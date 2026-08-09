@@ -1,0 +1,24 @@
+# The REBOL 3 interpreter used to check JEBOL's answers against a real one.
+#
+# A tool rather than source, and a 2.1M platform-specific binary at that.
+# Fetch your own from the Oldes/Rebol3 releases, picking the build for your
+# machine; see docs/allium-checker-notes.md for which asset and how to run
+# it. The binaries linked from rebol.com are i386 and will not run on any
+# current macOS.
+/r3
+/r3.exe
+
+# Gradle
+/.gradle/
+/build/
+
+# The Allium CLI's one-time notice marker, when the cache directory is not
+# writable and it falls back to the project root.
+/.allium-cli-notice-shown
+
+# Editors and operating systems
+.DS_Store
+*.swp
+.idea/
+*.iml
+.vscode/

@@ -1,0 +1,265 @@
+# The rest of the standard library.
+# Origin: REBOL/Core User Guide 2.3, section 6.
+#
+# Written before any of it exists. Milestone 3.
+
+# --- Changing a series in place ------------------------------
+
+--- id library/insert-puts-it-at-the-position
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+colors: copy [red green]
+insert colors 'blue
+head colors
+--- result
+[blue red green]
+
+--- id library/append-at-the-tail-adds-at-the-end
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+colors: copy [blue red green]
+append colors 'gold
+--- result
+[blue red green gold]
+
+--- id library/change-replaces-what-is-there
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+colors: copy [blue red green gold]
+change next colors 'yellow
+head colors
+--- result
+[blue yellow green gold]
+
+--- id library/remove-takes-out-the-one-at-the-position
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+colors: copy [red green blue gold]
+remove colors
+--- result
+[green blue gold]
+
+--- id library/clear-empties-from-the-position-on
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- note CLEAR removes from here to the tail, not the whole series, which is
+--- note why the guide's example keeps the first colour.
+--- code
+colors: copy [blue red green gold]
+clear next colors
+head colors
+--- result
+[blue]
+
+--- id library/clear-at-the-head-empties-it
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+colors: copy [blue red green]
+clear colors
+--- result
+[]
+
+# --- Copying parts -------------------------------------------
+
+--- id library/copy-part-takes-the-first-few
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+colors: [red green blue yellow]
+copy/part colors 2
+--- result
+[red green]
+
+--- id library/copy-part-of-more-than-there-is
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- note The boundary. Asking for more than remains gives what remains,
+--- note rather than raising or padding.
+--- code
+copy/part [red green] 10
+--- result
+[red green]
+
+--- id library/copy-part-of-none
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+copy/part [red green] 0
+--- result
+[]
+
+# --- Ordering ------------------------------------------------
+
+--- id library/sort-orders-words
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+sort copy [Eve Luke Zaphod Adam Matt Betty]
+--- result
+[Adam Betty Eve Luke Matt Zaphod]
+
+--- id library/sort-orders-numbers-by-value
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- note By value rather than by how they print, or 10 would come before 9.
+--- code
+sort copy [10 2 33 4]
+--- result
+[2 4 10 33]
+
+--- id library/sorting-an-empty-block
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+sort copy []
+--- result
+[]
+
+# --- Set operations ------------------------------------------
+
+--- id library/intersect-keeps-what-is-in-both
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+intersect [Bill Bob Bart] [Bob Ted Fred]
+--- result
+[Bob]
+
+--- id library/union-keeps-everything-once
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+union [Bill Bob Bart] [Bob Ted Fred]
+--- result
+[Bill Bob Bart Ted Fred]
+
+--- id library/exclude-drops-what-is-in-the-second
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+exclude [1 2 3 4] [1 2 3 5]
+--- result
+[4]
+
+--- id library/intersect-with-nothing-in-common
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+intersect [1 2] [3 4]
+--- result
+[]
+
+# --- Positions -----------------------------------------------
+
+--- id library/first-through-fifth
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+colors: [red green blue gold indigo teal]
+rejoin [first colors " " third colors " " fifth colors]
+--- result
+"red blue indigo"
+
+--- id library/index-of-the-head-is-one
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+index? [1 2 3 4 5]
+--- result
+1
+
+# --- Strings -------------------------------------------------
+
+--- id library/a-string-can-be-appended-to
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+message: copy "Message"
+append message " in a bottle"
+--- result
+"Message in a bottle"
+
+--- id library/find-in-a-string-gives-the-rest
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+find "Message in a bottle" #"i"
+--- result
+"in a bottle"
+
+--- id library/copy-part-of-a-string
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+copy/part "Message in a bottle" 7
+--- result
+"Message"
+
+--- id library/a-copied-string-is-independent
+--- origin REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+original: "hello"
+separate: copy original
+append separate " there"
+original
+--- result
+"hello"
+
+# --- Conversion ----------------------------------------------
+
+--- id library/to-integer-from-a-string
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+to-integer "42"
+--- result
+42
+
+--- id library/to-integer-from-something-that-is-not-a-number
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+to-integer "not a number"
+--- error script cannot-use
+
+--- id library/to-string-from-a-block-runs-them-together
+--- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- requires series
+--- code
+to-string [1 2 3]
+--- result
+"1 2 3"
+
+# --- Equality, as a real R3 answers it -----------------------
+
+--- id library/money-equality-ignores-scale
+--- origin confirmed against R3 3.22.1
+--- note $1.50 and $1.5 hold different scales and are nonetheless equal,
+--- note under both = and the strict ==. The scale is kept for printing and
+--- note ignored for comparing, which this repo had the wrong way round.
+--- code
+reduce [$1.50 = $1.5 $1.50 == $1.5 mold $1.50]
+--- result
+[true true "$1.50"]
+
+--- id library/loose-equality-ignores-case-for-files-and-tags
+--- origin confirmed against R3 3.22.1
+--- note = ignores case for every string-like type, not only string!. This
+--- note repo had it for string! and the words alone.
+--- code
+reduce [%A.txt = %a.txt <A> = <a> "A" = "a"]
+--- result
+[true true true]
+
+--- id library/strict-equality-still-minds-case
+--- origin confirmed against R3 3.22.1
+--- code
+reduce ["A" == "a" %A.txt == %a.txt]
+--- result
+[false false]

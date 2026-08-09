@@ -1,0 +1,295 @@
+# Objects: grouping values and the functions over them.
+# Origin: REBOL/Core User Guide 2.3, section 10.
+#
+# Written before objects exist. Milestone 2 in docs/milestones.md, and a
+# dependency of nearly everything after it: a VID face is an object, so
+# `face/color` in the demo sources is field access on one.
+
+# --- Making --------------------------------------------------
+
+--- id objects/make-object-holds-its-fields
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- code
+example: make object! [
+    var1: 10
+    var2: 20
+]
+example/var1
+--- result
+10
+
+--- id objects/a-field-can-be-computed-from-an-earlier-one
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object op
+--- note The body is evaluated in order, so a later field can use an earlier
+--- note one. That is what makes it a block being run rather than a literal.
+--- code
+example: make object! [
+    var1: 10
+    var2: var1 + 10
+]
+example/var2
+--- result
+20
+
+--- id objects/an-empty-object-is-legal
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- code
+empty: make object! []
+type? empty
+--- result
+object!
+
+--- id objects/two-objects-from-one-body-are-separate
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- note Each MAKE runs the body again, so the fields are new rather than
+--- note shared. Without this, one instance would tread on another.
+--- code
+body: [count: 0]
+first-one: make object! body
+second-one: make object! body
+first-one/count: 99
+second-one/count
+--- result
+0
+
+# --- Reading and writing fields ------------------------------
+
+--- id objects/a-field-can-be-assigned-through-a-path
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- code
+account: make object! [balance: 0]
+account/balance: 1000
+account/balance
+--- result
+1000
+
+--- id objects/assigning-a-field-does-not-add-one
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- note An object has the fields its body gave it. Assigning to a name it
+--- note does not have is a mistake rather than a way to extend it.
+--- code
+account: make object! [balance: 0]
+account/nosuchfield: 1
+--- error script invalid-path
+
+--- id objects/reading-a-field-that-is-not-there-raises
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- code
+account: make object! [balance: 0]
+account/nosuchfield
+--- error script invalid-path
+
+--- id objects/in-gives-the-word-in-the-objects-context
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- code
+account: make object! [balance: 1000]
+get in account 'balance
+--- result
+1000
+
+--- id objects/set-in-writes-through-the-word
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- note Reaching a field by a word held in a variable rather than by a
+--- note literal path, which is how a field name can be worked out at
+--- note runtime.
+--- code
+account: make object! [balance: 1000]
+set in account 'balance 20
+account/balance
+--- result
+20
+
+--- id objects/fields-can-be-read-by-a-word-held-in-a-variable
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object series control output
+--- code
+person: make object! [first-name: "Fred" last-name: "Smith"]
+foreach word [first-name last-name] [prin get in person word]
+--- prints
+FredSmith
+
+# --- Methods -------------------------------------------------
+
+--- id objects/a-function-in-an-object-reaches-its-fields
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object control op
+--- note This is the point of an object rather than a block: the function
+--- note sees the fields beside it without being handed them.
+--- code
+counter: make object! [
+    count: 0
+    step: does [count: count + 1]
+]
+counter/step
+counter/step
+counter/count
+--- result
+2
+
+--- id objects/a-method-takes-arguments
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object control op
+--- code
+account: make object! [
+    balance: 0
+    deposit: func [amount] [balance: balance + amount]
+]
+account/deposit 100
+account/deposit 10
+account/balance
+--- result
+110
+
+--- id objects/methods-on-two-instances-do-not-share-state
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires object control op
+--- code
+maker: [count: 0 step: does [count: count + 1]]
+one: make object! maker
+other: make object! maker
+one/step
+other/count
+--- result
+0
+
+# --- Deriving ------------------------------------------------
+
+--- id objects/make-from-an-object-copies-it
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- code
+original: make object! [var1: 10]
+copied: make original []
+copied/var1
+--- result
+10
+
+--- id objects/a-derived-object-can-add-fields
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- code
+original: make object! [var1: 10]
+extended: make original [var2: 20]
+extended/var2
+--- result
+20
+
+--- id objects/a-derived-object-does-not-share-the-original
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- note Deriving copies rather than linking, so changing the child leaves
+--- note the parent alone. REBOL objects have no live inheritance.
+--- code
+original: make object! [var1: 10]
+derived: make original []
+derived/var1: 99
+original/var1
+--- result
+10
+
+# --- Context -------------------------------------------------
+
+--- id objects/context-is-make-object-without-the-ceremony
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- code
+settings: context [width: 640 height: 480]
+settings/width
+--- result
+640
+
+--- id objects/an-object-does-not-leak-into-the-caller
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires object
+--- note The fields are the object's, not the enclosing script's, which is
+--- note what makes an object a way of not colliding.
+--- code
+width: "outer"
+settings: context [width: 640]
+width
+--- result
+"outer"
+
+--- id objects/a-field-can-see-out-to-the-enclosing-context
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires object control
+--- note A word the object does not define falls through to where the body
+--- note was written, which is how a method can call an ordinary function.
+--- code
+example: make object! [
+    doubled: multiply 21 2
+]
+example/doubled
+--- result
+42
+
+--- id objects/an-object-can-be-molded
+--- origin JEBOL, found by printing one
+--- requires object
+--- note Every object holds a word for itself, so molding one used to
+--- note recurse until the stack gave out. SELF is left out of the printed
+--- note form for that reason, and REBOL leaves it out for the same one.
+--- code
+settings: make object! [width: 640]
+mold settings
+--- result
+"make object! [width: 640]"
+
+--- id objects/self-refers-to-the-object
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires object control
+--- note It is still there and still usable, just not printed.
+--- code
+thing: make object! [
+    size: 10
+    mine: does [self]
+]
+same-thing: thing/mine
+same-thing/size
+--- result
+10
+
+--- id objects/a-copied-method-acts-on-the-copy
+--- origin JEBOL, found by running it
+--- requires object control op
+--- note The entry above proves a copied *field* is independent. This proves
+--- note a copied *method* is, which is a different thing and was broken: the
+--- note function still closed over the object it was written in, so
+--- note depositing into the copy moved money in the original.
+--- code
+account: make object! [
+    balance: 0
+    deposit: func [amount] [balance: balance + amount]
+]
+account/deposit 100
+savings: make account []
+savings/deposit 10
+rejoin [account/balance " and " savings/balance]
+--- result
+"100 and 110"
+
+--- id objects/two-copies-have-independent-methods
+--- origin JEBOL, found by running it
+--- requires object control op
+--- code
+maker: make object! [
+    count: 0
+    step: does [count: count + 1]
+]
+one: make maker []
+other: make maker []
+one/step
+one/step
+other/step
+rejoin [one/count " and " other/count]
+--- result
+"2 and 1"

@@ -1,0 +1,237 @@
+# Taking series apart and putting them back together.
+# Origin: REBOL/Core User Guide 2.3, sections 5, 8 and 10.
+#
+# Written for the natives added alongside it, so that twenty new natives do
+# not arrive with nothing asking whether they work.
+
+# --- Reading -------------------------------------------------
+
+--- id series/first-and-last
+--- origin adapted from REBOL/Core User Guide 2.3 section 5.3
+--- requires series
+--- code
+colors: [red green blue]
+last colors
+--- result
+blue
+
+--- id series/pick-by-position
+--- origin adapted from REBOL/Core User Guide 2.3 section 5.3
+--- requires series
+--- code
+pick [red green blue] 2
+--- result
+green
+
+--- id series/pick-past-the-end-is-none
+--- origin adapted from REBOL/Core User Guide 2.3 section 5.3
+--- requires series
+--- note The boundary. A position that holds nothing gives NONE rather than
+--- note raising, because a series has positions that are simply empty.
+--- code
+pick [red green blue] 4
+--- result
+none
+
+--- id series/empty-block-is-empty
+--- origin adapted from REBOL/Core User Guide 2.3 section 5.3
+--- requires series
+--- code
+empty? []
+--- result
+true
+
+--- id series/a-block-with-something-in-it-is-not
+--- origin adapted from REBOL/Core User Guide 2.3 section 5.3
+--- requires series
+--- code
+empty? [1]
+--- result
+false
+
+# --- Positions -----------------------------------------------
+
+--- id series/next-moves-one-along
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.3
+--- requires series
+--- code
+first next [red green blue]
+--- result
+green
+
+--- id series/back-moves-one-back
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.3
+--- requires series
+--- code
+first back next next [red green blue]
+--- result
+green
+
+--- id series/back-at-the-head-stays-there
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.3
+--- requires series
+--- note The boundary at the near end: there is nowhere before the head, so
+--- note it stays rather than going negative.
+--- code
+index? back [red green blue]
+--- result
+1
+
+--- id series/skip-jumps
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.3
+--- requires series
+--- code
+index? skip [a b c d e] 3
+--- result
+4
+
+--- id series/at-is-absolute-from-here
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.3
+--- requires series
+--- code
+first at [a b c d e] 3
+--- result
+c
+
+--- id series/tail-is-past-the-last
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.3
+--- requires series
+--- code
+tail? tail [a b c]
+--- result
+true
+
+--- id series/head-goes-back-to-the-start
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.3
+--- requires series
+--- code
+first head next next [a b c]
+--- result
+a
+
+# --- Searching -----------------------------------------------
+
+--- id series/find-gives-the-position
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.1
+--- requires series
+--- note FIND hands back the series positioned at the match, so the answer
+--- note is also somewhere to carry on from.
+--- code
+first find [red green blue] 'green
+--- result
+green
+
+--- id series/find-what-is-not-there-is-none
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.1
+--- requires series
+--- code
+find [red green blue] 'yellow
+--- result
+none
+
+--- id series/select-takes-the-value-after-the-match
+--- origin REBOL/Core User Guide 2.3 section 8.1
+--- requires series
+--- code
+select [center 1 right 2 left 3] 'right
+--- result
+2
+
+# --- Changing ------------------------------------------------
+
+--- id series/append-adds-at-the-end
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.2
+--- requires series
+--- code
+colors: copy [red green]
+append colors 'blue
+--- result
+[red green blue]
+
+--- id series/insert-adds-at-the-position
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.2
+--- requires series
+--- code
+colors: copy [green blue]
+insert colors 'red
+head colors
+--- result
+[red green blue]
+
+--- id series/remove-takes-one-out
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.2
+--- requires series
+--- code
+colors: copy [red green blue]
+remove colors
+--- result
+[green blue]
+
+--- id series/reverse-turns-it-round
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.2
+--- requires series
+--- code
+reverse copy [1 2 3]
+--- result
+[3 2 1]
+
+# --- Copying, which is the point of series semantics ---------
+
+--- id series/without-copy-a-mutation-is-shared
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.2
+--- requires series
+--- note Two words holding the same series hold the same storage, so a
+--- note change through one shows through the other. This surprises people
+--- note and it is the semantics rather than a mistake.
+--- code
+original: [red green]
+alias: original
+append alias 'blue
+original
+--- result
+[red green blue]
+
+--- id series/copy-is-how-you-stop-that
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.2
+--- requires series
+--- code
+original: [red green]
+separate: copy original
+append separate 'blue
+original
+--- result
+[red green]
+
+# --- Strings are series too ----------------------------------
+
+--- id series/string-length
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.2
+--- requires series
+--- code
+length? "REBOL"
+--- result
+5
+
+--- id series/uppercase-and-lowercase
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.2
+--- requires series
+--- code
+uppercase "rebol"
+--- result
+"REBOL"
+
+--- id series/find-in-a-string
+--- origin REBOL/Core User Guide 2.3 section 6.1
+--- requires series control
+--- code
+if find "let's talk about REBOL" #"t" ["found"]
+--- result
+"found"
+
+--- id series/rejoin-runs-them-together
+--- origin adapted from REBOL/Core User Guide 2.3 section 4.4
+--- requires series op
+--- code
+rejoin [1 + 2 3 + 4]
+--- result
+"37"

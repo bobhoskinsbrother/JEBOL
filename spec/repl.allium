@@ -1,0 +1,214 @@
+-- allium: 3
+--
+-- JEBOL: the console.
+--
+-- The REPL is an adapter, not part of the language. It reads a line,
+-- evaluates it and prints the result, and it is the only place in JEBOL
+-- that is allowed to be forgiving. Two conveniences live here that
+-- deliberately do not live in the evaluator: a fresh word can be assigned
+-- to, and an error ends the expression rather than the session.
+--
+-- Both of those are why this is a separate module. Putting them in the
+-- evaluator would mean a block handed to a function behaved differently
+-- depending on who was watching.
+
+use "./values.allium" as values
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+enum SubmissionOutcome {
+    printed             -- a value came back and was shown
+    | shown_nothing     -- the expression produced UNSET, so nothing printed
+    | reported_error    -- an error came back and was shown as an error
+    | still_reading     -- the line was incomplete, so more input is wanted
+}
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+entity Session {
+    user_context: values/Context
+    submissions: Submission with session = this
+
+    is_open: Boolean
+}
+
+entity Submission {
+    session: Session
+    source_text: String
+
+    status: submitted | evaluated | failed | incomplete
+
+    outcome: SubmissionOutcome when status in {evaluated, failed, incomplete}
+    result: values/Value when status = evaluated
+    error_value: values/Value when status = failed
+
+    -- What was printed back, so that a test can assert on what a user
+    -- would have seen rather than on an internal value.
+    displayed: String when status in {evaluated, failed}
+
+    transitions status {
+        submitted -> evaluated
+        submitted -> failed
+        submitted -> incomplete
+        terminal: evaluated, failed, incomplete
+    }
+}
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+rule SubmissionArrives {
+    when: Submit(session, source_text)
+    requires: session.is_open
+    ensures: Submission.created(
+        session: session,
+        source_text: source_text,
+        status: submitted
+    )
+}
+
+-- Before evaluating, every set-word in the submission that names nothing
+-- yet gets a slot in the user context. This is the one place JEBOL
+-- creates a binding on assignment, and it is what makes `x: 1` work at a
+-- console when `do [x: 1]` inside a function does not.
+rule SubmissionExtendsContextForFreshWords {
+    when: submission: Submission.created
+    requires: submission.status = submitted
+    requires: reads_successfully(submission.source_text)
+
+    ensures:
+        for word in set_words_within(submission.source_text):
+            if not is_known_in(submission.session.user_context, word.canonical):
+                values/ContextSlot.created(
+                    context: submission.session.user_context,
+                    spelling: word.spelling,
+                    canonical: word.canonical,
+                    value: unset_value(),
+                    is_protected: false
+                )
+
+    @guidance
+        -- Slots start UNSET rather than NONE. A word that has been named
+        -- but not yet assigned is exactly what UNSET is for, and the
+        -- evaluator already reports that differently from an unbound
+        -- word.
+}
+
+-- The single place a submission's outcome is decided, in precedence
+-- order. An unterminated block is not an error; it is a request for the
+-- next line, which is what lets a function definition be typed across
+-- several of them.
+rule SubmissionResolves {
+    when: submission: Submission.created
+    requires: submission.status = submitted
+
+    ensures:
+        if is_incomplete_source(submission.source_text):
+            submission.status = incomplete
+            submission.outcome = still_reading
+        else if evaluation_raised(submission.source_text):
+            submission.status = failed
+            submission.outcome = reported_error
+            submission.error_value = raised_error_of(submission.source_text)
+            submission.displayed = format_error(raised_error_of(submission.source_text))
+        else if result_is_unset(submission.source_text):
+            submission.status = evaluated
+            submission.outcome = shown_nothing
+            submission.result = unset_value()
+            submission.displayed = ""
+        else:
+            submission.status = evaluated
+            submission.outcome = printed
+            submission.result = result_of(submission.source_text)
+            submission.displayed = mold(result_of(submission.source_text))
+}
+
+-- An error ends the expression, never the session. A console that exited
+-- on a typo would be unusable, and the guarantee that errors are values
+-- is what makes carrying on safe rather than reckless.
+rule SessionSurvivesAnError {
+    when: submission: Submission.status transitions_to failed
+    ensures: submission.session.is_open = true
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- Nothing is shown for UNSET. Printing something for a value that is not
+-- there would make it impossible to tell a function that returned
+-- nothing from one that returned NONE.
+invariant UnsetShowsNothing {
+    for submission in Submissions:
+        submission.outcome = shown_nothing implies submission.displayed = ""
+}
+
+-- What the console prints is what MOLD prints, so anything shown can be
+-- typed back in. A console that pretty-printed into something unreadable
+-- would break the property the whole language rests on.
+invariant DisplayedValuesAreMolded {
+    for submission in Submissions:
+        submission.outcome = printed
+            implies submission.displayed = mold(submission.result)
+}
+
+-- An incomplete line produces no result and no error. It has not been
+-- evaluated at all yet.
+invariant IncompleteSubmissionsProduceNothing {
+    for submission in Submissions:
+        submission.status = incomplete implies submission.outcome = still_reading
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+surface Console {
+    facing operator: ConsoleUser
+    context session: Session where is_open = true
+
+    provides:
+        Submit(session, source_text) when operator.is_open
+
+    exposes:
+        SubmissionOutcome
+
+    @guarantee ErrorsNeverEndTheSession
+        -- Every failure is shown and the prompt returns. Nothing a user
+        -- can type ends the session except asking it to end.
+
+    @guarantee ConvenienceStopsAtTheConsole
+        -- Creating a slot for a fresh set-word happens here and nowhere
+        -- else. A block handed to a function behaves the same whether or
+        -- not a console is attached.
+}
+
+actor ConsoleUser {
+    identified_by: Session where is_open = true
+}
+
+------------------------------------------------------------
+-- Open Questions
+------------------------------------------------------------
+
+-- Resolved: the reader decides. The console offers the text to TRANSCODE
+-- and treats missing-close and unterminated-string as a request for more
+-- input, and every other failure as a mistake. Counting delimiters gets a
+-- brace inside a braced string wrong, and a braced string is exactly the
+-- thing that spans lines.
+
+-- Resolved: the console prints == before a value, as R3-Alpha does.
+
+-- Resolved against a real R3: the console is reachable as
+-- system/console, an object! whose words are [history current]. So the
+-- history is a REBOL value a script can read rather than something only
+-- the adapter knows about.
+--
+-- JEBOL does not have a system object yet, so this is answered but not
+-- built. When it is, history belongs there rather than in the user
+-- context, where a script could shadow it by accident.

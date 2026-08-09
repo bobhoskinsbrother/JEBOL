@@ -1,0 +1,215 @@
+# Defining and calling functions.
+# Origin: REBOL/Core User Guide 2.3, section 9.
+#
+# Missing for the same reason the loops were: the chapter was never
+# transcribed. Without this, JEBOL evaluates expressions but is not a
+# language anyone could write a program in.
+
+# --- Defining ------------------------------------------------
+
+--- id functions/func-defines-a-function
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control op
+--- code
+sum: func [arg1 arg2] [arg1 + arg2]
+sum 123 321
+--- result
+444
+
+--- id functions/func-defines-a-function-prefix-only
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note The same thing without infix, so a failure says whether the gap is
+--- note function definition or operators.
+--- code
+sum: func [arg1 arg2] [add arg1 arg2]
+sum 123 321
+--- result
+444
+
+--- id functions/a-function-returns-its-last-expression
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control op
+--- note The same rule as a block: the value of a body is the value of the
+--- note last thing in it. There is no implicit return because there is
+--- note nothing to make implicit.
+--- code
+sum: func [a b] [
+    a
+    b
+    a + b
+]
+sum 123 321
+--- result
+444
+
+--- id functions/does-defines-a-function-of-no-arguments
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- code
+answer: does [42]
+answer
+--- result
+42
+
+--- id functions/a-function-of-no-arguments-takes-none
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note It must not reach forward for a value it does not want, which is
+--- note the whole question of how far a word reaches.
+--- code
+answer: does [42]
+add answer 1
+--- result
+43
+
+# --- Arguments -----------------------------------------------
+
+--- id functions/arguments-are-local-to-the-call
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note The argument word must not leak into the caller, or two calls
+--- note would tread on each other.
+--- code
+n: "outer"
+double: func [n] [add n n]
+double 21
+n
+--- result
+"outer"
+
+--- id functions/arguments-are-evaluated-before-the-call
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- code
+double: func [n] [add n n]
+double add 10 11
+--- result
+42
+
+--- id functions/a-typed-argument-accepts-its-type
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control op
+--- code
+sum: func [arg1 [number!] arg2 [number!]] [arg1 + arg2]
+sum 1 2
+--- result
+3
+
+--- id functions/a-typed-argument-refuses-another-type
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note The declared type is a promise the caller has to keep, and the
+--- note error names the parameter rather than merely complaining.
+--- code
+sum: func [arg1 [number!] arg2 [number!]] [add arg1 arg2]
+sum "not a number" 2
+--- error script expect-arg
+
+--- id functions/too-few-arguments-is-an-error
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note There is no currying in REBOL: a call with nothing left to take is
+--- note a mistake rather than a partly applied function.
+--- code
+do [sum: func [a b] [add a b] sum 1]
+--- error script need-value
+
+# --- Recursion -----------------------------------------------
+
+--- id functions/a-function-can-call-itself
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control op
+--- note The test that a function body gets a fresh set of locals per call
+--- note rather than one shared set.
+--- code
+factorial: func [n] [
+    either n <= 1 [1] [n * factorial n - 1]
+]
+factorial 10
+--- result
+3628800
+
+--- id functions/recursion-terminates-at-its-base-case
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- code
+countdown: func [n] [
+    either n <= 0 ["done"] [countdown subtract n 1]
+]
+countdown 100
+--- result
+"done"
+
+--- id functions/runaway-recursion-is-a-catchable-error
+--- origin JEBOL spec/eval.allium, EvaluationRefusesToRecurseTooDeep
+--- requires control
+--- note Not in the guide. An operator running one bad script must get an
+--- note error rather than a dead process, which is why the depth limit is
+--- note a policy rather than whatever the host stack happens to allow.
+--- code
+forever: func [n] [forever n]
+forever 1
+--- error script too-deep
+
+# --- Functions as values -------------------------------------
+
+--- id functions/a-function-can-be-passed-to-another
+--- origin adapted from REBOL/Core User Guide 2.3 section 5.4
+--- requires control
+--- note :name fetches the function without calling it, which is the only
+--- note way to hand one on.
+--- code
+double: func [n] [add n n]
+apply-twice: func [f n] [f f n]
+apply-twice :double 3
+--- result
+12
+
+--- id functions/a-function-value-in-a-block-is-not-called
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control series
+--- note Blocks are inert, so a function sitting in one waits until
+--- note something reaches it through a word or a path.
+--- code
+double: func [n] [add n n]
+holder: reduce [:double]
+type? first holder
+--- result
+function!
+
+--- id functions/a-function-can-be-renamed
+--- origin adapted from REBOL/Core User Guide 2.3 section 5.4
+--- requires control
+--- code
+double: func [n] [add n n]
+twice: :double
+twice 21
+--- result
+42
+
+# --- Locals --------------------------------------------------
+
+--- id functions/local-refinement-keeps-words-out-of-the-caller
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control op series
+--- code
+average: func [block /local total] [
+    total: 0
+    foreach num block [total: total + num]
+    total / length? block
+]
+average [1 2 3 4]
+--- result
+2.5
+
+--- id functions/a-local-does-not-escape
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- code
+total: "caller's"
+tally: func [/local total] [total: 99]
+tally
+total
+--- result
+"caller's"

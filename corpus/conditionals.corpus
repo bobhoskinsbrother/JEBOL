@@ -1,0 +1,213 @@
+# Conditional truth and the control natives.
+# Origin: REBOL/Core User Guide 2.3, sections 6.1 to 6.4.
+#
+# The truthiness table below is the most valuable group in the corpus for
+# milestone 1. It is pure evaluation semantics with no series, no clock
+# and no output, and it is where REBOL differs most sharply from the
+# languages a reader is likely to arrive from. Zero is true. An empty
+# block is true. Only NONE and logic FALSE are false.
+
+--- id conditionals/true-is-true
+--- origin REBOL/Core User Guide 2.3 section 6.4
+--- requires control
+--- code
+if true [1]
+--- result
+1
+
+--- id conditionals/false-is-false
+--- origin REBOL/Core User Guide 2.3 section 6.4
+--- requires control
+--- note IF with a false condition produces none, not unset.
+--- code
+if false [1]
+--- result
+none
+
+--- id conditionals/one-is-true
+--- origin REBOL/Core User Guide 2.3 section 6.4
+--- requires control
+--- code
+if 1 [1]
+--- result
+1
+
+--- id conditionals/zero-is-true
+--- origin REBOL/Core User Guide 2.3 section 6.4
+--- requires control
+--- note The one that catches everybody. Zero is a value, so it is true.
+--- code
+if 0 [1]
+--- result
+1
+
+--- id conditionals/empty-block-is-true
+--- origin REBOL/Core User Guide 2.3 section 6.4
+--- requires control
+--- code
+if [] [1]
+--- result
+1
+
+--- id conditionals/block-holding-false-is-true
+--- origin REBOL/Core User Guide 2.3 section 6.4
+--- requires control
+--- note The block is the condition and blocks are true. What is inside it
+--- note is never looked at, because IF does not reduce its condition.
+--- code
+if [false] [1]
+--- result
+1
+
+--- id conditionals/none-is-false
+--- origin REBOL/Core User Guide 2.3 section 6.4
+--- requires control
+--- code
+if none [1]
+--- result
+none
+
+--- id conditionals/empty-string-is-true
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.4
+--- requires control
+--- note Not in the guide's list, but it follows from the same rule and is
+--- note the other case a reader expects to be false.
+--- code
+if "" [1]
+--- result
+1
+
+--- id conditionals/either-takes-the-true-branch
+--- origin REBOL/Core User Guide 2.3 section 6.1
+--- requires control
+--- code
+either true ["yes"] ["no"]
+--- result
+"yes"
+
+--- id conditionals/either-takes-the-false-branch
+--- origin REBOL/Core User Guide 2.3 section 6.1
+--- requires control
+--- code
+either none ["yes"] ["no"]
+--- result
+"no"
+
+--- id conditionals/if-result-is-a-value
+--- origin REBOL/Core User Guide 2.3 section 6.1
+--- requires control
+--- note IF is an expression, so its result can be assigned. This is what
+--- note makes the language uniform: there are no statements.
+--- code
+flag: if true ["lunch eaten"]
+flag
+--- result
+"lunch eaten"
+
+--- id conditionals/condition-block-held-in-a-word
+--- origin REBOL/Core User Guide 2.3 section 6.1
+--- requires control
+--- note The branch is an ordinary block held in an ordinary word. Code
+--- note and data are the same thing, and this is the proof.
+--- code
+notice: ["Wake up!"]
+if true notice
+--- result
+"Wake up!"
+
+--- id conditionals/any-returns-first-true-value
+--- origin REBOL/Core User Guide 2.3 section 6.2
+--- requires control
+--- note ANY returns the value, not a logic. This is how defaulting is
+--- note written in REBOL.
+--- code
+number: none
+any [number 100]
+--- result
+100
+
+--- id conditionals/any-skips-several-nones
+--- origin REBOL/Core User Guide 2.3 section 6.2
+--- requires control
+--- code
+num1: num2: none
+num3: 80
+any [num1 num2 num3]
+--- result
+80
+
+--- id conditionals/any-returns-none-when-all-fail
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.2
+--- requires control
+--- code
+any [none false]
+--- result
+none
+
+--- id conditionals/all-returns-last-value
+--- origin REBOL/Core User Guide 2.3 section 6.2
+--- requires control
+--- code
+all [true 1 "done"]
+--- result
+"done"
+
+--- id conditionals/all-returns-none-on-first-false
+--- origin REBOL/Core User Guide 2.3 section 6.2
+--- requires control series
+--- note The guide's example uses a none-valued string to short-circuit
+--- note APPEND. Reduced here to the behaviour being demonstrated.
+--- code
+a: "REBOL/"
+b: none
+all [string? a string? b append a b]
+--- result
+none
+
+--- id conditionals/all-runs-every-expression-when-all-pass
+--- origin REBOL/Core User Guide 2.3 section 6.2
+--- requires control series
+--- code
+a: "REBOL/"
+b: "Core"
+all [string? a string? b append a b]
+--- result
+"REBOL/Core"
+
+--- id conditionals/error-in-a-branch-propagates
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires control
+--- note An error raised inside a taken branch is the result of the whole
+--- note expression. Evaluation does not carry on past it.
+--- code
+if true [divide 1 0]
+--- error math zero-divide
+
+--- id conditionals/error-in-an-untaken-branch-does-not-fire
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires control
+--- note The untaken block is never evaluated, so what is inside it cannot
+--- note fail. This is the counterpart to the previous entry.
+--- code
+if none [divide 1 0]
+--- result
+none
+
+--- id conditionals/try-catches-an-error-as-a-value
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires control
+--- note Errors are values. TRY is what stops one being raised and hands
+--- note it back instead, which is why the spec insists no failure escapes
+--- note as a host exception.
+--- code
+error? try [divide 1 0]
+--- result
+true
+
+--- id conditionals/try-passes-through-a-good-result
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires control
+--- code
+try [divide 10 2]
+--- result
+5

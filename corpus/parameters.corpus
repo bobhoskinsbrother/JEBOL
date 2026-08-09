@@ -1,0 +1,127 @@
+# How a function takes its arguments.
+# Origin: REBOL/Core User Guide 2.3, section 9.
+#
+# Written before soft-literal parameters exist. They are declared in
+# spec/values.allium and gathered by nothing, and the open question there
+# asks exactly what the three opt-out forms do.
+
+# --- Normal: evaluated ---------------------------------------
+
+--- id parameters/a-normal-argument-is-evaluated
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- code
+show: func [value] [value]
+n: 42
+show n
+--- result
+42
+
+# --- Literal: never evaluated --------------------------------
+
+--- id parameters/a-literal-argument-arrives-as-written
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note A quoted word in the spec takes the word itself, which is how ZAP
+--- note in the guide can set a variable its caller named.
+--- code
+name-of: func ['word] [word]
+name-of hello
+--- result
+hello
+
+--- id parameters/a-literal-argument-is-not-looked-up
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note Even when the word does name something, the function gets the word.
+--- code
+defined: 99
+name-of: func ['word] [word]
+name-of defined
+--- result
+defined
+
+--- id parameters/a-literal-argument-lets-a-function-assign-for-its-caller
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note The guide's ZAP. Taking the word rather than its value is the only
+--- note way a function can set something in the caller.
+--- code
+zap: func ['var] [set var 0]
+test: 10
+zap test
+test
+--- result
+0
+
+# --- Soft literal: unevaluated unless the caller says otherwise
+
+--- id parameters/a-soft-literal-argument-arrives-as-written
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note A get-word in the spec behaves like a quoted one for an ordinary
+--- note word, so a function name arrives without being called.
+--- code
+soft: func [:value] [value]
+soft hello
+--- result
+hello
+
+--- id parameters/a-paren-opts-into-evaluation
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note This is the whole point of soft rather than hard. The caller wraps
+--- note the argument in a paren to say "evaluate this one after all".
+--- code
+soft: func [:value] [value]
+soft (add 1 2)
+--- result
+3
+
+--- id parameters/a-get-word-opts-into-evaluation
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- code
+answer: 42
+soft: func [:value] [value]
+soft :answer
+--- result
+42
+
+--- id parameters/a-soft-literal-still-refuses-an-ordinary-word
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note The contrast that makes the two above mean something: without one
+--- note of the opt-in forms, the word is not looked up.
+--- code
+answer: 42
+soft: func [:value] [value]
+soft answer
+--- result
+answer
+
+# --- Refinements ---------------------------------------------
+
+--- id parameters/a-refinement-not-asked-for-is-none
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note A refinement the caller did not use is NONE rather than unset, so
+--- note the body can test it without first asking whether it exists.
+--- code
+sum: func [a b /average] [
+    either average [divide add a b 2] [add a b]
+]
+sum 123 321
+--- result
+444
+
+--- id parameters/a-refinement-asked-for-is-true
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- code
+sum: func [a b /average] [
+    either average [divide add a b 2] [add a b]
+]
+sum/average 123 321
+--- result
+222

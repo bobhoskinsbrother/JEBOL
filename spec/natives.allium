@@ -1,0 +1,248 @@
+-- allium: 3
+--
+-- JEBOL: the built-in function set for milestone 1.
+--
+-- This module says what the natives are and what the non-obvious ones do.
+-- It does not restate the evaluator: how a native gets its arguments,
+-- what happens when one is the wrong type, and how an error travels back
+-- out are all in eval.allium and apply to natives exactly as they apply
+-- to anything else.
+--
+-- What earns a rule here is behaviour a caller can get wrong. IF
+-- returning NONE rather than UNSET, ANY returning a value rather than a
+-- logic, and zero being true are all things people trip over, and each of
+-- them has corpus entries behind it.
+
+use "./values.allium" as values
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+enum NativeCategory {
+    control         -- if, either, any, all, loop, while, until, foreach
+    | arithmetic    -- add, subtract, multiply, divide, remainder, negate
+    | comparison    -- equal, lesser, greater and their operator spellings
+    | logic_op      -- and, or, not, xor
+    | series        -- first, last, length, pick, select, find, append, copy
+    | conversion    -- to-integer, to-string, to-block, form, mold
+    | reflection    -- type, value, native, function, get, set, unset, protect
+    | failure       -- try, error, throw, catch
+}
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+-- One entry in the built-in catalogue. The catalogue is data: what a
+-- native is called, how many arguments it takes and what it accepts. What
+-- it does is either obvious or has a rule below.
+entity NativeDefinition {
+    name: String                    -- the word it is bound to, lowercased
+    category: NativeCategory
+    parameters: List<values/Parameter>
+    arity: parameters.count
+
+    -- True for the ones reached infix. An operator is always binary and
+    -- always has a prefix twin, so `1 + 2` and `add 1 2` are the same
+    -- call reached two ways.
+    is_operator: Boolean
+    prefix_twin: String when is_operator = true
+
+    invariant OperatorsAreBinary {
+        is_operator implies arity = 2
+    }
+}
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+-- === Conditionals ==========================================
+--
+-- Every conditional native asks the same question of its condition: is
+-- this value true? The answer is in values.allium, and it is that only
+-- NONE and logic FALSE are false. Zero is true, an empty string is true,
+-- an empty block is true. This is the single most surprising thing about
+-- the language for anyone arriving from elsewhere, and it is one rule
+-- rather than a special case per native.
+
+rule ConditionalTakesBranchOnTruth {
+    when: EvaluateIf(condition, branch)
+    requires: condition.is_truthy
+    ensures: BranchTaken(branch: branch)
+}
+
+-- IF with a false condition produces NONE, not UNSET. The distinction
+-- matters because UNSET cannot be assigned or passed on, and `flag: if
+-- false [...]` has to leave something behind.
+rule ConditionalProducesNoneOnFalsehood {
+    when: EvaluateIf(condition, branch)
+    requires: not condition.is_truthy
+    ensures: ConditionalResult(value: none_value())
+}
+
+-- The condition is not reduced. A block is a value and values are true,
+-- so `if [false] [...]` takes the branch. What is inside the block is
+-- never looked at.
+rule ConditionalDoesNotReduceItsCondition {
+    when: EvaluateIf(condition, branch)
+    requires: condition.datatype = block
+    ensures: BranchTaken(branch: branch)
+}
+
+-- An untaken branch is never evaluated, so an error inside it cannot
+-- fire. This is what makes a conditional a conditional rather than a
+-- function of two already-computed values.
+rule UntakenBranchIsNotEvaluated {
+    when: EvaluateEither(condition, true_branch, false_branch)
+    requires: not condition.is_truthy
+    ensures: BranchTaken(branch: false_branch)
+}
+
+-- === Any and all ===========================================
+--
+-- These return values, not logics. That is what makes `any [supplied 100]`
+-- the way a default is written in REBOL, and it is why they are worth a
+-- rule each rather than being filed under boolean logic.
+
+rule AnyProducesFirstTruthyValue {
+    when: EvaluateAny(candidates)
+    requires: candidates.any(candidate => candidate.is_truthy)
+    ensures: AnyResult(value: first_truthy(candidates))
+}
+
+rule AnyProducesNoneWhenNothingIsTruthy {
+    when: EvaluateAny(candidates)
+    requires: not candidates.any(candidate => candidate.is_truthy)
+    ensures: AnyResult(value: none_value())
+}
+
+rule AllProducesLastValueWhenNothingIsFalse {
+    when: EvaluateAll(candidates)
+    requires: candidates.all(candidate => candidate.is_truthy)
+    ensures: AllResult(value: last_value(candidates))
+}
+
+rule AllProducesNoneOnFirstFalsehood {
+    when: EvaluateAll(candidates)
+    requires: not candidates.all(candidate => candidate.is_truthy)
+    ensures: AllResult(value: none_value())
+}
+
+-- Both stop at the point the answer is known. An expression after the
+-- deciding one is never evaluated, which is what lets
+-- `all [string? a string? b append a b]` guard the append.
+rule AnyAndAllStopWhenDecided {
+    when: EvaluateAny(candidates)
+    ensures: EvaluatedCandidates(count: decisive_position(candidates))
+}
+
+-- === Arithmetic ============================================
+
+rule ArithmeticRaisesOnOverflow {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: overflows(operation, left, right)
+    ensures: ArithmeticFailed(failure: overflow)
+
+    @guidance
+        -- The JVM wraps silently, which is the worst available behaviour
+        -- because a wrong answer looks like a right one. Every integer
+        -- operation is checked.
+}
+
+rule DivisionByZeroRaises {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: operation in {divide, remainder}
+    requires: is_zero(right)
+    ensures: ArithmeticFailed(failure: zero_divide)
+}
+
+-- === Failure ===============================================
+
+-- TRY turns a raised error into an ordinary value. It is the only thing
+-- that stops an error propagating, and it is why the guarantee that no
+-- failure escapes as a host exception is keepable.
+rule TryProducesTheErrorAsAValue {
+    when: EvaluateTry(body)
+    requires: raises(body)
+    ensures: TryResult(value: raised_error(body))
+}
+
+rule TryPassesThroughASuccessfulResult {
+    when: EvaluateTry(body)
+    requires: not raises(body)
+    ensures: TryResult(value: body_result(body))
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- Names are unique, because a name is how a native is reached.
+invariant NativeNamesAreUnique {
+    for first in NativeDefinitions:
+        for second in NativeDefinitions:
+            first != second implies first.name != second.name
+}
+
+invariant NativeNamesAreCanonical {
+    for native in NativeDefinitions:
+        native.name = lowercase(native.name)
+}
+
+-- Every operator has a prefix spelling of the same thing. Without that,
+-- code that avoids infix could not be written, and the corpus entries
+-- that pair `1 + 2` with `add 1 2` would be comparing different
+-- behaviours rather than the same one reached two ways.
+invariant OperatorsHaveAPrefixTwin {
+    for native in NativeDefinitions:
+        native.is_operator implies native.prefix_twin != null
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+surface BuiltInFunctions {
+    exposes:
+        NativeCategory
+        NativeDefinition
+
+    @guarantee ConditionalTruthIsOneRule
+        -- Every native that asks whether a value is true gets the same
+        -- answer: only NONE and logic FALSE are false. No native has its
+        -- own notion of truth.
+
+    @guarantee NativesAreOrdinaryFunctions
+        -- A native gathers arguments, type-checks them and raises exactly
+        -- as a user function does. Nothing about being built in changes
+        -- how it is called, which is why :print can be assigned to
+        -- another word and called through it.
+}
+
+------------------------------------------------------------
+-- Open Questions
+------------------------------------------------------------
+
+open question "Which forty natives exactly? The categories are settled and the awkward semantics are specified, but the list itself is not written down. It should be pinned before the tests, because a native that turns up later is a native the corpus never asked for."
+
+-- Resolved: there are three ways out and each stops somewhere different.
+-- BREAK leaves the nearest loop. RETURN leaves the nearest function, and no
+-- further, so a helper that returns does not also return from its caller.
+-- THROW leaves everything up to the nearest CATCH, crossing loops and
+-- functions alike.
+--
+-- None of the three is an error. TRY catches none of them and CATCH catches
+-- only THROW, because a throw is a decision and an error is a failure, and
+-- letting either mechanism swallow the other would make both unreliable.
+-- All three unwind through the evaluator's own control flow rather than
+-- through the error mechanism.
+
+-- Resolved against a real R3: every string-like type, not only string!.
+-- %A.txt = %a.txt is true and <A> = <a> is true, and == minds case for
+-- all of them.
+
+-- Resolved: arithmetic widens integer to decimal to money. add 1 1.5 is a
+-- decimal and add $1.00 1 is money. Integer division that does not divide
+-- evenly widens too, so divide 10 3 is a decimal rather than 3.

@@ -1,0 +1,188 @@
+# Words: setting, getting, quoting, unset and protected.
+# Origin: REBOL/Core User Guide 2.3, section 5.
+
+--- id words/set-word-assigns-and-yields
+--- origin adapted from REBOL/Core User Guide 2.3 section 5.3
+--- note A set-word produces the value it assigned, which is why chained
+--- note assignment works at all.
+--- code
+age: 42
+--- result
+42
+
+--- id words/chained-assignment
+--- origin adapted from REBOL/Core User Guide 2.3 section 5.3
+--- code
+a: b: 10
+add a b
+--- result
+20
+
+--- id words/word-lookup
+--- origin REBOL/Core User Guide 2.3 section 5
+--- code
+zero: 0
+zero
+--- result
+0
+
+--- id words/literal-word-strips-one-quote
+--- origin REBOL/Core User Guide 2.3 section 5.5
+--- note 'this evaluates to the word this, and that word is not then
+--- note looked up. Without this, code could not be data.
+--- code
+word: 'this
+word
+--- result
+this
+
+--- id words/literal-word-of-a-native-name
+--- origin REBOL/Core User Guide 2.3 section 5.5
+--- note Even a word that names a function comes back as a word, not as
+--- note the function and not by calling it.
+--- code
+word: 'print
+word
+--- result
+print
+
+--- id words/get-word-fetches-without-calling
+--- origin REBOL/Core User Guide 2.3 section 5.4
+--- requires control
+--- note :print gives the function itself. This is how a function gets
+--- note passed to another function.
+--- code
+native? :if
+--- result
+true
+
+--- id words/get-word-aliases-a-function
+--- origin REBOL/Core User Guide 2.3 section 5.4
+--- requires output
+--- code
+drucken: :print
+drucken "test"
+--- prints
+test
+
+--- id words/get-word-via-get
+--- origin REBOL/Core User Guide 2.3 section 5.4
+--- requires output
+--- code
+stampa: get 'print
+stampa "test"
+--- prints
+test
+
+--- id words/first-of-block-gives-a-word
+--- origin REBOL/Core User Guide 2.3 section 5.5
+--- requires series
+--- note Taking a value out of a block does not evaluate it, so the word
+--- note arrives as a word.
+--- code
+word: first [this and that]
+word
+--- result
+this
+
+--- id words/unset-word-raises
+--- origin REBOL/Core User Guide 2.3 section 5.6
+--- code
+outlook
+--- error script no-value
+
+--- id words/value-of-unset-word
+--- origin REBOL/Core User Guide 2.3 section 5.6
+--- code
+word: "here"
+unset 'word
+value? 'word
+--- result
+false
+
+--- id words/value-of-set-word
+--- origin adapted from REBOL/Core User Guide 2.3 section 5.6
+--- code
+word: "here"
+value? 'word
+--- result
+true
+
+--- id words/protected-word-refuses-assignment
+--- origin REBOL/Core User Guide 2.3 section 5.7
+--- code
+word: "here"
+protect 'word
+word: "there"
+--- error script protected-word
+
+--- id words/unprotect-restores-assignment
+--- origin REBOL/Core User Guide 2.3 section 5.7
+--- code
+word: "here"
+protect 'word
+unprotect 'word
+word: "there"
+--- result
+"there"
+
+--- id words/set-word-counts-as-one-value
+--- origin REBOL/Core User Guide 2.3 section 5.1
+--- requires series
+--- note age: 42 is two values because the colon is part of the word.
+--- code
+length? [age: 42]
+--- result
+2
+
+--- id words/equals-is-a-separate-word
+--- origin REBOL/Core User Guide 2.3 section 5.1
+--- requires series
+--- note age = 42 is three values, because = is its own word. This is the
+--- note clearest demonstration that a set-word is lexically one thing.
+--- code
+length? [age = 42]
+--- result
+3
+
+--- id words/set-multiple-words
+--- origin REBOL/Core User Guide 2.3 section 5.3
+--- requires series
+--- code
+set [number num ten] 10
+add number add num ten
+--- result
+30
+
+--- id words/set-words-from-a-block
+--- origin REBOL/Core User Guide 2.3 section 5.3
+--- requires series
+--- code
+set [one two three] [1 2 3]
+three
+--- result
+3
+
+--- id words/select-by-literal-word
+--- origin REBOL/Core User Guide 2.3 section 5.5
+--- requires series
+--- note A block of data holding words, selected by a quoted word. The
+--- note block is never evaluated, which is the whole point.
+--- code
+video: [
+    title "Independence Day"
+    length 2:25:24
+    date   4/july/1996
+]
+select video 'title
+--- result
+"Independence Day"
+
+--- id words/set-word-at-block-end-raises
+--- origin JEBOL spec/eval.allium, rule SetWordEvaluates
+--- note Not in the guide. Specified as an error rather than an
+--- note assignment of UNSET, because `x:` alone is a mistake rather than
+--- note an instruction to clear x. Listed here so the decision is tested.
+--- code
+do [age:]
+--- error script need-value

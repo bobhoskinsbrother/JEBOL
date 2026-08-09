@@ -1,0 +1,400 @@
+-- allium: 3
+--
+-- JEBOL: turning REBOL source text into values.
+--
+-- Two operations live here. TRANSCODE reads text and produces a block of
+-- unbound values. LOAD is TRANSCODE followed by binding into a context.
+-- Keeping them apart matters: a word's binding is not a property of how
+-- it was written, and code that manipulates blocks before evaluating them
+-- depends on getting unbound words back.
+--
+-- This module specifies what reading guarantees and when it fails. The
+-- character-level grammar is not written out here; the resolutions that a
+-- caller can actually be surprised by are stated in the LexicalResolution
+-- contract, and the exhaustive form-by-form mapping lives in the golden
+-- corpus the tests are generated from.
+
+use "./values.allium" as values
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- The delimiters that open something the reader must find an end for.
+enum OpenDelimiter { bracket | parenthesis | brace | quote | tag | binary_brace }
+
+-- Why a read failed. Each maps to an error! of category syntax.
+enum SyntaxFailure {
+    invalid_lexeme          -- characters that begin no known literal
+    | missing_close         -- end of input inside an open series
+    | extra_close           -- a closing delimiter with no opener
+    | mismatched_close      -- a bracket closing a parenthesis, or the reverse
+    | unterminated_string   -- end of input inside a quoted or braced string
+    | invalid_escape        -- a caret escape naming no known character
+    | integer_out_of_range  -- digits that exceed the 64-bit range
+    | invalid_datatype      -- a datatype spelling that names no datatype
+    | invalid_binary        -- base-16 contents that are not valid base-16
+}
+
+------------------------------------------------------------
+-- Value Types
+------------------------------------------------------------
+
+-- Where in the source a value came from. Carried so syntax errors can
+-- point at the offending text rather than at the file as a whole.
+value SourcePosition {
+    line: Integer           -- 1-based
+    column: Integer         -- 1-based, counted in codepoints
+    offset: Integer         -- 0-based codepoint offset from the start
+}
+
+------------------------------------------------------------
+-- Contracts
+------------------------------------------------------------
+
+-- The reader resolves several forms that a naive longest-match would get
+-- wrong. Each resolution below is a property of reading that a caller can
+-- observe and be surprised by, so each one earns a named statement and a
+-- set of corpus cases proving it.
+contract LexicalResolution {
+    read_datatype: (text: String) -> values/Datatype
+
+    @invariant DotsChooseDecimalOrTuple
+        -- Among digits and dots, the number of dots decides the datatype.
+        -- One dot is a decimal, so 1.2 is a decimal. Two or more dots is a
+        -- tuple, so 1.2.3 and 1.2.3.4.5 are both tuples. The count of
+        -- digits between the dots plays no part.
+
+    @invariant LeadingSlashIsRefinementEmbeddedSlashIsPath
+        -- A slash at the start makes a refinement, so /local is one
+        -- value. A slash with something before it makes a path, so a/b is
+        -- one value of two segments. What precedes the first slash is the
+        -- whole of the difference.
+
+    @invariant HashPrefixSplitsThreeWays
+        -- The character immediately after a hash decides what follows it.
+        -- A quote makes a char, so #"a" is one character. An opening brace
+        -- makes a binary, so #{DEADBEEF} is four bytes. Anything else
+        -- makes an issue, so #foo is an issue.
+
+    @invariant SignBindsToDigitsWithoutSpace
+        -- A minus sign directly against a digit is part of the number, so
+        -- -1 is the integer minus one. A minus sign with a space after it,
+        -- or with anything that is not a digit after it, is the word
+        -- minus. So `- 1` reads as two values and `-1` reads as one.
+
+    @invariant AngleBracketsAreTagsNotComparisons
+        -- A less-than sign that opens a run ending in a greater-than sign
+        -- makes a tag, so <a href="x"> is one value. A less-than sign
+        -- standing alone is the word less-than. The reader decides by
+        -- looking for the closing sign, not by what surrounds it.
+
+    @guidance
+        -- Every resolution here needs corpus cases on both sides of the
+        -- decision, not just the surprising side. A corpus that proves
+        -- 1.2.3 is a tuple without also proving 1.2 is a decimal has
+        -- tested the exception and left the rule untested.
+}
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+entity TranscodeRequest {
+    source_text: String
+    status: reading | succeeded | failed
+
+    -- Set when this read was started on behalf of a LOAD, absent when a
+    -- caller asked to transcode directly.
+    load_request: LoadRequest?
+
+    -- The block! of unbound values read from the source. Its items are in
+    -- source order and the value sits at its head.
+    result: values/Value when status = succeeded
+
+    failure: SyntaxFailure when status = failed
+    failure_position: SourcePosition when status = failed
+    error_value: values/Value when status = failed
+
+    -- Which opener was left hanging, present only when the failure was
+    -- about delimiters. An error that says "unclosed" without saying what
+    -- was unclosed sends the reader hunting.
+    unclosed_delimiter: OpenDelimiter? when status = failed
+
+    transitions status {
+        reading -> succeeded
+        reading -> failed
+        terminal: succeeded, failed
+    }
+}
+
+entity LoadRequest {
+    source_text: String
+    target: values/Context
+    status: loading | succeeded | failed
+
+    transcode: TranscodeRequest with load_request = this
+
+    -- A load waits on its read. These go true when the read reaches a
+    -- terminal status, which is the moment the load can finish.
+    read_succeeded: transcode.status = succeeded
+    read_failed: transcode.status = failed
+
+    result: values/Value when status = succeeded
+    error_value: values/Value when status = failed
+
+    transitions status {
+        loading -> succeeded
+        loading -> failed
+        terminal: succeeded, failed
+    }
+}
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+-- === Reading ===============================================
+
+rule TranscodeBegins {
+    when: Transcode(source_text)
+    ensures: TranscodeRequest.created(
+        source_text: source_text,
+        status: reading
+    )
+}
+
+rule TranscodeProducesUnboundBlock {
+    when: request: TranscodeRequest.created
+
+    requires: request.status = reading
+    requires: is_well_formed_source(request.source_text)
+
+    ensures:
+        request.status = succeeded
+        request.result = block_of(read_values(request.source_text))
+
+    @guidance
+        -- read_values yields the values in source order. Whitespace and
+        -- comments separate values but produce none of their own, so a
+        -- source of only whitespace yields an empty block rather than an
+        -- error.
+}
+
+rule TranscodeRejectsMalformedSource {
+    when: request: TranscodeRequest.created
+
+    requires: request.status = reading
+    requires: not is_well_formed_source(request.source_text)
+
+    let failure = first_failure(request.source_text)
+    let position = first_failure_position(request.source_text)
+
+    ensures:
+        request.status = failed
+        request.failure = failure
+        request.failure_position = position
+        request.error_value = syntax_error_for(failure, position)
+        request.unclosed_delimiter = unclosed_delimiter_at(request.source_text, position)
+
+    @guidance
+        -- Reading reports the first failure and stops. It does not attempt
+        -- to recover and collect further failures, because a syntax error
+        -- leaves the reader with no reliable place to resume.
+}
+
+-- Every word that comes back from TRANSCODE is unbound. This is the
+-- property that lets a caller build code as data and choose a context
+-- later, and it is what separates TRANSCODE from LOAD.
+rule TranscodedWordsAreUnbound {
+    when: request: TranscodeRequest.status transitions_to succeeded
+    ensures:
+        for word in words_within(request.result):
+            word.binding = null
+}
+
+-- A series value read from source starts at its head. Nothing in the
+-- surface syntax can express a series positioned anywhere else, so a
+-- block that has just been read always begins at its first element.
+rule TranscodedSeriesStartAtHead {
+    when: request: TranscodeRequest.status transitions_to succeeded
+    ensures:
+        for series in series_within(request.result):
+            series.index = 1
+}
+
+-- A syntax failure produces a REBOL error! value, not a host-language
+-- exception. Errors are values in REBOL and callers can catch and inspect
+-- them, so the reader must hand back something the language can hold.
+rule SyntaxFailureIsAnErrorValue {
+    when: request: TranscodeRequest.status transitions_to failed
+    ensures:
+        request.error_value.datatype = error
+        request.error_value.category = syntax
+}
+
+-- === Loading ===============================================
+
+rule LoadBegins {
+    when: Load(source_text, target)
+    ensures: LoadRequest.created(
+        source_text: source_text,
+        target: target,
+        status: loading
+    )
+}
+
+rule LoadStartsRead {
+    when: request: LoadRequest.created
+    ensures: TranscodeRequest.created(
+        source_text: request.source_text,
+        status: reading,
+        load_request: request
+    )
+}
+
+rule LoadBindsIntoTargetContext {
+    when: request: LoadRequest.read_succeeded
+
+    requires: request.status = loading
+    requires: request.transcode.status = succeeded
+
+    ensures:
+        request.status = succeeded
+        request.result = request.transcode.result
+        for word in words_within(request.transcode.result):
+            if is_known_in(request.target, word.canonical):
+                word.binding = request.target
+
+    @guidance
+        -- Words with no matching slot in the target are left unbound
+        -- rather than given a slot holding UNSET. An unbound word and a
+        -- word bound to an unset slot report different errors when
+        -- evaluated, and the difference is worth keeping.
+}
+
+rule LoadPropagatesSyntaxFailure {
+    when: request: LoadRequest.read_failed
+
+    requires: request.status = loading
+    requires: request.transcode.status = failed
+
+    ensures:
+        request.status = failed
+        request.error_value = request.transcode.error_value
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- A successful read consumed all the input. A reader that stopped early
+-- and reported success would silently drop code.
+invariant SuccessfulReadConsumesAllInput {
+    for request in TranscodeRequests:
+        request.status = succeeded
+            implies consumed_length(request) = length(request.source_text)
+}
+
+-- A failure points somewhere inside the source it was reading, so the
+-- caller can be shown the offending text.
+invariant FailurePositionIsWithinSource {
+    for request in TranscodeRequests:
+        request.status = failed
+            implies request.failure_position.offset >= 0
+                and request.failure_position.offset <= length(request.source_text)
+}
+
+invariant FailurePositionIsOneBased {
+    for request in TranscodeRequests:
+        request.status = failed
+            implies request.failure_position.line >= 1
+                and request.failure_position.column >= 1
+}
+
+-- Only the delimiter failures name a delimiter. A failure about an
+-- invalid escape has no opener to report, and reporting one would be a
+-- guess dressed up as a fact.
+invariant OnlyDelimiterFailuresNameADelimiter {
+    for request in TranscodeRequests:
+        request.status = failed and request.unclosed_delimiter != null
+            implies request.failure in {missing_close, mismatched_close, unterminated_string}
+}
+
+-- Reading is a function of the text alone. The same source always yields
+-- the same outcome, with no dependence on a clock, a context or what was
+-- read before. This is what makes a golden corpus a valid test.
+invariant ReadingIsDeterministic {
+    for first in TranscodeRequests:
+        for second in TranscodeRequests:
+            first.source_text = second.source_text
+                implies first.status = second.status
+}
+
+-- Anything MOLD prints, the reader reads back as an equal value. This is
+-- the round trip that keeps code-as-data honest: a block that has been
+-- printed and read again must behave as the original did.
+invariant MoldRoundTripsThroughRead {
+    for request in TranscodeRequests:
+        request.status = succeeded
+            implies reads_back_equal(mold(request.result))
+}
+
+-- A load and its read agree about whether they worked. A load that
+-- reported success over a failed read would hand back a block that was
+-- never produced.
+invariant LoadAgreesWithItsRead {
+    for request in LoadRequests:
+        request.status = succeeded implies request.transcode.status = succeeded
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+surface SourceReading {
+    exposes:
+        SourcePosition
+        SyntaxFailure
+
+    provides:
+        Transcode(source_text)
+        Load(source_text, target)
+
+    contracts:
+        fulfils LexicalResolution
+
+    @guarantee ReadingNeverPartiallySucceeds
+        -- A read either yields every value in the source or yields an
+        -- error and no values. There is no outcome where a caller
+        -- receives a block holding some of the source.
+
+    @guarantee ReadingHasNoSideEffects
+        -- Reading creates values but changes nothing a caller could
+        -- observe beforehand. It does not bind words, evaluate anything
+        -- or touch a context. LOAD binds, and does so only into the
+        -- context it was handed.
+}
+
+------------------------------------------------------------
+-- Open Questions
+------------------------------------------------------------
+
+-- Resolved: LOAD with no target binds into the user context, for source
+-- compatibility with R3-Alpha. The explicit-target form stays, and is
+-- what everything inside JEBOL uses.
+
+-- Resolved: TRANSCODE returns a script header as ordinary values, a word
+-- followed by a block, because it is ordinary syntax and nothing about
+-- reading should treat it otherwise. LOAD strips it and makes it
+-- available separately. All fourteen programs in corpus/sources/ carry
+-- one, so this is exercised on every file.
+
+-- Resolved: binary literals are base-16 only for now. The base-64 and
+-- base-2 spellings accrete later without changing anything specified
+-- here, because they differ only in how the contents are decoded.
+
+-- Resolved: reading reports the first failure and stops, as
+-- TranscodeRejectsMalformedSource states. Recovery needs a
+-- resynchronisation point the syntax does not offer, and a second error
+-- guessed at from a bad position is worse than no second error.

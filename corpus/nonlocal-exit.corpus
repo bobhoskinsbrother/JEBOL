@@ -1,0 +1,177 @@
+# Leaving early: RETURN, EXIT, THROW and CATCH, and FORALL.
+# Origin: REBOL/Core User Guide 2.3, sections 7 and 9.
+#
+# Written before any of these exist. The batch before this one was built
+# first and tested afterwards, and the tests still found three bugs, one of
+# them a CASE that could not work at all. Written first, those would have
+# been red before the code was.
+
+# --- RETURN --------------------------------------------------
+
+--- id exit/return-leaves-a-function-early
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note The guide's find-value: return out of a loop inside a function,
+--- note past two levels at once.
+--- code
+first-over: func [limit block] [
+    foreach item block [
+        if item > limit [return item]
+    ]
+    none
+]
+first-over 2 [1 2 3 4]
+--- result
+3
+
+--- id exit/return-skips-what-follows-it
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- code
+early: func [] [
+    return "left"
+    "never reached"
+]
+early
+--- result
+"left"
+
+--- id exit/a-function-without-return-gives-its-last-value
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note The contrast. RETURN is for leaving early, not for handing a value
+--- note back, because the last expression already does that.
+--- code
+plain: func [] ["last"]
+plain
+--- result
+"last"
+
+--- id exit/return-from-a-nested-function-leaves-only-that-one
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note The boundary. RETURN must leave one function, not every function
+--- note on the way out, or a helper could not be written.
+--- code
+inner: func [] [return "inner"]
+outer: func [] [
+    inner
+    "outer"
+]
+outer
+--- result
+"outer"
+
+# --- EXIT ----------------------------------------------------
+
+--- id exit/exit-leaves-with-nothing
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note EXIT is RETURN with no value, so what comes back is UNSET rather
+--- note than NONE. A function that returned nothing and one that returned
+--- note NONE are different things.
+--- code
+silent: func [] [
+    exit
+    "never reached"
+]
+unset? silent
+--- result
+true
+
+# --- THROW and CATCH -----------------------------------------
+
+--- id exit/catch-catches-a-throw
+--- origin REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- code
+catch [throw "caught"]
+--- result
+"caught"
+
+--- id exit/catch-passes-through-when-nothing-throws
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- code
+catch ["ordinary"]
+--- result
+"ordinary"
+
+--- id exit/a-throw-crosses-a-function-boundary
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note This is what separates THROW from RETURN: it leaves as many
+--- note functions as it needs to, until something catches it.
+--- code
+deep: func [] [throw "from inside"]
+catch [
+    deep
+    "never reached"
+]
+--- result
+"from inside"
+
+--- id exit/a-throw-crosses-a-loop
+--- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- requires control
+--- note And it is not BREAK: a break leaves one loop, a throw leaves
+--- note everything up to the catch.
+--- code
+catch [
+    repeat outer 3 [
+        repeat inner 3 [
+            if inner = 2 [throw "out of both"]
+        ]
+    ]
+    "never reached"
+]
+--- result
+"out of both"
+
+--- id exit/break-is-not-a-throw
+--- origin adapted from REBOL/Core User Guide 2.3 section 7.7
+--- requires control
+--- note The counterpart. BREAK leaves its loop and the loop's own value
+--- note comes back, so CATCH sees nothing thrown.
+--- code
+catch [
+    repeat count 5 [if count = 2 [break]]
+    "loop finished normally"
+]
+--- result
+"loop finished normally"
+
+--- id exit/a-raised-error-is-not-a-throw
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires control
+--- note An error is a failure and a throw is a decision. CATCH must not
+--- note swallow errors, or TRY would have nothing left to do.
+--- code
+error? try [catch [divide 1 0]]
+--- result
+true
+
+# --- FORALL --------------------------------------------------
+
+--- id exit/forall-walks-the-series-itself
+--- origin REBOL/Core User Guide 2.3 section 7.5
+--- requires control series output
+--- note FOREACH binds each item; FORALL moves the series itself, so the
+--- note word holds a position rather than a value.
+--- code
+colors: [red green blue]
+forall colors [prin first colors]
+--- prints
+redgreenblue
+
+--- id exit/forall-leaves-the-series-at-its-tail
+--- origin REBOL/Core User Guide 2.3 section 7.5
+--- requires control series
+--- note The consequence people trip over: after a FORALL the word is at the
+--- note tail, which is why the guide follows every one with `head`.
+--- code
+colors: [red green blue]
+forall colors []
+tail? colors
+--- result
+true

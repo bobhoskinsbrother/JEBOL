@@ -1,0 +1,232 @@
+-- allium: 3
+--
+-- JEBOL: running scripts inside a host application.
+--
+-- This is what the project is for. Not interoperability, which is a poor
+-- reason to build a REBOL: plenty of things call Java already. The reason
+-- is running REBOL where production code already runs, with the operational
+-- benefits of the JVM, and that means a host has to be able to hand a
+-- script to an interpreter under bounds it sets and get a value back.
+--
+-- Three bounds matter, and none of them is optional in a web application:
+-- how long a script may run, how deep it may nest, and what it may reach.
+-- A script that cannot be stopped is a request that cannot be timed out.
+
+use "./values.allium" as values
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- Why a script stopped. The first is the ordinary case.
+enum Conclusion {
+    produced_a_value    -- the script finished and its value is available
+    | raised            -- the script failed and the error is available
+    | timed_out         -- the deadline passed before the script finished
+    | cancelled         -- the host asked for it to stop
+    | nested_too_deep   -- the script exceeded the nesting the host allowed
+}
+
+-- What a script is allowed to reach outside itself.
+enum HostAccess {
+    none_at_all         -- the script sees only REBOL
+    | reading           -- the script may read host values it was handed
+    | reading_and_calling  -- the script may also call host methods
+}
+
+------------------------------------------------------------
+-- Value Types
+------------------------------------------------------------
+
+-- What a host decides before a script runs. Every field is a bound, and
+-- every bound has a default, because a host that must configure five
+-- things before running anything will configure none of them.
+value Bounds {
+    wall_clock_limit: Duration
+    maximum_nesting: Integer
+    host_access: HostAccess
+}
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+-- One interpreter, owned by one thread, holding everything reachable from
+-- it. A host running many scripts at once runs many of these; it does not
+-- share one, because series share mutable storage and confining that to a
+-- single thread is what makes it need no synchronisation.
+entity Interpreter {
+    bounds: Bounds
+    user_context: values/Context
+
+    runs: ScriptRun with interpreter = this
+    active_runs: runs where status = running
+
+    invariant OneScriptAtATime {
+        active_runs.count <= 1
+    }
+}
+
+entity ScriptRun {
+    interpreter: Interpreter
+    source_text: String
+    started_at: Timestamp
+
+    status: running | finished
+
+    conclusion: Conclusion when status = finished
+    result: values/Value when status = finished
+    elapsed: Duration when status = finished
+
+    deadline: started_at + interpreter.bounds.wall_clock_limit
+    overdue: now >= deadline
+
+    -- Set when the host asked for the run to stop. The evaluator notices at
+    -- its own convenience rather than being interrupted where it stands,
+    -- because a thread stopped mid-mutation leaves values half-changed.
+    cancellation_requested: Boolean
+
+    transitions status {
+        running -> finished
+        terminal: finished
+    }
+}
+
+------------------------------------------------------------
+-- Config
+------------------------------------------------------------
+
+config {
+    -- Long enough that ordinary work finishes, short enough that a runaway
+    -- script does not hold a request open until something else times out.
+    default_wall_clock_limit: Duration = 5.seconds
+    default_maximum_nesting: Integer = 10_000
+}
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+rule ScriptRunBegins {
+    when: Run(interpreter, source_text)
+    requires: interpreter.active_runs.count = 0
+    ensures: ScriptRun.created(
+        interpreter: interpreter,
+        source_text: source_text,
+        started_at: now,
+        status: running,
+        cancellation_requested: false
+    )
+}
+
+-- The single place a run's outcome is decided, in precedence order.
+-- Stopping beats finishing: a script that produced a value after its
+-- deadline produced it too late to be wanted.
+rule ScriptRunConcludes {
+    when: run: ScriptRun.evaluation_settled
+    requires: run.status = running
+
+    ensures:
+        if run.overdue:
+            run.status = finished
+            run.conclusion = timed_out
+            run.result = timeout_error()
+        else if run.cancellation_requested:
+            run.status = finished
+            run.conclusion = cancelled
+            run.result = cancelled_error()
+        else if evaluation_raised(run):
+            run.status = finished
+            run.conclusion = raised
+            run.result = raised_error_of(run)
+        else:
+            run.status = finished
+            run.conclusion = produced_a_value
+            run.result = evaluation_result_of(run)
+}
+
+-- A run that passes its deadline is stopped whether or not it was going to
+-- finish. Without this the bound is advice.
+rule OverdueRunIsStopped {
+    when: run: ScriptRun.overdue
+    requires: run.status = running
+    ensures: run.cancellation_requested = true
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- Nothing a script does escapes as a host exception, including running out
+-- of time. A host catching REBOL failures by catching Java exceptions would
+-- be catching bugs in JEBOL as well, and could not tell them apart.
+invariant EveryConclusionIsAValue {
+    for run in ScriptRuns:
+        run.status = finished implies run.result.datatype in {error} or run.conclusion = produced_a_value
+}
+
+-- A finished run took no longer than its deadline allowed, give or take
+-- however long the evaluator takes to notice. A bound that could be
+-- exceeded without limit is not a bound.
+invariant FinishedRunsRespectTheirDeadline {
+    for run in ScriptRuns:
+        run.conclusion = timed_out implies run.elapsed >= interpreter_limit_of(run)
+}
+
+-- An interpreter runs one script at a time. Concurrency comes from having
+-- several interpreters, not from sharing one, because the value model has
+-- no synchronisation in it and deliberately so.
+invariant RunsDoNotOverlap {
+    for run in ScriptRuns:
+        run.status = running implies run.interpreter.active_runs.count = 1
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+surface Embedding {
+    facing host: HostApplication
+
+    provides:
+        Run(host, interpreter, source_text)
+        Cancel(host, interpreter)
+
+    exposes:
+        Conclusion
+        Bounds
+
+    @guarantee NoFailureEscapesAsAHostException
+        -- Every way a script can stop arrives as a conclusion and a value,
+        -- including timing out and nesting too deep. A host never has to
+        -- catch a throwable to find out that a script misbehaved.
+
+    @guarantee BoundsAreEnforcedNotAdvertised
+        -- A script that passes its deadline is stopped. A script that nests
+        -- past its limit is stopped. Neither depends on the script being
+        -- willing to cooperate.
+
+    @guarantee AnInterpreterIsOwnedByOneThread
+        -- Handing one to two threads is a mistake JEBOL does not defend
+        -- against and does not make safe. Run several instead.
+
+    @guidance
+        -- Cancellation is cooperative: the evaluator checks between steps
+        -- rather than being interrupted where it stands. Stopping a thread
+        -- mid-mutation would leave series half-changed, and series are
+        -- shared, so the damage would outlive the script.
+}
+
+actor HostApplication {
+    identified_by: Interpreter where active_runs.count >= 0
+}
+
+------------------------------------------------------------
+-- Open Questions
+------------------------------------------------------------
+
+open question "How often does the evaluator check whether it should stop? Every step is safest and slowest; every hundredth is cheaper and lets a tight loop overrun by a hundred steps. What is the right granularity, and should it be measured rather than guessed?"
+
+open question "Is there a memory bound as well as a time bound? A script can allocate without nesting, so a depth limit does not stop it. Bounding heap per interpreter needs something the JVM does not offer directly."
+
+open question "What does a host see of a script's progress while it runs? Nothing at all is simplest; a partial result or a progress callback would need the boundary to be crossed while the script is still running, which the one-thread rule forbids."

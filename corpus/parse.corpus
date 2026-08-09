@@ -1,0 +1,279 @@
+# PARSE: matching and pulling input apart.
+# Origin: REBOL/Core User Guide 2.3, section 15.
+#
+# Written before it exists. This is the feature REBOL is known for, and it
+# is a sub-language of its own: a rule block is not evaluated, it is matched.
+
+# --- Whether the input matched ------------------------------
+
+--- id parse/matching-literals-in-order
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse "a b c" ["a" "b" "c"]
+--- result
+true
+
+--- id parse/a-literal-that-does-not-match
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse "a b" ["a" "c"]
+--- result
+false
+
+--- id parse/input-left-over-does-not-match
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- note A rule that runs out before the input does has not matched it.
+--- note Matching means matching all of it.
+--- code
+parse "a b c d" ["a" "b" "c"]
+--- result
+false
+
+--- id parse/an-empty-rule-against-empty-input
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse "" []
+--- result
+true
+
+--- id parse/an-empty-rule-against-input
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse "a" []
+--- result
+false
+
+# --- Moving through the input -------------------------------
+
+--- id parse/to-stops-before-what-it-finds
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse "a b c d" [to "b" thru "d"]
+--- result
+true
+
+--- id parse/thru-goes-past-what-it-finds
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- note TO leaves the position before the match and THRU leaves it after,
+--- note which is the whole difference between them.
+--- code
+parse "abcd" [thru "c" "d"]
+--- result
+true
+
+--- id parse/to-end-matches-whatever-is-left
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse "a b c d" [to "b" to end]
+--- result
+true
+
+--- id parse/skip-passes-one-thing
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [1 2 3] [skip skip skip]
+--- result
+true
+
+--- id parse/skip-past-the-end-does-not-match
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [1 2] [skip skip skip]
+--- result
+false
+
+# --- Repetition ---------------------------------------------
+
+--- id parse/any-matches-none-or-more
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [1 1 1] [any 1]
+--- result
+true
+
+--- id parse/any-matching-nothing-still-matches
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- note The boundary that separates ANY from SOME.
+--- code
+parse [] [any 1]
+--- result
+true
+
+--- id parse/some-needs-at-least-one
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [] [some 1]
+--- result
+false
+
+--- id parse/some-matches-several
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [1 1] [some 1]
+--- result
+true
+
+--- id parse/opt-matches-none-or-one
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [2] [opt 1 2]
+--- result
+true
+
+# --- Alternatives -------------------------------------------
+
+--- id parse/the-first-alternative-that-matches-is-taken
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [b] ["a" | 'b]
+--- result
+true
+
+--- id parse/no-alternative-matching-fails
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [c] ['a | 'b]
+--- result
+false
+
+# --- Matching by datatype -----------------------------------
+
+--- id parse/a-datatype-matches-any-value-of-it
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [when 10:30] ['when time!]
+--- result
+true
+
+--- id parse/a-datatype-that-does-not-match
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [when "not a time"] ['when time!]
+--- result
+false
+
+--- id parse/a-lit-word-matches-that-word
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [when 10:30] ['when 10:30]
+--- result
+true
+
+# --- Keeping what was matched -------------------------------
+
+--- id parse/set-keeps-the-value-it-matched
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- note This is what makes PARSE a way of pulling input apart rather than
+--- note only a way of asking whether it fits.
+--- code
+parse [when 10:30] ['when set found time!]
+found
+--- result
+10:30
+
+--- id parse/copy-keeps-everything-a-rule-matched
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [1 2 3] [copy taken some integer!]
+taken
+--- result
+[1 2 3]
+
+# --- Doing something while matching -------------------------
+
+--- id parse/a-paren-runs-while-matching
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+count: 0
+parse [1 1 1] [some [1 (count: add count 1)]]
+count
+--- result
+3
+
+--- id parse/a-paren-in-a-rule-that-does-not-match-does-not-run
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+ran: false
+parse [2] ['nope (ran: true)]
+ran
+--- result
+false
+
+# --- Nesting ------------------------------------------------
+
+--- id parse/into-matches-inside-a-block
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [["Ukiah" 10:30]] [into [string! time!]]
+--- result
+true
+
+--- id parse/into-that-does-not-match-inside
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [["Ukiah" "not a time"]] [into [string! time!]]
+--- result
+false
+
+--- id parse/a-rule-can-be-held-in-a-word
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- note A rule is an ordinary block, so it can be named and reused. That is
+--- note what makes a grammar out of a rule.
+--- code
+digit: [integer!]
+parse [1 2] [some digit]
+--- result
+true
+
+# --- Splitting a string -------------------------------------
+
+--- id parse/parse-with-none-splits-on-whitespace
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse "The trip will take 21 days" none
+--- result
+["The" "trip" "will" "take" "21" "days"]
+
+--- id parse/parse-with-a-delimiter-splits-on-it
+--- origin REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse "707-467-8000" "-"
+--- result
+["707" "467" "8000"]
+
+--- id parse/splitting-something-with-no-delimiter-in-it
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse "nodelimiter" "-"
+--- result
+["nodelimiter"]

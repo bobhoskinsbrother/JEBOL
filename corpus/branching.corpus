@@ -1,0 +1,180 @@
+# Choosing between alternatives, and recovering from failure.
+# Origin: REBOL/Core User Guide 2.3, sections 8 and 10.
+
+# --- SWITCH --------------------------------------------------
+
+--- id branching/switch-runs-the-matching-block
+--- origin REBOL/Core User Guide 2.3 section 8.2
+--- requires control
+--- code
+switch 22 [
+    11 ["here"]
+    22 ["there"]
+]
+--- result
+"there"
+
+--- id branching/switch-with-no-match-is-none
+--- origin adapted from REBOL/Core User Guide 2.3 section 8.2
+--- requires control
+--- code
+switch 99 [
+    11 ["here"]
+    22 ["there"]
+]
+--- result
+none
+
+--- id branching/switch-on-a-string
+--- origin REBOL/Core User Guide 2.3 section 8.2
+--- requires control
+--- note SWITCH compares by value, so it works on anything that can be
+--- note compared rather than on integers alone.
+--- code
+person: "kid"
+switch person [
+    "dad" ["here"]
+    "mom" ["there"]
+    "kid" ["everywhere"]
+]
+--- result
+"everywhere"
+
+--- id branching/switch-on-a-word
+--- origin REBOL/Core User Guide 2.3 section 8.2
+--- requires control
+--- code
+person: 'kid
+switch person [
+    dad ["here"]
+    mom ["there"]
+    kid ["everywhere"]
+]
+--- result
+"everywhere"
+
+--- id branching/switch-evaluates-only-the-branch-it-takes
+--- origin adapted from REBOL/Core User Guide 2.3 section 8.2
+--- requires control
+--- note An untaken branch cannot fail, which is what makes SWITCH a choice
+--- note rather than a lookup of already-computed values.
+--- code
+switch 1 [
+    1 ["taken"]
+    2 [divide 1 0]
+]
+--- result
+"taken"
+
+# --- CASE ----------------------------------------------------
+
+--- id branching/case-takes-the-first-true-condition
+--- origin adapted from REBOL/Core User Guide 2.3 section 8
+--- requires control op
+--- code
+size: 50
+case [
+    size < 10 ["small"]
+    size < 90 ["medium"]
+    true      ["large"]
+]
+--- result
+"medium"
+
+--- id branching/case-with-nothing-true-is-none
+--- origin adapted from REBOL/Core User Guide 2.3 section 8
+--- requires control
+--- code
+case [
+    false ["no"]
+    none  ["also no"]
+]
+--- result
+none
+
+--- id branching/case-stops-at-the-first-match
+--- origin adapted from REBOL/Core User Guide 2.3 section 8
+--- requires control
+--- note Conditions after the deciding one are never evaluated, which is
+--- note why a later one may safely be something that would fail.
+--- code
+case [
+    true          ["taken"]
+    [divide 1 0]  ["never reached"]
+]
+--- result
+"taken"
+
+# --- UNLESS --------------------------------------------------
+
+--- id branching/unless-is-if-reversed
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.1
+--- requires control
+--- code
+unless false ["taken"]
+--- result
+"taken"
+
+--- id branching/unless-with-a-true-condition-is-none
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.1
+--- requires control
+--- code
+unless true ["never"]
+--- result
+none
+
+# --- Errors as values ----------------------------------------
+
+--- id branching/try-hands-back-the-error
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires control
+--- code
+error? try [divide 1 0]
+--- result
+true
+
+--- id branching/try-over-a-loop-of-divisions
+--- origin REBOL/Core User Guide 2.3 section 10
+--- requires control output
+--- note The guide's own example: divide by five down to zero, printing what
+--- note works and catching what does not. Loop, error and recovery in one.
+--- note The guide's fifteen digits turned out to be right for R3 as well as
+--- note for R2, which this repo got wrong for a while by reasoning instead
+--- note of running one.
+--- code
+for num 5 0 -1 [
+    either error? try [divide 10 num] [print "error"] [print divide 10 num]
+]
+--- prints
+2
+2.5
+3.33333333333333
+5
+10
+error
+
+--- id branching/attempt-swallows-the-error
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires control
+--- note ATTEMPT is TRY with the error thrown away: the value, or none.
+--- code
+attempt [divide 1 0]
+--- result
+none
+
+--- id branching/attempt-passes-a-good-value-through
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires control
+--- code
+attempt [divide 10 2]
+--- result
+5
+
+--- id branching/an-error-inside-a-function-reaches-the-caller
+--- origin adapted from REBOL/Core User Guide 2.3 section 10
+--- requires control
+--- code
+risky: func [n] [divide 10 n]
+error? try [risky 0]
+--- result
+true

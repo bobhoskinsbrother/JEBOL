@@ -1,0 +1,258 @@
+# Repetition.
+# Origin: REBOL/Core User Guide 2.3, sections 6.3 and 7.
+#
+# This file exists because it did not. The corpus was harvested from the
+# chapters on evaluation, words and conditionals, and chapter 7 was left
+# out, so sixty passing entries never noticed there were no loops at all.
+# Written before the loops are, which is the order that would have caught it.
+
+# --- LOOP: a fixed number of times ---------------------------
+
+--- id loops/loop-repeats-a-block
+--- origin REBOL/Core User Guide 2.3 section 7.1
+--- requires control output
+--- code
+loop 3 [prin "-"]
+--- prints
+---
+
+--- id loops/loop-returns-the-last-value
+--- origin REBOL/Core User Guide 2.3 section 7.1
+--- requires control op
+--- note A loop is an expression, so it has a value: whatever the last
+--- note pass produced.
+--- code
+i: 0
+loop 40 [i: i + 10]
+--- result
+400
+
+--- id loops/loop-zero-times-does-nothing
+--- origin adapted from REBOL/Core User Guide 2.3 section 7.1
+--- requires control
+--- note The boundary the guide does not show. Zero passes, so the block is
+--- note never evaluated and there is no last value to give back.
+--- code
+loop 0 [1]
+--- result
+none
+
+--- id loops/loop-once
+--- origin adapted from REBOL/Core User Guide 2.3 section 7.1
+--- requires control
+--- code
+loop 1 [42]
+--- result
+42
+
+# --- REPEAT: with the count in hand --------------------------
+
+--- id loops/repeat-counts-from-one
+--- origin REBOL/Core User Guide 2.3 section 7.2
+--- requires control output
+--- code
+repeat count 3 [print ["count:" count]]
+--- prints
+count: 1
+count: 2
+count: 3
+
+--- id loops/repeat-sums-its-counter
+--- origin REBOL/Core User Guide 2.3 section 7.2
+--- requires control op
+--- code
+i: 0
+repeat count 10 [i: i + count]
+--- result
+55
+
+--- id loops/repeat-zero-times
+--- origin adapted from REBOL/Core User Guide 2.3 section 7.2
+--- requires control
+--- code
+repeat count 0 [count]
+--- result
+none
+
+# --- FOR: from, to, by --------------------------------------
+
+--- id loops/for-counts-up-in-steps
+--- origin REBOL/Core User Guide 2.3 section 7.3
+--- requires control output
+--- code
+for count 0 50 10 [prin [count " "]]
+--- prints
+0  10  20  30  40  50
+
+--- id loops/for-counts-down-with-a-negative-step
+--- origin REBOL/Core User Guide 2.3 section 7.3
+--- requires control output
+--- note The step decides the direction. A negative step counts down and
+--- note stops at or past the end, rather than never running.
+--- code
+for count 4 0 -1 [prin count]
+--- prints
+43210
+
+--- id loops/for-over-characters
+--- origin REBOL/Core User Guide 2.3 section 7.3
+--- requires control output
+--- note FOR is not only for integers. Anything that can be stepped works,
+--- note which is why the counter is a value rather than an index.
+--- code
+for char #"a" #"e" 1 [prin char]
+--- prints
+abcde
+
+--- id loops/for-where-the-end-is-the-start
+--- origin adapted from REBOL/Core User Guide 2.3 section 7.3
+--- requires control output
+--- note The boundary case: one pass, not zero and not endless.
+--- code
+for count 3 3 1 [prin count]
+--- prints
+3
+
+# --- FOREACH: over a series ---------------------------------
+
+--- id loops/foreach-over-a-block
+--- origin REBOL/Core User Guide 2.3 section 7.4
+--- requires control output
+--- code
+colors: [red green blue]
+foreach color colors [print color]
+--- prints
+red
+green
+blue
+
+--- id loops/foreach-over-a-string-gives-characters
+--- origin REBOL/Core User Guide 2.3 section 7.4
+--- requires control output
+--- note A string is a series of characters, so this is the same operation
+--- note on a different series rather than a separate feature.
+--- code
+foreach char "REBOL" [prin char]
+--- prints
+REBOL
+
+--- id loops/foreach-over-an-empty-block
+--- origin adapted from REBOL/Core User Guide 2.3 section 7.4
+--- requires control
+--- code
+foreach item [] [item]
+--- result
+none
+
+--- id loops/foreach-takes-several-at-a-time
+--- origin REBOL/Core User Guide 2.3 section 7.4
+--- requires control output
+--- note A block of words takes that many items per pass, which is how
+--- note REBOL walks records held as a flat block.
+--- code
+movies: [8:30 "Contact" 10:15 "Ghostbusters"]
+foreach [time title] movies [print [title "at" time]]
+--- prints
+Contact at 8:30
+Ghostbusters at 10:15
+
+# --- WHILE and UNTIL: conditional loops ---------------------
+
+--- id loops/while-tests-before-each-pass
+--- origin REBOL/Core User Guide 2.3 section 6.3
+--- requires control series output
+--- code
+color: [red green blue]
+while [not tail? color] [
+    prin first color
+    color: next color
+]
+--- prints
+redgreenblue
+
+--- id loops/while-that-never-runs
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.3
+--- requires control
+--- note The condition is tested first, so a false condition means no
+--- note passes at all. The contrast with UNTIL below is the whole point.
+--- code
+while [false] [1]
+--- result
+none
+
+--- id loops/until-tests-after-each-pass
+--- origin REBOL/Core User Guide 2.3 section 6.3
+--- requires control series output
+--- note UNTIL runs the block and then asks, so the block always runs at
+--- note least once, and it stops when the block is true rather than false.
+--- code
+color: [red green blue]
+until [
+    prin first color
+    tail? color: next color
+]
+--- prints
+redgreenblue
+
+--- id loops/until-always-runs-once
+--- origin adapted from REBOL/Core User Guide 2.3 section 6.3
+--- requires control
+--- code
+until [true]
+--- result
+true
+
+# --- BREAK ---------------------------------------------------
+
+--- id loops/break-leaves-the-loop
+--- origin REBOL/Core User Guide 2.3 section 7.7
+--- requires control output
+--- code
+repeat count 10 [
+    if count > 3 [break]
+    prin count
+]
+--- prints
+123
+
+--- id loops/break-from-a-while
+--- origin adapted from REBOL/Core User Guide 2.3 section 7.7
+--- requires control op output
+--- code
+i: 0
+while [true] [
+    i: i + 1
+    if i > 3 [break]
+    prin i
+]
+--- prints
+123
+
+--- id loops/break-leaves-only-the-innermost-loop
+--- origin adapted from REBOL/Core User Guide 2.3 section 7.7
+--- requires control output
+--- note The case that decides how BREAK is implemented. It must unwind one
+--- note loop, not all of them.
+--- code
+repeat outer 2 [
+    repeat inner 5 [
+        if inner > 2 [break]
+        prin inner
+    ]
+    prin "|"
+]
+--- prints
+12|12|
+
+# --- Loops as expressions ------------------------------------
+
+--- id loops/a-loop-is-an-expression
+--- origin adapted from REBOL/Core User Guide 2.3 section 7.1
+--- requires control op
+--- note Every loop has a value and can be assigned, because REBOL has no
+--- note statements. This is the same property as `flag: if true [...]`.
+--- code
+total: loop 3 [99]
+total
+--- result
+99

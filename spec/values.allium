@@ -1,0 +1,498 @@
+-- allium: 3
+--
+-- JEBOL: the REBOL 3 (R3-Alpha) value model.
+--
+-- This module specifies what a REBOL value IS: the datatypes, how series
+-- values share mutable storage, how words carry bindings, and when two
+-- values count as equal. It specifies no evaluation; see eval.allium.
+--
+-- Scope is milestone 1. Datatypes deliberately left out for now:
+-- port!, event!, module!, library!, routine!, struct!, handle!, map!,
+-- vector!, image!, gob!, bitset!, typeset!, closure!, command!, op!, task!.
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- Every datatype JEBOL represents in milestone 1. The names match the
+-- REBOL spelling with the trailing "!" dropped, because "!" is not a
+-- legal character in an Allium enum literal.
+enum Datatype {
+    unset | none | logic | integer | decimal | percent | money | char
+    | pair | tuple | time | date
+    | string | file | url | email | tag | binary
+    | word | set_word | get_word | lit_word | refinement | issue
+    | block | paren | path | set_path | get_path | lit_path
+    | datatype | native | function | op | object | error
+    | java_object   -- a value belonging to the host, reachable both ways
+}
+
+-- The concrete datatypes reachable through each family variant. A family
+-- exists where several datatypes share one representation and differ only
+-- in how the loader spells them and how MOLD prints them.
+enum StringDatatype { string | file | url | email | tag }
+enum BlockDatatype { block | paren | path | set_path | get_path | lit_path }
+enum WordDatatype { word | set_word | get_word | lit_word | refinement | issue }
+
+-- Error categories as R3-Alpha groups them in its error catalogue.
+enum ErrorCategory { syntax | script | math | access | user | internal }
+
+-- How a function parameter consumes its argument.
+enum ParameterKind {
+    normal          -- evaluates the argument
+    | literal       -- takes the argument unevaluated (a 'word in the spec)
+    | soft_literal  -- unevaluated unless the argument is a paren, get-word or get-path
+    | refinement    -- a /refinement switch, contributing logic true or none
+    | refinement_arg-- an argument belonging to the preceding refinement
+    | return_type   -- a return: annotation, contributing no argument
+}
+
+------------------------------------------------------------
+-- Value Types
+------------------------------------------------------------
+
+-- A parameter of a function's interface, derived from its spec block.
+value Parameter {
+    name: String
+    kind: ParameterKind
+    accepted_types: Set<Datatype>
+    owning_refinement: String?
+}
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+-- Mutable storage shared by every series value that points into it.
+-- Two series values that share storage see each other's mutations; this
+-- is the property that makes REBOL series aliasing observable.
+
+entity BlockStorage {
+    items: List<Value>
+
+    length: items.count
+}
+
+entity StringStorage {
+    codepoints: List<Integer>
+
+    length: codepoints.count
+}
+
+entity BinaryStorage {
+    bytes: List<Integer>
+
+    length: bytes.count
+
+    invariant BytesAreOctets {
+        for byte in bytes:
+            byte >= 0 and byte <= 255
+    }
+}
+
+-- A binding target: a set of named slots that words can resolve through.
+-- The global environment and every object! share this representation.
+
+entity Context {
+    parent: Context?
+    slots: ContextSlot with context = this
+
+    slot_count: slots.count
+}
+
+entity ContextSlot {
+    context: Context
+    spelling: String            -- as first written, case preserved
+    canonical: String           -- lowercased, the form used for lookup
+    value: Value
+    is_protected: Boolean
+
+    invariant CanonicalIsLowercase {
+        canonical = lowercase(spelling)
+    }
+}
+
+-- The value itself. Every REBOL datatype is one variant of this sum type.
+
+entity Value {
+    kind: UnsetValue | NoneValue | LogicValue | IntegerValue | DecimalValue
+        | MoneyValue | CharValue | PairValue | TupleValue | TimeValue | DateValue
+        | AnyStringValue | BinaryValue | AnyBlockValue | AnyWordValue
+        | DatatypeValue | NativeValue | FunctionValue | OpValue | ObjectValue
+        | ErrorValue | JavaObjectValue
+
+    -- The concrete datatype this value reports to TYPE?. Each variant
+    -- narrows this to the datatypes it can carry.
+    datatype: Datatype
+
+    -- Typeset membership, as R3-Alpha defines the standard typesets.
+    is_any_string: datatype in {string, file, url, email, tag}
+    is_any_block: datatype in {block, paren, path, set_path, get_path, lit_path}
+    is_any_word: datatype in {word, set_word, get_word, lit_word, refinement, issue}
+    is_any_path: datatype in {path, set_path, get_path, lit_path}
+    is_series: is_any_string or is_any_block or datatype = binary
+    is_number: datatype in {integer, decimal, percent}
+    is_scalar: datatype in {integer, decimal, percent, money, char, pair, tuple, time, date}
+    is_any_function: datatype in {native, function, op}
+
+    -- Conditional truth. Only NONE and logic FALSE are false; everything
+    -- else is true, including zero, the empty string and the empty block.
+    -- UNSET is neither: using it as a condition raises an error, which is
+    -- why this derivation is guarded by is_conditional.
+    is_conditional: datatype != unset
+    is_truthy: datatype != none and kind != LogicValue
+
+    @guidance
+        -- LogicValue overrides is_truthy through its own truth field. The
+        -- derivation here covers every other variant, all of which are true.
+}
+
+variant UnsetValue : Value {
+    -- The absence of a value. Distinct from NONE, which is a value that
+    -- means "nothing". UNSET is what an unset word holds and what a
+    -- function returns when it returns nothing.
+}
+
+variant NoneValue : Value {
+    -- The single NONE value. All NONE values are equal.
+}
+
+variant LogicValue : Value {
+    truth: Boolean
+}
+
+variant IntegerValue : Value {
+    magnitude: Integer          -- 64-bit signed, per R3-Alpha
+}
+
+variant DecimalValue : Value {
+    -- Covers decimal! and percent!, which share IEEE 754 double
+    -- representation and differ only in how MOLD prints them.
+    quantity: Decimal
+}
+
+-- Amounts keep the scale they were written with, because money! is not
+-- normalised: $1.50 and $1.5 hold different scales. Whether they are
+-- nonetheless equal is an open question below, and it is exactly the
+-- distinction BigDecimal draws between equals and compareTo.
+variant MoneyValue : Value {
+    amount: Decimal
+    scale: Integer              -- digits after the point, as written
+    currency: String?           -- absent for the bare $1.50 form; 3 chars
+}
+
+variant CharValue : Value {
+    codepoint: Integer
+}
+
+variant PairValue : Value {
+    x: Integer
+    y: Integer
+}
+
+variant TupleValue : Value {
+    segments: List<Integer>
+
+    segment_count: segments.count
+}
+
+variant TimeValue : Value {
+    nanoseconds: Integer        -- signed; may exceed 24 hours
+}
+
+variant DateValue : Value {
+    year: Integer
+    month: Integer
+    day: Integer
+    time_of_day: TimeValue?
+    zone_minutes: Integer?      -- offset from UTC, present only with a time
+}
+
+variant AnyStringValue : Value {
+    string_type: StringDatatype
+    storage: StringStorage
+    index: Integer              -- 1-based position; storage.length + 1 is the tail
+}
+
+variant BinaryValue : Value {
+    storage: BinaryStorage
+    index: Integer
+}
+
+variant AnyBlockValue : Value {
+    block_type: BlockDatatype
+    storage: BlockStorage
+    index: Integer
+}
+
+variant AnyWordValue : Value {
+    word_type: WordDatatype
+    spelling: String            -- case preserved as written
+    canonical: String           -- lowercased, the form used for comparison
+    binding: Context?           -- absent when the word is unbound
+}
+
+variant DatatypeValue : Value {
+    represents: Datatype        -- the value of integer!, string! and friends
+}
+
+variant NativeValue : Value {
+    native_name: String
+    parameters: List<Parameter>
+}
+
+-- An infix operator. Always exactly two arguments, the first of which
+-- comes from the value already produced to its left rather than from the
+-- position after it. Everything else about applying one is ordinary.
+variant OpValue : Value {
+    op_name: String
+    underlying: Value           -- the native! or function! it dispatches to
+}
+
+variant FunctionValue : Value {
+    spec: Value                 -- the block! the function was defined with
+    body: Value                 -- the block! the function evaluates
+    parameters: List<Parameter>
+    closed_over: Context
+}
+
+variant ObjectValue : Value {
+    context: Context
+}
+
+-- A value that belongs to the host rather than to REBOL. REBOL code can
+-- hold one, pass it around and reach through it; the host can hold REBOL
+-- values in the same way. It has no REBOL spelling, so nothing the reader
+-- produces is ever a java-object!, and MOLD cannot print one that reads
+-- back.
+-- A held Java null is not NONE. NONE is a REBOL value meaning nothing; a
+-- Java null is the host's absence, and conflating the two would make a
+-- round trip through the host lossy.
+variant JavaObjectValue : Value {
+    class_name: String          -- the runtime class, for TYPE? and MOLD
+    is_host_null: Boolean       -- a held Java null, distinct from NONE
+}
+
+variant ErrorValue : Value {
+    category: ErrorCategory
+    error_id: String            -- e.g. "no-value", "expect-arg"
+    message: String
+    near: Value?                -- the block fragment being evaluated
+    where_word: String?         -- the function the error was raised in
+}
+
+------------------------------------------------------------
+-- Config
+------------------------------------------------------------
+
+config {
+    -- R3-Alpha integers are 64-bit signed. The bounds are stated here so
+    -- the loader and arithmetic can both refer to one definition.
+    max_integer: Integer = 9_223_372_036_854_775_807
+    min_integer: Integer = -9_223_372_036_854_775_808
+
+    -- Tuples hold 3 to 12 segments, each an octet.
+    min_tuple_segments: Integer = 3
+    max_tuple_segments: Integer = 12
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- A series index is a position, and a position runs from the head to one
+-- past the last element. One past the last element is the tail, which is
+-- a legal position to hold but not to read from.
+invariant BlockIndexInBounds {
+    for value in Values:
+        value.kind = AnyBlockValue
+            implies value.index >= 1 and value.index <= value.storage.length + 1
+}
+
+invariant StringIndexInBounds {
+    for value in Values:
+        value.kind = AnyStringValue
+            implies value.index >= 1 and value.index <= value.storage.length + 1
+}
+
+invariant BinaryIndexInBounds {
+    for value in Values:
+        value.kind = BinaryValue
+            implies value.index >= 1 and value.index <= value.storage.length + 1
+}
+
+-- The datatype a value reports must belong to the family its variant
+-- represents. Without this a value could claim to be a string! while
+-- carrying block storage.
+invariant StringDatatypeMatchesVariant {
+    for value in Values:
+        value.kind = AnyStringValue implies value.is_any_string
+}
+
+invariant BlockDatatypeMatchesVariant {
+    for value in Values:
+        value.kind = AnyBlockValue implies value.is_any_block
+}
+
+invariant WordDatatypeMatchesVariant {
+    for value in Values:
+        value.kind = AnyWordValue implies value.is_any_word
+}
+
+-- Word comparison is case-insensitive, so every word carries the
+-- lowercased form it compares by alongside the spelling it prints as.
+invariant WordCanonicalIsLowercase {
+    for value in Values:
+        value.kind = AnyWordValue implies value.canonical = lowercase(value.spelling)
+}
+
+-- Two slots in one context cannot claim the same name, because a lookup
+-- must resolve to exactly one slot.
+invariant ContextSlotsAreUnique {
+    for first in ContextSlots:
+        for second in ContextSlots:
+            first != second and first.context = second.context
+                implies first.canonical != second.canonical
+}
+
+-- Tuples are bounded in both length and element range.
+invariant TupleShape {
+    for value in Values:
+        value.kind = TupleValue
+            implies value.segment_count >= config.min_tuple_segments
+                and value.segment_count <= config.max_tuple_segments
+}
+
+invariant TupleSegmentsAreOctets {
+    for value in Values:
+        value.kind = TupleValue
+            implies value.segments.all(segment => segment >= 0 and segment <= 255)
+}
+
+-- Characters are Unicode scalar values. R3-Alpha stops at the Basic
+-- Multilingual Plane, but the JVM's own char is UTF-16, so JEBOL admits
+-- the full scalar range and excludes the surrogate block.
+invariant CharIsUnicodeScalar {
+    for value in Values:
+        value.kind = CharValue
+            implies value.codepoint >= 0 and value.codepoint <= 1_114_111
+}
+
+-- A date carries a zone only when it carries a time. A bare date has
+-- neither, because there is no instant to offset.
+invariant ZoneRequiresTime {
+    for value in Values:
+        value.kind = DateValue
+            implies (value.zone_minutes != null implies value.time_of_day != null)
+}
+
+-- A refinement argument must follow a refinement that exists on the same
+-- function, otherwise the argument can never be supplied.
+invariant RefinementArgumentsHaveOwners {
+    for value in Values:
+        value.kind = FunctionValue
+            implies value.parameters.all(p =>
+                p.kind = refinement_arg implies p.owning_refinement != null)
+}
+
+------------------------------------------------------------
+-- Open Questions
+------------------------------------------------------------
+
+-- Resolved, and corrected. An earlier note here claimed R3 molds the
+-- shortest representation that reads back, on the reasoning that it must
+-- differ from REBOL 2. Running a real R3 (3.22.1, arm64) says otherwise,
+-- and the Core guide was right all along.
+--
+-- A decimal molds to at most fifteen significant digits, always with a
+-- decimal point, and in exponent form only when the decimal exponent is
+-- 15 or more, or -7 or less. Pinned by running one:
+--
+--   0.1 + 0.2  ->  0.3                    not 0.30000000000000004
+--   10 / 3     ->  3.33333333333333       fifteen digits
+--   1.0        ->  1.0                    the point is never dropped
+--   1e14       ->  100000000000000.0      plain up to exponent 14
+--   1e15       ->  1.0e15                 exponent from 15
+--   1e-6       ->  0.000001               plain down to exponent -6
+--   1e-7       ->  1.0e-7                 exponent from -7
+--
+-- So Java's Double.toString is the wrong tool: it gives seventeen digits
+-- where fifteen are wanted. The rounding is ours to do.
+
+-- Resolved: money! is an arbitrary-precision decimal carrying a currency
+-- designator, held as a Decimal here and as a BigDecimal in the code.
+--
+-- The earlier note in this file said R3-Alpha stored money as a lossy
+-- decimal. That was wrong, and it was REBOL 2 being described. R3-Alpha's
+-- money! is a 128-bit type with 26 significant digits and an exponent
+-- from -128 to +127, and it is deliberately not normalised, so $1.50
+-- keeps its trailing zero rather than becoming $1.5. A currency
+-- designator of up to three characters sits alongside.
+--
+-- That maps onto BigDecimal closely: 26 digits is a MathContext, and
+-- BigDecimal preserves scale, which is what non-normalised means. Storing
+-- integer minor units instead would have been wrong twice over, because
+-- 26 significant digits do not fit and a bare $1.50 names no currency
+-- whose minor unit could be looked up.
+
+-- Resolved against a real R3: $1.50 = $1.5 and $1.50 == $1.5 are both
+-- true, while mold $1.50 still gives "$1.50". The scale is kept for
+-- printing and ignored for comparing, under the loose and the strict
+-- operator alike. So BigDecimal.compareTo is what both mean, and
+-- BigDecimal.equals is what neither means.
+
+-- Resolved against a real R3: $10 / 3 gives
+-- $3.3333333333333333333333333, which is 26 significant digits. The same
+-- width as the type, so division needs no rule of its own.
+
+-- Resolved: integer arithmetic always raises on overflow, never wraps.
+-- R3-Alpha is inconsistent about this and the JVM wraps silently, which
+-- is the worst of the options because a wrong answer looks like a right
+-- one. Costs a checked operation per arithmetic native.
+
+-- Resolved against a real R3: the loose = ignores case for every
+-- string-like type and not only for string!. %A.txt = %a.txt is true and
+-- <A> = <a> is true, while == minds case for all of them.
+
+-- Resolved against a real R3: binding is a snapshot, not a subscription.
+-- Binding a block to an object binds the words the object knows at that
+-- moment; extending the object afterwards does not make an already-bound
+-- word see the new slot. Demonstrated by binding [a b] to an object with
+-- only a, extending it with b, and finding the bound b still has no value.
+--
+-- So JEBOL keeps the limit, and it is not really a limit: it is what makes
+-- a bound block mean the same thing later that it meant when it was bound.
+
+-- Resolved: an interpreter instance is single-threaded and owns every
+-- value reachable from it. Concurrency comes from running many instances.
+-- Series aliasing therefore needs no synchronisation, because nothing
+-- shares storage across a thread boundary. See docs/decisions.md item 4.
+
+-- Resolved: the lexical types stay lexical, as in R3-Alpha. A tuple may
+-- hold 999.999.999 and an email is a shape rather than a checked address.
+-- The invariants below constrain what the reader can build, not what a
+-- caller may construct through conversion. See docs/decisions.md item 7.
+
+open question "Nothing may cross between interpreter instances yet, because a block carries its storage and its bindings with it. Is passing values between instances supported at all, and if so is it by deep copy, or by a handle that only the owning instance may follow?"
+
+-- Resolved: integer! crosses as a long and block! as a List. Anything
+-- without an obvious counterpart stays a REBOL value the host asks about
+-- rather than being guessed at.
+
+-- Resolved: MOLD prints #[java-object! <class>], which is deliberately not
+-- readable. The round-trip invariant is scoped to values the reader could
+-- have produced, and nothing the reader produces is ever a java-object!.
+-- Refusing to mold one at all would make debugging worse for no gain.
+
+-- Resolved: every host throwable becomes an error! at the boundary, so no
+-- exception crosses into REBOL as an exception. A host exception caught by
+-- REBOL and passed back arrives as an error value rather than the original
+-- throwable. That loss is the price of the guarantee that a script can
+-- catch anything a script can cause.
+
+-- Resolved: JEBOL makes no promise about host objects. An instance owns
+-- its REBOL values; a Java object it holds may be shared and mutated by
+-- anyone. This is the one hole in the isolation story and it is
+-- deliberate, because closing it would mean copying or freezing everything
+-- crossing the boundary. It must be stated where a host developer hands an
+-- object over, not left in a decisions file.

@@ -1,0 +1,18 @@
+# Warnings the Allium checker raises that are not defects.
+#
+# One exact diagnostic message per line. Anything not listed here fails
+# the spec gate, so a genuine warning cannot hide behind a blanket
+# "ignore warnings" rule.
+#
+# All of these are the same checker gap: usage analysis does not walk
+# variant bodies, so a type referenced only by a variant of Value is
+# reported as unused. Confirmed with minimal repros; see
+# docs/allium-checker-notes.md.
+
+Value 'StringDatatype' is declared but not referenced elsewhere.
+Value 'BlockDatatype' is declared but not referenced elsewhere.
+Value 'WordDatatype' is declared but not referenced elsewhere.
+Value 'ErrorCategory' is declared but not referenced elsewhere.
+Entity 'BlockStorage' is declared but not referenced elsewhere in this specification.
+Entity 'StringStorage' is declared but not referenced elsewhere in this specification.
+Entity 'BinaryStorage' is declared but not referenced elsewhere in this specification.

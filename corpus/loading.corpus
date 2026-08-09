@@ -1,0 +1,245 @@
+# Reading real REBOL source into values.
+#
+# Every entry here is a line lifted from the fourteen programs in
+# corpus/sources/, cited by file and line. Nothing is invented. The point
+# of loader tests drawn from real code rather than from a grammar is that
+# real code uses the awkward combinations, and a hand-written example
+# tends not to.
+#
+# The `types` field lists the datatype of each value the text loads to, in
+# order. A count mismatch fails the entry just as a type mismatch does,
+# which is what catches a reader that silently merges or splits values.
+
+# --- Pairs and tuples ---------------------------------------
+# 184 pairs and 90 tuples across all fourteen files. View code is built
+# from coordinates and colours, so these two carry most of the traffic.
+
+--- id loading/pair-literal
+--- origin corpus/sources/calculator.r line 29
+--- code
+40x24
+--- types
+pair
+
+--- id loading/pair-in-context
+--- origin corpus/sources/color-names.r line 19
+--- note A pair sits between an integer and a block with no delimiters
+--- note around it, so the reader must end the integer at the x.
+--- code
+font-size 11 100x38 [sc/color: face/color show sc]
+--- types
+word integer pair block
+
+--- id loading/tuple-three-segments
+--- origin corpus/sources/tile-game.r line 10
+--- code
+100.150.150
+--- types
+tuple
+
+--- id loading/tuple-with-zero-segments
+--- origin corpus/sources/clock1.r line 9
+--- note Leading zeros in every segment, which is where a reader that
+--- note parses tuples as decimals first goes wrong.
+--- code
+gradient 0x1 0.0.150 0.0.50
+--- types
+word pair tuple tuple
+
+--- id loading/version-tuple
+--- origin corpus/sources/color-names.r line 3
+--- code
+1.0.1
+--- types
+tuple
+
+--- id loading/pair-arithmetic-is-two-values
+--- origin corpus/sources/tile-game.r line 9
+--- note The multiplication is evaluation, not lexis. Reading gives three
+--- note values and it is the evaluator that turns them into a pair.
+--- code
+3 * 40x40
+--- types
+integer word pair
+
+# --- Decimals -----------------------------------------------
+
+--- id loading/decimal-with-leading-dot
+--- origin corpus/sources/font-lab.r line 84
+--- note .5 with no leading zero. One dot makes a decimal; the tuple
+--- note entries above are the same reader decision going the other way.
+--- code
+sl1/data: .5
+--- types
+set-path decimal
+
+--- id loading/decimal-among-operators
+--- origin corpus/sources/color-names.r line 46
+--- code
+m: max 1 to-integer factor - .5 * 8
+--- types
+set-word word integer word word word decimal word integer
+
+# --- Paths --------------------------------------------------
+# 478 paths across all fourteen files, and they are where the reader has
+# to be most careful.
+
+--- id loading/simple-path
+--- origin corpus/sources/calculator.r line 15
+--- code
+text-box/color: red
+--- types
+set-path word
+
+--- id loading/set-path-with-get-word-segment
+--- origin corpus/sources/color-names.r line 51
+--- note The hardest single line in these fourteen files. A set-path whose
+--- note third segment is a get-word: window, pane, :n, color, and the
+--- note trailing colon belongs to the whole path rather than to color.
+--- code
+window/pane/:n/color: clr
+--- types
+set-path word
+
+--- id loading/path-with-get-word-segment
+--- origin corpus/sources/mines.r line 79
+--- code
+grid/pane/:index/gui-state: 'cleared
+--- types
+set-path lit-word
+
+--- id loading/path-read-not-assigned
+--- origin corpus/sources/mines.r line 95
+--- code
+state: grid/pane/:index/gui-state
+--- types
+set-word path
+
+--- id loading/path-with-integer-segment
+--- origin corpus/sources/clock.r line 16
+--- note A path segment that is a word, and a set-path ending in a word
+--- note that could be read as a refinement if the reader is careless.
+--- code
+b/font/size: max 24 f/size/y - 40
+--- types
+set-path word integer path word integer
+
+--- id loading/path-then-comment
+--- origin corpus/sources/clock.r line 18
+--- note The comment produces no value. A reader that returns one for it
+--- note would shift everything after it.
+--- code
+b/size/x: 1024 ; for size-text
+--- types
+set-path integer
+
+# --- Words in their various shapes --------------------------
+
+--- id loading/refinement-in-a-function-spec
+--- origin corpus/sources/color-names.r line 43
+--- note A refinement is a slash with nothing before it. A path is a slash
+--- note with something before it. Both appear on this line.
+--- code
+[factor /local clr n m d]
+--- types
+block
+
+--- id loading/lit-word
+--- origin corpus/sources/color-names.r line 26
+--- code
+append out 'return
+--- types
+word word lit-word
+
+--- id loading/modulo-is-an-ordinary-word
+--- origin corpus/sources/color-names.r line 26
+--- note // is a word like any other, not punctuation. This is why the
+--- note reader can be ignorant of operators entirely.
+--- code
+zero? cnt // 6
+--- types
+word word word integer
+
+--- id loading/word-with-question-mark
+--- origin corpus/sources/mines.r line 81
+--- code
+not grid/pane/:index/data
+--- types
+word path
+
+--- id loading/set-word-chain
+--- origin corpus/sources/tile-game.r line 32
+--- code
+t15: tile "15"  t14: tile "14"
+--- types
+set-word word string set-word word string
+
+# --- The scalar types that carry their own syntax -----------
+
+--- id loading/file-literal
+--- origin corpus/sources/tile-game.r line 6
+--- code
+%tile-game.r
+--- types
+file
+
+--- id loading/url-and-file-on-one-line
+--- origin corpus/sources/effect-lab.r line 10
+--- note A url ends at whitespace, so the file after it is a separate
+--- note value rather than part of the url.
+--- code
+read-thru/to http://www.rebol.com/view/demos/nyc.jpg %nyc.jpg
+--- types
+path url file
+
+--- id loading/bare-email-literal
+--- origin corpus/sources/mines.r line 4
+--- code
+Email: allenk@powerup.com.au
+--- types
+set-word email
+
+--- id loading/quoted-email-is-a-string
+--- origin corpus/sources/rebodex.r line 14
+--- note The same characters in quotes are a string, not an email. The
+--- note contrast with the previous entry is the whole test.
+--- code
+email "carl@rebol.com"
+--- types
+word string
+
+--- id loading/date-literal
+--- origin corpus/sources/tile-game.r line 3
+--- code
+Date: 15-May-2000
+--- types
+set-word date
+
+# --- Whole structures ---------------------------------------
+
+--- id loading/script-header
+--- origin corpus/sources/clock1.r lines 1 to 5
+--- note The header is a word followed by an ordinary block. It is not
+--- note special syntax, which is why TRANSCODE can hand it back as
+--- note values like anything else.
+--- code
+REBOL [
+	Title: "Basic Digital Clock"
+	Author: "Carl Sassenrath"
+	Purpose: "A simple digital clock."
+]
+--- types
+word block
+
+--- id loading/nested-blocks-with-mixed-literals
+--- origin corpus/sources/clock1.r lines 7 to 11
+--- note The whole of the smallest demo, which between them covers pairs,
+--- note tuples, integers, blocks, set-words and paths.
+--- code
+view layout [
+	origin 0
+	banner 140x32 rate 1 effect [gradient 0x1 0.0.150 0.0.50]
+		feel [engage: func [f a e] [set-face f now/time]]
+]
+--- types
+word word block

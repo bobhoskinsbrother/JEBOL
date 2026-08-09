@@ -1,0 +1,206 @@
+# Evaluating expressions and blocks.
+# Origin: REBOL/Core User Guide 2.3, sections 4.1 to 4.7.
+
+--- id evaluation/console-addition
+--- origin REBOL/Core User Guide 2.3 section 4.1
+--- requires op
+--- note The very first example in the guide, and it needs infix.
+--- code
+1 + 2
+--- result
+3
+
+--- id evaluation/do-block
+--- origin REBOL/Core User Guide 2.3 section 4.3
+--- requires op
+--- code
+do [1 + 2]
+--- result
+3
+
+--- id evaluation/do-block-yields-last-expression
+--- origin REBOL/Core User Guide 2.3 section 4.3
+--- requires op
+--- note Pins that a block is a sequence of expressions and its value is
+--- note the last one, not a collection of all of them.
+--- code
+do [
+    1 + 2
+    3 + 4
+]
+--- result
+7
+
+--- id evaluation/do-block-prefix-only
+--- origin adapted from REBOL/Core User Guide 2.3 section 4.3
+--- note The same behaviour written without infix, so milestone 1 can run
+--- note it. If this passes and do-block does not, the gap is op! alone.
+--- code
+do [
+    add 1 2
+    add 3 4
+]
+--- result
+7
+
+--- id evaluation/nested-prefix-calls
+--- origin adapted from REBOL/Core User Guide 2.3 section 4.1
+--- note Argument gathering is itself a full evaluation, so the first
+--- note add's second argument is what the second add produced.
+--- code
+add 1 add 2 3
+--- result
+6
+
+--- id evaluation/empty-block-is-unset
+--- origin REBOL/Core User Guide 2.3 section 4.3
+--- note Not none. UNSET is what you get from something that returned
+--- note nothing; NONE is a value somebody chose.
+--- code
+unset? do []
+--- result
+true
+
+--- id evaluation/do-string
+--- origin REBOL/Core User Guide 2.3 section 4.6
+--- requires op
+--- note DO of a string loads then evaluates, so this exercises the
+--- note reader and the evaluator together.
+--- code
+do "1 + 2"
+--- result
+3
+
+--- id evaluation/reduce-block
+--- origin REBOL/Core User Guide 2.3 section 4.4
+--- requires op series
+--- note REDUCE evaluates every expression and collects the results,
+--- note which is the contrast case to DO returning only the last.
+--- code
+reduce [
+    1 + 2
+    3 + 4
+]
+--- result
+[3 7]
+
+--- id evaluation/paren-forces-grouping
+--- origin adapted from REBOL/Core User Guide 2.3 section 4.4
+--- note There is no operator precedence in REBOL, so a paren is the only
+--- note way to change grouping.
+--- code
+add 1 multiply 2 3
+--- result
+7
+
+--- id evaluation/paren-evaluates-inline
+--- origin adapted from REBOL/Core User Guide 2.3 section 4.4
+--- code
+add (add 1 2) 4
+--- result
+7
+
+--- id evaluation/divide-by-zero
+--- origin REBOL/Core User Guide 2.3 section 4.7
+--- requires op
+--- note Asserted by category and id, not by message text. R2 and R3 word
+--- note this differently and the wording is not the behaviour.
+--- code
+100 / 0
+--- error math zero-divide
+
+--- id evaluation/divide-by-zero-prefix
+--- origin adapted from REBOL/Core User Guide 2.3 section 4.7
+--- code
+divide 100 0
+--- error math zero-divide
+
+--- id evaluation/unset-word-in-expression
+--- origin REBOL/Core User Guide 2.3 section 4.7
+--- requires op
+--- code
+size + 10
+--- error script no-value
+
+--- id evaluation/wrong-argument-type
+--- origin REBOL/Core User Guide 2.3 section 4.7
+--- requires op
+--- note The guide reports "Cannot use add on block! value". JEBOL raises
+--- note expect-arg from the same cause.
+--- code
+10 + [size]
+--- error script expect-arg
+
+--- id evaluation/wrong-argument-type-prefix
+--- origin adapted from REBOL/Core User Guide 2.3 section 4.7
+--- code
+add 10 [size]
+--- error script expect-arg
+
+--- id evaluation/decimal-division-precision
+--- origin REBOL/Core User Guide 2.3 section 10, confirmed against R3 3.22.1
+--- note Fifteen significant digits, not the shortest form that reads back.
+--- note This repo asserted the shortest form for a while, on the reasoning
+--- note that R3 must differ from R2 here. Running a real R3 says otherwise:
+--- note mold 10 / 3 gives 3.33333333333333 and mold 0.1 + 0.2 gives 0.3.
+--- note The guide was right and the reasoning was wrong.
+--- code
+divide 10 3
+--- result
+3.33333333333333
+
+--- id evaluation/no-operator-precedence
+--- origin REBOL 3 Concepts: Math: Evaluation Order
+--- requires op
+--- note The single most consequential fact about REBOL arithmetic. All
+--- note operators bind equally and expressions run strictly left to right,
+--- note so this is 20 and not 14. Nothing to remember except left to right.
+--- code
+2 + 3 * 4
+--- result
+20
+
+--- id evaluation/operator-chain-runs-left-to-right
+--- origin REBOL 3 Concepts: Math: Evaluation Order
+--- requires op
+--- code
+1 + 2 + 3 + 4
+--- result
+10
+
+--- id evaluation/operator-reaches-into-a-prefix-argument
+--- origin adapted from REBOL/Core User Guide 2.3 section 4.1
+--- note The counterpart to the entry above, and the reason the rule is
+--- note subtler than it looks. An operator takes a single value, so the
+--- note addition in 2 + 3 * 4 finishes first. A prefix function takes a
+--- note whole expression, so the multiplication here finishes inside the
+--- note second argument and this is 7, not 9.
+--- code
+add 1 2 * 3
+--- result
+7
+
+--- id evaluation/paren-overrides-the-left-to-right-rule
+--- origin adapted from REBOL/Core User Guide 2.3 section 4.4
+--- note With no precedence to override, a paren is the only way to group.
+--- code
+2 + (3 * 4)
+--- result
+14
+
+--- id evaluation/decimals-mold-to-fifteen-digits
+--- origin confirmed against R3 3.22.1 on this machine
+--- note The rule, pinned by running one: fifteen significant digits, always
+--- note a decimal point, lowercase e with no plus for the exponent.
+--- code
+reduce [mold 0.1 + 0.2 mold 1.0 mold 100.0 mold divide 1 3]
+--- result
+["0.3" "1.0" "100.0" "0.333333333333333"]
+
+--- id evaluation/a-decimal-always-keeps-its-point
+--- origin confirmed against R3 3.22.1
+--- note So a decimal reads back as a decimal rather than as an integer.
+--- code
+mold 1.0
+--- result
+"1.0"

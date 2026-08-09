@@ -1,0 +1,981 @@
+-- allium: 3
+--
+-- JEBOL: evaluating REBOL values.
+--
+-- REBOL has no fixed grammar for expressions. A block is a flat sequence
+-- of values, and meaning comes from evaluating them left to right: each
+-- value either stands for itself or reaches forward and consumes the
+-- values after it. A word bound to a function of two arguments takes the
+-- next two results; a word bound to anything else takes none. That is why
+-- `add 1 add 2 3` is six, and why the same block means something
+-- different once a word is rebound.
+--
+-- This module specifies that walk: what each datatype does when evaluated,
+-- how arguments are gathered, and how errors travel back out.
+--
+-- Rules here are written one per decision point, with the alternatives as
+-- branches, rather than one rule per outcome. Where several outcomes are
+-- possible from the same state, the order of the branches is the order of
+-- precedence, and stating it in one place is what stops two outcomes both
+-- claiming to apply.
+
+use "./values.allium" as values
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- What went wrong while evaluating. Each maps to an error! of category
+-- script, except the arithmetic failures, which carry category math.
+enum EvaluationFailure {
+    no_value            -- a word whose slot holds UNSET was evaluated
+    | not_defined       -- a word with no binding was evaluated
+    | need_value        -- nothing left in the block to supply a value
+    | expect_arg        -- an argument of the wrong datatype
+    | invalid_path      -- a path segment that selects nothing
+    | cannot_use        -- an operation this datatype does not support
+    | protected_word    -- an assignment to a slot marked protected
+    | too_deep          -- nesting past the evaluation depth limit
+    | zero_divide       -- division by zero
+    | overflow          -- arithmetic outside the representable range
+    | thrown            -- an error! value reached during evaluation
+}
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+-- One walk through one block. Nested evaluations, whether from a paren, a
+-- function body or a called DO, each get their own, chained through
+-- caller so an error can say where it came from.
+entity Evaluation {
+    code: values/Value              -- the block! being walked
+    context: values/Context
+    caller: Evaluation?
+    depth: Integer                  -- 1 for a top-level DO
+
+    -- The step that is waiting for this evaluation to produce a value.
+    -- Absent for a top-level DO, which nothing is waiting on.
+    awaiting_step: EvaluationStep?
+
+    status: walking | completed | raised
+
+    steps: EvaluationStep with evaluation = this
+    step_count: steps.count
+    raised_steps: steps where status = raised
+
+    any_step_raised: raised_steps.count > 0
+    exceeded_depth: depth > config.max_evaluation_depth
+
+    -- The walk has nothing left to do: it blew the depth limit before it
+    -- started, a step raised, the block was empty, or the last step ran
+    -- off the end of the block.
+    walk_complete: exceeded_depth
+        or any_step_raised
+        or is_empty_block(code)
+        or last_step_reached_end(this)
+
+    result: values/Value when status = completed
+    error: values/Value when status = raised
+
+    transitions status {
+        walking -> completed
+        walking -> raised
+        terminal: completed, raised
+    }
+}
+
+-- Taking one value from the block and turning it into a result. A step
+-- may use up more than the value it started from: a word bound to a
+-- function uses up whatever its arguments were built from.
+entity EvaluationStep {
+    evaluation: Evaluation
+    input: values/Value             -- the value the step started from
+    input_position: Integer         -- 1-based index of input within the block
+
+    -- Set when this step exists to supply a value to something else: the
+    -- set-word waiting to store it, or the call waiting to receive it as
+    -- an argument. A step taken in the ordinary course of the walk has
+    -- neither.
+    supplies_assignment: EvaluationStep?
+    supplies_application: Application?
+
+    -- Set when this step starts from an infix operator and the value to
+    -- its left has already been produced. That value is the operator's
+    -- first argument, so only the second is gathered from the block.
+    infix_left: values/Value?
+
+    -- True when the value after this step is a word bound to an operator.
+    -- The walk does not move on in that case: the operator takes what was
+    -- just produced and continues from there.
+    infix_follows: next_value_is_operator(this)
+
+    status: pending | produced | raised
+
+    result: values/Value when status = produced
+
+    -- How many positions this step used up, counting the value it started
+    -- from. A self-evaluating value uses one. A word bound to a function
+    -- of two arguments uses one plus whatever its arguments used.
+    consumed: Integer when status = produced
+
+    failure: EvaluationFailure when status = raised
+    error: values/Value when status = raised
+
+    -- What a word-shaped input resolves to. Read once here so the
+    -- dispatch branches do not each repeat the lookup.
+    is_bound: input.binding != null
+    bound_value: slot_value(input)
+
+    transitions status {
+        pending -> produced
+        pending -> raised
+        terminal: produced, raised
+    }
+}
+
+-- Calling a function or native. Arguments are gathered by evaluating the
+-- positions after the call, left to right, each one a full step of its
+-- own.
+entity Application {
+    step: EvaluationStep
+    applied: values/Value           -- the function!, native! or op! called
+    requested_refinements: Set<String>
+
+    -- The operator's left operand, already produced before the operator
+    -- was reached. Absent for an ordinary prefix call.
+    infix_left: values/Value?
+
+    status: gathering | ready | invoked | raised
+
+    arguments: Argument with application = this
+    supplied_count: arguments.count
+    expected_count: required_argument_count(applied, requested_refinements)
+
+    -- An operator arrives with its first argument already in hand, so it
+    -- takes one fewer from the block than its arity suggests.
+    pre_supplied_count: if infix_left != null: 1 else: 0
+    gathered_needed: expected_count - pre_supplied_count
+
+    -- How many values sit after the call in the block it was reached
+    -- from. A call needs at least one value per argument still to gather,
+    -- though a value may itself be a call that consumes several.
+    values_after_call: block_length(step.evaluation.code) - step.input_position
+    enough_values_remain: values_after_call >= gathered_needed
+
+    all_arguments_gathered: supplied_count = gathered_needed
+    any_argument_mistyped: arguments.any(argument => not argument.type_accepted)
+
+    -- Nothing further can be gathered: either the block ran out or every
+    -- argument is in.
+    gathering_resolved: not enough_values_remain or all_arguments_gathered
+
+    -- The call has finished, one way or the other, and has something to
+    -- hand back to the step that started it.
+    call_settled: status = invoked or status = raised
+
+    result: values/Value when status = invoked
+    failure: EvaluationFailure when status = raised
+    error: values/Value when status = raised
+
+    transitions status {
+        gathering -> ready
+        gathering -> raised
+        ready -> invoked
+        terminal: invoked, raised
+    }
+}
+
+-- Selecting through a path, one segment at a time. `face/color` looks up
+-- face, then selects colour from it. `append/only` looks up append, finds
+-- a function, and treats what follows as refinements rather than
+-- selectors. Which of those a path is doing is not known until the first
+-- segment has been looked up.
+entity PathEvaluation {
+    step: EvaluationStep
+    path: values/Value              -- the path!, set-path! or get-path!
+    segment_count: path_segment_count(path)
+
+    -- 1-based index of the next segment to apply. Selection starts at the
+    -- second segment, because the first is the word that is looked up
+    -- rather than selected with.
+    position: Integer
+
+    current: values/Value           -- what has been selected so far
+    refinements: Set<String>        -- gathered when current is a function
+
+    status: selecting | selected | raised
+
+    reached_end: position > segment_count
+    selects_a_function: current.is_any_function
+
+    result: values/Value when status = selected
+    failure: EvaluationFailure when status = raised
+    error: values/Value when status = raised
+
+    transitions status {
+        selecting -> selected
+        selecting -> raised
+        terminal: selected, raised
+    }
+}
+
+entity Argument {
+    application: Application
+    parameter_name: String
+    ordinal: Integer                -- 1-based, in spec order
+    value: values/Value
+    type_accepted: Boolean
+}
+
+------------------------------------------------------------
+-- Config
+------------------------------------------------------------
+
+config {
+    -- How deep nested evaluation may go before JEBOL raises rather than
+    -- exhausting the host stack. R3-Alpha reports a stack overflow; JEBOL
+    -- reports it as an ordinary REBOL error so scripts can catch it.
+    max_evaluation_depth: Integer = 10_000
+}
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+-- === Walking a block =======================================
+
+rule EvaluationBegins {
+    when: Do(code, context)
+    ensures: Evaluation.created(
+        code: code,
+        context: context,
+        depth: 1,
+        status: walking
+    )
+}
+
+rule EvaluationTakesFirstValue {
+    when: evaluation: Evaluation.created
+    requires: evaluation.status = walking
+    requires: not evaluation.exceeded_depth
+    requires: not is_empty_block(evaluation.code)
+    ensures: EvaluationStep.created(
+        evaluation: evaluation,
+        input: value_at(evaluation.code, 1),
+        input_position: 1,
+        status: pending
+    )
+}
+
+rule EvaluationTakesNextValue {
+    when: step: EvaluationStep.status transitions_to produced
+    requires: step.evaluation.status = walking
+    requires: step.supplies_assignment = null
+    requires: step.supplies_application = null
+    requires: not step.infix_follows
+    requires: step.input_position + step.consumed <= block_length(step.evaluation.code)
+    ensures: EvaluationStep.created(
+        evaluation: step.evaluation,
+        input: value_at(step.evaluation.code, step.input_position + step.consumed),
+        input_position: step.input_position + step.consumed,
+        status: pending
+    )
+
+    @guidance
+        -- A step that exists to supply a set-word or a call does not
+        -- advance the walk itself. Whatever it supplies reports the
+        -- positions it used, and the walk carries on from there.
+}
+
+-- The single place an evaluation's outcome is decided. The branches are
+-- in precedence order: blowing the depth limit beats everything, a raised
+-- step beats a result, and an empty block yields UNSET rather than NONE.
+-- UNSET is what a caller gets from a function that returned nothing;
+-- NONE is a value somebody chose.
+rule EvaluationConcludes {
+    when: evaluation: Evaluation.walk_complete
+    requires: evaluation.status = walking
+
+    ensures:
+        if evaluation.exceeded_depth:
+            evaluation.status = raised
+            evaluation.error = script_error(too_deep)
+        else if evaluation.any_step_raised:
+            evaluation.status = raised
+            evaluation.error = first_raised_error(evaluation)
+        else if evaluation.step_count = 0:
+            evaluation.status = completed
+            evaluation.result = unset_value()
+        else:
+            evaluation.status = completed
+            evaluation.result = last_step_result(evaluation)
+
+    @guidance
+        -- A block's value is its last step's value, because a block is a
+        -- sequence of expressions rather than one expression.
+}
+
+-- A nested evaluation hands its outcome to the step that was waiting on
+-- it. This is how a paren's value reaches the block that contained it.
+rule NestedEvaluationReportsToItsStep {
+    when: evaluation: Evaluation.walk_complete
+    requires: evaluation.awaiting_step != null
+
+    ensures:
+        if evaluation.any_step_raised or evaluation.exceeded_depth:
+            evaluation.awaiting_step.status = raised
+            evaluation.awaiting_step.failure = thrown
+            evaluation.awaiting_step.error = evaluation.error
+        else:
+            evaluation.awaiting_step.status = produced
+            evaluation.awaiting_step.result = evaluation.result
+            evaluation.awaiting_step.consumed = 1
+}
+
+-- === Infix operators =======================================
+--
+-- REBOL has no operator precedence. Every operator binds equally and
+-- expressions run strictly left to right, so `2 + 3 * 4` is 20 and not
+-- 14. That is not a simplification of the language; it is the language,
+-- and it is what lets code that rewrites expressions leave the terms
+-- where it found them.
+--
+-- The whole of infix is this one rule. When a step produces a value and
+-- the next thing in the block is a word bound to an operator, the walk
+-- does not move on. The operator takes what was just produced as its
+-- first argument and carries on from there. Because that applies to the
+-- operator's own result too, chains fall out without further machinery,
+-- and because it applies while gathering arguments, `add 1 2 * 3` is 7.
+
+rule InfixOperatorContinuesTheWalk {
+    when: step: EvaluationStep.status transitions_to produced
+    requires: step.infix_follows
+
+    ensures: EvaluationStep.created(
+        evaluation: step.evaluation,
+        input: value_at(
+            step.evaluation.code,
+            step.input_position + step.consumed
+        ),
+        input_position: step.input_position + step.consumed,
+        infix_left: step.result,
+        supplies_assignment: step.supplies_assignment,
+        supplies_application: step.supplies_application,
+        status: pending
+    )
+
+    @guidance
+        -- The continuing step inherits whatever the produced step was
+        -- supplying. Without that, `total: 1 + 2` would store 1 and then
+        -- evaluate the addition into nothing, and `add 1 2 * 3` would pass
+        -- 2 rather than 6.
+}
+
+-- === Dispatch ==============================================
+
+-- Most datatypes evaluate to themselves. Notably this includes block!,
+-- which is why code can be passed around as data without running, and
+-- function!, which is why a function value sitting in a block is not
+-- called until a word or path reaches it.
+rule InertValueProducesItself {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.input.datatype in {
+        none, logic, integer, decimal, percent, money, char,
+        pair, tuple, time, date,
+        string, file, url, email, tag, binary,
+        block, datatype, object, refinement, issue, native, function
+    }
+    ensures:
+        step.status = produced
+        step.result = step.input
+        step.consumed = 1
+}
+
+-- A word looks up its binding. What it finds decides whether the step
+-- produces a value or reaches forward and calls something.
+rule WordEvaluates {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.input.datatype = word
+
+    ensures:
+        if not step.is_bound:
+            step.status = raised
+            step.failure = not_defined
+            step.error = script_error(not_defined)
+        else if step.bound_value.datatype = unset:
+            step.status = raised
+            step.failure = no_value
+            step.error = script_error(no_value)
+        else if step.bound_value.datatype = op and step.infix_left = null:
+            step.status = raised
+            step.failure = need_value
+            step.error = script_error(need_value)
+        else if step.bound_value.is_any_function:
+            Application.created(
+                step: step,
+                applied: step.bound_value,
+                infix_left: step.infix_left,
+                requested_refinements: {},
+                status: gathering
+            )
+        else:
+            step.status = produced
+            step.result = step.bound_value
+            step.consumed = 1
+
+    @guidance
+        -- not_defined and no_value are different mistakes. A word that was
+        -- never bound and a word bound to a slot nobody assigned need
+        -- different messages, because they need different fixes.
+}
+
+-- A get-word fetches without calling. :append gives you the function
+-- itself, which is how a function gets passed to another function.
+rule GetWordEvaluates {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.input.datatype = get_word
+
+    ensures:
+        if not step.is_bound:
+            step.status = raised
+            step.failure = not_defined
+            step.error = script_error(not_defined)
+        else:
+            step.status = produced
+            step.result = step.bound_value
+            step.consumed = 1
+}
+
+-- A lit-word evaluates to the plain word, stripping one level of quoting.
+-- 'foo produces foo, and that word is not then looked up.
+rule LitWordEvaluates {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.input.datatype = lit_word
+    ensures:
+        step.status = produced
+        step.result = as_plain_word(step.input)
+        step.consumed = 1
+}
+
+rule LitPathEvaluates {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.input.datatype = lit_path
+    ensures:
+        step.status = produced
+        step.result = as_plain_path(step.input)
+        step.consumed = 1
+}
+
+-- A set-word evaluates what follows it and stores the result. A set-word
+-- at the end of a block is an error rather than an assignment of UNSET,
+-- because writing `x:` and nothing else is a mistake, not an instruction
+-- to clear x.
+rule SetWordEvaluates {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.input.datatype = set_word
+
+    ensures:
+        if step.input_position >= block_length(step.evaluation.code):
+            step.status = raised
+            step.failure = need_value
+            step.error = script_error(need_value)
+        else if not step.is_bound:
+            step.status = raised
+            step.failure = not_defined
+            step.error = script_error(not_defined)
+        else if is_protected_slot(step.input):
+            step.status = raised
+            step.failure = protected_word
+            step.error = script_error(protected_word)
+        else:
+            EvaluationStep.created(
+                evaluation: step.evaluation,
+                input: value_at(step.evaluation.code, step.input_position + 1),
+                input_position: step.input_position + 1,
+                supplies_assignment: step,
+                status: pending
+            )
+}
+
+-- The assignment finishes when the value it was waiting for arrives. The
+-- assigned value is also what the set-word's own step produces, which is
+-- why `a: b: 1` sets both.
+rule AssignmentCompletes {
+    when: step: EvaluationStep.status transitions_to produced
+    requires: step.supplies_assignment != null
+    requires: not step.infix_follows
+
+    ensures:
+        step.supplies_assignment.status = produced
+        step.supplies_assignment.result = step.result
+        step.supplies_assignment.consumed = 1 + step.consumed
+        slot_for(step.supplies_assignment.input).value = step.result
+}
+
+rule AssignmentAbandonedOnRaise {
+    when: step: EvaluationStep.status transitions_to raised
+    requires: step.supplies_assignment != null
+
+    ensures:
+        step.supplies_assignment.status = raised
+        step.supplies_assignment.failure = step.failure
+        step.supplies_assignment.error = step.error
+
+    @guidance
+        -- The slot is left as it was. An assignment whose value raised
+        -- must not half-write, or a failed expression would leave the
+        -- word holding something nobody computed.
+}
+
+-- A paren evaluates its contents immediately and produces the last
+-- result. This is the only way to force grouping in REBOL, since there is
+-- no operator precedence to override.
+rule ParenEvaluates {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.input.datatype = paren
+    ensures: Evaluation.created(
+        code: as_block(step.input),
+        context: step.evaluation.context,
+        caller: step.evaluation,
+        awaiting_step: step,
+        depth: step.evaluation.depth + 1,
+        status: walking
+    )
+}
+
+-- Reaching an error! value while evaluating raises it. Errors are values
+-- and can be held and passed around, but evaluating one is how they get
+-- thrown.
+rule ErrorValueEvaluates {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.input.datatype = error
+    ensures:
+        step.status = raised
+        step.failure = thrown
+        step.error = step.input
+}
+
+-- === Paths =================================================
+--
+-- A path selects left to right. The first segment is a word and is looked
+-- up; every segment after it is a selector applied to what came before,
+-- and is not looked up. That is why `video/title` finds the field called
+-- title rather than evaluating a word called title, and it is the same
+-- reason a lit-word is needed to SELECT by name from a block.
+--
+-- A segment can itself be computed. `window/pane/:n/color` in
+-- corpus/sources/color-names.r has a get-word third segment, so the
+-- selector is whatever n holds at the time.
+
+rule PathEvaluates {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.input.datatype in {path, get_path, set_path}
+
+    ensures:
+        if not is_bound(first_segment(step.input)):
+            step.status = raised
+            step.failure = not_defined
+            step.error = script_error(not_defined)
+        else:
+            PathEvaluation.created(
+                step: step,
+                path: step.input,
+                position: 2,
+                current: slot_value(first_segment(step.input)),
+                refinements: {},
+                status: selecting
+            )
+}
+
+-- One segment at a time. A word segment selects by its own spelling, an
+-- integer indexes a series, and a get-word or paren segment is evaluated
+-- first and the result used as the selector.
+rule PathSelectsNextSegment {
+    when: selection: PathEvaluation.created
+    requires: selection.status = selecting
+    requires: not selection.reached_end
+    requires: not selection.selects_a_function
+
+    let selector = selector_at(selection.path, selection.position)
+
+    ensures:
+        if not can_select_from(selection.current, selector):
+            selection.status = raised
+            selection.failure = invalid_path
+            selection.error = script_error(invalid_path)
+        else:
+            selection.current = select_with(selection.current, selector)
+            selection.position = selection.position + 1
+
+    @guidance
+        -- Selecting past the end of a series gives NONE, because a series
+        -- has positions that simply hold nothing. Selecting a name an
+        -- object does not have raises, because an object either has that
+        -- field or the code is wrong. can_select_from carries that
+        -- difference; see the open question on whether R3-Alpha agrees.
+}
+
+-- Once a function has been reached, the remaining segments stop being
+-- selectors and start naming refinements. `append/only` is APPEND with
+-- its ONLY refinement, not a selection of ONLY from APPEND.
+rule PathGathersRefinement {
+    when: selection: PathEvaluation.created
+    requires: selection.status = selecting
+    requires: not selection.reached_end
+    requires: selection.selects_a_function
+
+    ensures:
+        selection.refinements.add(refinement_name_at(selection.path, selection.position))
+        selection.position = selection.position + 1
+}
+
+-- The path is finished. What happens next depends on what it landed on: a
+-- function is called, anything else is the value. A get-path never calls,
+-- which is what makes :obj/handler able to pass a function on.
+rule PathCompletes {
+    when: selection: PathEvaluation.reached_end
+    requires: selection.status = selecting
+
+    ensures:
+        selection.status = selected
+        selection.result = selection.current
+}
+
+rule PathProducesForItsStep {
+    when: selection: PathEvaluation.status transitions_to selected
+    requires: not selection.selects_a_function
+
+    ensures:
+        selection.step.status = produced
+        selection.step.result = selection.result
+        selection.step.consumed = 1
+}
+
+rule PathAppliesFunction {
+    when: selection: PathEvaluation.status transitions_to selected
+    requires: selection.selects_a_function
+    requires: selection.path.datatype = path
+
+    ensures: Application.created(
+        step: selection.step,
+        applied: selection.result,
+        requested_refinements: selection.refinements,
+        status: gathering
+    )
+}
+
+rule GetPathDoesNotApply {
+    when: selection: PathEvaluation.status transitions_to selected
+    requires: selection.selects_a_function
+    requires: selection.path.datatype = get_path
+
+    ensures:
+        selection.step.status = produced
+        selection.step.result = selection.result
+        selection.step.consumed = 1
+}
+
+rule PathRaisesForItsStep {
+    when: selection: PathEvaluation.status transitions_to raised
+
+    ensures:
+        selection.step.status = raised
+        selection.step.failure = selection.failure
+        selection.step.error = selection.error
+}
+
+-- A set-path assigns through the selection rather than reading it.
+-- `b/size/x: 1024` in corpus/sources/clock.r reaches size on b and stores
+-- into its x. The value comes from the position after the path, exactly
+-- as a set-word takes the value after it.
+rule SetPathAssignsFollowingValue {
+    when: selection: PathEvaluation.status transitions_to selected
+    requires: selection.path.datatype = set_path
+
+    ensures: EvaluationStep.created(
+        evaluation: selection.step.evaluation,
+        input: value_at(
+            selection.step.evaluation.code,
+            selection.step.input_position + 1
+        ),
+        input_position: selection.step.input_position + 1,
+        supplies_assignment: selection.step,
+        status: pending
+    )
+}
+
+-- === Applying a function ===================================
+
+rule ApplicationGathersNextArgument {
+    when: application: Application.created
+    requires: application.status = gathering
+    requires: not application.gathering_resolved
+    ensures: EvaluationStep.created(
+        evaluation: application.step.evaluation,
+        input: value_at(
+            application.step.evaluation.code,
+            application.step.input_position + 1
+        ),
+        input_position: application.step.input_position + 1,
+        supplies_application: application,
+        status: pending
+    )
+
+    @guidance
+        -- Arguments are gathered one at a time, left to right, each by a
+        -- full evaluation step. That is what makes `add 1 add 2 3` six:
+        -- the first add's second argument is whatever the second add
+        -- produced, not the literal 2.
+}
+
+-- The single place a call's gathering outcome is decided. Running out of
+-- block beats a type error, because a missing argument means the type
+-- check never had a value to look at. There is no currying in REBOL, so
+-- `add 1` at the end of a block is a mistake rather than a partial call.
+rule ApplicationResolvesGathering {
+    when: application: Application.gathering_resolved
+    requires: application.status = gathering
+
+    ensures:
+        if not application.enough_values_remain:
+            application.status = raised
+            application.failure = need_value
+            application.error = script_error(need_value)
+        else if application.any_argument_mistyped:
+            application.status = raised
+            application.failure = expect_arg
+            application.error = script_error(expect_arg)
+        else:
+            application.status = ready
+
+    @guidance
+        -- A type error names the parameter and the datatype it wanted.
+        -- A function of four arguments reporting only "bad argument"
+        -- leaves the caller counting values.
+}
+
+rule ApplicationInvokes {
+    when: application: Application.status transitions_to ready
+    ensures:
+        application.status = invoked
+        application.result = invoke(application)
+
+    @guidance
+        -- invoke takes the whole call rather than a function and a list,
+        -- because an operator's first argument is on the call and not in
+        -- the gathered arguments.
+}
+
+rule ApplicationReportsToItsStep {
+    when: application: Application.call_settled
+
+    ensures:
+        if application.status = raised:
+            application.step.status = raised
+            application.step.failure = application.failure
+            application.step.error = application.error
+        else:
+            application.step.status = produced
+            application.step.result = application.result
+            application.step.consumed = 1 + arguments_consumed(application)
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- A step always moves forward. A step that used up nothing would leave
+-- the walk taking the same value again, for ever.
+invariant StepsMakeProgress {
+    for step in EvaluationSteps:
+        step.status = produced implies step.consumed >= 1
+}
+
+-- A step cannot use up more than the block holds.
+invariant StepsStayWithinTheirBlock {
+    for step in EvaluationSteps:
+        step.status = produced
+            implies step.input_position + step.consumed
+                <= block_length(step.evaluation.code) + 1
+}
+
+invariant StepPositionsAreOneBased {
+    for step in EvaluationSteps:
+        step.input_position >= 1
+}
+
+-- A step supplies at most one thing. A step that was both a set-word's
+-- value and a call's argument would have two claimants for one result.
+invariant StepSuppliesAtMostOneThing {
+    for step in EvaluationSteps:
+        step.supplies_assignment != null implies step.supplies_application = null
+}
+
+-- An evaluation or step that raised carries an error! value, not some
+-- other datatype dressed up as one. Callers catch errors by datatype.
+invariant RaisedEvaluationsCarryErrorValues {
+    for evaluation in Evaluations:
+        evaluation.status = raised implies evaluation.error.datatype = error
+}
+
+invariant RaisedStepsCarryErrorValues {
+    for step in EvaluationSteps:
+        step.status = raised implies step.error.datatype = error
+}
+
+-- A completed evaluation had no raised step. The two outcomes are
+-- exclusive, and a completed evaluation holding a raised step would mean
+-- an error was silently swallowed.
+invariant CompletionExcludesRaisedSteps {
+    for evaluation in Evaluations:
+        evaluation.status = completed implies not evaluation.any_step_raised
+}
+
+-- Nesting is bounded, and each nested evaluation is exactly one deeper
+-- than the one that started it.
+invariant DepthCountsNesting {
+    for evaluation in Evaluations:
+        evaluation.caller != null
+            implies evaluation.depth = evaluation.caller.depth + 1
+}
+
+invariant TopLevelEvaluationsStartAtDepthOne {
+    for evaluation in Evaluations:
+        evaluation.caller = null implies evaluation.depth = 1
+}
+
+-- Only a nested evaluation has something waiting on it. A top-level DO
+-- reports to its caller, not to a step.
+invariant OnlyNestedEvaluationsAreAwaited {
+    for evaluation in Evaluations:
+        evaluation.awaiting_step != null implies evaluation.caller != null
+}
+
+-- Arguments arrive in spec order with no gaps. A function that received
+-- its third argument as its second would type-check against the wrong
+-- parameter.
+invariant ArgumentOrdinalsAreWithinArity {
+    for argument in Arguments:
+        argument.ordinal >= 1
+            and argument.ordinal <= argument.application.gathered_needed
+}
+
+-- An operator takes exactly two arguments and supplies the first itself.
+-- Anything else is not an operator, whatever it claims to be.
+invariant OperatorsTakeTwoArguments {
+    for application in Applications:
+        application.applied.datatype = op
+            implies application.expected_count = 2
+                and application.pre_supplied_count = 1
+}
+
+-- Only an operator arrives with an argument already in hand.
+invariant OnlyOperatorsArrivePartlyApplied {
+    for application in Applications:
+        application.infix_left != null
+            implies application.applied.datatype = op
+}
+
+invariant ArgumentOrdinalsAreUnique {
+    for first in Arguments:
+        for second in Arguments:
+            first != second and first.application = second.application
+                implies first.ordinal != second.ordinal
+}
+
+-- An invoked call type-checked everything it was given and received all
+-- of it. Reaching invoked otherwise would mean a check was skipped.
+invariant InvokedApplicationsTypeChecked {
+    for application in Applications:
+        application.status = invoked implies not application.any_argument_mistyped
+}
+
+invariant InvokedApplicationsAreFullyApplied {
+    for application in Applications:
+        application.status = invoked
+            implies application.supplied_count = application.gathered_needed
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+surface Evaluating {
+    exposes:
+        EvaluationFailure
+
+    provides:
+        Do(code, context)
+
+    @guarantee ErrorsAreValuesNotHostExceptions
+        -- Every failure a script can cause arrives as a REBOL error!
+        -- value the script could catch. No evaluation failure escapes as
+        -- a host-language exception, including running out of stack,
+        -- which is reported as too_deep.
+
+    @guarantee EvaluationOrderIsLeftToRight
+        -- Values are taken from the block in order and arguments are
+        -- gathered in order. There is no operator precedence and no
+        -- reordering, so the only way to change grouping is a paren.
+
+    @guarantee FailedAssignmentsLeaveSlotsAlone
+        -- A word keeps its previous value when the expression assigned to
+        -- it raises. There is no state in which a slot holds a partially
+        -- computed result.
+}
+
+------------------------------------------------------------
+-- Open Questions
+------------------------------------------------------------
+
+-- Resolved: assigning through an unbound set-word raises. The evaluator
+-- creates no slots. The REPL adapter extends the user context before
+-- evaluating, so a fresh x works at the console and does not work inside
+-- a function that was handed a block. The convenience belongs at the
+-- edge, and the domain stays strict.
+
+-- Resolved: infix operators are in milestone 1, they have no precedence,
+-- and they change the walk rather than sitting on top of it. See
+-- InfixOperatorContinuesTheWalk above.
+
+-- Resolved: a literal parameter always takes its argument as written. A
+-- soft-literal parameter does too, unless the value at the call site is a
+-- paren, a get-word or a get-path, each of which means "evaluate this one
+-- after all". That is what soft means: the function declares the default and
+-- the caller keeps a way out of it.
+
+-- Resolved: an error! returned by a native is an ordinary value and
+-- raises only when evaluated, as ErrorValueEvaluates states. R3-Alpha
+-- raises immediately, which makes an error! almost impossible to build
+-- without setting it off. This is a deliberate divergence.
+
+-- Resolved: path evaluation is specified above. Segments after the first
+-- are selectors and are not looked up; once a function is reached the
+-- remaining segments name refinements.
+
+-- Confirmed against a real R3 (3.22.1). The asymmetry is real and was
+-- asserted correctly from reasoning: blk/9 on a three-item block gives
+-- NONE, while obj/unknown raises invalid-path. A series has positions
+-- that hold nothing; an object either has the field or the code is wrong.
+
+-- Resolved against a real R3: b/missing/x: 1 raises invalid-path. It does
+-- not create the intermediate, so a path can never bring an object into
+-- being by being assigned through.
+
+-- Resolved: nesting is bounded twice. The evaluator refuses more than
+-- config.max_evaluation_depth nested evaluations, and the reader refuses
+-- source nested deeper than its own limit. The reader's is the one that
+-- fires in practice, because the evaluator still recurses on the host
+-- stack for nested blocks; that is a known gap rather than a design.
+
+open question "Evaluation state lives on the heap, so a running evaluation could in principle be suspended, resumed or moved between threads. Nothing here says whether JEBOL promises any of that, or at what granularity a script can be interrupted. A server that wants to bound how long one script runs needs an answer."

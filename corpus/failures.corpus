@@ -1,0 +1,169 @@
+# The failure branches, which the obligation audit found nothing testing.
+#
+# Every rule in the specs has a failure obligation as well as a success one,
+# and 68 of them had no test beside them. These are the ones where the gap
+# was real rather than structural: paths that select nothing, conditions that
+# are not conditions, and calls that cannot be made.
+
+# --- Paths that go wrong -------------------------------------
+
+--- id failures/a-path-through-a-word-with-no-value-blames-the-word
+--- origin JEBOL spec/eval.allium, rule PathEvaluates
+--- requires control
+--- note The error must name the word rather than the path. Reporting an
+--- note invalid path here would send the reader looking at the wrong end of
+--- note the expression, which is the whole reason no-value and not-defined
+--- note are kept apart in the first place.
+--- code
+do [nothing/here]
+--- error script no-value
+
+--- id failures/selecting-a-field-an-object-does-not-have-raises
+--- origin JEBOL spec/eval.allium, rule PathSelectsNextSegment
+--- requires control series
+--- note An object either has the field or the code is wrong, so this raises
+--- note rather than giving NONE. The contrast is the next entry.
+--- code
+holder: [a b c]
+holder/nosuchthing
+--- error script invalid-path
+
+--- id failures/selecting-past-the-end-of-a-series-gives-none
+--- origin JEBOL spec/eval.allium, rule PathSelectsNextSegment
+--- requires series
+--- note A series has positions that hold nothing, so reading one is not a
+--- note mistake. This asymmetry with objects is asserted from reasoning and
+--- note is still waiting on a real R3 to confirm.
+--- code
+holder: [a b c]
+holder/9
+--- result
+none
+
+--- id failures/selecting-by-position-works
+--- origin JEBOL spec/eval.allium, rule PathSelectsNextSegment
+--- requires series
+--- code
+holder: [a b c]
+holder/2
+--- result
+b
+
+--- id failures/a-path-cannot-select-from-a-number
+--- origin JEBOL spec/eval.allium, rule PathSelectsNextSegment
+--- requires control
+--- code
+count: 42
+count/field
+--- error script invalid-path
+
+--- id failures/a-set-path-into-something-that-is-not-an-object-raises
+--- origin JEBOL spec/eval.allium, rule SetPathAssignsFollowingValue
+--- requires control
+--- code
+count: 42
+count/field: 1
+--- error script invalid-path
+
+# --- Conditions that are not conditions ----------------------
+
+--- id failures/if-handed-an-unset-raises
+--- origin JEBOL spec/natives.allium, rule ConditionalTakesBranchOnTruth
+--- requires control
+--- note UNSET is not false, it is not a condition at all. Asking whether an
+--- note absent value is true is a mistake rather than a question.
+--- code
+nothing: does [exit]
+if nothing ["never"]
+--- error script no-value
+
+--- id failures/either-handed-an-unset-raises
+--- origin JEBOL spec/natives.allium, rule ConditionalTakesBranchOnTruth
+--- requires control
+--- code
+nothing: does [exit]
+either nothing ["yes"] ["no"]
+--- error script no-value
+
+--- id failures/not-handed-an-unset-raises
+--- origin JEBOL spec/natives.allium, rule ConditionalTakesBranchOnTruth
+--- requires control
+--- code
+nothing: does [exit]
+not nothing
+--- error script no-value
+
+--- id failures/if-needs-a-block-to-run
+--- origin JEBOL spec/natives.allium
+--- requires control
+--- note The branch is a block, not any value, so a caller who forgets the
+--- note brackets is told rather than having something surprising happen.
+--- code
+if true "not a block"
+--- error script expect-arg
+
+# --- Calls that cannot be made -------------------------------
+
+--- id failures/calling-something-that-is-not-a-function
+--- origin JEBOL spec/eval.allium, rule ApplicationResolvesGathering
+--- requires control
+--- note A path that lands on a number cannot be called, and saying so is
+--- note better than silently producing the number.
+--- code
+do [count: 42 count/1]
+--- error script invalid-path
+
+--- id failures/arithmetic-on-a-block-raises
+--- origin REBOL/Core User Guide 2.3 section 4.7
+--- requires control
+--- code
+add 10 [a b]
+--- error script expect-arg
+
+--- id failures/arithmetic-on-a-string-raises
+--- origin adapted from REBOL/Core User Guide 2.3 section 4.7
+--- requires control
+--- code
+multiply "text" 2
+--- error script expect-arg
+
+--- id failures/a-loop-count-must-be-a-number
+--- origin JEBOL spec/natives.allium
+--- requires control
+--- code
+loop "three" [1]
+--- error script expect-arg
+
+--- id failures/foreach-needs-something-to-walk
+--- origin JEBOL spec/natives.allium
+--- requires control
+--- code
+foreach item 42 [item]
+--- error script cannot-use
+
+# --- Assignment that cannot happen ---------------------------
+
+--- id failures/a-set-word-at-the-end-of-a-block
+--- origin JEBOL spec/eval.allium, rule SetWordEvaluates
+--- requires control
+--- code
+do [total:]
+--- error script need-value
+
+--- id failures/assigning-to-a-protected-word
+--- origin REBOL/Core User Guide 2.3 section 5.7
+--- requires control
+--- code
+kept: "original"
+protect 'kept
+kept: "replacement"
+--- error script protected-word
+
+--- id failures/an-operator-with-nothing-on-its-left
+--- origin JEBOL spec/eval.allium, rule WordEvaluates
+--- requires control op
+--- note An operator takes its first argument from what came before it, so
+--- note one at the start of a block has nothing to take.
+--- code
+do [+ 1]
+--- error script need-value
