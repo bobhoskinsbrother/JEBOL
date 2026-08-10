@@ -159,16 +159,15 @@ the difference, so the count only ever goes down.
 The remaining work splits by subsystem rather than by count, because each
 subsystem is one part of the interpreter with its own C source and can be
 finished and gated on its own. Counts are of failing suite assertions at
-3117 of 3721 passing, and are approximate.
+3221 of 3721 passing, and are approximate.
 
-Take them in the order given. Goal 2 is the most mechanical and nothing
-later can invalidate it; goal 1 is a dependency for the load and save
+Take them in the order given. Goal 1 is a dependency for the load and save
 assertions that sit in other files; goal 3 is the largest and wants
 splitting in two by the time it is reached.
 
-### Goal 1 -- the reader and the molder (~130)
+### Goal 1 -- the reader and the molder (~155)
 
-lexer-test 91, mold-test 29, load-test 11.
+lexer-test 91, load-test 32, mold-test 30.
 
 Source: `l-scan.c`, `l-types.c`, `s-mold.c`. These go together because
 molding is the inverse of reading, and a value cannot be made to write
@@ -179,19 +178,40 @@ The known pieces: which character runs form a word (`Lex_Map` and
 strings, the literal none, TRANSCODE's error reporting, and molding a
 url.
 
-### Goal 2 -- the scalar datatypes (~105)
+One piece is already known and unported: `deci_to_string` uses the
+exponent form when a money's digits run out, so `mold $1e-100` is
+`$1e-100` and JEBOL writes a hundred zeros. Nothing in the suite asserts
+it, which is why goal 2 left it.
 
-money 21, pair 22, decimal 20, compare 27, integer 10, and a few singles.
+### Goal 2 -- the scalar datatypes -- **DONE**
+
+money 21, pair 24, decimal 20, compare 27, integer 10: all green.
 
 Source: `t-money.c`, `t-pair.c`, `t-decimal.c`, `t-integer.c`,
-`n-math.c`. Four independent ports of the shape the tuple port took: read
-the datatype's C file, copy its actions, write the tests from the C.
-None of them touches another, so they may be done in any order.
+`n-math.c`. Five ports of the shape the tuple port took: read the
+datatype's C file, copy its actions, write the tests from the C.
 
-### Goal 3 -- series, evaluation and objects (~310)
+What the C settled that no probe would have. A pair's halves are C floats,
+so a half above 3.4e38 is infinite and `mold 2147483647x1` is
+`2.147484e9x1`. A money is ninety-six bits, so doubling $1 five hundred
+and nine times raises where an unbounded decimal answers happily. The
+decimal equality allowance is twenty-one steps and not ten. There are two
+comparison functions with different coercion rules and Rebol runs both, so
+`equal? "a" %a` is true and `equal? ["a"] [%a]` is false. `//` is
+integer-divide. Four spellings cover three definitions of remainder.
 
-series-test 100, evaluation-test 80, object-test 45, parse-test 43,
-protect 15, typeset 13.
+Two things were found by finishing it rather than by planning it. An error
+carried one of the three arguments its catalogue entry words, so
+`e/arg3 = integer!` was false for every expect-arg; widening that was a
+gap the code already had a comment about. And four existing JEBOL tests
+asserted behaviour the C contradicts -- pair infinities, the zero
+rounding scale, string-datatype equality, and `//` as remainder -- each of
+which had looked right from every angle but the C.
+
+### Goal 3 -- series, evaluation and objects (~330)
+
+evaluation-test 102, series-test 98, parse-test 56, object-test 35,
+protect 18, func 13, typeset 13.
 
 Source: `f-modify.c`, `t-block.c`, `t-string.c`, `c-do.c`, `c-frame.c`,
 `u-parse.c`.
@@ -398,9 +418,14 @@ yet used, passes.
       work with text without dropping to the host.
 - [x] **As a script author, I want arithmetic that raises on overflow
       rather than wrapping**, so that a wrong answer is never silent.
-- [ ] **As a script author, I want money arithmetic that keeps its
-      precision**, so that `$1.50` stays `$1.50`. *Two open questions
-      first: whether `$1.50` equals `$1.5`, and what division rounds to.*
+- [x] **As a script author, I want money arithmetic that keeps its
+      precision**, so that `$1.50` stays `$1.50`.
+      *Both open questions are now answered from the C. `$1.50` equals
+      `$1.5` and molds with its trailing zero: the scale is kept for
+      printing and ignored for comparing. Division rounds to twenty-six
+      significant digits, because that is all an eighty-seven bit
+      significand holds, and going past it raises overflow rather than
+      widening.*
 
 ---
 
