@@ -414,6 +414,144 @@ rule PairOrderingBreaksTheTieOnTheSecondHalf {
             else: holds(request.strictness, y_of(request.left), y_of(request.right)))
 }
 
+-- === Decimals and the maths natives ========================
+
+-- Three remainders, three definitions of division, and the names do not
+-- line up with the definitions in the way anyone would guess. Each is a
+-- separate function with its own rule.
+--
+-- REMAINDER and MOD are the same thing under two names: truncated
+-- division, so the sign follows the dividend and `-7 % 3` is -1. MODULO is
+-- Euclidean, so the answer is never negative and `-7 %% 3` is 2. Adding
+-- /FLOOR to MODULO switches it to floor division, where the sign follows
+-- the divisor, so `modulo/floor -7 -3` is -1 and `modulo/floor -7 3` is 2.
+--
+-- The three agree on every pair of positive numbers, which is why getting
+-- them wrong is quiet.
+enum DivisionDefinition {
+    truncated       -- REMAINDER, %, MOD. Sign follows the dividend.
+    | euclidean     -- MODULO, %%. Never negative.
+    | floored       -- MODULO/FLOOR. Sign follows the divisor.
+}
+
+rule TruncatedRemainderTakesTheDividendsSign {
+    when: EvaluateRemainder(truncated, dividend, divisor)
+    ensures: RemainderResult(sign: sign_of(dividend))
+}
+
+rule EuclideanModuloIsNeverNegative {
+    when: EvaluateRemainder(euclidean, dividend, divisor)
+    ensures: RemainderResult(value: value >= 0 and value < absolute(divisor))
+}
+
+rule FlooredModuloTakesTheDivisorsSign {
+    when: EvaluateRemainder(floored, dividend, divisor)
+    ensures: RemainderResult(sign: sign_of(divisor))
+}
+
+-- The two that are not truncated round a negligible answer down to nothing.
+-- `modulo 0.1 + 0.1 + 0.1 0.3` is 0.0 rather than the 5.55e-17 the
+-- arithmetic actually leaves, and `modulo 562949953421311.25 1` is 0.0
+-- rather than 0.25.
+--
+-- Negligible means: the answer makes no difference to the dividend when
+-- taken off it, or makes no difference to the divisor when added to it,
+-- measured by the same twenty-one step allowance EQUAL? uses. So this is
+-- not a fixed epsilon and not a rounding of the answer; it is a question
+-- about whether the answer is visible at the scale of its own operands.
+--
+-- MOD does not do this, which is how the two are told apart:
+-- `mod 562949953421311.25 1` is 0.25.
+rule NonTruncatedModuloRoundsANegligibleAnswerToZero {
+    when: EvaluateRemainder(definition, dividend, divisor)
+    requires: definition in {euclidean, floored}
+    requires: negligible_against(value, dividend) or negligible_against(value, divisor)
+    ensures: RemainderResult(value: 0)
+}
+
+-- The answer keeps the dividend's datatype, so an integer dividend gives an
+-- integer however the divisor was written.
+rule RemainderKeepsTheDividendsDatatype {
+    when: EvaluateRemainder(definition, dividend, divisor)
+    ensures: RemainderResult(datatype: dividend.datatype)
+}
+
+-- SINE and COSINE snap an answer within one step of the representation to
+-- an exact zero, so `cosine 90` is 0.0 and not 6.1e-17. Without it every
+-- assertion about a right angle fails on a number that prints as though it
+-- were zero.
+rule SineAndCosineSnapANegligibleAnswerToZero {
+    when: EvaluateTrigonometry(function, angle)
+    requires: function in {sine, cosine}
+    requires: absolute(result) < smallest_representable_step
+    ensures: TrigonometryResult(value: 0)
+}
+
+-- TANGENT answers an infinity at a right angle rather than the very large
+-- number the hardware gives, and "at a right angle" is measured with the
+-- same twenty-one step allowance rather than exactly. So
+-- `tangent 89.99999999999987` is 1.#INF.
+rule TangentAtARightAngleIsInfinite {
+    when: EvaluateTrigonometry(tangent, angle)
+    requires: nearly_equal(absolute(radians_of(angle)), pi / 2)
+    ensures: TrigonometryResult(value: if angle < 0: negative_infinity else: infinity)
+}
+
+-- SQRT takes a decimal and nothing else, where SQUARE-ROOT takes any
+-- number. Two functions for one curve, and the shorter name is the fussier
+-- one, which is the opposite of what the spelling suggests. `sqrt 4` raises
+-- expect-arg naming integer!; `square-root 4` is 2.0.
+--
+-- This is the same trap as SIN against SINE, and it is a trap because the
+-- forgiving version exists: code written with SQRT works on every decimal
+-- and fails the first time an integer reaches it.
+rule SqrtTakesADecimalAndSquareRootTakesAnyNumber {
+    when: EvaluateCall(sqrt, argument)
+    requires: not is_decimal(argument)
+    ensures: CallFailed(failure: expect_arg)
+}
+
+-- NUMBER? excludes a NaN, which makes it the one predicate that is not
+-- purely a question about the datatype. `number? 1.#NaN` is false although
+-- `decimal? 1.#NaN` is true.
+--
+-- A money counts as a number here, which the typeset does not: values.allium
+-- has is_number covering integer, decimal and percent only.
+rule NotANumberIsNotANumber {
+    when: EvaluatePredicate(is_number, subject)
+    requires: is_not_a_number(subject)
+    ensures: PredicateHolds(holds: false)
+}
+
+rule AMoneyIsANumberToTheNumberPredicate {
+    when: EvaluatePredicate(is_number, subject)
+    requires: is_money(subject)
+    ensures: PredicateHolds(holds: true)
+}
+
+-- A character in decimal arithmetic is its code point, so `1.0 * #"a"` is
+-- 97.0. The character does not survive: the answer is a decimal.
+rule ACharacterInDecimalArithmeticIsItsCodePoint {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: is_decimal(left) and is_char(right)
+    ensures: ArithmeticResult(
+        datatype: decimal,
+        value: apply(operation, value_of(left), codepoint_of(right)))
+}
+
+-- A scale of zero means "do not round", not "round to a whole number".
+-- `round/to 11.65 0.0` is 11.65 unchanged. A scale so small it underflows
+-- to zero, such as 1e-400, is the same case and answers the same way.
+--
+-- Reading a zero scale as a request for a whole number is the plausible
+-- wrong answer: it makes `round/to x 0.0` give 11, which looks like
+-- rounding rather than like a bug.
+rule AZeroRoundingScaleRoundsNothing {
+    when: EvaluateRound(subject, scale)
+    requires: value_of(scale) = 0
+    ensures: RoundResult(value: value_of(subject), datatype: subject.datatype)
+}
+
 -- === Money =================================================
 
 -- Money arithmetic widens the other side to a money and keeps the answer
@@ -1012,6 +1150,15 @@ surface BuiltInFunctions {
         NativeDefinition
         ComparisonStrictness
         ComparisonRequest
+        DivisionDefinition
+
+    @guarantee ThreeRemaindersUnderFourNames
+        -- REMAINDER, MOD, MODULO and MODULO/FLOOR are four spellings of
+        -- three different answers, and the names do not sort into the
+        -- definitions the way anyone guesses. REMAINDER and MOD are one
+        -- answer; MODULO is a second; MODULO/FLOOR is a third. All four
+        -- agree on every pair of positive numbers, so a wrong pairing
+        -- passes every test written without a negative in it.
 
     @guarantee ComparisonIsOneAnswerAskedTenWays
         -- All ten comparison natives reach one comparison, and the

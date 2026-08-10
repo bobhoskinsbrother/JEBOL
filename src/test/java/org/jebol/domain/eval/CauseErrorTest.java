@@ -44,15 +44,18 @@ class CauseErrorTest {
     }
 
     @Test
-    @DisplayName("only the first argument is carried, and R3 carries three")
-    void theSecondArgumentIsAKnownGap() {
-        // An error here holds one subject where R3 holds three, so arg2
-        // and arg3 are always none. Written down rather than left as a
-        // surprise; widening the record is its own change.
+    @DisplayName("all three arguments are carried, because a catalogue entry words three")
+    void allThreeArgumentsAreCarried() {
+        // This used to assert that arg2 and arg3 were always none, because
+        // an error held one subject where Rebol holds three. That made
+        // `e/arg3 = integer!` false for every expect-arg, which is an
+        // assertion Rebol's own suite makes.
         assertThat(answerTo(
                 "e: try [cause-error 'script 'invalid-arg [1 2]] e/arg1")).isEqualTo("1");
         assertThat(answerTo(
-                "e: try [cause-error 'script 'invalid-arg [1 2]] none? e/arg2"))
+                "e: try [cause-error 'script 'invalid-arg [1 2]] e/arg2")).isEqualTo("2");
+        assertThat(answerTo(
+                "e: try [cause-error 'script 'invalid-arg [1 2]] none? e/arg3"))
                 .isEqualTo("#(true)");
     }
 

@@ -19,6 +19,8 @@ public record ErrorValue(
         String errorId,
         String message,
         Optional<Value> subject,
+        Optional<Value> secondArgument,
+        Optional<Value> thirdArgument,
         Optional<Value> near,
         Optional<String> whereWord) implements Value {
 
@@ -32,21 +34,43 @@ public record ErrorValue(
         if (message == null) {
             throw new IllegalArgumentException("an error needs a message, even an empty one");
         }
-        if (subject == null || near == null || whereWord == null) {
+        if (subject == null || secondArgument == null || thirdArgument == null
+                || near == null || whereWord == null) {
             throw new IllegalArgumentException("optional fields are empty, never null");
         }
     }
 
     public static ErrorValue of(ErrorCategory category, String errorId, String message) {
         return new ErrorValue(category, errorId, message,
-                Optional.empty(), Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), Optional.empty(),
+                Optional.empty(), Optional.empty());
     }
 
     /** The same, naming what the failure was about. */
     public static ErrorValue about(
             ErrorCategory category, String errorId, String message, Value subject) {
         return new ErrorValue(category, errorId, message,
-                Optional.of(subject), Optional.empty(), Optional.empty());
+                Optional.of(subject), Optional.empty(), Optional.empty(),
+                Optional.empty(), Optional.empty());
+    }
+
+    /**
+     * An error carrying all three of the arguments its catalogue entry names.
+     *
+     * <p>Rebol's catalogue words each failure with up to three of them, and a
+     * script reads them by name: EXPECT-ARG is
+     * {@code [:arg1 {does not allow} :arg3 {for its} :arg2 {argument}]}, so
+     * arg1 is the function, arg2 the parameter and arg3 the datatype. Rebol's
+     * own suite asserts on arg3 directly, which is why the three cannot all
+     * live in the message.
+     */
+    public static ErrorValue about(
+            ErrorCategory category, String errorId, String message,
+            Value first, Value second, Value third) {
+
+        return new ErrorValue(category, errorId, message,
+                Optional.of(first), Optional.of(second), Optional.of(third),
+                Optional.empty(), Optional.empty());
     }
 
     /**
@@ -64,10 +88,14 @@ public record ErrorValue(
      * What one field holds, or empty when the error has no such field.
      *
      * <p>ARG1 carries whatever the failure was about -- the word that had
-     * no value, the argument of the wrong datatype -- and is none when
-     * the failure had nothing to name. It is read out of the message
-     * because that is where the raiser put it; a field of its own would
-     * be better and is a larger change than this one.
+     * no value, the function that refused an argument -- and is none when
+     * the failure had nothing to name. ARG2 and ARG3 carry the rest of what
+     * the catalogue entry words, and are none for the failures that name only
+     * one thing.
+     *
+     * <p>All three used to be read out of the message, with ARG2 and ARG3
+     * always none. That made `e/arg3 = integer!` false for every expect-arg,
+     * which is an assertion Rebol's own suite makes.
      */
     public Optional<Value> field(String name) {
         return switch (name) {
@@ -75,7 +103,8 @@ public record ErrorValue(
             case "type" -> Optional.of(WordValue.of(categoryWord()));
             case "id" -> Optional.of(WordValue.of(errorId));
             case "arg1" -> Optional.of(subject.orElseGet(NoneValue::none));
-            case "arg2", "arg3" -> Optional.of(NoneValue.none());
+            case "arg2" -> Optional.of(secondArgument.orElseGet(NoneValue::none));
+            case "arg3" -> Optional.of(thirdArgument.orElseGet(NoneValue::none));
             case "near" -> Optional.of(near.orElseGet(NoneValue::none));
             case "where" -> Optional.of(whereWord
                     .<Value>map(WordValue::of).orElseGet(NoneValue::none));
@@ -143,13 +172,13 @@ public record ErrorValue(
     /** The same error, carrying the block fragment it came from. */
     public ErrorValue near(Value fragment) {
         return new ErrorValue(category, errorId, message, subject,
-                Optional.of(fragment), whereWord);
+                secondArgument, thirdArgument, Optional.of(fragment), whereWord);
     }
 
     /** The same error, naming the function it was raised in. */
     public ErrorValue raisedIn(String functionName) {
-        return new ErrorValue(category, errorId, message, subject, near,
-                Optional.of(functionName));
+        return new ErrorValue(category, errorId, message, subject,
+                secondArgument, thirdArgument, near, Optional.of(functionName));
     }
 
     @Override

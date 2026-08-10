@@ -16,6 +16,7 @@ import org.jebol.domain.value.Context;
 import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.ContextSlot;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.FunctionValue;
 import org.jebol.domain.value.IntegerValue;
@@ -763,10 +764,22 @@ public final class Evaluator {
             Parameter parameter = consuming.get(index);
             Value argument = arguments.get(index);
             if (!parameter.accepts(argument.datatype())) {
-                throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                        calleeName + " wanted " + parameter.name() + " to be one of "
-                                + parameter.acceptedTypes() + ", got "
-                                + argument.datatype().literalSpelling());
+                // Rebol words this failure with three arguments:
+                //   expect-arg: [:arg1 {does not allow} :arg3 {for its}
+                //                :arg2 {argument}]
+                // So arg1 is the function, arg2 the parameter and arg3 the
+                // datatype that was refused. All three go in as values,
+                // because Rebol's own suite asserts on arg3 directly and no
+                // amount of message text will satisfy that.
+                throw new Raised(ErrorValue.about(
+                        EvaluationFailure.EXPECT_ARG.category(),
+                        EvaluationFailure.EXPECT_ARG.errorId(),
+                        calleeName + " does not allow "
+                                + argument.datatype().literalSpelling()
+                                + " for its " + parameter.name() + " argument",
+                        WordValue.of(calleeName),
+                        WordValue.of(parameter.name()),
+                        DatatypeValue.of(argument.datatype())));
             }
         }
     }

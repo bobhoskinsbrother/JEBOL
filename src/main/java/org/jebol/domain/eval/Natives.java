@@ -556,10 +556,16 @@ public final class Natives {
         // PAIR belongs here because arithmetic on a pair is arithmetic on
         // each half, so every operation below already means something for
         // one. It is not a number in any other sense: NUMBER? refuses it.
+        //
+        // CHAR belongs here for the same reason and with less warning: a
+        // character in arithmetic is its code point, so `1.0 * #"a"` is 97.0.
+        // The character does not survive -- the answer is a decimal -- and it
+        // is the argument list that has to allow it, because the door is where
+        // it was being turned away.
         Set<Datatype> numbers = Set.of(
                 Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
                 Datatype.MONEY, Datatype.PAIR, Datatype.TUPLE,
-                Datatype.TIME, Datatype.DATE);
+                Datatype.TIME, Datatype.DATE, Datatype.CHAR);
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
             parameters.add(Parameter.required(name, numbers));
@@ -585,6 +591,18 @@ public final class Natives {
         // prelude. Each is a line of libm in Rebol's C and a line of
         // java.lang.Math here.
         define("square-root", takesNumbers("value"),
+                (arguments, evaluator, context) -> DecimalValue.of(
+                        Math.sqrt(Comparison.asDouble(arguments.get(0)))));
+        // SQRT is not a short name for SQUARE-ROOT. They compute the same
+        // curve and differ in what they accept: SQUARE-ROOT takes any number
+        // and SQRT takes a decimal, so `sqrt 4` raises expect-arg naming
+        // integer! while `square-root 4` is 2.0.
+        //
+        // The shorter name being the fussier one is the wrong way round from
+        // what the spelling suggests, and it is a trap because the forgiving
+        // twin exists: code written with SQRT works on every decimal and
+        // fails the first time an integer reaches it.
+        define("sqrt", List.of(Parameter.required("value", Set.of(Datatype.DECIMAL))),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.sqrt(Comparison.asDouble(arguments.get(0)))));
         // The first host service JEBOL offers. It reaches outside the
@@ -655,21 +673,26 @@ public final class Natives {
         // take an angle and the three that answer one. Degrees is the
         // default because that is what a script written for R3 expects,
         // however unusual it looks beside every other language's library.
+        // Each of the three snaps an almost-right answer to the right one, and
+        // each snaps a different thing. SINE and COSINE force a result within
+        // one step of the representation to an exact zero, so `cosine 90` is
+        // 0.0 rather than 6.1e-17. TANGENT forces an angle close enough to a
+        // right angle to an infinity, rather than handing back the very large
+        // number the hardware gives.
+        //
+        // Without the snaps every assertion about a right angle fails on a
+        // number that prints as though it were the answer.
         define("sine", takesNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
-                        refinements.contains("radians")
-                                ? Math.sin(Comparison.asDouble(arguments.get(0)))
-                                : Math.sin(Math.toRadians(Comparison.asDouble(arguments.get(0))))));
+                        withoutTheNoiseNearZero(
+                                Math.sin(inRadians(arguments.get(0), refinements)))));
         define("cosine", takesNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
-                        refinements.contains("radians")
-                                ? Math.cos(Comparison.asDouble(arguments.get(0)))
-                                : Math.cos(Math.toRadians(Comparison.asDouble(arguments.get(0))))));
+                        withoutTheNoiseNearZero(
+                                Math.cos(inRadians(arguments.get(0), refinements)))));
         define("tangent", takesNumbers("value"), Set.of("radians"),
-                (arguments, evaluator, context, refinements) -> DecimalValue.of(
-                        refinements.contains("radians")
-                                ? Math.tan(Comparison.asDouble(arguments.get(0)))
-                                : Math.tan(Math.toRadians(Comparison.asDouble(arguments.get(0))))));
+                (arguments, evaluator, context, refinements) ->
+                        DecimalValue.of(tangentOf(inRadians(arguments.get(0), refinements))));
         define("arcsine", takesNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
@@ -886,29 +909,20 @@ public final class Natives {
         define("mod", List.of(
                         Parameter.required("dividend", DIVISIBLE),
                         Parameter.required("divisor", DIVISIBLE)),
-                (arguments, evaluator, context) -> {
-                    double divisor = asMagnitude(arguments.get(1));
-                    requireNonZero(divisor);
-                    return likeTheDividend(arguments.get(0),
-                            asMagnitude(arguments.get(0)) % divisor);
-                });
+                (arguments, evaluator, context) -> remainderOf(
+                        arguments.get(0), arguments.get(1), Division.TRUNCATED));
 
         // MODULO divides the way Euclid did: the answer is never negative,
         // whatever the signs, so a divisor of -3 still gives 2 for -7.
+        // /FLOOR switches it to the third definition, where the sign follows
+        // the divisor instead, so `modulo/floor -7 -3` is -1.
         define("modulo", List.of(
                         Parameter.required("dividend", DIVISIBLE),
                         Parameter.required("divisor", DIVISIBLE)),
-                (arguments, evaluator, context) -> {
-                    double divisor = asMagnitude(arguments.get(1));
-                    requireNonZero(divisor);
-                    double rest = asMagnitude(arguments.get(0)) % divisor;
-                    // The dividend decides the answer's datatype and the
-                    // divisor has no say: `8 %% 2.5` is 0.5 and answers 0,
-                    // `7.0 %% 2.5` answers 2.0, and a character in gives
-                    // a character out.
-                    return likeTheDividend(arguments.get(0),
-                            rest < 0 ? rest + Math.abs(divisor) : rest);
-                });
+                Set.of("floor"),
+                (arguments, evaluator, context, refinements) -> remainderOf(
+                        arguments.get(0), arguments.get(1),
+                        refinements.contains("floor") ? Division.FLOORED : Division.EUCLIDEAN));
 
         // A count past the width wraps, which is what the JVM does on
         // its own. A negative count does not: the JVM wraps that too and
@@ -995,6 +1009,134 @@ public final class Natives {
             case TimeValue time -> time.nanoseconds();
             default -> Comparison.asDouble(value);
         };
+    }
+
+    /**
+     * The angle in radians, whichever way the caller wrote it.
+     *
+     * <p>{@code Trig_Value} converts by hand rather than calling the library,
+     * and the range reduction it does first has no effect on the answer for an
+     * ordinary angle. What matters is the constant: the C uses its own
+     * {@code pi1} rather than the platform's.
+     */
+    private static double inRadians(Value angle, Set<String> refinements) {
+        double given = Comparison.asDouble(angle);
+        return refinements.contains("radians") ? given : Math.toRadians(given);
+    }
+
+    /**
+     * A sine or cosine with the noise near zero taken out.
+     *
+     * <p>{@code if (fabs(dval) < DBL_EPSILON) dval = 0.0;} in both natives.
+     * One step of the representation at 1.0, which is the smallest difference
+     * a double can tell from nothing, so anything below it is nothing.
+     */
+    private static double withoutTheNoiseNearZero(double answer) {
+        return Math.abs(answer) < Math.ulp(1.0) ? 0.0 : answer;
+    }
+
+    /**
+     * A tangent, infinite at a right angle.
+     *
+     * <p>{@code if (Eq_Decimal(fabs(dval), pi1 / 2.0))} answers the infinity,
+     * and {@code Eq_Decimal} allows ten steps of the representation. So "at a
+     * right angle" is a question with an allowance rather than an exact test,
+     * which is why {@code tangent 89.99999999999987} is 1.#INF and not the
+     * very large finite number the hardware computes.
+     */
+    private static double tangentOf(double radians) {
+        if (nearlyTheSame(Math.abs(radians), Math.PI / 2.0)) {
+            return radians < 0 ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+        }
+        return Math.tan(radians);
+    }
+
+    /**
+     * Which of the three definitions of division a remainder follows.
+     *
+     * <p>Four names and three answers. REMAINDER, {@code %} and MOD are all
+     * {@link #TRUNCATED}; MODULO and {@code %%} are {@link #EUCLIDEAN};
+     * MODULO/FLOOR is {@link #FLOORED}. All four agree on every pair of
+     * positive numbers, so a wrong pairing passes every test written without a
+     * negative in it.
+     */
+    private enum Division {
+        /** Sign follows the dividend, so {@code -7 % 3} is -1. */
+        TRUNCATED,
+        /** Never negative, so {@code -7 %% 3} is 2 and {@code -7 %% -3} is 2. */
+        EUCLIDEAN,
+        /** Sign follows the divisor, so {@code modulo/floor -7 -3} is -1. */
+        FLOORED
+    }
+
+    /**
+     * A remainder under one of the three definitions, ported from
+     * {@code modulus} in {@code n-math.c}.
+     *
+     * <p>Two whole numbers stay whole all the way through, which matters at
+     * the ends of the range where a double could not tell neighbouring whole
+     * numbers apart. Everything else goes through a double, as the C does.
+     */
+    private static Value remainderOf(Value dividend, Value divisor, Division definition) {
+        if (dividend instanceof IntegerValue whole && divisor instanceof IntegerValue by) {
+            long dividedBy = by.magnitude();
+            requireNonZero(dividedBy);
+            long rest = whole.magnitude() % dividedBy;
+            return IntegerValue.of(switch (definition) {
+                case TRUNCATED -> rest;
+                case EUCLIDEAN -> rest < 0 ? rest + Math.abs(dividedBy) : rest;
+                case FLOORED -> rest != 0 && (rest < 0) != (dividedBy < 0)
+                        ? rest + dividedBy
+                        : rest;
+            });
+        }
+        double first = asMagnitude(dividend);
+        double second = asMagnitude(divisor);
+        requireNonZero(second);
+        if (definition == Division.TRUNCATED) {
+            return likeTheDividend(dividend, first % second);
+        }
+        // The Euclidean form takes the divisor's magnitude first and then
+        // shares the floored form's arithmetic, which is what makes the two
+        // agree whenever the divisor is positive.
+        double by = definition == Division.EUCLIDEAN ? Math.abs(second) : second;
+        double rest = ((first % by) + by) % by;
+        return likeTheDividend(dividend, negligibleAgainstItsOperands(rest, first, by)
+                ? 0.0
+                : rest);
+    }
+
+    /**
+     * Whether a remainder is too small to make any difference to the numbers
+     * it came from, in which case both non-truncated definitions call it zero.
+     *
+     * <p>{@code if (almost_equal(a, a - m, 10) || almost_equal(b, b + m, 10))
+     * m = 0.0;} -- the question is not whether the answer is small but
+     * whether it is visible at the scale of its own operands. So
+     * {@code modulo 562949953421311.25 1} is 0.0 even though the answer 0.25
+     * is not small in absolute terms: it makes no difference to a dividend
+     * that large.
+     *
+     * <p>MOD does not ask this, which is how the two are told apart:
+     * {@code mod 562949953421311.25 1} is 0.25.
+     *
+     * <p>Ten steps rather than the twenty-one EQUAL? allows. The C passes the
+     * number by hand here rather than going through {@code Eq_Decimal}'s
+     * default, so the two allowances are separate numbers that happen to have
+     * been the same once.
+     */
+    private static boolean negligibleAgainstItsOperands(
+            double rest, double dividend, double divisor) {
+
+        return nearlyTheSame(dividend, dividend - rest)
+                || nearlyTheSame(divisor, divisor + rest);
+    }
+
+    private static final long STEPS_MODULUS_ALLOWS = 10;
+
+    private static boolean nearlyTheSame(double first, double second) {
+        return Comparison.looselyEqual(
+                DecimalValue.of(first), DecimalValue.of(second), STEPS_MODULUS_ALLOWS);
     }
 
     private static Value likeTheDividend(Value dividend, double magnitude) {
@@ -1134,6 +1276,29 @@ public final class Natives {
         if (left instanceof DateValue || right instanceof DateValue) {
             return dateArithmetic(left, right, operation);
         }
+        // A character on the right of a number is its code point, and the
+        // answer keeps the number's datatype except that a percent gives a
+        // plain decimal: REBTYPE(Decimal) sets `type = REB_DECIMAL` for a
+        // char, and REBTYPE(Integer) leaves the integer alone. So
+        // `1 + #"a"` is 98, `1.0 * #"a"` is 97.0 and `100% * #"a"` is 97.0.
+        //
+        // A character on the LEFT is a different question with a different
+        // answer -- `#"a" + 1` is #"b" -- so this is not symmetric and must
+        // not be made so.
+        //
+        // A money does not widen a character either. REBTYPE(Money) names
+        // integer, decimal, percent and time for the right side and stops, so
+        // `$1 / #"a"` raises where `1.0 / #"a"` answers.
+        if (right instanceof CharacterValue letter
+                && (left instanceof IntegerValue || left instanceof DecimalValue)) {
+            Value asNumber = left instanceof IntegerValue
+                    ? IntegerValue.of(letter.codepoint())
+                    : DecimalValue.of(letter.codepoint());
+            Value plainer = left instanceof DecimalValue quantity
+                    ? DecimalValue.of(quantity.quantity())
+                    : left;
+            return arithmetic(List.of(plainer, asNumber), operation);
+        }
         // A money on the left decides, even against a time on the right,
         // because REBTYPE(Money) runs before anything asks the time what it
         // thinks. `$5 * 1:30:0` is $7.5 and not a duration, and `$5 + 1:30:0`
@@ -1262,8 +1427,11 @@ public final class Natives {
                 || side instanceof DecimalValue) {
             return;
         }
-        throw Raised.of(EvaluationFailure.CANNOT_USE,
-                "cannot use " + side.datatype().literalSpelling() + " in pair arithmetic");
+        // Trap_Math_Args raises not-related, whose catalogue wording is
+        // "incompatible argument for <action> of <datatype>". Not cannot-use,
+        // which is a different id a script may be matching on.
+        throw Raised.of(EvaluationFailure.NOT_RELATED,
+                side.datatype().literalSpelling() + " does not go with pair arithmetic");
     }
 
     private static double halfArithmetic(double left, double right, Operation operation) {
@@ -1592,7 +1760,7 @@ public final class Natives {
     private static BigDecimal widenedToMeetMoney(Value other, Operation operation) {
         if (other instanceof TimeValue span) {
             if (operation != Operation.MULTIPLY) {
-                throw Raised.of(EvaluationFailure.CANNOT_USE,
+                throw Raised.of(EvaluationFailure.NOT_RELATED,
                         "only multiplication takes a time on the right of a money");
             }
             return BigDecimal.valueOf(
@@ -1603,8 +1771,8 @@ public final class Natives {
                 || other instanceof DecimalValue) {
             return asBigDecimal(other);
         }
-        throw Raised.of(EvaluationFailure.CANNOT_USE,
-                "cannot use " + other.datatype().literalSpelling() + " in money arithmetic");
+        throw Raised.of(EvaluationFailure.NOT_RELATED,
+                other.datatype().literalSpelling() + " does not go with money arithmetic");
     }
 
     private static final double NANOSECONDS_AN_HOUR = 3_600_000_000_000.0;
@@ -3091,10 +3259,20 @@ public final class Natives {
 
         // NUMBER? is wider than the NUMBER! typeset it is named after:
         // money counts, and the typeset does not say so.
+        // The one predicate in the family that looks at the value and not only
+        // at the datatype: a NaN is a decimal and is not a number. Rebol's own
+        // doc string says so -- "any type of number and not a NaN" -- and the
+        // C guards the decimal case with isnan.
+        //
+        // A money counts, which the number! typeset does not: that covers
+        // integer, decimal and percent only.
         define("number?", takes("value"),
-                (arguments, evaluator, context) -> LogicValue.of(
-                        arguments.get(0).datatype().isNumber()
-                                || arguments.get(0).datatype() == Datatype.MONEY));
+                (arguments, evaluator, context) -> LogicValue.of(switch (arguments.get(0)) {
+                    case DecimalValue quantity -> !Double.isNaN(quantity.quantity());
+                    case IntegerValue whole -> true;
+                    case MoneyValue amount -> true;
+                    default -> false;
+                }));
 
         // EQUIV? is the loose comparison despite the name; STRICT-EQUAL?
         // is the one that minds the datatype.
@@ -3908,12 +4086,15 @@ public final class Natives {
         if (!(spec instanceof BlockValue fields)) {
             return new ErrorValue(ErrorCategory.USER, "message",
                     Molder.form(spec), Optional.of(spec),
+                    Optional.empty(), Optional.empty(),
                     Optional.empty(), Optional.empty());
         }
         List<Value> items = fields.remaining();
         ErrorCategory category = ErrorCategory.USER;
         String errorId = "user-error";
         Optional<Value> subject = Optional.empty();
+        Optional<Value> second = Optional.empty();
+        Optional<Value> third = Optional.empty();
         for (int at = 0; at + 1 < items.size(); at += 2) {
             if (!(items.get(at) instanceof WordValue name)
                     || name.datatype() != Datatype.SET_WORD) {
@@ -3931,14 +4112,15 @@ public final class Natives {
                 // What caused it. Dropped before, so an error raised
                 // through CAUSE-ERROR carried its name and nothing else.
                 //
-                // Only the first: an ErrorValue holds one subject and R3
-                // holds three, so arg2 and arg3 are still always none.
-                // Widening the record is the fix and is its own change.
+                // All three, because a catalogue entry words up to three and
+                // a script reads them by name.
                 case "arg1" -> subject = Optional.of(items.get(at + 1));
+                case "arg2" -> second = Optional.of(items.get(at + 1));
+                case "arg3" -> third = Optional.of(items.get(at + 1));
                 default -> { }
             }
         }
-        return new ErrorValue(category, errorId, errorId, subject,
+        return new ErrorValue(category, errorId, errorId, subject, second, third,
                 Optional.empty(), Optional.empty());
     }
 
@@ -5091,13 +5273,16 @@ public final class Natives {
                     }
                     Value step = arguments.get(arguments.size() - 1);
                     double multiple = Comparison.asDouble(step);
-                    // Zero is the one scale that cannot mean "a multiple
-                    // of this", so it has a different job: throw the
-                    // fraction away and answer an integer. It truncates
-                    // rather than rounding, so 11.65 is 11 and -11.6 is
-                    // -11 -- the opposite of ROUND with no /TO at all.
+                    // A scale of zero rounds nothing, because there is no
+                    // multiple of zero to round to. What happens next is the
+                    // datatype conversion, and that is where the two zeroes
+                    // part company: `round/to 11.65 0` is the integer 11
+                    // because an integer scale truncates the answer, and
+                    // `round/to 11.65 0.0` is 11.65 because a decimal scale
+                    // does not. A scale so small it underflows to zero, such
+                    // as 1e-400, is the decimal case.
                     if (multiple == 0) {
-                        return IntegerValue.of((long) value);
+                        return roundedToTheScalesDatatype(step, value);
                     }
                     double rounded = roundedHalfAway(value / multiple) * multiple;
                     return roundedToTheScalesDatatype(step, rounded);

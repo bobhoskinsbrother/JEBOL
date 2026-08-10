@@ -44,6 +44,8 @@ public enum EvaluationFailure {
             "an assertion that did not hold"),
     PROTECTED(ErrorCategory.SCRIPT, "protected",
             "a change to a value that was protected from changing"),
+    NOT_RELATED(ErrorCategory.SCRIPT, "not-related",
+            "an operation and a datatype that do not go together"),
     NOT_SAME_CLASS(ErrorCategory.SCRIPT, "not-same-class",
             "two datatypes that hold different things, so neither can be read as the other"),
     TYPE_MISMATCH(ErrorCategory.SCRIPT, "type-mismatch",
