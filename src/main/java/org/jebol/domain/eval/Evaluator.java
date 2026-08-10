@@ -865,8 +865,52 @@ public final class Evaluator {
                             withOctetWritten(tuple, (int) where.magnitude(), value))));
             return StepOutcome.waiting();
         }
+        // A pair is a value rather than a series, so writing a half makes a
+        // new pair and puts it back where the old one came from -- the same
+        // shape a tuple needs, and for the same reason. Rebol writes through
+        // the value in place; the observable end of it is that `p: 1x1`
+        // followed by `p/x: 0` leaves p as 0x1, and that holds either way.
+        if (target instanceof PairValue pair && segments.size() == 2
+                && segments.getFirst() instanceof WordValue holder) {
+            ContextSlot slot = resolve(
+                    holder.isBound() ? holder : holder.boundTo(frame.context));
+            frame.pendingCalls.push(PendingCall.assignmentInto(
+                    value -> slot.setValue(withHalfWritten(pair, lastSegment, value))));
+            return StepOutcome.waiting();
+        }
         throw Raised.of(EvaluationFailure.INVALID_PATH,
                 "cannot assign through " + target.datatype().literalSpelling());
+    }
+
+    /**
+     * A pair with one half replaced, as {@code PD_Pair} writes it.
+     *
+     * <p>Two refusals, both {@code PE_BAD_SET} and so both {@code
+     * bad-path-set}. The segment has to be a half rather than the derived
+     * AREA, which has nothing to write to. And the value has to be an
+     * integer or a decimal: {@code PD_Pair} tests for those two and refuses
+     * everything else, so a pair cannot be written into a pair's half.
+     *
+     * <p>{@code bad-path-set} rather than {@code invalid-path}, because the
+     * path is fine and the write is not.
+     */
+    private static PairValue withHalfWritten(PairValue pair, Value segment, Value written) {
+        double replacement = switch (written) {
+            case IntegerValue whole -> whole.magnitude();
+            case DecimalValue quantity -> quantity.quantity();
+            default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET,
+                    "a pair half holds a number, not "
+                            + written.datatype().literalSpelling());
+        };
+        return switch (segment) {
+            case WordValue name when PairValue.isWritableHalf(name.canonical()) ->
+                    pair.withHalf(name.canonical(), replacement);
+            case IntegerValue position when position.magnitude() == 1
+                    || position.magnitude() == 2 ->
+                    pair.withHalfAt((int) position.magnitude(), replacement);
+            default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET,
+                    "a pair has an x half and a y half, and nothing else to write");
+        };
     }
 
     /** Walks the segments, gathering refinements once a function is reached. */
@@ -1015,8 +1059,11 @@ public final class Evaluator {
                 case WordValue name -> pair.half(name.canonical());
                 default -> Optional.empty();
             };
+            // Three named segments and two positions: x, y, area, 1 and 2.
+            // AREA is derived rather than stored, which is why it reads and
+            // cannot be written.
             return half.orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
-                    "a pair has an x half and a y half, and nothing else"));
+                    "a pair has an x half, a y half and an area, and nothing else"));
         }
         // An error is read like an object and is not one, which is how
         // REBOL code asks which failure happened. A field it has not got

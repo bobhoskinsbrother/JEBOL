@@ -282,6 +282,111 @@ rule PairArithmeticAppliesToEachHalf {
         y: apply(operation, y_of(left), y_of(right)))
 }
 
+-- The other side must be a pair or a plain number. Anything else is a
+-- math-args failure rather than being read as one somehow, so
+-- `1x1 + "a"` and `1x1 + 0:0:1` both raise.
+rule PairArithmeticTakesAPairOrANumber {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: is_pair(left)
+    requires: not (is_pair(right) or is_integer(right)
+        or is_decimal(right) or is_percent(right))
+    ensures: ArithmeticFailed(failure: cannot_use)
+}
+
+-- Dividing or taking a remainder by a zero half raises, and the guard is
+-- on either half rather than on both, so `1x1 / 1x0` raises although the
+-- x half would have divided cleanly.
+rule PairDivisionByAZeroHalfRaises {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: operation in {divide, remainder}
+    requires: is_pair(left)
+    requires: x_of(right) = 0 or y_of(right) = 0
+    ensures: ArithmeticFailed(failure: zero_divide)
+}
+
+-- AND, OR and XOR are bit operations, so each half is rounded to a whole
+-- number first and the answer is a pair of whole numbers. The rounding is
+-- to the nearest, halves going up, which is why `16x15.6 or 16x4` is
+-- 16x20: the 15.6 becomes 16, and 16 or 4 is 20.
+--
+-- Rounding rather than truncating is the whole of it. Truncating gives
+-- 15 for that half, and 15 or 4 is 15, so the answer would be 16x15 and
+-- look near enough right to survive review.
+rule PairBitOperationsRoundEachHalfFirst {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: operation in {bitwise_and, bitwise_or, bitwise_xor}
+    requires: is_pair(left)
+    ensures: LogicResult(
+        x: apply(operation, round_half_up(x_of(left)), round_half_up(x_of(right))),
+        y: apply(operation, round_half_up(y_of(left)), round_half_up(y_of(right))))
+}
+
+-- EVEN? and ODD? round each half the same way before asking, so
+-- `odd? 1.1x2.9` is true -- the 2.9 rounds to 3. A pair is odd when both
+-- halves are odd and even when both are even, so one of each is neither.
+rule PairParityRoundsEachHalfFirst {
+    when: EvaluatePredicate(predicate, subject)
+    requires: predicate in {is_odd, is_even}
+    requires: is_pair(subject)
+    ensures: PredicateHolds(
+        holds: holds(predicate, round_half_up(x_of(subject)))
+            and holds(predicate, round_half_up(y_of(subject))))
+}
+
+-- A path may write a half, and the pair the word holds changes. Rebol
+-- writes through the value in place; a language with immutable pairs has
+-- to put a new pair back in the word, and either way `p: 1x1  p/x: 0`
+-- leaves p as 0x1.
+rule WritingAPairHalfChangesThePairTheWordHolds {
+    when: EvaluateSetPath(target, segment, written)
+    requires: is_pair(value_of(target))
+    requires: segment in {x, y, 1, 2}
+    requires: is_integer(written) or is_decimal(written)
+    ensures: SetPathResult(
+        target_holds: pair_with_half_replaced(value_of(target), segment, written))
+}
+
+-- Writing anything but a number into a half is refused, and so is writing
+-- to the derived area, which has nothing to write to. Both are
+-- bad-path-set rather than bad-path-type: the path is fine and the write
+-- is not.
+rule WritingANonNumberIntoAPairHalfIsRefused {
+    when: EvaluateSetPath(target, segment, written)
+    requires: is_pair(value_of(target))
+    requires: segment = area or not (is_integer(written) or is_decimal(written))
+    ensures: SetPathFailed(failure: bad_path_set)
+}
+
+-- A pair answers to three word spellings and two positions, and nothing
+-- else. `p/z` and `p/3` are refused, and the failure names the path
+-- rather than the write.
+rule APairHasThreeNamedSegments {
+    when: EvaluatePath(target, segment)
+    requires: is_pair(value_of(target))
+    requires: not (segment in {x, y, area, 1, 2})
+    ensures: PathFailed(failure: invalid_path)
+}
+
+-- p/area is the size of the rectangle the pair describes, so it is never
+-- negative: the two halves are multiplied and the sign is dropped.
+-- `(-10x20)/area` is 200.0 and so is `10x20`'s.
+rule PairAreaIsAbsolute {
+    when: EvaluatePath(target, area)
+    requires: is_pair(value_of(target))
+    ensures: PathResult(value: absolute(x_of(target) * y_of(target)))
+}
+
+-- RANDOM of a pair randomises each half between one and that half read as
+-- a whole number, so the answer is always a pair of whole numbers. An
+-- infinite half is still randomised rather than refused, and the answer is
+-- finite, which is the only way `random as-pair 1e300 -1e300` can be a
+-- pair at all.
+rule RandomOfAPairRandomisesEachHalf {
+    when: EvaluateRandom(subject)
+    requires: is_pair(subject)
+    ensures: RandomResult(is_pair: true, x_is_finite: true, y_is_finite: true)
+}
+
 -- Two pairs are equal when both halves are. They are ordered on the first
 -- half alone, and the second half is looked at only to break a tie, so
 -- 1x2 < 2x1 is true: the x halves settle it before the y halves are

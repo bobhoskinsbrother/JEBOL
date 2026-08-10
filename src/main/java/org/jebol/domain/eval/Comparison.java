@@ -391,6 +391,9 @@ public final class Comparison {
             }
             return ordering(left, right) == 0;
         }
+        if (left instanceof PairValue && right instanceof PairValue) {
+            return ordering(left, right) == 0;
+        }
         if (left instanceof ObjectValue leftObject && right instanceof ObjectValue rightObject) {
             return sameFields(leftObject, rightObject, stepsAllowed);
         }
@@ -504,6 +507,15 @@ public final class Comparison {
             return !Double.isNaN(first.quantity())
                     && Double.compare(first.quantity(), second.quantity()) == 0;
         }
+        // CT_Pair answers the same question at every mode from nought up: it
+        // subtracts the halves rather than comparing their bits, so a
+        // negative zero half equals a zero one under all four of =, ==,
+        // EQUIV? and SAME?. A decimal is the opposite -- the three part
+        // company there -- so the pair case cannot be left to the decimal
+        // one to answer.
+        if (left instanceof PairValue && right instanceof PairValue) {
+            return ordering(left, right) == 0;
+        }
         // Two tuples holding the same octets differ when one was written
         // longer than the other, which nothing else can see: 1.2.3 and
         // 1.2.3.0 are equal and are not strictly equal. CT_Tuple asks about
@@ -565,6 +577,11 @@ public final class Comparison {
         if (left instanceof TupleValue first && right instanceof TupleValue second) {
             return first.equals(second) && first.segmentCount() == second.segmentCount();
         }
+        // And CT_Pair treats every mode from nought up alike, so SAME? on two
+        // pairs asks about the halves rather than about the values.
+        if (left instanceof PairValue && right instanceof PairValue) {
+            return ordering(left, right) == 0;
+        }
         return left.equals(right);
     }
 
@@ -596,8 +613,10 @@ public final class Comparison {
      */
     private static int ordering(Value left, Value right) {
         if (left instanceof PairValue leftPair && right instanceof PairValue rightPair) {
-            int acrossTheX = Double.compare(leftPair.x(), rightPair.x());
-            return acrossTheX != 0 ? acrossTheX : Double.compare(leftPair.y(), rightPair.y());
+            int acrossTheX = signOfTheDifference(leftPair.x(), rightPair.x());
+            return acrossTheX != 0
+                    ? acrossTheX
+                    : signOfTheDifference(leftPair.y(), rightPair.y());
         }
         // A character orders by code point, folding nothing, so `#"a"` is
         // above `#"B"` however the two compare for equality. The ordering
@@ -624,6 +643,25 @@ public final class Comparison {
         // The operators ask a different question from SORT and must not share
         // its answer, which is why SORT keeps its own rule for NaN above.
         return compareForSorting(left, right, false);
+    }
+
+    /**
+     * Which way one half sits against another, as {@code Cmp_Pair} works it
+     * out: subtract, then take the sign.
+     *
+     * <p>Not {@code Double.compare}, and the difference is not academic.
+     * Subtracting makes a negative zero equal to a zero, so
+     * {@code -32767x-32767 % -32767} equals {@code 0x0} although it molds as
+     * {@code -0x-0}. {@code Double.compare} puts -0.0 below 0.0 and answers
+     * that they are two different pairs.
+     *
+     * <p>It also makes two infinite halves equal, because the difference is a
+     * NaN and a NaN is neither above nor below zero. That is what lets
+     * {@code p = p} hold for a pair built out of 1e300.
+     */
+    private static int signOfTheDifference(double half, double other) {
+        double difference = half - other;
+        return difference > 0.0 ? 1 : (difference < 0.0 ? -1 : 0);
     }
 
     /**

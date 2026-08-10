@@ -111,9 +111,13 @@ public final class Molder {
     /** How many significant digits a decimal is printed to. */
     private static final int SIGNIFICANT_DIGITS = 15;
 
-    /** Outside these exponents, the exponent form is used. */
+    /**
+     * Below this exponent the exponent form is used. Above it, the threshold
+     * is the digit count rather than a constant, because
+     * {@code Emit_Decimal} compares against the digits it was asked for and a
+     * pair asks for half as many as a decimal does.
+     */
     private static final int SMALLEST_PLAIN_EXPONENT = -6;
-    private static final int LARGEST_PLAIN_EXPONENT = 14;
 
     /**
      * Fifteen significant digits, always with a decimal point.
@@ -137,19 +141,52 @@ public final class Molder {
     }
 
     /**
+     * How many significant digits a pair's half prints with, and why it is
+     * half as many as a decimal's.
+     *
+     * <p>{@code s-mold.c} molds a pair by calling {@code Emit_Decimal} on
+     * each half with {@code mold->digits / 2}, and {@code mold->digits} is
+     * fifteen. Seven digits is also about what a single precision half can
+     * carry, so the two agree by design rather than by accident: printing
+     * more would print digits the half never had.
+     */
+    private static final int PAIR_HALF_DIGITS = SIGNIFICANT_DIGITS / 2;
+
+    /**
      * A pair's half prints as a whole number when it is one, so 1x2 reads
      * back as 1x2 rather than as 1.0x2.0. This is the only place where a
      * decimal drops its point, and it is why the halves being decimals at
      * all is invisible until you take one out.
+     *
+     * <p>{@code Emit_Decimal} is passed {@code DEC_MOLD_MINIMAL} for a pair,
+     * which is what drops the point, and seven digits rather than fifteen.
+     * So {@code 2147483647x1} molds as {@code 2.147484e9x1}: the half holds
+     * 2147483648 and only seven of its digits are shown.
+     *
+     * <p>A negative zero keeps its sign, because the sign is written from the
+     * value rather than from the digits. That is how
+     * {@code -32767x-32767 % -32767} molds as {@code -0x-0} while still
+     * being equal to {@code 0x0}.
      */
     public static String moldHalf(double half) {
-        if (half == Math.rint(half) && Math.abs(half) < 1e15) {
-            return String.valueOf((long) half);
-        }
-        return renderDouble(half);
+        return renderDouble(half, PAIR_HALF_DIGITS, MINIMAL);
     }
 
+    /**
+     * {@code DEC_MOLD_MINIMAL}: drop the point rather than putting a zero
+     * after it. A decimal keeps its point or it would read back as an
+     * integer; a pair half has the {@code x} to say what it is, so it does
+     * not need one.
+     */
+    private static final boolean MINIMAL = true;
+
+    private static final boolean KEEPS_ITS_POINT = false;
+
     private static String renderDouble(double quantity) {
+        return renderDouble(quantity, SIGNIFICANT_DIGITS, KEEPS_ITS_POINT);
+    }
+
+    private static String renderDouble(double quantity, int digits, boolean minimal) {
         if (Double.isNaN(quantity)) {
             return "1.#NaN";
         }
@@ -157,23 +194,33 @@ public final class Molder {
             return quantity > 0 ? "1.#INF" : "-1.#INF";
         }
         if (quantity == 0.0) {
-            return (1 / quantity < 0 ? "-" : "") + "0.0";
+            String zero = 1 / quantity < 0 ? "-0" : "0";
+            return minimal ? zero : zero + ".0";
         }
 
         java.math.BigDecimal rounded = new java.math.BigDecimal(quantity)
-                .round(new java.math.MathContext(SIGNIFICANT_DIGITS))
+                .round(new java.math.MathContext(digits))
                 .stripTrailingZeros();
         int exponent = rounded.precision() - rounded.scale() - 1;
 
-        return exponent < SMALLEST_PLAIN_EXPONENT || exponent > LARGEST_PLAIN_EXPONENT
-                ? withExponent(rounded, exponent)
-                : withPoint(rounded.toPlainString());
+        // Emit_Decimal switches to the e-format once there are more digits
+        // before the point than it was asked to print, so the threshold moves
+        // with the digit count and is not a constant of the format.
+        return exponent < SMALLEST_PLAIN_EXPONENT || exponent > digits - 1
+                ? withExponent(rounded, exponent, minimal)
+                : pointAsWanted(rounded.toPlainString(), minimal);
     }
 
     /** {@code 1.0e15}: a mantissa that always has a point, and a bare e. */
-    private static String withExponent(java.math.BigDecimal rounded, int exponent) {
+    private static String withExponent(
+            java.math.BigDecimal rounded, int exponent, boolean minimal) {
+
         java.math.BigDecimal mantissa = rounded.movePointLeft(exponent).stripTrailingZeros();
-        return withPoint(mantissa.toPlainString()) + "e" + exponent;
+        return pointAsWanted(mantissa.toPlainString(), minimal) + "e" + exponent;
+    }
+
+    private static String pointAsWanted(String rendered, boolean minimal) {
+        return minimal ? trimTrailingZero(withPoint(rendered)) : withPoint(rendered);
     }
 
     /** A decimal never loses its point, or it would read back as an integer. */

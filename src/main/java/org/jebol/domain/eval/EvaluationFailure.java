@@ -19,6 +19,8 @@ public enum EvaluationFailure {
     INVALID_ARG(ErrorCategory.SCRIPT, "invalid-arg", "an argument that makes no sense here"),
     INVALID_COMPARE(ErrorCategory.SCRIPT, "invalid-compare",
             "two datatypes that cannot be put in an order"),
+    BAD_PATH_SET(ErrorCategory.SCRIPT, "bad-path-set",
+            "a path segment that cannot be written, or a value it will not hold"),
     OUT_OF_RANGE(ErrorCategory.SCRIPT, "out-of-range",
             "a number outside the range this operation allows"),
     NO_REFINE(ErrorCategory.SCRIPT, "no-refine", "a refinement this function does not have"),

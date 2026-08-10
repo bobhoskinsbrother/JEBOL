@@ -1,7 +1,6 @@
 package org.jebol.domain.value;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import net.jqwik.api.ForAll;
 import net.jqwik.api.Property;
@@ -55,24 +54,50 @@ class PairValueTest {
     }
 
     @Nested
-    @DisplayName("refusing halves that are not numbers")
-    class RefusedHalves {
+    @DisplayName("halves narrowed to single precision")
+    class SinglePrecisionHalves {
 
-        // A pair with a half that is not a number would mold to something
-        // the reader cannot read back, which breaks the round trip every
-        // other value keeps. Rejecting on construction keeps the damage
-        // at the boundary rather than at the MOLD.
+        // These two used to assert the opposite: that an infinite or
+        // not-a-number half was refused on construction, on the grounds
+        // that it would not mold back. Both mold back perfectly well --
+        // 1.#INF and 1.#NaN are readable literals -- and Rebol keeps
+        // them, so refusing made `as-pair 1e300 -1e300` fail where Rebol
+        // answers a pair. A pair's halves are C floats and a C float
+        // overflows to infinity; nothing in that path can refuse.
 
         @Test
-        void aHalfThatIsNotANumberIsRefused() {
-            assertThatIllegalArgumentException()
-                    .isThrownBy(() -> PairValue.of(Double.NaN, 1));
+        @DisplayName("a half too large for a float becomes infinite")
+        void aLargeHalfOverflows() {
+            assertThat(PairValue.of(1e300, 1).x()).isEqualTo(Double.POSITIVE_INFINITY);
+            assertThat(PairValue.of(1, -1e300).y()).isEqualTo(Double.NEGATIVE_INFINITY);
         }
 
         @Test
-        void anInfiniteHalfIsRefused() {
-            assertThatIllegalArgumentException()
-                    .isThrownBy(() -> PairValue.of(1, Double.POSITIVE_INFINITY));
+        @DisplayName("an infinite half is kept as it was given")
+        void anInfiniteHalfIsKept() {
+            assertThat(PairValue.of(1, Double.POSITIVE_INFINITY).y())
+                    .isEqualTo(Double.POSITIVE_INFINITY);
+        }
+
+        @Test
+        @DisplayName("a not-a-number half is kept as it was given")
+        void aNotANumberHalfIsKept() {
+            assertThat(PairValue.of(Double.NaN, 1).x()).isNaN();
+        }
+
+        @Test
+        @DisplayName("a fraction loses the digits a float cannot carry")
+        void aFractionIsNarrowed() {
+            // 0.1 as a float and then widened again, which is what makes
+            // `first 0.1x0.2` print as 0.100000001490116.
+            assertThat(PairValue.of(0.1, 0.2).x()).isEqualTo(0.10000000149011612d);
+            assertThat(PairValue.of(0.1, 0.2).x()).isNotEqualTo(0.1d);
+        }
+
+        @Test
+        @DisplayName("a whole number too large for a float loses its low digits")
+        void aLargeWholeNumberIsRounded() {
+            assertThat(PairValue.of(2147483647, 1).x()).isEqualTo(2147483648.0d);
         }
     }
 

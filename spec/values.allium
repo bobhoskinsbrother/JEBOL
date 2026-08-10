@@ -255,12 +255,35 @@ variant CharValue : Value {
 -- legal pair. R3 was asked and this is what it answers. Molding hides the
 -- point again when a half is whole, so the decimal nature is visible only
 -- when you take a half out or divide: 1x2 / 2 is 0.5x1.
+-- The halves are single precision rather than double, which is the fact
+-- that explains every surprising thing a pair does. Rebol declares them
+-- `REBD32`, a C float, so a half carries about seven significant digits
+-- and nothing more.
+--
+-- Three consequences, none of them guessable from the spelling:
+--
+-- A large whole number loses its low digits. 2147483647x1 molds as
+-- 2.147484e9x1, and 2147483647 and 1073741823 land on the same pair half
+-- once halved, which is why `2147483647x2147483647 / 2` equals
+-- `1073741823x1073741823`.
+--
+-- A half above about 3.4e38 becomes infinite rather than staying large.
+-- `as-pair 1e300 -1e300` molds as `1.#INFx-1.#INF`, and the infinity is a
+-- value the pair keeps rather than an error. A pair is the one datatype
+-- here that holds an infinity as a matter of course.
+--
+-- A fraction is stored to single precision and read back at double, so
+-- taking a half out shows the rounding: `first 0.1x0.2` is
+-- 0.100000001490116 and not 0.1. Molding hides it again, because a pair
+-- half molds to seven digits.
 variant PairValue : Value {
-    x: Decimal
+    x: Decimal      -- narrowed to single precision on construction
     y: Decimal
 
     -- Read as a path, a pair answers to two spellings for each half: the
-    -- name and the position. p/x and p/1 are the same question.
+    -- name and the position. p/x and p/1 are the same question. A third
+    -- spelling, p/area, is derived rather than stored.
+    area: absolute(x * y)
 }
 
 -- Up to twelve octets, written 100.150.150, with twelve zeros behind
@@ -472,6 +495,15 @@ invariant ContextSlotsAreUnique {
 --
 -- The floor is on what a tuple shows and not on what it keeps, so a
 -- tuple of one octet is legal and shows as three.
+-- A pair half is stored to single precision. Nothing widens it back: a
+-- half read out is the single precision value shown as a double, which is
+-- why `first 0.1x0.2` is 0.100000001490116.
+invariant PairHalvesAreSinglePrecision {
+    for pair in PairValues:
+        pair.x = narrowed_to_single(pair.x)
+            and pair.y = narrowed_to_single(pair.y)
+}
+
 invariant TupleShape {
     for value in Values:
         value.kind = TupleValue

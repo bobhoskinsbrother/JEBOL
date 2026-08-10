@@ -731,6 +731,7 @@ public final class Natives {
                         // spread over all of them, so an octet never
                         // grows and a zero one stays zero.
                         case TupleValue tuple -> randomisedOctets(tuple);
+                        case PairValue point -> randomisedHalves(point);
                         default -> raiseCannotUse(arguments.get(0), "random");
                     };
                 });
@@ -1085,10 +1086,17 @@ public final class Natives {
                 case XOR -> ours ^ theirs;
             });
         }
-        if (left instanceof PairValue leftPair && right instanceof PairValue rightPair) {
+        // A pair meets a pair or a plain number, and each half is rounded to
+        // a whole number before the bits are combined. `16x15.6 or 16x4` is
+        // 16x20 because the 15.6 rounds to 16; truncating gives 15, and
+        // 15 or 4 is 15, so the answer would be 16x15 and look near enough
+        // right to pass review.
+        if (left instanceof PairValue leftPair) {
             return PairValue.of(
-                    combinedBits((long) leftPair.x(), (long) rightPair.x(), operation),
-                    combinedBits((long) leftPair.y(), (long) rightPair.y(), operation));
+                    combinedBits(roundedHalfUp(leftPair.x()),
+                            roundedHalfUp(firstHalfOf(right)), operation),
+                    combinedBits(roundedHalfUp(leftPair.y()),
+                            roundedHalfUp(secondHalfOf(right)), operation));
         }
         // The whole integer meets each octet and the answer clamps
         // afterwards, so `1.2.3.255 or -1` is 0.0.0.0 rather than the
@@ -1214,9 +1222,39 @@ public final class Natives {
      * widened to meet it.
      */
     private static Value pairArithmetic(Value left, Value right, Operation operation) {
+        requireAPairOrAPlainNumber(left);
+        requireAPairOrAPlainNumber(right);
+        // The C guards both halves of the divisor before dividing either, so
+        // `1x1 / 1x0` raises rather than dividing the x half and then
+        // stopping. The distinction is invisible in the answer and visible in
+        // the order things happen, which is what a partial answer would show.
+        if (operation == Operation.DIVIDE || operation == Operation.REMAINDER
+                || operation == Operation.MODULO) {
+            requireNonZero(firstHalfOf(right));
+            requireNonZero(secondHalfOf(right));
+        }
         return PairValue.of(
                 halfArithmetic(firstHalfOf(left), firstHalfOf(right), operation),
                 halfArithmetic(secondHalfOf(left), secondHalfOf(right), operation));
+    }
+
+    /**
+     * Arithmetic on a pair takes a pair or a plain number and nothing else.
+     *
+     * <p>{@code REBTYPE(Pair)} names three datatypes for the other side --
+     * pair, integer, and decimal or percent -- and calls
+     * {@code Trap_Math_Args} for anything else. A money and a time are the
+     * two that look like they ought to work: both are numbers elsewhere in
+     * the language, and neither is a number here.
+     */
+    private static void requireAPairOrAPlainNumber(Value side) {
+        if (side instanceof PairValue
+                || side instanceof IntegerValue
+                || side instanceof DecimalValue) {
+            return;
+        }
+        throw Raised.of(EvaluationFailure.CANNOT_USE,
+                "cannot use " + side.datatype().literalSpelling() + " in pair arithmetic");
     }
 
     private static double halfArithmetic(double left, double right, Operation operation) {
@@ -1423,6 +1461,29 @@ public final class Natives {
             }
         }
         return TupleValue.of(octets);
+    }
+
+    /**
+     * Each half randomised on its own, between one and that half.
+     *
+     * <p>{@code A_RANDOM} calls {@code Random_Range((REBINT)x1, ...)} on each
+     * half, so the half is read as a machine integer before anything else
+     * happens. An infinite half becomes a number that way rather than
+     * refusing, which is the only reason
+     * {@code random as-pair 1e300 -1e300} can be a pair at all -- and it is
+     * why Rebol's own assertion about it asks only that the answer is
+     * finite.
+     */
+    private Value randomisedHalves(PairValue point) {
+        return PairValue.of(randomisedHalf(point.x()), randomisedHalf(point.y()));
+    }
+
+    private double randomisedHalf(double half) {
+        long bound = (long) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, half));
+        if (bound == 0) {
+            return 0;
+        }
+        return (1 + (long) (randomness.nextDouble() * Math.abs(bound))) * Long.signum(bound);
     }
 
     /**
@@ -2885,15 +2946,21 @@ public final class Natives {
         // A pair is even when both halves are, so one even half and one
         // odd is false rather than true-ish. That boundary is the whole
         // difference between "asks about both" and "asks about either".
+        //
+        // Each half is rounded before the question is asked, because
+        // A_ODDQ reads it through VAL_PAIR_X_INT and that is ROUND_TO_INT.
+        // So `odd? 1.1x2.9` is true: the 2.9 rounds to 3. Testing the
+        // fraction directly answers false for every fractional half, which
+        // looks right until a test says otherwise.
         define("odd?", List.of(Parameter.required("number")),
                 (arguments, evaluator, context) -> LogicValue.of(
                         arguments.get(0) instanceof PairValue pair
-                                ? bothHalves(pair, half -> Math.abs(half % 2) == 1)
+                                ? bothHalves(pair, half -> isOdd(roundedHalfUp(half)))
                                 : Math.abs(roundedWholeOf(arguments.get(0), "odd?") % 2) == 1));
         define("even?", List.of(Parameter.required("number")),
                 (arguments, evaluator, context) -> LogicValue.of(
                         arguments.get(0) instanceof PairValue pair
-                                ? bothHalves(pair, half -> half % 2 == 0)
+                                ? bothHalves(pair, half -> !isOdd(roundedHalfUp(half)))
                                 : roundedWholeOf(arguments.get(0), "even?") % 2 == 0));
 
         define("object?", takes("value"),
@@ -7834,6 +7901,24 @@ public final class Natives {
     /** Whether a question about a pair is true of both its halves. */
     private static boolean bothHalves(PairValue pair, DoublePredicate asked) {
         return asked.test(pair.x()) && asked.test(pair.y());
+    }
+
+    /**
+     * A pair half as the whole number the bit operations and the parity
+     * questions read it as.
+     *
+     * <p>{@code ROUND_TO_INT} is {@code (REBINT)(floor(d + 0.5))}, so it
+     * rounds to the nearest and sends a half upwards rather than away from
+     * zero: 2.5 becomes 3 and -2.5 becomes -2. Everything that reads a pair
+     * half as an integer goes through it -- AND, OR, XOR, EVEN? and ODD? --
+     * so there is one rule here and not five.
+     */
+    private static long roundedHalfUp(double half) {
+        return (long) Math.floor(half + 0.5);
+    }
+
+    private static boolean isOdd(long whole) {
+        return (whole & 1L) != 0L;
     }
 
     /**

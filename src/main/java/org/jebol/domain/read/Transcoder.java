@@ -972,8 +972,15 @@ public final class Transcoder {
     // Either half may be fractional, because a pair holds two decimals
     // rather than two integers. 1.5x2 is a legal pair and was unreadable
     // while this pattern only took digits.
-    private static final Pattern PAIR =
-            Pattern.compile("([-+]?\\d+(?:\\.\\d+)?)[xX]([-+]?\\d+(?:\\.\\d+)?)");
+    //
+    // Either half may also carry an exponent, so 3.4e38x1 reads. That form
+    // matters more for a pair than for a decimal, because a pair's halves
+    // are single precision and 3.4e38 is where they run out: writing the
+    // boundary down is how the overflow to 1.#INF can be tested at all.
+    // The exponent binds before the x, so 1e3x1 is a pair of 1000 and 1.
+    private static final Pattern PAIR = Pattern.compile(
+            "([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)"
+                    + "[xX]([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)");
     private static final Pattern TIME =
             Pattern.compile("([-+]?\\d+):(\\d{1,2})(?::(\\d{1,2}(?:\\.\\d+)?))?");
     private static final Pattern TUPLE = Pattern.compile("\\d+(?:\\.\\d+){2,}");
