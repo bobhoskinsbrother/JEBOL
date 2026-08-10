@@ -488,7 +488,12 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("REMAINDER works octet by octet too")
         void remainderIsOctetWise() {
-            assertThat(answerTo("(10.20.30 // 7) == 3.6.2")).isEqualTo("#(true)");
+            // The operator is %, not //. This used to be written with //,
+            // which JEBOL had mapped to REMAINDER; ops.reb reads
+            // `// integer-divide`, and integer-divide takes a number rather
+            // than a tuple.
+            assertThat(answerTo("(10.20.30 % 7) == 3.6.2")).isEqualTo("#(true)");
+            assertThat(answerTo("(remainder 10.20.30 7) == 3.6.2")).isEqualTo("#(true)");
         }
 
         @Test

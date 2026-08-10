@@ -984,7 +984,11 @@ public final class Transcoder {
     private static final Pattern TIME =
             Pattern.compile("([-+]?\\d+):(\\d{1,2})(?::(\\d{1,2}(?:\\.\\d+)?))?");
     private static final Pattern TUPLE = Pattern.compile("\\d+(?:\\.\\d+){2,}");
-    private static final Pattern INTEGER = Pattern.compile("[-+]?\\d+");
+    // A quote inside the digits is a separator, so 1'000 reads as 1000 and
+    // 99'504'028'301'131 reads as one integer. Rebol's own suite writes large
+    // numbers this way, and without it the whole lexeme reads as a word --
+    // which fails later as an unset word rather than as a syntax error.
+    private static final Pattern INTEGER = Pattern.compile("[-+]?\\d+(?:'\\d+)*");
     private static final Pattern DECIMAL =
             Pattern.compile("[-+]?(?:\\d+\\.\\d*|\\.\\d+|\\d+)(?:[eE][-+]?\\d+)?");
     private static final Pattern PERCENT =
@@ -1205,7 +1209,7 @@ public final class Transcoder {
         }
         if (INTEGER.matcher(lexeme).matches()) {
             try {
-                return IntegerValue.of(Long.parseLong(lexeme));
+                return IntegerValue.of(Long.parseLong(lexeme.replace("'", "")));
             } catch (NumberFormatException tooBig) {
                 throw failure(SyntaxFailure.INTEGER_OUT_OF_RANGE, null);
             }

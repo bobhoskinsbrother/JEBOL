@@ -225,7 +225,12 @@ public final class Natives {
         defineOperator("+", "add");
         defineOperator("-", "subtract");
         defineOperator("/", "divide");
-        defineOperator("//", "remainder");
+        // // is INTEGER-DIVIDE and not REMAINDER. ops.reb reads
+        // `// integer-divide`, and every other language that spells a
+        // remainder with two characters spells it this way, which is what
+        // makes this the pairing most likely to be got wrong. `23 // 10` is 2
+        // and `23 % 10` is 3.
+        defineOperator("//", "integer-divide");
         defineOperator("<", "lesser?");
         defineOperator("<<", "shift-left");
         defineOperator("<=", "lesser-or-equal?");
@@ -1178,6 +1183,62 @@ public final class Natives {
             case CharacterValue character -> character;
             default -> raiseCannotUse(value, "abs");
         };
+    }
+
+    /**
+     * SHIFT without /LOGICAL: keeps the sign and loses no bit off the top.
+     *
+     * <p>Four cases, and the C spells each of them out. Shifting left, a count
+     * of sixty-four or more raises unless the value is already zero; below
+     * sixty-four, it raises when the magnitude would not fit. Shifting right, a
+     * count of sixty-four or more repeats the sign bit -- so -1 for a negative
+     * value and 0 for anything else, not zero for both; below sixty-four it is
+     * an ordinary signed shift.
+     *
+     * <p>The one exception in the overflow check is the most negative whole
+     * number, which is reachable: it is the only value with no positive
+     * counterpart, so it is the only value the exception can be about.
+     */
+    private static long shiftedKeepingTheSign(long value, long places) {
+        if (places < 0) {
+            long rightwards = -places;
+            // `VAL_INT64(a) >>= 63` rather than answering zero, so the sign
+            // survives a shift wider than the word.
+            return rightwards >= Long.SIZE ? value >> (Long.SIZE - 1) : value >> rightwards;
+        }
+        if (places >= Long.SIZE) {
+            if (value != 0) {
+                throw Raised.of(EvaluationFailure.OVERFLOW,
+                        "shifting " + value + " left by " + places + " loses every bit");
+            }
+            return 0;
+        }
+        // `c` is the largest magnitude that still fits after the shift, worked
+        // out as the sign bit shifted down; `d` is the magnitude being shifted.
+        long largestThatFits = Long.MIN_VALUE >>> places;
+        long magnitude = value < 0 ? -value : value;
+        if (Long.compareUnsigned(largestThatFits, magnitude) <= 0) {
+            if (Long.compareUnsigned(largestThatFits, magnitude) < 0 || value >= 0) {
+                throw Raised.of(EvaluationFailure.OVERFLOW,
+                        "shifting " + value + " left by " + places + " leaves the range");
+            }
+            return Long.MIN_VALUE;
+        }
+        return value << places;
+    }
+
+    /**
+     * SHIFT/LOGICAL: moves the bits and refuses nothing.
+     *
+     * <p>Every case the plain form raises on, this answers, which is why the
+     * two refinements of one native need separate code. A count of sixty-four
+     * or more answers zero from either end, because the bits have all gone.
+     */
+    private static long bitsShifted(long value, long places) {
+        if (Math.abs(places) >= Long.SIZE) {
+            return 0;
+        }
+        return places >= 0 ? value << places : value >>> -places;
     }
 
     private static Value shifted(List<Value> arguments, boolean leftwards) {
@@ -3149,19 +3210,14 @@ public final class Natives {
                         Parameter.required("value", Set.of(Datatype.INTEGER)),
                         Parameter.required("places", Set.of(Datatype.INTEGER))),
                 Set.of("logical"),
-                (arguments, evaluator, context, refinements) -> {
-                    long value = ((IntegerValue) arguments.get(0)).magnitude();
-                    long places = ((IntegerValue) arguments.get(1)).magnitude();
-                    if (!refinements.contains("logical")) {
-                        return IntegerValue.of(
-                                places >= 0 ? value << places : value >> -places);
-                    }
-                    if (Math.abs(places) >= Long.SIZE) {
-                        return IntegerValue.of(0);
-                    }
-                    return IntegerValue.of(
-                            places >= 0 ? value << places : value >>> -places);
-                });
+                (arguments, evaluator, context, refinements) -> IntegerValue.of(
+                        refinements.contains("logical")
+                                ? bitsShifted(
+                                        ((IntegerValue) arguments.get(0)).magnitude(),
+                                        ((IntegerValue) arguments.get(1)).magnitude())
+                                : shiftedKeepingTheSign(
+                                        ((IntegerValue) arguments.get(0)).magnitude(),
+                                        ((IntegerValue) arguments.get(1)).magnitude())));
 
         // =? is SAME? rather than EQUAL?: it asks whether two references
         // are one value, so `"a" =? "a"` is false. Registered here rather
@@ -3386,7 +3442,16 @@ public final class Natives {
         // block. /SOME leaves a word holding what it held where the value
         // would have been none, which is for filling defaults in from a
         // partly populated block.
-        define("set", List.of(Parameter.required("target"), Parameter.required("value")),
+        // The argument check is where a number is turned away, so `set 1 1` is
+        // expect-arg rather than the cannot-use a hand-written guard inside
+        // would raise. natives.reb spells the accepted shapes out:
+        // `word [word! lit-word! any-path! block! object!]`.
+        //
+        // An issue and a refinement are words underneath and get past this,
+        // which is why the guard inside still exists.
+        define("set", List.of(
+                        Parameter.required("target", NAME_SHAPED),
+                        Parameter.required("value")),
                 Set.of("any", "only", "some"),
                 (arguments, evaluator, context, refinements) -> {
                     Value target = arguments.getFirst();
@@ -4183,6 +4248,20 @@ public final class Natives {
         }
         return forward > at && forward < text.length() && text.charAt(forward) == '[';
     }
+
+    /**
+     * The shapes SET will take, from {@code natives.reb}: a word, a lit-word,
+     * any path, a block or an object.
+     *
+     * <p>An issue and a refinement are word datatypes and so pass this check;
+     * {@link #refuseUnassignableName} turns them away afterwards. Two guards
+     * for one question, because the datatype does not tell them apart.
+     */
+    private static final Set<Datatype> NAME_SHAPED = Set.of(
+            Datatype.WORD, Datatype.LIT_WORD, Datatype.SET_WORD, Datatype.GET_WORD,
+            Datatype.ISSUE, Datatype.REFINEMENT,
+            Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
+            Datatype.BLOCK, Datatype.OBJECT);
 
     /**
      * Refuses a name SET cannot assign to.
@@ -8317,14 +8396,47 @@ public final class Natives {
         }
     }
 
+    /**
+     * Text with a decimal point in it, read as a whole number by throwing the
+     * fraction away, and refused otherwise.
+     *
+     * <p>The point has to be there. {@code Scan_Integer} fails on a whole
+     * number too large for a machine word and the decimal scan that follows
+     * needs a point, so {@code to integer! "1e5"} is refused while
+     * {@code to integer! "1.5e3"} is 1500. Odd, and it is the rule.
+     *
+     * <p>Refusing a number outside the range rather than saturating at the
+     * largest one is the point of the check. Saturating gives a result that is
+     * a number, is in range, and is not the number the text said -- which is
+     * how {@code to integer! "11111111111111111111111"} used to answer the
+     * largest whole number instead of raising.
+     */
     private static Value truncatedDecimal(String candidate, String original) {
+        if (candidate.indexOf('.') < 0) {
+            throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
+                    "cannot read \"" + original + "\" as an integer");
+        }
         try {
-            return IntegerValue.of((long) Double.parseDouble(candidate));
+            double asNumber = Double.parseDouble(candidate);
+            if (!(Math.abs(asNumber) < TOO_LARGE_FOR_A_WHOLE_NUMBER)) {
+                throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
+                        "\"" + original + "\" is outside the range of a whole number");
+            }
+            return IntegerValue.of((long) asNumber);
         } catch (NumberFormatException notANumberEither) {
             throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
                     "cannot read \"" + original + "\" as an integer");
         }
     }
+
+    /**
+     * Where a double stops fitting in a signed machine word.
+     *
+     * <p>Written as a double so the comparison is one a double can answer:
+     * casting the other way saturates silently, which is the behaviour being
+     * guarded against.
+     */
+    private static final double TOO_LARGE_FOR_A_WHOLE_NUMBER = 9.223372036854776E18;
 
     /**
      * The whole number EVEN? and ODD? are really being asked about.

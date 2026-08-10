@@ -414,6 +414,91 @@ rule PairOrderingBreaksTheTieOnTheSecondHalf {
             else: holds(request.strictness, y_of(request.left), y_of(request.right)))
 }
 
+-- === Integers and the bit operations =======================
+
+-- SHIFT keeps the sign and refuses to lose a bit off the top, which makes
+-- it the fussiest of the three shifting natives. `shift 1 63` raises
+-- overflow, because the answer would be the most negative whole number and
+-- a positive one was shifted. Four cases, and each has its own boundary:
+--
+--   a count of 64 or more, shifting left: overflow unless the value is
+--     already zero, in which case the answer is zero
+--   a count below 64, shifting left: overflow when the magnitude would not
+--     fit, and the one exception is the most negative number itself, which
+--     is reachable and is not an overflow
+--   a count of 64 or more, shifting right: the sign bit repeated, so -1 for
+--     a negative value and 0 for anything else
+--   a count below 64, shifting right: an ordinary signed shift
+--
+-- /LOGICAL drops all of that and shifts the bits, so
+-- `shift/logical 1 63` is the most negative whole number rather than an
+-- overflow, and `shift/logical -9223372036854775808 -64` is 0.
+rule ShiftingLeftPastTheWidthRaises {
+    when: EvaluateShift(value, count)
+    requires: count >= 64
+    requires: value != 0
+    ensures: ShiftFailed(failure: overflow)
+}
+
+rule ShiftingLeftOutOfRangeRaises {
+    when: EvaluateShift(value, count)
+    requires: count > 0 and count < 64
+    requires: not fits_in_a_signed_word(value * power(2, count))
+    ensures: ShiftFailed(failure: overflow)
+}
+
+rule ShiftingRightPastTheWidthRepeatsTheSignBit {
+    when: EvaluateShift(value, count)
+    requires: count <= -64
+    ensures: ShiftResult(value: if value < 0: -1 else: 0)
+}
+
+-- `//` is INTEGER-DIVIDE and not REMAINDER, which is the operator pairing
+-- most likely to be got wrong: every other language that spells a
+-- remainder with two characters spells it this way. `23 // 10` is 2, the
+-- whole part of the quotient, and `23 % 10` is 3, what is left over.
+--
+-- Both operands are truncated to whole numbers before dividing, so
+-- `23.5 // 10` and `23 // 10.5` are both 2, and the answer is always an
+-- integer.
+rule IntegerDivideTruncatesBothSidesAndTheAnswer {
+    when: EvaluateArithmetic(integer_divide, left, right)
+    ensures: ArithmeticResult(
+        datatype: integer,
+        value: truncated(left) / truncated(right))
+}
+
+-- Reading an integer out of text that names a number too large for a
+-- machine word raises rather than saturating at the largest one. Saturating
+-- is the dangerous answer: it is a number, it is in range, and it is not
+-- the number the text said.
+rule ReadingAnOversizedIntegerRaises {
+    when: EvaluateConversion(integer, source)
+    requires: is_string(source)
+    requires: not fits_in_a_signed_word(number_named_by(source))
+    ensures: ConversionFailed(failure: bad_make_arg)
+}
+
+-- SET takes a word, a lit-word, a path, a block or an object, and the
+-- refusal is at the door: `set 1 1` is expect-arg, from the argument check,
+-- rather than a failure raised inside the native.
+rule SetTakesANameShapedArgument {
+    when: EvaluateCall(set, target, value)
+    requires: not (is_word(target) or is_path(target)
+        or is_block(target) or is_object(target))
+    ensures: CallFailed(failure: expect_arg)
+}
+
+-- PRIME? is trial division by six-and-one-either-side up to the square
+-- root, which reaches a fourteen digit number in about a million and a half
+-- steps. So the largest prime it will be asked about is a real answer and
+-- not a timeout, and a bound on the input would be wrong.
+rule PrimeIsAnsweredForEveryWholeNumber {
+    when: EvaluatePredicate(is_prime, subject)
+    requires: is_integer(subject)
+    ensures: PredicateHolds(holds: has_no_divisor_below_its_square_root(subject))
+}
+
 -- === Decimals and the maths natives ========================
 
 -- Three remainders, three definitions of division, and the names do not
