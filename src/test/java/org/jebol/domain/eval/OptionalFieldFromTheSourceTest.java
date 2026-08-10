@@ -28,6 +28,10 @@ class OptionalFieldFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
+    private static String errorIdOf(String source) {
+        return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
+    }
+
     private static final String TRUE = "#(true)";
 
     @Test
@@ -56,6 +60,77 @@ class OptionalFieldFromTheSourceTest {
     void theIdiomWorks() {
         assertThat(answerTo("o: make object! [a: 1] any [get in o 'zz 9]")).isEqualTo("9");
         assertThat(answerTo("o: make object! [a: 1] any [get in o 'a 9]")).isEqualTo("1");
+    }
+
+    @Test
+    @DisplayName("an error answers IN as an object does")
+    void anErrorAnswersIn() {
+        // `frame = IS_ERROR(val) ? VAL_ERR_OBJECT(val) : VAL_OBJ_FRAME(val);`
+        // An error is an object underneath, and so is a port. The C's own
+        // comment on the argument reads "object, error, port, block".
+        assertThat(answerTo("e: try [1 / 0] word? in e 'id")).isEqualTo(TRUE);
+        assertThat(answerTo("e: try [1 / 0] none? in e 'zz")).isEqualTo(TRUE);
+    }
+
+    @Test
+    @DisplayName("IN with a block searches it for the object that holds the word")
+    void inSearchesABlock() {
+        // The block form reads each item and looks a word up as it goes, thus
+        // a block of words naming objects works as well as a block of them.
+        assertThat(answerTo("o: make object! [a: 1] "
+                + "word? in reduce [1 o] 'a")).isEqualTo(TRUE);
+        assertThat(answerTo("o: make object! [a: 1] "
+                + "1 = get in reduce [1 o] 'a")).isEqualTo(TRUE);
+    }
+
+    @Test
+    @DisplayName("a block with no object holding the word answers none")
+    void aBlockWithNoSuchObjectAnswersNone() {
+        assertThat(answerTo("none? in [1 2] 'a")).isEqualTo(TRUE);
+    }
+
+    @Test
+    @DisplayName("the block form refuses a second argument that is not a word")
+    void theBlockFormNeedsAWord() {
+        // `else Trap_Arg(word);` -- searching for a number is not a question
+        // the form can answer.
+        assertThat(errorIdOf("in [1 2] 5")).isEqualTo("expect-arg");
+    }
+
+    @Test
+    @DisplayName("IN with a block SECOND binds that block and answers it")
+    void inWithABlockBinds() {
+        // A different function under the same name, told apart by which
+        // argument is the block. The C calls it "Special form: IN object
+        // block". Nothing is read and nothing is searched for.
+        assertThat(answerTo("o: make object! [a: 1] mold in o [a]")).isEqualTo("\"[a]\"");
+        assertThat(answerTo("o: make object! [a: 1] b: [a] in o b do b")).isEqualTo("1");
+    }
+
+    @Test
+    @DisplayName("GET of anything that is not a word, a path or an object answers itself")
+    void getOfAnythingElseAnswersItself() {
+        // `else val = word;` -- one line, and the general rule. GET of none
+        // answering none is one case of it rather than a rule of its own.
+        assertThat(answerTo("get 5")).isEqualTo("5");
+        assertThat(answerTo("get \"a\"")).isEqualTo("\"a\"");
+        assertThat(answerTo("mold get [1 2]")).isEqualTo("\"[1 2]\"");
+    }
+
+    @Test
+    @DisplayName("GET of a path evaluates the path")
+    void getOfAPathEvaluatesIt() {
+        assertThat(answerTo("o: make object! [a: 1] get 'o/a")).isEqualTo("1");
+    }
+
+    @Test
+    @DisplayName("GET of an object answers a block of its values, without SELF")
+    void getOfAnObjectAnswersItsValues() {
+        // `Copy_Block(VAL_OBJ_FRAME(word), 1)` -- the 1 skips the first slot,
+        // which is SELF. Every object holds one and it points back at the
+        // object, thus a block carrying it could not be printed.
+        assertThat(answerTo("o: make object! [a: 1 b: 2] mold get o")).isEqualTo("\"[1 2]\"");
+        assertThat(answerTo("o: make object! [a: 1] block? get o")).isEqualTo(TRUE);
     }
 
     @Test

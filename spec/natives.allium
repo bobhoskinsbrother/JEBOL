@@ -472,12 +472,67 @@ rule AskingForAWordAnObjectHasNotGotAnswersNone {
     ensures: CallResult(value: none)
 }
 
--- GET of none answers none, because GET's argument is untyped in Rebol and
--- none is what IN just answered. The two are written to work together.
-rule GettingNoneAnswersNone {
+-- An error and a port answer IN as an object does, because each is an object
+-- underneath. `in err 'id` gives the word bound to the error.
+rule AnErrorAndAPortAnswerInAsAnObjectDoes {
+    when: EvaluateCall(in_context, subject, word)
+    requires: is_error(subject) or is_port(subject)
+    ensures: CallResult(value: word_bound_to(subject, word))
+}
+
+-- IN with a block for its first argument searches the block. It reads each
+-- item, looks a word up as it goes, and answers the first item that is an
+-- object holding the wanted word. No such item answers none, and a second
+-- argument that is not a word raises.
+--
+-- This is how code asks a list of objects which of them owns a field.
+rule InSearchesABlockOfObjects {
+    when: EvaluateCall(in_context, subject, word)
+    requires: is_block(subject) and is_word(word)
+    ensures: CallResult(
+        value: first_object_in(subject, that_holds: word).word_bound_to(word))
+}
+
+-- IN with a block for its SECOND argument is a different function under the
+-- same name. It binds that block into the object, deeply, and answers the
+-- block. Nothing is read and nothing is searched for.
+--
+-- The two forms are told apart by which argument is the block, which is why
+-- reading the specification as "IN takes an object and a word" gets one of
+-- them wrong. Rebol's C calls this one "Special form: IN object block".
+rule InWithABlockBindsThatBlockAndAnswersIt {
+    when: EvaluateCall(in_context, subject, block)
+    requires: is_object(subject) and is_block(block)
+    ensures: CallResult(value: block, block_is_bound_to: subject)
+}
+
+-- GET of anything that is not a word, a path or an object answers that thing.
+-- `get 5` is 5 and `get "a"` is "a". The C's last branch is one line:
+-- `else val = word;`
+--
+-- That is the general rule, and GET of none answering none is one case of it
+-- rather than a rule of its own. Writing only the none case leaves `get 5`
+-- refusing a number for no reason a caller can see.
+rule GettingAnythingElseAnswersItself {
     when: EvaluateCall(get, subject)
-    requires: subject = none
-    ensures: CallResult(value: none)
+    requires: not (is_any_word(subject) or is_path(subject) or is_object(subject))
+    ensures: CallResult(value: subject)
+}
+
+-- GET of a path evaluates the path.
+rule GettingAPathEvaluatesIt {
+    when: EvaluateCall(get, subject)
+    requires: is_path(subject)
+    ensures: CallResult(value: result_of(subject))
+}
+
+-- GET of an object answers a block of its values, and SELF is not among them.
+-- Every object holds SELF and it points back at the object, thus a block that
+-- carried it could not be printed.
+rule GettingAnObjectAnswersItsValues {
+    when: EvaluateCall(get, subject)
+    requires: is_object(subject)
+    ensures: CallResult(value: field_values_of(subject, excluding: self))
 }
 
 -- === Reading and writing one bit of a set =================

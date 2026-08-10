@@ -2603,11 +2603,41 @@ public final class Natives {
         // IN gives a word bound to the object's own context, which is how a
         // field can be reached by a name worked out at runtime rather than
         // written into a path.
+        // Three forms under one name, and Rebol's C tells them apart by which
+        // argument is a block.
+        //
+        //   in <object> <word>   the word bound to the object, or none
+        //   in <object> <block>  the block bound to the object, and the block
+        //   in <block> <word>    the first object in the block holding it
+        //
+        // The middle one the C calls "Special form: IN object block". Reading
+        // the specification as "IN takes an object and a word" gets two of the
+        // three wrong.
+        //
+        // An error and a port are objects underneath and answer as one does:
+        // `frame = IS_ERROR(val) ? VAL_ERR_OBJECT(val) : VAL_OBJ_FRAME(val)`.
         define("in", List.of(
-                        Parameter.required("object", Set.of(Datatype.OBJECT)),
-                        Parameter.required("word", Set.of(Datatype.WORD))),
+                        Parameter.required("object", Set.of(Datatype.OBJECT, Datatype.ERROR,
+                                Datatype.PORT, Datatype.BLOCK, Datatype.PAREN)),
+                        Parameter.required("word", Set.of(Datatype.WORD, Datatype.LIT_WORD,
+                                Datatype.GET_WORD, Datatype.SET_WORD, Datatype.REFINEMENT,
+                                Datatype.ISSUE, Datatype.BLOCK, Datatype.PAREN))),
                 (arguments, evaluator, context) -> {
-                    ObjectValue object = (ObjectValue) arguments.get(0);
+                    if (arguments.getFirst() instanceof BlockValue searched
+                            && searched.datatype() != Datatype.PATH) {
+                        return firstHolderIn(searched, arguments.get(1), evaluator, context);
+                    }
+                    Context frame = contextOf(arguments.getFirst());
+                    // A block as the second argument is the special form: bind
+                    // it into the object and answer the block.
+                    // Bound where it stands, and the same block answered:
+                    // `Bind_Block(...); return R_ARG2`. The caller's block is
+                    // bound afterwards, which is what `b: [a] in o b do b`
+                    // depends on. Copying instead leaves the caller's block
+                    // unbound and the call looking as though it did nothing.
+                    if (arguments.get(1) instanceof BlockValue body) {
+                        return Binder.bindInPlace(body, frame);
+                    }
                     WordValue word = (WordValue) arguments.get(1);
                     // A word the object does not hold answers none rather
                     // than refusing. That is what makes
@@ -2616,10 +2646,10 @@ public final class Natives {
                     // reads its awake handler exactly that way. Refusing
                     // broke the idiom at the first absent field, and the
                     // refusal read as a bad path rather than as no field.
-                    if (!object.context().holds(word.canonical())) {
+                    if (!frame.holds(word.canonical())) {
                         return NoneValue.none();
                     }
-                    return word.boundTo(object.context());
+                    return word.boundTo(frame);
                 });
 
         // COLLECT-WORDS gathers the words a block uses, which is what
@@ -4004,17 +4034,33 @@ public final class Natives {
         // asks whether a word has a value without having to catch an
         // error to find out.
         // GET's argument is untyped in Rebol -- `word {Word, path, object to
-        // get}` -- so none reaches it and answers itself. IN answers none for
-        // an absent field, and the two are written to work together.
-        define("get", List.of(Parameter.required("word",
-                        Set.of(Datatype.WORD, Datatype.LIT_WORD, Datatype.GET_WORD,
-                                Datatype.SET_WORD, Datatype.NONE))),
+        // get}` -- and the C has four branches for it. A word is looked up. A
+        // path is evaluated. An object answers a block of its values. And
+        // anything else answers itself, which is one line: `else val = word;`
+        //
+        // That last branch is the general rule, and `get none` answering none
+        // is one case of it. Writing only the none case leaves `get 5`
+        // refusing a number for no reason a caller can see.
+        define("get", List.of(Parameter.required("word")),
                 Set.of("any"),
                 (arguments, evaluator, context, refinements) -> {
-                    if (arguments.get(0) instanceof NoneValue) {
-                        return NoneValue.none();
+                    if (arguments.get(0) instanceof BlockValue path
+                            && path.datatype() == Datatype.PATH) {
+                        return evaluator.evaluateOrRaise(
+                                BlockValue.block(List.of(path)), context);
                     }
-                    Value held = slotOf((WordValue) arguments.get(0)).value();
+                    // SELF is left out, which is what the 1 in
+                    // `Copy_Block(VAL_OBJ_FRAME(word), 1)` skips. Every object
+                    // holds one and it points back at the object, thus a block
+                    // carrying it could not be printed.
+                    if (arguments.get(0) instanceof ObjectValue object) {
+                        return BlockValue.block(List.copyOf(
+                                object.context().fieldsExcludingSelf().values()));
+                    }
+                    if (!(arguments.get(0) instanceof WordValue named)) {
+                        return arguments.get(0);
+                    }
+                    Value held = slotOf(named).value();
                     if (held instanceof UnsetValue && !refinements.contains("any")) {
                         throw Raised.of(EvaluationFailure.NO_VALUE,
                                 ((WordValue) arguments.get(0)).spelling() + " has no value");
@@ -9246,6 +9292,65 @@ public final class Natives {
             String line = evaluator.console().readLine();
             return line == null ? NoneValue.none() : StringValue.of(line);
         });
+    }
+
+    /**
+     * The context behind a value IN will look a word up in.
+     *
+     * <p>An object, an error and a port are all a context underneath, which is
+     * why the C reads {@code IS_ERROR(val) ? VAL_ERR_OBJECT(val) :
+     * VAL_OBJ_FRAME(val)} and why its comment on the argument says "object,
+     * error, port, block".
+     */
+    private static Context contextOf(Value value) {
+        return switch (value) {
+            case ObjectValue object -> object.context();
+            case PortValue port -> port.context();
+            case ErrorValue raised -> contextOfError(raised);
+            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
+                    "in wanted an object, an error, a port or a block, not "
+                            + value.datatype().literalSpelling());
+        };
+    }
+
+    /**
+     * An error as a context, so that IN can look a field up in one.
+     *
+     * <p>An error is read like an object and is not built as one, thus its
+     * fields are gathered here rather than held in a context of their own.
+     */
+    private static Context contextOfError(ErrorValue raised) {
+        Context fields = Context.root();
+        for (String name : ErrorValue.FIELDS) {
+            raised.field(name).ifPresent(value -> fields.set(name, value));
+        }
+        return fields;
+    }
+
+    /**
+     * The first object in a block that holds the wanted word, as that word
+     * bound to it, or none.
+     *
+     * <p>The C reads each item through {@code Get_Simple_Value}, thus a word
+     * naming an object counts as the object. This is how code asks a list of
+     * objects which of them owns a field.
+     */
+    private static Value firstHolderIn(
+            BlockValue searched, Value wanted, Evaluator evaluator, Context context) {
+
+        if (!(wanted instanceof WordValue word) || wanted instanceof BlockValue) {
+            return raiseWrongArgument(wanted, "in", "word");
+        }
+        for (Value item : searched.remaining()) {
+            Value resolved = item instanceof WordValue named && named.isBound()
+                    ? evaluator.evaluateOrRaise(BlockValue.block(List.of(named)), context)
+                    : item;
+            if (resolved instanceof ObjectValue object
+                    && object.context().holds(word.canonical())) {
+                return word.boundTo(object.context());
+            }
+        }
+        return NoneValue.none();
     }
 
     /** The three modes a console port has, from Console_Actor's A_MODIFY. */

@@ -39,6 +39,26 @@ public final class Binder {
                 new BlockStorage(bound), 1, block.datatype());
     }
 
+    /**
+     * The same block, with its own words bound where they stand.
+     *
+     * <p>{@code Bind_Block(frame, VAL_BLK(word), BIND_DEEP)} and then
+     * {@code return R_ARG2}: Rebol binds the caller's block and answers that
+     * block, thus the caller's block is bound afterwards. IN's special form
+     * depends on it, because `b: [a]  in o b  do b` reads the object's field.
+     *
+     * <p>{@link #bind} copies instead, which is right everywhere else: binding
+     * a body the caller still holds would change code the caller wrote. Only
+     * IN asks for the other behavior, and it asks for it on purpose.
+     */
+    public static BlockValue bindInPlace(BlockValue block, Context context) {
+        for (int at = 0; at < block.lengthFromHere(); at++) {
+            int where = block.index() + at;
+            block.storage().set(where, bindValue(block.storage().at(where), context));
+        }
+        return block;
+    }
+
     private static Value bindValue(Value value, Context context) {
         return switch (value) {
             case WordValue word -> context.knows(word.canonical())
