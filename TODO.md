@@ -111,33 +111,25 @@ the two is redundant and it is not the generator.
 `abs` is the smallest one and a good first move: `base-constants.reb` is
 already loaded, so deleting the Java definition should need nothing.
 
-# 2. The port datatype
+# 2. The file library is done
 
-JEBOL now loads the two files from Rebol that hold the file functions.
-ORDER.txt lists mezz-func.reb and mezz-files.reb, every file from Rebol loads
-to its end, and the list of early stops in BorrowedFilesLoadWholeTest is
-empty for the first time. JEBOL gets 25 more functions as a result.
+JEBOL loads mezz-func.reb, mezz-files.reb and sys-ports.reb from Rebol. Every
+file from Rebol loads to its end. The list of early stops in
+BorrowedFilesLoadWholeTest is empty.
 
-At first these 2 files made 21 unit tests fail. Each cause was an error in
-JEBOL, and JEBOL is now correct in 3 of the 4 causes.
+Rebol's own INPUT and ASK run on Rebol's own port datatype. There is no
+stand-in left over them.
 
-**One cause remains, and it is the port datatype.** mezz-files.reb defines
-INPUT and ASK, and both give an error, because Rebol writes them on
-system/ports/input:
+The port datatype is built far enough for the console. Java holds OPEN,
+SET-SCHEME, CLOSE, MODIFY, the datatype and the console actor. REBOL holds
+MAKE-PORT* and MAKE-SCHEME, and OPEN calls them.
 
-```rebol
-port: system/ports/input
-if any [not port? port  not open? port] [
-    system/ports/input: port: open [scheme: 'console]
-]
-```
+**What the port datatype still needs**, and each is a separate piece of work:
 
-The natives that they replaced work, thus Interpreter sets those 2 names to
-the natives again. To finish the port datatype, delete
-keepTheNativesRebolCannotReplaceYet.
-
-The port datatype also gives 5 of the functions in section 4: open, open?,
-close, create, and query on a port.
+- A file scheme and a directory scheme, which give 5 functions in section 4:
+  open, open?, close, create, and query on a port.
+- WRITE to a port, and QUERY of a port.
+- A network scheme, which needs the network service.
 
 Also unblocked once base-files.reb can load: size?, modified?, delete-dir,
 file-type?, import, intern. That file is out for a different reason. Its LOAD
