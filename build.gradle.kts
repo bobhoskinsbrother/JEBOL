@@ -39,6 +39,17 @@ tasks.withType<JavaCompile>().configureEach {
 tasks.test {
     useJUnitPlatform()
 
+    // The tests run with no display, which is what a server has and what CI
+    // has. Two reasons, and the second is the one that cost a killed build.
+    //
+    // It makes the window adapter's refusal path the one that runs, rather
+    // than being skipped on every developer machine and exercised only in CI.
+    // And it makes it impossible for a test to open a dialog and wait: Swing
+    // asks for a screen, finds none, and the adapter refuses before it gets
+    // that far. A test that opened a colour chooser hung the build until
+    // someone noticed.
+    systemProperty("java.awt.headless", "true")
+
     // The corpus is test input. Without this, changing a .corpus file leaves
     // the test task up to date and the change never runs, which is how a new
     // corpus file can look green before anything has read it.
