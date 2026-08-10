@@ -111,43 +111,39 @@ the two is redundant and it is not the generator.
 `abs` is the smallest one and a good first move: `base-constants.reb` is
 already loaded, so deleting the Java definition should need nothing.
 
-# 2. Finish the file-library import
+# 2. The port datatype
 
-`mezz-func.reb` and `mezz-files.reb` are on disk and out of `ORDER.txt`.
-Adding both makes **every borrowed file load to its end for the first
-time** and gains 25 functions: `clos`, `closure` with `/with`, `has`,
-`context`, `map`, `task`, `enum`, `wildcard`, `confirm`, `dir-tree`,
-`list-dir`, `in-dir`, `to-relative-file`, and the twelve
-`mezz-shell.reb` defines.
+JEBOL now loads the two files from Rebol that hold the file functions.
+ORDER.txt lists mezz-func.reb and mezz-files.reb, every file from Rebol loads
+to its end, and the list of early stops in BorrowedFilesLoadWholeTest is
+empty for the first time. JEBOL gets 25 more functions as a result.
 
-It cost 21 unit assertions when first measured. **Eleven are now fixed** --
-CLEAN-PATH needed CASE to answer true for a truthy condition with no block
-after it, and MAKE to take a value as a prototype rather than only a
-datatype. Both were C behaviours, both are ported, and both were general
-rules rather than anything to do with files.
+At first these 2 files made 21 unit tests fail. Each cause was an error in
+JEBOL, and JEBOL is now correct in 3 of the 4 causes.
 
-**Two blockers remain, and each is bigger than the import:**
+**One cause remains, and it is the port datatype.** mezz-files.reb defines
+INPUT and ASK, and both give an error, because Rebol writes them on
+system/ports/input:
 
-- **`input` and `ask`** (7 assertions) want `system/ports/input` and
-  `open [scheme: 'console]`, which is the whole `port!` datatype. JEBOL's
-  own INPUT and ASK are Java natives duplicating Rebol's REBOL, so they are
-  forks and Rebol's should win -- once there is a port to read.
-- **`enum`** (4 assertions) wants `system/standard/enum`, and its PARSE rule
-  uses INSERT and CHANGE as keywords. The values come out shifted by the
-  number of names, which points at one of those two keywords or at
-  FUNCTION's collection of locals. A real defect either way, and worth
-  finding on its own: it is in the evaluator rather than in ENUM.
+```rebol
+port: system/ports/input
+if any [not port? port  not open? port] [
+    system/ports/input: port: open [scheme: 'console]
+]
+```
 
-Then delete the `mezz-shell.reb` line from `BorrowedFilesLoadWholeTest`'s
-`STOPS_ON`, which is what that test's javadoc says to do when a stop is
-fixed, and the partial-load count reaches zero.
+The natives that they replaced work, thus Interpreter sets those 2 names to
+the natives again. To finish the port datatype, delete
+keepTheNativesRebolCannotReplaceYet.
 
-Also unblocked once `base-files.reb` can be imported: `size?`, `modified?`,
-`delete-dir`, `file-type?`, `import`, `intern`. That file is out for a
-different reason: its `LOAD` is the REBOL-level one and wants the whole of
-`sys/load-header` underneath it, which costs 115 assertions. Getting that
-LOAD to work is its own piece of work and it is worth six functions plus
-whatever `sys-load.reb` brings.
+The port datatype also gives 5 of the functions in section 4: open, open?,
+close, create, and query on a port.
+
+Also unblocked once base-files.reb can load: size?, modified?, delete-dir,
+file-type?, import, intern. That file is out for a different reason. Its LOAD
+is the one written in REBOL and wants all of sys/load-header under it, which
+costs 115 assertions. To make that LOAD work is its own piece of work, and it
+is worth 6 functions plus what sys-load.reb adds.
 
 # 3. What is wrong with what is ported
 
@@ -209,8 +205,8 @@ console, environment and the working directory all exist. What is left is
 the functions on top.
 
 - **Ports as a datatype** (5): `open`, `open?`, `close`, `query` on a port,
-  `create`. `port!` is a datatype JEBOL has not got, and this is really its
-  own piece of work rather than part of the boundary.
+  `create`. See section 2: the same datatype blocks INPUT and ASK, so one
+  piece of work clears both.
 - ~~**The WINDOWS service** (5)~~ **done.** `browse`, `request-file`,
   `request-dir`, `request-color`, `request-password`, over one grant, with a
   `WindowPort` and all three refusal reasons wired. A declined dialog answers
