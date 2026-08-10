@@ -994,7 +994,12 @@ public final class Parser {
 
     private static boolean looselyEqual(Value left, Value right) {
         if (left instanceof StringValue leftText && right instanceof StringValue rightText) {
-            return leftText.equalsIgnoringCase(rightText);
+            // The datatype counts here, because matching a rule against an
+            // item of a block follows Cmp_Value rather than Compare_Values,
+            // and Cmp_Value exempts only the numbers and the words from the
+            // datatype check. So a %a rule does not match a "a" item.
+            return leftText.datatype() == rightText.datatype()
+                    && leftText.equalsIgnoringCase(rightText);
         }
         if (left instanceof WordValue leftWord && right instanceof WordValue rightWord) {
             return leftWord.namesSameAs(rightWord);

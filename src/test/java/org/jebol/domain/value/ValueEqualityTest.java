@@ -119,11 +119,14 @@ class ValueEqualityTest {
         }
 
         @Test
-        @DisplayName("loose equality still respects the datatype")
-        void looseEqualityStillChecksDatatype() {
+        @DisplayName("loose equality ignores which string datatype each side is")
+        void looseEqualityIgnoresTheDatatype() {
+            // Compare_Values sends any string against any other string to
+            // CT_String, which compares the contents alone. This asserted
+            // the opposite until the C was read: `equal? "a" %a` is true.
             assertThat(StringValue.of("REBOL")
                     .equalsIgnoringCase(StringValue.of("rebol", Datatype.FILE)))
-                    .isFalse();
+                    .isTrue();
         }
 
         @Test

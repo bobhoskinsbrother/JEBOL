@@ -67,6 +67,36 @@ enum NativeCategory {
     | failure       -- try, error, throw, catch
 }
 
+-- How closely two values have to agree before a comparison calls them
+-- equal, and how far it will go to compare two different datatypes. The
+-- ten comparison natives ask one of these six questions between them.
+--
+-- Four questions are about sameness and two are about order. Reading down
+-- the list, each sameness question is stricter than the one above it.
+enum ComparisonStrictness {
+    -- = and EQUAL?, and NOT-EQUAL? and <> negated. Folds the case of a
+    -- character or a string, coerces across the datatypes named in the
+    -- rules below, and allows two decimals to differ in the last few bits.
+    equal
+
+    -- EQUIV?, and NOT-EQUIV? negated. Coerces and folds exactly as
+    -- `equal` does, and then insists on the bits of a decimal.
+    | equiv
+
+    -- == and STRICT-EQUAL?, and !== and STRICT-NOT-EQUAL? negated. Minds
+    -- the case and refuses two different datatypes rather than coercing.
+    | strict_equal
+
+    -- =? and SAME?. Asks whether the two are one value.
+    | same
+
+    -- GREATER-OR-EQUAL? and >=, and LESSER? and < negated.
+    | greater_or_equal
+
+    -- GREATER? and >, and LESSER-OR-EQUAL? and <= negated.
+    | greater
+}
+
 ------------------------------------------------------------
 -- Entities and Variants
 ------------------------------------------------------------
@@ -106,6 +136,40 @@ entity NativeDefinition {
         -- The other seven are the obvious twins: != is NOT-EQUAL?,
         -- !== is STRICT-NOT-EQUAL?, ** is POWER, & is AND~, | is OR~,
         -- << is SHIFT-LEFT and >> is SHIFT-RIGHT.
+}
+
+-- One comparison, as all ten comparison natives reach it. The strictness
+-- is the whole of the difference between them: nothing else about the call
+-- changes from EQUAL? to LESSER?.
+entity ComparisonRequest {
+    left: values/Value
+    right: values/Value
+    strictness: ComparisonStrictness
+
+    -- Whether the two values can be brought to a common datatype at this
+    -- strictness. True when they share one already; true across the four
+    -- number datatypes, between a time and the three non-money numbers,
+    -- between a character and an integer, among the word datatypes and
+    -- among the string ones; false for the two strictest strictnesses
+    -- whenever the datatypes differ at all.
+    coerces: Boolean
+
+    -- True where a series function asked -- FIND, SELECT, SWITCH, SORT,
+    -- UNIQUE, or the object field walk. Those cross fewer datatype
+    -- boundaries than the comparison natives do, so who asked changes the
+    -- answer.
+    asked_by_a_series_function: Boolean
+
+    -- A comparison that cannot bring the two together either answers false
+    -- or refuses to answer, and which one it does depends only on whether
+    -- the question was about order.
+    refuses_to_answer: not coerces
+        and strictness in {greater_or_equal, greater}
+
+    invariant SamenessQuestionsAlwaysAnswer {
+        strictness in {equal, equiv, strict_equal, same}
+            implies refuses_to_answer = false
+    }
 }
 
 ------------------------------------------------------------
@@ -218,15 +282,31 @@ rule PairArithmeticAppliesToEachHalf {
         y: apply(operation, y_of(left), y_of(right)))
 }
 
--- Two pairs compare by both halves at once, so neither < nor > is a
--- total order over pairs: 1x2 < 2x3 is true and 1x2 < 2x1 is false, and
--- so is 1x2 > 2x1. Code that sorts pairs cannot lean on trichotomy.
-rule PairComparisonNeedsBothHalves {
-    when: EvaluateComparison(operation, left, right)
-    requires: is_pair(left) and is_pair(right)
+-- Two pairs are equal when both halves are. They are ordered on the first
+-- half alone, and the second half is looked at only to break a tie, so
+-- 1x2 < 2x1 is true: the x halves settle it before the y halves are
+-- reached. That makes < a total order over pairs.
+--
+-- Both-halves-must-agree was what JEBOL did until Cmp_Pair was read. It is
+-- the rule the equality gets and not the one the ordering gets, and it
+-- answers false for 1x2 < 2x1 where Rebol answers true.
+rule PairEqualityNeedsBothHalves {
+    when: EvaluateComparison(request)
+    requires: request.strictness in {equal, equiv, strict_equal}
+    requires: is_pair(request.left) and is_pair(request.right)
     ensures: ComparisonHolds(
-        holds: holds(operation, x_of(left), x_of(right))
-            and holds(operation, y_of(left), y_of(right)))
+        holds: x_of(request.left) = x_of(request.right)
+            and y_of(request.left) = y_of(request.right))
+}
+
+rule PairOrderingBreaksTheTieOnTheSecondHalf {
+    when: EvaluateComparison(request)
+    requires: request.strictness in {greater_or_equal, greater}
+    requires: is_pair(request.left) and is_pair(request.right)
+    ensures: ComparisonHolds(
+        holds: if x_of(request.left) != x_of(request.right):
+                holds(request.strictness, x_of(request.left), x_of(request.right))
+            else: holds(request.strictness, y_of(request.left), y_of(request.right)))
 }
 
 -- === Tuples ================================================
@@ -281,17 +361,20 @@ rule TupleDivisionByADecimalRounds {
 -- further question of whether the two were written to the same length,
 -- and those two are not.
 rule TupleEqualityIgnoresTheLength {
-    when: EvaluateComparison(equal, left, right)
-    requires: is_tuple(left) and is_tuple(right)
-    ensures: ComparisonHolds(holds: octets_to_twelve(left) = octets_to_twelve(right))
+    when: EvaluateComparison(request)
+    requires: request.strictness = equal
+    requires: is_tuple(request.left) and is_tuple(request.right)
+    ensures: ComparisonHolds(
+        holds: octets_to_twelve(request.left) = octets_to_twelve(request.right))
 }
 
 rule TupleStrictEqualityMindsTheLength {
-    when: EvaluateComparison(strict_equal, left, right)
-    requires: is_tuple(left) and is_tuple(right)
+    when: EvaluateComparison(request)
+    requires: request.strictness = strict_equal
+    requires: is_tuple(request.left) and is_tuple(request.right)
     ensures: ComparisonHolds(
-        holds: octets_to_twelve(left) = octets_to_twelve(right)
-            and left.segment_count = right.segment_count)
+        holds: octets_to_twelve(request.left) = octets_to_twelve(request.right)
+            and request.left.segment_count = request.right.segment_count)
 }
 
 -- A path reads any of the shown octets, so a tuple of one octet answers
@@ -352,6 +435,178 @@ rule DivisionByZeroRaises {
     requires: operation in {divide, remainder}
     requires: is_zero(right)
     ensures: ArithmeticFailed(failure: zero_divide)
+}
+
+-- === Comparison ============================================
+
+-- There is one comparison in the language and every comparison native is
+-- a call to it with a strictness. That is worth stating plainly, because
+-- writing a separate answer per native is how the operators come to
+-- disagree with the words they are twins of.
+--
+-- Only two of the four ordering natives ask a question of their own.
+-- GREATER? asks `greater` and LESSER-OR-EQUAL? asks the same thing and
+-- negates the answer; GREATER-OR-EQUAL? asks `greater_or_equal` and
+-- LESSER? asks the same thing and negates it. So `a < b` is worked out as
+-- "not (a >= b)", and everything the rules below say about ordering --
+-- including which datatypes refuse to be ordered at all -- holds for < and
+-- <= as much as for > and >=.
+
+-- There are two comparisons, not one, and the rules below are the looser
+-- one. A comparison native reaches it. A series function -- FIND, SELECT,
+-- SWITCH, SORT, UNIQUE, and the walk that compares two objects field by
+-- field -- reaches a stricter one that crosses only two datatype
+-- boundaries: among the four numbers, and among the six words. It crosses
+-- neither the string boundary, nor the time-to-number one, nor the
+-- character-to-integer one.
+--
+-- So the same two values get two answers depending on who asked.
+-- `equal? "a" %a` is true and `equal? ["a"] [%a]` is false;
+-- `equal? 0:0:1 1` is true and `equal? [0:0:1] [1]` is false. The three
+-- pairings where they part company are the string one, the time one and
+-- the character one, and each has a Rebol assertion of its own.
+--
+-- This is not a tidiness problem to be fixed by making them agree. Making
+-- the series functions looser makes `select [%a [1] "a" [2]] "a"` answer
+-- the file's block, which Rebol's own suite asserts against.
+rule SeriesFunctionsCrossFewerDatatypeBoundaries {
+    when: EvaluateComparison(request)
+    requires: request.asked_by_a_series_function
+    requires: request.left.datatype != request.right.datatype
+    requires: not (is_number(request.left) and is_number(request.right))
+    requires: not (is_word(request.left) and is_word(request.right))
+    ensures: ComparisonHolds(holds: false)
+}
+
+-- The four number datatypes compare as numbers whichever pair of them
+-- meets, so all sixteen combinations of integer, decimal, percent and
+-- money answer about the amounts. `97 = 97.0`, `97 = 9700%` and
+-- `$1 = 1` are all true.
+rule NumbersCompareAcrossTheirDatatypes {
+    when: EvaluateComparison(request)
+    requires: request.coerces
+    requires: is_number(request.left) and is_number(request.right)
+    ensures: ComparisonHolds(holds: holds(request.strictness,
+        amount_of(request.left), amount_of(request.right)))
+}
+
+-- A time compares as its length in seconds, so `0:0:1 = 1` and
+-- `0:0:1 < 2.0`. It meets an integer, a decimal and a percent this way and
+-- does not meet a money, so `equal? 0:0:1 $1` is false rather than true.
+rule TimeComparesAsItsSeconds {
+    when: EvaluateComparison(request)
+    requires: request.coerces
+    requires: is_time(request.left) or is_time(request.right)
+    ensures: ComparisonHolds(holds: holds(request.strictness,
+        seconds_of(request.left), seconds_of(request.right)))
+}
+
+-- A character meets an integer and no other number, so `#"a" = 97` is
+-- true while `#"a" = 97.0` is false and `#"a" < 98.0` refuses to answer.
+-- The three excluded types are excluded on purpose: comparing a code point
+-- against a fraction or an amount of money is a question with no sensible
+-- answer, and the loose form of it is a typo that would otherwise pass.
+rule CharacterComparesWithAnIntegerAndNothingElseNumeric {
+    when: EvaluateComparison(request)
+    requires: request.coerces
+    requires: is_char(request.left) and is_integer(request.right)
+    ensures: ComparisonHolds(holds: holds(request.strictness,
+        codepoint_of(request.left), amount_of(request.right)))
+}
+
+-- Strict equality and sameness mind the datatype before they look at the
+-- value, so two different datatypes are not equal whatever they hold.
+-- `97 == 97.0` is false, and so are `1 == 1.0`, `$1 == 1` and
+-- `#"a" == 97`. This is the whole difference between == and =.
+rule StrictComparisonMindsTheDatatype {
+    when: EvaluateComparison(request)
+    requires: request.strictness in {strict_equal, same}
+    requires: request.left.datatype != request.right.datatype
+    ensures: ComparisonHolds(holds: false)
+}
+
+-- Two datatypes that do not coerce are simply not equal. Asking whether a
+-- character equals a string, or an integer equals a pair, answers false
+-- rather than failing, so `#"a" <> "a"` is true and needs no TRY around
+-- it.
+rule UncomparableDatatypesAreNotEqual {
+    when: EvaluateComparison(request)
+    requires: not request.coerces
+    requires: not request.refuses_to_answer
+    ensures: ComparisonHolds(holds: false)
+}
+
+-- Ordering the same two values raises instead, because there is no false
+-- answer to "is this one below that one" when the question does not apply.
+-- `#"a" < "a"`, `90 < 1x1` and `0:0:0 < "a"` all raise invalid-compare.
+rule OrderingUncomparableDatatypesRaises {
+    when: EvaluateComparison(request)
+    requires: request.refuses_to_answer
+    ensures: ComparisonFailed(failure: invalid_compare)
+}
+
+-- An object is never ordered, whatever it holds, so `>` and `<` on two of
+-- them raise invalid-compare rather than comparing field by field.
+rule ObjectsRefuseToBeOrdered {
+    when: EvaluateComparison(request)
+    requires: request.strictness in {greater_or_equal, greater}
+    requires: is_object(request.left) and is_object(request.right)
+    ensures: ComparisonFailed(failure: invalid_compare)
+}
+
+-- Two objects are equal when they declare the same field names in the same
+-- order and each pair of values is equal. The values are compared as a
+-- block's items are, so a number field coerces across its datatypes and
+-- `construct [c: 1]` equals `construct [c: $1]`. Strict equality compares
+-- the same fields strictly, so those two are not strictly equal.
+rule ObjectEqualityComparesFieldsAsValues {
+    when: EvaluateComparison(request)
+    requires: request.strictness in {equal, equiv, strict_equal}
+    requires: is_object(request.left) and is_object(request.right)
+    ensures: ComparisonHolds(
+        holds: field_names_of(request.left) = field_names_of(request.right)
+            and field_positions_of(request.left).all(at => holds(request.strictness,
+                    field_value_at(request.left, at), field_value_at(request.right, at))))
+}
+
+-- How far apart two decimals may be and still be equal, counted in steps
+-- of the floating point representation rather than as a fixed amount, so
+-- the allowance scales with the size of the numbers.
+--
+-- Twenty-one for `equal` and none at all for `equiv`. The twenty-one is
+-- not a round number and not a guess: it is the smallest allowance under
+-- which `100% // 3% = 1%` is true, which is the assertion Rebol's own
+-- source cites beside the constant.
+rule EqualAllowsTwentyOneStepsBetweenDecimals {
+    when: EvaluateComparison(request)
+    requires: request.strictness = equal
+    requires: is_decimal(request.left) or is_decimal(request.right)
+    ensures: ComparisonHolds(
+        holds: representation_steps_between(request.left, request.right) <= 21)
+}
+
+rule EquivAllowsNoStepsBetweenDecimals {
+    when: EvaluateComparison(request)
+    requires: request.strictness = equiv
+    requires: is_decimal(request.left) or is_decimal(request.right)
+    ensures: ComparisonHolds(
+        holds: representation_steps_between(request.left, request.right) = 0)
+}
+
+-- A NaN is a number that is not equal to itself, and the four strictnesses
+-- disagree about whether to say so. `equal` and `equiv` allow a step
+-- count only between real numbers, so both call two NaNs equal only where
+-- the allowance is more than nothing: `1.#NaN = 1.#NaN` is true and
+-- `equiv? 1.#NaN 1.#NaN` is false. `strict_equal` compares the bits and
+-- excludes a NaN by name, so `1.#NaN == 1.#NaN` is false. `same` compares
+-- the bits with no exclusion, so `same? 1.#NaN 1.#NaN` is true.
+--
+-- No two of the four agree, which is why each is written down rather than
+-- derived from another.
+rule NotANumberIsEqualAndNotStrictlyEqualToItself {
+    when: EvaluateComparison(request)
+    requires: is_not_a_number(request.left) and is_not_a_number(request.right)
+    ensures: ComparisonHolds(holds: request.strictness in {equal, same})
 }
 
 -- === Two names, two different functions ====================
@@ -543,6 +798,16 @@ surface BuiltInFunctions {
     exposes:
         NativeCategory
         NativeDefinition
+        ComparisonStrictness
+        ComparisonRequest
+
+    @guarantee ComparisonIsOneAnswerAskedTenWays
+        -- All ten comparison natives reach one comparison, and the
+        -- strictness is the only thing that differs between them. An
+        -- implementation that answers each native separately drifts: the
+        -- operator and the word it is a twin of start disagreeing, and the
+        -- disagreement shows up first on a cross-datatype call nobody
+        -- wrote a test for.
 
     @guarantee ConditionalTruthIsOneRule
         -- Every native that asks whether a value is true gets the same
@@ -939,18 +1204,25 @@ open question "A base written with a sign is refused by a real R3 -- `+2#{}` and
 --
 -- The allowance is counted in steps of the floating point representation
 -- rather than as a fixed amount, so it scales with the size of the
--- numbers: ten steps apart or fewer is equal, and more is not. Measured
--- at the boundary, 1.0 equals 1.000000000000002 and does not equal
--- 1.00000000000002.
+-- numbers: twenty-one steps apart or fewer is equal, and more is not.
+-- At the boundary, 1.0 equals 1.0000000000000047, which is twenty-one
+-- steps above it, and does not equal 1.0000000000000049, which is
+-- twenty-two.
+--
+-- Twenty-one was read from Rebol's own source rather than probed. An
+-- earlier reading of ten made every assertion here pass and made
+-- `100% // 3% = 1%` fail, which is the one Rebol's comment cites beside
+-- the constant.
 --
 -- A fixed tolerance would be wrong in both directions at once, too coarse
 -- for small numbers and far too fine for large ones.
 --
 -- == and SAME? are exact and mind the datatype as well, so
 -- `0.5 == 0.5000000000000001` is false and so is `1 == 1.0` while
--- `1 = 1.0` is true. Two NaNs are equal to each other and a zero equals a
--- negative zero, under both, which is the opposite of what the hardware
--- says on its own.
+-- `1 = 1.0` is true. A zero equals a negative zero under both. The two
+-- part company over NaN: `1.#NaN == 1.#NaN` is false and
+-- `same? 1.#NaN 1.#NaN` is true, because == excludes a NaN by name before
+-- it looks at the bits and SAME? does not.
 --
 -- This is not a detail of the arithmetic natives. Every assertion in a
 -- test suite that computes a decimal and compares it to a written-out one

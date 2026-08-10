@@ -17,6 +17,8 @@ public enum EvaluationFailure {
     TOO_SHORT(ErrorCategory.SCRIPT, "too-short", "nothing there to convert"),
     LOCKED_WORD(ErrorCategory.SCRIPT, "locked-word", "an assignment to a protected slot"),
     INVALID_ARG(ErrorCategory.SCRIPT, "invalid-arg", "an argument that makes no sense here"),
+    INVALID_COMPARE(ErrorCategory.SCRIPT, "invalid-compare",
+            "two datatypes that cannot be put in an order"),
     OUT_OF_RANGE(ErrorCategory.SCRIPT, "out-of-range",
             "a number outside the range this operation allows"),
     NO_REFINE(ErrorCategory.SCRIPT, "no-refine", "a refinement this function does not have"),

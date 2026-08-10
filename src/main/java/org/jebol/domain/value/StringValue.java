@@ -98,9 +98,21 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
         return datatype.hashCode() * 31 + text().hashCode();
     }
 
-    /** REBOL's {@code =}: same datatype, same contents, ignoring case. */
+    /**
+     * REBOL's {@code =}: the same contents, ignoring case and ignoring which
+     * of the string datatypes each side is.
+     *
+     * <p>The datatype really does drop out. {@code Compare_Values} sends any
+     * string against any other string to {@code CT_String}, which compares
+     * the contents and nothing else, so {@code equal? "a" %a} is true and so
+     * is {@code equal? "a" <a>}. Only {@code ==} minds the datatype, and it
+     * minds it before reaching here.
+     *
+     * <p>This method used to insist on the datatype, which read as the
+     * obvious rule and made those two assertions false.
+     */
     public boolean equalsIgnoringCase(StringValue other) {
-        return other.datatype == datatype && other.text().equalsIgnoreCase(text());
+        return other.text().equalsIgnoreCase(text());
     }
 
     @Override

@@ -586,7 +586,7 @@ public final class Natives {
         // java.lang.Math here.
         define("square-root", takesNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.sqrt(asDouble(arguments.get(0)))));
+                        Math.sqrt(Comparison.asDouble(arguments.get(0)))));
         // The first host service JEBOL offers. It reaches outside the
         // interpreter for the time, thus it asks whether the host granted
         // the clock before it answers.
@@ -627,30 +627,30 @@ public final class Natives {
                 });
         define("exp", takesNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.exp(asDouble(arguments.get(0)))));
+                        Math.exp(Comparison.asDouble(arguments.get(0)))));
         define("log-e", takesNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.log(asDouble(arguments.get(0)))));
+                        Math.log(Comparison.asDouble(arguments.get(0)))));
         define("log-10", takesNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.log10(asDouble(arguments.get(0)))));
+                        Math.log10(Comparison.asDouble(arguments.get(0)))));
         // E raised to a power, the other way round from LOG. Named for
         // the mathematics rather than for what it does to its argument,
         // which is why it is not called power-of-e.
         define("exp", takesNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.exp(asDouble(arguments.get(0)))));
+                        Math.exp(Comparison.asDouble(arguments.get(0)))));
         // What is left of a decimal once the whole part is taken off, and
         // it keeps the sign: the fraction of -1.25 is -0.25 and not 0.75.
         define("fraction", List.of(Parameter.required("number", Set.of(
                         Datatype.DECIMAL, Datatype.PERCENT))),
                 (arguments, evaluator, context) -> {
-                    double whole = asDouble(arguments.get(0));
+                    double whole = Comparison.asDouble(arguments.get(0));
                     return DecimalValue.of(whole - (long) whole);
                 });
         define("log-2", takesNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.log(asDouble(arguments.get(0))) / Math.log(2)));
+                        Math.log(Comparison.asDouble(arguments.get(0))) / Math.log(2)));
         // Degrees by default and radians when asked, for the three that
         // take an angle and the three that answer one. Degrees is the
         // default because that is what a script written for R3 expects,
@@ -658,33 +658,33 @@ public final class Natives {
         define("sine", takesNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
-                                ? Math.sin(asDouble(arguments.get(0)))
-                                : Math.sin(Math.toRadians(asDouble(arguments.get(0))))));
+                                ? Math.sin(Comparison.asDouble(arguments.get(0)))
+                                : Math.sin(Math.toRadians(Comparison.asDouble(arguments.get(0))))));
         define("cosine", takesNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
-                                ? Math.cos(asDouble(arguments.get(0)))
-                                : Math.cos(Math.toRadians(asDouble(arguments.get(0))))));
+                                ? Math.cos(Comparison.asDouble(arguments.get(0)))
+                                : Math.cos(Math.toRadians(Comparison.asDouble(arguments.get(0))))));
         define("tangent", takesNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
-                                ? Math.tan(asDouble(arguments.get(0)))
-                                : Math.tan(Math.toRadians(asDouble(arguments.get(0))))));
+                                ? Math.tan(Comparison.asDouble(arguments.get(0)))
+                                : Math.tan(Math.toRadians(Comparison.asDouble(arguments.get(0))))));
         define("arcsine", takesNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
-                                ? Math.asin(asDouble(arguments.get(0)))
-                                : Math.toDegrees(Math.asin(asDouble(arguments.get(0))))));
+                                ? Math.asin(Comparison.asDouble(arguments.get(0)))
+                                : Math.toDegrees(Math.asin(Comparison.asDouble(arguments.get(0))))));
         define("arccosine", takesNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
-                                ? Math.acos(asDouble(arguments.get(0)))
-                                : Math.toDegrees(Math.acos(asDouble(arguments.get(0))))));
+                                ? Math.acos(Comparison.asDouble(arguments.get(0)))
+                                : Math.toDegrees(Math.acos(Comparison.asDouble(arguments.get(0))))));
         define("arctangent", takesNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
-                                ? Math.atan(asDouble(arguments.get(0)))
-                                : Math.toDegrees(Math.atan(asDouble(arguments.get(0))))));
+                                ? Math.atan(Comparison.asDouble(arguments.get(0)))
+                                : Math.toDegrees(Math.atan(Comparison.asDouble(arguments.get(0))))));
 
         // ABSOLUTE keeps the datatype it was given, so the whole number
         // stays whole rather than becoming a decimal on the way.
@@ -775,14 +775,14 @@ public final class Natives {
                         Parameter.required("y", Set.of(Datatype.DECIMAL)),
                         Parameter.required("x", Set.of(Datatype.DECIMAL))),
                 (arguments, evaluator, context) -> DecimalValue.of(Math.atan2(
-                        asDouble(arguments.get(0)), asDouble(arguments.get(1)))));
+                        Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1)))));
 
         define("to-degrees", takesNumbers("radians"),
                 (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.toDegrees(asDouble(arguments.get(0)))));
+                        Math.toDegrees(Comparison.asDouble(arguments.get(0)))));
         define("to-radians", takesNumbers("degrees"),
                 (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.toRadians(asDouble(arguments.get(0)))));
+                        Math.toRadians(Comparison.asDouble(arguments.get(0)))));
 
         // The whole-number functions. Each refuses a fraction rather
         // than truncating it, because divisors and primes are ideas
@@ -809,11 +809,11 @@ public final class Natives {
                     // away. Refusing them is the tempting reading, since
                     // the name says integer, and it is not what a real R3
                     // does: `integer-divide 23.5 10` is 2.
-                    long divisor = (long) asDouble(arguments.get(1));
+                    long divisor = (long) Comparison.asDouble(arguments.get(1));
                     requireNonZero(divisor);
                     // Towards zero rather than downwards, so -7 over 2 is
                     // -3 and not -4.
-                    return IntegerValue.of((long) asDouble(arguments.get(0)) / divisor);
+                    return IntegerValue.of((long) Comparison.asDouble(arguments.get(0)) / divisor);
                 });
 
         // A tuple gets in and is turned away inside rather than at the
@@ -825,11 +825,11 @@ public final class Natives {
                     if (arguments.get(0) instanceof TupleValue tuple) {
                         return raiseCannotUse(tuple, "power");
                     }
-                    if (!isNumeric(arguments.get(0)) || !isNumeric(arguments.get(1))) {
+                    if (!Comparison.isNumeric(arguments.get(0)) || !Comparison.isNumeric(arguments.get(1))) {
                         return raiseWrongArgument(arguments.get(0), "power", "number");
                     }
                     return DecimalValue.of(
-                            Math.pow(asDouble(arguments.get(0)), asDouble(arguments.get(1))));
+                            Math.pow(Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1))));
                 });
 
         define("negate", takesNumbers("value"),
@@ -937,7 +937,7 @@ public final class Natives {
     private void defineRadianFunction(String name, java.util.function.DoubleUnaryOperator work) {
         define(name, List.of(Parameter.required("value", Set.of(Datatype.DECIMAL))),
                 (arguments, evaluator, context) -> DecimalValue.of(
-                        work.applyAsDouble(asDouble(arguments.get(0)))));
+                        work.applyAsDouble(Comparison.asDouble(arguments.get(0)))));
     }
 
     private static List<Parameter> takesWholeNumbers(String... names) {
@@ -992,7 +992,7 @@ public final class Natives {
         return switch (value) {
             case CharacterValue character -> character.codepoint();
             case TimeValue time -> time.nanoseconds();
-            default -> asDouble(value);
+            default -> Comparison.asDouble(value);
         };
     }
 
@@ -1066,8 +1066,8 @@ public final class Natives {
                     furtherOf(leftPair.y(), rightPair.y(), wantingLarger));
         }
         boolean takeLeft = wantingLarger
-                ? compareForSorting(left, right, false) >= 0
-                : compareForSorting(left, right, false) <= 0;
+                ? Comparison.compareForSorting(left, right, false) >= 0
+                : Comparison.compareForSorting(left, right, false) <= 0;
         return takeLeft ? left : right;
     }
 
@@ -1139,7 +1139,7 @@ public final class Natives {
         // money and time all still raise, so the licence belongs to the
         // one call site where the result is a plain decimal rather than
         // to the arithmetic itself.
-        return decimalArithmetic(asDouble(left), asDouble(right), operation, true);
+        return decimalArithmetic(Comparison.asDouble(left), Comparison.asDouble(right), operation, true);
     }
 
     private static Value integerArithmetic(long left, long right, Operation operation) {
@@ -1224,11 +1224,11 @@ public final class Natives {
     }
 
     private static double firstHalfOf(Value value) {
-        return value instanceof PairValue pair ? pair.x() : asDouble(value);
+        return value instanceof PairValue pair ? pair.x() : Comparison.asDouble(value);
     }
 
     private static double secondHalfOf(Value value) {
-        return value instanceof PairValue pair ? pair.y() : asDouble(value);
+        return value instanceof PairValue pair ? pair.y() : Comparison.asDouble(value);
     }
 
     /**
@@ -1313,7 +1313,7 @@ public final class Natives {
             return raiseCannotUse(left, "tuple arithmetic");
         }
         TupleValue theirs = right instanceof TupleValue tuple ? tuple : null;
-        if (theirs == null && !isNumeric(right)) {
+        if (theirs == null && !Comparison.isNumeric(right)) {
             return raiseCannotUse(right, "tuple arithmetic");
         }
         int width = theirs == null
@@ -1321,7 +1321,7 @@ public final class Natives {
                 : Math.max(ours.segmentCount(), theirs.segmentCount());
         boolean fractional = right.datatype() == Datatype.DECIMAL
                 || right.datatype() == Datatype.PERCENT;
-        double amount = theirs == null ? asDouble(right) : 0;
+        double amount = theirs == null ? Comparison.asDouble(right) : 0;
 
         int[] answer = new int[width];
         for (int at = 1; at <= width; at++) {
@@ -1351,12 +1351,12 @@ public final class Natives {
      * octet to a byte instead, so a walk that lands on 83.5 gives 83.
      */
     private static Value interpolated(Value from, Value to, Value fraction) {
-        double walked = Math.max(0, Math.min(1, asDouble(fraction)));
-        if (isNumeric(from) && !(from instanceof TupleValue) && !(from instanceof PairValue)) {
-            if (!isNumeric(to) || to instanceof TupleValue || to instanceof PairValue) {
+        double walked = Math.max(0, Math.min(1, Comparison.asDouble(fraction)));
+        if (Comparison.isNumeric(from) && !(from instanceof TupleValue) && !(from instanceof PairValue)) {
+            if (!Comparison.isNumeric(to) || to instanceof TupleValue || to instanceof PairValue) {
                 throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(to));
             }
-            return DecimalValue.of(alongTheWay(asDouble(from), asDouble(to), walked));
+            return DecimalValue.of(alongTheWay(Comparison.asDouble(from), Comparison.asDouble(to), walked));
         }
         if (from instanceof TupleValue start) {
             if (!(to instanceof TupleValue end)) {
@@ -1440,7 +1440,7 @@ public final class Natives {
     private static Value timeArithmetic(Value left, Value right, Operation operation) {
         if (operation == Operation.MULTIPLY || operation == Operation.DIVIDE) {
             long scaled = (long) ((DecimalValue) decimalArithmetic(
-                    nanosecondsOf(left), asDouble(scalarOf(right)), operation)).quantity();
+                    nanosecondsOf(left), Comparison.asDouble(scalarOf(right)), operation)).quantity();
             return TimeValue.ofNanoseconds(scaled);
         }
         double worked = ((DecimalValue) decimalArithmetic(
@@ -1455,7 +1455,7 @@ public final class Natives {
     private static double nanosecondsOf(Value value) {
         return value instanceof TimeValue time
                 ? time.nanoseconds()
-                : asDouble(value) * NANOSECONDS_A_SECOND;
+                : Comparison.asDouble(value) * NANOSECONDS_A_SECOND;
     }
 
     private static Value scalarOf(Value value) {
@@ -1480,7 +1480,7 @@ public final class Natives {
             return IntegerValue.of(dayNumberOf(from) - dayNumberOf(to));
         }
         DateValue moment = left instanceof DateValue date ? date : (DateValue) right;
-        long days = (long) asDouble(left instanceof DateValue ? right : left);
+        long days = (long) Comparison.asDouble(left instanceof DateValue ? right : left);
         long moved = operation == Operation.SUBTRACT
                 ? dayNumberOf(moment) - days
                 : dayNumberOf(moment) + days;
@@ -1519,21 +1519,6 @@ public final class Natives {
         }
     }
 
-    private static double asDouble(Value value) {
-        return switch (value) {
-            case IntegerValue integer -> integer.magnitude();
-            // A time counts as its seconds, which is what `to integer!
-            // 1:00` gives. Widening the parameter checks to accept a time
-            // without widening this let it past the door and refused it
-            // inside, which is the same error from a less useful place.
-            case TimeValue time -> (double) time.nanoseconds() / 1_000_000_000L;
-            case DecimalValue decimal -> decimal.quantity();
-            case MoneyValue money -> money.amount().doubleValue();
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    value.datatype().literalSpelling() + " is not a number");
-        };
-    }
-
     private static BigDecimal asBigDecimal(Value value) {
         return switch (value) {
             case MoneyValue money -> money.amount();
@@ -1547,230 +1532,34 @@ public final class Natives {
     // ---- comparison ------------------------------------------------------
 
     private void defineComparison() {
-        define("equal?", takes("value1", "value2"),
-                (arguments, evaluator, context) -> LogicValue.of(looselyEqual(
-                        arguments.get(0), arguments.get(1))));
-        // Strict equality is where the hardware's own answer shows
-        // through: `1.#NaN == 1.#NaN` is false, although the loose = says
-        // true and SAME? says true.
-        define("strict-equal?", takes("value1", "value2"),
-                (arguments, evaluator, context) -> LogicValue.of(
-                        strictlyEqual(arguments.getFirst(), arguments.get(1))));
-        define("not-equal?", takes("value1", "value2"),
-                (arguments, evaluator, context) -> LogicValue.of(!looselyEqual(
-                        arguments.get(0), arguments.get(1))));
-        define("greater?", List.of(Parameter.required("value1"), Parameter.required("value2")),
-                (arguments, evaluator, context) -> LogicValue.of(ordersAs(
-                        arguments.get(0), arguments.get(1), ordering -> ordering > 0)));
-        define("lesser?", List.of(Parameter.required("value1"), Parameter.required("value2")),
-                (arguments, evaluator, context) -> LogicValue.of(ordersAs(
-                        arguments.get(0), arguments.get(1), ordering -> ordering < 0)));
-        define("greater-or-equal?", List.of(Parameter.required("value1"), Parameter.required("value2")),
-                (arguments, evaluator, context) -> LogicValue.of(ordersAs(
-                        arguments.get(0), arguments.get(1), ordering -> ordering >= 0)));
-        define("lesser-or-equal?", List.of(Parameter.required("value1"), Parameter.required("value2")),
-                (arguments, evaluator, context) -> LogicValue.of(ordersAs(
-                        arguments.get(0), arguments.get(1), ordering -> ordering <= 0)));
-
-        // The modulo operator divides, so dividing by zero through it
-        // fails the same way DIVIDE does: math zero-divide, not script.
-
-        // %% is MOD rather than MODULO or REMAINDER, so `-7 %% 3` is 2.
-
+        // Ten natives, six questions. Each is one call to Comparison.holds
+        // with its strictness, and the negating half asks the same question
+        // and flips the answer rather than asking its own -- which is what
+        // Compare_Values does, and what keeps `<` refusing the pairings
+        // `>=` refuses.
+        asksAbout("equal?", Comparison.Strictness.EQUAL, true);
+        asksAbout("not-equal?", Comparison.Strictness.EQUAL, false);
+        asksAbout("equiv?", Comparison.Strictness.EQUIV, true);
+        asksAbout("not-equiv?", Comparison.Strictness.EQUIV, false);
+        asksAbout("strict-equal?", Comparison.Strictness.STRICT_EQUAL, true);
+        asksAbout("strict-not-equal?", Comparison.Strictness.STRICT_EQUAL, false);
+        asksAbout("greater-or-equal?", Comparison.Strictness.GREATER_OR_EQUAL, true);
+        asksAbout("lesser?", Comparison.Strictness.GREATER_OR_EQUAL, false);
+        asksAbout("greater?", Comparison.Strictness.GREATER, true);
+        asksAbout("lesser-or-equal?", Comparison.Strictness.GREATER, false);
+        // =? is SAME? rather than EQUAL?: it asks whether two references are
+        // one value, so `"a" =? "a"` is false.
+        asksAbout("same?", Comparison.Strictness.SAME, true);
     }
 
     /**
-     * Strict equality, which for decimals means the same number AND the
-     * same sign.
-     *
-     * <p>Three comparisons that disagree, all confirmed against a real R3.
-     * The loose = asks whether two values are the same number, so both
-     * zeroes are equal and so are two NaNs. This asks the same question
-     * and minds the sign as well, so the zeroes are not equal and neither
-     * are the NaNs. SAME? asks whether the bits are identical, which makes
-     * two NaNs the same value and the two zeroes different ones.
-     *
-     * <p>No two of the three agree on both cases, which is why each has
-     * its own answer written down rather than being derived from another.
+     * One comparison native: the strictness it asks about, and whether it
+     * reports the answer or its opposite.
      */
-    private static boolean strictlyEqual(Value left, Value right) {
-        if (left instanceof DecimalValue first && right instanceof DecimalValue second) {
-            return !Double.isNaN(first.quantity())
-                    && Double.compare(first.quantity(), second.quantity()) == 0;
-        }
-        // Two tuples holding the same octets differ when one was written
-        // longer than the other, which nothing else can see: 1.2.3 and
-        // 1.2.3.0 are equal and are not strictly equal. CT_Tuple asks
-        // about the length from mode 2 upwards and not below it.
-        if (left instanceof TupleValue first && right instanceof TupleValue second) {
-            return first.equals(second) && first.segmentCount() == second.segmentCount();
-        }
-        return left.equals(right);
-    }
-
-    /**
-     * REBOL's {@code =}: equal, folding case, and an integer may equal a decimal.
-     *
-     * <p>All the way down. Folding case for a bare string while comparing
-     * a nested one strictly is the kind of split nobody writes on purpose,
-     * and nothing catches it until a block holds a string.
-     */
-    private static boolean looselyEqual(Value left, Value right) {
-        return looselyEqual(left, right, STEPS_ALLOWED_BETWEEN_DECIMALS);
-    }
-
-    /**
-     * The same comparison, with the decimal allowance chosen by the caller.
-     *
-     * <p>EQUIV? sits between the two other comparisons and needs zero
-     * here: it folds case and lets an integer meet a decimal, exactly as
-     * {@code =} does, and then insists on the bits. Passing the allowance
-     * down rather than writing a second walk keeps the two from drifting,
-     * which matters most inside a block, where the difference would only
-     * show once something nested a decimal.
-     */
-    private static boolean looselyEqual(Value left, Value right, long stepsAllowed) {
-        // A character folds case for this question and not for the
-        // ordering one, which is the opposite way round from what the
-        // code points suggest. Everything built on this comparison
-        // inherits the folding, which is what makes `switch #"a"` take a
-        // branch written with a capital.
-        if (left instanceof CharacterValue leftCharacter
-                && right instanceof CharacterValue rightCharacter) {
-            return Character.toLowerCase(leftCharacter.codepoint())
-                    == Character.toLowerCase(rightCharacter.codepoint());
-        }
-        if (left instanceof StringValue leftText && right instanceof StringValue rightText) {
-            return leftText.equalsIgnoringCase(rightText);
-        }
-        if (left instanceof WordValue leftWord && right instanceof WordValue rightWord) {
-            return leftWord.namesSameAs(rightWord);
-        }
-        if (isNumeric(left) && isNumeric(right)) {
-            // Whether the two are the same number, minding neither the
-            // sign of a zero nor the hardware's refusal to call a NaN
-            // itself. Both are what the strict == exists to mind, and
-            // compare() cannot answer this: it orders NaN below
-            // everything, and it puts -0.0 below 0.0.
-            double first = asDouble(left);
-            double second = asDouble(right);
-            if (Double.isNaN(first) || Double.isNaN(second)) {
-                return Double.isNaN(first) && Double.isNaN(second);
-            }
-            if (left instanceof DecimalValue || right instanceof DecimalValue) {
-                return nearlyTheSameNumber(first, second, stepsAllowed);
-            }
-            return compare(left, right) == 0;
-        }
-        if (left instanceof BlockValue leftBlock && right instanceof BlockValue rightBlock) {
-            List<Value> theirs = rightBlock.remaining();
-            List<Value> ours = leftBlock.remaining();
-            if (ours.size() != theirs.size() || left.datatype() != right.datatype()) {
-                return false;
-            }
-            for (int at = 0; at < ours.size(); at++) {
-                if (!looselyEqual(ours.get(at), theirs.get(at), stepsAllowed)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return left.equals(right);
-    }
-
-    /**
-     * How many steps of the floating point representation {@code =} allows
-     * two decimals to differ by and still count as the same number.
-     *
-     * <p>Ten, measured against a real R3 at the boundary: 1.0 equals
-     * 1.000000000000002 and does not equal 1.00000000000002.
-     */
-    private static final long STEPS_ALLOWED_BETWEEN_DECIMALS = 10;
-
-    /**
-     * Whether two decimals are the same number as far as {@code =} cares.
-     *
-     * <p>Counted in steps of the representation rather than as a fixed
-     * amount, so the allowance scales with the size of the numbers. A
-     * fixed tolerance is wrong in two directions at once: far too coarse
-     * near zero and far too fine out at a million.
-     *
-     * <p>Without this, `(0.1 + 0.2) = 0.3` is false and so is
-     * `0.5 = cosine 60`, and every test that computes a decimal and
-     * compares it with a written-out one fails for what looks like an
-     * arithmetic bug.
-     *
-     * <p>The bit patterns are shifted into one running order first,
-     * because the sign bit alone would put the negatives in reverse and
-     * leave a gulf between -0.0 and 0.0 that REBOL says is not there.
-     */
-    private static boolean nearlyTheSameNumber(double first, double second, long stepsAllowed) {
-        long steps = inRunningOrder(first) - inRunningOrder(second);
-        return Math.abs(steps) <= stepsAllowed;
-    }
-
-    /** A double's bits renumbered so that ordering them orders the numbers. */
-    private static long inRunningOrder(double number) {
-        long bits = Double.doubleToRawLongBits(number);
-        return bits < 0 ? Long.MIN_VALUE - bits : bits;
-    }
-
-    private static boolean isNumeric(Value value) {
-        return value.datatype().isNumber()
-                || value.datatype() == Datatype.MONEY
-                // A time equals its seconds, so EQUAL? crosses the
-                // datatype boundary here as it does for integer and
-                // decimal.
-                || value.datatype() == Datatype.TIME;
-    }
-
-    /**
-     * Whether two values stand in the asked-for order.
-     *
-     * <p>Two pairs must agree on both halves, which means neither
-     * {@code <} nor {@code >} is a total order over pairs: {@code 1x2} is
-     * neither less than nor greater than {@code 2x1}. That cannot be said
-     * with a single comparison number, which is why this asks a question
-     * about an ordering rather than handing one back.
-     */
-    private static boolean ordersAs(Value left, Value right, IntPredicate wanted) {
-        if (left instanceof PairValue leftPair && right instanceof PairValue rightPair) {
-            return wanted.test(Double.compare(leftPair.x(), rightPair.x()))
-                    && wanted.test(Double.compare(leftPair.y(), rightPair.y()));
-        }
-        // A character orders by code point, folding nothing, so `#"a"` is
-        // above `#"B"` however the two compare for equality. Left to the
-        // sorting comparison it folded, and put the letters in an order
-        // R3 does not use.
-        if (left instanceof CharacterValue leftCharacter
-                && right instanceof CharacterValue rightCharacter) {
-            return wanted.test(Integer.compare(
-                    leftCharacter.codepoint(), rightCharacter.codepoint()));
-        }
-        // The operators ask a different question from SORT and must not
-        // share its answer. `1.#NaN < 1` and `1 < 1.#NaN` are both true,
-        // which is a perfectly good answer to "is this one below that
-        // one" and no use at all for putting values in a line. SORT has
-        // its own rule; this one keeps REBOL's.
-        return wanted.test(isNumeric(left) && isNumeric(right)
-                ? compare(left, right)
-                : compareForSorting(left, right, false));
-    }
-
-    private static int compare(Value left, Value right) {
-        if (left instanceof IntegerValue leftInteger && right instanceof IntegerValue rightInteger) {
-            return Long.compare(leftInteger.magnitude(), rightInteger.magnitude());
-        }
-        double first = asDouble(left);
-        double second = asDouble(right);
-        // A comparison against NaN orders it below, whichever side it is
-        // on, so `1.#NaN < 1` and `1 < 1.#NaN` are both true and neither
-        // > holds. That is what a real R3 answers; the JVM's own compare
-        // sorts NaN above everything instead.
-        if (Double.isNaN(first) || Double.isNaN(second)) {
-            return -1;
-        }
-        return Double.compare(first, second);
+    private void asksAbout(String name, Comparison.Strictness strictness, boolean asAsked) {
+        define(name, takes("value1", "value2"),
+                (arguments, evaluator, context) -> LogicValue.of(asAsked
+                        == Comparison.holds(arguments.get(0), arguments.get(1), strictness)));
     }
 
     // ---- control ---------------------------------------------------------
@@ -1908,7 +1697,7 @@ public final class Natives {
                     for (int at = 0; at + 1 < choices.size(); at += 2) {
                         boolean chosen = refinements.contains("case")
                                 ? choices.get(at).equals(arguments.get(0))
-                                : looselyEqual(choices.get(at), arguments.get(0));
+                                : Comparison.looselyEqual(choices.get(at), arguments.get(0));
                         if (chosen) {
                             return choices.get(at + 1) instanceof BlockValue branch
                                     ? evaluator.evaluateOrRaise(
@@ -2887,7 +2676,7 @@ public final class Natives {
             Value step,
             BlockValue body) {
 
-        double stepBy = asDouble(step);
+        double stepBy = Comparison.asDouble(step);
         if (stepBy == 0.0) {
             throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "a for loop with a step of zero would never end");
@@ -2899,8 +2688,8 @@ public final class Natives {
         rejectCharacterBound(start);
         rejectCharacterBound(end);
 
-        double from = asDouble(start);
-        double to = asDouble(end);
+        double from = Comparison.asDouble(start);
+        double to = Comparison.asDouble(end);
         boolean wholeNumbers = start instanceof IntegerValue && step instanceof IntegerValue;
 
         Context locals = Context.childOf(evaluator.systemContext());
@@ -3093,10 +2882,6 @@ public final class Natives {
         // are one value, so `"a" =? "a"` is false. Registered here rather
         // than beside the other operators because a twin has to exist
         // before the operator naming it does.
-        define("same?", List.of(Parameter.required("left"), Parameter.required("right")),
-                (arguments, evaluator, context) -> LogicValue.of(
-                        isSameValue(arguments.get(0), arguments.get(1))));
-
         // A pair is even when both halves are, so one even half and one
         // odd is false rather than true-ish. That boundary is the whole
         // difference between "asks about both" and "asks about either".
@@ -3196,13 +2981,6 @@ public final class Natives {
         // `equiv? 1 1.0` is true while `equiv? 0.5 0.5000000000000001` is
         // false. It is the only comparison that splits those two hairs
         // differently, which is why it takes the allowance by hand.
-        define("equiv?", takes("value1", "value2"),
-                (arguments, evaluator, context) -> LogicValue.of(
-                        looselyEqual(arguments.get(0), arguments.get(1), 0)));
-        define("not-equiv?", takes("value1", "value2"),
-                (arguments, evaluator, context) -> LogicValue.of(!looselyEqual(
-                        arguments.get(0), arguments.get(1), 0)));
-
         // The three character-range questions. Empty answers true, which
         // is the useful way round for a guard.
         defineCodepointRange("ascii?", 0x7F);
@@ -3226,14 +3004,14 @@ public final class Natives {
                 (arguments, evaluator, context) -> LogicValue.of(
                         arguments.get(0) instanceof PairValue pair
                                 ? bothHalves(pair, half -> half < 0)
-                                : asDouble(arguments.get(0)) < 0));
+                                : Comparison.asDouble(arguments.get(0)) < 0));
         define("positive?", takesNumbers("value"),
                 (arguments, evaluator, context) -> LogicValue.of(
                         arguments.get(0) instanceof PairValue pair
                                 ? bothHalves(pair, half -> half > 0)
-                                : asDouble(arguments.get(0)) > 0));
+                                : Comparison.asDouble(arguments.get(0)) > 0));
         define("zero?", takesNumbers("value"),
-                (arguments, evaluator, context) -> LogicValue.of(asDouble(arguments.get(0)) == 0.0));
+                (arguments, evaluator, context) -> LogicValue.of(Comparison.asDouble(arguments.get(0)) == 0.0));
 
         // These take a word and act on its slot, so they are written
         // `value? 'word` rather than `value? word`: the lit-word is what
@@ -3533,11 +3311,6 @@ public final class Natives {
                     return BlockValue.block(only);
                 });
 
-        define("strict-not-equal?",
-                List.of(Parameter.required("left"), Parameter.required("right")),
-                (arguments, evaluator, context) -> LogicValue.of(
-                        !arguments.get(0).equals(arguments.get(1))));
-
         // REFLECT is the general form of the -OF functions, so WORDS-OF
         // is REFLECT with the field named. A field that does not apply
         // gives none rather than raising, so a caller can ask about one
@@ -3663,8 +3436,8 @@ public final class Natives {
                             boolean mindingCase = refinements.contains("case");
                             for (int at = 0; at + 1 < items.size(); at += 2) {
                                 if (mindingCase
-                                        ? identicallyEqual(items.get(at), arguments.get(1))
-                                        : looselyEqual(items.get(at), arguments.get(1))) {
+                                        ? Comparison.identicallyEqual(items.get(at), arguments.get(1))
+                                        : Comparison.looselyEqual(items.get(at), arguments.get(1))) {
                                     block.storage().set(
                                             block.index() + at + 1, arguments.get(2));
                                     break;
@@ -3745,11 +3518,11 @@ public final class Natives {
                     for (int index = 0; index < items.size(); index += stride) {
                         boolean matches;
                         if (mindingIdentity) {
-                            matches = identicallyEqual(items.get(index), arguments.get(1));
+                            matches = Comparison.identicallyEqual(items.get(index), arguments.get(1));
                         } else if (mindingCase) {
                             matches = items.get(index).equals(arguments.get(1));
                         } else {
-                            matches = looselyEqual(items.get(index), arguments.get(1));
+                            matches = Comparison.looselyEqual(items.get(index), arguments.get(1));
                         }
                         if (matches) {
                             // A match with nothing after it has no answer,
@@ -5188,12 +4961,12 @@ public final class Natives {
                         return PairValue.of(
                                 roundedHalfAway(pair.x()), roundedHalfAway(pair.y()));
                     }
-                    double value = asDouble(arguments.get(0));
+                    double value = Comparison.asDouble(arguments.get(0));
                     if (!refinements.contains("to")) {
                         return DecimalValue.of(roundedBy(value, refinements));
                     }
                     Value step = arguments.get(arguments.size() - 1);
-                    double multiple = asDouble(step);
+                    double multiple = Comparison.asDouble(step);
                     // Zero is the one scale that cannot mean "a multiple
                     // of this", so it has a different job: throw the
                     // fraction away and answer an integer. It truncates
@@ -5462,7 +5235,7 @@ public final class Natives {
                 && !(series instanceof StringValue)
                 && !(series instanceof BinaryValue)) {
             return refinements.contains("only")
-                    ? isSameValue(items.get(at), wanted)
+                    ? Comparison.isSameValue(items.get(at), wanted)
                     : sameRunAt(items, at, wanted);
         }
         // A string or a binary matches a run of its own items, thus the
@@ -5547,8 +5320,8 @@ public final class Natives {
         }
         for (int step = 0; step < run.size(); step++) {
             boolean same = mindingIdentity
-                    ? identicallyEqual(items.get(at + step), run.get(step))
-                    : looselyEqual(items.get(at + step), run.get(step));
+                    ? Comparison.identicallyEqual(items.get(at + step), run.get(step))
+                    : Comparison.looselyEqual(items.get(at + step), run.get(step));
             if (!same) {
                 return false;
             }
@@ -5574,7 +5347,7 @@ public final class Natives {
             return false;
         }
         for (int step = 0; step < run.size(); step++) {
-            if (!isSameValue(items.get(at + step), run.get(step))) {
+            if (!Comparison.isSameValue(items.get(at + step), run.get(step))) {
                 return false;
             }
         }
@@ -5733,8 +5506,8 @@ public final class Natives {
             Value here = haystack.get(at + step);
             Value sought = needle.get(step);
             boolean fits = identically
-                    ? isSameValue(here, sought)
-                    : looselyEqual(here, sought);
+                    ? Comparison.isSameValue(here, sought)
+                    : Comparison.looselyEqual(here, sought);
             if (!fits) {
                 return false;
             }
@@ -5746,7 +5519,7 @@ public final class Natives {
         // Minding case means minding the datatype too, so 1, 1.0 and 100%
         // stop being one another. Comparing with equals() alone left them
         // equal, because a decimal and a percent hold the same number.
-        return mindingCase ? identicallyEqual(item, wanted) : looselyEqual(item, wanted);
+        return mindingCase ? Comparison.identicallyEqual(item, wanted) : Comparison.looselyEqual(item, wanted);
     }
 
     /** How far past the match /tail lands, which a substring makes more than one. */
@@ -5884,7 +5657,7 @@ public final class Natives {
             return compareByColumns(left, right, columns.remaining(), mindingCase);
         }
         if (comparator == null) {
-            return compareForSorting(left.getFirst(), right.getFirst(), mindingCase);
+            return Comparison.compareForSorting(left.getFirst(), right.getFirst(), mindingCase);
         }
         // With /ALL the comparator is handed whole records rather than
         // single values, which is the only way it can reach a field
@@ -5964,7 +5737,7 @@ public final class Natives {
             List<Value> left, List<Value> right, boolean mindingCase) {
 
         for (int at = 0; at < Math.min(left.size(), right.size()); at++) {
-            int order = compareForSorting(left.get(at), right.get(at), mindingCase);
+            int order = Comparison.compareForSorting(left.get(at), right.get(at), mindingCase);
             if (order != 0) {
                 return order;
             }
@@ -5985,7 +5758,7 @@ public final class Natives {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
                         "there is no column " + column.magnitude() + " to sort by");
             }
-            int ordering = compareForSorting(left.get(at), right.get(at), mindingCase);
+            int ordering = Comparison.compareForSorting(left.get(at), right.get(at), mindingCase);
             if (ordering != 0) {
                 return ordering;
             }
@@ -6016,8 +5789,8 @@ public final class Natives {
         if (answer instanceof LogicValue truth) {
             return truth.truth() ? 1 : -1;
         }
-        if (isNumeric(answer)) {
-            double amount = asDouble(answer);
+        if (Comparison.isNumeric(answer)) {
+            double amount = Comparison.asDouble(answer);
             return amount > 0 ? 1 : amount == 0 ? 0 : -1;
         }
         return -1;
@@ -6133,7 +5906,7 @@ public final class Natives {
     private static int codePointOf(Value value) {
         return value instanceof CharacterValue character
                 ? character.codepoint()
-                : (int) asDouble(value);
+                : (int) Comparison.asDouble(value);
     }
 
     private Value shuffled(BlockValue block) {
@@ -6670,7 +6443,7 @@ public final class Natives {
     private static void removeKeyedPair(BlockValue pairs, Value key) {
         List<Value> items = pairs.remaining();
         for (int at = 0; at + 1 < items.size(); at += 2) {
-            if (identicallyEqual(items.get(at), key)) {
+            if (Comparison.identicallyEqual(items.get(at), key)) {
                 pairs.storage().removeAt(pairs.index() + at);
                 pairs.storage().removeAt(pairs.index() + at);
                 return;
@@ -6698,11 +6471,6 @@ public final class Natives {
                 throw Raised.of(EvaluationFailure.HIDDEN, word.spelling());
             }
         }
-    }
-
-    /** Whether two values are the same value, minding the datatype exactly. */
-    private static boolean identicallyEqual(Value left, Value right) {
-        return left.datatype() == right.datatype() && strictlyEqual(left, right);
     }
 
     /** Where a literal needle sits, as a start and an end, or null. */
@@ -7238,36 +7006,8 @@ public final class Natives {
             return ours.isEmpty() && theirs.isEmpty();
         }
         return mindingCase
-                ? identicallyEqual(ours.getFirst(), theirs.getFirst())
-                : looselyEqual(ours.getFirst(), theirs.getFirst());
-    }
-
-    /**
-     * The default order: numbers by size, everything else by its text.
-     *
-     * <p>Case is folded unless {@code /case} was asked for, so "a" and "A"
-     * land together rather than every capital coming first.
-     */
-    private static int compareForSorting(Value left, Value right, boolean mindingCase) {
-        if (isNumeric(left) && isNumeric(right)) {
-            // Sorting needs a real ordering, and comparison does not
-            // provide one. `1.#NaN < 1` and `1 < 1.#NaN` are both true in
-            // REBOL, so compare() answers "less" whichever way round it
-            // is asked -- fine for the operator and useless for a sort,
-            // which needs the two answers to disagree.
-            //
-            // Confirmed against a real R3: sorting puts every NaN last
-            // and treats two of them as equal.
-            boolean leftIsNaN = Double.isNaN(asDouble(left));
-            boolean rightIsNaN = Double.isNaN(asDouble(right));
-            if (leftIsNaN || rightIsNaN) {
-                return leftIsNaN == rightIsNaN ? 0 : (leftIsNaN ? 1 : -1);
-            }
-            return compare(left, right);
-        }
-        return mindingCase
-                ? Molder.form(left).compareTo(Molder.form(right))
-                : Molder.form(left).compareToIgnoreCase(Molder.form(right));
+                ? Comparison.identicallyEqual(ours.getFirst(), theirs.getFirst())
+                : Comparison.looselyEqual(ours.getFirst(), theirs.getFirst());
     }
 
     /**
@@ -7433,7 +7173,7 @@ public final class Natives {
 
         define("as-pair", takesNumbers("x", "y"),
                 (arguments, evaluator, context) -> PairValue.of(
-                        asDouble(arguments.get(0)), asDouble(arguments.get(1))));
+                        Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1))));
 
         // The answer is an issue rather than a string, padded to the
         // full width of a whole number unless /size narrows it.
@@ -7615,7 +7355,7 @@ public final class Natives {
             // text form has already rounded.
             case DECIMAL -> value instanceof BinaryValue bits
                     ? DecimalValue.of(Double.longBitsToDouble(bitsOf(bits)))
-                    : DecimalValue.of(asDouble(value));
+                    : DecimalValue.of(Comparison.asDouble(value));
             case STRING -> StringValue.of(runTogether(value));
             // The rest of the string family takes the text of the value
             // the same way, so `to file! [a b]` is %ab: nothing inserts
@@ -7664,7 +7404,7 @@ public final class Natives {
                     ? TypesetValue.of(datatypesNamedIn(named))
                     : raiseBadMakeArg(value, "typeset!");
             case TIME -> TimeValue.ofNanoseconds(
-                    (long) (asDouble(value) * NANOSECONDS_A_SECOND));
+                    (long) (Comparison.asDouble(value) * NANOSECONDS_A_SECOND));
             case TUPLE -> tupleFrom(value);
             // Truthiness, not zero-ness. Only none and false are false, so
             // `to logic! 0` and `to logic! ""` are both true -- the case a
@@ -8000,7 +7740,7 @@ public final class Natives {
         if (!(value instanceof IntegerValue || value instanceof DecimalValue)) {
             return raiseBadMakeArg(value, "char!");
         }
-        double codepoint = asDouble(value);
+        double codepoint = Comparison.asDouble(value);
         if (codepoint < 0 || codepoint > Character.MAX_CODE_POINT) {
             throw Raised.of(EvaluationFailure.INVALID_CHAR,
                     ((long) codepoint) + " is not a code point");
@@ -8066,7 +7806,7 @@ public final class Natives {
         if (halves.size() != 2) {
             return raiseBadMakeArg(BlockValue.block(halves), "pair!");
         }
-        return PairValue.of(asDouble(halves.get(0)), asDouble(halves.get(1)));
+        return PairValue.of(Comparison.asDouble(halves.get(0)), Comparison.asDouble(halves.get(1)));
     }
 
     private static Value readPair(String text) {
@@ -8131,36 +7871,6 @@ public final class Natives {
             throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
                     "cannot read \"" + original + "\" as an integer");
         }
-    }
-
-    /** Whether two values are one thing rather than two equal things. */
-    private static boolean isSameValue(Value left, Value right) {
-        if (left instanceof SeriesValue first && right instanceof SeriesValue second) {
-            return first.sharesStorageWith(second) && first.index() == second.index();
-        }
-        if (left instanceof WordValue first && right instanceof WordValue second) {
-            return first.isSameAs(second);
-        }
-        // Two decimals are the same value when their bits are identical,
-        // which makes two NaNs the same and the two zeroes different --
-        // the reverse of the loose = on both counts.
-        if (left instanceof DecimalValue first && right instanceof DecimalValue second) {
-            return Double.doubleToRawLongBits(first.quantity())
-                    == Double.doubleToRawLongBits(second.quantity());
-        }
-        // Two objects are the same object only when they are one object.
-        // ObjectValue.equals compares fields, which is what EQUAL? wants
-        // and the opposite of what this asks: a copy holding identical
-        // fields is equal and is not the same.
-        if (left instanceof ObjectValue first && right instanceof ObjectValue second) {
-            return first.context() == second.context();
-        }
-        // The same question as == for a tuple, because CT_Tuple treats
-        // every mode above 1 alike.
-        if (left instanceof TupleValue first && right instanceof TupleValue second) {
-            return first.equals(second) && first.segmentCount() == second.segmentCount();
-        }
-        return left.equals(right);
     }
 
     /**
