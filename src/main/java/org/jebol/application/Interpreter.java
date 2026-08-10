@@ -90,9 +90,46 @@ public final class Interpreter {
         evaluator.putRuntimeWordsIn(userContext);
         loadPrelude();
         loadRebolsOwnLibrary();
+        keepTheNativesRebolCannotReplaceYet(natives);
         // What the library's own loading caught is not what the script
         // did, and system/state is the script's view.
         natives.forgetStartupState();
+    }
+
+    /**
+     * Two names Rebol's own library defines and cannot yet run.
+     *
+     * <p>INPUT and ASK live in mezz-files.reb, which is imported whole and
+     * unedited. Rebol writes both on top of the port datatype:
+     *
+     * <pre>
+     *     port: system/ports/input
+     *     if any [not port? port  not open? port] [
+     *         system/ports/input: port: open [scheme: 'console]
+     *     ]
+     * </pre>
+     *
+     * <p>JEBOL has no {@code port!}, so those definitions raise on
+     * {@code system/ports} the moment they are called. The natives they
+     * replaced work, so the natives are put back afterwards and the borrowed
+     * definitions are left where they are.
+     *
+     * <p>This is a stand-in and not a decision. Decision 13 says a function
+     * Rebol writes in REBOL is loaded rather than rewritten, and both of these
+     * are loaded -- the file is not edited and nothing is copied out of it.
+     * What is overridden is the binding, by name, with the reason written
+     * here. Deleting this method is what finishing {@code port!} looks like.
+     */
+    private static final java.util.List<String> WAITING_ON_PORTS =
+            java.util.List.of("input", "ask");
+
+    private void keepTheNativesRebolCannotReplaceYet(Natives natives) {
+        Context natively = natives.asContext();
+        for (String name : WAITING_ON_PORTS) {
+            if (natively.knows(name) && systemContext.knows(name)) {
+                systemContext.set(name, natively.slotFor(name).value());
+            }
+        }
     }
 
     /** Where the REBOL half of the standard library lives. */

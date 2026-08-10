@@ -72,6 +72,8 @@ mezz-tag.reb
 mezz-colors.reb
 mezz-debug.reb
 mezz-save.reb
+mezz-func.reb
+mezz-files.reb
 mezz-shell.reb
 sys-base.reb
 sys-codec.reb

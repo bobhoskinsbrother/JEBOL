@@ -23,9 +23,19 @@ import org.junit.jupiter.api.Test;
  */
 class BorrowedFilesLoadWholeTest {
 
-    /** File to the word it stopped on. */
-    private static final Map<String, String> STOPS_ON = Map.of(
-            "mezz-shell.reb", "list-dir");
+    /**
+     * File to the word it stopped on. Empty, and that is the point.
+     *
+     * <p>mezz-shell.reb was here, stopping on LIST-DIR. It stopped on the
+     * first statement of the file and lost all twelve of its definitions,
+     * which is what this test exists to make visible. LIST-DIR arrived when
+     * mezz-files.reb was imported, and the line came out.
+     *
+     * <p>An entry here is a real gap rather than tolerated noise: each one
+     * names a native the borrowed code expects and JEBOL has not got. A new
+     * one is a regression and a removed one is progress.
+     */
+    private static final Map<String, String> STOPS_ON = Map.of();
 
     @Test
     @DisplayName("no borrowed file stops partway except the ones known to")
