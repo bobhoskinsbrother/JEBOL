@@ -48,6 +48,7 @@ import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.OperatorValue;
 import org.jebol.domain.value.PairValue;
+import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.SeriesValue;
 import org.jebol.domain.value.StringValue;
@@ -325,6 +326,27 @@ public final class Natives {
                 .toList());
     }
 
+    /** A set holding exactly the characters of a string. */
+    private static BitsetValue charactersIn(String characters) {
+        return BitsetValue.ofCharacters(characters.chars().toArray());
+    }
+
+    /**
+     * The octets a quoted-printable body may carry as they stand.
+     *
+     * <p>sysobj.reb writes it as sixteen bytes of mostly-ones. Read back, it
+     * is every octet except the three the encoding must escape.
+     */
+    private static BitsetValue quotedPrintableOctets() {
+        StringBuilder allowed = new StringBuilder();
+        for (int octet = 0; octet < 256; octet++) {
+            if (octet != 0x3D && octet != 0x3A && octet != 0x2E) {
+                allowed.append((char) octet);
+            }
+        }
+        return charactersIn(allowed.toString());
+    }
+
     private static BitsetValue rangeOfCharacters(int from, int to) {
         int[] codes = new int[to - from + 1];
         for (int at = 0; at < codes.length; at++) {
@@ -381,6 +403,27 @@ public final class Natives {
         bitsets.set("hex-digits", together(rangeOfCharacters('0', '9'),
                 together(rangeOfCharacters('a', 'f'), rangeOfCharacters('A', 'F'))));
         bitsets.set("plus-minus", BitsetValue.ofCharacters('+', '-'));
+        // The four Rebol has that JEBOL had not. sys-ports.reb's url-parser
+        // reads URI, and without it that file stops on its first rule -- which
+        // takes MAKE-PORT* and the whole scheme registry with it.
+        //
+        // NOT-CRLF is computed rather than written out, exactly as
+        // sysobj.reb computes it, so the two cannot drift apart.
+        bitsets.set("not-crlf",
+                BitsetValue.ofCharacters('\r', '\n').complemented());
+        // The characters that need no percent-encoding in a URL, and the
+        // narrower set for one component of one. Copied from sysobj.reb,
+        // where each is written as the octets rather than as a range, because
+        // neither is a range.
+        bitsets.set("uri", charactersIn(
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+                        + "!#$&'()*+,-./:;=?@_~"));
+        bitsets.set("uri-component", charactersIn(
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+                        + "!'()*-._~"));
+        // Everything a quoted-printable body may carry without escaping,
+        // which is every octet but four.
+        bitsets.set("quoted-printable", quotedPrintableOctets());
         catalog.set("bitsets", new ObjectValue(bitsets));
 
         // Suffix then name, in pairs. REGISTER-CODEC appends to this as
@@ -2566,8 +2609,15 @@ public final class Natives {
                 (arguments, evaluator, context) -> {
                     ObjectValue object = (ObjectValue) arguments.get(0);
                     WordValue word = (WordValue) arguments.get(1);
+                    // A word the object does not hold answers none rather
+                    // than refusing. That is what makes
+                    // `any [get in obj 'field  default]` the ordinary way to
+                    // read an optional field, and Rebol's own MAKE-PORT*
+                    // reads its awake handler exactly that way. Refusing
+                    // broke the idiom at the first absent field, and the
+                    // refusal read as a bad path rather than as no field.
                     if (!object.context().holds(word.canonical())) {
-                        throw Raised.of(EvaluationFailure.INVALID_PATH, word.spelling());
+                        return NoneValue.none();
                     }
                     return word.boundTo(object.context());
                 });
@@ -3953,9 +4003,17 @@ public final class Natives {
         // /ANY answers the unset rather than refusing, which is how code
         // asks whether a word has a value without having to catch an
         // error to find out.
-        define("get", List.of(Parameter.required("word", Set.of(Datatype.WORD))),
+        // GET's argument is untyped in Rebol -- `word {Word, path, object to
+        // get}` -- so none reaches it and answers itself. IN answers none for
+        // an absent field, and the two are written to work together.
+        define("get", List.of(Parameter.required("word",
+                        Set.of(Datatype.WORD, Datatype.LIT_WORD, Datatype.GET_WORD,
+                                Datatype.SET_WORD, Datatype.NONE))),
                 Set.of("any"),
                 (arguments, evaluator, context, refinements) -> {
+                    if (arguments.get(0) instanceof NoneValue) {
+                        return NoneValue.none();
+                    }
                     Value held = slotOf((WordValue) arguments.get(0)).value();
                     if (held instanceof UnsetValue && !refinements.contains("any")) {
                         throw Raised.of(EvaluationFailure.NO_VALUE,
@@ -6843,6 +6901,11 @@ public final class Natives {
                     1, block.datatype());
             case StringValue text -> StringValue.of(text.text(), text.datatype());
             case BinaryValue binary -> copiedBytes(binary, binary.lengthFromHere());
+            // A bitset can be written through a path, thus COPY has to
+            // duplicate its octets. Without this, writing to the copy wrote
+            // to the original, and Rebol's own url-parser silently added a
+            // percent sign to the catalogue's URI set.
+            case BitsetValue members -> members.duplicate();
             default -> original;
         };
     }
@@ -7905,6 +7968,13 @@ public final class Natives {
             case CHAR -> asCharacter(value);
             case PAIR -> asPair(value);
             case MONEY -> asMoney(value);
+            // MAKE-PORT* in sys-ports.reb ends with `port: to port! port`,
+            // having built an ordinary object from system/standard/port. So
+            // this conversion is the last step of building every port, and a
+            // port is an object whose datatype sends an action to its actor.
+            case PORT -> value instanceof ObjectValue built
+                    ? new PortValue(built.context())
+                    : raiseBadMakeArg(value, "port!");
             case BITSET -> bitsetOf(value);
             // A typeset need not be one of the named families: code can
             // build its own from whichever datatypes it cares about, and
@@ -8614,8 +8684,16 @@ public final class Natives {
         // for the reading to go. A grant with no adapter reaches nothing,
         // and an adapter with no grant is not asked -- thus the grant is
         // tested first, so the error says which of the two is missing.
-        define("read", List.of(Parameter.required("source", Set.of(Datatype.FILE))),
-                (arguments, evaluator, context) -> {
+        // READ takes a file or a port. A port sends the action to its actor,
+        // which is what Do_Port_Action does: one verb reaches every kind of
+        // thing a script can open, and the actor decides what reading means.
+        define("read", List.of(Parameter.required("source",
+                        Set.of(Datatype.FILE, Datatype.PORT))),
+                Set.of("string", "lines", "binary", "seek", "part", "with"),
+                (arguments, evaluator, context, refinements) -> {
+                    if (arguments.getFirst() instanceof PortValue port) {
+                        return readFromPort(port, evaluator);
+                    }
                     requireService(HostService.FILES);
                     return throughPort(() ->
                             StringValue.of(evaluator.files().read(
@@ -8834,6 +8912,96 @@ public final class Natives {
                     return throughPort(() -> LogicValue.of(
                             evaluator.files().exists(
                                     ((StringValue) arguments.get(0)).text())));
+                });
+
+        // SET-SCHEME attaches an actor to a scheme, and it is the seam where
+        // Java meets Rebol's own REBOL. MAKE-SCHEME in sys-ports.reb builds
+        // the scheme object and then calls this, exactly as Rebol's C does:
+        // the REBOL half decides what a scheme is and the host half decides
+        // what it can actually reach.
+        //
+        // A scheme JEBOL has no actor for is left alone and answers none,
+        // which is what the C does for the same case. So registering a scheme
+        // JEBOL cannot serve is not an error, it just gives a scheme nothing
+        // can open.
+        define("set-scheme", List.of(
+                        Parameter.required("scheme", Set.of(Datatype.OBJECT))),
+                (arguments, evaluator, context) -> {
+                    ObjectValue scheme = (ObjectValue) arguments.getFirst();
+                    Value named = scheme.context().holds("name")
+                            ? scheme.context().ownSlotFor("name").value()
+                            : NoneValue.none();
+                    if (!(named instanceof WordValue name)
+                            || !name.canonical().equals("console")) {
+                        return NoneValue.none();
+                    }
+                    scheme.context().set("actor", WordValue.of("console"));
+                    return LogicValue.of(true);
+                });
+
+        define("port?", takes("value"),
+                (arguments, evaluator, context) -> LogicValue.of(
+                        arguments.getFirst() instanceof PortValue));
+
+        // OPEN builds a port from a spec and then opens it. Building it is
+        // MAKE-PORT* in sys-ports.reb, which is Rebol's own REBOL, thus this
+        // native calls back into the library rather than doing the work.
+        // That is what Rebol's C does too: Make_Port is four lines and one of
+        // them is `Do_Sys_Func(SYS_CTX_MAKE_PORT_P, spec, 0)`.
+        define("open", List.of(Parameter.required("spec")),
+                Set.of("new", "read", "write", "seek", "allow"),
+                (arguments, evaluator, context, refinements) -> {
+                    Value built = evaluator.applyFunction(
+                            libraryFunction(context, "make-port*"),
+                            List.of(arguments.getFirst()));
+                    if (!(built instanceof PortValue port)) {
+                        throw Raised.of(EvaluationFailure.INVALID_ARG,
+                                "nothing knows how to open that");
+                    }
+                    requireServiceForScheme(port.schemeName());
+                    port.markOpen(true);
+                    return port;
+                });
+
+        // READ on a port sends the action to the port's actor. The console
+        // actor answers one line, which is what Console_Actor's A_READ does
+        // once RDM_READ_LINE is set -- and INPUT sets it with MODIFY.
+        //
+        // The answer is a string rather than a binary because /STRING is the
+        // shape INPUT asks for, and none at the end of the input, because
+        // Console_Actor answers none for a line that is not there.
+        define("open?", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
+                (arguments, evaluator, context) -> LogicValue.of(
+                        ((PortValue) arguments.getFirst()).isOpen()));
+
+        define("close", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
+                (arguments, evaluator, context) -> {
+                    PortValue port = (PortValue) arguments.getFirst();
+                    port.markOpen(false);
+                    return port;
+                });
+
+        // MODIFY sets one mode of a port. The console has three -- echo, line
+        // and error -- and each takes a logic. Rebol raises bad-file-mode for
+        // any other word and invalid-value-for a value that is not a logic.
+        define("modify", List.of(
+                        Parameter.required("target", Set.of(Datatype.PORT, Datatype.FILE)),
+                        Parameter.required("field", Set.of(Datatype.WORD, Datatype.NONE)),
+                        Parameter.required("value")),
+                (arguments, evaluator, context) -> {
+                    if (!(arguments.get(1) instanceof WordValue mode)
+                            || !CONSOLE_MODES.contains(mode.canonical())) {
+                        throw Raised.of(EvaluationFailure.INVALID_ARG,
+                                "a port mode is echo, line or error");
+                    }
+                    if (!(arguments.get(2) instanceof LogicValue)) {
+                        throw Raised.of(EvaluationFailure.INVALID_ARG,
+                                "a port mode is set to true or false");
+                    }
+                    if (arguments.getFirst() instanceof PortValue port) {
+                        port.setField(mode.canonical(), arguments.get(2));
+                    }
+                    return arguments.get(2);
                 });
 
         // The five things a script may ask the operator for through a window.
@@ -9056,6 +9224,69 @@ public final class Natives {
             return given.remaining().stream().map(Molder::form).toList();
         }
         return List.of(Molder.form(command));
+    }
+
+    /**
+     * READ on a port, sent to the port's actor.
+     *
+     * <p>Only the console actor exists. It answers one line, which is what
+     * {@code Console_Actor}'s {@code A_READ} does once the read-line mode is
+     * set, and INPUT sets that mode with MODIFY before it reads.
+     *
+     * <p>A line that is not there answers none, as the C does, and a script
+     * must be able to tell that from an empty line.
+     */
+    private Value readFromPort(PortValue port, Evaluator evaluator) {
+        if (!port.schemeName().equals("console")) {
+            throw Raised.of(EvaluationFailure.NO_SERVICE,
+                    "nothing here reads the " + port.schemeName() + " scheme");
+        }
+        requireService(HostService.CONSOLE);
+        return throughPort(() -> {
+            String line = evaluator.console().readLine();
+            return line == null ? NoneValue.none() : StringValue.of(line);
+        });
+    }
+
+    /** The three modes a console port has, from Console_Actor's A_MODIFY. */
+    private static final Set<String> CONSOLE_MODES = Set.of("echo", "line", "error");
+
+    /**
+     * A function the loaded library defines, by name.
+     *
+     * <p>The seam where Java calls Rebol's own REBOL. Rebol's C has the same
+     * seam and uses it in four places: MAKE PORT!, MAKE MODULE!, DO of a file,
+     * and the boot. Building a port needs the scheme registry and the URL
+     * parser, and both of those are REBOL, thus OPEN cannot do its own work.
+     */
+    private static Value libraryFunction(Context context, String name) {
+        if (!context.knows(name)) {
+            throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
+        }
+        return context.slotFor(name).value();
+    }
+
+    /**
+     * Refuses a scheme whose service the host did not grant.
+     *
+     * <p>A port is a way out of the interpreter, thus opening one asks the
+     * same question every other host call asks. The scheme names which
+     * service: console for a console port, files for a file port.
+     */
+    private void requireServiceForScheme(String scheme) {
+        switch (scheme) {
+            case "console" -> requireService(HostService.CONSOLE);
+            case "file", "dir" -> requireService(HostService.FILES);
+            default -> {
+                // A scheme with no service behind it is one JEBOL cannot
+                // serve. Opening it is refused rather than answering a port
+                // that nothing can read.
+                throw Raised.of(EvaluationFailure.NO_SERVICE,
+                        scheme.isEmpty()
+                                ? "that port has no scheme"
+                                : "nothing here serves the " + scheme + " scheme");
+            }
+        }
     }
 
     /** Turns a port's refusal into an error the script can catch. */

@@ -192,8 +192,27 @@ entity Value {
 -- A set of character codes, held as bits so membership is a lookup
 -- rather than a search. Not a series: it has no position and no order,
 -- and FIND answers whether something is in it rather than where.
+-- A path reads and writes one bit of a set. `b/(#"a")` answers true or
+-- false, and `b/(#"a"): true` puts that character in the set.
+--
+-- Reading answers a logic and never none, thus a character the set does not
+-- hold answers false. That matters because the two look alike in a
+-- condition and part company under NONE? and under LOGIC?.
+--
+-- Writing minds the complement flag and inverts what true means. A
+-- complemented set holds every character its octets do not name, thus to
+-- put a character in one, the octet for that character must be cleared.
+-- `Set_Bits(ser, select, BITS_NOT(ser) ? !t : t)` in the C, and the
+-- inversion is easy to miss because it changes nothing for an ordinary set.
+--
+-- Rebol's own url-parser needs the write. It copies the URI set and then
+-- adds the percent sign to it, so that an already-encoded URL is left
+-- alone.
 variant BitsetValue : Value {
     bits: List<Integer>         -- one octet per eight codes, lowest first
+
+    -- Whether the set holds every character its octets do not name.
+    is_complemented: Boolean
 }
 
 -- A map!, written #[key: value ...] and made with `make map!`.

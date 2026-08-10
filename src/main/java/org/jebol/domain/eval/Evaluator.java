@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
+import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.DecimalValue;
@@ -29,6 +30,7 @@ import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.ProtectedFromChange;
 import org.jebol.domain.value.SlotIsProtected;
 import org.jebol.domain.value.PairValue;
+import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.TupleValue;
@@ -195,6 +197,10 @@ public final class Evaluator {
                 // for it. A name the body mentions and nobody supplied
                 // holds unset, which is a value; leaving it undefined
                 // makes the body fail on a missing word instead.
+                // The /local words too. The walk defines them and this did
+                // not, so a function reached this way failed on its own first
+                // local -- and MAKE-PORT* declares three.
+                function.localNames().forEach(locals::define);
                 for (int at = 0; at < parameters.size(); at++) {
                     locals.set(parameters.get(at).name(), at < arguments.size()
                             ? arguments.get(at)
@@ -891,6 +897,20 @@ public final class Evaluator {
                             withOctetWritten(tuple, (int) where.magnitude(), value))));
             return StepOutcome.waiting();
         }
+        // A set is changed in place rather than replaced, because a parse rule
+        // that already names the word has to see the change. Rebol's own
+        // url-parser copies the URI set and then adds the percent sign to it.
+        // The segment is evaluated first. `b/(#"a"): true` names the
+        // character in a paren, which is the only way a path reaches a
+        // character the source did not spell out -- and Rebol's own
+        // url-parser writes it exactly that way.
+        if (target instanceof BitsetValue set
+                && selectorFor(lastSegment, frame.context)
+                        instanceof CharacterValue letter) {
+            frame.pendingCalls.push(PendingCall.assignmentInto(
+                    value -> set.hold(letter.codepoint(), value.isTruthy())));
+            return StepOutcome.waiting();
+        }
         // A pair is a value rather than a series, so writing a half makes a
         // new pair and puts it back where the old one came from -- the same
         // shape a tuple needs, and for the same reason. Rebol writes through
@@ -1079,6 +1099,12 @@ public final class Evaluator {
                 default -> NoneValue.none();
             };
         }
+        // A path reads one bit of a set and answers a logic, never none:
+        // `SET_LOGIC(pvs->store, Check_Bits(...))` in PD_Bitset. The two look
+        // alike in a condition and part company under NONE? and LOGIC?.
+        if (target instanceof BitsetValue set && selector instanceof CharacterValue letter) {
+            return LogicValue.of(set.holds(letter.codepoint()));
+        }
         if (target instanceof PairValue pair) {
             Optional<Value> half = switch (selector) {
                 case IntegerValue position -> pair.halfAt((int) position.magnitude());
@@ -1104,6 +1130,15 @@ public final class Evaluator {
                 throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
             }
             return object.context().ownSlotFor(field.canonical()).value();
+        }
+        // A port is an object underneath, thus a path reads its fields the
+        // same way. Rebol's own INPUT reads `port/scheme/name` and
+        // MAKE-PORT* writes every field of one.
+        if (target instanceof PortValue port && selector instanceof WordValue field) {
+            if (!port.context().holds(field.canonical())) {
+                throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
+            }
+            return port.context().ownSlotFor(field.canonical()).value();
         }
         if (target instanceof BlockValue block && selector instanceof IntegerValue position) {
             long index = position.magnitude();

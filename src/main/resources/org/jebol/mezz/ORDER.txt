@@ -76,6 +76,7 @@ mezz-func.reb
 mezz-files.reb
 mezz-shell.reb
 sys-base.reb
+sys-ports.reb
 sys-codec.reb
 codec-braille.reb
 codec-css.reb

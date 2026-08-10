@@ -103,6 +103,10 @@ public final class Molder {
                     + (bitset.isComplemented() ? "not " : "")
                     + "#{" + hexOf(bitset.octets()) + "})";
             case ObjectValue object -> renderObject(object, forReading);
+            // A port molds as an object, which is what types.reb says: its
+            // mold column reads "object". Underneath it is one.
+            case PortValue port -> renderObject(
+                    new ObjectValue(port.context()), forReading);
             case ErrorValue error -> "#[error! " + error.errorId() + "]";
             case JavaObjectValue host -> "#[java-object! " + host.className() + "]";
         };

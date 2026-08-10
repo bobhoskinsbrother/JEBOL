@@ -38,6 +38,22 @@ public final class BitsetValue implements Value {
         return complemented;
     }
 
+    /**
+     * A set with the same members, holding its own octets.
+     *
+     * <p>COPY on a bitset has to duplicate the octets. A bitset can be
+     * written through a path, and a shallow copy means that writing to the
+     * copy writes to the original: Rebol's own url-parser copies the URI set
+     * from the catalogue and adds a percent sign to the copy, and with a
+     * shallow copy the catalogue's own set gained the percent sign as well.
+     * Every later use of it was then wrong, and nothing pointed at COPY.
+     */
+    public BitsetValue duplicate() {
+        BitsetValue same = new BitsetValue(octets.clone());
+        same.complemented = complemented;
+        return same;
+    }
+
     /** A set of everything this one leaves out. */
     public BitsetValue complemented() {
         BitsetValue turned = new BitsetValue(octets.clone());
@@ -93,6 +109,36 @@ public final class BitsetValue implements Value {
 
     public boolean holds(int code) {
         return complemented != namesDirectly(code);
+    }
+
+    /**
+     * Puts a character in the set, or takes it out.
+     *
+     * <p>{@code PD_Bitset} writes a bit through a path, and it minds the
+     * complement flag: {@code t = IS_TRUE(val); if (BITS_NOT(ser)) t = !t;}.
+     * A complemented set holds every character its octets do not name, thus
+     * to put a character into one, the octet for that character is cleared.
+     *
+     * <p>The inversion changes nothing for an ordinary set, which is why it
+     * is easy to leave out and hard to notice afterwards.
+     *
+     * <p>Changes this set rather than answering a new one, because a path
+     * writes through to the value the word holds and a parse rule that
+     * already names that word has to see the change.
+     */
+    public void hold(int code, boolean wanted) {
+        if (complemented == wanted) {
+            clearDirectly(code);
+        } else {
+            add(code);
+        }
+    }
+
+    private void clearDirectly(int code) {
+        int octet = code / BITS_PER_OCTET;
+        if (octet < octets.length) {
+            octets[octet] &= (byte) ~(1 << (7 - code % BITS_PER_OCTET));
+        }
     }
 
     /** Whether the bits themselves name this character. */

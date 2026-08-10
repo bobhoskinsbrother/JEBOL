@@ -490,9 +490,51 @@ clean-path: func [
 
 ;; system/standard holds the shapes that other functions build from.
 ;; Rebol keeps it in sysobj.reb and ENUM reads the enum object out of it.
+;; MAKE-SCHEME puts each scheme it builds in system/schemes, and INPUT reads
+;; system/ports/input. Both start empty, thus a scheme exists only once
+;; something has registered it.
+append system reduce [
+    to set-word! 'schemes  make object! []
+    to set-word! 'ports    make object! [
+        input: none
+        output: none
+        system: none
+    ]
+]
+
 append system reduce [
     to set-word! 'standard
     make object! [
+        ;; The shapes a scheme and a port are built from, copied from
+        ;; sysobj.reb. Data rather than functions: MAKE-SCHEME and MAKE-PORT*
+        ;; in sys-ports.reb are Rebol's own and are loaded, and both build
+        ;; from these.
+        scheme: make object! [
+            name: none          ;; word of console, file, http and so on
+            title: none         ;; user-friendly title for the scheme
+            spec: none          ;; custom spec for the scheme, if it needs one
+            info: none          ;; prototype info object that QUERY answers
+            actor: none         ;; the handler for this scheme's port actions
+            awake: none         ;; the handler for this scheme's port events
+        ]
+
+        port: make object! [
+            spec: none          ;; published specification of the port
+            scheme: none        ;; scheme object used for this port
+            parent: none        ;; port's parent, for a port inside a port
+            actor: none         ;; port action handler
+            awake: none         ;; port awake function
+            state: none         ;; internal state values, private
+            extra: none         ;; the host's own storage
+            data: none          ;; data buffer, usually binary or block
+        ]
+
+        port-spec-head: make object! [
+            title: none         ;; user-friendly title for the port
+            scheme: none        ;; reference to the scheme that defines it
+            ref: none           ;; reference path or url, for errors
+        ]
+
         enum: make object! [
             title*: none
 

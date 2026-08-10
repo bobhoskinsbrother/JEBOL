@@ -457,6 +457,55 @@ rule ABranchThatIsNotABlockIsItsOwnAnswer {
     ensures: CaseResult(value: taken_branch_of(entries))
 }
 
+-- === Asking an object for a word it may not have ==========
+
+-- IN answers none for a word the object does not hold, rather than refusing.
+-- That is what makes `any [get in obj 'field  default]` the ordinary way to
+-- read an optional field, and Rebol's own MAKE-PORT* reads its awake handler
+-- exactly that way.
+--
+-- Refusing instead breaks the idiom at the first missing field, and the
+-- refusal reads as a bad path rather than as an absent field.
+rule AskingForAWordAnObjectHasNotGotAnswersNone {
+    when: EvaluateCall(in_context, object, word)
+    requires: not object.holds(word)
+    ensures: CallResult(value: none)
+}
+
+-- GET of none answers none, because GET's argument is untyped in Rebol and
+-- none is what IN just answered. The two are written to work together.
+rule GettingNoneAnswersNone {
+    when: EvaluateCall(get, subject)
+    requires: subject = none
+    ensures: CallResult(value: none)
+}
+
+-- === Reading and writing one bit of a set =================
+
+-- A path reads one bit of a bitset and answers a logic. A character the set
+-- does not hold answers false and never none, which matters because the two
+-- look alike in a condition and part company under NONE?.
+rule ReadingABitOfASetAnswersALogic {
+    when: EvaluatePath(target, selector)
+    requires: is_bitset(target) and is_char(selector)
+    ensures: PathResult(value: target.holds(selector))
+}
+
+-- Writing a bit minds the complement flag, and the flag inverts what true
+-- means. A complemented set holds every character its octets do not name,
+-- thus to put a character into one the octet for it must be cleared.
+--
+-- The inversion changes nothing for an ordinary set, which is why it is easy
+-- to leave out and hard to notice.
+rule WritingABitOfAComplementedSetInvertsIt {
+    when: EvaluateSetPath(target, selector, written)
+    requires: is_bitset(value_of(target)) and is_char(selector)
+    ensures: SetPathResult(
+        octet_set: if value_of(target).is_complemented:
+                not written.is_truthy
+            else: written.is_truthy)
+}
+
 -- === Asking about a file ===================================
 
 -- QUERY asks the host what it knows about a file, and the shape of its
