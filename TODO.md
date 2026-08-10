@@ -201,7 +201,7 @@ in files JEBOL holds** — see section 2 — so the real figure is 108, and
 `PortingBacklogTest` cannot tell the difference because it measures
 `Interpreter.create()`.
 
-### The host boundary (37 functions)
+### The host boundary (32 functions)
 
 `spec/embed.allium` specifies it and most of the code is now written:
 `HostService`, `ServiceRefusal`, `Bounds`, and ports for files, processes,
@@ -211,9 +211,11 @@ the functions on top.
 - **Ports as a datatype** (5): `open`, `open?`, `close`, `query` on a port,
   `create`. `port!` is a datatype JEBOL has not got, and this is really its
   own piece of work rather than part of the boundary.
-- **The WINDOWS service** (5): `browse`, `request-color`, `request-dir`,
-  `request-file`, `request-password`. Mostly refusals; `ServiceRefusal`
-  already has the three reasons to choose between.
+- ~~**The WINDOWS service** (5)~~ **done.** `browse`, `request-file`,
+  `request-dir`, `request-color`, `request-password`, over one grant, with a
+  `WindowPort` and all three refusal reasons wired. A declined dialog answers
+  none and a refused service raises; granted-with-no-screen reports
+  `not_present` rather than `not_granted`.
 - **Interpreter internals** (7): `recycle`, `stats`, `evoke`, `secure`,
   `wait`, `set-scheme`, `flush`. Decide each one's reason from the C;
   several are `never_portable`.
