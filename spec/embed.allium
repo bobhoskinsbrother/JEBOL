@@ -79,6 +79,23 @@ value Bounds {
     granted_services: Set<HostService> = empty
 }
 
+-- What the host can tell the interpreter about one thing on its filesystem.
+--
+-- Six facts and no more, because this is the whole of what QUERY answers
+-- and a port that offered more would be offering something no script can
+-- ask for. Every field is optional except the name and the kind: a host
+-- may know a file exists without being able to say when it was last read,
+-- and a script asking for a fact the host has not got gets none rather
+-- than a refusal. The refusal is for the service, not for the field.
+value FileInformation {
+    name: String                -- the path, as the interpreter spells it
+    is_directory: Boolean       -- what QUERY's `type` field reports
+    size: Integer?              -- none for a directory, and for a host that cannot say
+    modified: Timestamp?
+    accessed: Timestamp?
+    created: Timestamp?
+}
+
 ------------------------------------------------------------
 -- Entities and Variants
 ------------------------------------------------------------
@@ -191,6 +208,28 @@ rule WorkingDirectoryIsPerInterpreter {
         run.interpreter.working_directory = path
         for other in interpreters where other != run.interpreter:
             other.working_directory unchanged
+}
+
+-- A script asking about a file it cannot see gets none rather than a
+-- refusal, because "there is nothing there" is an answer and a script has
+-- to be able to act on it. The refusal is for the service: a script not
+-- granted `files` cannot ask at all, and that raises.
+rule AskingAboutAMissingFileAnswersNone {
+    when: script_queries_file(run, path)
+    requires: files in run.interpreter.bounds.granted_services
+    requires: not host_has_anything_at(path)
+    ensures: QueryResult(value: none)
+}
+
+-- A fact the host cannot supply is none for that field alone, and the rest
+-- of the answer stands. A host that knows a file's size and not when it was
+-- last read is an ordinary host, not a broken one.
+rule AFactTheHostHasNotGotIsNoneOnItsOwn {
+    when: script_queries_file(run, path, field)
+    requires: files in run.interpreter.bounds.granted_services
+    requires: host_has_anything_at(path)
+    requires: information_of(path).field_named(field) = null
+    ensures: QueryResult(value: none)
 }
 
 rule ScriptRunBegins {
@@ -310,6 +349,18 @@ surface Embedding {
         Bounds
         HostService
         ServiceRefusal
+        FileInformation
+
+    @guarantee TheHostSaysWhatItKnowsAboutAFileAndNoMore
+        -- Six facts cross the boundary about one file: its name, whether it
+        -- is a directory, its size, and when it was created, last read and
+        -- last changed. That is the whole of what QUERY can answer, so a
+        -- port offering more would be offering something no script can ask
+        -- for.
+        --
+        -- A fact the host has not got is none for that field alone and the
+        -- rest of the answer stands. A host that knows a file's size and
+        -- not when it was last read is an ordinary host.
 
     @guarantee AHostGrantsServicesOneAtATime
         -- A script can reach the file system, the environment, another

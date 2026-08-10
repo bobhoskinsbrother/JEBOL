@@ -10,6 +10,25 @@
 # what stops the rest. A file joins this list when it loads clean AND
 # BorrowedLibraryTest shows it changes no corpus answer for the worse.
 #
+# mezz-func.reb and mezz-files.reb are here on disk and NOT in this list
+# yet, and the reason is measured rather than guessed. Adding both makes
+# every borrowed file load to its end for the first time -- zero partial
+# loads -- and gains twenty-five functions, LIST-DIR and everything
+# mezz-shell.reb defines among them. It also costs twenty-one unit
+# assertions, because Rebol's own CLEAN-PATH, INPUT, ASK, ENUM, CONTEXT and
+# MAP replace JEBOL's and then need natives JEBOL has not got: MAKE on a
+# file, and CASE with a condition whose block follows later.
+#
+# Those six failures are the work-list, not an argument against the import.
+# See TODO.md.
+#
+# The chain is worth writing down because one unwritten C native hid three
+# files and nineteen functions: mezz-shell.reb opens with
+# `ls: dir: :list-dir`, LIST-DIR lives in mezz-files.reb and is
+# `closure/with`, CLOSURE with /with lives in mezz-func.reb, and LIST-DIR's
+# body asks QUERY for three fields at once. QUERY is a C native (p-file.c)
+# and now exists; the two REBOL files are what remains.
+#
 # base-files.reb and sys-load.reb are both absent, and the pair is the
 # reason this list is judged on the suite and not only on the corpus.
 #

@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import org.jebol.domain.eval.FileInformation;
 import org.jebol.domain.eval.FilePort;
 
 /**
@@ -120,6 +121,58 @@ public final class FileSystemPort implements FilePort {
     @Override
     public boolean isDirectory(String path) {
         return Files.isDirectory(within(path));
+    }
+
+    /**
+     * What this filesystem knows about one path, or empty when nothing is
+     * there.
+     *
+     * <p>Read in one pass through {@link Files#readAttributes}, because asking
+     * separately for the size and each timestamp would let the file change
+     * between questions and answer about two different files.
+     *
+     * <p>A directory reports no size. Java would give the size of the
+     * directory entry, which is a number about the filesystem rather than
+     * about the directory, and Rebol reports none.
+     */
+    @Override
+    public java.util.Optional<FileInformation> informationAbout(String path) {
+        Path target = within(path);
+        if (!Files.exists(target)) {
+            return java.util.Optional.empty();
+        }
+        try {
+            java.nio.file.attribute.BasicFileAttributes read = Files.readAttributes(
+                    target, java.nio.file.attribute.BasicFileAttributes.class);
+            String name = asRebolPath(target, read.isDirectory());
+            java.util.Optional<java.time.Instant> modified =
+                    java.util.Optional.of(read.lastModifiedTime().toInstant());
+            java.util.Optional<java.time.Instant> accessed =
+                    java.util.Optional.of(read.lastAccessTime().toInstant());
+            java.util.Optional<java.time.Instant> created =
+                    java.util.Optional.of(read.creationTime().toInstant());
+            return java.util.Optional.of(read.isDirectory()
+                    ? FileInformation.directory(name, modified, accessed, created)
+                    : FileInformation.file(name, read.size(), modified, accessed, created));
+        } catch (IOException unreadable) {
+            throw new Denied("cannot-open", "cannot read the details of " + path);
+        }
+    }
+
+    /**
+     * The path as a script spells it: relative to where the script is, and
+     * with a trailing slash on a directory.
+     *
+     * <p>Relative rather than absolute because the absolute form names the
+     * host's disk layout, which is outside what the script was granted. A
+     * script that could read the root's real path could learn where it is
+     * confined, which the root exists to prevent.
+     */
+    private String asRebolPath(Path target, boolean isDirectory) {
+        String relative = here.equals(target)
+                ? ""
+                : here.relativize(target).toString();
+        return isDirectory && !relative.endsWith("/") ? relative + "/" : relative;
     }
 
     /** Refuses a change when this port was made read only. */

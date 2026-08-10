@@ -372,3 +372,63 @@ and one unit test asserted behaviour that R3 does not have, each citing
 JEBOL's own specification as its origin -- exactly what `corpus/README.md`
 warns against. An entry is worth nothing unless it says where the claim
 came from, and "the implementation does this" is not a source.
+
+## 13. Only Rebol's C functions may be written in Java
+
+Rebol implements its library in two layers. About a third is C, in
+`src/core/*.c`. The rest is REBOL, in `src/mezz/*.reb`, and it is twenty-five
+thousand lines.
+
+**A function Rebol writes in C is written in Java here. A function Rebol
+writes in REBOL is imported from its own file and loaded as a resource. It is
+never rewritten and never copied into `prelude.reb`, not even verbatim.**
+
+The test is mechanical and there is no judgement in it: find which R3 file
+defines the function. `src/core/*.c` means Java. `src/mezz/*.reb` means copy
+that file into `src/main/resources/org/jebol/mezz/`, add it to `ORDER.txt`,
+and fix whatever native it turns out to need.
+
+### Why a verbatim copy is still wrong
+
+A copy is a fork. The moment JEBOL holds its own `size?`, Rebol's own
+`base-files.reb` can no longer be loaded over the top without colliding with
+it, and the borrowing this whole design exists for stops being available for
+that file. `prelude.reb`'s own header says as much about the functions already
+copied into it: they are "something Rebol's own library silently replaces the
+moment that file is borrowed".
+
+The second reason is the one that costs time. A REBOL function that will not
+load is naming a native that is wrong, and that failure is the best work-list
+this project has -- better than any inventory, because it is driven by what
+the language actually needs. Rewriting the function in the prelude throws the
+signal away and leaves the native wrong.
+
+### What this cost before it was written down
+
+`mezz-shell.reb` opens with `ls: dir: :list-dir`. LIST-DIR lives in
+`mezz-files.reb`, which was not imported. So the file raised `not-defined` on
+its first statement and every one of its twelve definitions was lost --
+`pwd`, `rm`, `mkdir`, `cd`, `more`, `su`, `set-user`, `wait-key`, `user's` and
+`file-checksum` among them, all of which had their dependencies present and
+would have worked.
+
+Following the chain down: LIST-DIR is `closure/with`, CLOSURE with `/with`
+lives in `mezz-func.reb`, which was not imported either -- the prelude had
+`closure: :func`, a copy, and `/with` was therefore absent. And LIST-DIR's own
+body asks QUERY for three fields at once, and QUERY is a C native
+(`p-file.c`) that nobody had written.
+
+One unwritten C native hid three unimported REBOL files, which hid nineteen
+functions. `PortingBacklogTest` counted every one of them as missing and could
+not say why, because it measures `Interpreter.create()`, which loads none of
+the borrowed library at all.
+
+### The consequence for the prelude
+
+`prelude.reb` currently holds JEBOL's own version of several dozen functions
+Rebol writes in REBOL -- `empty?`, `does`, `rejoin`, `also`, `unique`,
+`forever`, `comment`, `join`, `collect`, `split-path`, `funct`, `clos`, the
+`-of` family and the `to-x` family among them. Each is a fork by the rule
+above. Replacing them with the R3 files that define them is outstanding work,
+and it is listed in TODO.md rather than done here, because each replacement
+needs the natives underneath it to be right first.

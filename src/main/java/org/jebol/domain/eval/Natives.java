@@ -2378,7 +2378,19 @@ public final class Natives {
                     // implementation that does not expose it cannot be
                     // extended with a new way of making functions without
                     // being changed itself.
-                    case DatatypeValue wanted when wanted.represents() == Datatype.FUNCTION ->
+                    // MAKE CLOSURE! is the same constructor. Rebol has two
+                    // datatypes because its FUNC frame dies with the call and
+                    // its closure frame does not; JEBOL's frame already
+                    // outlives the call, so the two mean the same thing here.
+                    // That is JEBOL's FUNC being wrong rather than this being
+                    // right, and the note on CLOSURE in the prelude says so.
+                    //
+                    // It has to exist because Rebol's own mezz-func.reb ends
+                    // CLOSURE with `make closure! reduce [spec body]`, and
+                    // without it that file stops there -- taking LIST-DIR,
+                    // and then everything mezz-shell.reb defines, with it.
+                    case DatatypeValue wanted when wanted.represents() == Datatype.FUNCTION
+                            || wanted.represents() == Datatype.CLOSURE ->
                             functionFrom(arguments.get(1), context);
                     case DatatypeValue wanted when wanted.represents() == Datatype.ERROR ->
                             errorFromSpec(arguments.get(1), evaluator, context);
@@ -8787,6 +8799,118 @@ public final class Natives {
                             evaluator.files().exists(
                                     ((StringValue) arguments.get(0)).text())));
                 });
+
+        // QUERY is what the rest of the file library is built on: SIZE? and
+        // MODIFIED? are one line each over it, and LIST-DIR and DIR-TREE both
+        // ask it for three fields at once. One crossing of the boundary, so
+        // there is one place for the host to be asked.
+        //
+        // The shape of the second argument decides the shape of the answer.
+        // See queryAnswerFor.
+        define("query", List.of(
+                        Parameter.required("target", Set.of(Datatype.FILE)),
+                        Parameter.required("field",
+                                Set.of(Datatype.WORD, Datatype.GET_WORD, Datatype.LIT_WORD,
+                                        Datatype.BLOCK, Datatype.NONE))),
+                (arguments, evaluator, context) -> {
+                    requireService(HostService.FILES);
+                    return throughPort(() -> queryAnswerFor(
+                            evaluator.files().informationAbout(
+                                    ((StringValue) arguments.getFirst()).text()),
+                            arguments.get(1)));
+                });
+    }
+
+    /**
+     * QUERY's answer, in the shape the question was asked.
+     *
+     * <p>{@code Ret_Query_File} has three branches and the middle one is the
+     * one nobody guesses. A word asks for one fact and gets it bare. None asks
+     * for everything and gets an object. A block asks for several and gets a
+     * block -- and whether each fact is labelled depends on how its word was
+     * written, per word rather than per block: a plain word puts itself in the
+     * answer as a set-word before its value, a get-word contributes the value
+     * alone.
+     *
+     * <p>So {@code query %a [type size]} is {@code [type: file size: 5]} and
+     * {@code query %a [:type :size]} is {@code [file 5]}. Rebol's own LIST-DIR
+     * asks the second form and reads the answer by position, so reading the
+     * block as a plain list of field names breaks it.
+     *
+     * <p>A path with nothing at it answers none whichever shape was asked,
+     * because "there is nothing there" is an answer a script acts on.
+     */
+    private static Value queryAnswerFor(
+            java.util.Optional<FileInformation> found, Value field) {
+
+        if (found.isEmpty()) {
+            return NoneValue.none();
+        }
+        FileInformation about = found.get();
+        if (field instanceof BlockValue wanted) {
+            List<Value> answer = new ArrayList<>();
+            for (Value item : wanted.remaining()) {
+                if (!(item instanceof WordValue named)) {
+                    throw Raised.of(EvaluationFailure.INVALID_ARG,
+                            "a query field is a word, not "
+                                    + item.datatype().literalSpelling());
+                }
+                if (named.datatype() != Datatype.GET_WORD) {
+                    answer.add(named.as(Datatype.SET_WORD));
+                }
+                answer.add(queryFieldOf(about, named));
+            }
+            return BlockValue.block(answer);
+        }
+        if (field instanceof WordValue named) {
+            return queryFieldOf(about, named);
+        }
+        return everythingKnownAbout(about);
+    }
+
+    /** The seven field names {@code Set_File_Mode_Value} answers, and no others. */
+    private static Value queryFieldOf(FileInformation about, WordValue named) {
+        return switch (named.canonical()) {
+            case "size" -> about.size().<Value>map(IntegerValue::of).orElseGet(NoneValue::none);
+            // A word rather than a logic, and both words are truthy, so
+            // `if query %a 'type` says nothing and a caller has to compare.
+            case "type" -> WordValue.of(about.isDirectory() ? "dir" : "file");
+            // Two names for one fact. The C's own comment says DATE is there
+            // for backward compatibility, and the object form fills both from
+            // the same source.
+            case "date", "modified" -> asDateValue(about.modified());
+            case "accessed" -> asDateValue(about.accessed());
+            case "created" -> asDateValue(about.created());
+            case "name" -> StringValue.of(about.name(), Datatype.FILE);
+            // A misspelled field is a mistake in the script, so it raises.
+            // Answering none would let the script read its own typo as a
+            // missing file.
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    named.spelling() + " is not a field a file has");
+        };
+    }
+
+    /** All six facts as an object, which is what a field of none asks for. */
+    private static Value everythingKnownAbout(FileInformation about) {
+        Context fields = Context.root();
+        fields.set("name", StringValue.of(about.name(), Datatype.FILE));
+        fields.set("size", about.size().<Value>map(IntegerValue::of).orElseGet(NoneValue::none));
+        fields.set("type", WordValue.of(about.isDirectory() ? "dir" : "file"));
+        fields.set("modified", asDateValue(about.modified()));
+        fields.set("date", asDateValue(about.modified()));
+        fields.set("accessed", asDateValue(about.accessed()));
+        fields.set("created", asDateValue(about.created()));
+        return new ObjectValue(fields);
+    }
+
+    /** A moment as a date, or none where the host could not say. */
+    private static Value asDateValue(java.util.Optional<java.time.Instant> moment) {
+        return moment.<Value>map(when -> {
+            java.time.LocalDateTime local = java.time.LocalDateTime.ofInstant(
+                    when, java.time.ZoneOffset.UTC);
+            return DateValue.of(local.getYear(), local.getMonthValue(), local.getDayOfMonth(),
+                    TimeValue.of(local.getHour(), local.getMinute(), local.getSecond(), 0));
+        }).orElseGet(NoneValue::none);
     }
 
     /**

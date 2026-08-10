@@ -49,6 +49,22 @@ public interface FilePort {
     /** Whether the path names a directory rather than a file. */
     boolean isDirectory(String path);
 
+    /**
+     * What the host knows about one thing on its filesystem, or empty when
+     * there is nothing there.
+     *
+     * <p>Empty rather than a refusal, because "there is nothing there" is an
+     * answer a script has to be able to act on: Rebol's own DELETE-DIR leans
+     * on it. The refusal is for the service, and it happens before this is
+     * reached.
+     *
+     * <p>What QUERY answers, and the only thing that answers it. SIZE? and
+     * MODIFIED? are one line each over QUERY rather than separate crossings
+     * of the boundary, so there is one place for the host to be asked and one
+     * place for it to be wrong.
+     */
+    java.util.Optional<FileInformation> informationAbout(String path);
+
     /** Why a port refused. Carries an error id the boundary reports. */
     final class Denied extends RuntimeException {
 
@@ -106,6 +122,11 @@ public interface FilePort {
 
             @Override
             public boolean isDirectory(String path) {
+                throw refuse();
+            }
+
+            @Override
+            public java.util.Optional<FileInformation> informationAbout(String path) {
                 throw refuse();
             }
 

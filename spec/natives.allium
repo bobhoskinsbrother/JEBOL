@@ -414,6 +414,102 @@ rule PairOrderingBreaksTheTieOnTheSecondHalf {
             else: holds(request.strictness, y_of(request.left), y_of(request.right)))
 }
 
+-- === Asking about a file ===================================
+
+-- QUERY asks the host what it knows about a file, and the shape of its
+-- second argument decides the shape of the answer. Three shapes, three
+-- answers, and the third is the one nobody guesses.
+--
+-- A word asks for one fact and answers it bare: `query %a 'size` is a
+-- number.
+--
+-- None asks for everything and answers an object, whose fields are the six
+-- facts plus `date` as a second name for `modified`.
+--
+-- A block asks for several and answers a block -- and whether each fact is
+-- labelled depends on how the word was written. A plain word puts itself
+-- in the answer as a set-word before its value; a get-word contributes the
+-- value alone. So `query %a [type size]` is `[type: file size: 1234]` and
+-- `query %a [:type :size]` is `[file 1234]`, and the two may be mixed:
+-- `query %a [type: :size]` is `[type: file 1234]`.
+--
+-- That last rule is what makes QUERY worth specifying rather than
+-- guessing. Reading the block as a plain list of fields gives the
+-- get-word form for every call, and the labelled form is the one a caller
+-- reading the answer by name depends on.
+enum QueryShape {
+    one_field       -- a word: the fact alone
+    | several       -- a block: a block, labelled or not, word by word
+    | everything    -- none: an object of all six facts
+}
+
+rule QueryingWithAWordAnswersTheFactAlone {
+    when: EvaluateQuery(target, field)
+    requires: is_word(field)
+    ensures: QueryResult(shape: one_field, value: fact_of(target, field))
+}
+
+rule QueryingWithNoneAnswersAnObject {
+    when: EvaluateQuery(target, field)
+    requires: field = none
+    ensures: QueryResult(shape: everything, is_object: true)
+}
+
+rule QueryingWithABlockLabelsAPlainWordAndNotAGetWord {
+    when: EvaluateQuery(target, field)
+    requires: is_block(field)
+    ensures: QueryResult(
+        shape: several,
+        items: field.flat_map(word =>
+            if is_get_word(word): [fact_of(target, word)]
+            else: [as_set_word(word), fact_of(target, word)]))
+}
+
+-- A field the host does not report is refused rather than answered none,
+-- because a misspelled field name is a mistake in the script and a script
+-- that got none for it would read the mistake as a missing file.
+--
+-- The six names are size, type, date, modified, accessed and created, plus
+-- name. DATE and MODIFIED are the same fact under two names, which is why
+-- there are seven names for six facts.
+rule QueryingAnUnknownFieldRaises {
+    when: EvaluateQuery(target, field)
+    requires: is_word(field) or is_block(field)
+    requires: not every_named_field_is_known(field)
+    ensures: QueryFailed(failure: invalid_arg)
+}
+
+-- Anything in the block that is not a word at all raises the same way. A
+-- block of fields is a block of names, and a number in it is not a name
+-- that happens to be unknown.
+rule QueryingWithANonWordInTheBlockRaises {
+    when: EvaluateQuery(target, field)
+    requires: is_block(field)
+    requires: field.any(item => not is_word(item))
+    ensures: QueryFailed(failure: invalid_arg)
+}
+
+-- SIZE? and MODIFIED? are QUERY with the field already chosen, which is how
+-- Rebol writes them: one line each. Writing them as their own host calls
+-- would give two more places for the boundary to be crossed and two more
+-- chances for them to disagree with QUERY.
+rule SizeAndModifiedAreQueryWithTheFieldChosen {
+    when: EvaluateCall(function, target)
+    requires: function in {size_of, modified_of}
+    ensures: CallResult(value: fact_of(target,
+        if function = size_of: size else: modified))
+}
+
+-- The type field is a word rather than a logic, and it is `dir` or `file`.
+-- EXISTS? answers the same two words rather than true, which is the trap:
+-- `if exists? %a [...]` takes the branch for a directory as readily as for
+-- a file, because both words are truthy, and code that wanted to know
+-- which has to compare.
+rule TheTypeFieldIsAWord {
+    when: EvaluateQuery(target, type)
+    ensures: QueryResult(value: if is_directory(target): dir else: file)
+}
+
 -- === Integers and the bit operations =======================
 
 -- SHIFT keeps the sign and refuses to lose a bit off the top, which makes
@@ -1236,6 +1332,15 @@ surface BuiltInFunctions {
         ComparisonStrictness
         ComparisonRequest
         DivisionDefinition
+        QueryShape
+
+    @guarantee QueryAnswersInTheShapeItWasAsked
+        -- The shape of QUERY's second argument decides the shape of its
+        -- answer: a word gives the fact bare, none gives an object of all
+        -- six, and a block gives a block. In the block form a plain word
+        -- labels its own value with a set-word and a get-word does not, so
+        -- `query %a [type size]` and `query %a [:type :size]` are two
+        -- different answers to the same question.
 
     @guarantee ThreeRemaindersUnderFourNames
         -- REMAINDER, MOD, MODULO and MODULO/FLOOR are four spellings of
