@@ -419,11 +419,7 @@ public final class Parser {
             wholeBlock = true;
             lastRuleAt = replacementAt + 1;
         }
-        Value replacement = rules.get(lastRuleAt);
-        if (replacement instanceof BlockValue paren
-                && paren.datatype() == Datatype.PAREN) {
-            replacement = evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
-        }
+        Value replacement = valueToPutIn(rules.get(lastRuleAt));
         List<Value> putting = !wholeBlock && replacement instanceof BlockValue spread
                 && spread.datatype() == Datatype.BLOCK
                 ? spread.remaining()
@@ -445,6 +441,48 @@ public final class Parser {
     }
 
     /**
+     * The value INSERT or CHANGE is about to put in, looked up first.
+     *
+     * <p>{@code Get_Parse_Value} in the C: a word that is not a parse keyword
+     * is fetched, a path is evaluated, and everything else is taken as it
+     * stands. A paren is evaluated too, at the moment the modification
+     * happens rather than when the rule was written.
+     *
+     * <p>The word case is the one that matters and it was missing. Taking the
+     * word as written leaves a rule that repeats one symbol rather than one
+     * that builds anything: `v: 7  parse [a b] [some [word! insert v]]` left
+     * [a v b v] instead of [a 7 b 7]. Rebol's own ENUM is built on this, and
+     * with the word taken as written every name in an enumeration came out
+     * holding the final count instead of its own.
+     *
+     * <p>A lit-word loses its tick, which the C does by hand after the
+     * modification. It is the only way to put a plain word in: an unquoted one
+     * would be fetched by the rule above and a quoted one would stay quoted.
+     */
+    private Value valueToPutIn(Value written) {
+        if (written instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
+            return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
+        }
+        if (written instanceof WordValue named) {
+            return switch (named.datatype()) {
+                case LIT_WORD -> named.as(Datatype.WORD);
+                // No keyword test here, and the C does not have one either.
+                // It deals with ONLY before this point and treats any other
+                // parse command in the value position as a bad rule, so by
+                // the time the value is fetched it is never a keyword.
+                case WORD -> evaluator.evaluateOrRaise(
+                        BlockValue.block(List.of(named)), context);
+                default -> named;
+            };
+        }
+        if (written instanceof BlockValue path && path.datatype() == Datatype.PATH) {
+            return evaluator.evaluateOrRaise(
+                    BlockValue.block(List.of(path)), context);
+        }
+        return written;
+    }
+
+    /**
      * INSERT: put a value in at the position, consuming nothing.
      *
      * <p>The position ends up after what was inserted, which is what stops
@@ -452,16 +490,35 @@ public final class Parser {
      */
     private int insertValue(List<Value> rules, int at) {
         following(rules, at, "insert");
-        Value added = rules.get(at + 1);
-        if (added instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
-            added = evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
+        // ONLY puts a block in whole. Without it a block is spread, which is
+        // the same rule CHANGE follows and for the same reason: the C passes
+        // AN_ONLY to Modify_Block only when the word is there, and
+        // Modify_Block spreads a block otherwise.
+        //
+        // JEBOL inserted a block whole either way, so `v: [1 2]` gave
+        // [[1 2] a] where Rebol gives [1 2 a].
+        int valueAt = at + 1;
+        boolean wholeBlock = false;
+        if (rules.get(valueAt) instanceof WordValue modifier
+                && modifier.datatype() == Datatype.WORD
+                && modifier.canonical().equals("only")
+                && valueAt + 1 < rules.size()) {
+            wholeBlock = true;
+            valueAt++;
         }
-        input.add(position, added);
-        if (source != null) {
-            source.storage().insertAt(source.index() + position, added);
+        Value added = valueToPutIn(rules.get(valueAt));
+        List<Value> putting = !wholeBlock && added instanceof BlockValue spread
+                && spread.datatype() == Datatype.BLOCK
+                ? spread.remaining()
+                : List.of(added);
+        for (int added0 = putting.size(); added0 > 0; added0--) {
+            input.add(position, putting.get(added0 - 1));
+            if (source != null) {
+                source.storage().insertAt(source.index() + position, putting.get(added0 - 1));
+            }
         }
-        position++;
-        return 2;
+        position += putting.size();
+        return valueAt + 1 - at;
     }
 
     /**

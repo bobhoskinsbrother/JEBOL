@@ -346,6 +346,49 @@ rule StringParsingNeverSkipsWhitespace {
 -- The position ends up after what was inserted, which is what stops an
 -- INSERT inside a repeat from running forever.
 
+-- INSERT and CHANGE look their value up before using it, so a word in that
+-- place contributes what the word holds and not the word. `Get_Parse_Value`
+-- in the C: a word that is not a parse command is fetched, a path is
+-- evaluated, and everything else is taken as it stands.
+--
+-- This is the difference between a rule that builds something and a rule
+-- that repeats one symbol. `v: 7  parse [a b] [some [word! insert v]]`
+-- leaves [a 7 b 7], and taking the word as written leaves [a v b v] --
+-- which looks like a working INSERT until something reads the result.
+--
+-- Rebol's own ENUM is built on it. Its rule is
+-- `pos: word! insert enum-value (...)`, counting up as it goes, and with
+-- the word taken as written every entry gets the same word instead of its
+-- own number. The object then evaluates that word once, at construction,
+-- so every name in the enumeration comes out holding the final count.
+rule InsertAndChangeLookTheirValueUp {
+    when: MatchRule(rule, input)
+    requires: rule.keyword in {insert, change}
+    requires: is_word(rule.value) and not is_parse_keyword(rule.value)
+    ensures: RuleMatched(inserted: value_of(rule.value))
+}
+
+rule InsertAndChangeEvaluateAPath {
+    when: MatchRule(rule, input)
+    requires: rule.keyword in {insert, change}
+    requires: is_path(rule.value)
+    ensures: RuleMatched(inserted: result_of(rule.value))
+}
+
+-- A lit-word loses its tick on the way in, so `change word! 'x` leaves the
+-- plain word x. The C does it by hand after the modify:
+-- `if (IS_LIT_WORD(item)) SET_TYPE(BLK_SKIP(series, index-1), REB_WORD);`
+--
+-- Without that step there is no way to insert a plain word at all: an
+-- unquoted one would be looked up by the rule above, and a quoted one would
+-- stay quoted.
+rule ALitWordInsertedBecomesAPlainWord {
+    when: MatchRule(rule, input)
+    requires: rule.keyword in {insert, change}
+    requires: is_lit_word(rule.value)
+    ensures: RuleMatched(inserted: as_plain_word(rule.value))
+}
+
 -- === Case, chosen part way through =========================
 
 -- CASE and NO-CASE change how the rules after them compare, and they
