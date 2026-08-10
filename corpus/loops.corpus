@@ -35,7 +35,7 @@ loop 40 [i: i + 10]
 --- code
 loop 0 [1]
 --- result
-none
+_
 
 --- id loops/loop-once
 --- origin adapted from REBOL/Core User Guide 2.3 section 7.1
@@ -72,7 +72,7 @@ repeat count 10 [i: i + count]
 --- code
 repeat count 0 [count]
 --- result
-none
+_
 
 # --- FOR: from, to, by --------------------------------------
 
@@ -94,13 +94,23 @@ for count 4 0 -1 [prin count]
 --- prints
 43210
 
---- id loops/for-over-characters
---- origin REBOL/Core User Guide 2.3 section 7.3
+--- id loops/for-refuses-a-character-range
+--- origin REBOL/Core User Guide 2.3 section 7.3, corrected against R3 3.22.1
 --- requires control output
---- note FOR is not only for integers. Anything that can be stepped works,
---- note which is why the counter is a value rather than an index.
+--- note Written as a working example from the guide, on the reasoning that
+--- note FOR steps anything steppable. It does not: FOR counts through
+--- note numbers, and a character range is rejected before the loop starts.
+--- note FOREACH over a string is how you walk the alphabet.
 --- code
 for char #"a" #"e" 1 [prin char]
+--- error script expect-arg
+
+--- id loops/foreach-is-how-a-string-is-walked
+--- origin confirmed against R3 3.22.1
+--- requires control output
+--- note What the entry above was reaching for.
+--- code
+foreach char "abcde" [prin char]
 --- prints
 abcde
 
@@ -142,7 +152,7 @@ REBOL
 --- code
 foreach item [] [item]
 --- result
-none
+_
 
 --- id loops/foreach-takes-several-at-a-time
 --- origin REBOL/Core User Guide 2.3 section 7.4
@@ -178,7 +188,7 @@ redgreenblue
 --- code
 while [false] [1]
 --- result
-none
+_
 
 --- id loops/until-tests-after-each-pass
 --- origin REBOL/Core User Guide 2.3 section 6.3
@@ -200,7 +210,7 @@ redgreenblue
 --- code
 until [true]
 --- result
-true
+#(true)
 
 # --- BREAK ---------------------------------------------------
 

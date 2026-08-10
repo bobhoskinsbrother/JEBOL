@@ -23,7 +23,7 @@ switch 99 [
     22 ["there"]
 ]
 --- result
-none
+_
 
 --- id branching/switch-on-a-string
 --- origin REBOL/Core User Guide 2.3 section 8.2
@@ -90,7 +90,7 @@ case [
     none  ["also no"]
 ]
 --- result
-none
+_
 
 --- id branching/case-stops-at-the-first-match
 --- origin adapted from REBOL/Core User Guide 2.3 section 8
@@ -121,7 +121,7 @@ unless false ["taken"]
 --- code
 unless true ["never"]
 --- result
-none
+_
 
 # --- Errors as values ----------------------------------------
 
@@ -131,7 +131,7 @@ none
 --- code
 error? try [divide 1 0]
 --- result
-true
+#(true)
 
 --- id branching/try-over-a-loop-of-divisions
 --- origin REBOL/Core User Guide 2.3 section 10
@@ -160,7 +160,7 @@ error
 --- code
 attempt [divide 1 0]
 --- result
-none
+_
 
 --- id branching/attempt-passes-a-good-value-through
 --- origin adapted from REBOL/Core User Guide 2.3 section 10
@@ -177,4 +177,4 @@ attempt [divide 10 2]
 risky: func [n] [divide 10 n]
 error? try [risky 0]
 --- result
-true
+#(true)

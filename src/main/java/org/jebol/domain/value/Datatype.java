@@ -10,6 +10,9 @@ import java.util.Set;
  * mirror the standard R3-Alpha typesets rather than being invented here.
  */
 public enum Datatype {
+    // END first, as Rebol numbers them: it is the marker for no value at
+    // all, and system/catalog/datatypes is read in this order.
+    END("end"),
     UNSET("unset"),
     NONE("none"),
     LOGIC("logic"),
@@ -27,6 +30,7 @@ public enum Datatype {
     URL("url"),
     EMAIL("email"),
     TAG("tag"),
+    REF("ref"),
     BINARY("binary"),
     WORD("word"),
     SET_WORD("set-word"),
@@ -46,11 +50,35 @@ public enum Datatype {
     FUNCTION("function"),
     OP("op"),
     OBJECT("object"),
+    MAP("map"),
     ERROR("error"),
+    // Named but not built. No value of these exists yet, and the names
+    // still have to: #(bitset!) is a datatype value and datatype? answers
+    // true for it, whether or not a bitset can be made. A bare bitset! in
+    // source is a word, which is a different question the reader settles
+    // by not settling it.
+    ACTION("action"),
+    BITSET("bitset"),
+    CLOSURE("closure"),
+    COMMAND("command"),
+    EVENT("event"),
+    FRAME("frame"),
+    GOB("gob"),
+    HANDLE("handle"),
+    HASH("hash"),
+    IMAGE("image"),
+    LIBRARY("library"),
+    MODULE("module"),
+    PORT("port"),
+    REBCODE("rebcode"),
+    STRUCT("struct"),
+    TASK("task"),
+    UTYPE("utype"),
+    VECTOR("vector"),
     JAVA_OBJECT("java-object");
 
     private static final Set<Datatype> ANY_STRING =
-            Set.of(STRING, FILE, URL, EMAIL, TAG);
+            Set.of(STRING, FILE, URL, EMAIL, TAG, REF);
     private static final Set<Datatype> ANY_BLOCK =
             Set.of(BLOCK, PAREN, PATH, SET_PATH, GET_PATH, LIT_PATH);
     private static final Set<Datatype> ANY_PATH =
@@ -73,6 +101,23 @@ public enum Datatype {
     /** The REBOL name without its trailing exclamation mark. */
     public String spelling() {
         return spelling;
+    }
+
+    /**
+     * The datatype a name stands for, with or without its exclamation
+     * mark. Empty when the name is not a datatype's, because a bare word
+     * in a block is far more often something else.
+     */
+    public static java.util.Optional<Datatype> named(String spelling) {
+        String wanted = spelling.endsWith("!")
+                ? spelling.substring(0, spelling.length() - 1)
+                : spelling;
+        for (Datatype datatype : values()) {
+            if (datatype.spelling().equalsIgnoreCase(wanted)) {
+                return java.util.Optional.of(datatype);
+            }
+        }
+        return java.util.Optional.empty();
     }
 
     /** The REBOL name as written in source, including the exclamation mark. */

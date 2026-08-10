@@ -1,0 +1,118 @@
+--- title Reading an error
+--- about An error is read through paths, and that is how REBOL code asks
+--- about which failure happened. Rebol's own suite is written in this
+--- about idiom throughout, so an implementation whose errors are opaque
+--- about cannot run any of it.
+
+--- id errors/the-id-names-the-failure
+--- origin confirmed against R3 3.22.1
+--- code
+e: try [1 / 0]
+e/id
+--- result
+zero-divide
+
+--- id errors/the-id-is-a-word-not-a-string
+--- origin confirmed against R3 3.22.1
+--- note So it compares with a lit-word. Making it a string would let
+--- note every assertion in the suite compile and none of them hold.
+--- code
+e: try [1 / 0]
+type? e/id
+--- result
+#(word!)
+
+--- id errors/the-type-names-the-category
+--- origin confirmed against R3 3.22.1
+--- code
+e: try [1 / 0]
+e/type
+--- result
+Math
+
+--- id errors/the-type-is-a-word-too
+--- origin confirmed against R3 3.22.1
+--- code
+e: try [1 / 0]
+type? e/type
+--- result
+#(word!)
+
+--- id errors/the-code-numbers-the-failure
+--- origin confirmed against R3 3.22.1
+--- code
+e: try [1 / 0]
+e/code
+--- result
+400
+
+--- id errors/an-error-with-nothing-to-name
+--- origin confirmed against R3 3.22.1
+--- note Dividing by zero is about no particular value, so the argument
+--- note fields are none rather than absent.
+--- code
+e: try [1 / 0]
+e/arg1
+--- result
+_
+
+--- id errors/an-error-names-the-word-it-tripped-over
+--- origin confirmed against R3 3.22.1
+--- code
+e: try [zzz]
+e/arg1
+--- result
+zzz
+
+--- id errors/the-id-of-a-word-with-no-value
+--- origin confirmed against R3 3.22.1
+--- code
+e: try [zzz]
+e/id
+--- result
+no-value
+
+--- id errors/the-id-of-a-wrong-argument
+--- origin confirmed against R3 3.22.1
+--- note The one the suite reaches for most.
+--- code
+e: try [1 + "a"]
+e/id
+--- result
+expect-arg
+
+--- id errors/the-fields-an-error-has
+--- origin confirmed against R3 3.22.1
+--- note Fixed, and in this order, because code walks the result.
+--- code
+e: try [1 / 0]
+mold words-of e
+--- result
+"[code type id arg1 arg2 arg3 near where]"
+
+--- id errors/an-error-is-not-an-object
+--- origin confirmed against R3 3.22.1
+--- note Even though it is read like one. OBJECT? says no, so code
+--- note cannot use that to tell whether a path will work.
+--- code
+e: try [1 / 0]
+object? e
+--- result
+#(false)
+
+--- id errors/asking-for-a-field-an-error-has-not-got
+--- origin confirmed against R3 3.22.1
+--- note Raises rather than answering none, because an error either has
+--- note the field or the code asking is wrong.
+--- code
+e: try [1 / 0]
+e/nonesuch
+--- error script invalid-path
+
+--- id errors/the-usual-idiom-in-one-line
+--- origin confirmed against R3 3.22.1
+--- note This is what most of Rebol's own error assertions look like.
+--- code
+all [error? e: try [1 + "a"] e/id = 'expect-arg]
+--- result
+#(true)

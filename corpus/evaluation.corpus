@@ -59,7 +59,7 @@ add 1 add 2 3
 --- code
 unset? do []
 --- result
-true
+#(true)
 
 --- id evaluation/do-string
 --- origin REBOL/Core User Guide 2.3 section 4.6
@@ -204,3 +204,138 @@ reduce [mold 0.1 + 0.2 mold 1.0 mold 100.0 mold divide 1 3]
 mold 1.0
 --- result
 "1.0"
+
+--- id evaluation/making-a-word-from-text
+--- origin confirmed against R3 3.22.1
+--- note MAKE on a datatype converts, which is where it overlaps with
+--- note TO. What it adds is the number case below.
+--- code
+mold make word! "abc"
+--- result
+"abc"
+
+--- id evaluation/making-a-block-from-a-block
+--- origin confirmed against R3 3.22.1
+--- code
+mold make block! [1 2]
+--- result
+"[1 2]"
+
+--- id evaluation/making-a-series-from-a-number
+--- origin confirmed against R3 3.22.1
+--- note A number is a capacity hint rather than a value to convert, so
+--- note the answer is empty rather than being the number. TO does not
+--- note do this, and it is the whole difference between the two.
+--- code
+mold make block! 5
+--- result
+"[]"
+
+--- id evaluation/making-a-string-from-a-number
+--- origin confirmed against R3 3.22.1
+--- code
+mold make string! 10
+--- result
+{""}
+
+--- id evaluation/making-a-whole-number-from-text
+--- origin confirmed against R3 3.22.1
+--- code
+make integer! "5"
+--- result
+5
+
+--- id evaluation/making-a-function-from-another
+--- origin confirmed against R3 3.22.1
+--- note MAKE on a function keeps what it does and replaces what it
+--- note says about itself. The argument is a block holding a spec
+--- note block, which is why `make :f [a + 1]` is refused: that is a
+--- note body where a spec was wanted.
+--- code
+g: func [a] ["orig"]
+h: make :g [["new title" a [integer!]]]
+mold spec-of :h
+--- result
+{["new title" a [integer!]]}
+
+--- id evaluation/the-derived-function-does-what-the-original-did
+--- origin confirmed against R3 3.22.1
+--- note Which is the point: Rebol's own library derives EMPTY? from
+--- note TAIL? this way, to give it a wider declared interface without
+--- note writing the behaviour twice.
+--- code
+g: func [a] ["orig"]
+h: make :g [["new title" a [integer!]]]
+h 1
+--- result
+"orig"
+
+--- id evaluation/reducing-something-that-is-not-a-block
+--- origin confirmed against R3 3.22.1
+--- note REDUCE takes any value, not only a block, and anything that is
+--- note not a block comes back unchanged. Rebol's own JOIN relies on
+--- note it: `reduce :rest` where rest may be a single value.
+--- code
+reduce "b"
+--- result
+"b"
+
+--- id evaluation/reducing-a-number
+--- origin confirmed against R3 3.22.1
+--- code
+reduce 1
+--- result
+1
+
+--- id evaluation/reducing-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+reduce none
+--- result
+_
+
+--- id evaluation/reducing-a-word-does-not-look-it-up
+--- origin confirmed against R3 3.22.1
+--- note Which is the boundary that shows it really is "unchanged"
+--- note rather than "evaluated once".
+--- code
+a: 5
+mold reduce first [a]
+--- result
+"a"
+
+--- id evaluation/do-of-a-block-still-evaluates-it
+--- origin confirmed against R3 3.22.1
+--- note The contrast: a block is run, a function is called.
+--- code
+do [1 + 1]
+--- result
+2
+
+--- id evaluation/do-of-a-function-calls-it
+--- origin confirmed against R3 3.22.1
+--- note DO given a function applies it, taking its arguments from the
+--- note block that follows. It is how a function held in a variable is
+--- note called without naming it, and Rebol's own COLLECT builds its
+--- note KEEP that way.
+--- code
+f: func [a] [a + 1]
+do :f 5
+--- result
+6
+
+--- id evaluation/do-of-a-function-taking-two
+--- origin confirmed against R3 3.22.1
+--- code
+g: func [a b] [a * b]
+do :g 3 4
+--- result
+12
+
+--- id evaluation/do-of-a-function-taking-none
+--- origin confirmed against R3 3.22.1
+--- code
+h: does [7]
+do :h
+--- result
+7

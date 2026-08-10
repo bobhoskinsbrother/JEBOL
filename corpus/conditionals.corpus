@@ -22,7 +22,7 @@ if true [1]
 --- code
 if false [1]
 --- result
-none
+_
 
 --- id conditionals/one-is-true
 --- origin REBOL/Core User Guide 2.3 section 6.4
@@ -65,7 +65,7 @@ if [false] [1]
 --- code
 if none [1]
 --- result
-none
+_
 
 --- id conditionals/empty-string-is-true
 --- origin adapted from REBOL/Core User Guide 2.3 section 6.4
@@ -142,7 +142,7 @@ any [num1 num2 num3]
 --- code
 any [none false]
 --- result
-none
+_
 
 --- id conditionals/all-returns-last-value
 --- origin REBOL/Core User Guide 2.3 section 6.2
@@ -162,7 +162,7 @@ a: "REBOL/"
 b: none
 all [string? a string? b append a b]
 --- result
-none
+_
 
 --- id conditionals/all-runs-every-expression-when-all-pass
 --- origin REBOL/Core User Guide 2.3 section 6.2
@@ -191,7 +191,7 @@ if true [divide 1 0]
 --- code
 if none [divide 1 0]
 --- result
-none
+_
 
 --- id conditionals/try-catches-an-error-as-a-value
 --- origin REBOL/Core User Guide 2.3 section 10
@@ -202,7 +202,7 @@ none
 --- code
 error? try [divide 1 0]
 --- result
-true
+#(true)
 
 --- id conditionals/try-passes-through-a-good-result
 --- origin adapted from REBOL/Core User Guide 2.3 section 10

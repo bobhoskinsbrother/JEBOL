@@ -71,3 +71,8 @@ val checkSpec by tasks.registering(Exec::class) {
 tasks.check {
     dependsOn(checkSpec)
 }
+
+// So `gradlew run` can be fed a script on standard input.
+tasks.named<JavaExec>("run") {
+    standardInput = System.`in`
+}

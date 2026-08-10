@@ -1,0 +1,131 @@
+--- title Refinements the suite reaches for
+--- about Each entry pins one refinement of one native. They are gathered
+--- about here rather than filed under the native because what is being
+--- about tested is the same thing every time: that asking for a named
+--- about refinement changes the answer in the way R3 says it does.
+
+--- id refinements/ajoin-drops-none-by-default
+--- origin confirmed against R3 3.22.1
+--- note Which is the fact /all exists to undo, so it is pinned first.
+--- code
+ajoin ["a" none "b"]
+--- result
+"ab"
+
+--- id refinements/ajoin-all-keeps-none
+--- origin confirmed against R3 3.22.1
+--- code
+ajoin/all ["a" none "b"]
+--- result
+"anoneb"
+
+--- id refinements/ajoin-with-puts-a-separator-between
+--- origin confirmed against R3 3.22.1
+--- note Between, not after: three items give two separators.
+--- code
+ajoin/with ["a" "b" "c"] "-"
+--- result
+"a-b-c"
+
+--- id refinements/append-part-takes-only-the-first-few
+--- origin confirmed against R3 3.22.1
+--- code
+append/part [1 2] [3 4 5] 2
+--- result
+[1 2 3 4]
+
+--- id refinements/append-part-on-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+append/part "ab" "cde" 2
+--- result
+"abcd"
+
+--- id refinements/remove-part-drops-several
+--- origin confirmed against R3 3.22.1
+--- note And answers what is left from the position, not the whole
+--- note series, which is easy to get the wrong way round.
+--- code
+remove/part [1 2 3 4] 2
+--- result
+[3 4]
+
+--- id refinements/take-all-takes-the-lot
+--- origin confirmed against R3 3.22.1
+--- code
+take/all [1 2 3]
+--- result
+[1 2 3]
+
+--- id refinements/select-case-minds-the-case
+--- origin confirmed against R3 3.22.1
+--- note Without /case the first key wins, so this is the boundary
+--- note between finding "A" and finding "a".
+--- code
+select/case ["A" 1 "a" 2] "a"
+--- result
+2
+
+--- id refinements/select-skip-treats-the-block-as-records
+--- origin confirmed against R3 3.22.1
+--- note Three-wide records, so the value that follows key 3 is 4.
+--- code
+select/skip [1 2 3 4] 3 2
+--- result
+4
+
+--- id refinements/switch-case-minds-the-case
+--- origin confirmed against R3 3.22.1
+--- code
+switch/case "a" ["A" [1] "a" [2]]
+--- result
+2
+
+--- id refinements/trim-head-only-trims-the-front
+--- origin confirmed against R3 3.22.1
+--- code
+trim/head "  ab  "
+--- result
+"ab  "
+
+--- id refinements/trim-tail-only-trims-the-back
+--- origin confirmed against R3 3.22.1
+--- code
+trim/tail "  ab  "
+--- result
+"  ab"
+
+--- id refinements/parse-case-refuses-the-wrong-case
+--- origin confirmed against R3 3.22.1
+--- note PARSE ignores case by default, so this is the one that shows
+--- note /case doing something.
+--- code
+parse/case "AB" ["ab"]
+--- result
+#(false)
+
+--- id refinements/parse-case-accepts-the-right-case
+--- origin confirmed against R3 3.22.1
+--- code
+parse/case "AB" ["AB"]
+--- result
+#(true)
+
+--- id refinements/reduce-into-answers-the-position-after-what-it-put
+--- origin confirmed against R3 3.22.1
+--- note Not the target and not what was reduced. Inserting 2 at the
+--- note head of [9] leaves the answer looking at [9], which reads as
+--- note though nothing happened until you look at the target again.
+--- code
+reduce/into [1 + 1] [9]
+--- result
+[9]
+
+--- id refinements/reduce-into-really-does-fill-the-target
+--- origin confirmed against R3 3.22.1
+--- code
+target: [9]
+reduce/into [1 + 1] target
+target
+--- result
+[2 9]

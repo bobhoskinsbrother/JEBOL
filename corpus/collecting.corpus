@@ -1,0 +1,44 @@
+--- title Collecting values as code runs
+--- about COLLECT and KEEP as ordinary functions, which is a different
+--- about thing from the PARSE keywords of the same names. COLLECT
+--- about evaluates a block and answers what KEEP put aside while it
+--- about ran, so the gathering is not tied to matching at all. Rebol's
+--- about own SPLIT is built on them.
+
+--- id collecting/keeping-two-values
+--- origin confirmed against R3 3.22.1
+--- code
+mold collect [keep 1 keep 2]
+--- result
+"[1 2]"
+
+--- id collecting/collecting-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+mold collect []
+--- result
+"[]"
+
+--- id collecting/a-block-is-spread-by-default
+--- origin confirmed against R3 3.22.1
+--- note Which is the surprise, and the reason /only exists.
+--- code
+mold collect [keep [1 2]]
+--- result
+"[1 2]"
+
+--- id collecting/keeping-a-block-whole
+--- origin confirmed against R3 3.22.1
+--- code
+mold collect [keep/only [1 2]]
+--- result
+"[[1 2]]"
+
+--- id collecting/keeping-from-inside-a-loop
+--- origin confirmed against R3 3.22.1
+--- note The point of having it as a function rather than a parse rule:
+--- note anything that runs can keep, including a loop.
+--- code
+mold collect [repeat i 3 [keep i]]
+--- result
+"[1 2 3]"

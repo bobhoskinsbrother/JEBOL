@@ -1,0 +1,95 @@
+--- title A paren as a path segment
+--- about `data/(k)` reaches the field named by whatever K holds. It is
+--- about the only way a path selects something decided at run time: a
+--- about word segment is a name taken as written, so without this a
+--- about path can only reach what the source spelled out.
+
+--- id paren-paths/a-path-with-a-paren-is-still-a-path
+--- origin confirmed against R3 3.22.1
+--- code
+type? first [a/(1 + 1)]
+--- result
+#(path!)
+
+--- id paren-paths/the-paren-is-one-segment
+--- origin confirmed against R3 3.22.1
+--- note Not a nested path, so the length is two and not three.
+--- code
+length? first [a/(1 + 1)]
+--- result
+2
+
+--- id paren-paths/it-molds-back-with-its-parentheses
+--- origin confirmed against R3 3.22.1
+--- code
+mold first [a/(1 + 1)]
+--- result
+"a/(1 + 1)"
+
+--- id paren-paths/a-paren-among-other-segments
+--- origin confirmed against R3 3.22.1
+--- code
+mold first [a/(b)/c]
+--- result
+"a/(b)/c"
+
+--- id paren-paths/the-paren-is-evaluated-to-give-the-selector
+--- origin confirmed against R3 3.22.1
+--- code
+b: [x y]
+b/(1 + 1)
+--- result
+y
+
+--- id paren-paths/reaching-the-third-item-that-way
+--- origin confirmed against R3 3.22.1
+--- code
+b: [x y z]
+b/(2 + 1)
+--- result
+z
+
+--- id paren-paths/computing-the-name-of-an-objects-field
+--- origin confirmed against R3 3.22.1
+--- note Which is what makes this worth having: the field is not in the
+--- note source at all.
+--- code
+o: make object! [a: 1]
+o/(to word! "a")
+--- result
+1
+
+--- id paren-paths/a-computed-position-past-the-end
+--- origin confirmed against R3 3.22.1
+--- code
+b: [x y]
+b/(0)
+--- result
+_
+
+--- id paren-paths/a-get-path-selects-through-the-path
+--- origin confirmed against R3 3.22.1
+--- note It is not the path itself, which is what a lit-path would be.
+--- code
+o: make object! [a: 1]
+:o/a
+--- result
+1
+
+--- id paren-paths/a-get-path-does-not-call-what-it-reaches
+--- origin confirmed against R3 3.22.1
+--- note Which is the whole difference from a plain path: `o/f` calls
+--- note the function and `:o/f` hands it back.
+--- code
+o: make object! [a: 1 f: does [99]]
+type? :o/f
+--- result
+#(function!)
+
+--- id paren-paths/a-plain-path-does-call-it
+--- origin confirmed against R3 3.22.1
+--- code
+o: make object! [a: 1 f: does [99]]
+o/f
+--- result
+99

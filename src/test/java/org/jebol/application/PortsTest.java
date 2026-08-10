@@ -25,6 +25,18 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class PortsTest {
 
+    /**
+     * An interpreter that may ask for files but has been given no port.
+     *
+     * <p>The grant and the port are two separate things. This file is
+     * about the port, thus the grant is given everywhere and the tests
+     * below say what happens with and without somewhere to read.
+     */
+    private static Interpreter grantedFiles() {
+        return Interpreter.withBounds(
+                Bounds.standard().granting(org.jebol.domain.host.HostService.FILES));
+    }
+
     @Nested
     @DisplayName("without a port, a script reaches nothing")
     class DeniedByDefault {
@@ -32,7 +44,7 @@ class PortsTest {
         @Test
         @DisplayName("reading a file is refused when no port was supplied")
         void readingIsRefusedByDefault() {
-            ScriptOutcome outcome = Interpreter.create().run("read %somewhere.txt");
+            ScriptOutcome outcome = grantedFiles().run("read %somewhere.txt");
 
             assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
             assertThat(outcome.errorId()).contains("no-port");
@@ -42,7 +54,7 @@ class PortsTest {
         @DisplayName("writing is refused too")
         void writingIsRefusedByDefault() {
             ScriptOutcome outcome =
-                    Interpreter.create().run("write %somewhere.txt \"contents\"");
+                    grantedFiles().run("write %somewhere.txt \"contents\"");
 
             assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
             assertThat(outcome.errorId()).contains("no-port");
@@ -51,10 +63,10 @@ class PortsTest {
         @Test
         @DisplayName("and the refusal is a catchable error, not a crash")
         void refusalIsAnOrdinaryError() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = grantedFiles();
 
             assertThat(interpreter.run("error? try [read %somewhere.txt]").display())
-                    .isEqualTo("true");
+                    .isEqualTo("#(true)");
         }
     }
 
@@ -67,7 +79,7 @@ class PortsTest {
             Path file = directory.resolve("greeting.txt");
             Files.writeString(file, "hello from disk", StandardCharsets.UTF_8);
 
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
             assertThat(interpreter.run("read %greeting.txt").display())
@@ -76,7 +88,7 @@ class PortsTest {
 
         @Test
         void aScriptCanWriteAFile(@TempDir Path directory) throws IOException {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
             interpreter.run("write %written.txt \"from the script\"");
@@ -88,7 +100,7 @@ class PortsTest {
         @Test
         @DisplayName("reading something that is not there is an error, not empty text")
         void readingSomethingAbsentIsAnError(@TempDir Path directory) {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
             ScriptOutcome outcome = interpreter.run("read %missing.txt");
@@ -101,11 +113,11 @@ class PortsTest {
         @DisplayName("a script can tell whether a file is there")
         void aScriptCanAskWhetherAFileExists(@TempDir Path directory) throws IOException {
             Files.writeString(directory.resolve("here.txt"), "yes");
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
-            assertThat(interpreter.run("exists? %here.txt").display()).isEqualTo("true");
-            assertThat(interpreter.run("exists? %not-here.txt").display()).isEqualTo("false");
+            assertThat(interpreter.run("exists? %here.txt").display()).isEqualTo("#(true)");
+            assertThat(interpreter.run("exists? %not-here.txt").display()).isEqualTo("#(false)");
         }
     }
 
@@ -117,7 +129,7 @@ class PortsTest {
         @DisplayName("a script cannot climb out of the directory it was given")
         void escapingTheRootIsRefused(@TempDir Path directory) throws IOException {
             Files.writeString(directory.resolve("inside.txt"), "fine");
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
             ScriptOutcome outcome = interpreter.run("read %../../../etc/passwd");
@@ -131,7 +143,7 @@ class PortsTest {
         @Test
         @DisplayName("nor reach an absolute path")
         void absolutePathsAreRefused(@TempDir Path directory) {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
             ScriptOutcome outcome = interpreter.run("read %/etc/passwd");
@@ -144,7 +156,7 @@ class PortsTest {
         @DisplayName("a read-only port refuses writes")
         void aReadOnlyPortRefusesWrites(@TempDir Path directory) throws IOException {
             Files.writeString(directory.resolve("readable.txt"), "contents");
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory).readOnly());
 
             assertThat(interpreter.run("read %readable.txt").succeeded()).isTrue();
@@ -159,7 +171,7 @@ class PortsTest {
         void aRefusedWriteChangesNothing(@TempDir Path directory) throws IOException {
             Path file = directory.resolve("readable.txt");
             Files.writeString(file, "original");
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory).readOnly());
 
             interpreter.run("write %readable.txt \"changed\"");

@@ -7,8 +7,8 @@
 -- values count as equal. It specifies no evaluation; see eval.allium.
 --
 -- Scope is milestone 1. Datatypes deliberately left out for now:
--- port!, event!, module!, library!, routine!, struct!, handle!, map!,
--- vector!, image!, gob!, bitset!, typeset!, closure!, command!, op!, task!.
+-- port!, event!, module!, library!, routine!, struct!, handle!,
+-- vector!, image!, gob!, bitset!, closure!, command!, task!.
 
 ------------------------------------------------------------
 -- Enumerations
@@ -20,28 +20,50 @@
 enum Datatype {
     unset | none | logic | integer | decimal | percent | money | char
     | pair | tuple | time | date
-    | string | file | url | email | tag | binary
+    | string | file | url | email | tag | binary | ref
     | word | set_word | get_word | lit_word | refinement | issue
     | block | paren | path | set_path | get_path | lit_path
-    | datatype | native | function | op | object | error
+    | datatype | native | function | op | object | error | map
     | java_object   -- a value belonging to the host, reachable both ways
+
+    -- Named but not built. No value of these exists yet, and the names
+    -- still have to: `#(bitset!)` is a datatype value and `datatype?`
+    -- answers true for it, whether or not a bitset can be made.
+    --
+    -- This was tried once as a way to stop the reader refusing `bitset!`
+    -- in source and reverted, because that was the wrong fix -- a bare
+    -- name is a word and the reader has no business deciding which
+    -- datatypes exist. The names are needed for the construction form,
+    -- which is a different question and does need them.
+    | action | bitset | closure | command | end | event | frame | gob
+    | handle | hash | image | library | module | port | rebcode
+    | struct | task | utype | vector
 }
 
 -- The concrete datatypes reachable through each family variant. A family
 -- exists where several datatypes share one representation and differ only
 -- in how the loader spells them and how MOLD prints them.
-enum StringDatatype { string | file | url | email | tag }
+enum StringDatatype { string | file | url | email | tag | ref }
 enum BlockDatatype { block | paren | path | set_path | get_path | lit_path }
 enum WordDatatype { word | set_word | get_word | lit_word | refinement | issue }
 
 -- Error categories as R3-Alpha groups them in its error catalogue.
-enum ErrorCategory { syntax | script | math | access | user | internal }
+-- The `throw` category is what a control-flow signal looks like once
+-- TRY/ALL has turned it into a value. Confirmed against a real R3:
+-- `try/all [throw 5]` gives type Throw, id throw, and a stray break gives
+-- type Throw, id break. Nothing raises one directly.
+enum ErrorCategory { syntax | script | math | access | user | internal | throw }
 
 -- How a function parameter consumes its argument.
+--
+-- The two quoting kinds are named for how firmly they hold, because
+-- naming them "literal" and "soft literal" left nothing to say which
+-- sigil was which, and they were specified the wrong way round until a
+-- real R3 was asked. The sigil is now part of each name's explanation.
 enum ParameterKind {
     normal          -- evaluates the argument
-    | literal       -- takes the argument unevaluated (a 'word in the spec)
-    | soft_literal  -- unevaluated unless the argument is a paren, get-word or get-path
+    | hard_quoted   -- takes the argument exactly as written (a :word in the spec)
+    | soft_quoted   -- as written (a 'word in the spec) unless the caller opts out
     | refinement    -- a /refinement switch, contributing logic true or none
     | refinement_arg-- an argument belonging to the preceding refinement
     | return_type   -- a return: annotation, contributing no argument
@@ -100,6 +122,26 @@ entity Context {
     slot_count: slots.count
 }
 
+-- Key-to-value storage for a map!, mutable and shared exactly as series
+-- storage is. Kept apart from Context because a map's keys are values
+-- rather than names: #[1 2] has the integer 1 as a key, and nothing about
+-- a map is a binding target.
+entity MapStorage {
+    entries: List<MapEntry>
+
+    length: entries.count
+
+    invariant KeysAreUnique {
+        for entry in entries:
+            entries.count(other => other.key = entry.key) = 1
+    }
+}
+
+value MapEntry {
+    key: Value
+    value: Value
+}
+
 entity ContextSlot {
     context: Context
     spelling: String            -- as first written, case preserved
@@ -119,7 +161,7 @@ entity Value {
         | MoneyValue | CharValue | PairValue | TupleValue | TimeValue | DateValue
         | AnyStringValue | BinaryValue | AnyBlockValue | AnyWordValue
         | DatatypeValue | NativeValue | FunctionValue | OpValue | ObjectValue
-        | ErrorValue | JavaObjectValue
+        | ErrorValue | JavaObjectValue | MapValue | BitsetValue
 
     -- The concrete datatype this value reports to TYPE?. Each variant
     -- narrows this to the datatypes it can carry.
@@ -145,6 +187,27 @@ entity Value {
     @guidance
         -- LogicValue overrides is_truthy through its own truth field. The
         -- derivation here covers every other variant, all of which are true.
+}
+
+-- A set of character codes, held as bits so membership is a lookup
+-- rather than a search. Not a series: it has no position and no order,
+-- and FIND answers whether something is in it rather than where.
+variant BitsetValue : Value {
+    bits: List<Integer>         -- one octet per eight codes, lowest first
+}
+
+-- A map!, written #[key: value ...] and made with `make map!`.
+--
+-- Not a series: it has no position, so NEXT and FIRST mean nothing on
+-- one, and LENGTH? counts pairs rather than items. Reading a key that is
+-- not there gives NONE rather than raising, which is the opposite of an
+-- object and the same as a series position past the end: a map is asked
+-- about keys it may not have, and an object is asked for fields it should.
+variant MapValue : Value {
+    storage: MapStorage
+
+    -- Two maps are equal when they hold the same keys with equal values.
+    -- Order of insertion is not part of it.
 }
 
 variant UnsetValue : Value {
@@ -185,15 +248,39 @@ variant CharValue : Value {
     codepoint: Integer
 }
 
+-- A coordinate pair, written 40x40.
+--
+-- Both halves are decimals, not integers, which is not what the spelling
+-- suggests: 1x2 reads back as 1x2 but FIRST 1x2 is 1.0, and 1.5x2 is a
+-- legal pair. R3 was asked and this is what it answers. Molding hides the
+-- point again when a half is whole, so the decimal nature is visible only
+-- when you take a half out or divide: 1x2 / 2 is 0.5x1.
 variant PairValue : Value {
-    x: Integer
-    y: Integer
+    x: Decimal
+    y: Decimal
+
+    -- Read as a path, a pair answers to two spellings for each half: the
+    -- name and the position. p/x and p/1 are the same question.
 }
 
+-- Up to twelve octets, written 100.150.150, with twelve zeros behind
+-- whatever was written.
+--
+-- Two lengths, and nearly everything about a tuple follows from the gap
+-- between them. The kept length is how many octets were written down and
+-- can be anything from none to twelve. The shown length is never below
+-- three, so a tuple of one octet still reads and molds as three.
+--
+-- The octets past the kept length are zeros rather than absent, which is
+-- what makes 1.2.3 equal to 1.2.3.0. The two are equal and are not the
+-- same tuple, because only the length tells them apart.
 variant TupleValue : Value {
-    segments: List<Integer>
+    segments: List<Integer>     -- what was written; 0 to 12 octets
 
     segment_count: segments.count
+
+    -- What LENGTH? answers, and how far a path may read.
+    shown_count: max(segments.count, 3)
 }
 
 variant TimeValue : Value {
@@ -273,12 +360,38 @@ variant JavaObjectValue : Value {
     is_host_null: Boolean       -- a held Java null, distinct from NONE
 }
 
+-- An error, which is a value like any other until something tries to
+-- use it.
+--
+-- It is read through paths, and that is not a convenience: it is how
+-- REBOL code asks which failure happened. `all [error? e: try [...]
+-- e/id = 'expect-arg]` is the idiom Rebol's own test suite uses
+-- throughout, and an implementation whose errors are opaque cannot run
+-- any of it. A hundred and seventy-seven of JEBOL's failing assertions
+-- reach for one of these fields.
+--
+-- The eight fields are fixed and in this order, because WORDS-OF
+-- reports them and code walks the result. TYPE and ID are words rather
+-- than strings, so they compare with a lit-word and not with a quoted
+-- string. ARG1 to ARG3 carry whatever the failure was about -- the word
+-- that had no value, the argument of the wrong datatype -- and are none
+-- when the failure had nothing to name. A field an error has not got
+-- raises rather than answering none, because an error either has that
+-- field or the code asking is wrong.
 variant ErrorValue : Value {
-    category: ErrorCategory
-    error_id: String            -- e.g. "no-value", "expect-arg"
+    code: Integer               -- the number R3 gives this failure
+    category: ErrorCategory     -- read as TYPE, and a word: Math, Script
+    error_id: String            -- read as ID, and a word: no-value, zero-divide
     message: String
+    arg1: Value?                -- what the failure was about, if anything
+    arg2: Value?
+    arg3: Value?
     near: Value?                -- the block fragment being evaluated
     where_word: String?         -- the function the error was raised in
+
+    -- The order WORDS-OF reports, which code walks.
+    field_order: List<String> = [
+        "code", "type", "id", "arg1", "arg2", "arg3", "near", "where"]
 }
 
 ------------------------------------------------------------
@@ -291,7 +404,7 @@ config {
     max_integer: Integer = 9_223_372_036_854_775_807
     min_integer: Integer = -9_223_372_036_854_775_808
 
-    -- Tuples hold 3 to 12 segments, each an octet.
+    -- A tuple keeps up to 12 octets and never shows fewer than 3.
     min_tuple_segments: Integer = 3
     max_tuple_segments: Integer = 12
 }
@@ -356,11 +469,20 @@ invariant ContextSlotsAreUnique {
 }
 
 -- Tuples are bounded in both length and element range.
+--
+-- The floor is on what a tuple shows and not on what it keeps, so a
+-- tuple of one octet is legal and shows as three.
 invariant TupleShape {
     for value in Values:
         value.kind = TupleValue
-            implies value.segment_count >= config.min_tuple_segments
+            implies value.segment_count >= 0
                 and value.segment_count <= config.max_tuple_segments
+}
+
+invariant TupleShowsAtLeastThree {
+    for value in Values:
+        value.kind = TupleValue
+            implies value.shown_count >= config.min_tuple_segments
 }
 
 invariant TupleSegmentsAreOctets {
@@ -463,6 +585,29 @@ invariant RefinementArgumentsHaveOwners {
 -- So JEBOL keeps the limit, and it is not really a limit: it is what makes
 -- a bound block mean the same thing later that it meant when it was bound.
 
+-- Resolved against a real R3: a bound word names the context that holds
+-- its slot, never a descendant that only reaches it through a parent.
+-- Contexts nest here, so binding a block into an inner scope could plainly
+-- have marked every word with that scope. It must not: BIND asked for the
+-- home of a word answers wherever that word lives, and code that adds a
+-- name there expects it to outlive the block being bound. REBOL's own
+-- boot writes its six reflector functions exactly that way, inside a USE
+-- whose scope disappears immediately afterwards.
+
+-- Resolved against a real R3: a series value keeps its own position, so
+-- shortening the storage underneath one leaves it standing past the end.
+-- Take three items off a four-item block that something else holds at
+-- position four, and that other value is stranded: it reads as empty,
+-- answers true to TAIL? and EMPTY?, and PAST? exists to ask about
+-- exactly this.
+--
+-- It is an ordinary state rather than an error, and every operation has
+-- to cope with it. JEBOL computed the remaining items as a sublist from
+-- the position, and a stranded one threw an IllegalArgumentException
+-- straight out of the interpreter -- or, for a string, a
+-- NegativeArraySizeException from building a buffer of negative size.
+-- Both are the kind of failure spec/embed.allium says cannot happen.
+
 -- Resolved: an interpreter instance is single-threaded and owns every
 -- value reachable from it. Concurrency comes from running many instances.
 -- Series aliasing therefore needs no synchronisation, because nothing
@@ -473,16 +618,63 @@ invariant RefinementArgumentsHaveOwners {
 -- The invariants below constrain what the reader can build, not what a
 -- caller may construct through conversion. See docs/decisions.md item 7.
 
+open question "A malformed map literal such as #[none] is refused by the reader with a syntax malconstruct, where a real Rebol refuses it with a script invalid-arg. Rebol reads the brackets into a block and builds the map afterwards; JEBOL builds it while reading. Is the reader the right place to build a map at all, or should #[...] read as a block that something later turns into one?"
+
 open question "Nothing may cross between interpreter instances yet, because a block carries its storage and its bindings with it. Is passing values between instances supported at all, and if so is it by deep copy, or by a handle that only the owning instance may follow?"
 
 -- Resolved: integer! crosses as a long and block! as a List. Anything
 -- without an obvious counterpart stays a REBOL value the host asks about
 -- rather than being guessed at.
 
+-- Resolved against a real R3: a bitset! is a set of character codes,
+-- held as bits so membership is a lookup rather than a search. FIND
+-- answers a logic on one rather than a position, because there is no
+-- position in a set: it is asked whether something is in it.
+--
+-- It molds as construction syntax carrying the bits, so
+-- `make bitset! "ab"` molds as `#(bitset! #{...60})` with the sixth and
+-- seventh bits of the thirteenth byte set, those being 97 and 98.
+--
+-- Wanted for PARSE, where a bitset is how a rule says "any of these
+-- characters" without listing them as alternatives, and by two of
+-- Rebol's own library files.
+
+-- Resolved against a real R3: comparing series folds case all the way
+-- down, so `equal? ["a"] ["A"]` is true and not only `equal? "a" "A"`.
+-- JEBOL folded case at the top level and compared nested values
+-- strictly, which is the kind of split nobody writes on purpose and
+-- nothing catches until a block holds a string.
+
+-- Resolved against a real R3: two objects are equal when they hold the
+-- same fields with equal values, whatever contexts they were built in.
+-- `equal? #(object! [a: 1]) #(object! [a: 1])` is true. JEBOL compared
+-- objects by the identity of their context, so two objects built the same
+-- way were never equal, and nothing noticed until construction syntax
+-- made it easy to build the same object twice.
+--
+-- The `self` field is left out of the comparison, as it is left out of
+-- molding, because every object has one and it points back at the object.
+-- Counting it would make the comparison recurse for ever.
+
 -- Resolved: MOLD prints #[java-object! <class>], which is deliberately not
 -- readable. The round-trip invariant is scoped to values the reader could
 -- have produced, and nothing the reader produces is ever a java-object!.
 -- Refusing to mold one at all would make debugging worse for no gain.
+
+-- Resolved against a real R3, and it is not what a reader of this file
+-- would guess. The values with no literal spelling mold as construction
+-- syntax rather than as the words that name them:
+--
+--     mold none    is  "_"
+--     mold true    is  "#(true)"
+--     mold false   is  "#(false)"
+--     mold unset   is  "#(unset)"
+--
+-- NONE is the odd one: a single underscore, not `#(none)`, though
+-- `#(none)` still reads. Molding these as the bare words `none` and
+-- `true` is what JEBOL did, and it broke round-tripping in the direction
+-- nobody checks: `true` reads back as a word bound to a function rather
+-- than as the logic it came from.
 
 -- Resolved: every host throwable becomes an error! at the boundary, so no
 -- exception crosses into REBOL as an exception. A host exception caught by

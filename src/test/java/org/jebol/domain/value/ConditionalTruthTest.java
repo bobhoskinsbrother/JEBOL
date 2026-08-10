@@ -107,29 +107,30 @@ class ConditionalTruthTest {
     }
 
     @Nested
-    @DisplayName("unset is not a condition at all")
-    class UnsetIsNotConditional {
+    @DisplayName("unset is a condition, and it is true")
+    class UnsetIsConditional {
 
         @Test
-        void unsetCannotBeUsedAsACondition() {
-            assertThat(UnsetValue.unset().isConditional()).isFalse();
+        @DisplayName("an unset is true, as IS_FALSE in the C says")
+        void unsetIsTrue() {
+            // `#define IS_FALSE(v) (IS_NONE(v) || (IS_LOGIC(v) &&
+            // !VAL_LOGIC(v)))` in sys-value.h. It never asks whether a
+            // value is unset, thus an unset is not false and every
+            // conditional takes its true branch for one.
+            assertThat(UnsetValue.unset().isTruthy()).isTrue();
         }
 
         @Test
-        @DisplayName("every other value can")
-        void everythingElseIsConditional() {
-            List<Value> conditionals = List.of(
-                    NoneValue.none(),
-                    LogicValue.no(),
-                    LogicValue.yes(),
-                    IntegerValue.of(0),
-                    StringValue.of(""),
-                    BlockValue.block());
-
-            assertThat(conditionals)
-                    .allSatisfy(value -> assertThat(value.isConditional())
-                            .as("%s", value.datatype())
-                            .isTrue());
+        @DisplayName("only none and a false logic are false")
+        void onlyTwoValuesAreFalse() {
+            assertThat(NoneValue.none().isTruthy()).isFalse();
+            assertThat(LogicValue.no().isTruthy()).isFalse();
+            assertThat(LogicValue.yes().isTruthy()).isTrue();
+            assertThat(IntegerValue.of(0).isTruthy())
+                    .as("zero is true, unlike in most languages")
+                    .isTrue();
+            assertThat(StringValue.of("").isTruthy()).isTrue();
+            assertThat(BlockValue.block().isTruthy()).isTrue();
         }
 
         @Test

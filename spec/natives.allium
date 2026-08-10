@@ -2,6 +2,43 @@
 --
 -- JEBOL: the built-in function set for milestone 1.
 --
+-- The standard function set is two layers, and this module covers both.
+-- Natives are written in the host language because they reach something
+-- the language cannot: arithmetic on machine integers, the reader, the
+-- evaluator itself. The prelude is written in REBOL and evaluated at
+-- startup into the same context, and holds everything that can be said in
+-- REBOL. Nothing tells a caller which layer a function came from.
+--
+-- This is not an optimisation, it is what the language is. REBOL is
+-- extended in REBOL: a dialect is a block interpreted by a function, and
+-- a library is words bound in a context. An implementation that can only
+-- be extended in its host language is a program that parses REBOL rather
+-- than a REBOL. It also cannot borrow: REBOL's own library is some
+-- twenty-five thousand lines of REBOL, and none of it is reachable to an
+-- implementation with nowhere to put it.
+--
+-- The rule for which layer a function belongs in is whether it needs
+-- something REBOL cannot say. MAX compares two values and belongs in the
+-- prelude; ADD touches machine arithmetic and does not.
+--
+-- The rule has a test, and JEBOL fails it in sixteen places. R3 defines
+-- these in REBOL and JEBOL defines them in Java:
+--
+--   body-of exists? func function join keys-of load quote split
+--   to-block to-decimal to-integer to-string to-word use values-of
+--
+-- Each is a native that did not have to be one. FUNC and FUNCTION are
+-- the striking pair: R3 builds them in REBOL on top of MAKE FUNCTION!,
+-- and JEBOL builds them in Java, which means JEBOL cannot be extended
+-- with a new way of making functions without changing JEBOL.
+--
+-- This matters more than tidiness. Loading Rebol's own file for one of
+-- these replaces the native outright -- the REBOL definition wins,
+-- because it is assigned into the same context afterwards. So every one
+-- of the sixteen is either dead code waiting to be shadowed, or a
+-- deliberate divergence that has to be defended. Left alone it is
+-- neither, and nobody can tell which by reading it.
+--
 -- This module says what the natives are and what the non-obvious ones do.
 -- It does not restate the evaluator: how a native gets its arguments,
 -- what happens when one is the wrong type, and how an error travels back
@@ -52,6 +89,23 @@ entity NativeDefinition {
     invariant OperatorsAreBinary {
         is_operator implies arity = 2
     }
+
+    @guidance
+        -- Two of the pairings are not what the spelling suggests, and
+        -- guessing them wrong gives an operator that works on the easy
+        -- cases and lies on the rest.
+        --
+        -- `=?` is SAME?, not EQUAL?. It asks whether two references are
+        -- one value, so `1 =? 1` is true and `"a" =? "a"` is false --
+        -- two strings that are equal but not the same one.
+        --
+        -- `%%` is MOD, not MODULO. Both divide, and they differ on
+        -- negatives: `-7 %% 3` is 2, never negative, because it uses
+        -- Euclidean division. Reading `%%` as REMAINDER gives -1.
+        --
+        -- The other seven are the obvious twins: != is NOT-EQUAL?,
+        -- !== is STRICT-NOT-EQUAL?, ** is POWER, & is AND~, | is OR~,
+        -- << is SHIFT-LEFT and >> is SHIFT-RIGHT.
 }
 
 ------------------------------------------------------------
@@ -151,11 +205,292 @@ rule ArithmeticRaisesOnOverflow {
         -- operation is checked.
 }
 
+-- Arithmetic on a pair is arithmetic on each half. Where the other side
+-- is a single number rather than a pair, that number applies to both
+-- halves, so 1x2 + 1 is 2x3 and 1x2 * 2 is 2x4. This is the only place
+-- where an operand is spread across a value rather than widened to meet
+-- it, and it is why a pair is not simply a two-item block.
+rule PairArithmeticAppliesToEachHalf {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: is_pair(left) or is_pair(right)
+    ensures: ArithmeticResult(
+        x: apply(operation, x_of(left), x_of(right)),
+        y: apply(operation, y_of(left), y_of(right)))
+}
+
+-- Two pairs compare by both halves at once, so neither < nor > is a
+-- total order over pairs: 1x2 < 2x3 is true and 1x2 < 2x1 is false, and
+-- so is 1x2 > 2x1. Code that sorts pairs cannot lean on trichotomy.
+rule PairComparisonNeedsBothHalves {
+    when: EvaluateComparison(operation, left, right)
+    requires: is_pair(left) and is_pair(right)
+    ensures: ComparisonHolds(
+        holds: holds(operation, x_of(left), x_of(right))
+            and holds(operation, y_of(left), y_of(right)))
+}
+
+-- === Tuples ================================================
+--
+-- A tuple is a row of octets and every operation on one works octet by
+-- octet, then forces the answer back into an octet. Nothing about a
+-- tuple ever overflows or raises on range: 200 + 100 is 255 and 1 - 2 is
+-- 0. This is the opposite of integer arithmetic, where an answer that
+-- does not fit raises, and it is deliberate: a tuple is a colour or a
+-- version number, and both want the edge rather than a failure.
+rule TupleArithmeticClampsEachOctet {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: is_tuple(left)
+    ensures: ArithmeticResult(
+        octets: octets_of(left).map(octet =>
+            clamp(apply(operation, octet, matching_octet(right)), 0, 255)))
+}
+
+-- Where the right side is a single number it applies to every octet, as
+-- it does for a pair. Where it is a tuple, the longer of the two lengths
+-- wins and the shorter one contributes zeros.
+rule TupleArithmeticTakesTheLongerLength {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: is_tuple(left) and is_tuple(right)
+    ensures: ArithmeticResult(
+        segment_count: max(left.segment_count, right.segment_count))
+}
+
+-- A zero octet stays zero however large the factor, and a factor over
+-- 255 saturates without being multiplied out. Both are guards against a
+-- multiplication that would leave the range of a machine integer on the
+-- way to an answer that was going to be clamped anyway.
+rule TupleMultiplicationSaturates {
+    when: EvaluateArithmetic(multiply, left, right)
+    requires: is_tuple(left) and magnitude_of(right) > 255
+    ensures: ArithmeticResult(
+        octets: octets_of(left).map(octet => saturated(octet)))
+}
+
+-- Dividing by a decimal rounds the octet to the nearest whole number
+-- rather than truncating it, so 1 / 0.625 is 2 and not 1.
+rule TupleDivisionByADecimalRounds {
+    when: EvaluateArithmetic(divide, left, right)
+    requires: is_tuple(left) and is_decimal(right)
+    ensures: ArithmeticResult(
+        octets: octets_of(left).map(octet =>
+            clamp(round_half_away(octet / right), 0, 255)))
+}
+
+-- Two tuples are equal when their octets agree, and the zeros behind the
+-- kept ones count, so 1.2.3 equals 1.2.3.0. Strict equality asks the
+-- further question of whether the two were written to the same length,
+-- and those two are not.
+rule TupleEqualityIgnoresTheLength {
+    when: EvaluateComparison(equal, left, right)
+    requires: is_tuple(left) and is_tuple(right)
+    ensures: ComparisonHolds(holds: octets_to_twelve(left) = octets_to_twelve(right))
+}
+
+rule TupleStrictEqualityMindsTheLength {
+    when: EvaluateComparison(strict_equal, left, right)
+    requires: is_tuple(left) and is_tuple(right)
+    ensures: ComparisonHolds(
+        holds: octets_to_twelve(left) = octets_to_twelve(right)
+            and left.segment_count = right.segment_count)
+}
+
+-- A path reads any of the shown octets, so a tuple of one octet answers
+-- zero for its second and third. Past the shown length it answers none,
+-- the way a series does rather than the way an object does.
+rule TupleReadsAZeroWithinTheShownLength {
+    when: EvaluatePath(target, position)
+    requires: is_tuple(target) and position >= 1
+        and position <= target.shown_count
+    ensures: PathResult(value: octet_at(target, position))
+}
+
+rule TupleReadsNonePastTheShownLength {
+    when: EvaluatePath(target, position)
+    requires: is_tuple(target)
+        and (position < 1 or position > target.shown_count)
+    ensures: PathResult(value: none_value())
+}
+
+-- Writing past the end lengthens the tuple and fills the gap with zeros,
+-- so setting the fifth octet of 1.2.3 gives 1.2.3.0.5. A written octet
+-- is clamped rather than refused, matching the arithmetic.
+rule TupleWriteExtendsAndClamps {
+    when: EvaluateSetPath(target, position, written)
+    requires: is_tuple(target) and position >= 1 and position <= 12
+        and is_number(written)
+    ensures: SetPathResult(
+        octet_at: clamp(written, 0, 255),
+        segment_count: max(target.segment_count, position))
+}
+
+-- Writing NONE cuts the tuple short at that position and zeros what
+-- followed. It is the only way to shorten one.
+rule TupleWriteOfNoneShortens {
+    when: EvaluateSetPath(target, position, written)
+    requires: is_tuple(target) and position >= 1 and position <= 12
+        and is_none(written)
+    ensures: SetPathResult(segment_count: position - 1)
+}
+
+rule TupleWriteOutsideTheBoundsRaises {
+    when: EvaluateSetPath(target, position, written)
+    requires: is_tuple(target) and (position < 1 or position > 12)
+    ensures: SetPathFailed(failure: bad_path_set)
+}
+
+-- POKE is refused where a set-path is allowed. A tuple is not a series
+-- and POKE asks for one, so the argument is rejected before the write is
+-- considered.
+rule PokeOfATupleIsRefused {
+    when: EvaluatePoke(target, position, written)
+    requires: is_tuple(target)
+    ensures: PokeFailed(failure: expect_arg)
+}
+
 rule DivisionByZeroRaises {
     when: EvaluateArithmetic(operation, left, right)
     requires: operation in {divide, remainder}
     requires: is_zero(right)
     ensures: ArithmeticFailed(failure: zero_divide)
+}
+
+-- === Two names, two different functions ====================
+
+-- SIN is not a short name for SINE. They are different functions that
+-- happen to compute the same curve, and they disagree on both of the
+-- things that matter:
+--
+--   sine 90    is 1.0                 -- degrees
+--   sin 90.0   is 0.893996663600558   -- radians
+--   sin 90     raises expect_arg      -- decimals only
+--
+-- The long names take degrees and accept a whole number. The short ones
+-- take radians and refuse anything but a decimal. The same split runs
+-- through COS and COSINE, TAN and TANGENT, ASIN and ARCSINE, ACOS and
+-- ARCCOSINE, ATAN and ARCTANGENT, and SQRT and SQUARE-ROOT -- the last
+-- of which has no angle at all and still refuses `sqrt 16` while
+-- answering `square-root 16`.
+--
+-- Naming one as an alias of the other is a plausible reading and gives
+-- an implementation that is wrong by a factor of fifty-seven for every
+-- angle. Neither pair may be defined in terms of the other.
+--
+-- ATAN2 belongs with the short names: two decimals, whole numbers
+-- refused.
+-- === Counting from zero ====================================
+
+-- REBOL series are one-based: the first item is at index 1, and INDEX?
+-- of a fresh series is 1. There is a second family of natives that
+-- counts from zero instead, spelled with a z: ATZ, INDEXZ?, PICKZ and
+-- POKEZ. They exist for code talking to something that counts from zero
+-- and are otherwise the same operations.
+--
+-- Both families are present at once, which is the trap. `pick b 1` and
+-- `pickz b 1` are different items, and neither spelling is wrong. Code
+-- that mixes them is off by one in a way that reads as correct.
+--
+-- ATZ clamps rather than raising. A position past the tail gives the
+-- tail and a negative one gives the head, so `atz [1 2 3] 4` is the
+-- empty tail and `atz [1 2 3] -1` is the whole series. That is the same
+-- clamping SKIP does, and it is why neither of them has an out-of-range
+-- failure.
+rule ZeroBasedPositionsClampAtBothEnds {
+    when: EvaluateAtz(series, position)
+    ensures: SeriesPosition(
+        index: clamp(position, 0, series.length))
+}
+
+-- Writing one element by number refuses an index outside the series.
+-- Confirmed against a real R3: for a three-element series, POKE at 1 and
+-- at 3 both work, and 0, -1 and 4 all raise out-of-range. An empty
+-- series refuses every index, including 1.
+--
+-- Reading does not. `pick [1 2 3] 4` is none, and so are `pick` at 0 and
+-- at -1. So POKE and PICK part company on the same index, and the split
+-- is reading against writing rather than anything about the number: a
+-- question about an element that is not there has an answer, and a
+-- demand to change one does not.
+--
+-- Worth stating beside the clamping rule above, because three natives
+-- given the same out-of-range number do three different things. AT
+-- clamps, PICK shrugs, POKE raises. Each is right for what it is asked,
+-- and none of it is guessable.
+rule WritingAnElementOutsideTheSeriesRaises {
+    when: EvaluatePoke(series, index)
+    requires: index < 1 or index > series.length
+    ensures: Raises(id: out_of_range)
+}
+
+rule ReadingAnElementOutsideTheSeriesGivesNone {
+    when: EvaluatePick(series, index)
+    requires: index < 1 or index > series.length
+    ensures: PickResult(value: none)
+}
+
+-- The same rule covers a record width, which is an element count and so
+-- has the same lower bound. `select/skip [1 2 3 4 5 6] 5 -4` and the same
+-- with 0 both raise, rather than being read as "backwards" or "no step".
+-- Confirmed against a real R3 for SELECT, FIND and SORT alike.
+--
+-- Searching backwards is the exception, and it is a real one rather than
+-- an oversight. FIND/REVERSE is already walking towards the head, so a
+-- negative width is not a contradiction there: `find/reverse/skip tail
+-- "acde" (a bitset holding #"c") -2` finds "cde", and so does the same
+-- call with 2. A width of zero under /REVERSE answers none rather than
+-- raising. Confirmed against a real R3, all three.
+rule NonPositiveStepSizeRaises {
+    when: EvaluateSkippingSearch(series, step)
+    requires: step < 1
+    requires: not searching_backwards
+    ensures: Raises(id: out_of_range)
+
+    @guidance
+        -- Zero is the one that catches an implementation out: a step of
+        -- zero reads as "do not move", and a search that does not move
+        -- does not end. JEBOL's SELECT looped on it until this rule
+        -- existed, and no wall-clock bound stopped it, because nothing
+        -- inside a native's own loop asks whether to keep running.
+}
+
+-- SELECT answers the value straight after the match, always. The record
+-- width decides only WHERE it is allowed to look: at the first element of
+-- each record and nowhere else. Without /skip it may look anywhere.
+--
+-- Confirmed against a real R3, and the two halves are easy to conflate.
+-- `select/skip [1 2 3 4 5 6] 4 3` is 5, not 6: the width of three puts a
+-- record boundary before the 4, and the answer is still the very next
+-- element rather than the end of that record. An implementation that
+-- returns the record's last field agrees at a width of two and disagrees
+-- everywhere else, which is a hard way to find out.
+--
+-- A match with nothing after it answers none, and so does a value that
+-- sits inside a record rather than at its start.
+rule SelectAnswersTheValueAfterTheMatch {
+    when: EvaluateSelect(series, wanted, width)
+
+    requires: matched_record_start(series, wanted, width) > 0
+
+    ensures:
+        if matched_record_start(series, wanted, width) < series.length:
+            SelectResult(value: element_at(
+                series, matched_record_start(series, wanted, width) + 1))
+        else:
+            SelectResult(value: none)
+
+    @guidance
+        -- Without /skip the width is one, so every position is a record
+        -- start. A default of two would quietly skip half the series and
+        -- fail to find anything at an even position.
+}
+
+-- Taking everything from an empty series gives an empty series of the
+-- same kind, not a failure and not none. `take/all` on an empty block is
+-- an empty block; on an empty string it is an empty string. Emptiness is
+-- the ordinary case for a series, so it must not be an error path.
+rule TakingEverythingFromAnEmptySeriesGivesAnEmptyOne {
+    when: EvaluateTakeAll(series)
+    requires: series.length = 0
+    ensures: TakeResult(value: empty_series_like(series))
 }
 
 -- === Failure ===============================================
@@ -214,6 +549,39 @@ surface BuiltInFunctions {
         -- answer: only NONE and logic FALSE are false. No native has its
         -- own notion of truth.
 
+    @guarantee ANativeDeclaresItsRefinements
+        -- A native declares its refinements and is told which of them the
+        -- caller asked for, exactly as a user function is. It does not get
+        -- a separate entry per refinement, and a refinement it does not
+        -- declare raises no_refine.
+        --
+        -- Registering copy/part as its own native worked while there were
+        -- three of them and stopped working at nine: FIND alone takes
+        -- /any, /tail, /last, /same, /part, /skip, /case, /reverse and
+        -- /only, and a caller may combine them, so one entry per
+        -- combination is five hundred entries for one native. Rebol's own
+        -- suite reaches roughly six hundred assertions through
+        -- refinements that arrangement could not express.
+        --
+        -- A refinement may carry an argument, and only when it was asked
+        -- for: TAKE takes one value and TAKE/PART takes two. Counting
+        -- those unconditionally would make every plain call demand values
+        -- it has no use for.
+
+    @guarantee ThePreludeIsIndistinguishableFromANative
+        -- A prelude function is reached, called, molded and rebound
+        -- exactly as a native is. A caller cannot tell which layer a
+        -- function came from, and nothing in the language depends on
+        -- knowing, so a function may move between the layers without any
+        -- script noticing.
+
+    @guarantee ThePreludeIsEvaluatedBeforeAnyScript
+        -- It is evaluated once when the interpreter is built, into the
+        -- context the natives are in, so its functions see the natives and
+        -- each other. A failure while evaluating it is a defect in JEBOL
+        -- rather than something a script did, and it is raised as one
+        -- rather than leaving an interpreter half-built.
+
     @guarantee NativesAreOrdinaryFunctions
         -- A native gathers arguments, type-checks them and raises exactly
         -- as a user function does. Nothing about being built in changes
@@ -225,7 +593,589 @@ surface BuiltInFunctions {
 -- Open Questions
 ------------------------------------------------------------
 
-open question "Which forty natives exactly? The categories are settled and the awkward semantics are specified, but the list itself is not written down. It should be pinned before the tests, because a native that turns up later is a native the corpus never asked for."
+-- Resolved: the list is pinned by the corpus rather than written out
+-- here. There are 113 of them, each reached by at least one entry, and a
+-- native with no entry is a native that does not exist. The count moved
+-- from forty as the milestones landed, which is why naming it here would
+-- have gone stale.
+
+-- Resolved against a real R3: TO-STRING runs a block's values together
+-- with no separator, so to-string [1 2 3] is "123". Putting spaces
+-- between them is FORM's job, and form [1 2 3] is "1 2 3". The two are
+-- easy to conflate because they agree on every value that is not a
+-- series, and the corpus had them conflated until the binary was asked.
+
+-- Resolved against a real R3: converting a string to an integer fails in
+-- three distinguishable ways, and which one you get depends on the text
+-- rather than on the call. Leading and trailing whitespace is trimmed
+-- first. Nothing left after trimming is too_short. Whitespace still
+-- inside what remains is invalid_chars, so "1 2" and "a b" fail alike.
+-- Anything else that will not parse is bad_make_arg. A quote is a digit
+-- separator, so "1'000" is 1000, and a leading + or - is accepted.
+-- A decimal is truncated toward zero rather than rejected.
+
+-- Resolved against a real R3: FORALL leaves the series at its head, not
+-- at its tail. It walks the series to the end and then puts the word
+-- back where it found it. The guide's habit of writing HEAD after every
+-- FORALL is what suggested otherwise, and that habit is a leftover
+-- rather than a necessity.
+
+-- Resolved against a real R3: SYSTEM is an object holding what the
+-- interpreter knows about itself, reached by path: system/catalog holds
+-- the datatypes and the error catalogue, system/options what the host
+-- chose, system/version which build this is.
+--
+-- The catalogue is not decoration. REBOL's own library reads it and
+-- builds itself out of what it finds: base-defs.reb walks
+-- system/catalog/reflectors and defines SPEC-OF, BODY-OF, WORDS-OF,
+-- VALUES-OF, TYPES-OF and TITLE-OF from it, one per entry, rather than
+-- writing six functions out. base-series.reb walks
+-- system/catalog/bitsets to define the named character sets, and
+-- base-constants.reb reads system/contexts to name the two contexts it
+-- works in.
+--
+-- So a missing catalogue field is not a missing field. It is every
+-- function that would have been generated from it, and the ones
+-- generated from those in turn. Six of eighty-two mezzanine files load
+-- today, and the commonest reason the rest do not is a path into SYSTEM
+-- that resolves to nothing.
+--
+-- It is data rather than a function, which is why nothing here had it: a
+-- native set is a list of things to call, and this is a thing to read. A
+-- script asks it what datatypes exist rather than being told, and
+-- Rebol's own library reaches for it in six of its files.
+
+-- Resolved against a real R3: USE makes a context holding the words it
+-- is given, binds the block to it, and evaluates it there. A word named
+-- in the USE shadows an outer one of the same name and the outer one is
+-- untouched afterwards, which is what makes it a scope rather than an
+-- assignment.
+--
+-- It is how REBOL scopes local words outside a function, so a library can
+-- keep its working names to itself. Its absence is why several of Rebol's
+-- own library files would not load.
+
+-- Resolved: BIND given a single word answers the same question BIND
+-- given a block answers, one word at a time. A word it can place comes
+-- back naming the context that holds the slot, not the target it was
+-- asked through. The two halves of one function disagreeing about where
+-- a word lives is the sort of thing that only shows up much later, in
+-- code that asks where a word lives and then writes there.
+
+open question "BIND given an object and a word the object does not itself have raises in a real R3, because an object there is a flat context and the word is simply not in it. Contexts nest here, so an object reaches its parent and JEBOL places the word in whichever ancestor holds it. Matching R3 means asking an object only for its own fields, which is a change with a wide blast radius and no test pressing on it yet. Which behaviour does JEBOL want, and is the nesting an implementation detail that binding should not be able to see? Note that R3 is not consistent about this itself: given a WORD as the target rather than an object, it returns an unplaceable word unchanged instead of raising."
+
+-- Resolved against a real R3: ROUND/TO rounds to a multiple of what it
+-- is given rather than to a number of places, so `round/to 1.234 0.01`
+-- is 1.23 and `round/to 17 5` is 15. One rule covers both, which a
+-- decimal-places refinement would not.
+
+-- Resolved against a real R3: MAX and MIN compare whatever they are
+-- given rather than only numbers, so `max "a" "b"` is "b". They are the
+-- same comparison SORT uses, reached two at a time.
+
+-- Resolved against a real R3: SORT folds case and is stable, so
+-- ["b" "A" "a" "B"] sorts to ["A" "a" "b" "B"] rather than to
+-- ["A" "B" "a" "b"]. Equal keys keep the order they arrived in, which is
+-- what makes a second sort on another key a usable way to sort on two.
+-- /case compares exactly and puts every capital before every small
+-- letter. /compare takes a function of two values and puts the first one
+-- first when the answer is true or positive. /skip sorts records of that
+-- many items by their first, so a flat block of pairs stays paired.
+
+-- Resolved against a real R3: PROTECT on an object protects its fields,
+-- so assigning through a path into it raises locked_word exactly as
+-- assigning to a protected word does. Protecting the word that holds the
+-- object and protecting the object are different things, and it is the
+-- second that stops o/a: 1.
+
+-- Resolved against a real R3: the % operator divides, so dividing by zero
+-- through it raises zero_divide with category math, the same as DIVIDE
+-- does. It is an operator with a prefix twin like the rest.
+
+-- Resolved against a real R3: there are five names for taking what is
+-- left after a division, and they fall into two groups that disagree
+-- wherever a negative is involved. Checked at every combination of signs,
+-- with -7 and 3:
+--
+--   %, MOD and REMAINDER  answer -1
+--   %% and MODULO         answer 2
+--
+-- REMAINDER takes its sign from the dividend, so it is what a JVM's own %
+-- already does and needs no correction. MODULO is never negative at all:
+-- with a divisor of -3 it still answers 2 for -7 and 1 for 7, so the
+-- divisor's sign changes nothing either way.
+--
+-- The grouping is the reverse of what the spellings suggest twice over.
+-- % is REMAINDER although the operator is called modulo everywhere else,
+-- and MOD is REMAINDER although its name is the first three letters of
+-- the other one. Only %% and MODULO go together.
+--
+-- Nothing about this is inferable, and getting it wrong is silent: the
+-- two groups agree on every pair of positive operands, which is most
+-- code and nearly every test. JEBOL had all three of the first group
+-- answering 2.
+
+-- Resolved against a real R3: AJOIN takes its datatype from the first
+-- value, when that is one which can carry a run of text without markers
+-- of its own: a file gives a file, a url a url, an email an email.
+-- Everything else gives a string.
+--
+-- A tag is the exception worth writing down, and Rebol's own suite calls
+-- it out as by design: `ajoin [<a> "b"]` is the string "<a>b", not a
+-- tag, because a tag's text carries its own angle brackets and running
+-- two together would produce something that no longer reads as one.
+--
+-- The first value decides even when it contributes nothing: `ajoin
+-- [none %a 3]` is a string, because the none came first.
+
+-- Resolved against a real R3: JOIN keeps the datatype of what it is
+-- joining onto, so `join %a "b"` is the file %ab rather than a string.
+-- Joining onto something that is not a series gives a string, which is
+-- why `join 'a 'b` is "ab" and not a word.
+
+-- Resolved against a real R3: FIND on a string searches for a substring
+-- rather than for a single character, so `find "abc" "b"` answers "bc".
+-- Comparing one item at a time is right for a block and wrong for a
+-- string, and the difference was invisible for as long as every corpus
+-- entry searched a block.
+--
+-- Its refinements narrow or turn the search rather than changing what it
+-- answers. /reverse walks backwards from the position toward the head and
+-- /last walks backwards from the end; /part bounds how far it looks, so a
+-- match beyond the bound is not found; /case stops folding case; /tail
+-- answers the position after the match instead of at it; /only treats a
+-- block needle as one value rather than as a run to match.
+
+-- Resolved against a real R3: TO converts to whatever datatype it is
+-- given, so `to integer! "12"` and `to-integer "12"` are the same call
+-- reached two ways. The to-x spellings are the common conversions given
+-- names; TO is the general one, and a script that computes which type it
+-- wants can only use TO.
+--
+-- The to-x spellings are generated rather than written out, one per
+-- datatype a value can actually be made of. Forty-five of R3's fifty-eight
+-- get one. The thirteen that do not are END, UNSET and NONE, which hold a
+-- single value each and so have nothing to convert to, and the ten the
+-- interpreter keeps to itself -- NATIVE, ACTION, REBCODE, OP, FRAME, TASK,
+-- HANDLE, STRUCT, LIBRARY and UTYPE. Every generated one is exactly
+-- `to <type>! :value` and nothing else, so none of them can drift from TO
+-- or from each other.
+--
+-- Eleven further to-x names exist and are not conversions in this sense at
+-- all: TO-DEGREES, TO-RADIANS, TO-HEX, TO-IDATE, TO-ITIME, TO-JSON,
+-- TO-LOCAL-FILE, TO-REAL-FILE, TO-REBOL-FILE, TO-RELATIVE-FILE and
+-- TO-VALUE. Each takes its own arguments and several take refinements, so
+-- they are separate work and not part of the family.
+--
+-- JEBOL's catalogue holds one datatype R3's does not, JAVA-OBJECT!. It
+-- gets no to-x while the interop boundary is still unspecified.
+
+-- Resolved against a real R3: QUOTE takes its argument as written and
+-- hands it back, so `quote (1 + 1)` is the paren rather than 2. It is
+-- how a value is passed on without being evaluated on the way.
+
+-- Resolved against a real R3: SHIFT moves bits left for a positive count
+-- and right for a negative one, so `shift 1 2` is 4 and `shift 8 -2` is
+-- 2. One native rather than two, with the sign choosing the direction,
+-- which is the same arrangement FOR uses for its step.
+
+-- Resolved against a real R3: CONSTRUCT builds an object from a block
+-- without evaluating it, so the values arrive as written. MAKE OBJECT!
+-- evaluates; CONSTRUCT is for data that happens to be shaped like a
+-- spec, where evaluating would be wrong or unsafe.
+
+-- Resolved against a real R3: TAKE from a position the series no longer
+-- reaches answers nothing rather than failing.
+--
+-- `s: next [1 2] clear head s` leaves s pointing at the second item of a
+-- series that now has none. TAKE/ALL on it answers an empty series of the
+-- same kind, and so does the same walk on a string or a binary.
+--
+-- Clamping how many to take is not enough on its own: the position it
+-- starts from has to be clamped as well, or a count of zero is read from
+-- an index past the end and the reading is what fails.
+
+-- Resolved against a real R3: a binary literal may say what base it is
+-- written in, and only three bases exist.
+--
+-- `2#{...}` is bits, `16#{...}` is hexadecimal and is what a plain
+-- `#{...}` means, and `64#{...}` is base 64. Any other base raises invalid
+-- naming "integer", so `8#{00}` and `10#{00}` are both refused; so is a
+-- base written with a sign or with leading zeros, `+2#{}` and `0016#{FF}`.
+-- The complaint is about the integer rather than about the binary, which
+-- is the clue that the base is read as a number first.
+--
+-- Inside the braces, whitespace is ignored wherever it falls -- spaces,
+-- tabs, newlines and carriage returns alike -- so a long binary can be
+-- broken across lines. A semicolon starts a comment that runs to the end
+-- of the line, exactly as it does in ordinary source.
+--
+open question "A base written with a sign is refused by a real R3 -- `+2#{}` and `-2#{}` both raise invalid naming \"integer\" -- and JEBOL reads them as a number followed by an empty binary. A base with leading zeros is refused correctly, so the rule is understood; what differs is where the reader ends the lexeme. With no sign it takes `2#` as one lexeme and the check sees the hash; with a sign it stops at `+2` and the hash is still to come, so the same check never fires. Should the reader keep a sign with the digits when a hash follows, or should this be caught somewhere later?"
+
+-- A body that does not fill its last byte is padded rather than refused:
+-- `2#{000}` and `16#{0}` are both one zero byte. An empty body is an
+-- empty binary. Base 64 is the exception, and a body it cannot decode
+-- raises invalid naming "binary".
+
+-- Resolved against a real R3: COMPOSE/INTO puts the answer into the
+-- target whatever the answer is, and hands back the target positioned
+-- after what it put there.
+--
+-- Anything that is not a block composes to itself, which is right, and
+-- /INTO must still insert it: `compose/into "a" x` leaves x holding the
+-- string and answers x at its tail. Letting the non-block case answer
+-- early skips the insertion, so the target is left untouched and the
+-- caller gets the source back instead of a position.
+--
+-- The position matters as much as the insertion. It is what makes a run
+-- of COMPOSE/INTO calls build one series, each carrying on where the last
+-- stopped.
+
+-- Resolved against a real R3: SET takes a word, a path or a block of
+-- them, and refuses an issue or a refinement.
+--
+-- `set #ab 1` and `set /a 1` raise expect-arg. The same targets inside a
+-- block raise invalid-arg instead: `set [#f][6]` and `set [/e][5]` do.
+-- Two different ids for the same mistake, because the first is a wrong
+-- argument to SET and the second is a wrong item inside a right argument.
+--
+-- An issue and a refinement both read as words at a glance, which is what
+-- makes silently assigning to them plausible and wrong.
+
+-- Resolved against a real R3: TRIM refuses two kinds of contradictory
+-- request rather than picking one of them, and both raise bad-refines.
+--
+-- /HEAD or /TAIL says which end to work on; /ALL and /WITH say to work
+-- everywhere. Asking for one of each leaves nothing coherent to do, so
+-- `trim/head/all` and `trim/tail/with` are refused. /AUTO is not in that
+-- quarrel and `trim/auto/tail` is a perfectly ordinary call.
+--
+-- /WITH, /AUTO and /LINES are about text, so a binary or a block refuses
+-- all three. /HEAD, /TAIL and /ALL still work on both: a binary drops
+-- zero bytes and a block drops nones, which is the same idea as dropping
+-- spaces.
+--
+-- Ten of the fourteen TRIM assertions in the suite are these two rules and
+-- nothing else, which is what a refinement combination nobody checked
+-- looks like from the outside.
+
+-- Resolved against a real R3: seven more refinements, found by comparing
+-- the whole library against the binary rather than by reading failures.
+--
+-- COPY/DEEP copies what the series holds as well as the series, so
+-- changing a nested block afterwards leaves the original alone. Without
+-- it `copy` gives a new outer block whose items are the very same inner
+-- ones, and a change through either is visible through both. It combines
+-- with /PART: `copy/part/deep` takes the first few and copies those
+-- deeply.
+--
+-- UPPERCASE/PART and LOWERCASE/PART change only the first few characters
+-- from where the series is, counting from the position rather than from
+-- the head, so `uppercase/part next "abcd" 2` is "BCd".
+--
+-- REVERSE/PART turns round only the first few and leaves the rest where
+-- they were, so `reverse/part [1 2 3 4] 2` is [2 1 3 4].
+--
+-- TYPE?/WORD answers the datatype's name as a word rather than the
+-- datatype itself, which is what makes it usable in a block being built.
+--
+-- IF/ONLY, EITHER/ONLY and UNLESS/ONLY hand the branch back without
+-- running it, so `if/only true [1]` is the block [1] rather than 1. It is
+-- how a caller chooses between two blocks without either being evaluated.
+--
+-- COPY/PART is a refinement and not a function called "copy/part". A word
+-- with a slash in it answers the one call it is named for and leaves
+-- every other combination raising no-refine, which is why `copy/part`
+-- worked and `copy/deep` did not.
+
+-- Resolved against a real R3: two characters compare equal without regard
+-- to case, and compare in order with regard to it.
+--
+-- `#"a" = #"A"` is true and `#"a" == #"A"` is false, the same split a
+-- string gets. But `#"a" < #"B"` is false, so the ordering is by code
+-- point and folds nothing: the two questions are answered differently on
+-- purpose, and a comparison that folds for both puts the letters in an
+-- order nobody asked for.
+--
+-- The folding is not confined to the operator. Everything built on that
+-- comparison inherits it, so `switch #"a" [#"A" [1] #"a" [2]]` takes the
+-- first branch, and SELECT and FIND find the capital when asked for the
+-- small letter. /CASE turns it off where it is offered.
+--
+-- A character is not a one-character string, so `#"a" = "A"` is false.
+
+-- Resolved against a real R3: INDEX? and LENGTH? answer none for none
+-- rather than refusing, and EMPTY? answers true. Nothing else in that
+-- family is so forgiving -- FIRST, LAST, HEAD, TAIL, NEXT and BACK all
+-- raise -- so this is three named exceptions rather than a rule about
+-- none, and code that leans on it is asking about a series it may not
+-- have got.
+
+-- Resolved against a real R3: LOAD reads a string, a binary or a block of
+-- either, not only a string.
+--
+-- A binary is read as UTF-8, and a byte order mark at the front is
+-- dropped rather than becoming part of the first value. So
+-- `load #{EFBBBF223322}` and `load #{223322}` both answer the string "3".
+--
+-- A block is a block of sources rather than something to load. Each item
+-- is loaded on its own and its answer added as a single item, so
+-- `load ["1" "2"]` is `[1 2]` and `load ["print 'a" "print 'b"]` is
+-- `[[print 'a] [print 'b]]` -- the second nests because each of those
+-- sources holds two values and so loads as a block. An item that is not a
+-- source raises expect-arg: `load [1]` does.
+--
+-- Loading nothing answers an empty block rather than failing, for a
+-- string and a binary alike.
+--
+-- /ALL is a refinement rather than a second function. Source holding
+-- exactly one value loads as that value, and /ALL turns that off, so
+-- `load "1"` is the integer and `load/all "1"` is a block holding it.
+
+-- Resolved against a real R3: = on two decimals allows the last few bits
+-- to differ, and == does not. `0.5 = cosine 60` is true even though
+-- `cosine 60` is 0.5000000000000001, and `(0.1 + 0.2) = 0.3` is true even
+-- though the sum is 0.30000000000000004.
+--
+-- The allowance is counted in steps of the floating point representation
+-- rather than as a fixed amount, so it scales with the size of the
+-- numbers: ten steps apart or fewer is equal, and more is not. Measured
+-- at the boundary, 1.0 equals 1.000000000000002 and does not equal
+-- 1.00000000000002.
+--
+-- A fixed tolerance would be wrong in both directions at once, too coarse
+-- for small numbers and far too fine for large ones.
+--
+-- == and SAME? are exact and mind the datatype as well, so
+-- `0.5 == 0.5000000000000001` is false and so is `1 == 1.0` while
+-- `1 = 1.0` is true. Two NaNs are equal to each other and a zero equals a
+-- negative zero, under both, which is the opposite of what the hardware
+-- says on its own.
+--
+-- This is not a detail of the arithmetic natives. Every assertion in a
+-- test suite that computes a decimal and compares it to a written-out one
+-- depends on it, and an exact comparison fails most of them for reasons
+-- that look like arithmetic bugs.
+
+-- Resolved against a real R3: seven refinements JEBOL had not got. Each
+-- has to be written down with what the plain call does beside it, because
+-- a refinement that is accepted and then changes nothing looks right from
+-- every angle but that one.
+--
+-- CASE/ALL runs every branch whose condition is truthy rather than
+-- stopping at the first, and answers the last one it ran. With no
+-- condition truthy it answers none, and a branch whose block is empty
+-- makes the whole thing answer unset.
+--
+-- GET/ANY answers unset for a word whose slot holds nothing, where plain
+-- GET raises no-value. It is how code asks whether a word has a value
+-- without having to catch an error to find out.
+--
+-- REDUCE/NO-SET leaves a set-word or set-path where it stands and reduces
+-- only what follows it, so `reduce/no-set [x: 1 + 2]` is `[x: 3]` and
+-- assigns nothing. Plain REDUCE performs the assignment and drops the
+-- set-word, leaving `[3]`.
+--
+-- The trigonometric natives take degrees by default and /RADIANS switches
+-- them to radians, both for the six that take an angle and for the three
+-- that answer one: SINE, COSINE, TANGENT, ARCSINE, ARCCOSINE and
+-- ARCTANGENT.
+--
+-- SHIFT/LOGICAL shifts without regard to sign, filling with zeros from
+-- whichever end, so `shift/logical 1 63` is the most negative integer and
+-- `shift/logical -9223372036854775808 -64` is 0. Plain SHIFT keeps the
+-- sign, so a right shift of a negative number stays negative.
+--
+-- PUT/CASE matches its key exactly rather than folding case, so a block
+-- holding both "A" and "a" has two separate entries to a PUT/CASE and one
+-- to a plain PUT.
+--
+-- SELECT/SAME compares by identity and by exact datatype rather than by
+-- value. 1, 1.0 and 100% are three different keys to it and one key to
+-- plain SELECT, and on a string it stops folding case.
+
+-- Resolved against a real R3: DO of an error value raises it.
+--
+-- Rebol's own CAUSE-ERROR is written as `do make error! [...]` and
+-- nothing else, thus every call to it depends on this. Answering the
+-- error as a value makes CAUSE-ERROR do nothing at all.
+--
+-- The failure is hard to see because it looks right. TRY of the call
+-- still gives back an error value, so `error? try [...]` still holds. It
+-- shows only when something follows the call: the value is dropped and
+-- the script carries on as though nothing went wrong.
+--
+-- Found while porting ENUM, whose ASSERT raises this way. Four other
+-- explanations were tried and measured away first -- the function body,
+-- FIND, UNLESS and VALUES-OF were each blamed and each cleared -- because
+-- the probes were read from a console that interleaves its prompts with
+-- what a script prints. A probe must print a label and be run through the
+-- same file on both sides, or it proves nothing.
+
+-- Resolved against a real R3: CONTINUE stops the round a loop is in and
+-- starts the next, where BREAK stops the loop.
+--
+-- The two are caught in different places and that is the whole of the
+-- difference: a break around the whole walk, a continue around each turn
+-- of it. A CONTINUE caught where BREAK is would end the loop, which makes
+-- the two words the same.
+--
+-- A round that was cut short answers none, so a loop whose last round
+-- continued answers none rather than whatever the round before it left.
+--
+-- Either may sit several blocks deep inside the body, which is why both
+-- are thrown rather than returned: every step in between would otherwise
+-- have to carry the news back.
+
+-- Resolved against a real R3: /ANY reads the needle as a shape rather
+-- than as text to find. A question mark stands for one character and a
+-- star for any run of them, including none.
+--
+-- The match may then be longer or shorter than the needle, so what comes
+-- after it cannot be worked out by counting characters: `select/any
+-- "abcde" "*d"` answers the e, which means the star stopped at the d
+-- rather than running to the end. Only those two characters mean
+-- anything; everything else in the needle is itself, so a needle holding
+-- a dot looks for a dot.
+--
+-- FIND/SAME minds case for the same reason /CASE does: a capital is not
+-- the same character as a small letter. Minding case means minding the
+-- datatype as well, so 1, 1.0 and 100% stop being one another.
+
+-- Resolved against a real R3: PROTECT/HIDE conceals a field rather than
+-- locking it, and the two are separate: a hidden field is not locked and
+-- a locked one is not hidden.
+--
+-- The object stops listing the field in WORDS-OF and BODY-OF, stops
+-- molding it, and a path to it raises invalid-path as though there were
+-- no such field. Code written inside the object still reaches it, which
+-- is the whole point -- it is how an object keeps something to itself,
+-- and without that hiding would be the same as removing.
+--
+-- Nothing outside may write over it either: EXTEND, APPEND and PUT all
+-- raise `hidden` for that name, while any other name is added as usual.
+-- Allowing it would let something outside replace what the object was
+-- keeping, and the object's own code would then find something else
+-- there.
+
+-- Resolved against a real R3: PROTECT given a path protects the field
+-- the path names, and nothing else. `protect 'o/a` makes `o/a: 9` raise
+-- locked-word while `o/o/a: 9` stays free, and the word `o` in the
+-- enclosing scope is still assignable afterwards.
+--
+-- A path is a block of words, so a PROTECT that reads its target as a
+-- list of names finds `o` and `a` and protects whatever those words are
+-- bound to where they were written. That protects the outer `o` rather
+-- than the field, and every later `o: something` then fails quietly --
+-- which reads as though the object is protected when it is the name that
+-- is. Six assertions in the suite's UNPROTECT group failed on that one
+-- line, all of them several tests later.
+--
+-- A path that names nothing does nothing and raises no error:
+-- `protect 'o/missing` and `protect 'o/a/deeper`, where o/a is a number
+-- and cannot be walked into, both answer the path and change no state.
+
+-- Resolved against a real R3: protecting an object gives two different
+-- failures depending on how the change was attempted, and both are
+-- REBOL errors rather than host exceptions.
+--
+-- Assigning through a name raises locked-word: `set in p 'a 99` and
+-- `p/a: 5` both do. Changing it as a container raises protected:
+-- `append p [a: 2]` and `put p to-set-word 'a 2` both do. PUT belongs
+-- with APPEND and not with the assignments, and it asks the same single
+-- question APPEND asks: is the object open to new names. Whether the
+-- word is already there makes no difference, so after UNPROTECT/WORDS,
+-- which releases the words but not the object, `o/a: 0` succeeds while
+-- `put o to-set-word 'a 0` is still refused. Asking instead whether any
+-- slot happened to be protected answers neither question and lets EXTEND
+-- through, since EXTEND is written in terms of PUT.
+--
+-- So the error names the route rather than the
+-- object, which is why the value layer cannot choose it -- it knows only
+-- that the change is refused, and the layer that knows what was being
+-- attempted turns that into one error or the other.
+--
+-- JEBOL threw a Java IllegalStateException for all three, which
+-- spec/embed.allium says cannot happen.
+
+open question "PROTECT/HIDE takes a field out of WORDS-OF and makes the path to it raise invalid-path rather than reading it. Confirmed against a real R3: after hiding `a`, `words-of` gives [test], `o/a` raises invalid-path, and `append o [a: 2]` raises hidden. JEBOL accepts the call and hides nothing. Is hiding a property of the slot, of the context, or of the object, and what should REFLECT do with a hidden field -- omit it as WORDS-OF does, or report it?"
+
+-- Resolved against a real R3: SAME? on two objects asks whether they are
+-- one object, not whether they hold the same fields. `make base
+-- (an empty object)` gives an object that is EQUAL? to base and not
+-- SAME? as it. An implementation that compares fields for both answers
+-- true twice and loses the only question SAME? exists to answer.
+--
+-- The same distinction series already have, where SAME? means shared
+-- storage at the same position rather than matching contents.
+
+-- Resolved against a real R3: MAKE given a prototype and a second OBJECT
+-- rather than a block merges the two. The result holds the prototype's
+-- fields, with the second object's values written over the ones they
+-- share and its extra fields added. The prototype is not touched.
+--
+-- Methods come along and are rebound to the result, so they see the
+-- merged values rather than the ones they were written against. That is
+-- the part worth stating: with `o1: make object! [a: 1 f: does [a]]` and
+-- `o2: make object! [a: 2]`, the `f` in `make o1 o2` answers 2. A method
+-- that still closed over its original object would answer 1, and would
+-- also write into the prototype when called on the copy.
+--
+-- Merging in the other direction is a second case rather than the same
+-- one: `make a b` where b adds a field that b's own method needs -- b's
+-- `show` reads x and y, a has no y -- works because b's fields arrive
+-- before its methods are asked anything.
+
+-- Resolved against a real R3: TRANSCODE is reachable as a native and
+-- takes a string or a binary, giving back the block of values it read.
+-- It is the reader with no binding step, which is what LOAD adds, and it
+-- is how a script gets at source text as data. Specified in load.allium
+-- from the start and only exposed once Rebol's own suite asked for it in
+-- 179 places.
+
+-- Resolved against a real R3: ROUND goes half away from zero rather than
+-- to even, so 1.5 rounds to 2 and 2.5 rounds to 3, and -1.5 rounds to
+-- -2. Banker's rounding is what a JVM reaches for by default and it is
+-- not what REBOL does.
+
+-- Resolved against a real R3: COMPOSE evaluates the parens in a block
+-- and leaves everything else alone, so `compose [a (1 + 1)]` is
+-- `[a 2]`. It is how a block of code is built from a template without
+-- reducing the parts that were meant to stay as written.
+--
+-- Only the parens at the top level, unless /DEEP. `compose [[(7 - 6)]]`
+-- keeps the inner paren as written and `compose/deep [[(7 - 6)]]` is
+-- `[[1]]`, to any depth: `compose/deep [[[(1 + 1)]]]` is `[[[2]]]`.
+-- Confirmed against a real R3.
+--
+-- A paren answering a block splices its contents in, so `compose [a
+-- (reduce [1 2]) b]` is `[a 1 2 b]`. /ONLY turns that off and puts the
+-- block in as one value.
+--
+-- COMPOSE/INTO fills a block the caller already has, at its position,
+-- and answers the position after what it put there -- the same shape
+-- REDUCE/INTO has, and for the same reason: a loop that builds one block
+-- rather than a new one each time round. A string is refused, because a
+-- composed template is values and there is no sensible text for them.
+--
+-- A paren that answers nothing contributes nothing, so
+-- `compose [x (print "") y]` is [x y]. An unset is not a value a block
+-- can hold and go on being usable, and a template full of side effects
+-- would otherwise fill with them.
+--
+-- And COMPOSE given something that is not a block hands it straight
+-- back: `compose 1` is 1, not a failure. That is the one an
+-- implementation gets wrong by being careful, because refusing a
+-- non-block looks like good hygiene and is not what the language does.
+-- It matters for generated code, where a template may reduce to a single
+-- value and the caller should not have to check first.
+
+-- Resolved against a real R3: FOR does not step a character range.
+-- `for c #"a" #"e" 1 [...]` raises expect_arg, so it is not a way to walk
+-- the alphabet; FOREACH over a string is. It is the character type
+-- specifically that is refused, not everything non-numeric: integers,
+-- decimals and series bounds are all accepted, and it is the step that
+-- must always be a number.
 
 -- Resolved: there are three ways out and each stops somewhere different.
 -- BREAK leaves the nearest loop. RETURN leaves the nearest function, and no
@@ -239,6 +1189,566 @@ open question "Which forty natives exactly? The categories are settled and the a
 -- All three unwind through the evaluator's own control flow rather than
 -- through the error mechanism.
 
+-- Resolved against a real R3: a throw may carry a name, and naming
+-- changes who is allowed to catch it. The pairing is strict in both
+-- directions, which is the whole point -- an unnamed CATCH is not a
+-- catch-all, so a throw meant for an outer handler travels past an inner
+-- one that was not expecting it.
+--
+--   catch [throw 5]                        catches, 5
+--   catch/name [throw/name 5 'foo] 'foo    catches, 5
+--   catch/name [throw/name 5 'foo] 'bar    does not catch
+--   catch [throw/name 5 'foo]              does not catch
+--   catch/all [throw/name 5 'foo]          catches, 5
+--   catch/all [throw 5]                    catches, 5
+--
+-- /ALL is the deliberate catch-all, and it is a separate refinement
+-- rather than the default because catching a throw addressed to somebody
+-- else is almost always a bug.
+--
+-- A CATCH that catches nothing answers what its block answered, so
+-- `catch [1 2 3]` is 3. There is no way to tell that apart from a throw
+-- of the same value, and REBOL does not try to provide one.
+rule CatchTakesOnlyAThrowItWasExpecting {
+    when: EvaluateCatch(body, expected_name, catching_everything)
+
+    requires: throws(body)
+
+    ensures:
+        if catching_everything or thrown_name(body) = expected_name:
+            CatchResult(value: thrown_value(body))
+        else:
+            Rethrows(value: thrown_value(body), name: thrown_name(body))
+}
+
+-- Resolved against a real R3: an error's code is its category's base plus
+-- the id's position within that category, so the code depends on the id
+-- and not only on the family. `1 / 0` is 400 because zero-divide is the
+-- first id under Math, whose base is 400, and a throw caught by TRY/ALL
+-- is 2 because throw is the third id under Throw, whose base is 0.
+--
+-- The catalogue is data: ten categories and a hundred and forty-one ids,
+-- taken verbatim from a real R3 and readable as `system/catalog/errors`.
+-- A script compares codes against arithmetic on it and compares ids
+-- against names it did not choose, so neither half can be invented and
+-- neither can be worked out from what JEBOL happens to raise.
+--
+-- Each category also carries a `type` field naming itself. That is not
+-- an error id, and counting it would shift every code in the category by
+-- one, which is the mistake this rule exists to prevent.
+
+-- Resolved against a real R3: MAKE ERROR! builds the error the spec asks
+-- for. Given a block it takes the type and id written there, so
+-- `make error! [type: 'math id: 'positive]` really is a math error whose
+-- id is positive. A `code:` field in the spec is ignored: the code
+-- follows from the type, and letting a caller set it would let an error
+-- claim a category its code contradicts.
+--
+open question "A real R3 keeps whichever spelling of the type word it was given, so an error it raised itself reports Math while one built from a spec saying 'math reports math. The catalogue spells them capitalised -- Throw, Note, Syntax, Script, Math, Access, Command, User, Internal -- so the raised form is the canonical one and the made form is the caller's. Word equality ignores case, so nothing a script can write depends on it, and JEBOL reports the canonical spelling in both cases. Is the difference deliberate, or an artefact of the spec block being copied verbatim?"
+
+-- Given a string instead, the error is a User one whose id is `message`
+-- and whose first argument is the string. That is the shape a script
+-- uses to raise something of its own, and it needs no catalogue entry.
+
+-- Resolved against a real R3: a datatype describes itself. REFLECT on one
+-- with SPEC gives an object holding a title and a type, and with TITLE or
+-- TYPE gives either directly. `reflect integer! 'title` is "64 bit
+-- integer" and `reflect integer! 'type` is the word scalar.
+--
+-- Both are data rather than derivations. The title is a string a script
+-- can compare against, so inventing the wording would make every such
+-- comparison wrong, and the type names R3's own families -- scalar,
+-- string, block, word, function, object, internal, vector, symbol,
+-- opt-object -- several of which group datatypes JEBOL has not built.
+-- Neither can be worked out from what JEBOL knows, so both are taken
+-- verbatim from a real R3 and kept as a table.
+
+-- Resolved against a real R3: a decimal index truncates wherever an index
+-- is taken, not only into a series. A pair and a tuple answer their parts
+-- the same way, so `1x2` at 1.6 is 1 and `1.2.3` at 2.6 is 2.
+
+-- Resolved against a real R3: INTEGER-DIVIDE takes decimals and throws
+-- their fractions away, so `integer-divide 23.5 10` and `integer-divide
+-- 23 10.5` are both 2. Refusing a decimal is the tempting reading, since
+-- the name says integer, and it is not what the function does.
+
+-- Resolved against a real R3: SELECT and FIND reach an error's fields.
+-- `select e 'arg1` answers what that field holds, and FIND answers
+-- something truthy when the field exists. An error is an object with a
+-- fixed set of fields, so the things that read an object's fields read
+-- an error's too.
+
+-- Resolved against a real R3: ROUND has six modes besides its default,
+-- and they disagree in more places than the names suggest. Measured at
+-- every half and either side of one:
+--
+--            1.5   2.5  -1.5  -2.5   1.4   1.6  -1.4
+--   plain     2     3    -2    -3     1     2    -1
+--   /down     1     2    -1    -2     1     1    -1
+--   /even     2     2    -2    -2     1     2    -1
+--   /half-down 1    2    -1    -2     1     2    -1
+--   /floor    1     2    -2    -3     1     1    -2
+--   /ceiling  2     3    -1    -2     2     2    -1
+--   /half-ceiling 2 3    -1    -2     1     2    -1
+--
+-- /DOWN and /FLOOR agree on every positive and part company on every
+-- negative; /HALF-DOWN and /HALF-CEILING agree everywhere except on an
+-- exact half. JEBOL declared an /UP that a real R3 has not got, and had
+-- neither /FLOOR nor /CEILING.
+
+-- Resolved against a real R3: ROUND/TO with a scale of zero throws the
+-- fraction away and answers an integer, so `round/to 11.65 0` is 11 --
+-- not 12, not 11.0, and not a division by zero. It truncates towards
+-- zero rather than rounding, which is the opposite of what ROUND does
+-- with no /TO at all, and -11.6 is -11 rather than -12.
+--
+-- It is the one scale that cannot mean "a multiple of this", so it has
+-- been given a different job, and the job is not the one the function's
+-- name suggests.
+
+-- Resolved against a real R3: REDUCE/INTO puts the results into a series
+-- the caller already has, at its position, and answers the position after
+-- what it put there. `b: [] reduce/into [1 + 1 2 + 2] b` leaves b holding
+-- [2 4]. It is how a loop fills one block without building a new one each
+-- time round.
+
+-- Resolved against a real R3: ++ and -- step a character as readily as a
+-- number, so `a: #"a"` then `++ a` answers #"a" and leaves a holding
+-- #"b". The same one-operation-covers-everything shape they have for
+-- series positions.
+
+-- Resolved against a real R3: `system/state` records what just happened
+-- rather than what is configured. `last-error` holds the error the most
+-- recent TRY caught, and `last-result` holds the value the most recent
+-- CATCH or QUIT carried. Both are readable after the fact, which is what
+-- lets a handler that was given no arguments still find out what it is
+-- handling: `catch/with [throw 3] [system/state/last-result * 10]` is 30.
+--
+-- So a /WITH handler has two ways to reach the value, its argument and
+-- this, and a block handler has only this one. That is why the pair
+-- exists rather than being derivable from the handler's parameters.
+
+-- Resolved against a real R3: TO DECIMAL! of a binary reads the bytes as
+-- the double they are, big-endian, rather than as text or as a number to
+-- be scaled. `to decimal! #{3FD3333333333333}` is 0.3, and the pattern
+-- for an infinity or a NaN gives that. A binary shorter than eight bytes
+-- is read right-aligned, so #{01} is the smallest subnormal there is.
+--
+-- TO BINARY! of a decimal is the same thing backwards: `to binary! 0.3`
+-- is #{3FD3333333333333}. The pair is how a test suite pins floating
+-- point exactly, without writing decimals whose text form has already
+-- rounded.
+--
+-- Note that -0.0 survives the trip and molds as -0.0, which is the whole
+-- reason the sign bit is worth carrying.
+
+-- Resolved against a real R3: EVEN? and ODD? take a decimal, and round it
+-- half away from zero before asking. So 1.4 is odd and 1.5 is even, 2.4
+-- is even and 2.5 is odd, and -1.5 is even. The same rule ROUND uses,
+-- which is the point: they are asking about the whole number the decimal
+-- is nearest to, not about the one it truncates to.
+--
+-- Truncating instead agrees on every whole decimal and disagrees on every
+-- half, so refusing decimals outright is the safer wrong answer and
+-- guessing at truncation is the dangerous one.
+
+-- Resolved against a real R3: a decimal used as a path index truncates
+-- towards zero rather than rounding, so `b/1.6` is the first item and
+-- `b/2.6` is the second. The opposite of the rule above, in the same
+-- language, and both were checked rather than assumed.
+
+-- Resolved against a real R3: TRY and ATTEMPT take a paren as readily as
+-- a block, so `try first [(1 + 1)]` is 2. A paren is a block that
+-- evaluates itself when reached; handing one to TRY is asking for the
+-- same thing a block would give.
+
+-- Resolved against a real R3: SORT/REVERSE sorts the other way round, and
+-- SORT/PART sorts only the first so many items and leaves the rest where
+-- they were, answering the whole series either way. `sort/part [3 1 2 9]
+-- 3` is [1 2 3 9]: the 9 was outside the part and did not move.
+
+-- Resolved against a real R3: sorting needs a real ordering, and REBOL's
+-- comparison does not provide one. `1.#NaN < 1` and `1 < 1.#NaN` are both
+-- true, so a comparison answers "less" whichever way round it is asked,
+-- and a sort built on it produces whatever the algorithm happens to do.
+--
+-- So SORT has its own rule for NaN: every NaN goes last and two of them
+-- are equal. `sort [1.#inf -1.0 1.#nan 1.0 -1.#inf 0 1.#NAN]` is
+-- [-1.#INF -1.0 0 1.0 1.#INF 1.#NaN 1.#NaN].
+--
+-- The two questions are genuinely different. Comparison is asked whether
+-- one value is below another and may answer yes to both; ordering has to
+-- put them in a line.
+
+-- Resolved against a real R3: SORT/ALL compares whole records rather than
+-- their first elements, so `sort/skip/all [4 3 4 1] 2` is [4 1 4 3] where
+-- plain `sort/skip` leaves both records where they were -- their first
+-- elements are equal and the sort is stable.
+--
+-- /ALL and /COMPARE together are refused with bad-refines: /COMPARE says
+-- how to compare records, which leaves /ALL nothing to mean.
+
+open question "PROTECT/DEEP/WORDS on a block of words: a real R3 refuses `insert a/b \"x\"` with protected after `protect/deep/words [a]`, so /DEEP plainly reaches what each word holds. Implementing it costs six of Rebol's own UNPROTECT assertions in object-test.r3 and gains two, and three explanations have now been ruled out by measurement: it is not asymmetry between guarding and releasing (restricting it to the protecting direction changes nothing), it is not the object-versus-words distinction below (adding that changed nothing here), and those UNPROTECT assertions do not go through this code path at all -- they protect an object directly, not a block of words. So something else in the run is reaching it. Left unimplemented rather than half-implemented. The probe is `a: make object! [b: \"abc\"] protect/deep/words [a] insert a/b \"x\"`, and the six assertions are object-test.r3 UNPROTECT #174 #175 #179 #182 #183 #187."
+
+-- Resolved against a real R3: protection on an object covers three
+-- separate things, and no two of them are the same question:
+--
+--   the object itself   -- may a new word be added to it
+--   the words in it     -- may an existing word be reassigned
+--   the values it holds -- may a series a word holds be changed
+--
+-- PROTECT/DEEP guards all three. The UNPROTECT refinements each release
+-- a different subset, which is how the three are told apart:
+--
+--   unprotect            frees the object and its words, not the values
+--   unprotect/words      frees the words only
+--   unprotect/deep       frees all three
+--   unprotect/words/deep frees the words and the values, not the object
+--
+-- Rebol's own object-test.r3 spells this out in comments beside each of
+-- the four. Without the first as a flag of its own, "may a word be
+-- added" and "may a word be reassigned" are one question, and no
+-- combination of refinements can separate them -- which is why an
+-- attempt to make /DEEP reach the values cost six of those assertions
+-- and could not be made to fit.
+
+-- Resolved against a real R3: /DEEP reaches everything inside, including
+-- an object inside an object. Protecting an object deeply and then
+-- writing `o/b/c: 4` raises locked-word; stopping at the outer object
+-- leaves free exactly the case a caller reached for /DEEP to cover.
+--
+
+-- Resolved against a real R3: SWITCH/DEFAULT names the branch to run when
+-- nothing matched. Without it the answer is none, which a caller cannot
+-- tell from a branch that answered none itself -- so the refinement is
+-- not sugar for `any [switch ... [...]]`, it is the only way to know
+-- which happened.
+
+-- Resolved against a real R3: COLLECT-WORDS/IGNORE leaves out the words
+-- it is given, so `collect-words/ignore [a: 1 b: 2] [a]` is [b]. It takes
+-- an object as readily as a block, which is how a caller asks what is in
+-- here that a context does not already know about.
+
+-- Resolved against a real R3: TRIM has five modes and they are not
+-- variations on each other. The plain form takes whitespace off both
+-- ends; /HEAD and /TAIL bound it to one. /ALL takes every space out
+-- wherever it sits, so "  a b  " is "ab". /LINES folds the whole thing
+-- onto one line with single spaces, so "a\nb\n\nc" is "a b c". /WITH
+-- takes out the characters it is given rather than whitespace. /AUTO
+-- removes the first line's indentation from every line, keeping anything
+-- deeper -- so a block of code pasted into a string comes back with its
+-- shape intact.
+--
+-- All four beyond the plain form were declared and unread, so every one
+-- of them silently did what the plain form does.
+
+-- Resolved against a real R3: /DUP repeats what is being added, so
+-- `append/dup [1] 2 3` is [1 2 2 2] and `change/dup [1 2 3 4] 9 3` is
+-- [9 9 9 4]. A block being spliced repeats as a whole, so
+-- `append/dup [1] [2 3] 2` is [1 2 3 2 3], and a count of zero adds
+-- nothing, which is what makes the refinement usable with a computed
+-- number.
+--
+-- Its count had no parameter in JEBOL, so the number was never consumed:
+-- it leaked out as the expression's own value and the operation happened
+-- once.
+
+-- Resolved: a refinement's argument is found by which refinements were
+-- asked for, never by a fixed position in the argument list. Only the
+-- ones a caller names contribute arguments, so adding /DUP after /PART
+-- moves /PART's own argument when both are asked and neither when only
+-- one is. Two natives had a fixed index and read one refinement's
+-- argument as the other's the moment a second was declared.
+
+-- Resolved against a real R3: a binary is a series like the others, so
+-- APPEND, INSERT, SWAP and REMOVE-EACH all take one. Each was written for
+-- blocks and strings and left binaries out, which refused ordinary calls
+-- and, where the binary was protected, reported a type error in place of
+-- the refusal.
+
+-- Resolved against a real R3: a protected series refuses a change before
+-- the change is attempted, not when the first element is touched. So
+-- `remove-each a bin [a < 3]` raises even when nothing in bin would have
+-- been removed. A guard that only fires when something actually changes
+-- is not a guard: whether it fires depends on the data rather than on
+-- the protection.
+
+-- Resolved against a real R3: RESOLVE into a protected object raises
+-- `protected` too. Filling an object from another changes it as a
+-- container, which puts it with APPEND and PUT rather than with an
+-- assignment through a name.
+
+-- Resolved against a real R3: PUT on a protected object raises
+-- `protected` and not `locked-word`. It changes the object as a
+-- container, which is the same split APPEND is on: the error names the
+-- route, and only an assignment through a name is a locked word.
+
+-- Resolved against a real R3: PROTECT/VALUES and PROTECT/WORDS take a
+-- block of words and protect two different things. /VALUES protects what
+-- each word holds, so changing the series raises `protected` and
+-- reassigning the word is allowed. /WORDS protects the slots, so
+-- reassigning raises `locked-word` and changing the series is allowed.
+--
+-- They are complements, and neither does the other's job. Without them a
+-- caller who writes `protect/values [a b]` protects the literal block
+-- holding the two words and nothing else -- accepted, plausible, and
+-- leaving everything it was meant to guard wide open.
+
+-- Resolved against a real R3: RANDOM shuffles the series it was given and
+-- answers it, so another name for the same series sees the new order. It
+-- takes a binary as readily as a block or a string.
+--
+-- Same shape as UPPERCASE below, and the same two consequences when it is
+-- got wrong: the caller's own series is left untouched, and a protected
+-- one is shuffled instead of refusing.
+
+-- Resolved against a real R3: INSERT puts a binary into a binary byte by
+-- byte, the way it puts a block into a block item by item, so
+-- `insert #{0102} #{03}` is #{030102}. Only an integer was accepted,
+-- which made the one obvious way to join two binaries a type error.
+
+-- Resolved: which natives change a series and which build a new one is a
+-- decision per native, not a rule, and getting it wrong is invisible in
+-- the answer. UPPERCASE, LOWERCASE, TRIM, DELINE, ENLINE, RANDOM and
+-- SORT all change what they were given; MAP-EACH, DIFFERENCE, AJOIN,
+-- COLLECT-WORDS and FUNCTION all build something new, confirmed against
+-- a real R3.
+--
+-- The five that were wrong were found one at a time, each through a
+-- different failing assertion, before the shape was recognised. Anything
+-- that takes a series, hands back a freshly built one and never reaches
+-- the storage is the shape to look for.
+
+-- Resolved against a real R3: DELINE and ENLINE change the string they
+-- were given, like UPPERCASE below, so a caller holding it sees the
+-- change and a protected one refuses. DELINE/LINES answers the lines as
+-- a block instead of rewriting anything.
+--
+-- On a platform whose line ending is a bare newline the two agree on the
+-- answer and differ only in intent, which is why building a new string
+-- looked harmless: the text was right and everything else about it was
+-- not.
+
+-- Resolved against a real R3: UPPERCASE, LOWERCASE and TRIM change the
+-- string they were given and answer it, rather than building a new one.
+-- `s: "ab" uppercase s` leaves s holding "AB".
+--
+-- Building a new string agrees on the answer and disagrees on everything
+-- else. A caller holding the string never sees the change, which is the
+-- whole point on a series someone else is also looking at, and a
+-- protected string is quietly rewritten instead of refusing -- because
+-- the refusal lives in the storage, and a native that never touches the
+-- storage never meets it.
+
+-- Resolved against a real R3: FIND/SAME asks each element of a run to be
+-- the same value rather than an equal one, and the two part company on
+-- numbers written as different datatypes: 1.0 equals 1 and is not the
+-- same as it.
+--
+-- In [1.0 3 1 3 1.0 2.0 1 2] a loose search for [1 2] finds the decimals
+-- at position five and a same search finds the integers at seven. A
+-- single-value needle was already asked strictly; only a run was not, so
+-- the refinement worked for `find/same blk 1` and lied for
+-- `find/same blk [1 2]`.
+
+-- Resolved against a real R3: FIND/ANY matches wildcards, where * stands
+-- for any run of characters and ? for one. How much the star takes
+-- depends on where it sits: a star at the END of the pattern takes the
+-- rest of the series, and a star with anything after it takes as little
+-- as it can.
+--
+--   "c*"  in "abcd"     ends at the tail
+--   "a*"  in "abcd"     ends at the tail
+--   "*bc" in "abcabc"   ends at the third character, not the sixth
+--   "a*c" in "abcabc"   ends at the third
+--   "b*d" in "abcdabcd" ends at the fourth
+--
+-- Neither a wholly greedy star nor a wholly lazy one fits: each is right
+-- for one of those groups and wrong for the other. And it only shows in
+-- where the match ENDS, which is what /TAIL stands after, so a single
+-- rule either way finds every position correctly and reports half the
+-- lengths wrongly.
+--
+-- The pattern search combines with /REVERSE, which looks BEHIND the
+-- position rather than ahead of it, so a series standing at its tail has
+-- the whole string behind it and nothing in front. Searching only what
+-- is ahead answers none for every such call, and measuring the match
+-- from the position rather than from the head gives a negative offset.
+-- `find/any/reverse tail "abcdabcd" "?c"` is "bcd".
+
+-- Resolved against a real R3: searching a binary for a number no byte
+-- could hold raises out_of_range rather than answering "not found".
+-- `find #{0063} -1`, the same with 256, and the same with 700 all raise,
+-- while 0 and 99 are ordinary searches. SELECT raises on the same input.
+--
+-- Which is the right split. A byte holds 0 to 255, so asking for anything
+-- outside that is a mistake in the caller rather than a search that
+-- happened to miss, and answering none would hide it.
+
+open question "Searching a binary for 255 answers none even when the byte is there: `find #{00FF} 255` and `find #{FF00} 255` are both none, while `find #{0063} 99` finds its byte. 255 is inside the legal range and is not refused, so this is neither the out-of-range rule nor an ordinary miss. Is 255 a sentinel inside R3's own search, and is the behaviour intended? JEBOL finds the byte, which is what the rule above implies; if the binary is right then the rule needs an exception nobody has written down."
+
+-- Resolved against a real R3: what TAKE/PART answers is a series of the
+-- same kind it was taking from. Two items off a paren give a paren, off a
+-- binary give a binary, off a string give a string. Answering a block for
+-- everything loses the datatype silently, and the loss only shows up
+-- somewhere else entirely, when the result is molded or appended to.
+--
+-- TAKE/LAST takes from the tail rather than the head, so `take/last
+-- [1 2 3]` is 3. Taking one item without /LAST is the head.
+--
+-- The counts clamp rather than failing. A count of zero or a negative one
+-- takes nothing, and a count past the end takes what there is.
+
+-- Resolved against a real R3: PROTECT and UNPROTECT answer the value they
+-- were given, not unset, so `b: protect #{0102}` is a way to build a
+-- protected value and keep hold of it in one step. Answering unset makes
+-- that read as `b: ` with nothing after it, and every later use of b
+-- fails on a word with no value rather than on the protection.
+--
+-- Protecting a series refuses every change to it while leaving reads
+-- alone: CLEAR, APPEND, INSERT and POKE all raise `protected` and MOLD
+-- still works.
+
+-- Resolved against a real R3: DO/NEXT evaluates one expression and moves
+-- a word on to what is left, so `blk: [1 + 1 5]` with `do/next blk 'blk`
+-- answers 2 and leaves blk holding [5]. It is how a caller walks a block
+-- an expression at a time without counting values itself, and the reason
+-- it needs a word rather than answering a pair is that the caller usually
+-- wants to keep stepping the same variable.
+
+-- Resolved against a real R3: CONSTRUCT builds an object without
+-- evaluating, but it still reads `none`, `true` and `false` as the values
+-- they name. /ONLY turns even that off, so `construct/only [b: none]`
+-- gives b the WORD none rather than the none value.
+--
+-- Which is the whole point of the plainer form: data that arrived from
+-- somewhere untrusted and happens to be shaped like a spec should not
+-- have its words quietly become values.
+
+-- Resolved against a real R3: CONTEXT? answers the object a bound word
+-- lives in, which is how code holding a word can reach the rest of what
+-- surrounds it.
+
+-- Resolved against a real R3: RESOLVE copies values from one object into
+-- another, and by default it only fills in the words the target has not
+-- got a value for. /ALL overwrites the ones it has, and /EXTEND adds the
+-- words it lacks. Without /EXTEND a word only the source has is skipped
+-- rather than added, so `resolve a b` where b has an extra field leaves
+-- the target's word list unchanged.
+
+-- Resolved against a real R3: dividing by zero raises only when both
+-- sides are whole numbers. `1 / 0` raises zero_divide; `1.0 / 0` and
+-- `1 / 0.0` are both 1.#INF, and `0.0 / 0.0` is 1.#NaN. So the decimal
+-- side follows the floating-point hardware and the integer side does not,
+-- and which one a caller gets depends on how the operands happen to be
+-- written.
+--
+-- 1.#INF, -1.#INF and 1.#NaN are decimals, they read as literals, and
+-- they mold back as they were written.
+
+-- Resolved against a real R3: the two equalities disagree about NaN, and
+-- in the direction opposite to every other pair of values.
+--
+--   1.#NaN =  1.#NaN   is true
+--   1.#NaN == 1.#NaN   is false
+--   same? 1.#NaN 1.#NaN is true
+--
+-- Everywhere else the loose = is the forgiving one and == the strict one,
+-- and here loose means "the same value" while strict means "what the
+-- hardware says". A comparison against NaN is also true rather than
+-- false: `1.#NaN < 1` holds.
+--
+-- Nothing about this is inferable from IEEE 754 or from how the two
+-- operators behave on anything else.
+
+-- Resolved against a real R3: TO BINARY! reads the value's bytes rather
+-- than the text of how it is written. A string gives its UTF-8, so
+-- `to binary! "ab"` is #{6162}; a block of numbers gives one byte each,
+-- so `[1 2 3]` is #{010203}; and an integer gives all eight bytes of its
+-- machine width, so 65 is #{0000000000000041} rather than #{41}.
+--
+-- That last one is the trap. Reading it as "the smallest binary that
+-- holds this number" is more useful and is not what happens, and the two
+-- agree for every value under 256 written as a block.
+--
+-- TO FILE! takes the text of the value, so a word gives its spelling and
+-- a block gives its parts run together: `to file! [a b]` is %ab, not
+-- %a/b. Nothing inserts separators.
+
+-- Resolved against a real R3: ++ and -- change a word in place and answer
+-- what it held BEFORE the change, so `a: 1  reduce [++ a a]` is [1 2].
+-- Answering the new value would be the obvious reading and is wrong.
+--
+-- On a series they step the position rather than the contents: with s
+-- holding [1 2 3], `++ s` answers [1 2 3] and leaves s holding [2 3].
+-- One operation covers counting and walking, because in REBOL a position
+-- is a value like any other.
+
+-- Resolved against a real R3: TRUNCATE throws away everything before the
+-- current position, so a series skipped past its first two items keeps
+-- only what is left. /PART bounds how much of the rest is kept.
+
+-- Resolved against a real R3: SET given a block of words spreads a block
+-- of values across them one for one, and spreads anything else to every
+-- word. So `set [d e] 9` puts 9 in both, and `set [b c] [1 2]` puts 1 in
+-- one and 2 in the other. A short value block pads with none rather than
+-- failing: `set [k l m] [1 2]` leaves m holding none.
+--
+-- /ONLY turns the spreading off, so every word gets the whole block.
+-- /SOME skips the words whose value would be none, leaving what was
+-- there: with h and i holding 1 and 2, `set/some [h i] reduce [10 none]`
+-- gives 10 and 2, where plain SET gives 10 and none. It is for filling
+-- in defaults from a partly populated block.
+--
+-- SET also takes an object, and then the values go to its fields in
+-- order, which is the same spreading rule with the object's own words
+-- standing in for the block.
+
+-- Resolved against a real R3: TRY/ALL widens TRY to the control-flow
+-- signals as well, turning a throw, a break, a continue, a return or an
+-- exit into an ordinary error value. `try/all [throw 5]` gives an error
+-- whose id is `throw`.
+--
+-- Which is the exception that proves the rule above rather than a
+-- contradiction of it. Plain TRY still catches only failures, because a
+-- throw is a decision; /ALL exists for the caller who is running code
+-- they did not write and wants nothing at all to escape. Having to ask
+-- for it keeps the default honest.
+--
+-- TRY/WITH runs a handler instead of answering the error, and only on a
+-- failure: `try/with [1 / 0] [42]` is 42 and `try/with [3] [42]` is 3.
+-- The same handler-not-finally shape CATCH/WITH has.
+
+-- Resolved against a real R3: BREAK/RETURN gives the loop a value to
+-- answer, so `repeat i 3 [break/return 9]` is 9 where a plain `break`
+-- leaves the loop answering unset. It is how a search loop reports what
+-- it found without a variable outside the loop to put it in.
+
+-- Resolved against a real R3: ATTEMPT answers none on a failure rather
+-- than the error, and /SAFER widens it the way TRY/ALL widens TRY. Both
+-- forms answer none, so the refinement changes what is caught and never
+-- what a caught thing looks like.
+
+-- Resolved against a real R3: /WITH runs a block or a function instead of
+-- answering the thrown value, so `catch/with [throw 5] [10]` is 10. It
+-- runs only when something was thrown: `catch/with [1] [10]` is 1, not
+-- 10, so it is a handler rather than a finally.
+--
+-- And /QUIT catches what QUIT raised, which nothing else can:
+-- `catch/quit [quit/return 7]` is 7 and the run carries on. That makes a
+-- host able to run a script that stops itself without the stopping
+-- reaching the host, which is the same guest-versus-host line QUIT
+-- itself is drawn on.
+rule CatchWithRunsItsHandlerOnlyOnAThrow {
+    when: EvaluateCatchWith(body, handler)
+
+    ensures:
+        if throws(body):
+            CatchResult(value: handler_result(handler))
+        else:
+            CatchResult(value: body_result(body))
+}
+
 -- Resolved against a real R3: every string-like type, not only string!.
 -- %A.txt = %a.txt is true and <A> = <a> is true, and == minds case for
 -- all of them.
@@ -246,3 +1756,20 @@ open question "Which forty natives exactly? The categories are settled and the a
 -- Resolved: arithmetic widens integer to decimal to money. add 1 1.5 is a
 -- decimal and add $1.00 1 is money. Integer division that does not divide
 -- evenly widens too, so divide 10 3 is a decimal rather than 3.
+
+-- Resolved: a native declares its refinements and is told which of them
+-- the caller asked for, exactly as a user function is. It does not get a
+-- separate entry per refinement.
+--
+-- Registering copy/part as its own native worked while there were three
+-- of them and stopped working at nine: FIND alone takes /any, /tail,
+-- /last, /same, /part, /skip, /case, /reverse and /only, and a caller may
+-- combine them. One entry per combination is five hundred entries for one
+-- native. Rebol's own suite reaches roughly six hundred assertions
+-- through refinements the registration approach could not express, and
+-- /one/error was failing purely for being a pair rather than a single.
+--
+-- The shape already existed on the other side: a user function declares
+-- refinements as parameters, and Application already carries
+-- requested_refinements. This joins the two up.
+

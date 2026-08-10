@@ -70,7 +70,7 @@ class InteropTest {
             Interpreter interpreter = Interpreter.create();
             interpreter.define("thing", new StringBuilder("mutable"));
 
-            assertThat(interpreter.run("type? thing").display()).isEqualTo("java-object!");
+            assertThat(interpreter.run("type? thing").display()).isEqualTo("#(java-object!)");
         }
 
         @Test
@@ -81,7 +81,7 @@ class InteropTest {
 
             assertThat(interpreter.run("none? absent").display())
                     .as("a Java null is the host's absence, not REBOL's nothing")
-                    .isEqualTo("false");
+                    .isEqualTo("#(false)");
         }
     }
 
@@ -178,7 +178,7 @@ class InteropTest {
                 throw new IllegalStateException("the host gave up");
             });
 
-            assertThat(interpreter.run("error? try [explode 1]").display()).isEqualTo("true");
+            assertThat(interpreter.run("error? try [explode 1]").display()).isEqualTo("#(true)");
         }
     }
 

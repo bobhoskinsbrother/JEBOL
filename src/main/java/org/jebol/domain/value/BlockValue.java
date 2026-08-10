@@ -82,7 +82,13 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
 
     /** The items from this position to the tail. */
     public List<Value> remaining() {
-        return storage.snapshot().subList(index - 1, storage.length());
+        // Clamped, because the storage may have been shortened
+        // underneath this value and left its index past the end. That is
+        // an ordinary state in REBOL -- PAST? asks about it -- and it
+        // used to throw an IllegalArgumentException straight out of the
+        // interpreter.
+        return storage.snapshot().subList(
+                Math.min(index - 1, storage.length()), storage.length());
     }
 
     @Override

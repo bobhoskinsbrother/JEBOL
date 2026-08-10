@@ -1,0 +1,59 @@
+--- title Making a function from data
+--- about MAKE FUNCTION! is what every other way of writing a function is
+--- about built on. R3 defines FUNC, FUNCTION, USE, CLOSURE and DOES in
+--- about REBOL on top of it, so an implementation that does not expose
+--- about it cannot be extended with a new way of making functions
+--- about without changing the implementation.
+
+--- id making-functions/a-function-from-a-spec-and-a-body
+--- origin confirmed against R3 3.22.1
+--- note The argument is one block holding two: the spec and the body.
+--- code
+f: make function! [[a] [a + 1]]
+f 1
+--- result
+2
+
+--- id making-functions/the-spec-it-was-given
+--- origin confirmed against R3 3.22.1
+--- code
+mold spec-of make function! [[a] [a + 1]]
+--- result
+"[a]"
+
+--- id making-functions/the-body-it-was-given
+--- origin confirmed against R3 3.22.1
+--- code
+mold body-of make function! [[a] [a + 1]]
+--- result
+"[a + 1]"
+
+--- id making-functions/a-function-of-no-arguments
+--- origin confirmed against R3 3.22.1
+--- code
+f: make function! [[] [7]]
+f
+--- result
+7
+
+--- id making-functions/the-two-blocks-may-be-computed
+--- origin confirmed against R3 3.22.1
+--- note Which is the point of having it: the spec and body are data
+--- note until this turns them into a function.
+--- code
+f: make function! reduce [[b] [b * 2]]
+f 5
+--- result
+10
+
+--- id making-functions/a-spec-with-no-body-is-refused
+--- origin confirmed against R3 3.22.1
+--- code
+make function! [[a]]
+--- error script bad-make-arg
+
+--- id making-functions/two-things-that-are-not-blocks-are-refused
+--- origin confirmed against R3 3.22.1
+--- code
+make function! [1 2]
+--- error script bad-make-arg

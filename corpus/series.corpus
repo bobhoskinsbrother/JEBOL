@@ -31,7 +31,7 @@ green
 --- code
 pick [red green blue] 4
 --- result
-none
+_
 
 --- id series/empty-block-is-empty
 --- origin adapted from REBOL/Core User Guide 2.3 section 5.3
@@ -39,7 +39,7 @@ none
 --- code
 empty? []
 --- result
-true
+#(true)
 
 --- id series/a-block-with-something-in-it-is-not
 --- origin adapted from REBOL/Core User Guide 2.3 section 5.3
@@ -47,7 +47,7 @@ true
 --- code
 empty? [1]
 --- result
-false
+#(false)
 
 # --- Positions -----------------------------------------------
 
@@ -99,7 +99,7 @@ c
 --- code
 tail? tail [a b c]
 --- result
-true
+#(true)
 
 --- id series/head-goes-back-to-the-start
 --- origin adapted from REBOL/Core User Guide 2.3 section 6.3
@@ -127,7 +127,7 @@ green
 --- code
 find [red green blue] 'yellow
 --- result
-none
+_
 
 --- id series/select-takes-the-value-after-the-match
 --- origin REBOL/Core User Guide 2.3 section 8.1

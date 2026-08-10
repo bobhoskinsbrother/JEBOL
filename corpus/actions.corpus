@@ -1,0 +1,385 @@
+--- title The datatype actions
+--- about An action is one operation with an implementation per datatype.
+--- about What each entry pins is which datatypes an action takes and
+--- about what it answers for each, because that is where they differ
+--- about from ordinary natives and where the surprises are.
+
+--- id actions/absolute-of-a-negative
+--- origin confirmed against R3 3.22.1
+--- code
+abs -5
+--- result
+5
+
+--- id actions/absolute-of-a-positive-changes-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+abs 5
+--- result
+5
+
+--- id actions/absolute-of-zero
+--- origin confirmed against R3 3.22.1
+--- code
+abs 0
+--- result
+0
+
+--- id actions/absolute-of-negative-zero-stays-negative
+--- origin confirmed against R3 3.22.1
+--- note Which is the one answer here nobody would predict. Negative
+--- note zero is a value floating point has and arithmetic keeps, and
+--- note ABS does not take the sign off it.
+--- code
+abs -0.0
+--- result
+-0.0
+
+--- id actions/absolute-of-the-most-negative-whole-number-overflows
+--- origin confirmed against R3 3.22.1
+--- note There is no positive counterpart, so the answer does not exist
+--- note rather than wrapping to itself.
+--- code
+abs -9223372036854775808
+--- error math overflow
+
+--- id actions/absolute-of-a-pair
+--- origin confirmed against R3 3.22.1
+--- code
+mold abs -1x-2
+--- result
+"1x2"
+
+--- id actions/absolute-of-a-time
+--- origin confirmed against R3 3.22.1
+--- code
+abs -10:00
+--- result
+10:00
+
+--- id actions/complement-flips-every-bit
+--- origin confirmed against R3 3.22.1
+--- note Which for a whole number is one less than the negation.
+--- code
+complement 5
+--- result
+-6
+
+--- id actions/complement-of-zero
+--- origin confirmed against R3 3.22.1
+--- code
+complement 0
+--- result
+-1
+
+--- id actions/complement-of-all-bits-set
+--- origin confirmed against R3 3.22.1
+--- code
+complement -1
+--- result
+0
+
+--- id actions/complement-of-a-logic-negates-it
+--- origin confirmed against R3 3.22.1
+--- note The same word for two jobs: bits for a number, truth for a
+--- note logic.
+--- code
+complement true
+--- result
+#(false)
+
+--- id actions/counting-a-position-from-zero
+--- origin confirmed against R3 3.22.1
+--- note The z family counts from zero where the rest of the language
+--- note counts from one, so atz b 1 is the second item. Both spellings
+--- note are legal and mixing them is off by one.
+--- code
+b: [1 2 3]
+mold atz b 1
+--- result
+"[2 3]"
+
+--- id actions/position-zero-is-the-head
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+mold atz b 0
+--- result
+"[1 2 3]"
+
+--- id actions/the-last-position-from-zero
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+mold atz b 2
+--- result
+"[3]"
+
+--- id actions/one-past-the-last-is-the-tail
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+mold atz b 3
+--- result
+"[]"
+
+--- id actions/further-past-the-tail-clamps
+--- origin confirmed against R3 3.22.1
+--- note Rather than raising, which is why there is no out-of-range
+--- note failure for it.
+--- code
+b: [1 2 3]
+mold atz b 4
+--- result
+"[]"
+
+--- id actions/a-negative-position-clamps-to-the-head
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+mold atz b -1
+--- result
+"[1 2 3]"
+
+--- id actions/asking-a-position-from-zero
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+indexz? b
+--- result
+0
+
+--- id actions/asking-a-position-one-along
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+indexz? next b
+--- result
+1
+
+--- id actions/asking-the-tails-position-from-zero
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+indexz? tail b
+--- result
+3
+
+--- id actions/an-empty-series-is-at-zero
+--- origin confirmed against R3 3.22.1
+--- code
+b: []
+indexz? b
+--- result
+0
+
+--- id actions/the-head-is-not-past-the-tail
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+past? b
+--- result
+#(false)
+
+--- id actions/nor-is-the-tail-itself
+--- origin confirmed against R3 3.22.1
+--- note Which makes PAST? false for every position an ordinary series
+--- note can be at.
+--- code
+b: [1 2 3]
+past? tail b
+--- result
+#(false)
+
+--- id actions/swapping-two-positions
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+swap b next b
+b
+--- result
+[2 1 3]
+
+--- id actions/swapping-a-position-with-itself
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+swap b b
+b
+--- result
+[1 2 3]
+
+--- id actions/reflecting-an-objects-words
+--- origin confirmed against R3 3.22.1
+--- note REFLECT is the general form of the -OF functions, so this is
+--- note what WORDS-OF is built on.
+--- code
+o: make object! [a: 1 b: 2]
+mold reflect o 'words
+--- result
+"[a b]"
+
+--- id actions/reflecting-an-objects-values
+--- origin confirmed against R3 3.22.1
+--- code
+o: make object! [a: 1 b: 2]
+mold reflect o 'values
+--- result
+"[1 2]"
+
+--- id actions/reflecting-a-field-an-object-has-not-got
+--- origin confirmed against R3 3.22.1
+--- note None rather than an error, so a caller can ask about a field
+--- note that may not apply.
+--- code
+o: make object! [a: 1]
+reflect o 'spec
+--- result
+_
+
+--- id actions/random-of-one-is-always-one
+--- origin confirmed against R3 3.22.1
+--- note The only value RANDOM can answer here, which is what makes it
+--- note testable without a seed.
+--- code
+random 1
+--- result
+1
+
+--- id actions/random-of-zero
+--- origin confirmed against R3 3.22.1
+--- code
+random 0
+--- result
+0
+
+--- id actions/picking-from-zero-gives-the-first-item
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+pickz b 0
+--- result
+1
+
+--- id actions/picking-the-last-item-from-zero
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+pickz b 2
+--- result
+3
+
+--- id actions/picking-one-past-the-last-gives-nothing
+--- origin confirmed against R3 3.22.1
+--- note None rather than an error, the same way PICK behaves past the
+--- note end.
+--- code
+b: [1 2 3]
+pickz b 3
+--- result
+_
+
+--- id actions/picking-before-the-first-gives-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+pickz b -1
+--- result
+_
+
+--- id actions/absolute-refuses-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+abs "a"
+--- error script expect-arg
+
+--- id actions/absolute-refuses-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+abs none
+--- error script expect-arg
+
+--- id actions/complement-refuses-a-decimal
+--- origin confirmed against R3 3.22.1
+--- note Bits are a whole-number idea, so the fractional case is
+--- note refused rather than truncated.
+--- code
+complement 5.5
+--- error script expect-arg
+
+--- id actions/complement-refuses-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+complement none
+--- error script expect-arg
+
+--- id actions/a-position-from-zero-must-be-a-number
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+atz b "x"
+--- error script expect-arg
+
+--- id actions/only-a-series-has-a-position-from-zero
+--- origin confirmed against R3 3.22.1
+--- code
+atz 5 1
+--- error script expect-arg
+
+--- id actions/only-a-series-can-be-asked-its-position
+--- origin confirmed against R3 3.22.1
+--- code
+indexz? 5
+--- error script expect-arg
+
+--- id actions/only-a-series-can-be-past-its-tail
+--- origin confirmed against R3 3.22.1
+--- code
+past? 5
+--- error script expect-arg
+
+--- id actions/only-a-series-can-be-swapped
+--- origin confirmed against R3 3.22.1
+--- code
+swap 5 6
+--- error script expect-arg
+
+--- id actions/swapping-at-the-tail-changes-nothing
+--- origin confirmed against R3 3.22.1
+--- note There is nothing at the tail to exchange, so the call is a
+--- note no-op rather than a failure.
+--- code
+b: [1 2 3]
+swap tail b b
+b
+--- result
+[1 2 3]
+
+--- id actions/swapping-between-two-different-series
+--- origin confirmed against R3 3.22.1
+--- note Each takes the other's item, so this moves values between
+--- note blocks rather than within one.
+--- code
+b: [1 2]
+c: [3 4]
+swap b c
+mold reduce [b c]
+--- result
+"[[3 2] [1 4]]"
+
+--- id actions/random-shuffles-a-block
+--- origin confirmed against R3 3.22.1
+--- note Not "pick one at random", which is /only. Given a series it
+--- note reorders it, and the answer is the series.
+--- code
+b: [1]
+mold random b
+--- result
+"[1]"
+
+--- id actions/random-shuffles-a-string-too
+--- origin confirmed against R3 3.22.1
+--- code
+random "a"
+--- result
+"a"

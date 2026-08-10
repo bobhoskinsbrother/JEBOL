@@ -143,8 +143,12 @@ public final class Layout {
         switch (item) {
             case StringValue text -> face.setCaption(text.text());
             case PairValue size -> {
-                face.style("width", size.x() + "px");
-                face.style("height", size.y() + "px");
+                // A pair's halves are decimals, and a browser wants 200px
+                // rather than 200.0px. Molding a pair already drops the
+                // point from a whole half, so this asks it rather than
+                // printing the double.
+                face.style("width", Molder.moldHalf(size.x()) + "px");
+                face.style("height", Molder.moldHalf(size.y()) + "px");
             }
             case TupleValue colour -> face.style("background-color", asRgb(colour));
             case WordValue word -> colourNamed(word.canonical())
@@ -174,7 +178,9 @@ public final class Layout {
     }
 
     private static String asRgb(TupleValue colour) {
-        return "rgb(" + colour.segmentAt(1) + "," + colour.segmentAt(2)
-                + "," + colour.segmentAt(3) + ")";
+        // Three octets whatever the tuple keeps, because a colour written
+        // as a tuple of one is still a colour and the rest are zeros.
+        return "rgb(" + colour.octetAt(1) + "," + colour.octetAt(2)
+                + "," + colour.octetAt(3) + ")";
     }
 }

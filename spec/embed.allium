@@ -25,6 +25,7 @@ enum Conclusion {
     | timed_out         -- the deadline passed before the script finished
     | cancelled         -- the host asked for it to stop
     | nested_too_deep   -- the script exceeded the nesting the host allowed
+    | quit_early        -- the script itself asked to stop, and may say with what
 }
 
 -- What a script is allowed to reach outside itself.
@@ -32,6 +33,31 @@ enum HostAccess {
     none_at_all         -- the script sees only REBOL
     | reading           -- the script may read host values it was handed
     | reading_and_calling  -- the script may also call host methods
+}
+
+-- The kinds of thing outside the interpreter that a script can ask for.
+-- Named as kinds rather than as single functions because a host grants or
+-- refuses a kind: a host that lets a script read a file almost always
+-- lets it read every file it can see, and a host that does not want the
+-- file system does not want one corner of it either.
+enum HostService {
+    files               -- read, write, delete, rename, list, ask about
+    | working_directory -- which directory a relative path counts from
+    | environment       -- the names and values the host was started with
+    | processes         -- start another program and wait for it
+    | console           -- read a line from the operator, write one back
+    | clock             -- what the time is now
+    | network           -- open a connection to another machine
+    | windows           -- ask the operator with a window on a screen
+}
+
+-- Why a host service is not available. A script that asks for one it
+-- cannot have must be able to tell these apart: the first two are the
+-- host's decision and the third never changes.
+enum ServiceRefusal {
+    not_granted         -- the host has this service and did not grant it
+    | not_present       -- the host itself has no such service to grant
+    | never_portable    -- no host can offer it, so JEBOL never will
 }
 
 ------------------------------------------------------------
@@ -45,6 +71,12 @@ value Bounds {
     wall_clock_limit: Duration
     maximum_nesting: Integer
     host_access: HostAccess
+    -- Empty by default. A host that says nothing gets a script that can
+    -- compute and cannot reach out, thus a host must name each service it
+    -- wants, one at a time. The other bounds have useful defaults because
+    -- a host that must set five things sets none of them; this one has no
+    -- useful default, because the useful value is the one nobody guessed.
+    granted_services: Set<HostService> = empty
 }
 
 ------------------------------------------------------------
@@ -81,10 +113,24 @@ entity ScriptRun {
     deadline: started_at + interpreter.bounds.wall_clock_limit
     overdue: now >= deadline
 
+    -- Which host service the script asked for and did not get, and why.
+    -- Kept on the run and not only in the error value because a host that
+    -- granted too little wants to see that from the outside, without
+    -- reading the error the script saw.
+    refused_service: HostService when conclusion = raised
+    refusal_reason: ServiceRefusal when conclusion = raised
+
     -- Set when the host asked for the run to stop. The evaluator notices at
     -- its own convenience rather than being interrupted where it stands,
     -- because a thread stopped mid-mutation leaves values half-changed.
     cancellation_requested: Boolean
+
+    -- Set when the script itself asked to stop, by calling QUIT. Kept
+    -- apart from cancellation because the two are not the same event: one
+    -- is the host overruling the script, the other is the script finishing
+    -- early on purpose, and a host wants to tell them apart.
+    quit_requested: Boolean
+    quit_value: values/Value when quit_requested
 
     transitions status {
         running -> finished
@@ -106,6 +152,46 @@ config {
 ------------------------------------------------------------
 -- Rules
 ------------------------------------------------------------
+
+-- A script that asks for a host service it has not been granted gets an
+-- error, and the error says which of the three reasons applies. Silence
+-- is the failure this prevents: a READ that quietly answers none reads as
+-- an empty file, and a script cannot tell the two apart.
+rule RefusedServiceRaises {
+    when: script_asks_for(run, service)
+    requires: service not in run.interpreter.bounds.granted_services
+    ensures:
+        run.status = finished
+        run.conclusion = raised
+        run.refusal_reason in ServiceRefusal
+        run.refused_service = service
+}
+
+-- Four things exist to call code written in C, thus no host can offer
+-- them and no grant can turn them on. They are refused before the grant
+-- is even looked at, and the reason says so.
+rule ExtensionServicesAreNeverAvailable {
+    when: script_asks_for(run, service)
+    requires: service.is_an_extension_point
+    ensures:
+        run.status = finished
+        run.conclusion = raised
+        run.refusal_reason = never_portable
+}
+
+-- The current directory belongs to the interpreter and not to the process
+-- that holds it. A host runs many interpreters at once and each one must
+-- be able to sit in a different directory, thus changing one must not
+-- move another. Every relative path is made absolute against the
+-- interpreter's own directory before it reaches the host.
+rule WorkingDirectoryIsPerInterpreter {
+    when: script_changes_directory(run, path)
+    requires: working_directory in run.interpreter.bounds.granted_services
+    ensures:
+        run.interpreter.working_directory = path
+        for other in interpreters where other != run.interpreter:
+            other.working_directory unchanged
+}
 
 rule ScriptRunBegins {
     when: Run(interpreter, source_text)
@@ -145,6 +231,31 @@ rule ScriptRunConcludes {
             run.result = evaluation_result_of(run)
 }
 
+-- QUIT ends the run and nothing else. In a real REBOL it ends the process
+-- too, because there the script IS the process; here a script is a guest
+-- and the host is the one entitled to decide whether anything exits. A
+-- guest that could take the host down with it is not embeddable, and a
+-- host that had to guard against it could not run untrusted code at all.
+--
+-- It carries a value because REBOL's QUIT/RETURN does, and because a host
+-- running a script to get an answer wants the answer rather than a bare
+-- "it stopped".
+rule QuitEndsTheRunWithoutEndingTheHost {
+    when: run: ScriptRun.quit_requested
+
+    requires: run.status = running
+
+    ensures:
+        run.status = finished
+        run.conclusion = quit_early
+        run.result = quit_value_of(run)
+
+    @guidance
+        -- Without /RETURN the value is none, matching REBOL. The
+        -- refinement chooses the value; it does not choose whether there
+        -- is one.
+}
+
 -- A run that passes its deadline is stopped whether or not it was going to
 -- finish. Without this the bound is advice.
 rule OverdueRunIsStopped {
@@ -162,7 +273,8 @@ rule OverdueRunIsStopped {
 -- be catching bugs in JEBOL as well, and could not tell them apart.
 invariant EveryConclusionIsAValue {
     for run in ScriptRuns:
-        run.status = finished implies run.result.datatype in {error} or run.conclusion = produced_a_value
+        run.status = finished implies run.result.datatype in {error}
+            or run.conclusion in {produced_a_value, quit_early}
 }
 
 -- A finished run took no longer than its deadline allowed, give or take
@@ -190,11 +302,56 @@ surface Embedding {
 
     provides:
         Run(host, interpreter, source_text)
+        RunNext(host, interpreter, source_text)
         Cancel(host, interpreter)
 
     exposes:
         Conclusion
         Bounds
+        HostService
+        ServiceRefusal
+
+    @guarantee AHostGrantsServicesOneAtATime
+        -- A script can reach the file system, the environment, another
+        -- program, the operator, the clock, the network and the screen.
+        -- Each is a separate grant and none is given by default.
+        --
+        -- One kind at a time and not one function at a time, because a
+        -- host that lets a script read a file almost always lets it read
+        -- every file it can see. A grant per function reads as finer
+        -- control and gives none: the host cannot say which file, only
+        -- which verb, and the verb was never the interesting half.
+        --
+        -- A script that asks for a service it has not been granted gets
+        -- an error that names the service and says which of three things
+        -- happened: the host has it and did not grant it, the host has no
+        -- such service, or nothing can offer it. The last covers the four
+        -- that exist to call code written in C. A script cannot tell an
+        -- empty answer from a refused one, thus none of them may answer
+        -- with silence.
+        --
+        -- The working directory belongs to the interpreter. A host runs
+        -- many interpreters at once and each must be able to sit in a
+        -- different directory, so changing one must not move another.
+
+    @guarantee RunNextStopsAfterOneExpression
+        -- RunNext evaluates the first expression of the source and hands
+        -- back both its conclusion and the source still unread, so a host
+        -- can walk a script an expression at a time. Everything else about
+        -- it is Run: the same bounds, the same conclusions, the same
+        -- promise that nothing escapes as a host exception.
+        --
+        -- Needed because "the value of this source" and "the value of its
+        -- first expression" are different questions, and only Run answered
+        -- either. A console answers the first for a line; a test harness
+        -- reading `--assert all [...] a: none` needs the second, because
+        -- the assertion is the ALL and the rest is ordinary code that
+        -- still has to run.
+        --
+        -- Three attempts to build this beside the interpreter rather than
+        -- inside it each lost ground: REDUCE fails wholesale when a later
+        -- expression does, and a hand-assembled evaluator did not carry
+        -- the same bounds or fresh-word handling. The seam belongs here.
 
     @guarantee NoFailureEscapesAsAHostException
         -- Every way a script can stop arrives as a conclusion and a value,

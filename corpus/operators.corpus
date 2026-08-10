@@ -1,0 +1,385 @@
+--- title The infix operators
+--- about Every operator is a second way to reach a prefix native, so
+--- about what each one pins is which native it reaches. Two of the nine
+--- about here are not the twin the spelling suggests, and both were
+--- about settled by comparing bodies in R3 3.22.1 rather than guessed.
+
+--- id operators/not-equal-when-they-differ
+--- origin confirmed against R3 3.22.1
+--- code
+1 != 2
+--- result
+#(true)
+
+--- id operators/not-equal-when-they-do-not
+--- origin confirmed against R3 3.22.1
+--- code
+1 != 1
+--- result
+#(false)
+
+--- id operators/strictly-not-equal-minds-the-datatype
+--- origin confirmed against R3 3.22.1
+--- note One and one-point-zero are the same magnitude and different
+--- note datatypes, which is the whole difference from !=.
+--- code
+1 !== 1.0
+--- result
+#(true)
+
+--- id operators/strictly-not-equal-on-two-of-a-kind
+--- origin confirmed against R3 3.22.1
+--- code
+1 !== 1
+--- result
+#(false)
+
+--- id operators/euclidean-modulo-is-never-negative
+--- origin confirmed against R3 3.22.1
+--- note %% is MOD, not MODULO and not REMAINDER. Reading it as
+--- note REMAINDER gives -1 here, which is the answer you get by
+--- note assuming rather than asking.
+--- code
+-7 %% 3
+--- result
+2
+
+--- id operators/euclidean-modulo-with-a-negative-divisor
+--- origin confirmed against R3 3.22.1
+--- code
+7 %% -3
+--- result
+1
+
+--- id operators/bitwise-and
+--- origin confirmed against R3 3.22.1
+--- code
+5 & 3
+--- result
+1
+
+--- id operators/bitwise-or
+--- origin confirmed against R3 3.22.1
+--- code
+1 | 2
+--- result
+3
+
+--- id operators/raising-to-a-power-gives-a-decimal
+--- origin confirmed against R3 3.22.1
+--- note Even when both sides are whole and the answer is whole.
+--- code
+2 ** 10
+--- result
+1024.0
+
+--- id operators/shifting-left
+--- origin confirmed against R3 3.22.1
+--- code
+1 << 4
+--- result
+16
+
+--- id operators/shifting-right
+--- origin confirmed against R3 3.22.1
+--- code
+16 >> 2
+--- result
+4
+
+--- id operators/identity-holds-for-one-number
+--- origin confirmed against R3 3.22.1
+--- note =? is SAME?, not EQUAL?. Two integers of equal magnitude are
+--- note one value, so this is true.
+--- code
+1 =? 1
+--- result
+#(true)
+
+--- id operators/identity-fails-for-two-equal-strings
+--- origin confirmed against R3 3.22.1
+--- note And this is why the distinction matters: these two strings are
+--- note equal and are not the same one.
+--- code
+"a" =? "a"
+--- result
+#(false)
+
+--- id operators/two-percents-is-a-word-not-a-file
+--- origin confirmed against R3 3.22.1
+--- note The boundary that matters for reading %% at all: % is the file
+--- note sigil, so a reader that takes %% as a file leaves the operator
+--- note unreachable and the expression around it quietly wrong.
+--- code
+type? first [%%]
+--- result
+#(word!)
+
+--- id operators/one-percent-alone-is-a-word-too
+--- origin confirmed against R3 3.22.1
+--- note A file needs a name after the sigil. Nothing after it is not an
+--- note empty file, it is the word.
+--- code
+type? first [%]
+--- result
+#(word!)
+
+--- id operators/a-percent-with-a-name-is-a-file
+--- origin confirmed against R3 3.22.1
+--- note One character past the boundary, and it reads the other way.
+--- code
+type? first [%a]
+--- result
+#(file!)
+
+--- id operators/euclidean-modulo-of-zero
+--- origin confirmed against R3 3.22.1
+--- code
+0 %% 3
+--- result
+0
+
+--- id operators/euclidean-modulo-just-below-the-divisor
+--- origin confirmed against R3 3.22.1
+--- code
+-1 %% 3
+--- result
+2
+
+--- id operators/euclidean-modulo-at-the-divisor
+--- origin confirmed against R3 3.22.1
+--- code
+-3 %% 3
+--- result
+0
+
+--- id operators/euclidean-modulo-by-zero-raises
+--- origin confirmed against R3 3.22.1
+--- code
+7 %% 0
+--- error math zero-divide
+
+--- id operators/euclidean-modulo-with-a-fractional-dividend
+--- origin confirmed against R3 3.22.1
+--- code
+7.5 %% 2
+--- result
+1.5
+
+--- id operators/euclidean-modulo-with-a-fractional-divisor
+--- origin confirmed against R3 3.22.1
+--- note And the answer is a whole number rather than 2.0, which is not
+--- note what mixing a decimal in usually does.
+--- code
+7 %% 2.5
+--- result
+2
+
+--- id operators/shifting-left-by-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+1 << 0
+--- result
+1
+
+--- id operators/shifting-left-into-the-sign-bit
+--- origin confirmed against R3 3.22.1
+--- note One short of the width. The answer is negative, because the bit
+--- note that moved into place is the sign.
+--- code
+1 << 63
+--- result
+-9223372036854775808
+
+--- id operators/shifting-left-by-the-whole-width
+--- origin confirmed against R3 3.22.1
+--- note Not zero. The count wraps, so shifting by 64 is shifting by 0.
+--- code
+1 << 64
+--- result
+1
+
+--- id operators/shifting-left-by-a-negative-count
+--- origin confirmed against R3 3.22.1
+--- note Also not what wrapping would give: a plain wrap sends -1 to 63
+--- note and the answer to the sign bit. R3 answers 1.
+--- code
+1 << -1
+--- result
+1
+
+--- id operators/shifting-right-by-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+8 >> 0
+--- result
+8
+
+--- id operators/shifting-right-by-the-whole-width
+--- origin confirmed against R3 3.22.1
+--- code
+8 >> 64
+--- result
+8
+
+--- id operators/shifting-a-negative-right-keeps-the-sign
+--- origin confirmed against R3 3.22.1
+--- code
+-8 >> 1
+--- result
+-4
+
+--- id operators/anything-to-the-power-of-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+2 ** 0
+--- result
+1.0
+
+--- id operators/a-negative-power-is-a-reciprocal
+--- origin confirmed against R3 3.22.1
+--- code
+2 ** -1
+--- result
+0.5
+
+--- id operators/zero-to-the-power-of-zero
+--- origin confirmed against R3 3.22.1
+--- code
+0 ** 0
+--- result
+1.0
+
+--- id operators/bitwise-and-with-all-bits-set
+--- origin confirmed against R3 3.22.1
+--- code
+-1 & 5
+--- result
+5
+
+--- id operators/bitwise-or-with-all-bits-set
+--- origin confirmed against R3 3.22.1
+--- code
+-1 | 5
+--- result
+-1
+
+--- id operators/identity-across-datatypes
+--- origin confirmed against R3 3.22.1
+--- note Same magnitude, different datatype, so not the same value.
+--- code
+1 =? 1.0
+--- result
+#(false)
+
+--- id operators/identity-of-a-shared-series
+--- origin confirmed against R3 3.22.1
+--- note Two names for one block. This is what =? is for.
+--- code
+a: [1]
+b: a
+a =? b
+--- result
+#(true)
+
+--- id operators/identity-of-a-copied-series
+--- origin confirmed against R3 3.22.1
+--- note Equal contents, two blocks. EQUAL? would say true here.
+--- code
+a: [1]
+b: copy [1]
+a =? b
+--- result
+#(false)
+
+--- id operators/identity-of-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+none =? none
+--- result
+#(true)
+
+--- id operators/not-equal-folds-case
+--- origin confirmed against R3 3.22.1
+--- code
+"a" != "A"
+--- result
+#(false)
+
+--- id operators/strictly-not-equal-minds-case
+--- origin confirmed against R3 3.22.1
+--- note Which is the pair that shows != and !== are not the same
+--- note question asked twice.
+--- code
+"a" !== "A"
+--- result
+#(true)
+
+--- id operators/shifting-left-by-a-large-count-wraps
+--- origin confirmed against R3 3.22.1
+--- note 65 wraps to 1, so the count is taken modulo the width.
+--- code
+1 << 65
+--- result
+2
+
+--- id operators/shifting-right-by-a-negative-count
+--- origin confirmed against R3 3.22.1
+--- note Negative counts do nothing in either direction, which is not
+--- note what wrapping the count would give.
+--- code
+8 >> -1
+--- result
+8
+
+--- id operators/euclidean-modulo-takes-the-dividends-datatype
+--- origin confirmed against R3 3.22.1
+--- note 8 mod 2.5 is 0.5, and the answer is 0. The dividend is a whole
+--- note number, so the answer is one too, and the fraction is dropped
+--- note rather than carried.
+--- code
+8 %% 2.5
+--- result
+0
+
+--- id operators/euclidean-modulo-with-a-decimal-dividend-stays-decimal
+--- origin confirmed against R3 3.22.1
+--- note The same division the other way round. Only the dividend
+--- note decides.
+--- code
+7.0 %% 2.5
+--- result
+2.0
+
+--- id operators/euclidean-modulo-of-a-character
+--- origin confirmed against R3 3.22.1
+--- note MOD takes characters, times and money as well as numbers, and
+--- note the dividend's datatype decides the answer's throughout. A
+--- note character in gives a character out.
+--- code
+#"a" %% 3
+--- result
+#"^A"
+
+--- id operators/a-character-as-the-divisor
+--- origin confirmed against R3 3.22.1
+--- note The other way round: the character is read as its code point
+--- note and the answer is a whole number.
+--- code
+1000 %% #"a"
+--- result
+30
+
+--- id operators/euclidean-modulo-of-a-time
+--- origin confirmed against R3 3.22.1
+--- code
+10:0 %% 3:0
+--- result
+1:00
+
+--- id operators/euclidean-modulo-of-money
+--- origin confirmed against R3 3.22.1
+--- code
+$10 %% 3
+--- result
+$1

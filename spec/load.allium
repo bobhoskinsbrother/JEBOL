@@ -25,15 +25,19 @@ enum OpenDelimiter { bracket | parenthesis | brace | quote | tag | binary_brace 
 
 -- Why a read failed. Each maps to an error! of category syntax.
 enum SyntaxFailure {
-    invalid_lexeme          -- characters that begin no known literal
+    invalid                 -- text that is not a valid literal of its kind
+                            -- (R3's generic syntax failure; JEBOL called
+                            -- this invalid, which names nothing in
+                            -- R3's catalogue)
     | missing_close         -- end of input inside an open series
     | extra_close           -- a closing delimiter with no opener
     | mismatched_close      -- a bracket closing a parenthesis, or the reverse
     | unterminated_string   -- end of input inside a quoted or braced string
     | invalid_escape        -- a caret escape naming no known character
     | integer_out_of_range  -- digits that exceed the 64-bit range
-    | invalid_datatype      -- a datatype spelling that names no datatype
+    | invalid_datatype      -- a construct naming no datatype
     | invalid_binary        -- base-16 contents that are not valid base-16
+    | malconstruct          -- a construct whose datatype cannot be built that way
 }
 
 ------------------------------------------------------------
@@ -83,11 +87,46 @@ contract LexicalResolution {
         -- or with anything that is not a digit after it, is the word
         -- minus. So `- 1` reads as two values and `-1` reads as one.
 
-    @invariant AngleBracketsAreTagsNotComparisons
-        -- A less-than sign that opens a run ending in a greater-than sign
-        -- makes a tag, so <a href="x"> is one value. A less-than sign
-        -- standing alone is the word less-than. The reader decides by
-        -- looking for the closing sign, not by what surrounds it.
+    @invariant EveryDatatypeSpellingIsAWord
+        -- A name ending in "!" is a word, always. integer! in source is
+        -- an ordinary word that the system context happens to bind to a
+        -- datatype value, which is why `make bitset! ...` works without
+        -- the reader knowing anything about bitsets and why an unknown
+        -- spelling is a word rather than an error. Only #(integer!) is a
+        -- datatype value in source, because that is what asks for one.
+        --
+        -- JEBOL read these as datatype values and refused the spellings
+        -- it did not recognise, which is the reader deciding something
+        -- that is not its to decide. It cost the whole of Rebol's own
+        -- series-test.r3 from line 394, where a `make bitset!` appears,
+        -- and datatype-test.r3 from its fifteenth line.
+        --
+        -- The consequence is that anything wanting a datatype from a
+        -- block -- a function spec, a parse rule -- resolves the word
+        -- rather than expecting a datatype to have been read.
+
+    @invariant AngleBracketsAreTagsUnlessTheRunIsAllSymbols
+        -- A less-than sign opens a tag when what follows holds anything
+        -- that is not a symbol character, so <a>, <3>, </a> and
+        -- <a href="x"> are all tags. A run made only of symbols is a
+        -- word however it ends, so <>, <=, <- and <--> are words even
+        -- though two of them close with a greater-than sign.
+        --
+        -- Closing with > is not the test, which is what JEBOL used, and
+        -- it made <--> a tag. Rebol's own lexer-test.r3 asserts that one
+        -- directly, on line 338, and losing it cost the 444 assertions
+        -- in that file.
+
+    @invariant AHashInsideDigitsChoosesTheBase
+        -- Digits before a hash are the base and what follows is the
+        -- number in it, so 2#01 is one and 16#FF is 255. Without this
+        -- the whole run is an invalid lexeme, which cost lexer-test.r3
+        -- thirty-five assertions.
+
+    @invariant ACaretSpaceIsASpace
+        -- The caret escapes take a space as well as the named characters
+        -- and the parenthesised codepoints, so "a^ b" is three
+        -- characters. JEBOL refused it as an escape naming no character.
 
     @guidance
         -- Every resolution here needs corpus cases on both sides of the
@@ -203,6 +242,52 @@ rule TranscodeRejectsMalformedSource {
         -- leaves the reader with no reliable place to resume.
 }
 
+-- === Construction syntax =====================================
+
+-- Some values have no literal spelling of their own. NONE, the two
+-- logics, UNSET and every datatype value are written `#(...)`, and that
+-- is what MOLD produces for them, so it is the syntax that makes those
+-- values round-trip.
+--
+-- Three shapes. `#(none)`, `#(true)`, `#(false)` and `#(unset)` name a
+-- value directly. `#(integer!)` names a datatype and produces a
+-- datatype! value rather than an integer. `#(decimal! 1)` builds a value
+-- of the named datatype from what follows, so it reads as 1.0 rather
+-- than as the integer 1.
+--
+-- Not every datatype can be built this way. `#(char! 65)` is a
+-- malconstruct, so the reader has to know which datatypes accept a value
+-- rather than assuming any of them will.
+--
+-- `#(object! [a: 1])` builds an object from a block of set-words and
+-- values. The block is taken as written and never evaluated, because the
+-- reader has no context to evaluate in; that is what makes an object
+-- round-trip through MOLD. It is the single most valuable form to read:
+-- Rebol's own series-test.r3 and object-test.r3 hold 1,725 assertions
+-- between them and both stop at the first one of these.
+--
+-- REBOL 2 and R3-Alpha wrote all of this with square brackets, as
+-- `#[none]`. Rebol 3.x replaced the form rather than adding to it, and
+-- now refuses the bracket spelling. JEBOL read only the bracket form
+-- until Rebol's own test suite was run against it, at which point
+-- seventeen of twenty-two files would not parse at all and one of them
+-- lost 1,532 assertions to a `#(unset)` on its twenty-sixth line.
+rule ConstructionSyntaxNamesValuesThatHaveNoLiteral {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+    requires: source_holds_construct(request.source_text)
+
+    ensures:
+        if not construct_datatype_is_known(request.source_text):
+            request.status = failed
+            request.failure = invalid_datatype
+        else if not construct_accepts_its_contents(request.source_text):
+            request.status = failed
+            request.failure = malconstruct
+        else:
+            request.status = reading
+}
+
 -- Every word that comes back from TRANSCODE is unbound. This is the
 -- property that lets a caller build code as data and choose a context
 -- later, and it is what separates TRANSCODE from LOAD.
@@ -261,16 +346,32 @@ rule LoadBindsIntoTargetContext {
 
     ensures:
         request.status = succeeded
-        request.result = request.transcode.result
+        -- A source holding exactly one value loads as that value rather
+        -- than as a block wrapping it, so `load "1"` is the integer and
+        -- `load "1 2"` is a block of two. `load "[1 2]"` is the block
+        -- that was written, not a block holding it. The /all refinement
+        -- turns the unwrapping off and always gives a block.
+        if transcoded_value_count(request.transcode.result) = 1:
+            request.result = only_value_of(request.transcode.result)
+        else:
+            request.result = request.transcode.result
         for word in words_within(request.transcode.result):
             if is_known_in(request.target, word.canonical):
-                word.binding = request.target
+                word.binding = holder_of(request.target, word.canonical)
 
     @guidance
         -- Words with no matching slot in the target are left unbound
         -- rather than given a slot holding UNSET. An unbound word and a
         -- word bound to an unset slot report different errors when
         -- evaluated, and the difference is worth keeping.
+
+        -- A word binds to the context that actually holds its slot, which
+        -- may be an ancestor of the target rather than the target itself.
+        -- Binding a block into a short-lived inner scope must not make its
+        -- outer words appear to live in that scope: code that asks a bound
+        -- word where it lives, and then writes there, would write into a
+        -- scope that is about to be thrown away rather than into the
+        -- library the word came from.
 }
 
 rule LoadPropagatesSyntaxFailure {
@@ -398,3 +499,71 @@ surface SourceReading {
 -- TranscodeRejectsMalformedSource states. Recovery needs a
 -- resynchronisation point the syntax does not offer, and a second error
 -- guessed at from a bad position is worse than no second error.
+
+-- Resolved against a real R3: a word may not contain an angle bracket,
+-- so a lexeme mixing one with letters is refused rather than becoming a
+-- word with an impossible name. `a<b` and `a>b` both raise invalid.
+--
+-- A run made only of symbols is a word however it is spelled, so `<`,
+-- `<=`, `<>` and `-->` are words. That exception is why the test is on
+-- the mixture rather than on the characters alone.
+--
+-- And a number followed by such a run splits in two. `1<` is the integer
+-- and the word `<`, `1.2<` and `19-Jan-2010<` likewise -- but `1<2`
+-- raises, because what follows the number has to be a symbol run of its
+-- own to be worth splitting off. A word prefix never splits, which is
+-- the whole difference between `1<` and `a<`.
+--
+-- Those three parts together are what makes the behaviour explicable. A
+-- rule where `<` always begins a tag attempt fails on `a<`; a rule where
+-- `<` is absorbed into a word fails on `1<`. Neither is wrong about the
+-- case it was drawn from.
+
+open question "A real R3 refuses % # $ \\ and a comma inside a word as well as an angle bracket -- `a%b`, `a#b`, `a$b` and `a,b` all raise invalid, measured directly. JEBOL refuses only the angle brackets so far. The hash is the awkward one: it is how a based number and a based binary are written, `2#01` and `64#{...}`, so a rule that refuses it in a word has to run after those forms are recognised rather than on the raw lexeme. Refusing it early turned `64#{` into the integer 64 and broke a source file that reads perfectly well. The comma is awkward for a different reason: the reader treats it as a delimiter, so `a,b` is split before any check sees it."
+
+-- Resolved against a real R3: a construct naming a series may carry its
+-- position as a second value, so `#(string! "ab" 2)` is that string
+-- standing at its second character and `#(block! [1 2 3] 2)` is [2 3].
+-- It is how MOLD/ALL writes a series that was not at its head, and
+-- without reading it back such a mold does not round-trip.
+--
+-- The block family converts within itself the way the string family
+-- does, so `#(paren! [1 2])` is a paren holding what the block held. A
+-- construct naming one of these and holding anything else is refused
+-- rather than guessed at: `#(block! 1)` is a malconstruct, not a block
+-- of one item.
+
+-- Resolved against a real R3: TRANSCODE/ERROR answers the error as a
+-- value instead of raising it, so `transcode/one/error "2#12"` is an
+-- error! and `transcode/one/error "1"` is 1. It is TRY built into the
+-- reader, for a caller reading text they did not write and wanting to
+-- look at what went wrong rather than catch it.
+--
+-- Without the refinement the same source raises, which is what makes the
+-- refinement worth having rather than being the only behaviour.
+
+open question "A path may begin with a paren: `(make object! [q: 7])/q` is 7 in a real R3, and `(transcode/one/error \"2#12\")/id` reads the error's field the same way. JEBOL reads a paren followed by /id as two values, the paren and the refinement, so the path is never formed. A paren is already handled as a path segment in the middle -- `data/(k)` works -- so this is the same idea at the front. Is the leading form worth supporting, and does it change how a lone refinement after any value should be read?"
+
+-- Resolved against a real R3: TRANSCODE/NEXT answers the first value and
+-- whatever is left, and getting "whatever is left" right is the whole of
+-- the refinement.
+--
+-- A value is taken as far as it goes. "1" is already a whole value, so a
+-- reader that stops at the first thing that reads answers 1 for "12" and
+-- leaves the 2 behind.
+--
+-- The whitespace after a value belongs to what follows rather than to the
+-- value, so reading "1 2" leaves " 2" and not "2".
+--
+-- /PART bounds how much may be read and not what is left over. Reading
+-- one character of "123]" answers 1 and leaves "23]", because a caller
+-- walking a source with a bound would otherwise find it empty after a
+-- single step.
+--
+-- What is left comes back as the kind that went in, so reading a binary
+-- leaves a binary and reading it to the end leaves an empty binary rather
+-- than an empty string.
+--
+-- Asking for a value where the source has none left raises past-end.
+-- Answering none would be wrong because none is a value a source can
+-- genuinely hold, and a caller could not tell the two apart.

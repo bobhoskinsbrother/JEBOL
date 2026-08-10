@@ -40,7 +40,7 @@ example/var2
 empty: make object! []
 type? empty
 --- result
-object!
+#(object!)
 
 --- id objects/two-objects-from-one-body-are-separate
 --- origin adapted from REBOL/Core User Guide 2.3 section 10
@@ -233,16 +233,20 @@ example/doubled
 42
 
 --- id objects/an-object-can-be-molded
---- origin JEBOL, found by printing one
+--- origin confirmed against R3 3.22.1
 --- requires object
 --- note Every object holds a word for itself, so molding one used to
 --- note recurse until the stack gave out. SELF is left out of the printed
 --- note form for that reason, and REBOL leaves it out for the same one.
+--- note One field per line, indented four. This entry recorded the flat
+--- note form for a long time, on the strength of having been read off
+--- note JEBOL's own output rather than the binary's -- which is what its
+--- note origin said, and why an origin is worth reading.
 --- code
 settings: make object! [width: 640]
 mold settings
 --- result
-"make object! [width: 640]"
+"make object! [^/    width: 640^/]"
 
 --- id objects/self-refers-to-the-object
 --- origin REBOL/Core User Guide 2.3 section 10
@@ -259,7 +263,7 @@ same-thing/size
 10
 
 --- id objects/a-copied-method-acts-on-the-copy
---- origin JEBOL, found by running it
+--- origin confirmed against R3 3.22.1
 --- requires object control op
 --- note The entry above proves a copied *field* is independent. This proves
 --- note a copied *method* is, which is a different thing and was broken: the
@@ -278,7 +282,7 @@ rejoin [account/balance " and " savings/balance]
 "100 and 110"
 
 --- id objects/two-copies-have-independent-methods
---- origin JEBOL, found by running it
+--- origin confirmed against R3 3.22.1
 --- requires object control op
 --- code
 maker: make object! [

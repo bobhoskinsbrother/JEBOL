@@ -21,9 +21,19 @@ public final class FileSystemPort implements FilePort {
     private final Path root;
     private final boolean writable;
 
+    /**
+     * Where a relative path counts from now.
+     *
+     * <p>It starts at the root and moves when a script changes directory.
+     * It can never leave the root, because every path goes through the
+     * same test.
+     */
+    private Path here;
+
     private FileSystemPort(Path root, boolean writable) {
         this.root = root.toAbsolutePath().normalize();
         this.writable = writable;
+        this.here = this.root;
     }
 
     /** A port allowing reading and writing beneath one directory. */
@@ -34,6 +44,89 @@ public final class FileSystemPort implements FilePort {
     /** The same port, refusing writes. */
     public FileSystemPort readOnly() {
         return new FileSystemPort(root, false);
+    }
+
+    /**
+     * The directory a relative path counts from.
+     *
+     * <p>It is the root, and it moves when a script changes directory. A
+     * JVM cannot change the working directory of its own process, thus
+     * keeping it here is the only way a script can have one at all. It
+     * also means one interpreter cannot move another.
+     */
+    @Override
+    public String workingDirectory() {
+        return here.toString().endsWith("/") ? here.toString() : here + "/";
+    }
+
+    @Override
+    public void changeDirectory(String path) {
+        Path target = within(path);
+        if (!Files.isDirectory(target)) {
+            throw new Denied("cannot-open", path + " is not a directory");
+        }
+        here = target;
+    }
+
+    @Override
+    public void makeDirectory(String path, boolean andItsParents) {
+        requireWritable();
+        Path target = within(path);
+        try {
+            if (andItsParents) {
+                Files.createDirectories(target);
+            } else if (!Files.exists(target)) {
+                Files.createDirectory(target);
+            }
+        } catch (IOException refused) {
+            throw new Denied("cannot-open", "cannot make a directory at " + path);
+        }
+    }
+
+    @Override
+    public void delete(String path) {
+        requireWritable();
+        try {
+            Files.delete(within(path));
+        } catch (IOException refused) {
+            throw new Denied("cannot-open", "cannot delete " + path);
+        }
+    }
+
+    @Override
+    public void rename(String from, String to) {
+        requireWritable();
+        try {
+            Files.move(within(from), within(to));
+        } catch (IOException refused) {
+            throw new Denied("cannot-open", "cannot rename " + from);
+        }
+    }
+
+    @Override
+    public java.util.List<String> namesIn(String path) {
+        Path target = within(path);
+        try (java.util.stream.Stream<Path> names = Files.list(target)) {
+            return names.map(one -> Files.isDirectory(one)
+                            ? one.getFileName() + "/"
+                            : one.getFileName().toString())
+                    .sorted()
+                    .toList();
+        } catch (IOException unreadable) {
+            throw new Denied("cannot-open", "cannot read the directory at " + path);
+        }
+    }
+
+    @Override
+    public boolean isDirectory(String path) {
+        return Files.isDirectory(within(path));
+    }
+
+    /** Refuses a change when this port was made read only. */
+    private void requireWritable() {
+        if (!writable) {
+            throw new Denied("no-permission", "this port does not allow changes");
+        }
     }
 
     @Override
@@ -72,7 +165,10 @@ public final class FileSystemPort implements FilePort {
      */
     private Path within(String path) {
         try {
-            Path resolved = root.resolve(path).toAbsolutePath().normalize();
+            // Resolved against where the script is now and not against
+            // the root, so CHANGE-DIR means something. The test is still
+            // against the root, thus moving cannot widen what is reachable.
+            Path resolved = here.resolve(path).toAbsolutePath().normalize();
             if (!resolved.startsWith(root)) {
                 throw new Denied("outside-root", path + " is outside what this port allows");
             }

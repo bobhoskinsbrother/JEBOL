@@ -1,0 +1,142 @@
+--- title Tuples
+--- about A tuple is a run of bytes written with dots, which is what
+--- about makes it right for a version or a colour. The part worth
+--- about pinning is that arithmetic on one clamps at each end rather
+--- about than wrapping, so a segment never leaves 0 to 255.
+
+--- id tuples/adding-to-every-segment
+--- origin confirmed against R3 3.22.1
+--- code
+mold 1.2.3 + 1
+--- result
+"2.3.4"
+
+--- id tuples/subtracting-from-every-segment
+--- origin confirmed against R3 3.22.1
+--- code
+mold 1.2.3 - 1
+--- result
+"0.1.2"
+
+--- id tuples/multiplying-every-segment
+--- origin confirmed against R3 3.22.1
+--- code
+mold 1.2.3 * 2
+--- result
+"2.4.6"
+
+--- id tuples/dividing-truncates-each-segment
+--- origin confirmed against R3 3.22.1
+--- note Segments are whole numbers, so 3 over 2 is 1 rather than 1.5.
+--- code
+mold 1.2.3 / 2
+--- result
+"0.1.1"
+
+--- id tuples/adding-two-tuples
+--- origin confirmed against R3 3.22.1
+--- code
+mold 1.2.3 + 1.1.1
+--- result
+"2.3.4"
+
+--- id tuples/a-segment-cannot-go-above-its-ceiling
+--- origin confirmed against R3 3.22.1
+--- note It clamps rather than wrapping, so the answer is unchanged
+--- note rather than 0.0.0. A wrapping implementation is right for
+--- note every value except the ones at the edge.
+--- code
+mold 255.255.255 + 1
+--- result
+"255.255.255"
+
+--- id tuples/nor-below-its-floor
+--- origin confirmed against R3 3.22.1
+--- code
+mold 0.0.0 - 1
+--- result
+"0.0.0"
+
+--- id tuples/how-many-segments
+--- origin confirmed against R3 3.22.1
+--- code
+length? 1.2.3
+--- result
+3
+
+--- id tuples/the-first-segment-by-path
+--- origin confirmed against R3 3.22.1
+--- code
+u: 1.2.3
+u/1
+--- result
+1
+
+--- id tuples/the-last-segment-by-path
+--- origin confirmed against R3 3.22.1
+--- code
+u: 1.2.3
+u/3
+--- result
+3
+
+--- id tuples/one-past-the-last-segment
+--- origin confirmed against R3 3.22.1
+--- note None rather than raising, which is how a series behaves past
+--- note its end and not how an object behaves.
+--- code
+u: 1.2.3
+u/4
+--- result
+_
+
+--- id tuples/the-position-before-the-first
+--- origin confirmed against R3 3.22.1
+--- code
+u: 1.2.3
+u/0
+--- result
+_
+
+--- id tuples/the-first-segment-by-name
+--- origin confirmed against R3 3.22.1
+--- code
+first 1.2.3
+--- result
+1
+
+--- id tuples/picking-a-segment
+--- origin confirmed against R3 3.22.1
+--- code
+pick 1.2.3 2
+--- result
+2
+
+--- id tuples/two-equal-tuples
+--- origin confirmed against R3 3.22.1
+--- code
+1.2.3 = 1.2.3
+--- result
+#(true)
+
+--- id tuples/comparing-two-tuples
+--- origin confirmed against R3 3.22.1
+--- code
+1.2.3 < 1.2.4
+--- result
+#(true)
+
+--- id tuples/made-from-a-block-of-numbers
+--- origin confirmed against R3 3.22.1
+--- code
+mold to tuple! [1 2 3]
+--- result
+"1.2.3"
+
+--- id tuples/converted-to-a-block-wraps-rather-than-splits
+--- origin confirmed against R3 3.22.1
+--- note The same as a pair, and the same surprise.
+--- code
+mold to block! 1.2.3
+--- result
+"[1.2.3]"

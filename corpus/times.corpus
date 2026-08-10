@@ -1,0 +1,206 @@
+--- title Times and dates
+--- about Both do arithmetic with plain numbers, and what the number
+--- about means differs: seconds for a time, days for a date. Both are
+--- about read by path for their parts.
+
+--- id times/adding-two-times
+--- origin confirmed against R3 3.22.1
+--- code
+1:00 + 1:00
+--- result
+2:00
+
+--- id times/subtracting-two-times
+--- origin confirmed against R3 3.22.1
+--- code
+1:00 - 0:30
+--- result
+0:30
+
+--- id times/a-time-can-be-negative
+--- origin confirmed against R3 3.22.1
+--- note It is a duration rather than a clock reading, so there is no
+--- note floor at midnight.
+--- code
+0:00 - 1:00
+--- result
+-1:00
+
+--- id times/scaling-a-time
+--- origin confirmed against R3 3.22.1
+--- code
+1:00 * 2
+--- result
+2:00
+
+--- id times/halving-a-time
+--- origin confirmed against R3 3.22.1
+--- code
+1:00 / 2
+--- result
+0:30
+
+--- id times/a-bare-number-added-to-a-time-is-seconds
+--- origin confirmed against R3 3.22.1
+--- note Not minutes and not hours, which is the guess to get wrong.
+--- code
+1:00 + 1
+--- result
+1:00:01
+
+--- id times/the-hour-of-a-time
+--- origin confirmed against R3 3.22.1
+--- code
+t: 1:02:03
+t/hour
+--- result
+1
+
+--- id times/the-minute-of-a-time
+--- origin confirmed against R3 3.22.1
+--- code
+t: 1:02:03
+t/minute
+--- result
+2
+
+--- id times/the-second-of-a-time
+--- origin confirmed against R3 3.22.1
+--- code
+t: 1:02:03
+t/second
+--- result
+3
+
+--- id times/comparing-two-times
+--- origin confirmed against R3 3.22.1
+--- code
+1:00 < 2:00
+--- result
+#(true)
+
+--- id times/converting-a-number-to-a-time-reads-it-as-seconds
+--- origin confirmed against R3 3.22.1
+--- code
+to time! 60
+--- result
+0:01
+
+--- id times/a-bare-number-added-to-a-date-is-days
+--- origin confirmed against R3 3.22.1
+--- note A different unit from the time case, for the same spelling.
+--- code
+1-Jan-2020 + 1
+--- result
+2-Jan-2020
+
+--- id times/stepping-a-date-back-over-a-year-boundary
+--- origin confirmed against R3 3.22.1
+--- code
+1-Jan-2020 - 1
+--- result
+31-Dec-2019
+
+--- id times/the-days-between-two-dates
+--- origin confirmed against R3 3.22.1
+--- note A whole number rather than a date, because the difference of
+--- note two dates is a span and not a moment.
+--- code
+1-Jan-2020 - 1-Jan-2019
+--- result
+365
+
+--- id times/the-year-of-a-date
+--- origin confirmed against R3 3.22.1
+--- code
+d: 1-Jan-2020
+d/year
+--- result
+2020
+
+--- id times/the-month-of-a-date
+--- origin confirmed against R3 3.22.1
+--- code
+d: 1-Jan-2020
+d/month
+--- result
+1
+
+--- id times/the-day-of-a-date
+--- origin confirmed against R3 3.22.1
+--- code
+d: 1-Jan-2020
+d/day
+--- result
+1
+
+--- id times/comparing-two-dates
+--- origin confirmed against R3 3.22.1
+--- code
+1-Jan-2020 < 2-Jan-2020
+--- result
+#(true)
+
+--- id times/a-time-as-a-number-is-its-seconds
+--- origin confirmed against R3 3.22.1
+--- code
+to integer! 1:00
+--- result
+3600
+
+--- id times/a-time-can-be-asked-whether-it-is-zero
+--- origin confirmed against R3 3.22.1
+--- code
+zero? 0:00
+--- result
+#(true)
+
+--- id times/a-negative-time-is-negative
+--- origin confirmed against R3 3.22.1
+--- code
+negative? -1:00
+--- result
+#(true)
+
+--- id times/rounding-a-time
+--- origin confirmed against R3 3.22.1
+--- code
+round 1:00
+--- result
+1:00
+
+--- id times/a-part-a-time-has-not-got
+--- origin confirmed against R3 3.22.1
+--- note A time raises where a date answers none, so the two are not
+--- note the same rule with different field names.
+--- code
+t: 1:00
+t/nonesuch
+--- error script invalid-path
+
+--- id times/a-part-a-date-has-not-got
+--- origin confirmed against R3 3.22.1
+--- code
+d: 1-Jan-2020
+d/nonesuch
+--- result
+_
+
+--- id times/a-time-is-indexable-too
+--- origin confirmed against R3 3.22.1
+--- note Position 1 is the hour, so the named and numbered spellings
+--- note agree the way they do for a pair.
+--- code
+t: 1:00
+t/1
+--- result
+1
+
+--- id times/a-time-equals-its-seconds
+--- origin confirmed against R3 3.22.1
+--- note Which makes EQUAL? cross the datatype boundary here, as it
+--- note does for integers and decimals.
+--- code
+1:00 = 3600
+--- result
+#(true)

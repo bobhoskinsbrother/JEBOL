@@ -51,7 +51,7 @@ class AssignmentSafetyTest {
         assertThat(failed.succeeded()).isFalse();
         assertThat(interpreter.display(interpreter.run("value? 'fresh")))
                 .as("a word whose only assignment failed holds nothing")
-                .isEqualTo("false");
+                .isEqualTo("#(false)");
     }
 
     @Test
@@ -69,7 +69,7 @@ class AssignmentSafetyTest {
                 .isEqualTo("1");
         assertThat(interpreter.display(interpreter.run("value? 'third-word")))
                 .as("the assignment after the failure never ran")
-                .isEqualTo("false");
+                .isEqualTo("#(false)");
     }
 
     @Test
@@ -81,7 +81,7 @@ class AssignmentSafetyTest {
         ScriptOutcome refused = interpreter.run("kept: \"replacement\"");
 
         assertThat(refused.succeeded()).as("assigning to a protected word must raise").isFalse();
-        assertThat(refused.errorId().orElseThrow()).isEqualTo("protected-word");
+        assertThat(refused.errorId().orElseThrow()).isEqualTo("locked-word");
         assertThat(interpreter.display(interpreter.run("kept"))).isEqualTo("\"original\"");
     }
 }

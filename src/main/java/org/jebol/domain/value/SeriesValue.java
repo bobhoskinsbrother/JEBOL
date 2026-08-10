@@ -23,7 +23,20 @@ public sealed interface SeriesValue extends Value permits StringValue, BinaryVal
 
     /** How many elements remain from this position to the tail. */
     default int lengthFromHere() {
-        return storageLength() - index() + 1;
+        return Math.max(0, storageLength() - index() + 1);
+    }
+
+    /**
+     * Whether the position is beyond what the storage now holds.
+     *
+     * <p>A series value keeps its own index, so shortening the storage
+     * underneath one leaves it standing past the end: take three items
+     * off a four-item block that something else is holding at position
+     * four, and that other value is stranded. REBOL answers PAST? for
+     * exactly this and treats the value as empty everywhere else.
+     */
+    default boolean isPastTheEnd() {
+        return index() > storageLength() + 1;
     }
 
     /** Whether this value sits at the head of its storage. */
@@ -33,7 +46,10 @@ public sealed interface SeriesValue extends Value permits StringValue, BinaryVal
 
     /** Whether this value sits one past the last element. */
     default boolean atTail() {
-        return index() == storageLength() + 1;
+        // At or past it. A position left stranded by the storage being
+        // shortened has nothing ahead of it either, so TAIL? and EMPTY?
+        // both answer true for it, as they do in a real R3.
+        return index() >= storageLength() + 1;
     }
 
     /** The same storage, seen from a different position. */

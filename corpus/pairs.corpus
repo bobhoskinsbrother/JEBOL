@@ -1,0 +1,462 @@
+--- title Coordinate pairs
+--- about A pair is two decimals written with an x between them. The
+--- about spelling suggests two integers and R3 does not agree: FIRST 1x2
+--- about is 1.0, and 1.5x2 is a legal pair. Everything here was asked of
+--- about R3 3.22.1 rather than reasoned out, because the integer reading
+--- about is the one you arrive at by thinking about it.
+
+--- id pairs/reads-and-molds-back
+--- origin confirmed against R3 3.22.1
+--- code
+mold 1x2
+--- result
+"1x2"
+
+--- id pairs/reports-its-datatype
+--- origin confirmed against R3 3.22.1
+--- code
+type? 1x2
+--- result
+#(pair!)
+
+--- id pairs/first-half-is-a-decimal
+--- origin confirmed against R3 3.22.1
+--- note The whole reason this file exists. Nothing about the spelling
+--- note 1x2 warns you that taking a half out gives you 1.0.
+--- code
+first 1x2
+--- result
+1.0
+
+--- id pairs/second-half-is-a-decimal
+--- origin confirmed against R3 3.22.1
+--- code
+second 1x2
+--- result
+2.0
+
+--- id pairs/a-half-may-be-fractional
+--- origin confirmed against R3 3.22.1
+--- note Which is the other half of the same fact: if the halves were
+--- note integers this would not read at all.
+--- code
+mold 1.5x2
+--- result
+"1.5x2"
+
+--- id pairs/molding-hides-a-whole-half
+--- origin confirmed against R3 3.22.1
+--- note So the decimal nature is invisible until you take a half out.
+--- code
+mold 1x2 * 1.5
+--- result
+"1.5x3"
+
+--- id pairs/named-halves-read-through-a-path
+--- origin confirmed against R3 3.22.1
+--- code
+p: 1x2
+p/x
+--- result
+1.0
+
+--- id pairs/second-named-half
+--- origin confirmed against R3 3.22.1
+--- code
+p: 1x2
+p/y
+--- result
+2.0
+
+--- id pairs/halves-answer-to-their-positions-too
+--- origin confirmed against R3 3.22.1
+--- note p/x and p/1 are the same question, which is worth pinning
+--- note because only one of the two spellings is obvious.
+--- code
+p: 1x2
+p/1
+--- result
+1.0
+
+--- id pairs/picking-a-half-by-position
+--- origin confirmed against R3 3.22.1
+--- code
+pick 1x2 1
+--- result
+1.0
+
+--- id pairs/negative-halves-read
+--- origin confirmed against R3 3.22.1
+--- note The minus binds to each half separately, so this is one pair
+--- note and not a subtraction.
+--- code
+mold -1x-2
+--- result
+"-1x-2"
+
+--- id pairs/zero-pair
+--- origin confirmed against R3 3.22.1
+--- code
+mold 0x0
+--- result
+"0x0"
+
+--- id pairs/addition-works-on-each-half
+--- origin confirmed against R3 3.22.1
+--- code
+mold 1x2 + 3x4
+--- result
+"4x6"
+
+--- id pairs/subtraction-works-on-each-half
+--- origin confirmed against R3 3.22.1
+--- code
+mold 1x2 - 3x4
+--- result
+"-2x-2"
+
+--- id pairs/multiplication-works-on-each-half
+--- origin confirmed against R3 3.22.1
+--- code
+mold 1x2 * 2x3
+--- result
+"2x6"
+
+--- id pairs/a-single-number-spreads-across-both-halves
+--- origin confirmed against R3 3.22.1
+--- note This is the only place in the language where an operand is
+--- note spread rather than widened to meet the other side.
+--- code
+mold 1x2 * 2
+--- result
+"2x4"
+
+--- id pairs/adding-a-single-number-spreads-too
+--- origin confirmed against R3 3.22.1
+--- code
+mold 1x2 + 1
+--- result
+"2x3"
+
+--- id pairs/division-can-produce-a-fractional-half
+--- origin confirmed against R3 3.22.1
+--- note And here the decimal halves become visible without anyone
+--- note asking for them.
+--- code
+mold 1x2 / 2
+--- result
+"0.5x1"
+
+--- id pairs/dividing-by-a-pair-divides-each-half
+--- origin confirmed against R3 3.22.1
+--- code
+mold 3x4 / 2x2
+--- result
+"1.5x2"
+
+--- id pairs/negate-flips-both-halves
+--- origin confirmed against R3 3.22.1
+--- code
+mold negate 1x2
+--- result
+"-1x-2"
+
+--- id pairs/equal-pairs
+--- origin confirmed against R3 3.22.1
+--- code
+1x2 = 1x2
+--- result
+#(true)
+
+--- id pairs/one-differing-half-is-enough
+--- origin confirmed against R3 3.22.1
+--- code
+1x2 = 1x3
+--- result
+#(false)
+
+--- id pairs/less-than-needs-both-halves
+--- origin confirmed against R3 3.22.1
+--- code
+1x2 < 2x3
+--- result
+#(true)
+
+--- id pairs/greater-than-is-not-the-negation-of-less-than
+--- origin confirmed against R3 3.22.1
+--- note Both halves must agree, so a pair that beats another on one
+--- note axis and loses on the other is neither less nor greater. Code
+--- note that sorts pairs cannot lean on trichotomy.
+--- code
+1x2 > 2x3
+--- result
+#(false)
+
+--- id pairs/made-from-a-block-of-two
+--- origin confirmed against R3 3.22.1
+--- code
+mold make pair! [1 2]
+--- result
+"1x2"
+
+--- id pairs/converted-from-a-block-of-two
+--- origin confirmed against R3 3.22.1
+--- code
+mold to pair! [3 4]
+--- result
+"3x4"
+
+--- id pairs/converted-from-one-number-fills-both-halves
+--- origin confirmed against R3 3.22.1
+--- code
+mold to pair! 5
+--- result
+"5x5"
+
+--- id pairs/converted-to-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+to string! 1x2
+--- result
+"1x2"
+
+--- id pairs/converted-to-a-block-wraps-rather-than-splits
+--- origin confirmed against R3 3.22.1
+--- note Which is not what you would guess for a two-part value.
+--- code
+mold to block! 1x2
+--- result
+"[1x2]"
+
+--- id pairs/reverse-swaps-the-halves
+--- origin confirmed against R3 3.22.1
+--- code
+mold reverse 1x2
+--- result
+"2x1"
+
+--- id pairs/min-takes-the-smaller-of-each-half-separately
+--- origin confirmed against R3 3.22.1
+--- note So the answer can be a pair that neither argument was.
+--- code
+mold min 1x2 2x1
+--- result
+"1x1"
+
+--- id pairs/max-takes-the-larger-of-each-half-separately
+--- origin confirmed against R3 3.22.1
+--- code
+mold max 1x2 2x1
+--- result
+"2x2"
+
+--- id pairs/even-asks-about-both-halves
+--- origin confirmed against R3 3.22.1
+--- code
+even? 2x2
+--- result
+#(true)
+
+--- id pairs/odd-asks-about-both-halves
+--- origin confirmed against R3 3.22.1
+--- code
+odd? 1x1
+--- result
+#(true)
+
+--- id pairs/negative-asks-about-both-halves
+--- origin confirmed against R3 3.22.1
+--- code
+negative? -1x-1
+--- result
+#(true)
+
+--- id pairs/positive-asks-about-both-halves
+--- origin confirmed against R3 3.22.1
+--- code
+positive? 1x1
+--- result
+#(true)
+
+--- id pairs/a-pair-is-not-a-series
+--- origin confirmed against R3 3.22.1
+--- note Which settles what a pair is: two numbers in one value, not a
+--- note two-item collection. LENGTH? refuses it outright.
+--- code
+length? 1x2
+--- error script expect-arg
+
+--- id pairs/lerp-walks-between-two-pairs
+--- origin confirmed against R3 3.22.1
+--- note LERP is Oldes's, not R3-Alpha's. Halfway between the origin
+--- note and 10x10 is 5x5.
+--- code
+mold lerp 0x0 10x10 0.5
+--- result
+"5x5"
+
+--- id pairs/lerp-at-the-start
+--- origin confirmed against R3 3.22.1
+--- code
+mold lerp 0x0 10x10 0.0
+--- result
+"0x0"
+
+--- id pairs/lerp-at-the-end
+--- origin confirmed against R3 3.22.1
+--- code
+mold lerp 0x0 10x10 1.0
+--- result
+"10x10"
+
+--- id pairs/asking-whether-something-is-a-pair
+--- origin confirmed against R3 3.22.1
+--- code
+pair? 1x2
+--- result
+#(true)
+
+--- id pairs/converting-from-one-item-is-refused
+--- origin confirmed against R3 3.22.1
+--- note A pair needs both halves. One below the count it wants is the
+--- note interesting boundary, and R3 refuses rather than filling in.
+--- code
+to pair! [1]
+--- error script bad-make-arg
+
+--- id pairs/converting-from-three-items-is-refused
+--- origin confirmed against R3 3.22.1
+--- code
+to pair! [1 2 3]
+--- error script bad-make-arg
+
+--- id pairs/converting-from-a-string-reads-it
+--- origin confirmed against R3 3.22.1
+--- note So the string goes through the reader rather than being
+--- note rejected as the wrong shape.
+--- code
+mold to pair! "1x2"
+--- result
+"1x2"
+
+--- id pairs/converting-from-nothing-is-refused
+--- origin confirmed against R3 3.22.1
+--- code
+to pair! none
+--- error script bad-make-arg
+
+--- id pairs/making-from-one-number-fills-both-halves
+--- origin confirmed against R3 3.22.1
+--- code
+mold make pair! 5
+--- result
+"5x5"
+
+--- id pairs/bitwise-and-of-two-pairs
+--- origin confirmed against R3 3.22.1
+--- note The bitwise operators work on the halves as whole numbers,
+--- note which is the one place the decimal halves are ignored.
+--- code
+mold 1x2 and 3x3
+--- result
+"1x2"
+
+--- id pairs/bitwise-or-of-two-pairs
+--- origin confirmed against R3 3.22.1
+--- code
+mold 1x2 or 3x3
+--- result
+"3x3"
+
+--- id pairs/bitwise-exclusive-or-of-two-pairs
+--- origin confirmed against R3 3.22.1
+--- code
+mold 1x2 xor 3x3
+--- result
+"2x1"
+
+--- id pairs/a-pair-never-equals-a-single-number
+--- origin confirmed against R3 3.22.1
+--- code
+1x2 = 1
+--- result
+#(false)
+
+--- id pairs/even-needs-both-halves-even
+--- origin confirmed against R3 3.22.1
+--- note One even half and one odd is the boundary that separates
+--- note "asks about both" from "asks about either".
+--- code
+even? 1x2
+--- result
+#(false)
+
+--- id pairs/odd-needs-both-halves-odd
+--- origin confirmed against R3 3.22.1
+--- code
+odd? 1x2
+--- result
+#(false)
+
+--- id pairs/negative-needs-both-halves-negative
+--- origin confirmed against R3 3.22.1
+--- code
+negative? -1x1
+--- result
+#(false)
+
+--- id pairs/positive-needs-both-halves-positive
+--- origin confirmed against R3 3.22.1
+--- code
+positive? 1x-1
+--- result
+#(false)
+
+--- id pairs/arithmetic-with-a-non-number-is-refused
+--- origin confirmed against R3 3.22.1
+--- code
+1x2 + none
+--- error script expect-arg
+
+--- id pairs/dividing-a-pair-by-zero-still-raises
+--- origin confirmed against R3 3.22.1
+--- note Spreading a single operand across both halves does not turn
+--- note the division into a floating one that quietly gives infinity.
+--- code
+1x2 / 0
+--- error math zero-divide
+
+--- id pairs/absolute-applies-to-each-half
+--- origin confirmed against R3 3.22.1
+--- code
+mold absolute -1x-2
+--- result
+"1x2"
+
+--- id pairs/rounding-applies-to-each-half
+--- origin confirmed against R3 3.22.1
+--- code
+mold round 1.5x2.5
+--- result
+"2x3"
+
+--- id pairs/less-than-or-equal-accepts-two-equal-pairs
+--- origin confirmed against R3 3.22.1
+--- code
+1x2 <= 1x2
+--- result
+#(true)
+
+--- id pairs/greater-than-or-equal-accepts-two-equal-pairs
+--- origin confirmed against R3 3.22.1
+--- code
+1x2 >= 1x2
+--- result
+#(true)
+
+--- id pairs/not-equal-notices-one-differing-half
+--- origin confirmed against R3 3.22.1
+--- code
+1x2 <> 1x3
+--- result
+#(true)

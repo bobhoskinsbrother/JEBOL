@@ -60,12 +60,20 @@ public final class CorpusReader {
         }
     }
 
+    private static boolean isComment(String line) {
+        return line.equals("#") || line.startsWith("# ");
+    }
+
     static List<CorpusEntry> entriesIn(Path file) {
         List<CorpusEntry> entries = new ArrayList<>();
         EntryBuilder building = null;
 
         for (String line : read(file).lines().toList()) {
-            if (line.startsWith("#") || (line.isBlank() && building == null)) {
+            // A comment is a hash followed by a space, or a hash alone.
+            // "#(true)" is a value, not a comment: construction syntax
+            // begins with the same character, and treating it as a comment
+            // silently emptied every entry whose expected result was a logic.
+            if (isComment(line) || (line.isBlank() && building == null)) {
                 continue;
             }
             if (line.startsWith(FIELD_PREFIX + "id ")) {

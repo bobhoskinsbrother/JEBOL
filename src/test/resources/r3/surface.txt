@@ -1,0 +1,580 @@
+! | value<any-type!>
+!= | value1<any-type!> value2<any-type!>
+!== | value1<any-type!> value2<any-type!>
+% | value1<scalar! vector!> value2<scalar! vector!>
+%% | a<number! money! char! time!> b<number! money! char! time!> /floor
+& | value1<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!> value2<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!>
+* | value1<scalar! vector!> value2<scalar! vector!>
+** | number<number!> exponent<number!>
++ | value1<scalar! date! vector!> value2<scalar! date! vector!>
+++ | word<word!>
+- | value1<scalar! date! vector!> value2<scalar! date! vector!>
+-- | word<word!>
+--- | value
+/ | value1<scalar! vector!> value2<scalar! vector!>
+// | value1<number!> value2<number!>
+< | value1 value2
+<< | data<integer!> bits<integer!>
+<= | value1 value2
+<> | value1<any-type!> value2<any-type!>
+= | value1<any-type!> value2<any-type!>
+== | value1<any-type!> value2<any-type!>
+=? | value1<any-type!> value2<any-type!>
+> | value1 value2
+>= | value1 value2
+>> | data<integer!> bits<integer!>
+? | word<any-type!> /doc /into string<string!> /local value spec args refs rets type ret desc desc-ext arg def des ref str tmp ret-desc
+?? | name /local a
+about |
+abs | value<number! pair! money! time!>
+absolute | value<number! pair! money! time!>
+access-os | field<word!> /set value<integer! block!>
+acos | value<decimal!>
+action? | value<any-type!>
+add | value1<scalar! date! vector!> value2<scalar! date! vector!>
+ajoin | block<block!> /with delimiter<any-type!> /all
+all | block<block!>
+all-of | word<word! block!> data<series! any-object! map! none!> test<block!>
+also | value1<any-type!> value2<any-type!>
+alter | series<series! port! bitset!> value /case
+and | value1<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!> value2<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!>
+and~ | value1<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!> value2<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!>
+ansi-colorize | text<string!> /init style /local underline? code? str s e
+any | block<block!>
+any-block? | value<any-type!>
+any-function? | value<any-type!>
+any-object? | value<any-type!>
+any-of | word<word! block!> data<series! any-object! map! none!> test<block!>
+any-path? | value<any-type!>
+any-string? | value<any-type!>
+any-word? | value<any-type!>
+append | series<series! port! map! gob! object! bitset!> value<any-type!> /part range<number! series! pair!> /only /dup count<number! pair!>
+apply | func<any-function!> block<block!> /only
+arccosine | value<number!> /radians
+arcsine | value<number!> /radians
+arctangent | value<number!> /radians
+arctangent2 | point<pair!> /radians
+array | size<integer! block!> /initial value /local block rest word /with tag indexes
+as | type<any-block! any-string! datatype!> spec<any-block! any-string!>
+as-blue | value return<string!> /local
+as-cyan | value return<string!> /local
+as-gray | value return<string!> /local
+as-green | value return<string!> /local
+as-pair | x<number!> y<number!>
+as-purple | value return<string!> /local
+as-red | value return<string!> /local
+as-white | value return<string!> /local
+as-yellow | value return<string!> /local
+ascii? | value<any-string! char! integer!>
+asin | value<decimal!>
+ask | question<series!> /hide /only limit<bitset! string! block! char! word!>
+assert | conditions<block!> /type
+at | series<series! gob! port!> index<number! logic! pair!>
+atan | value<decimal!>
+atan2 | y<decimal!> x<decimal!>
+attempt | block<block! paren!> /safer
+atz | series<series! gob! port!> index<number! logic! pair!>
+average | block<block! vector! paren!>
+back | series<series! gob! port!>
+binary | ctx<object! binary! integer! none!> /init spec<binary! integer! none!> /write data<binary! block!> /read code<word! block! integer! binary!> /into out<block!> /with num<integer!>
+binary? | value<any-type!>
+bind | word<block! any-word!> context<any-word! any-object!> /copy /only /new /set
+bitset? | value<any-type!>
+block? | value<any-type!>
+blur | image<image!> radius<number!>
+body-of | value<any-function! any-object! map! struct!>
+break | /return value<any-type!>
+browse | url<url! file! none!>
+bugs |
+call | command<any-string! block! file!> /wait /console /shell /info /input in<string! binary! file! none!> /output out<string! binary! file! none!> /error err<string! binary! file! none!>
+case | block<block!> /all
+catch | block<block!> /name word<word! block!> /all /quit /with callback<block! function!>
+cause-error | err-type<word!> err-id<word!> args
+cd | path /local val
+change | series<series! gob! port! struct!> value<any-type!> /part range<number! series! pair!> /only /dup count<number! pair!>
+change-dir | path<file!>
+changes |
+char? | value<any-type!>
+charset | chars<string! block! binary! char! integer!> /length len<integer!>
+check | val<series!>
+checksum | data<binary! string! file!> method<word!> /with spec<any-string! binary! integer!> /part length
+clean-path | file<file! url! string!> /only /dir /local out cnt f
+clear | series<series! port! map! gob! bitset! struct! none!>
+clos | spec<block!> body<block!>
+close | port<port!>
+closure | spec<block!> body<block!> /with object<any-object! block! map!> /extern words<block!>
+closure? | value<any-type!>
+collect | body<block!> /into output<series!>
+collect-words | block<block!> /deep /set /ignore words<any-object! block! none!> /as type<datatype!>
+color-distance | a<tuple!> b<tuple!>
+combine | data<block!> /with delimiter /into out<series!> /ignore ignored<typeset!> /only /local val rule append-del append-val block-rule
+command? | value<any-type!>
+comment | value
+complement | value<logic! integer! tuple! binary! bitset! typeset! image!>
+complement? | value<bitset!>
+compose | value /deep /only /into out<any-block!>
+compress | data<binary! string!> method<word!> /part length /level lvl<integer!>
+confirm | question<series!> /with choices<string! block!> /local response
+construct | block<block! string! binary!> /with object<object!> /only
+context | spec<block!> /only
+context? | word<any-word!>
+continue |
+copy | value<series! port! map! object! bitset! any-function! error! struct!> /part range<number! series! pair!> /deep /types kinds<typeset! datatype!>
+cos | value<decimal!>
+cosine | value<number!> /radians
+create | port<port! file! url! block!>
+datatype? | value<any-type!>
+date? | value<any-type!>
+debase | value<binary! any-string!> base<integer!> /url /part limit<integer! binary! any-string!>
+decimal? | value<any-type!>
+decloak | data<binary!> key<string! binary! integer!> /with
+decode | type<word!> data /local cod
+decode-url | url<url! string!> /local result
+decompress | data<binary!> method<word!> /part length<number! series!> /size bytes<integer!>
+deduplicate | set<block! string! binary!> /case /skip size<integer!>
+default | word<word! set-word! lit-word!> value
+dehex | value<any-string! binary!> /escape char<char!> /uri
+delect | dialect<object!> input<block!> output<block!> /in where<block!> /all
+delete | port<port! file! url! block!>
+delete-dir | path<file!> /local files
+deline | string<any-string!> /lines
+delta-profile | block<block!> /only /local start end adjust
+delta-time | block<block!> /local start
+detab | string<any-string! binary!> /size number<integer!>
+dh | dh-key<handle!> /public /secret public-key<binary!>
+dh-init | g<binary!> p<binary!>
+did | value<any-type!>
+difference | set1<block! string! bitset! date! typeset! map!> set2<block! string! bitset! date! typeset! map!> /case /skip size<integer!>
+dir | path<file! word! path! string! unset!> /f /d /r /i indent<string! char!> /l max-depth<integer!> /local
+dir-tree | path<file! word! path! string! unset!> /d /i indent<string! char!> /l max-depth /callback on-value<function!> /local value prefix changeprefix directory depth newprefix addprefix formed contents str
+dir? | target<file! url! none!> /check
+dirize | path<file! string! url!>
+divide | value1<scalar! vector!> value2<scalar! vector!>
+do | value<any-type!> /args arg /next var<word!>
+do-callback | event<event!>
+do-codec | handle<handle!> action<word!> data<binary! image! string!>
+do-commands | commands<block!>
+does | body<block!>
+dp | block<block!> /only /local start end adjust
+ds |
+dt | block<block!> /local start
+dump | v /fmt
+dump-obj | obj<any-object! map!> /match pattern /ignore ignored<datatype! typeset!> /local start wild type str result user? sorted
+ecdh | key<handle! none!> /init type<word!> /curve /public /secret public-key<binary!>
+ecdsa | key<handle! binary!> hash<binary!> /sign /verify signature<binary!> /curve type<word!>
+echo | target<file! none! logic!>
+eighth | value
+either | condition<any-type!> true-branch false-branch /only
+ellipsize | str<string!> len<integer!> /one-line
+email? | value<any-type!>
+empty? | series<series! object! gob! port! bitset! typeset! map! none!>
+enbase | value<binary! any-string! integer!> base<integer!> /url /part limit<integer! binary! any-string!> /flat
+encloak | data<binary!> key<string! binary! integer!> /with
+encode | type<word!> data /as options /local cod
+encoding? | data<binary!> /local codec
+enhex | value<any-string! binary!> /escape char<char!> /except unescaped<bitset!> /uri
+enline | series<any-string! block!>
+entab | string<any-string! binary!> /size number<integer!>
+enum | spec<block!> title<string! word!> /local enum-value pos enum
+equal? | value1<any-type!> value2<any-type!>
+equiv? | value1<any-type!> value2<any-type!>
+error? | value<any-type!>
+even? | number<number! char! date! money! time! pair!>
+event? | value<any-type!>
+evoke | chant<word! block! integer!>
+exclude | set1<block! string! bitset! typeset! map!> set2<block! string! bitset! typeset! map!> /case /skip size<integer!>
+exists? | target<file! url!>
+exit |
+exp | power<number!>
+extend | obj<object! map! block! paren!> word<any-word!> val
+extract | series<series!> width<integer!> /index pos<number! logic! block!> /default value /into output<series!> /local len val
+fifth | value
+file-checksum | file<file!> method<word!> /local port bin
+file-type? | file<file! url!>
+file? | value<any-type!>
+filter | data<binary!> width<number!> type<integer! word!> /skip bpp<integer!>
+find | series<series! map! any-object! gob! bitset! typeset! none!> value<any-type!> /part range<number! series! pair!> /only /case /same /any /with wild<string!> /skip size<integer!> /last /reverse /tail /match
+find-all | series<word!> value body<block!> /local orig result
+find-max | series<series!> /skip size<integer!> /local spot
+find-min | series<series!> /skip size<integer!> /local spot
+find-script | script<binary!>
+first | value
+first+ | word<word!>
+flush | port<port!>
+for | word<word!> start<series! number! pair!> end<series! number! pair!> bump<number! pair!> body<block!>
+forall | word<word!> body<block!>
+foreach | word<word! block!> data<series! any-object! map! none!> body<block!>
+forever | body<block!>
+form | value<any-type!>
+form-oid | oid<binary!>
+format | rules values /pad p /local plen out rule val scale pad-len
+format-datetime | value<date! time!> rule<string! tag!> /local tmp d t as-time? s e n v
+format-time | time<time!> /local units
+forskip | word<word!> size<integer! decimal!> body<block!> /local orig result
+fourth | value
+fraction | number<decimal!>
+frame? | value<any-type!>
+func | spec<block!> body<block!>
+funco | spec<block!> body<block!>
+funct | spec<block!> body<block!> /with object<any-object! block! map!> /extern words<block!>
+function | spec<block!> body<block!> /with object<any-object! block! map!> /extern words<block!>
+function? | value<any-type!>
+gcd | a<integer!> b<integer!>
+generate | type<word!>
+get | word /any
+get-cookies | host<string!> path<string! file!> return<string! Cookies formated into a single string suitable for HTTP requests.> /local temp
+get-env | var<any-string! any-word!>
+get-path? | value<any-type!>
+get-word? | value<any-type!>
+gob? | value<any-type!>
+grayscale | target<tuple! image!> return<integer! When input is a tuple image! When input is an image>
+greater-or-equal? | value1 value2
+greater? | value1 value2
+halt |
+handle? | value<any-type!>
+has | vars<block!> body<block!>
+hash | value<any-type!>
+hash? | value<any-type!>
+head | series<series! gob! port!>
+head? | series<series! gob! port!>
+help | word<any-type!> /doc /into string<string!> /local value spec args refs rets type ret desc desc-ext arg def des ref str tmp ret-desc
+hsv-to-rgb | hsv<tuple!>
+iconv | data<binary!> codepage<word! integer! tag! string!> /to target<word! integer! tag! string!>
+if | condition<any-type!> true-branch /only
+image | /load src-file<file! binary!> /save dst-file<none! file! binary!> dst-image<none! image!> /frame num<integer!> /as type<word!>
+image-diff | a<image!> b<image!> /part offset<pair!> size<pair!>
+image? | value<any-type!>
+import | module<any-word! file! url! string! binary! module! block!> /version needs<tuple!> /check hash<binary!> /no-share /no-lib /no-user /local source options name file exports header
+in | object<any-object! block!> word<any-word! block! paren!>
+in-dir | dir<file!> block<block!> /local old-dir
+index? | series<series! gob! port! none!> /xy
+indexz? | series<series! gob! port! none!> /xy
+input | /hide /local line port
+insert | series<series! port! map! gob! object! bitset!> value<any-type!> /part range<number! series! pair!> /only /dup count<number! pair!>
+integer-divide | value1<number!> value2<number!>
+integer? | value<any-type!>
+intern | data<block! any-word!> /local index usr
+intersect | set1<block! string! bitset! typeset! map!> set2<block! string! bitset! typeset! map!> /case /skip size<integer!>
+invalid-utf? | data<binary!> /utf num<integer!>
+issue? | value<any-type!>
+join | value rest
+keys-of | value<any-function! any-object! map! date! handle! struct!>
+last | value<series! tuple! gob!>
+last? | series<series! port! map! tuple! bitset! object! gob! any-word!>
+latin1? | value<any-string! char! integer!>
+launch | script<file! string!> /with args<string! block! none!> /wait /local command
+lcm | a<integer!> b<integer!>
+length? | series<series! port! map! tuple! bitset! object! gob! struct! any-word! none!>
+lerp | start<number! tuple! pair!> end<number! tuple! pair!> factor<number!>
+lesser-or-equal? | value1 value2
+lesser? | value1 value2
+library? | value<any-type!>
+license |
+list-dir | path<file! word! path! string! unset!> /f /d /r /i indent<string! char!> /l max-depth<integer!> /local
+list-env |
+lit-path? | value<any-type!>
+lit-word? | value<any-type!>
+load | source<file! url! string! binary! block!> /header /all /as type<word! none!> /local detected-type body script remaining line
+load-extension | name<file! binary!> /dispatch function<handle!>
+load-json | input<string!>
+log-10 | value<number!>
+log-2 | value<number!>
+log-debug | id<any-word!> message /local
+log-e | value<number!>
+log-error | id<any-word!> message /local
+log-info | id<any-word!> message /local
+log-trace | id<any-word!> message /local
+log-warn | id<any-word!> message /local
+logic? | value<any-type!>
+loop | count<number!> block<block!>
+lowercase | string<any-string! char!> /part length<number! any-string!>
+ls | path<file! word! path! string! unset!> /f /d /r /i indent<string! char!> /l max-depth<integer!> /local
+luminosity | target<tuple! image!> /luma return<integer! When input is a tuple image! When input is an image>
+make | type<any-type!> spec<any-type!>
+make-banner | fmt /local str star spc a b s sf
+make-dir | path<file! url!> /deep /local dirs end created
+map | val
+map-each | word<word! block!> data<block! vector!> body<block!>
+map-event | event<event!>
+map-gob-offset | gob<gob!> xy<pair!> /reverse
+map? | value<any-type!>
+max | value1<scalar! date! series!> value2<scalar! date! series!>
+maximum | value1<scalar! date! series!> value2<scalar! date! series!>
+min | value1<scalar! date! series!> value2<scalar! date! series!>
+minimum | value1<scalar! date! series!> value2<scalar! date! series!>
+mkdir | path<file! url!> /deep /local dirs end created
+mod | a<number! money! char! time!> b<number! money! char! time!>
+modified? | target<file! url!>
+modify | target<port! file!> field<word! none!> value
+module | spec<block!> body<block!> /mixin words<object!>
+module? | value<any-type!>
+modulo | a<number! money! char! time!> b<number! money! char! time!> /floor
+mold | value<any-type!> /only /all /flat /part limit<integer!>
+mold64 | data /local base
+money? | value<any-type!>
+more | file<file! word! path! string!>
+move | source<series! gob!> offset<integer!> /part length<integer!> /skip size<integer!> /to
+multiply | value1<scalar! vector!> value2<scalar! vector!>
+native? | value<any-type!>
+negate | number<number! pair! money! time! bitset!>
+negative? | number<number! money! time! pair!>
+new-line | position<block! paren!> value /all /skip size<integer!>
+new-line? | position<block! paren!>
+next | series<series! gob! port!>
+ninth | value
+none? | value<any-type!>
+not | value<any-type!>
+not-equal? | value1<any-type!> value2<any-type!>
+not-equiv? | value1<any-type!> value2<any-type!>
+now | /year /month /day /time /zone /date /weekday /yearday /precise /utc
+number? | value<any-type! unset!>
+object | spec<block!> /only
+object? | value<any-type!>
+odd? | number<number! char! date! money! time! pair!>
+offset? | series1<series!> series2<series!>
+op? | value<any-type!>
+open | spec<port! file! url! block! word!> /new /read /write /seek /allow access<block!>
+open? | port<port!>
+or | value1<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!> value2<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!>
+or~ | value1<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!> value2<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!>
+pad | str n<integer!> /with c<char!> return<string! Modified input string at head>
+pair? | value<any-type!>
+paren? | value<any-type!>
+parse | input<series!> rules<block!> /case
+past? | series<series! gob! port!>
+path? | value<any-type!>
+percent? | value<any-type!>
+pick | aggregate<series! map! gob! pair! date! time! tuple! bitset! port!> index
+pickz | aggregate<series! bitset! tuple!> index<integer!>
+poke | series<series! port! map! gob! bitset!> index value<any-type!>
+pokez | series<series! bitset! tuple!> index<integer!> value<any-type!>
+port? | value<any-type!>
+positive? | number<number! money! time! pair!>
+power | number<number!> exponent<number!>
+premultiply | image<image!>
+prime? | number<integer!>
+prin | value<any-type!>
+print | value<any-type!>
+print-hline | /with string<any-string! char!> /width cols<integer!> /local
+print-table | headers<block!> block<block!> /local format header sep i text width fmt-func
+printf | fmt val
+probe | value<any-type!> /local len
+profile | blocks<block!> /times count<integer!> /quiet /local res code test data temp reference fmt-time rel
+protect | value<word! series! bitset! map! object! module!> /deep /words /values /hide /lock
+protected? | value<word! series! bitset! map! object! module!>
+put | series<any-block! map! port! object!> key<any-type!> value<any-type!> /case /skip size<integer!>
+pwd |
+q | /return value /now
+query | target<port! file! url! block! vector! date! handle! word!> field<word! block! none! datatype!> /mode
+quit | /return value /now
+quote | value<any-type!>
+random | value /seed /secure /only
+rc4 | /key crypt-key<binary!> /stream ctx<handle!> data<binary!>
+read | source<port! file! url! block! word!> /part length<number!> /seek index<number!> /string /binary /lines /all
+read-key |
+rebcode? | value<any-type!>
+rebol-console | /with spec<block!> /local editor
+recycle | /off /on /ballast size<integer!> /torture /pools
+reduce | value /no-set /only words<block! none!> /into out<any-block!>
+ref? | value<any-type!>
+refinement? | value<any-type!>
+reflect | value<any-type!> field<word!>
+reform | value
+register | name<word! set-word! lit-word!> value<struct!>
+register-codec | codec<block! object!> /local name suffixes
+rejoin | block<block!>
+release | handle<handle!>
+remainder | value1<scalar! vector!> value2<scalar! vector!>
+remold | value /only /all /flat /part limit<integer!>
+remove | series<series! gob! port! bitset! none! map!> /part range<number! series! pair! char!> /key key-arg<any-type!>
+remove-each | word<word! block!> data<series! map!> body<block!> /count
+rename | from<port! file! url! block!> to<port! file! url! block!>
+repeat | word<word!> value<number! series! pair! none!> body<block!>
+repend | series<series! port! map! gob! object! bitset!> value /part length<number! series! pair!> /only /dup count<number! pair!>
+replace | target<series!> search replace /all /case /tail /local save-target len value pos do-break
+request-color | /default color<tuple!>
+request-dir | /title text<string!> /dir name<file!> /keep /local cmd
+request-file | /save /multi /file name<file!> /title text<string!> /filter list<block!> /local script cmd
+request-password |
+resize | image<image!> size<pair! percent! integer!> /filter name<word! integer!> /blur factor<number!>
+resolve | target<any-object!> source<any-object!> /only from<block! integer!> /all /extend
+return | value<any-type!>
+reverse | series<series! gob! tuple! pair!> /part range<number! series!>
+reword | source<any-string! binary!> values<map! object! block!> /case /only /escape char<char! any-string! binary! block! none!> /into output<any-string! binary!> /local char-end vals word wtype cword out fout rule a b c w v
+rgb-to-hsv | rgb<tuple!>
+rm | port<port! file! url! block!>
+round | value<number! pair! money! time!> /to scale<number! money! time!> /even /down /half-down /floor /ceiling /half-ceiling
+rsa | rsa-key<handle!> data<binary! any-string!> /encrypt /decrypt /sign /verify signature<binary!> /hash algorithm<word! none!> /oaep /pss
+rsa-init | n<binary!> e<binary!> /private d<binary!> p<binary!> q<binary!>
+same? | value1<any-type!> value2<any-type!>
+save | where<file! url! binary! string! none!> value /header header-data<block! object! logic!> /all /length /compress method<logic! word!> /local type data tmp
+scalar? | value<any-type!>
+script? | source<file! url! binary! string!>
+second | value
+secure | policy<word! lit-word! block! unset!> /local set-policies get-policies out n pol la lb rule case cur
+select | series<series! map! any-object! none!> value<any-type!> /part range<number! series! pair!> /only /case /same /any /with wild<string!> /skip size<integer!> /last /reverse
+selfless? | context<any-word! any-object!>
+series? | value<any-type!>
+set | word<word! lit-word! any-path! block! object!> value<any-type!> /any /only /some
+set-cookies | host<string!> data<string! block!> /local timestamp Expires domain path max-age attr c-name c-value set? dcooks
+set-env | var<any-string! any-word!> value<string! none!>
+set-path? | value<any-type!>
+set-scheme | scheme<object!>
+set-user | name<word! ref! string! email! unset! none!> /p password<string! binary!> /f file<file!> /n /local su
+set-word? | value<any-type!>
+seventh | value
+shift | value<integer!> bits<integer!> /logical
+shift-left | data<integer!> bits<integer!>
+shift-right | data<integer!> bits<integer!>
+sign? | number<number! money! time!>
+sin | value<decimal!>
+sine | value<number!> /radians
+single? | series<series! port! map! tuple! bitset! object! gob! any-word!>
+sixth | value
+size? | target<file! url! port! vector!>
+skip | series<series! gob! port!> offset<number! logic! pair!>
+sort | series<series!> /case /skip size<integer!> /compare comparator<integer! block! any-function!> /part range<number! series!> /all /reverse /unstable
+source | word<word! path!>
+spec-of | value<any-function! any-object! vector! datatype! struct!>
+speed? | /no-io /times /local result x calc tmp file secs
+split | series<series!> dlm /parts /at /local res size count piece-size mk1 mk2 fill-val add-fill-val
+split-lines | value<string!>
+split-path | target<file! url! string!> /local dir pos
+sqrt | value<decimal!>
+square-root | value<number!>
+stack | offset<integer!> /block /word /func /args /size /depth /limit
+stats | /show /profile /timer /evals /dump-series pool-id<integer!>
+strict-equal? | value1<any-type!> value2<any-type!>
+strict-not-equal? | value1<any-type!> value2<any-type!>
+string? | value<any-type!>
+struct? | value<any-type!>
+su | name<word! ref! string! email! unset! none!> /p password<string! binary!> /f file<file!> /n /local su
+subtract | value1<scalar! date! vector!> value2<scalar! date! vector!>
+suffix? | path<file! url! string!> /local end
+sum | values<block! vector! paren!> /local result value
+supplement | series<block!> value /case /local result
+swap | series1<series! gob!> series2<series! gob!>
+swap-endian | value<binary!> /width bytes<integer!> /part range<number! series!>
+switch | value cases<block!> /default def /all /case
+tag? | value<any-type!>
+tail | series<series! gob! port!>
+tail? | series<series! gob! port! bitset! typeset! map!>
+take | series<series! port! gob! none!> /part range<number! series! pair!> /deep /last /all
+tan | value<decimal!>
+tangent | value<number!> /radians
+task | spec<block!> body<block!>
+task? | value<any-type!>
+tenth | value
+third | value
+throw | value<any-type!> /name word<word!>
+time? | value<any-type!>
+tint | target<tuple! image!> rgb<tuple!> amount<number!>
+title-of | value<any-function! datatype! module!>
+to | type<any-type!> value<any-type!>
+to-binary | value
+to-bitset | value
+to-block | value
+to-char | value
+to-closure | value
+to-command | value
+to-datatype | value
+to-date | value<any-type!> /utc /local day month year time zone
+to-decimal | value
+to-degrees | radians<integer! decimal!>
+to-email | value
+to-error | value
+to-event | value
+to-file | value
+to-function | value
+to-get-path | value
+to-get-word | value
+to-gob | value
+to-hash | value
+to-hex | value<integer! char! tuple!> /size len<integer!>
+to-idate | date<date!> /gmt /local zone
+to-image | value
+to-integer | value
+to-issue | value
+to-itime | time<time! number! block! none!>
+to-json | data /pretty indent<string!> /ascii /local result
+to-lit-path | value
+to-lit-word | value
+to-local-file | path<file! string!> /full
+to-logic | value
+to-map | value
+to-module | value
+to-money | value
+to-object | value
+to-pair | value
+to-paren | value
+to-path | value
+to-percent | value
+to-port | value
+to-radians | degrees<integer! decimal!>
+to-real-file | path<file! string!>
+to-rebol-file | path<file! string!>
+to-ref | value
+to-refinement | value
+to-relative-file | file<file! string!> /no-copy /as-rebol /as-local
+to-set-path | value
+to-set-word | value
+to-string | value
+to-tag | value
+to-time | value
+to-tuple | value
+to-typeset | value
+to-url | value
+to-value | value<any-type!>
+to-vector | value
+to-word | value
+trace | mode<integer! logic!> /back /function
+transcode | source<binary! string!> /next /one /only /error /line count<integer!> /part length<integer!>
+trim | series<series! object! error! module!> /head /tail /auto /lines /all /with str<char! string! binary! integer!>
+true? | value<any-type!>
+truncate | series<series!> /part range<number! series!>
+try | block<block! paren!> /all /with handler<block! any-function!>
+tty? |
+tuple? | value<any-type!>
+type? | value<any-type!> /word
+types-of | value<any-function!>
+typeset? | value<any-type!>
+unbind | word<block! any-word!> /deep
+undirize | path<file! string! url!>
+unfilter | data<binary!> width<number!> /as type<integer! word!> /skip bpp<integer!>
+union | set1<block! string! bitset! typeset! map!> set2<block! string! bitset! typeset! map!> /case /skip size<integer!>
+unique | set1<block! string! bitset! typeset! map!> /case /skip size<integer!>
+unless | condition<any-type!> false-branch /only
+unprotect | value<word! series! bitset! map! object! module!> /deep /words /values
+unset | word<word! block! none!>
+unset? | value<any-type!>
+until | block<block!>
+update | port<port!>
+uppercase | string<any-string! char!> /part length<number! any-string!>
+url? | value<any-type!>
+usage |
+use | vars<block! word!> body<block!>
+user's | key /local data
+utf? | data<binary!>
+utype? | value<any-type!>
+value? | value<word!>
+values-of | value<any-object! map! struct!>
+vector? | value<any-type!>
+version | /data
+wait | value<number! time! port! block! none!> /all /only
+wait-key | /only limit<bitset! string! block! char! word!> /local key
+wake-up | port<port!> event<event!>
+what | name<word! lit-word! unset!> /args /local ctx vals arg list size a
+what-dir |
+while | cond-block<block!> body-block<block!>
+wildcard | path<file!> value<any-string!> /local result
+wildcard? | path<file!>
+with | context<object! module! port!> body<block!>
+word? | value<any-type!>
+words-of | value<any-function! any-object! map! date! handle! struct!>
+wrap | body<block!>
+write | destination<port! file! url! block! word!> data /part length<number!> /seek index<number!> /append /allow access<block!> /lines /binary /all
+xor | value1<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!> value2<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!>
+xor~ | value1<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!> value2<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!>
+xtest |
+zero? | value
+| | value1<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!> value2<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!>

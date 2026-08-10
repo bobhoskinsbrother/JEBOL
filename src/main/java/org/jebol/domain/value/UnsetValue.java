@@ -24,11 +24,6 @@ public record UnsetValue() implements Value {
     }
 
     @Override
-    public boolean isConditional() {
-        return false;
-    }
-
-    @Override
     public String toString() {
         return "unset";
     }

@@ -17,6 +17,21 @@ public record BinaryValue(BinaryStorage storage, int index) implements SeriesVal
         return new BinaryValue(BinaryStorage.of(octets), 1);
     }
 
+    /**
+     * The octets from here on, read as UTF-8 text.
+     *
+     * <p>What TRANSCODE needs: a script that has read a file holds a
+     * binary, and reading source out of it means deciding an encoding.
+     * UTF-8 is what REBOL 3 sources are.
+     */
+    public String asText() {
+        byte[] octets = new byte[storageLength() - index + 1];
+        for (int at = 0; at < octets.length; at++) {
+            octets[at] = (byte) storage.at(index + at);
+        }
+        return new String(octets, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
     @Override
     public Datatype datatype() {
         return Datatype.BINARY;

@@ -1,0 +1,71 @@
+--- title Calling a function with arguments in hand
+--- about APPLY reaches a function when the arguments are already a
+--- about block rather than written after the call, and FORSKIP walks a
+--- about series in strides. ASSERT is the one that raises rather than
+--- about answering.
+
+--- id applying/calling-a-native-with-a-block-of-arguments
+--- origin confirmed against R3 3.22.1
+--- code
+apply :add [1 2]
+--- result
+3
+
+--- id applying/calling-a-user-function-the-same-way
+--- origin confirmed against R3 3.22.1
+--- note A caller cannot tell the two apart, which is the point.
+--- code
+f: func [a b] [a + b]
+apply :f [1 2]
+--- result
+3
+
+--- id applying/applying-with-too-few-arguments
+--- origin confirmed against R3 3.22.1
+--- note The arity is still checked, so a short block is the same
+--- note mistake as a short call.
+--- code
+apply :add []
+--- error script expect-arg
+
+--- id applying/an-assertion-that-holds-answers-true
+--- origin confirmed against R3 3.22.1
+--- code
+assert [true]
+--- result
+#(true)
+
+--- id applying/an-assertion-of-an-expression
+--- origin confirmed against R3 3.22.1
+--- code
+assert [1 = 1]
+--- result
+#(true)
+
+--- id applying/an-assertion-that-fails-raises
+--- origin confirmed against R3 3.22.1
+--- note With an id of its own rather than a generic script error, so a
+--- note caller can tell an assertion from anything else that went
+--- note wrong.
+--- code
+assert [false]
+--- error script assert-failed
+
+--- id applying/equal-values-hash-alike
+--- origin confirmed against R3 3.22.1
+--- note The only thing worth pinning about HASH. The number itself is
+--- note the implementation's business, and pinning R3's would mean
+--- note reimplementing R3's hash function for no gain.
+--- code
+b: [1 2 3]
+c: [1 2 3]
+(hash b) = (hash c)
+--- result
+#(true)
+
+--- id applying/different-values-hash-differently
+--- origin confirmed against R3 3.22.1
+--- code
+(hash "a") = (hash "b")
+--- result
+#(false)

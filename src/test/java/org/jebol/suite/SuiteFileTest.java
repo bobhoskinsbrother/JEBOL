@@ -1,0 +1,247 @@
+package org.jebol.suite;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.jebol.domain.read.Transcoder;
+import org.junit.jupiter.api.io.TempDir;
+
+/**
+ * Tests for the thing that decides what the suite score means.
+ *
+ * <p>{@link SuiteFile} slices Rebol's test scripts into the assertions
+ * they make, and the whole pass count rests on it. It had no tests. That
+ * showed up when a measuring tool built on it reported that a real R3
+ * fails {@code even? 1.7976931348623157e308}, which R3 answers true to:
+ * the number had lost digits somewhere between the file and the run.
+ *
+ * <p>So the property that matters is not "does it produce something" but
+ * "does it produce what the file says". Each test below asks one thing,
+ * and the aggregate one at the bottom asks it of all 3,556 assertions.
+ */
+class SuiteFileTest {
+
+    @TempDir
+    Path folder;
+
+    private SuiteFile fileHolding(String body) {
+        Path written = folder.resolve("made-up-test.r3");
+        try {
+            Files.writeString(written, """
+                    Rebol [Title: "made up"]
+                    ~~~start-file~~~ "Made up"
+                    ===start-group=== "a group"
+                    --test-- "a test"
+                    """ + body + """
+
+                    ===end-group===
+                    ~~~end-file~~~
+                    """, StandardCharsets.UTF_8);
+        } catch (IOException unwritable) {
+            throw new UncheckedIOException(unwritable);
+        }
+        return SuiteFile.read(written);
+    }
+
+    @Nested
+    @DisplayName("finding the assertions")
+    class Slicing {
+
+        @Test
+        void oneAssertionIsFound() {
+            assertThat(fileHolding("\t--assert true").assertions()).hasSize(1);
+        }
+
+        @Test
+        void twoAssertionsAreFoundSeparately() {
+            assertThat(fileHolding("\t--assert true\n\t--assert false").assertions())
+                    .hasSize(2);
+        }
+
+        @Test
+        void aFileWithNoAssertionsYieldsNone() {
+            assertThat(fileHolding("").assertions()).isEmpty();
+        }
+
+        @Test
+        void theHarnessWordsAreNotThemselvesAssertions() {
+            // ===start-group=== and friends read as ordinary words, so a
+            // slicer that did not know them would count four more.
+            assertThat(fileHolding("\t--assert true").steps())
+                    .allSatisfy(step -> assertThat(step.isAssertion()
+                            || step.setup() != null).isTrue());
+        }
+
+        @Test
+        void anAssertionKnowsWhichGroupItCameFrom() {
+            assertThat(fileHolding("\t--assert true").assertions().getFirst().group())
+                    .isEqualTo("a group");
+        }
+
+        @Test
+        void anAssertionKnowsWhichTestItCameFrom() {
+            assertThat(fileHolding("\t--assert true").assertions().getFirst().test())
+                    .isEqualTo("a test");
+        }
+
+        @Test
+        void setupBetweenAssertionsIsKeptAsAStep() {
+            // A test file is a script: assertions lean on lines above them.
+            SuiteFile read = fileHolding("\ta: 5\n\t--assert a = 5");
+
+            assertThat(read.steps()).anySatisfy(step ->
+                    assertThat(step.isAssertion()).isFalse());
+        }
+
+        @Test
+        void stepsComeBackInFileOrder() {
+            SuiteFile read = fileHolding("\ta: 5\n\t--assert a = 5");
+            List<SuiteFile.Step> steps = read.steps();
+
+            int setupAt = -1;
+            int assertionAt = -1;
+            for (int at = 0; at < steps.size(); at++) {
+                if (steps.get(at).isAssertion()) {
+                    assertionAt = assertionAt < 0 ? at : assertionAt;
+                } else {
+                    setupAt = setupAt < 0 ? at : setupAt;
+                }
+            }
+            assertThat(setupAt).isLessThan(assertionAt);
+        }
+    }
+
+    @Nested
+    @DisplayName("keeping the source the file wrote")
+    class Fidelity {
+
+        // The source an assertion carries is what gets run. Anything the
+        // slicer changes on the way is a change to the test, and a change
+        // nobody asked for and nothing reports.
+
+        @Test
+        void aDecimalKeepsEveryDigitItWasWrittenWith() {
+            SuiteFile read = fileHolding("\t--assert even? 1.7976931348623157e308");
+
+            assertThat(read.assertions().getFirst().source())
+                    .contains("1.7976931348623157e308");
+        }
+
+        @Test
+        void aSmallDecimalKeepsItsDigitsToo() {
+            SuiteFile read = fileHolding("\t--assert 0.1234567890123456 > 0");
+
+            assertThat(read.assertions().getFirst().source())
+                    .contains("0.1234567890123456");
+        }
+
+        @Test
+        void anIntegerIsUnchanged() {
+            SuiteFile read = fileHolding("\t--assert 42 = 42");
+
+            assertThat(read.assertions().getFirst().source()).contains("42");
+        }
+
+        @Test
+        void aStringKeepsItsQuotes() {
+            SuiteFile read = fileHolding("\t--assert \"ab\" = \"ab\"");
+
+            assertThat(read.assertions().getFirst().source()).contains("\"ab\"");
+        }
+
+        @Test
+        void aTimeIsNotTurnedIntoSomethingElse() {
+            SuiteFile read = fileHolding("\t--assert 0:00:01 = 0:00:01");
+
+            assertThat(read.assertions().getFirst().source()).contains("0:00:01");
+        }
+
+        @Test
+        void aLitWordKeepsItsTick() {
+            SuiteFile read = fileHolding("\t--assert 'invalid-compare = 'invalid-compare");
+
+            assertThat(read.assertions().getFirst().source()).contains("'invalid-compare");
+        }
+    }
+
+    @Nested
+    @DisplayName("across the whole vendored suite")
+    class EveryFile {
+
+        // Not text identity. The slicer reads the file into values and
+        // writes them back out, so `0:0:1` comes back as `0:00:01` -- a
+        // different spelling of the same time, which changes nothing about
+        // what the assertion asks. Nine hundred assertions differ that
+        // way and none of them is a problem.
+        //
+        // What matters is whether the meaning survived. An assertion whose
+        // source no longer reads, or reads as something else, is not the
+        // assertion the file wrote, and whatever it scores says nothing
+        // about JEBOL.
+
+        @Test
+        @DisplayName("every assertion's source can still be read")
+        void everySourceStillReads() {
+            List<String> unreadable = new java.util.ArrayList<>();
+
+            for (SuiteFile file : RebolSuiteTest.filesInSuite()) {
+                for (SuiteFile.Assertion assertion : file.assertions()) {
+                    if (!Transcoder.transcode(assertion.source()).succeeded()) {
+                        unreadable.add(assertion + "  ->  " + assertion.source());
+                    }
+                }
+            }
+
+            assertThat(unreadable)
+                    .as("a source the reader refuses cannot be run, so the assertion "
+                            + "scores false for a reason that is not about the assertion")
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("every assertion's source is text the file actually contains")
+        void nothingIsRewrittenOnTheWayOut() {
+            // The whole point. An assertion carrying source the file does
+            // not contain is not that file's assertion, and whatever it
+            // scores says nothing about JEBOL.
+            //
+            // Whitespace is ignored because the spans of one assertion are
+            // joined with a single space, and the file may have used a tab
+            // or several. Nothing but spacing may differ.
+            List<String> rewritten = new java.util.ArrayList<>();
+
+            for (SuiteFile file : RebolSuiteTest.filesInSuite()) {
+                String original = withoutWhitespace(read(
+                        Path.of("src", "test", "resources", "rebol-suite", file.name())));
+                for (SuiteFile.Assertion assertion : file.assertions()) {
+                    String source = withoutWhitespace(assertion.source());
+                    if (!source.isEmpty() && !original.contains(source)) {
+                        rewritten.add(assertion + "  ->  " + assertion.source());
+                    }
+                }
+            }
+
+            assertThat(rewritten).isEmpty();
+        }
+
+        private static String withoutWhitespace(String text) {
+            return text.replaceAll("\\s+", "");
+        }
+
+        private static String read(Path path) {
+            try {
+                return Files.readString(path, StandardCharsets.UTF_8);
+            } catch (IOException unreadable) {
+                throw new UncheckedIOException(unreadable);
+            }
+        }
+    }
+}

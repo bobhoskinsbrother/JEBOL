@@ -1,0 +1,131 @@
+--- title The typeset predicates
+--- about A typeset names a family of datatypes, and each one has a
+--- about question that asks whether a value belongs to it. Rebol's own
+--- about library leans on SERIES? in particular: REJOIN branches on it,
+--- about and without it that function cannot run at all.
+
+--- id typesets/a-block-is-a-series
+--- origin confirmed against R3 3.22.1
+--- code
+series? [1]
+--- result
+#(true)
+
+--- id typesets/a-string-is-a-series
+--- origin confirmed against R3 3.22.1
+--- code
+series? "a"
+--- result
+#(true)
+
+--- id typesets/a-binary-is-a-series
+--- origin confirmed against R3 3.22.1
+--- note All three, which is what the family means and what a native
+--- note taking a series has to accept.
+--- code
+series? #{01}
+--- result
+#(true)
+
+--- id typesets/a-number-is-not-a-series
+--- origin confirmed against R3 3.22.1
+--- code
+series? 1
+--- result
+#(false)
+
+--- id typesets/nothing-is-not-a-series
+--- origin confirmed against R3 3.22.1
+--- code
+series? none
+--- result
+#(false)
+
+--- id typesets/a-file-counts-as-a-string
+--- origin confirmed against R3 3.22.1
+--- note The family is wider than the datatype: a file, a url, an email
+--- note and a tag are all any-string.
+--- code
+any-string? %a
+--- result
+#(true)
+
+--- id typesets/a-block-is-not-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+any-string? [1]
+--- result
+#(false)
+
+--- id typesets/a-paren-counts-as-a-block
+--- origin confirmed against R3 3.22.1
+--- code
+any-block? first [(1)]
+--- result
+#(true)
+
+--- id typesets/a-set-word-counts-as-a-word
+--- origin confirmed against R3 3.22.1
+--- code
+any-word? first [a:]
+--- result
+#(true)
+
+--- id typesets/a-string-is-not-a-word
+--- origin confirmed against R3 3.22.1
+--- code
+any-word? "a"
+--- result
+#(false)
+
+--- id typesets/a-native-counts-as-a-function
+--- origin confirmed against R3 3.22.1
+--- code
+any-function? :add
+--- result
+#(true)
+
+--- id typesets/a-number-is-scalar
+--- origin confirmed against R3 3.22.1
+--- code
+scalar? 1
+--- result
+#(true)
+
+--- id typesets/a-string-is-not-scalar
+--- origin confirmed against R3 3.22.1
+--- code
+scalar? "a"
+--- result
+#(false)
+
+--- id typesets/a-path-counts-as-a-path
+--- origin confirmed against R3 3.22.1
+--- code
+any-path? first ['a/b]
+--- result
+#(true)
+
+--- id typesets/a-typeset-built-from-a-block-of-datatypes
+--- origin confirmed against R3 3.22.1
+--- note A typeset need not be one of the named families: code can make
+--- note its own out of whichever datatypes it cares about. Rebol's own
+--- note base-defs.reb builds one per generated function this way.
+--- code
+mold to typeset! [integer! string!]
+--- result
+"make typeset! [integer! string!]"
+
+--- id typesets/asking-whether-a-datatype-is-in-a-built-typeset
+--- origin confirmed against R3 3.22.1
+--- code
+find to typeset! [integer!] integer!
+--- result
+#(true)
+
+--- id typesets/what-a-built-typeset-reports-itself-as
+--- origin confirmed against R3 3.22.1
+--- code
+type? to typeset! [integer!]
+--- result
+#(typeset!)

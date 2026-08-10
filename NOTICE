@@ -1,0 +1,22 @@
+JEBOL
+Copyright 2026 Ben Hoskins
+
+Licensed under the Apache License, Version 2.0. See LICENSE.
+
+------------------------------------------------------------------------
+
+This product includes software developed as part of the Rebol 3 project.
+
+The files under src/test/resources/rebol-suite/ are unmodified test
+scripts taken from Oldes/Rebol3 (https://github.com/Oldes/Rebol3), which
+is itself a continuation of REBOL, Copyright 2012 REBOL Technologies.
+Both are licensed under the Apache License, Version 2.0.
+
+They are vendored rather than fetched so the suite is reproducible
+without a network, and they are kept byte-for-byte as published so that
+a failure is unambiguously ours. Where JEBOL cannot yet satisfy one, the
+gap is recorded in src/test/resources/rebol-suite/known-gaps.txt rather
+than by editing the script.
+
+REBOL is a trademark of REBOL Technologies. JEBOL is not associated with
+or endorsed by REBOL Technologies or by the maintainers of Oldes/Rebol3.

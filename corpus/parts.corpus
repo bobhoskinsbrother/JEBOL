@@ -1,0 +1,80 @@
+--- title Saying how much with a position
+--- about /part takes a count or a series position. Given a position it
+--- about means "as far as there", and the two positions may be in
+--- about either order -- the span is between them, taken from whichever
+--- about comes first.
+
+--- id parts/taking-up-to-a-later-position
+--- origin confirmed against R3 3.22.1
+--- code
+s: "123"
+take/part s skip s 1
+--- result
+"1"
+
+--- id parts/the-two-positions-may-be-the-other-way-round
+--- origin confirmed against R3 3.22.1
+--- note Which is why this is a span rather than a direction: the same
+--- note two positions give the same answer either way.
+--- code
+s: "123"
+take/part skip s 1 s
+--- result
+"1"
+
+--- id parts/taking-up-to-two-along
+--- origin confirmed against R3 3.22.1
+--- code
+s: "123"
+take/part s skip s 2
+--- result
+"12"
+
+--- id parts/a-span-that-starts-partway-in
+--- origin confirmed against R3 3.22.1
+--- code
+s: "123"
+take/part skip s 1 skip s 2
+--- result
+"2"
+
+--- id parts/a-span-of-nothing
+--- origin confirmed against R3 3.22.1
+--- note The degenerate case: the same position twice takes nothing.
+--- code
+s: "123"
+take/part s s
+--- result
+""
+
+--- id parts/copying-up-to-a-position
+--- origin confirmed against R3 3.22.1
+--- code
+s: "123"
+copy/part s skip s 2
+--- result
+"12"
+
+--- id parts/copying-with-the-positions-reversed
+--- origin confirmed against R3 3.22.1
+--- code
+s: "123"
+copy/part skip s 2 s
+--- result
+"12"
+
+--- id parts/taking-a-span-from-a-block
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+mold take/part b skip b 2
+--- result
+"[1 2]"
+
+--- id parts/copying-a-span-from-a-block
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+mold copy/part b skip b 2
+--- result
+"[1 2]"

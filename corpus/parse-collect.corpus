@@ -1,0 +1,239 @@
+--- title Collecting while parsing
+--- about COLLECT and KEEP gather values as a rule walks. The part worth
+--- about pinning is that collecting does not backtrack when matching
+--- about does: a KEEP that ran inside a branch that then failed still
+--- about leaves its value in the answer. Nothing about the rest of PARSE
+--- about suggests that, so every entry here was asked of R3 3.22.1.
+
+--- id parse-collect/an-empty-collect-answers-an-empty-block
+--- origin confirmed against R3 3.22.1
+--- note Not none, so a caller can append to the answer without testing
+--- note it first.
+--- code
+parse [] [collect []]
+--- result
+[]
+
+--- id parse-collect/leftover-input-stops-mattering
+--- origin confirmed against R3 3.22.1
+--- note Ordinarily leftover input fails a parse. With COLLECT the
+--- note question is no longer whether the rule accounted for all of it.
+--- code
+parse [1 2] [collect [keep integer!]]
+--- result
+[1]
+
+--- id parse-collect/one-match-is-kept-as-itself
+--- origin confirmed against R3 3.22.1
+--- code
+parse [1] [collect [keep skip]]
+--- result
+[1]
+
+--- id parse-collect/several-matches-are-kept-as-a-block
+--- origin confirmed against R3 3.22.1
+--- note So a caller can tell one run from two. The count decides the
+--- note shape, not the kind of rule.
+--- code
+parse [1 2 3] [collect [keep integer! keep 2 integer!]]
+--- result
+[1 [2 3]]
+
+--- id parse-collect/keep-pick-keeps-them-separately
+--- origin confirmed against R3 3.22.1
+--- code
+parse [1 2] [collect some [keep pick 2 integer!]]
+--- result
+[1 2]
+
+--- id parse-collect/a-failed-branch-still-leaves-what-it-kept
+--- origin confirmed against R3 3.22.1
+--- note The whole point of this file. The first branch keeps the 1 and
+--- note then fails on the string; the alternative keeps the same 1
+--- note again. Both are in the answer, so the 1 appears twice.
+--- code
+parse [1 2] [collect [keep integer! keep string! | keep integer!]]
+--- result
+[1 1]
+
+--- id parse-collect/the-same-through-nested-blocks
+--- origin confirmed against R3 3.22.1
+--- code
+parse [1 2] [collect [[keep integer! keep string!] | [keep integer!]]]
+--- result
+[1 1]
+
+--- id parse-collect/a-nested-collect-leaves-a-block-even-when-it-fails
+--- origin confirmed against R3 3.22.1
+--- note The inner collect hands its block to the collection around it
+--- note when it starts, not when it succeeds. Its rule needs two items
+--- note and there are none, and the empty block is in the answer.
+--- code
+parse [] [collect [collect [keep 2 skip]]]
+--- result
+[[]]
+
+--- id parse-collect/a-nested-collect-keeps-what-it-got-before-failing
+--- origin confirmed against R3 3.22.1
+--- note The inner rule keeps the 1, then wants a second integer and
+--- note there is none. The 1 stays.
+--- code
+parse [1] [collect some [collect [keep integer! keep integer!]]]
+--- result
+[[1]]
+
+--- id parse-collect/a-partial-last-round-shows-up-as-its-own-block
+--- origin confirmed against R3 3.22.1
+--- code
+parse [1 2 3] [collect some [collect [keep integer! keep integer!]]]
+--- result
+[[1 2] [3]]
+
+--- id parse-collect/some-tries-one-more-time-than-it-succeeds
+--- origin confirmed against R3 3.22.1
+--- note Which is why there is a trailing empty block: SOME attempts a
+--- note third round, the inner COLLECT starts and contributes its
+--- note block, and only then does the KEEP fail.
+--- code
+parse [1 2] [collect some [collect keep integer!]]
+--- result
+[[1] [2] []]
+
+--- id parse-collect/the-trailing-block-appears-with-a-following-keep-too
+--- origin confirmed against R3 3.22.1
+--- code
+parse [1 2] [collect some [collect keep integer! keep ('a)]]
+--- result
+[[1] a [2] a []]
+
+--- id parse-collect/and-when-the-inner-rule-is-a-block
+--- origin confirmed against R3 3.22.1
+--- code
+parse [1 2] [collect some [collect [keep integer! keep ('a)]]]
+--- result
+[[1 a] [2 a] []]
+
+--- id parse-collect/a-collect-answers-its-block-even-when-nothing-matched
+--- origin confirmed against R3 3.22.1
+--- code
+parse [] [collect [keep 2 skip]]
+--- result
+[]
+
+--- id parse-collect/collects-nest-three-deep
+--- origin confirmed against R3 3.22.1
+--- code
+parse [] [collect [collect [collect []]]]
+--- result
+[[[]]]
+
+--- id parse-collect/an-outer-failure-does-not-discard-the-inner-block
+--- origin confirmed against R3 3.22.1
+--- note The inner collect keeps the 1; the outer KEEP then runs out of
+--- note input. The answer still holds the inner block.
+--- code
+parse [1] [collect [collect [keep skip] keep skip]]
+--- result
+[[1]]
+
+--- id parse-collect/two-nested-collects-side-by-side
+--- origin confirmed against R3 3.22.1
+--- code
+parse [1] [collect [collect [keep skip] collect [keep skip]]]
+--- result
+[[1] []]
+
+--- id parse-collect/collecting-from-a-string-at-all
+--- origin confirmed against R3 3.22.1
+--- note COLLECT works the same way on a string parse as on a block one,
+--- note which is worth pinning because the two are separate walks and
+--- note only one of them had it.
+--- code
+parse "" [collect []]
+--- result
+[]
+
+--- id parse-collect/leftover-string-input-stops-mattering-too
+--- origin confirmed against R3 3.22.1
+--- code
+parse "a" [collect []]
+--- result
+[]
+
+--- id parse-collect/one-character-is-kept-as-a-character
+--- origin confirmed against R3 3.22.1
+--- note Not as a one-character string. This is the string parse's
+--- note version of "one match is kept as itself".
+--- code
+parse "a" [collect [keep skip]]
+--- result
+[#"a"]
+
+--- id parse-collect/each-round-keeps-its-own-character
+--- origin confirmed against R3 3.22.1
+--- code
+parse "abc" [collect any [keep skip]]
+--- result
+[#"a" #"b" #"c"]
+
+--- id parse-collect/several-characters-are-kept-as-a-string
+--- origin confirmed against R3 3.22.1
+--- note And the boundary between the two shapes shows up in one
+--- note answer: "ab" is a string and the leftover c is a character.
+--- code
+parse "abc" [collect any [keep 1 2 skip]]
+--- result
+["ab" #"c"]
+
+--- id parse-collect/what-is-kept-keeps-the-inputs-datatype
+--- origin confirmed against R3 3.22.1
+--- note Parsing a file gives file pieces, not string pieces. A run of
+--- note characters is a slice of the input rather than a fresh string.
+--- code
+parse %abc [collect any [keep 1 2 skip]]
+--- result
+[%ab #"c"]
+
+--- id parse-collect/a-run-matched-by-some-is-one-piece
+--- origin confirmed against R3 3.22.1
+--- code
+parse "aabbb" [collect [keep some "a" keep some #"b"]]
+--- result
+["aa" "bbb"]
+
+--- id parse-collect/a-count-keeps-one-piece
+--- origin confirmed against R3 3.22.1
+--- code
+parse "ab" [collect [keep 2 skip]]
+--- result
+["ab"]
+
+--- id parse-collect/keep-pick-keeps-the-characters-separately
+--- origin confirmed against R3 3.22.1
+--- note Which is the whole difference PICK makes: same rule, two
+--- note characters instead of one string.
+--- code
+parse "ab" [collect [keep pick 2 skip]]
+--- result
+[#"a" #"b"]
+
+--- id parse-collect/keeping-what-to-skipped-over
+--- origin confirmed against R3 3.22.1
+--- code
+parse "abc" [collect [keep to "c"]]
+--- result
+["ab"]
+
+--- id parse-collect/keeping-what-thru-passed
+--- origin confirmed against R3 3.22.1
+--- code
+parse "abc" [collect [keep thru "b"]]
+--- result
+["ab"]
+
+--- id parse-collect/a-paren-keeps-its-value-in-a-string-parse
+--- origin confirmed against R3 3.22.1
+--- code
+parse "a" [collect [keep ("x")]]
+--- result
+["x"]

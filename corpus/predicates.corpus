@@ -1,0 +1,207 @@
+--- title Asking what a value is
+--- about The questions that answer a logic. Most are obvious; the ones
+--- about pinned here are the ones where the obvious answer is wrong,
+--- about and the boundaries that separate two questions that look like
+--- about the same one.
+
+--- id predicates/truth-of-a-number
+--- origin confirmed against R3 3.22.1
+--- code
+true? 1
+--- result
+#(true)
+
+--- id predicates/zero-is-true
+--- origin confirmed against R3 3.22.1
+--- note The single most surprising thing about the language. Only NONE
+--- note and logic FALSE are false.
+--- code
+true? 0
+--- result
+#(true)
+
+--- id predicates/an-empty-string-is-true
+--- origin confirmed against R3 3.22.1
+--- code
+true? ""
+--- result
+#(true)
+
+--- id predicates/an-empty-block-is-true
+--- origin confirmed against R3 3.22.1
+--- code
+true? []
+--- result
+#(true)
+
+--- id predicates/nothing-is-false
+--- origin confirmed against R3 3.22.1
+--- code
+true? none
+--- result
+#(false)
+
+--- id predicates/false-is-false
+--- origin confirmed against R3 3.22.1
+--- code
+true? false
+--- result
+#(false)
+
+--- id predicates/did-asks-the-same-question
+--- origin confirmed against R3 3.22.1
+--- note DID is TRUE? under a name that reads better in front of a call.
+--- code
+did 1
+--- result
+#(true)
+
+--- id predicates/did-of-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+did none
+--- result
+#(false)
+
+--- id predicates/a-whole-number-is-a-number
+--- origin confirmed against R3 3.22.1
+--- code
+number? 1
+--- result
+#(true)
+
+--- id predicates/a-decimal-is-a-number
+--- origin confirmed against R3 3.22.1
+--- code
+number? 1.0
+--- result
+#(true)
+
+--- id predicates/money-counts-as-a-number
+--- origin confirmed against R3 3.22.1
+--- note Which the standard NUMBER! typeset does not say. The predicate
+--- note is wider than the typeset it is named after.
+--- code
+number? $1
+--- result
+#(true)
+
+--- id predicates/a-string-of-digits-is-not-a-number
+--- origin confirmed against R3 3.22.1
+--- code
+number? "1"
+--- result
+#(false)
+
+--- id predicates/equivalence-ignores-the-datatype
+--- origin confirmed against R3 3.22.1
+--- note So EQUIV? is the loose comparison, not the strict one its name
+--- note suggests. STRICT-EQUAL? is the one that minds the datatype.
+--- code
+equiv? 1 1.0
+--- result
+#(true)
+
+--- id predicates/equivalence-ignores-case
+--- origin confirmed against R3 3.22.1
+--- code
+equiv? "a" "A"
+--- result
+#(true)
+
+--- id predicates/the-negation-of-equivalence
+--- origin confirmed against R3 3.22.1
+--- code
+not-equiv? 1 1.0
+--- result
+#(false)
+
+--- id predicates/plain-text-is-ascii
+--- origin confirmed against R3 3.22.1
+--- code
+ascii? "abc"
+--- result
+#(true)
+
+--- id predicates/an-accent-is-not-ascii
+--- origin confirmed against R3 3.22.1
+--- code
+ascii? "aé"
+--- result
+#(false)
+
+--- id predicates/nothing-at-all-is-ascii
+--- origin confirmed against R3 3.22.1
+--- note The degenerate case answers true rather than false, which is
+--- note the useful way round for a guard.
+--- code
+ascii? ""
+--- result
+#(true)
+
+--- id predicates/a-character-can-be-asked-too
+--- origin confirmed against R3 3.22.1
+--- code
+ascii? #"a"
+--- result
+#(true)
+
+--- id predicates/an-accent-fits-latin-one
+--- origin confirmed against R3 3.22.1
+--- note The next range up, so this is the boundary between the two
+--- note questions.
+--- code
+latin1? "aé"
+--- result
+#(true)
+
+--- id predicates/well-formed-bytes-have-no-bad-position
+--- origin confirmed against R3 3.22.1
+--- note INVALID-UTF? answers where the trouble is rather than whether
+--- note there is any, so none means well-formed.
+--- code
+invalid-utf? #{41}
+--- result
+_
+
+--- id predicates/malformed-bytes-answer-where
+--- origin confirmed against R3 3.22.1
+--- code
+mold invalid-utf? #{FF}
+--- result
+"#{FF}"
+
+--- id predicates/the-sixth-item
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3 4 5 6]
+sixth b
+--- result
+6
+
+--- id predicates/the-sixth-item-of-a-shorter-series
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+sixth b
+--- result
+_
+
+--- id predicates/taking-the-first-item-and-stepping-on
+--- origin confirmed against R3 3.22.1
+--- note FIRST+ answers the first item and leaves the series one along,
+--- note which is the whole difference from FIRST.
+--- code
+b: [1 2 3]
+first+ b
+--- result
+1
+
+--- id predicates/where-the-series-is-left-afterwards
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2 3]
+first+ b
+mold b
+--- result
+"[2 3]"

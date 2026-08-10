@@ -1,0 +1,607 @@
+-- allium: 3
+--
+-- JEBOL: the PARSE dialect.
+--
+-- PARSE walks a series against a rule block and answers whether the whole
+-- of the series matched. It is a second little language living inside the
+-- first, with its own vocabulary, and almost nothing about the evaluator
+-- carries over: a word in a rule is a rule, not a lookup, and an integer
+-- is a count, not a value.
+--
+-- This module exists because it did not, and the cost was visible. The
+-- parse corpus was written from REBOL/Core documentation, which describes
+-- REBOL 2, and nine of its thirty entries were wrong in ways nothing
+-- checked. Every claim below was run against a real R3 (3.22.1) rather
+-- than read.
+
+use "./values.allium" as values
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- The words PARSE reserves. A word in a rule block that is not one of
+-- these is looked up, and what it holds is used as a rule.
+enum ParseKeyword {
+    any             -- the rule that follows, zero or more times
+    | some          -- the rule that follows, one or more times
+    | opt           -- the rule that follows, zero or one time
+    | to            -- advance to just before the rule matches
+    | thru          -- advance to just past where the rule matches
+    | end           -- matches only at the tail
+    | skip          -- consume one item without looking at it
+    | into          -- descend into the block at this position
+    | set           -- put what the next rule matched into a word
+    | copy          -- put everything the next rule matched into a word
+    | collect       -- gather what the rules below KEEP, and answer that
+    | keep          -- add what the next rule matched to the collection
+    | ahead         -- match the next rule without consuming it
+    | remove        -- take what the next rule matched out of the input
+    | change        -- replace what the next rule matched with a value
+    | insert        -- put a value in at the position, consuming nothing
+    | case          -- mind case from here on
+    | no_case       -- fold case from here on
+}
+
+-- How a parse attempt finished.
+enum ParseOutcome {
+    matched         -- the rule matched and the input is used up
+    | unmatched     -- the rule did not match, or input was left over
+    | collected     -- COLLECT gathered what KEEP matched, and that is the answer
+    | raised        -- the rule block is malformed
+}
+
+-- Why a rule block is malformed.
+enum ParseFailure {
+    parse_end       -- a repeat count with no rule after it to repeat
+    | expect_arg    -- the input or rule argument is the wrong datatype
+    | no_refine     -- a refinement PARSE no longer has
+}
+
+------------------------------------------------------------
+-- Entities and Variants
+------------------------------------------------------------
+
+-- One call to PARSE.
+entity ParseAttempt {
+    input: values/Value
+    rule: values/Value
+
+    -- Where the walk has reached, as an index into the input.
+    position: Integer
+
+    -- True once no rule remains to apply.
+    rule_exhausted: Boolean
+
+    -- The count in front of the rule being applied, when one was written.
+    active_count: RepeatCount?
+
+    -- True when position has reached the tail of the input.
+    input_exhausted: Boolean
+
+    -- How many KEEP rules have run, whether or not the rule they sit in
+    -- went on to match. Counted rather than derived, because what makes
+    -- it interesting is exactly that it does not follow from the
+    -- matching: see CollectingIsNotUndoneByBacktracking.
+    keeps_attempted: Integer
+
+    -- How many values the collection holds. Never less than the number
+    -- of KEEPs that ran, because nothing is taken back out.
+    collected_count: Integer
+
+    status: ParseOutcome?
+    failure: ParseFailure?
+
+    invariant FailureAccompaniesRaised {
+        status = raised implies failure != null
+    }
+
+    -- A count is always a count of something. Reaching the end of the
+    -- rule block with one still outstanding is the parse_end failure.
+    invariant ACountAlwaysHasARuleToApplyTo {
+        active_count != null implies rule_exhausted = false
+    }
+
+    @guarantee TheDialectDoesNotDependOnTheInputType
+        -- Every keyword means the same thing over a string as over a
+        -- block. What changes is only what a rule matches against: a
+        -- string rule matches a run of characters and a block rule
+        -- matches one item. The counts, SET, COPY, COLLECT, KEEP, the
+        -- alternatives and the backtracking are the same dialect either
+        -- way.
+        --
+        -- Worth stating because it is the kind of thing an implementation
+        -- quietly gets wrong. Matching a string and matching a block want
+        -- different code, and once they are two walks nothing forces the
+        -- second to keep up with the first. JEBOL's string walk had no
+        -- counts, no SET, no COPY, no COLLECT and no KEEP, and nothing
+        -- asked why `parse "ab" [2 skip]` was false while
+        -- `parse [a b] [2 skip]` was true.
+        --
+        -- What a KEEP puts in the collection follows the input: one item
+        -- of a block is that item, one character of a string is a
+        -- character, and a run of characters is a slice keeping the
+        -- input's own datatype. Collecting from a file gives file pieces,
+        -- not string pieces.
+}
+
+-- A repeat count written in front of a rule. One integer means exactly
+-- that many; two mean a range.
+value RepeatCount {
+    minimum: Integer
+    maximum: Integer
+
+    invariant RangeIsOrdered {
+        minimum <= maximum
+    }
+}
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+-- === What counts as success ================================
+
+-- The single thing most often got wrong about PARSE: matching the rule is
+-- not enough. Input left over is a failure, which is why
+-- `parse [1] []` is false while `parse [] []` is true. An empty rule
+-- block matches nothing, and matching nothing only uses up an input that
+-- was already empty.
+rule ParseSucceedsOnlyWhenInputIsUsedUp {
+    when: attempt: ParseAttempt.rule_exhausted
+    requires: attempt.status = null
+
+    ensures:
+        if attempt.input_exhausted:
+            attempt.status = matched
+        else:
+            attempt.status = unmatched
+}
+
+-- === An integer is a count, never a value ==================
+
+-- In the evaluator an integer is a value. In a rule block it is the
+-- number of times to apply whatever comes next, and there is no way to
+-- write "match the integer 1" by writing 1. This is the difference that
+-- made nine corpus entries wrong: `[any 1]` reads as "ANY, repeated once"
+-- with no rule left to repeat, so it raises rather than matching a block
+-- of ones.
+--
+-- One integer is an exact count. Two are a range, inclusive at both ends,
+-- so `[2 3 integer!]` matches two or three of them. A count of zero
+-- matches nothing at all, which succeeds, and then the leftover input
+-- decides the parse.
+rule RepeatCountNeedsARuleToRepeat {
+    when: attempt: ParseAttempt.count_read
+    requires: attempt.status = null
+
+    ensures:
+        if attempt.rule_exhausted:
+            attempt.status = raised
+            attempt.failure = parse_end
+        else:
+            attempt.status = null
+}
+
+-- === How many times ========================================
+
+-- ANY, SOME and OPT are the three counts with names. ANY is zero or more,
+-- so it matches against empty input. SOME is one or more, so it does not.
+-- OPT is zero or one, and always matches.
+rule NamedCountsDifferOnlyInTheirMinimum {
+    when: attempt: ParseAttempt.keyword_read
+    requires: attempt.status = null
+
+    ensures:
+        if attempt.rule_exhausted:
+            attempt.status = raised
+            attempt.failure = parse_end
+        else:
+            attempt.status = null
+}
+
+-- === What counts as getting somewhere ====================
+
+-- ANY and SOME stop when a round gets nowhere, or they would never
+-- finish. The question is what "nowhere" means, and consuming input is
+-- not the whole of it: REMOVE takes what it matched out and leaves the
+-- position where it was, so a round that removed something has advanced
+-- through the input without the position moving at all.
+--
+-- `parse "aa" [some [remove "a"]]` is true and leaves the input empty.
+-- Reading progress as "the position moved" makes that false after one
+-- round, because the position is where it started and the walk decides
+-- it is looping.
+--
+-- So a round gets somewhere when the position moved OR the input got
+-- shorter. A round that does neither ends the repeat, which is what
+-- keeps `parse "" [some [remove "a"]]` from running forever -- it is
+-- false, because SOME needs one round and no round succeeded.
+--
+-- The guard belongs to the open-ended repeats alone. A counted rule is
+-- bounded by the count, so it cannot loop for ever and does not need
+-- protecting; applying the guard there stops it early instead.
+-- Confirmed against a real R3: `parse [1 2] [collect 2 [collect []
+-- (x: x + 1) keep (x)]]` runs both rounds and gives [[] 1 [] 2], even
+-- though the first round consumes nothing at all. With the guard it
+-- stops after one and gives [[] 1].
+rule ARepeatStopsWhenARoundChangesNothing {
+    when: attempt: ParseAttempt.round_finished
+    requires: attempt.status = null
+
+    ensures:
+        attempt.status = null
+}
+
+-- === A bitset matches any of its characters ===============
+
+-- A bitset in a rule matches one character that is in it, which is how a
+-- rule says "any of these" without writing them as alternatives. It is
+-- the difference between a rule that reads as a set and one that reads
+-- as a list, and for a set of any size it is the only workable form.
+--
+-- Reached either as a value bound to a word or written out as a
+-- construct, since a rule block is not evaluated and `make bitset! "ab"`
+-- inside one is three values rather than a bitset.
+rule ABitsetMatchesOneOfItsCharacters {
+    when: attempt: ParseAttempt.bitset_read
+    requires: attempt.status = null
+
+    ensures:
+        attempt.status = null
+}
+
+-- === Strings are matched exactly ===========================
+
+-- Parsing a string never skips whitespace. `parse "a b c" ["a" "b" "c"]`
+-- is false, because nothing consumed the spaces, and the rule that works
+-- is `["a" " " "b" " " "c"]`. REBOL 2 skipped whitespace unless you asked
+-- it not to with /all; R3 reversed the default and dropped the
+-- refinement, so /all now raises no_refine rather than being redundant.
+rule StringParsingNeverSkipsWhitespace {
+    when: attempt: ParseAttempt.created
+    requires: attempt.input.datatype = string
+
+    ensures:
+        attempt.position = 1
+        attempt.status = null
+}
+
+-- === Changing the input while matching ====================
+
+-- CHANGE matches the rule after it and puts a value where the match was,
+-- so the input is different afterwards and may be a different length. It
+-- is REMOVE and an insertion in one step, and like REMOVE it needs the
+-- series rather than a copy of it.
+--
+-- Confirmed against a real R3: the replacement may be a paren, and then
+-- it is evaluated at the moment the change happens rather than when the
+-- rule was written. That is what makes CHANGE useful with SET:
+-- `parse [1] [change set n integer! (n * 10)]` leaves [10], because the
+-- paren runs after n has been set by the match it is replacing.
+--
+-- The replacement is one value, however many items the rule matched:
+-- `parse [1 2 3] [change 2 skip 9]` leaves [9 3].
+
+-- Confirmed against a real R3: a bitset folds case like everything else
+-- in a parse, so `parse "A" reduce [charset "a"]` matches and
+-- `parse/case "A" reduce [charset "a"]` does not. Asking the set only
+-- about the character as written makes a charset the one rule in the
+-- dialect that always minds case, which is not something a rule author
+-- would expect or could switch off.
+
+-- Confirmed against a real R3: TO and THRU take a whole rule, not only a
+-- value. `parse "zx" [thru [x | y]]` walks forward until either
+-- alternative matches, and `parse "abc" [to ["b" | "q"] "bc"]` stops
+-- before whichever one did.
+--
+-- Reading the target as text instead makes every such rule fail, because
+-- a block has no text form that appears in the input. It is the kind of
+-- failure that looks like a rule that simply did not match.
+
+-- Confirmed against a real R3: COLLECT may be told where to put what it
+-- gathers. SET names a word to hold the collection; INTO names a series
+-- the caller already has and puts them at its position, pushing what was
+-- there along; AFTER puts them past what is there.
+--
+-- The target need not be a block. Collecting characters into a string
+-- gives a string, because a string takes the text of what it is given
+-- rather than the values: `a: "" parse "1" [collect into a [keep skip]]`
+-- leaves a holding "1", where the same into a block leaves [#"1"].
+--
+-- Each of these three forms occupies two more items in the rule than a
+-- plain COLLECT does, and a walk that measures them as a plain one
+-- resumes on the word and matches it as a rule of its own. That is not a
+-- small error: it collects nothing at all and reports a match.
+
+-- Confirmed against a real R3: CASE and NO-CASE work on a block parse as
+-- they do on a string one. `parse ["A"] ["a"]` matches, `[case ["a"]]`
+-- does not, `[case ["A"]]` does, and `[case no-case ["a"]]` does -- so
+-- the mode really is a mode and the later word wins.
+
+-- Resolved: every keyword in the dialect works on both a block and a
+-- string, and JEBOL implements the two in separate walkers, so a keyword
+-- added to one and not the other makes the same rule behave differently
+-- depending on what is being parsed -- the worst kind of divergence to
+-- chase, because the rule is demonstrably correct somewhere.
+--
+-- Four had genuinely drifted apart: WHILE, CASE and NO-CASE were on the
+-- string side only, and IF on the block side only. All four are now on
+-- both, each checked against a real R3 on both.
+--
+-- Comparing the two keyword switches found six candidates, not four.
+-- AFTER and BREAK were false positives: the block walker implements
+-- them, AFTER inside COLLECT's own clause handling and BREAK through the
+-- signal that ends a repeat, so neither appears in the switch the
+-- comparison reads. A structural audit finds candidates, not defects,
+-- and every one of them still has to be put to the binary.
+
+-- Confirmed against a real R3: WHILE is ANY under another name. It
+-- repeats the rule until it stops matching and succeeds either way, so
+-- `parse "" [while [remove #"y" | #"x"]]` is true. The two spellings are
+-- a matter of convention; nothing distinguishes them.
+
+-- Confirmed against a real R3: INSERT puts a value in at the current
+-- position and consumes nothing, so `parse [1] [insert 9]` leaves [9 1].
+-- The position ends up after what was inserted, which is what stops an
+-- INSERT inside a repeat from running forever.
+
+-- === Case, chosen part way through =========================
+
+-- CASE and NO-CASE change how the rules after them compare, and they
+-- last until the other one appears. A parse is case-folding by default,
+-- so NO-CASE is only needed to undo a CASE earlier in the same rule.
+-- Being a mode rather than a refinement is what lets one rule mind case
+-- in one place and not in another.
+
+-- === Looking without consuming ============================
+
+-- AHEAD, spelled AND as well, matches the rule after it and then puts
+-- the position back. It is how a rule asks what comes next without
+-- taking it, so `[ahead #"a" skip]` matches an "a" twice over: once to
+-- look and once to consume.
+--
+-- REMOVE is the opposite kind of thing: it matches the rule after it and
+-- takes what matched out of the input, so the series is shorter
+-- afterwards. Both leave the parse's answer alone; what they change is
+-- the position and the input.
+rule LookaheadPutsThePositionBack {
+    when: attempt: ParseAttempt.ahead_read
+    requires: attempt.status = null
+
+    ensures:
+        attempt.status = null
+}
+
+-- === One dialect, whichever series is being walked ========
+
+-- Every keyword above means the same thing over a string as over a
+-- block. What changes is only what a rule matches against: a string rule
+-- matches a run of characters and a block rule matches one item.
+-- Everything else -- the counts, SET, COPY, COLLECT, KEEP, the
+-- alternatives, the backtracking -- is the same dialect.
+--
+-- This is worth stating because it is the kind of thing an
+-- implementation quietly gets wrong. Matching a string and matching a
+-- block want different code, and once they are two walks nothing forces
+-- the second to keep up with the first. JEBOL's string walk had no
+-- counts, no SET, no COPY, no COLLECT and no KEEP, and no test asked why
+-- `parse "ab" [2 skip]` was false when `parse [a b] [2 skip]` was true.
+--
+-- What a KEEP puts in the collection follows the input: one item of a
+-- block is that item, one character of a string is a character, and a
+-- run of characters is a slice that keeps the input's own datatype. So
+-- collecting from a file gives file pieces, not string pieces.
+-- === Collecting while matching ============================
+
+-- COLLECT changes what PARSE answers. Ordinarily a parse is a question
+-- with a logic for an answer; with COLLECT at the top of the rule it is
+-- an extraction, and the answer is the block of everything KEEP matched.
+--
+-- Two consequences follow and both are easy to miss. Leftover input does
+-- not matter, because the question is no longer "did this account for
+-- all of it"; `parse [1 2] [collect [keep integer!]]` answers `[1]` and
+-- not false. And an empty collection is an empty block rather than none,
+-- so a caller can append to what came back without testing it first.
+rule CollectChangesWhatParseAnswers {
+    when: attempt: ParseAttempt.collect_read
+    requires: attempt.status = null
+
+    ensures:
+        attempt.status = collected
+}
+
+-- A collection is answered whether or not its rule matched, and what
+-- KEEP put in it stays there.
+--
+-- This is the part of COLLECT that no amount of reasoning gets you to,
+-- and it was asked of R3 rather than worked out. Matching in PARSE
+-- backtracks: a rule that fails puts the position back and an
+-- alternative tries from there. Collecting does not.
+-- `parse [1 2] [collect [keep integer! keep string! | keep integer!]]`
+-- answers `[1 1]`, because the first branch kept the 1, then failed on
+-- the string, and the alternative kept the same 1 again. Both are in
+-- the answer.
+--
+-- The same holds one level up. A nested COLLECT hands its block to the
+-- collection around it as soon as it starts, not when it succeeds, so a
+-- nested collect whose rule fails still leaves a block behind:
+-- `parse [] [collect [collect [keep 2 skip]]]` answers `[[]]`.
+--
+-- What this means for anyone reading a rule: the collection is a record
+-- of every KEEP that ran, not of the KEEPs on the path that finally
+-- matched. A rule with alternatives collects from the branches it tried
+-- and abandoned as well as from the one it kept.
+rule CollectingIsNotUndoneByBacktracking {
+    when: attempt: ParseAttempt.collect_read
+    requires: attempt.status = null
+
+    ensures:
+        attempt.status = collected
+        and attempt.collected_count >= attempt.keeps_attempted
+}
+
+-- === PARSE no longer splits ================================
+
+-- REBOL 2 let the rule be a string, a character or NONE, meaning "split
+-- the input on these delimiters" rather than "match this grammar", and
+-- kept /all to hold whitespace out of the delimiter set. R3-Alpha still
+-- had both. Rebol 3.22.1 removed them: a rule has to be a block, a string
+-- where one belongs raises expect_arg, /all raises no_refine, and
+-- splitting is SPLIT's job.
+--
+-- This entry has been written twice in both directions. The corpus said
+-- "splits" from the REBOL/Core guide, was changed to "raises" against the
+-- binary, changed back on reading R3-Alpha's Parse_String, and changed to
+-- "raises" again when the target moved to the maintained fork. The
+-- removal is a deliberate tidy-up rather than a regression: one name did
+-- two unrelated jobs and now two names do one each.
+rule ParseRequiresARuleBlock {
+    when: attempt: ParseAttempt.created
+    requires: attempt.rule.datatype != block
+
+    ensures:
+        attempt.status = raised
+        attempt.failure = expect_arg
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+surface ParseDialect {
+    exposes:
+        ParseKeyword
+        ParseOutcome
+        ParseAttempt
+
+    @guarantee ParenEffectsSurviveBacktracking
+        -- A paren in a rule runs the moment the walk reaches it, and
+        -- nothing undoes it if the rule it sits in goes on to fail. So
+        -- `[[integer! (n: n + 1) word!] | integer!]` against `[1]` takes
+        -- the second alternative and still leaves n incremented. A paren
+        -- that the walk never reaches never runs, which is the only sense
+        -- in which a failing rule's paren is skipped.
+
+    @guarantee AWordInARuleIsARule
+        -- A word that is not a keyword is looked up and what it holds is
+        -- used as a rule, so a rule can be held in a word and reused. A
+        -- lit-word is the way to match a word as a value: 'x matches the
+        -- word x. A datatype word matches any value of that datatype.
+
+    @guarantee SetAndCopyOutliveTheParse
+        -- SET puts the single value its rule matched into a word, and
+        -- COPY puts the whole span into a word as a series. Both survive
+        -- the call, so the word still holds the value afterwards.
+}
+
+------------------------------------------------------------
+-- Open Questions
+------------------------------------------------------------
+
+-- Resolved against a real R3: the whole of the input must be consumed for
+-- PARSE to answer true. It is not "did the rule match" but "did the rule
+-- account for everything".
+
+-- Resolved against a real R3: a repeat count of zero followed by a rule
+-- matches nothing and succeeds. `parse [] [0 integer!]` is true and
+-- `parse [1 1 1] [0 integer!]` is false, the second because the three
+-- integers are still sitting there unaccounted for.
+
+-- Resolved: the target is Rebol 3.22.1, the maintained fork, and not
+-- R3-Alpha. R3-Alpha's last commit was in July 2015. Where the two
+-- disagree the fork decides, which so far means only the splitting form
+-- above. See docs/decisions.md item 10.
+
+open question "Backtracking is specified here only by what survives it. Nothing says how far PARSE backs up when an alternative fails, or whether a partially applied repeat count is retried at a lower count. The corpus reaches the common cases and the implementation makes a choice; the choice is not written down."
+
+-- Resolved against a real R3: two mistakes PARSE refuses that JEBOL used
+-- to let past in silence.
+--
+-- A KEEP with no COLLECT around it raises parse-no-collect. Left alone it
+-- dropped what it kept and carried on matching, so a rule with the
+-- COLLECT left off looked like it worked and the values simply went
+-- missing. The same failure covers a COLLECT whose next rule is not a
+-- block, because nothing ever opens a collection for the KEEPs below it.
+--
+-- A COLLECT INTO target that cannot hold what the parse yields raises
+-- parse-into-type. A block, a paren or a hash takes anything; a string
+-- target needs a string being parsed and a binary target needs a binary;
+-- anything that is not a series at all is refused whatever is being
+-- parsed. Left unchecked the delivery quietly did nothing, which is the
+-- same silence in a different place.
+
+-- Resolved against a real R3: PARSE walks a binary one byte at a time,
+-- with every rule word meaning what it means for a string.
+--
+-- SKIP steps one byte, a rule written as a binary matches those bytes,
+-- and TO and THRU seek over them. A count still has to match the length,
+-- so `parse #{0102} [3 skip]` is false.
+--
+-- What differs from a string is only what comes back out. COPY answers a
+-- binary however many bytes it took, so one byte is still `#{01}` and not
+-- a number. SET of one byte answers the number, 1 rather than `#{01}`,
+-- and that difference between COPY and SET is the whole of it. KEEP
+-- follows SET's rule for one byte and COPY's for a span, which is why
+-- `parse #{010203} [collect any [keep 1 2 skip]]` is `[#{0102} 3]` -- a
+-- binary and a number in the same block.
+--
+-- A zero byte and a byte of 255 are both ordinary. Nothing about them
+-- ends anything, which is worth pinning because the obvious way to build
+-- this -- letting each byte stand in for a character -- puts the null
+-- character in the middle of the input.
+
+-- Resolved against a real R3: TO and THRU take three kinds of target and
+-- treat them quite differently.
+--
+-- Something to look for is searched forward from where the parse has
+-- reached. TO stops before it and THRU stops after it, which is the whole
+-- difference between the two words.
+--
+-- A whole number is a place rather than a thing to find, counted from the
+-- head. `to 3` goes to the third item and `thru 3` goes past it, so
+-- `thru 1` lands exactly where `to 2` does. Because it is counted from
+-- the head it can move the parse backwards: `parse "abcd" ["ab" to 1
+-- "abcd"]` succeeds, which nothing searched forward could do. A place
+-- outside the input is no match rather than an error.
+--
+-- A rule that repeats is neither, and raises parse-rule: `thru some "0"`
+-- and `thru any "0"` are both refused. So is a fraction, which is not a
+-- place and not something to look for.
+--
+-- A tag stands for its brackets and all. FORM of a tag gives the letter
+-- alone, so matching on that finds the letter without its brackets and
+-- stops a character early -- or finds a letter that was never part of a
+-- tag at all.
+
+-- Resolved against a real R3: CHANGE spreads a block replacement and puts
+-- it in whole only when ONLY says so.
+--
+-- `change some word! [z p]` leaves two words where the match was, not one
+-- block holding them. `change ['a 'b] only [z p]` leaves the block. An
+-- empty block takes the match out and puts nothing back, which is how a
+-- CHANGE deletes and is not something a CHANGE that always nested could
+-- do at all.
+--
+-- ONLY says how to put the replacement in, so it goes before the
+-- replacement. Before the rule it reads as a rule called only, which is
+-- no rule, and R3 raises parse-rule.
+--
+-- A paren replacement is evaluated, so the value put in is what the paren
+-- answered rather than the paren itself.
+
+-- Resolved against a real R3: a set-word in a block rule marks where the
+-- parse has reached and consumes nothing; a get-word goes back to what
+-- one recorded. The two together are how a rule measures a span.
+--
+-- The mark holds the series at that position, so `parse [1 2 3] [skip
+-- mark: to end]` leaves mark as [2 3]. A mark at the head holds the whole
+-- series and one at the tail holds an empty one; both are places.
+--
+-- A get-word naming no place, or a place in a different series, does not
+-- match. That is better than moving: a position the walker cannot read is
+-- worse than a rule that simply fails.
+--
+-- Missing entirely, a set-word is taken as a value to match and fails
+-- against whatever is there, and everything after it in the rule fails
+-- with it. That makes the mark look as though it broke the rule.

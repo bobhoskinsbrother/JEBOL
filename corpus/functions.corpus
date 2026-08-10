@@ -113,7 +113,16 @@ sum "not a number" 2
 --- note a mistake rather than a partly applied function.
 --- code
 do [sum: func [a b] [add a b] sum 1]
---- error script need-value
+--- error script no-arg
+
+--- id functions/a-call-with-no-arguments-at-all-is-the-same-error
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note The degenerate end of the same boundary: none of the two supplied
+--- note rather than one of them.
+--- code
+do [sum: func [a b] [add a b] sum]
+--- error script no-arg
 
 # --- Recursion -----------------------------------------------
 
@@ -176,7 +185,7 @@ double: func [n] [add n n]
 holder: reduce [:double]
 type? first holder
 --- result
-function!
+#(function!)
 
 --- id functions/a-function-can-be-renamed
 --- origin adapted from REBOL/Core User Guide 2.3 section 5.4
@@ -213,3 +222,78 @@ tally
 total
 --- result
 "caller's"
+
+--- id functions/a-return-annotation-may-describe-what-comes-back
+--- origin confirmed against R3 3.22.1
+--- note The type block after `return:` takes a string alongside the
+--- note datatypes. An ordinary parameter's does not, which is the
+--- note asymmetry to get right rather than allowing strings in every
+--- note type block.
+--- code
+f: func [a [integer!] return: [string! "the answer"]] ["x"]
+f 1
+--- result
+"x"
+
+--- id functions/an-ordinary-parameter-may-not
+--- origin confirmed against R3 3.22.1
+--- code
+f: func [a [integer! "a number"]] ["x"]
+--- error script invalid-arg
+
+--- id functions/a-function-with-a-persistent-object
+--- origin confirmed against R3 3.22.1
+--- note /with gives the function an object to work in, and the object
+--- note outlives the call: it is where state that survives between
+--- note calls goes. The body sees the object's fields as words.
+--- code
+f: function/with [a] [b + a] [b: 10]
+f 5
+--- result
+15
+
+--- id functions/the-object-really-does-persist
+--- origin confirmed against R3 3.22.1
+--- note Which is the whole point, and what separates it from a local.
+--- code
+f: function/with [a] [b: b + a] [b: 0]
+f 1
+f 2
+--- result
+3
+
+--- id functions/every-set-word-in-the-body-is-local
+--- origin confirmed against R3 3.22.1
+--- note This is what FUNCTION is for, and what separates it from FUNC.
+--- note It takes two arguments, not three: the locals are worked out
+--- note from the body rather than declared.
+--- code
+b: 99
+f: function [a] [b: a * 2 b]
+f 5
+--- result
+10
+
+--- id functions/the-outer-word-is-untouched
+--- origin confirmed against R3 3.22.1
+--- code
+b: 99
+f: function [a] [b: a * 2 b]
+f 5
+b
+--- result
+99
+
+--- id functions/a-closure-keeps-its-locals-alive
+--- origin confirmed against R3 3.22.1
+--- note Each call gets its own context, and it outlives the call when
+--- note something inside captured it. Two counters made this way count
+--- note separately.
+--- code
+make-counter: closure [start] [does [start: start + 1]]
+a: make-counter 0
+b: make-counter 100
+mold reduce [a a b]
+--- result
+"[1 2 101]"
+

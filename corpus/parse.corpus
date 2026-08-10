@@ -1,36 +1,64 @@
 # PARSE: matching and pulling input apart.
-# Origin: REBOL/Core User Guide 2.3, section 15.
+# Origin: REBOL/Core User Guide 2.3, section 15, corrected against R3.
 #
-# Written before it exists. This is the feature REBOL is known for, and it
-# is a sub-language of its own: a rule block is not evaluated, it is matched.
+# This is the feature REBOL is known for, and it is a sub-language of its
+# own: a rule block is not evaluated, it is matched.
+#
+# Nine of these entries were wrong when they were written from the guide,
+# because the guide documents REBOL 2 and two things changed underneath
+# it. An integer in a rule is a repeat count and never a value to match,
+# so [any 1] is "ANY, once" with nothing left to repeat rather than "any
+# number of ones". And parsing a string no longer skips whitespace, so a
+# rule has to account for the spaces itself. Every entry below was run
+# against a real R3 (3.22.1).
 
 # --- Whether the input matched ------------------------------
 
 --- id parse/matching-literals-in-order
---- origin REBOL/Core User Guide 2.3 section 15
+--- origin REBOL/Core User Guide 2.3 section 15, corrected against R3 3.22.1
 --- requires parse
+--- code
+parse "abc" ["a" "b" "c"]
+--- result
+#(true)
+
+--- id parse/matching-a-string-does-not-skip-whitespace
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note REBOL 2 skipped whitespace unless you passed /all. R3 reversed the
+--- note default and dropped the refinement, so this is now false where the
+--- note guide says true. It is the second half of why the parse corpus was
+--- note wrong.
 --- code
 parse "a b c" ["a" "b" "c"]
 --- result
-true
+#(false)
 
---- id parse/a-literal-that-does-not-match
---- origin REBOL/Core User Guide 2.3 section 15
+--- id parse/whitespace-has-to-be-matched-explicitly
+--- origin confirmed against R3 3.22.1
 --- requires parse
 --- code
-parse "a b" ["a" "c"]
+parse "a b c" ["a" " " "b" " " "c"]
 --- result
-false
+#(true)
+
+--- id parse/a-literal-that-does-not-match
+--- origin REBOL/Core User Guide 2.3 section 15, corrected against R3 3.22.1
+--- requires parse
+--- code
+parse "ab" ["a" "c"]
+--- result
+#(false)
 
 --- id parse/input-left-over-does-not-match
---- origin REBOL/Core User Guide 2.3 section 15
+--- origin REBOL/Core User Guide 2.3 section 15, corrected against R3 3.22.1
 --- requires parse
 --- note A rule that runs out before the input does has not matched it.
 --- note Matching means matching all of it.
 --- code
-parse "a b c d" ["a" "b" "c"]
+parse "abcd" ["a" "b" "c"]
 --- result
-false
+#(false)
 
 --- id parse/an-empty-rule-against-empty-input
 --- origin adapted from REBOL/Core User Guide 2.3 section 15
@@ -38,15 +66,155 @@ false
 --- code
 parse "" []
 --- result
-true
+#(true)
 
 --- id parse/an-empty-rule-against-input
 --- origin adapted from REBOL/Core User Guide 2.3 section 15
 --- requires parse
+--- note The pair above and below are the boundary: an empty rule matches
+--- note nothing, and matching nothing is only enough when there was
+--- note nothing there.
 --- code
 parse "a" []
 --- result
-false
+#(false)
+
+# --- An integer is a count, not a value ---------------------
+
+--- id parse/an-integer-in-a-rule-is-a-repeat-count
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The difference that made nine entries here wrong. In the evaluator
+--- note an integer is a value; in a rule block it is the number of times to
+--- note apply whatever comes next. This is also the ON point for the count,
+--- note with one short and one over below it.
+--- code
+parse [1 1 1] [3 integer!]
+--- result
+#(true)
+
+--- id parse/a-count-with-no-rule-after-it-raises
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note This is what [any 1] actually means: ANY, once, with nothing left
+--- note to repeat. The guide's [any 1] examples all raise.
+--- code
+parse [1 1 1] [any 1]
+--- error script parse-end
+
+--- id parse/a-bare-count-at-the-end-of-a-rule-raises
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1] [1]
+--- error script parse-end
+
+--- id parse/a-count-one-short-does-not-match
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The OFF point below the count. Two integers matched, one left over,
+--- note and leftover input is a failure.
+--- code
+parse [1 1 1] [2 integer!]
+--- result
+#(false)
+
+--- id parse/a-count-one-over-does-not-match
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The OFF point above the count. There is no fourth integer.
+--- code
+parse [1 1 1] [4 integer!]
+--- result
+#(false)
+
+--- id parse/two-integers-are-a-range
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note Inclusive at both ends.
+--- code
+parse [1 1 1] [2 3 integer!]
+--- result
+#(true)
+
+--- id parse/a-range-reaching-its-upper-end
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1 1 1] [1 3 integer!]
+--- result
+#(true)
+
+--- id parse/a-count-of-zero-against-empty-input
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note Zero matches nothing, and nothing is enough when the input was
+--- note already empty.
+--- code
+parse [] [0 integer!]
+--- result
+#(true)
+
+--- id parse/a-count-of-zero-leaves-the-input-unaccounted-for
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The same rule against non-empty input fails, not because zero
+--- note failed to match but because the three integers are still there.
+--- code
+parse [1 1 1] [0 integer!]
+--- result
+#(false)
+
+# --- Repetition by name -------------------------------------
+
+--- id parse/any-matches-none-or-more
+--- origin REBOL/Core User Guide 2.3 section 15, corrected against R3 3.22.1
+--- requires parse
+--- code
+parse [1 1 1] [any integer!]
+--- result
+#(true)
+
+--- id parse/any-matching-nothing-still-matches
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- note The boundary that separates ANY from SOME.
+--- code
+parse [] [any integer!]
+--- result
+#(true)
+
+--- id parse/some-needs-at-least-one
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [] [some integer!]
+--- result
+#(false)
+
+--- id parse/some-matches-several
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [1 1] [some integer!]
+--- result
+#(true)
+
+--- id parse/opt-matches-one-when-there-is-one
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [1] [opt integer!]
+--- result
+#(true)
+
+--- id parse/opt-matches-none-when-there-is-none
+--- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- requires parse
+--- code
+parse [] [opt integer!]
+--- result
+#(true)
 
 # --- Moving through the input -------------------------------
 
@@ -54,9 +222,9 @@ false
 --- origin REBOL/Core User Guide 2.3 section 15
 --- requires parse
 --- code
-parse "a b c d" [to "b" thru "d"]
+parse [1 2 3] [to 3 integer! end]
 --- result
-true
+#(true)
 
 --- id parse/thru-goes-past-what-it-finds
 --- origin adapted from REBOL/Core User Guide 2.3 section 15
@@ -64,17 +232,17 @@ true
 --- note TO leaves the position before the match and THRU leaves it after,
 --- note which is the whole difference between them.
 --- code
-parse "abcd" [thru "c" "d"]
+parse [1 2 3] [thru 3 end]
 --- result
-true
+#(true)
 
 --- id parse/to-end-matches-whatever-is-left
 --- origin REBOL/Core User Guide 2.3 section 15
 --- requires parse
 --- code
-parse "a b c d" [to "b" to end]
+parse [1 2 3] [to end]
 --- result
-true
+#(true)
 
 --- id parse/skip-passes-one-thing
 --- origin adapted from REBOL/Core User Guide 2.3 section 15
@@ -82,58 +250,23 @@ true
 --- code
 parse [1 2 3] [skip skip skip]
 --- result
-true
+#(true)
 
 --- id parse/skip-past-the-end-does-not-match
 --- origin adapted from REBOL/Core User Guide 2.3 section 15
 --- requires parse
 --- code
-parse [1 2] [skip skip skip]
+parse [1 2 3] [4 skip]
 --- result
-false
+#(false)
 
-# --- Repetition ---------------------------------------------
-
---- id parse/any-matches-none-or-more
---- origin REBOL/Core User Guide 2.3 section 15
+--- id parse/a-count-in-front-of-skip
+--- origin confirmed against R3 3.22.1
 --- requires parse
 --- code
-parse [1 1 1] [any 1]
+parse [1 2 3] [3 skip end]
 --- result
-true
-
---- id parse/any-matching-nothing-still-matches
---- origin adapted from REBOL/Core User Guide 2.3 section 15
---- requires parse
---- note The boundary that separates ANY from SOME.
---- code
-parse [] [any 1]
---- result
-true
-
---- id parse/some-needs-at-least-one
---- origin adapted from REBOL/Core User Guide 2.3 section 15
---- requires parse
---- code
-parse [] [some 1]
---- result
-false
-
---- id parse/some-matches-several
---- origin adapted from REBOL/Core User Guide 2.3 section 15
---- requires parse
---- code
-parse [1 1] [some 1]
---- result
-true
-
---- id parse/opt-matches-none-or-one
---- origin adapted from REBOL/Core User Guide 2.3 section 15
---- requires parse
---- code
-parse [2] [opt 1 2]
---- result
-true
+#(true)
 
 # --- Alternatives -------------------------------------------
 
@@ -141,17 +274,25 @@ true
 --- origin adapted from REBOL/Core User Guide 2.3 section 15
 --- requires parse
 --- code
-parse [b] ["a" | 'b]
+parse [x] [integer! | word!]
 --- result
-true
+#(true)
+
+--- id parse/an-earlier-alternative-matching-is-enough
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1] [integer! | word!]
+--- result
+#(true)
 
 --- id parse/no-alternative-matching-fails
 --- origin adapted from REBOL/Core User Guide 2.3 section 15
 --- requires parse
 --- code
-parse [c] ['a | 'b]
+parse [#"a"] [integer! | word!]
 --- result
-false
+#(false)
 
 # --- Matching by datatype -----------------------------------
 
@@ -161,7 +302,7 @@ false
 --- code
 parse [when 10:30] ['when time!]
 --- result
-true
+#(true)
 
 --- id parse/a-datatype-that-does-not-match
 --- origin adapted from REBOL/Core User Guide 2.3 section 15
@@ -169,15 +310,23 @@ true
 --- code
 parse [when "not a time"] ['when time!]
 --- result
-false
+#(false)
 
 --- id parse/a-lit-word-matches-that-word
 --- origin REBOL/Core User Guide 2.3 section 15
 --- requires parse
 --- code
-parse [when 10:30] ['when 10:30]
+parse [x] ['x]
 --- result
-true
+#(true)
+
+--- id parse/a-lit-word-does-not-match-a-different-word
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [x] ['y]
+--- result
+#(false)
 
 # --- Keeping what was matched -------------------------------
 
@@ -204,16 +353,16 @@ taken
 # --- Doing something while matching -------------------------
 
 --- id parse/a-paren-runs-while-matching
---- origin REBOL/Core User Guide 2.3 section 15
+--- origin REBOL/Core User Guide 2.3 section 15, corrected against R3 3.22.1
 --- requires parse
 --- code
 count: 0
-parse [1 1 1] [some [1 (count: add count 1)]]
+parse [1 2 3] [some [integer! (count: add count 1)]]
 count
 --- result
 3
 
---- id parse/a-paren-in-a-rule-that-does-not-match-does-not-run
+--- id parse/a-paren-the-walk-never-reaches-does-not-run
 --- origin adapted from REBOL/Core User Guide 2.3 section 15
 --- requires parse
 --- code
@@ -221,7 +370,21 @@ ran: false
 parse [2] ['nope (ran: true)]
 ran
 --- result
-false
+#(false)
+
+--- id parse/a-paren-that-ran-stays-run-when-its-rule-fails
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The edge the guide never mentions. The first alternative matches
+--- note the integer, runs the paren, then fails on word!. Backtracking
+--- note takes the second alternative but does not undo the paren, so the
+--- note count is 1 even though that branch was abandoned.
+--- code
+ran: 0
+parse [1] [[integer! (ran: add ran 1) word!] | integer!]
+ran
+--- result
+1
 
 # --- Nesting ------------------------------------------------
 
@@ -231,7 +394,7 @@ false
 --- code
 parse [["Ukiah" 10:30]] [into [string! time!]]
 --- result
-true
+#(true)
 
 --- id parse/into-that-does-not-match-inside
 --- origin adapted from REBOL/Core User Guide 2.3 section 15
@@ -239,7 +402,7 @@ true
 --- code
 parse [["Ukiah" "not a time"]] [into [string! time!]]
 --- result
-false
+#(false)
 
 --- id parse/a-rule-can-be-held-in-a-word
 --- origin adapted from REBOL/Core User Guide 2.3 section 15
@@ -250,30 +413,618 @@ false
 digit: [integer!]
 parse [1 2] [some digit]
 --- result
-true
+#(true)
 
-# --- Splitting a string -------------------------------------
+# --- PARSE no longer splits ---------------------------------
+#
+# REBOL 2 and R3-Alpha both let the rule be a string, a character or NONE,
+# meaning "split on these delimiters" rather than "match this grammar".
+# 3.22.1 removed it: one name was doing two unrelated jobs, and SPLIT now
+# does the second one.
 
---- id parse/parse-with-none-splits-on-whitespace
---- origin REBOL/Core User Guide 2.3 section 15
---- requires parse
---- code
-parse "The trip will take 21 days" none
---- result
-["The" "trip" "will" "take" "21" "days"]
-
---- id parse/parse-with-a-delimiter-splits-on-it
---- origin REBOL/Core User Guide 2.3 section 15
+--- id parse/a-string-rule-no-longer-splits
+--- origin REBOL/Core User Guide 2.3 section 15, corrected against R3 3.22.1
 --- requires parse
 --- code
 parse "707-467-8000" "-"
+--- error script expect-arg
+
+--- id parse/a-none-rule-no-longer-splits-on-whitespace
+--- origin REBOL/Core User Guide 2.3 section 15, corrected against R3 3.22.1
+--- requires parse
+--- code
+parse "The trip will take 21 days" none
+--- error script expect-arg
+
+--- id parse/all-is-a-refinement-parse-no-longer-has
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note /all held whitespace out of the delimiter set, and went when the
+--- note splitting form went. Asking for it is an error rather than a
+--- note no-op, which is the behaviour worth pinning: a silently ignored
+--- note refinement would let old code look like it still worked.
+--- code
+parse/all "a b c" ["a" "b" "c"]
+--- error script no-refine
+
+--- id parse/split-is-what-splits-on-a-delimiter
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+split "707-467-8000" "-"
 --- result
 ["707" "467" "8000"]
 
 --- id parse/splitting-something-with-no-delimiter-in-it
---- origin adapted from REBOL/Core User Guide 2.3 section 15
+--- origin confirmed against R3 3.22.1
 --- requires parse
+--- note One piece, not none and not an error.
 --- code
-parse "nodelimiter" "-"
+split "nodelimiter" "-"
 --- result
 ["nodelimiter"]
+
+--- id parse/splitting-empty-input-gives-no-pieces
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note No pieces rather than one empty piece, which is the opposite of
+--- note what the entry below might lead you to expect.
+--- code
+split "" "-"
+--- result
+[]
+
+--- id parse/two-delimiters-together-leave-an-empty-piece
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note Nothing between the two hyphens is still something: a piece, and
+--- note an empty one. Together with the entry above this pins both ends of
+--- note how emptiness is counted.
+--- code
+split "a--b" "-"
+--- result
+["a" "" "b"]
+
+# --- Collecting while matching ------------------------------
+#
+# COLLECT changes what PARSE answers. Ordinarily a parse is a question
+# with a logic for an answer; with COLLECT it is an extraction, and the
+# answer is the block of everything KEEP matched.
+
+--- id parse/collect-answers-what-keep-matched
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1] [collect [keep integer!]]
+--- result
+[1]
+
+--- id parse/collect-with-nothing-kept-is-an-empty-block
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note An empty block rather than none, so a caller can append to what
+--- note came back without testing it first.
+--- code
+parse [] [collect []]
+--- result
+[]
+
+--- id parse/collect-does-not-mind-input-left-over
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The consequence easiest to miss: the question is no longer "did
+--- note this account for all of it", so leftover input is not a failure.
+--- code
+parse [1 2] [collect [keep integer!]]
+--- result
+[1]
+
+--- id parse/keep-gathers-every-time-it-matches
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1 2] [collect [some [keep integer!]]]
+--- result
+[1 2]
+
+--- id parse/keep-only-gathers-what-it-wraps
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The SKIP consumes the word and keeps nothing, so only the integer
+--- note comes back.
+--- code
+parse [a 1] [collect [skip keep integer!]]
+--- result
+[1]
+
+--- id parse/keep-can-wrap-skip
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1] [collect [keep skip]]
+--- result
+[1]
+
+--- id parse/keep-of-one-item-keeps-the-value
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The count decides the shape, not the kind of rule: ANY that
+--- note matched once keeps the value.
+--- code
+parse [1] [collect [keep any integer!]]
+--- result
+[1]
+
+--- id parse/keep-of-several-items-keeps-a-block
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note And the same rule matching twice keeps them together, so a caller
+--- note can tell one run from two.
+--- code
+parse [1 1] [collect [keep any integer!]]
+--- result
+[[1 1]]
+
+--- id parse/keep-of-a-counted-run-keeps-a-block
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1 2] [collect [keep 2 integer!]]
+--- result
+[[1 2]]
+
+# --- Looking without consuming ------------------------------
+
+--- id parse/ahead-matches-without-consuming
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The "a" is matched twice over: once to look and once to consume.
+--- note Without the lookahead there would be nothing left for SKIP.
+--- code
+parse "a" [ahead #"a" skip]
+--- result
+#(true)
+
+--- id parse/and-is-the-older-spelling-of-ahead
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse "a" [and #"a" skip]
+--- result
+#(true)
+
+--- id parse/a-lookahead-that-does-not-match-fails-the-rule
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse "ab" [and #"b" skip]
+--- result
+#(false)
+
+--- id parse/remove-takes-what-it-matched-out-of-the-input
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The series is shorter afterwards, so this is a rule that changes
+--- note what it is matching against rather than only reading it.
+--- code
+b: [1 x 2]
+parse b [some [remove integer! | skip]]
+b
+--- result
+[x]
+
+--- id parse/removing-still-answers-whether-it-matched
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1 x] [some [remove integer! | skip]]
+--- result
+#(true)
+
+--- id parse/remove-while-parsing-a-string
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The same rule over a string. The string parser walked a copy of the
+--- note text for a long time, so it had nothing to shorten and REMOVE
+--- note worked on a block parse and not on this one.
+--- code
+v: "yx"
+parse v [some [remove #"y" | #"x"]]
+v
+--- result
+"x"
+
+--- id parse/change-replaces-what-it-matched
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note REMOVE and an insertion in one step, so the input may be a
+--- note different length afterwards.
+--- code
+s: "(1)"
+parse s [change "(1)" "()"]
+s
+--- result
+"()"
+
+--- id parse/parsing-a-string-folds-case-by-default
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse "aAa" [no-case "AAA"]
+--- result
+#(true)
+
+--- id parse/case-makes-the-rules-after-it-mind-case
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note A mode rather than a refinement, which is what lets one rule mind
+--- note case in one place and not in another.
+--- code
+parse "aAa" [case "AAA"]
+--- result
+#(false)
+
+--- id parse/case-still-matches-when-the-case-agrees
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse "aAa" [case "aAa"]
+--- result
+#(true)
+
+--- id parse/if-fails-the-rule-when-its-paren-is-false
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note A guard: the rule matched, and IF decides whether that counts.
+--- note Without it a rule cannot depend on what it has just captured.
+--- code
+parse [1 2 3] [collect [some [keep [set v integer! if (even? v)] | skip]]]
+--- result
+[2]
+
+--- id parse/collect-nests
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note Each COLLECT produces a block, and an inner one's block is kept in
+--- note the enclosing collection rather than merged into it. One flat list
+--- note of gathered values cannot express this.
+--- code
+parse [] [collect [collect [collect []]]]
+--- result
+[[[]]]
+
+--- id parse/an-inner-collect-keeps-its-block-in-the-outer-one
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1 2] [collect [collect [keep 2 skip]]]
+--- result
+[[[1 2]]]
+
+--- id parse/two-keeps-in-one-collect-gather-together
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1 2] [collect [collect [keep integer! keep integer!]]]
+--- result
+[[1 2]]
+
+--- id parse/keep-of-a-paren-keeps-its-value
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note And consumes nothing, so a collection can hold something that was
+--- note computed rather than only what was matched.
+--- code
+parse [] [collect [keep (1)]]
+--- result
+[1]
+
+--- id parse/keep-pick-gathers-items-one-by-one
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note Without PICK a run of two is kept as one block; with it the items
+--- note go in separately.
+--- code
+parse [1 2] [collect [keep pick 2 integer!]]
+--- result
+[1 2]
+
+--- id parse/keep-of-a-copy-keeps-the-copied-block
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note COPY captures a block however many items it took, so each keep
+--- note here gathers a block of one rather than a bare integer.
+--- code
+parse [1 2 3] [collect some [keep copy w integer!]]
+--- result
+[[1] [2] [3]]
+
+--- id parse/collect-set-binds-the-collection-to-a-word
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1] [collect set a [keep skip]]
+a
+--- result
+[1]
+
+--- id parse/collect-set-leaves-the-parse-answering-a-logic
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The difference from a bare COLLECT, which answers the collection
+--- note instead. With SET the collection has somewhere to go, so the
+--- note answer goes back to being whether it matched.
+--- code
+parse [] [collect set a []]
+--- result
+#(true)
+
+--- id parse/collect-set-still-minds-leftover-input
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note And because it answers a logic, the full-consumption rule that a
+--- note bare COLLECT suspends applies again.
+--- code
+parse [1 2] [collect set a [keep skip]]
+--- result
+#(false)
+
+--- id parse/a-second-top-level-collect-is-kept-in-the-first
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The first COLLECT establishes what the parse answers, and any
+--- note after it add their block to that rather than replacing it or
+--- note starting a list of their own.
+--- code
+parse [1 2] [collect [keep integer!] collect [keep integer!]]
+--- result
+[1 [2]]
+
+--- id parse/a-third-collect-goes-in-the-same-place
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+parse [1 2 3] [collect [keep integer!] collect [keep integer!] collect [keep integer!]]
+--- result
+[1 [2] [3]]
+
+--- id parse/a-collect-that-is-not-first-in-the-rule-still-answers-alone
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note What comes before it does not make it a second collect: there is
+--- note only one, so its block is the answer.
+--- code
+parse [1 2] [skip collect [keep integer!]]
+--- result
+[2]
+
+--- id parse/a-bitset-matches-any-character-in-it
+--- origin confirmed against R3 3.22.1
+--- requires parse bitset
+--- note How a rule says "any of these" without writing them out as
+--- note alternatives, which for a set of any size is the only workable
+--- note form.
+--- code
+b: make bitset! "ab"
+parse "aab" [some b]
+--- result
+#(true)
+
+--- id parse/a-bitset-does-not-match-a-character-outside-it
+--- origin confirmed against R3 3.22.1
+--- requires parse bitset
+--- code
+b: make bitset! "ab"
+parse "aax" [some b]
+--- result
+#(false)
+
+--- id parse/a-bitset-can-be-written-into-the-rule-as-a-construct
+--- origin confirmed against R3 3.22.1
+--- requires parse bitset
+--- note A rule block is not evaluated, so `make bitset! "ab"` inside one
+--- note is three values rather than a bitset. The construct is how it is
+--- note written without a word to hold it.
+--- code
+parse "aab" [some #(bitset! #{00000000000000000000000060})]
+--- result
+#(true)
+
+--- id parse/collect-into-inserts-at-the-position
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note Into an existing series rather than a fresh one, and at its
+--- note position, so what was already there is pushed along rather than
+--- note replaced.
+--- code
+a: [x]
+parse [1] [collect into a [keep skip]]
+a
+--- result
+[1 x]
+
+--- id parse/collect-into-an-empty-series
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+a: []
+parse [1] [collect into a [keep skip]]
+a
+--- result
+[1]
+
+--- id parse/collect-into-leaves-the-parse-answering-a-logic
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note As COLLECT SET does, and for the same reason: the collection has
+--- note somewhere to go, so the answer goes back to whether it matched.
+--- code
+a: []
+parse [1] [collect into a [keep skip]]
+--- result
+#(true)
+
+--- id parse/collect-after-appends-past-what-is-there
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- note The counterpart to COLLECT INTO: INTO puts the collection at the
+--- note series' position and pushes the rest along, AFTER puts it past
+--- note what is already there.
+--- code
+a: [x]
+parse [1 2] [collect after a some [keep skip]]
+a
+--- result
+[x 1 2]
+
+--- id parse/collect-after-an-empty-series
+--- origin confirmed against R3 3.22.1
+--- requires parse
+--- code
+a: []
+parse [1] [collect after a [keep skip]]
+a
+--- result
+[1]
+
+--- id parse/removing-counts-as-getting-somewhere
+--- origin confirmed against R3 3.22.1
+--- note SOME stops when a round gets nowhere. REMOVE leaves the position
+--- note exactly where it was, so a walk that reads progress as "the
+--- note position moved" decides it is looping and stops after one round.
+--- note The input got shorter, which is the other way to advance.
+--- code
+v: "aa"
+parse v [some [remove "a"]]
+--- result
+#(true)
+
+--- id parse/what-removing-leaves-behind
+--- origin confirmed against R3 3.22.1
+--- code
+v: "aa"
+parse v [some [remove "a"]]
+v
+--- result
+""
+
+--- id parse/a-round-that-changes-nothing-still-ends-the-repeat
+--- origin confirmed against R3 3.22.1
+--- note Which is what keeps the rule above from running forever. SOME
+--- note needs one round and no round succeeded.
+--- code
+parse "" [some [remove "a"]]
+--- result
+#(false)
+
+--- id parse/removing-some-of-the-input-and-keeping-the-rest
+--- origin confirmed against R3 3.22.1
+--- code
+v: "abc"
+parse v [some [remove "b" | skip]]
+v
+--- result
+"ac"
+
+--- id parse/removing-from-a-block-parse-too
+--- origin confirmed against R3 3.22.1
+--- code
+v: [1 2]
+parse v [some [remove integer!]]
+v
+--- result
+[]
+
+--- id parse/removing-a-character-rule
+--- origin confirmed against R3 3.22.1
+--- code
+v: "yx"
+parse v [some [remove #"y" | #"x"]]
+v
+--- result
+"x"
+
+--- id parse/changing-a-match-to-nothing-is-a-removal
+--- origin confirmed against R3 3.22.1
+--- code
+v: "yx"
+parse v [some [change #"y" "" | #"x"]]
+v
+--- result
+"x"
+
+--- id parse/changing-to-something-longer
+--- origin confirmed against R3 3.22.1
+--- code
+s: "abc"
+parse s [some ["a" change "b" "XX" | skip]]
+s
+--- result
+"aXXc"
+
+--- id parse/what-change-copy-captured
+--- origin confirmed against R3 3.22.1
+--- note COPY captures what the rule matched before CHANGE replaces it,
+--- note so the word holds the old text and not the new.
+--- code
+s: "abc"
+parse s [some ["a" change copy v "b" (uppercase v) | skip]]
+s
+--- result
+"aBc"
+
+--- id parse/a-set-word-marks-where-the-parse-has-reached
+--- origin confirmed against R3 3.22.1
+--- note It consumes nothing and always matches. This is how a rule
+--- note keeps hold of a position so a later rule can measure back to
+--- note it, and Rebol's own SPLIT is built on the pair below.
+--- code
+parse "abc" [mk: skip]
+mk
+--- result
+"abc"
+
+--- id parse/the-mark-follows-the-position
+--- origin confirmed against R3 3.22.1
+--- code
+parse "abc" [skip mk: skip]
+mk
+--- result
+"bc"
+
+--- id parse/a-get-word-seeks-back-to-a-mark
+--- origin confirmed against R3 3.22.1
+--- note The other half: the set-word records and the get-word returns
+--- note to what it recorded.
+--- code
+parse "abc" [skip m: skip :m skip skip]
+--- result
+#(true)
+
+--- id parse/break-stops-the-repeat-around-it
+--- origin confirmed against R3 3.22.1
+--- note What matched before it stands; the repeat simply stops asking
+--- note for more. Rebol's own SPLIT uses it to walk to a delimiter and
+--- note stop there, and without it the walk runs to the end and the
+--- note whole string comes back as one piece.
+--- code
+mold collect [parse "abc" [some [copy c skip (keep c) break]]]
+--- result
+{["a"]}
+
+--- id parse/breaking-out-of-a-search-for-a-delimiter
+--- origin confirmed against R3 3.22.1
+--- note The shape SPLIT is built on: mark, walk to the delimiter,
+--- note break, keep what lies between the two marks.
+--- code
+mold collect [parse "a-b" [any [m: some [n: "-" break | skip] (keep/only copy/part m n)]]]
+--- result
+{["a" "b"]}
+
+--- id parse/a-rule-that-breaks-does-not-match-overall
+--- origin confirmed against R3 3.22.1
+--- note Because the input is not used up, which is the ordinary rule.
+--- code
+parse "abc" [some ["a" break | skip]]
+--- result
+#(false)

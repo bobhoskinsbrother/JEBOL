@@ -16,5 +16,13 @@ public enum Conclusion {
     /** The deadline passed before the script finished. */
     TIMED_OUT,
     /** The host asked for it to stop. */
-    CANCELLED
+    CANCELLED,
+    /**
+     * The script asked to stop, by calling QUIT. Its value is available.
+     *
+     * <p>Apart from {@link #CANCELLED} on purpose: one is the host
+     * overruling the script, the other is the script finishing early
+     * because it meant to, and a host wants to tell them apart.
+     */
+    QUIT_EARLY
 }

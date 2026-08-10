@@ -1,0 +1,300 @@
+--- title The series natives on every kind of series
+--- about A series is a block, a string or a binary, and a native that
+--- about takes one should take all three. These pin the string and
+--- about binary cases for the mutators, which is where an
+--- about implementation is likeliest to have done blocks and stopped.
+
+--- id series-types/removing-from-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+s: "abc"
+remove s
+s
+--- result
+"bc"
+
+--- id series-types/removing-several-from-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+s: "abc"
+remove/part s 2
+s
+--- result
+"c"
+
+--- id series-types/removing-from-an-empty-string
+--- origin confirmed against R3 3.22.1
+--- note Nothing there to remove, so it is a no-op rather than a
+--- note failure.
+--- code
+s: ""
+remove s
+s
+--- result
+""
+
+--- id series-types/reversing-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+s: "abc"
+reverse s
+--- result
+"cba"
+
+--- id series-types/reversing-an-empty-string
+--- origin confirmed against R3 3.22.1
+--- code
+s: ""
+reverse s
+--- result
+""
+
+--- id series-types/changing-in-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+s: "abc"
+change s "X"
+s
+--- result
+"Xbc"
+
+--- id series-types/poking-a-character-into-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+s: "abc"
+poke s 2 #"X"
+s
+--- result
+"aXc"
+
+--- id series-types/removing-from-a-binary
+--- origin confirmed against R3 3.22.1
+--- code
+b: #{010203}
+remove b
+mold b
+--- result
+"#{0203}"
+
+--- id series-types/reversing-a-binary
+--- origin confirmed against R3 3.22.1
+--- code
+b: #{010203}
+mold reverse b
+--- result
+"#{030201}"
+
+--- id series-types/inserting-into-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+s: "abc"
+insert s "X"
+s
+--- result
+"Xabc"
+
+--- id series-types/appending-to-a-binary
+--- origin confirmed against R3 3.22.1
+--- code
+b: #{0102}
+append b 3
+mold b
+--- result
+"#{010203}"
+
+--- id series-types/inserting-into-a-binary
+--- origin confirmed against R3 3.22.1
+--- code
+b: #{0102}
+insert b 0
+mold b
+--- result
+"#{000102}"
+
+--- id series-types/taking-from-a-binary
+--- origin confirmed against R3 3.22.1
+--- note The octet comes back as a whole number rather than as a
+--- note one-byte binary.
+--- code
+b: #{0102}
+take b
+--- result
+1
+
+--- id series-types/what-taking-leaves-in-a-binary
+--- origin confirmed against R3 3.22.1
+--- code
+b: #{0102}
+take b
+mold b
+--- result
+"#{02}"
+
+--- id series-types/sorting-a-binary
+--- origin confirmed against R3 3.22.1
+--- code
+b: #{030102}
+mold sort b
+--- result
+"#{010203}"
+
+--- id series-types/swapping-inside-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+s: "abc"
+swap s next s
+s
+--- result
+"bac"
+
+--- id series-types/copying-part-of-a-binary
+--- origin confirmed against R3 3.22.1
+--- code
+b: #{010203}
+mold copy/part b 2
+--- result
+"#{0102}"
+
+--- id series-types/taking-the-first-character-and-stepping-on
+--- origin confirmed against R3 3.22.1
+--- code
+s: "abc"
+first+ s
+--- result
+#"a"
+
+--- id series-types/where-that-leaves-the-string
+--- origin confirmed against R3 3.22.1
+--- code
+s: "abc"
+first+ s
+s
+--- result
+"bc"
+
+--- id series-types/appending-a-block-to-a-string-runs-the-items-together
+--- origin confirmed against R3 3.22.1
+--- note Each item is formed and the results are concatenated, with
+--- note nothing between them. Forming the whole block instead puts a
+--- note space between every pair, which is what FORM does and what
+--- note APPEND must not do.
+--- code
+append copy "a" ["x" "y"]
+--- result
+"axy"
+
+--- id series-types/the-block-may-hold-anything
+--- origin confirmed against R3 3.22.1
+--- code
+append copy "a" [1 2]
+--- result
+"a12"
+
+--- id series-types/a-space-in-the-block-is-the-only-space
+--- origin confirmed against R3 3.22.1
+--- note The case that shows the difference: one space in, one space
+--- note out. Rebol's own REJOIN builds strings this way.
+--- code
+append copy "a" [" " b]
+--- result
+"a b"
+
+--- id series-types/appending-an-empty-block-adds-nothing
+--- origin confirmed against R3 3.22.1
+--- code
+append copy "a" []
+--- result
+"a"
+
+--- id series-types/forming-a-block-does-put-spaces-in
+--- origin confirmed against R3 3.22.1
+--- note And this is the contrast: FORM separates, APPEND does not.
+--- code
+form [1 2]
+--- result
+"1 2"
+
+--- id series-types/inserting-a-block-spreads-it
+--- origin confirmed against R3 3.22.1
+--- note The items go in one by one, not the block as one item, which
+--- note is the same way APPEND behaves and the reason /only exists.
+--- code
+b: copy []
+insert b [1 2]
+mold b
+--- result
+"[1 2]"
+
+--- id series-types/inserting-a-block-whole
+--- origin confirmed against R3 3.22.1
+--- code
+c: copy []
+insert/only c [1 2]
+mold c
+--- result
+"[[1 2]]"
+
+--- id series-types/assigning-a-character-through-a-path
+--- origin confirmed against R3 3.22.1
+--- note A string is a series and a path into one names a position, so
+--- note assigning through it replaces that character. Rebol's own
+--- note base-defs.reb rewrites strings this way, having no REPLACE
+--- note that early in the boot.
+--- code
+s: copy "abc"
+s/1: #"X"
+s
+--- result
+"Xbc"
+
+--- id series-types/assigning-through-a-path-from-a-found-position
+--- origin confirmed against R3 3.22.1
+--- note The path is relative to where the series is positioned, not to
+--- note its head.
+--- code
+t: copy "abc"
+p: find t #"b"
+p/1: #"Y"
+t
+--- result
+"aYc"
+
+--- id series-types/assigning-through-a-path-into-a-block
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2]
+b/1: 9
+mold b
+--- result
+"[9 2]"
+
+--- id series-types/changing-a-part-shorter-than-the-replacement
+--- origin confirmed against R3 3.22.1
+--- note /part says how much to take out, and the replacement need not
+--- note be the same length, so the series may grow.
+--- code
+s: copy "abcd"
+change/part s "XY" 1
+s
+--- result
+"XYbcd"
+
+--- id series-types/changing-a-part-longer-than-the-replacement
+--- origin confirmed against R3 3.22.1
+--- note And shrink, which is how Rebol's own base-defs.reb rewrites a
+--- note title string in place.
+--- code
+t: copy "abcd"
+change/part t "X" 3
+t
+--- result
+"Xd"
+
+--- id series-types/changing-a-part-of-a-block
+--- origin confirmed against R3 3.22.1
+--- code
+b: copy [1 2 3]
+change/part b [9] 2
+mold b
+--- result
+"[9 3]"

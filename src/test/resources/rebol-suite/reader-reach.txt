@@ -1,0 +1,36 @@
+# How many assertions the reader can reach in each vendored file.
+#
+# A floor, not a target. SuiteCoverageTest fails if any file drops below
+# its number here, which catches a reader change that quietly loses
+# ground. Raising a number is how an improvement is recorded; the goal is
+# for every one of these to equal the count in the file itself.
+#
+# Numbers went down once, deliberately: 33 assertions moved to
+# rebol-suite-excluded/ because this build of R3 3.22.1 does not pass them
+# either. Anything else that lowers a number is a regression.
+#
+# These are counts of assertions REACHED, not passed. Recompute them only
+# from a run with known-gaps.txt emptied; a normal run skips the gaps and
+# so counts only the passes, which once rewrote char-test.r3 from 4 to 1.
+char-test.r3 4
+compare-test.r3 269
+conditional-test.r3 42
+copy-test.r3 0
+datatype-test.r3 28
+decimal-test.r3 214
+error-test.r3 19
+evaluation-test.r3 417
+func-test.r3 54
+integer-test.r3 184
+lexer-test.r3 450
+load-test.r3 57
+mold-test.r3 84
+money-test.r3 72
+object-test.r3 190
+pair-test.r3 125
+parse-test.r3 373
+protect-test.r3 63
+series-test.r3 947
+tuple-test.r3 77
+typeset-test.r3 20
+word-test.r3 30

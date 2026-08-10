@@ -11,6 +11,8 @@ import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.ParameterKind;
 import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
@@ -71,6 +73,13 @@ final class FunctionSpec {
             if (LOCALS_REFINEMENT.equals(currentRefinement)) {
                 continue;
             }
+            // `return:` says what the function answers, not what it
+            // takes. Counting it as a parameter made every function
+            // carrying one want an argument it never uses. The spec has
+            // always named this kind; the walk did not honour it.
+            if (word.datatype() == Datatype.SET_WORD && word.canonical().equals("return")) {
+                continue;
+            }
             parameters.add(new Parameter(
                     word.spelling(),
                     kindOf(word),
@@ -99,8 +108,8 @@ final class FunctionSpec {
 
     private static ParameterKind kindOf(WordValue word) {
         return switch (word.datatype()) {
-            case LIT_WORD -> ParameterKind.LITERAL;
-            case GET_WORD -> ParameterKind.SOFT_LITERAL;
+            case LIT_WORD -> ParameterKind.SOFT_QUOTED;
+            case GET_WORD -> ParameterKind.HARD_QUOTED;
             default -> ParameterKind.NORMAL;
         };
     }
@@ -110,16 +119,53 @@ final class FunctionSpec {
         if (index + 1 >= items.size() || !(items.get(index + 1) instanceof BlockValue types)) {
             return Set.of();
         }
+        // A `return:` annotation may describe what comes back alongside
+        // the datatypes: `return: [string! "the answer"]`. An ordinary
+        // parameter may not, so the string is allowed here only for that
+        // one word rather than in every type block.
+        boolean describesTheReturn = items.get(index) instanceof WordValue word
+                && word.datatype() == Datatype.SET_WORD
+                && word.canonical().equals("return");
         Set<Datatype> accepted = EnumSet.noneOf(Datatype.class);
         for (Value declared : types.remaining()) {
-            switch (declared) {
+            if (describesTheReturn && declared instanceof StringValue) {
+                continue;
+            }
+            switch (resolveTypeName(declared)) {
                 case DatatypeValue datatype -> accepted.add(datatype.represents());
-                case TypesetValue typeset -> accepted.addAll(typeset.represents().members());
-                default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
+                case TypesetValue typeset -> accepted.addAll(typeset.members());
+                // INVALID_ARG rather than CANNOT_USE: the spec is the
+                // argument being refused, not an operation the value
+                // does not support.
+                default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                         "a type block holds datatypes, not "
                                 + declared.datatype().literalSpelling());
             }
         }
         return accepted;
+    }
+
+    /**
+     * The datatype or typeset a type-block entry names.
+     *
+     * <p>A type block holds words. {@code integer!} is a word the system
+     * context binds to a datatype, and the reader hands it over as written,
+     * so the name is resolved here. This used to receive datatypes directly
+     * because the reader made them, which is not what a real REBOL does.
+     */
+    private static Value resolveTypeName(Value declared) {
+        if (!(declared instanceof WordValue named) || !named.spelling().endsWith("!")) {
+            return declared;
+        }
+        String withoutMark = named.spelling().substring(0, named.spelling().length() - 1);
+        for (Datatype candidate : Datatype.values()) {
+            if (candidate.spelling().equalsIgnoreCase(withoutMark)) {
+                return DatatypeValue.of(candidate);
+            }
+        }
+        return Typeset.named(withoutMark)
+                .map(typeset -> (Value) TypesetValue.of(typeset))
+                .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_USE,
+                        named.spelling() + " names no datatype"));
     }
 }

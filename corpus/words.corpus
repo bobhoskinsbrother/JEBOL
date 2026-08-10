@@ -54,7 +54,7 @@ print
 --- code
 native? :if
 --- result
-true
+#(true)
 
 --- id words/get-word-aliases-a-function
 --- origin REBOL/Core User Guide 2.3 section 5.4
@@ -98,7 +98,7 @@ word: "here"
 unset 'word
 value? 'word
 --- result
-false
+#(false)
 
 --- id words/value-of-set-word
 --- origin adapted from REBOL/Core User Guide 2.3 section 5.6
@@ -106,7 +106,7 @@ false
 word: "here"
 value? 'word
 --- result
-true
+#(true)
 
 --- id words/protected-word-refuses-assignment
 --- origin REBOL/Core User Guide 2.3 section 5.7
@@ -114,7 +114,7 @@ true
 word: "here"
 protect 'word
 word: "there"
---- error script protected-word
+--- error script locked-word
 
 --- id words/unprotect-restores-assignment
 --- origin REBOL/Core User Guide 2.3 section 5.7
@@ -186,3 +186,30 @@ select video 'title
 --- code
 do [age:]
 --- error script need-value
+
+--- id words/a-number-splits-from-a-trailing-angle-bracket
+--- origin confirmed against R3 3.22.1
+--- note A number followed by a run of symbols is two values, not one.
+--- note The bracket is not part of the number and does not begin a tag.
+--- code
+mold load "19-Jan-2010<"
+--- result
+"[19-Jan-2010 <]"
+
+--- id words/a-run-of-symbols-is-a-word
+--- origin confirmed against R3 3.22.1
+--- note Angle brackets cannot appear in a word spelled with letters, yet
+--- note a lexeme made only of symbols is a word whatever it contains.
+--- note That is how <, <= and --> are all legal names.
+--- code
+mold reduce [type? first [<] type? first [<=] type? first [-->]]
+--- result
+"[#(word!) #(word!) #(word!)]"
+
+--- id words/letters-mixed-with-an-angle-bracket-are-refused
+--- origin confirmed against R3 3.22.1
+--- note Not the word a followed by the word <. The number case splits and
+--- note the letter case refuses, so the decision needs the lexeme's type.
+--- code
+load "a<"
+--- error syntax invalid

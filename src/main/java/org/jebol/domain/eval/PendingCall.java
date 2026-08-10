@@ -1,7 +1,9 @@
 package org.jebol.domain.eval;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.jebol.domain.value.ContextSlot;
 import org.jebol.domain.value.FunctionValue;
 import org.jebol.domain.value.NativeValue;
@@ -26,6 +28,17 @@ final class PendingCall {
     private final int needed;
     private final boolean infix;
     private final List<String> refinements;
+
+    /**
+     * Every refinement the path named, granted or not.
+     *
+     * <p>A refinement written as a get-word that turned out to be false
+     * is still named, and its arguments still come out of the block. The
+     * C takes each one and drops it -- {@code if (useArgs) DS_Base[ds] =
+     * *DS_POP; else DS_DROP} -- so what a call consumes depends on what
+     * was written and not on what was granted.
+     */
+    private final List<String> named;
     private final List<Parameter> consuming;
 
     private PendingCall(
@@ -34,17 +47,19 @@ final class PendingCall {
             int needed,
             List<Value> supplied,
             boolean infix,
-            List<String> refinements) {
+            List<String> refinements,
+            List<String> named) {
         this.callee = callee;
         this.slot = slot;
         this.needed = needed;
         this.infix = infix;
         this.refinements = List.copyOf(refinements);
-        this.consuming = consumingParametersOf(callee);
+        this.named = List.copyOf(named);
+        this.consuming = arrivingParametersOf(callee, this.named);
         this.arguments.addAll(supplied);
     }
 
-    private static List<Parameter> consumingParametersOf(Value callee) {
+    private static List<Parameter> declaredParametersOf(Value callee) {
         List<Parameter> declared = switch (callee) {
             case NativeValue built -> built.parameters();
             case FunctionValue function -> function.parameters();
@@ -54,16 +69,48 @@ final class PendingCall {
     }
 
     /**
+     * The parameters in the order their values arrive from the block.
+     *
+     * <p>Which is the order the path wrote its refinements, not the order
+     * the function declares them. A refinement nobody asked for takes no
+     * value at all and is left out entirely, so counting along this list
+     * says what the next value is for.
+     *
+     * <p>Getting this wrong is subtle rather than loud. A quoted parameter
+     * belonging to a refinement written out of order was matched against
+     * whichever parameter sat at that position in the declaration, so
+     * {@code f/two/one "a" x y 1} evaluated X instead of taking it as
+     * written, and failed on a word nobody had set.
+     */
+    private static List<Parameter> arrivingParametersOf(
+            Value callee, List<String> asked) {
+
+        List<Parameter> declared = declaredParametersOf(callee);
+        List<Parameter> arriving = new ArrayList<>(declared.stream()
+                .filter(parameter -> parameter.owningRefinement().isEmpty())
+                .toList());
+        for (String refinement : asked) {
+            declared.stream()
+                    .filter(parameter -> parameter.owningRefinement()
+                            .filter(refinement::equals).isPresent())
+                    .forEach(arriving::add);
+        }
+        return List.copyOf(arriving);
+    }
+
+    /**
      * Whether the argument about to be gathered is taken as written.
      *
      * <p>A literal parameter always is, which is why {@code repeat count 3}
      * works: the counter is a word the loop is about to bind, so looking it
      * up first would fail on a word nobody has set.
      *
-     * <p>A soft-literal parameter is too, unless the caller asked otherwise.
+     * <p>A soft-quoted parameter is too, unless the caller asked otherwise.
      * A paren, a get-word or a get-path at the call site says "evaluate this
      * one after all", which is what makes it soft: the function declares the
-     * default and the caller keeps a way out.
+     * default and the caller keeps a way out. The soft one is the {@code
+     * 'word} sigil, not the {@code :word} one, which is the way round a real
+     * R3 answers and the opposite of how this read until it was asked.
      */
     boolean wantsUnevaluated(Value upcoming) {
         int position = arguments.size();
@@ -71,8 +118,8 @@ final class PendingCall {
             return false;
         }
         return switch (consuming.get(position).kind()) {
-            case LITERAL -> true;
-            case SOFT_LITERAL -> !optsIntoEvaluation(upcoming);
+            case HARD_QUOTED -> true;
+            case SOFT_QUOTED -> !optsIntoEvaluation(upcoming);
             default -> false;
         };
     }
@@ -84,8 +131,9 @@ final class PendingCall {
         };
     }
 
-    static PendingCall prefix(Value callee, List<String> refinements) {
-        return new PendingCall(callee, null, arityOf(callee), List.of(), false, refinements);
+    static PendingCall prefix(Value callee, List<String> refinements, List<String> named) {
+        return new PendingCall(callee, null, arityOf(callee, named),
+                List.of(), false, refinements, named);
     }
 
     /** Which refinements the call site asked for, from a path such as sum/average. */
@@ -98,11 +146,33 @@ final class PendingCall {
      * takes only its right from the block.
      */
     static PendingCall infix(OperatorValue operator, Value leftOperand) {
-        return new PendingCall(operator, null, 2, List.of(leftOperand), true, List.of());
+        return new PendingCall(
+                operator, null, 2, List.of(leftOperand), true, List.of(), List.of());
     }
 
     static PendingCall assignment(ContextSlot slot) {
-        return new PendingCall(null, slot, 1, List.of(), false, List.of());
+        return new PendingCall(null, slot, 1, List.of(), false, List.of(), List.of());
+    }
+
+    /**
+     * Where a set-path puts its value when the place is not a slot.
+     *
+     * <p>A path may name a position in a series as readily as a field in
+     * an object -- `s/1: #"X"` replaces a character -- and a position is
+     * not a context slot. So the target is somewhere a value can be put
+     * rather than a slot, and a slot is one of the things that is.
+     */
+    private java.util.function.Consumer<Value> destination;
+
+    static PendingCall assignmentInto(java.util.function.Consumer<Value> destination) {
+        PendingCall call = new PendingCall(
+                null, null, 1, List.of(), false, List.of(), List.of());
+        call.destination = destination;
+        return call;
+    }
+
+    java.util.function.Consumer<Value> destination() {
+        return destination;
     }
 
     /**
@@ -118,7 +188,24 @@ final class PendingCall {
         return infix;
     }
 
-    private static int arityOf(Value callee) {
+    /**
+     * How many arguments this call takes from the block.
+     *
+     * <p>An argument belonging to a refinement is only taken when that
+     * refinement was asked for, so the count depends on the call site
+     * rather than on the function. The native path has always known
+     * this; the user-function path counted them all, so
+     * `f: func [a /into b] [...]` demanded two arguments from every
+     * caller and Rebol's own COLLECT could not be written.
+     */
+    private static int arityOf(Value callee, List<String> asked) {
+        if (callee instanceof FunctionValue function) {
+            return (int) function.parameters().stream()
+                    .filter(Parameter::consumesAnArgument)
+                    .filter(parameter -> parameter.owningRefinement()
+                            .map(asked::contains).orElse(true))
+                    .count();
+        }
         return switch (callee) {
             case NativeValue built -> built.arity();
             case FunctionValue function -> function.arity();
@@ -143,6 +230,9 @@ final class PendingCall {
      * was null, which is a sum type wearing a disguise.
      */
     boolean isAssignment() {
+        if (destination != null) {
+            return true;
+        }
         return slot != null;
     }
 
@@ -154,7 +244,45 @@ final class PendingCall {
         return slot;
     }
 
+    /**
+     * The gathered arguments, put back into the order the function
+     * declares them.
+     *
+     * <p>They arrive in the order the call site wrote its refinements,
+     * which need not be the order the function declares them: {@code
+     * sort/compare/skip s 1 3} hands over the comparator first and the
+     * record size second, and SORT declares the size first. Every reader
+     * downstream counts along the declared order, so the two are lined up
+     * here rather than in each of them.
+     *
+     * <p>{@code Do_Args} in {@code c-do.c} does the same thing from the
+     * other end. When the path names a refinement that is not the next
+     * one in the spec, it restarts the spec walk at that refinement and
+     * fills its arguments from the stream, under a comment reading
+     * "refinement out of sequence, resequence arg order".
+     */
     List<Value> arguments() {
-        return List.copyOf(arguments);
+        if (arguments.size() != consuming.size()
+                || (named.size() < 2 && named.size() == refinements.size())) {
+            return List.copyOf(arguments);
+        }
+        // CONSUMING is in arrival order and the readers downstream count
+        // along the declared one, so each value is put back beside the
+        // parameter it was gathered for.
+        List<Parameter> declared = declaredParametersOf(callee);
+        List<Value> lined = new ArrayList<>(arguments.size());
+        for (Parameter wanted : declared) {
+            // A parameter belonging to a refinement that was named and
+            // turned down has a value here, and the call must not see
+            // it: the whole point of turning the refinement down is
+            // that the function is called as though it were absent.
+            boolean granted = wanted.owningRefinement()
+                    .map(refinements::contains).orElse(true);
+            int at = consuming.indexOf(wanted);
+            if (granted && at >= 0) {
+                lined.add(arguments.get(at));
+            }
+        }
+        return List.copyOf(lined);
     }
 }

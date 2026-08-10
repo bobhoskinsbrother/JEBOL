@@ -32,6 +32,8 @@ public sealed interface Value permits
         FunctionValue,
         OperatorValue,
         ObjectValue,
+        MapValue,
+        BitsetValue,
         ErrorValue,
         JavaObjectValue {
 
@@ -39,17 +41,12 @@ public sealed interface Value permits
     Datatype datatype();
 
     /**
-     * Whether this value can be used as a condition at all. Only {@code unset!}
-     * cannot: asking whether an absent value is true is a mistake, not a
-     * question with an answer.
-     */
-    default boolean isConditional() {
-        return true;
-    }
-
-    /**
-     * Whether a conditional native treats this value as true. Everything is
-     * true except {@code none} and a false {@code logic}.
+     * Whether a conditional native treats this value as true.
+     *
+     * <p>Everything is true except none and a false logic. That is
+     * {@code IS_FALSE} in Rebol's {@code sys-value.h}, and it never asks
+     * whether a value is unset -- thus an unset is true here, and
+     * `if () [1]` answers 1 rather than failing.
      */
     default boolean isTruthy() {
         return true;

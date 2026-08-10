@@ -8,6 +8,11 @@ import net.jqwik.api.Property;
 import net.jqwik.api.constraints.CharRange;
 import net.jqwik.api.constraints.Size;
 import net.jqwik.api.constraints.StringLength;
+import org.jebol.domain.value.LogicValue;
+import org.jebol.domain.value.Molder;
+import org.jebol.domain.value.NoneValue;
+import org.jebol.domain.value.UnsetValue;
+import org.jebol.domain.value.Value;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -86,8 +91,22 @@ class ReaderNeverThrowsTest {
     @Test
     @DisplayName("construction syntax reads back what MOLD wrote")
     void constructionSyntaxReadsBack() {
-        assertThat(Transcoder.transcode("#[unset!]").succeeded()).isTrue();
-        assertThat(Transcoder.transcode("#[none]").succeeded()).isTrue();
-        assertThat(Transcoder.transcode("#[true]").succeeded()).isTrue();
+        // Asserted as the round trip rather than as three spellings. The
+        // spellings moved from #[none] to #(none) between R3-Alpha and
+        // Rebol 3.x, and a test naming them passed while the property it
+        // was there for had quietly stopped holding.
+        assertThat(readBack(NoneValue.none())).isEqualTo(NoneValue.none());
+        assertThat(readBack(LogicValue.yes())).isEqualTo(LogicValue.yes());
+        assertThat(readBack(LogicValue.no())).isEqualTo(LogicValue.no());
+        assertThat(readBack(UnsetValue.unset())).isEqualTo(UnsetValue.unset());
+    }
+
+    /** A value molded to source and read straight back. */
+    private static Value readBack(Value value) {
+        TranscodeResult reread = Transcoder.transcode(Molder.mold(value));
+        assertThat(reread.succeeded())
+                .as("mold produced %s, which will not read", Molder.mold(value))
+                .isTrue();
+        return reread.values().orElseThrow().first();
     }
 }

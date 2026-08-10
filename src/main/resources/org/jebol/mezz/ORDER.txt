@@ -1,0 +1,72 @@
+# The files of Rebol's own library that JEBOL can load, in the order they
+# must be loaded: a file that defines what another uses comes first.
+#
+# These are Rebol's, not JEBOL's. They are here rather than rewritten
+# because that is what the two-layer design is for -- an implementation
+# that can only be extended in its host language cannot borrow, and this
+# is twenty-five thousand lines worth borrowing from.
+#
+# MezzanineLoadTest measures the whole set against this build and reports
+# what stops the rest. A file joins this list when it loads clean AND
+# BorrowedLibraryTest shows it changes no corpus answer for the worse.
+#
+# base-files.reb and sys-load.reb are both absent, and the pair is the
+# reason this list is judged on the suite and not only on the corpus.
+#
+# base-files.reb defines a LOAD that says of itself "minimal boot
+# version"; sys-load.reb replaces it. Loaded together they leave the
+# corpus untouched -- BorrowedLibraryTest reported zero divergence -- and
+# cost the suite a hundred and fifteen assertions. Zero divergence means
+# the corpus does not cover the difference, not that there is none.
+#
+# So a file joins this list when it loads clean AND the suite count does
+# not fall. The corpus is the faster check and the smaller net.
+#
+# Measured again since, one file at a time, against the suite:
+#
+#   base-files.reb   -115 assertions, and twenty corpus answers with it.
+#                    Its LOAD is the REBOL-level one and wants the whole
+#                    of sys/load-header underneath it.
+#   sys-load.reb     -115, for the same reason: it replaces that LOAD
+#                    with a fuller one that wants the same machinery.
+#   sys-start.reb    no change either way.
+#   codec-image.reb  no change either way.
+#
+# The last two cost nothing and buy nothing measurable, so they stay out
+# until something asks for them.
+#
+# base-defs.reb joined the list only after BINDING was fixed. It generates
+# its six reflector functions inside a USE, hanging each new name off
+# REFLECT's own context; JEBOL bound words to the scope they were bound
+# through rather than the context actually holding them, so all six were
+# defined in the USE scope and vanished with it. See
+# BindingNamesTheHolderTest.
+
+base-constants.reb
+base-defs.reb
+base-series.reb
+base-debug.reb
+mezz-math.reb
+mezz-series.reb
+mezz-date.reb
+mezz-tag.reb
+mezz-colors.reb
+mezz-debug.reb
+mezz-save.reb
+mezz-shell.reb
+sys-base.reb
+sys-codec.reb
+codec-braille.reb
+codec-css.reb
+codec-csv.reb
+codec-gzip.reb
+codec-html-entities.reb
+codec-json.reb
+codec-pkix.reb
+codec-ppk.reb
+codec-quoted-printable.reb
+codec-srt.reb
+codec-ssh-key.reb
+codec-unixtime.reb
+codec-utc-time.reb
+codec-wav.reb

@@ -243,3 +243,744 @@ view layout [
 ]
 --- types
 word word block
+
+# --- Construction syntax ------------------------------------
+#
+# The values with no literal spelling of their own. This is what MOLD
+# produces for them, so it is the syntax that makes them round-trip.
+#
+# REBOL 2 and R3-Alpha wrote these with square brackets, as #[none].
+# Rebol 3.x replaced the form rather than adding to it and now refuses the
+# bracket spelling. JEBOL read only the bracket form until Rebol's own
+# test suite was run against it, which is when seventeen of twenty-two
+# files turned out not to parse at all.
+#
+# Written as LOAD of a string rather than as bare source, so that a
+# reader failure is something the entry can catch and name instead of
+# stopping the whole script before it starts.
+
+--- id loading/construct-none
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+type? load {#(none)}
+--- result
+#(none!)
+
+--- id loading/construct-true
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+type? load {#(true)}
+--- result
+#(logic!)
+
+--- id loading/construct-false-is-not-the-same-value-as-true
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+false = load {#(false)}
+--- result
+#(true)
+
+--- id loading/construct-unset
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The one that cannot be written any other way at all, and the one
+--- note that stopped series-test.r3 on its twenty-sixth line.
+--- code
+type? load {#(unset)}
+--- result
+#(unset!)
+
+--- id loading/construct-naming-a-datatype
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note A datatype value, not an integer. #(integer!) is the datatype
+--- note itself, which is what makes datatypes usable as parse rules and
+--- note as type declarations in a function spec.
+--- code
+type? load {#(integer!)}
+--- result
+#(datatype!)
+
+--- id loading/construct-naming-a-datatype-that-does-not-exist
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note One failure covers both ways a construct can be wrong: a datatype
+--- note that does not exist and a datatype that cannot be built from what
+--- note follows both give malconstruct.
+--- code
+load {#(nonesuch!)}
+--- error syntax malconstruct
+
+--- id loading/construct-building-a-value-from-contents
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The third shape: build a value of the named datatype from what
+--- note follows. This reads as the decimal 1.0 and not as the integer 1,
+--- note which is the whole point of writing it.
+--- code
+type? load {#(decimal! 1)}
+--- result
+#(decimal!)
+
+--- id loading/a-datatype-that-cannot-be-built-that-way
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Not every datatype accepts contents, so the reader has to know
+--- note which do rather than assuming any of them will.
+--- code
+load {#(char! 65)}
+--- error syntax malconstruct
+
+--- id loading/the-square-bracket-form-no-longer-means-a-construct
+--- origin confirmed against R3 3.22.1, diverged from deliberately on the id
+--- requires reader map
+--- note R3-Alpha's spelling for a construct. The brackets were not freed
+--- note up but reused: #[1 2] is a map! in Rebol 3.x, and #[none] is a
+--- note malformed map rather than a malformed construct.
+--- note
+--- note JEBOL diverges on the id, and deliberately. Rebol reads the
+--- note brackets into a block and builds the map afterwards, so it reports
+--- note a script invalid-arg from the building; JEBOL builds the map in
+--- note the reader, so it reports a syntax malconstruct from the reading.
+--- note Both refuse the source. Matching the id exactly would mean moving
+--- note map construction out of the reader, which is a larger change than
+--- note this one entry is worth and is recorded as an open question in
+--- note spec/values.allium instead.
+--- code
+load {#[none]}
+--- error syntax malconstruct
+
+# --- LOAD ---------------------------------------------------
+#
+# Reading source text at run time. Specced from the start and only
+# implemented once Rebol's own suite needed it.
+
+--- id loading/load-a-single-value-gives-that-value
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Not a block wrapping it. This is the boundary that makes LOAD
+--- note awkward to implement and pleasant to use.
+--- code
+type? load "1"
+--- result
+#(integer!)
+
+--- id loading/load-two-values-gives-a-block
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+type? load "1 2"
+--- result
+#(block!)
+
+--- id loading/load-nothing-gives-an-empty-block
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The degenerate case goes the other way: no values is a block, not
+--- note an unset, because there is no single value to unwrap to.
+--- code
+load ""
+--- result
+[]
+
+--- id loading/load-a-block-gives-that-block-not-a-wrapper
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note One value that happens to be a block is still one value.
+--- code
+load "[1 2]"
+--- result
+[1 2]
+
+--- id loading/load-all-always-gives-a-block
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The refinement that turns the unwrapping off, for a caller who
+--- note would rather not test what came back.
+--- code
+type? load/all "1"
+--- result
+#(block!)
+
+# --- Datatype names the reader must know --------------------
+#
+# The reader knows every datatype spelling, whether or not values of that
+# type can be built yet. A name it does not know stops the whole file, and
+# Rebol's own suite showed what that costs: one `make bitset!` on line 394
+# of series-test.r3 hid the other 1,138 assertions behind it.
+#
+# Reading the name is not a claim that the datatype works. A script that
+# tries to make one of these still fails, which is the honest place for it
+# to fail.
+
+--- id loading/a-datatype-name-in-source-is-a-word
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Not a datatype value. `bitset!` in source is an ordinary word that
+--- note happens to be bound to a datatype, which is why `make bitset! ...`
+--- note works without the reader knowing anything about bitsets. Only
+--- note #(bitset!) is the datatype value itself.
+--- code
+type? load {bitset!}
+--- result
+#(word!)
+
+--- id loading/an-unknown-datatype-name-is-also-just-a-word
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The reader does not decide which datatypes exist. Anything ending
+--- note in ! reads as a word and evaluation decides whether it names
+--- note anything, which is why a reader that refuses unknown spellings is
+--- note refusing valid source.
+--- code
+type? load {end!}
+--- result
+#(word!)
+
+--- id loading/a-spelling-that-names-no-datatype-is-a-word-too
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+type? load {nonesuch!}
+--- result
+#(word!)
+
+# --- ref! ---------------------------------------------------
+
+--- id loading/an-at-sign-starts-a-ref
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note A datatype Rebol 3.x added. JEBOL read @bob as a word, which is
+--- note the quiet kind of reader bug: it parses into the wrong thing
+--- note rather than failing.
+--- code
+type? load {@bob}
+--- result
+#(ref!)
+
+--- id loading/a-ref-molds-back-as-it-was-written
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+mold load {@bob}
+--- result
+"@bob"
+
+--- id loading/an-at-sign-on-its-own-is-an-empty-ref
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The degenerate case, and it is a ref rather than an error.
+--- code
+type? load {@}
+--- result
+#(ref!)
+
+--- id loading/a-known-datatype-name-is-a-word-too
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Not only the unknown ones. integer! is a word that the system
+--- note context binds to a datatype, which is why a function spec and a
+--- note parse rule both have to look the word up rather than expect the
+--- note reader to have handed them a datatype.
+--- code
+type? load {integer!}
+--- result
+#(word!)
+
+--- id loading/a-typeset-name-is-a-word-as-well
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+type? load {number!}
+--- result
+#(word!)
+
+--- id loading/the-datatype-value-itself-still-needs-a-construct
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The contrast that makes the rule above mean something.
+--- code
+type? load {#(integer!)}
+--- result
+#(datatype!)
+
+--- id loading/a-datatype-word-evaluates-to-its-datatype
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Which is what makes reading it as a word harmless: the value you
+--- note get by evaluating it is the one the reader used to produce.
+--- code
+datatype? integer!
+--- result
+#(true)
+
+# --- Tags, and the words that look like them ----------------
+
+--- id loading/an-angle-run-holding-a-name-is-a-tag
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+type? load {<a>}
+--- result
+#(tag!)
+
+--- id loading/an-angle-run-of-only-symbols-is-a-word
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Closing with > is not the test. JEBOL used it and made <--> a
+--- note tag, which cost lexer-test.r3 all 444 of its assertions on the
+--- note line that asserts this exact case.
+--- code
+type? load {<-->}
+--- result
+#(word!)
+
+--- id loading/the-not-equal-operator-is-a-word-not-an-empty-tag
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+type? load {<>}
+--- result
+#(word!)
+
+--- id loading/a-comparison-operator-is-a-word
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+type? load {<=}
+--- result
+#(word!)
+
+--- id loading/a-tag-may-hold-digits
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note One non-symbol character is enough to make it a tag.
+--- code
+type? load {<3>}
+--- result
+#(tag!)
+
+--- id loading/a-closing-tag-is-a-tag
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+type? load {</a>}
+--- result
+#(tag!)
+
+# --- Caret escapes ------------------------------------------
+
+--- id loading/a-caret-space-is-a-space
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The escape JEBOL refused. Three characters, not four.
+--- code
+length? "a^ b"
+--- result
+3
+
+# --- Objects in construction syntax -------------------------
+
+--- id loading/a-construct-can-build-an-object
+--- origin confirmed against R3 3.22.1
+--- requires reader object
+--- note The single most valuable construct to read: series-test.r3 and
+--- note object-test.r3 hold 1,725 assertions between them and both stop
+--- note at the first one of these. The block is taken as written and
+--- note never evaluated, because the reader has no context to evaluate in.
+--- code
+type? load {#(object! [a: 1])}
+--- result
+#(object!)
+
+--- id loading/an-object-built-by-a-construct-holds-its-fields
+--- origin confirmed against R3 3.22.1
+--- requires reader object
+--- code
+built: load {#(object! [a: 1])}
+built/a
+--- result
+1
+
+--- id loading/two-objects-built-the-same-way-are-equal
+--- origin confirmed against R3 3.22.1
+--- requires reader object
+--- code
+equal? load {#(object! [a: 1])} load {#(object! [a: 1])}
+--- result
+#(true)
+
+# --- Integers in another base -------------------------------
+
+--- id loading/a-base-two-integer
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Digits before the hash are the base and what follows is the
+--- note number in it. Without this the whole run is an invalid lexeme,
+--- note which cost lexer-test.r3 thirty-five assertions.
+--- code
+transcode/one "2#01"
+--- result
+1
+
+--- id loading/a-base-sixteen-integer
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+transcode/one "16#FF"
+--- result
+255
+
+--- id loading/a-base-ten-integer-is-still-an-integer
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+transcode/one "10#42"
+--- result
+42
+
+--- id loading/a-bare-percent-is-a-word
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note With nothing after it there is no filename, so it is the word the
+--- note modulo operator is bound to. Reading it as an empty file made
+--- note `7 % 0` answer 0 rather than dividing by zero.
+--- code
+type? first [%]
+--- result
+#(word!)
+
+--- id loading/a-percent-with-a-name-after-it-is-a-file
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+type? first [%a]
+--- result
+#(file!)
+
+--- id loading/a-construct-names-a-datatype-that-has-no-values-yet
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The name has to exist even though nothing can be made of it.
+--- note A bare bitset! in source is a word and the reader decides
+--- note nothing about it; #(bitset!) asks for the datatype itself, and
+--- note that is a different question.
+--- code
+type? load {#(bitset!)}
+--- result
+#(datatype!)
+
+--- id loading/a-construct-can-build-a-string
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+load {#(string! "ab")}
+--- result
+"ab"
+
+--- id loading/a-construct-can-build-a-file
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note And the datatype it names is the one it gets, so this is a file
+--- note rather than the string it was built from.
+--- code
+load {#(file! "ab")}
+--- result
+%ab
+
+--- id loading/a-base-two-integer-fills-the-whole-word
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Sixty-four ones is minus one: the digits fill the machine word and
+--- note the top bit is the sign, so this is read unsigned and then taken
+--- note as signed.
+--- code
+transcode/one "2#1111111111111111111111111111111111111111111111111111111111111111"
+--- result
+-1
+
+--- id loading/a-base-eight-integer-fills-the-whole-word-too
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+transcode/one "8#7777777777777777777777"
+--- result
+-1
+
+--- id loading/a-digit-the-base-does-not-have
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Two is not a base-two digit, and the whole lexeme is refused
+--- note rather than the number stopping short.
+--- code
+load "2#12"
+--- error syntax invalid
+
+--- id loading/a-letter-where-base-ten-expects-a-digit
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+load "10#1A2"
+--- error syntax invalid
+
+--- id loading/a-based-integer-too-big-for-the-word
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Past sixty-four bits there is nowhere to put it, so it is a
+--- note syntax error rather than a wrapped number.
+--- code
+load "10#9999999999999999999"
+--- error syntax invalid
+
+--- id loading/base-zero-means-hexadecimal
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Zero is not a base, so it stands for the default one. Refusing it
+--- note cost mold-test.r3 eighteen assertions, and the regression guard
+--- note caught that rather than the count quietly dropping.
+--- code
+0#FF
+--- result
+255
+
+--- id loading/base-zero-fills-the-word-like-any-bit-pattern
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+0#8000000000000000
+--- result
+-9223372036854775808
+
+# --- The control-character escapes --------------------------
+#
+# A caret before a character from @ to _ escapes to that character less
+# sixty-four, which is how the control codes are written. The caret
+# itself is the exception: ^^ is a caret and not thirty.
+#
+# JEBOL handled only the letters, so ^[ was an invalid escape. That one
+# omission is what stopped most of Rebol's own library from loading.
+
+--- id loading/caret-open-bracket-is-escape
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note ESC, and the escape Rebol's own library uses most.
+--- code
+to integer! first "^["
+--- result
+27
+
+--- id loading/caret-at-sign-is-nul
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The bottom of the range.
+--- code
+to integer! first "^@"
+--- result
+0
+
+--- id loading/caret-underscore-is-the-top-of-the-range
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+to integer! first "^_"
+--- result
+31
+
+--- id loading/caret-caret-is-a-caret-not-thirty
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The exception in the middle of the range: a caret has to be able
+--- note to mean itself.
+--- code
+to integer! first "^^"
+--- result
+94
+
+--- id loading/caret-tilde-is-delete
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Outside the range, and its own case.
+--- code
+to integer! first "^~"
+--- result
+127
+
+--- id loading/an-escape-outside-the-control-range-is-the-character-itself
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note There is no such thing as an unknown escape for a character that
+--- note is there: a caret before anything the table does not name gives
+--- note that character back. JEBOL refused these, which is what stopped
+--- note codec-css.reb and others in Rebol's own library.
+--- code
+to integer! first "^="
+--- result
+61
+
+--- id loading/an-escaped-digit-is-that-digit
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+to integer! first "^1"
+--- result
+49
+
+--- id loading/an-escaped-space-is-a-space
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Which the earlier entry for a caret-space said, and this is the
+--- note rule it turns out to be a case of rather than an exception.
+--- code
+to integer! first "^ "
+--- result
+32
+
+--- id loading/molding-the-null-character
+--- origin confirmed against R3 3.22.1
+--- note Control characters mold as a caret and the letter 64 above them,
+--- note so code point 0 is ^@ and 1 is ^A. This is the bottom of that
+--- note range.
+--- code
+mold to char! 0
+--- result
+{#"^^@"}
+
+--- id loading/molding-the-last-control-character
+--- origin confirmed against R3 3.22.1
+--- note 31 is the top of the caret-letter range; 32 is a space and
+--- note molds as itself.
+--- code
+mold to char! 31
+--- result
+{#"^^_"}
+
+--- id loading/molding-the-first-printable-character
+--- origin confirmed against R3 3.22.1
+--- code
+mold to char! 32
+--- result
+{#" "}
+
+--- id loading/molding-the-caret-itself
+--- origin confirmed against R3 3.22.1
+--- note The escape character has to escape itself.
+--- code
+mold to char! 94
+--- result
+{#"^^^^"}
+
+--- id loading/molding-past-the-printable-range
+--- origin confirmed against R3 3.22.1
+--- note 127 is where the caret-letter form stops and the hex form
+--- note starts, and the hex is upper case.
+--- code
+mold to char! 127
+--- result
+{#"^^(7F)"}
+
+--- id loading/converting-a-number-to-a-character
+--- origin confirmed against R3 3.22.1
+--- code
+to char! 65
+--- result
+#"A"
+
+--- id loading/converting-a-string-takes-its-first-character
+--- origin confirmed against R3 3.22.1
+--- note Rather than refusing a string of more than one, which is what
+--- note the name suggests it might do.
+--- code
+to char! "AB"
+--- result
+#"A"
+
+--- id loading/converting-a-decimal-truncates
+--- origin confirmed against R3 3.22.1
+--- code
+to char! 65.9
+--- result
+#"A"
+
+--- id loading/the-lowest-character
+--- origin confirmed against R3 3.22.1
+--- code
+to char! 0
+--- result
+#"^@"
+
+--- id loading/one-below-the-lowest-character-is-refused
+--- origin confirmed against R3 3.22.1
+--- code
+to char! -1
+--- error access invalid-char
+
+--- id loading/one-past-the-highest-character-is-refused
+--- origin confirmed against R3 3.22.1
+--- note The top of Unicode, so the boundary is where the code points
+--- note run out rather than anywhere REBOL chose. The failure is an
+--- note ACCESS error rather than a script one, which is not where you
+--- note would look for it.
+--- code
+to char! 1114112
+--- error access invalid-char
+
+--- id loading/converting-nothing-to-a-character-is-refused
+--- origin confirmed against R3 3.22.1
+--- code
+to char! none
+--- error script bad-make-arg
+
+--- id loading/molding-the-code-point-that-would-clash-with-the-caret
+--- origin confirmed against R3 3.22.1
+--- note 30 is the one hole in the caret-letter range. 30 plus 64 is the
+--- note caret itself, so ^^ would read back as a caret rather than as
+--- note 30, and R3 writes the hex form instead. Every other code point
+--- note below 32 except tab and newline takes the letter.
+--- code
+mold to char! 30
+--- result
+{#"^^(1E)"}
+
+--- id loading/molding-the-code-point-either-side-of-that-hole
+--- origin confirmed against R3 3.22.1
+--- code
+mold to char! 29
+--- result
+{#"^^]"}
+
+--- id loading/a-scheme-with-nothing-after-it-is-a-url
+--- origin confirmed against R3 3.22.1
+--- note A colon makes a set-word only when nothing follows it. Here
+--- note the slashes follow, so the whole lexeme is a url.
+--- code
+type? first [tls://]
+--- result
+#(url!)
+
+--- id loading/a-url-may-end-in-a-colon
+--- origin confirmed against R3 3.22.1
+--- note And a trailing colon does not turn it back into a set-word.
+--- note Rebol's own TLS scheme is written `tls://:` and this one
+--- note character stopped fifty-three of its definitions loading.
+--- code
+mold first [tls://:]
+--- result
+"tls://:"
+
+--- id loading/a-colon-with-nothing-after-it-is-a-set-word
+--- origin confirmed against R3 3.22.1
+--- note The boundary the other way.
+--- code
+type? first [a:]
+--- result
+#(set-word!)
+
+--- id loading/a-scheme-with-no-slashes-is-still-a-url
+--- origin confirmed against R3 3.22.1
+--- code
+type? first [mailto:x]
+--- result
+#(url!)

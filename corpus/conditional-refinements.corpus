@@ -1,0 +1,38 @@
+--- title Applying a refinement only if a word says so
+--- about `insert/:only` takes the refinement when ONLY is true and
+--- about leaves it off when ONLY is false or none. Without it a
+--- about function that passes its own refinements on has to branch,
+--- about writing the call twice. Rebol's own COLLECT uses it, and so
+--- about does much of the rest of its library.
+
+--- id conditional-refinements/applied-when-the-word-is-true
+--- origin confirmed against R3 3.22.1
+--- code
+b: copy []
+only: true
+insert/:only b [1 2]
+mold b
+--- result
+"[[1 2]]"
+
+--- id conditional-refinements/left-off-when-the-word-is-false
+--- origin confirmed against R3 3.22.1
+--- code
+c: copy []
+only: false
+insert/:only c [1 2]
+mold c
+--- result
+"[1 2]"
+
+--- id conditional-refinements/left-off-when-the-word-is-nothing
+--- origin confirmed against R3 3.22.1
+--- note Which is the case that matters: an unasked refinement arrives
+--- note as none, and passing it straight on has to mean "not asked".
+--- code
+d: copy []
+only: none
+insert/:only d [1 2]
+mold d
+--- result
+"[1 2]"

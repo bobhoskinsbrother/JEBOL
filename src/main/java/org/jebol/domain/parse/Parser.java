@@ -1,16 +1,22 @@
 package org.jebol.domain.parse;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import org.jebol.domain.eval.EvaluationFailure;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.Raised;
+import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.ContextSlot;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.LogicValue;
+import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
@@ -35,20 +41,105 @@ public final class Parser {
     private final Context context;
     private final List<Value> input;
 
+    /**
+     * The series being matched, when there is one to change.
+     *
+     * <p>REMOVE takes what it matched out of the input, so the parser needs
+     * the series and not only a snapshot of its items. Null when the caller
+     * handed over a plain list, in which case REMOVE has nothing to shorten.
+     */
+    private final BlockValue source;
+
+    /**
+     * What kind of thing this parse was given.
+     *
+     * <p>Kept apart from {@link #source}, which is null for anything that
+     * is not a block. A binary arrives as a single item in a list of one
+     * rather than as a series being walked, so the input's own datatype is
+     * the only record of what is being parsed.
+     */
+    private Datatype parsing = Datatype.BLOCK;
+
     private int position;
 
-    private Parser(Evaluator evaluator, Context context, List<Value> input) {
+    /**
+     * Whether the rules from here on mind case.
+     *
+     * <p>Off until CASE turns it on, because a parse folds case by
+     * default. A mode rather than a refinement so one rule can mind case
+     * in one place and not in another -- and the string walker has had
+     * one all along, which is why the same rule behaved differently
+     * depending on what was being parsed.
+     */
+    private boolean mindingCase;
+
+    /**
+     * The collections COLLECT has open, innermost last.
+     *
+     * <p>COLLECT changes what PARSE answers: ordinarily a parse is a
+     * question with a logic for an answer, and with COLLECT it is an
+     * extraction whose answer is the outermost of these.
+     *
+     * <p>A stack rather than one list, because COLLECT nests and an inner
+     * one's block is kept in the enclosing collection rather than merged
+     * into it: {@code [collect [collect [collect []]]]} answers
+     * {@code [[[]]]}. One flat list cannot express that.
+     */
+    private final Deque<List<Value>> collecting = new ArrayDeque<>();
+
+    /** The outermost collection, once the walk is over. */
+    private List<Value> gathered;
+
+    private Parser(Evaluator evaluator, Context context, List<Value> input,
+            BlockValue source) {
         this.evaluator = evaluator;
         this.context = context;
-        this.input = input;
+        this.input = new ArrayList<>(input);
+        this.source = source;
     }
 
     /** Whether the whole of the input matches the whole of the rule. */
     public static boolean matches(
             Evaluator evaluator, Context context, List<Value> input, BlockValue rule) {
 
-        Parser parser = new Parser(evaluator, context, input);
+        Parser parser = new Parser(evaluator, context, input, null);
         return parser.matchSequence(rule.remaining()) && parser.atEnd();
+    }
+
+    /**
+     * What a parse answered: a logic, or the block COLLECT gathered.
+     *
+     * <p>Leftover input is not a failure once COLLECT is involved, because
+     * the question is no longer whether the rule accounted for all of it.
+     */
+    public static Value answer(
+            Evaluator evaluator, Context context, Value input, BlockValue rule) {
+        return answer(evaluator, context, input, rule, false);
+    }
+
+    /**
+     * The same, with case either minded from the start or not.
+     *
+     * <p>`if (IS_BINARY(item) || (parse->flags & PF_CASED)) parse->flags
+     * |= PF_CASE` in the C: /CASE sets the mode the CASE and NO-CASE rule
+     * words switch between, thus it needs no machinery of its own. It was
+     * reaching the string walker and not this one, so `parse/case [a]
+     * ['A]` folded case and matched.
+     */
+    public static Value answer(
+            Evaluator evaluator, Context context, Value input, BlockValue rule,
+            boolean mindingCase) {
+
+        BlockValue source = input instanceof BlockValue block ? block : null;
+        Parser parser = new Parser(evaluator, context,
+                source != null ? source.remaining() : List.of(input), source);
+        parser.parsing = input.datatype();
+        parser.mindingCase = mindingCase;
+        boolean matched = parser.matchSequence(rule.remaining());
+        if (parser.gathered != null) {
+            return BlockValue.block(parser.gathered);
+        }
+        return LogicValue.of(matched && parser.atEnd());
     }
 
     private boolean atEnd() {
@@ -93,6 +184,31 @@ public final class Parser {
     private static final int NO_MATCH = -1;
 
     /**
+     * Moves back to a place a set-word recorded, if it named one.
+     *
+     * <p>A mark from a different series, or from before this parse began,
+     * is not a place this rule can reach. Answering no match rather than
+     * moving keeps the rule honest instead of leaving the position
+     * somewhere the walker cannot read.
+     */
+    private int seekToMark(WordValue back) {
+        Context holder = back.isBound() ? back.binding() : context;
+        if (!holder.knows(back.canonical())
+                || !(holder.slotFor(back.canonical()).value() instanceof BlockValue marked)) {
+            return NO_MATCH;
+        }
+        if (source == null || !marked.sharesStorageWith(source)) {
+            return NO_MATCH;
+        }
+        int sought = marked.index() - source.index();
+        if (sought < 0 || sought > input.size()) {
+            return NO_MATCH;
+        }
+        position = sought;
+        return 1;
+    }
+
+    /**
      * Matches the rule item at {@code at}, and says how many rule items it
      * used up. A keyword such as {@code some} uses two: itself and what it
      * applies to.
@@ -100,6 +216,22 @@ public final class Parser {
     private int matchOne(List<Value> rules, int at) {
         Value rule = rules.get(at);
 
+        if (rule instanceof IntegerValue) {
+            return matchCountedRule(rules, at);
+        }
+        // A set-word marks where the parse has reached and consumes
+        // nothing; a get-word seeks back to what one recorded. The string
+        // walker had both and this one had neither, so `p:` was taken as
+        // a value to match and failed against whatever was there.
+        if (rule instanceof WordValue mark && mark.datatype() == Datatype.SET_WORD) {
+            assign(mark, source == null
+                    ? BlockValue.block(input.subList(position, input.size()))
+                    : source.atIndex(source.index() + position));
+            return 1;
+        }
+        if (rule instanceof WordValue back && back.datatype() == Datatype.GET_WORD) {
+            return seekToMark(back);
+        }
         if (rule instanceof WordValue word && word.datatype() == Datatype.WORD) {
             Integer consumed = matchKeyword(word.canonical(), rules, at);
             if (consumed != null) {
@@ -110,12 +242,102 @@ public final class Parser {
         return matchValue(rule) ? 1 : NO_MATCH;
     }
 
+    /**
+     * An integer in a rule is a repeat count, never a value to match.
+     *
+     * <p>This is the difference between the two languages that catches
+     * people, and it caught this corpus: {@code [any 1]} is not "any number
+     * of ones", it is ANY applied once with nothing left for it to repeat,
+     * and it raises. One integer is an exact count and two are an inclusive
+     * range, so {@code [2 3 integer!]} matches two or three of them.
+     */
+    private int matchCountedRule(List<Value> rules, int at) {
+        long least = ((IntegerValue) rules.get(at)).magnitude();
+        int countItems = 1;
+        long most = least;
+
+        if (at + 1 < rules.size() && rules.get(at + 1) instanceof IntegerValue upper) {
+            most = upper.magnitude();
+            countItems = 2;
+        }
+        if (at + countItems >= rules.size()) {
+            throw Raised.of(EvaluationFailure.PARSE_END,
+                    "a repeat count has no rule after it to repeat");
+        }
+
+        int matched = 0;
+        while (matched < most) {
+            int before = position;
+            // No no-progress guard here, unlike ANY and SOME. The count
+            // bounds this loop already, so it cannot run for ever, and
+            // stopping early on a round that consumed nothing loses rounds
+            // that were explicitly asked for: `collect 2 [collect [] (...)
+            // keep (...)]` must run both although neither round moves.
+            if (matchOne(rules, at + countItems) == NO_MATCH) {
+                position = before;
+                break;
+            }
+            matched++;
+        }
+        return matched >= least ? countItems + ruleSpan(rules, at + countItems) : NO_MATCH;
+    }
+
+    /**
+     * How many rule items the rule starting at {@code at} occupies, without
+     * matching anything.
+     *
+     * <p>Needed because a rule that matched nothing still has to be stepped
+     * over. {@code [any integer!]} against empty input matches, and the walk
+     * then has to know that ANY and its rule were two items rather than one.
+     */
+    private static int ruleSpan(List<Value> rules, int at) {
+        if (at >= rules.size()) {
+            return 1;
+        }
+        if (rules.get(at) instanceof IntegerValue) {
+            int counts = at + 1 < rules.size() && rules.get(at + 1) instanceof IntegerValue ? 2 : 1;
+            return counts + ruleSpan(rules, at + counts);
+        }
+        if (rules.get(at) instanceof WordValue word && word.datatype() == Datatype.WORD) {
+            // COLLECT may be followed by SET, INTO or AFTER and a word
+            // before its rule, and then it occupies two more items than
+            // the plain form. Measuring it as two left the walk resuming
+            // on the word and trying to match it as a rule, which is why
+            // `collect into a [...]` collected nothing at all.
+            if (word.canonical().equals("collect")
+                    && at + 2 < rules.size()
+                    && rules.get(at + 1) instanceof WordValue keyword
+                    && keyword.datatype() == Datatype.WORD
+                    && java.util.Set.of("set", "into", "after").contains(keyword.canonical())
+                    && rules.get(at + 2) instanceof WordValue) {
+                return 3 + ruleSpan(rules, at + 3);
+            }
+            return switch (word.canonical()) {
+                case "any", "some", "opt", "to", "thru", "into", "collect", "keep",
+                     "and", "ahead", "remove", "if", "insert", "while" ->
+                        1 + ruleSpan(rules, at + 1);
+                // CHANGE takes a rule and then the value to put in its
+                // place, so it spans both.
+                case "quote" -> 2;
+                case "set", "copy", "change" -> 2 + ruleSpan(rules, at + 2);
+                default -> 1;
+            };
+        }
+        return 1;
+    }
+
     /** The keywords, or null when the word is not one. */
     private Integer matchKeyword(String keyword, List<Value> rules, int at) {
         return switch (keyword) {
             case "end" -> atEnd() ? 1 : NO_MATCH;
             case "skip" -> advanceOne() ? 1 : NO_MATCH;
-            case "any" -> repeat(rules, at, 0);
+            // WHILE is ANY under another name, and every keyword the two
+            // parsers share must be in both. Five were in one and not the
+            // other, which made a rule that worked on a string fail on a
+            // block and the reverse.
+            case "any", "while" -> repeat(rules, at, 0);
+            case "case" -> setCaseMode(true);
+            case "no-case" -> setCaseMode(false);
             case "some" -> repeat(rules, at, 1);
             case "opt" -> optional(rules, at);
             case "to" -> seek(rules, at, false);
@@ -123,8 +345,358 @@ public final class Parser {
             case "into" -> into(rules, at);
             case "set" -> capture(rules, at, false);
             case "copy" -> capture(rules, at, true);
+            case "collect" -> collect(rules, at);
+            case "keep" -> keep(rules, at);
+            // `case SYM_QUOTE` in the C: the next rule item is a value
+            // to match rather than a rule to run, and a paren there is
+            // evaluated first. It is how a rule matches a word that would
+            // otherwise name a rule.
+            case "quote" -> quoted(rules, at);
+            case "and", "ahead" -> lookahead(rules, at);
+            case "if" -> guard(rules, at);
+            case "remove" -> removeMatched(rules, at);
+            case "change" -> changeMatched(rules, at);
+            case "insert" -> insertValue(rules, at);
             default -> null;
         };
+    }
+
+    /**
+     * AHEAD, spelled AND as well: match the rule after it, then put the
+     * position back.
+     *
+     * <p>How a rule asks what comes next without taking it, so
+     * {@code [ahead #"a" skip]} matches an "a" twice over: once to look
+     * and once to consume.
+     */
+    private int lookahead(List<Value> rules, int at) {
+        following(rules, at, "ahead");
+        int before = position;
+        boolean matched = matchOne(rules, at + 1) != NO_MATCH;
+        position = before;
+        return matched ? 1 + ruleSpan(rules, at + 1) : NO_MATCH;
+    }
+
+    /**
+     * CHANGE: match the rule after it and put a value where the match was.
+     *
+     * <p>REMOVE and an insertion in one step. The replacement is one value
+     * however many items the rule matched, and a paren replacement is
+     * evaluated at the moment the change happens rather than when the rule
+     * was written. That is what makes it useful with SET, where the paren
+     * reads a word the very match being replaced has just set.
+     */
+    private int changeMatched(List<Value> rules, int at) {
+        Value rule = following(rules, at, "change");
+        // ONLY belongs before the replacement and not before the rule.
+        // `change only ['a 'b] [z p]` reads as a rule called only, which
+        // is no rule at all, and a real R3 says so.
+        if (rule instanceof WordValue misplaced && misplaced.datatype() == Datatype.WORD
+                && misplaced.canonical().equals("only")) {
+            throw Raised.of(EvaluationFailure.PARSE_RULE,
+                    "only says how to put the replacement in, so it goes "
+                            + "before the replacement and not before the rule");
+        }
+        int replacementAt = at + 1 + ruleSpan(rules, at + 1);
+        if (replacementAt >= rules.size()) {
+            throw Raised.of(EvaluationFailure.PARSE_END,
+                    "change needs a value to put where the match was");
+        }
+        int before = position;
+        if (matchOne(rules, at + 1) == NO_MATCH) {
+            position = before;
+            return NO_MATCH;
+        }
+        // ONLY here means put the block in whole. Without it a block
+        // replacement is spread, so `change some word! [z p]` leaves two
+        // words where the match was and not one block holding them.
+        int lastRuleAt = replacementAt;
+        boolean wholeBlock = false;
+        if (rules.get(replacementAt) instanceof WordValue modifier
+                && modifier.datatype() == Datatype.WORD
+                && modifier.canonical().equals("only")
+                && replacementAt + 1 < rules.size()) {
+            wholeBlock = true;
+            lastRuleAt = replacementAt + 1;
+        }
+        Value replacement = rules.get(lastRuleAt);
+        if (replacement instanceof BlockValue paren
+                && paren.datatype() == Datatype.PAREN) {
+            replacement = evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
+        }
+        List<Value> putting = !wholeBlock && replacement instanceof BlockValue spread
+                && spread.datatype() == Datatype.BLOCK
+                ? spread.remaining()
+                : List.of(replacement);
+        for (int taken = position; taken > before; taken--) {
+            input.remove(taken - 1);
+            if (source != null) {
+                source.storage().removeAt(source.index() + taken - 1);
+            }
+        }
+        for (int added = putting.size(); added > 0; added--) {
+            input.add(before, putting.get(added - 1));
+            if (source != null) {
+                source.storage().insertAt(source.index() + before, putting.get(added - 1));
+            }
+        }
+        position = before + putting.size();
+        return lastRuleAt + 1 - at;
+    }
+
+    /**
+     * INSERT: put a value in at the position, consuming nothing.
+     *
+     * <p>The position ends up after what was inserted, which is what stops
+     * an INSERT inside a repeat from running forever.
+     */
+    private int insertValue(List<Value> rules, int at) {
+        following(rules, at, "insert");
+        Value added = rules.get(at + 1);
+        if (added instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
+            added = evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
+        }
+        input.add(position, added);
+        if (source != null) {
+            source.storage().insertAt(source.index() + position, added);
+        }
+        position++;
+        return 2;
+    }
+
+    /**
+     * REMOVE: match the rule after it and take what matched out of the
+     * input, so the series is shorter afterwards.
+     */
+    private int removeMatched(List<Value> rules, int at) {
+        following(rules, at, "remove");
+        int before = position;
+        if (matchOne(rules, at + 1) == NO_MATCH) {
+            position = before;
+            return NO_MATCH;
+        }
+        for (int taken = position; taken > before; taken--) {
+            input.remove(taken - 1);
+            if (source != null) {
+                source.storage().removeAt(source.index() + taken - 1);
+            }
+        }
+        position = before;
+        return 1 + ruleSpan(rules, at + 1);
+    }
+
+    /**
+     * IF: a guard. The rule matched, and this decides whether that counts.
+     *
+     * <p>Without it a rule cannot depend on what it has just captured, so
+     * {@code [set v integer! if (even? v)]} would have no way to reject the
+     * odd ones.
+     */
+    private int guard(List<Value> rules, int at) {
+        Value condition = following(rules, at, "if");
+        if (!(condition instanceof BlockValue paren)
+                || paren.datatype() != Datatype.PAREN) {
+            return NO_MATCH;
+        }
+        return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context).isTruthy()
+                ? 2
+                : NO_MATCH;
+    }
+
+    /**
+     * Refuses a COLLECT INTO target that cannot hold what this parse yields.
+     *
+     * <p>Parsing a block yields values, so the target has to be somewhere
+     * values go: a block, a paren or a hash. A string cannot hold them and
+     * neither can a number, and left unchecked the delivery quietly did
+     * nothing -- so a rule collecting into the wrong kind of thing looked
+     * like it worked and the target was simply never touched.
+     */
+    private void refuseWrongIntoTarget(Value target) {
+        Datatype kind = target.datatype();
+        boolean holdsWhatWeParse = kind == Datatype.BINARY && parsing == Datatype.BINARY;
+        if (!holdsWhatWeParse
+                && kind != Datatype.BLOCK && kind != Datatype.PAREN && kind != Datatype.HASH) {
+            throw Raised.of(EvaluationFailure.PARSE_INTO_TYPE,
+                    "a " + kind.literalSpelling() + " cannot hold what this parse yields");
+        }
+    }
+
+    /**
+     * Runs the rule that follows, gathering whatever KEEP matches.
+     *
+     * <p>The block it gathers is kept in the enclosing collection when
+     * there is one, and becomes the parse's answer when there is not.
+     */
+    private int collect(List<Value> rules, int at) {
+        Value next = following(rules, at, "collect");
+
+        // COLLECT SET word [...] puts the collection in the word instead
+        // of answering it, so the parse goes back to answering whether it
+        // matched -- full-consumption rule and all, which a bare COLLECT
+        // suspends.
+        WordValue into = null;
+        WordValue insertInto = null;
+        WordValue appendTo = null;
+        int ruleAt = at + 1;
+        if (next instanceof WordValue keyword && keyword.datatype() == Datatype.WORD
+                && at + 2 < rules.size()
+                && rules.get(at + 2) instanceof WordValue name) {
+            if (keyword.canonical().equals("set")) {
+                into = name;
+                ruleAt = at + 3;
+            } else if (keyword.canonical().equals("into")) {
+                // INTO an existing series rather than a fresh one, at its
+                // position, so what was already there is pushed along.
+                insertInto = name;
+                ruleAt = at + 3;
+            } else if (keyword.canonical().equals("after")) {
+                // AFTER is the counterpart: past what is already there
+                // rather than in front of it.
+                appendTo = name;
+                ruleAt = at + 3;
+            }
+        }
+        if (ruleAt >= rules.size()) {
+            throw Raised.of(EvaluationFailure.PARSE_END,
+                    "collect has no rule after it to apply to");
+        }
+
+        collecting.push(new ArrayList<>());
+        int consumed = matchOne(rules, ruleAt);
+        List<Value> mine = collecting.pop();
+
+        // The collection is handed over whether or not the rule matched.
+        // Matching backtracks and collecting does not, so a COLLECT whose
+        // rule fails still leaves its block behind:
+        // `parse [] [collect [collect [keep 2 skip]]]` answers [[]], and
+        // a SOME that attempts one round too many leaves a trailing empty
+        // block for the round that failed. Discarding it here is what made
+        // sixty-five of Rebol's own COLLECT assertions disagree.
+        if (appendTo != null) {
+            refuseWrongIntoTarget(valueOf(appendTo));
+            if (valueOf(appendTo) instanceof BlockValue existing) {
+                mine.forEach(gathered -> existing.storage().insertAt(
+                        existing.storageLength() + 1, gathered));
+            }
+        } else if (insertInto != null) {
+            Value target = valueOf(insertInto);
+            refuseWrongIntoTarget(target);
+            if (target instanceof BlockValue existing) {
+                for (int added = mine.size(); added > 0; added--) {
+                    existing.storage().insertAt(existing.index(), mine.get(added - 1));
+                }
+            }
+        } else if (into != null) {
+            assign(into, BlockValue.block(mine));
+        } else if (!collecting.isEmpty()) {
+            collecting.peek().add(BlockValue.block(mine));
+        } else if (gathered == null) {
+            // The first COLLECT establishes what the parse answers.
+            gathered = mine;
+        } else {
+            // Any after it add their block to that rather than replacing
+            // it or starting a list of their own, so two collects answer
+            // [1 [2]] and not [[1] [2]].
+            gathered.add(BlockValue.block(mine));
+        }
+        return consumed == NO_MATCH
+                ? NO_MATCH
+                : (ruleAt - at) + ruleSpan(rules, ruleAt);
+    }
+
+    /**
+     * Adds what the rule that follows matched to the collection.
+     *
+     * <p>Four shapes. A paren keeps its value and consumes nothing, so a
+     * collection can hold something computed rather than only something
+     * matched. PICK gathers the matched items one by one instead of
+     * together. COPY keeps the block it captured, however many items that
+     * was. Anything else keeps one item as itself and several as a block.
+     */
+    private int keep(List<Value> rules, int at) {
+        Value kept = following(rules, at, "keep");
+        // KEEP needs somewhere to keep into. Without a COLLECT around it
+        // the value was quietly dropped and the rule went on matching, so
+        // a rule with the COLLECT left off looked like it worked.
+        if (collecting.isEmpty()) {
+            throw Raised.of(EvaluationFailure.PARSE_NO_COLLECT,
+                    "keep has no collect around it");
+        }
+
+        if (kept instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
+            Value produced = evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
+            if (!collecting.isEmpty()) {
+                collecting.peek().add(produced);
+            }
+            return 2;
+        }
+        if (kept instanceof WordValue modifier && modifier.datatype() == Datatype.WORD
+                && modifier.canonical().equals("pick")) {
+            return keepIndividually(rules, at + 2);
+        }
+        if (kept instanceof WordValue capture && capture.datatype() == Datatype.WORD
+                && capture.canonical().equals("copy")) {
+            return keepTheCapture(rules, at + 1);
+        }
+
+        int before = position;
+        if (matchOne(rules, at + 1) == NO_MATCH) {
+            position = before;
+            return NO_MATCH;
+        }
+        if (!collecting.isEmpty()) {
+            // One item is kept as itself and several are kept together as a
+            // block, so a caller can tell one run from two. The count
+            // decides the shape, not the kind of rule: an ANY that matched
+            // once keeps the value.
+            List<Value> matched = input.subList(before, position);
+            if (matched.size() == 1) {
+                collecting.peek().add(matched.getFirst());
+            } else if (!matched.isEmpty()) {
+                collecting.peek().add(BlockValue.block(matched));
+            }
+        }
+        return 1 + ruleSpan(rules, at + 1);
+    }
+
+    /** KEEP PICK: the matched items go in separately, not as a block. */
+    private int keepIndividually(List<Value> rules, int at) {
+        int before = position;
+        if (matchOne(rules, at) == NO_MATCH) {
+            position = before;
+            return NO_MATCH;
+        }
+        if (!collecting.isEmpty()) {
+            collecting.peek().addAll(input.subList(before, position));
+        }
+        return 2 + ruleSpan(rules, at);
+    }
+
+    /**
+     * KEEP COPY: the block COPY captured is what goes in.
+     *
+     * <p>{@code at} is the COPY, so the word it binds is next and the rule
+     * it captures is the one after that. The word is set as well, because
+     * COPY still does its own job inside a KEEP.
+     */
+    private int keepTheCapture(List<Value> rules, int at) {
+        if (at + 2 >= rules.size()) {
+            return NO_MATCH;
+        }
+        int before = position;
+        if (matchOne(rules, at + 2) == NO_MATCH) {
+            position = before;
+            return NO_MATCH;
+        }
+        BlockValue captured = BlockValue.block(input.subList(before, position));
+        if (rules.get(at + 1) instanceof WordValue name) {
+            assign(name, captured);
+        }
+        if (!collecting.isEmpty()) {
+            collecting.peek().add(captured);
+        }
+        return 3 + ruleSpan(rules, at + 2);
     }
 
     private boolean advanceOne() {
@@ -135,27 +707,42 @@ public final class Parser {
         return true;
     }
 
-    /** ANY and SOME: match the following rule until it stops matching. */
+    /**
+     * ANY and SOME: match the following rule until it stops matching.
+     *
+     * <p>The rule that follows can itself be a counted one, which is why
+     * this goes back through {@link #matchOne} rather than matching a
+     * single item. {@code [any 1]} is ANY applied to a count of one with
+     * nothing to count, and raises rather than matching a block of ones.
+     */
     private int repeat(List<Value> rules, int at, int leastNeeded) {
-        Value repeated = following(rules, at, "any or some");
+        following(rules, at, "any or some");
         int matched = 0;
         while (true) {
             int before = position;
-            if (!matchValue(repeated) || position == before) {
+            int wasLong = input.size();
+            // A rule that consumes nothing would repeat for ever, so the
+            // loop stops when nothing moved. REMOVE moves nothing but
+            // shortens the input, which is progress of a different kind and
+            // has to count as progress or `some [remove x | skip]` removes
+            // only the first match.
+            if (matchOne(rules, at + 1) == NO_MATCH
+                    || (position == before && input.size() == wasLong)) {
+                position = before;
                 break;
             }
             matched++;
         }
-        return matched >= leastNeeded ? 2 : NO_MATCH;
+        return matched >= leastNeeded ? 1 + ruleSpan(rules, at + 1) : NO_MATCH;
     }
 
     private int optional(List<Value> rules, int at) {
-        Value optional = following(rules, at, "opt");
+        following(rules, at, "opt");
         int before = position;
-        if (!matchValue(optional)) {
+        if (matchOne(rules, at + 1) == NO_MATCH) {
             position = before;
         }
-        return 2;
+        return 1 + ruleSpan(rules, at + 1);
     }
 
     /**
@@ -229,6 +816,13 @@ public final class Parser {
         return taken.isEmpty() ? org.jebol.domain.value.NoneValue.none() : taken.get(0);
     }
 
+    private Value valueOf(WordValue word) {
+        Context target = word.isBound() ? word.binding() : context;
+        return target.knows(word.canonical())
+                ? target.slotFor(word.canonical()).value()
+                : NoneValue.none();
+    }
+
     private void assign(WordValue word, Value value) {
         Context target = word.isBound() ? word.binding() : context;
         if (!target.knows(word.canonical())) {
@@ -242,7 +836,8 @@ public final class Parser {
 
     private Value following(List<Value> rules, int at, String keyword) {
         if (at + 1 >= rules.size()) {
-            throw Raised.of(EvaluationFailure.CANNOT_USE, keyword + " needs something after it");
+            throw Raised.of(EvaluationFailure.PARSE_END,
+                    keyword + " has no rule after it to apply to");
         }
         return rules.get(at + 1);
     }
@@ -270,19 +865,82 @@ public final class Parser {
             }
             case BlockValue nested when nested.datatype() == Datatype.BLOCK ->
                     matchSequence(nested.remaining());
+            case BitsetValue members -> !atEnd()
+                    && current() instanceof CharacterValue character
+                    && members.holds(character.codepoint())
+                    && advanceOne();
             case DatatypeValue wanted -> matchesDatatype(wanted.represents());
             case TypesetValue wanted -> !atEnd()
-                    && wanted.represents().members().contains(current().datatype())
+                    && wanted.holds(current().datatype())
                     && advanceOne();
+            // `if (IS_WORD(blk) && !Compare_Word(blk, item, ...))` in the
+            // C, under a comment that says "patch to search for word, not
+            // lit". A lit-word in a rule matches a plain word in the
+            // input, thus `parse [a] ['a]` holds.
             case WordValue word when word.datatype() == Datatype.LIT_WORD ->
                     matchesLiteral(word.as(Datatype.WORD));
-            // A plain word inside SOME or TO names a rule, exactly as it does
-            // at the top level. Without this a grammar could not be built out
-            // of named parts, which is most of what PARSE is for.
+            // A plain word inside SOME, TO or a repeat count names a rule,
+            // exactly as it does at the top level. Without this a grammar
+            // could not be built out of named parts, which is most of what
+            // PARSE is for. The two keywords that stand alone have to be
+            // recognised here too, so that `[3 skip]` counts skips rather
+            // than looking for a rule named skip.
             case WordValue word when word.datatype() == Datatype.WORD ->
-                    word.canonical().equals("end") ? atEnd() : matchNamedRule(word);
+                    switch (word.canonical()) {
+                        case "end" -> atEnd();
+                        case "skip" -> advanceOne();
+                        default -> matchNamedRule(word);
+                    };
+            // `case REB_LIT_PATH: if (IS_PATH(blk) && !Cmp_Block(...))`
+            // in the C. A lit-path matches a path, the same way a
+            // lit-word matches a word. Left out, it fell to the block
+            // case and was read as a sub-rule.
+            case BlockValue path when path.datatype() == Datatype.LIT_PATH ->
+                    matchesLiteral(path.as(Datatype.PATH));
             default -> matchesLiteral(rule);
         };
+    }
+
+    /**
+     * QUOTE: the next rule item is a value to match, not a rule.
+     *
+     * <p>`case SYM_QUOTE` in the C. A paren there is evaluated first and
+     * its answer is what gets matched, thus a rule can look for a value
+     * it works out as it goes.
+     */
+    private int quoted(List<Value> rules, int at) {
+        if (at + 1 >= rules.size()) {
+            throw Raised.of(EvaluationFailure.PARSE_END,
+                    "quote has no value after it to match");
+        }
+        Value wanted = rules.get(at + 1);
+        if (wanted instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
+            wanted = evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
+        }
+        return matchesLiteral(wanted) ? 2 : NO_MATCH;
+    }
+
+    /**
+     * Whether two paths name the same thing, item for item.
+     *
+     * <p>Cmp_Block in the C, which walks both and compares each pair.
+     * Case folds for each item unless the parse was told to mind it.
+     */
+    private boolean samePath(BlockValue here, BlockValue wanted) {
+        List<Value> ours = here.remaining();
+        List<Value> theirs = wanted.remaining();
+        if (ours.size() != theirs.size()) {
+            return false;
+        }
+        for (int at = 0; at < ours.size(); at++) {
+            boolean same = mindingCase
+                    ? ours.get(at).equals(theirs.get(at))
+                    : looselyEqual(ours.get(at), theirs.get(at));
+            if (!same) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private boolean matchesDatatype(Datatype wanted) {
@@ -300,11 +958,38 @@ public final class Parser {
         if (wanted instanceof IntegerValue count && !(current() instanceof IntegerValue)) {
             return false;
         }
-        if (!looselyEqual(current(), wanted)) {
+        // A parse folds case unless CASE has been reached, and that holds
+        // for a block parse as much as a string one: `parse ["A"]
+        // [case ["A"]]` minds it and `[no-case ["a"]]` does not.
+        // Cmp_Block in the C compares a path item for item, thus each
+        // word inside it folds case the same way a bare word does.
+        // Comparing the two paths with equals() minded case whatever the
+        // parse had been told.
+        boolean fits = wanted instanceof BlockValue path
+                && path.datatype() == Datatype.PATH
+                && current() instanceof BlockValue here
+                && here.datatype() == Datatype.PATH
+                ? samePath(here, path)
+                : mindingCase
+                        ? current().equals(wanted)
+                        : looselyEqual(current(), wanted);
+        if (!fits) {
             return false;
         }
         position++;
         return true;
+    }
+
+    /**
+     * CASE and NO-CASE: change how the rules after them compare.
+     *
+     * <p>A mode rather than a refinement, which is what lets one rule
+     * mind case in one place and not in another. Consuming nothing, so
+     * they can sit anywhere a rule can.
+     */
+    private int setCaseMode(boolean minding) {
+        mindingCase = minding;
+        return 1;
     }
 
     private static boolean looselyEqual(Value left, Value right) {

@@ -1,0 +1,85 @@
+--- title Finding with refinements
+--- about FIND has nine refinements and they combine, so what is pinned
+--- about here is what each one changes rather than that finding works.
+--- about The two below are the ones whose rule is not guessable.
+
+--- id finding/a-block-needle-is-a-sequence-not-a-value
+--- origin confirmed against R3 3.22.1
+--- note The thing to know before any of the rest. FIND given a block
+--- note looks for that run of items inside the series, so
+--- note `find [1 2 3] [2 3]` succeeds and `find [[1]] [1]` does not --
+--- note the second is asking for a bare 1.
+--- code
+mold find [1 2 3] [2 3]
+--- result
+"[2 3]"
+
+--- id finding/a-block-needle-does-not-match-a-nested-block
+--- origin confirmed against R3 3.22.1
+--- code
+b: reduce [[1] "x"]
+find b [1]
+--- result
+_
+
+--- id finding/only-makes-the-needle-one-value
+--- origin confirmed against R3 3.22.1
+--- note And this is what /only is for: stop reading the block as a run
+--- note and look for the block itself.
+--- code
+b: reduce [[1] "x"]
+index? find/only b [1]
+--- result
+1
+
+--- id finding/equality-takes-the-first-equal-one
+--- origin confirmed against R3 3.22.1
+--- code
+a: [1]
+d: reduce ["x" [1] a]
+index? find/only d [1]
+--- result
+2
+
+--- id finding/identity-passes-over-the-merely-equal
+--- origin confirmed against R3 3.22.1
+--- note /same asks whether it is the same value rather than an equal
+--- note one, so it walks past the block at position 2 and finds the
+--- note one that actually is A.
+--- code
+a: [1]
+d: reduce ["x" [1] a]
+index? find/only/same d a
+--- result
+3
+
+--- id finding/records-only-match-at-a-boundary
+--- origin confirmed against R3 3.22.1
+--- note /skip reads the series as fixed-width records, so a match that
+--- note starts halfway through one does not count. Here the tag sits
+--- note at position 2 of a two-wide record and is missed.
+--- code
+find/skip "a<a>b" <a> 2
+--- result
+_
+
+--- id finding/a-record-boundary-that-does-line-up
+--- origin confirmed against R3 3.22.1
+--- code
+find/skip "aa<a>b" <a> 2
+--- result
+"<a>b"
+
+--- id finding/skipping-through-a-block-of-records
+--- origin confirmed against R3 3.22.1
+--- code
+mold find/skip [1 2 3 4] 3 2
+--- result
+"[3 4]"
+
+--- id finding/a-value-that-is-never-at-a-boundary
+--- origin confirmed against R3 3.22.1
+--- code
+find/skip [1 2 3 4] 2 2
+--- result
+_

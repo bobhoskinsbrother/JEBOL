@@ -268,3 +268,107 @@ survives a browser round trip, which REBOL's own model never had to.
 
 Still undecided: whether VID is reimplemented faithfully or accepted as a
 dialect shape and rendered as idiomatic HTML. See `docs/milestones.md`.
+
+## 10. The target is Rebol 3.22.1, the maintained fork
+
+The corpus began as claims read from the REBOL/Core User Guide. A guide
+describes an implementation and is not one, so every entry was a belief
+nobody had checked. Two tools now check them:
+
+- `scripts/differential.py` runs each corpus entry through `./r3` and
+  reports where the answer differs from the entry.
+- `scripts/audit.py` runs the same expression through `./r3` and through
+  a built JEBOL, for sweeping a feature at its boundaries before any
+  entry exists.
+
+The first sweep found nineteen wrong entries, including nine in PARSE and
+a pair of quoting sigils specified exactly backwards.
+
+**Which REBOL.** This said R3-Alpha for most of the project, and briefly
+said so in writing here, before the dates settled it: `rebolsource/r3`
+last had a commit in **July 2015**, while `Oldes/Rebol3` is worked on
+weekly. A target nobody maintains is a target whose bugs are permanent and
+whose binary will not build on a current machine, which we had already hit
+once. So the target is Rebol 3.22.1, pinned to that version so a new
+release cannot silently redefine what correct means.
+
+The two agree almost everywhere. Across nineteen checked divergences from
+the documentation, exactly one was a real difference between the fork and
+R3-Alpha: PARSE used to take a string, character or NONE as delimiters and
+return the pieces, with `/all` to hold whitespace out of that set. 3.22.1
+removed both and `split` does that job now. Following the fork is also the
+better design, because one name was doing two unrelated things.
+
+R3-Alpha's source stays useful as a reference for **why**, since it is the
+origin of nearly everything the fork still does. It is not the arbiter of
+**what**.
+
+**Read the source before sweeping, not after.** Boundary analysis against
+a black box means guessing where the boundaries are. `to-integer` on a
+string fails in three distinguishable ways, and the third was found by
+chance rather than by design. The branches are all in the C, and
+`src/boot/errors.reb` lists all 158 error ids in one file where JEBOL
+reaches 18. A good deal of REBOL is also written in REBOL, in `src/mezz/`,
+which reads directly as a specification of what those functions do.
+
+The fork also ships `src/tests/units/`: 77 files, 3,290 named tests and
+11,899 assertions, written by the people who maintain the implementation.
+That is a far better source of cases than boundaries we invent. Twenty of
+those files are now imported under `src/test/resources/rebol-suite/` and
+run on every build as `RebolSuiteTest`: 3,721 assertions, none of them
+skipped.
+
+The C is a reference, not a thing to translate. Its `REBVAL` is a tagged
+union, its series are pointer arithmetic, its errors are `setjmp` and its
+memory is a hand-rolled collector; none of that survives the move to the
+JVM, and a transliteration would carry a C runtime's shape into the
+environment this project exists to run well in.
+
+
+**Port from the C, not from the failure report.** Two ways of working
+were tried and they find different things. Working down the failure
+report finds functions that are present and wrong. Working the porting
+list finds functions that are absent, which usually produce no failure at
+all. Only the second is the goal, and the first is how a port gets
+checked.
+
+The method that works, four steps in order: read the whole C function;
+copy its structure into Java, branch for branch; write the tests by
+reading the C again rather than by reading the port; then run Rebol's own
+suite. Step three is the one that is easy to skip and the one that pays.
+Tests written by reading the port only prove that the port agrees with
+itself.
+
+The C carries rules that no amount of probing will show. Four found in a
+single day, each of which had been implemented plausibly and wrongly:
+
+- A tuple keeps a length **and** twelve octets, and the octets past the
+  length are zeros rather than absent. That one fact decides why `1.2.3`
+  equals `1.2.3.0` but is not strictly equal to it, why `length?` never
+  answers below three, and why writing NONE through a path is the only
+  way to shorten one. Modelled as a plain list of three to twelve
+  segments, none of that is reachable.
+- Refinement arguments are read in the order the **path** wrote them, not
+  the order the function declares them, so `sort/compare/skip s 1 3`
+  gives 1 to the comparator. `Do_Args` resequences the specification walk
+  to whichever refinement the path names next, under a comment saying so.
+  Declared order agrees whenever the two happen to match, which is most
+  calls, so the defect hides.
+- A refinement written as `f/:flag` and turned down still takes its
+  arguments out of the block and drops them. It has to: the values are
+  already written down and something must consume them, or everything
+  after the call shifts by one.
+- A REBOL comparator handed to SORT need not behave like one. A plain
+  predicate such as `[a < b]` answers false for a pair either way round,
+  which is a contradiction as far as a sort is concerned. The C's merge
+  takes from the left run whenever the comparison is at or below zero, so
+  that contradiction leaves the order alone; TimSort reads it as a
+  descending run and reverses it. The merge sort is therefore written out
+  rather than handed to the JVM, and the difference shows up only as
+  equal keys coming back shuffled.
+
+**Do not write JEBOL's own answer down as R3's.** Three corpus entries
+and one unit test asserted behaviour that R3 does not have, each citing
+JEBOL's own specification as its origin -- exactly what `corpus/README.md`
+warns against. An entry is worth nothing unless it says where the claim
+came from, and "the implementation does this" is not a source.

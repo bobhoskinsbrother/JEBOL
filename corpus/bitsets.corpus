@@ -1,0 +1,126 @@
+--- title Making a set of characters
+--- about A bitset says which characters are in it, which is what a parse
+--- about rule needs to mean "any of these" without writing them as
+--- about alternatives. TO BITSET! builds one from whatever names the
+--- about characters, and CHARSET is the name most code uses.
+
+--- id bitsets/a-set-from-a-string
+--- origin confirmed against R3 3.22.1
+--- note Each character of the string is a member.
+--- code
+mold to bitset! "abc"
+--- result
+"#(bitset! #{00000000000000000000000070})"
+
+--- id bitsets/a-set-from-a-block-of-characters
+--- origin confirmed against R3 3.22.1
+--- code
+mold to bitset! [#"a" #"b"]
+--- result
+"#(bitset! #{00000000000000000000000060})"
+
+--- id bitsets/a-set-from-a-block-of-code-points
+--- origin confirmed against R3 3.22.1
+--- note Numbers name characters by their code point, which is how a
+--- note set of control characters is written without spelling them.
+--- code
+mold to bitset! [1 2 3]
+--- result
+"#(bitset! #{70})"
+
+--- id bitsets/a-set-from-a-range
+--- origin confirmed against R3 3.22.1
+--- note A dash between two characters means everything between them,
+--- note which is the only way to write a large set at all.
+--- code
+b: to bitset! [#"a" - #"c"]
+find b #"b"
+--- result
+#(true)
+
+--- id bitsets/asking-whether-a-character-is-in-a-set
+--- origin confirmed against R3 3.22.1
+--- note FIND answers whether rather than where, because a bitset has
+--- note no order and no position.
+--- code
+b: charset "abc"
+find b #"a"
+--- result
+#(true)
+
+--- id bitsets/a-character-that-is-not-in-the-set
+--- origin confirmed against R3 3.22.1
+--- code
+b: charset "abc"
+find b #"z"
+--- result
+#(false)
+
+--- id bitsets/two-sets-joined
+--- origin confirmed against R3 3.22.1
+--- note The set operations work on bitsets as well as on blocks, which
+--- note is how a rule builds a character class out of named pieces
+--- note rather than spelling every member.
+--- code
+a: charset "ab"
+b: charset "bc"
+find union a b #"c"
+--- result
+#(true)
+
+--- id bitsets/only-what-two-sets-share
+--- origin confirmed against R3 3.22.1
+--- code
+a: charset "ab"
+b: charset "bc"
+find intersect a b #"a"
+--- result
+#(false)
+
+--- id bitsets/what-the-first-has-and-the-second-does-not
+--- origin confirmed against R3 3.22.1
+--- code
+a: charset "ab"
+b: charset "bc"
+find exclude a b #"a"
+--- result
+#(true)
+
+--- id bitsets/everything-the-set-does-not-hold
+--- origin confirmed against R3 3.22.1
+--- note COMPLEMENT of a set is the set of everything else, which is
+--- note what a rule means by "any character but these".
+--- code
+a: charset "ab"
+find complement a #"a"
+--- result
+#(false)
+
+--- id bitsets/adding-a-character-to-a-set
+--- origin confirmed against R3 3.22.1
+--- note APPEND on a bitset adds members rather than putting something
+--- note at the end, because a bitset has no end to put anything at.
+--- code
+b: charset "a"
+append b #"b"
+find b #"b"
+--- result
+#(true)
+
+--- id bitsets/what-was-already-in-the-set-stays
+--- origin confirmed against R3 3.22.1
+--- code
+b: charset "a"
+append b #"b"
+find b #"a"
+--- result
+#(true)
+
+--- id bitsets/adding-a-whole-string-of-members
+--- origin confirmed against R3 3.22.1
+--- code
+c: charset "a"
+append c "xy"
+find c #"x"
+--- result
+#(true)

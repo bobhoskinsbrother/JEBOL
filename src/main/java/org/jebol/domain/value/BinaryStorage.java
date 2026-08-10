@@ -28,6 +28,37 @@ public final class BinaryStorage {
         return new BinaryStorage(initial);
     }
 
+    /**
+     * Whether this storage refuses modification.
+     *
+     * <p>On the storage rather than on the value, because two series
+     * values sharing storage are two views of one thing and cannot
+     * disagree about whether it can change. PROTECT of either protects
+     * both, which is what makes protection worth anything.
+     */
+    private boolean isProtected;
+
+    /**
+     * Stops a change to protected storage.
+     *
+     * <p>Here rather than in the natives, because every mutation passes
+     * through this class and a check per native is a check that can be
+     * left off the next one.
+     */
+    private void refuseIfProtected() {
+        if (isProtected) {
+            throw new ProtectedFromChange();
+        }
+    }
+
+    public boolean isProtected() {
+        return isProtected;
+    }
+
+    public void protectFromChange(boolean protectedNow) {
+        this.isProtected = protectedNow;
+    }
+
     public int length() {
         return length;
     }
@@ -42,11 +73,41 @@ public final class BinaryStorage {
     }
 
     public void append(int octet) {
+        refuseIfProtected();
         if (length == bytes.length) {
             bytes = Arrays.copyOf(bytes, Math.max(INITIAL_CAPACITY, bytes.length * 2));
         }
         bytes[length] = requireOctet(octet);
         length++;
+    }
+
+    /**
+     * Replaces one octet.
+     *
+     * <p>This storage was append-only, which made a binary the one series
+     * REVERSE and REMOVE could not touch. A binary is a series like any
+     * other and the natives that take one should take it.
+     */
+    public void set(int oneBasedIndex, int octet) {
+        refuseIfProtected();
+        bytes[oneBasedIndex - 1] = (byte) octet;
+    }
+
+    public void insertAt(int oneBasedIndex, int octet) {
+        refuseIfProtected();
+        append(0);
+        System.arraycopy(bytes, oneBasedIndex - 1, bytes, oneBasedIndex,
+                length - oneBasedIndex);
+        bytes[oneBasedIndex - 1] = (byte) octet;
+    }
+
+    public int removeAt(int oneBasedIndex) {
+        refuseIfProtected();
+        int taken = bytes[oneBasedIndex - 1] & 0xFF;
+        System.arraycopy(bytes, oneBasedIndex, bytes, oneBasedIndex - 1,
+                length - oneBasedIndex);
+        length--;
+        return taken;
     }
 
     public byte[] snapshot() {

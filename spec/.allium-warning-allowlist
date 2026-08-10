@@ -16,3 +16,4 @@ Value 'ErrorCategory' is declared but not referenced elsewhere.
 Entity 'BlockStorage' is declared but not referenced elsewhere in this specification.
 Entity 'StringStorage' is declared but not referenced elsewhere in this specification.
 Entity 'BinaryStorage' is declared but not referenced elsewhere in this specification.
+Entity 'MapStorage' is declared but not referenced elsewhere in this specification.

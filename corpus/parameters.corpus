@@ -59,34 +59,59 @@ test
 --- id parameters/a-soft-literal-argument-arrives-as-written
 --- origin REBOL/Core User Guide 2.3 section 9
 --- requires control
---- note A get-word in the spec behaves like a quoted one for an ordinary
---- note word, so a function name arrives without being called.
+--- note An ordinary word arrives as written under either sigil, so a
+--- note function name arrives without being called. This entry passed
+--- note while naming the wrong sigil, because it is the one case where
+--- note both behave alike.
 --- code
-soft: func [:value] [value]
+soft: func ['value] [value]
 soft hello
 --- result
 hello
 
 --- id parameters/a-paren-opts-into-evaluation
---- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- origin adapted from REBOL/Core User Guide 2.3 section 9, corrected against R3 3.22.1
 --- requires control
 --- note This is the whole point of soft rather than hard. The caller wraps
 --- note the argument in a paren to say "evaluate this one after all".
+--- note The soft one is written 'value. It was written :value here until a
+--- note real R3 was asked, which had the two sigils the wrong way round.
 --- code
-soft: func [:value] [value]
+soft: func ['value] [value]
 soft (add 1 2)
 --- result
 3
 
 --- id parameters/a-get-word-opts-into-evaluation
---- origin adapted from REBOL/Core User Guide 2.3 section 9
+--- origin adapted from REBOL/Core User Guide 2.3 section 9, corrected against R3 3.22.1
 --- requires control
 --- code
 answer: 42
-soft: func [:value] [value]
+soft: func ['value] [value]
 soft :answer
 --- result
 42
+
+--- id parameters/a-hard-quoted-paren-is-not-evaluated
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note The other sigil, and the contrast that names them. A :value
+--- note parameter takes the paren itself, so nothing opts in.
+--- code
+hard: func [:value] [value]
+hard (add 1 2)
+--- result
+(add 1 2)
+
+--- id parameters/a-hard-quoted-get-word-is-not-evaluated
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- code
+answer: 42
+hard: func [:value] [value]
+hard :answer
+--- result
+:answer
 
 --- id parameters/a-soft-literal-still-refuses-an-ordinary-word
 --- origin adapted from REBOL/Core User Guide 2.3 section 9
@@ -95,7 +120,7 @@ soft :answer
 --- note of the opt-in forms, the word is not looked up.
 --- code
 answer: 42
-soft: func [:value] [value]
+soft: func ['value] [value]
 soft answer
 --- result
 answer
@@ -125,3 +150,32 @@ sum: func [a b /average] [
 sum/average 123 321
 --- result
 222
+
+--- id parameters/an-unasked-refinements-argument-is-nothing
+--- origin confirmed against R3 3.22.1
+--- note The argument belongs to the refinement, so leaving the
+--- note refinement off leaves the argument out too. It is none rather
+--- note than missing, so the body can read it without asking first.
+--- code
+f: func [a /opt b] [reduce [a b]]
+mold f 1
+--- result
+"[1 _]"
+
+--- id parameters/asking-for-it-supplies-it
+--- origin confirmed against R3 3.22.1
+--- code
+f: func [a /opt b] [reduce [a b]]
+mold f/opt 1 2
+--- result
+"[1 2]"
+
+--- id parameters/a-refinement-with-no-argument-of-its-own
+--- origin confirmed against R3 3.22.1
+--- note Two refinements where only the second takes an argument, so
+--- note the count depends on which were asked for.
+--- code
+g: func [a /x /y c] [reduce [a c]]
+mold g 1
+--- result
+"[1 _]"

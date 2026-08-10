@@ -51,7 +51,8 @@ class CorpusIntegrityTest {
     void capabilityTagsAreKnown() {
         List<String> known = List.of(
                 "op", "output", "series", "control", "object",
-                "clock", "random", "file", "network", "parse", "r2-only");
+                "clock", "random", "file", "network", "parse", "r2-only",
+                "reader", "map", "mutable-strings", "bitset");
 
         assertThat(ENTRIES)
                 .allSatisfy(entry -> assertThat(known)

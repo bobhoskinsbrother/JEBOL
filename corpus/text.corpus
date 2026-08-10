@@ -1,0 +1,135 @@
+--- title Conversion and text shaping
+--- about AS reinterprets a value as a sibling type without copying, and
+--- about the tab and line natives reshape text in place. The boundaries
+--- about pinned here are what AS refuses and what the size refinements
+--- about default to.
+
+--- id text/making-a-pair-from-two-numbers
+--- origin confirmed against R3 3.22.1
+--- code
+mold as-pair 1 2
+--- result
+"1x2"
+
+--- id text/a-pair-from-a-fraction
+--- origin confirmed against R3 3.22.1
+--- code
+mold as-pair 1.5 2
+--- result
+"1.5x2"
+
+--- id text/a-pair-of-zeroes
+--- origin confirmed against R3 3.22.1
+--- code
+mold as-pair 0 0
+--- result
+"0x0"
+
+--- id text/a-pair-needs-numbers
+--- origin confirmed against R3 3.22.1
+--- code
+as-pair "a" 1
+--- error script expect-arg
+
+--- id text/a-number-as-hex
+--- origin confirmed against R3 3.22.1
+--- note Padded to the full width of a whole number, and the answer is
+--- note an issue rather than a string.
+--- code
+mold to-hex 255
+--- result
+"#00000000000000FF"
+
+--- id text/zero-as-hex
+--- origin confirmed against R3 3.22.1
+--- code
+mold to-hex 0
+--- result
+"#0000000000000000"
+
+--- id text/a-negative-as-hex
+--- origin confirmed against R3 3.22.1
+--- note Two's complement rather than a minus sign.
+--- code
+mold to-hex -1
+--- result
+"#FFFFFFFFFFFFFFFF"
+
+--- id text/hex-narrowed-to-a-width
+--- origin confirmed against R3 3.22.1
+--- code
+mold to-hex/size 255 2
+--- result
+"#FF"
+
+--- id text/spaces-become-a-tab
+--- origin confirmed against R3 3.22.1
+--- note Four spaces by default, which is not the eight a terminal
+--- note usually means by a tab.
+--- code
+entab "    a"
+--- result
+"^-a"
+
+--- id text/text-with-no-leading-spaces-is-unchanged
+--- origin confirmed against R3 3.22.1
+--- code
+entab "a"
+--- result
+"a"
+
+--- id text/a-tab-becomes-spaces
+--- origin confirmed against R3 3.22.1
+--- code
+detab "^-a"
+--- result
+"    a"
+
+--- id text/text-with-no-tabs-is-unchanged
+--- origin confirmed against R3 3.22.1
+--- code
+detab "a"
+--- result
+"a"
+
+--- id text/a-narrower-tab-stop
+--- origin confirmed against R3 3.22.1
+--- code
+detab/size "^-a" 2
+--- result
+"  a"
+
+--- id text/dropping-the-carriage-returns
+--- origin confirmed against R3 3.22.1
+--- note DELINE turns the two-character line ending into the one-
+--- note character one, which is what reading a file written elsewhere
+--- note needs.
+--- code
+deline "a^M^/b"
+--- result
+"a^/b"
+
+--- id text/a-block-reinterpreted-as-a-path
+--- origin confirmed against R3 3.22.1
+--- note AS changes how a value is read without copying it. A block and
+--- note a path hold the same thing and differ in how they are written.
+--- code
+b: [a b]
+mold as path! b
+--- result
+"a/b"
+
+--- id text/a-string-as-a-string-is-itself
+--- origin confirmed against R3 3.22.1
+--- code
+as string! "a"
+--- result
+"a"
+
+--- id text/a-block-cannot-be-read-as-a-string
+--- origin confirmed against R3 3.22.1
+--- note The two hold different things, so there is nothing to
+--- note reinterpret. This is where AS stops and TO starts.
+--- code
+as block! "ab"
+--- error script not-same-class

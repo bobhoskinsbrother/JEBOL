@@ -107,7 +107,7 @@ class ReplEndToEndTest {
 
         @Test
         void noneIsFalse() {
-            assertThat(session("if none [\"taken\"]")).contains("== none");
+            assertThat(session("if none [\"taken\"]")).contains("== _");
         }
 
         @Test

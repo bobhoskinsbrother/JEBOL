@@ -221,18 +221,110 @@ to-integer "42"
 --- result
 42
 
---- id library/to-integer-from-something-that-is-not-a-number
---- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- id library/to-integer-from-text-with-spaces-in-it
+--- origin adapted from REBOL/Core User Guide 2.3 section 6, corrected against R3 3.22.1
 --- requires series
+--- note Converting a string to an integer fails in three different ways and
+--- note the text decides which. Whitespace still inside the trimmed string
+--- note is this one.
 --- code
 to-integer "not a number"
---- error script cannot-use
+--- error script invalid-chars
 
---- id library/to-string-from-a-block-runs-them-together
---- origin adapted from REBOL/Core User Guide 2.3 section 6
+--- id library/to-integer-from-digits-with-a-space-between-them
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Digits do not help: it is the space that decides the id.
+--- code
+to-integer "1 2"
+--- error script invalid-chars
+
+--- id library/to-integer-from-text-with-no-spaces-in-it
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note No internal whitespace, so it gets as far as trying to read a
+--- note number and fails there instead.
+--- code
+to-integer "abc"
+--- error script bad-make-arg
+
+--- id library/to-integer-from-digits-followed-by-letters
+--- origin confirmed against R3 3.22.1
 --- requires series
 --- code
+to-integer "12abc"
+--- error script bad-make-arg
+
+--- id library/to-integer-from-an-empty-string
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The degenerate case, and a third id again.
+--- code
+to-integer ""
+--- error script too-short
+
+--- id library/to-integer-from-nothing-but-spaces
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Trimming happens first, so this is empty by the time it is judged.
+--- code
+to-integer "   "
+--- error script too-short
+
+--- id library/to-integer-trims-the-outside
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Whitespace around the number is fine. Only whitespace inside it is
+--- note not, which is the boundary between this and the entries above.
+--- code
+to-integer " 12 "
+--- result
+12
+
+--- id library/to-integer-takes-a-sign
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+to-integer "-5"
+--- result
+-5
+
+--- id library/to-integer-reads-a-quote-as-a-digit-separator
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Not a quirk of the reader: the conversion accepts it too.
+--- code
+to-integer "1'000"
+--- result
+1000
+
+--- id library/to-integer-truncates-a-decimal-string
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Toward zero, and without complaint.
+--- code
+to-integer "12.9"
+--- result
+12
+
+--- id library/to-string-from-a-block-runs-them-together
+--- origin adapted from REBOL/Core User Guide 2.3 section 6, corrected against R3 3.22.1
+--- requires series
+--- note No separator at all. The name was right and the result was wrong:
+--- note putting spaces between them is FORM's job, not this one's.
+--- code
 to-string [1 2 3]
+--- result
+"123"
+
+--- id library/form-puts-spaces-between-a-block-s-values
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The one that does what TO-STRING was assumed to do. The two agree
+--- note on every value that is not a series, which is how they came to be
+--- note conflated.
+--- code
+form [1 2 3]
 --- result
 "1 2 3"
 
@@ -246,7 +338,7 @@ to-string [1 2 3]
 --- code
 reduce [$1.50 = $1.5 $1.50 == $1.5 mold $1.50]
 --- result
-[true true "$1.50"]
+[#(true) #(true) "$1.50"]
 
 --- id library/loose-equality-ignores-case-for-files-and-tags
 --- origin confirmed against R3 3.22.1
@@ -255,11 +347,1452 @@ reduce [$1.50 = $1.5 $1.50 == $1.5 mold $1.50]
 --- code
 reduce [%A.txt = %a.txt <A> = <a> "A" = "a"]
 --- result
-[true true true]
+[#(true) #(true) #(true)]
 
 --- id library/strict-equality-still-minds-case
 --- origin confirmed against R3 3.22.1
 --- code
 reduce ["A" == "a" %A.txt == %a.txt]
 --- result
-[false false]
+[#(false) #(false)]
+
+# --- Natives Rebol's own suite reached for -------------------
+#
+# Chosen by counting what the failing assertions tripped over rather than
+# by guessing. Each line below stood between us and dozens of them.
+
+--- id library/same-compares-identity-not-contents
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Two strings with the same text are equal and not the same: SAME?
+--- note asks whether they are one series, which is the question EQUAL?
+--- note deliberately does not ask.
+--- code
+same? "a" "a"
+--- result
+#(false)
+
+--- id library/same-is-true-for-one-value-twice
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+same? 1 1
+--- result
+#(true)
+
+--- id library/odd-and-even
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+odd? 3
+--- result
+#(true)
+
+--- id library/even-of-an-odd-number
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+even? 3
+--- result
+#(false)
+
+--- id library/even-of-zero
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The boundary: zero is even.
+--- code
+even? 0
+--- result
+#(true)
+
+--- id library/a-plain-word-is-not-a-lit-word
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note FIRST of a block strips nothing, so the word arrives as written.
+--- code
+lit-word? first [x]
+--- result
+#(false)
+
+--- id library/a-lit-word-is-one
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+lit-word? first ['x]
+--- result
+#(true)
+
+--- id library/take-removes-and-answers-the-first-item
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+take [1 2 3]
+--- result
+1
+
+--- id library/take-shortens-what-it-took-from
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The half that matters: TAKE modifies rather than copying.
+--- code
+holder: [1 2 3]
+take holder
+length? holder
+--- result
+2
+
+--- id library/take-from-an-empty-series-is-none
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The degenerate case, and it does not raise.
+--- code
+take []
+--- result
+_
+
+--- id library/ajoin-runs-values-together-into-a-string
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+ajoin ["a" 1]
+--- result
+"a1"
+
+--- id library/object-recognises-an-object
+--- origin confirmed against R3 3.22.1
+--- requires object
+--- code
+object? make object! []
+--- result
+#(true)
+
+--- id library/body-of-gives-a-function-its-body-back
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note Part of what makes a function inspectable rather than opaque.
+--- code
+body-of func [] [1]
+--- result
+[1]
+
+--- id library/transcode-reads-source-into-values
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The reader with no binding step, which is what LOAD adds. Specced
+--- note from the start and exposed only when Rebol's own suite asked for
+--- note it in 179 places.
+--- code
+transcode "1 2"
+--- result
+[1 2]
+
+--- id library/transcode-of-nothing-is-an-empty-block
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- code
+transcode ""
+--- result
+[]
+
+--- id library/transcode-does-not-unwrap-a-single-value
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The boundary against LOAD, which does unwrap it.
+--- code
+transcode "1"
+--- result
+[1]
+
+--- id library/round-goes-half-away-from-zero
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Not to even. A JVM rounds 2.5 to 2 by default and REBOL rounds it
+--- note to 3, which is the kind of difference that shows up in totals long
+--- note after anyone remembers changing it.
+--- code
+round 2.5
+--- result
+3.0
+
+--- id library/round-rounds-a-half-up
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+round 1.5
+--- result
+2.0
+
+--- id library/round-goes-away-from-zero-downward-too
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+round -1.5
+--- result
+-2.0
+
+--- id library/compose-evaluates-only-the-parens
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note How a block of code is built from a template without reducing the
+--- note parts meant to stay as written.
+--- code
+compose [1 (1 + 1) 3]
+--- result
+[1 2 3]
+
+--- id library/compose-leaves-words-alone
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note The half that matters: a word is not looked up.
+--- code
+compose [a (1 + 1)]
+--- result
+[a 2]
+
+--- id library/compose-of-a-block-with-no-parens-is-unchanged
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- code
+compose [1 2 3]
+--- result
+[1 2 3]
+
+# --- Refinements --------------------------------------------
+#
+# A native declares its refinements and is told which arrived, rather than
+# each combination being a separate registration. FIND alone takes nine.
+
+--- id library/find-answers-the-series-from-what-it-found
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Not the value and not an index: the position, so what follows can
+--- note be read from it.
+--- code
+find [1 2 3] 2
+--- result
+[2 3]
+
+--- id library/find-tail-answers-the-position-after-it
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/tail [1 2 3] 2
+--- result
+[3]
+
+--- id library/find-last-searches-from-the-end
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/last [1 2 1] 1
+--- result
+[1]
+
+--- id library/find-what-is-not-there-is-none
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find [1 2 3] 9
+--- result
+_
+
+--- id library/copy-part-takes-a-count
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+copy/part [1 2 3] 2
+--- result
+[1 2]
+
+--- id library/take-part-takes-several
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+take/part [1 2 3] 2
+--- result
+[1 2]
+
+--- id library/take-part-shortens-what-it-took-from
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+holder: [1 2 3]
+take/part holder 2
+holder
+--- result
+[3]
+
+--- id library/transcode-one-reads-a-single-value
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The refinement that made the registration approach untenable: it
+--- note combines with /error, and a pair needed an entry of its own.
+--- code
+transcode/one "1 2"
+--- result
+1
+
+--- id library/to-converts-to-the-datatype-it-is-given
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The general conversion. The to-x spellings are the common ones
+--- note given names; a script that computes which type it wants can only
+--- note use this.
+--- code
+to integer! "12"
+--- result
+12
+
+--- id library/to-string-through-the-general-form
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+to string! 12
+--- result
+"12"
+
+--- id library/to-block-wraps-a-single-value
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+to block! 1
+--- result
+[1]
+
+--- id library/to-word-from-text
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+to word! "a"
+--- result
+a
+
+--- id library/quote-hands-back-its-argument-as-written
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note The paren, not 2. How a value is passed on without being
+--- note evaluated on the way.
+--- code
+quote (1 + 1)
+--- result
+(1 + 1)
+
+--- id library/shift-moves-bits-left
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+shift 1 2
+--- result
+4
+
+--- id library/shift-with-a-negative-count-moves-right
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note One native rather than two, with the sign choosing the direction,
+--- note which is the arrangement FOR uses for its step.
+--- code
+shift 8 -2
+--- result
+2
+
+--- id library/shift-by-nothing-changes-nothing
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+shift 5 0
+--- result
+5
+
+--- id library/construct-builds-an-object-without-evaluating
+--- origin confirmed against R3 3.22.1
+--- requires object
+--- note MAKE OBJECT! evaluates the block; CONSTRUCT does not. For data
+--- note shaped like a spec, where evaluating would be wrong or unsafe.
+--- code
+built: construct [a: 1]
+built/a
+--- result
+1
+
+--- id library/find-in-a-string-searches-for-a-substring
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Not a single character. Comparing item by item is right for a
+--- note block and wrong for a string, and the difference stayed invisible
+--- note for as long as every entry here searched a block.
+--- code
+find "abc" "b"
+--- result
+"bc"
+
+--- id library/find-a-substring-of-more-than-one-character
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find "hello world" "lo w"
+--- result
+"lo world"
+
+--- id library/find-case-minds-case
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Plain FIND folds case, so this is the contrast that shows it.
+--- code
+find/case "ABC" "b"
+--- result
+_
+
+--- id library/find-without-case-folds-it
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find "ABC" "b"
+--- result
+"BC"
+
+--- id library/find-reverse-searches-back-toward-the-head
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note From the position, not from the end. At the tail there is nothing
+--- note ahead, so a forward search would find nothing at all.
+--- code
+find/reverse tail [1 2 1] 1
+--- result
+[1]
+
+--- id library/find-part-does-not-look-past-its-bound
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The 3 is there, and outside the two items /part allows.
+--- code
+find/part [1 2 3] 3 2
+--- result
+_
+
+--- id library/find-part-finds-what-is-inside-its-bound
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/part [1 2 3] 2 2
+--- result
+[2 3]
+
+--- id library/find-only-treats-a-block-as-one-value
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/only [[1]] [1]
+--- result
+[[1]]
+
+--- id library/join-keeps-the-datatype-it-joins-onto
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note A file joined with a string is a file, not a string.
+--- code
+join %a "b"
+--- result
+%ab
+
+--- id library/join-two-strings
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+join "a" "b"
+--- result
+"ab"
+
+--- id library/joining-onto-a-word-gives-a-string
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note A word is not a series, so there is no datatype to keep and the
+--- note answer falls back to a string.
+--- code
+join (quote a) (quote b)
+--- result
+"ab"
+
+--- id library/comparing-blocks-folds-case-all-the-way-down
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Not only at the top level. Folding case for a bare string and
+--- note comparing a nested one strictly is the kind of split nobody
+--- note writes on purpose and nothing catches until a block holds a
+--- note string.
+--- code
+equal? ["a"] ["A"]
+--- result
+#(true)
+
+--- id library/find-a-number-in-a-string
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The needle is formed to text first, so anything can be looked for
+--- note in a string rather than only a string.
+--- code
+find "123" 2
+--- result
+"23"
+
+--- id library/find-a-word-in-a-string
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find "abc" (quote b)
+--- result
+"bc"
+
+--- id library/modulo-by-zero-raises
+--- origin confirmed against R3 3.22.1
+--- requires op
+--- note The % operator divides, so it fails the same way DIVIDE does, in
+--- note the math category rather than the script one.
+--- code
+7 % 0
+--- error math zero-divide
+
+--- id library/protecting-an-object-protects-its-fields
+--- origin confirmed against R3 3.22.1
+--- requires object
+--- note Protecting the word that holds the object and protecting the
+--- note object are different things, and it is the second that stops an
+--- note assignment through a path.
+--- code
+o: make object! [a: 1]
+protect o
+o/a: 0
+--- error script locked-word
+
+--- id library/modulo-of-positives-matches-remainder
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+modulo 7 3
+--- result
+1
+
+--- id library/modulo-of-a-negative-is-never-negative
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Where MODULO and REMAINDER part company: remainder -7 3 is -1 and
+--- note this is 2, so modulo always lands between zero and the divisor.
+--- code
+modulo -7 3
+--- result
+2
+
+--- id library/remainder-of-a-negative-keeps-its-sign
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The contrast that makes the entry above mean something.
+--- code
+remainder -7 3
+--- result
+-1
+
+--- id library/modulo-by-a-negative-divisor
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Still not negative: the divisor's sign does not carry across.
+--- code
+modulo 7 -3
+--- result
+1
+
+--- id library/compose-splices-a-block-a-paren-produced
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note The contents go in, not the block itself. This is what makes
+--- note COMPOSE useful for building a block out of pieces rather than
+--- note only for filling in single values.
+--- code
+compose [a ([1 2]) b]
+--- result
+[a 1 2 b]
+
+--- id library/compose-of-an-empty-block-adds-nothing
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- code
+compose [([])]
+--- result
+[]
+
+--- id library/compose-only-keeps-the-block-whole
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note The refinement that turns the splicing off.
+--- code
+compose/only [([1 2])]
+--- result
+[[1 2]]
+
+--- id library/find-in-none-is-none
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Not an error. Looking in nothing finds nothing, which lets a
+--- note result be passed straight on without testing it first.
+--- code
+find none 1
+--- result
+_
+
+--- id library/select-from-none-is-none
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+select none 1
+--- result
+_
+
+--- id library/sort-folds-case-and-is-stable
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Equal keys keep the order they arrived in, which is what makes a
+--- note second sort on another key a usable way to sort on two.
+--- code
+sort ["b" "A" "a" "B"]
+--- result
+["A" "a" "b" "B"]
+
+--- id library/sort-case-compares-exactly
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Every capital before every small letter, which is the contrast
+--- note that shows the default is folding rather than ordering by code.
+--- code
+sort/case ["b" "A" "a" "B"]
+--- result
+["A" "B" "a" "b"]
+
+--- id library/sort-compare-puts-the-first-one-first-when-true
+--- origin confirmed against R3 3.22.1
+--- requires series control
+--- code
+sort/compare [1 2 3] func [a b] [a > b]
+--- result
+[3 2 1]
+
+--- id library/sort-skip-sorts-records-by-their-first-item
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note A flat block of pairs stays paired.
+--- code
+sort/skip [3 4 1 2] 2
+--- result
+[1 2 3 4]
+
+--- id library/sorting-a-string-orders-its-characters
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+sort "cba"
+--- result
+"abc"
+
+--- id library/take-from-a-string-gives-a-character
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note A string is a series of characters, so taking one gives a
+--- note character rather than a one-character string.
+--- code
+s: "abc"
+take s
+--- result
+#"a"
+
+--- id library/taking-from-a-string-shortens-it
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+s: "abc"
+take s
+s
+--- result
+"bc"
+
+--- id library/take-part-of-a-string-gives-a-string
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Several characters come back as a string, not as a block of them.
+--- code
+s: "123456"
+take/part s 2
+--- result
+"12"
+
+--- id library/take-part-of-more-than-there-is
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Clamped rather than refused.
+--- code
+s: "12"
+take/part s 10
+--- result
+"12"
+
+--- id library/a-negative-take-part-takes-backwards
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note From the position toward the head, so this takes the character
+--- note before where the series is sitting.
+--- code
+s: "123"
+take/part skip s 1 -1
+--- result
+"1"
+
+--- id library/a-negative-take-part-at-the-head-takes-nothing
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The boundary: there is nothing behind the head to take.
+--- code
+s: "123"
+take/part s -1
+--- result
+""
+
+--- id library/find-a-run-of-bytes-in-a-binary
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note A binary is a series of bytes, so finding in one searches for a
+--- note run of them exactly as finding in a string searches for a
+--- note substring.
+--- code
+find #{000102} #{02}
+--- result
+#{02}
+
+--- id library/find-tail-in-a-binary-lands-after-the-run
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/tail #{000102} #{02}
+--- result
+#{}
+
+--- id library/find-last-in-a-binary
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/last #{FF00FF00FF00} #{FF}
+--- result
+#{FF00}
+
+--- id library/find-a-character-in-a-binary-matches-its-byte
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find #{0063} #"c"
+--- result
+#{63}
+
+--- id library/find-what-is-not-in-a-binary
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find #{0001} #{FF}
+--- result
+_
+
+--- id library/forming-a-binary-gives-its-hex-without-the-wrapper
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Which is why a binary can be looked for inside a string: the
+--- note needle is formed first.
+--- code
+form #{F00D}
+--- result
+"F00D"
+
+--- id library/forming-a-tag-keeps-its-brackets
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The odd one in the string family: a tag's delimiters are part of
+--- note its text, where a file's percent and a ref's at-sign are not.
+--- note This is why a tag can be looked for inside a string and match the
+--- note brackets as written.
+--- code
+form <a>
+--- result
+"<a>"
+
+--- id library/forming-a-file-drops-its-percent
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+form %a.txt
+--- result
+"a.txt"
+
+--- id library/forming-a-ref-drops-its-at-sign
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+form @bob
+--- result
+"bob"
+
+--- id library/find-a-tag-inside-a-string
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find "x<a>" <a>
+--- result
+"<a>"
+
+--- id library/find-match-anchors-at-the-position
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Only at the position, and it answers the series from there rather
+--- note than the match, so what follows can be read from it.
+--- code
+find/match "<a>b" <a>
+--- result
+"<a>b"
+
+--- id library/find-match-lands-after-the-match-with-tail
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/match/tail "<a>b" <a>
+--- result
+"b"
+
+--- id library/find-match-that-is-not-at-the-position-is-none
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The boundary that separates /match from a plain FIND: the needle
+--- note is there, and not where /match insists it be.
+--- code
+find/match "x<a>" <a>
+--- result
+_
+
+--- id library/transcode-next-gives-the-value-and-what-is-left
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note Two things in a block: the first value read, and the rest of the
+--- note input as text. That is what lets a caller read a source a value
+--- note at a time without counting characters itself.
+--- code
+transcode/next "1 + 1"
+--- result
+[1 " + 1"]
+
+--- id library/transcode-part-reads-only-so-many-characters
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note A bound on the text, not on the values: three characters of
+--- note "1 23]" is "1 2", which reads as two integers.
+--- code
+transcode/part "1 23]" 3
+--- result
+[1 2]
+
+--- id library/transcode-part-taking-one-more-character
+--- origin confirmed against R3 3.22.1
+--- requires reader
+--- note The fourth character finishes the second number rather than
+--- note starting a third, which is the boundary worth pinning.
+--- code
+transcode/part "1 23]" 4
+--- result
+[1 23]
+
+--- id library/find-any-treats-a-star-as-any-run
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note /any turns the needle into a pattern: a star stands for any run
+--- note of characters, including none.
+--- code
+find/any "abcd" "b*d"
+--- result
+"bcd"
+
+--- id library/find-any-treats-a-question-mark-as-one-character
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/any "abcde" "b?d"
+--- result
+"bcde"
+
+--- id library/find-any-anchored-at-the-front-by-a-star
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note A leading star matches from the head, so the answer starts there
+--- note rather than at the c.
+--- code
+find/any "abcd" "*c"
+--- result
+"abcd"
+
+--- id library/find-any-that-matches-nothing
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/any "abcd" "z*"
+--- result
+_
+
+--- id library/find-any-with-a-question-mark-in-the-middle
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/any "abcd" "a?c"
+--- result
+"abcd"
+
+--- id library/sort-compare-by-a-column
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note An integer comparator names a column of each record rather than
+--- note being a function, so this orders the pairs by their second item.
+--- code
+sort/skip/compare [3 4 1 2] 2 2
+--- result
+[1 2 3 4]
+
+--- id library/sort-compare-by-the-first-column
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+sort/skip/compare [3 4 1 2] 2 1
+--- result
+[1 2 3 4]
+
+--- id library/a-column-to-compare-by-needs-records-to-take-it-from
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Without /skip there are no records, so a column number means
+--- note nothing and saying so is better than picking one.
+--- code
+sort/compare ["b" "a"] 1
+--- error script invalid-arg
+
+--- id library/find-any-tail-lands-past-what-the-pattern-took
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note How much a wildcard took varies, so /tail cannot land a fixed
+--- note distance along the way it can for a plain needle.
+--- code
+find/any/tail "abcd" "b?"
+--- result
+"d"
+
+--- id library/find-any-tail-with-a-star-taking-the-rest
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/any/tail "abcd" "*d"
+--- result
+""
+
+--- id library/find-any-tail-with-a-star-in-the-middle
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/any/tail "abcde" "b*d"
+--- result
+"e"
+
+--- id library/round-to-a-multiple
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note To a multiple of what it is given, not to a number of places. One
+--- note rule covers rounding money to the penny and time to the nearest
+--- note five minutes, which a decimal-places refinement would not.
+--- code
+round/to 1.234 0.01
+--- result
+1.23
+
+--- id library/round-to-a-whole-multiple
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+round/to 17 5
+--- result
+15
+
+--- id library/max-of-two-numbers
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+max 3 7
+--- result
+7
+
+--- id library/min-of-two-numbers
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+min 3 7
+--- result
+3
+
+--- id library/max-compares-more-than-numbers
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The same comparison SORT uses, reached two at a time.
+--- code
+max "a" "b"
+--- result
+"b"
+
+--- id library/mold-all-quotes-a-string-with-braces
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note /all asks for the form that reads back under every setting.
+--- note JEBOL molds that way already, so the refinement changes nothing
+--- note here; what it must not do is be refused.
+--- code
+mold/all "a"
+--- result
+{"a"}
+
+--- id library/a-string-holding-a-quote-molds-with-braces
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Braces avoid escaping the quote, which is what makes the molded
+--- note form readable rather than only re-readable.
+--- code
+mold {a"b}
+--- result
+{{a"b}}
+
+--- id library/comparison-orders-strings-too
+--- origin confirmed against R3 3.22.1
+--- requires op
+--- note The comparison operators take whatever they are given, not only
+--- note numbers. Restricting them to numbers is what stopped MAX working
+--- note on strings once MAX was written in REBOL rather than Java.
+--- code
+"b" > "a"
+--- result
+#(true)
+
+--- id library/comparison-of-strings-that-run-the-other-way
+--- origin confirmed against R3 3.22.1
+--- requires op
+--- code
+"a" >= "b"
+--- result
+#(false)
+
+--- id library/a-braced-string-still-escapes-a-caret
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Braces spare the quotes and nothing else, so a caret is still
+--- note doubled or the text would not read back.
+--- code
+mold {a"b^^c}
+--- result
+{{a"b^^^^c}}
+
+--- id library/use-makes-a-scope-for-the-words-it-names
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note How REBOL scopes local words outside a function, so a library can
+--- note keep its working names to itself.
+--- code
+use [x] [x: 5 x]
+--- result
+5
+
+--- id library/a-word-in-a-use-shadows-the-outer-one
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note And leaves it untouched, which is what makes this a scope rather
+--- note than an assignment.
+--- code
+x: 1
+use [x] [x: 9]
+x
+--- result
+1
+
+--- id library/use-can-name-several-words
+--- origin confirmed against R3 3.22.1
+--- requires control op
+--- code
+use [a b] [a: 1 b: 2 a + b]
+--- result
+3
+
+--- id library/use-with-no-words-still-evaluates-its-block
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note The degenerate case: an empty scope is still a scope.
+--- code
+use [] [42]
+--- result
+42
+
+--- id library/system-is-an-object
+--- origin confirmed against R3 3.22.1
+--- requires object
+--- note What the interpreter knows about itself, as data to read rather
+--- note than a function to call. That is why a native set alone never had
+--- note it: a native list is things to call.
+--- code
+type? system
+--- result
+#(object!)
+
+--- id library/the-catalogue-is-part-of-it
+--- origin confirmed against R3 3.22.1
+--- requires object
+--- code
+type? system/catalog
+--- result
+#(object!)
+
+--- id library/the-catalogue-lists-the-datatypes
+--- origin confirmed against R3 3.22.1
+--- requires object series
+--- note A script asks which datatypes exist rather than being told, which
+--- note is what makes the list worth holding.
+--- code
+block? system/catalog/datatypes
+--- result
+#(true)
+
+--- id library/the-first-datatype-is-end
+--- origin confirmed against R3 3.22.1
+--- requires object series
+--- note The order is the one the interpreter numbers them in, and END is
+--- note first because it is the marker for no value at all.
+--- code
+first system/catalog/datatypes
+--- result
+#(end!)
+
+--- id library/a-bitset-is-made-from-the-characters-it-holds
+--- origin confirmed against R3 3.22.1
+--- requires bitset
+--- note A set of character codes held as bits, so asking whether one is
+--- note in it is a lookup rather than a search.
+--- code
+type? make bitset! "abc"
+--- result
+#(bitset!)
+
+--- id library/find-in-a-bitset-answers-whether-not-where
+--- origin confirmed against R3 3.22.1
+--- requires bitset
+--- note There is no position in a set, so FIND cannot answer one. This is
+--- note the one place FIND gives a logic.
+--- code
+find make bitset! "abc" #"a"
+--- result
+#(true)
+
+--- id library/find-in-a-bitset-that-does-not-hold-it
+--- origin confirmed against R3 3.22.1
+--- requires bitset
+--- code
+find make bitset! "abc" #"z"
+--- result
+#(false)
+
+--- id library/a-bitset-molds-as-its-bits
+--- origin confirmed against R3 3.22.1
+--- requires bitset
+--- note The sixth and seventh bits of the thirteenth byte, those being
+--- note ninety-seven and ninety-eight.
+--- code
+mold make bitset! "ab"
+--- result
+"#(bitset! #{00000000000000000000000060})"
+
+--- id library/a-bitset-can-be-written-as-a-construct
+--- origin confirmed against R3 3.22.1
+--- requires bitset
+--- code
+type? load {#(bitset! #{00})}
+--- result
+#(bitset!)
+
+--- id library/find-the-first-character-in-a-bitset
+--- origin confirmed against R3 3.22.1
+--- requires series bitset
+--- note A bitset as the needle asks for the first character that is in
+--- note it, rather than for a run to match. One character, however many
+--- note the set holds.
+--- code
+find "abc" make bitset! "b"
+--- result
+"bc"
+
+--- id library/find-a-bitset-holding-nothing-that-is-there
+--- origin confirmed against R3 3.22.1
+--- requires series bitset
+--- code
+find "abc" make bitset! "z"
+--- result
+_
+
+--- id library/find-tail-past-a-bitset-match-moves-one
+--- origin confirmed against R3 3.22.1
+--- requires series bitset
+--- note One character, because that is what a bitset matched however wide
+--- note the set is.
+--- code
+find/tail "abc" make bitset! "b"
+--- result
+"c"
+
+--- id library/find-skip-looks-only-at-the-start-of-each-record
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note /skip makes the series records of that width and looks only at
+--- note the first item of each, so a match halfway through a record is
+--- note not a match at all.
+--- code
+find/skip [1 2 3 4] 3 2
+--- result
+[3 4]
+
+--- id library/find-skip-does-not-see-inside-a-record
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The 2 is there, in the second half of the first record, and that
+--- note is exactly where /skip is not looking.
+--- code
+find/skip [1 2 3 4] 2 2
+--- result
+_
+
+--- id library/find-skip-is-how-a-flat-block-of-pairs-is-searched
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+find/skip [a 1 b 2] (quote b) 2
+--- result
+[b 2]
+
+--- id library/find-reverse-skip-with-a-bitset
+--- origin confirmed against R3 3.22.1
+--- requires series bitset
+--- note All three at once, which is the shape Rebol's own suite uses and
+--- note the reason each piece alone was not enough.
+--- code
+find/reverse/skip tail "acde" make bitset! #"c" -2
+--- result
+"cde"
+
+--- id library/find-reverse-in-a-string-searches-what-is-behind
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note From the position back toward the head. At the tail there is
+--- note nothing ahead, so a forward search would find nothing at all.
+--- code
+find/reverse tail "a<a>b" "<a>"
+--- result
+"<a>b"
+
+--- id library/find-skip-matches-a-run-at-each-record-start
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The needle is three characters and the records are two, so this
+--- note only matches because the run begins where a record does.
+--- code
+find/skip "aa<a>b" "<a>" 2
+--- result
+"<a>b"
+
+--- id library/find-skip-passes-over-a-run-that-starts-mid-record
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Records of four: the first holds a match that does not begin at
+--- note its start, so it is passed over and the later one is found.
+--- code
+find/skip "x<a><b>x<a>x" "<a>" 4
+--- result
+"<a>x"
+
+--- id library/find-last-takes-the-final-match-ahead
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note /last and /reverse are different operations, which is easy to
+--- note miss because both end up behind where a plain FIND would land.
+--- note /last searches what is ahead and keeps the final match.
+--- code
+find/last "abcabc" "b"
+--- result
+"bc"
+
+--- id library/find-reverse-at-the-head-finds-nothing
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note And /reverse searches what is behind, so at the head there is
+--- note nothing to find however many matches lie ahead.
+--- code
+find/reverse "abcabc" "b"
+--- result
+_
+
+# --- Natives ported from Rebol's own set --------------------
+
+--- id library/also-answers-the-first-and-runs-the-second
+--- origin confirmed against R3 3.22.1
+--- requires control
+--- note For when the second thing is done for its effect and the first is
+--- note the answer.
+--- code
+also 1 2
+--- result
+1
+
+--- id library/seventh-and-the-rest-of-the-ordinals
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+seventh [1 2 3 4 5 6 7]
+--- result
+7
+
+--- id library/to-value-passes-a-value-through
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+to-value none
+--- result
+_
+
+--- id library/square-root
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Answers a decimal even for a whole result, because a root is not
+--- note a whole-number operation.
+--- code
+square-root 16
+--- result
+4.0
+
+--- id library/sine-of-zero
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+sine 0
+--- result
+0.0
+
+--- id library/absolute-of-a-negative
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+absolute -5
+--- result
+5
+
+--- id library/negative-of-a-negative
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+negative? -1
+--- result
+#(true)
+
+--- id library/zero-is-not-positive
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note The boundary: zero is neither.
+--- code
+positive? 0
+--- result
+#(false)
+
+--- id library/map-each-answers-a-block-of-results
+--- origin confirmed against R3 3.22.1
+--- requires control series
+--- note FOREACH walks for effect and this walks for an answer, which is
+--- note the whole difference.
+--- code
+map-each x [1 2] [x * 2]
+--- result
+[2 4]
+
+--- id library/unique-drops-repeats
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+unique [1 2 1]
+--- result
+[1 2]
+
+--- id library/power-raises-to-an-exponent
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note A decimal even for a whole result, as SQUARE-ROOT is.
+--- code
+power 2 10
+--- result
+1024.0
+
+--- id library/maximum-is-max-under-another-name
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+maximum 3 7
+--- result
+7
+
+--- id library/minimum-likewise
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+minimum 3 7
+--- result
+3
+
+--- id library/poke-answers-what-it-put-in
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note Not the series, which is what makes POKE awkward in a chain and
+--- note is worth pinning for that reason.
+--- code
+b: [1 2 3]
+poke b 2 9
+--- result
+9
+
+--- id library/poke-changes-the-series
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+b: [1 2 3]
+poke b 2 9
+b
+--- result
+[1 9 3]
+
+--- id library/difference-is-what-is-in-one-and-not-both
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- code
+difference [1 2] [2 3]
+--- result
+[1 3]
+
+--- id library/remove-each-drops-what-the-block-accepts
+--- origin confirmed against R3 3.22.1
+--- requires series control
+--- note And answers the series, which is the opposite way round from POKE.
+--- code
+b: [1 2 3 4]
+remove-each x b [even? x]
+--- result
+[1 3]
+
+--- id library/strict-not-equal-minds-the-datatype
+--- origin confirmed against R3 3.22.1
+--- requires series
+--- note One and one-point-zero are the same magnitude and different
+--- note datatypes, which is exactly what the strict comparison is for.
+--- code
+strict-not-equal? 1 1.0
+--- result
+#(true)

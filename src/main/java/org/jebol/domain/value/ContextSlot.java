@@ -18,6 +18,17 @@ public final class ContextSlot {
     private Value value = UnsetValue.unset();
     private boolean protectedFromAssignment;
 
+    /**
+     * Whether this field is invisible from outside the object.
+     *
+     * <p>PROTECT/HIDE does not lock a field, it conceals it: the object
+     * stops listing it, molding it and answering for it, and a path to it
+     * fails as though there were no such field. Code written inside the
+     * object still reaches it, which is the whole point -- it is how an
+     * object keeps something to itself.
+     */
+    private boolean hidden;
+
     ContextSlot(Context context, String spelling, String canonical) {
         this.context = context;
         this.spelling = spelling;
@@ -48,8 +59,7 @@ public final class ContextSlot {
                     "a slot holds unset, never null: use UnsetValue.unset()");
         }
         if (protectedFromAssignment) {
-            throw new IllegalStateException(
-                    "\"" + spelling + "\" is protected and cannot be assigned");
+            throw new SlotIsProtected(spelling);
         }
         this.value = replacement;
     }
@@ -60,6 +70,16 @@ public final class ContextSlot {
 
     public void protectFromAssignment() {
         this.protectedFromAssignment = true;
+    }
+
+    /** Whether this field is concealed from outside the object. */
+    public boolean isHidden() {
+        return hidden;
+    }
+
+    /** Conceals this field, or reveals it again. */
+    public void hide(boolean concealed) {
+        this.hidden = concealed;
     }
 
     public void allowAssignment() {

@@ -40,9 +40,37 @@ public record Parameter(
         return new Parameter(name, ParameterKind.NORMAL, acceptedTypes, Optional.empty());
     }
 
-    /** An argument taken unevaluated, written {@code 'word} in a spec. */
-    public static Parameter literal(String name) {
-        return new Parameter(name, ParameterKind.LITERAL, Set.of(), Optional.empty());
+    /**
+     * An argument taken as written, written {@code 'word} in a spec.
+     *
+     * <p>This is what REBOL's own loop natives declare: {@code spec-of
+     * :forall} reports {@code 'word [word!]}. Being soft rather than hard
+     * is observable, because it lets the caller choose the counter at run
+     * time: {@code chosen: 'n  foreach (chosen) [7] [n]} gives 7.
+     */
+    public static Parameter softQuoted(String name) {
+        return new Parameter(name, ParameterKind.SOFT_QUOTED, Set.of(), Optional.empty());
+    }
+
+    /**
+     * An argument that arrives only when its refinement was asked for.
+     *
+     * <p>{@code take} takes one value and {@code take/part} takes two, so
+     * the count depends on the call site rather than on the native.
+     */
+    public static Parameter belongingTo(
+            String refinement, String name, Set<Datatype> acceptedTypes) {
+        return new Parameter(name, ParameterKind.REFINEMENT_ARGUMENT,
+                acceptedTypes, Optional.of(refinement));
+    }
+
+    /**
+     * An argument taken exactly as written, written {@code :word} in a
+     * spec. Nothing at the call site opts out, which is what QUOTE needs:
+     * a soft-quoted paren would evaluate, and QUOTE exists not to.
+     */
+    public static Parameter hardQuoted(String name) {
+        return new Parameter(name, ParameterKind.HARD_QUOTED, Set.of(), Optional.empty());
     }
 
     public static Parameter refinement(String name) {
@@ -52,8 +80,9 @@ public record Parameter(
     /** Whether this parameter takes a value from the block being evaluated. */
     public boolean consumesAnArgument() {
         return kind == ParameterKind.NORMAL
-                || kind == ParameterKind.LITERAL
-                || kind == ParameterKind.SOFT_LITERAL;
+                || kind == ParameterKind.HARD_QUOTED
+                || kind == ParameterKind.SOFT_QUOTED
+                || kind == ParameterKind.REFINEMENT_ARGUMENT;
     }
 
     /** Whether a value of this datatype is acceptable here. */

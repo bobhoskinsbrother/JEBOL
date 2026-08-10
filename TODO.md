@@ -1,5 +1,222 @@
 # TODO
 
+## The goal
+
+**Port every function a real Rebol 3 has -- the C natives and the REBOL
+mezzanine alike -- into JEBOL.** The imported Rebol test suite is how a
+port is checked, not what is being aimed at.
+
+The distinction is not pedantic and it has already cost time. A passing
+assertion is evidence a port is right; a failing one may be about a
+function that is there and wrong, or about setup three tests earlier, or
+about nothing much. A function that is missing altogether usually shows up
+as no failure at all. Working the failure report therefore finds a
+different set of things from working the porting list, and only one of
+them is the goal.
+
+**The porting list is `PortingBacklogTest`.** It prints what R3 has and
+JEBOL has not, grouped by what is blocking each part, and it asserts the
+count so that ignoring it breaks the build. `SuiteFailureReportTest` is
+the other half of the picture and answers a different question: of what
+has been ported, what is wrong.
+
+Read the backlog first. Reach for the failure report when a port needs
+checking, or when the backlog is empty.
+
+## Committing
+
+**Nothing is committed until every test passes.** That includes the
+imported Rebol suite: 3721 assertions, all of them green, and not a
+scoreboard that goes up.
+
+This is settled. Do not raise it again, do not ask whether the suite
+counts, and do not offer to commit "the safe part". There is no safe part
+until the port is finished.
+
+## How to port one function
+
+Four steps, in this order. Do not begin one before the last is finished.
+
+1. **Read the C.** `src/core/*.c` for a native, `src/mezz/*.reb` for the
+   rest. Read the whole function, not the part that looks relevant. The C
+   carries the rules that no probe will ever show you: which flags are
+   set together, what a count of zero means, where a search starts.
+2. **Copy the logic into Java.** Follow the C's structure, not your own
+   idea of how the function should work. Where the C has a branch, have a
+   branch. Where it has a special case, have that case. A rewrite that
+   looks tidier is a rewrite whose bugs are yours and not Rebol's.
+3. **Write the tests from the C, not from your Java.** Read the C again
+   and write a test for every branch, every flag combination, every
+   boundary it guards. Tests written by reading the port only prove the
+   port agrees with itself.
+4. **Run the imported suite.** It is Rebol's own, thus a failure there is
+   a rule the C states and the port missed.
+
+Probing `./r3` is the last resort and not the first. Its console
+interleaves prompts with printed output, thus a bare probe is easy to
+misread -- four defects were claimed and withdrawn in one afternoon that
+way. If a probe is needed, print a label and run the same file through
+both.
+
+## Where the answers come from
+
+Three sources, in this order.
+
+1. **Rebol's own C source**, at https://github.com/Oldes/Rebol3. Clone it
+   and read `src/core` for the natives and `src/mezz` for the rest. This
+   says what a function does and why, and it settles a question in one
+   reading that a hand probe settles in ten.
+2. **Rebol's own test suite**, already here in
+   `src/test/resources/rebol-suite/`. This says what the behaviour must
+   be rather than how one implementation reaches it, thus it is the
+   better source when the two seem to disagree.
+3. **The `./r3` binary**, for a question the first two leave open.
+
+Reaching for the binary first is a mistake that has already cost this
+project time. A hand probe gives one answer to one question. The source
+gives the rule, and the rule is what a port needs.
+
+## Working notes
+
+Practical things a fresh session has to know, each of which cost time to
+find out.
+
+**Get the C source first.** It is not in this repository and every port
+depends on it.
+
+```
+git clone --depth 1 https://github.com/Oldes/Rebol3 <somewhere outside the repo>
+```
+
+Read `src/core/t-*.c` for the datatypes, `src/core/n-*.c` for the natives,
+`src/core/c-do.c` for the evaluator, `src/core/l-scan.c` and `l-types.c`
+for the reader, `src/boot/actions.reb` and `natives.reb` for argument
+specifications, `src/boot/errors.reb` for the error catalogue, and
+`src/mezz/*.reb` for the REBOL half of the library.
+
+**Do not use `./gradlew run` to try something out.** It starts the REPL
+and waits on standard input, so it hangs until it is killed. To probe,
+write a throwaway JUnit test and delete it afterwards:
+
+```java
+// src/test/java/org/jebol/Probe.java
+String[] cases = { "mold 1.2.3", "length? 'a" };
+for (String source : cases) {
+    Interpreter interpreter = Interpreter.create();
+    interpreter.defineFreshWordsIn(source);
+    System.out.println("  " + source + "   ==>   "
+            + interpreter.display(interpreter.run(source)));
+}
+```
+
+Run it with `./gradlew test --tests 'org.jebol.Probe' -i` and filter for
+the arrow. Always print a label beside the answer; unlabelled output is
+how four defects were claimed and withdrawn in one afternoon.
+
+**Reading the suite result.** `./gradlew check` is the gate. The report
+is in `build/test-results/test/TEST-org.jebol.suite.RebolSuiteTest.xml`,
+one `<failure>` per assertion, and the assertion text is in the message.
+Two things to watch: every failure appears twice in that file, once in
+the attribute and once in the body, so halve any count taken by grepping;
+and running a single test class deletes the suite's XML, so re-run the
+suite before reading it again.
+
+**Writing a test from the C.** The shape used throughout: a private
+`answerTo(String)` that builds an `Interpreter`, calls
+`defineFreshWordsIn` and then `run`, and a private `errorIdOf(String)`
+that wraps the source in `try` and answers `e/id` or the word `no-error`.
+Name the file `<Thing>FromTheSourceTest` and cite the C function in the
+class javadoc, so a later disagreement is settled by reading that
+function rather than by argument.
+
+Three traps in those tests. JEBOL molds none as `_`, not `#(none)`. A
+literal block compares as words, so `x = ["a" true]` is false and
+`x = reduce ["a" true]` is what was meant. And `e: try [...]` followed by
+`error? e` raises when the body answered unset, so use `unset? do ...`
+for those.
+
+**The build is strict.** `-Werror` is on with `dangling-doc-comments`, so
+inserting a helper between a javadoc and the declaration it documents
+fails the build. `DependencyRuleTest` enforces the hexagonal boundary:
+the domain imports nothing from `application` or `adapter` and does no
+I/O, so a domain class reaching `java.io.File` is a build failure rather
+than a review comment.
+
+**Commits use `hoskins_ben@hotmail.com`.** It is set repository-locally
+already. Do not change it and do not fall back to the git global, which
+is a work address.
+
+**`known-gaps.txt` is deliberately empty of gaps.** It is not a skip
+list: every assertion runs on every build. Leave it empty.
+
+**`src/test/resources/r3/surface.txt`** is the checked-in record of R3's
+library: 580 functions with their full argument and refinement shapes.
+`PortingBacklogTest` compares it against a booted interpreter and asserts
+the difference, so the count only ever goes down.
+
+## The three goals
+
+The remaining work splits by subsystem rather than by count, because each
+subsystem is one part of the interpreter with its own C source and can be
+finished and gated on its own. Counts are of failing suite assertions at
+3117 of 3721 passing, and are approximate.
+
+Take them in the order given. Goal 2 is the most mechanical and nothing
+later can invalidate it; goal 1 is a dependency for the load and save
+assertions that sit in other files; goal 3 is the largest and wants
+splitting in two by the time it is reached.
+
+### Goal 1 -- the reader and the molder (~130)
+
+lexer-test 91, mold-test 29, load-test 11.
+
+Source: `l-scan.c`, `l-types.c`, `s-mold.c`. These go together because
+molding is the inverse of reading, and a value cannot be made to write
+back correctly while it still reads wrongly.
+
+The known pieces: which character runs form a word (`Lex_Map` and
+`Scan_Token`), what an invalid construction raises and with which id, raw
+strings, the literal none, TRANSCODE's error reporting, and molding a
+url.
+
+### Goal 2 -- the scalar datatypes (~105)
+
+money 21, pair 22, decimal 20, compare 27, integer 10, and a few singles.
+
+Source: `t-money.c`, `t-pair.c`, `t-decimal.c`, `t-integer.c`,
+`n-math.c`. Four independent ports of the shape the tuple port took: read
+the datatype's C file, copy its actions, write the tests from the C.
+None of them touches another, so they may be done in any order.
+
+### Goal 3 -- series, evaluation and objects (~310)
+
+series-test 100, evaluation-test 80, object-test 45, parse-test 43,
+protect 15, typeset 13.
+
+Source: `f-modify.c`, `t-block.c`, `t-string.c`, `c-do.c`, `c-frame.c`,
+`u-parse.c`.
+
+Split this in two when it is reached: series and PARSE in one, evaluation
+and objects and protection in the other. Nothing in it spans two C files
+that have to change together, so the cut is free.
+
+## What blocks the backlog now
+
+Three things, and none is more porting. `docs/surface-audit.md` has the
+detail.
+
+1. **The host boundary.** It blocks 40 of the 88 C natives and 5 more
+   written in REBOL. `spec/embed.allium` now specifies it: eight kinds of
+   host service, granted one at a time, none by default, and a refusal
+   that says which of three reasons applies. The code is not written.
+2. **The user context is not published.** `intern` and `module` need
+   `system/contexts/user`. JEBOL has the context -- source read at run
+   time binds into it -- but nothing exposes it under that name, so no
+   REBOL code can reach it. Exposing it is the work, not building it.
+3. **No console layer.** `dump-obj`, `help`, `about`, `usage` and the
+   five `log-*` functions need `emit`, `reform`, `ansi` and
+   `system/options`.
+
 The milestones from `docs/milestones.md` as user stories. Reasoning for
 the ordering lives there; decisions and their consequences live in
 `docs/decisions.md`.

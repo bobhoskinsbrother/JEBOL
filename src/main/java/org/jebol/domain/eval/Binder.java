@@ -19,6 +19,10 @@ import org.jebol.domain.value.WordValue;
  * <p>Words the context does not know are left unbound rather than given a
  * slot holding unset. An unbound word and a word bound to an unset slot report
  * different errors, and the difference is worth keeping.
+ *
+ * <p>A word is bound to whichever context actually holds its slot, not to the
+ * one it was bound through. Binding a block into a short-lived inner scope
+ * must not make its outer words look as though they live in that scope.
  */
 public final class Binder {
 
@@ -38,10 +42,48 @@ public final class Binder {
     private static Value bindValue(Value value, Context context) {
         return switch (value) {
             case WordValue word -> context.knows(word.canonical())
-                    ? word.boundTo(context)
+                    ? word.boundTo(context.holderOf(word.canonical()))
                     : word;
             case BlockValue block -> bind(block, context);
             default -> value;
         };
+    }
+
+    /**
+     * The same, but a word the context does not know gets a slot rather
+     * than staying unbound.
+     *
+     * <p>{@code BIND_ALL} in the C, and {@code Do_String} uses it for
+     * every piece of source that arrives at run time. Without it nothing
+     * loaded at run time can name anything new: {@code do "total: 1"}
+     * fails on TOTAL, because the word was not in the text the
+     * interpreter was started with and so was never given a slot.
+     *
+     * <p>The new slot holds unset until something assigns to it. That is
+     * what changes a mistyped word from "not defined" to "has no value",
+     * which is the answer a real R3 gives for the same typo.
+     */
+    public static BlockValue bindAndDefine(BlockValue block, Context context) {
+        for (Value item : block.remaining()) {
+            defineWordsIn(item, context);
+        }
+        return bind(block, context);
+    }
+
+    private static void defineWordsIn(Value value, Context context) {
+        switch (value) {
+            case WordValue word -> {
+                if (!context.knows(word.canonical())) {
+                    context.define(word.spelling());
+                }
+            }
+            case BlockValue nested -> {
+                for (Value item : nested.remaining()) {
+                    defineWordsIn(item, context);
+                }
+            }
+            default -> {
+            }
+        }
     }
 }

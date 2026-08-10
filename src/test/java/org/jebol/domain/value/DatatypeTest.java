@@ -18,7 +18,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 class DatatypeTest {
 
     private static final Set<Datatype> EXPECTED_ANY_STRING = EnumSet.of(
-            Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL, Datatype.TAG);
+            Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL, Datatype.TAG,
+            Datatype.REF);
 
     private static final Set<Datatype> EXPECTED_ANY_BLOCK = EnumSet.of(
             Datatype.BLOCK, Datatype.PAREN, Datatype.PATH,
@@ -33,6 +34,7 @@ class DatatypeTest {
 
     private static final Set<Datatype> EXPECTED_SERIES = EnumSet.of(
             Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL, Datatype.TAG,
+            Datatype.REF,
             Datatype.BLOCK, Datatype.PAREN, Datatype.PATH,
             Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
             Datatype.BINARY);

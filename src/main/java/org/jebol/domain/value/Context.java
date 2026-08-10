@@ -55,6 +55,33 @@ public final class Context {
         return unbound;
     }
 
+    /**
+     * Whether new names may be added.
+     *
+     * <p>The third thing protection covers on an object, and separate
+     * from the other two. PROTECT/DEEP guards the object itself, the
+     * words already in it, and the values those words hold, and the
+     * UNPROTECT refinements release different subsets: plain releases the
+     * object and its words but not their values, /WORDS releases only the
+     * words, /DEEP releases all three, /WORDS/DEEP releases the words and
+     * their values but not the object.
+     *
+     * <p>Without this as its own flag, "can a word be added" and "can a
+     * word be reassigned" are the same question, and no combination of
+     * refinements can tell them apart.
+     */
+    private boolean closedToNewNames;
+
+    /** Whether a new name may be added to this context. */
+    public boolean isClosedToNewNames() {
+        return closedToNewNames;
+    }
+
+    /** Closes or reopens this context to new names. */
+    public void closeToNewNames(boolean closed) {
+        this.closedToNewNames = closed;
+    }
+
     /** Whether this context or an ancestor holds the name. */
     public boolean knows(String canonicalName) {
         if (unbound) {
@@ -64,9 +91,38 @@ public final class Context {
                 || (parent != null && parent.knows(canonicalName));
     }
 
-    /** Whether this context itself holds the name, ignoring ancestors. */
+    /**
+     * Whether this context itself holds the name, ignoring ancestors.
+     *
+     * <p>A hidden field is not held, as far as anything outside the object
+     * is concerned. This is the question field selection asks, so
+     * `o/f` on a hidden f fails as though there were no such field --
+     * while {@link #knows}, which is how a word inside the object
+     * resolves, still finds it. That split is the whole of PROTECT/HIDE.
+     */
     public boolean holds(String canonicalName) {
-        return !unbound && slotsByCanonicalName.containsKey(canonicalName);
+        ContextSlot slot = unbound ? null : slotsByCanonicalName.get(canonicalName);
+        return slot != null && !slot.isHidden();
+    }
+
+    /**
+     * The context that actually holds the name, which may be an ancestor.
+     *
+     * <p>What a bound word must point at. Pointing at a descendant that only
+     * reaches the slot through its parent would be true enough for reading,
+     * but a caller that asks a word where it lives and then defines a name
+     * there would write into a scope that is about to be thrown away. Ask
+     * {@link #knows} first.
+     */
+    public Context holderOf(String canonicalName) {
+        if (holds(canonicalName)) {
+            return this;
+        }
+        if (!unbound && parent != null) {
+            return parent.holderOf(canonicalName);
+        }
+        throw new IllegalStateException(
+                "no context holds \"" + canonicalName + "\"; ask knows() first");
     }
 
     /**
@@ -134,11 +190,57 @@ public final class Context {
         return slot;
     }
 
+    /**
+     * This context's own fields by name, without {@code self}.
+     *
+     * <p>What object equality compares. {@code self} is left out because
+     * every object has one and it points back at the object, so counting
+     * it would make the comparison recurse for ever.
+     */
+    public Map<String, Value> fieldsExcludingSelf() {
+        Map<String, Value> fields = new LinkedHashMap<>();
+        slotsByCanonicalName.forEach((name, slot) -> {
+            if (!name.equals("self") && !slot.isHidden()) {
+                fields.put(name, slot.value());
+            }
+        });
+        return fields;
+    }
+
+    /**
+     * How many fields there are, hidden ones counted and SELF not.
+     *
+     * <p>Not {@link #slotCount}: an object built one way carries SELF and
+     * one built another does not, so counting slots makes two objects
+     * with the same fields unequal for a reason that has nothing to do
+     * with their fields.
+     */
+    public int fieldCount() {
+        return (int) slotsByCanonicalName.entrySet().stream()
+                .filter(entry -> !entry.getKey().equals("self"))
+                .count();
+    }
+
     public int slotCount() {
         return slotsByCanonicalName.size();
     }
 
+    /**
+     * This context's slots, without the hidden ones.
+     *
+     * <p>What WORDS-OF, VALUES-OF, BODY-OF and MOLD all walk, so hiding a
+     * field takes it out of every one of them at once. Anything that has
+     * to see a hidden field asks {@link #everySlot} instead, and there is
+     * only one such caller: the code that hides them.
+     */
     public List<ContextSlot> slots() {
+        return slotsByCanonicalName.values().stream()
+                .filter(slot -> !slot.isHidden())
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+    }
+
+    /** Every slot, hidden ones included. */
+    public List<ContextSlot> everySlot() {
         return new ArrayList<>(slotsByCanonicalName.values());
     }
 

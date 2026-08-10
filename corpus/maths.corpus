@@ -1,0 +1,208 @@
+--- title Arithmetic beyond the four operations
+--- about The whole-number functions and the two names each of the
+--- about trigonometric ones carry. What is pinned here is mostly the
+--- about boundaries: what these answer at zero, at one, and for the
+--- about negatives and wrong types where the obvious guess is wrong.
+
+--- id maths/greatest-common-divisor
+--- origin confirmed against R3 3.22.1
+--- code
+gcd 12 18
+--- result
+6
+
+--- id maths/common-divisor-with-zero
+--- origin confirmed against R3 3.22.1
+--- note Zero divides into anything, so the answer is the other side
+--- note rather than zero or an error.
+--- code
+gcd 0 5
+--- result
+5
+
+--- id maths/common-divisor-of-two-zeroes
+--- origin confirmed against R3 3.22.1
+--- code
+gcd 0 0
+--- result
+0
+
+--- id maths/common-divisor-ignores-sign
+--- origin confirmed against R3 3.22.1
+--- code
+gcd -12 18
+--- result
+6
+
+--- id maths/common-divisor-refuses-a-fraction
+--- origin confirmed against R3 3.22.1
+--- note Divisors are a whole-number idea, so a decimal is refused
+--- note rather than truncated.
+--- code
+gcd 12.5 5
+--- error script expect-arg
+
+--- id maths/common-divisor-refuses-a-string
+--- origin confirmed against R3 3.22.1
+--- code
+gcd "a" 1
+--- error script expect-arg
+
+--- id maths/lowest-common-multiple
+--- origin confirmed against R3 3.22.1
+--- code
+lcm 4 6
+--- result
+12
+
+--- id maths/lowest-common-multiple-with-zero
+--- origin confirmed against R3 3.22.1
+--- note Zero rather than the other side, which is the opposite of what
+--- note GCD does with a zero.
+--- code
+lcm 0 5
+--- result
+0
+
+--- id maths/lowest-common-multiple-of-two-zeroes
+--- origin confirmed against R3 3.22.1
+--- code
+lcm 0 0
+--- result
+0
+
+--- id maths/the-smallest-prime
+--- origin confirmed against R3 3.22.1
+--- code
+prime? 2
+--- result
+#(true)
+
+--- id maths/an-odd-prime
+--- origin confirmed against R3 3.22.1
+--- code
+prime? 7
+--- result
+#(true)
+
+--- id maths/one-is-not-prime
+--- origin confirmed against R3 3.22.1
+--- note The boundary just below the first prime, and the one people
+--- note get wrong.
+--- code
+prime? 1
+--- result
+#(false)
+
+--- id maths/zero-is-not-prime
+--- origin confirmed against R3 3.22.1
+--- code
+prime? 0
+--- result
+#(false)
+
+--- id maths/a-negative-is-not-prime
+--- origin confirmed against R3 3.22.1
+--- code
+prime? -7
+--- result
+#(false)
+
+--- id maths/whole-division-drops-the-remainder
+--- origin confirmed against R3 3.22.1
+--- code
+integer-divide 7 2
+--- result
+3
+
+--- id maths/whole-division-of-a-negative-rounds-towards-zero
+--- origin confirmed against R3 3.22.1
+--- note Towards zero rather than downwards, so -3 and not -4.
+--- code
+integer-divide -7 2
+--- result
+-3
+
+--- id maths/whole-division-by-zero-raises
+--- origin confirmed against R3 3.22.1
+--- code
+integer-divide 7 0
+--- error math zero-divide
+
+--- id maths/radians-to-degrees
+--- origin confirmed against R3 3.22.1
+--- code
+to-degrees 3.14159265358979
+--- result
+180.0
+
+--- id maths/degrees-to-radians
+--- origin confirmed against R3 3.22.1
+--- code
+to-radians 180
+--- result
+3.14159265358979
+
+--- id maths/the-long-name-takes-degrees
+--- origin confirmed against R3 3.22.1
+--- note SINE and SIN are not two names for one function. This one
+--- note takes degrees, and the quarter turn is one.
+--- code
+sine 90
+--- result
+1.0
+
+--- id maths/the-short-name-takes-radians
+--- origin confirmed against R3 3.22.1
+--- note The same number through the other one is the sine of ninety
+--- note radians, which is nowhere near. Defining either as an alias of
+--- note the other is wrong by a factor of fifty-seven.
+--- code
+sin 90.0
+--- result
+0.893996663600558
+
+--- id maths/the-short-name-refuses-a-whole-number
+--- origin confirmed against R3 3.22.1
+--- note And this is the other half of the difference: the long names
+--- note take a whole number and the short ones do not.
+--- code
+sin 90
+--- error script expect-arg
+
+--- id maths/the-long-square-root-takes-a-whole-number
+--- origin confirmed against R3 3.22.1
+--- code
+square-root 16
+--- result
+4.0
+
+--- id maths/the-short-square-root-does-not
+--- origin confirmed against R3 3.22.1
+--- note There is no angle here at all, and the split still holds, so
+--- note it is about the argument type rather than about radians.
+--- code
+sqrt 16
+--- error script expect-arg
+
+--- id maths/the-short-square-root-takes-a-decimal
+--- origin confirmed against R3 3.22.1
+--- code
+sqrt 16.0
+--- result
+4.0
+
+--- id maths/the-angle-of-a-point
+--- origin confirmed against R3 3.22.1
+--- code
+atan2 1.0 1.0
+--- result
+0.785398163397448
+
+--- id maths/the-angle-of-a-point-refuses-whole-numbers
+--- origin confirmed against R3 3.22.1
+--- note Which is the one place in the maths natives where a whole
+--- note number is not accepted where a decimal is wanted.
+--- code
+atan2 1 1
+--- error script expect-arg

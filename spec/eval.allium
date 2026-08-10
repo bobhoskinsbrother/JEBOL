@@ -30,11 +30,14 @@ use "./values.allium" as values
 enum EvaluationFailure {
     no_value            -- a word whose slot holds UNSET was evaluated
     | not_defined       -- a word with no binding was evaluated
-    | need_value        -- nothing left in the block to supply a value
+    | need_value        -- a set-word with nothing after it to assign
+    | no_arg            -- a call reached the end of the block still short
+    | no_op_arg         -- an operator with nothing on its left
     | expect_arg        -- an argument of the wrong datatype
     | invalid_path      -- a path segment that selects nothing
     | cannot_use        -- an operation this datatype does not support
-    | protected_word    -- an assignment to a slot marked protected
+    | locked_word       -- an assignment to a slot marked protected
+    | no_refine         -- a refinement the function does not have
     | too_deep          -- nesting past the evaluation depth limit
     | zero_divide       -- division by zero
     | overflow          -- arithmetic outside the representable range
@@ -140,7 +143,10 @@ entity EvaluationStep {
 entity Application {
     step: EvaluationStep
     applied: values/Value           -- the function!, native! or op! called
-    requested_refinements: Set<String>
+
+    -- In the order the path wrote them, which decides the order the
+    -- arguments after the call are read in.
+    requested_refinements: List<String>
 
     -- The operator's left operand, already produced before the operator
     -- was reached. Absent for an ordinary prefix call.
@@ -202,7 +208,11 @@ entity PathEvaluation {
     position: Integer
 
     current: values/Value           -- what has been selected so far
-    refinements: Set<String>        -- gathered when current is a function
+
+    -- Gathered when current is a function, and kept in the order the
+    -- path wrote them. The order is not a detail of the path: it is the
+    -- order the arguments that follow are read in.
+    refinements: List<String>
 
     status: selecting | selected | raised
 
@@ -411,8 +421,8 @@ rule WordEvaluates {
             step.error = script_error(no_value)
         else if step.bound_value.datatype = op and step.infix_left = null:
             step.status = raised
-            step.failure = need_value
-            step.error = script_error(need_value)
+            step.failure = no_op_arg
+            step.error = script_error(no_op_arg)
         else if step.bound_value.is_any_function:
             Application.created(
                 step: step,
@@ -492,8 +502,8 @@ rule SetWordEvaluates {
             step.error = script_error(not_defined)
         else if is_protected_slot(step.input):
             step.status = raised
-            step.failure = protected_word
-            step.error = script_error(protected_word)
+            step.failure = locked_word
+            step.error = script_error(locked_word)
         else:
             EvaluationStep.created(
                 evaluation: step.evaluation,
@@ -565,6 +575,26 @@ rule ErrorValueEvaluates {
 }
 
 -- === Paths =================================================
+
+-- A path segment may be a paren, and then it is evaluated and its value
+-- used as the selector. `data/(k)` reaches the field named by whatever K
+-- holds, and `objects/(keys/1)` computes the selector from another path.
+--
+-- This is the only way a path selects something decided at run time. A
+-- word segment is a name taken as written, so without the paren form a
+-- path can only reach what the source spelled out. Rebol's own library
+-- leans on it: five of its files use one, and between them they hold a
+-- hundred and seventeen definitions that are unreachable without it.
+--
+-- The paren is one segment, not a nested path: `a/(1 + 1)` has a length
+-- of two, and molds back with the parentheses.
+rule AParenSegmentIsEvaluatedForItsSelector {
+    when: walk: PathEvaluation.segment_read
+    requires: walk.status = null
+
+    ensures:
+        walk.status = null
+}
 --
 -- A path selects left to right. The first segment is a word and is looked
 -- up; every segment after it is a selector applied to what came before,
@@ -628,6 +658,14 @@ rule PathSelectsNextSegment {
 -- Once a function has been reached, the remaining segments stop being
 -- selectors and start naming refinements. `append/only` is APPEND with
 -- its ONLY refinement, not a selection of ONLY from APPEND.
+--
+-- A refinement the function does not have is an error, not something to
+-- ignore. This was found by pinning that `parse/all` raises, which it
+-- must because /all was removed: JEBOL looked the refined name up and
+-- quietly fell back to the plain function when it was missing, so every
+-- misspelled refinement in every script ran as though it had been left
+-- off. Silence there is worse than the mistake it hides, because code
+-- written against an older REBOL goes on looking like it works.
 rule PathGathersRefinement {
     when: selection: PathEvaluation.created
     requires: selection.status = selecting
@@ -635,8 +673,13 @@ rule PathGathersRefinement {
     requires: selection.selects_a_function
 
     ensures:
-        selection.refinements.add(refinement_name_at(selection.path, selection.position))
-        selection.position = selection.position + 1
+        if not selection.current.has_refinement_named(
+                refinement_name_at(selection.path, selection.position)):
+            selection.status = raised
+            selection.failure = no_refine
+        else:
+            selection.refinements.add(refinement_name_at(selection.path, selection.position))
+            selection.position = selection.position + 1
 }
 
 -- The path is finished. What happens next depends on what it landed on: a
@@ -738,6 +781,29 @@ rule ApplicationGathersNextArgument {
         -- produced, not the literal 2.
 }
 
+-- Which parameter each gathered value lands in.
+--
+-- The values before the first refinement's belong to the parameters the
+-- function requires, in the order it declares them. What follows belongs
+-- to the refinements in the order the path wrote them, and not in the
+-- order the function declares them. So `sort/compare/skip s 1 3` gives 1
+-- to the comparator and 3 to the record size, and writing the same two
+-- refinements the other way round swaps which value is which.
+--
+-- This surprises people, and the alternative surprises them worse: a
+-- caller reading their own call left to right would have to know the
+-- function's declaration order to say what they had written.
+rule RefinementArgumentsFollowThePath {
+    when: application: Application.ready
+    requires: application.requested_refinements.count > 1
+    ensures: ArgumentBinding(
+        parameter: parameter_owned_by(
+            application.applied,
+            application.requested_refinements[refinement_position]),
+        value: application.arguments[
+            required_parameter_count(application.applied) + argument_position])
+}
+
 -- The single place a call's gathering outcome is decided. Running out of
 -- block beats a type error, because a missing argument means the type
 -- check never had a value to look at. There is no currying in REBOL, so
@@ -749,8 +815,8 @@ rule ApplicationResolvesGathering {
     ensures:
         if not application.enough_values_remain:
             application.status = raised
-            application.failure = need_value
-            application.error = script_error(need_value)
+            application.failure = no_arg
+            application.error = script_error(no_arg)
         else if application.any_argument_mistyped:
             application.status = raised
             application.failure = expect_arg
@@ -948,11 +1014,19 @@ surface Evaluating {
 -- and they change the walk rather than sitting on top of it. See
 -- InfixOperatorContinuesTheWalk above.
 
--- Resolved: a literal parameter always takes its argument as written. A
--- soft-literal parameter does too, unless the value at the call site is a
--- paren, a get-word or a get-path, each of which means "evaluate this one
--- after all". That is what soft means: the function declares the default and
--- the caller keeps a way out of it.
+-- Resolved against a real R3 (3.22.1), and it was specified backwards
+-- until it was asked. A parameter written :word is the hard one: it takes
+-- the argument exactly as written, so `f (add 1 2)` hands the function the
+-- paren itself and `f :answer` hands it the get-word. A parameter written
+-- 'word is the soft one: it takes the argument as written too, unless the
+-- value at the call site is a paren, a get-word or a get-path, each of
+-- which means "evaluate this one after all". That is what soft means: the
+-- function declares the default and the caller keeps a way out of it.
+--
+-- The mistake was reading the guide's prose about "a literal argument" and
+-- assuming the quote mark was the firmer of the two marks because it looks
+-- firmer. It is the other way round, and nothing but running it would have
+-- said so.
 
 -- Resolved: an error! returned by a native is an ordinary value and
 -- raises only when evaluated, as ErrorValueEvaluates states. R3-Alpha

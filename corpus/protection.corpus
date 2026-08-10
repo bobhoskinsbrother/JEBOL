@@ -1,0 +1,97 @@
+--- title Protecting a value from change
+--- about PROTECT makes a value refuse modification. It applies to a word
+--- about slot, to an object's fields and to a series itself, and the
+--- about three are separate: protecting the word that holds a block does
+--- about not protect the block.
+
+--- id protection/a-protected-block-refuses-appending
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2]
+protect b
+error? try [append b 3]
+--- result
+#(true)
+
+--- id protection/the-failure-has-its-own-id
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2]
+protect b
+e: try [append b 3]
+e/id
+--- result
+protected
+
+--- id protection/asking-whether-a-block-is-protected
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2]
+protect b
+protected? b
+--- result
+#(true)
+
+--- id protection/an-unprotected-block-is-not
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2]
+protected? b
+--- result
+#(false)
+
+--- id protection/unprotecting-lets-it-change-again
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2]
+protect b
+unprotect b
+error? try [append b 3]
+--- result
+#(false)
+
+--- id protection/a-protected-string-refuses-appending
+--- origin confirmed against R3 3.22.1
+--- code
+s: "ab"
+protect s
+error? try [append s "c"]
+--- result
+#(true)
+
+--- id protection/a-protected-objects-fields-refuse-assignment
+--- origin confirmed against R3 3.22.1
+--- code
+o: make object! [a: 1]
+protect o
+error? try [o/a: 2]
+--- result
+#(true)
+
+--- id protection/a-protected-word-refuses-assignment
+--- origin confirmed against R3 3.22.1
+--- code
+protect 'zz
+error? try [zz: 1]
+--- result
+#(true)
+
+--- id protection/protecting-shallowly-leaves-the-nested-block-open
+--- origin confirmed against R3 3.22.1
+--- note Which is the boundary /deep exists to cross, and the one that
+--- note makes protection worth asking about twice.
+--- code
+b: [[1]]
+protect b
+error? try [append b/1 2]
+--- result
+#(false)
+
+--- id protection/protecting-deeply-reaches-the-nested-block
+--- origin confirmed against R3 3.22.1
+--- code
+b: [[1]]
+protect/deep b
+error? try [append b/1 2]
+--- result
+#(true)

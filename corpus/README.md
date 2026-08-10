@@ -56,6 +56,12 @@ do [1 + 2]
 - `requires` — space-separated capabilities the example needs beyond the
   milestone 1 core. Absent means it should run today.
 - `note` — free text, optional.
+
+  Capabilities in use: `op`, `output`, `series`, `control`, `object`,
+  `parse`, `reader`, and the ones nothing implements yet — `clock`,
+  `random`, `file`, `network`, `map`, `r2-only`. An entry needing one of
+  those is reported by the coverage test rather than run, so the gap stays
+  countable instead of quietly passing.
 - `code` — the REBOL source, verbatim where possible. Self-contained:
   where the original relied on something set up earlier in the chapter,
   the setup is included here rather than assumed.
@@ -91,3 +97,31 @@ must have at least one, or it asserts nothing.
 `clock` and `random` entries cannot assert a fixed result as written.
 They are kept because the shape of the example is still worth testing once
 the clock and the generator are injectable, which the specs already require.
+
+## Origins
+
+Every entry carries an `--- origin` line, and it is worth reading before
+trusting the entry.
+
+`confirmed against R3 3.22.1` means somebody put the code to the binary
+and wrote down what came back. That is the only origin that proves the
+entry is REBOL rather than JEBOL.
+
+`REBOL/Core User Guide 2.3 section N` means it came from the
+documentation. Good evidence, and not the same thing: the guide describes
+REBOL 2 and R3 differs from it in places.
+
+`JEBOL spec/<file>, rule <name>` means the entry records a decision JEBOL
+made rather than behaviour it copied. Legitimate, because the spec is the
+authority for JEBOL's own choices, but it proves nothing about REBOL.
+
+There used to be a third kind, `JEBOL, found by running it`. That is an
+entry recorded from JEBOL's own output, which makes it a test that JEBOL
+does what JEBOL does. One of them held the wrong answer for months: it
+said an object molds on one line, and a real R3 puts each field on its
+own line. The flat mold was wrong and the entry that was supposed to
+catch it agreed with the bug.
+
+There are none left, and a new one should not be added. If the binary
+cannot be asked, say so in a note and mark the entry as an open question
+rather than recording what JEBOL happens to print.

@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -17,6 +18,7 @@ public record ErrorValue(
         ErrorCategory category,
         String errorId,
         String message,
+        Optional<Value> subject,
         Optional<Value> near,
         Optional<String> whereWord) implements Value {
 
@@ -30,14 +32,101 @@ public record ErrorValue(
         if (message == null) {
             throw new IllegalArgumentException("an error needs a message, even an empty one");
         }
-        if (near == null || whereWord == null) {
+        if (subject == null || near == null || whereWord == null) {
             throw new IllegalArgumentException("optional fields are empty, never null");
         }
     }
 
     public static ErrorValue of(ErrorCategory category, String errorId, String message) {
-        return new ErrorValue(category, errorId, message, Optional.empty(), Optional.empty());
+        return new ErrorValue(category, errorId, message,
+                Optional.empty(), Optional.empty(), Optional.empty());
     }
+
+    /** The same, naming what the failure was about. */
+    public static ErrorValue about(
+            ErrorCategory category, String errorId, String message, Value subject) {
+        return new ErrorValue(category, errorId, message,
+                Optional.of(subject), Optional.empty(), Optional.empty());
+    }
+
+    /**
+     * The fields WORDS-OF reports, in the order it reports them.
+     *
+     * <p>Fixed and ordered because code walks the result. TYPE and ID are
+     * words rather than strings, so they compare with a lit-word --
+     * {@code e/id = 'expect-arg} is the idiom Rebol's own suite is
+     * written in, and it fails silently against strings.
+     */
+    public static final List<String> FIELDS = List.of(
+            "code", "type", "id", "arg1", "arg2", "arg3", "near", "where");
+
+    /**
+     * What one field holds, or empty when the error has no such field.
+     *
+     * <p>ARG1 carries whatever the failure was about -- the word that had
+     * no value, the argument of the wrong datatype -- and is none when
+     * the failure had nothing to name. It is read out of the message
+     * because that is where the raiser put it; a field of its own would
+     * be better and is a larger change than this one.
+     */
+    public Optional<Value> field(String name) {
+        return switch (name) {
+            case "code" -> Optional.of(IntegerValue.of(codeNumber()));
+            case "type" -> Optional.of(WordValue.of(categoryWord()));
+            case "id" -> Optional.of(WordValue.of(errorId));
+            case "arg1" -> Optional.of(subject.orElseGet(NoneValue::none));
+            case "arg2", "arg3" -> Optional.of(NoneValue.none());
+            case "near" -> Optional.of(near.orElseGet(NoneValue::none));
+            case "where" -> Optional.of(whereWord
+                    .<Value>map(WordValue::of).orElseGet(NoneValue::none));
+            default -> Optional.empty();
+        };
+    }
+
+    /**
+     * R3 numbers its failures in hundreds by category, and code 400 for
+     * a maths error is what a script compares against.
+     */
+    private long codeNumber() {
+        // R3 numbers each id within its category, so the number depends on
+        // the id and not only on the family it belongs to. The catalogue
+        // that says which is R3's own, held in the eval layer.
+        int fromCatalogue = ErrorCatalogue.codeFor(
+                category.name().charAt(0) + category.name().substring(1).toLowerCase(
+                        java.util.Locale.ROOT),
+                errorId);
+        if (fromCatalogue > 0) {
+            return fromCatalogue;
+        }
+        return switch (category) {
+            case SYNTAX -> 200;
+            case SCRIPT -> 300;
+            case MATH -> 400;
+            case ACCESS -> 500;
+            case USER -> 800;
+            case INTERNAL -> 900;
+            // The one category not numbered in hundreds. A real R3 gives
+            // `try/all [throw 5]` the code 2, so this family counts from
+            // zero. Which id sits at which number is part of the wider
+            // error-catalogue reconciliation, not settled here.
+            case THROW -> 0;
+        };
+    }
+
+    /** Capitalised, as R3 writes it: Math, Script, Access. */
+    private String categoryWord() {
+        String spelling = category.spelling();
+        return Character.toUpperCase(spelling.charAt(0)) + spelling.substring(1);
+    }
+
+    /**
+     * What the failure was about, when the message names it.
+     *
+     * <p>The raiser writes the offending word or value at the front of
+     * the message, so this reads it back. A structured field carrying the
+     * value itself would be better; this is what can be had without
+     * changing every raise site.
+     */
 
     public static ErrorValue script(String errorId, String message) {
         return of(ErrorCategory.SCRIPT, errorId, message);
@@ -53,12 +142,14 @@ public record ErrorValue(
 
     /** The same error, carrying the block fragment it came from. */
     public ErrorValue near(Value fragment) {
-        return new ErrorValue(category, errorId, message, Optional.of(fragment), whereWord);
+        return new ErrorValue(category, errorId, message, subject,
+                Optional.of(fragment), whereWord);
     }
 
     /** The same error, naming the function it was raised in. */
     public ErrorValue raisedIn(String functionName) {
-        return new ErrorValue(category, errorId, message, near, Optional.of(functionName));
+        return new ErrorValue(category, errorId, message, subject, near,
+                Optional.of(functionName));
     }
 
     @Override

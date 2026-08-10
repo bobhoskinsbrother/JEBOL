@@ -23,6 +23,37 @@ public final class StringStorage {
         return new StringStorage(text);
     }
 
+    /**
+     * Whether this storage refuses modification.
+     *
+     * <p>On the storage rather than on the value, because two series
+     * values sharing storage are two views of one thing and cannot
+     * disagree about whether it can change. PROTECT of either protects
+     * both, which is what makes protection worth anything.
+     */
+    private boolean isProtected;
+
+    /**
+     * Stops a change to protected storage.
+     *
+     * <p>Here rather than in the natives, because every mutation passes
+     * through this class and a check per native is a check that can be
+     * left off the next one.
+     */
+    private void refuseIfProtected() {
+        if (isProtected) {
+            throw new ProtectedFromChange();
+        }
+    }
+
+    public boolean isProtected() {
+        return isProtected;
+    }
+
+    public void protectFromChange(boolean protectedNow) {
+        this.isProtected = protectedNow;
+    }
+
     public int length() {
         return buffer.length();
     }
@@ -33,18 +64,22 @@ public final class StringStorage {
     }
 
     public void set(int oneBasedIndex, int codepoint) {
+        refuseIfProtected();
         buffer.set(oneBasedIndex - 1, codepoint);
     }
 
     public void append(int codepoint) {
+        refuseIfProtected();
         buffer.append(codepoint);
     }
 
     public void insertAt(int oneBasedIndex, int codepoint) {
+        refuseIfProtected();
         buffer.insertAt(oneBasedIndex - 1, codepoint);
     }
 
     public int removeAt(int oneBasedIndex) {
+        refuseIfProtected();
         return buffer.removeAt(oneBasedIndex - 1);
     }
 

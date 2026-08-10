@@ -1,0 +1,10 @@
+# Assertions from Rebol's own suite that JEBOL does not satisfy yet.
+#
+# Not a skip list. Everything here is run on every build; what this file
+# does is say which failures are already known, so a new one turns the
+# build red instead of joining a crowd. Taking a line off is how a fix is
+# recorded, and RebolSuiteTest fails if a listed assertion starts passing
+# while still listed.
+#
+# Written by hand from a run, so it is a snapshot rather than a target:
+# the aim is for this file to be empty.

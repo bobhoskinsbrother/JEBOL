@@ -1,0 +1,311 @@
+--- title Words, contexts and binding
+--- about What a word is bound to is not part of how it was written, so
+--- about these are the natives that ask about a binding or change one.
+--- about The pinned boundaries are mostly about what counts as a word
+--- about worth collecting and what nesting does.
+
+--- id contexts/collecting-the-words-in-a-block
+--- origin confirmed against R3 3.22.1
+--- note Unique, and in the order first seen.
+--- code
+mold collect-words [a b a c]
+--- result
+"[a b c]"
+
+--- id contexts/collecting-from-an-empty-block
+--- origin confirmed against R3 3.22.1
+--- code
+mold collect-words []
+--- result
+"[]"
+
+--- id contexts/a-set-word-is-collected-as-a-plain-word
+--- origin confirmed against R3 3.22.1
+--- code
+mold collect-words [a: 1 b]
+--- result
+"[a b]"
+
+--- id contexts/collecting-only-the-set-words
+--- origin confirmed against R3 3.22.1
+--- code
+mold collect-words/set [a: 1 b]
+--- result
+"[a]"
+
+--- id contexts/nested-blocks-are-not-looked-into
+--- origin confirmed against R3 3.22.1
+--- note Which is the boundary /deep exists to cross.
+--- code
+mold collect-words [a [b]]
+--- result
+"[a]"
+
+--- id contexts/looking-into-nested-blocks
+--- origin confirmed against R3 3.22.1
+--- code
+mold collect-words/deep [a [b]]
+--- result
+"[a b]"
+
+--- id contexts/a-fresh-block-has-no-line-break
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1 2]
+new-line? b
+--- result
+#(false)
+
+--- id contexts/marking-a-line-break
+--- origin confirmed against R3 3.22.1
+--- note The marker is a property of the position rather than a value
+--- note in the block, which is why it takes its own pair of natives.
+--- code
+b: [1 2]
+new-line b true
+new-line? b
+--- result
+#(true)
+
+--- id contexts/evaluating-a-block-inside-an-object
+--- origin confirmed against R3 3.22.1
+--- note WITH binds the block to the object, so a bare word reaches the
+--- note object's field rather than anything outside.
+--- code
+o: make object! [a: 1]
+with o [a]
+--- result
+1
+
+--- id contexts/assigning-inside-an-object
+--- origin confirmed against R3 3.22.1
+--- note And the assignment lands in the object, not in a local.
+--- code
+o: make object! [a: 1]
+with o [a: 2 a]
+--- result
+2
+
+--- id contexts/an-object-made-the-short-way
+--- origin confirmed against R3 3.22.1
+--- note OBJECT is MAKE OBJECT! with the datatype left out.
+--- code
+o: object [a: 1]
+o/a
+--- result
+1
+
+--- id contexts/an-ordinary-object-holds-self
+--- origin confirmed against R3 3.22.1
+--- note So SELFLESS? is false for one, and the question is only
+--- note interesting for the contexts that do not.
+--- code
+o: make object! [a: 1]
+selfless? o
+--- result
+#(false)
+
+--- id contexts/an-ordinary-word-is-not-protected
+--- origin confirmed against R3 3.22.1
+--- code
+protected? 'foo
+--- result
+#(false)
+
+--- id contexts/an-ordinary-block-is-not-protected
+--- origin confirmed against R3 3.22.1
+--- code
+b: [1]
+protected? b
+--- result
+#(false)
+
+--- id contexts/unbinding-a-word-answers-the-word
+--- origin confirmed against R3 3.22.1
+--- code
+unbind 'a
+--- result
+a
+
+--- id contexts/unbinding-a-block-answers-the-block
+--- origin confirmed against R3 3.22.1
+--- code
+b: [a]
+mold unbind b
+--- result
+"[a]"
+
+--- id contexts/binding-a-word-that-the-context-has
+--- origin confirmed against R3 3.22.1
+--- code
+o: make object! [a: 1]
+mold bind 'a o
+--- result
+"a"
+
+--- id contexts/binding-a-word-the-context-has-not-got
+--- origin confirmed against R3 3.22.1
+--- note /new adds it rather than leaving it loose, which is how a
+--- note generated word is given somewhere to live. base-defs.reb uses
+--- note exactly this to define SPEC-OF and its five siblings.
+--- code
+o: make object! [a: 1]
+mold bind/new 'zz o
+--- result
+"zz"
+
+--- id contexts/a-word-bound-with-new-can-be-set
+--- origin confirmed against R3 3.22.1
+--- code
+o: make object! [a: 1]
+w: bind/new 'zz o
+set w 9
+get w
+--- result
+9
+
+--- id contexts/binding-a-block-answers-the-block
+--- origin confirmed against R3 3.22.1
+--- code
+o: make object! [a: 1]
+mold bind [a] o
+--- result
+"[a]"
+
+--- id contexts/binding-to-a-word-uses-that-words-context
+--- origin confirmed against R3 3.22.1
+--- note The target may be a word rather than an object, and then it
+--- note means "wherever this word is bound". base-defs.reb uses that
+--- note to hang six generated words off REFLECT's own context without
+--- note naming the context at all.
+--- code
+o: make object! [a: 1]
+w: bind 'a o
+mold bind 'a w
+--- result
+"a"
+
+--- id contexts/a-word-bound-that-way-reaches-the-same-value
+--- origin confirmed against R3 3.22.1
+--- code
+o: make object! [a: 1]
+w: bind 'a o
+get bind 'a w
+--- result
+1
+
+--- id contexts/appending-to-an-object-adds-a-field
+--- origin confirmed against R3 3.22.1
+--- note An object is not a series, so APPEND on one means "extend it"
+--- note rather than "put this at the end". The block is read as
+--- note set-word and value pairs. Rebol's own REGISTER-CODEC adds to
+--- note system/codecs this way.
+--- code
+o: make object! [a: 1]
+append o [b: 2]
+o/b
+--- result
+2
+
+--- id contexts/the-field-shows-up-in-the-words
+--- origin confirmed against R3 3.22.1
+--- code
+o: make object! [a: 1]
+append o [b: 2]
+mold words-of o
+--- result
+"[a b]"
+
+--- id contexts/the-set-word-may-be-computed
+--- origin confirmed against R3 3.22.1
+--- note Which is the point: the field name is not in the source, so an
+--- note object can gain a field decided at run time.
+--- code
+p: make object! [a: 1]
+append p reduce [to set-word! 'c 9]
+p/c
+--- result
+9
+
+--- id contexts/converting-a-word-to-a-set-word
+--- origin confirmed against R3 3.22.1
+--- note The word family converts within itself, which is how code
+--- note builds an assignment it did not spell out.
+--- code
+mold to set-word! 'c
+--- result
+"c:"
+
+--- id contexts/and-back-again
+--- origin confirmed against R3 3.22.1
+--- code
+mold to word! first [c:]
+--- result
+"c"
+
+--- id contexts/a-word-to-a-lit-word
+--- origin confirmed against R3 3.22.1
+--- code
+mold to lit-word! 'c
+--- result
+"'c"
+
+--- id contexts/putting-a-field-into-an-object
+--- origin confirmed against R3 3.22.1
+--- note PUT answers the value rather than the thing it put it in,
+--- note which makes it awkward in a chain and is worth knowing before
+--- note you write one.
+--- code
+o: make object! [a: 1]
+put o 'b 2
+--- result
+2
+
+--- id contexts/and-the-field-is-there-afterwards
+--- origin confirmed against R3 3.22.1
+--- code
+o: make object! [a: 1]
+put o 'b 2
+o/b
+--- result
+2
+
+--- id contexts/putting-a-key-into-a-map
+--- origin confirmed against R3 3.22.1
+--- code
+m: make map! []
+put m 'k 5
+m/k
+--- result
+5
+
+--- id contexts/putting-into-a-block-replaces-the-value-after-the-key
+--- origin confirmed against R3 3.22.1
+--- note A block is read as key and value pairs here, the way SELECT
+--- note reads one.
+--- code
+b: [a 1]
+put b 'a 9
+mold b
+--- result
+"[a 9]"
+
+--- id contexts/walking-an-objects-words
+--- origin confirmed against R3 3.22.1
+--- note FOREACH over an object walks its words, so an object can be
+--- note inspected without asking for WORDS-OF first.
+--- code
+o: make object! [a: 1 b: 2]
+mold collect [foreach w o [keep w]]
+--- result
+"[a b]"
+
+--- id contexts/walking-an-objects-words-and-values-together
+--- origin confirmed against R3 3.22.1
+--- note Two words in the loop's spec take a word and its value each
+--- note time round, the way they take pairs from a block.
+--- code
+o: make object! [a: 1 b: 2]
+mold collect [foreach [k v] o [keep reduce [k v]]]
+--- result
+"[a 1 b 2]"

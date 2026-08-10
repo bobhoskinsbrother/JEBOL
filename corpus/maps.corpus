@@ -1,0 +1,174 @@
+# map!: key-to-value storage.
+# Origin: confirmed against R3 3.22.1, driven by Rebol's own test suite.
+#
+# Added because it was the largest single thing missing. series-test.r3 and
+# evaluation-test.r3 hold 1,959 assertions between them and both stopped at
+# the first #[...] literal.
+#
+# A map is not a series. It has no position, so NEXT and FIRST mean nothing
+# on one, and LENGTH? counts pairs rather than items. Reading a key it has
+# not got gives NONE rather than raising, which is the opposite of an object
+# and the same as a series position past the end: a map is asked about keys
+# it may not have, and an object is asked for fields it should have.
+
+# --- Reading one -------------------------------------------
+
+--- id maps/a-hash-bracket-literal-is-a-map
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- note The brackets used to mean construction syntax in R3-Alpha. They
+--- note were reused rather than freed up.
+--- code
+type? #[a: 1]
+--- result
+#(map!)
+
+--- id maps/an-empty-map-literal
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- code
+type? #[]
+--- result
+#(map!)
+
+--- id maps/a-map-can-be-made-from-a-block
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- code
+type? make map! [a: 1 b: 2]
+--- result
+#(map!)
+
+--- id maps/keys-need-not-be-words
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- note #[1 2] has the integer 1 as a key, which is what separates a map
+--- note from an object: a map's keys are values, not names.
+--- code
+type? #[1 2]
+--- result
+#(map!)
+
+# --- Getting values out -------------------------------------
+
+--- id maps/a-path-reads-a-key
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- code
+m: #[a: 1]
+m/a
+--- result
+1
+
+--- id maps/a-key-that-is-not-there-gives-none
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- note The boundary that separates a map from an object. An object raises
+--- note invalid-path for a field it has not got; a map answers NONE.
+--- code
+m: #[a: 1]
+m/zz
+--- result
+_
+
+--- id maps/select-reads-a-key-too
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- code
+select #[a: 1] 'a
+--- result
+1
+
+--- id maps/select-on-a-missing-key-is-none
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- code
+select #[a: 1] 'zz
+--- result
+_
+
+# --- How big ------------------------------------------------
+
+--- id maps/length-counts-pairs
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- note Pairs, not items. A block of the same source would be four long.
+--- code
+length? #[a: 1 b: 2]
+--- result
+2
+
+--- id maps/an-empty-map-has-no-length
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- code
+length? #[]
+--- result
+0
+
+# --- Equality and molding -----------------------------------
+
+--- id maps/two-maps-with-the-same-pairs-are-equal
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- code
+equal? #[a: 1] #[a: 1]
+--- result
+#(true)
+
+--- id maps/maps-with-different-values-are-not-equal
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- code
+equal? #[a: 1] #[a: 2]
+--- result
+#(false)
+
+--- id maps/an-empty-map-molds-on-one-line
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- note The degenerate case is the only one that does not break the line.
+--- code
+mold #[]
+--- result
+"#[]"
+
+# --- Changing one -------------------------------------------
+
+--- id maps/put-adds-a-key
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- code
+m: #[]
+put m 'a 1
+m/a
+--- result
+1
+
+--- id maps/put-replaces-an-existing-key
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- note A key appears once however many times it is put, which is the
+--- note invariant that makes a map a map.
+--- code
+m: #[a: 1]
+put m 'a 2
+length? m
+--- result
+1
+
+--- id maps/keys-of-gives-the-keys-as-a-block
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- code
+keys-of #[a: 1 b: 2]
+--- result
+[a b]
+
+--- id maps/values-of-gives-the-values-as-a-block
+--- origin confirmed against R3 3.22.1
+--- requires map
+--- code
+values-of #[a: 1 b: 2]
+--- result
+[1 2]
