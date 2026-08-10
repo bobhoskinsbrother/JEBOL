@@ -8836,6 +8836,101 @@ public final class Natives {
                                     ((StringValue) arguments.get(0)).text())));
                 });
 
+        // The five things a script may ask the operator for through a window.
+        // One grant covers all of them, because a host that will put one
+        // dialog on the screen will put any of them there.
+        //
+        // Every one answers none when the operator declines, and raises when
+        // the service is refused. Those must never look the same: closing a
+        // chooser is an answer, and a script told none for a refusal retries
+        // the dialog for as long as the operator keeps closing it.
+        define("browse", List.of(Parameter.required("url",
+                        Set.of(Datatype.URL, Datatype.FILE, Datatype.NONE))),
+                (arguments, evaluator, context) -> {
+                    requireService(HostService.WINDOWS);
+                    return throughWindow(() -> {
+                        // None is in Rebol's own spec, so browsing nothing is
+                        // a call rather than a mistake. Nothing to open means
+                        // nothing to do.
+                        if (!(arguments.getFirst() instanceof StringValue target)) {
+                            return NoneValue.none();
+                        }
+                        evaluator.windows().browse(target.text());
+                        return NoneValue.none();
+                    });
+                });
+
+        // The datatype of the answer follows the refinement rather than the
+        // outcome: /MULTI always answers a block, so code walking it need not
+        // test for none first, and the plain form always answers a file or
+        // none, so `read request-file` works.
+        define("request-file", List.of(
+                        Parameter.belongingTo("file", "name", Set.of(Datatype.FILE)),
+                        Parameter.belongingTo("title", "text", Set.of(Datatype.STRING))),
+                Set.of("save", "multi", "file", "title", "filter"),
+                (arguments, evaluator, context, refinements) -> {
+                    requireService(HostService.WINDOWS);
+                    return throughWindow(() -> {
+                        List<String> chosen = evaluator.windows().chooseFiles(
+                                refinements.contains("save"),
+                                refinements.contains("multi"),
+                                textOfArgument(arguments, refinements, "file"),
+                                textOfArgument(arguments, refinements, "title"));
+                        if (refinements.contains("multi")) {
+                            return BlockValue.block(chosen.stream()
+                                    .<Value>map(one -> StringValue.of(one, Datatype.FILE))
+                                    .toList());
+                        }
+                        return chosen.isEmpty()
+                                ? NoneValue.none()
+                                : StringValue.of(chosen.getFirst(), Datatype.FILE);
+                    });
+                });
+
+        define("request-dir", List.of(
+                        Parameter.belongingTo("title", "text", Set.of(Datatype.STRING)),
+                        Parameter.belongingTo("dir", "name", Set.of(Datatype.FILE))),
+                Set.of("title", "dir", "keep"),
+                (arguments, evaluator, context, refinements) -> {
+                    requireService(HostService.WINDOWS);
+                    return throughWindow(() -> evaluator.windows().chooseDirectory(
+                                    textOfArgument(arguments, refinements, "dir"),
+                                    textOfArgument(arguments, refinements, "title"))
+                            .<Value>map(where -> StringValue.of(where, Datatype.FILE))
+                            .orElseGet(NoneValue::none));
+                });
+
+        // A colour goes in as a tuple and comes back as one, per Rebol's own
+        // `/default color [tuple!]`.
+        define("request-color", List.of(
+                        Parameter.belongingTo("default", "color", Set.of(Datatype.TUPLE))),
+                Set.of("default", "rgb16"),
+                (arguments, evaluator, context, refinements) -> {
+                    requireService(HostService.WINDOWS);
+                    return throughWindow(() -> {
+                        Optional<int[]> suggested = refinements.contains("default")
+                                        && arguments.getFirst() instanceof TupleValue given
+                                ? Optional.of(given.segments())
+                                : Optional.empty();
+                        return evaluator.windows().chooseColour(suggested)
+                                .<Value>map(TupleValue::of)
+                                .orElseGet(NoneValue::none);
+                    });
+                });
+
+        // What the operator types must not reach the screen, which is the
+        // whole reason this is its own request rather than a text dialog.
+        define("request-password", List.of(
+                        Parameter.belongingTo("title", "text", Set.of(Datatype.STRING))),
+                Set.of("title"),
+                (arguments, evaluator, context, refinements) -> {
+                    requireService(HostService.WINDOWS);
+                    return throughWindow(() -> evaluator.windows()
+                            .askForPassword(textOfArgument(arguments, refinements, "title"))
+                            .<Value>map(StringValue::of)
+                            .orElseGet(NoneValue::none));
+                });
+
         // QUERY is what the rest of the file library is built on: SIZE? and
         // MODIFIED? are one line each over it, and LIST-DIR and DIR-TREE both
         // ask it for three fields at once. One crossing of the boundary, so
@@ -8971,6 +9066,47 @@ public final class Natives {
             throw new Raised(ErrorValue.of(
                     ErrorCategory.ACCESS, denied.errorId(), denied.getMessage()));
         }
+    }
+
+    /**
+     * The same, for a window port.
+     *
+     * <p>A separate wrapper because the two refusals mean different things and
+     * carry different ids. A window port refuses because the host granted the
+     * service and supplied no screen, which is {@code not_present}; a file port
+     * refuses for reasons of its own about the path.
+     */
+    private static Value throughWindow(Supplier<Value> operation) {
+        try {
+            return operation.get();
+        } catch (WindowPort.Denied denied) {
+            throw new Raised(ErrorValue.of(
+                    ErrorCategory.ACCESS, denied.errorId(),
+                    denied.getMessage() + ", which is "
+                            + ServiceRefusal.NOT_PRESENT.name()
+                                    .toLowerCase(java.util.Locale.ROOT).replace('_', ' ')));
+        }
+    }
+
+    /**
+     * A refinement's string argument, or empty when the refinement was not
+     * asked for.
+     *
+     * <p>The dialogs take four optional arguments between them and every one
+     * of them is "use the host's own default if I say nothing", so an absent
+     * refinement has to arrive as an absence rather than as an empty string.
+     */
+    private static Optional<String> textOfArgument(
+            List<Value> arguments, Set<String> refinements, String refinement) {
+
+        if (!refinements.contains(refinement)) {
+            return Optional.empty();
+        }
+        return arguments.stream()
+                .filter(StringValue.class::isInstance)
+                .map(StringValue.class::cast)
+                .map(StringValue::text)
+                .findFirst();
     }
 
     // ---- parse -----------------------------------------------------------

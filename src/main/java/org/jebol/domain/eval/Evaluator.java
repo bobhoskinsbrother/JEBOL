@@ -83,6 +83,9 @@ public final class Evaluator {
     /** Where a script reads a line from the operator. Nowhere, by default. */
     private ConsolePort console = ConsolePort.none();
 
+    /** Where a script puts a window on a screen. Nowhere, by default. */
+    private WindowPort windows = WindowPort.none();
+
     /** How a script starts another program. Not at all, by default. */
     private ProcessPort processes = ProcessPort.none();
     private int stepsSinceLastCheck;
@@ -143,6 +146,16 @@ public final class Evaluator {
     /** Gives the script a console to read. */
     public void useConsole(ConsolePort port) {
         this.console = port;
+    }
+
+    /** Where a script puts a window on a screen. Nowhere, by default. */
+    public WindowPort windows() {
+        return windows;
+    }
+
+    /** Gives the script a screen to put a window on. */
+    public void useWindows(WindowPort port) {
+        this.windows = port;
     }
 
     /** The names the host was started with. None, by default. */

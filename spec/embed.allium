@@ -96,6 +96,25 @@ value FileInformation {
     created: Timestamp?
 }
 
+-- What a script may ask the operator for through a window on a screen.
+--
+-- Five things, and they are one service rather than five because a host that
+-- will put one dialog on the screen will put any of them there. A grant per
+-- dialog would let a host say which verb and not which screen, and the verb
+-- was never the interesting half.
+--
+-- Every one of them answers none when the operator declines. That is not a
+-- refusal and must not be reported as one: a person who closes a file
+-- chooser has answered the question, and a script that cannot tell "no file"
+-- from "no permission" will retry the wrong one.
+enum WindowRequest {
+    a_browser_at         -- open a URL or a local file in a web browser
+    | a_file             -- choose a file, to read or to save
+    | a_directory        -- choose a directory
+    | a_colour           -- choose a colour
+    | a_password         -- type a secret, without it appearing on screen
+}
+
 ------------------------------------------------------------
 -- Entities and Variants
 ------------------------------------------------------------
@@ -232,6 +251,30 @@ rule AFactTheHostHasNotGotIsNoneOnItsOwn {
     ensures: QueryResult(value: none)
 }
 
+-- A dialog the operator declined answers none. The three refusal reasons are
+-- about the service and never about the answer, so a script can tell a
+-- cancelled file chooser from a filesystem it was not granted.
+rule ADeclinedDialogAnswersNone {
+    when: script_asks_the_operator(run, request)
+    requires: windows in run.interpreter.bounds.granted_services
+    requires: operator_declined(request)
+    ensures: WindowResult(value: none)
+}
+
+-- A host that granted the windows service and supplied nothing to put a
+-- window on gets not_present rather than not_granted. The two are different
+-- facts about the host and a script may act on either: the first can be
+-- fixed by granting, the second cannot.
+rule GrantedWithNoScreenIsNotPresent {
+    when: script_asks_the_operator(run, request)
+    requires: windows in run.interpreter.bounds.granted_services
+    requires: run.interpreter.window_port = null
+    ensures:
+        run.conclusion = raised
+        run.refusal_reason = not_present
+        run.refused_service = windows
+}
+
 rule ScriptRunBegins {
     when: Run(interpreter, source_text)
     requires: interpreter.active_runs.count = 0
@@ -350,6 +393,7 @@ surface Embedding {
         HostService
         ServiceRefusal
         FileInformation
+        WindowRequest
 
     @guarantee TheHostSaysWhatItKnowsAboutAFileAndNoMore
         -- Six facts cross the boundary about one file: its name, whether it

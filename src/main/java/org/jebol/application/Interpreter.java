@@ -537,6 +537,17 @@ public final class Interpreter {
     }
 
     /**
+     * Gives the script a screen to put a window on.
+     *
+     * <p>One grant for all five dialogs. A host that will show one will show
+     * any of them, so a grant per dialog would say which verb and not which
+     * screen.
+     */
+    public void useWindows(org.jebol.domain.eval.WindowPort port) {
+        evaluator.useWindows(port);
+    }
+
+    /**
      * Gives the script the host's environment to read.
      *
      * <p>Reading only. A JVM cannot change the environment of its own
