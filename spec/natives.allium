@@ -414,6 +414,113 @@ rule PairOrderingBreaksTheTieOnTheSecondHalf {
             else: holds(request.strictness, y_of(request.left), y_of(request.right)))
 }
 
+-- === Money =================================================
+
+-- Money arithmetic widens the other side to a money and keeps the answer
+-- a money, so `$4 * $4` is $16 and `$4 / $4` is $1 rather than the plain 1
+-- either of them might have been. An integer, a decimal and a percent all
+-- widen; nothing else does.
+rule MoneyArithmeticWidensTheOtherSide {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: is_money(left)
+    requires: is_integer(right) or is_decimal(right) or is_percent(right)
+        or is_money(right)
+    ensures: ArithmeticResult(is_money: true)
+}
+
+-- A time is the one exception, and it is an exception in one direction
+-- only: multiplying accepts it and reads it as a count of hours, so
+-- `$5 * 1:30:0` is $7.5. Adding, subtracting, dividing and taking a
+-- remainder all refuse it.
+--
+-- Hours rather than seconds, which is the part to get wrong. Reading
+-- 1:30:0 as 5400 gives $27000 -- a plausible-looking number from a wage
+-- calculation that has quietly gone wrong by a factor of 3600.
+rule MultiplyingMoneyByATimeReadsItAsHours {
+    when: EvaluateArithmetic(multiply, left, right)
+    requires: is_money(left) and is_time(right)
+    ensures: ArithmeticResult(is_money: true, amount: amount_of(left) * hours_of(right))
+}
+
+rule OtherMoneyArithmeticRefusesATime {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: is_money(left) and is_time(right)
+    requires: operation != multiply
+    ensures: ArithmeticFailed(failure: cannot_use)
+}
+
+-- Anything that is not a number and not a time is refused whichever
+-- operation asked. A character and a tuple are the two that look like they
+-- might work: both carry numbers, and neither is a number here.
+rule MoneyArithmeticRefusesEverythingElse {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: is_money(left)
+    requires: not (is_integer(right) or is_decimal(right) or is_percent(right)
+        or is_money(right) or is_time(right))
+    ensures: ArithmeticFailed(failure: cannot_use)
+}
+
+-- Arithmetic past twenty-six significant digits, or past a power of ten of
+-- 127, raises overflow. This is the one place where an implementation on an
+-- unbounded decimal silently disagrees: it answers a number Rebol refuses
+-- to hold, and every assertion about the values below the bound still
+-- passes.
+rule MoneyArithmeticRaisesPastTheBound {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: is_money(left)
+    requires: result_significand_of(operation, left, right) >= power(10, 26)
+        or result_exponent_of(operation, left, right) > 127
+    ensures: ArithmeticFailed(failure: overflow)
+}
+
+-- Seven datatypes make a money and everything else is refused. A binary is
+-- the ninety-six bit form, right-aligned in twelve bytes, so a shorter
+-- binary is padded from the left and `to money! #{0F}` is $15.
+rule SevenDatatypesMakeAMoney {
+    when: EvaluateMake(money, source)
+    requires: is_integer(source) or is_decimal(source) or is_percent(source)
+        or is_money(source) or is_string(source) or is_binary(source)
+        or is_logic(source)
+    ensures: MakeResult(is_money: true)
+}
+
+-- An issue is refused on purpose. It looks like the obvious way to write a
+-- money in hexadecimal, and Rebol removed the support rather than never
+-- having had it, so the refusal is a decision and not a gap.
+rule MakingAMoneyFromAnythingElseIsRefused {
+    when: EvaluateMake(money, source)
+    requires: not (is_integer(source) or is_decimal(source) or is_percent(source)
+        or is_money(source) or is_string(source) or is_binary(source)
+        or is_logic(source))
+    ensures: MakeFailed(failure: bad_make_arg)
+}
+
+-- A logic makes a money only through MAKE, not through TO, and true is $1
+-- while false is $0.
+rule MakingAMoneyFromALogicGivesOneOrNothing {
+    when: EvaluateMake(money, source)
+    requires: is_logic(source)
+    ensures: MakeResult(amount: if source.truth: 1 else: 0)
+}
+
+-- A money converts to a binary as the same twelve bytes it was made from,
+-- so the round trip through both is exact.
+rule AMoneyConvertsToTwelveBytes {
+    when: EvaluateConversion(binary, source)
+    requires: is_money(source)
+    ensures: ConversionResult(byte_count: 12)
+}
+
+-- ROUND/TO takes the datatype of the scale rather than keeping the money.
+-- `round/to $1.333 $.01` is a money, `round/to $1.333 .01` is a decimal and
+-- `round/to $0.5 1` is the integer 1. Plain ROUND with no scale keeps the
+-- money.
+rule RoundingAMoneyTakesTheDatatypeOfItsScale {
+    when: EvaluateRound(subject, scale)
+    requires: is_money(subject)
+    ensures: RoundResult(datatype: scale.datatype)
+}
+
 -- === Tuples ================================================
 --
 -- A tuple is a row of octets and every operation on one works octet by

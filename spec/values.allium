@@ -238,10 +238,34 @@ variant DecimalValue : Value {
 -- normalised: $1.50 and $1.5 hold different scales. Whether they are
 -- nonetheless equal is an open question below, and it is exactly the
 -- distinction BigDecimal draws between equals and compareTo.
+--
+-- The range is bounded and both bounds matter. Rebol's `deci` struct packs
+-- a money into ninety-six bits: one sign bit, an eight-bit signed
+-- exponent, and a whole-number significand across three fields totalling
+-- eighty-seven bits. So a money carries at most twenty-six significant
+-- digits and its power of ten runs from -128 to 127, and arithmetic that
+-- leaves either bound raises overflow rather than widening.
+--
+-- Doubling $1 five hundred and eight times is the assertion that pins it:
+-- the answer is $83798799562141231872337704e127, and doubling once more
+-- raises. An implementation on an unbounded decimal computes the same
+-- five-hundred-and-ninth value happily, which is the failure that looks
+-- like success.
+--
+-- Ninety-six bits is also the width of the binary form, which is why
+-- `to money! #{0F}` is $15 and `to-binary $15` is twelve bytes.
 variant MoneyValue : Value {
     amount: Decimal
     scale: Integer              -- digits after the point, as written
     currency: String?           -- absent for the bare $1.50 form; 3 chars
+
+    -- The whole number the digits spell, without the point. This is what
+    -- the significand fields hold, and what the bound applies to.
+    significand: absolute(amount) * power(10, scale)
+
+    -- The power of ten the significand is multiplied by. Rebol's exponent
+    -- field is the negation of the scale.
+    exponent: 0 - scale
 }
 
 variant CharValue : Value {
@@ -495,6 +519,19 @@ invariant ContextSlotsAreUnique {
 --
 -- The floor is on what a tuple shows and not on what it keeps, so a
 -- tuple of one octet is legal and shows as three.
+-- Twenty-six digits and no more, because the significand has eighty-seven
+-- bits to hold them in.
+invariant MoneySignificandFitsInEightySevenBits {
+    for money in MoneyValues:
+        money.significand < power(10, 26)
+}
+
+-- And the power of ten fits in a signed byte.
+invariant MoneyExponentFitsInASignedByte {
+    for money in MoneyValues:
+        money.exponent >= -128 and money.exponent <= 127
+}
+
 -- A pair half is stored to single precision. Nothing widens it back: a
 -- half read out is the single precision value shown as a double, which is
 -- why `first 0.1x0.2` is 0.100000001490116.

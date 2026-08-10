@@ -1134,11 +1134,20 @@ public final class Natives {
         if (left instanceof DateValue || right instanceof DateValue) {
             return dateArithmetic(left, right, operation);
         }
+        // A money on the left decides, even against a time on the right,
+        // because REBTYPE(Money) runs before anything asks the time what it
+        // thinks. `$5 * 1:30:0` is $7.5 and not a duration, and `$5 + 1:30:0`
+        // raises rather than adding five seconds. Letting the time branch go
+        // first gave both of those the wrong answer, and the wrong answer was
+        // a plausible time in each case.
+        if (left instanceof MoneyValue amount) {
+            return moneyArithmetic(amount, right, operation);
+        }
         if (left instanceof TimeValue || right instanceof TimeValue) {
             return timeArithmetic(left, right, operation);
         }
-        if (left instanceof MoneyValue || right instanceof MoneyValue) {
-            return moneyArithmetic(asBigDecimal(left), asBigDecimal(right), operation);
+        if (right instanceof MoneyValue) {
+            return moneyArithmetic(MoneyValue.of(asBigDecimal(left)), right, operation);
         }
         if (left instanceof IntegerValue leftInteger && right instanceof IntegerValue rightInteger) {
             return integerArithmetic(leftInteger.magnitude(), rightInteger.magnitude(), operation);
@@ -1552,6 +1561,53 @@ public final class Natives {
     private static long dayNumberOf(DateValue date) {
         return java.time.LocalDate.of(date.year(), date.month(), date.day()).toEpochDay();
     }
+
+    /**
+     * Arithmetic on a money, with whatever the other side turns out to be.
+     *
+     * <p>{@code REBTYPE(Money)} widens the right side and then does the sum
+     * in {@code deci}, so the answer is always a money -- there is no branch
+     * out of the switch that changes the datatype. {@code $4 / $4} is $1 and
+     * not the plain 1 the division suggests.
+     */
+    private static Value moneyArithmetic(MoneyValue amount, Value other, Operation operation) {
+        return withinTheDeciRange((MoneyValue) moneyArithmetic(
+                amount.amount(), widenedToMeetMoney(other, operation), operation));
+    }
+
+    /**
+     * The other side of a money sum, as a decimal amount.
+     *
+     * <p>Four datatypes widen and one is a special case. An integer, a
+     * decimal, a percent and a money all become the amount they name. A time
+     * becomes its count of hours, and only for a multiplication: the C's test
+     * is {@code IS_TIME(arg) && action == A_MULTIPLY}, so the same argument
+     * is taken by one operation and refused by the other four.
+     *
+     * <p>Hours rather than seconds. {@code VAL_TIME(arg) * NANO / 3600.0}
+     * turns nanoseconds into seconds and then into hours, so 1:30:0 is 1.5
+     * and {@code $5 * 1:30:0} is $7.5. Reading it as seconds gives $27000 --
+     * a wage calculation wrong by a factor of 3600, and wrong quietly.
+     */
+    private static BigDecimal widenedToMeetMoney(Value other, Operation operation) {
+        if (other instanceof TimeValue span) {
+            if (operation != Operation.MULTIPLY) {
+                throw Raised.of(EvaluationFailure.CANNOT_USE,
+                        "only multiplication takes a time on the right of a money");
+            }
+            return BigDecimal.valueOf(
+                    (double) span.nanoseconds() / NANOSECONDS_AN_HOUR);
+        }
+        if (other instanceof MoneyValue
+                || other instanceof IntegerValue
+                || other instanceof DecimalValue) {
+            return asBigDecimal(other);
+        }
+        throw Raised.of(EvaluationFailure.CANNOT_USE,
+                "cannot use " + other.datatype().literalSpelling() + " in money arithmetic");
+    }
+
+    private static final double NANOSECONDS_AN_HOUR = 3_600_000_000_000.0;
 
     private static Value moneyArithmetic(BigDecimal left, BigDecimal right, Operation operation) {
         return switch (operation) {
@@ -5030,7 +5086,8 @@ public final class Natives {
                     }
                     double value = Comparison.asDouble(arguments.get(0));
                     if (!refinements.contains("to")) {
-                        return DecimalValue.of(roundedBy(value, refinements));
+                        return roundedKeepingTheDatatype(
+                                arguments.get(0), roundedBy(value, refinements));
                     }
                     Value step = arguments.get(arguments.size() - 1);
                     double multiple = Comparison.asDouble(step);
@@ -5043,12 +5100,64 @@ public final class Natives {
                         return IntegerValue.of((long) value);
                     }
                     double rounded = roundedHalfAway(value / multiple) * multiple;
-                    return step instanceof IntegerValue && arguments.get(0) instanceof IntegerValue
-                            ? IntegerValue.of((long) rounded)
-                            : DecimalValue.of(new java.math.BigDecimal(rounded)
-                                    .round(new java.math.MathContext(15)).doubleValue());
+                    return roundedToTheScalesDatatype(step, rounded);
                 });
 
+    }
+
+    /**
+     * A rounded number, keeping the datatype of the number that was rounded.
+     *
+     * <p>Plain ROUND with no scale keeps the subject's datatype, so
+     * {@code round $1.5} is a money and {@code round 50.5%} is a percent. Each
+     * datatype's {@code A_ROUND} ends at its own {@code setDec} or its own
+     * {@code SET_TYPE}, which is what makes this the rule rather than the
+     * exception.
+     */
+    private static Value roundedKeepingTheDatatype(Value subject, double rounded) {
+        return switch (subject) {
+            case MoneyValue amount -> amount.amounting(BigDecimal.valueOf(rounded));
+            case DecimalValue quantity when quantity.datatype() == Datatype.PERCENT ->
+                    DecimalValue.percent(rounded);
+            case IntegerValue whole -> IntegerValue.of((long) rounded);
+            default -> DecimalValue.of(rounded);
+        };
+    }
+
+    /**
+     * A rounded number, taking the datatype of the scale rather than of the
+     * subject.
+     *
+     * <p>This is the surprising half of ROUND and it is the same in all three
+     * of {@code t-money.c}, {@code t-decimal.c} and {@code t-integer.c}: with
+     * a scale, the answer is the scale's datatype. So
+     * {@code round/to $1.333 .01} is the decimal 1.33 rather than a money, and
+     * {@code round/to $0.5 1} is the integer 1. A money scale pulls the answer
+     * the other way, so {@code round/to 0.5 $1} is a money.
+     *
+     * <p>Reading it as "keep the subject's datatype and let the scale say how
+     * far to round" is the natural guess, and it disagrees on every mixed
+     * call.
+     */
+    private static Value roundedToTheScalesDatatype(Value scale, double rounded) {
+        return switch (scale) {
+            case MoneyValue amount -> amount.amounting(BigDecimal.valueOf(rounded));
+            case IntegerValue whole -> IntegerValue.of((long) rounded);
+            case DecimalValue quantity when quantity.datatype() == Datatype.PERCENT ->
+                    DecimalValue.percent(toFifteenDigits(rounded));
+            default -> DecimalValue.of(toFifteenDigits(rounded));
+        };
+    }
+
+    /**
+     * A rounded answer trimmed back to the fifteen digits MOLD would show.
+     *
+     * <p>Dividing by the scale and multiplying back puts noise in the low
+     * bits, so `round/to $1.333 .01` computes 1.3299999999999999 and has to
+     * be brought back to 1.33 before anything compares it.
+     */
+    private static double toFifteenDigits(double rounded) {
+        return new BigDecimal(rounded).round(new java.math.MathContext(15)).doubleValue();
     }
 
     /**
@@ -7384,6 +7493,16 @@ public final class Natives {
         return bits;
     }
 
+    /** A binary's bytes from its current position, as the JVM counts them. */
+    private static byte[] bytesFromHere(BinaryValue binary) {
+        int howMany = binary.lengthFromHere();
+        byte[] bytes = new byte[howMany];
+        for (int at = 0; at < howMany; at++) {
+            bytes[at] = (byte) binary.storage().at(binary.index() + at);
+        }
+        return bytes;
+    }
+
     /** Signed JVM bytes as a binary value, which counts them unsigned. */
     private static Value binaryOfBytes(byte[] bytes) {
         int[] octets = new int[bytes.length];
@@ -7423,6 +7542,11 @@ public final class Natives {
             case DECIMAL -> value instanceof BinaryValue bits
                     ? DecimalValue.of(Double.longBitsToDouble(bitsOf(bits)))
                     : DecimalValue.of(Comparison.asDouble(value));
+            // A percent shares the decimal's representation and stores the
+            // fraction rather than the printed number, so `make percent! $100`
+            // is 10000% and `make money! 100%` is $1. The two conversions are
+            // inverses and neither multiplies by a hundred.
+            case PERCENT -> DecimalValue.percent(Comparison.asDouble(value));
             case STRING -> StringValue.of(runTogether(value));
             // The rest of the string family takes the text of the value
             // the same way, so `to file! [a b]` is %ab: nothing inserts
@@ -7446,6 +7570,11 @@ public final class Natives {
                         java.nio.ByteBuffer.allocate(Long.BYTES)
                                 .putLong(Double.doubleToRawLongBits(
                                         fractional.quantity())).array());
+                // Twelve bytes, which is the whole of the deci form: one
+                // sign bit, an eight bit power of ten and eighty-seven bits
+                // of significand. Nothing normalises on the way, so a money
+                // made from twelve bytes converts back to the same twelve.
+                case MoneyValue amount -> binaryOfBytes(amount.toBytes());
                 case BlockValue block -> bytesOfEach(block);
                 default -> raiseCannotUse(value, "to binary!");
             };
@@ -7463,6 +7592,7 @@ public final class Natives {
             case MAP -> MapValue.of(itemsOf(value));
             case CHAR -> asCharacter(value);
             case PAIR -> asPair(value);
+            case MONEY -> asMoney(value);
             case BITSET -> bitsetOf(value);
             // A typeset need not be one of the named families: code can
             // build its own from whichever datatypes it cares about, and
@@ -7869,6 +7999,59 @@ public final class Natives {
         };
     }
 
+    /**
+     * A money made from whatever was offered.
+     *
+     * <p>Seven datatypes and no more. A money is handed straight back. An
+     * integer, a decimal and a percent become the amount they name, and a
+     * percent names its fraction rather than its printed number, so
+     * {@code make money! 100%} is $1. A string goes through the reader. A
+     * binary is the twelve byte {@code deci} form. A logic is $1 or $0.
+     *
+     * <p>An issue is refused, and the refusal is a decision rather than a
+     * gap: {@code t-money.c} carries the case label commented out with the
+     * issue number that removed it. Writing a money in hexadecimal reads like
+     * the obvious use for an issue, and Rebol decided against it.
+     */
+    private static Value asMoney(Value value) {
+        return withinTheDeciRange(switch (value) {
+            case MoneyValue already -> already;
+            case IntegerValue whole -> MoneyValue.of(BigDecimal.valueOf(whole.magnitude()));
+            case DecimalValue quantity ->
+                    MoneyValue.of(BigDecimal.valueOf(quantity.quantity()));
+            case StringValue text -> readMoney(text.text());
+            case BinaryValue bytes -> MoneyValue.fromBytes(bytesFromHere(bytes));
+            case LogicValue truth ->
+                    MoneyValue.of(truth.truth() ? BigDecimal.ONE : BigDecimal.ZERO);
+            default -> (MoneyValue) raiseBadMakeArg(value, "money!");
+        });
+    }
+
+    /**
+     * The amount, or an overflow if it is one a {@code deci} cannot hold.
+     *
+     * <p>Twenty-six significant digits and a power of ten inside a signed
+     * byte. Checked here rather than on construction so that the failure is a
+     * REBOL error a script can catch, which is what the C raises.
+     */
+    private static MoneyValue withinTheDeciRange(MoneyValue amount) {
+        if (!amount.isWithinTheDeciRange()) {
+            throw Raised.of(EvaluationFailure.OVERFLOW,
+                    "a money holds twenty-six digits and a power of ten from -128 to 127");
+        }
+        return amount;
+    }
+
+    private static MoneyValue readMoney(String text) {
+        List<Value> read = Transcoder.transcode("$" + text.strip()).values()
+                .map(BlockValue::remaining)
+                .orElseGet(List::of);
+        if (read.size() != 1 || !(read.getFirst() instanceof MoneyValue amount)) {
+            return (MoneyValue) raiseBadMakeArg(StringValue.of(text), "money!");
+        }
+        return amount;
+    }
+
     private static Value pairOf(List<Value> halves) {
         if (halves.size() != 2) {
             return raiseBadMakeArg(BlockValue.block(halves), "pair!");
@@ -7965,8 +8148,16 @@ public final class Natives {
      * so 1.5 is even and 2.5 is odd. Truncating instead agrees on every
      * whole decimal and disagrees on every half, which makes it the
      * dangerous wrong answer rather than the obvious one.
+     *
+     * <p>A money truncates rather than rounding, because {@code A_EVENQ} in
+     * {@code t-money.c} reads it through {@code deci_to_int} and that throws
+     * the fraction away. So the two datatypes disagree on a half, and each
+     * follows its own C.
      */
     private static long roundedWholeOf(Value value, String nativeName) {
+        if (value instanceof MoneyValue amount) {
+            return amount.amount().longValue();
+        }
         if (value instanceof DecimalValue fractional) {
             double magnitude = fractional.quantity();
             // Past the point where a double can tell neighbouring whole
