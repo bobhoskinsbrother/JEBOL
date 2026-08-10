@@ -120,14 +120,23 @@ time** and gains 25 functions: `clos`, `closure` with `/with`, `has`,
 `list-dir`, `in-dir`, `to-relative-file`, and the twelve
 `mezz-shell.reb` defines.
 
-It costs 21 unit assertions. Rebol's own versions replace JEBOL's and then
-need natives JEBOL has not got. **Six things to fix, and they are the whole
-of the import:**
+It cost 21 unit assertions when first measured. **Eleven are now fixed** --
+CLEAN-PATH needed CASE to answer true for a truthy condition with no block
+after it, and MAKE to take a value as a prototype rather than only a
+datatype. Both were C behaviours, both are ported, and both were general
+rules rather than anything to do with files.
 
-- `MAKE` on a `file!` value
-- `CASE` where a condition's block comes later rather than immediately
-- whatever `input` and `ask` need beyond `system/ports/input`
-- whatever `enum`, `context` and `map` need that the Java versions supplied
+**Two blockers remain, and each is bigger than the import:**
+
+- **`input` and `ask`** (7 assertions) want `system/ports/input` and
+  `open [scheme: 'console]`, which is the whole `port!` datatype. JEBOL's
+  own INPUT and ASK are Java natives duplicating Rebol's REBOL, so they are
+  forks and Rebol's should win -- once there is a port to read.
+- **`enum`** (4 assertions) wants `system/standard/enum`, and its PARSE rule
+  uses INSERT and CHANGE as keywords. The values come out shifted by the
+  number of names, which points at one of those two keywords or at
+  FUNCTION's collection of locals. A real defect either way, and worth
+  finding on its own: it is in the evaluator rather than in ENUM.
 
 Then delete the `mezz-shell.reb` line from `BorrowedFilesLoadWholeTest`'s
 `STOPS_ON`, which is what that test's javadoc says to do when a stop is

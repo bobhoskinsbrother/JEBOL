@@ -2083,9 +2083,25 @@ public final class Natives {
                     while (!at.atTail()) {
                         Evaluator.Step condition = evaluator.evaluateNextOrRaise(at, context);
                         BlockValue afterCondition = at.atIndex(condition.nextIndex());
+                        // A truthy condition with nothing after it answers
+                        // logic true. `if (index >= SERIES_TAIL(block)) return
+                        // R_TRUE;` in the C, and it is what makes a trailing
+                        // expression a default clause whose side effect is the
+                        // point: Rebol's own CLEAN-PATH ends
+                        // `case [ ... file: append what-dir file ]`, with no
+                        // block, to do the assignment.
+                        //
+                        // Raising here instead stopped CLEAN-PATH from
+                        // loading, and CLEAN-PATH is in the file every other
+                        // file function comes from.
                         if (afterCondition.atTail()) {
-                            throw Raised.of(EvaluationFailure.NEED_VALUE,
-                                    "a case condition has no block after it");
+                            // Only a truthy one. A false condition at the end
+                            // does `index++`, the loop runs out and the C
+                            // reaches `return R_NONE`, so `case [false]` is
+                            // none where `case [true]` is true.
+                            return condition.value().isTruthy()
+                                    ? LogicValue.of(true)
+                                    : lastTaken;
                         }
                         Value branch = afterCondition.first();
                         if (condition.value().isTruthy()) {
@@ -2409,6 +2425,26 @@ public final class Natives {
                             derivedFunction(original, given);
                     case FunctionValue original when arguments.get(1) instanceof BlockValue given ->
                             derivedFunction(original, given);
+                    // MAKE takes a value as readily as a datatype, and reads
+                    // the value's own datatype off it:
+                    //     type = VAL_TYPE(value);
+                    //     if (type == REB_DATATYPE) type = VAL_DATATYPE(value);
+                    // Two lines, and the first is the one to notice. Rebol's
+                    // own CLEAN-PATH writes `out: make file length? file` with
+                    // the comment "same datatype", because it wants an empty
+                    // series of whatever kind it was handed and does not know
+                    // which that is.
+                    case SeriesValue prototype -> {
+                        // `if (IS_NONE(arg)) Trap_Make(type, arg);` is the
+                        // first line of the arm, before the datatype is even
+                        // worked out, so it applies to the prototype form too.
+                        if (arguments.get(1) instanceof NoneValue) {
+                            yield raiseBadMakeArg(arguments.get(1),
+                                    prototype.datatype().literalSpelling());
+                        }
+                        yield makeOfDatatype(DatatypeValue.of(prototype.datatype()),
+                                arguments.get(1));
+                    }
                     case DatatypeValue wanted -> makeOfDatatype(wanted, arguments.get(1));
                     default -> raiseCannotUse(arguments.get(0), "make");
                 });

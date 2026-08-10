@@ -414,6 +414,49 @@ rule PairOrderingBreaksTheTieOnTheSecondHalf {
             else: holds(request.strictness, y_of(request.left), y_of(request.right)))
 }
 
+-- === CASE walks a block two values at a time ===============
+
+-- CASE reads its block as condition, branch, condition, branch, and the
+-- interesting rules are all about what happens when that pattern runs out
+-- or is not followed.
+--
+-- A condition that is false skips the next value without evaluating it. A
+-- condition that is truthy has the next value evaluated, and then that
+-- value is run only if it turned out to be a block. So `case [true 1]` is
+-- 1: a branch that is not a block is its own answer rather than a mistake.
+--
+-- And a truthy condition with nothing after it at all answers logic true.
+-- That is the rule worth writing down, because it is what makes a trailing
+-- expression a default clause whose side effect is the point. Rebol's own
+-- CLEAN-PATH ends with
+--
+--     case [ ... test [branch] ... file: append what-dir file ]
+--
+-- where the last entry is a condition, has no block, and is there to be
+-- evaluated for its assignment. An implementation that refuses it stops
+-- CLEAN-PATH from loading, and CLEAN-PATH is in the file every other file
+-- function comes from.
+rule ATruthyConditionWithNoBranchAnswersTrue {
+    when: EvaluateCase(entries)
+    requires: first_truthy_condition_is_last(entries)
+    ensures: CaseResult(value: true)
+}
+
+rule AFalseConditionSkipsItsBranchWithoutEvaluatingIt {
+    when: EvaluateCase(entries)
+    requires: entries.any(entry => not entry.condition.is_truthy)
+    ensures: CaseResult(branches_evaluated: 0)
+}
+
+-- A branch is evaluated once as a value, and run a second time only if it
+-- turned out to be a block. So a bare value branch answers itself.
+rule ABranchThatIsNotABlockIsItsOwnAnswer {
+    when: EvaluateCase(entries)
+    requires: taken_branch_of(entries) != null
+    requires: not is_block(taken_branch_of(entries))
+    ensures: CaseResult(value: taken_branch_of(entries))
+}
+
 -- === Asking about a file ===================================
 
 -- QUERY asks the host what it knows about a file, and the shape of its
