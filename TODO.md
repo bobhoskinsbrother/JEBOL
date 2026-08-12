@@ -527,7 +527,20 @@ IN declare the unmakeable typeclasses as R3 does. The append/insert/change
 
 The vector!/task! lines remain datatype backlog, not surface work.
 
-## 5c. The suite: 22 failing of 3721
+## 5c. The suite: 7 failing of 3721
+
+The seven that remain, and what each needs:
+- catch/quit [quit] #293/#294: the test shells out to a real Rebol binary
+  through CALL; needs a process host and an executable the machine lacks.
+- dyn-ref-1 #409: a truthy dynamic refinement forwarded through
+  `repend/:only` to a native; needs the PendingCall arity alignment traced.
+- wish-2440 #53: `same? :do context? p` after the function returned - a
+  frame-reuse artifact of the C's stack frames.
+- construction syntax any-string! #326: needs a struct! value class.
+- construction syntax function! #339: the reader would need the spec
+  parser, which lives on the evaluator's side of the boundary.
+- SORT unstable #947: pins the exact permutation of the C's
+  symmetry-partition sort; needs f-adp-symmetry-psort.c ported.
 
 **A malformed number is refused now, and it took three changes that only work
 together.** The one-line refusal had been tried twice before and cost about twenty
