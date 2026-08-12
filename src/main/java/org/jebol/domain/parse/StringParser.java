@@ -288,10 +288,28 @@ public final class StringParser {
                 : null;
     }
 
-    /** A paren in the replacement slot is evaluated; anything else stands. */
+    /**
+     * The replacement a CHANGE or an INSERT is about to write, looked up
+     * first: a paren is evaluated, a lit-word drops its tick, a plain word
+     * is fetched from its binding -- and an unset one raises no-value, as
+     * {@code if (IS_UNSET(item)) Trap1(RE_NO_VALUE, rules-1)} does.
+     */
     private String replacementFor(Value replacement) {
         if (replacement instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
             return textOf(evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context));
+        }
+        if (replacement instanceof WordValue word
+                && word.datatype() == Datatype.LIT_WORD) {
+            return textOf(word.as(Datatype.WORD));
+        }
+        if (replacement instanceof WordValue word
+                && word.datatype() == Datatype.WORD) {
+            Context holder = word.isBound() ? word.binding() : context;
+            if (!holder.knows(word.canonical())
+                    || holder.slotFor(word.canonical()).value() instanceof UnsetValue) {
+                throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
+            }
+            return textOf(holder.slotFor(word.canonical()).value());
         }
         return textOf(replacement);
     }

@@ -509,7 +509,7 @@ public final class Transcoder {
                 return;
             }
             if (next == ';') {
-                while (peek() != END_OF_INPUT && peek() != '\n') {
+                while (peek() != END_OF_INPUT && !endsAComment(peek())) {
                     advance();
                 }
                 continue;
@@ -769,6 +769,14 @@ public final class Transcoder {
      * would be obvious.
      */
     private Value builtFrom(Datatype datatype, List<Value> contents) {
+        // `#(bitset! not #{FF})` is the complemented set: MT_Bitset takes an
+        // optional leading NOT, then the binary, and nothing after it.
+        if (datatype == Datatype.BITSET && contents.size() == 2
+                && contents.getFirst() instanceof WordValue complementing
+                && complementing.canonical().equals("not")
+                && contents.get(1) instanceof BinaryValue octets) {
+            return BitsetValue.of(bytesOf(octets)).complemented();
+        }
         // A series construct may carry its position as a second value, so
         // `#(string! "ab" 2)` is that string standing at its second
         // character rather than at its head. It is how MOLD/ALL writes a
@@ -777,7 +785,10 @@ public final class Transcoder {
         if (contents.size() == 2 && contents.get(1) instanceof IntegerValue at) {
             Value whole = builtFrom(datatype, List.of(contents.getFirst()));
             if (!(whole instanceof SeriesValue series)) {
-                return whole;
+                // Only a series has a position to stand at, so a trailing
+                // number on anything else is a malformed construct rather
+                // than a value to quietly drop -- `return IS_END(++data);`.
+                throw failure(SyntaxFailure.MALCONSTRUCT, null);
             }
             long wanted = Math.max(1, Math.min(at.magnitude(),
                     series.storageLength() + 1L));
@@ -920,13 +931,18 @@ public final class Transcoder {
                 continue;
             }
             if (next == ';') {
-                while (peek() != END_OF_INPUT && peek() != '\n') {
+                while (peek() != END_OF_INPUT && !endsAComment(peek())) {
                     advance();
                 }
                 continue;
             }
             body.appendCodePoint(next);
         }
+    }
+
+    /** A carriage return ends a comment as a line feed does: NOT_NEWLINE. */
+    private static boolean endsAComment(int codepoint) {
+        return codepoint == '\n' || codepoint == '\r';
     }
 
     /** Digits of the given base packed into bytes, the last one padded. */
