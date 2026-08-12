@@ -80,12 +80,49 @@ public final class BitsetValue implements Value {
         }
     }
 
+    /**
+     * Puts every member of another set in, or takes every one out, minding
+     * the complement the way {@link #hold} does.
+     */
+    public void holdAll(BitsetValue members, boolean wanted) {
+        byte[] theirs = members.octets;
+        for (int code = 0; code < theirs.length * BITS_PER_OCTET; code++) {
+            if (members.namesDirectly(code)) {
+                hold(code, wanted);
+            }
+        }
+    }
+
+    /**
+     * Clears the raw bits another set names, whatever the complement says.
+     *
+     * <p>What the C's REMOVE does: it reaches {@code Set_Bits(..., FALSE)}
+     * without the sense-inversion APPEND, INSERT and POKE all get. The spec
+     * parks whether that is meant for a complemented set.
+     */
+    public void clearAllDirectly(BitsetValue members) {
+        byte[] theirs = members.octets;
+        for (int code = 0; code < theirs.length * BITS_PER_OCTET; code++) {
+            if (members.namesDirectly(code)) {
+                clearDirectly(code);
+            }
+        }
+    }
+
     public static BitsetValue of(byte[] octets) {
         return new BitsetValue(octets.clone());
     }
 
     /** A bitset holding every code in the text. */
     public static BitsetValue ofCharacters(int... codes) {
+        // No codes means no octets, which is what makes `empty? charset ""`
+        // true: `Find_Max_Bit` answers 0 for an empty string and `Make_Bitset(0)`
+        // allocates nothing. Rounding up to one octet regardless would give a
+        // set of eight bits that holds none of them, and TAIL? would say the
+        // empty set is not empty.
+        if (codes.length == 0) {
+            return new BitsetValue(new byte[0]);
+        }
         int widest = 0;
         for (int code : codes) {
             widest = Math.max(widest, code);
@@ -146,6 +183,18 @@ public final class BitsetValue implements Value {
         int octet = code / BITS_PER_OCTET;
         return octet < octets.length
                 && (octets[octet] & (1 << (7 - code % BITS_PER_OCTET))) != 0;
+    }
+
+    /**
+     * Empties the set, length and all.
+     *
+     * <p>`Clear_Series(VAL_SERIES(value))` -- so a cleared set holds nothing
+     * rather than holding zero bits, and `length? clear make bitset! "ab"` is 0
+     * rather than 8. The C weighs the two readings in a comment beside the arm
+     * and takes this one.
+     */
+    public void clear() {
+        octets = new byte[0];
     }
 
     public byte[] octets() {

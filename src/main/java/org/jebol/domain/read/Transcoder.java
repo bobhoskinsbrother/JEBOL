@@ -141,19 +141,72 @@ public final class Transcoder {
         return List.copyOf(spans);
     }
 
-    /** Reads every value in the source, or reports the first failure. */
-    public static TranscodeResult transcode(String source) {
+    /**
+     * Reads one value and stops, without looking at a character past it.
+     *
+     * <p>What {@code Scan_Token} does and what reading the whole source and taking
+     * the first value only approximates: {@code transcode/one "1]"} is 1, and the
+     * bracket closing nothing is never reached because reading stopped before it.
+     *
+     * <p>Answers a success holding a one-value block, or the failure if it could not
+     * read even one -- which is not the same as reading none. None is a value a
+     * source can genuinely hold, so `#(` has to fail rather than answer it.
+     *
+     * <p>The obvious substitute is a walk over successively longer prefixes, keeping
+     * the longest that parses as a single value. That is a different question, and
+     * it answers `'%` for `'%/` where this fails: the token boundaries are the
+     * reader's, not the longest thing that happens to parse.
+     */
+    public static Reading read(String source, long firstLine, Extent extent) {
         if (source == null) {
             throw new IllegalArgumentException("nothing to read: source was null");
         }
         Transcoder reader = new Transcoder(source);
+        reader.line = (int) firstLine;
+        reader.stopAfterOneValue = extent != Extent.THE_WHOLE_SOURCE;
+        reader.stopAtEveryDepth = extent == Extent.THE_FIRST_VALUE_AT_EVERY_DEPTH;
         try {
-            List<Value> values = reader.readSequence(NO_TERMINATOR);
-            return new TranscodeResult.Success(BlockValue.block(values));
+            return new Reading(
+                    reader.readSequence(NO_TERMINATOR),
+                    Optional.empty(),
+                    reader.position,
+                    reader.line);
         } catch (MalformedSource malformed) {
-            return new TranscodeResult.Failure(
-                    malformed.failure, malformed.position, malformed.unclosed);
+            return new Reading(
+                    List.copyOf(reader.valuesTakenAtTheTopLevel),
+                    Optional.of(new TranscodeResult.Failure(
+                            malformed.failure, malformed.position, malformed.unclosed,
+                            malformed.tokenKind, malformed.fragment,
+                            malformed.offendingText)),
+                    reader.position,
+                    reader.line);
         }
+    }
+
+    public enum Extent {
+        THE_WHOLE_SOURCE,
+        THE_FIRST_VALUE,
+        THE_FIRST_VALUE_AT_EVERY_DEPTH
+    }
+
+    public record Reading(
+            List<Value> valuesReadBeforeStopping,
+            Optional<TranscodeResult.Failure> whyItStopped,
+            int endedAtCodePoint,
+            int lineEndedOn) {}
+
+    /** Reads every value in the source, or reports the first failure. */
+    public static TranscodeResult transcode(String source) {
+        return transcode(source, 1);
+    }
+
+    /** Lines counted from somewhere other than one, for a caller reading a fragment. */
+    public static TranscodeResult transcode(String source, long firstLine) {
+        Reading reading = read(source, firstLine, Extent.THE_WHOLE_SOURCE);
+        return reading.whyItStopped()
+                .<TranscodeResult>map(failure -> failure)
+                .orElseGet(() -> new TranscodeResult.Success(
+                        BlockValue.block(reading.valuesReadBeforeStopping())));
     }
 
     // ---- the walk over the source ----------------------------------------
@@ -225,17 +278,61 @@ public final class Transcoder {
                 if (terminator == NO_TERMINATOR && closing == NO_TERMINATOR
                         && enclosing.isEmpty()) {
                     topLevelEnds.add(position);
+                    valuesTakenAtTheTopLevel.add(finished);
+                    if (stopAfterOneValue) {
+                        return values;
+                    }
                 }
                 continue;
             }
 
-            values.add(readValue());
+            Value read = readValue();
+            values.add(read);
             if (outermost) {
                 topLevelStarts.add(began);
                 topLevelEnds.add(position);
+                valuesTakenAtTheTopLevel.add(read);
+            }
+            if (stopAtEveryDepth) {
+                return closingEveryLevelLeftOpen(enclosing, values, collecting);
+            }
+            if (outermost && stopAfterOneValue) {
+                return values;
             }
         }
     }
+
+    private List<Value> closingEveryLevelLeftOpen(
+            Deque<OpenLevel> enclosing, List<Value> innermost, Datatype innermostKind) {
+
+        List<Value> values = innermost;
+        Datatype collecting = innermostKind;
+        while (!enclosing.isEmpty()) {
+            Value finished = collecting == Datatype.PAREN
+                    ? BlockValue.paren(values)
+                    : BlockValue.block(values);
+            OpenLevel parent = enclosing.pop();
+            values = parent.values();
+            collecting = parent.collecting();
+            values.add(finished);
+        }
+        return values;
+    }
+
+    /**
+     * Whether to stop as soon as one whole top-level value has been read.
+     *
+     * <p>What {@code Scan_Token} gives the C for free and this had no way to be
+     * asked: read one value and stop, without looking at a character past it. Set
+     * for the whole life of a reader rather than passed down, because the walk
+     * hands its own state around a stack and one more parameter would have to be
+     * threaded through every level to be ignored by all of them.
+     */
+    private boolean stopAfterOneValue;
+
+    private boolean stopAtEveryDepth;
+
+    private final List<Value> valuesTakenAtTheTopLevel = new ArrayList<>();
 
     /** A block left open while its contents are read. */
     private record OpenLevel(List<Value> values, int closing, Datatype collecting) {
@@ -290,6 +387,18 @@ public final class Transcoder {
      * malformed file rather than reading a word.
      */
     private Value readFileOrPercentWord() {
+        // A run of percent signs followed by a brace opens a raw string, where
+        // nothing is escaped and a brace need not be matched:
+        //     if (cp[n] == '{') { // raw-string scan; values like: %%{...}%%
+        // The run's length is what closes it, which is how a raw string can
+        // hold the closing sequence of a shorter one.
+        int percents = 0;
+        while (peekAt(percents) == '%') {
+            percents++;
+        }
+        if (peekAt(percents) == '{') {
+            return readRawString(percents);
+        }
         if (beginsNoFilename(peekAt(1))) {
             advance();
             return percentWord("%");
@@ -307,6 +416,51 @@ public final class Transcoder {
             return percentWord("%%");
         }
         return readFile();
+    }
+
+    /**
+     * A raw string, written {@code %{...}%} or with a longer run of percents.
+     *
+     * <p>{@code Scan_Raw_String}, whose summary is the whole point: "Scan a raw
+     * string (without any modifications). Eliminates need of double escaping and
+     * allowes unmatched braces." So a caret is a caret, a lone brace is a brace,
+     * and a line ending is whatever the source had -- where a braced string
+     * would have read every one of those as an instruction.
+     *
+     * <p>The run of percent signs is what closes it, which is what lets a raw
+     * string hold the closing sequence of a shorter one: {@code %%{ %{^}% }%%}
+     * is one string holding another. A closing brace followed by a longer run
+     * than the one that opened is a mistake rather than content --
+     * {@code if (n > num) return 0;} -- so the reader refuses it rather than
+     * reading to the end of the file looking for its own terminator.
+     */
+    private Value readRawString(int percents) {
+        for (int skipped = 0; skipped <= percents; skipped++) {
+            advance();
+        }
+        StringBuilder held = new StringBuilder();
+        while (peek() != END_OF_INPUT) {
+            if (peek() == '}') {
+                int following = 0;
+                while (peekAt(1 + following) == '%') {
+                    following++;
+                }
+                if (following == percents) {
+                    for (int skipped = 0; skipped <= percents; skipped++) {
+                        advance();
+                    }
+                    return StringValue.of(held.toString());
+                }
+                if (following > percents) {
+                    throw failure(SyntaxFailure.INVALID_LEXEME, null);
+                }
+            }
+            held.appendCodePoint(peek());
+            advance();
+        }
+        // Ran out of source with the string still open, which is the same
+        // mistake an unclosed quote is.
+        throw failure(SyntaxFailure.UNTERMINATED_STRING, null);
     }
 
     /** The word, or the set-word when a colon follows it. */
@@ -581,11 +735,11 @@ public final class Transcoder {
     private Value readMap() {
         advance();
         advance();
-        try {
-            return MapValue.of(readSequence(']'));
-        } catch (IllegalArgumentException malformed) {
-            throw failure(SyntaxFailure.MALCONSTRUCT, null);
+        List<Value> pairs = readSequence(']');
+        if (pairs.size() % 2 != 0) {
+            throw failure(SyntaxFailure.INVALID_ARG, null);
         }
+        return MapValue.of(pairs);
     }
 
     private Value datatypeNamed(WordValue word) {
@@ -642,7 +796,7 @@ public final class Transcoder {
             // A construct naming one of these and holding anything else
             // is refused rather than guessed at: `#(block! 1)` is a
             // malconstruct, not a block of one.
-            case BLOCK, PAREN, PATH, SET_PATH, GET_PATH, LIT_PATH ->
+            case BLOCK, PAREN, PATH, SET_PATH, GET_PATH, LIT_PATH, HASH ->
                     only instanceof BlockValue items
                             ? items.as(datatype)
                             : requireDatatype(only, datatype);
@@ -806,11 +960,11 @@ public final class Transcoder {
      */
     private Value readBasedBinary(String spelling) {
         if (!spelling.matches("[1-9][0-9]*")) {
-            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "integer", spelling);
         }
         int base = Integer.parseInt(spelling);
         if (base != BITS && base != HEXADECIMAL && base != BASE_64) {
-            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "integer", spelling);
         }
         return readBinary(base);
     }
@@ -837,6 +991,25 @@ public final class Transcoder {
                 && SYMBOL_CHARACTERS.indexOf(codepoints[scout]) >= 0) {
             scout++;
         }
+        // A colon after the run belongs to the word and makes it a set-word.
+        // `Skip_Left_Arrow` consumes it and stops -- `if (*cp == ':') { cp++;
+        // break; }` -- and the caller reads the last character to decide:
+        // `return (np[-1] == ':' ? TOKEN_SET : TOKEN_WORD);`.
+        //
+        // So `<-->:` is one value and not two. Rebol's own lexer test asserts four
+        // spellings of it, and without this each came back as the word and a
+        // stray colon, which is a set-word nobody can write.
+        if (scout > position && scout < codepoints.length && codepoints[scout] == ':'
+                && (scout + 1 >= codepoints.length
+                        || isDelimiterOrSpace(codepoints[scout + 1]))) {
+            StringBuilder named = new StringBuilder();
+            while (position < scout) {
+                named.appendCodePoint(peek());
+                advance();
+            }
+            advance();
+            return WordValue.of(named.toString(), Datatype.SET_WORD);
+        }
         if (scout >= codepoints.length || isDelimiterOrSpace(codepoints[scout])) {
             return classify(readLexeme());
         }
@@ -857,17 +1030,150 @@ public final class Transcoder {
         return StringValue.of(text.toString(), Datatype.TAG);
     }
 
+    /**
+     * What an unquoted file may not hold. {@code Scan_File}'s first line.
+     *
+     * <p>{@code const REBYTE *invalid = cb_cast(":;()[]\"^");} -- eight
+     * characters, and the caret is the surprising one, because it is an escape
+     * everywhere else in the language.
+     */
+    private static final String REFUSED_IN_A_FILE = ":;()[]\"^";
+
+    /**
+     * And what a quoted one may not. {@code invalid = cb_cast(":;\"");}
+     *
+     * <p>Five of the eight come off the list, which is the point of the form: a
+     * name holding a space or a bracket has to be spellable somehow. The caret
+     * comes off with them and becomes an escape again.
+     */
+    private static final String REFUSED_IN_A_QUOTED_FILE = ":;\"";
+
+    /**
+     * A file literal, checked character by character.
+     *
+     * <p>{@code Scan_File} chooses the refused set and hands the rest to
+     * {@code Scan_Item}, which is where every rule lives: a control character is
+     * refused, a backslash quietly becomes a forward slash, a percent sign wants
+     * two hex digits after it, and anything in the refused set ends the read with
+     * a failure rather than with a file.
+     *
+     * <p>This used to take everything up to the next space. Which read
+     * {@code %a^b} and {@code %a%2h} as files and let a typo become a filename --
+     * five of Rebol's own lexer assertions, and the reader is the wrong place to
+     * be generous.
+     */
     private StringValue readFile() {
         advance();
-        if (peek() == '"') {
-            return readQuotedString().as(Datatype.FILE);
-        }
-        StringBuilder text = new StringBuilder();
-        while (peek() != END_OF_INPUT && !endsLexeme(peek())) {
-            text.appendCodePoint(peek());
+        boolean quoted = peek() == '"';
+        if (quoted) {
             advance();
         }
+        String refused = quoted ? REFUSED_IN_A_QUOTED_FILE : REFUSED_IN_A_FILE;
+        StringBuilder text = new StringBuilder();
+        while (peek() != END_OF_INPUT) {
+            int character = peek();
+            // `while (src < end && *src != term)` -- the closing quote ends a
+            // quoted name, and whitespace ends an unquoted one.
+            if (quoted && character == '"') {
+                advance();
+                return StringValue.of(text.toString(), Datatype.FILE);
+            }
+            // A delimiter ends the name before the refused set is consulted, and
+            // that ordering is the whole of why the refused set looks stranger
+            // than it is. The lexer finds the token's extent first --
+            // `scan_state->end` stops at `IS_LEX_DELIMIT`, which is whitespace and
+            // `( ) [ ] { } " ;` -- and only then does `Scan_File` check what it
+            // found. So five of the eight characters `Scan_File` refuses can never
+            // appear inside an unquoted name, because they ended it.
+            //
+            // Which leaves the colon and the caret as the two that really bite.
+            // Refusing the delimiters instead turned `(clean-path %a/b) = %a/b`
+            // into a syntax error, because the closing bracket was read as part of
+            // the name.
+            if (!quoted && endsLexeme(character)) {
+                break;
+            }
+            text.appendCodePoint(nextFileCharacter(refused, quoted));
+        }
+        if (quoted) {
+            // A quoted name whose quote never arrives.
+            throw failure(SyntaxFailure.UNTERMINATED_STRING, null);
+        }
         return StringValue.of(text.toString(), Datatype.FILE);
+    }
+
+    /**
+     * One character of a file name, with the escapes read and the rest checked.
+     *
+     * <p>In the C's order, because the order decides the answer: the control
+     * check comes first and catches a raw tab before the refused set is consulted,
+     * and the backslash is rewritten before the escapes are looked for.
+     */
+    private int nextFileCharacter(String refused, boolean quoted) {
+        int character = peek();
+        // `if (chr < ' ') return 0; // invalid char`
+        if (character < ' ') {
+            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+        }
+        // `if (chr == '\\') chr = '/';` -- one line and no comment, so a
+        // Windows-shaped path comes out with the separators the language uses and
+        // a script never sees a backslash in a file it loaded.
+        if (character == '\\') {
+            advance();
+            return '/';
+        }
+        // `if (!Scan_Hex2(src, &chr)) return 0; src += 2;`
+        if (character == '%') {
+            return escapedByPercent();
+        }
+        // `if (src + 1 == end || (invalid && strchr(cs_cast(invalid), chr)))
+        // return 0; // nothing follows ^ or used in unquoted file` -- two
+        // failures in one test, and for an unquoted file it is the second that
+        // fires, because the caret is in that refused set.
+        if (character == '^') {
+            if (!quoted || peekAt(1) == END_OF_INPUT) {
+                throw failure(SyntaxFailure.INVALID_LEXEME, null);
+            }
+            advance();
+            return readEscape();
+        }
+        if (character < 0x80 && refused.indexOf(character) >= 0) {
+            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+        }
+        advance();
+        return character;
+    }
+
+    /**
+     * The byte two hex digits name, which is how a file name holds a space.
+     *
+     * <p>{@code Scan_Hex2} wants exactly two, and anything else is a failure
+     * rather than a literal percent sign. So {@code %a%2h} is not a file.
+     */
+    private int escapedByPercent() {
+        int high = hexDigitValue(peekAt(1));
+        int low = hexDigitValue(peekAt(2));
+        if (high < 0 || low < 0) {
+            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+        }
+        advance();
+        advance();
+        advance();
+        return high * 16 + low;
+    }
+
+    /** A hex digit's value, or -1 for anything that is not one. */
+    private static int hexDigitValue(int character) {
+        if (character >= '0' && character <= '9') {
+            return character - '0';
+        }
+        if (character >= 'a' && character <= 'f') {
+            return character - 'a' + 10;
+        }
+        if (character >= 'A' && character <= 'F') {
+            return character - 'A' + 10;
+        }
+        return -1;
     }
 
     /**
@@ -884,22 +1190,57 @@ public final class Transcoder {
             advance();
             return moneyOf(readLexeme(), negative);
         }
+        // A sign against a hash form is the sign alone, as a word, and the hash
+        // form is read afresh. One line of the C, in the plus and minus case:
+        //
+        //     cp++;
+        //     if (IS_LEX_AT_LEAST_NUMBER(*cp)) goto num;
+        //     if (IS_LEX_SPECIAL(*cp)) {
+        //         if (*cp == '#') {
+        //             scan_state->end = cp;
+        //             return TOKEN_WORD;
+        //         }
+        //
+        // So `-#"a"` is the word `-` and the character, which is Rebol's issue
+        // #2319. It matters because of what it unblocks rather than for its own
+        // sake: `charset [#"a"-#"z"]` is how a range is written without spaces, and
+        // that has to mean the same as `charset [#"a" - #"z"]`. Read as `-#` and a
+        // string, it meant nothing at all.
+        if ((peek() == '-' || peek() == '+') && peekAt(1) == '#') {
+            String sign = String.valueOf((char) peek());
+            advance();
+            return WordValue.of(sign);
+        }
         return classify(readLexeme());
     }
 
     private MoneyValue readMoney() {
         String lexeme = readLexeme();
         String digits = lexeme.substring(1);
-        return moneyOf(digits, false);
+        return moneyOf(digits, false, lexeme);
     }
 
     /** The digits after the dollar sign, with the sign applied. */
     private MoneyValue moneyOf(String digits, boolean negative) {
+        return moneyOf(digits, negative, (negative ? "-$" : "$") + digits);
+    }
+
+    /**
+     * The same, told what the whole token was so the failure can report it.
+     *
+     * <p>{@code Scan_Error} names the token kind in ARG1 and its text in ARG2, and
+     * Rebol's money group compares the second: `e/arg2 = "$1*$2"`. An amount that is
+     * not a number is the whole of what can go wrong here, and the four spellings it
+     * asserts are all a money literal run into an operator with no space --
+     * {@code $1*$2}, {@code $1+$2}, {@code $1-$2}, {@code $1/$2}. Each is one token
+     * as far as the reader is concerned, and none of them is a number.
+     */
+    private MoneyValue moneyOf(String digits, boolean negative, String token) {
         try {
             BigDecimal amount = new BigDecimal(digits);
             return MoneyValue.of(negative ? amount.negate() : amount);
         } catch (NumberFormatException notANumber) {
-            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "money", token);
         }
     }
 
@@ -969,6 +1310,25 @@ public final class Transcoder {
             Pattern.compile("\\d{1,4}/[A-Za-z0-9]+/\\d{1,4}");
     private static final Pattern HYPHENATED_DATE =
             Pattern.compile("(\\d{1,4})-([A-Za-z]{3,}|\\d{1,2})-(\\d{1,4})");
+    /**
+     * A date carrying a time, and perhaps an offset:
+     * {@code 1-Jan-2000/12:30:15+2:00}.
+     *
+     * <p>One value rather than three, and it has to be matched before the path
+     * reader gets a look at it: the separator between the day and the time is a
+     * slash, so {@code 1-Jan-2000/12:00} otherwise reads as a path of a date
+     * and a time. That path molds identically to the date, which is how it went
+     * unnoticed -- the answer looked right and was of the wrong datatype, so
+     * every date field read off it was none.
+     *
+     * <p>The offset needs its colon. A real R3 reads {@code +2} and {@code Z} as
+     * no offset at all rather than as two hours or as Zulu, so both fall into
+     * the group and are read as zero.
+     */
+    private static final Pattern DATE_WITH_TIME = Pattern.compile(
+            "(\\d{1,4}[-/](?:[A-Za-z]{3,}|\\d{1,2})[-/]\\d{1,4})"
+                    + "(?:/(\\d{1,2}:\\d{1,2}(?::\\d{1,2}(?:\\.\\d+)?)?))?"
+                    + "([-+]\\d{1,2}:\\d{2}|[-+]\\d{1,2}|[Zz])?");
     // Either half may be fractional, because a pair holds two decimals
     // rather than two integers. 1.5x2 is a legal pair and was unreadable
     // while this pattern only took digits.
@@ -981,8 +1341,24 @@ public final class Transcoder {
     private static final Pattern PAIR = Pattern.compile(
             "([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)"
                     + "[xX]([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)");
-    private static final Pattern TIME =
-            Pattern.compile("([-+]?\\d+):(\\d{1,2})(?::(\\d{1,2}(?:\\.\\d+)?))?");
+    /**
+     * The four shapes {@code Scan_Time} lists, and the fraction that changes the
+     * meaning of the first two.
+     *
+     * <pre>
+     * //    HH:MM       as part1:part2
+     * //    HH:MM:SS    as part1:part2:part3
+     * //    HH:MM:SS.DD as part1:part2:part3.part4
+     * //    MM:SS.DD    as part1:part2.part4
+     * </pre>
+     *
+     * <p>A two-part time with a fraction is the last of those: {@code 12:34.5} is
+     * twelve <em>minutes</em> and 34.5 seconds, where {@code 12:34} is twelve hours
+     * and thirty-four minutes. Which is why the pattern has to allow a fraction on
+     * the second component and {@link #readTime} has to look for it.
+     */
+    private static final Pattern TIME = Pattern.compile(
+            "([-+]?\\d+):(\\d{1,2}(?:\\.\\d+)?)(?::(\\d{1,2}(?:\\.\\d+)?))?");
     private static final Pattern TUPLE = Pattern.compile("\\d+(?:\\.\\d+){2,}");
     // A quote inside the digits is a separator, so 1'000 reads as 1000 and
     // 99'504'028'301'131 reads as one integer. Rebol's own suite writes large
@@ -1053,18 +1429,32 @@ public final class Transcoder {
         //
         // Only digits, because plenty of ordinary words end in a hash --
         // Rebol's own CSS codec has one -- and those are not bases.
-        // A signed number with a hash after it is the same mistake seen
-        // one character earlier: the reader stops the lexeme at the sign,
-        // so `+2#{}` arrives here as `+2` with the hash still to come.
-        if (peek() == '#' && lexeme.matches("[+-][0-9]+")) {
-            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+        // A base may not carry a sign. `if (cp == scan_state->begin) { // no +2 +16
+        // +64 allowed` -- the base has to sit at the very start of the token, so a
+        // sign in front of it makes the whole thing a malformed number. Two spellings
+        // reach here, depending on whether the hash came into the lexeme or is still
+        // ahead of it.
+        if (lexeme.matches("[+-][0-9]+#?") && (peek() == '#' || peek() == '{')) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "integer", lexeme);
         }
         if (lexeme.matches("[0-9]+#")) {
             if (peek() == '{') {
                 return readBasedBinary(lexeme.substring(0, lexeme.length() - 1));
             }
             if (peek() == '(' || peek() == '"') {
-                throw failure(SyntaxFailure.INVALID_LEXEME, null);
+                throw failureReading(SyntaxFailure.INVALID_LEXEME, "integer", lexeme);
+            }
+        }
+        // A digit-leading lexeme is a number, and the C cuts it at an angle bracket
+        // before it classifies anything -- `case LEX_CLASS_NUMBER: /* order of tests
+        // is important */`. So `1<` and `1.1<tag>` are settled here, and only then
+        // may the fallback refuse what is left.
+        if (Character.isDigit(lexeme.charAt(0))) {
+            int angle = firstAngleBracket(lexeme);
+            if (angle > 0) {
+                position -= lexeme.length() - angle;
+                column -= lexeme.length() - angle;
+                return classifyPlain(lexeme.substring(0, angle));
             }
         }
         Value read = classifyPlain(lexeme);
@@ -1094,7 +1484,13 @@ public final class Transcoder {
         if (offending == 0 && !allSymbols(lexeme)) {
             throw failure(SyntaxFailure.INVALID_LEXEME, null);
         }
-        if (offending <= 0 || allSymbols(lexeme) || !(read instanceof WordValue)) {
+        // An angle bracket is looked at even when the lexeme already read as
+        // something -- a path, most often. `a/b<` read as the path `a/b<`, with the
+        // bracket swallowed into the last segment, where the C refuses it.
+        boolean angleToSettle = offending > 0 && !allSymbols(lexeme)
+                && (lexeme.charAt(offending) == '<' || lexeme.charAt(offending) == '>');
+        if (!angleToSettle
+                && (offending <= 0 || allSymbols(lexeme) || !(read instanceof WordValue))) {
             return read;
         }
         String before = lexeme.substring(0, offending);
@@ -1105,7 +1501,7 @@ public final class Transcoder {
         // right and refused the second, because a tag has letters in it.
         boolean startsAnAngleBracket = after.charAt(0) == '<' || after.charAt(0) == '>';
         if ((allSymbols(after) || startsAnAngleBracket)
-                && !(classifyPlain(before) instanceof WordValue)) {
+                && splitsHereRatherThanFailing(before, after)) {
             // Put the symbol run back for the next read rather than
             // holding it aside: the reader has one place it takes
             // characters from, and giving it a second would mean every
@@ -1114,7 +1510,61 @@ public final class Transcoder {
             column -= after.length();
             return classifyPlain(before);
         }
+        // `-type` in the C is the token kind negated, and a script reads it as
+        // ARG1: Rebol's own test asserts `e/arg1 = "word"` beside the id for
+        // `a/b<`. Only where a word was what the reader was building, which is
+        // every case that reaches here with an angle bracket.
+        if (startsAnAngleBracket) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "word");
+        }
         throw failure(SyntaxFailure.INVALID_LEXEME, null);
+    }
+
+    /**
+     * Whether the value ends here, or the angle bracket has spoiled it.
+     *
+     * <p>Two rules meet, and which applies depends on what the reader had before
+     * the bracket.
+     *
+     * <p><b>A number simply ends.</b> A path is assembled from separate tokens, so
+     * the last segment of {@code a/3<} is scanned as a number and a number stops at
+     * any character that is not a digit. The word rule is never consulted, which is
+     * why {@code a/3<} loads as {@code [a/3 <]}. The same is true without a path:
+     * {@code 1<}, {@code 1.0<a>} and {@code 1.#INF<} all end at the bracket.
+     *
+     * <p><b>A word obeys {@code scanword}</b>, whose comment states it outright:
+     * "Allow word&lt;tag&gt; and word&lt;/tag&gt; but not word&lt; word&lt;=
+     * word&lt;&gt; etc."
+     *
+     * <pre>
+     * if (cp[1] == '&lt;' || cp[1] == '&gt;' || cp[1] == '=' ||
+     *     IS_LEX_SPACE(cp[1]) || (cp[1] != '/' &amp;&amp; IS_LEX_DELIMIT(cp[1])))
+     *     return -type;
+     * </pre>
+     *
+     * <p>So the character after the bracket decides. A name or a slash means a tag
+     * or an arrow word is beginning and the word is finished. Another bracket, an
+     * equals, a space or the end of input means somebody wrote an operator hard
+     * against a name, and that is a mistake rather than two values.
+     *
+     * <p>Which is what separates {@code a/3<} from {@code a/b<}: the same path
+     * shape, the same bracket, and the last segment is the whole difference. Rebol's
+     * own lexer test asserts the pair side by side.
+     */
+    private boolean splitsHereRatherThanFailing(String before, String after) {
+        String lastSegment = before.substring(before.lastIndexOf('/') + 1);
+        if (!lastSegment.isEmpty() && !(classifyPlain(lastSegment) instanceof WordValue)) {
+            return true;
+        }
+        if (after.length() < 2) {
+            return false;
+        }
+        char following = after.charAt(1);
+        if (following == '/') {
+            return true;
+        }
+        return following != '<' && following != '>' && following != '='
+                && !isDelimiterOrSpace(following);
     }
 
     /** Where the first character a word may not hold sits, or -1. */
@@ -1128,6 +1578,7 @@ public final class Transcoder {
     }
 
     private Value classifyPlain(String lexeme) {
+        refuseAMisplacedSigil(lexeme);
         // A lone underscore is NONE, and it is what MOLD writes for one.
         // Only on its own: _a and a_ are ordinary words. Without this the
         // round trip is broken in the direction nobody looks, because a
@@ -1140,6 +1591,35 @@ public final class Transcoder {
         // only a slash with something before it makes a path.
         if (lexeme.chars().allMatch(character -> character == '/')) {
             return WordValue.of(lexeme);
+        }
+        // A run of slashes can be assigned to and read from, and both spellings
+        // have their own arm in the C because a slash is a delimiter and would
+        // otherwise end the token. `/:` is `TOKEN_SET` --
+        // `if (*cp == ':' && IS_LEX_DELIMIT(cp[1])) { scan_state->end = cp+1;
+        // return TOKEN_SET; }` -- and `:/` is `TOKEN_GET`, whose arm says why it
+        // needs one: "must be modified, because / is delimiter!".
+        //
+        // Both matter because `/` and `//` are ordinary words: they are what
+        // divides and what takes a remainder. A script that rebinds either writes
+        // `/: :my-divide`, and that is unspellable without this.
+        if (lexeme.length() > 1 && lexeme.endsWith(":")
+                && lexeme.chars().limit(lexeme.length() - 1L)
+                        .allMatch(character -> character == '/')) {
+            return WordValue.of(
+                    lexeme.substring(0, lexeme.length() - 1), Datatype.SET_WORD);
+        }
+        if (lexeme.length() > 1 && lexeme.charAt(0) == ':'
+                && lexeme.chars().skip(1).allMatch(character -> character == '/')) {
+            return WordValue.of(lexeme.substring(1), Datatype.GET_WORD);
+        }
+        // A tick and then slashes is a lit-word of them: `'///` is the word
+        // `///` quoted, which the C allows on purpose -- `if (*cp == '/') {
+        // // allow '///` -- and only refuses when something that is not a
+        // delimiter follows the run. Refusing the whole shape read `'//` and
+        // `'///` as syntax errors, and MOLD writes both.
+        if (lexeme.length() > 1 && lexeme.charAt(0) == '\''
+                && lexeme.chars().skip(1).allMatch(character -> character == '/')) {
+            return WordValue.of(lexeme.substring(1), Datatype.LIT_WORD);
         }
         if (lexeme.startsWith("/") && lexeme.indexOf('/', 1) < 0) {
             return WordValue.of(lexeme.substring(1), Datatype.REFINEMENT);
@@ -1155,22 +1635,166 @@ public final class Transcoder {
         if (SLASHED_DATE.matcher(lexeme).matches()) {
             return readDate(lexeme, "/");
         }
+        // Before the path reader, because the slash between the day and the
+        // time belongs to the date.
+        var dated = DATE_WITH_TIME.matcher(lexeme);
+        if (dated.matches() && (dated.group(2) != null || dated.group(3) != null)) {
+            return readDateWithTime(dated.group(1), dated.group(2), dated.group(3));
+        }
         if (lexeme.indexOf('/') >= 0) {
             return readPath(lexeme);
         }
         if (lexeme.endsWith(":") && lexeme.length() > 1) {
-            return WordValue.of(lexeme.substring(0, lexeme.length() - 1), Datatype.SET_WORD);
+            String named = lexeme.substring(0, lexeme.length() - 1);
+            refuseTheNoneWordAsAName(named, "word-set", lexeme);
+            return WordValue.of(named, Datatype.SET_WORD);
         }
         if (lexeme.startsWith(":") && lexeme.length() > 1) {
+            refuseTheNoneWordAsAName(lexeme.substring(1), "word-get", lexeme);
             return WordValue.of(lexeme.substring(1), Datatype.GET_WORD);
         }
         if (lexeme.startsWith("'") && lexeme.length() > 1) {
+            refuseTheNoneWordAsAName(lexeme.substring(1), "word-lit", lexeme);
             return WordValue.of(lexeme.substring(1), Datatype.LIT_WORD);
         }
         if (lexeme.indexOf('@') > 0) {
-            return StringValue.of(lexeme, Datatype.EMAIL);
+            return StringValue.of(emailBodyOf(lexeme), Datatype.EMAIL);
         }
         return classifyScalarOrWord(lexeme);
+    }
+
+    /**
+     * An email's text, with its escapes read and its at-signs counted.
+     *
+     * <p>{@code Scan_Email} writes out the percent rule rather than sharing
+     * {@code Scan_Item}, and adds one of its own: exactly one at-sign.
+     * {@code if (*cp == '@') { if (at) return 0; at = TRUE; }} on the way through
+     * and {@code if (!at) return 0;} at the end, so two is as wrong as none.
+     *
+     * <p>Nothing else is refused. An email is not a file and shares none of the
+     * eight characters a file turns away, which is why this is a second function
+     * rather than another call to the first.
+     */
+    private String emailBodyOf(String lexeme) {
+        StringBuilder text = new StringBuilder();
+        boolean seenAnAtSign = false;
+        for (int at = 0; at < lexeme.length(); at++) {
+            char character = lexeme.charAt(at);
+            if (character == '@') {
+                if (seenAnAtSign) {
+                    throw failure(SyntaxFailure.INVALID_LEXEME, null);
+                }
+                seenAnAtSign = true;
+            }
+            // `if (len <= 2 || !Scan_Hex2(cp+1, &n)) return 0;` -- the length test
+            // is what refuses a percent with fewer than two characters after it.
+            if (character == '%') {
+                if (at + 2 >= lexeme.length()) {
+                    throw failure(SyntaxFailure.INVALID_LEXEME, null);
+                }
+                int high = hexDigitValue(lexeme.charAt(at + 1));
+                int low = hexDigitValue(lexeme.charAt(at + 2));
+                if (high < 0 || low < 0) {
+                    throw failure(SyntaxFailure.INVALID_LEXEME, null);
+                }
+                text.append((char) (high * 16 + low));
+                at += 2;
+                continue;
+            }
+            text.append(character);
+        }
+        if (!seenAnAtSign) {
+            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+        }
+        return text.toString();
+    }
+
+    /**
+     * A sigil with something after it that cannot follow one.
+     *
+     * <p>{@code Scan_Token} answers a *negative* token for each of these, and a
+     * negative token is a syntax failure. Nine cases across three sigils, and each
+     * carries the C's own comment:
+     *
+     * <pre>
+     * case LEX_SPECIAL_TICK:
+     *     if (IS_LEX_NUMBER(cp[1])) return -TOKEN_LIT;   // no '2nd
+     *     if (cp[1] == ':') return -TOKEN_LIT;           // no ':X
+     *     if (cp[1] == '_' && IS_LEX_DELIMIT(cp[2])) return -TOKEN_LIT;   // no '_
+     *     ...
+     *     if ((*cp == '-' || *cp == '+') && IS_LEX_NUMBER(cp[1])) return -TOKEN_WORD;
+     *     if (*cp == '\'') return -TOKEN_LIT;            // no ''foo
+     *
+     * case LEX_SPECIAL_COLON:
+     *     if (cp[1] == '_' &amp;&amp; IS_LEX_DELIMIT(cp[2])) return -TOKEN_GET;   // no :_
+     *     if (cp[1] == '\'' || cp[1] == ':') return -TOKEN_WORD; // no :'foo ::foo
+     *
+     * case LEX_DELIMIT_SLASH:
+     *     if (*(scan_state->end - 1) == ':') return -type;   // no /a:
+     * </pre>
+     *
+     * <p>None of them is arbitrary. A sigil names a word and each of these asks
+     * for a word that cannot exist: one starting with a digit, one that is itself
+     * a sigil, one that is the none literal, one already carrying a sigil at the
+     * other end. JEBOL read every one as a perfectly good lit-word or get-word.
+     */
+    private void refuseAMisplacedSigil(String lexeme) {
+        if (lexeme.length() < 2) {
+            return;
+        }
+        if (isDoublySignedTime(lexeme)) {
+            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+        }
+        char sigil = lexeme.charAt(0);
+        char following = lexeme.charAt(1);
+        if (sigil == '\'' || sigil == ':') {
+            // `'2nd` and, for a colon, the time forms are handled before this --
+            // `:12` is a time and reaches its own reader.
+            if (sigil == '\'' && Character.isDigit(following)) {
+                throw failure(SyntaxFailure.INVALID_LEXEME, null);
+            }
+            // A sigil after a sigil: `''foo`, `:'foo`, `::foo`, `':a`.
+            if (following == '\'' || following == ':') {
+                throw failure(SyntaxFailure.INVALID_LEXEME, null);
+            }
+            // No arm for `'_` and `:_`, though the C refuses both. They are
+            // already refused downstream by refuseTheNoneWordAsAName, which
+            // carries what this cannot: the error names which kind of word was
+            // being read, and a script reads that as ARG1. Refusing them here
+            // first only lost the name.
+            // A ref cannot be named either. `@foo` is a ref, a datatype of its own,
+            // and the C refuses a sigil in front of one before it looks at anything
+            // else -- the very first line of the special class:
+            //
+            //     if (HAS_LEX_FLAG(flags, LEX_SPECIAL_AT) && *cp != '<' && *cp != '%') {
+            //         if (*cp == '\'' || *cp == ':') return -TOKEN_WORD; // no '@foo abd :@foo
+            //
+            // The at-sign anywhere in the lexeme is what the flag means, not just
+            // straight after the sigil. And the two exceptions in that condition are
+            // the reason it is a flag test: `<a@b>` is a tag and `%61@b` is a file
+            // whose escape happens to decode to an at-sign, and neither is a ref.
+            if (lexeme.indexOf('@') > 0) {
+                throw failure(SyntaxFailure.INVALID_LEXEME, null);
+            }
+            // A signed number is not a word to quote: `'-1` and `'+1`.
+            if ((following == '-' || following == '+') && lexeme.length() > 2
+                    && Character.isDigit(lexeme.charAt(2))) {
+                throw failure(SyntaxFailure.INVALID_LEXEME, null);
+            }
+        }
+        // A refinement cannot end in a colon: `/a:`, from
+        // `if (*(scan_state->end - 1) == ':') return -type;`.
+        //
+        // Only when a name sits between the slashes and the colon, though. That
+        // check is inside the arm the C reaches when a *word* follows the slash
+        // run; a colon immediately after the run is a different arm two cases
+        // down, and it makes a set-word. So `/a:` is refused and `/:` is the
+        // set-word of the word `/`. Refusing both cost the three slash set-words.
+        if (sigil == '/' && lexeme.endsWith(":")
+                && !lexeme.chars().limit(lexeme.length() - 1L)
+                        .allMatch(character -> character == '/')) {
+            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+        }
     }
 
     /** {@code 2#01} and {@code 16#FF}: digits, a hash, then the number. */
@@ -1223,6 +1847,19 @@ public final class Transcoder {
         }
         if (DECIMAL.matcher(lexeme).matches() && lexeme.matches(".*[\\d].*")) {
             return DecimalValue.of(Double.parseDouble(lexeme));
+        }
+        // A digit-leading lexeme reaching here is a malformed number in R3, not a
+        // name, and refusing it has now been measured twice. Both attempts cost
+        // about twenty assertions to gain six, and the second had the angle bracket
+        // already settled first -- so the ordering was not what was missing.
+        //
+        // What breaks is real code: `mezz-debug.reb` stops partway and
+        // evaluation-test.r3 loses twenty-one, so some digit-leading spelling the
+        // library relies on is a word here. Find that spelling before trying a
+        // third time; the refusal is one line and the reason it cannot go in yet is
+        // not in this function.
+        if (Character.isDigit(lexeme.charAt(0))) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "integer", lexeme);
         }
         return WordValue.of(lexeme);
     }
@@ -1316,7 +1953,12 @@ public final class Transcoder {
         List<Value> segments = new ArrayList<>();
         for (String segment : splitOutsideParens(body)) {
             if (segment.isEmpty()) {
-                throw failure(SyntaxFailure.INVALID_LEXEME, null);
+                // A segment that is not there: `a/`, `a//b`, `'%/`. The error names
+                // the token being read, which for anything path-shaped is "path" --
+                // `-TOKEN_PATH` in the C, and a script reads the kind as ARG1.
+                // Rebol's own test asserts `e/arg1 = "path"` for four spellings of
+                // a sigil'd percent word with a trailing slash.
+                throw failureReading(SyntaxFailure.INVALID_LEXEME, "path");
             }
             segments.add(readPathSegment(segment));
         }
@@ -1372,6 +2014,22 @@ public final class Transcoder {
         if (DECIMAL.matcher(segment).matches() && segment.matches(".*[\\d].*")) {
             return DecimalValue.of(Double.parseDouble(segment));
         }
+        // Anything else is read with the ordinary scanner, because that is what
+        // Rebol does: a path segment is scanned like any other lexeme and a word
+        // is what is left when nothing else fits. This list used to end here, so
+        // every datatype not named above arrived as a word -- `img/1x2` selected
+        // with the word `1x2` rather than with the pair, and an image reads a
+        // pair as a coordinate.
+        //
+        // One value only. A lexeme the scanner splits in two is not a segment:
+        // whatever it means, it does not mean either half.
+        TranscodeResult read = transcode(segment);
+        if (read.succeeded()) {
+            List<Value> values = read.values().orElseThrow().remaining();
+            if (values.size() == 1 && !(values.getFirst() instanceof WordValue)) {
+                return values.getFirst();
+            }
+        }
         return WordValue.of(segment);
     }
 
@@ -1395,7 +2053,40 @@ public final class Transcoder {
         return TupleValue.of(segments);
     }
 
-    private Value readTime(String hours, String minutes, String seconds) {
+    private Value readTime(String first, String second, String third) {
+        if (!isMinutesAndSeconds(second, third)) {
+            return timeOf(first, second, third);
+        }
+        // `MIN_TIME(part1) + SEC_TIME(part2)` -- the first number is minutes, so it
+        // moves along one slot and the hours are the sign's only carrier.
+        boolean negative = first.startsWith("-");
+        String minutes = first.startsWith("-") || first.startsWith("+")
+                ? first.substring(1)
+                : first;
+        return timeOf(negative ? "-0" : "0", minutes, second);
+    }
+
+    /**
+     * Whether a two-part time means minutes and seconds rather than hours and
+     * minutes.
+     *
+     * <p>{@code if (part3 >= 0 || part4 < 0)} chooses HH:MM mode and the else is
+     * MM:SS, so it takes both an absent third part and a fraction on the second.
+     * {@code 12:34.5} is twelve minutes; {@code 12:34} and {@code 12:34:56.7} are
+     * twelve hours.
+     *
+     * <p>A fraction of zero does not count, because {@code Grab_Int_Scale} is
+     * followed by {@code if (part4 == 0) part4 = -1;} -- so {@code 12:34.0} is
+     * twelve hours and thirty-four minutes.
+     */
+    private static boolean isMinutesAndSeconds(String second, String third) {
+        if (third != null || !second.contains(".")) {
+            return false;
+        }
+        return Double.parseDouble("0" + second.substring(second.indexOf('.'))) > 0;
+    }
+
+    private TimeValue timeOf(String hours, String minutes, String seconds) {
         long wholeSeconds = 0;
         long nanoseconds = 0;
         if (seconds != null) {
@@ -1406,7 +2097,7 @@ public final class Transcoder {
         boolean negative = hours.startsWith("-");
         long magnitude = Math.abs(Long.parseLong(hours));
         TimeValue positive = TimeValue.of(
-                magnitude, Long.parseLong(minutes), wholeSeconds, nanoseconds);
+                magnitude, (long) Double.parseDouble(minutes), wholeSeconds, nanoseconds);
         return negative ? TimeValue.ofNanoseconds(-positive.nanoseconds()) : positive;
     }
 
@@ -1419,6 +2110,66 @@ public final class Transcoder {
             year += year < 50 ? 2000 : 1900;
         }
         return DateValue.of(year, month, day);
+    }
+
+    /**
+     * A date with a time of day and perhaps an offset.
+     *
+     * <p>An offset written without a time gives a time of 0:00 and an offset of
+     * zero, which is what a real R3 answers: {@code 1-Jan-2000+2:00} molds as
+     * {@code 1-Jan-2000/0:00} and reads its zone as 0:00. The offset is
+     * consumed and not kept, because there is nothing yet to offset when it
+     * arrives.
+     */
+    private Value readDateWithTime(String day, String time, String offset) {
+        DateValue date = (DateValue) readDate(day, day.indexOf('-') >= 0 ? "-" : "/");
+        TimeValue timeOfDay = time == null
+                ? TimeValue.ofNanoseconds(0)
+                : timeFromText(time);
+        return new DateValue(date.year(), date.month(), date.day(),
+                Optional.of(timeOfDay),
+                Optional.of(time == null ? 0 : offsetMinutesFrom(offset)));
+    }
+
+    /** {@code 12:30:15.25} as a time, the same three fields the lexer reads. */
+    private TimeValue timeFromText(String written) {
+        var parts = TIME.matcher(written);
+        if (!parts.matches()) {
+            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+        }
+        return (TimeValue) readTime(parts.group(1), parts.group(2), parts.group(3));
+    }
+
+    /**
+     * An offset in minutes, or zero where none was written.
+     *
+     * <p>Zero for {@code Z} and for a bare {@code +2} as well, because that is
+     * what a real R3 makes of both: the offset needs its colon to count.
+     */
+    private static int offsetMinutesFrom(String written) {
+        if (written == null || written.indexOf(':') < 0) {
+            return 0;
+        }
+        int colon = written.indexOf(':');
+        int hours = Integer.parseInt(written.substring(1, colon));
+        int minutes = Integer.parseInt(written.substring(colon + 1));
+        int size = hours * 60 + minutes;
+        return written.charAt(0) == '-' ? -size : size;
+    }
+
+    /**
+     * Refuses a lone underscore where a name belongs.
+     *
+     * <p>{@code _} is how none is written, so it is not a word and cannot take
+     * a sigil: {@code \'_}, {@code :_} and {@code _:} are each a mistake rather
+     * than a quoted, read or assigned none. A real R3 reports them as invalid
+     * and names which of the three was being read, which is what a script
+     * catching the error looks at.
+     */
+    private void refuseTheNoneWordAsAName(String named, String tokenKind, String lexeme) {
+        if (named.equals("_")) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, tokenKind);
+        }
     }
 
     private int monthNumber(String name) {
@@ -1453,13 +2204,36 @@ public final class Transcoder {
         if (position >= codepoints.length) {
             return;
         }
-        if (codepoints[position] == '\n') {
+        if (endsALine(position)) {
             line++;
             column = 1;
         } else {
             column++;
         }
         position++;
+    }
+
+    /**
+     * Whether the character here is the one that ends a line.
+     *
+     * <p>Three spellings and two of them share a character. A line feed ends a line, a
+     * carriage return ends a line, and a carriage return followed by a line feed ends
+     * one line rather than two -- so the return of such a pair is not the character
+     * that ends it, the line feed after it is. From {@code LEX_DELIMIT_RETURN} in
+     * {@code Scan_Token}, which steps over the line feed with {@code if (cp[1] == LF)
+     * cp++} before letting the count rise once.
+     *
+     * <p>The order matters and only one way round: a line feed followed by a carriage
+     * return is two lines, because only the return looks ahead for a partner.
+     */
+    private boolean endsALine(int at) {
+        int here = codepoints[at];
+        if (here == '\n') {
+            return true;
+        }
+        boolean followedByLineFeed =
+                at + 1 < codepoints.length && codepoints[at + 1] == '\n';
+        return here == '\r' && !followedByLineFeed;
     }
 
     private static boolean isClosingDelimiter(int codepoint) {
@@ -1476,7 +2250,80 @@ public final class Transcoder {
         return new MalformedSource(
                 failure,
                 new SourcePosition(line, column, position),
-                Optional.ofNullable(unclosed));
+                Optional.ofNullable(unclosed),
+                Optional.empty(),
+                Optional.of(theLineBeingRead()));
+    }
+
+    /**
+     * The source line the reader is on, as R3 puts in a syntax error's NEAR.
+     *
+     * <p>The whole line rather than the offending token, because that is what a
+     * person reading the error needs: `(line 2) 1d` says where to look, and the
+     * token on its own would not. Written as R3 writes it, so a script comparing
+     * the two agrees.
+     */
+    private String theLineBeingRead() {
+        int from = Math.min(position, codepoints.length);
+        while (from > 0 && codepoints[from - 1] != '\n') {
+            from--;
+        }
+        int to = from;
+        while (to < codepoints.length && codepoints[to] != '\n') {
+            to++;
+        }
+        return new String(codepoints, from, to - from).trim();
+    }
+
+    /**
+     * A sign and a colon make a token a time, so this is a malformed one rather than
+     * the word it looks like. {@code Scan_Time} calls it a hole in its own comment:
+     * {@code if (*cp == '-' || *cp == '+') return 0; // small hole: --1:23}
+     */
+    private static boolean isDoublySignedTime(String lexeme) {
+        if (!isSign(lexeme.charAt(0)) || !isSign(lexeme.charAt(1))) {
+            return false;
+        }
+        int colon = lexeme.indexOf(':');
+        return colon > 0 && colon < lexeme.length() - 1;
+    }
+
+    private static boolean isSign(char character) {
+        return character == '-' || character == '+';
+    }
+
+    /**
+     * The same failure, naming the token the reader was building and the text
+     * it was reading.
+     *
+     * <p>R3 reports both: ARG1 is the kind -- "word-lit", "tag",
+     * "end-of-script" -- and NEAR is the line and the fragment. A script
+     * catching a syntax error reads those rather than the message, and Rebol's
+     * own suite asserts on them.
+     */
+    private MalformedSource failureReading(SyntaxFailure failure, String tokenKind) {
+        return failureReading(failure, tokenKind, null);
+    }
+
+    /**
+     * The same, naming the text that offended as well as the token kind.
+     *
+     * <p>{@code Scan_Error} fills three fields from three places, and a script reads
+     * each for something different: ARG1 is the kind, ARG2 is the token's own text,
+     * and NEAR is the line it sat on. Rebol's money group compares ARG2 --
+     * {@code e/arg2 = "$1*$2"} -- so the token has to be carried here rather than
+     * recovered from the line.
+     */
+    private MalformedSource failureReading(
+            SyntaxFailure failure, String tokenKind, String offendingText) {
+
+        return new MalformedSource(
+                failure,
+                new SourcePosition(line, column, position),
+                Optional.empty(),
+                Optional.of(tokenKind),
+                Optional.of(theLineBeingRead()),
+                Optional.ofNullable(offendingText));
     }
 
     /** Internal control flow. Never escapes {@link #transcode(String)}. */
@@ -1487,15 +2334,33 @@ public final class Transcoder {
         private final transient SyntaxFailure failure;
         private final transient SourcePosition position;
         private final transient Optional<OpenDelimiter> unclosed;
+        private final transient Optional<String> tokenKind;
+        private final transient Optional<String> fragment;
+        private final transient Optional<String> offendingText;
 
         MalformedSource(
                 SyntaxFailure failure,
                 SourcePosition position,
-                Optional<OpenDelimiter> unclosed) {
+                Optional<OpenDelimiter> unclosed,
+                Optional<String> tokenKind,
+                Optional<String> fragment) {
+            this(failure, position, unclosed, tokenKind, fragment, Optional.empty());
+        }
+
+        MalformedSource(
+                SyntaxFailure failure,
+                SourcePosition position,
+                Optional<OpenDelimiter> unclosed,
+                Optional<String> tokenKind,
+                Optional<String> fragment,
+                Optional<String> offendingText) {
             super(failure.description(), null, false, false);
             this.failure = failure;
             this.position = position;
             this.unclosed = unclosed;
+            this.tokenKind = tokenKind;
+            this.fragment = fragment;
+            this.offendingText = offendingText;
         }
     }
 }

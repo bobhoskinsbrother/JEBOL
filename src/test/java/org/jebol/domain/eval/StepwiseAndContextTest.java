@@ -106,4 +106,82 @@ class StepwiseAndContextTest {
                         + "resolve/extend a b mold words-of a"))
                 .isEqualTo("\"[x y]\"");
     }
+
+    @Test
+    @DisplayName("RESOLVE/ONLY takes a block of the words it may write")
+    void resolveOnlyLimitsToTheNamedWords() {
+        // `from [block! integer!]`, and the block form is the one a caller
+        // writes: `Limit exports to only these words`. The words it does not
+        // name are left as they were, /ALL or not.
+        assertThat(answerTo(
+                "a: make object! [x: 1 y: 2] b: make object! [x: 9 y: 9] "
+                        + "resolve/only/all a b [x] mold reduce [a/x a/y]"))
+                .isEqualTo("\"[9 2]\"");
+    }
+
+    @Test
+    @DisplayName("and anything in that block which is not a word is passed over")
+    void resolveOnlyIgnoresWhatIsNotAWord() {
+        // `if (IS_WORD(words) || IS_SET_WORD(words))` -- a number or a string
+        // in the block is neither an error nor a word to copy.
+        assertThat(answerTo(
+                "a: make object! [x: 1] b: make object! [x: 9] "
+                        + "resolve/only/all a b [x: 5 \"z\"] a/x"))
+                .isEqualTo("9");
+    }
+
+    @Test
+    @DisplayName("a word it names that the source has not got is unset in the target")
+    void resolveOnlyUnsetsWhatTheSourceLacks() {
+        // `if (m < 0) SET_UNSET(vals);` -- the mark stays negative when the
+        // source never claimed the word, and the target's slot is emptied.
+        // This is the one thing /ONLY does that is not a narrowing: without it
+        // the same word is left alone, because nothing marked it at all.
+        assertThat(answerTo(
+                "a: make object! [x: 1] b: make object! [y: 9] "
+                        + "resolve/only/all a b [x] unset? a/x"))
+                .isEqualTo("#(true)");
+        assertThat(answerTo(
+                "a: make object! [x: 1] b: make object! [y: 9] "
+                        + "resolve/all a b a/x"))
+                .as("with no /ONLY the word was never marked, so it keeps its value")
+                .isEqualTo("1");
+    }
+
+    @Test
+    @DisplayName("RESOLVE/ONLY takes a position instead, meaning the target's words from there")
+    void resolveOnlyTakesAPosition() {
+        // "an index to tail", and this is how the C uses it itself: DO of a
+        // script records the user context's length, binds the code -- which
+        // appends every new word -- and then resolves from that length on, so
+        // the words the binding just added take their values from lib.
+        //
+        // The index counts frame words, and SELF is the first of them, so a
+        // one covers everything.
+        assertThat(answerTo(
+                "a: make object! [x: 1 y: 2] b: make object! [x: 9 y: 9] "
+                        + "resolve/only/all a b 1 mold reduce [a/x a/y]"))
+                .isEqualTo("\"[9 9]\"");
+    }
+
+    @Test
+    @DisplayName("and a position past the end has nothing to do rather than failing")
+    void resolveOnlyPastTheEnd() {
+        // `if (i >= target->tail) return;`
+        assertThat(answerTo(
+                "a: make object! [x: 1] b: make object! [x: 9] "
+                        + "resolve/only/all a b 99 a/x"))
+                .isEqualTo("1");
+    }
+
+    @Test
+    @DisplayName("and /EXTEND adds only what /ONLY named")
+    void resolveOnlyLimitsTheExtending() {
+        // The expand loop reads the same marks, so a source word the block did
+        // not name was never marked and is not added either.
+        assertThat(answerTo(
+                "a: make object! [x: 1] b: make object! [y: 2 z: 3] "
+                        + "resolve/only/extend a b [y] mold words-of a"))
+                .isEqualTo("\"[x y]\"");
+    }
 }

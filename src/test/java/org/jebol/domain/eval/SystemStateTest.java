@@ -69,8 +69,14 @@ class SystemStateTest {
     @Test
     @DisplayName("system/options names the places the interpreter was started from")
     void theOptionsAreFiles() {
+        // HOME, PATH and DATA are files. BOOT is none, and sysobj.reb says
+        // why on the line that reads it: "boot (path to the exe) may be none
+        // if not resolved!". An embedded interpreter has no path to its own
+        // executable to give, and mezz-tail.reb guards on that before calling
+        // CLEAN-PATH -- which needs the working directory it may not have.
         assertThat(answerTo("mold reduce [file? system/options/home "
-                + "file? system/options/boot]"))
-                .isEqualTo("\"[#(true) #(true)]\"");
+                + "file? system/options/path  file? system/options/data]"))
+                .isEqualTo("\"[#(true) #(true) #(true)]\"");
+        assertThat(answerTo("none? system/options/boot")).isEqualTo("#(true)");
     }
 }

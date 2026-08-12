@@ -27,14 +27,22 @@ class QuitEndsTheRunTest {
     }
 
     @Test
-    @DisplayName("QUIT on its own ends the run and answers none")
-    void aBareQuitAnswersNone() {
+    @DisplayName("QUIT on its own ends the run and carries nothing")
+    void aBareQuitCarriesNothing() {
         ScriptOutcome outcome = quitting("quit");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
+        // Unset, on the authority of Rebol's own suite: five assertions in
+        // evaluation-test.r3 read `unset? catch/quit [quit]`.
+        //
+        // This test used to assert none, citing the C's comment on the line
+        // that raises it -- `Halt_Code(RE_QUIT, val); // NONE if /return not
+        // set`. Both were measured: none costs five suite assertions and unset
+        // costs nothing, so the comment describes what QUIT hands over rather
+        // than what a caller gets back.
         assertThat(outcome.value().datatype().literalSpelling())
-                .as("REBOL's QUIT with no /RETURN carries none")
-                .isEqualTo("none!");
+                .as("a bare QUIT carries nothing, which is unset and not none")
+                .isEqualTo("unset!");
     }
 
     @Test

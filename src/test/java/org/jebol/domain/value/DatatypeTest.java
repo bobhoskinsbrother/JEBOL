@@ -21,9 +21,16 @@ class DatatypeTest {
             Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL, Datatype.TAG,
             Datatype.REF);
 
+    // HASH belongs to both any-block! and series!, which the last column of
+    // Rebol's `boot/types.reb` says outright: `hash  self  block  +  f*  *  *
+    // [series block]`. Its typeclass is `block`, so every arm in REBTYPE(Block)
+    // serves it. This table left it out and JEBOL agreed with the table, which
+    // meant a datatype JEBOL declared could not be built: every operation on a
+    // hash threw an IllegalArgumentException out of the interpreter.
     private static final Set<Datatype> EXPECTED_ANY_BLOCK = EnumSet.of(
             Datatype.BLOCK, Datatype.PAREN, Datatype.PATH,
-            Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH);
+            Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
+            Datatype.HASH);
 
     private static final Set<Datatype> EXPECTED_ANY_PATH = EnumSet.of(
             Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH);
@@ -32,12 +39,24 @@ class DatatypeTest {
             Datatype.WORD, Datatype.SET_WORD, Datatype.GET_WORD,
             Datatype.LIT_WORD, Datatype.REFINEMENT, Datatype.ISSUE);
 
+    // IMAGE and VECTOR belong to series! too, and this table left both out the
+    // way it once left out HASH. The last column of `boot/types.reb` names
+    // sixteen: binary, the six strings, image, vector, the six blocks and hash.
+    // Transcribing it by hand is what keeps going wrong, and the cost is the same
+    // each time -- every navigation native refused an image until this was
+    // corrected, because `isSeries()` had been written to agree with the table.
+    //
+    // VECTOR is here and JEBOL has no vector value yet. That is deliberate: the
+    // typeset is what the source says, and a datatype JEBOL cannot build is still
+    // a member of the sets it belongs to.
     private static final Set<Datatype> EXPECTED_SERIES = EnumSet.of(
             Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL, Datatype.TAG,
             Datatype.REF,
             Datatype.BLOCK, Datatype.PAREN, Datatype.PATH,
             Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
-            Datatype.BINARY);
+            Datatype.HASH,
+            Datatype.BINARY,
+            Datatype.IMAGE, Datatype.VECTOR);
 
     private static final Set<Datatype> EXPECTED_NUMBER = EnumSet.of(
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT);
@@ -123,12 +142,19 @@ class DatatypeTest {
     class TypesetRelationships {
 
         @Test
-        @DisplayName("series! is exactly any-string!, any-block! and binary!")
+        @DisplayName("series! is any-string!, any-block!, binary!, image! and vector!")
         void seriesIsTheUnionOfItsParts() {
+            // Not a union of the other typesets: `series` is a column in
+            // `boot/types.reb` and two of its members belong to no other set.
+            // This used to read as any-string plus any-block plus binary, which
+            // is a rule that happens to hold until a datatype arrives that does
+            // not fit it -- and `image` and `vector` are both such datatypes.
             for (Datatype datatype : Datatype.values()) {
                 boolean expected = datatype.isAnyString()
                         || datatype.isAnyBlock()
-                        || datatype == Datatype.BINARY;
+                        || datatype == Datatype.BINARY
+                        || datatype == Datatype.IMAGE
+                        || datatype == Datatype.VECTOR;
                 assertThat(datatype.isSeries()).as("%s", datatype).isEqualTo(expected);
             }
         }

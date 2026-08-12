@@ -54,20 +54,15 @@ directly in the requires (`step.input.datatype = word`) and keep derived
 aliases for `ensures` bodies only.
 
 
-## Getting a real R3 to check against
+## Checking a rule against Rebol
 
-The binaries linked from `rebol.com` are i386, which no current macOS can
-run: Rosetta 2 translates x86_64 only, and 32-bit executables went in
-Catalina. `lipo -archs r3` says `i386` and that is the end of it.
+**Read the C. Do not run a build.** A binary was kept here for a while and has
+been deleted: it answered what one build of one fork did on one machine, and it
+was a fork rather than R3-Alpha itself, so every answer was evidence rather
+than proof. The C says what the language is and explains itself as well.
 
-What does work is the maintained fork at `github.com/Oldes/Rebol3`, which
-publishes a native `rebol3-bulk-macos-arm64` among its release assets. Run
-an expression with `./r3 --quiet --do '...'` or a script with
-`./r3 --quiet file.r`; piping to stdin gets you the banner and a prompt.
-
-Four questions that had been marked "asserted from reasoning" were settled
-in one sitting with it, and one of them said the reasoning was wrong. It is
-worth reaching for earlier than we did.
-
-Caveat: that fork is not R3-Alpha itself. For anything where the two might
-plausibly differ, it is evidence rather than proof.
+Where to look is in TODO.md under "The C is the authority". For a rule in a
+spec, the trace is to a line of `~/Code/personal/rebol3-source/src/core/*.c` or
+to a declaration in `src/boot/`. A rule that cannot be traced there is a guess
+wearing a spec's clothing, and four of ours were -- RECYCLE, STATS, STACK and
+the map's key spelling all agreed with themselves and disagreed with Rebol.

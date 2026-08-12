@@ -38,8 +38,24 @@ class PortingBacklogTest {
      * it. If a change makes this fail by going up, a function that used
      * to be reachable is not any more -- which has happened, and silently:
      * a borrowed Rebol file can define a name over one of ours.
+     *
+     * <p>It was 134 of 580 while this read a dump of a running binary, and it is
+     * 30 of 353 now that it reads Rebol's source. The dump was not wrong about
+     * what that build held; it was wrong about what the library is. It listed
+     * every top-level word of every file the build had loaded, and most of those
+     * files are modules whose words no script can reach -- forty in
+     * `prot-tls.reb`, forty more in `codec-swf.reb`. Counting them made the
+     * backlog look four times its size and pointed the work at functions nobody
+     * can call.
+     *
+     * <p>What remains is worth reading rather than counting: seven are Goal 1's,
+     * two are graphics, and most of the rest are the module and load machinery --
+     * LOAD-HEADER, LOAD-MODULE, MAKE-MODULE*, EXPORT, DO-NEEDS. A few of those
+     * JEBOL does have in its `sys` context rather than its library, and this
+     * asks the library, so they read as missing. That is this measure's own
+     * blind spot and it belongs in the open rather than in a fudge.
      */
-    private static final int STILL_TO_PORT = 134;
+    private static final int STILL_TO_PORT = 24;
 
     /** The sets that wait on a decision rather than on the work. */
     private static final Set<String> HOST = Set.of(
@@ -66,8 +82,9 @@ class PortingBacklogTest {
     @Test
     @DisplayName("what R3 has and JEBOL has not, grouped by what is blocking it")
     void theBacklogIsPrinted() {
-        Set<String> theirs = functionsInTheBinary();
+        Set<String> theirs = functionsRebolDefines();
         Set<String> ours = functionsInJebol();
+        writeForTheAudit(ours);
         TreeSet<String> missing = new TreeSet<>(theirs);
         missing.removeAll(ours);
 
@@ -100,18 +117,52 @@ class PortingBacklogTest {
         }
     }
 
-    /** Every function name in the checked-in record of R3's library. */
-    private static Set<String> functionsInTheBinary() {
-        try (var source = PortingBacklogTest.class.getResourceAsStream("/r3/surface.txt")) {
+    /**
+     * Every function Rebol's own source defines, read from that source.
+     *
+     * <p>Three kinds of line in {@code c-surface.txt} name one: ACTION and
+     * NATIVE for the third of the library Rebol writes in C, and LIBRARY for the
+     * rest, which it writes in REBOL in {@code src/mezz/*.reb}.
+     *
+     * <p>This used to read a frozen dump of a running binary. A dump says what
+     * one build had loaded on one machine and cannot be checked against
+     * anything; the source says what the language is and explains itself. Where
+     * the two disagreed the source was right every time.
+     */
+    private static Set<String> functionsRebolDefines() {
+        try (var source = PortingBacklogTest.class.getResourceAsStream("/r3/c-surface.txt")) {
             if (source == null) {
-                throw new IllegalStateException("r3/surface.txt is not on the test path");
+                throw new IllegalStateException(
+                        "r3/c-surface.txt is not on the test path; "
+                                + "run scripts/c-surface.py");
             }
             return new String(source.readAllBytes(), StandardCharsets.UTF_8).lines()
-                    .filter(line -> line.contains(" |"))
+                    .filter(line -> line.startsWith("ACTION ")
+                            || line.startsWith("NATIVE ")
+                            || line.startsWith("LIBRARY "))
+                    .map(line -> line.substring(line.indexOf(' ') + 1))
                     .map(line -> line.substring(0, line.indexOf(" |")).trim())
                     .collect(Collectors.toCollection(TreeSet::new));
         } catch (IOException unreadable) {
             throw new UncheckedIOException(unreadable);
+        }
+    }
+
+    /**
+     * The same names, written where `scripts/c-parity.py` can read them.
+     *
+     * <p>The audit needs to tell three things apart: a function JEBOL has in
+     * Java, one it has in REBOL, and one it has not got. The registry answers
+     * the first and this answers the second, and without both a function Rebol
+     * writes in C and JEBOL writes in its prelude reads as missing.
+     */
+    private static void writeForTheAudit(Set<String> names) {
+        java.nio.file.Path into = java.nio.file.Path.of("build", "jebol-library.txt");
+        try {
+            java.nio.file.Files.createDirectories(into.getParent());
+            java.nio.file.Files.write(into, names);
+        } catch (IOException unwritable) {
+            throw new UncheckedIOException(unwritable);
         }
     }
 

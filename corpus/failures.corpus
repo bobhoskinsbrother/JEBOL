@@ -19,21 +19,36 @@ do [nothing/here]
 --- error script no-value
 
 --- id failures/selecting-a-field-an-object-does-not-have-raises
---- origin JEBOL spec/eval.allium, rule PathSelectsNextSegment
+--- origin R3 t-object.c, the arm FIND and SELECT share
 --- requires control series
---- note An object either has the field or the code is wrong, so this raises
---- note rather than giving NONE. The contrast is the next entry.
+--- note An object either has the field or the code asking is wrong, so a path
+--- note into one raises. A block is the contrast: it answers none, because a
+--- note block is a list that may or may not hold what is being looked for.
+--- note This entry read a block and expected the object's answer, which a real
+--- note R3 disagrees with -- measured, not reasoned.
 --- code
-holder: [a b c]
+holder: make object! [a: 1]
 holder/nosuchthing
 --- error script invalid-path
 
+--- id failures/selecting-a-name-a-block-does-not-hold-gives-none
+--- origin R3 t-block.c, PD_Block
+--- requires series
+--- note A word selector on a block answers the item after the word, so a name
+--- note the block has not got answers none rather than raising:
+--- note `if (n < 0 || n >= VAL_TAIL(value)) return PE_NONE;`.
+--- code
+holder: [a b c]
+holder/nosuchthing
+--- result
+_
+
 --- id failures/selecting-past-the-end-of-a-series-gives-none
---- origin JEBOL spec/eval.allium, rule PathSelectsNextSegment
+--- origin R3 t-block.c, PD_Block
 --- requires series
 --- note A series has positions that hold nothing, so reading one is not a
---- note mistake. This asymmetry with objects is asserted from reasoning and
---- note is still waiting on a real R3 to confirm.
+--- note mistake. Measured against a real R3, which answers none here and
+--- note refuses the same selector on a write.
 --- code
 holder: [a b c]
 holder/9

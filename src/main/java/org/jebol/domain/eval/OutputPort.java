@@ -19,7 +19,18 @@ public interface OutputPort {
         write(System.lineSeparator());
     }
 
+    /**
+     * Pushes anything buffered out to wherever it is really going.
+     *
+     * <p>What FLUSH asks for. A no-op by default, because a port that writes
+     * straight through has nothing held back, and only a buffered adapter has
+     * anything to do.
+     */
+    default void flush() {
+    }
+
     /** A port that discards everything, for when nothing is watching. */
+
     static OutputPort discarding() {
         return text -> {
         };

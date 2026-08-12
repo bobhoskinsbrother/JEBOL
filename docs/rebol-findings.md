@@ -1,16 +1,21 @@
-# Things about REBOL 3 that only the binary knows
+# Things about REBOL 3 that are not written down
 
-A running note, kept while porting REBOL 3 to the JVM.
+A frozen note, kept while porting REBOL 3 to the JVM.
 
-Each entry is behaviour that is not written down anywhere we could find, and
-that we learned by asking a real interpreter. Some are surprising. A few
-look like inconsistencies rather than decisions, and those are flagged as
-questions rather than as complaints - a reimplementation is not evidence
-that the original is wrong.
+Each entry is behaviour that is not written down anywhere we could find. Some
+are surprising. A few look like inconsistencies rather than decisions, and those
+are flagged as questions rather than as complaints - a reimplementation is not
+evidence that the original is wrong.
 
-The interpreter used throughout is Oldes Rebol 3.22.1, invoked as `./r3`.
-Every claim below has the command that produced it, so it can be rerun
-against a different build and disagreed with.
+**This is a record, not a method.** Every claim below was obtained by asking a
+running Oldes Rebol 3.22.1, and that binary has been deleted on purpose: it
+answered what one build of one fork did on one machine, and it was a fork rather
+than R3-Alpha itself. The commands are left in place so a claim can be traced,
+not so it can be rerun.
+
+**A new finding is read out of the C.** `~/Code/personal/rebol3-source` is the
+authority, and TODO.md says where in it to look. A claim traced to a line of C
+explains itself as well as settling the question, which no probe does.
 
 An entry earns its place by being *unobvious*: something a careful reader of
 the documentation would get wrong. Behaviour that is merely undocumented but
@@ -403,9 +408,11 @@ JEBOL's own answer as though it were R3's.
 
 ## How this list is used
 
-Wherever JEBOL matches the binary, the finding is also a corpus entry under
-`corpus/` or a test under `src/test/`, so the claim is rechecked on every
-build rather than believed. Entries 3 to 16 are pinned that way.
+Wherever JEBOL matches, the finding is also a corpus entry under `corpus/` or a
+test under `src/test/`, so the claim is rechecked on every build rather than
+believed. Entries 3 to 16 are pinned that way. That pinning is what keeps the
+findings useful now the binary is gone: the record cannot be retaken, but the
+tests fail if JEBOL drifts away from it.
 
 Entry 1 is not, because JEBOL does not match yet: its contexts nest, so an
 object reaches its parent and can place a word the object itself has not
@@ -415,7 +422,7 @@ than quietly implemented one way or the other. Entry 2 is pinned by
 asserts is about where a definition lands rather than about a value.
 Entry 17 is pinned by `WordCharactersTest` and by the corpus. Entries 18
 and 19 are pinned by `ProtectByNameTest` and `ProtectedObjectTest`, and
-entry 20 by `ConversionFamilyTest`, which carries the list of forty-five
-names read out of the binary rather than reasoned about.
+entry 20 by `ConversionFamilyTest`, which carries the list of forty-five names
+taken from Rebol rather than reasoned about.
 
 An entry with neither should be read as a recollection, not a finding.

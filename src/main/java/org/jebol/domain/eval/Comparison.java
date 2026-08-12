@@ -10,6 +10,7 @@ import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.HandleValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.MoneyValue;
@@ -351,6 +352,15 @@ public final class Comparison {
     private static boolean equalValues(
             Value left, Value right, long stepsAllowed, boolean approved) {
 
+        // A handle is equal to another when both are context handles of the same
+        // kind. Which means a function handle -- a codec, an extension entry point
+        // -- is equal to nothing, including itself, because it publishes no kind
+        // for equality to compare. `equal? h h` is false for a codec, and that is
+        // `CT_Handle` at mode zero rather than a slip here.
+        if (left instanceof HandleValue first && right instanceof HandleValue second) {
+            return first.isEqualHandleTo(second);
+        }
+
         // A character folds case for this question and not for the ordering
         // one, which is the opposite way round from what the code points
         // suggest. Everything built on this comparison inherits the folding,
@@ -552,6 +562,12 @@ public final class Comparison {
         if (left.datatype() != right.datatype()) {
             return false;
         }
+        // Identity, which for a handle is the only question that always has an
+        // answer: `(VAL_HANDLE_FLAGS(a) == VAL_HANDLE_FLAGS(b)) &&
+        // (VAL_HANDLE_DATA(a) == VAL_HANDLE_DATA(b))`.
+        if (left instanceof HandleValue first && right instanceof HandleValue second) {
+            return first.isTheSameHandleAs(second);
+        }
         if (left instanceof SeriesValue first && right instanceof SeriesValue second) {
             return first.sharesStorageWith(second) && first.index() == second.index();
         }
@@ -612,6 +628,13 @@ public final class Comparison {
      * until the C was read.
      */
     private static int ordering(Value left, Value right) {
+        // `Cmp_Handle`, which puts every context handle before every function one,
+        // sorts context handles of different kinds by name, and everything else by
+        // identity. Which is what makes SORT on a block of handles group them by
+        // kind rather than leave them where they were.
+        if (left instanceof HandleValue first && right instanceof HandleValue second) {
+            return first.compareWith(second);
+        }
         if (left instanceof PairValue leftPair && right instanceof PairValue rightPair) {
             int acrossTheX = signOfTheDifference(leftPair.x(), rightPair.x());
             return acrossTheX != 0

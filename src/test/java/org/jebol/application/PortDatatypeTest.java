@@ -100,6 +100,19 @@ class PortDatatypeTest {
         }
 
         @Test
+        @DisplayName("/ALLOW takes a block of attributes that nothing reads")
+        void theAllowBlockIsDeclaredAndUnread() {
+            // `access [block!]`, and the C never looks it up: `args =
+            // Find_Refines(ds, ALL_OPEN_REFS)` collects the refinement flags
+            // and Setup_File reads those. So the block changes nothing, and
+            // being unable to pass one was the only difference here.
+            assertThat(answerFrom(withAConsole(),
+                    "open? open/allow [scheme: 'console] [read]")).isEqualTo(TRUE);
+            assertThat(errorIdFrom(withAConsole(),
+                    "open/allow [scheme: 'console] 'read")).isEqualTo("expect-arg");
+        }
+
+        @Test
         @DisplayName("the port carries the scheme it was opened from")
         void thePortKnowsItsScheme() {
             assertThat(answerFrom(withAConsole(),

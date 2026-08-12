@@ -30,4 +30,16 @@ public final class StreamOutput implements OutputPort {
         stream.print(text);
         stream.flush();
     }
+
+    /**
+     * Pushes the stream's buffer out.
+     *
+     * <p>What FLUSH reaches. A {@code PrintStream} to a terminal flushes on
+     * each newline and one to a pipe does not, so a script that prints a
+     * prompt without a newline and then waits needs this to be reachable.
+     */
+    @Override
+    public void flush() {
+        stream.flush();
+    }
 }

@@ -24,5 +24,14 @@ public enum Conclusion {
      * overruling the script, the other is the script finishing early
      * because it meant to, and a host wants to tell them apart.
      */
-    QUIT_EARLY
+    QUIT_EARLY,
+    /**
+     * The script asked to stop and hand control back, by calling HALT.
+     *
+     * <p>Apart from {@link #QUIT_EARLY} on purpose. Quitting ends the host's
+     * run; halting ends the script and leaves the host running, so a console
+     * that halts is a console afterwards. R3's own summary of HALT is "Stops
+     * evaluation and returns to the input prompt."
+     */
+    HALTED
 }

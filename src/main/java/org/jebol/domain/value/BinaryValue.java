@@ -25,11 +25,24 @@ public record BinaryValue(BinaryStorage storage, int index) implements SeriesVal
      * UTF-8 is what REBOL 3 sources are.
      */
     public String asText() {
+        return new String(octetsFromHere(), java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    /**
+     * The octets from here on, as octets.
+     *
+     * <p>What anything that wants the bytes themselves needs. Going through
+     * {@link #asText()} and back loses every byte above 0x7F, because
+     * decoding as UTF-8 turns an octet that is not valid UTF-8 into the
+     * replacement character. That is how {@code make bitset! #{FF}} came out
+     * holding {@code #{3F}}, which is a question mark.
+     */
+    public byte[] octetsFromHere() {
         byte[] octets = new byte[storageLength() - index + 1];
         for (int at = 0; at < octets.length; at++) {
             octets[at] = (byte) storage.at(index + at);
         }
-        return new String(octets, java.nio.charset.StandardCharsets.UTF_8);
+        return octets;
     }
 
     @Override

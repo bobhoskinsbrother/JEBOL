@@ -7,7 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import org.jebol.domain.read.TranscodeResult;
+
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Molder;

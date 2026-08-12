@@ -62,8 +62,15 @@ class MakeErrorTest {
     }
 
     @Test
-    @DisplayName("an empty block still gives an error")
-    void anEmptyBlockIsTheDegenerateCase() {
-        assertThat(answerTo("error? make error! []")).isEqualTo("#(true)");
+    @DisplayName("an empty block raises, and what is caught is invalid-error")
+    void anEmptyBlockRaises() {
+        // This test asserted that the call ANSWERS an error, which was
+        // wrong: the C's Find_Error_Info reaches Trap0(RE_INVALID_ERROR)
+        // for a spec that names no type or no id, so the call raises and
+        // only a TRY holds the internal invalid-error. error-test.r3
+        // asserts the raised shape twice.
+        assertThat(answerTo("""
+                e: try [make error! []] reduce [e/type e/id]"""))
+                .isEqualTo("[Internal invalid-error]");
     }
 }

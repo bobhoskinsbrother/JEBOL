@@ -26,6 +26,7 @@ import java.util.Map;
 public final class MapValue implements Value {
 
     private final Map<Value, Value> entries;
+    private boolean protectedFromChange;
 
     private MapValue(Map<Value, Value> entries) {
         this.entries = entries;
@@ -55,16 +56,31 @@ public final class MapValue implements Value {
     }
 
     /**
-     * A set-word key is stored as the plain word it names.
+     * Any kind of word is stored as the set-word it names.
      *
-     * <p>{@code #[a: 1]} and {@code make map! [a 1]} hold the same key, so
-     * writing the literal with a colon must not produce a different map from
-     * building one without.
+     * <p>{@code if (ANY_WORD(key) && VAL_TYPE(key) != REB_SET_WORD) ...
+     * VAL_SET(set, REB_SET_WORD);}. So {@code #[a: 1]} and
+     * {@code make map! [a 1]} hold one key, and so do a lit-word, a get-word
+     * and a refinement of the same spelling: a map is keyed by what a word
+     * names rather than by how it was written.
+     *
+     * <p>The direction matters as much as the fact. Storing the set-word is
+     * what makes a molded map read back as an equal map -- the colon comes from
+     * the key and not from the molder, which is why a map keyed by an integer
+     * molds as {@code #[1 2]} with no colon anywhere. KEYS-OF turns them back,
+     * and so does the walk; nothing else does.
      */
     private static Value keyOf(Value written) {
-        return written instanceof WordValue word && word.datatype() == Datatype.SET_WORD
-                ? word.as(Datatype.WORD)
+        return written instanceof WordValue word && word.datatype() != Datatype.SET_WORD
+                ? word.as(Datatype.SET_WORD)
                 : written;
+    }
+
+    /** A stored key as KEYS-OF and the walk hand it out: a word, not a set-word. */
+    private static Value keyAsAskedAbout(Value stored) {
+        return stored instanceof WordValue word && word.datatype() == Datatype.SET_WORD
+                ? word.as(Datatype.WORD)
+                : stored;
     }
 
     /** What a key holds, or NONE when the map has not got it. */
@@ -76,9 +92,29 @@ public final class MapValue implements Value {
         return entries.containsKey(keyOf(key));
     }
 
+    /**
+     * The key as the map holds it, or NONE when the map has not got it.
+     *
+     * <p>What FIND on a map answers, and the C says why with a comment on the
+     * line itself: {@code // `find` returns the key}. The key it answers with
+     * is not always the key that was asked for -- a word goes in and comes back
+     * as a set-word, because that is how the entry is stored -- and that
+     * difference is the only thing FIND on a map can tell a caller that SELECT
+     * cannot.
+     */
+    public Value storedKeyLike(Value asked) {
+        Value wanted = keyOf(asked);
+        return entries.containsKey(wanted) ? wanted : NoneValue.none();
+    }
+
     /** Adds or replaces a key, in place. */
     public void put(Value key, Value value) {
         entries.put(keyOf(key), value);
+    }
+
+    /** Empties the map, as CLEAR on a series empties it. */
+    public void clear() {
+        entries.clear();
     }
 
     public void remove(Value key) {
@@ -90,15 +126,32 @@ public final class MapValue implements Value {
         return entries.size();
     }
 
+    /**
+     * The keys as a caller asks about them: plain words, not set-words.
+     *
+     * <p>{@code Map_To_Block} takes a flag for which question is asking, and
+     * this is the only one that turns a word key back:
+     * {@code if (ANY_WORD(val)) VAL_SET(out - 1, REB_WORD);} under
+     * {@code what < 0}. So KEYS-OF answers `[a]` where BODY-OF answers
+     * `[a: 1]`, and a caller can compare a key it was handed against a word it
+     * wrote.
+     */
     public List<Value> keys() {
-        return List.copyOf(entries.keySet());
+        return entries.keySet().stream().map(MapValue::keyAsAskedAbout).toList();
     }
 
     public List<Value> values() {
         return List.copyOf(entries.values());
     }
 
-    /** The pairs in order, as a flat list, which is how MOLD walks them. */
+    /**
+     * The pairs in order, as a flat list, keys as they are stored.
+     *
+     * <p>What MOLD, BODY-OF and {@code to block!} all walk -- {@code what == 0}
+     * in {@code Map_To_Block} -- and none of them normalises a word key. That is
+     * what makes a molded map read back as an equal map: the colon is in the
+     * key, so the molder writes the pairs out and nothing more.
+     */
     public List<Value> flattened() {
         List<Value> flat = new ArrayList<>();
         entries.forEach((key, value) -> {
@@ -108,6 +161,47 @@ public final class MapValue implements Value {
         return List.copyOf(flat);
     }
 
+    /**
+     * The pairs as the walk hands them out: keys as plain words.
+     *
+     * <p>{@code if (IS_SET_WORD(vars)) SET_TYPE(vars, REB_WORD);} inside
+     * {@code Loop_Each}. So FOREACH agrees with KEYS-OF rather than with
+     * BODY-OF, and a walk that compares its key against a word finds what it
+     * is looking for.
+     */
+    public List<Value> walkable() {
+        List<Value> flat = new ArrayList<>();
+        entries.forEach((key, value) -> {
+            flat.add(keyAsAskedAbout(key));
+            flat.add(value);
+        });
+        return List.copyOf(flat);
+    }
+
+    /**
+     * Whether the map refuses to be changed, having been PROTECTed.
+     *
+     * <p>A map is protected as a series is, which is one line of the C:
+     * {@code if (ANY_SERIES(value) || IS_MAP(value) || IS_BITSET(value))
+     * Protect_Series(value, flags);}. It is not a block, so PROTECT/DEEP
+     * stops here rather than reaching what the values hold.
+     */
+    public boolean isProtected() {
+        return protectedFromChange;
+    }
+
+    public void protectFromChange(boolean refusing) {
+        protectedFromChange = refusing;
+    }
+
+    /**
+     * A copy, which is free to be changed even when the original was not.
+     *
+     * <p>{@code Copy_Map} builds a new series and copies the pairs into it,
+     * and the protection lives on the series rather than on the pairs. So a
+     * copy of a protected map is the way to get a changeable one, and a caller
+     * that expected the protection to travel would be protecting nothing.
+     */
     public MapValue copy() {
         return new MapValue(new LinkedHashMap<>(entries));
     }

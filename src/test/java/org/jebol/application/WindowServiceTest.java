@@ -35,6 +35,7 @@ class WindowServiceTest {
         private final Optional<int[]> colour;
         private final Optional<String> password;
         private String browsed = "";
+        private List<String> filtersAsked = List.of();
 
         Screen(List<String> files, Optional<String> directory,
                 Optional<int[]> colour, Optional<String> password) {
@@ -60,10 +61,17 @@ class WindowServiceTest {
             browsed = target;
         }
 
+        private Optional<String> suggestedNameAsked = Optional.empty();
+        private Optional<String> titleAsked = Optional.empty();
+
         @Override
         public List<String> chooseFiles(
                 boolean forSaving, boolean allowingMany,
-                Optional<String> suggestedName, Optional<String> title) {
+                Optional<String> suggestedName, Optional<String> title,
+                List<String> filterPairs) {
+            this.filtersAsked = filterPairs;
+            this.suggestedNameAsked = suggestedName;
+            this.titleAsked = title;
             return allowingMany || files.isEmpty() ? files : List.of(files.getFirst());
         }
 
@@ -79,7 +87,7 @@ class WindowServiceTest {
         }
 
         @Override
-        public Optional<String> askForPassword(Optional<String> title) {
+        public Optional<String> askForPassword() {
             return password;
         }
 
@@ -111,6 +119,59 @@ class WindowServiceTest {
     @Nested
     @DisplayName("the operator answers")
     class TheOperatorAnswers {
+
+        @Test
+        @DisplayName("REQUEST-FILE/FILTER hands the name and pattern pairs to the screen")
+        void filterPairsReachTheScreen() {
+            Screen screen = Screen.answering("/chosen/file.r3");
+            Interpreter interpreter = withAScreen(screen);
+
+            answerFrom(interpreter, """
+                    request-file/filter [{Rebol scripts} {*.r3}]""");
+
+            assertThat(screen.filtersAsked).containsExactly("Rebol scripts", "*.r3");
+        }
+
+        @Test
+        @DisplayName("filter items are formed to text, whatever they are")
+        void filterItemsAreFormed() {
+            Screen screen = Screen.answering("/chosen/file.r3");
+            Interpreter interpreter = withAScreen(screen);
+
+            answerFrom(interpreter, """
+                    request-file/filter [%scripts 12]""");
+
+            assertThat(screen.filtersAsked).containsExactly("scripts", "12");
+        }
+
+        @Test
+        @DisplayName("an odd number of filter items is refused before the dialog opens")
+        void anOddFilterListIsRefused() {
+            Screen screen = Screen.answering("/chosen/file.r3");
+            assertThat(errorIdFrom(withAScreen(screen), """
+                    request-file/filter [{orphaned name}]""")).isEqualTo("invalid-arg");
+            assertThat(screen.filtersAsked).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a filter that is not a block is refused")
+        void aFilterOfTheWrongTypeIsRefused() {
+            assertThat(errorIdFrom(withAScreen(Screen.answering("x")), """
+                    request-file/filter 5""")).isEqualTo("expect-arg");
+        }
+
+        @Test
+        @DisplayName("the suggested name and the title each reach their own place")
+        void nameAndTitleStayApart() {
+            Screen screen = Screen.answering("/chosen/file.txt");
+            Interpreter interpreter = withAScreen(screen);
+
+            answerFrom(interpreter, """
+                    request-file/file/title %start.txt {Pick a script}""");
+
+            assertThat(screen.suggestedNameAsked).contains("start.txt");
+            assertThat(screen.titleAsked).contains("Pick a script");
+        }
 
         @Test
         @DisplayName("BROWSE hands the target to the screen")
@@ -171,11 +232,17 @@ class WindowServiceTest {
         }
 
         @Test
-        @DisplayName("REQUEST-PASSWORD answers a string")
+        @DisplayName("REQUEST-PASSWORD answers a string, and takes nothing at all")
         void requestPasswordAnswersAString() {
             Interpreter interpreter = withAScreen(Screen.answering("x"));
             assertThat(answerFrom(interpreter, "string? request-password"))
                     .isEqualTo(TRUE);
+            // `request-password: native [{...}]` and nothing else: no argument
+            // and no refinement. JEBOL had offered a /TITLE, which is a promise
+            // Rebol does not make and a call Rebol would refuse -- a script
+            // written here would not have run there.
+            assertThat(errorIdFrom(interpreter, "request-password/title \"q\""))
+                    .isEqualTo("no-refine");
         }
     }
 

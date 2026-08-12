@@ -50,9 +50,29 @@ public record DateValue(
         return Datatype.DATE;
     }
 
+    /**
+     * The written form: the day, then the time, then the offset.
+     *
+     * <p>An offset of zero is written as nothing at all, which is what a real
+     * R3 does: {@code 1-Jan-2000/12:00+0:00} molds as {@code 1-Jan-2000/12:00}.
+     * So the written form does not distinguish an offset of zero from a date
+     * that never carried one, and reading either back gives a zone of 0:00.
+     */
     @Override
     public String toString() {
         String rendered = day + "-" + MONTH_NAMES[month - 1] + "-" + year;
-        return timeOfDay.map(time -> rendered + "/" + time).orElse(rendered);
+        if (timeOfDay.isEmpty()) {
+            return rendered;
+        }
+        return rendered + "/" + timeOfDay.get() + writtenOffset();
+    }
+
+    private String writtenOffset() {
+        int minutes = zoneMinutes.orElse(0);
+        if (minutes == 0) {
+            return "";
+        }
+        int size = Math.abs(minutes);
+        return "%s%d:%02d".formatted(minutes < 0 ? "-" : "+", size / 60, size % 60);
     }
 }

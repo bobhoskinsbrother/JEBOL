@@ -52,58 +52,15 @@ rejoin: func [
     ajoin block
 ]
 
-also: func [
-    "Answers the first value, having evaluated the second for its effect."
-    first
-    second
-][
-    first
-]
-
-to-value: func [
-    "The value it was given, so a caller need not test before passing on."
-    value
-][
-    value
-]
-
 ; NEGATIVE? and POSITIVE? are not here. They were, written as a
 ; comparison against zero, and R3 refuses to compare a pair with a
 ; number at all -- so the only way to ask the question of a pair is to
 ; ask it of each half, which needs the halves.
 
-seventh: func ["The seventh value in a series." series] [pick series 7]
-eighth:  func ["The eighth value in a series."  series] [pick series 8]
-ninth:   func ["The ninth value in a series."   series] [pick series 9]
-tenth:   func ["The tenth value in a series."   series] [pick series 10]
-
 ; MAP-EACH is not here, and the reason is the rule for which layer a
 ; function belongs in. It has to bind the caller's block to the word it
 ; walks with, and binding a block to a context is not something REBOL can
 ; say without BIND. So it is a native, and would move here the day BIND is.
-
-unique: func [
-    "The series with repeats dropped, keeping the first of each."
-    series
-    /local kept
-][
-    kept: copy []
-    foreach value series [unless find kept value [append kept value]]
-    kept
-]
-
-forever: func [
-    "Evaluates a block until something leaves the loop."
-    body [block!]
-][
-    while [true] body
-]
-
-comment: func [
-    "Ignores what it is given, so a note can sit where a value would."
-    'ignored
-][
-]
 
 ; The -of family. REBOL's own base-defs.reb generates these by walking
 ; system/catalog/reflectors, one function per entry, and that file does
@@ -275,22 +232,6 @@ any-of: func [
         if (to paren! test) [found: (to get-word! word) break]
     ]
     found
-]
-
-forskip: func [
-    "Evaluates a block at every nth position of a series."
-    'word [word!] "The word holding the series, set to each position"
-    size [integer! decimal!] "How far to move each time"
-    body [block!] "What to evaluate"
-    /local orig result
-][
-    orig: get word
-    while [not tail? get word] [
-        set/any 'result do body
-        set word skip get word size
-    ]
-    set word orig
-    get/any 'result
 ]
 
 wrap: func [
@@ -493,12 +434,84 @@ clean-path: func [
 ;; MAKE-SCHEME puts each scheme it builds in system/schemes, and INPUT reads
 ;; system/ports/input. Both start empty, thus a scheme exists only once
 ;; something has registered it.
+;; The console options, copied from sysobj.reb. Data rather than functions,
+;; like system/standard below it.
+;;
+;; NO-COLOR and ANSI are what mezz-logger.reb reads on its fourth line, and
+;; their absence stopped that file before it defined any of its five
+;; functions. LOG is a map of verbosity per service, and SELECT on it
+;; answering none is what makes a service fall back to the file's own
+;; default.
+append system/options reduce [
+    ;; QUIET is read by every one of mezz-logger.reb's five functions before
+    ;; they write anything, and by Rebol's start-up banner.
+    to set-word! 'quiet     false
+    to set-word! 'no-color  false
+    to set-word! 'log       make map! [rebol: 1 http: 1 tls: 1 zip: 1 tar: 1]
+    to set-word! 'ansi      make map! [
+        reset:             "^[[0m"
+        bold:              "^[[1m"
+        italic:            "^[[3m"
+        underline:         "^[[4m"
+        invert:            "^[[7m"
+        bold-off:          "^[[22m"
+        italic-off:        "^[[23m"
+        underline-off:     "^[[24m"
+        invert-off:        "^[[27m"
+        foreground:        "^[[39m"
+        background:        "^[[49m"
+        gray:              "^[[38;5;244m"
+        black:             "^[[30m"
+        red:               "^[[31m"
+        green:             "^[[32m"
+        yellow:            "^[[33m"
+        blue:              "^[[34m"
+        magenta:           "^[[35m"
+        cyan:              "^[[36m"
+        white:             "^[[37m"
+        bright-red:        "^[[91m"
+        bright-green:      "^[[92m"
+        bright-yellow:     "^[[93m"
+        bright-blue:       "^[[94m"
+        bright-magenta:    "^[[95m"
+        bright-cyan:       "^[[96m"
+        bright-white:      "^[[97m"
+        black-bg:          "^[[40m"
+        red-bg:            "^[[41m"
+        green-bg:          "^[[42m"
+        yellow-bg:         "^[[43m"
+        blue-bg:           "^[[44m"
+        magenta-bg:        "^[[45m"
+        cyan-bg:           "^[[46m"
+        white-bg:          "^[[47m"
+        bright-red-bg:     "^[[101m"
+        bright-green-bg:   "^[[102m"
+        bright-yellow-bg:  "^[[103m"
+        bright-blue-bg:    "^[[104m"
+        bright-magenta-bg: "^[[105m"
+        bright-cyan-bg:    "^[[106m"
+        bright-white-bg:   "^[[107m"
+        error:             "^[[38;5;201m"
+        banner:            "^[[30;107m"
+    ]
+]
+
 append system reduce [
     to set-word! 'schemes  make object! []
+    ;; The seven fields sysobj.reb declares, all none until a host fills one.
+    ;; Not decoration: `Get_Event_Var` reads EVENT for a GUI event's port,
+    ;; CALLBACK for a callback's and INPUT for a console event's, so a field
+    ;; missing here is a field an event answers nothing for. All seven are none
+    ;; in a stock console 3.22.1 too, which is why Rebol's own event test guards
+    ;; its port case with `if system/ports/event [...]`.
     to set-word! 'ports    make object! [
+        system: none
+        event: none
         input: none
         output: none
-        system: none
+        echo: none
+        mail: none
+        callback: none
     ]
 ]
 
@@ -509,6 +522,30 @@ append system reduce [
         ;; sysobj.reb. Data rather than functions: MAKE-SCHEME and MAKE-PORT*
         ;; in sys-ports.reb are Rebol's own and are loaded, and both build
         ;; from these.
+        ;; What STATS/PROFILE fills in and answers. The same object every
+        ;; time, refreshed in place, because that is what the C does --
+        ;; `stats = Get_System(SYS_STANDARD, STD_STATS); *ds = *stats;` -- and
+        ;; DELTA-PROFILE depends on it: it copies this, runs a block, asks
+        ;; again, and differences the copy against the object it still holds.
+        ;;
+        ;; Thirteen fields in sysobj.reb's order, because DELTA-PROFILE walks
+        ;; them with FOREACH rather than naming them.
+        stats: make object! [
+            timer: 0:0:0
+            evals: 0
+            eval-natives: 0
+            eval-functions: 0
+            series-made: 0
+            series-freed: 0
+            series-expanded: 0
+            series-bytes: 0
+            series-recycled: 0
+            made-blocks: 0
+            made-objects: 0
+            recycles: 0
+            collisions: 0
+        ]
+
         scheme: make object! [
             name: none          ;; word of console, file, http and so on
             title: none         ;; user-friendly title for the scheme
@@ -533,6 +570,84 @@ append system reduce [
             title: none         ;; user-friendly title for the port
             scheme: none        ;; reference to the scheme that defines it
             ref: none           ;; reference path or url, for errors
+        ]
+
+        ;; The port specs each scheme extends, copied from sysobj.reb. Data
+        ;; rather than functions, like everything else in system/standard.
+        ;;
+        ;; Absent ones do not degrade: a set-path cannot create a field, so a
+        ;; protocol file that writes to one stops there. PORT-SPEC-NET alone
+        ;; was four of Rebol's own files -- prot-http, prot-pop3, prot-smtp and
+        ;; prot-daytime all open by extending it.
+        port-spec-file: make port-spec-head [
+            path: none
+        ]
+
+        port-spec-net: make port-spec-head [
+            host: none
+            port: 80
+            path: none
+            target: none
+            query: none
+            fragment: none
+        ]
+
+        port-spec-checksum: make port-spec-head [
+            scheme: 'checksum
+            method: none
+        ]
+
+        port-spec-crypt: make port-spec-head [
+            scheme: 'crypt
+            direction: 'encrypt
+            algorithm: none
+            init-vector: none
+            key: none
+        ]
+
+        port-spec-midi: make port-spec-head [
+            scheme: 'midi
+            device-in: none
+            device-out: none
+        ]
+
+        ;; What QUERY answers about a file, and what a scheme's own QUERY
+        ;; builds from: `info: make system/standard/file-info [...]`, which is
+        ;; how both prot-http.reb and prot-mysql.reb describe what they are
+        ;; looking at. Seven fields, in sysobj.reb's order, and the comment on
+        ;; DATE is Rebol's own: "same as `modified` (it is here just for
+        ;; backwards compatibility)".
+        file-info: construct [
+            name:
+            size:
+            type:
+            date:
+            modified:
+            accessed:
+            created:
+        ]
+
+        ;; The shape a module header is built from. MAKE-MODULE* starts with
+        ;; `construct/with :spec system/standard/header`, so a header block
+        ;; from a file is filled into a copy of this and every field it did
+        ;; not set is none. Without the prototype that ATTEMPT answers none
+        ;; and the ASSERT/TYPE below it raises.
+        ;;
+        ;; Ten fields, in sysobj.reb's order, because a header is read by
+        ;; walking WORDS-OF. VERSION starts at 0.0.0 and TITLE at "Untitled"
+        ;; because MAKE-MODULE* asserts that the first is a tuple, and a
+        ;; header that says neither still has to make a module.
+        header: make object! [
+            version: 0.0.0
+            title: "Untitled"
+            name: none
+            type: none
+            date: none
+            file: none
+            author: none
+            needs: none
+            options: none
+            checksum: none
         ]
 
         enum: make object! [

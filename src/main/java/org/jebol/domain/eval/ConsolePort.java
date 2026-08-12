@@ -32,6 +32,37 @@ public interface ConsolePort {
      */
     String readHiddenLine();
 
+    /**
+     * One keypress, as a codepoint, or -1 when none can be read.
+     *
+     * <p>What READ-KEY asks for: "Reads a single keypress from the console
+     * without echoing it." A single keypress needs the terminal in raw mode,
+     * and nothing in the JDK can put it there -- so how much of this an adapter
+     * can honour depends on the adapter, and the domain asks the question
+     * either way.
+     *
+     * <p>-1 rather than an exception, because the C answers none when the host
+     * cannot read a key, and a script that offered a menu and got nothing back
+     * should see nothing rather than a failure.
+     */
+    default int readKey() {
+        return -1;
+    }
+
+    /**
+     * Whether this console is a real terminal.
+     *
+     * <p>What TTY? answers. A script asks it to decide whether to prompt, so a
+     * console that is really a pipe must say so: prompting into a pipe waits
+     * for a person who is not there.
+     *
+     * <p>False by default, because a port that reads nothing is not a terminal
+     * and the safe answer is the one that stops a script waiting.
+     */
+    default boolean isATerminal() {
+        return false;
+    }
+
     /** A port that reads nothing, which is what a script gets by default. */
     static ConsolePort none() {
         return new ConsolePort() {

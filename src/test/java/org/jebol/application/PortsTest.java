@@ -82,7 +82,7 @@ class PortsTest {
             Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
-            assertThat(interpreter.run("read %greeting.txt").display())
+            assertThat(interpreter.run("read/string %greeting.txt").display())
                     .isEqualTo("\"hello from disk\"");
         }
 
@@ -116,8 +116,11 @@ class PortsTest {
             Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
-            assertThat(interpreter.run("exists? %here.txt").display()).isEqualTo("#(true)");
-            assertThat(interpreter.run("exists? %not-here.txt").display()).isEqualTo("#(false)");
+            // Rebol's EXISTS? answers the type word, or none for a file that
+            // is not there. `'file` and `_` read as true and false, which is
+            // what every caller asks of it.
+            assertThat(interpreter.run("exists? %here.txt").display()).isEqualTo("file");
+            assertThat(interpreter.run("exists? %not-here.txt").display()).isEqualTo("_");
         }
     }
 

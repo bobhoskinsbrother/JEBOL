@@ -20,13 +20,13 @@ import org.junit.jupiter.api.Test;
 /**
  * Every function JEBOL offers, with its arguments and refinements.
  *
- * <p>Printed in the shape a real R3 prints its own, so the two can be
- * compared line for line. The binary answers {@code spec-of} for all five
- * hundred and eighty of its functions; JEBOL's natives carry no
- * REBOL-readable spec, so this reads the registry instead.
+ * <p>Printed in the shape Rebol declares its own, so the two can be compared
+ * line for line against the declared specs in {@code r3/c-surface.txt}, which
+ * {@code scripts/c-surface.py} writes from Rebol's source. JEBOL's natives carry
+ * a rebuilt spec rather than a REBOL block, so this reads the registry instead.
  *
  * <p>Why this exists: without it, the only way to learn that a native is
- * missing, or that it refuses an argument the binary accepts, is to run
+ * missing, or that it refuses an argument Rebol accepts, is to run
  * the suite and read the failure. That finds them one at a time and in no
  * useful order. The two surfaces side by side give the whole list at once,
  * and say which of the three kinds of gap each one is: a function that is
@@ -48,8 +48,26 @@ class SurfaceReportTest {
 
         System.out.printf("%nSURFACE %d functions:%n", byName.size());
         byName.values().forEach(line -> System.out.println("SURFACE " + line));
+        writeForTheAudit(byName.values());
 
         assertThat(byName).as("an empty surface means nothing was registered").isNotEmpty();
+    }
+
+    /**
+     * The same lines, written where `scripts/c-parity.py` can read them.
+     *
+     * <p>Printing alone means the surface can only be compared by eye. The
+     * audit compares Rebol's own C declarations against this, so this one has
+     * to be a file.
+     */
+    private static void writeForTheAudit(java.util.Collection<String> lines) {
+        java.nio.file.Path into = java.nio.file.Path.of("build", "jebol-surface.txt");
+        try {
+            java.nio.file.Files.createDirectories(into.getParent());
+            java.nio.file.Files.write(into, lines);
+        } catch (java.io.IOException unwritable) {
+            throw new java.io.UncheckedIOException(unwritable);
+        }
     }
 
     /** One function's arguments and refinements, or nothing if it is not one. */
@@ -86,11 +104,11 @@ class SurfaceReportTest {
     }
 
     /**
-     * The datatypes a parameter accepts, in the binary's spelling.
+     * The datatypes a parameter accepts, spelled as Rebol spells them.
      *
-     * <p>Left off when the parameter accepts everything, because that is
-     * how the binary prints an unconstrained argument too, and a list of
-     * fifty-eight names would bury the ones that matter.
+     * <p>Left off when the parameter accepts everything, because that is how
+     * Rebol declares an unconstrained argument too, and a list of fifty-eight
+     * names would bury the ones that matter.
      */
     private static void appendAcceptedTypes(StringBuilder shape, Parameter parameter) {
         Set<Datatype> accepted = parameter.acceptedTypes();

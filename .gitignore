@@ -8,6 +8,19 @@
 /r3
 /r3.exe
 
+# Rebol's own source, symlinked in so the IDE indexes it and the MCP can search
+# it. It is the authority every port is read from -- `src/core/*.c`, `boot/*.reb`,
+# `src/tests/units/*.r3` -- and keeping it outside the project meant every search
+# of it fell back to grep.
+#
+# A link rather than a copy, so there is one checkout on disk and it updates with
+# its own git. Never committed: it is 25,000 lines of somebody else's Apache-2.0
+# code, and vendoring it would put JEBOL's own history and licensing in doubt.
+#
+# Make your own with:
+#     ln -s ~/Code/personal/rebol3-source rebol3-source
+/rebol3-source
+
 # Gradle
 /.gradle/
 /build/

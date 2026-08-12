@@ -135,7 +135,12 @@ public final class Parser {
                 source != null ? source.remaining() : List.of(input), source);
         parser.parsing = input.datatype();
         parser.mindingCase = mindingCase;
-        boolean matched = parser.matchSequence(rule.remaining());
+        boolean matched;
+        try {
+            matched = parser.matchSequence(rule.remaining());
+        } catch (Returned returned) {
+            return returned.value();
+        }
         if (parser.gathered != null) {
             return BlockValue.block(parser.gathered);
         }
@@ -357,8 +362,21 @@ public final class Parser {
             case "remove" -> removeMatched(rules, at);
             case "change" -> changeMatched(rules, at);
             case "insert" -> insertValue(rules, at);
+            case "return" -> returnFrom(rules, at);
             default -> null;
         };
+    }
+
+    private int returnFrom(List<Value> rules, int at) {
+        Value following = following(rules, at, "return");
+        if (following instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
+            throw new Returned(evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context));
+        }
+        int begin = position;
+        if (matchOne(rules, at + 1) == NO_MATCH) {
+            return NO_MATCH;
+        }
+        throw new Returned(BlockValue.block(List.copyOf(input.subList(begin, position))));
     }
 
     /**
@@ -1079,5 +1097,20 @@ public final class Parser {
         }
         alternatives.add(List.copyOf(current));
         return alternatives;
+    }
+
+    /** Signals that RETURN ended the parse early with a value to answer. */
+    private static final class Returned extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+        private final transient Value value;
+
+        Returned(Value value) {
+            super(null, null, false, false);
+            this.value = value;
+        }
+
+        Value value() {
+            return value;
+        }
     }
 }

@@ -24,6 +24,8 @@ enum Datatype {
     | word | set_word | get_word | lit_word | refinement | issue
     | block | paren | path | set_path | get_path | lit_path
     | datatype | native | function | op | object | error | map
+    | module | port -- a context that carries something extra: a header, or
+                    -- a way out of the interpreter
     | java_object   -- a value belonging to the host, reachable both ways
 
     -- Named but not built. No value of these exists yet, and the names
@@ -36,7 +38,7 @@ enum Datatype {
     -- datatypes exist. The names are needed for the construction form,
     -- which is a different question and does need them.
     | action | bitset | closure | command | end | event | frame | gob
-    | handle | hash | image | library | module | port | rebcode
+    | handle | hash | image | library | rebcode
     | struct | task | utype | vector
 }
 
@@ -112,6 +114,127 @@ entity BinaryStorage {
     }
 }
 
+-- An image's pixels, four bytes each, with the shape they are arranged in.
+--
+-- A series like any other, and that is the whole trick of it: `IMG_WIDE` and
+-- `IMG_HIGH` sit beside the data, the element is a quad -- `QUAD_SKIP(s, n)` is
+-- `data + n * 4` -- and the tail is `w * h`. So a position into an image is a
+-- pixel index, and every navigation action an image has comes free from that.
+--
+-- The bytes are red, green, blue and alpha in that order, on every platform.
+-- Rebol's own order is not: `include/reb-c.h` picks ARGB on a big-endian host,
+-- RGBA on Android and BGRA elsewhere, so the same image is laid out three ways
+-- depending on where Rebol was built. What a script sees is fixed either way --
+-- molding writes `RRGGBB` and a pixel is the tuple `r.g.b.a` -- so the fixed
+-- order is the language and the varying one is an implementation detail. See
+-- decision 20: JEBOL is meant for desktop, the web and Android, and Android is
+-- the platform Rebol treats differently.
+--
+-- Alpha is stored for every pixel whether the image uses one or not, which is why
+-- molding asks `Image_Has_Alpha` before writing the second binary rather than
+-- reading a flag.
+--
+-- Width times height is the pixel count and neither may pass 0xFFFF:
+-- `if (w > 0xFFFF || h > 0xFFFF)` refuses, with `size-limit` when MAKE asked and
+-- silently when a codec did.
+entity ImageStorage {
+    pixels: List<Integer>
+    wide: Integer
+    high: Integer
+
+    length: wide * high
+
+    invariant FourBytesAPixel {
+        pixels.count = wide * high * 4
+    }
+
+    invariant PixelBytesAreOctets {
+        for byte in pixels:
+            byte >= 0 and byte <= 255
+    }
+
+    invariant NeitherSideIsNegative {
+        wide >= 0 and high >= 0
+    }
+
+    invariant NeitherSideIsBiggerThanTheLimit {
+        wide <= 65535 and high <= 65535
+    }
+}
+
+-- What a gob! holds: a place on a screen, one piece of content, and children.
+--
+-- Two things about it are not object-like, and both come from `Set_GOB_Var`.
+--
+-- The content is a UNION rather than five fields. `image`, `draw`, `text`,
+-- `effect` and `color` all write `GOB_CONTENT` and set a type tag beside it, so
+-- giving a gob an image takes away whatever draw block it had. Reading the one it
+-- has not got answers none.
+--
+-- And the pane is a series. Every navigation and modification action a gob has --
+-- 24 of them in `REBTYPE(Gob)` -- works on the list of children rather than on
+-- the gob itself: `append gob child` puts a child in, `length? gob` counts them,
+-- and `pick gob 1` is the first child. A gob with no pane answers none to PICK
+-- and zero to LENGTH?, because the pane is allocated when the first child
+-- arrives.
+--
+-- A fresh gob is not an empty one. `Make_Gob` clears the struct and then writes
+-- three fields: `GOB_W(gob) = 100; GOB_H(gob) = 100; GOB_ALPHA(gob) = 255;`. So
+-- `make gob! []` is a hundred by a hundred and fully opaque, and the offset is
+-- the only field that starts at nothing.
+entity GobStorage {
+    offset: PairValue             -- where it sits, in float pixels; starts 0x0
+    size: PairValue               -- starts 100x100, not 0x0
+    alpha: Integer                -- 0 to 255, clipped on the way in; starts 255
+    content_kind: GobContent
+    content: Value?               -- the one piece the kind names
+    pane: List<Value>             -- child gobs, and the series every arm walks
+    parent: Value?
+    data_kind: GobHeld            -- a second tag, not part of the content union
+    data: Value?
+    owner: Value?                 -- written and never read
+    flags: List<GobFlag>
+
+    length: pane.count
+
+    invariant AlphaIsAnOctet {
+        alpha >= 0 and alpha <= 255
+    }
+
+    invariant ContentMatchesItsKind {
+        content_kind = none implies content = absent
+    }
+
+    invariant DataMatchesItsKind {
+        data_kind = nothing implies data = absent
+    }
+}
+
+-- The kinds of content a gob can hold, one at a time. `GOBT_*` in reb-gob.h.
+--
+-- Two of these read back through one field name: a block written to `text` is
+-- `text` and a string written to it is `string`, and `g/text` answers whichever
+-- went in.
+enum GobContent {
+    none | color | image | draw | text | string | effect | widget
+}
+
+-- The kinds of thing `data` holds. `GOBD_*`, and a tag of its own, which is what
+-- lets one gob carry a draw block and a block of data at the same time.
+enum GobHeld {
+    nothing | object | block | string | binary | integer
+}
+
+-- The flag words `flags` accepts, from `Set_Gob_Flag`.
+--
+-- Nine of them, in this order, because `Flags_To_Block` walks the same table to
+-- build the block a script reads: `g/flags` comes back in table order whatever
+-- order it was written in.
+enum GobFlag {
+    resize | no_title | no_border | dropable | transparent
+    | popup | modal | on_top | hidden
+}
+
 -- A binding target: a set of named slots that words can resolve through.
 -- The global environment and every object! share this representation.
 
@@ -162,6 +285,7 @@ entity Value {
         | AnyStringValue | BinaryValue | AnyBlockValue | AnyWordValue
         | DatatypeValue | NativeValue | FunctionValue | OpValue | ObjectValue
         | ErrorValue | JavaObjectValue | MapValue | BitsetValue
+        | ModuleValue | PortValue
 
     -- The concrete datatype this value reports to TYPE?. Each variant
     -- narrows this to the datatypes it can carry.
@@ -372,6 +496,116 @@ variant BinaryValue : Value {
     index: Integer
 }
 
+-- A position into an image, counted in pixels rather than in bytes.
+--
+-- `VAL_INDEX` is the pixel and `QUAD_SKIP` turns it into the byte offset, so an
+-- image navigates exactly as a block does and its width survives being skipped
+-- into: `at img 3` is the third pixel of the same 2x2 image, not a 1x1 one.
+variant ImageValue : Value {
+    storage: ImageStorage
+    index: Integer              -- 1-based pixel; storage.length + 1 is the tail
+}
+
+-- An opaque thing the runtime owns, which a script can only pass around.
+--
+-- `c-handle.c` says what it grew into: "initially handles were just user
+-- transparent pointer holders. But it seems to be more useful to have it as a
+-- more advanced type, with possibility to register a function for releasing
+-- resources from GC when handle value is no more needed."
+--
+-- There are two kinds and nearly everything depends on which. A *function*
+-- handle wraps something callable -- a codec dispatcher, an extension entry
+-- point. A *context* handle owns a resource with a lifetime -- a cipher's key
+-- schedule, a port's device state. Only a context handle publishes anything
+-- about itself, and only a context handle can be released.
+--
+-- Nothing makes one: the Make column of `boot/types.reb` is a dash and
+-- `MT_Handle` is `return FALSE` and nothing else. So every handle a script sees
+-- was handed to it, and in a build with no ciphers and no extension API the only
+-- ones are the two codecs `Init_Codecs` registers at boot.
+--
+-- Three comparisons and they disagree with each other on purpose. `same?` is
+-- identity. `equal?` needs *both* sides to be context handles of one kind, so a
+-- function handle is equal to nothing at all, including itself. And the ordering
+-- puts every context handle before every function one -- which is what FIND and
+-- SORT actually use, because they go through `Cmp_Value` rather than through the
+-- equality dispatch.
+variant HandleValue : Value {
+    type_name: Text             -- a word: `codec`, `rc4`, `aes`
+    kind: HandleKind
+    identity: Integer           -- what `same?` compares and the ordering sorts on
+    payload: Value?             -- what the runtime put behind it
+}
+
+-- Which of the two a handle is. `HANDLE_FUNCTION = 0` and
+-- `HANDLE_CONTEXT = 1 << 2` in sys-value.h.
+enum HandleKind {
+    function | context
+}
+
+-- A thing that happened, waiting to be answered: a click, a key, a connection
+-- opening, a file dropped on a window.
+--
+-- Not a series and not a container. The C keeps one in a single value cell of
+-- twelve bytes -- "events are kept compact in order to fit into normal 128 bit
+-- value cells", says `t-event.c` -- and every field a script reads is unpacked
+-- from those bytes rather than stored as itself. So an event has two arms and
+-- MAKE, and nothing else: `REBTYPE(Event)` handles A_MAKE and A_TO and sends
+-- everything else to `Trap_Action`.
+--
+-- The packing is where the surprises live, and there are three.
+--
+-- The type is an *index* into `system/catalog/event-types`, so what a type word
+-- means is decided by a block a script can read, and index 0 reads back as none
+-- rather than as the word `ignore` that sits there.
+--
+-- `offset`, `key` and `code` are one four-byte field seen three ways, and two
+-- flags say which way to read it. An offset packs two signed sixteen-bit halves
+-- into it and raises HAS_XY; a key or a code puts a number in it and raises
+-- HAS_CODE instead. Writing either takes the other's flag down, so HAS_XY and
+-- HAS_CODE are never both up -- which is why an event with a key has no offset.
+-- Each half of an offset is a signed short, and `Float_Int16` raises
+-- `out-of-range` rather than truncating anything that will not fit in one.
+--
+-- And `port`, `gob` and `data` share one slot, with the model saying which is
+-- there. A gob and a window are the same field under two names.
+variant EventValue : Value {
+    type_index: Integer         -- into system/catalog/event-types; 0 reads as none
+    flags: List<EventFlag>
+    model: EventModel
+    data: Integer               -- an offset's two halves, or a key, or a code
+    attached: Value?            -- the port, object or gob the model names
+}
+
+-- What an event's flags byte can say. `EVF_*` in reb-event.h.
+--
+-- Three of these a script can read back through `e/flags`: double, control and
+-- shift. The rest are the C's own bookkeeping, and two of them decide how the
+-- data field is read.
+enum EventFlag {
+    copied | has_xy | double | control | shift | has_data | has_code | alt
+}
+
+-- Which kind of thing the shared slot holds. `EVM_*` in reb-event.h.
+--
+-- Reading `e/port` goes through this: a GUI event answers
+-- `system/ports/event`, a port event answers the port it holds, an object event
+-- answers the object, and a device event has to reach through an I/O request to
+-- find one.
+enum EventModel {
+    device | port | object | gui | callback | midi | console
+}
+
+-- A position into a gob's pane, which is what makes a gob a series.
+--
+-- The index walks the children rather than anything about the gob itself, so
+-- `next gob` is the same gob standing at its second child. That is why the gob's
+-- own fields are read through a path and never through a position.
+variant GobValue : Value {
+    storage: GobStorage
+    index: Integer              -- 1-based child; storage.length + 1 is the tail
+}
+
 variant AnyBlockValue : Value {
     block_type: BlockDatatype
     storage: BlockStorage
@@ -411,6 +645,42 @@ variant FunctionValue : Value {
 
 variant ObjectValue : Value {
     context: Context
+}
+
+-- A module: a context that carries a header saying what it is called, what
+-- version it is, and which of its words the rest of the world may see.
+--
+-- An object underneath, and R3's is the same object with one extra field.
+-- What makes it a module rather than an object is that header, because the
+-- header is what decides which names escape. A module whose header exports
+-- three words puts three words into the library and keeps the rest to
+-- itself, and a name it holds privately cannot collide with a library
+-- function of the same spelling.
+--
+-- That collision is why this datatype is here rather than deferred again.
+-- Rebol's own JSON codec is a module holding a parse rule named `exp` and
+-- another named `stack`. Loaded flat, both replace the library functions
+-- of those names, and the failure is silent: the word still answers, it
+-- just answers a block.
+variant ModuleValue : Value {
+    context: Context            -- the words the module defines
+    header: ObjectValue         -- name, version, type, options, exports
+
+    -- The words the module publishes. Every other word it defines is
+    -- private to it. Absent from the header means nothing is published.
+    exported_names: List<String>
+}
+
+-- A port: something outside the interpreter that a script reads and writes.
+--
+-- An object underneath, like a module, and again the difference is what the
+-- extra field is for. A port's is an actor, and the actor is what makes one
+-- verb reach every kind of thing a script can open: reading a console port
+-- and reading a file port are the same call to READ and two different
+-- actors.
+variant PortValue : Value {
+    context: Context            -- spec, scheme, actor, state and the rest
+    is_open: Boolean
 }
 
 -- A value that belongs to the host rather than to REBOL. REBOL code can
@@ -532,6 +802,16 @@ invariant ContextSlotsAreUnique {
         for second in ContextSlots:
             first != second and first.context = second.context
                 implies first.canonical != second.canonical
+}
+
+-- A module cannot publish a word it has not got. An export naming nothing
+-- would put a slot holding UNSET into the library, and a library word that
+-- answers UNSET reports a different failure from one that was never
+-- defined.
+invariant ExportedNamesAreHeld {
+    for module in ModuleValues:
+        for name in module.exported_names:
+            is_known_in(module.context, name)
 }
 
 -- Tuples are bounded in both length and element range.

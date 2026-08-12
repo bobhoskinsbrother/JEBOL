@@ -26,11 +26,22 @@ class ErrorCatalogueTest {
     }
 
     @Test
-    @DisplayName("the catalogue holds the ten categories R3 has")
+    @DisplayName("the catalogue holds the ten categories R3 has, and any a module added")
     void theCategoriesAreThere() {
+        // Eleven, not ten: prot-mysql.reb ends with `put system/catalog/errors
+        // 'MySQL make object! [...]`, and a real R3 grows the same eleventh
+        // category the moment that module is imported. The categories are a
+        // register a module may add to, so the assertion is that the ten are
+        // all there and in Rebol's order rather than that there are ten.
+        // Braces, not quotes: the category list is over fifty characters
+        // and MOLD switches to the braced form past that length, which is
+        // Mold_String_Series' MAX_QUOTED_STR.
         assertThat(answerTo("mold words-of system/catalog/errors"))
-                .isEqualTo("\"[Throw Note Syntax Script Math Access Command "
-                        + "resv700 User Internal]\"");
+                .startsWith("{[Throw Note Syntax Script Math Access Command "
+                        + "resv700 User Internal");
+        assertThat(answerTo("mold find words-of system/catalog/errors 'MySQL"))
+                .as("the module's own category keeps the case it was written in")
+                .isEqualTo("\"[MySQL]\"");
     }
 
     @Test

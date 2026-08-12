@@ -2,12 +2,6 @@ package org.jebol.domain.read;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
-import net.jqwik.api.ForAll;
-import net.jqwik.api.Property;
-import net.jqwik.api.constraints.CharRange;
-import net.jqwik.api.constraints.Size;
-import net.jqwik.api.constraints.StringLength;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.NoneValue;
@@ -59,28 +53,10 @@ class ReaderNeverThrowsTest {
         }
     }
 
-    @Property
-    @DisplayName("nor does arbitrary text")
-    void arbitraryTextNeverThrows(@ForAll @StringLength(max = 40) String source) {
-        TranscodeResult result = Transcoder.transcode(source);
-
-        assertThat(result).isNotNull();
-        assertThat(result.succeeded() || result.error().isPresent()).isTrue();
-    }
-
-    @Property
-    @DisplayName("nor does arbitrary punctuation, which is where readers break")
-    void arbitraryPunctuationNeverThrows(
-            @ForAll @Size(max = 24) List<@CharRange(from = '!', to = '/')
-                    Character> characters) {
-        StringBuilder source = new StringBuilder();
-        characters.forEach(source::append);
-
-        TranscodeResult result = Transcoder.transcode(source.toString());
-
-        assertThat(result).isNotNull();
-        assertThat(result.succeeded() || result.error().isPresent()).isTrue();
-    }
+    // The two properties that used to live here are in ReaderNeverThrowsProperties,
+    // and they had to move to run at all: a class holding both jqwik's @Property
+    // and Jupiter's @Test is claimed by Jupiter, and the properties are reported as
+    // skipped without ever executing. See that class for the whole story.
 
     @Test
     @DisplayName("a bare hash is a mistake, not a crash")

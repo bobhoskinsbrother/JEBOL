@@ -36,11 +36,16 @@ enum ParseKeyword {
     | collect       -- gather what the rules below KEEP, and answer that
     | keep          -- add what the next rule matched to the collection
     | ahead         -- match the next rule without consuming it
+    | not           -- succeed where the next rule fails, consuming nothing
+    | reject        -- fail the current block at once, trying no alternative
+    | return        -- end the parse at once and answer a value
+    | then          -- match nothing and succeed, letting the next rule run
     | remove        -- take what the next rule matched out of the input
     | change        -- replace what the next rule matched with a value
     | insert        -- put a value in at the position, consuming nothing
     | case          -- mind case from here on
     | no_case       -- fold case from here on
+    | limit         -- reserved for future use, and raises until it exists
 }
 
 -- How a parse attempt finished.
@@ -56,6 +61,9 @@ enum ParseFailure {
     parse_end       -- a repeat count with no rule after it to repeat
     | expect_arg    -- the input or rule argument is the wrong datatype
     | no_refine     -- a refinement PARSE no longer has
+    | not_done      -- a reserved keyword that is not yet implemented (LIMIT)
+    | parse_rule    -- a rule that names no searchable target, such as a
+                    -- command word after TO or THRU
 }
 
 ------------------------------------------------------------
@@ -299,6 +307,31 @@ rule StringParsingNeverSkipsWhitespace {
 -- a block has no text form that appears in the input. It is the kind of
 -- failure that looks like a rule that simply did not match.
 
+-- Confirmed against a real R3: TO and THRU refuse a parse command word as
+-- their target, raising parse-rule. Their target is a place -- an index -- or
+-- something to look for -- a string, a char, a bitset, a block rule -- and a
+-- command word is none of those. So `parse "abc" [thru thru]` raises
+-- parse-rule rather than searching for the text "thru".
+--
+-- END is the one word they do take, meaning the tail, so `to end` and
+-- `thru end` are the way to walk to the end of the input. Every other command
+-- word -- to, thru, skip, some, not and the rest -- names a step in the
+-- dialect rather than a value, and there is nothing in the input for it to
+-- point at. The C passes command words through unresolved and then rejects
+-- any target that is not a searchable value.
+
+-- Confirmed against a real R3: LIMIT is a reserved parse command word that is
+-- not yet implemented, so it raises not-done the moment it is read.
+-- `parse "123" [limit ["123"]]` raises rather than doing anything with the
+-- rule after it, and the error's id is not-done, in the Internal category:
+-- "reserved for future use (or not yet implemented)".
+--
+-- Reserved rather than unknown is the distinction. An unknown word in a rule
+-- would be looked up as a variable; LIMIT is known to the dialect and has a
+-- place held for it, so it is refused at the door as unfinished rather than
+-- read as a name. A script reaching it is told the feature is not here yet,
+-- not that it wrote something meaningless.
+
 -- Confirmed against a real R3: COLLECT may be told where to put what it
 -- gathers. SET names a word to hold the collection; INTO names a series
 -- the caller already has and puts them at its position, pushing what was
@@ -404,6 +437,19 @@ rule ALitWordInsertedBecomesAPlainWord {
 -- taking it, so `[ahead #"a" skip]` matches an "a" twice over: once to
 -- look and once to consume.
 --
+-- The rule after AHEAD is a whole rule, not a single value. So
+-- `parse "abc" [ahead thru "c" 3 skip]` succeeds: AHEAD matches `thru "c"`,
+-- a two-item rule, without moving, and then `3 skip` consumes "abc" from the
+-- head. And `parse "abc" [and thru "z" 3 skip]` fails, because there is no
+-- "z" ahead for the lookahead to reach. Reading the following rule as one
+-- value made a compound lookahead like `thru "c"` fail, because it
+-- text-matched only the first word.
+--
+-- AHEAD succeeds when the rule matches and fails when it does not, resetting
+-- the position only on the success. So a failed lookahead leaves the parse
+-- where a failed match leaves it, and a matched one leaves the position
+-- exactly where AHEAD found it.
+--
 -- REMOVE is the opposite kind of thing: it matches the rule after it and
 -- takes what matched out of the input, so the series is shorter
 -- afterwards. Both leave the parse's answer alone; what they change is
@@ -415,6 +461,25 @@ rule LookaheadPutsThePositionBack {
     ensures:
         attempt.status = null
 }
+
+-- Confirmed against a real R3: NOT negates the rule after it and consumes no
+-- input. It is the mirror of AHEAD: where AHEAD succeeds when the next rule
+-- matches, NOT succeeds when the next rule fails, and neither moves the
+-- position. So `parse "abc" [not "x" "abc"]` is true -- the "x" is not there,
+-- so NOT succeeds and "abc" then matches from the head -- and
+-- `parse "abc" [not "a" "abc"]` is false, because the "a" is there and NOT
+-- fails on it.
+--
+-- Stacked, two NOTs cancel: NOT NOT is a no-op, a zero-width assertion that
+-- succeeds where the inner rule matches and still consumes nothing, so
+-- `parse "1" [not not "1" "1"]` is true -- the doubled NOT succeeds at the
+-- head and the following "1" matches. The C carries a second flag toggled on
+-- each NOT, so an even number of them leaves the negation off.
+--
+-- Consuming nothing is the property to hold on to. NOT is a test of what
+-- comes next, not a step over it, so a rule after a NOT starts from the same
+-- position the NOT looked at -- which is why `not "x" "abc"` matches "abc"
+-- from the head rather than from one past it.
 
 -- === One dialect, whichever series is being walked ========
 
@@ -484,7 +549,76 @@ rule CollectingIsNotUndoneByBacktracking {
         and attempt.collected_count >= attempt.keeps_attempted
 }
 
--- === PARSE no longer splits ================================
+-- Confirmed against a real R3: REJECT fails the current block at once and
+-- tries none of that block's later alternatives. That is exactly where it
+-- differs from an ordinary match failure: a plain failure lets the block go
+-- on to its next `|` branch, and REJECT abandons the whole block.
+--
+-- So `parse "aabb" [[#"a" reject | "aabb"]]` is false: the inner block
+-- matches "a", REJECT fails the block, and the `| "aabb"` branch it holds is
+-- never tried -- which is what makes `not parse ...` of it true. The `|`
+-- alternative would have matched, and an ordinary failure would have reached
+-- it; REJECT is the difference.
+--
+-- A REJECT only fails the block it sits in, not the one around it. So
+-- `parse "aabb" [[#"a" reject] | "aabb"]` is true: the inner block is
+-- abandoned, but the outer block still has its own `| "aabb"` to try, and
+-- that matches. The abandonment stops at the block boundary rather than
+-- unwinding the whole parse.
+--
+-- REJECT and BREAK are the two ways a block ends itself early and they end
+-- it opposite ways: BREAK (and ACCEPT) leave the block a success, REJECT
+-- leaves it a failure. The C returns success from one and not-found from the
+-- other, each unwinding the current rule loop immediately.
+
+-- Confirmed against a real R3: RETURN ends the parse at once and answers a
+-- value, rather than answering whether the whole input matched. It is the
+-- other keyword that changes what PARSE gives back -- COLLECT answers the
+-- gathered block, RETURN answers one value and stops.
+--
+-- It has two forms. RETURN of a paren evaluates the paren and answers its
+-- value, so `parse [1 2 3] [return (42)]` answers 42, whatever is left
+-- unmatched. RETURN of a rule matches that rule and answers the slice of
+-- input the rule matched, so `parse [1 2 3] [return 2 skip]` answers [1 2] and
+-- `parse [a b c] [return skip]` answers [a]. The rule after RETURN is a whole
+-- rule, and the answer is exactly what it consumed.
+--
+-- A RETURN whose rule does not match does not end the parse. It fails like any
+-- other rule, so `parse [1 2 3] [return "x"]` is false rather than answering
+-- something: the "x" is not there, the RETURN rule fails, and the parse goes
+-- on to fail as a whole. Only a RETURN that reaches its value ends the parse.
+--
+-- The C throws a paren's value the instant it reads the RETURN, and for a
+-- rule sets a flag so that the matched slice is thrown on the rule's success;
+-- the top level catches whatever was thrown and answers it. This is the block
+-- parser -- the string parser could take the same for parity, and the suite
+-- asserts on block parses.
+
+-- Confirmed against a real R3: a get-word in a rule moves where the parse is
+-- looking. It already seeks to a marked position when it names a place in the
+-- series being parsed, and when it names a different series it switches the
+-- input to that series and starts matching it from its head.
+--
+-- The seek is the familiar half: a set-word marks a position and a get-word
+-- returns to it, so `parse "abc" [skip m: skip :m "bc"]` skips one, marks the
+-- position, skips again, then seeks back to the mark and matches "bc" from
+-- there. The switch is the same mechanism reaching a different series:
+-- `b: "this"  parse "test" ["test" :b "this"]` is true, because "test" matches
+-- the whole of "test", then `:b` adopts "this" as the input, and the "this"
+-- rule matches the new input to its end.
+--
+-- One mechanism, not two, is the thing to hold on to. The C resets both the
+-- series and the index whenever the get-word holds any series, so whether it
+-- names the same series or another is only whether the series changed -- a
+-- seek is a switch that happened to land on the series already being parsed.
+-- A get-word holding something that is not a series raises parse-series.
+
+-- Confirmed against a real R3: THEN matches nothing and succeeds, so the rule
+-- after it runs straight on. `parse "ab" ["a" then "b"]` is true -- "a"
+-- matches, THEN matches nothing and consumes nothing, and "b" matches from
+-- where "a" left off. It sits inside a longer sequence without breaking it.
+
+open question "THEN's fuller behaviour commits the current alternative when the rule after it fails, skipping the later bar branches so they are not tried -- the C does it by skipping to the next bar on the following rule's failure. JEBOL implements only the zero-width success half so far, which is what parse-test.r3 asserts; the commit-on-failure half is not built yet and no assertion presses on it. Recorded as an open edge: the built behaviour is correct as far as it goes, and the missing half changes only what happens down a failing branch."
 
 -- REBOL 2 let the rule be a string, a character or NONE, meaning "split
 -- the input on these delimiters" rather than "match this grammar", and

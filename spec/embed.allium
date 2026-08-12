@@ -51,6 +51,29 @@ enum HostService {
     | windows           -- ask the operator with a window on a screen
 }
 
+-- What feeds a started program's standard input.
+--
+-- The difference between the last two is the one that matters. A child given
+-- nothing reads end of input at once and gets on with its work; a child that
+-- inherited the host's input waits for whoever is on the other end of it,
+-- who may never type anything. A script that meant the first and got the
+-- second has hung, and nothing in the answer says why.
+enum ProgramInput {
+    the_hosts_own       -- the child reads from wherever the host reads
+    | supplied_bytes    -- these bytes, and then end of input
+    | a_files_contents  -- the named file, from its start to its end
+    | nothing_at_all    -- closed, so the child reads end of input at once
+}
+
+-- Where a started program's standard output or standard error goes. The two
+-- streams are directed separately and by the same four choices.
+enum ProgramOutput {
+    the_hosts_own       -- the child writes where the host writes
+    | captured          -- the bytes come back to the interpreter
+    | into_a_file       -- the bytes are written to the named file
+    | discarded         -- the bytes are thrown away
+}
+
 -- Why a host service is not available. A script that asks for one it
 -- cannot have must be able to tell these apart: the first two are the
 -- host's decision and the third never changes.
@@ -96,6 +119,95 @@ value FileInformation {
     created: Timestamp?
 }
 
+-- What crosses the boundary when a script starts another program.
+--
+-- The command arrives already separated, one entry for the program and one
+-- for each argument, so the host never has to decide where an argument ends.
+-- Quoting is the reason: a host handed one line has to split it, splitting
+-- needs quoting rules, and the quoting rules differ between systems. A
+-- script that wants the system's own rules asks for them, and that is what
+-- the shell flag is.
+value ProgramToStart {
+    command: List<String>
+
+    -- Whether the shell reads the command rather than the host starting the
+    -- program itself. The shell does the splitting, the globbing and the
+    -- redirecting.
+    --
+    -- The first entry is the command line the shell reads, and any entries
+    -- after it become the shell's positional parameters: the second is $0,
+    -- the third is $1, and so on. So a block command with the shell is not a
+    -- list of arguments to the program, which is what it is without the
+    -- shell, and reading it as one gives a command line that ignores
+    -- everything after the first entry.
+    --
+    -- The single-entry case is the string command, where there was never
+    -- more than one thing to send.
+    read_by_the_shell: Boolean
+
+    -- Whether the child is put on the host's own console. Asked for
+    -- separately from inheriting the streams, because a host may have
+    -- streams and no console to attach to.
+    attached_to_the_hosts_console: Boolean
+
+    -- Whether the interpreter waits for the child to exit before carrying
+    -- on. It has to when anything is being captured, because there is
+    -- nothing to hand back until the child has finished writing.
+    waited_for: Boolean
+
+    standard_input: ProgramInput
+    input_bytes: List<Integer>?     -- when the input is supplied_bytes
+    input_file: String?             -- when the input is a_files_contents
+
+    standard_output: ProgramOutput
+    output_file: String?            -- when the output goes into_a_file
+
+    standard_error: ProgramOutput
+    error_file: String?             -- when the error stream goes into_a_file
+}
+
+-- What the host tells the interpreter about a program it started.
+--
+-- The last field is the one to get right. A system that would not start the
+-- program at all is a different outcome from a program that started and
+-- failed, and the two are easy to conflate because both end with a script
+-- that did not get what it wanted. An exit code says the program ran.
+value ProgramResult {
+    process_number: Integer
+    exit_code: Integer?             -- only when the child was waited for
+    captured_output: List<Integer>?
+    captured_error: List<Integer>?
+    refusal_message: String?        -- what the system said, when it refused
+}
+
+-- What a script asks for when it asks the operator to choose a file.
+--
+-- All five are optional and the dialog is usable with none of them, which is
+-- why they are fields on a request rather than five separate ways of asking.
+value FileChoiceRequest {
+    for_saving: Boolean         -- choosing a name to write, not one to read
+    several_at_once: Boolean    -- the operator may pick more than one
+    starting_at: String?        -- the name or directory to open on
+    window_title: String?       -- what the window's bar says
+
+    -- What the chooser will show, flat: a name, then the pattern it stands
+    -- for, then the next name, and so on. Empty when the script named none.
+    --
+    -- The two entries of a pair do different jobs. The name is what the
+    -- operator reads in the chooser's menu and the pattern is what it selects
+    -- by, so "Rebol scripts" then "*.r3" reads as a menu entry a person can
+    -- pick, and a chooser offering "*.r3" as the name is one nobody can use.
+    --
+    -- Flat rather than already paired, because flat is what the script hands
+    -- over and the pairing is a reading of it rather than a property of it. A
+    -- list of an odd length has no pairing at all and is refused; a model that
+    -- had paired them already could not say what was wrong with a list that
+    -- would not pair.
+    --
+    -- Every entry is text by the time it crosses, whatever the script wrote.
+    filters: List<String>
+}
+
 -- What a script may ask the operator for through a window on a screen.
 --
 -- Five things, and they are one service rather than five because a host that
@@ -109,7 +221,8 @@ value FileInformation {
 -- from "no permission" will retry the wrong one.
 enum WindowRequest {
     a_browser_at         -- open a URL or a local file in a web browser
-    | a_file             -- choose a file, to read or to save
+    | a_file             -- choose a file, to read or to save, from a
+                         -- FileChoiceRequest saying which files to offer
     | a_directory        -- choose a directory
     | a_colour           -- choose a colour
     | a_password         -- type a secret, without it appearing on screen
@@ -249,6 +362,104 @@ rule AFactTheHostHasNotGotIsNoneOnItsOwn {
     requires: host_has_anything_at(path)
     requires: information_of(path).field_named(field) = null
     ensures: QueryResult(value: none)
+}
+
+-- Starting another program hands the host a command already separated and a
+-- decision about each of the child's three streams. Nothing about the shape
+-- of the call is left for the host to work out.
+--
+-- Each stream is decided independently, which is what lets a script capture
+-- what a program printed while letting its complaints go to the console the
+-- operator is watching.
+rule StartingAProgramCrossesAsACommandAndThreeStreams {
+    when: script_starts_a_program(run, program)
+    requires: processes in run.interpreter.bounds.granted_services
+
+    ensures:
+        program.command.count >= 1
+        program.standard_input in ProgramInput
+        program.standard_output in ProgramOutput
+        program.standard_error in ProgramOutput
+}
+
+-- A capture waits, and the host is told so rather than working it out. A
+-- child still running has not finished writing, so there is nothing to give
+-- back yet, and a host that answered early would answer with part of the
+-- output and no way of saying it was part.
+rule CapturingAStreamMeansWaitingForTheChild {
+    when: script_starts_a_program(run, program)
+    requires: processes in run.interpreter.bounds.granted_services
+    requires: program.standard_output = captured
+        or program.standard_error = captured
+        or program.standard_input = supplied_bytes
+
+    ensures: program.waited_for = true
+}
+
+-- What comes back is the process number, and the exit code as well when the
+-- child was waited for. A number that is not there is absent rather than
+-- zero: a program that has not finished has no exit code, and zero is the
+-- code for a program that finished perfectly.
+rule AnUnwaitedProgramHasNoExitCodeYet {
+    when: host_reports_a_started_program(run, result)
+    requires: not result.was_waited_for
+
+    ensures: result.exit_code = null
+}
+
+-- A file chooser's filters are pairs, and a list with an odd number of items
+-- is refused before the dialog opens.
+--
+-- Before it opens is the whole point. A malformed list is the script's
+-- mistake and nothing about it improves by asking a person first: an
+-- operator shown a chooser, who picks a file, and is then told the call was
+-- invalid has done work for nothing and cannot tell what went wrong.
+rule AFilterListOfOddLengthIsRefusedBeforeTheDialogOpens {
+    when: script_asks_the_operator_to_choose_a_file(run, request)
+    requires: windows in run.interpreter.bounds.granted_services
+    requires: not the_filter_items_pair_up(run)
+
+    ensures:
+        run.conclusion = raised
+        no_window_was_shown(request)
+}
+
+-- Each item of the filter list is formed to text, so an item that is not a
+-- string is not a mistake. A word, a file or a number becomes its own
+-- spelling and goes to the chooser as that.
+--
+-- Formed rather than molded, so a file contributes its path and not a path
+-- with a percent sign in front of it. Only the count is checked, which is
+-- why the odd-length refusal is the only way a filter list can be wrong.
+rule EachFilterItemIsFormedToText {
+    when: script_asks_the_operator_to_choose_a_file(run, request)
+    requires: windows in run.interpreter.bounds.granted_services
+
+    ensures:
+        for item in the_filter_items_written_by(run):
+            request.filters.holds(formed(item))
+}
+
+-- A filter pattern the host cannot honour is applied as far as the host can
+-- and otherwise ignored. The chooser still opens.
+--
+-- A decision, and it is about which of two disappointments to prefer. A
+-- desktop chooser typically filters by extension and no further, so "*.r3"
+-- works and "r3-*" does not. Refusing the call would stop a script for a
+-- request the operator would not have minded, and would make a script's
+-- portability depend on which patterns each host's chooser happens to
+-- support. Showing everything is the lesser loss: the operator sees more
+-- files than the script suggested and can still pick the right one.
+--
+-- What is not acceptable is silently choosing a different file. The filter
+-- narrows what is offered and never what is answered, so whatever the
+-- operator picks is what the script gets.
+rule AFilterTheHostCannotHonourIsAppliedAsFarAsItGoes {
+    when: script_asks_the_operator_to_choose_a_file(run, request)
+    requires: windows in run.interpreter.bounds.granted_services
+    requires: some_pattern_the_host_cannot_honour(request)
+
+    ensures: the_chooser_is_shown(request)
 }
 
 -- A dialog the operator declined answers none. The three refusal reasons are
@@ -394,6 +605,30 @@ surface Embedding {
         ServiceRefusal
         FileInformation
         WindowRequest
+        ProgramInput
+        ProgramOutput
+        ProgramToStart
+        ProgramResult
+        FileChoiceRequest
+
+    @guarantee AStartedProgramArrivesSplitWithItsThreeStreamsDecided
+        -- A command crosses the boundary already separated into the program
+        -- and its arguments, so the host never splits a line and never
+        -- applies quoting rules of its own. A script that wants the system's
+        -- own rules asks for the shell, and then the single entry is a
+        -- command line the shell reads.
+        --
+        -- Each of the child's three streams is decided separately. Its input
+        -- comes from the host's own, from bytes the script supplied, from a
+        -- file, or from nothing at all. Each of its two outputs goes to the
+        -- host's own, back to the interpreter, into a file, or nowhere.
+        --
+        -- Two of those choices are quiet traps. Closing a child's input is
+        -- not the same as leaving it on the host's, because the first reads
+        -- end of input at once and the second waits for someone who may
+        -- never type. And a system that refused to start the program at all
+        -- is not a program that ran and failed, so what comes back
+        -- distinguishes a message from the system from an exit code.
 
     @guarantee TheHostSaysWhatItKnowsAboutAFileAndNoMore
         -- Six facts cross the boundary about one file: its name, whether it
@@ -476,6 +711,10 @@ actor HostApplication {
 ------------------------------------------------------------
 -- Open Questions
 ------------------------------------------------------------
+
+open question "Does attaching a started program to the host's console differ observably from letting it inherit the host's streams, in a host that has no console? The C passes a flag and leaves the host to decide, so both readings are available: a console-less host could treat the request as ordinary inheritance, or it could refuse it and say the host has no console to attach to. The first keeps a script portable and gives the operator nothing; the second is honest and stops a script that would have worked. It matters for JEBOL because the common case is a server with no console at all, which is the opposite of the case the refinement was designed for."
+
+open question "Does a file feeding a started program's input cross the boundary as a path for the host to open, or as bytes the interpreter read? The C passes the path and the host opens it, which is what this spec follows and why ProgramInput has four members rather than three. Reading it in the interpreter would leave the host with one way of being fed rather than two, at the cost of holding a whole file in memory and of the host losing the chance to stream it. Nothing a script can observe separates them, so this is a question about where the work sits rather than about behaviour."
 
 open question "How often does the evaluator check whether it should stop? Every step is safest and slowest; every hundredth is cheaper and lets a tight loop overrun by a hundred steps. What is the right granularity, and should it be measured rather than guessed?"
 

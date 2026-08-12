@@ -37,10 +37,13 @@ public interface WindowPort {
      * @param allowingMany whether more than one file may be chosen
      * @param suggestedName a file or directory to start at, or empty
      * @param title the window's heading, or empty for the host's own
+     * @param filterPairs a display name then the pattern it selects, over and
+     *     over, or empty for no filtering
      */
     List<String> chooseFiles(
             boolean forSaving, boolean allowingMany,
-            Optional<String> suggestedName, Optional<String> title);
+            Optional<String> suggestedName, Optional<String> title,
+            List<String> filterPairs);
 
     /** Asks the operator to choose a directory, or empty if they declined. */
     Optional<String> chooseDirectory(
@@ -57,8 +60,12 @@ public interface WindowPort {
      *
      * <p>What the operator types must not appear on the screen. That is the
      * whole reason this is a separate request rather than a text dialog.
+     *
+     * <p>No prompt to pass on: the C declares REQUEST-PASSWORD with no argument
+     * at all, and a caller that wants a question prints one first. Rebol's own
+     * ASK-PASSWORD is exactly that -- `prin question` and then this.
      */
-    Optional<String> askForPassword(Optional<String> title);
+    Optional<String> askForPassword();
 
     /** Why a port refused. Carries an error id the boundary reports. */
     final class Denied extends RuntimeException {
@@ -96,7 +103,8 @@ public interface WindowPort {
             @Override
             public List<String> chooseFiles(
                     boolean forSaving, boolean allowingMany,
-                    Optional<String> suggestedName, Optional<String> title) {
+                    Optional<String> suggestedName, Optional<String> title,
+                    List<String> filterPairs) {
                 throw refuse();
             }
 
@@ -112,7 +120,7 @@ public interface WindowPort {
             }
 
             @Override
-            public Optional<String> askForPassword(Optional<String> title) {
+            public Optional<String> askForPassword() {
                 throw refuse();
             }
 

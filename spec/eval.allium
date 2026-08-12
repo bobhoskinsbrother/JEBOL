@@ -757,6 +757,31 @@ rule SetPathAssignsFollowingValue {
     )
 }
 
+-- A set-path resolves its last segment the same way it resolves every earlier
+-- one, rather than demanding a plain word there. A paren is evaluated, a
+-- get-word is looked up, and a plain word is taken as the field name -- and
+-- because the last segment is where the store lands, which field that is may
+-- be computed as readily as any other.
+--
+-- Evaluating a paren fires whatever is inside it, a throw included. So
+-- `catch [foo/(throw "ok" 'bar): 3]` catches "ok": the paren runs, the throw
+-- unwinds to the catch, and the store never happens. The path is not
+-- malformed, it is computed.
+--
+-- The mistake this corrects matched only a plain word as a valid last
+-- segment, so a paren fell through every branch to invalid-path without ever
+-- being evaluated -- a computed field name reported as a broken path.
+rule ASetPathsLastSegmentIsResolvedLikeAnyOther {
+    when: selection: PathEvaluation.created
+    requires: selection.path.datatype = set_path
+    requires: selection.status = selecting
+    requires: last_segment_of(selection.path).datatype = paren
+
+    ensures:
+        the_field_the_store_lands_on(selection.path) =
+            value_of_evaluating(last_segment_of(selection.path))
+}
+
 -- === Applying a function ===================================
 
 rule ApplicationGathersNextArgument {
@@ -802,6 +827,29 @@ rule RefinementArgumentsFollowThePath {
             application.requested_refinements[refinement_position]),
         value: application.arguments[
             required_parameter_count(application.applied) + argument_position])
+}
+
+-- Every argument a call gathered is checked against the parameter it
+-- belongs to, and a refinement's argument is checked exactly as a base
+-- argument is. There is one type check, not two: nothing about a parameter
+-- belonging to a refinement makes its check looser or later.
+--
+-- So `func [a [string!] /ref1 b [integer!]]` called as `fce/ref1 "a" ""`
+-- refuses the empty string, because b's parameter declared integer! and a
+-- string is not one. And it refuses `fce/ref1 1 2` on a, because the base
+-- parameter is still checked when a refinement is present -- naming a
+-- refinement does not excuse the arguments before it.
+--
+-- The check is against the parameter each argument belongs to, which is
+-- what the refinement arguments following the path gives us: an argument
+-- gathered for /ref1 belongs to /ref1's parameter and is checked against
+-- that, not against whatever base parameter sits at the same ordinal.
+rule EachGatheredArgumentIsCheckedAgainstItsOwnParameter {
+    when: argument: Argument.created
+    ensures: argument.type_accepted =
+        parameter_accepts(
+            parameter_named(argument.application.applied, argument.parameter_name),
+            argument.value)
 }
 
 -- The single place a call's gathering outcome is decided. Running out of
@@ -964,6 +1012,26 @@ invariant ArgumentOrdinalsAreUnique {
 invariant InvokedApplicationsTypeChecked {
     for application in Applications:
         application.status = invoked implies not application.any_argument_mistyped
+}
+
+-- Only the arguments a call actually supplied become Arguments, so only
+-- they are checked. A refinement that was not named contributes no
+-- argument, which is what keeps an absent refinement's declared type from
+-- ever meeting a value.
+--
+-- This is the whole of why `fce "a"` is accepted where `fce/ref1 "a" ""`
+-- is refused. Without the refinement, ref1's parameter takes none and is
+-- not lined up against the next value in the block: `fce "a" ""` leaves the
+-- second string where it was for the next step to read, rather than
+-- checking it against b. A model that gathered an argument for every
+-- declared parameter would type-check b against a value nobody meant for
+-- it, and would consume a value the call was never entitled to.
+invariant OnlyNamedRefinementsContributeAnArgument {
+    for argument in Arguments:
+        let owner = owning_refinement_of(
+            argument.application.applied, argument.parameter_name)
+        owner != null
+            implies contains(argument.application.requested_refinements, owner)
 }
 
 invariant InvokedApplicationsAreFullyApplied {

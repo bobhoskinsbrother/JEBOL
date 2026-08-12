@@ -13,11 +13,20 @@ package org.jebol.domain.eval;
  */
 public interface FilePort {
 
-    /** The contents of a file, as text. */
-    String read(String path);
+    /** The contents of a file, exactly as stored. */
+    byte[] readBytes(String path);
 
-    /** Replaces a file's contents. */
-    void write(String path, String contents);
+    /** Replaces a file's contents, making the file when it is not there. */
+    void write(String path, byte[] contents);
+
+    /**
+     * Overwrites from a position never past the file's size, leaving the
+     * rest of the file as it was, and making the file when it is not there.
+     */
+    void writeAt(String path, long position, byte[] contents);
+
+    /** Adds to the end of a file, making it when it is not there. */
+    void appendTo(String path, byte[] contents);
 
     /** Whether there is anything at that path. */
     boolean exists(String path);
@@ -50,6 +59,18 @@ public interface FilePort {
     boolean isDirectory(String path);
 
     /**
+     * The canonical absolute path of something that is there, or null.
+     *
+     * <p>What TO-REAL-FILE answers. Canonical means symbolic links resolved
+     * and every {@code .} and {@code ..} removed, which is why it can only be
+     * answered for a path that exists: there is nothing to resolve otherwise.
+     *
+     * <p>Null rather than a thrown failure, because "not there" is a true
+     * answer to the question and the native turns it into none.
+     */
+    String canonicalPathOf(String path);
+
+    /**
      * What the host knows about one thing on its filesystem, or empty when
      * there is nothing there.
      *
@@ -71,14 +92,25 @@ public interface FilePort {
         private static final long serialVersionUID = 1L;
 
         private final transient String errorId;
+        private final transient String subject;
 
         public Denied(String errorId, String because) {
+            this(errorId, because, "");
+        }
+
+        /** The same, naming the path the refusal is about. */
+        public Denied(String errorId, String because, String subject) {
             super(because, null, false, false);
             this.errorId = errorId;
+            this.subject = subject;
         }
 
         public String errorId() {
             return errorId;
+        }
+
+        public String subject() {
+            return subject;
         }
     }
 
@@ -86,7 +118,7 @@ public interface FilePort {
     static FilePort none() {
         return new FilePort() {
             @Override
-            public String read(String path) {
+            public byte[] readBytes(String path) {
                 throw refuse();
             }
 
@@ -126,12 +158,27 @@ public interface FilePort {
             }
 
             @Override
+            public String canonicalPathOf(String path) {
+                throw refuse();
+            }
+
+            @Override
             public java.util.Optional<FileInformation> informationAbout(String path) {
                 throw refuse();
             }
 
             @Override
-            public void write(String path, String contents) {
+            public void write(String path, byte[] contents) {
+                throw refuse();
+            }
+
+            @Override
+            public void writeAt(String path, long position, byte[] contents) {
+                throw refuse();
+            }
+
+            @Override
+            public void appendTo(String path, byte[] contents) {
                 throw refuse();
             }
 

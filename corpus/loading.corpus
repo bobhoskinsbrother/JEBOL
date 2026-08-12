@@ -335,23 +335,19 @@ load {#(char! 65)}
 --- error syntax malconstruct
 
 --- id loading/the-square-bracket-form-no-longer-means-a-construct
---- origin confirmed against R3 3.22.1, diverged from deliberately on the id
+--- origin confirmed against R3 3.22.1
 --- requires reader map
 --- note R3-Alpha's spelling for a construct. The brackets were not freed
 --- note up but reused: #[1 2] is a map! in Rebol 3.x, and #[none] is a
 --- note malformed map rather than a malformed construct.
 --- note
---- note JEBOL diverges on the id, and deliberately. Rebol reads the
---- note brackets into a block and builds the map afterwards, so it reports
---- note a script invalid-arg from the building; JEBOL builds the map in
---- note the reader, so it reports a syntax malconstruct from the reading.
---- note Both refuse the source. Matching the id exactly would mean moving
---- note map construction out of the reader, which is a larger change than
---- note this one entry is worth and is recorded as an open question in
---- note spec/values.allium instead.
+--- note A malformed map answers invalid-arg, not malconstruct. R3 reads
+--- note the brackets as key-value pairs and refuses an odd count as a bad
+--- note argument, and lexer-test.r3 asserts that id for `#[x]`. The reader
+--- note gives that id directly, so a script catches the odd map by id.
 --- code
 load {#[none]}
---- error syntax malconstruct
+--- error syntax invalid-arg
 
 # --- LOAD ---------------------------------------------------
 #

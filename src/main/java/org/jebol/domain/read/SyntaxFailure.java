@@ -13,12 +13,15 @@ public enum SyntaxFailure {
     UNTERMINATED_STRING("unterminated-string", "end of input inside a string"),
     INVALID_ESCAPE("invalid-escape", "a caret escape naming no known character"),
     INTEGER_OUT_OF_RANGE("integer-out-of-range", "digits beyond the 64-bit range"),
-    INVALID_DATATYPE("invalid-datatype", "a datatype spelling that names no datatype"),
     // A real R3 reports every bad binary body as plain `invalid`, naming
     // "binary" as the thing it could not read. There is no invalid-binary
     // in its catalogue, so a script catching one by id would never fire.
     INVALID_BINARY("invalid", "contents that are not a binary in the base given"),
     MALCONSTRUCT("malconstruct", "a construct whose datatype cannot be built that way"),
+    // A map literal with an odd number of items has a key without a value.
+    // R3 reads this as `invalid-arg` rather than a construction failure,
+    // which a script catches by id whatever the category.
+    INVALID_ARG("invalid-arg", "a map literal whose keys and values do not pair up"),
     NESTING_TOO_DEEP("nesting-too-deep", "blocks nested deeper than the reader accepts"),
     PAST_END("past-end", "a read asked for a value where the source has none left");
 

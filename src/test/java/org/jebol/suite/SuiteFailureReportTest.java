@@ -130,7 +130,7 @@ class SuiteFailureReportTest {
     void theQuietDisagreementsAreNamed() {
         // The largest bucket by far, and the only one a count says nothing
         // about: "answered false" is the same reason for every one of them.
-        // Each has to be put to the binary on its own, and that needs the
+        // Each has to be traced to the C on its own, and that needs the
         // source. Grouped so a whole area can be worked through at once.
         Map<String, List<String>> byGroup = new LinkedHashMap<>();
         for (SuiteFile.Assertion assertion : RebolSuiteTest.everyAssertion().toList()) {

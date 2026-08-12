@@ -59,6 +59,47 @@ public final class Binder {
         return block;
     }
 
+    /**
+     * Binds only the names given, leaving every other word as it stands.
+     *
+     * <p>{@code Bind_Relative} in the C, and the difference from {@link #bind}
+     * is the whole of REBOL's binding model: a function body is bound to its
+     * own arguments and locals, and every other word keeps the binding it
+     * already had from wherever the body was written.
+     *
+     * <p>Rebinding everything instead is subtly wrong and hard to see. FUNC is
+     * itself a REBOL function, so {@code make function!} runs inside FUNC's
+     * frame; a body rebound through that chain resolves its free words in the
+     * library rather than where they were written. Rebol's own COLLECT is
+     * exactly that shape -- it builds its KEEP function inside itself and
+     * KEEP writes to COLLECT's own OUTPUT -- and OUTPUT came out none.
+     */
+    public static BlockValue bindOnly(
+            BlockValue block, Context context, java.util.Set<String> names) {
+
+        List<Value> bound = new ArrayList<>(block.lengthFromHere());
+        for (Value item : block.remaining()) {
+            bound.add(bindValueOnly(item, context, names));
+        }
+        return new BlockValue(new BlockStorage(bound), 1, block.datatype());
+    }
+
+    private static Value bindValueOnly(
+            Value value, Context context, java.util.Set<String> names) {
+
+        return switch (value) {
+            case WordValue word when names.contains(word.canonical()) ->
+                    word.boundTo(context.knows(word.canonical())
+                            ? context.holderOf(word.canonical())
+                            : context);
+            // A word the function does not own keeps whatever binding it
+            // arrived with, including none at all.
+            case WordValue word -> word;
+            case BlockValue nested -> bindOnly(nested, context, names);
+            default -> value;
+        };
+    }
+
     private static Value bindValue(Value value, Context context) {
         return switch (value) {
             case WordValue word -> context.knows(word.canonical())

@@ -6,7 +6,6 @@ public enum OpenDelimiter {
     PARENTHESIS("(", ")"),
     BRACE("{", "}"),
     QUOTE("\"", "\""),
-    TAG("<", ">"),
     BINARY_BRACE("#{", "}");
 
     private final String opening;

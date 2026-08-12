@@ -83,11 +83,15 @@ class PortedLibraryFunctionsTest {
     }
 
     @Test
-    @DisplayName("an empty series passes ALL-OF and fails ANY-OF")
+    @DisplayName("an empty series answers none from both of them")
     void theEmptySeriesGoesBothWays() {
-        // Nothing failed, so ALL-OF holds; nothing passed, so ANY-OF
-        // does not. The pair is the only way to pin that.
-        assertThat(answerTo("all-of v [] [false]")).isEqualTo("#(true)");
+        // This used to assert that ALL-OF holds for an empty series, because
+        // nothing in it failed. That is what "all" ought to mean and it is not
+        // what the code does. Both are `if data [foreach ...]`, and FOREACH
+        // over an empty series answers none: `SET_NONE(D_RET)` sits above the
+        // walk in Loop_Each and the body never runs to replace it. An empty
+        // block is truthy, so the IF does not shortcut it either.
+        assertThat(answerTo("none? all-of v [] [false]")).isEqualTo("#(true)");
         assertThat(answerTo("none? any-of v [] [true]")).isEqualTo("#(true)");
     }
 

@@ -55,6 +55,24 @@ public record ErrorValue(
     }
 
     /**
+     * The same, naming two things rather than one.
+     *
+     * <p>Several of Rebol's catalogue entries word a failure with exactly two:
+     * {@code expect-val: [{expected} :arg1 {not} :arg2]} and
+     * {@code bad-field-set: [{cannot set} :arg1 {field to} :arg2 {datatype}]}.
+     * Building those through the three-argument form would put a none in ARG3
+     * where the entry has nothing at all.
+     */
+    public static ErrorValue about(
+            ErrorCategory category, String errorId, String message,
+            Value first, Value second) {
+
+        return new ErrorValue(category, errorId, message,
+                Optional.of(first), Optional.of(second), Optional.empty(),
+                Optional.empty(), Optional.empty());
+    }
+
+    /**
      * An error carrying all three of the arguments its catalogue entry names.
      *
      * <p>Rebol's catalogue words each failure with up to three of them, and a

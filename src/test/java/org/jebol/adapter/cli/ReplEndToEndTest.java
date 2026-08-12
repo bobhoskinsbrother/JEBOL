@@ -12,6 +12,7 @@ import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The console, driven the way a person drives it: text in, text out.
@@ -29,6 +30,22 @@ class ReplEndToEndTest {
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
 
         Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output));
+        new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
+
+        return captured.toString(StandardCharsets.UTF_8);
+    }
+
+    /** The same session, with a filesystem to reach under one directory. */
+    private static String sessionWithFiles(java.nio.file.Path directory, String... linesTyped) {
+        String typed = String.join("\n", List.of(linesTyped)) + "\nquit\n";
+        ByteArrayOutputStream captured = new ByteArrayOutputStream();
+        PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
+
+        Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output),
+                org.jebol.application.Bounds.standard()
+                        .granting(org.jebol.domain.host.HostService.FILES));
+        interpreter.useFileSystem(
+                org.jebol.application.FileSystemPort.rootedAt(directory));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
 
         return captured.toString(StandardCharsets.UTF_8);
@@ -219,6 +236,115 @@ class ReplEndToEndTest {
     }
 
     @Nested
+    @DisplayName("reading text as data, a value at a time")
+    class ReadingSourceText {
+
+        @Test
+        @DisplayName("a walk through three lines names each line it reaches")
+        void aWalkKeepsItsOwnLineCount() {
+            // What a script that reads another script does: take a value, keep the
+            // rest and keep the count, then hand both back. The count is the caller's
+            // to carry, so the whole point is that it survives the round trip.
+            String session = session(
+                    "code: rejoin [{first} newline {second} newline {third}]",
+                    "line: 1",
+                    "set [value code line] transcode/next/line :code :line",
+                    "reduce [value line]",
+                    "set [value code line] transcode/next/line :code :line",
+                    "reduce [value line]",
+                    "set [value code line] transcode/next/line :code :line",
+                    "reduce [value line]");
+
+            assertThat(session)
+                    .contains("== [first 1]")
+                    .contains("== [second 2]")
+                    .contains("== [third 3]");
+        }
+
+        @Test
+        @DisplayName("and a mistake on the fourth line is reported as the fourth line")
+        void aFailureNamesTheLineInTheWholeFile() {
+            // The reason the count is handed round at all. A reader given only the
+            // last fragment would call it line one and send the person looking in
+            // the wrong place.
+            assertThat(session(
+                    "e: try [transcode/line \"1d\" 4]",
+                    "e/near"))
+                    .contains("== \"(line 4) 1d\"");
+        }
+
+        @Test
+        @DisplayName("and asking to start counting from nothing is refused, not guessed at")
+        void aStartOfZeroIsRefused() {
+            assertThat(session("transcode/line \"1 2\" 0"))
+                    .contains("a number outside the range this operation allows")
+                    .contains("line one or later, not 0");
+        }
+    }
+
+    @Nested
+    @DisplayName("modules, typed the way a person types them")
+    class Modules {
+
+        @Test
+        @DisplayName("a module typed at the prompt answers a module")
+        void aTypedModuleAnswersAModule() {
+            assertThat(session("module? make module! [[Title: \"t\"] [a: 1]]"))
+                    .contains("== #(true)");
+        }
+
+        @Test
+        @DisplayName("none of a module's words are left behind in the session")
+        void noModuleWordEscapesIntoTheSession() {
+            // The session is where a person would notice. A module that
+            // leaked its words would answer here, and the answer would look
+            // like the module having worked rather than having broken
+            // something.
+            //
+            // Not even the exported one. MAKE MODULE! builds the module and
+            // stops there; putting a module's exports into the library is
+            // IMPORT's job, and IMPORT is sys-load.reb's. So a module made
+            // at the prompt is reached through the value it answered.
+            String transcript = session(
+                    "m: make module! [[Title: \"t\" Exports: [shown]] "
+                            + "[shown: 1 kept-back: 2]]",
+                    "value? 'kept-back",
+                    "value? 'shown",
+                    "m/shown");
+
+            assertThat(transcript.split("== #\\(false\\)", -1))
+                    .as("neither the private word nor the exported one is in the session")
+                    .hasSize(3);
+            assertThat(transcript)
+                    .as("and the module itself still holds the value")
+                    .contains("== 1");
+        }
+
+        @Test
+        @DisplayName("EXP answers a number at the prompt, not a block")
+        void expAnswersANumber() {
+            // What a person sees when the JSON codec has overwritten the
+            // library's EXP: `exp 0` answers the parse rule rather than one.
+            assertThat(session("exp 0")).contains("== 1");
+        }
+
+        @Test
+        @DisplayName("DECODE-URL is a function at the prompt, not none")
+        void decodeUrlIsAFunction() {
+            // Calling it needs ENHEX, which JEBOL has not got. What a person
+            // can see today is that the name holds a function rather than
+            // none, which is what the sys context bought.
+            assertThat(session("any-function? :decode-url")).contains("== #(true)");
+        }
+
+        @Test
+        @DisplayName("a log function writes a line, which is the whole point of the five")
+        void aLogFunctionWrites() {
+            assertThat(session("log-info 'app \"a message\"")).contains("a message");
+        }
+    }
+
+    @Nested
     @DisplayName("the session survives whatever is typed at it")
     class Robustness {
 
@@ -251,6 +377,106 @@ class ReplEndToEndTest {
         @Test
         void emptyInputIsHarmless() {
             assertThat(session("", "", "1 + 1")).contains("== 2");
+        }
+    }
+
+    /** The same session, allowed to start real programs on this machine. */
+    private static String sessionWithProcesses(String... linesTyped) {
+        String typed = String.join("\n", List.of(linesTyped)) + "\nquit\n";
+        ByteArrayOutputStream captured = new ByteArrayOutputStream();
+        PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
+
+        Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output),
+                org.jebol.application.Bounds.standard()
+                        .granting(org.jebol.domain.host.HostService.PROCESSES));
+        interpreter.useProcesses(new org.jebol.adapter.host.JavaProcesses());
+        new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
+
+        return captured.toString(StandardCharsets.UTF_8);
+    }
+
+    @Nested
+    @DisplayName("running another program, for real")
+    class RunningAnotherProgram {
+
+        @Test
+        @DisplayName("what echo prints lands in the caller's buffer")
+        void whatEchoPrintsLandsInTheBuffer() {
+            String transcript = sessionWithProcesses(
+                    "buf: copy {}",
+                    "call/wait/output [{echo} {hello from a child}] buf",
+                    "buf");
+
+            assertThat(transcript).contains("hello from a child");
+        }
+
+        @Test
+        @DisplayName("the shell reads only the first entry as its command line")
+        void theShellReadsOnlyTheFirstEntry() {
+            String transcript = sessionWithProcesses(
+                    "buf: copy {}",
+                    "call/wait/shell/output [{echo} {spilled}] buf",
+                    "find buf {spilled}");
+
+            assertThat(transcript)
+                    .as("later entries are the shell's positional parameters,"
+                            + " not part of the command line")
+                    .contains("== _");
+        }
+
+        @Test
+        @DisplayName("a program that is not there is an error, not a hang")
+        void aMissingProgramIsAnError() {
+            String transcript = sessionWithProcesses(
+                    "call [{jebol-no-such-program-e2e}]",
+                    "1 + 1");
+
+            assertThat(transcript)
+                    .contains("error")
+                    .as("the mistake ends the expression, never the session")
+                    .contains("== 2");
+        }
+    }
+
+    @Nested
+    @DisplayName("writing a file, the way a script keeps a list")
+    class WritingAFile {
+
+        @Test
+        @DisplayName("lines written, a line appended, the whole read back")
+        void aListGrowsALineAtATime(@TempDir java.nio.file.Path directory) {
+            String transcript = sessionWithFiles(directory,
+                    "write/lines %list.txt [{milk} {eggs}]",
+                    "write/append %list.txt {jam^/}",
+                    "length? read %list.txt");
+
+            assertThat(transcript)
+                    .as("milk, eggs and jam, each with its line feed, is 14")
+                    .contains("== 14");
+        }
+
+        @Test
+        @DisplayName("a correction seeks back and overwrites in place")
+        void aCorrectionOverwritesInPlace(@TempDir java.nio.file.Path directory) {
+            String transcript = sessionWithFiles(directory,
+                    "write %score.txt {score 0}",
+                    "write/seek %score.txt {9} 6",
+                    "read/string %score.txt");
+
+            assertThat(transcript).contains("== \"score 9\"");
+        }
+
+        @Test
+        @DisplayName("a negative bound is reported as an error, not obeyed")
+        void aNegativeBoundIsReported(@TempDir java.nio.file.Path directory) {
+            String transcript = sessionWithFiles(directory,
+                    "write/part %a.txt {abc} -1",
+                    "1 + 1");
+
+            assertThat(transcript)
+                    .contains("a number outside the range this operation allows")
+                    .as("the mistake ends the expression, never the session")
+                    .contains("== 2");
         }
     }
 }

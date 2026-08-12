@@ -3,10 +3,15 @@
 -- JEBOL: turning REBOL source text into values.
 --
 -- Two operations live here. TRANSCODE reads text and produces a block of
--- unbound values. LOAD is TRANSCODE followed by binding into a context.
--- Keeping them apart matters: a word's binding is not a property of how
--- it was written, and code that manipulates blocks before evaluating them
--- depends on getting unbound words back.
+-- unbound values. LOAD reads too, and adds what a script wants around the
+-- reading: a source holding one value comes back as that value, a block of
+-- sources is read one at a time, and a binary loses its byte order mark
+-- before anything looks at it.
+--
+-- Neither of them binds. A word's binding is not a property of how it was
+-- written, and code that manipulates blocks before evaluating them depends
+-- on getting unbound words back. Binding happens on the way to evaluation,
+-- which is a different behaviour specified elsewhere.
 --
 -- This module specifies what reading guarantees and when it fails. The
 -- character-level grammar is not written out here; the resolutions that a
@@ -21,7 +26,10 @@ use "./values.allium" as values
 ------------------------------------------------------------
 
 -- The delimiters that open something the reader must find an end for.
-enum OpenDelimiter { bracket | parenthesis | brace | quote | tag | binary_brace }
+--
+-- An angle bracket is not one of them. A run that does not close is read as
+-- a word rather than as an unclosed tag, so no read ever fails naming one.
+enum OpenDelimiter { bracket | parenthesis | brace | quote | binary_brace }
 
 -- Why a read failed. Each maps to an error! of category syntax.
 enum SyntaxFailure {
@@ -35,9 +43,22 @@ enum SyntaxFailure {
     | unterminated_string   -- end of input inside a quoted or braced string
     | invalid_escape        -- a caret escape naming no known character
     | integer_out_of_range  -- digits that exceed the 64-bit range
-    | invalid_datatype      -- a construct naming no datatype
-    | invalid_binary        -- base-16 contents that are not valid base-16
+    | invalid_binary        -- contents that are not a binary in the base
+                            -- that was named, which is one of 2, 16 and 64
     | malconstruct          -- a construct whose datatype cannot be built that way
+    | invalid_arg           -- a map literal whose items do not pair up, an odd
+                            -- count leaving a key with no value. R3 reports it
+                            -- with the id a bad argument gets even though the
+                            -- reader raised it, so a script catches it by that
+                            -- id whatever category the error carries
+    | nesting_too_deep      -- blocks nested deeper than a thousand levels,
+                            -- which is where the reader stops. One bound at
+                            -- the door bounds every later walk over the block
+                            -- -- binding, molding, comparing, evaluating --
+                            -- rather than each of them keeping a stack of its
+                            -- own, and no real source comes near it
+    | past_end              -- a read asked for a value where the text it was
+                            -- allowed to look at holds none left
 }
 
 ------------------------------------------------------------
@@ -75,17 +96,57 @@ contract LexicalResolution {
         -- one value of two segments. What precedes the first slash is the
         -- whole of the difference.
 
-    @invariant HashPrefixSplitsThreeWays
+    @invariant HashPrefixSplitsFiveWays
         -- The character immediately after a hash decides what follows it.
         -- A quote makes a char, so #"a" is one character. An opening brace
-        -- makes a binary, so #{DEADBEEF} is four bytes. Anything else
-        -- makes an issue, so #foo is an issue.
+        -- makes a binary, so #{DEADBEEF} is four bytes. An opening
+        -- parenthesis begins construction syntax, so #(none) is the none
+        -- value. An opening square bracket begins a map literal, so
+        -- #[a 1] is a map of one key. Anything else makes an issue, so
+        -- #foo is an issue.
+
+    @invariant AMapLiteralIsWrittenWithHashAndSquareBrackets
+        -- #[a 1 b 2] reads as a map of two keys, taken as alternating keys
+        -- and values. An odd number of items is refused rather than the
+        -- last key being given an empty value.
+        --
+        -- The square brackets are the ones R3-Alpha used for construction
+        -- syntax. Rebol 3.x moved constructs to parentheses and gave the
+        -- brackets to maps rather than leaving them free, so the two forms
+        -- are one character apart and source written for the older
+        -- spelling reads as something else entirely rather than failing.
 
     @invariant SignBindsToDigitsWithoutSpace
         -- A minus sign directly against a digit is part of the number, so
         -- -1 is the integer minus one. A minus sign with a space after it,
         -- or with anything that is not a digit after it, is the word
         -- minus. So `- 1` reads as two values and `-1` reads as one.
+
+    @invariant AFileLiteralRefusesEightCharactersAndValidatesItsEscapes
+        -- A file literal is not "everything up to whitespace". `Scan_Item`
+        -- checks each character, and an unquoted file rejects eight of them
+        -- outright: colon, semicolon, the two parentheses, the two square
+        -- brackets, the double quote and the caret. So %a:b is not a file and
+        -- neither is %a^b.
+        --
+        -- The caret is the one worth stating, because it is an escape
+        -- everywhere else. In an unquoted file it is refused rather than
+        -- read, and the C says so in a comment: "checks also if not used in
+        -- file like: %a^b which must be invalid!". Inside a *quoted* file --
+        -- %"..." -- the refused set narrows to colon, semicolon and quote, so
+        -- the caret becomes an escape again.
+        --
+        -- A percent sign is an escape and must be followed by two hex
+        -- digits. %a%2h is not a file, because 2h is not two hex digits. The
+        -- same rule and the same failure apply to an email, where
+        -- `Scan_Email` checks it directly.
+        --
+        -- And a control character is refused, and a backslash quietly
+        -- becomes a forward slash.
+        --
+        -- JEBOL validated none of this and read every one of those as a
+        -- file, which is five of Rebol's own lexer assertions and the kind
+        -- of permissiveness that turns a typo into a filename.
 
     @invariant EveryDatatypeSpellingIsAWord
         -- A name ending in "!" is a word, always. integer! in source is
@@ -147,18 +208,92 @@ entity TranscodeRequest {
     -- caller asked to transcode directly.
     load_request: LoadRequest?
 
+    -- The number the first line of the source carries, when the caller asked
+    -- for lines to be counted at all. A caller reading a whole file starts at
+    -- one. A caller reading a file a value at a time hands over a fragment
+    -- rather than the file, so the reader would otherwise call the fragment's
+    -- first line line one and every failure after the first would name the
+    -- wrong place.
+    --
+    -- Absent when the caller did not ask, and having asked is what the count
+    -- coming back depends on.
+    first_line_number: Integer?
+
+    -- Whether the caller asked for lines to be counted, which is the same
+    -- question as whether it handed a number for the first line in.
+    counts_lines: first_line_number != null
+
+    -- How much of the source the caller asked for. Every read a LOAD starts
+    -- is of the whole source, and each of the rules that starts one says so.
+    scope: the_whole_source | the_first_value | the_first_value_at_every_depth
+
+    -- How many characters of the source the reader may look at, when the
+    -- caller bounded the read. Absent when it did not, and then the whole
+    -- source is readable.
+    characters_permitted: Integer?
+
+    -- Whether a failure comes back as a value beside whatever was read, rather
+    -- than being raised for the caller to catch.
+    hands_back_failures: Boolean = false
+
+    -- Whether the answer is the value itself rather than a block holding it.
+    -- The reader hands the first value back bare, before the unread text or
+    -- the line count would have been added, so a caller asking for one value
+    -- gets one value rather than a block of three things.
+    answers_the_value_alone: Boolean = false
+
+    -- Whether the reader was asked to stop before the end of the source, by
+    -- any means at all. One condition rather than four, and it is the one that
+    -- decides whether the answer carries the unread text and the line count
+    -- beside the values.
+    stops_before_the_end: scope != the_whole_source or hands_back_failures
+
+    -- Whether the answer carries the unread text after the values. A reader
+    -- that stopped early leaves the caller somewhere to carry on from, unless
+    -- the caller asked for the value alone.
+    carries_the_unread_text: stops_before_the_end and not answers_the_value_alone
+
+    -- Whether the answer carries the line the reader stopped on. All three
+    -- conditions are needed: a caller who did not ask for a count gets none, a
+    -- caller who read the whole source has nowhere to carry one to, and a
+    -- caller who asked for the value alone gets the value alone.
+    answers_the_stopped_line:
+        counts_lines and stops_before_the_end and not answers_the_value_alone
+
     -- The block! of unbound values read from the source. Its items are in
     -- source order and the value sits at its head.
     result: values/Value when status = succeeded
+
+    -- What the reader did not reach, as the kind of series that was handed in,
+    -- so reading a binary leaves a binary.
+    unread_remainder: values/Value when carries_the_unread_text
+
+    -- The line the reader was on when it stopped. This is what a caller
+    -- stepping through a source hands back as first_line_number on the step
+    -- after, which is how a count survives being handed round.
+    --
+    -- It comes back beside a failure the caller asked to be handed rather than
+    -- raised, as much as beside values: reading "1 2" from line ten, asking
+    -- for both the failure and the count, answers the two values, an empty
+    -- remainder and ten.
+    stopped_on_line: Integer when answers_the_stopped_line
 
     failure: SyntaxFailure when status = failed
     failure_position: SourcePosition when status = failed
     error_value: values/Value when status = failed
 
-    -- Which opener was left hanging, present only when the failure was
-    -- about delimiters. An error that says "unclosed" without saying what
-    -- was unclosed sends the reader hunting.
-    unclosed_delimiter: OpenDelimiter? when status = failed
+    -- The values the reader took before it met the failure. Reading stops at a
+    -- failure either way; this is what the caller who asked for the failure as
+    -- a value gets to keep of the work already done.
+    values_before_the_failure: values/Value when status = failed
+
+    -- Which delimiter the failure was about, present only when it was about
+    -- one. An error that says "unclosed" without saying what was unclosed
+    -- sends the reader hunting.
+    --
+    -- Not always an unclosed one, which is why the name does not say so: a
+    -- closing delimiter with no opener names the surplus closer.
+    delimiter_involved: OpenDelimiter? when status = failed
 
     transitions status {
         reading -> succeeded
@@ -167,9 +302,76 @@ entity TranscodeRequest {
     }
 }
 
+-- Where the words a library file defines go.
+--
+-- JEBOL loads twenty-five thousand lines of Rebol's own library at start.
+-- Every file of it was written to be loaded into one of three places, and
+-- a file loaded into the wrong one is not a smaller interpreter but a
+-- wrong answer: the file still runs, its words still answer, and one of
+-- them answers as something the rest of the library did not expect.
+enum LoadTarget {
+    library             -- system/contexts/lib, where the standard functions live
+    | system_internals  -- system/contexts/sys, the library's own private helpers
+    | its_own_module    -- a fresh context, from which only exports escape
+}
+
+-- One file of Rebol's own library, being loaded.
+--
+-- The header decides the target, and R3 decides it the same way in the four
+-- lines of Do_Global_Block that run the boot blocks: base files add their
+-- new words to lib, sys files add theirs to sys, and both bind deep into
+-- lib so that a helper can call a standard function.
+entity LibraryFileLoad {
+    file_name: String
+
+    -- The REBOL [...] block at the top of the file, read as data and never
+    -- evaluated. A file that has no header has an empty one.
+    header: values/Value
+
+    -- The header's Type field, when the header sets it. `Type: module` is
+    -- how a file asks for a context of its own.
+    declared_type: String?
+
+    -- The header's Exports field. Only meaningful for a module, and empty
+    -- when the header does not set it.
+    declared_exports: List<String>
+
+    -- Where the load order says this file's words go, before the header gets
+    -- a say. Rebol keeps three lists of files and this is which one the file
+    -- is in.
+    catalogue_target: LoadTarget
+
+    target: LoadTarget
+    context: values/Context when status = loaded
+
+    status: loading | loaded | stopped_early
+
+    -- What stopped it, when something did, as the error's text. A file that
+    -- stops partway defines nothing below the line it stopped on and says so
+    -- nowhere else, so the reason is kept rather than swallowed.
+    --
+    -- Text rather than the error value, because what this is for is being read
+    -- by whoever is asking why the interpreter came up smaller than it should
+    -- have. A file that would not even transcode keeps the syntax error's text
+    -- the same way.
+    stopped_on: String when status = stopped_early
+
+    transitions status {
+        loading -> loaded
+        loading -> stopped_early
+        terminal: loaded, stopped_early
+    }
+}
+
 entity LoadRequest {
-    source_text: String
-    target: values/Context
+    -- What to load. LOAD takes a string of source, a binary holding it, or a
+    -- block of either to load one after another.
+    source: values/Value
+
+    -- Whether every answer comes back as a block, even one holding a single
+    -- value. A caller who would rather not test what came back asks for this.
+    always_answers_a_block: Boolean = false
+
     status: loading | succeeded | failed
 
     transcode: TranscodeRequest with load_request = this
@@ -196,9 +398,14 @@ entity LoadRequest {
 -- === Reading ===============================================
 
 rule TranscodeBegins {
-    when: Transcode(source_text)
+    when: Transcode(source_text, scope, hands_back_failures, answers_the_value_alone, first_line_number, characters_permitted)
     ensures: TranscodeRequest.created(
         source_text: source_text,
+        scope: scope,
+        hands_back_failures: hands_back_failures,
+        answers_the_value_alone: answers_the_value_alone,
+        first_line_number: first_line_number,
+        characters_permitted: characters_permitted,
         status: reading
     )
 }
@@ -234,12 +441,181 @@ rule TranscodeRejectsMalformedSource {
         request.failure = failure
         request.failure_position = position
         request.error_value = syntax_error_for(failure, position)
-        request.unclosed_delimiter = unclosed_delimiter_at(request.source_text, position)
+        request.delimiter_involved = delimiter_involved_at(request.source_text, position)
 
     @guidance
         -- Reading reports the first failure and stops. It does not attempt
         -- to recover and collect further failures, because a syntax error
         -- leaves the reader with no reliable place to resume.
+}
+
+-- === Reading less than the whole source =====================
+
+-- A caller who asked for less than the whole source is walking it, and a
+-- walk needs somewhere to carry on from. So the answer holds the unread
+-- text after the values, and the caller passes that back to get the next
+-- value.
+--
+-- The condition is "did the reader stop early", not "which refinement was
+-- named". Asking for the failure as a value counts, because the reader
+-- stops at a failure too and the caller has the same reason to want the
+-- rest. In R3's C this is one line, `next = scan_state.opts > 0`, and
+-- reading it as "the caller asked to step through" rather than as a name
+-- is what makes the other three cases fall out of it.
+--
+-- With one exception, and it is the caller saying it does not want a walk: a
+-- caller asking for the value alone gets the value alone, handed back bare
+-- before the unread text would have been added to it.
+rule TheUnreadTextComesBackWhenTheReaderStopsEarly {
+    when: request: TranscodeRequest.status transitions_to succeeded
+    requires: request.carries_the_unread_text
+
+    ensures:
+        request.unread_remainder = remainder_after(
+            request.source_text, characters_read(request))
+
+    @guidance
+        -- The remainder is the rest of the whole source and not the rest of
+        -- whatever a bound permitted, or a caller walking a bounded source
+        -- would find it empty after a single step.
+}
+
+-- Reading one value stops at one value everywhere, not only at the top. So
+-- a block yields its first element and nothing more, and asking for one
+-- value out of `[1 2]` gives a block holding 1.
+--
+-- This is the whole of the difference between the two ways to ask for one
+-- value. The other way keeps a block whole: a block IS one value, and a
+-- caller stepping through a script wants the block it wrote, not its first
+-- element.
+rule ReadingOneValueAtEveryDepthKeepsOnlyTheFirstOfEachBlock {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+    requires: request.scope = the_first_value_at_every_depth
+
+    ensures:
+        for series in block_series_within(request.result):
+            series.length <= 1
+
+    @guidance
+        -- Blocks and parens only. A string is one value however long it is,
+        -- so a string inside comes back whole rather than cut to its first
+        -- character: the reader is stopping after one value at each level of
+        -- nesting, and a string has no levels.
+}
+
+-- A failure handed back as a value does not throw away the values already
+-- read. The reader took them before it met the failure, and they are as
+-- good as they would have been had the failure come later.
+--
+-- Rebol's own suite asserts this and it is easy to get wrong, because the
+-- obvious shape for a failing read is "the failure, and nothing else".
+rule AFailureHandedBackKeepsWhatWasAlreadyRead {
+    when: request: TranscodeRequest.status transitions_to failed
+    requires: request.hands_back_failures
+
+    ensures:
+        request.error_value = syntax_error_for(request.failure, request.failure_position)
+        request.values_before_the_failure = block_of(
+            read_values_up_to(request.source_text, request.failure_position))
+}
+
+-- Asking for a value where the source has none left fails. Answering none
+-- would be wrong: none is a value a source can genuinely hold, so a caller
+-- could not tell an empty source from a source holding none.
+--
+-- It is the same condition again. A caller reading the whole source gets an
+-- empty block for an empty source, because asking what is in nothing has an
+-- answer. A caller stepping through gets a failure, because asking for the
+-- next value when there is none does not.
+--
+-- Emptiness is judged on the text the bound permitted rather than on the
+-- whole source. A read of "1 2" bounded to no characters fails past-end even
+-- though the source plainly holds values, because none of them are inside
+-- the bound and the reader never sees them.
+rule AskingForAValueWhereThereIsNoneFails {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+    requires: request.stops_before_the_end
+    requires: is_empty_of_values(text_within_the_bound(request))
+
+    ensures:
+        request.status = failed
+        request.failure = past_end
+}
+
+-- === Line counting ==========================================
+
+-- A source carries no record of where it came from, so the reader cannot
+-- work out that it was handed the middle of a file. The caller has to say.
+--
+-- These two rules are one idea seen from both ends. A caller passes a line
+-- number in and gets one back, and the one that comes back is what it
+-- passes in next time. That makes reading a long file one value at a time
+-- report the same lines as reading it whole, which is the point: an error
+-- naming line 1 of a fragment tells the reader nothing.
+rule LinesAreCountedFromWhereTheCallerSays {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+    requires: request.counts_lines
+    requires: not is_well_formed_source(request.source_text)
+
+    let failure_offset = first_failure_position(request.source_text).offset
+
+    ensures:
+        request.failure_position.line =
+            request.first_line_number
+            + line_breaks_before(request.source_text, failure_offset)
+
+    @guidance
+        -- A caller who handed no number in gets the count from one, which is
+        -- this same sum with the missing number filled in rather than a
+        -- different rule.
+}
+
+-- The count comes back only to a caller who asked for one, and only where
+-- there is room to put it: beside the unread text, in the answer a reader
+-- that stopped early gives back. A read of the whole source has nothing left
+-- to carry on from and says nothing about lines, and a caller asking for the
+-- value alone gets the value alone.
+--
+-- It comes back beside a handed-back failure as readily as beside values,
+-- which is what makes stepping through a source that has a syntax error in it
+-- possible: the caller learns where the reader got to and can say so.
+rule TheLineTheReaderStoppedOnComesBack {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+    requires: request.answers_the_stopped_line
+    requires: is_well_formed_source(request.source_text) or request.hands_back_failures
+
+    ensures:
+        request.stopped_on_line =
+            request.first_line_number
+            + line_breaks_before(request.source_text, characters_read(request))
+
+    @guidance
+        -- The line break the reader stops in front of does not count. A
+        -- caller reading `1` and then a newline and then `2` is told line
+        -- one for the first value and line two for the second, because the
+        -- break belongs to the step that crosses it.
+}
+
+-- A line number is a counting number, so zero and below are refused
+-- rather than taken as "count backwards" or "do not count".
+--
+-- Worth a rule of its own because the sibling bound is not the same. A
+-- read may legitimately be bounded to zero characters, and zero lines is
+-- not a line at all.
+rule ANonPositiveFirstLineNumberIsRefused {
+    when: Transcode(_, _, _, _, first_line_number, _)
+    requires: first_line_number < 1
+    ensures: Raises(id: out_of_range)
+}
+
+rule ANegativeBoundOnTheReadIsRefused {
+    when: Transcode(_, _, _, _, _, characters_permitted)
+    requires: characters_permitted < 0
+    ensures: Raises(id: out_of_range)
 }
 
 -- === Construction syntax =====================================
@@ -258,6 +634,12 @@ rule TranscodeRejectsMalformedSource {
 -- Not every datatype can be built this way. `#(char! 65)` is a
 -- malconstruct, so the reader has to know which datatypes accept a value
 -- rather than assuming any of them will.
+--
+-- A construct whose first word names no datatype at all is the same failure
+-- and not a different one. R3's catalogue has no invalid-datatype to raise,
+-- and the thing that is malformed is the construct rather than the word: the
+-- same spelling outside a construct is an ordinary word that nothing is
+-- bound to.
 --
 -- `#(object! [a: 1])` builds an object from a block of set-words and
 -- values. The block is taken as written and never evaluated, because the
@@ -278,19 +660,41 @@ rule ConstructionSyntaxNamesValuesThatHaveNoLiteral {
     requires: source_holds_construct(request.source_text)
 
     ensures:
-        if not construct_datatype_is_known(request.source_text):
-            request.status = failed
-            request.failure = invalid_datatype
-        else if not construct_accepts_its_contents(request.source_text):
+        if not construct_can_be_built(request.source_text):
             request.status = failed
             request.failure = malconstruct
         else:
             request.status = reading
 }
 
--- Every word that comes back from TRANSCODE is unbound. This is the
--- property that lets a caller build code as data and choose a context
--- later, and it is what separates TRANSCODE from LOAD.
+-- A map literal `#[...]` reads as a map when its items pair up, and an odd
+-- count is refused. `#[a 1 b 2]` is a map of two keys, `#[]` is an empty map,
+-- and `#[a]` and `#[a 1 b]` both fail: a map's items are key-then-value, so an
+-- odd one leaves a key with no value.
+--
+-- The failure is invalid-arg, not the malconstruct a malformed construct
+-- gives. The two live one bracket apart -- `#(...)` is a construct and
+-- `#[...]` is a map -- and it would be tidy to give a malformed one of each
+-- the same id, but R3 does not: it reports the odd map with the id a bad
+-- argument gets, even though it is the reader raising it rather than a
+-- function rejecting what it was passed. A script catching it does so by that
+-- id whatever category the error carries, so the id is the behaviour to match
+-- rather than the category.
+rule AMapLiteralWithAnOddItemCountIsRefused {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+    requires: source_holds_map_literal(request.source_text)
+    requires: not map_literal_items_pair_up(request.source_text)
+
+    ensures:
+        request.status = failed
+        request.failure = invalid_arg
+}
+
+-- Every word that comes back from TRANSCODE is unbound, and so is every word
+-- that comes back from LOAD, because LOAD is this and then some unwrapping.
+-- This is the property that lets a caller build code as data and choose a
+-- context later.
 rule TranscodedWordsAreUnbound {
     when: request: TranscodeRequest.status transitions_to succeeded
     ensures:
@@ -299,14 +703,26 @@ rule TranscodedWordsAreUnbound {
 }
 
 -- A series value read from source starts at its head. Nothing in the
--- surface syntax can express a series positioned anywhere else, so a
--- block that has just been read always begins at its first element.
+-- ordinary surface syntax can express a series positioned anywhere else, so
+-- a block that has just been read begins at its first element.
+--
+-- The one exception is a construct that names a position, and it exists
+-- because MOLD/ALL has to be readable: `#(string! "ab" 2)` is that string
+-- standing at its second character and `#(block! [1 2 3] 2)` is [2 3]. A
+-- series that was not at its head molds to that form, and without reading it
+-- back such a mold does not round-trip.
 rule TranscodedSeriesStartAtHead {
     when: request: TranscodeRequest.status transitions_to succeeded
+    requires: not source_names_a_position_in_a_construct(request.source_text)
     ensures:
         for series in series_within(request.result):
             series.index = 1
 }
+
+-- What writes that form is MOLD/ALL, and the two are one round trip. The
+-- molding side is specified with the other natives, in natives.allium; this
+-- rule is the half that reads it back, and neither is worth having without
+-- the other.
 
 -- A syntax failure produces a REBOL error! value, not a host-language
 -- exception. Errors are values in REBOL and callers can catch and inspect
@@ -321,24 +737,96 @@ rule SyntaxFailureIsAnErrorValue {
 -- === Loading ===============================================
 
 rule LoadBegins {
-    when: Load(source_text, target)
+    when: Load(source, always_answers_a_block)
     ensures: LoadRequest.created(
-        source_text: source_text,
-        target: target,
+        source: source,
+        always_answers_a_block: always_answers_a_block,
         status: loading
     )
 }
 
-rule LoadStartsRead {
+-- A block handed to LOAD is a block of sources rather than something to
+-- read, and the answers nest rather than run together. Loading two files
+-- gives a block holding what each one loaded, not one block of both files'
+-- values, so a caller can still tell which value came from where.
+--
+-- Each source inside is loaded exactly as it would have been alone,
+-- unwrapping included, so a file holding a single value contributes that
+-- value and a file holding several contributes a block.
+rule LoadOfABlockLoadsEachSourceInTurn {
     when: request: LoadRequest.created
+    requires: is_a_block_of_sources(request.source)
+
+    ensures:
+        request.status = succeeded
+        request.result = block_of(each_source_loaded(request.source))
+}
+
+-- A binary is bytes of UTF-8, and a byte order mark at the front of them
+-- marks the encoding rather than being part of the text. Leaving it in makes
+-- the source's first value a string that nothing a script writes can match.
+rule LoadOfABinaryDropsAnyByteOrderMark {
+    when: request: LoadRequest.created
+    requires: is_a_binary(request.source)
+    requires: the_bytes_are_utf8(request.source)
+
     ensures: TranscodeRequest.created(
-        source_text: request.source_text,
+        source_text: text_after_any_byte_order_mark(request.source),
+        scope: the_whole_source,
         status: reading,
         load_request: request
     )
 }
 
-rule LoadBindsIntoTargetContext {
+-- Bytes that are not UTF-8 are refused rather than read. `load #{789DE3}`
+-- raises invalid-chars, and so does transcoding the same binary.
+--
+-- Strictly, which means no replacement characters. A lenient decoder turns
+-- every bad byte into the replacement character and hands back a string, so
+-- the load succeeds, the answer looks like source text, and what the script
+-- then reads is a program nobody wrote. The failure surfaces much later and
+-- somewhere else, if at all.
+--
+-- The same class of mistake the read of a file already closes: bytes that do
+-- not decode must not quietly become text. What differs is the answer, and
+-- the difference is right. A read is handed bytes and asked what they say,
+-- so answering the bytes is honest. A load is handed bytes and asked for the
+-- values in them, and there are no values in bytes that are not source, so
+-- there is nothing to answer and it raises.
+--
+-- Valid bytes still read. This narrows nothing a caller could legitimately
+-- have been doing.
+--
+-- TRANSCODE handed the same binary refuses it the same way. Both reach one
+-- decoder, so there is one answer rather than two, and a caller cannot get
+-- the lenient reading by choosing the other verb.
+rule BinarySourceThatIsNotUtf8IsRefused {
+    when: request: LoadRequest.created
+    requires: is_a_binary(request.source)
+    requires: not the_bytes_are_utf8(request.source)
+
+    ensures: LoadFails(error: invalid_chars, about: request.source)
+}
+
+rule LoadStartsRead {
+    when: request: LoadRequest.created
+    requires: not is_a_block_of_sources(request.source)
+    requires: not is_a_binary(request.source)
+
+    ensures: TranscodeRequest.created(
+        source_text: text_of(request.source),
+        scope: the_whole_source,
+        status: reading,
+        load_request: request
+    )
+}
+
+-- A source holding exactly one value loads as that value rather than as a
+-- block wrapping it, so `load "1"` is the integer and `load "1 2"` is a block
+-- of two. `load "[1 2]"` is the block that was written, not a block holding
+-- it. A caller who would rather not test what came back asks for a block
+-- every time and gets one.
+rule LoadUnwrapsASingleValue {
     when: request: LoadRequest.read_succeeded
 
     requires: request.status = loading
@@ -346,32 +834,176 @@ rule LoadBindsIntoTargetContext {
 
     ensures:
         request.status = succeeded
-        -- A source holding exactly one value loads as that value rather
-        -- than as a block wrapping it, so `load "1"` is the integer and
-        -- `load "1 2"` is a block of two. `load "[1 2]"` is the block
-        -- that was written, not a block holding it. The /all refinement
-        -- turns the unwrapping off and always gives a block.
-        if transcoded_value_count(request.transcode.result) = 1:
+        if transcoded_value_count(request.transcode.result) = 1
+                and not request.always_answers_a_block:
             request.result = only_value_of(request.transcode.result)
         else:
             request.result = request.transcode.result
-        for word in words_within(request.transcode.result):
-            if is_known_in(request.target, word.canonical):
-                word.binding = holder_of(request.target, word.canonical)
 
     @guidance
-        -- Words with no matching slot in the target are left unbound
-        -- rather than given a slot holding UNSET. An unbound word and a
-        -- word bound to an unset slot report different errors when
-        -- evaluated, and the difference is worth keeping.
+        -- LOAD does not bind and names no context to bind into. The words it
+        -- answers are as unbound as the ones TRANSCODE answers, which is what
+        -- lets a caller load code as data and choose a context afterwards.
+        --
+        -- Words do get bound into the user context on the way to being
+        -- evaluated, but that is the interpreter's evaluate path doing it and
+        -- not this. It is a different behaviour and outside this spec.
+}
 
-        -- A word binds to the context that actually holds its slot, which
-        -- may be an ancestor of the target rather than the target itself.
-        -- Binding a block into a short-lived inner scope must not make its
-        -- outer words appear to live in that scope: code that asks a bound
-        -- word where it lives, and then writes there, would write into a
-        -- scope that is about to be thrown away rather than into the
-        -- library the word came from.
+-- === Loading Rebol's own library ==========================
+
+rule LibraryFileLoadBegins {
+    when: LoadLibraryFile(file_name, header, declared_type, declared_exports, catalogue_target)
+    ensures: LibraryFileLoad.created(
+        file_name: file_name,
+        header: header,
+        declared_type: declared_type,
+        declared_exports: declared_exports,
+        catalogue_target: catalogue_target,
+        status: loading
+    )
+}
+
+-- A file whose header says `Type: module` gets a context of its own.
+--
+-- This is the whole point of the datatype. Rebol's JSON codec declares
+-- `Type: module` and defines a parse rule named `exp` and another named
+-- `stack`. Loaded into the library, those two replace the library
+-- functions of the same spelling, and nothing reports it: the word still
+-- answers, it just answers a block instead of a function.
+rule ModuleHeaderAsksForItsOwnContext {
+    when: load: LibraryFileLoad.begins
+
+    requires: load.declared_type = "module"
+
+    ensures: load.target = its_own_module
+}
+
+-- A file the catalogue marks as a sys file defines its new words in the
+-- system internals, not in the library.
+--
+-- R3 runs these with rebind 2, which adds their new words to sys and binds
+-- them deep into lib. The words are the library's own private helpers:
+-- MAKE-MODULE*, MAKE-PORT* and the URL parser are all reached as
+-- `sys/something` and never as a bare word.
+--
+-- Which files these are is data rather than a rule about the name. Rebol
+-- keeps three lists and JEBOL carries the same split in its load order.
+-- Deciding it from the name instead is wrong in a way worth recording:
+-- sys-codec.reb is in Rebol's sys list, and its last line is
+-- `export [register-codec decode encode encoding?]`. EXPORT is a real
+-- function in sys-base.reb that copies each named word into the library, so
+-- the file loads into sys and four of its words reach lib because it says
+-- so. Every codec file then calls REGISTER-CODEC as a bare word.
+rule SystemFilesDefineIntoSystemInternals {
+    when: load: LibraryFileLoad.begins
+
+    requires: load.declared_type != "module"
+    requires: load.catalogue_target = system_internals
+
+    ensures: load.target = system_internals
+}
+
+-- Everything else defines into the library, which is what a standard
+-- function is.
+rule OtherFilesDefineIntoTheLibrary {
+    when: load: LibraryFileLoad.begins
+
+    requires: load.declared_type != "module"
+    requires: load.catalogue_target != system_internals
+
+    ensures: load.target = library
+}
+
+-- A sys file's own set-words go to sys, and every other word it uses binds
+-- to the library.
+--
+-- Two binds rather than one, because the same spelling can want both. The C
+-- runs them in this order and the first is deliberately shallow:
+--
+--     Bind_Block(Sys_Context, BLK_HEAD(block), BIND_SET);   -- new set-words to sys
+--     Bind_Block(Lib_Context, BLK_HEAD(block), BIND_DEEP);  -- the rest to lib
+--     Bind_Block(Sys_Context, BLK_HEAD(block), BIND_DEEP);  -- sys wins where sys has it
+--
+-- The third pass is what lets one sys file call another's helper. Leaving it
+-- out bound EXPORT to the library, where there is no such word, and
+-- sys-codec.reb stopped on its last line -- taking REGISTER-CODEC with it
+-- and stopping all fourteen codec files on their first line.
+rule ASystemFilesOwnWordsAreItsOwn {
+    when: load: LibraryFileLoad.finishes
+
+    requires: load.target = system_internals
+    requires: load.status = loaded
+
+    ensures:
+        for name in top_level_assigned_names(load):
+            is_known_in(system_internals_context(), name)
+
+    @guidance
+        -- Shallow on purpose, and the C says why: "BIND_SET must be used
+        -- carefully, because it does not bind prior instances of the word
+        -- before the set-word."
+}
+
+-- A file that ran to its end is loaded, and the context holding its words
+-- is the one its target named.
+rule AFileThatRunsToItsEndIsLoaded {
+    when: load: LibraryFileLoad.finishes
+
+    requires: load.status = loading
+
+    ensures:
+        load.status = loaded
+        load.context = context_for(load.target)
+}
+
+-- Of a module, only the words its header exports reach the library.
+--
+-- The rest stay in the module's own context. A module that exports
+-- nothing adds nothing, which is the right answer for a codec whose whole
+-- job is to register itself with a side effect.
+rule OnlyExportsReachTheLibrary {
+    when: load: LibraryFileLoad.finishes
+
+    requires: load.status = loaded
+    requires: load.target = its_own_module
+
+    ensures:
+        for name in load.declared_exports:
+            is_known_in(library_context(), name)
+            value_in(library_context(), name)
+                = value_in(load.context, name)
+
+    @guidance
+        -- An export naming a word the body never defined is the module's own
+        -- defect. What should happen about it is undecided and recorded as an
+        -- open question below: today the loader defines every exported name
+        -- before the body runs, so the guard here never fires and an unset
+        -- slot reaches the library without a word being said.
+}
+
+-- A file that stops partway keeps whatever it managed to define, and what
+-- stopped it is kept as the error's text.
+--
+-- These are borrowed rather than JEBOL's own, so one that stops leaves an
+-- interpreter that is smaller rather than broken. The prelude is the
+-- opposite case: its failure is a defect and is fatal.
+--
+-- The text rather than the error value, because the reason is kept to be read
+-- rather than to be caught: nothing downstream branches on it, and a file
+-- that would not even transcode has a syntax error whose text says as much.
+rule AFileThatStopsKeepsWhatItDefined {
+    when: load: LibraryFileLoad.raises
+
+    ensures:
+        load.status = stopped_early
+        load.stopped_on = text_of_the_raised_error()
+
+    @guidance
+        -- Swallowing the reason hid base-defs.reb generating its six
+        -- reflector functions into a scope that was thrown away straight
+        -- afterwards, and hid mezz-shell.reb losing all twelve of its
+        -- definitions on its opening line.
 }
 
 rule LoadPropagatesSyntaxFailure {
@@ -389,11 +1021,18 @@ rule LoadPropagatesSyntaxFailure {
 -- Invariants
 ------------------------------------------------------------
 
--- A successful read consumed all the input. A reader that stopped early
--- and reported success would silently drop code.
+-- A read of the whole source that succeeded consumed all the input. A reader
+-- that stopped early and reported success would silently drop code.
+--
+-- Of the whole source only. The forms that stop early stop on purpose, and a
+-- read that hands its failure back stops where the failure is. Both leave
+-- input behind and both say so, in the unread text they answer beside the
+-- values, so neither is the silent case this guards against.
 invariant SuccessfulReadConsumesAllInput {
     for request in TranscodeRequests:
         request.status = succeeded
+            and request.scope = the_whole_source
+            and not request.hands_back_failures
             implies consumed_length(request) = length(request.source_text)
 }
 
@@ -413,13 +1052,18 @@ invariant FailurePositionIsOneBased {
                 and request.failure_position.column >= 1
 }
 
--- Only the delimiter failures name a delimiter. A failure about an
--- invalid escape has no opener to report, and reporting one would be a
--- guess dressed up as a fact.
+-- Only the failures about a delimiter name one. A failure about an invalid
+-- escape has no delimiter to report, and reporting one would be a guess
+-- dressed up as a fact.
+--
+-- Six failures rather than three, and not all of them are about something
+-- left open: a closing delimiter with no opener names the surplus closer,
+-- nesting that goes too deep names the bracket that was one too many, and a
+-- binary that will not decode names the brace pair its body sat in.
 invariant OnlyDelimiterFailuresNameADelimiter {
     for request in TranscodeRequests:
-        request.status = failed and request.unclosed_delimiter != null
-            implies request.failure in {missing_close, mismatched_close, unterminated_string}
+        request.status = failed and request.delimiter_involved != null
+            implies request.failure in {missing_close, mismatched_close, unterminated_string, extra_close, nesting_too_deep, invalid_binary}
 }
 
 -- Reading is a function of the text alone. The same source always yields
@@ -432,21 +1076,50 @@ invariant ReadingIsDeterministic {
                 implies first.status = second.status
 }
 
--- Anything MOLD prints, the reader reads back as an equal value. This is
--- the round trip that keeps code-as-data honest: a block that has been
--- printed and read again must behave as the original did.
+-- Anything MOLD prints, the reader reads back as an equal value, up to the
+-- places where molding itself loses something. This is the round trip that
+-- keeps code-as-data honest: a block that has been printed and read again
+-- must behave as the original did.
+--
+-- Two documented losses, and a real R3 loses the same two. The largest
+-- double molds to fifteen digits and reads back as 1.#INF, and 0:0:1 molds
+-- as 0:00:01. Anything needing one expression exactly as it was written has
+-- to keep the source text rather than mold the value back.
 invariant MoldRoundTripsThroughRead {
     for request in TranscodeRequests:
         request.status = succeeded
             implies reads_back_equal(mold(request.result))
+                or molds_lossily(request.result)
 }
 
 -- A load and its read agree about whether they worked. A load that
 -- reported success over a failed read would hand back a block that was
 -- never produced.
+--
+-- A block of sources has no read of its own -- it loads each source inside
+-- and each of those has one -- so there is nothing here for it to agree with.
 invariant LoadAgreesWithItsRead {
     for request in LoadRequests:
-        request.status = succeeded implies request.transcode.status = succeeded
+        request.status = succeeded and request.transcode != null
+            implies request.transcode.status = succeeded
+}
+
+-- A word a module keeps to itself never replaces a library word of the same
+-- spelling.
+--
+-- This is the invariant the flat loader broke, and it is worth stating
+-- separately from the rule that puts the exports in, because the failure it
+-- prevents is silent. A private word that overwrites a library function
+-- leaves that name answering, so nothing raises and no test of the module
+-- itself fails. The next caller of the library function is what breaks, and
+-- by then the file that did it is thirty files back.
+invariant PrivateModuleWordsDoNotReachTheLibrary {
+    for load in LibraryFileLoads:
+        load.target = its_own_module implies
+            for name in names_defined_by(load):
+                not contains(load.declared_exports, name) implies
+                    value_in(library_context(), name)
+                        = value_before_loading(library_context(), name)
 }
 
 ------------------------------------------------------------
@@ -457,33 +1130,44 @@ surface SourceReading {
     exposes:
         SourcePosition
         SyntaxFailure
+        LoadTarget
 
     provides:
-        Transcode(source_text)
-        Load(source_text, target)
+        Transcode(source_text, scope, hands_back_failures, answers_the_value_alone, first_line_number, characters_permitted)
+        Load(source, always_answers_a_block)
+        LoadLibraryFile(file_name, header, declared_type, declared_exports, catalogue_target)
 
     contracts:
         fulfils LexicalResolution
 
-    @guarantee ReadingNeverPartiallySucceeds
-        -- A read either yields every value in the source or yields an
-        -- error and no values. There is no outcome where a caller
-        -- receives a block holding some of the source.
+    @guarantee AWholeSourceReadIsAllOrNothing
+        -- A read of the whole source that was not asked to hand its failure
+        -- back either yields every value in the source or yields an error and
+        -- no values. There is no outcome where such a caller receives a block
+        -- holding some of the source.
+        --
+        -- The forms that stop early, and the form that hands a failure back
+        -- as a value, are the deliberate exceptions to this. Each answers
+        -- what it did read together with the text it did not reach, which is
+        -- what makes walking a source possible at all, and neither claims to
+        -- have read the rest.
 
     @guarantee ReadingHasNoSideEffects
         -- Reading creates values but changes nothing a caller could
         -- observe beforehand. It does not bind words, evaluate anything
-        -- or touch a context. LOAD binds, and does so only into the
-        -- context it was handed.
+        -- or touch a context. Neither does LOAD: it reads and unwraps, and
+        -- the words it answers are as unbound as the ones TRANSCODE answers.
 }
 
 ------------------------------------------------------------
 -- Open Questions
 ------------------------------------------------------------
 
--- Resolved: LOAD with no target binds into the user context, for source
--- compatibility with R3-Alpha. The explicit-target form stays, and is
--- what everything inside JEBOL uses.
+-- Resolved: LOAD names no context and does no binding. It reads the source,
+-- unwraps a single value and stops, so what it answers is as unbound as what
+-- TRANSCODE answers. A loaded block does get its words bound before it is
+-- evaluated, but that is the interpreter's evaluate path doing it on the way
+-- past, and it is specified with evaluation rather than here.
 
 -- Resolved: TRANSCODE returns a script header as ordinary values, a word
 -- followed by a block, because it is ordinary syntax and nothing about
@@ -491,9 +1175,15 @@ surface SourceReading {
 -- available separately. All fourteen programs in corpus/sources/ carry
 -- one, so this is exercised on every file.
 
--- Resolved: binary literals are base-16 only for now. The base-64 and
--- base-2 spellings accrete later without changing anything specified
--- here, because they differ only in how the contents are decoded.
+-- Resolved against a real R3: a binary literal may be written in base 2, 16
+-- or 64, and `#{...}` with no base named is base 16. Any other base is
+-- refused, and refused as a bad integer rather than as a bad binary -- which
+-- is the clue that the reader reads the base as a number before it looks at
+-- the braces at all. A sign or a leading zero on the base is refused the same
+-- way, so `016#{FF}` is not a hexadecimal binary.
+--
+-- A body that does not fill its last byte is padded rather than refused, so
+-- `2#{000}` and `16#{0}` are both one zero byte.
 
 -- Resolved: reading reports the first failure and stops, as
 -- TranscodeRejectsMalformedSource states. Recovery needs a
@@ -522,10 +1212,8 @@ surface SourceReading {
 open question "A real R3 refuses % # $ \\ and a comma inside a word as well as an angle bracket -- `a%b`, `a#b`, `a$b` and `a,b` all raise invalid, measured directly. JEBOL refuses only the angle brackets so far. The hash is the awkward one: it is how a based number and a based binary are written, `2#01` and `64#{...}`, so a rule that refuses it in a word has to run after those forms are recognised rather than on the raw lexeme. Refusing it early turned `64#{` into the integer 64 and broke a source file that reads perfectly well. The comma is awkward for a different reason: the reader treats it as a delimiter, so `a,b` is split before any check sees it."
 
 -- Resolved against a real R3: a construct naming a series may carry its
--- position as a second value, so `#(string! "ab" 2)` is that string
--- standing at its second character and `#(block! [1 2 3] 2)` is [2 3].
--- It is how MOLD/ALL writes a series that was not at its head, and
--- without reading it back such a mold does not round-trip.
+-- position as a second value, which is the one exception to a read series
+-- starting at its head. TranscodedSeriesStartAtHead states it.
 --
 -- The block family converts within itself the way the string family
 -- does, so `#(paren! [1 2])` is a paren holding what the block held. A
@@ -567,3 +1255,7 @@ open question "A path may begin with a paren: `(make object! [q: 7])/q` is 7 in 
 -- Asking for a value where the source has none left raises past-end.
 -- Answering none would be wrong because none is a value a source can
 -- genuinely hold, and a caller could not tell the two apart.
+
+open question "A module whose header exports a word its body never defines puts an unset slot into the library and says nothing about it. The loader defines every exported name before the body runs, so by the time the export is copied the name is always known and the guard that was meant to catch this can never fire. Two honest answers and they differ in what a sound-but-sloppy file costs: raising when the module is made names the export that was never defined and stops the file, which catches a typo in a header at the moment it is introduced; skipping the copy for a word that is still unset lets the rest of the file load and leaves the library untouched. Which one applies, and does the answer change for a file JEBOL borrows rather than owns?"
+
+open question "A module built at load time is not the same as one a script asks for. Rebol's mezz-help.reb writes `import (module [...][...])` in its body, so the file needs the IMPORT function rather than a loader that reads headers, and IMPORT lives in sys-load.reb on top of the whole of LOAD-HEADER. That file costs a hundred and fifteen suite assertions when it goes in, because its LOAD replaces JEBOL's. So the ten functions mezz-help.reb defines -- HELP, ?, ABOUT, USAGE, WHAT, LICENSE, SOURCE, DUMP-OBJ, BUGS and CHANGES -- wait on sys-load.reb and not on this. Does the loader here and the IMPORT there end up sharing one path, or are they two ways of making a module that both have to exist?"

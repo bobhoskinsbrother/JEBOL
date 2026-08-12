@@ -120,7 +120,7 @@ class DirectoryNativesTest {
         Files.writeString(directory.resolve("inner/here.txt"), "found");
         Interpreter interpreter = reaching(
                 directory, HostService.WORKING_DIRECTORY, HostService.FILES);
-        assertThat(answerTo(interpreter, "change-dir %inner/ read %here.txt"))
+        assertThat(answerTo(interpreter, "change-dir %inner/ read/string %here.txt"))
                 .isEqualTo("\"found\"");
     }
 

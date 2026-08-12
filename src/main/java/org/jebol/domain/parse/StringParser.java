@@ -51,7 +51,7 @@ public final class StringParser {
      * the series and not only its text. This walked a copy for a long time,
      * which is why REMOVE worked on a block parse and not on a string one.
      */
-    private final SeriesValue source;
+    private SeriesValue source;
 
     /**
      * Whether the input is bytes rather than characters.
@@ -62,7 +62,7 @@ public final class StringParser {
      * single item is the byte's number, and a rule written as a binary is
      * compared byte for byte rather than as the text "01".
      */
-    private final boolean walkingBytes;
+    private boolean walkingBytes;
 
     /**
      * Whether the rules from here on mind case.
@@ -93,6 +93,13 @@ public final class StringParser {
         this.source = source;
         this.walkingBytes = source instanceof BinaryValue;
         this.text = textOfSeries(source);
+    }
+
+    private void adoptInput(SeriesValue newInput) {
+        this.source = newInput;
+        this.walkingBytes = newInput instanceof BinaryValue;
+        this.text = textOfSeries(newInput);
+        this.position = 0;
     }
 
     /**
@@ -267,17 +274,32 @@ public final class StringParser {
             return -1;
         }
         int before = position;
-        boolean matched = matchValue(rules.get(at + 1));
+        boolean matched = matchOne(rules, at + 1) != NO_MATCH;
         position = before;
-        return matched ? 2 : -1;
+        return matched ? 1 + ruleSpan(rules, at + 1) : -1;
+    }
+
+    private int negate(List<Value> rules, int at) {
+        if (at + 1 >= rules.size()) {
+            return -1;
+        }
+        int before = position;
+        boolean matched = matchOne(rules, at + 1) != NO_MATCH;
+        position = before;
+        return matched ? NO_MATCH : 1 + ruleSpan(rules, at + 1);
     }
 
     private boolean matchSequence(List<Value> rules) {
         int startedAt = position;
         for (List<Value> alternative : splitOnAlternatives(rules)) {
             position = startedAt;
-            if (matchAllOf(alternative)) {
-                return true;
+            try {
+                if (matchAllOf(alternative)) {
+                    return true;
+                }
+            } catch (Rejected rejected) {
+                position = startedAt;
+                return false;
             }
         }
         position = startedAt;
@@ -310,16 +332,17 @@ public final class StringParser {
             Context holder = back.isBound() ? back.binding() : context;
             if (holder.knows(back.canonical())
                     && holder.slotFor(back.canonical()).value() instanceof StringValue marked) {
-                // A mark from somewhere else, or from before where this
-                // parse began, is not a position this rule can seek to.
-                // Left unchecked it made the position negative and the
-                // next read of the source failed as a Java exception,
-                // which spec/embed.allium says cannot happen. A real R3
-                // refuses the rule instead.
+                if (!marked.sharesStorageWith(source)) {
+                    adoptInput(marked);
+                    return 1;
+                }
+                // A mark from before where this parse began is not a
+                // position this rule can seek to. Left unchecked it made
+                // the position negative and the next read of the source
+                // failed as a Java exception, which spec/embed.allium says
+                // cannot happen. A real R3 refuses the rule instead.
                 int sought = marked.index() - source.index();
-                if (!marked.sharesStorageWith(source)
-                        || sought < 0
-                        || sought > source.lengthFromHere()) {
+                if (sought < 0 || sought > source.lengthFromHere()) {
                     throw Raised.of(EvaluationFailure.PARSE_RULE,
                             ":" + back.spelling() + " is not a position in what is "
                                     + "being parsed");
@@ -350,6 +373,9 @@ public final class StringParser {
                 case "break" -> {
                     throw new RepeatEnded();
                 }
+                case "reject" -> {
+                    throw new Rejected();
+                }
                 case "case" -> setCaseMode(true);
                 case "no-case" -> setCaseMode(false);
                 case "change" -> changeMatched(rules, at);
@@ -360,6 +386,12 @@ public final class StringParser {
                 case "copy" -> capture(rules, at, true);
                 case "collect" -> collect(rules, at);
                 case "keep" -> keep(rules, at);
+                case "not" -> negate(rules, at);
+                case "then" -> 1;
+                case "limit" -> {
+                    throw Raised.of(EvaluationFailure.NOT_DONE,
+                            "limit is a parse command reserved for future use");
+                }
                 // A word that names something is that thing: a rule can
                 // be held in a word, and a bitset almost always is. The
                 // block parser has always resolved these and this one
@@ -437,7 +469,7 @@ public final class StringParser {
             }
             return switch (word.canonical()) {
                 case "any", "some", "opt", "to", "thru", "collect", "keep",
-                     "and", "ahead", "remove", "while", "insert", "if" ->
+                     "and", "ahead", "not", "remove", "while", "insert", "if" ->
                         1 + ruleSpan(rules, at + 1);
                 case "set", "copy" -> 2 + ruleSpan(rules, at + 2);
                 default -> 1;
@@ -715,6 +747,15 @@ public final class StringParser {
         }
     }
 
+    /** Signals that REJECT failed the current block without trying its later alternatives. */
+    private static final class Rejected extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        Rejected() {
+            super(null, null, false, false);
+        }
+    }
+
     private int repeat(List<Value> rules, int at, int leastNeeded) {
         int matched = 0;
         while (true) {
@@ -759,9 +800,12 @@ public final class StringParser {
         return 2;
     }
 
-    /** The rule words that repeat, which TO and THRU cannot seek to. */
-    private static final java.util.Set<String> REPEATING_KEYWORDS =
-            java.util.Set.of("some", "any", "while", "opt");
+    /** The parse command words TO and THRU cannot seek to. */
+    private static final java.util.Set<String> PARSE_COMMANDS = java.util.Set.of(
+            "skip", "to", "thru", "any", "some", "while", "opt", "and", "ahead",
+            "not", "then", "break", "reject", "accept", "return", "limit",
+            "case", "no-case", "change", "remove", "insert", "if", "set",
+            "copy", "collect", "keep", "into");
 
     private int seek(List<Value> rules, int at, boolean past) {
         Value wanted = rules.get(at + 1);
@@ -787,7 +831,7 @@ public final class StringParser {
         if (wanted instanceof DecimalValue
                 || (wanted instanceof WordValue keyword
                         && keyword.datatype() == Datatype.WORD
-                        && REPEATING_KEYWORDS.contains(keyword.canonical()))) {
+                        && PARSE_COMMANDS.contains(keyword.canonical()))) {
             throw Raised.of(EvaluationFailure.PARSE_RULE,
                     "to and thru take a place or something to look for, not "
                             + Molder.mold(wanted));

@@ -40,6 +40,24 @@ public final class Molder {
         return render(value, true);
     }
 
+    /**
+     * Source text that reads back including the series position, which plain
+     * MOLD drops.
+     *
+     * <p>A series not at its head molds as the positioned construct form:
+     * {@code mold/all next "123"} is {@code #[string! "123" 2]}, which LOAD
+     * reads back as the string at its second character. Rebol's own suite
+     * round-trips exactly that. A series already at its head, and anything
+     * that is not a series, molds as it always does.
+     */
+    public static String moldAll(Value value) {
+        if (value instanceof SeriesValue series && series.index() > 1) {
+            return "#(" + value.datatype().literalSpelling() + " "
+                    + mold(series.head()) + " " + series.index() + ")";
+        }
+        return render(value, true);
+    }
+
     /** Text for a person: strings unquoted, blocks without their brackets. */
     public static String form(Value value) {
         return render(value, false);
@@ -81,13 +99,25 @@ public final class Molder {
                     ? "#\"" + escape(character.toString()) + "\""
                     : character.toString();
             case PairValue pair -> moldHalf(pair.x()) + "x" + moldHalf(pair.y());
+            case EventValue event -> renderEvent(event, forReading);
+            // `Mold_Handle`: "#(handle! " then the type name, then a bracket, with
+            // a context handle's own molder allowed to add to it. A handle with no
+            // name at all falls back to `Emit(mold, "+T", value)`, the bare
+            // datatype -- and nothing here makes a nameless one.
+            case HandleValue handle -> "#(handle! " + handle.typeName() + ")";
             case TupleValue tuple -> tuple.toString();
             case TimeValue time -> time.toString();
             case DateValue date -> date.toString();
             case StringValue string -> renderString(string, forReading);
             case BinaryValue binary -> renderBinary(binary, forReading);
+            case ImageValue image -> renderImage(image, forReading);
+            case GobValue gob -> renderGob(gob, forReading);
             case BlockValue block -> renderBlock(block, forReading);
-            case WordValue word -> word.toString();
+            // MOLD keeps a word's sigil so it reads back; FORM drops it,
+            // because FORM is for a person: `form ['a b: :c] is "a b c".
+            // Every any-word datatype -- lit, set, get, refinement, issue --
+            // forms to its bare spelling in the C's Mold_Value.
+            case WordValue word -> forReading ? word.toString() : word.spelling();
             case DatatypeValue datatype -> forReading
                     ? "#(" + datatype.represents().literalSpelling() + ")"
                     : datatype.represents().literalSpelling();
@@ -107,6 +137,12 @@ public final class Molder {
             // mold column reads "object". Underneath it is one.
             case PortValue port -> renderObject(
                     new ObjectValue(port.context()), forReading);
+            // And a module molds as one for the same reason. Its header is
+            // not printed: SPEC-OF is how a caller reads that, and molding it
+            // here would make the words a module defines hard to find among
+            // ten fields of copyright text.
+            case ModuleValue module -> renderObject(
+                    new ObjectValue(module.context()), forReading);
             case ErrorValue error -> "#[error! " + error.errorId() + "]";
             case JavaObjectValue host -> "#[java-object! " + host.className() + "]";
         };
@@ -250,12 +286,17 @@ public final class Molder {
         if (map.pairCount() == 0) {
             return "#[]";
         }
+        // The pairs and nothing else. A word key carries its own colon,
+        // because it is stored as a set-word, so adding one here would write
+        // `a:: 1` for a word and `1: 2` for an integer -- and the second does
+        // not read back as a map at all. R3 molds `#[a: 1]` and `#[1 2]` for
+        // exactly this reason.
         StringBuilder rendered = new StringBuilder("#[\n");
         List<Value> flat = map.flattened();
         for (int at = 0; at < flat.size(); at += 2) {
             rendered.append("    ")
                     .append(render(flat.get(at), forReading))
-                    .append(": ")
+                    .append(' ')
                     .append(render(flat.get(at + 1), forReading))
                     .append('\n');
         }
@@ -266,14 +307,19 @@ public final class Molder {
      * Escaped for the braced form, which spares the quotes and nothing
      * else: a caret is still doubled or the text would not read back.
      */
-    private static String escapeInBraces(String text) {
+    private static String escapeInBraces(String text, boolean bracesAreUnbalanced) {
         StringBuilder escaped = new StringBuilder();
         text.codePoints().forEach(codepoint -> {
             switch (codepoint) {
-                case '^' -> escaped.append("^^");
-                case '\n' -> escaped.append("^/");
-                case '\t' -> escaped.append("^-");
-                default -> escaped.appendCodePoint(codepoint);
+                // A newline and a quote are themselves inside braces -- the
+                // whole reason the braced form exists is to spare them.
+                case '\n', '"' -> escaped.appendCodePoint(codepoint);
+                // A brace is escaped only when the braces do not pair up;
+                // a balanced pair stays literal, so `{a{b}c}` reads as
+                // written.
+                case '{', '}' -> escaped.append(
+                        bracesAreUnbalanced ? "^" + (char) codepoint : (char) codepoint);
+                default -> escaped.append(escapedCodepoint(codepoint));
             }
         });
         return escaped.toString();
@@ -303,30 +349,64 @@ public final class Molder {
             return string.datatype() == Datatype.TAG ? "<" + text + ">" : text;
         }
         return switch (string.datatype()) {
-            case FILE -> "%" + text;
+            case FILE -> moldedFile(text);
             case URL, EMAIL -> text;
             case TAG -> "<" + text + ">";
             case REF -> "@" + text;
-            // A string holding a quote molds with braces rather than
-            // escaping it, which is what makes the molded form readable
-            // and not merely re-readable.
-            default -> text.indexOf('"') >= 0 && balancedBraces(text)
-                    ? "{" + escapeInBraces(text) + "}"
-                    : "\"" + escape(text) + "\"";
+            default -> moldedText(text);
         };
+    }
+
+    /** The longest string molded with quotes before braces are used. */
+    private static final int LONGEST_QUOTED = 50;
+
+    /**
+     * The characters a file literal escapes as {@code %XX}: the lexer's own
+     * delimiters, the control range and space, and the percent and colon.
+     * The rest of {@code URL_Escapes}' file set.
+     */
+    private static final String FILE_DELIMITERS = ";\"()[]{}<>\\^%:";
+
+    /**
+     * A file molded, escaping the characters that would not read back as
+     * part of one. Without this a space truncated the path and a control
+     * character vanished, so {@code load mold} did not round-trip.
+     */
+    private static String moldedFile(String text) {
+        StringBuilder written = new StringBuilder("%");
+        text.codePoints().forEach(codepoint -> {
+            if (codepoint <= 0x20 || codepoint == 0x7F
+                    || FILE_DELIMITERS.indexOf(codepoint) >= 0) {
+                written.append("%").append("%02X".formatted(codepoint));
+            } else {
+                written.appendCodePoint(codepoint);
+            }
+        });
+        return written.toString();
+    }
+
+    /**
+     * A plain string molded, choosing quotes or braces as the C does.
+     *
+     * <p>{@code Mold_String_Series} uses the quoted form only when the text
+     * holds no quote, fewer than three newlines, and no more than fifty
+     * characters. Otherwise it uses braces, where a quote and a newline
+     * stand for themselves and only an unbalanced brace is escaped.
+     */
+    private static String moldedText(String text) {
+        long newlines = text.chars().filter(each -> each == '\n').count();
+        boolean quoted = text.indexOf('"') < 0
+                && newlines < 3
+                && text.codePointCount(0, text.length()) <= LONGEST_QUOTED;
+        return quoted
+                ? "\"" + escape(text) + "\""
+                : "{" + escapeInBraces(text, !balancedBraces(text)) + "}";
     }
 
     private static String escape(String text) {
         StringBuilder escaped = new StringBuilder(text.length());
-        text.codePoints().forEach(codepoint -> {
-            switch (codepoint) {
-                case '"' -> escaped.append("^\"");
-                case '^' -> escaped.append("^^");
-                case '\n' -> escaped.append("^/");
-                case '\t' -> escaped.append("^-");
-                default -> escaped.append(escapedCodepoint(codepoint));
-            }
-        });
+        text.codePoints().forEach(
+                codepoint -> escaped.append(escapedCodepoint(codepoint)));
         return escaped.toString();
     }
 
@@ -347,17 +427,24 @@ public final class Molder {
      * are what a person reading the output expects to see.
      */
     private static String escapedCodepoint(int codepoint) {
-        // 30 is the one hole in the range. Sixty-four above it is the
-        // caret itself, so ^^ would read back as a caret and the round
-        // trip would lose the value. R3 writes the hex form for that one
-        // and the letter for every other.
-        if (codepoint < 0x20 && codepoint != 0x1E) {
-            return "^" + (char) (codepoint + 64);
+        // The hex form for 0x1E and for 0x7F to 0x9F, which is the C's
+        // `chr == 0x1e || (chr >= 0x7f && chr < 0xA0)`. 0x1E is the hole in
+        // the caret-letter range: sixty-four above it is the caret itself,
+        // so `^^` would read back as a caret and lose the value.
+        if (codepoint == 0x1E || (codepoint >= 0x7F && codepoint <= 0x9F)) {
+            return "^(" + "%02X".formatted(codepoint) + ")";
         }
-        if (codepoint >= 0x20 && codepoint < 0x7F) {
-            return String.valueOf((char) codepoint);
-        }
-        return "^(" + "%02X".formatted(codepoint) + ")";
+        // The caret-letter escapes: the control range with its own letters
+        // for tab and newline, and the doubled caret and quote.
+        return switch (codepoint) {
+            case '\t' -> "^-";
+            case '\n' -> "^/";
+            case '"' -> "^\"";
+            case '^' -> "^^";
+            default -> codepoint < 0x20
+                    ? "^" + (char) (codepoint + 0x40)
+                    : new String(Character.toChars(codepoint));
+        };
     }
 
     /**
@@ -372,6 +459,38 @@ public final class Molder {
             hex.append("%02X".formatted(octet & 0xFF));
         }
         return hex.toString();
+    }
+
+    /**
+     * An image as its size and its pixels, from `Mold_Image_Data`.
+     *
+     * <p>`Pre_Mold` writes `make image! [` for an ordinary mold and `#(image! `
+     * for MOLD/ALL, so the two forms differ in their brackets rather than in
+     * their content. Six hex digits a pixel, from the position the image stands
+     * at -- `size = VAL_IMAGE_LEN(value)` counts from the index -- except under
+     * /ALL, which sets the index to zero first and molds the whole thing.
+     *
+     * <p>The alpha binary appears only when some pixel needs it, and that is
+     * decided by walking the pixels rather than by reading a flag. One byte a
+     * pixel, in the same order.
+     */
+    private static String renderImage(ImageValue image, boolean forReading) {
+        ImageValue shown = image;
+        StringBuilder colours = new StringBuilder();
+        StringBuilder alphas = new StringBuilder();
+        for (int pixel = 1; pixel <= shown.lengthFromHere(); pixel++) {
+            int[] channels = shown.pixelAt(pixel);
+            colours.append("%02X%02X%02X".formatted(channels[0], channels[1], channels[2]));
+            alphas.append("%02X".formatted(channels[3]));
+        }
+        String pixels = shown.storage().wide() + "x" + shown.storage().high()
+                + " #{" + colours + "}"
+                + (shown.storage().hasAlpha() ? " #{" + alphas + "}" : "");
+        // MOLD and FORM write the same thing: the image arm of the C's mold
+        // switch never looks at `molded`. The construction form `#(image! ...)`
+        // belongs to MOLD/ALL, which is not implemented for any datatype here --
+        // see 5c's MOLD/ALL cluster -- so it is not written for this one either.
+        return "make image! [" + pixels + "]";
     }
 
     private static String renderBinary(BinaryValue binary, boolean forReading) {
@@ -395,6 +514,11 @@ public final class Molder {
             case SET_PATH -> joinPath(block, "", ":");
             case GET_PATH -> joinPath(block, ":", "");
             case LIT_PATH -> joinPath(block, "'", "");
+            // A hash names its datatype, which is what the Mold column of
+            // `boot/types.reb` means by `+`: `Pre_Mold` emits "make T " for a
+            // plain mold and "#(T " for MOLD/ALL. Without it a hash molds as a
+            // block and reads back as one, which loses the datatype.
+            case HASH -> "make hash! [" + items + "]";
             default -> "[" + items + "]";
         };
     }
@@ -403,6 +527,49 @@ public final class Molder {
         return prefix + path.remaining().stream()
                 .map(Molder::mold)
                 .collect(Collectors.joining("/")) + suffix;
+    }
+
+    /**
+     * An event as the fields that answer something.
+     *
+     * <p>`Pre_Mold`, then each field of a fixed list that is not none, then a
+     * bracket. A word gets a quote in front of it -- `if (IS_WORD(&val))
+     * Append_Byte(mold->series, '\'')` -- so the mold reads back as the event it
+     * molded, which is not true of every datatype here.
+     */
+    private static String renderEvent(EventValue event, boolean forReading) {
+        StringBuilder built = new StringBuilder("make event! [");
+        List<Value> spec = event.moldingSpec();
+        for (int at = 0; at < spec.size(); at++) {
+            if (at > 0) {
+                built.append(' ');
+            }
+            Value shown = spec.get(at);
+            boolean quoted = shown instanceof WordValue word
+                    && word.datatype() == Datatype.WORD;
+            built.append(quoted ? "'" : "").append(render(shown, forReading));
+        }
+        return built.append(']').toString();
+    }
+
+    /**
+     * A gob as the spec block that would remake it.
+     *
+     * <p>`Pre_Mold`, `Gob_To_Block`, `End_Mold` -- so a gob molds as
+     * `make gob! [offset: 0x0 size: 100x100]` and reads back as a gob. Which
+     * fields appear is not "the ones that were set": offset and size always, the
+     * alpha only when the gob is see-through, and the one content field it has.
+     */
+    private static String renderGob(GobValue gob, boolean forReading) {
+        StringBuilder built = new StringBuilder("make gob! [");
+        List<Value> spec = gob.storage().moldingSpec();
+        for (int at = 0; at < spec.size(); at++) {
+            if (at > 0) {
+                built.append(' ');
+            }
+            built.append(render(spec.get(at), forReading));
+        }
+        return built.append(']').toString();
     }
 
     /**

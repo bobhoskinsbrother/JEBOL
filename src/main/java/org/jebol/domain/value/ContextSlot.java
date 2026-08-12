@@ -18,6 +18,9 @@ public final class ContextSlot {
     private Value value = UnsetValue.unset();
     private boolean protectedFromAssignment;
 
+    /** Whether the protection is permanent, as PROTECT/LOCK makes it. */
+    private boolean locked;
+
     /**
      * Whether this field is invisible from outside the object.
      *
@@ -72,6 +75,25 @@ public final class ContextSlot {
         this.protectedFromAssignment = true;
     }
 
+    /**
+     * Protects this slot for good, so nothing can release it again.
+     *
+     * <p>PROTECT/LOCK in the C, whose comment on the releasing side is the
+     * whole of the difference: "unprotect series only when not locked (using
+     * protect/permanently)". Rebol's own mezz-logger.reb ends with
+     * {@code protect/words/lock 'log-levels}, so that a script cannot quietly
+     * turn the logging levels back into something writable.
+     */
+    public void protectForGood() {
+        this.protectedFromAssignment = true;
+        this.locked = true;
+    }
+
+    /** Whether protection on this slot can no longer be released. */
+    public boolean isLocked() {
+        return locked;
+    }
+
     /** Whether this field is concealed from outside the object. */
     public boolean isHidden() {
         return hidden;
@@ -82,7 +104,17 @@ public final class ContextSlot {
         this.hidden = concealed;
     }
 
+    /**
+     * Releases the protection, unless it was locked.
+     *
+     * <p>UNPROTECT on a locked slot changes nothing rather than refusing, and
+     * that is what the C does: it tests {@code IS_LOCK_SERIES} and skips the
+     * release.
+     */
     public void allowAssignment() {
+        if (locked) {
+            return;
+        }
         this.protectedFromAssignment = false;
     }
 

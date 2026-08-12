@@ -16,7 +16,9 @@ import java.util.stream.Stream;
  * something.
  */
 public enum Typeset {
-    ANY_TYPE("any-type", EnumSet.allOf(Datatype.class)),
+    // Every datatype except END, which is the marker for no value at all:
+    // types.reb opens with it and any-type! starts one entry later.
+    ANY_TYPE("any-type", EnumSet.complementOf(EnumSet.of(Datatype.END))),
     NUMBER("number", EnumSet.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
     SCALAR("scalar", datatypesWhere(Datatype::isScalar)),
     SERIES("series", datatypesWhere(Datatype::isSeries)),

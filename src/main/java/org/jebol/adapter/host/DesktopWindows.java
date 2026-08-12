@@ -67,13 +67,15 @@ public final class DesktopWindows implements WindowPort {
     @Override
     public List<String> chooseFiles(
             boolean forSaving, boolean allowingMany,
-            Optional<String> suggestedName, Optional<String> title) {
+            Optional<String> suggestedName, Optional<String> title,
+            List<String> filterPairs) {
 
         requireADisplay();
         JFileChooser chooser = new JFileChooser();
         chooser.setMultiSelectionEnabled(allowingMany);
         title.ifPresent(chooser::setDialogTitle);
         suggestedName.ifPresent(name -> chooser.setSelectedFile(new File(name)));
+        eachFilterOf(filterPairs, chooser);
 
         int chose = forSaving
                 ? chooser.showSaveDialog(null)
@@ -88,6 +90,18 @@ public final class DesktopWindows implements WindowPort {
         Arrays.stream(chooser.getSelectedFiles())
                 .forEach(one -> chosen.add(one.getPath()));
         return chosen;
+    }
+
+    private static void eachFilterOf(List<String> filterPairs, JFileChooser chooser) {
+        for (int at = 0; at + 1 < filterPairs.size(); at += 2) {
+            String name = filterPairs.get(at);
+            String pattern = filterPairs.get(at + 1);
+            if (pattern.startsWith("*.")) {
+                chooser.addChoosableFileFilter(
+                        new javax.swing.filechooser.FileNameExtensionFilter(
+                                name, pattern.substring(2)));
+            }
+        }
     }
 
     @Override
@@ -124,14 +138,14 @@ public final class DesktopWindows implements WindowPort {
     }
 
     @Override
-    public Optional<String> askForPassword(Optional<String> title) {
+    public Optional<String> askForPassword() {
         requireADisplay();
         // A password field rather than a text field, so what the operator
         // types does not appear on the screen. That is the whole reason this
         // is a separate request.
         JPasswordField typing = new JPasswordField();
         int chose = JOptionPane.showConfirmDialog(
-                null, typing, title.orElse("Password"),
+                null, typing, "Password",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (chose != JOptionPane.OK_OPTION) {
             return Optional.empty();

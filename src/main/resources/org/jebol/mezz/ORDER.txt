@@ -1,83 +1,91 @@
-# The files of Rebol's own library that JEBOL can load, in the order they
-# must be loaded: a file that defines what another uses comes first.
+# Rebol's own library, in Rebol's own boot order.
 #
-# These are Rebol's, not JEBOL's. They are here rather than rewritten
-# because that is what the two-layer design is for -- an implementation
-# that can only be extended in its host language cannot borrow, and this
-# is twenty-five thousand lines worth borrowing from.
+# These are Rebol's files, not JEBOL's. They are loaded rather than
+# rewritten because that is what the two-layer design is for: an
+# implementation that can only be extended in its host language cannot
+# borrow, and this is twenty-five thousand lines worth borrowing from.
+# See decision 13.
 #
-# MezzanineLoadTest measures the whole set against this build and reports
-# what stops the rest. A file joins this list when it loads clean AND
-# BorrowedLibraryTest shows it changes no corpus answer for the worse.
+# The order and the grouping are not JEBOL's invention. They are the three
+# lists in Rebol's own `make/rebol3.nest`, and the C runs them in this
+# order in `Do_Global_Block`:
 #
-# mezz-func.reb and mezz-files.reb are here on disk and NOT in this list
-# yet, and the reason is measured rather than guessed. Adding both makes
-# every borrowed file load to its end for the first time -- zero partial
-# loads -- and gains twenty-five functions, LIST-DIR and everything
-# mezz-shell.reb defines among them. It also costs twenty-one unit
-# assertions, because Rebol's own CLEAN-PATH, INPUT, ASK, ENUM, CONTEXT and
-# MAP replace JEBOL's and then need natives JEBOL has not got: MAKE on a
-# file, and CASE with a condition whose block follows later.
+#   mezz-base-files   rebind 1 -- new words to lib, bind deep to lib
+#   mezz-sys-files    rebind 2 -- new words to sys, bind deep to lib then sys
+#   mezz-lib-files    run afterwards from sys-start, into lib
 #
-# Those six failures are the work-list, not an argument against the import.
-# See TODO.md.
+# "-> sys" after a name is that second group. The default is lib.
 #
-# The chain is worth writing down because one unwritten C native hid three
-# files and nineteen functions: mezz-shell.reb opens with
-# `ls: dir: :list-dir`, LIST-DIR lives in mezz-files.reb and is
-# `closure/with`, CLOSURE with /with lives in mezz-func.reb, and LIST-DIR's
-# body asks QUERY for three fields at once. QUERY is a C native (p-file.c)
-# and now exists; the two REBOL files are what remains.
+# A file whose own header says `Type: module` overrides both and gets a
+# context of its own, from which only its `Exports:` escape. That is in the
+# file rather than here because the file is what declares it. See
+# decision 14.
 #
-# base-files.reb and sys-load.reb are both absent, and the pair is the
-# reason this list is judged on the suite and not only on the corpus.
+# JEBOL used to interleave the three groups and put the sys files last, and
+# that is why base-funcs.reb went missing for so long without anyone
+# noticing. It is second in Rebol's list, ahead of everything that uses
+# FUNC, FUNCTION, APPLY, DEFAULT, MODULE and CAUSE-ERROR, and JEBOL carried
+# its own versions of those in the prelude instead.
 #
-# base-files.reb defines a LOAD that says of itself "minimal boot
-# version"; sys-load.reb replaces it. Loaded together they leave the
-# corpus untouched -- BorrowedLibraryTest reported zero divergence -- and
-# cost the suite a hundred and fifteen assertions. Zero divergence means
-# the corpus does not cover the difference, not that there is none.
+# Guessing a file's group from its name is wrong, which is why the marks are
+# here as data. sys-codec.reb is in Rebol's sys list and carries the comment
+# "export to lib!", and the mechanism behind that comment is its last line:
+# `export [register-codec decode encode encoding?]`. EXPORT is a real
+# function in sys-base.reb that copies each named word into lib. So the file
+# loads into sys and four of its words reach lib because it says so.
 #
-# So a file joins this list when it loads clean AND the suite count does
-# not fall. The corpus is the faster check and the smaller net.
+# What is deliberately left out, and why:
 #
-# Measured again since, one file at a time, against the suite:
+#   base-collected.reb   generated from the C sources by Rebol's own build.
+#                        JEBOL has no equivalent generator, so there is
+#                        nothing to collect.
+#   mezz-osx-dialogs.reb macOS only in Rebol. JEBOL's WINDOWS service covers
+#                        what it provides, per platform, in DesktopWindows.
 #
-#   base-files.reb   -115 assertions, and twenty corpus answers with it.
-#                    Its LOAD is the REBOL-level one and wants the whole
-#                    of sys/load-header underneath it.
-#   sys-load.reb     -115, for the same reason: it replaces that LOAD
-#                    with a fuller one that wants the same machinery.
-#   sys-start.reb    no change either way.
-#   codec-image.reb  no change either way.
-#
-# The last two cost nothing and buy nothing measurable, so they stay out
-# until something asks for them.
-#
-# base-defs.reb joined the list only after BINDING was fixed. It generates
-# its six reflector functions inside a USE, hanging each new name off
-# REFLECT's own context; JEBOL bound words to the scope they were bound
-# through rather than the context actually holding them, so all six were
-# defined in the USE scope and vanished with it. See
-# BindingNamesTheHolderTest.
+# BorrowedFilesLoadWholeTest fails if any file stops partway, and its list
+# of known stops is empty. A file that stops defines nothing below the line
+# it stopped on and says so nowhere else.
 
+# -- base: low-level boot, into lib ------------------------------------
 base-constants.reb
-base-defs.reb
+base-funcs.reb
 base-series.reb
+base-files.reb
 base-debug.reb
-mezz-math.reb
-mezz-series.reb
-mezz-date.reb
-mezz-tag.reb
-mezz-colors.reb
-mezz-debug.reb
-mezz-save.reb
+base-defs.reb
+
+# -- sys: the library's own private helpers, into sys ------------------
+sys-base.reb -> sys
+sys-ports.reb -> sys
+sys-codec.reb -> sys
+sys-load.reb -> sys
+sys-start.reb -> sys
+
+# -- lib: the mezzanine, into lib --------------------------------------
+mezz-ansi.reb
+mezz-secure.reb
+mezz-types.reb
 mezz-func.reb
+mezz-debug.reb
+mezz-logger.reb
+mezz-control.reb
+mezz-save.reb
+mezz-series.reb
 mezz-files.reb
 mezz-shell.reb
-sys-base.reb
-sys-ports.reb
-sys-codec.reb
+mezz-math.reb
+mezz-help.reb
+mezz-banner.reb
+
+# -- what Rebol imports on demand, and JEBOL boots ---------------------
+#
+# A deviation from Rebol, and a deliberate one: these are commented out of
+# Rebol's own lib list because it reaches them through IMPORT. JEBOL has no
+# IMPORT yet, so a codec that is not booted cannot be reached at all. Each
+# registers itself through REGISTER-CODEC, which sys-codec.reb exports.
+mezz-colors.reb
+mezz-date.reb
+mezz-tag.reb
 codec-braille.reb
 codec-css.reb
 codec-csv.reb
@@ -92,3 +100,73 @@ codec-ssh-key.reb
 codec-unixtime.reb
 codec-utc-time.reb
 codec-wav.reb
+
+# -- last of what Rebol boots, because that is what it is for ----------
+#
+# mezz-tail.reb is the last file in Rebol's own mezz-lib-files list, and it
+# has to be last of what JEBOL boots too. It sets the three aliases the rest
+# of the library reads -- `codecs: :system/codecs` among them -- and then calls
+# PROTECT-SYSTEM.
+#
+# It sits before the on-demand imports below rather than after them, which is
+# where Rebol has it. Sealing the system object first is not a problem for the
+# codecs that follow, because PROTECT-SYSTEM ends by naming the one part they
+# write to:
+#     unprotect/values [system/options system/catalog/file-types]
+# and REGISTER-CODEC does `append append system/catalog/file-types ...`.
+mezz-tail.reb
+
+# -- what Rebol imports on demand, and JEBOL boots ---------------------
+#
+# Rebol reaches every one of these through IMPORT, after the boot has ended.
+# JEBOL has no IMPORT yet, so a codec that is not booted cannot be reached at
+# all. They come after mezz-tail.reb because that is where Rebol's own
+# imports happen: `codecs` and `keys-of` are its aliases, and a file loaded
+# before it cannot see them -- which is what stopped codec-image-ext.reb.
+#
+# mezz-osx-dialogs.reb is deliberately not here. It opens by unsetting
+# REQUEST-DIR, REQUEST-FILE and REQUEST-COLOR and defining its own, each of
+# which shells out to `osascript`. JEBOL serves those three through the WINDOWS
+# service and its port, which works on every platform and asks the host's grant
+# first; the vendored file works on one platform and asks nobody. It read as
+# nothing until raw strings arrived -- its AppleScript is written as `%%{...}%%`
+# -- and loading it then replaced the port with a shell command.
+codec-ar.reb
+codec-bbcode.reb
+# codec-der.reb before codec-crt.reb, which opens with
+# `der-codec: system/codecs/DER`. Alphabetical order puts them the other way
+# about, and Rebol never has to decide: it imports each on demand, so a codec
+# that needs another is asking for it by the time it runs.
+codec-der.reb
+codec-crt.reb
+codec-ico.reb
+codec-image-ext.reb
+codec-image.reb
+codec-mime-field.reb
+codec-mime-types.reb
+codec-pdb.reb
+codec-pdf.reb
+codec-plist.reb
+codec-safe.reb
+codec-swf.reb
+codec-tar.reb
+codec-xml.reb
+codec-zip.reb
+dial-draw.reb
+dial-effect.reb
+dial-text.reb
+prot-daytime.reb
+prot-http.reb
+prot-mail.reb
+prot-mysql.reb
+prot-pop3.reb
+prot-rdap.reb
+prot-smtp.reb
+prot-tls.reb
+prot-whois.reb
+repl-completion.reb
+repl-line-editor.reb
+repl-rebol-console.reb
+sys-ports-audio.reb
+sys-ports-midi.reb
+view-funcs.reb

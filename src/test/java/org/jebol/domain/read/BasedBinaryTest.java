@@ -102,15 +102,17 @@ class BasedBinaryTest {
     }
 
     @Test
-    @DisplayName("a signed base is not refused yet, and R3 refuses it")
-    void theSignedBaseIsAKnownDivergence() {
-        // `+2#{}` reads as the integer 2 and an empty binary, where a
-        // real R3 raises invalid naming "integer". The reader ends the
-        // lexeme before the hash when a sign is present and after it when
-        // one is not, so the check that catches `0016#` never sees this
-        // one. Written down rather than left as a surprise; the open
-        // question is in spec/natives.allium.
-        assertThat(errorIdOf("load \"+2#{}\"")).isEqualTo("no-error");
+    @DisplayName("and a signed base is refused, because a base sits at the start of the token")
+    void aSignedBaseIsRefused() {
+        // `if (cp == scan_state->begin) { // no +2 +16 +64 allowed`.
+        //
+        // This test asserted `no-error` until the divergence was closed: `+2#{}`
+        // used to read as the integer 2 and an empty binary. The check that catches
+        // `0016#` never saw it, because the reader takes the hash into the lexeme
+        // when a sign is present and leaves it ahead when one is not, so the two
+        // spellings arrive in different shapes.
+        assertThat(errorIdOf("load \"+2#{}\"")).isEqualTo("invalid");
+        assertThat(errorIdOf("load \"-2#{01}\"")).isEqualTo("invalid");
     }
 
     @Test

@@ -50,6 +50,24 @@ tasks.test {
     // someone noticed.
     systemProperty("java.awt.headless", "true")
 
+    // Run the classes across several JVMs, because the suite is boot-bound
+    // rather than work-bound. `Interpreter.create()` costs about 68ms -- it
+    // loads and evaluates the whole imported library every time -- and nearly
+    // every test asks for a fresh one, while the evaluation each test then does
+    // is too fast to measure. So the wall clock is very close to
+    // 68ms times the number of tests, and on one fork that is nine minutes.
+    //
+    // The forks share nothing: each is a separate process with its own
+    // single-threaded interpreter, and no test writes to a fixed path outside
+    // its own temporary directory. Nothing about the interpreter becomes
+    // concurrent.
+    //
+    // Half the cores rather than all of them, because more buys nothing. Gradle
+    // hands out whole classes, so the wall clock cannot go below the slowest
+    // single class -- `BorrowedLibraryTest` at about two minutes -- and six forks
+    // already reach that floor. Ten measured the same to within two seconds.
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+
     // The corpus is test input. Without this, changing a .corpus file leaves
     // the test task up to date and the change never runs, which is how a new
     // corpus file can look green before anything has read it.

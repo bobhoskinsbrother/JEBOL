@@ -58,14 +58,14 @@ class DesktopWindowsTest {
                     .isThrownBy(() -> screen.browse("http://example.com"));
             assertThatExceptionOfType(WindowPort.Denied.class)
                     .isThrownBy(() -> screen.chooseFiles(
-                            false, false, Optional.empty(), Optional.empty()));
+                            false, false, Optional.empty(), Optional.empty(), List.of()));
             assertThatExceptionOfType(WindowPort.Denied.class)
                     .isThrownBy(() -> screen.chooseDirectory(
                             Optional.empty(), Optional.empty()));
             assertThatExceptionOfType(WindowPort.Denied.class)
                     .isThrownBy(() -> screen.chooseColour(Optional.empty()));
             assertThatExceptionOfType(WindowPort.Denied.class)
-                    .isThrownBy(() -> screen.askForPassword(Optional.empty()));
+                    .isThrownBy(screen::askForPassword);
         }
 
         @Test
@@ -135,7 +135,8 @@ class DesktopWindowsTest {
                 @Override
                 public List<String> chooseFiles(
                         boolean forSaving, boolean allowingMany,
-                        Optional<String> suggestedName, Optional<String> title) {
+                        Optional<String> suggestedName, Optional<String> title,
+                        List<String> filterPairs) {
                     return List.of();
                 }
 
@@ -151,7 +152,7 @@ class DesktopWindowsTest {
                 }
 
                 @Override
-                public Optional<String> askForPassword(Optional<String> title) {
+                public Optional<String> askForPassword() {
                     return Optional.empty();
                 }
             };

@@ -48,6 +48,7 @@ final class FunctionSpec {
         List<Parameter> parameters = new ArrayList<>();
         String currentRefinement = null;
         List<Value> items = spec.remaining();
+        Set<String> alreadyNamed = new java.util.HashSet<>();
 
         for (int index = 0; index < items.size(); index++) {
             Value item = items.get(index);
@@ -63,11 +64,28 @@ final class FunctionSpec {
                         "a function spec holds words, not "
                                 + item.datatype().literalSpelling());
             }
+            // The interface -- parameters, refinements and the return
+            // annotation -- may name nothing twice. A /local word may:
+            // Rebol's own FUNCTION collects the body's set-words into
+            // /local and a body that assigns the same name in two branches
+            // hands it two occurrences, which R3 tolerates there.
+            if (!LOCALS_REFINEMENT.equals(currentRefinement)) {
+                refuseADuplicate(word, alreadyNamed);
+            }
             if (word.datatype() == Datatype.REFINEMENT) {
                 currentRefinement = word.canonical();
-                if (!currentRefinement.equals(LOCALS_REFINEMENT)) {
-                    parameters.add(Parameter.refinement(word.spelling()));
-                }
+                // /local is a refinement like any other, and its own word is
+                // readable in the frame: none when the caller did not supply
+                // it. What is special is only that the words after it are the
+                // function's own rather than arguments, which localNamesIn
+                // collects and the walk below skips.
+                //
+                // Skipping the refinement itself left `local` holding unset,
+                // and Rebol's own LOAD opens with
+                //     assert/type [local none!]  ; protect against /local hacks
+                // which reads that word to check nobody passed /local. Every
+                // caller of LOAD and IMPORT stopped there.
+                parameters.add(Parameter.refinement(word.spelling()));
                 continue;
             }
             if (LOCALS_REFINEMENT.equals(currentRefinement)) {
@@ -76,8 +94,10 @@ final class FunctionSpec {
             // `return:` says what the function answers, not what it
             // takes. Counting it as a parameter made every function
             // carrying one want an argument it never uses. The spec has
-            // always named this kind; the walk did not honour it.
+            // always named this kind; the walk did not honour it. It must
+            // carry a type block: `func [return:]` is no definition at all.
             if (word.datatype() == Datatype.SET_WORD && word.canonical().equals("return")) {
+                requireAReturnAnnotationBlock(spec, items, index);
                 continue;
             }
             parameters.add(new Parameter(
@@ -104,6 +124,27 @@ final class FunctionSpec {
             }
         }
         return List.copyOf(locals);
+    }
+
+    private static void refuseADuplicate(WordValue word, Set<String> alreadyNamed) {
+        if (!alreadyNamed.add(word.canonical())) {
+            throw new Raised(org.jebol.domain.value.ErrorValue.about(
+                    org.jebol.domain.value.ErrorCategory.SCRIPT,
+                    EvaluationFailure.DUP_VARS.errorId(),
+                    EvaluationFailure.DUP_VARS.description(),
+                    WordValue.of(word.spelling())));
+        }
+    }
+
+    private static void requireAReturnAnnotationBlock(
+            BlockValue spec, List<Value> items, int index) {
+        if (index + 1 >= items.size() || !(items.get(index + 1) instanceof BlockValue)) {
+            throw new Raised(org.jebol.domain.value.ErrorValue.about(
+                    org.jebol.domain.value.ErrorCategory.SCRIPT,
+                    EvaluationFailure.BAD_FUNC_DEF.errorId(),
+                    EvaluationFailure.BAD_FUNC_DEF.description(),
+                    spec.head()));
+        }
     }
 
     private static ParameterKind kindOf(WordValue word) {

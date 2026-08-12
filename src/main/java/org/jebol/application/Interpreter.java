@@ -5,21 +5,25 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jebol.domain.eval.Binder;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.FilePort;
-import org.jebol.domain.eval.Interruption;
+import org.jebol.domain.eval.HaltRequested;
 import org.jebol.domain.eval.Natives;
 import org.jebol.domain.eval.Outcome;
 import org.jebol.domain.eval.OutputPort;
 import org.jebol.domain.eval.QuitRequested;
 import org.jebol.domain.eval.Raised;
 import org.jebol.domain.eval.Stopped;
+import org.jebol.domain.host.HostService;
+import org.jebol.domain.read.LibraryFileHeader;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.BlockValue;
@@ -27,6 +31,8 @@ import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.JavaObjectValue;
 import org.jebol.domain.value.NativeValue;
+import org.jebol.domain.value.ModuleValue;
+import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
@@ -66,20 +72,32 @@ public final class Interpreter {
     private final AtomicBoolean cancellationRequested = new AtomicBoolean();
     private volatile long deadlineNanos = Long.MAX_VALUE;
 
-    /** Whether to load Rebol's own library over the prelude. */
-    private final boolean borrowFromRebol;
+    /** Where the sys files define their words: {@code system/contexts/sys}. */
+    private final Context systemInternals;
 
     private Interpreter(OutputPort output, Bounds bounds) {
-        this(output, bounds, false);
-    }
-
-    private Interpreter(OutputPort output, Bounds bounds, boolean borrowFromRebol) {
-        this.borrowFromRebol = borrowFromRebol;
-        Natives natives = Natives.standard(bounds.grantedServices());
+        // The library may read the clock while it loads, whatever the host
+        // granted, because loading it is building the interpreter rather than
+        // running a script. Rebol's own prot-mysql.reb opens with
+        // `last-activity: now/precise` inside a top-level MAKE OBJECT!, so a
+        // host that grants nothing would otherwise get a language with no
+        // MySQL scheme in it -- and the grants exist to confine what a script
+        // can reach, not to decide which of Rebol's own files exist.
+        //
+        // The clock and nothing else. Reading it cannot leak anything and
+        // cannot change anything outside, which is not true of files, the
+        // network, or starting another program: if a library file ever wants
+        // one of those at load time, that is a decision to take with the file
+        // in hand. See decision 19.
+        Set<HostService> duringTheBoot = EnumSet.of(HostService.CLOCK);
+        duringTheBoot.addAll(bounds.grantedServices());
+        Natives natives = Natives.standard(duringTheBoot);
         natives.useFileSeparator(java.io.File.separatorChar);
         this.bounds = bounds;
         this.systemContext = natives.asContext();
+        this.systemInternals = natives.systemInternals();
         this.userContext = Context.childOf(systemContext);
+        publishTheUserContext();
         this.evaluator = new Evaluator(
                 natives.behaviours(),
                 systemContext,
@@ -91,6 +109,9 @@ public final class Interpreter {
         loadPrelude();
         loadRebolsOwnLibrary();
         registerTheSchemesJebolCanServe();
+        // The boot is over, so the host's grants take effect. Everything the
+        // script can reach from here asks the bounds and not this set.
+        natives.grantOnly(bounds.grantedServices());
         // What the library's own loading caught is not what the script
         // did, and system/state is the script's view.
         natives.forgetStartupState();
@@ -110,10 +131,20 @@ public final class Interpreter {
      * calls {@code make-port*}.
      */
     private void registerTheSchemesJebolCanServe() {
-        if (!systemContext.knows("make-scheme")) {
+        // MAKE-SCHEME is sys-ports.reb's, so it is in sys and not in the
+        // library. R3 calls it the same way, from INIT-SCHEMES in that file.
+        if (!systemInternals.knows("make-scheme")) {
             return;
         }
-        run("make-scheme [title: \"Console Access\" name: 'console]");
+        // INIT-SCHEMES opens with a line that is not about schemes at all:
+        //     sys/decode-url: lib/decode-url: :sys/url-parser/parse-url
+        // Rebol builds DECODE-URL as a method of its url-parser object and
+        // publishes it from there. JEBOL does not run INIT-SCHEMES, because
+        // that function registers every scheme Rebol's host can reach and
+        // JEBOL has an actor for one, so this line has to be run here or
+        // DECODE-URL stays none.
+        run("sys/decode-url: lib/decode-url: :sys/url-parser/parse-url");
+        run("sys/make-scheme [title: \"Console Access\" name: 'console]");
     }
 
     /** Where the REBOL half of the standard library lives. */
@@ -174,22 +205,16 @@ public final class Interpreter {
      * cannot borrow, and there are twenty-five thousand lines here worth
      * borrowing from.
      *
-     * <p>Off by default, and the reason is the work rather than a
-     * doubt about the approach. Loading these replaces JEBOL's own
-     * definition of every word they define, and where the natives
-     * underneath are wrong the borrowed version is worse than what it
-     * replaced -- forty-six corpus entries and a hundred suite
-     * assertions worse, at the last count.
+     * <p>Always, now. This was behind a switch while the borrowed versions were
+     * worse than the natives they replaced -- forty-six corpus entries and a
+     * hundred suite assertions worse, at the last count -- and each difference
+     * named a native that did not do what Rebol's own code expected of it. That
+     * list emptied and the switch came off.
      *
-     * <p>That list is the point. Each failure names a native that does
-     * not do what Rebol's own code expects of it, which is a better
-     * work-list than any inventory: it is driven by what the language
-     * actually needs rather than by what is missing from a catalogue.
-     * REDUCE taking only a block and the eight typeset predicates being
-     * absent were both found this way.
-     *
-     * <p>The switch comes off when the list empties. Until then the
-     * default interpreter is the one that works.
+     * <p>The measurement went with it. Comparing an interpreter with the library
+     * against one without needs two different interpreters, and there is only one
+     * kind now. When it is worth having again it should be a comparison against a
+     * real 3.22.1 rather than against JEBOL's own smaller self.
      *
      * <p>A file that fails here is skipped rather than fatal, unlike the
      * prelude. The prelude is JEBOL's and its failure is a defect; these
@@ -202,27 +227,225 @@ public final class Interpreter {
      * functions into a scope that was thrown away straight afterwards.
      */
     private void loadRebolsOwnLibrary() {
-        for (String name : borrowedFileNames()) {
+        for (String entry : borrowedFileNames()) {
+            String name = fileNameIn(entry);
             String source = resourceText(MEZZANINE + name);
             if (source == null) {
                 continue;
             }
             TranscodeResult read = Transcoder.transcode(source);
             if (read.values().isEmpty()) {
-                borrowedLoadFailures.put(name, "did not read");
+                borrowedLoadFailures.put(name, read.error().orElseThrow().toString());
                 continue;
             }
             BlockValue values = read.values().orElseThrow();
-            // The REBOL [...] header is data, not code.
-            BlockValue body = values.remaining().size() >= 2
-                    ? values.atIndex(3)
-                    : values;
-            defineAssignedWordsIn(body, systemContext);
-            Outcome outcome = evaluator.evaluate(
-                    Binder.bind(body, systemContext), systemContext);
+            // The REBOL [...] header is data, not code. It is read all the
+            // same, because it says where the file's words belong.
+            boolean hasHeader = startsWithARebolHeader(values);
+            // The second value, not the block positioned at it: atIndex gives
+            // a position, which is what the body wants and the header does
+            // not.
+            LibraryFileHeader header = hasHeader
+                    ? LibraryFileHeader.readFrom(values.remaining().get(1))
+                    : LibraryFileHeader.none();
+            BlockValue body = hasHeader ? values.atIndex(3) : values;
+
+            Outcome outcome = header.declaresAModule()
+                    ? loadAsAModule(body, header)
+                    : entry.endsWith(INTO_SYS)
+                            ? loadAsASystemFile(body)
+                            : loadInto(body, systemContext);
             if (outcome instanceof Outcome.Raised raised) {
                 borrowedLoadFailures.put(name, raised.failure().toString());
             }
+        }
+    }
+
+    /**
+     * Loads a sys file: its own set-words go to sys, everything else to lib.
+     *
+     * <p>R3 runs these with rebind 2, which is two binds in this order:
+     *
+     * <pre>
+     * Bind_Block(Sys_Context, BLK_HEAD(block), BIND_SET);   // new set-words to sys
+     * Bind_Block(Lib_Context, BLK_HEAD(block), BIND_DEEP);  // the rest to lib
+     * </pre>
+     *
+     * <p>Two binds rather than one, because a sys file can use the same
+     * spelling for both. base-defs.reb declares {@code decode-url: none} with
+     * the note "set in sys init", and sys-ports.reb sets it with
+     * {@code set 'decode-url} from inside a nested block. That lit-word has to
+     * reach the library, while the top-level {@code decode-url: none} on the
+     * line after has to reach sys. One bind cannot do both.
+     *
+     * <p>Loading these into the library instead is what made DECODE-URL none:
+     * the two lines became the same word and the none, being last, won.
+     */
+    private Outcome loadAsASystemFile(BlockValue body) {
+        // Pass one: the file's own set-words get a slot in sys, whether or
+        // not the library already holds that spelling. BIND_SET builds its
+        // table from sys alone, so a spelling lib also has still becomes a
+        // sys word. sys-ports.reb writes `decode-url: none` and the library
+        // already has DECODE-URL, and in R3 those stay two different words.
+        //
+        // Shallow, and the C says why: "BIND_SET must be used carefully,
+        // because it does not bind prior instances of the word before the
+        // set-word."
+        for (Value item : body.remaining()) {
+            if (item instanceof WordValue word
+                    && word.datatype() == Datatype.SET_WORD
+                    && !systemInternals.holds(word.canonical())) {
+                systemInternals.define(word.spelling());
+            }
+        }
+        // Passes two and three: bind deep to lib, then deep to sys. Binding
+        // into sys does both at once, because sys is a child of lib and a
+        // word binds to whichever context actually holds its slot. Sys wins
+        // where sys has the word, which is pass three, and lib supplies the
+        // rest, which is pass two.
+        //
+        // Pass three is not optional. Leaving it out bound EXPORT to lib,
+        // where it does not exist: EXPORT is sys-base.reb's, and it is how
+        // sys-codec.reb gets REGISTER-CODEC into lib for all fourteen codec
+        // files to call.
+        return evaluator.evaluate(
+                Binder.bind(body, systemInternals), systemInternals);
+    }
+
+    private static boolean startsWithARebolHeader(BlockValue values) {
+        List<Value> items = values.remaining();
+        return items.size() >= 2
+                && items.get(0) instanceof WordValue opening
+                && "rebol".equals(opening.canonical())
+                && items.get(1) instanceof BlockValue;
+    }
+
+    /** Defines a body's assigned words in a context, then runs it there. */
+    private Outcome loadInto(BlockValue body, Context target) {
+        defineAssignedWordsIn(body, target);
+        return evaluator.evaluate(Binder.bind(body, target), target);
+    }
+
+    /**
+     * Loads a file whose header says {@code Type: module}.
+     *
+     * <p>The body runs in a context of its own, a child of the library so
+     * that it still sees every standard function, and then only the words the
+     * header exports are copied out. Everything else stays where it was put.
+     *
+     * <p>This is the whole point of the datatype. Rebol's JSON codec declares
+     * {@code Type: module} and defines a parse rule named {@code exp} and
+     * another named {@code stack}. Loaded into the library, those two replace
+     * the library functions of the same spelling, and nothing reports it: the
+     * word still answers, it just answers a block.
+     */
+    private Outcome loadAsAModule(BlockValue body, LibraryFileHeader header) {
+        Context own = Context.childOf(systemContext);
+        // The exported words get their slots before the body is bound, which is
+        // one line of MAKE-MODULE* with the reason written beside it:
+        //     bind/new spec/exports context
+        //     ; Add exported words at top of context (performance)
+        //
+        // Performance is not the half that matters. A module may define an
+        // exported word with `set 'name func [...]` rather than with a
+        // set-word, and prot-mysql.reb defines five of its six that way. The
+        // set-word pass below cannot see those, so without this the word is
+        // unbound where the body refers to it later and the file stops on the
+        // first such reference.
+        for (String exported : header.exportedNames()) {
+            if (!own.holds(exported)) {
+                own.define(exported);
+            }
+        }
+        // Every word the body assigns gets a slot here, whether or not the
+        // library already holds that spelling. Skipping the ones the library
+        // knows is what a plain load does, and it is exactly wrong for a
+        // module: EXP is a native, so the JSON codec's `exp:` bound to the
+        // library's slot and overwrote the function with a parse rule.
+        for (Value item : body.remaining()) {
+            if (item instanceof WordValue word
+                    && word.datatype() == Datatype.SET_WORD
+                    && !own.holds(word.canonical())) {
+                own.define(word.spelling());
+            }
+        }
+        Outcome outcome = evaluator.evaluate(Binder.bind(body, own), own);
+        if (outcome instanceof Outcome.Raised) {
+            // A module that stopped partway publishes nothing. Half its
+            // exports would be worse than none: a caller cannot tell a
+            // function that is missing from one that is missing its helpers.
+            return outcome;
+        }
+        for (String exported : header.exportedNames()) {
+            if (own.holds(exported)) {
+                systemContext.set(exported, own.ownSlotFor(exported).value());
+            }
+        }
+        registerTheModule(header, own);
+        return outcome;
+    }
+
+    /**
+     * Puts a loaded module in {@code system/modules} under its own name.
+     *
+     * <p>What LOAD-MODULE does when it has finished: {@code repend
+     * system/modules [name module]}. In this fork that object starts out
+     * holding a URL per external extension, and REPEND on an object writes
+     * fields, so a loaded module takes the place of the address it would have
+     * been fetched from.
+     *
+     * <p>IMPORT reads it back with {@code select system/modules name} and
+     * answers the module it finds rather than loading anything, which is how
+     * importing the same module twice costs nothing. Without this every IMPORT
+     * of an already-booted module went looking for a file: {@code import
+     * 'quoted-printable} in codec-mime-field.reb is the first one to try.
+     */
+    private void registerTheModule(LibraryFileHeader header, Context own) {
+        String name = header.moduleName();
+        if (name.isEmpty()
+                || !(pathInto("system", "modules") instanceof ObjectValue modules)) {
+            return;
+        }
+        // Enough of a header for SPEC-OF to answer: what it is called, what it
+        // is, and what it publishes. The rest of a real header is copyright
+        // text, and this is not a place to keep a second copy of it.
+        Context spec = Context.root();
+        spec.set("name", WordValue.of(name));
+        spec.set("type", WordValue.of("module"));
+        spec.set("exports", BlockValue.block(header.exportedNames().stream()
+                .<Value>map(WordValue::of).toList()));
+        modules.context().set(name, new ModuleValue(own, new ObjectValue(spec)));
+    }
+
+    /** A value read out of the system object by a path of field names. */
+    private Value pathInto(String... names) {
+        Value here = systemContext.knows(names[0])
+                ? systemContext.slotFor(names[0]).value()
+                : UnsetValue.unset();
+        for (int at = 1; at < names.length; at++) {
+            if (!(here instanceof ObjectValue object)
+                    || !object.context().holds(names[at])) {
+                return UnsetValue.unset();
+            }
+            here = object.context().ownSlotFor(names[at]).value();
+        }
+        return here;
+    }
+
+    /**
+     * Publishes the user context as {@code system/contexts/user}.
+     *
+     * <p>{@code sysobj.reb} names four contexts and JEBOL published two of
+     * them. INTERN, MODULE and IMPORT all reach for this one.
+     */
+    private void publishTheUserContext() {
+        if (systemContext.knows("system")
+                && systemContext.slotFor("system").value()
+                        instanceof ObjectValue system
+                && system.context().holds("contexts")
+                && system.context().ownSlotFor("contexts").value()
+                        instanceof ObjectValue contexts) {
+            contexts.context().set("user", new ObjectValue(userContext));
         }
     }
 
@@ -235,6 +458,9 @@ public final class Interpreter {
         return Map.copyOf(borrowedLoadFailures);
     }
 
+    /** Where a file's new words go, as ORDER.txt says. */
+    private static final String INTO_SYS = "-> sys";
+
     private List<String> borrowedFileNames() {
         String order = resourceText(MEZZANINE + "ORDER.txt");
         if (order == null) {
@@ -244,6 +470,12 @@ public final class Interpreter {
                 .map(String::strip)
                 .filter(line -> !line.isEmpty() && !line.startsWith("#"))
                 .toList();
+    }
+
+    /** The file name, without the target ORDER.txt may have written after it. */
+    private static String fileNameIn(String entry) {
+        int marker = entry.indexOf("->");
+        return marker < 0 ? entry : entry.substring(0, marker).strip();
     }
 
     private static String resourceText(String path) {
@@ -259,18 +491,6 @@ public final class Interpreter {
     /** An interpreter with the standard bounds, whose output goes nowhere. */
     public static Interpreter create() {
         return new Interpreter(OutputPort.discarding(), Bounds.standard());
-    }
-
-    /**
-     * An interpreter that also loads Rebol's own library.
-     *
-     * <p>For measuring what the borrowed code still needs from the
-     * native layer. Not the default: see loadRebolsOwnLibrary.
-     */
-    public static Interpreter borrowingFromRebol() {
-        Interpreter interpreter = new Interpreter(
-                OutputPort.discarding(), Bounds.standard(), true);
-        return interpreter;
     }
 
     /** An interpreter with bounds the host chose. */
@@ -310,6 +530,14 @@ public final class Interpreter {
             return new ScriptOutcome(
                     Conclusion.QUIT_EARLY,
                     quit.answer(),
+                    Duration.ofNanos(System.nanoTime() - startedAt));
+        // HALT ends the script and leaves the interpreter usable, which is the
+        // whole difference from QUIT. It carries no value, so the outcome
+        // carries none.
+        } catch (HaltRequested halted) {
+            return new ScriptOutcome(
+                    Conclusion.HALTED,
+                    UnsetValue.unset(),
                     Duration.ofNanos(System.nanoTime() - startedAt));
         } catch (Stopped stopped) {
             return new ScriptOutcome(
@@ -381,6 +609,11 @@ public final class Interpreter {
             return new Step(new ScriptOutcome(
                     Conclusion.QUIT_EARLY,
                     quit.answer(),
+                    Duration.ofNanos(System.nanoTime() - startedAt)), "");
+        } catch (HaltRequested halted) {
+            return new Step(new ScriptOutcome(
+                    Conclusion.HALTED,
+                    UnsetValue.unset(),
                     Duration.ofNanos(System.nanoTime() - startedAt)), "");
         } catch (Stopped stopped) {
             return new Step(new ScriptOutcome(

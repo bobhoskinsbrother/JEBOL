@@ -124,6 +124,30 @@ public final class FileSystemPort implements FilePort {
     }
 
     /**
+     * The canonical absolute path, or null when nothing is there.
+     *
+     * <p>{@code toRealPath} resolves symbolic links and removes every
+     * {@code .} and {@code ..}, which is what TO-REAL-FILE means by real. It
+     * refuses a path that does not exist, and that refusal is the answer: null
+     * here, none to the script.
+     *
+     * <p>The result is still reported inside this port's own root rather than
+     * as a machine-wide path. A script granted a filesystem rooted at one
+     * directory has no business learning where that directory sits.
+     */
+    @Override
+    public String canonicalPathOf(String path) {
+        try {
+            java.nio.file.Path real = within(path).toRealPath();
+            java.nio.file.Path relative = root.toRealPath().relativize(real);
+            return "/" + relative.toString().replace(
+                    java.io.File.separatorChar, '/');
+        } catch (java.io.IOException notThere) {
+            return null;
+        }
+    }
+
+    /**
      * What this filesystem knows about one path, or empty when nothing is
      * there.
      *
@@ -183,25 +207,54 @@ public final class FileSystemPort implements FilePort {
     }
 
     @Override
-    public String read(String path) {
+    public byte[] readBytes(String path) {
         Path file = within(path);
         try {
-            return Files.readString(file, StandardCharsets.UTF_8);
+            return Files.readAllBytes(file);
         } catch (IOException unreadable) {
-            throw new Denied("cannot-open", "cannot read " + path);
+            throw new Denied("cannot-open", "cannot read " + path, path);
         }
     }
 
     @Override
-    public void write(String path, String contents) {
-        if (!writable) {
-            throw new Denied("read-only", "this filesystem may only be read");
-        }
-        Path file = within(path);
+    public void appendTo(String path, byte[] contents) {
+        refuseWhenReadOnly();
         try {
-            Files.writeString(file, contents, StandardCharsets.UTF_8);
+            Files.write(within(path), contents,
+                    java.nio.file.StandardOpenOption.CREATE,
+                    java.nio.file.StandardOpenOption.APPEND);
+        } catch (IOException unwritable) {
+            throw new Denied("cannot-open", "cannot append to " + path);
+        }
+    }
+
+    @Override
+    public void write(String path, byte[] contents) {
+        refuseWhenReadOnly();
+        try {
+            Files.write(within(path), contents);
         } catch (IOException unwritable) {
             throw new Denied("cannot-open", "cannot write " + path);
+        }
+    }
+
+    @Override
+    public void writeAt(String path, long position, byte[] contents) {
+        refuseWhenReadOnly();
+        try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(
+                within(path),
+                java.nio.file.StandardOpenOption.CREATE,
+                java.nio.file.StandardOpenOption.WRITE)) {
+            channel.position(position);
+            channel.write(java.nio.ByteBuffer.wrap(contents));
+        } catch (IOException unwritable) {
+            throw new Denied("cannot-open", "cannot write " + path);
+        }
+    }
+
+    private void refuseWhenReadOnly() {
+        if (!writable) {
+            throw new Denied("read-only", "this filesystem may only be read");
         }
     }
 

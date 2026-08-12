@@ -38,7 +38,7 @@ class BorrowingReplacesNativesTest {
     @Test
     @DisplayName("a native no borrowed file defines is left alone")
     void theUnclaimedNativeSurvives() {
-        Interpreter borrowing = Interpreter.borrowingFromRebol();
+        Interpreter borrowing = Interpreter.create();
 
         assertThat(borrowing.display(borrowing.run("type? :add")))
                 .isEqualTo("#(native!)");

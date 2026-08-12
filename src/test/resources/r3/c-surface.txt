@@ -1,0 +1,461 @@
+# Rebol's C surface, read from its own source. Written by
+# scripts/c-surface.py. No running binary is involved.
+
+# TYPESET name | the datatypes that belong to it
+TYPESET any-block! | block! get-path! hash! lit-path! paren! path! set-path!
+TYPESET any-function! | action! closure! command! function! native! op! rebcode!
+TYPESET any-object! | error! module! object! port! task!
+TYPESET any-path! | get-path! lit-path! path! set-path!
+TYPESET any-string! | email! file! ref! string! tag! url!
+TYPESET any-word! | get-word! issue! lit-word! refinement! set-word! word!
+TYPESET number! | decimal! integer! percent!
+TYPESET scalar! | char! date! decimal! integer! money! pair! percent! time! tuple!
+TYPESET series! | binary! block! email! file! get-path! hash! image! lit-path! paren! path! ref! set-path! string! tag! url! vector!
+
+# DATATYPE name | typeclass path make
+DATATYPE action! | function - *
+DATATYPE binary! | string * *
+DATATYPE bitset! | bitset * *
+DATATYPE block! | block * *
+DATATYPE char! | char * -
+DATATYPE closure! | function - *
+DATATYPE command! | function - *
+DATATYPE datatype! | datatype - *
+DATATYPE date! | date * *
+DATATYPE decimal! | decimal - *
+DATATYPE email! | string * *
+DATATYPE end! | 0 - -
+DATATYPE error! | object * *
+DATATYPE event! | event * *
+DATATYPE file! | string file *
+DATATYPE frame! | frame * -
+DATATYPE function! | function - *
+DATATYPE get-path! | block * *
+DATATYPE get-word! | word - -
+DATATYPE gob! | gob * *
+DATATYPE handle! | handle * -
+DATATYPE hash! | block * *
+DATATYPE image! | image * *
+DATATYPE integer! | integer - -
+DATATYPE issue! | word - -
+DATATYPE library! | 0 - -
+DATATYPE lit-path! | block * *
+DATATYPE lit-word! | word - -
+DATATYPE logic! | logic - *
+DATATYPE map! | map * *
+DATATYPE module! | object * *
+DATATYPE money! | money - -
+DATATYPE native! | function - *
+DATATYPE none! | none - *
+DATATYPE object! | object * *
+DATATYPE op! | function - *
+DATATYPE pair! | pair * *
+DATATYPE paren! | block * *
+DATATYPE path! | block * *
+DATATYPE percent! | decimal - *
+DATATYPE port! | port object -
+DATATYPE rebcode! | 0 - *
+DATATYPE ref! | string * *
+DATATYPE refinement! | word - -
+DATATYPE set-path! | block * *
+DATATYPE set-word! | word - -
+DATATYPE string! | string * *
+DATATYPE struct! | struct * *
+DATATYPE tag! | string * *
+DATATYPE task! | object * *
+DATATYPE time! | time * *
+DATATYPE tuple! | tuple * *
+DATATYPE typeset! | typeset - *
+DATATYPE unset! | none - *
+DATATYPE url! | string file *
+DATATYPE utype! | utype - -
+DATATYPE vector! | vector * *
+DATATYPE word! | word - -
+
+# ARMS typeclass | the actions its REBTYPE block implements
+ARMS Bitset | append clear complement copy find insert length? make negate pick poke remove tail? to
+ARMS Block | append at atz back change clear copy find head head? index? indexz? insert length? next past? pick poke put random remove reverse select skip sort swap tail tail? take trim
+ARMS Char | add complement divide even? make multiply negate odd? random remainder subtract to
+ARMS Datatype | make reflect to
+ARMS Date | absolute even? make odd? pick poke query random reflect to
+ARMS Decimal | absolute add complement divide even? make multiply negate odd? power random remainder round subtract to
+ARMS Event | pick
+ARMS Frame | make to
+ARMS Function | copy make reflect to
+ARMS Gob | append at atz back change clear find head head? index? indexz? insert length? make next past? pick poke remove reverse skip tail tail? take
+ARMS Handle | query reflect
+ARMS Image | append at atz back change clear complement copy find head head? index? indexz? insert length? make next pick poke remove skip tail tail? to
+ARMS Integer | absolute add complement divide even? make multiply negate odd? power random remainder round subtract to
+ARMS Logic | change complement make random to
+ARMS Map | append clear copy find insert length? make pick poke put reflect remove select tail? to
+ARMS Money | absolute add divide even? make multiply negate odd? remainder round subtract to
+ARMS None | clear find index? length? make remove select tail? take to
+ARMS Object | append copy find insert length? make pick put reflect select tail? to trim
+ARMS Pair | absolute add complement divide even? make multiply negate odd? pick poke random remainder reverse round subtract to
+ARMS Port | create delete make modify open query read reflect rename to update write
+ARMS String | append at atz back change clear complement copy find head head? index? indexz? insert length? make next past? pick poke random remove reverse select skip sort swap tail tail? take to trim
+ARMS Struct | change clear copy length? make reflect to
+ARMS Time | absolute add divide even? make multiply negate odd? pick poke random remainder round subtract to
+ARMS Tuple | add complement divide length? make multiply pick poke random remainder reverse subtract to
+ARMS Typeset | complement find make tail? to
+ARMS Vector | add append at atz back change clear copy divide head head? index? indexz? insert length? make multiply next past? pick poke query random reflect remainder remove reverse skip sort subtract tail tail? take to
+ARMS Word | length? make open query read to write
+
+# ACTION name | declared spec
+ACTION absolute | value<number! pair! money! time!>
+ACTION add | value1<scalar! date! vector!> value2<scalar! date! vector!>
+ACTION and~ | value1<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!> value2<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!>
+ACTION append | series<series! port! map! gob! object! bitset!> value<any-type!> /part range<number! series! pair!> /only /dup count<number! pair!>
+ACTION at | series<series! gob! port!> index<number! logic! pair!>
+ACTION atz | series<series! gob! port!> index<number! logic! pair!>
+ACTION back | series<series! gob! port!>
+ACTION change | series<series! gob! port! struct!> value<any-type!> /part range<number! series! pair!> /only /dup count<number! pair!>
+ACTION clear | series<series! port! map! gob! bitset! struct! none!>
+ACTION close | port<port!>
+ACTION complement | value<logic! integer! tuple! binary! bitset! typeset! image!>
+ACTION copy | value<series! port! map! object! bitset! any-function! error! struct!> /part range<number! series! pair!> /deep /types kinds<typeset! datatype!>
+ACTION create | port<port! file! url! block!>
+ACTION delete | port<port! file! url! block!>
+ACTION divide | value1<scalar! vector!> value2<scalar! vector!>
+ACTION even? | number<number! char! date! money! time! pair!>
+ACTION find | series<series! map! any-object! gob! bitset! typeset! none!> value<any-type!> /part range<number! series! pair!> /only /case /same /any /with wild<string!> /skip size<integer!> /last /reverse /tail /match
+ACTION flush | port<port!>
+ACTION head | series<series! gob! port!>
+ACTION head? | series<series! gob! port!>
+ACTION index? | series<series! gob! port! none!> /xy
+ACTION indexz? | series<series! gob! port! none!> /xy
+ACTION insert | series<series! port! map! gob! object! bitset!> value<any-type!> /part range<number! series! pair!> /only /dup count<number! pair!>
+ACTION length? | series<series! port! map! tuple! bitset! object! gob! struct! any-word! none!>
+ACTION make | type<any-type!> spec<any-type!>
+ACTION modify | target<port! file!> field<word! none!> value
+ACTION multiply | value1<scalar! vector!> value2<scalar! vector!>
+ACTION negate | number<number! pair! money! time! bitset!>
+ACTION next | series<series! gob! port!>
+ACTION odd? | number<number! char! date! money! time! pair!>
+ACTION open | spec<port! file! url! block! word!> /new /read /write /seek /allow access<block!>
+ACTION open? | port<port!>
+ACTION or~ | value1<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!> value2<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!>
+ACTION past? | series<series! gob! port!>
+ACTION pick | aggregate<series! map! gob! pair! date! time! tuple! bitset! port!> index
+ACTION poke | series<series! port! map! gob! bitset!> index value<any-type!>
+ACTION power | number<number!> exponent<number!>
+ACTION put | series<any-block! map! port! object!> key<any-type!> value<any-type!> /case /skip size<integer!>
+ACTION query | target<port! file! url! block! vector! date! handle! word!> field<word! block! none! datatype!> /mode
+ACTION random | value /seed /secure /only
+ACTION read | source<port! file! url! block! word!> /part length<number!> /seek index<number!> /string /binary /lines /all
+ACTION reflect | value<any-type!> field<word!>
+ACTION remainder | value1<scalar! vector!> value2<scalar! vector!>
+ACTION remove | series<series! gob! port! bitset! none! map!> /part range<number! series! pair! char!> /key key-arg<any-type!>
+ACTION rename | from<port! file! url! block!> to<port! file! url! block!>
+ACTION reverse | series<series! gob! tuple! pair!> /part range<number! series!>
+ACTION round | value<number! pair! money! time!> /to scale<number! money! time!> /even /down /half-down /floor /ceiling /half-ceiling
+ACTION select | series<series! map! any-object! none!> value<any-type!> /part range<number! series! pair!> /only /case /same /any /with wild<string!> /skip size<integer!> /last /reverse
+ACTION skip | series<series! gob! port!> offset<number! logic! pair!>
+ACTION sort | series<series!> /case /skip size<integer!> /compare comparator<integer! block! any-function!> /part range<number! series!> /all /reverse /unstable
+ACTION subtract | value1<scalar! date! vector!> value2<scalar! date! vector!>
+ACTION swap | series1<series! gob!> series2<series! gob!>
+ACTION tail | series<series! gob! port!>
+ACTION tail? | series<series! gob! port! bitset! typeset! map!>
+ACTION take | series<series! port! gob! none!> /part range<number! series! pair!> /deep /last /all
+ACTION to | type<any-type!> value<any-type!>
+ACTION trim | series<series! object! error! module!> /head /tail /auto /lines /all /with str<char! string! binary! integer!>
+ACTION update | port<port!>
+ACTION write | destination<port! file! url! block! word!> data /part length<number!> /seek index<number!> /append /allow access<block!> /lines /binary /all
+ACTION xor~ | value1<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!> value2<logic! integer! char! tuple! binary! bitset! typeset! datatype! pair! vector!>
+
+# NATIVE name | declared spec
+NATIVE ++ | 'word<word!>
+NATIVE -- | 'word<word!>
+NATIVE ajoin | block<block!> /with delimiter<any-type!> /all
+NATIVE all | block<block!>
+NATIVE also | value1<any-type!> value2<any-type!>
+NATIVE any | block<block!>
+NATIVE apply | func<any-function!> block<block!> /only
+NATIVE arccosine | value<number!> /radians
+NATIVE arcsine | value<number!> /radians
+NATIVE arctangent | value<number!> /radians
+NATIVE as | type<any-block! any-string! datatype!> spec<any-block! any-string!>
+NATIVE as-color | r<integer! decimal! percent!> g<integer! decimal! percent!> b<integer! decimal! percent!>
+NATIVE as-pair | x<number!> y<number!>
+NATIVE ascii? | value<any-string! char! integer!>
+NATIVE assert | conditions<block!> /type
+NATIVE attempt | block<block! paren!> /safer
+NATIVE bind | word<block! any-word!> context<any-word! any-object!> /copy /only /new /set
+NATIVE break | /return value<any-type!>
+NATIVE browse | url<url! file! none!>
+NATIVE call | command<any-string! block! file!> /wait /console /shell /info /input in<string! binary! file! none!> /output out<string! binary! file! none!> /error err<string! binary! file! none!>
+NATIVE case | block<block!> /all
+NATIVE catch | block<block!> /name word<word! block!> /all /quit /with callback<block! function!>
+NATIVE change-dir | path<file!>
+NATIVE check | val<series!>
+NATIVE comment | value
+NATIVE compose | value /deep /only /into out<any-block!>
+NATIVE construct | block<block! string! binary!> /with object<object!> /only
+NATIVE context? | word<any-word!>
+NATIVE continue | 
+NATIVE cosine | value<number!> /radians
+NATIVE debase | value<binary! any-string!> base<integer!> /url /part limit<integer! binary! any-string!>
+NATIVE decloak | data<binary!> key<string! binary! integer!> /with
+NATIVE dehex | value<any-string! binary!> /escape char<char!> /uri
+NATIVE deline | string<any-string!> /lines
+NATIVE detab | string<any-string! binary!> /size number<integer!>
+NATIVE difference | set1<block! string! bitset! date! typeset! map!> set2<block! string! bitset! date! typeset! map!> /case /skip size<integer!>
+NATIVE do | value<any-type!> /args arg /next var<word!>
+NATIVE do-callback | event<event!>
+NATIVE do-codec | handle<handle!> action<word!> data<binary! image! string!>
+NATIVE do-commands | commands<block!>
+NATIVE ds | 
+NATIVE dump | v /fmt
+NATIVE echo | target<file! none! logic!>
+NATIVE eighth | value
+NATIVE either | condition<any-type!> true-branch false-branch /only
+NATIVE enbase | value<binary! any-string! integer!> base<integer!> /url /part limit<integer! binary! any-string!> /flat
+NATIVE encloak | data<binary!> key<string! binary! integer!> /with
+NATIVE enhex | value<any-string! binary!> /escape char<char!> /except unescaped<bitset!> /uri
+NATIVE enline | series<any-string! block!>
+NATIVE entab | string<any-string! binary!> /size number<integer!>
+NATIVE equal? | value1<any-type!> value2<any-type!>
+NATIVE equiv? | value1<any-type!> value2<any-type!>
+NATIVE evoke | chant<word! block! integer!>
+NATIVE exclude | set1<block! string! bitset! typeset! map!> set2<block! string! bitset! typeset! map!> /case /skip size<integer!>
+NATIVE exit | 
+NATIVE exp | power<number!>
+NATIVE fifth | value
+NATIVE find-script | script<binary!>
+NATIVE first | value
+NATIVE first+ | 'word<word!>
+NATIVE for | 'word<word!> start<series! number! pair!> end<series! number! pair!> bump<number! pair!> body<block!>
+NATIVE forall | 'word<word!> body<block!>
+NATIVE foreach | 'word<word! block!> data<series! any-object! map! none!> body<block!>
+NATIVE forever | body<block!>
+NATIVE form | value<any-type!>
+NATIVE forskip | 'word<word!> size<integer! decimal!> body<block!> /local orig result
+NATIVE fourth | value
+NATIVE get | word /any
+NATIVE get-env | var<any-string! any-word!>
+NATIVE greater-or-equal? | value1 value2
+NATIVE greater? | value1 value2
+NATIVE halt | 
+NATIVE if | condition<any-type!> true-branch /only
+NATIVE in | object<any-object! block!> word<any-word! block! paren!>
+NATIVE intersect | set1<block! string! bitset! typeset! map!> set2<block! string! bitset! typeset! map!> /case /skip size<integer!>
+NATIVE invalid-utf? | data<binary!> /utf num<integer!>
+NATIVE last | value<series! tuple! gob!>
+NATIVE latin1? | value<any-string! char! integer!>
+NATIVE lesser-or-equal? | value1 value2
+NATIVE lesser? | value1 value2
+NATIVE limit-usage | field<word!> limit<number!>
+NATIVE list-env | 
+NATIVE load-extension | name<file! binary!> /dispatch function<handle!>
+NATIVE log-10 | value<number!>
+NATIVE log-2 | value<number!>
+NATIVE log-e | value<number!>
+NATIVE loop | count<number!> block<block!>
+NATIVE lowercase | string<any-string! char!> /part length<number! any-string!>
+NATIVE map-each | 'word<word! block!> data<block! vector!> body<block!>
+NATIVE map-event | event<event!>
+NATIVE map-gob-offset | gob<gob!> xy<pair!> /reverse
+NATIVE maximum | value1<scalar! date! series!> value2<scalar! date! series!>
+NATIVE minimum | value1<scalar! date! series!> value2<scalar! date! series!>
+NATIVE mold | value<any-type!> /only /all /flat /part limit<integer!>
+NATIVE negative? | number<number! money! time! pair!>
+NATIVE new-line | position<block! paren!> value /all /skip size<integer!>
+NATIVE new-line? | position<block! paren!>
+NATIVE ninth | value
+NATIVE not | value<any-type!>
+NATIVE not-equal? | value1<any-type!> value2<any-type!>
+NATIVE not-equiv? | value1<any-type!> value2<any-type!>
+NATIVE now | /year /month /day /time /zone /date /weekday /yearday /precise /utc
+NATIVE object | spec<block!> /only
+NATIVE parse | input<series!> rules<block!> /case
+NATIVE positive? | number<number! money! time! pair!>
+NATIVE prin | value<any-type!>
+NATIVE print | value<any-type!>
+NATIVE protect | value<word! series! bitset! map! object! module!> /deep /words /values /hide /lock
+NATIVE protected? | value<word! series! bitset! map! object! module!>
+NATIVE quit | /return value /now
+NATIVE recycle | /off /on /ballast size<integer!> /torture /pools
+NATIVE reduce | value /no-set /only words<block! none!> /into out<any-block!>
+NATIVE release | handle<handle!>
+NATIVE remove-each | 'word<word! block!> data<series! map!> body<block!> /count
+NATIVE repeat | 'word<word!> value<number! series! pair! none!> body<block!>
+NATIVE request-dir | /title text<string!> /dir name<file!> /keep
+NATIVE request-file | /save /multi /file name<file!> /title text<string!> /filter list<block!>
+NATIVE request-password | 
+NATIVE resolve | target<any-object!> source<any-object!> /only from<block! integer!> /all /extend
+NATIVE return | value<any-type!>
+NATIVE same? | value1<any-type!> value2<any-type!>
+NATIVE second | value
+NATIVE selfless? | context<any-word! any-object!>
+NATIVE set | word<word! lit-word! any-path! block! object!> value<any-type!> /any /only /some
+NATIVE set-env | var<any-string! any-word!> value<string! none!>
+NATIVE set-scheme | scheme<object!>
+NATIVE seventh | value
+NATIVE shift | value<integer!> bits<integer!> /logical
+NATIVE sine | value<number!> /radians
+NATIVE sixth | value
+NATIVE split-lines | value<string!>
+NATIVE square-root | value<number!>
+NATIVE stack | offset<integer!> /block /word /func /args /size /depth /limit
+NATIVE stats | /show /profile /timer /evals /dump-series pool-id<integer!>
+NATIVE strict-equal? | value1<any-type!> value2<any-type!>
+NATIVE strict-not-equal? | value1<any-type!> value2<any-type!>
+NATIVE switch | value cases<block!> /default def /all /case
+NATIVE tangent | value<number!> /radians
+NATIVE tenth | value
+NATIVE third | value
+NATIVE throw | value<any-type!> /name word<word!>
+NATIVE to-hex | value<integer! char! tuple!> /size len<integer!>
+NATIVE to-local-file | path<file! string!> /full
+NATIVE to-rebol-file | path<file! string!>
+NATIVE to-value | value<any-type!>
+NATIVE trace | mode<integer! logic!> /back /function
+NATIVE transcode | source<binary! string!> /next /one /only /error /line count<integer!> /part length<integer!>
+NATIVE try | block<block! paren!> /all /with handler<block! any-function!>
+NATIVE type? | value<any-type!> /word
+NATIVE unbind | word<block! any-word!> /deep
+NATIVE union | set1<block! string! bitset! typeset! map!> set2<block! string! bitset! typeset! map!> /case /skip size<integer!>
+NATIVE unique | set1<block! string! bitset! typeset! map!> /case /skip size<integer!>
+NATIVE unless | condition<any-type!> false-branch /only
+NATIVE unprotect | value<word! series! bitset! map! object! module!> /deep /words /values
+NATIVE unset | word<word! block! none!>
+NATIVE until | block<block!>
+NATIVE uppercase | string<any-string! char!> /part length<number! any-string!>
+NATIVE utf? | data<binary!>
+NATIVE value? | value<word!>
+NATIVE wait | value<number! time! port! block! none!> /all /only
+NATIVE wake-up | port<port!> event<event!>
+NATIVE what-dir | 
+NATIVE while | cond-block<block!> body-block<block!>
+NATIVE zero? | value
+
+# LIBRARY name | the REBOL file that defines it
+LIBRARY ?? | base-debug.reb
+LIBRARY all-of | mezz-control.reb
+LIBRARY alter | mezz-series.reb
+LIBRARY any-block? | base-defs.reb
+LIBRARY any-function? | base-defs.reb
+LIBRARY any-object? | base-defs.reb
+LIBRARY any-of | mezz-control.reb
+LIBRARY any-path? | base-defs.reb
+LIBRARY any-string? | base-defs.reb
+LIBRARY any-word? | base-defs.reb
+LIBRARY array | mezz-series.reb
+LIBRARY ask | mezz-files.reb
+LIBRARY assert-utf8 | sys-base.reb
+LIBRARY average | mezz-math.reb
+LIBRARY bind-lib | sys-load.reb
+LIBRARY cause-error | base-funcs.reb
+LIBRARY cd | mezz-shell.reb
+LIBRARY charset | mezz-series.reb
+LIBRARY clean-path | mezz-files.reb
+LIBRARY clos | mezz-func.reb
+LIBRARY closure | mezz-func.reb
+LIBRARY collect | mezz-series.reb
+LIBRARY combine | mezz-series.reb
+LIBRARY completion! | repl-completion.reb
+LIBRARY confirm | mezz-files.reb
+LIBRARY css-minify | codec-css.reb
+LIBRARY css-tokenize | codec-css.reb
+LIBRARY decode | sys-codec.reb
+LIBRARY deduplicate | mezz-series.reb
+LIBRARY default | base-funcs.reb
+LIBRARY delete-dir | base-files.reb
+LIBRARY dir-tree | mezz-files.reb
+LIBRARY dirize | base-files.reb
+LIBRARY do* | sys-base.reb
+LIBRARY do-needs | sys-load.reb
+LIBRARY does | base-funcs.reb
+LIBRARY download-extension | sys-load.reb
+LIBRARY ellipsize | base-series.reb
+LIBRARY encode | sys-codec.reb
+LIBRARY encoding? | sys-codec.reb
+LIBRARY enum | mezz-func.reb
+LIBRARY exists? | base-files.reb
+LIBRARY export | sys-base.reb
+LIBRARY export-words | sys-load.reb
+LIBRARY extend | mezz-series.reb
+LIBRARY extract | mezz-series.reb
+LIBRARY file-checksum | mezz-shell.reb
+LIBRARY file-type? | base-files.reb
+LIBRARY find-all | mezz-series.reb
+LIBRARY find-max | mezz-math.reb
+LIBRARY find-min | mezz-math.reb
+LIBRARY format | mezz-series.reb
+LIBRARY format-datetime | mezz-series.reb
+LIBRARY format-time | mezz-debug.reb
+LIBRARY func | mezz-tail.reb
+LIBRARY function | base-funcs.reb
+LIBRARY get-cookies | prot-http.reb
+LIBRARY has | mezz-func.reb
+LIBRARY import | sys-load.reb
+LIBRARY in-dir | mezz-files.reb
+LIBRARY init-schemes | sys-ports.reb
+LIBRARY input | mezz-files.reb
+LIBRARY intern | base-files.reb
+LIBRARY join | base-series.reb
+LIBRARY launch | mezz-control.reb
+LIBRARY line-editor! | repl-line-editor.reb
+LIBRARY list-dir | mezz-files.reb
+LIBRARY load | base-files.reb
+LIBRARY load-boot-exts | sys-load.reb
+LIBRARY load-ext-module | sys-load.reb
+LIBRARY load-header | sys-load.reb
+LIBRARY load-module | sys-load.reb
+LIBRARY locate-extension | sys-load.reb
+LIBRARY log | sys-base.reb
+LIBRARY make-banner | mezz-banner.reb
+LIBRARY make-dir | base-files.reb
+LIBRARY make-module* | sys-base.reb
+LIBRARY make-port* | sys-ports.reb
+LIBRARY make-scheme | sys-ports.reb
+LIBRARY map | mezz-func.reb
+LIBRARY mixin? | sys-load.reb
+LIBRARY modified? | base-files.reb
+LIBRARY module | base-funcs.reb
+LIBRARY mold64 | mezz-save.reb
+LIBRARY more | mezz-shell.reb
+LIBRARY move | mezz-series.reb
+LIBRARY offset? | mezz-series.reb
+LIBRARY pad | mezz-series.reb
+LIBRARY print-hline | mezz-debug.reb
+LIBRARY print-table | mezz-debug.reb
+LIBRARY printf | mezz-series.reb
+LIBRARY probe | base-debug.reb
+LIBRARY profile | mezz-debug.reb
+LIBRARY quote | base-defs.reb
+LIBRARY read-decode | sys-load.reb
+LIBRARY rebol-console | repl-rebol-console.reb
+LIBRARY reform | base-series.reb
+LIBRARY register-codec | sys-codec.reb
+LIBRARY rejoin | mezz-series.reb
+LIBRARY remold | mezz-series.reb
+LIBRARY remove-ansi | sys-base.reb
+LIBRARY repend | base-series.reb
+LIBRARY replace | mezz-series.reb
+LIBRARY reword | mezz-series.reb
+LIBRARY save | mezz-save.reb
+LIBRARY scalar? | base-defs.reb
+LIBRARY script? | base-files.reb
+LIBRARY secure | mezz-secure.reb
+LIBRARY series? | base-defs.reb
+LIBRARY set-cookies | prot-http.reb
+LIBRARY sign? | mezz-math.reb
+LIBRARY size? | base-files.reb
+LIBRARY speed? | mezz-debug.reb
+LIBRARY split | mezz-series.reb
+LIBRARY split-path | base-files.reb
+LIBRARY start | sys-start.reb
+LIBRARY suffix? | base-files.reb
+LIBRARY sum | mezz-math.reb
+LIBRARY supplement | mezz-series.reb
+LIBRARY task | mezz-func.reb
+LIBRARY to-date | mezz-date.reb
+LIBRARY to-idate | mezz-date.reb
+LIBRARY to-itime | mezz-date.reb
+LIBRARY to-relative-file | mezz-files.reb
+LIBRARY undirize | mezz-files.reb
+LIBRARY use | base-funcs.reb
+LIBRARY wait-key | mezz-shell.reb
+LIBRARY wildcard | mezz-files.reb
+LIBRARY wrap | mezz-control.reb

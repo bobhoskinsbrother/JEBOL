@@ -7,15 +7,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Refinements found by comparing the whole library against the binary.
+ * Refinements found by comparing the whole library against Rebol's own
+ * declarations rather than by a failing assertion.
  *
- * <p>Specified in {@code spec/natives.allium}, measured against a real R3
- * 3.22.1, and listed in {@code docs/surface-audit.md}.
+ * <p>{@code boot/actions.reb} and {@code boot/natives.reb} declare all 224 C
+ * functions with every refinement, so the complete list of what JEBOL is
+ * missing can be taken in one pass. {@code copy/deep} had never worked and no
+ * test had ever asked it to.
  *
- * <p>These were not found by a failing assertion. The binary answers
- * {@code spec-of} for every one of its functions, so the complete list of
- * what JEBOL is missing can be taken in one pass; {@code copy/deep} had
- * never worked and no test had ever asked it to.
+ * <p>{@code scripts/c-parity.py} is that pass, and Goal 3 in TODO.md is what it
+ * still reports.
  */
 class AuditedRefinementsTest {
 
@@ -62,9 +63,24 @@ class AuditedRefinementsTest {
     }
 
     @Test
-    @DisplayName("COPY of something that is not a series answers it unchanged")
-    void copyOfANonSeriesIsUnchanged() {
-        assertThat(answerTo("(copy 5) = 5")).isEqualTo("#(true)");
+    @DisplayName("and COPY refuses what its own declaration does not name")
+    void copyOfANonSeriesIsRefused() {
+        // This test used to assert `(copy 5) = 5`, which was a guess and not an
+        // audit. The same declaration pass this file is named after settles it:
+        // `value [series! port! map! object! bitset! any-function! error!
+        // struct!]`, and an integer is on none of those lists. So a copy of a
+        // number never reaches an arm.
+        //
+        // Found while building `gob!`. A gob is not on the list either, and
+        // narrowing the declaration to the C's eight was what made this one
+        // answer, which is the whole reason to declare a typeset rather than
+        // leave it open: the list decides the error.
+        assertThat(answerTo(
+                "e: try [copy 5] either error? e [e/id] ['no-error]"))
+                .isEqualTo("expect-arg");
+        assertThat(answerTo(
+                "e: try [copy make gob! []] either error? e [e/id] ['no-error]"))
+                .isEqualTo("expect-arg");
     }
 
     @Test

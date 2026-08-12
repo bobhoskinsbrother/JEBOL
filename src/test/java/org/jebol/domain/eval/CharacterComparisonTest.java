@@ -100,11 +100,22 @@ class CharacterComparisonTest {
     @Test
     @DisplayName("the rest of the family still refuses none")
     void theOthersAreNotSoForgiving() {
-        // Three named exceptions rather than a rule about none, so the
-        // ones that are not exceptions have to be pinned too.
+        // Named exceptions rather than a rule about none, so the ones that are
+        // not exceptions have to be pinned too. FIRST, HEAD and NEXT all raise.
         assertThat(errorIdOf("first none")).isNotEqualTo("no-error");
         assertThat(errorIdOf("head none")).isNotEqualTo("no-error");
         assertThat(errorIdOf("next none")).isNotEqualTo("no-error");
-        assertThat(errorIdOf("tail? none")).isNotEqualTo("no-error");
+    }
+
+    @Test
+    @DisplayName("and TAIL? refuses none: the declaration is the door")
+    void tailRefusesNone() {
+        // This test asserted true here twice, each time from half the C.
+        // REBTYPE(None) has the arm -- `case A_TAILQ: if (IS_NONE(val))
+        // return R_TRUE;` -- but the declared spec in actions.reb has no
+        // none!, so a direct call never reaches the arm. EMPTY? reaches it,
+        // because Rebol's own mezz builds EMPTY? as `make :tail?` with a
+        // spec that adds none!. Line 97 above pins that half.
+        assertThat(errorIdOf("tail? none")).isEqualTo("expect-arg");
     }
 }

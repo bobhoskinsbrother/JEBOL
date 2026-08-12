@@ -50,7 +50,7 @@ class FileServiceGrantTest {
     void theWholePathWorks(@TempDir Path directory) {
         Interpreter interpreter = readingUnder(
                 Bounds.standard().granting(HostService.FILES), directory);
-        assertThat(answerTo(interpreter, "write %a.txt \"hello\" read %a.txt"))
+        assertThat(answerTo(interpreter, "write %a.txt {hello} read/string %a.txt"))
                 .isEqualTo("\"hello\"");
     }
 
@@ -59,8 +59,14 @@ class FileServiceGrantTest {
     void existsFollowsTheWrite(@TempDir Path directory) {
         Interpreter interpreter = readingUnder(
                 Bounds.standard().granting(HostService.FILES), directory);
+        // Rebol's own EXISTS? answers the type word or none, not a logic:
+        //     all [word? target: try [query target 'type] target]
+        // Both still read as false and true in a condition, which is all any
+        // caller does with it, so this asserts truthiness rather than the
+        // logic values JEBOL's own version used to give.
         assertThat(answerTo(interpreter,
-                "before: exists? %b.txt write %b.txt \"x\" reduce [before exists? %b.txt]"))
+                "before: exists? %b.txt write %b.txt \"x\" "
+                + "reduce [true? before  true? exists? %b.txt]"))
                 .isEqualTo("[#(false) #(true)]");
     }
 

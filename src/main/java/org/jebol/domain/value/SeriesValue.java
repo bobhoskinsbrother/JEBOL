@@ -13,7 +13,8 @@ package org.jebol.domain.value;
  * tail is a legal position to hold and an illegal one to read from, which is
  * what lets {@code until [tail? series: next series]} terminate.
  */
-public sealed interface SeriesValue extends Value permits StringValue, BinaryValue, BlockValue {
+public sealed interface SeriesValue extends Value
+        permits StringValue, BinaryValue, BlockValue, ImageValue, GobValue {
 
     /** 1-based position within the storage. {@code length() + 1} is the tail. */
     int index();

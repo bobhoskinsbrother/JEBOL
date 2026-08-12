@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.DoublePredicate;
-import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -24,6 +23,7 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.value.BinaryStorage;
 import org.jebol.domain.value.BinaryValue;
+import java.nio.charset.StandardCharsets;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.BlockStorage;
 import org.jebol.domain.value.BlockValue;
@@ -38,9 +38,16 @@ import org.jebol.domain.read.SyntaxFailure;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.FunctionValue;
+import org.jebol.domain.value.EventCatalogue;
+import org.jebol.domain.value.EventValue;
+import org.jebol.domain.value.GobValue;
+import org.jebol.domain.value.HandleValue;
+import org.jebol.domain.value.ImageValue;
+import org.jebol.domain.value.ImageStorage;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.MapValue;
+import org.jebol.domain.value.ModuleValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.MoneyValue;
 import org.jebol.domain.value.NativeValue;
@@ -50,6 +57,7 @@ import org.jebol.domain.value.OperatorValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.ParameterKind;
 import org.jebol.domain.value.SeriesValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.DateValue;
@@ -89,6 +97,16 @@ public final class Natives {
      * is handling.
      */
     private final Context runState = Context.root();
+
+    /**
+     * The library's own private helpers, reachable as
+     * {@code system/contexts/sys}.
+     *
+     * <p>Built when the system object is assembled and handed to the
+     * interpreter, which loads the sys files into it. A child of the library
+     * context, so a helper defined here still sees every standard function.
+     */
+    private Context systemInternals = Context.root();
 
     /**
      * What each datatype says about itself, as {@code reflect} answers it.
@@ -195,6 +213,8 @@ public final class Natives {
         defineSeries();
         defineStrings();
         defineConversion();
+        defineEncodings();
+        defineInterpreterState();
         definePorts();
         defineParse();
         defineLayout();
@@ -277,6 +297,19 @@ public final class Natives {
         Natives natives = standard();
         natives.grantedServices = Set.copyOf(granted);
         return natives;
+    }
+
+    /**
+     * Narrows what is granted to exactly this set.
+     *
+     * <p>Called once, when the interpreter has finished building itself. The
+     * library may read the clock while it loads and a script may not unless the
+     * host said so, and the two are not the same question: loading Rebol's own
+     * files is part of making the language, and the grants are about what a
+     * script can reach once there is one. See decision 19.
+     */
+    public void grantOnly(Set<HostService> granted) {
+        this.grantedServices = Set.copyOf(granted);
     }
 
     /**
@@ -426,6 +459,31 @@ public final class Natives {
         bitsets.set("quoted-printable", quotedPrintableOctets());
         catalog.set("bitsets", new ObjectValue(bitsets));
 
+        // The two lists an event's type and its named keys are positions in. A
+        // script reads them here and the event datatype reads the same order to
+        // turn a word into a number, so both come from EventCatalogue rather than
+        // being written out twice -- the same reason the character sets above are
+        // computed rather than listed.
+        // `Register_Handle` appends the type word here as each kind registers, up
+        // to `MAX_HANDLE_TYPES` of 64, and a handle stores its position. Only
+        // `codec` registers in this build; the crypto kinds arrive with the
+        // ciphers.
+        catalog.set("handles", BlockValue.block(List.of(WordValue.of("codec"))));
+
+        catalog.set("event-types", EventCatalogue.typesBlock());
+        catalog.set("event-keys", EventCatalogue.keysBlock());
+
+        // Which checksums and compressions exist is the host's business
+        // rather than the language's, which is why R3 fills these two from
+        // Init_Crypt and Init_Compression rather than writing them out in
+        // sysobj.reb. A script asks the catalogue before asking for one.
+        catalog.set("checksums", BlockValue.block(
+                Encodings.checksumMethods().stream()
+                        .<Value>map(WordValue::of).toList()));
+        catalog.set("compressions", BlockValue.block(
+                Encodings.COMPRESSIONS.stream()
+                        .<Value>map(WordValue::of).toList()));
+
         // Suffix then name, in pairs. REGISTER-CODEC appends to this as
         // each codec arrives, so it starts as the few JEBOL knows about
         // rather than as R3's full list -- the list is a record of what
@@ -435,25 +493,75 @@ public final class Natives {
                 StringValue.of(".html", Datatype.FILE), WordValue.of("markup"),
                 StringValue.of(".htm", Datatype.FILE), WordValue.of("markup"))));
 
+        // system/options, with every field sysobj.reb declares.
+        //
+        // The whole list rather than the ones something has asked for so
+        // far, because a set-path cannot create a field an object has not
+        // got -- R3 refuses that too -- so a missing field is not a missing
+        // convenience, it stops the file that writes to it. mezz-tail.reb
+        // reads `system/options/data` on its fourth-from-last line and lost
+        // everything below it, PROTECT-SYSTEM included.
         Context options = Context.root();
+        for (String field : new String[] {
+                "boot", "path", "home", "data", "modules", "flags", "script",
+                "args", "do-arg", "import", "debug", "secure", "version",
+                "boot-level", "domain-name", "module-paths", "result-types"}) {
+            options.set(field, NoneValue.none());
+        }
+        // FLAGS is read as an object of named boot flags, not as a number:
+        // mezz-secure.reb ends with `unless system/options/flags/secure-min`.
+        // The names are system/catalog/boot-flags, and none of them is set,
+        // because JEBOL is embedded rather than started from a command line.
+        Context bootFlags = Context.root();
+        for (String flag : new String[] {
+                "script", "args", "do", "import", "version", "debug", "secure",
+                "help", "vers", "quiet", "verbose", "secure-min", "secure-max",
+                "trace", "halt", "cgi", "boot-level", "no-window", "no-color",
+                "legacy-repl"}) {
+            bootFlags.set(flag, LogicValue.no());
+        }
+        options.set("flags", new ObjectValue(bootFlags));
+        options.set("quiet", LogicValue.no());
+        options.set("no-color", LogicValue.no());
         options.set("binary-base", IntegerValue.of(16));
-        options.set("log", new ObjectValue(Context.root()));
-
-        // What a value must be for the console to print it as a result.
-        // base-defs.reb assigns this on startup, and a set-path cannot
-        // create a field an object has not got -- R3 refuses that too --
-        // so the slot has to be here for the assignment to land.
-        options.set("result-types", NoneValue.none());
+        options.set("decimal-digits", IntegerValue.of(15));
+        options.set("probe-limit", IntegerValue.of(16000));
+        options.set("http-redirects", IntegerValue.of(10));
+        options.set("default-suffix", StringValue.of(".reb", Datatype.FILE));
         // Where the interpreter was started from and where it lives. Both
         // are files in a real R3, and code reads them to find things
         // relative to itself.
         options.set("home", StringValue.of(
                 System.getProperty("user.home", "") + "/", Datatype.FILE));
-        options.set("boot", StringValue.of(
-                System.getProperty("user.dir", "") + "/jebol", Datatype.FILE));
-        options.set("script", NoneValue.none());
+        // BOOT stays none. mezz-tail.reb says why on the line above the one
+        // that reads it -- "boot (path to the exe) may be none if not
+        // resolved!" -- and it guards on that before calling CLEAN-PATH,
+        // which needs the working directory. An embedded interpreter with no
+        // filesystem grant has no path to its own executable to give, and
+        // inventing one made that guard pass and the call fail.
+        options.set("path", StringValue.of(
+                System.getProperty("user.dir", "") + "/", Datatype.FILE));
+        options.set("data", StringValue.of(
+                System.getProperty("user.home", "") + "/.jebol/", Datatype.FILE));
+        // LOG and ANSI are maps in R3 and are filled in by the prelude,
+        // which can write a map literally and this cannot.
 
+        // system/state, again the whole of sysobj.reb's list. POLICIES is an
+        // object of eleven security policies, all set to 0.0.0 meaning allow,
+        // and mezz-secure.reb reads and writes every one of them.
         Context state = runState;
+        Context policies = Context.root();
+        for (String policy : new String[] {
+                "file", "net", "eval", "memory", "secure", "protect", "debug",
+                "envr", "call", "browse", "extension"}) {
+            policies.set(policy, TupleValue.of(new int[] {0, 0, 0}));
+        }
+        state.set("policies", new ObjectValue(policies));
+        for (String field : new String[] {
+                "note", "confirm-policy", "control?", "shift?", "alt?", "quit?"}) {
+            state.set(field, NoneValue.none());
+        }
+        state.set("wait-list", BlockValue.block(List.of()));
         state.set("last-error", NoneValue.none());
         state.set("last-result", NoneValue.none());
 
@@ -475,26 +583,118 @@ public final class Natives {
         system.set("catalog", new ObjectValue(catalog));
         system.set("options", new ObjectValue(options));
         system.set("state", new ObjectValue(state));
-        system.set("version", StringValue.of("0.1.0"));
+        // VERSION is a tuple in R3, not a string. sysobj.reb writes
+        // `version: 0.0.0`, and code compares it with a tuple: mezz-banner.reb
+        // prints it and sys-load.reb checks a module's Needs against it.
+        system.set("version", TupleValue.of(new int[] {0, 1, 0}));
         system.set("platform", WordValue.of("JVM"));
-        system.set("codecs", new ObjectValue(Context.root()));
+        // PRODUCT names which build this is. mezz-banner.reb reads it.
+        system.set("product", WordValue.of("core"));
+        system.set("license", NoneValue.none());
+
+        // The rest of sysobj.reb's top-level fields, as objects of none.
+        // Absent ones are not a missing convenience: a set-path cannot make
+        // a field, so the file that writes to one stops there.
+        Context build = Context.root();
+        for (String field : new String[] {
+                "os", "os-version", "abi", "sys", "arch", "libc", "vendor",
+                "target", "compiler", "date", "git"}) {
+            build.set(field, NoneValue.none());
+        }
+        system.set("build", new ObjectValue(build));
+
+        Context whoIsRunningIt = Context.root();
+        whoIsRunningIt.set("name", NoneValue.none());
+        whoIsRunningIt.set("data", MapValue.of(List.of()));
+        system.set("user", new ObjectValue(whoIsRunningIt));
+
+        Context dialects = Context.root();
+        for (String dialect : new String[] {
+                "secure", "draw", "effect", "text", "rebcode"}) {
+            dialects.set(dialect, NoneValue.none());
+        }
+        system.set("dialects", new ObjectValue(dialects));
+
+        Context aboutTheScript = Context.root();
+        for (String field : new String[] {
+                "title", "header", "parent", "path", "args"}) {
+            aboutTheScript.set(field, NoneValue.none());
+        }
+        system.set("script", new ObjectValue(aboutTheScript));
+
+        Context modules = Context.root();
+        modules.set("help", NoneValue.none());
+        system.set("modules", new ObjectValue(modules));
+
+        Context locale = Context.root();
+        for (String field : new String[] {
+                "language", "language*", "locale", "locale*"}) {
+            locale.set(field, NoneValue.none());
+        }
+        system.set("locale", new ObjectValue(locale));
+        // `Init_Codecs` registers two at boot, and `Register_Codec` puts a handle
+        // of type `codec` in here for each: `SET_HANDLE(value, dispatcher,
+        // SYM_CODEC, HANDLE_FUNCTION)`. Those handles are what DO-CODEC is given,
+        // and registering them is what makes the handle datatype reachable at all --
+        // nothing else in a build without the crypto family or an extension API
+        // produces one.
+        //
+        // Every other codec in the C sits behind an `#ifdef INCLUDE_*_CODEC`, so
+        // these two are what a stock build always has.
+        Context codecs = Context.root();
+        for (int at = 0; at < Codecs.REGISTERED.size(); at++) {
+            String named = Codecs.REGISTERED.get(at);
+            codecs.set(named, HandleValue.function(
+                    "codec", CODEC_HANDLE_IDENTITY + at, WordValue.of(named)));
+        }
+        system.set("codecs", new ObjectValue(codecs));
         system.set("console", new ObjectValue(Context.root()));
 
-        // base-constants.reb starts by naming the two contexts it works
-        // in, and everything after that line in the file depends on the
-        // names existing. LIB is where the natives live; SYS is the
-        // interpreter's own, and here they are the same context because
-        // JEBOL has no second one to give.
+        // base-constants.reb starts by naming the contexts it works in, and
+        // everything after that line in the file depends on the names
+        // existing. LIB is where the standard functions live and SYS is the
+        // library's own private helpers.
+        //
+        // SYS is a child of LIB, which is how R3 arranges it in the two lines
+        // of Do_Global_Block that run the sys files: new words are added to
+        // sys, and the block then binds deep into lib so that a helper can
+        // still call a standard function. USER is filled in by the
+        // interpreter, which owns it.
+        Context internals = Context.childOf(systemContext);
+        // NATIVE and ACTION exist before any file loads, because Rebol's
+        // boot puts them there: `Do_Global_Block(actions, -1)` and
+        // `Do_Global_Block(natives, -1)`. Rebind -1 adds the set-words to
+        // lib and then binds the block into sys as well, so the words live
+        // in lib. They are how the C's function specs get declared.
+        //
+        // JEBOL's natives are Java and declare themselves, so nothing here
+        // needs the words -- but base-funcs.reb ends with
+        // `unset 'action ; this native was only for internal use`, and
+        // unsetting a word that was never defined is an error. sys-base.reb
+        // sets both to none for the same reason, and it runs later.
+        systemContext.set("native", NoneValue.none());
+        systemContext.set("action", NoneValue.none());
         Context contexts = Context.root();
         contexts.set("lib", new ObjectValue(systemContext));
-        contexts.set("sys", new ObjectValue(systemContext));
+        contexts.set("sys", new ObjectValue(internals));
         system.set("contexts", new ObjectValue(contexts));
+        this.systemInternals = internals;
         return new ObjectValue(system);
     }
 
     /** What the evaluator dispatches on: native name to behaviour. */
     public Map<String, RefinedCallable> behaviours() {
         return Map.copyOf(behaviours);
+    }
+
+    /**
+     * Where the sys files define their words.
+     *
+     * <p>Only meaningful after {@link #asContext()} has run, which is where
+     * the system object and its three contexts are assembled.
+     */
+    public Context systemInternals() {
+        return systemInternals;
     }
 
     /** A fresh context holding every native, and the operators alongside. */
@@ -600,6 +800,27 @@ public final class Natives {
         return parameters;
     }
 
+    /** The same parameters, with bitset! allowed for the first one. */
+    private static List<Parameter> withBitsets(List<Parameter> parameters) {
+        List<Parameter> widened = new ArrayList<>(parameters);
+        Parameter first = widened.getFirst();
+        Set<Datatype> accepted = EnumSet.copyOf(first.acceptedTypes());
+        accepted.add(Datatype.BITSET);
+        widened.set(0, Parameter.required(first.name(), accepted));
+        return widened;
+    }
+
+    /** {@code number!} and nothing else: integer!, decimal! and percent!. */
+    private static List<Parameter> takesOnlyNumbers(String... names) {
+        Set<Datatype> numbers = Set.of(
+                Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT);
+        List<Parameter> parameters = new ArrayList<>();
+        for (String name : names) {
+            parameters.add(Parameter.required(name, numbers));
+        }
+        return parameters;
+    }
+
     private static List<Parameter> takesNumbers(String... names) {
         // PAIR belongs here because arithmetic on a pair is arithmetic on
         // each half, so every operation below already means something for
@@ -638,7 +859,7 @@ public final class Natives {
         // point, which is the test for belonging in Java rather than the
         // prelude. Each is a line of libm in Rebol's C and a line of
         // java.lang.Math here.
-        define("square-root", takesNumbers("value"),
+        define("square-root", takesOnlyNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.sqrt(Comparison.asDouble(arguments.get(0)))));
         // SQRT is not a short name for SQUARE-ROOT. They compute the same
@@ -656,20 +877,118 @@ public final class Natives {
         // The first host service JEBOL offers. It reaches outside the
         // interpreter for the time, thus it asks whether the host granted
         // the clock before it answers.
+        // Ten refinements, and each names a part of one reading rather than a
+        // question of its own. Only one may be asked at a time, which is why
+        // they are listed as alternatives here and enforced below.
         define("now", List.of(),
-                (arguments, evaluator, context) -> {
+                Set.of("year", "month", "day", "time", "zone", "date",
+                        "weekday", "yearday", "precise", "utc"),
+                (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.CLOCK);
-                    java.time.LocalDateTime here = java.time.LocalDateTime.now();
-                    return DateValue.of(here.getYear(), here.getMonthValue(),
-                            here.getDayOfMonth(),
-                            TimeValue.ofNanoseconds(here.toLocalTime().toNanoOfDay()));
+                    return whatTheClockSays(refinements);
+                });
+
+        // ALSO answers its first argument and evaluates the second for its
+        // effect. `return R_ARG1;` is the whole function: both arguments are
+        // ordinary, so both are evaluated before it runs, and the second's value
+        // is dropped.
+        define("also", List.of(Parameter.required("value1"),
+                        Parameter.required("value2")),
+                (arguments, evaluator, context) -> arguments.getFirst());
+
+        // COMMENT evaluates its argument and answers nothing. `return R_UNSET;`,
+        // and the spec takes an ordinary `value` rather than a quoted one -- so
+        // `comment print "x"` prints. What it ignores is the value, not the
+        // work.
+        define("comment", List.of(Parameter.required("value")),
+                (arguments, evaluator, context) -> UnsetValue.unset());
+
+        // TO-VALUE turns an unset into a none and leaves everything else alone:
+        // `return (IS_UNSET(D_ARG(1)) ? R_NONE : R_ARG1);`. It is how a caller
+        // passes something on without testing it first, because most functions
+        // refuse an unset and accept a none.
+        define("to-value", List.of(Parameter.required("value")),
+                (arguments, evaluator, context) ->
+                        arguments.getFirst() instanceof UnsetValue
+                                ? NoneValue.none()
+                                : arguments.getFirst());
+
+        // FOREVER runs its block until something leaves the loop, and answers
+        // the last value the block gave: `while (1) { result = DO_BLK(...); if
+        // (THROWN(result) && Check_Error(result) >= 0) break; } return R_TOS1;`.
+        define("forever", List.of(Parameter.required("body", Set.of(Datatype.BLOCK))),
+                (arguments, evaluator, context) -> {
+                    BlockValue body = (BlockValue) arguments.getFirst();
+                    Value last = NoneValue.none();
+                    try {
+                        while (true) {
+                            last = oneRound(evaluator, body, context);
+                        }
+                    } catch (LoopSignal stopped) {
+                        return stopped.answer();
+                    }
+                });
+
+        // The four ordinals JEBOL was missing. `Do_Ordinal(ds, n)` pushes the
+        // number and dispatches PICK, so an ordinal is PICK with the position
+        // written into the name -- and every rule PICK has, these have.
+        define("seventh", List.of(Parameter.required("series")),
+                (arguments, evaluator, context) -> pick(arguments.getFirst(), 7));
+        define("eighth", List.of(Parameter.required("series")),
+                (arguments, evaluator, context) -> pick(arguments.getFirst(), 8));
+        define("ninth", List.of(Parameter.required("series")),
+                (arguments, evaluator, context) -> pick(arguments.getFirst(), 9));
+        define("tenth", List.of(Parameter.required("series")),
+                (arguments, evaluator, context) -> pick(arguments.getFirst(), 10));
+
+        // TRACE turns the evaluator's walk into output, and the level is a
+        // limit rather than a switch: `Trace_Level = IS_TRUE(arg) ? 100000 : 0;`
+        // for a logic, and the number itself for an integer, so `trace 3` shows
+        // three levels of nesting and nothing deeper.
+        //
+        // /BACK keeps the lines instead of printing them, and asking for them
+        // also turns tracing off -- `Trace_Flags = 0; Display_Backtrace(...)`.
+        // A caller that wants both has to ask for the level again.
+        define("trace", List.of(Parameter.required("mode",
+                        Set.of(Datatype.INTEGER, Datatype.LOGIC))),
+                Set.of("back", "function"),
+                (arguments, evaluator, context, refinements) -> {
+                    // `Check_Security(SYM_DEBUG, POL_READ, 0)` guards this in
+                    // the C, which is Rebol's SECURE policy rather than a host
+                    // service: tracing writes to the output the interpreter
+                    // already has, so there is nothing outside to reach for and
+                    // no grant to ask. PRINT is unguarded here for the same
+                    // reason.
+                    Value mode = arguments.getFirst();
+                    Trace tracing = evaluator.tracing();
+                    tracing.writeTo(evaluator.output());
+                    if (refinements.contains("back")) {
+                        if (mode instanceof IntegerValue lines) {
+                            tracing.showTheLast((int) lines.magnitude());
+                            return UnsetValue.unset();
+                        }
+                        tracing.keepRatherThanPrint(mode.isTruthy());
+                    } else {
+                        // `else Enable_Backtrace(FALSE);` -- a plain TRACE turns
+                        // the buffer off, so the lines print as they happen.
+                        tracing.keepRatherThanPrint(false);
+                    }
+                    int wanted = mode instanceof IntegerValue level
+                            ? (int) level.magnitude()
+                            : (mode.isTruthy() ? Trace.EVERYTHING : 0);
+                    tracing.level(wanted, refinements.contains("function"));
+                    return UnsetValue.unset();
                 });
 
         // The four that exist to call code written in C. Each one is
         // refused whatever the host granted, and the error says that
         // nothing can offer it rather than that this host did not.
-        define("load-extension", takes("path"),
-                (arguments, evaluator, context) -> refuseExtensionPoint("load-extension"));
+        define("load-extension", List.of(
+                        Parameter.required("name", Set.of(Datatype.FILE, Datatype.BINARY)),
+                        Parameter.belongingTo("dispatch", "function", Set.of(Datatype.HANDLE))),
+                Set.of("dispatch"),
+                (arguments, evaluator, context, refinements) ->
+                        refuseExtensionPoint("load-extension"));
         define("do-callback", takes("callback"),
                 (arguments, evaluator, context) -> refuseExtensionPoint("do-callback"));
         define("do-commands", takes("commands"),
@@ -691,19 +1010,16 @@ public final class Natives {
                             ? angle
                             : Math.toDegrees(angle));
                 });
-        define("exp", takesNumbers("value"),
-                (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.exp(Comparison.asDouble(arguments.get(0)))));
-        define("log-e", takesNumbers("value"),
+        define("log-e", takesOnlyNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.log(Comparison.asDouble(arguments.get(0)))));
-        define("log-10", takesNumbers("value"),
+        define("log-10", takesOnlyNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.log10(Comparison.asDouble(arguments.get(0)))));
         // E raised to a power, the other way round from LOG. Named for
         // the mathematics rather than for what it does to its argument,
         // which is why it is not called power-of-e.
-        define("exp", takesNumbers("value"),
+        define("exp", takesOnlyNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.exp(Comparison.asDouble(arguments.get(0)))));
         // What is left of a decimal once the whole part is taken off, and
@@ -714,7 +1030,7 @@ public final class Natives {
                     double whole = Comparison.asDouble(arguments.get(0));
                     return DecimalValue.of(whole - (long) whole);
                 });
-        define("log-2", takesNumbers("value"),
+        define("log-2", takesOnlyNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.log(Comparison.asDouble(arguments.get(0))) / Math.log(2)));
         // Degrees by default and radians when asked, for the three that
@@ -730,28 +1046,28 @@ public final class Natives {
         //
         // Without the snaps every assertion about a right angle fails on a
         // number that prints as though it were the answer.
-        define("sine", takesNumbers("value"), Set.of("radians"),
+        define("sine", takesOnlyNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         withoutTheNoiseNearZero(
                                 Math.sin(inRadians(arguments.get(0), refinements)))));
-        define("cosine", takesNumbers("value"), Set.of("radians"),
+        define("cosine", takesOnlyNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         withoutTheNoiseNearZero(
                                 Math.cos(inRadians(arguments.get(0), refinements)))));
-        define("tangent", takesNumbers("value"), Set.of("radians"),
+        define("tangent", takesOnlyNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) ->
                         DecimalValue.of(tangentOf(inRadians(arguments.get(0), refinements))));
-        define("arcsine", takesNumbers("value"), Set.of("radians"),
+        define("arcsine", takesOnlyNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
                                 ? Math.asin(Comparison.asDouble(arguments.get(0)))
                                 : Math.toDegrees(Math.asin(Comparison.asDouble(arguments.get(0))))));
-        define("arccosine", takesNumbers("value"), Set.of("radians"),
+        define("arccosine", takesOnlyNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
                                 ? Math.acos(Comparison.asDouble(arguments.get(0)))
                                 : Math.toDegrees(Math.acos(Comparison.asDouble(arguments.get(0))))));
-        define("arctangent", takesNumbers("value"), Set.of("radians"),
+        define("arctangent", takesOnlyNumbers("value"), Set.of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
                                 ? Math.atan(Comparison.asDouble(arguments.get(0)))
@@ -803,6 +1119,29 @@ public final class Natives {
                         // grows and a zero one stays zero.
                         case TupleValue tuple -> randomisedOctets(tuple);
                         case PairValue point -> randomisedHalves(point);
+                        // A character answers one between the first and its own
+                        // codepoint, skipping the codepoints no character can
+                        // hold: `do { chr = 1 + (Random_Int(...) % chr); } while
+                        // (IS_INVALID_CHAR(chr));`. A codepoint of zero has
+                        // nothing to pick from and answers itself.
+                        case CharacterValue letter -> letter.codepoint() == 0
+                                ? letter
+                                : CharacterValue.of(aValidCodepointUpTo(
+                                        letter.codepoint()));
+                        // A time answers one between zero and itself, in
+                        // whatever precision it carries: `secs =
+                        // Random_Range(secs, D_REF(3));`.
+                        case TimeValue span -> TimeValue.ofNanoseconds(
+                                randomLongUpTo(span.nanoseconds()));
+                        // A date randomises the year, the month, the day and
+                        // the time, each within its own range, which is why the
+                        // answer is a date somewhere in the past rather than a
+                        // number of days from this one.
+                        case DateValue when -> randomisedDate(when);
+                        // A logic answers true or false: `SET_LOGIC(D_RET,
+                        // Random_Int(...) & 1);`.
+                        case LogicValue ignored ->
+                                LogicValue.of(randomness.nextBoolean());
                         default -> raiseCannotUse(arguments.get(0), "random");
                     };
                 });
@@ -815,13 +1154,30 @@ public final class Natives {
                 (arguments, evaluator, context) -> LogicValue.of(
                         ((BitsetValue) arguments.getFirst()).isComplemented()));
 
-        define("complement", List.of(Parameter.required("value")),
+        // `value<logic! integer! tuple! binary! bitset! typeset! image!>` and
+        // nothing else. The arm for a decimal exists in `REBTYPE(Decimal)` --
+        // `case A_COMPLEMENT: SET_INTEGER(D_RET, ~(REBINT)d1);` -- and is
+        // unreachable through COMPLEMENT because the declaration turns the
+        // decimal away first. A parameter that accepted everything let it
+        // through, which is how `complement 5.5` came to answer -6 here and an
+        // error in a real R3.
+        define("complement", List.of(Parameter.required("value", Set.of(
+                        Datatype.LOGIC, Datatype.INTEGER, Datatype.TUPLE,
+                        Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET,
+                        Datatype.IMAGE))),
                 (arguments, evaluator, context) -> switch (arguments.get(0)) {
                     case LogicValue truth -> LogicValue.of(!truth.truth());
                     case IntegerValue whole -> IntegerValue.of(~whole.magnitude());
                     // The set of everything the bitset does not hold,
                     // which is what a rule means by "any but these".
                     case BitsetValue members -> members.complemented();
+                    case BinaryValue bytes -> newBytesEachFlipped(bytes);
+                    case ImageValue image -> newImageEachChannelFlipped(image);
+                    // Every datatype the typeset does not hold. One line in
+                    // the C -- `VAL_TYPESET(val) = ~VAL_TYPESET(val)` -- and
+                    // it covers every datatype the build knows rather than
+                    // only the ones the set was written with.
+                    case TypesetValue kinds -> complementOfTypeset(kinds);
                     // Every kept octet flipped, and the zeros behind them
                     // left alone, so complementing 1.0.0 gives 254.255.255
                     // and not twelve flipped octets.
@@ -904,9 +1260,15 @@ public final class Natives {
                             Math.pow(Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1))));
                 });
 
-        define("negate", takesNumbers("value"),
-                (arguments, evaluator, context) -> arithmetic(
-                        List.of(IntegerValue.of(0), arguments.get(0)), Operation.SUBTRACT));
+        // NEGATE and COMPLEMENT are one case group for a bitset -- `case
+        // A_COMPLEMENT: case A_NEGATE:` -- so negating a set is complementing
+        // it, and the parameter list has to admit one.
+        define("negate", withBitsets(takesNumbers("value")),
+                (arguments, evaluator, context) -> arguments.getFirst()
+                        instanceof BitsetValue members
+                        ? members.complemented()
+                        : arithmetic(List.of(IntegerValue.of(0), arguments.get(0)),
+                                Operation.SUBTRACT));
 
         // MIN and MAX were REBOL in the prelude, written as a comparison
         // and a choice between the two arguments. That cannot answer for
@@ -1037,7 +1399,7 @@ public final class Natives {
     /** What ABS measures: everything with a magnitude and a sign. */
     private static final Set<Datatype> MEASURABLE = Set.of(
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
-            Datatype.MONEY, Datatype.CHAR, Datatype.TIME, Datatype.PAIR);
+            Datatype.MONEY, Datatype.TIME, Datatype.PAIR);
 
     /** What MOD divides: numbers, and the three things measured like them. */
     private static final Set<Datatype> DIVISIBLE = Set.of(
@@ -1363,6 +1725,116 @@ public final class Natives {
     }
 
     /**
+     * Arithmetic with a character on the left, as {@code REBTYPE(Char)} does it.
+     *
+     * <p>The right operand becomes a plain number first -- a character gives its
+     * codepoint, a whole number itself, a decimal its truncation, and anything
+     * else is refused -- and then the operation runs on codepoints. The answer
+     * is a character, so it has to be one: {@code if (IS_INVALID_CHAR(chr))
+     * Trap1(RE_INVALID_CHAR, ...)} refuses a result past the last codepoint or
+     * inside the surrogate range rather than wrapping it.
+     */
+    private static Value characterArithmetic(
+            CharacterValue letter, Value right, Operation operation) {
+
+        long other = switch (right) {
+            case CharacterValue another -> another.codepoint();
+            case IntegerValue whole -> whole.magnitude();
+            case DecimalValue fraction -> (long) fraction.quantity();
+            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
+                    "a character takes a character or a number, not a "
+                            + right.datatype().literalSpelling());
+        };
+        long codepoint = letter.codepoint();
+        long answered = switch (operation) {
+            case ADD -> codepoint + other;
+            case SUBTRACT -> codepoint - other;
+            case MULTIPLY -> codepoint * other;
+            case DIVIDE -> dividedBy(codepoint, other);
+            case REMAINDER -> remainderOf(codepoint, other);
+            default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
+                    "cannot use that on a character");
+        };
+        // `if (IS_CHAR(D_ARG(2))) { DS_RET_INT(chr); return R_RET; }` -- the
+        // distance between two characters is a count and not a character.
+        if (operation == Operation.SUBTRACT && right instanceof CharacterValue) {
+            return IntegerValue.of(answered);
+        }
+        return CharacterValue.of(requireACodepoint(answered));
+    }
+
+    private static long dividedBy(long codepoint, long other) {
+        if (other == 0) {
+            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
+        }
+        return codepoint / other;
+    }
+
+    private static long remainderOf(long codepoint, long other) {
+        if (other == 0) {
+            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
+        }
+        return codepoint % other;
+    }
+
+    /**
+     * A codepoint between one and the limit that a character can hold.
+     *
+     * <p>`do { chr = 1 + (Random_Int(secure) % chr); } while
+     * (IS_INVALID_CHAR(chr));` -- the loop is there because the surrogate range
+     * is inside the span being picked from and no character may hold one.
+     */
+    private int aValidCodepointUpTo(int limit) {
+        while (true) {
+            int picked = 1 + randomness.nextInt(limit);
+            boolean surrogate = picked >= 0xD800 && picked <= 0xDFFF;
+            if (!surrogate && picked <= MAXIMUM_CODEPOINT) {
+                return picked;
+            }
+        }
+    }
+
+    /** A whole number between zero and the limit, keeping its sign. */
+    private long randomLongUpTo(long limit) {
+        if (limit == 0) {
+            return 0;
+        }
+        long picked = 1 + (long) (randomness.nextDouble() * Math.abs(limit));
+        return limit < 0 ? -picked : picked;
+    }
+
+    /**
+     * A date with every part randomised inside its own range.
+     *
+     * <p>The C randomises the year, then the month, then the day, then the
+     * seconds, each with {@code Random_Range} of that part alone. So the answer
+     * is a date no later than this one in every part rather than a random
+     * instant before it, and a date in January can only come back in January.
+     */
+    private Value randomisedDate(DateValue when) {
+        int year = (int) randomLongUpTo(when.year());
+        int month = (int) Math.max(1, randomLongUpTo(when.month()));
+        int day = (int) Math.max(1, randomLongUpTo(when.day()));
+        return when.timeOfDay().isEmpty()
+                ? DateValue.of(year, month, day)
+                : new DateValue(year, month, day,
+                        java.util.Optional.of(TimeValue.ofNanoseconds(
+                                randomLongUpTo(when.timeOfDay().orElseThrow()
+                                        .nanoseconds()))),
+                        when.zoneMinutes());
+    }
+
+    /** A number as a codepoint, refusing one no character can hold. */
+    private static int requireACodepoint(long wanted) {
+        boolean surrogate = wanted >= 0xD800 && wanted <= 0xDFFF;
+        if (wanted < 0 || wanted > MAXIMUM_CODEPOINT || surrogate) {
+            throw Raised.of(EvaluationFailure.INVALID_CHAR,
+                    wanted + " is not a character");
+        }
+        return (int) wanted;
+    }
+
+    /**
      * Integer arithmetic raises on overflow rather than wrapping. The JVM
      * wraps silently, which is the worst available behaviour: a wrong answer
      * that looks like a right one.
@@ -1371,6 +1843,15 @@ public final class Natives {
         Value left = arguments.get(0);
         Value right = arguments.get(1);
 
+        // A character on the LEFT is its own arithmetic, and the answer is a
+        // character: `case A_ADD: chr += arg; break;` in REBTYPE(Char), with the
+        // whole dispatcher ending in `SET_CHAR(DS_RETURN, chr)`. So `#"a" + 1`
+        // is #"b" and not 98. The one exception is written into the C beside it:
+        // subtracting one character from another answers the distance as an
+        // integer, because that is the only useful thing it could be.
+        if (left instanceof CharacterValue letter) {
+            return characterArithmetic(letter, right, operation);
+        }
         if (left instanceof PairValue || right instanceof PairValue) {
             return pairArithmetic(left, right, operation);
         }
@@ -1725,6 +2206,26 @@ public final class Natives {
     }
 
     /** Every kept octet flipped, which is what COMPLEMENT does to a tuple. */
+    private static Value newImageEachChannelFlipped(ImageValue image) {
+        ImageStorage flipped = ImageStorage.of(
+                image.storage().wide(), image.storage().high());
+        for (int pixel = 1; pixel <= image.storage().length(); pixel++) {
+            int[] channels = image.storage().pixelAt(pixel);
+            flipped.setColourAt(pixel,
+                    ~channels[0] & 0xFF, ~channels[1] & 0xFF, ~channels[2] & 0xFF);
+            flipped.setAlphaAt(pixel, ~channels[3] & 0xFF);
+        }
+        return new ImageValue(flipped, 1);
+    }
+
+    private static Value newBytesEachFlipped(BinaryValue bytes) {
+        byte[] flipped = bytes.octetsFromHere();
+        for (int at = 0; at < flipped.length; at++) {
+            flipped[at] = (byte) ~flipped[at];
+        }
+        return new BinaryValue(new BinaryStorage(flipped), 1);
+    }
+
     private static Value flippedOctets(TupleValue tuple) {
         int[] octets = tuple.segments();
         for (int at = 0; at < octets.length; at++) {
@@ -1988,20 +2489,37 @@ public final class Natives {
         // what is left, so a caller can walk a block an expression at a
         // time. It takes a word rather than answering a pair because the
         // caller almost always wants to keep stepping the same variable.
+        // /ARGS carries what a script reads as `system/script/args`, and the
+        // vendored `sys/do*` is what puts it there: `system/script: make
+        // system/standard/script compose [... args: :arg]`. DO declared the
+        // refinement and no argument for it, so a caller could ask for /ARGS and
+        // had nowhere to put the value -- which reads as the script being
+        // handed nothing.
         define("do", List.of(Parameter.required("value"),
+                        Parameter.belongingTo("args", "arg", Set.of()),
                         Parameter.belongingTo("next", "var", Set.of(Datatype.WORD))),
                 Set.of("next", "args"),
                 (arguments, evaluator, context, refinements) -> {
+                    // Set before the value runs, so the script sees it. A script
+                    // reads `system/script/args` and nothing else, so this is
+                    // the whole of what /ARGS does.
+                    if (refinements.contains("args") && arguments.size() > 1) {
+                        Value given = argumentFor("args", List.of("args", "next"),
+                                arguments, refinements, 1);
+                        recordTheScriptArguments(evaluator, given);
+                    }
                     if (refinements.contains("next") && arguments.size() > 1
+                            && arguments.getLast() instanceof WordValue
                             && arguments.getFirst() instanceof BlockValue block) {
                         Evaluator.Step taken =
                                 evaluator.evaluateNextOrRaise(block, context);
-                        slotOf((WordValue) arguments.get(1))
+                        slotOf((WordValue) arguments.getLast())
                                 .setValue(block.atIndex(taken.nextIndex()));
                         return taken.value();
                     }
                     return switch (arguments.getFirst()) {
-                        case BlockValue block ->
+                        case BlockValue block when block.datatype() == Datatype.BLOCK
+                                || block.datatype() == Datatype.PAREN ->
                                 evaluator.evaluateOrRaise(block, context);
                         case StringValue text -> evaluator.evaluateSource(text.text());
                         // DO of an error raises it. That is how a script
@@ -2011,6 +2529,34 @@ public final class Natives {
                         // makes every such call do nothing at all, and the
                         // value is then dropped when anything follows it.
                         case ErrorValue built -> throw new Raised(built);
+                        // A word or a get-word is looked up: `*D_RET =
+                        // *Get_Var(value);`. So `do 'a` is what A holds, which
+                        // is how a script runs a name it was handed. A path is
+                        // the same question one segment deeper.
+                        case WordValue named when named.datatype() == Datatype.WORD
+                                || named.datatype() == Datatype.GET_WORD ->
+                                evaluator.valueOfWordIn(named, context);
+                        // A lit-word answers the plain word rather than what it
+                        // names, and a lit-path the plain path:
+                        // `*D_RET = *value; SET_TYPE(D_RET, REB_WORD);`. That is
+                        // the one step of evaluation a quoted value has left.
+                        case WordValue quoted when quoted.datatype() == Datatype.LIT_WORD ->
+                                quoted.as(Datatype.WORD);
+                        case BlockValue quoted when quoted.datatype() == Datatype.LIT_PATH ->
+                                quoted.as(Datatype.PATH);
+                        case BlockValue path when path.datatype() == Datatype.PATH ->
+                                evaluator.valueOfPathIn(path, context);
+                        // A set-word or a set-path is refused rather than
+                        // answered: `case REB_SET_WORD: case REB_SET_PATH:
+                        // Trap_Arg(value);`. There is nothing after it to
+                        // assign, so the caller has handed over half an
+                        // expression.
+                        case WordValue assigning
+                                when assigning.datatype() == Datatype.SET_WORD ->
+                                raiseHalfAnExpression(assigning);
+                        case BlockValue assigning
+                                when assigning.datatype() == Datatype.SET_PATH ->
+                                raiseHalfAnExpression(assigning);
                         default -> arguments.getFirst();
                     };
                 });
@@ -2082,17 +2628,63 @@ public final class Natives {
                         Parameter.belongingTo("default", "fallback", Set.of(Datatype.BLOCK))),
                 Set.of("case", "default", "all"),
                 (arguments, evaluator, context, refinements) -> {
+                    // Walked one value at a time rather than in pairs, and a
+                    // value that matched runs the next block there is rather
+                    // than the item straight after it. The C is four lines
+                    // and the second one is the whole of it:
+                    //     if (!IS_BLOCK(blk) && 0 == Cmp_Value(...)) {
+                    //         for (; !IS_BLOCK(blk) && NOT_END(blk); blk++);
+                    //         if (IS_END(blk)) break;
+                    //         result = DO_BLK(blk);
+                    //
+                    // So several values may share one block by writing them
+                    // one after another with no block between. Rebol's own
+                    // JSON codec does exactly that:
+                    //     integer!
+                    //     decimal! [append output value]
+                    //
+                    // Walking in pairs read INTEGER! against DECIMAL! and
+                    // matched nothing, so `to-json 5` answered an empty
+                    // string with no error to say why.
                     List<Value> choices = ((BlockValue) arguments.get(1)).remaining();
-                    for (int at = 0; at + 1 < choices.size(); at += 2) {
+                    boolean runsThemAll = refinements.contains("all");
+                    boolean matchedSomething = false;
+                    Value lastBranchTaken = NoneValue.none();
+                    for (int at = 0; at < choices.size(); at++) {
+                        // A block is never a choice, only a branch. A paren
+                        // stays a choice: the C's IS_BLOCK is block! exactly,
+                        // so `(1 2 3)` matches an equal paren, unevaluated.
+                        if (isExactlyABlock(choices.get(at))) {
+                            continue;
+                        }
                         boolean chosen = refinements.contains("case")
                                 ? choices.get(at).equals(arguments.get(0))
                                 : Comparison.looselyEqual(choices.get(at), arguments.get(0));
-                        if (chosen) {
-                            return choices.get(at + 1) instanceof BlockValue branch
-                                    ? evaluator.evaluateOrRaise(
-                                            branch, context)
-                                    : choices.get(at + 1);
+                        if (!chosen) {
+                            continue;
                         }
+                        int branchAt = at;
+                        while (branchAt < choices.size()
+                                && !isExactlyABlock(choices.get(branchAt))) {
+                            branchAt++;
+                        }
+                        // A match with no block after it anywhere answers
+                        // none, as though nothing had matched at all.
+                        if (branchAt >= choices.size()) {
+                            break;
+                        }
+                        matchedSomething = true;
+                        lastBranchTaken = evaluator.evaluateOrRaise(
+                                (BlockValue) choices.get(branchAt), context);
+                        if (!runsThemAll) {
+                            return lastBranchTaken;
+                        }
+                        // Resume after the block, so the branch's own
+                        // contents are never read as further choices.
+                        at = branchAt;
+                    }
+                    if (matchedSomething) {
+                        return lastBranchTaken;
                     }
                     // /DEFAULT names the branch for when nothing matched.
                     // Without it the answer is none, which a caller cannot
@@ -2194,6 +2786,12 @@ public final class Natives {
                         Parameter.belongingTo("with", "handler", Set.of())),
                 Set.of("all", "with"),
                 (arguments, evaluator, context, refinements) -> {
+                    // Reset on the way in, whatever happens next:
+                    // `REBVAL *error = Get_System(SYS_STATE, STATE_LAST_ERROR);
+                    // SET_NONE(error); // reset the last error`. So a TRY that
+                    // succeeds clears whatever the last one left, and a caller
+                    // reading last-error afterwards is reading this call.
+                    runState.set("last-error", NoneValue.none());
                     Value failure;
                     try {
                         return evaluator.evaluateOrRaise(
@@ -2204,8 +2802,16 @@ public final class Natives {
                         if (!refinements.contains("all")) {
                             throw thrown;
                         }
-                        failure = ErrorValue.of(ErrorCategory.THROW, "throw",
-                                "a throw that nothing caught");
+                        // `Make_Error(code, arg1, sym ? &word : 0, 0)` in
+                        // Disarm_Throw_Error: the value thrown becomes arg1 and
+                        // the name becomes arg2, so a handler reading the error
+                        // can see what was thrown and where it was addressed.
+                        failure = ErrorValue.about(ErrorCategory.THROW, "throw",
+                                "a throw that nothing caught",
+                                thrown.value(),
+                                thrown.name().<Value>map(WordValue::of)
+                                        .orElseGet(NoneValue::none),
+                                NoneValue.none());
                     } catch (LoopSignal stopped) {
                         if (!refinements.contains("all")) {
                             throw stopped;
@@ -2225,8 +2831,14 @@ public final class Natives {
                         if (!refinements.contains("all")) {
                             throw returned;
                         }
-                        failure = ErrorValue.of(ErrorCategory.THROW, "return",
-                                "a return outside a function");
+                        // RETURN carries a value too, and EXIT carries unset --
+                        // which is why arg1 is none for `try/all/with [exit]`
+                        // and the returned value for `[return 1]`.
+                        failure = ErrorValue.about(ErrorCategory.THROW, "return",
+                                "a return outside a function",
+                                returned.value() instanceof UnsetValue
+                                        ? NoneValue.none()
+                                        : returned.value());
                     }
                     // Recorded so a handler written as a block, which has
                     // no argument to read, can still reach what it is
@@ -2301,8 +2913,13 @@ public final class Natives {
                         return evaluator.evaluateOrRaise(
                                 (BlockValue) arguments.getFirst(), context);
                     } catch (ThrownSignal thrown) {
-                        if (!refinements.contains("all")
-                                && !answersTo(thrown, expectedNames(arguments, refinements))) {
+                        boolean catchesQuitOnly = refinements.contains("quit")
+                                && !refinements.contains("name")
+                                && !refinements.contains("all");
+                        if (catchesQuitOnly
+                                || (!refinements.contains("all")
+                                        && !answersTo(thrown,
+                                                expectedNames(arguments, refinements)))) {
                             throw thrown;
                         }
                         handled = thrown.value();
@@ -2317,16 +2934,49 @@ public final class Natives {
                             throw quit;
                         }
                         handled = quit.answer();
+                        // The C tells the user where the exit came from:
+                        //     SET_LOGIC(Get_System(SYS_STATE, STATE_QUITQ), TRUE);
+                        // so a caller can tell a caught quit from a caught
+                        // throw that happened to answer the same value.
+                        runState.set("quit?", LogicValue.of(true));
+                    } catch (HaltRequested halted) {
+                        // /QUIT catches HALT as well, and answers unset. Two
+                        // arms of one branch in the C -- `Try_Block_Halt`
+                        // catches both, and then:
+                        //     if (VAL_ERR_NUM(ret) == RE_QUIT) ... quit value
+                        //     else if (VAL_ERR_NUM(ret) == RE_HALT)
+                        //         VAL_SET(DS_RETURN, REB_UNSET);
+                        //
+                        // A halt carries no value, so there is nothing else it
+                        // could answer.
+                        if (!refinements.contains("quit")) {
+                            throw halted;
+                        }
+                        handled = UnsetValue.unset();
                     }
                     runState.set("last-result", handled);
                     // /WITH runs on a throw and not on the way out, so it
                     // is a handler rather than a finally.
                     if (refinements.contains("with")) {
                         Value handler = arguments.getLast();
-                        return handler instanceof BlockValue block
-                                ? evaluator.evaluateOrRaise(block, context)
-                                : evaluator.applyFunction(
-                                        handler, List.of(handled, carriedName));
+                        // A block handler reads the caught value through
+                        // system/state/last-result, which is why last-result
+                        // is set before it runs -- and is set again to the
+                        // handler's own result afterwards:
+                        //     *last_result = *DO_BLK(&callback);
+                        // So `catch/with [throw 1][2 * system/state/last-result]`
+                        // answers 2 and leaves last-result at 2.
+                        // Only a block handler writes its result back into
+                        // last-result: the C reassigns it after DO_BLK but
+                        // leaves it at the caught value for a function
+                        // handler, which takes the value as an argument
+                        // rather than reading it from state.
+                        if (handler instanceof BlockValue block) {
+                            Value answered = evaluator.evaluateOrRaise(block, context);
+                            runState.set("last-result", answered);
+                            return answered;
+                        }
+                        return evaluator.applyToCaught(handler, handled, carriedName);
                     }
                     return handled;
                 });
@@ -2425,8 +3075,19 @@ public final class Natives {
                     case ObjectValue prototype ->
                             makeObject(evaluator, context, Optional.of(prototype),
                                     (BlockValue) arguments.get(1));
+                    // A number is how much room to make rather than what to
+                    // put in, so it answers an empty map -- the same reading
+                    // MAKE OBJECT! gives a number above. `else if
+                    // (IS_NUMBER(arg)) { if (action == A_TO) Trap_Arg(arg);
+                    // n = Int32s(arg, 0); }`, and the map is made with room
+                    // for n. TO MAP! refuses a number on that same line, which
+                    // is why only MAKE reads it this way.
+                    //
+                    // Rebol's own codec-mime-types.reb opens with
+                    // `make map! 111` and stopped there, taking the whole
+                    // MIME type table with it.
                     case DatatypeValue wanted when wanted.represents() == Datatype.MAP ->
-                            MapValue.of(itemsOf(arguments.get(1)));
+                            mapMadeFrom(arguments.get(1));
                     case DatatypeValue wanted when wanted.represents() == Datatype.BITSET ->
                             bitsetOf(arguments.get(1));
                     case DatatypeValue wanted when wanted.represents() == Datatype.PAIR ->
@@ -2453,6 +3114,26 @@ public final class Natives {
                             functionFrom(arguments.get(1), context);
                     case DatatypeValue wanted when wanted.represents() == Datatype.ERROR ->
                             errorFromSpec(arguments.get(1), evaluator, context);
+                    // A string over an existing error re-messages it: the
+                    // answer is the User category's message entry, arg1 the
+                    // text, whatever the prototype was.
+                    case ErrorValue prototype
+                            when arguments.get(1) instanceof StringValue ->
+                            errorFromSpec(arguments.get(1), evaluator, context);
+                    // MAKE MODULE! does not build the module. It hands the
+                    // spec to MAKE-MODULE* in sys-base.reb, exactly as MAKE
+                    // PORT! hands its spec to MAKE-PORT*, and for the same
+                    // reason: Rebol's C does. Make_Module is four lines and
+                    // one of them is
+                    // `Do_Sys_Func(SYS_CTX_MAKE_MODULE_P, spec, 0)`.
+                    //
+                    // Those ninety lines of REBOL are where the EXPORT and
+                    // HIDDEN keywords in a module body are handled, where the
+                    // header is checked, and where the choice between a
+                    // shared and an isolated namespace is made. A copy of
+                    // them here would be a second set of answers.
+                    case DatatypeValue wanted when wanted.represents() == Datatype.MODULE ->
+                            moduleFromSpec(arguments.get(1), evaluator, context);
                     // MAKE on any other datatype converts, exactly as TO
                     // does, with one addition: a number is a capacity
                     // hint rather than a value, so `make block! 5` is an
@@ -2486,9 +3167,18 @@ public final class Natives {
                                     prototype.datatype().literalSpelling());
                         }
                         yield makeOfDatatype(DatatypeValue.of(prototype.datatype()),
-                                arguments.get(1));
+                                arguments.get(1), evaluator, context);
                     }
-                    case DatatypeValue wanted -> makeOfDatatype(wanted, arguments.get(1));
+                    // An event is not a series, so it needs its own arm to be a
+                    // prototype: `if (IS_EVENT(value) || IS_DATATYPE(value))` in
+                    // `REBTYPE(Event)` takes either. It contributes nothing to the
+                    // result -- the arm clears the event before filling it -- so
+                    // `make some-event [...]` is a fresh event and not a copy.
+                    case EventValue prototype -> EventPath.made(prototype,
+                            arguments.get(1),
+                            value -> simpleValueOf(value, evaluator, context));
+                    case DatatypeValue wanted ->
+                            makeOfDatatype(wanted, arguments.get(1), evaluator, context);
                     default -> raiseCannotUse(arguments.get(0), "make");
                 });
 
@@ -2518,13 +3208,33 @@ public final class Natives {
                             : headerFieldsIn(body instanceof StringValue text
                                     ? text.text()
                                     : textOfBytes((BinaryValue) body));
+                    // /WITH names a prototype, and the C makes it the parent:
+                    // `if (D_REF(2)) parent = VAL_OBJ_FRAME(D_ARG(3));` and
+                    // then `Construct_Object(parent, ...)`. So the result
+                    // holds every field the prototype has, and the block
+                    // overwrites the ones it mentions.
+                    //
+                    // The refinement was declared here and ignored, which
+                    // made `construct/with` a plain CONSTRUCT. MAKE-MODULE*
+                    // opens with `construct/with :spec system/standard/header`
+                    // and then reads spec/name, so a header that did not
+                    // mention NAME had no such field and the read raised
+                    // invalid-path.
+                    if (refinements.contains("with") && arguments.size() > 1
+                            && arguments.get(1) instanceof ObjectValue prototype) {
+                        prototype.context().fieldsExcludingSelf()
+                                .forEach(built::set);
+                    }
                     constructInto(built, items, refinements.contains("only"));
                     return new ObjectValue(built);
                 });
 
         // CONTEXT? answers the object a bound word lives in, which is how
         // code holding a word can reach the rest of what surrounds it.
-        define("context?", List.of(Parameter.required("word", Set.of(Datatype.WORD))),
+        // `word [any-word!]` -- a set-word and a lit-word carry a binding
+        // just as a plain word does, and code asking where one lives has no
+        // reason to convert it first.
+        define("context?", List.of(Parameter.required("word", Typeset.ANY_WORD.members())),
                 (arguments, evaluator, context) -> {
                     WordValue word = (WordValue) arguments.getFirst();
                     return word.isBound()
@@ -2535,12 +3245,24 @@ public final class Natives {
         // RESOLVE fills in only what the target has no value for. /ALL
         // overwrites what it has, /EXTEND adds the words it lacks. Without
         // /EXTEND a word only the source has is skipped rather than added.
+        // `target [any-object!] source [any-object!]`, so a module counts:
+        // Rebol's IMPORT ends by resolving a module's exports into lib, and
+        // OBJECT! alone refused it.
+        // /ONLY says which words may be written, in either of two shapes:
+        // `from [block! integer!]` -- a block of the words to copy, or a
+        // position in the target from which its words are new. The C marks
+        // both in one bind table, so one rule follows from either: a word
+        // that /ONLY named and the source has not got is UNSET in the target
+        // rather than left alone. Without /ONLY the same word is left as it
+        // was, because nothing marked it.
         define("resolve", List.of(
-                        Parameter.required("target", Set.of(Datatype.OBJECT)),
-                        Parameter.required("source", Set.of(Datatype.OBJECT))),
+                        Parameter.required("target", Typeset.ANY_OBJECT.members()),
+                        Parameter.required("source", Typeset.ANY_OBJECT.members()),
+                        Parameter.belongingTo("only", "from",
+                                Set.of(Datatype.BLOCK, Datatype.INTEGER))),
                 Set.of("only", "all", "extend"),
                 (arguments, evaluator, context, refinements) -> {
-                    Context into = ((ObjectValue) arguments.getFirst()).context();
+                    Context into = fieldsOf(arguments.getFirst());
                     // Filling an object from another changes it as a
                     // container, so a target protected as a container
                     // raises `protected` rather than the `locked-word` a
@@ -2553,22 +3275,10 @@ public final class Natives {
                     if (into.isClosedToNewNames()) {
                         throw Raised.of(EvaluationFailure.PROTECTED, "resolve");
                     }
-                    for (ContextSlot slot : ((ObjectValue) arguments.get(1)).context().slots()) {
-                        if (slot.canonical().equals("self")) {
-                            continue;
-                        }
-                        if (!into.holds(slot.canonical())) {
-                            if (refinements.contains("extend")) {
-                                into.set(slot.spelling(), slot.value());
-                            }
-                            continue;
-                        }
-                        if (refinements.contains("all")
-                                || into.slotFor(slot.canonical()).value() instanceof UnsetValue) {
-                            into.set(slot.spelling(), slot.value());
-                        }
-                    }
-                    return arguments.getFirst();
+                    return resolvedFrom(into, fieldsOf(arguments.get(1)),
+                            arguments.getFirst(), refinements,
+                            argumentFor("only", List.of("only"),
+                                    arguments, refinements, 2));
                 });
 
         // USE makes a context holding the words it is given, binds the
@@ -2618,7 +3328,8 @@ public final class Natives {
         // `frame = IS_ERROR(val) ? VAL_ERR_OBJECT(val) : VAL_OBJ_FRAME(val)`.
         define("in", List.of(
                         Parameter.required("object", Set.of(Datatype.OBJECT, Datatype.ERROR,
-                                Datatype.PORT, Datatype.BLOCK, Datatype.PAREN)),
+                                Datatype.PORT, Datatype.MODULE, Datatype.TASK,
+                                Datatype.BLOCK)),
                         Parameter.required("word", Set.of(Datatype.WORD, Datatype.LIT_WORD,
                                 Datatype.GET_WORD, Datatype.SET_WORD, Datatype.REFINEMENT,
                                 Datatype.ISSUE, Datatype.BLOCK, Datatype.PAREN))),
@@ -2658,17 +3369,34 @@ public final class Natives {
         // APPLY reaches a function when the arguments are already a
         // block rather than written after the call. The arity is still
         // checked, so a short block is the same mistake as a short call.
-        define("apply", List.of(Parameter.required("callee"),
-                        Parameter.required("arguments", Set.of(Datatype.BLOCK))),
+        // APPLY reduces the block, then makes it exactly as long as the
+        // function's argument list: extra values are dropped and missing
+        // ones are filled with none. `Apply_Block` in the C does both in
+        // two lines, and the second is the one JEBOL had backwards:
+        //     if (len < n) n = len;              // drop the extra
+        //     for (; n < len; n++) DS_PUSH_NONE; // pad out missing args
+        //
+        // Refusing a short block instead is why base-defs.reb and
+        // mezz-types.reb both stopped. Rebol's own library calls APPLY with
+        // a block whose length it does not know, exactly because APPLY is
+        // the call that does not mind.
+        define("apply", List.of(Parameter.required("func"),
+                        Parameter.required("block", Set.of(Datatype.BLOCK))),
                 Set.of("only"),
                 (arguments, evaluator, context, refinements) -> {
-                    List<Value> given = ((BlockValue) arguments.get(1)).remaining();
-                    long wanted = arityOf(arguments.get(0));
-                    if (given.size() < wanted) {
-                        return raiseWrongArgument(arguments.get(1), "apply",
-                                wanted + " arguments and got " + given.size());
+                    BlockValue given = (BlockValue) arguments.get(1);
+                    // Reduced first, unless /ONLY asks for the values as
+                    // written. `Apply_Block(D_ARG(1), D_ARG(2), !D_REF(3))`.
+                    List<Value> supplied = refinements.contains("only")
+                            ? given.remaining()
+                            : evaluator.evaluateEachOrRaise(given, context);
+                    int wanted = (int) arityOf(arguments.get(0));
+                    List<Value> exactly = new ArrayList<>(
+                            supplied.subList(0, Math.min(wanted, supplied.size())));
+                    while (exactly.size() < wanted) {
+                        exactly.add(NoneValue.none());
                     }
-                    return evaluator.applyFunction(arguments.get(0), given);
+                    return evaluator.applyFunction(arguments.get(0), exactly);
                 });
 
         // ASSERT raises with an id of its own rather than a generic
@@ -2677,6 +3405,10 @@ public final class Natives {
         define("assert", List.of(Parameter.required("conditions", Set.of(Datatype.BLOCK))),
                 Set.of("type"),
                 (arguments, evaluator, context, refinements) -> {
+                    if (refinements.contains("type")) {
+                        return assertedTypes(
+                                (BlockValue) arguments.get(0), evaluator, context);
+                    }
                     Value held = evaluator.evaluateOrRaise(
                             (BlockValue) arguments.get(0), context);
                     if (!held.isTruthy()) {
@@ -2694,20 +3426,50 @@ public final class Natives {
 
         // /IGNORE names words to leave out, which is how a caller asks
         // "what is here that I do not already know about".
+        // The spec is the C's, verbatim:
+        //     block [block!]
+        //     /deep    "Include nested blocks"
+        //     /set     "Only include set-words"
+        //     /ignore  "Ignore prior words"
+        //      words [any-object! block! none!] "Words to ignore"
+        //     /as   "Datatype of the words in the returned block"
+        //      type [datatype!] "Any word type"
+        //
+        // NONE on /IGNORE is not a nicety. `collect-words/ignore body
+        // select spec 'exports` passes whatever SELECT answered, and SELECT
+        // answers none for a field the object has not got. Refusing it
+        // stopped ten of Rebol's own files, MAKE-MODULE* among them.
         define("collect-words", List.of(Parameter.required("block", Set.of(Datatype.BLOCK)),
-                        Parameter.belongingTo("ignore", "known",
-                                Set.of(Datatype.BLOCK, Datatype.OBJECT))),
+                        Parameter.belongingTo("ignore", "words",
+                                anyObjectOr(Datatype.BLOCK, Datatype.NONE)),
+                        Parameter.belongingTo("as", "type", Set.of(Datatype.DATATYPE))),
                 Set.of("deep", "set", "ignore", "as"),
                 (arguments, evaluator, context, refinements) -> {
                     List<Value> found = new ArrayList<>();
                     gatherWords((BlockValue) arguments.get(0), refinements.contains("deep"),
                             refinements.contains("set"), found);
                     Value ignoring = argumentFor(
-                            "ignore", List.of("ignore"), arguments, refinements, 1);
-                    if (ignoring != null) {
+                            "ignore", List.of("ignore", "as"), arguments, refinements, 1);
+                    if (ignoring != null && !(ignoring instanceof NoneValue)) {
                         Set<String> known = namesIn(ignoring);
                         found.removeIf(word -> word instanceof WordValue named
                                 && known.contains(named.canonical()));
+                    }
+                    // /AS names the word datatype to answer, and only a word
+                    // datatype will do:
+                    //     type = D_REF(6) ? VAL_DATATYPE(D_ARG(7)) : REB_WORD;
+                    //     if (type < REB_WORD || type > REB_ISSUE)
+                    //         Trap1(RE_BAD_FUNC_ARG, D_ARG(7));
+                    if (refinements.contains("as")) {
+                        Value wanted = argumentFor(
+                                "as", List.of("ignore", "as"), arguments, refinements, 1);
+                        if (!(wanted instanceof DatatypeValue named)
+                                || !ANY_WORD_DATATYPES.contains(named.represents())) {
+                            throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, "as");
+                        }
+                        found.replaceAll(word -> word instanceof WordValue spelt
+                                ? spelt.as(named.represents())
+                                : word);
                     }
                     return BlockValue.block(found);
                 });
@@ -2715,13 +3477,46 @@ public final class Natives {
         // The line-break marker belongs to a position rather than to a
         // value, so it takes a pair of natives of its own: there is
         // nothing you could insert into the block to put one there.
+        // The whole of the C is one loop with one condition in it:
+        //     REBINT skip = -1;
+        //     if (D_REF(3)) skip = 1;                      // all
+        //     if (D_REF(4)) skip = MAX(1, Int32s(size));   // skip
+        //     for (n = 0; NOT_END(val); n++, val++) {
+        //         if (cond ^ (n % skip != 0)) VAL_SET_LINE(val);
+        //         else VAL_CLR_LINE(val);
+        //         if (skip < 0) break;
+        //     }
+        //
+        // Three things follow that reading the name would not give. A plain
+        // call marks one position and stops -- `if (skip < 0) break;`. /ALL is
+        // /SKIP with a size of one. And the condition is an exclusive or, so
+        // /SKIP marks every nth position and *clears* the rest: it sets the
+        // pattern rather than adding to it.
         define("new-line", List.of(
                         Parameter.required("position", Set.of(Datatype.BLOCK, Datatype.PAREN)),
-                        Parameter.required("value")),
+                        Parameter.required("value"),
+                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
                 Set.of("all", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     BlockValue block = (BlockValue) arguments.get(0);
-                    block.storage().setLineBreakAt(block.index(), arguments.get(1).isTruthy());
+                    boolean wanted = arguments.get(1).isTruthy();
+                    int stride = -1;
+                    if (refinements.contains("all")) {
+                        stride = 1;
+                    }
+                    if (refinements.contains("skip") && arguments.size() > 2
+                            && arguments.get(2) instanceof IntegerValue size) {
+                        stride = (int) Math.max(1, size.magnitude());
+                    }
+                    for (int n = 0; block.index() + n <= block.storageLength(); n++) {
+                        boolean marking = stride < 0
+                                ? wanted
+                                : wanted ^ (n % stride != 0);
+                        block.storage().setLineBreakAt(block.index() + n, marking);
+                        if (stride < 0) {
+                            break;
+                        }
+                    }
                     return block;
                 });
         define("new-line?", List.of(
@@ -2776,11 +3571,14 @@ public final class Natives {
                     default -> false;
                 }));
 
-        // UNBIND takes the binding off and answers what it was given, so
-        // a block comes back as the same block with its words loose.
+        // UNBIND takes the binding off its words. A word comes back loose,
+        // so `unset unbind 'x` raises not-defined rather than reading the
+        // slot x still pointed at. A block has each of its words unbound,
+        // and /deep reaches the words in the blocks it holds.
         define("unbind", List.of(Parameter.required("word")),
                 Set.of("deep"),
-                (arguments, evaluator, context, refinements) -> arguments.get(0));
+                (arguments, evaluator, context, refinements) ->
+                        unbound(arguments.get(0), refinements.contains("deep")));
 
         // BIND takes a word as readily as a block. /new adds a word the
         // context has not got rather than leaving it loose, which is how
@@ -2795,13 +3593,17 @@ public final class Natives {
                     // then it means "wherever this word is bound".
                     // base-defs.reb uses that to hang six generated words
                     // off REFLECT's own context without naming it.
-                    Context target = switch (arguments.get(1)) {
-                        case ObjectValue object -> object.context();
-                        case WordValue named when named.isBound() -> named.binding();
-                        default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
+                    // `context [any-word! any-object!]`, so a module, a port
+                    // and an error all serve. Rebol's own MAKE-MODULE* binds
+                    // a body to the module it is building.
+                    Context target = arguments.get(1) instanceof WordValue named
+                            ? boundContextOf(named)
+                            : fieldsOf(arguments.get(1));
+                    if (target == null) {
+                        throw Raised.of(EvaluationFailure.EXPECT_ARG,
                                 "bind wanted an object or a bound word, not "
                                         + arguments.get(1).datatype().literalSpelling());
-                    };
+                    }
                     if (arguments.get(0) instanceof WordValue word) {
                         if (refinements.contains("new") || refinements.contains("set")) {
                             target.define(word.canonical());
@@ -2821,7 +3623,21 @@ public final class Natives {
                     if (refinements.contains("new") || refinements.contains("set")) {
                         defineFreshWordsOf(block, target, refinements.contains("set"));
                     }
-                    return Binder.bind(block, target);
+                    // BIND changes the caller's own block. /COPY is what asks
+                    // for a copy, and the C makes that the whole of the
+                    // difference in one line:
+                    //     blk = D_REF(3) ? Clone_Block_Value(arg) : VAL_SERIES(arg);
+                    //
+                    // Copying always was what stopped MAKE-MODULE* working.
+                    // It binds one body four times over -- `bind/only/set body
+                    // context`, `bind body lib`, `bind body mixins`,
+                    // `bind body context` -- and then evaluates that body. With
+                    // every bind answering a copy nobody kept, `do body` ran an
+                    // unbound block and the module came out holding a slot per
+                    // word and a value for none of them.
+                    return refinements.contains("copy")
+                            ? Binder.bind(block, target)
+                            : Binder.bindInPlace(block, target);
                 });
     }
 
@@ -2841,16 +3657,22 @@ public final class Natives {
             BlockValue body) {
 
         Context fields = Context.childOf(enclosing);
+        // SELF first, because rehoming a method rebinds its body to these
+        // fields and a method that says `self` has to reach the copy. Setting
+        // it afterwards left SELF bound to the prototype, so Rebol's own ENUM
+        // read the shape it was made from rather than the one it made.
+        ObjectValue built = new ObjectValue(fields);
+        fields.set("self", built);
+
         // Copying an object copies its methods too, and a method that still
         // closed over the object it was written in would move money in the
         // original when called on the copy.
-        prototype.ifPresent(existing -> existing.context().slots()
+        prototype.ifPresent(existing -> existing.context().slots().stream()
+                .filter(slot -> !slot.canonical().equals("self"))
                 .forEach(slot -> fields.set(
                         slot.spelling(), rehomed(slot.value(), fields))));
 
         declaredFieldsIn(body).forEach(fields::define);
-        ObjectValue built = new ObjectValue(fields);
-        fields.set("self", built);
 
         evaluator.evaluateOrRaise(Binder.bind(body, fields), fields);
         return built;
@@ -2891,10 +3713,23 @@ public final class Natives {
 
     /** A function copied into a new object belongs to that object now. */
     private static Value rehomed(Value value, Context fields) {
-        return value instanceof FunctionValue function
-                ? new FunctionValue(function.spec(), function.body(),
-                        function.parameters(), function.localNames(), fields)
-                : value;
+        if (!(value instanceof FunctionValue function)) {
+            return value;
+        }
+        // The body is rebound to the copy's fields, not just pointed at them.
+        // A call binds a body to the function's own words and leaves the rest
+        // as they stand -- see decision 17 -- so a method that still refers to
+        // the prototype's slots would keep reading the prototype after the
+        // copy. `make account [balance: 10]` and then `deposit 5` would add to
+        // the original.
+        //
+        // Rebol does the same thing when it copies an object: the words are
+        // not copied and the bindings are not changed at call time, so they
+        // have to be changed here.
+        return new FunctionValue(
+                function.spec(),
+                Binder.bind(function.body(), fields),
+                function.parameters(), function.localNames(), fields);
     }
 
     /** The set-words in a body, which are the fields the object will have. */
@@ -2914,8 +3749,9 @@ public final class Natives {
     // gives NONE, because there is no last value to give back.
 
     private void defineLoops() {
+        // `count [number!]` -- a decimal is truncated rather than refused.
         define("loop", List.of(
-                        Parameter.required("count", Set.of(Datatype.INTEGER)),
+                        Parameter.required("count", Typeset.NUMBER.members()),
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     long passes = ((IntegerValue) arguments.get(0)).magnitude();
@@ -2933,16 +3769,18 @@ public final class Natives {
 
         define("repeat", List.of(
                         Parameter.softQuoted("counter"),
-                        Parameter.required("count", Set.of(Datatype.INTEGER)),
+                        Parameter.required("count", Set.of(Datatype.INTEGER, Datatype.PAIR)),
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
+                    WordValue counter = (WordValue) arguments.get(0);
+                    BlockValue body = (BlockValue) arguments.get(2);
+                    if (arguments.get(1) instanceof PairValue grid) {
+                        return repeatedOverGrid(evaluator, context, counter, grid, body);
+                    }
                     long passes = ((IntegerValue) arguments.get(1)).magnitude();
                     return countedLoop(
-                            evaluator,
-                            (WordValue) arguments.get(0),
-                            (BlockValue) arguments.get(2),
-                            index -> IntegerValue.of(index + 1),
-                            passes);
+                            evaluator, context, counter, body,
+                            index -> IntegerValue.of(index + 1), passes);
                 });
 
         define("while", List.of(
@@ -2990,6 +3828,7 @@ public final class Natives {
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> steppedLoop(
                         evaluator,
+                        context,
                         (WordValue) arguments.get(0),
                         arguments.get(1),
                         arguments.get(2),
@@ -3004,6 +3843,7 @@ public final class Natives {
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> forEachLoop(
                         evaluator,
+                        context,
                         arguments.get(0),
                         arguments.get(1),
                         (BlockValue) arguments.get(2)));
@@ -3013,27 +3853,44 @@ public final class Natives {
         define("remove-each", List.of(
                         Parameter.softQuoted("word"),
                         Parameter.required("series",
-                                Set.of(Datatype.BLOCK, Datatype.BINARY, Datatype.STRING)),
+                                Set.of(Datatype.BLOCK, Datatype.BINARY,
+                                        Datatype.STRING, Datatype.MAP)),
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
+                Set.of("count"),
+                (arguments, evaluator, context, refinements) -> {
+                    // A map is walked in pairs rather than one item at a time,
+                    // and what it answers for /COUNT is halved for the same
+                    // reason /PART is halved:
+                    //     SET_INTEGER(DS_RETURN, IS_MAP(value) ? index / 2 : index);
+                    if (arguments.get(1) instanceof MapValue map) {
+                        return removedEachPairFrom(
+                                map, arguments, refinements, evaluator, context);
+                    }
                     // A binary and a string are walked the same way a
                     // block is, one element at a time. Taking only a
                     // block made a protected binary report the wrong
                     // failure, and refused a perfectly ordinary call.
                     if (arguments.get(1) instanceof SeriesValue other
                             && !(other instanceof BlockValue)) {
-                        return removedEachFrom(other, arguments, evaluator);
+                        return removedEachFrom(other, arguments, evaluator, context);
                     }
                     BlockValue series = (BlockValue) arguments.get(1);
-                    Context locals = Context.childOf(evaluator.systemContext());
-                    WordValue word = (WordValue) arguments.get(0);
-                    locals.define(word.spelling());
+                    // As FOREACH: the body sees the frame it was written in,
+                    // and walks with one name or a block of them.
+                    Context locals = Context.childOf(context);
+                    List<WordValue> names = loopNamesIn(arguments.get(0), "remove-each");
+                    names.forEach(name -> locals.define(name.spelling()));
                     BlockValue bound = Binder.bind((BlockValue) arguments.get(2), locals);
+                    List<Value> items = series.remaining();
                     List<Value> kept = new ArrayList<>();
-                    for (Value item : series.remaining()) {
-                        locals.set(word.spelling(), item);
-                        if (!evaluator.evaluateOrRaise(bound, locals).isTruthy()) {
-                            kept.add(item);
+                    int taken = 0;
+                    for (int at = 0; at < items.size(); at += names.size()) {
+                        setLoopNames(locals, names, items, at);
+                        int through = Math.min(at + names.size(), items.size());
+                        if (evaluator.evaluateOrRaise(bound, locals).isTruthy()) {
+                            taken += through - at;
+                        } else {
+                            kept.addAll(items.subList(at, through));
                         }
                     }
                     int had = series.lengthFromHere();
@@ -3043,26 +3900,41 @@ public final class Natives {
                     for (int at = kept.size(); at > 0; at--) {
                         series.storage().insertAt(series.index(), kept.get(at - 1));
                     }
-                    return series;
+                    return refinements.contains("count")
+                            ? IntegerValue.of(taken)
+                            : series;
                 });
 
         // MAP-EACH walks for an answer where FOREACH walks for effect. It
         // is a native rather than prelude because it binds the caller's
         // block to the word it walks with, and binding a block to a
         // context is not something the language can say without BIND.
+        //
+        // A map is refused, and the refusal is in the spec above the walk
+        // rather than in the walk: MAP-EACH declares `data [block! vector!]`
+        // where FOREACH declares `data [series! any-object! map! none!]`.
         define("map-each", List.of(
                         Parameter.softQuoted("word"),
-                        Parameter.required("series"),
+                        Parameter.required("series", Set.of(Datatype.BLOCK)),
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
-                    Context locals = Context.childOf(evaluator.systemContext());
-                    WordValue word = (WordValue) arguments.get(0);
-                    locals.define(word.spelling());
+                    // As FOREACH: the body sees the frame it was written in.
+                    // Rebol's own LOAD maps over a block of sources and reads
+                    // its own /AS argument inside the body.
+                    //
+                    // And as FOREACH, the walk takes a block of names as
+                    // readily as one name, because one Init_Loop reads the
+                    // list for all four walks. The answer holds one value a
+                    // round rather than one value a name.
+                    Context locals = Context.childOf(context);
+                    List<WordValue> names = loopNamesIn(arguments.get(0), "map-each");
+                    names.forEach(name -> locals.define(name.spelling()));
                     BlockValue bound = Binder.bind(
                             (BlockValue) arguments.get(2), locals);
+                    List<Value> items = itemsOf(arguments.get(1));
                     List<Value> gathered = new ArrayList<>();
-                    for (Value item : itemsOf(arguments.get(1))) {
-                        locals.set(word.spelling(), item);
+                    for (int at = 0; at < items.size(); at += names.size()) {
+                        setLoopNames(locals, names, items, at);
                         gathered.add(evaluator.evaluateOrRaise(bound, locals));
                     }
                     return BlockValue.block(gathered);
@@ -3074,29 +3946,41 @@ public final class Natives {
         // never starting because the series was empty. The guide's habit of
         // following every FORALL with HEAD suggested otherwise and is a
         // leftover; a real R3 reports index? 1 in all three cases.
+        // FORSKIP is FORALL with a step, and one C function serves both:
+        // `Loop_All(ds, 0)` for FORALL and `Loop_All(ds, 1)` for FORSKIP. Three
+        // things in that function are not guessable.
+        //
+        // A negative step starts from the tail: `if (inc < 0 && VAL_INDEX(var)
+        // >= VAL_TAIL(var)) VAL_INDEX(var) = VAL_TAIL(var) + inc;`, so a word
+        // sitting at the tail walks backwards from the last item rather than
+        // doing nothing.
+        //
+        // The word is put back where it started -- `*var = *DS_ARG(1);` on the
+        // way out -- except when the loop was left by BREAK, which returns
+        // before that line. So a loop that ran out restores the word and a loop
+        // that broke leaves it where it stopped.
+        //
+        // And a word holding none answers none rather than raising: `if
+        // (IS_NONE(var)) return R_NONE;` is the first thing it checks.
+        define("forskip", List.of(
+                        Parameter.softQuoted("word"),
+                        Parameter.required("size",
+                                Set.of(Datatype.INTEGER, Datatype.DECIMAL)),
+                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                (arguments, evaluator, context) -> walkBySteps(
+                        evaluator,
+                        (WordValue) arguments.get(0),
+                        (int) Comparison.asDouble(arguments.get(1)),
+                        (BlockValue) arguments.get(2)));
+
         define("forall", List.of(
                         Parameter.softQuoted("word"),
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
-                    WordValue word = (WordValue) arguments.get(0);
-                    ContextSlot slot = slotOf(word);
-                    if (!(slot.value() instanceof SeriesValue start)) {
-                        return raiseCannotUse(slot.value(), "forall");
-                    }
-                    BlockValue body = (BlockValue) arguments.get(1);
-                    Value last = NoneValue.none();
-                    try {
-                        for (int at = start.index(); at <= start.storageLength(); at++) {
-                            slot.setValue(start.atIndex(at));
-                            last = oneRound(evaluator, body, evaluator.systemContext());
-                        }
-                    } catch (LoopSignal stopped) {
-                        return stopped.answer();
-                    } finally {
-                        slot.setValue(start);
-                    }
-                    return last;
-                });
+                (arguments, evaluator, context) -> walkBySteps(
+                        evaluator,
+                        (WordValue) arguments.get(0),
+                        1,
+                        (BlockValue) arguments.get(1)));
 
         // /RETURN gives the loop a value to answer, which is how a search
         // loop reports what it found without a variable outside the loop
@@ -3122,12 +4006,14 @@ public final class Natives {
     /** REPEAT and FOREACH: bind a word, run the body, repeat. */
     private static Value countedLoop(
             Evaluator evaluator,
+            Context within,
             WordValue counter,
             BlockValue body,
             java.util.function.LongFunction<Value> valueAt,
             long passes) {
 
-        Context locals = Context.childOf(evaluator.systemContext());
+        // As FOREACH: the body sees the frame it was written in.
+        Context locals = Context.childOf(within);
         locals.define(counter.spelling());
         BlockValue bound = Binder.bind(body, locals);
         Value last = NoneValue.none();
@@ -3142,40 +4028,125 @@ public final class Natives {
         return last;
     }
 
+    private static Value repeatedOverGrid(
+            Evaluator evaluator, Context within, WordValue counter,
+            PairValue grid, BlockValue body) {
+
+        Context locals = Context.childOf(within);
+        locals.define(counter.spelling());
+        BlockValue bound = Binder.bind(body, locals);
+        long across = (long) grid.x();
+        long down = (long) grid.y();
+        Value last = NoneValue.none();
+        try {
+            for (long onDown = 1; onDown <= down; onDown++) {
+                for (long onAcross = 1; onAcross <= across; onAcross++) {
+                    locals.set(counter.spelling(), PairValue.of(onAcross, onDown));
+                    last = oneRound(evaluator, bound, locals);
+                }
+            }
+        } catch (LoopSignal stopped) {
+            return stopped.answer();
+        }
+        return last;
+    }
+
     private static Value steppedLoop(
             Evaluator evaluator,
+            Context within,
             WordValue counter,
             Value start,
             Value end,
             Value step,
             BlockValue body) {
 
-        double stepBy = Comparison.asDouble(step);
-        if (stepBy == 0.0) {
+        if (Comparison.asDouble(step) == 0.0) {
             throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "a for loop with a step of zero would never end");
         }
-        // A character range looks like it ought to work and does not. The
-        // guide's `for c #"a" #"e" 1 [...]` was implemented here from that
-        // example; a real R3 raises expect-arg on it, and FOREACH over a
-        // string is how the alphabet actually gets walked.
         rejectCharacterBound(start);
         rejectCharacterBound(end);
 
-        double from = Comparison.asDouble(start);
-        double to = Comparison.asDouble(end);
-        boolean wholeNumbers = start instanceof IntegerValue && step instanceof IntegerValue;
-
-        Context locals = Context.childOf(evaluator.systemContext());
+        Context locals = Context.childOf(within);
         locals.define(counter.spelling());
         BlockValue bound = Binder.bind(body, locals);
-        Value last = NoneValue.none();
 
+        if (start instanceof SeriesValue series) {
+            return steppedOverSeries(evaluator, locals, counter, series, end, step, bound);
+        }
+        if (start instanceof IntegerValue from
+                && end instanceof IntegerValue to
+                && step instanceof IntegerValue by) {
+            return steppedOverWholeNumbers(evaluator, locals, counter,
+                    from.magnitude(), to.magnitude(), by.magnitude(), bound);
+        }
+        return steppedOverRealNumbers(evaluator, locals, counter,
+                Comparison.asDouble(start), Comparison.asDouble(end),
+                Comparison.asDouble(step), bound);
+    }
+
+    private static Value steppedOverWholeNumbers(
+            Evaluator evaluator, Context locals, WordValue counter,
+            long from, long to, long stepBy, BlockValue body) {
+
+        Value last = NoneValue.none();
+        try {
+            long at = from;
+            while (stepBy > 0 ? at <= to : at >= to) {
+                locals.set(counter.spelling(), IntegerValue.of(at));
+                last = oneRound(evaluator, body, locals);
+                at = steppedOrOverflowed(at, stepBy);
+            }
+        } catch (LoopSignal stopped) {
+            return stopped.answer();
+        }
+        return last;
+    }
+
+    private static long steppedOrOverflowed(long at, long stepBy) {
+        try {
+            return Math.addExact(at, stepBy);
+        } catch (ArithmeticException overflowed) {
+            throw Raised.of(EvaluationFailure.OVERFLOW,
+                    "a for loop counter stepped past the integer range");
+        }
+    }
+
+    private static Value steppedOverRealNumbers(
+            Evaluator evaluator, Context locals, WordValue counter,
+            double from, double to, double stepBy, BlockValue body) {
+
+        Value last = NoneValue.none();
         try {
             for (double at = from; stepBy > 0 ? at <= to : at >= to; at += stepBy) {
-                locals.set(counter.spelling(),
-                        wholeNumbers ? IntegerValue.of((long) at) : DecimalValue.of(at));
-                last = oneRound(evaluator, bound, locals);
+                locals.set(counter.spelling(), DecimalValue.of(at));
+                last = oneRound(evaluator, body, locals);
+            }
+        } catch (LoopSignal stopped) {
+            return stopped.answer();
+        }
+        return last;
+    }
+
+    private static Value steppedOverSeries(
+            Evaluator evaluator, Context locals, WordValue counter,
+            SeriesValue series, Value end, Value step, BlockValue body) {
+
+        int tail = series.storageLength() + 1;
+        int endIndex = end instanceof SeriesValue other
+                ? other.index()
+                : (int) asMagnitude(end);
+        endIndex = Math.max(0, Math.min(endIndex, tail));
+        long stepBy = (long) asMagnitude(step);
+        Value last = NoneValue.none();
+        try {
+            int at = series.index();
+            while (stepBy > 0 ? at <= endIndex : at >= endIndex) {
+                locals.set(counter.spelling(), series.atIndex(at));
+                last = oneRound(evaluator, body, locals);
+                int landedAt = locals.slotFor(counter.canonical()).value()
+                        instanceof SeriesValue moved ? moved.index() : at;
+                at = (int) (landedAt + stepBy);
             }
         } catch (LoopSignal stopped) {
             return stopped.answer();
@@ -3192,33 +4163,35 @@ public final class Natives {
     }
 
     private static Value forEachLoop(
-            Evaluator evaluator, Value target, Value series, BlockValue body) {
+            Evaluator evaluator, Context within,
+            Value target, Value series, BlockValue body) {
 
-        List<WordValue> names = target instanceof BlockValue block
-                ? block.remaining().stream().map(WordValue.class::cast).toList()
-                : List.of((WordValue) target);
-        // An object walks as its words, or as its words and values when
-        // the loop takes two. Which it is depends on the loop rather than
-        // on the object, so it cannot be settled where the items are
-        // gathered -- `foreach w o` gives [a b] and `foreach [k v] o`
-        // gives [a 1 b 2].
-        List<Value> items = series instanceof ObjectValue object && names.size() == 1
-                ? object.context().slots().stream()
-                        .filter(slot -> !slot.canonical().equals("self"))
-                        .<Value>map(slot -> WordValue.of(slot.spelling()))
-                        .toList()
-                : itemsOf(series);
+        List<WordValue> names = loopNamesIn(target, "foreach");
+        refuseMoreNamesThanAPairHas(series, names);
+        // An object or a map walks as its keys, or as its keys and values when
+        // the loop takes two. Which it is depends on the loop rather than on
+        // what is being walked, so it cannot be settled where the items are
+        // gathered -- `foreach w o` gives [a b] and `foreach [k v] o` gives
+        // [a 1 b 2].
+        //
+        // For a map that is `*vars = *BLK_SKIP(series, index & ~1)`: with one
+        // name the mask keeps reading the key while the walk steps two slots,
+        // so the values are never reached.
+        List<Value> items = keysOnly(series, names.size());
 
-        Context locals = Context.childOf(evaluator.systemContext());
+        // A loop body runs inside whatever called it, so its context hangs
+        // off the caller's frame and holds only the loop's own words. Hanging
+        // it off the system context instead hid every local of the enclosing
+        // function: `f: func [a /as type] [foreach i [1] [type]]` failed on
+        // TYPE, and Rebol's own LOAD is exactly that shape.
+        Context locals = Context.childOf(within);
         names.forEach(name -> locals.define(name.spelling()));
         BlockValue bound = Binder.bind(body, locals);
         Value last = NoneValue.none();
 
         try {
-            for (int at = 0; at + names.size() <= items.size(); at += names.size()) {
-                for (int which = 0; which < names.size(); which++) {
-                    locals.set(names.get(which).spelling(), items.get(at + which));
-                }
+            for (int at = 0; at < items.size(); at += names.size()) {
+                setLoopNames(locals, names, items, at);
                 last = oneRound(evaluator, bound, locals);
             }
         } catch (LoopSignal stopped) {
@@ -3227,20 +4200,178 @@ public final class Natives {
         return last;
     }
 
+    /**
+     * A walk over pairs takes one name or two, and refuses a third.
+     *
+     * <p>{@code else Trap_Arg(words);} on the third name, reached only for an
+     * object or a map. A pair has two halves and there is nothing for a third
+     * name to be set to; setting it to none would make a malformed loop look
+     * like a working one. A block has no such limit, because a block is
+     * whatever width the caller says it is.
+     */
+    private static void refuseMoreNamesThanAPairHas(
+            Value series, List<WordValue> names) {
+
+        if (names.size() > 2 && (series instanceof MapValue || series instanceof ObjectValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    "a walk over " + series.datatype().literalSpelling()
+                            + " takes a key and a value, and " + names.size()
+                            + " names is one more than a pair has");
+        }
+    }
+
+    /**
+     * The words a walk sets each round, whichever way they were written.
+     *
+     * <p>One name or a block of them: {@code 'word [word! block!]} in every one
+     * of the four walks, because {@code Init_Loop} reads the list before
+     * {@code Loop_Each} looks at which walk is running. So MAP-EACH takes a
+     * block for the same reason FOREACH does, and refusing one here threw a
+     * Java exception out of the interpreter rather than answering anything.
+     *
+     * <p>Anything that is not a word in the block is refused where the C
+     * refuses it, {@code else Trap_Arg(words);}, rather than being skipped.
+     */
+    private static List<WordValue> loopNamesIn(Value target, String nativeName) {
+        if (!(target instanceof BlockValue block)) {
+            if (target instanceof WordValue single) {
+                return List.of(single);
+            }
+            throw Raised.of(EvaluationFailure.EXPECT_ARG,
+                    nativeName + " walks with a word or a block of words, not a "
+                            + target.datatype().literalSpelling());
+        }
+        List<WordValue> names = new ArrayList<>(block.lengthFromHere());
+        for (Value item : block.remaining()) {
+            if (!(item instanceof WordValue name)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG,
+                        nativeName + " walks with words, and " + Molder.mold(item)
+                                + " is not one");
+            }
+            names.add(name);
+        }
+        return List.copyOf(names);
+    }
+
+    /**
+     * Setting the walk's words for one round, filling with none past the end.
+     *
+     * <p>{@code else SET_NONE(vars);} where the walk has passed the tail. So a
+     * three-item block walked two names at a time runs twice rather than once,
+     * and the second round's second name holds none. Dropping the short round
+     * is the convenient reading and it is not what the C does: REMOVE-EACH over
+     * `[1 2 3]` with two names reaches the 3.
+     */
+    private static void setLoopNames(
+            Context locals, List<WordValue> names, List<Value> items, int at) {
+
+        for (int which = 0; which < names.size(); which++) {
+            locals.set(names.get(which).spelling(),
+                    at + which < items.size()
+                            ? items.get(at + which)
+                            : NoneValue.none());
+        }
+    }
+
+    /**
+     * What a walk steps over, given how many names it walks with.
+     *
+     * <p>One name over an object or a map walks the keys alone. For a map that
+     * is the index mask -- {@code *vars = *BLK_SKIP(series, index & ~1)} keeps
+     * reading the key while the walk steps two slots at a time -- and for an
+     * object it is the same shape by hand.
+     */
+    private static List<Value> keysOnly(Value series, int howManyNames) {
+        if (howManyNames != 1) {
+            return itemsOf(series);
+        }
+        return switch (series) {
+            case ObjectValue object -> object.context().slots().stream()
+                    .filter(slot -> !slot.canonical().equals("self"))
+                    .<Value>map(slot -> WordValue.of(slot.spelling()))
+                    .toList();
+            case MapValue map -> map.keys();
+            default -> itemsOf(series);
+        };
+    }
+
+    /**
+     * Walking a word that holds a series, a step at a time.
+     *
+     * <p>{@code Loop_All} in {@code n-loop.c}, which serves FORALL with a step
+     * of one and FORSKIP with the step it was given. What it does with the word
+     * is the part worth reading twice.
+     *
+     * <p>A word holding none answers none. A word holding anything that is not a
+     * series is refused. A negative step starting at the tail walks backwards
+     * from the last item rather than doing nothing. And the word goes back where
+     * it started on the way out -- unless BREAK left the loop, which returns
+     * before the line that restores it.
+     */
+    private static Value walkBySteps(
+            Evaluator evaluator, WordValue word, int step, BlockValue body) {
+
+        ContextSlot slot = slotOf(word);
+        if (slot.value() instanceof NoneValue nothing) {
+            return nothing;
+        }
+        if (!(slot.value() instanceof SeriesValue start)) {
+            return raiseCannotUse(slot.value(), "forall");
+        }
+        // A step of zero would never reach the tail. The C does not guard it and
+        // hangs; refusing is the one place this parts from the C on purpose,
+        // because a hang is not an answer a script can act on.
+        if (step == 0) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    "a step of zero would never reach the end");
+        }
+        int at = start.index();
+        // `if (inc < 0 && VAL_INDEX(var) >= VAL_TAIL(var)) VAL_INDEX(var) =
+        // VAL_TAIL(var) + inc;`
+        if (step < 0 && at > start.storageLength()) {
+            at = start.storageLength() + 1 + step;
+        }
+        Value last = NoneValue.none();
+        try {
+            while (at >= 1 && at <= start.storageLength()) {
+                slot.setValue(start.atIndex(at));
+                last = oneRound(evaluator, body, evaluator.systemContext());
+                at += step;
+            }
+        } catch (LoopSignal stopped) {
+            // No restoring here: the C returns before `*var = *DS_ARG(1)`, so a
+            // loop that broke leaves the word where it stopped and a caller can
+            // read the position the break happened at.
+            return stopped.answer();
+        }
+        slot.setValue(start);
+        return last;
+    }
+
     /** A series as a list of its values, whatever kind of series it is. */
     private static List<Value> itemsOf(Value series) {
         return switch (series) {
             case BlockValue block -> block.remaining();
+            // A gob walks the children it has from where it stands, which is what
+            // `Pane_To_Block(gob, index, -1)` builds.
+            case GobValue gob -> gob.storage().pane()
+                    .subList(Math.min(gob.index() - 1, gob.storage().length()),
+                            gob.storage().length());
             case StringValue text -> text.text().codePoints()
                     .mapToObj(codepoint -> (Value) CharacterValue.of(codepoint))
                     .toList();
             // An object walks as its words and their values, so FOREACH
             // can inspect one without asking for WORDS-OF first. SELF is
             // left out, or every walk would reach the object again.
+            // Each word is bound to the object, not handed out loose. A
+            // walk that answered unbound words would be readable and not
+            // writable, and Rebol's own DELTA-PROFILE writes through them:
+            //     foreach [key num] adjust [set key end/:key - num]
             case ObjectValue object -> object.context().slots().stream()
                     .filter(slot -> !slot.canonical().equals("self"))
                     .<Value>mapMulti((slot, accept) -> {
-                        accept.accept(WordValue.of(slot.spelling()));
+                        accept.accept(WordValue.of(slot.spelling())
+                                .boundTo(object.context()));
                         accept.accept(slot.value());
                     })
                     .toList();
@@ -3251,6 +4382,11 @@ public final class Natives {
                 }
                 yield List.copyOf(octets);
             }
+            // A map walks as its pairs, with the keys handed out as plain
+            // words: `if (IS_SET_WORD(vars)) SET_TYPE(vars, REB_WORD);`. So a
+            // walk agrees with KEYS-OF rather than with BODY-OF, and a body
+            // that compares its key against a word it wrote finds it.
+            case MapValue map -> map.walkable();
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "cannot walk " + series.datatype().literalSpelling() + " value");
         };
@@ -3302,8 +4438,22 @@ public final class Natives {
                     "load reads a string, a binary or a block of either, not "
                             + source.datatype().literalSpelling());
         }
-        String text = bytes.asText();
+        String text = strictlyUtf8(bytes.octetsFromHere());
         return text.startsWith("\uFEFF") ? text.substring(1) : text;
+    }
+
+    /** Bytes as UTF-8, refusing any that do not decode -- R3's invalid-chars. */
+    private static String strictlyUtf8(byte[] bytes) {
+        try {
+            return StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                    .decode(java.nio.ByteBuffer.wrap(bytes))
+                    .toString();
+        } catch (java.nio.charset.CharacterCodingException notText) {
+            throw Raised.of(EvaluationFailure.INVALID_CHARS,
+                    "the bytes given to load are not valid UTF-8 text");
+        }
     }
 
     private void defineReflection() {
@@ -3470,19 +4620,33 @@ public final class Natives {
         // is the useful way round for a guard.
         defineCodepointRange("ascii?", 0x7F);
         defineCodepointRange("latin1?", 0xFF);
-        defineCodepointRange("utf?", Character.MAX_CODE_POINT);
+        // utf?: data [binary!] -- the byte order mark's encoding, negative
+        // for little-endian and zero when there is no mark. `What_UTF` in
+        // s-unicode.c, which is four comparisons and no guessing: a mark or
+        // nothing.
+        //
+        // This was a codepoint-range predicate here, alongside ASCII? and
+        // LATIN1?, which is a different question with the same spelling. It
+        // refused a binary, and Rebol's own ASSERT-UTF8 opens with
+        // `unless find [0 8] encoding: utf? source`.
+        define("utf?", List.of(Parameter.required("data", Set.of(Datatype.BINARY))),
+                (arguments, evaluator, context) -> IntegerValue.of(
+                        byteOrderMarkOf(((BinaryValue) arguments.getFirst())
+                                .octetsFromHere())));
 
         // INVALID-UTF? answers where the trouble is rather than whether
         // there is any, so none means well-formed.
-        define("invalid-utf?", List.of(Parameter.required("data", Set.of(Datatype.BINARY))),
-                (arguments, evaluator, context) -> {
+        // /UTF and its NUM are declared and never read. `REBNATIVE(invalid_utfq)`
+        // touches D_ARG(1) alone -- "Bit size - positive for BE negative for
+        // LE" describes an argument no line of the function looks at. Declared
+        // here so a script written for Rebol can make the same call.
+        define("invalid-utf?", List.of(Parameter.required("data", Set.of(Datatype.BINARY)),
+                        Parameter.belongingTo("utf", "num", Set.of(Datatype.INTEGER))),
+                Set.of("utf"),
+                (arguments, evaluator, context, refinements) -> {
                     BinaryValue bytes = (BinaryValue) arguments.get(0);
-                    for (int at = bytes.index(); at <= bytes.storageLength(); at++) {
-                        if ((bytes.storage().at(at) & 0xFF) >= 0xF8) {
-                            return bytes.atIndex(at);
-                        }
-                    }
-                    return NoneValue.none();
+                    int trouble = firstMalformedUtf8(bytes);
+                    return trouble < 0 ? NoneValue.none() : bytes.atIndex(trouble);
                 });
 
         define("negative?", takesNumbers("value"),
@@ -3509,9 +4673,28 @@ public final class Natives {
                             && !word.binding().slotFor(word.canonical()).holdsUnset());
                 });
 
-        define("unset", List.of(Parameter.required("word", Set.of(Datatype.WORD))),
+        // The spec is R3's: `word [word! block! none!]`. A block unsets each
+        // word in it, and none unsets nothing rather than being refused.
+        //
+        // NONE matters because Rebol's own files reach this with a value they
+        // did not check. mezz-tail.reb ends `unset 'protect-system`, and
+        // base-funcs.reb ends `unset 'action`; a build where the word was
+        // never defined passes none, and refusing it loses everything below
+        // that line.
+        define("unset", List.of(Parameter.required("word",
+                        Set.of(Datatype.WORD, Datatype.BLOCK, Datatype.NONE))),
                 (arguments, evaluator, context) -> {
-                    slotOf((WordValue) arguments.get(0)).setValue(UnsetValue.unset());
+                    switch (arguments.get(0)) {
+                        case WordValue named -> slotOf(named).setValue(UnsetValue.unset());
+                        case BlockValue named -> {
+                            for (Value item : named.remaining()) {
+                                if (item instanceof WordValue word) {
+                                    slotOf(word).setValue(UnsetValue.unset());
+                                }
+                            }
+                        }
+                        default -> { }
+                    }
                     return UnsetValue.unset();
                 });
 
@@ -3520,7 +4703,7 @@ public final class Natives {
         // protecting the object are different things, and it is the second
         // that stops `o/a: 1`.
         define("protect", List.of(Parameter.required("target")),
-                Set.of("deep", "words", "values", "hide"),
+                Set.of("deep", "words", "values", "hide", "lock"),
                 (arguments, evaluator, context, refinements) -> {
                     // /HIDE conceals a field rather than locking it, and
                     // the two are separate: a hidden field is not locked
@@ -3543,17 +4726,14 @@ public final class Natives {
                     return arguments.getFirst();
                 });
 
+        // No /HIDE: PROTECT has one and UNPROTECT does not, in the C's own
+        // declarations. Hiding a word is not a lock to be lifted -- `/hide
+        // "Hide variables (avoid binding and lookup)"` -- and there is no
+        // native that reveals one again. JEBOL had offered the undoing, which
+        // is a promise Rebol does not make.
         define("unprotect", List.of(Parameter.required("target")),
-                Set.of("deep", "words", "values", "hide"),
+                Set.of("deep", "words", "values"),
                 (arguments, evaluator, context, refinements) -> {
-                    // /HIDE conceals a field rather than locking it, and
-                    // the two are separate: a hidden field is not locked
-                    // and a locked one is not hidden.
-                    if (refinements.contains("hide")
-                            && arguments.getFirst() instanceof WordValue named) {
-                        slotOf(named).hide(false);
-                        return arguments.getFirst();
-                    }
                     if (!protectFieldNamedBy(arguments.getFirst(), false, refinements)) {
                         protectNamed(arguments.getFirst(), false, refinements);
                         setProtection(arguments.get(0), false, refinements.contains("deep"),
@@ -3614,11 +4794,48 @@ public final class Natives {
                     if (names == null) {
                         return raiseCannotUse(target, "set");
                     }
+                    // An unset value is refused before anything is written,
+                    // which is the first thing the C does:
+                    //     if (not_any && !IS_SET(val)) Trap1(RE_NEED_VALUE, word);
+                    boolean anyValue = refinements.contains("any");
+                    if (!anyValue && supplied.datatype() == Datatype.UNSET) {
+                        throw Raised.of(EvaluationFailure.NEED_VALUE, "set");
+                    }
+                    // Object to object is its own rule: each word of the
+                    // TARGET takes the value the source holds for that same
+                    // word, and a word the source has not got is left alone.
+                    // Position plays no part, which is what makes it different
+                    // from every other shape of SET.
+                    if (target instanceof ObjectValue into
+                            && supplied instanceof ObjectValue from
+                            && !refinements.contains("only")) {
+                        setFieldsFromObject(into, from, refinements);
+                        return supplied;
+                    }
                     List<Value> values = !refinements.contains("only")
                             && supplied instanceof BlockValue block
                             ? block.remaining()
                             : null;
+                    // And an unset inside a block is refused the same way,
+                    // also before anything is written:
+                    //     if (not_any && is_blk && not_only && !IS_END(tmp)
+                    //             && IS_UNSET(tmp++)) Trap1(RE_NEED_VALUE, word);
+                    if (!anyValue && values != null) {
+                        for (int index = 0; index < names.size()
+                                && index < values.size(); index++) {
+                            if (values.get(index).datatype() == Datatype.UNSET) {
+                                throw Raised.of(EvaluationFailure.NEED_VALUE, "set");
+                            }
+                        }
+                    }
                     for (int index = 0; index < names.size(); index++) {
+                        // Past the end of a block the target words take none,
+                        // unless /SOME, which stops instead:
+                        //     if (IS_END(val)) { if (ref_some) break; ... }
+                        if (values != null && index >= values.size()
+                                && refinements.contains("some")) {
+                            break;
+                        }
                         Value assigned = values == null
                                 ? supplied
                                 : index < values.size() ? values.get(index) : NoneValue.none();
@@ -3642,6 +4859,10 @@ public final class Natives {
                         Parameter.belongingTo("part", "count", Set.of())),
                 Set.of("part", "last", "deep", "all"),
                 (arguments, evaluator, context, refinements) -> {
+                    // Taking from nothing answers nothing.
+                    if (arguments.get(0) instanceof NoneValue nothing) {
+                        return nothing;
+                    }
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.get(0), "take");
                     }
@@ -3666,8 +4887,8 @@ public final class Natives {
                                 : taken;
                     }
                     if (arguments.size() > 1 && arguments.get(1) instanceof SeriesValue upTo) {
-                        return takeSeveral(earlierOf(series, upTo),
-                                Math.abs(upTo.index() - series.index()));
+                        return deepenedIfAsked(takeSeveral(earlierOf(series, upTo),
+                                Math.abs(upTo.index() - series.index())), refinements);
                     }
                     long wanted = arguments.size() > 1
                             ? countUpTo(series, arguments.get(1))
@@ -3700,9 +4921,10 @@ public final class Natives {
                     if (refinements.contains("last")) {
                         int tail = series.storageLength() + 1;
                         long from = Math.max(1, tail - wanted);
-                        return takeSeveral(series.atIndex((int) from), wanted);
+                        return deepenedIfAsked(
+                                takeSeveral(series.atIndex((int) from), wanted), refinements);
                     }
-                    return takeSeveral(series, wanted);
+                    return deepenedIfAsked(takeSeveral(series, wanted), refinements);
                 });
 
         // AJOIN drops NONE by default, which is the behaviour /all exists
@@ -3712,10 +4934,15 @@ public final class Natives {
                         Parameter.belongingTo("with", "separator", Set.of())),
                 Set.of("all", "with"),
                 (arguments, evaluator, context, refinements) -> {
+                    // Without /ALL, a none and an unset both drop out, which
+                    // is the C's `VAL_TYPE(top) <= REB_NONE && !all`: unset
+                    // and none both sort at or below none. A surviving unset
+                    // is invisible until /WITH puts a separator beside it.
                     List<Value> pieces = evaluator.evaluateEachOrRaise(
                                     (BlockValue) arguments.get(0), context).stream()
                             .filter(piece -> refinements.contains("all")
-                                    || !(piece instanceof NoneValue))
+                                    || !(piece instanceof NoneValue
+                                            || piece instanceof UnsetValue))
                             .toList();
                     String separator = refinements.contains("with") && arguments.size() > 1
                             ? Molder.form(arguments.get(1))
@@ -3746,15 +4973,41 @@ public final class Natives {
         // turned away here even though `t/2: 99` writes one. The two are
         // not the same operation: a set-path builds a new tuple and puts
         // it back, and there is nowhere for POKE to put one.
+        // `series<series! port! map! gob! bitset!>`, and series! is the whole
+        // family: the any-path datatypes are blocks and REF is a string, so all
+        // five were missing from a list that named their siblings.
         define("poke", List.of(Parameter.required("series",
                                 Set.of(Datatype.BLOCK, Datatype.PAREN, Datatype.HASH,
+                                        Datatype.PATH, Datatype.SET_PATH,
+                                        Datatype.GET_PATH, Datatype.LIT_PATH,
                                         Datatype.STRING, Datatype.FILE, Datatype.URL,
-                                        Datatype.TAG, Datatype.EMAIL, Datatype.BINARY,
-                                        Datatype.MAP, Datatype.BITSET)),
-                        Parameter.required("index", Set.of(Datatype.INTEGER)),
+                                        Datatype.TAG, Datatype.EMAIL, Datatype.REF,
+                                        Datatype.BINARY, Datatype.MAP, Datatype.BITSET,
+                                        Datatype.PORT, Datatype.GOB, Datatype.IMAGE)),
+                        // `index {Index offset, symbol, or other value to use as
+                        // index}` -- declared with no datatypes at all, because a
+                        // map takes any value as a key. Which means the refusal of
+                        // a word here is the arm's and not the declaration's, and
+                        // the two raise different errors.
+                        Parameter.required("index"),
                         Parameter.required("value")),
                 (arguments, evaluator, context) -> {
-                    long at = ((IntegerValue) arguments.get(1)).magnitude();
+                    // A gob pokes into its pane, and `Get_Num_Arg` is what refuses
+                    // a field name: `poke g 'offset 1x1` is invalid-arg rather than
+                    // a write to the offset. So a gob's fields are reachable
+                    // through a path and through nothing else.
+                    if (arguments.get(0) instanceof GobValue gob) {
+                        GobPath.poke(gob, (int) positionPokedAt(arguments.get(1)),
+                                arguments.get(2));
+                        return arguments.get(2);
+                    }
+                    if (arguments.get(0) instanceof ImageValue image) {
+                        ImagePath.write(image,
+                                (int) positionPokedAt(arguments.get(1)),
+                                arguments.get(2));
+                        return arguments.get(2);
+                    }
+                    long at = positionPokedAt(arguments.get(1));
                     // POKE names an element rather than a place to stand,
                     // so outside the series there is nothing to write to.
                     // AT clamps and PICK answers none for the same number;
@@ -3766,15 +5019,61 @@ public final class Natives {
                                 "poke at " + at + " on a series of "
                                         + series.lengthFromHere());
                     }
-                    if (arguments.get(0) instanceof StringValue text
-                            && arguments.get(2) instanceof CharacterValue letter) {
-                        text.storage().set(text.index() + (int) at - 1, letter.codepoint());
+                    if (arguments.get(0) instanceof StringValue text) {
+                        // A character or a number that is one:
+                        //     if (IS_CHAR(arg)) c = VAL_CHAR(arg);
+                        //     else if (IS_INTEGER(arg) && VAL_UNT64(arg) <= MAX_CHAR)
+                        //         c = VAL_INT32(arg);
+                        //     else Trap_Arg(arg);
+                        // So `poke s 1 65` writes an A, which is how code that
+                        // has a codepoint in hand writes it without converting.
+                        int codepoint = switch (arguments.get(2)) {
+                            case CharacterValue letter -> letter.codepoint();
+                            case IntegerValue number
+                                    when number.magnitude() >= 0
+                                    && number.magnitude() <= MAXIMUM_CODEPOINT ->
+                                    (int) number.magnitude();
+                            default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
+                                    "poke into a string takes a character or a "
+                                            + "codepoint, not a "
+                                            + arguments.get(2).datatype()
+                                                    .literalSpelling());
+                        };
+                        text.storage().set(text.index() + (int) at - 1, codepoint);
                         return arguments.get(2);
                     }
                     if (arguments.get(0) instanceof BinaryValue bytes
                             && arguments.get(2) instanceof IntegerValue octet) {
-                        bytes.storage().set(
-                                bytes.index() + (int) at - 1, (int) octet.magnitude());
+                        bytes.storage().set(bytes.index() + (int) at - 1,
+                                asAnOctet(octet));
+                        return arguments.get(2);
+                    }
+                    // A char writes its code point as a byte too, and one past
+                    // 0xFF is out of range -- a char is never negative, so it
+                    // is the out-of-range half of asAnOctet's two answers.
+                    if (arguments.get(0) instanceof BinaryValue bytes
+                            && arguments.get(2) instanceof CharacterValue character) {
+                        if (character.codepoint() > 0xFF) {
+                            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                                    character.codepoint() + " does not fit in a byte");
+                        }
+                        bytes.storage().set(bytes.index() + (int) at - 1,
+                                character.codepoint());
+                        return arguments.get(2);
+                    }
+                    // A bitset's index is a character code rather than a
+                    // position, so nothing is clamped and nothing is out of
+                    // range: every code names a bit. The complement flag is
+                    // minded exactly as PD_Bitset minds it --
+                    // `t = IS_TRUE(val); if (BITS_NOT(ser)) t = !t;` -- which
+                    // changes nothing for an ordinary set and everything for
+                    // a complemented one.
+                    if (arguments.get(0) instanceof BitsetValue set) {
+                        set.hold((int) at, arguments.get(2).isTruthy());
+                        return arguments.get(2);
+                    }
+                    if (arguments.get(0) instanceof MapValue map) {
+                        map.put(arguments.get(1), arguments.get(2));
                         return arguments.get(2);
                     }
                     if (!(arguments.get(0) instanceof BlockValue block)) {
@@ -3787,11 +5086,20 @@ public final class Natives {
         // What is in one and not the other, from both directions. /CASE
         // stops the case folding as it does for the other three.
         define("difference", List.of(
-                        Parameter.required("first", Set.of(Datatype.BLOCK)),
-                        Parameter.required("second", Set.of(Datatype.BLOCK)),
+                        Parameter.required("first",
+                                setOperandOr(Datatype.BLOCK)),
+                        Parameter.required("second",
+                                setOperandOr(Datatype.BLOCK)),
                         Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
                 Set.of("case", "skip"),
                 (arguments, evaluator, context, refinements) -> {
+                    // A typeset and a bitset each combine bit by bit rather
+                    // than item by item, and for DIFFERENCE that is a
+                    // symmetric difference: `VAL_TYPESET(val1) ^= ...`.
+                    if (arguments.get(0) instanceof TypesetValue
+                            || arguments.get(0) instanceof BitsetValue) {
+                        return combined(arguments, Combination.DIFFERENCE);
+                    }
                     boolean mindingCase = refinements.contains("case");
                     List<Value> ours = ((BlockValue) arguments.get(0)).remaining();
                     List<Value> theirs = ((BlockValue) arguments.get(1)).remaining();
@@ -3834,6 +5142,30 @@ public final class Natives {
                             default -> NoneValue.none();
                         };
                     }
+                    // A module answers SPEC and TITLE from its header, and
+                    // everything else from its words. t-object.c takes the
+                    // first two through their own arm, before the arm every
+                    // other object shares:
+                    //     if (action == OF_SPEC || action == OF_TITLE) {
+                    //         if (!VAL_MOD_SPEC(value)) return R_NONE;
+                    //         VAL_OBJ_FRAME(value) = VAL_MOD_SPEC(value);
+                    //
+                    // So SPEC-OF a module is the header as an object, and
+                    // TITLE-OF is one field read out of it. This is how any
+                    // reader of a module asks what it is called and what
+                    // version it is.
+                    if (arguments.get(0) instanceof ModuleValue module) {
+                        return switch (field) {
+                            case "spec" -> module.header();
+                            case "title" -> module.headerField("title");
+                            case "words" -> BlockValue.block(
+                                    module.context().fieldsExcludingSelf().keySet().stream()
+                                            .<Value>map(WordValue::of).toList());
+                            case "values" -> BlockValue.block(List.copyOf(
+                                    module.context().fieldsExcludingSelf().values()));
+                            default -> NoneValue.none();
+                        };
+                    }
                     if (arguments.get(0) instanceof ErrorValue raised) {
                         return switch (field) {
                             case "words" -> BlockValue.block(ErrorValue.FIELDS.stream()
@@ -3844,20 +5176,61 @@ public final class Natives {
                             default -> NoneValue.none();
                         };
                     }
-                    // A map answers WORDS and VALUES the way an object
-                    // does, which is what KEYS-OF and VALUES-OF need now
-                    // they are written in REBOL on top of this.
+                    // A map answers WORDS, VALUES and BODY, and one C function
+                    // answers all three with a flag saying which is asking:
+                    // `Map_To_Block(mapser, what)` with -1 for the words, +1
+                    // for the values and 0 for the pairs. Only the words are
+                    // normalised back from set-words, which is why KEYS-OF
+                    // answers `[a]` and BODY-OF answers `[a: 1]`.
                     if (arguments.get(0) instanceof MapValue map) {
                         return switch (field) {
                             case "words" -> BlockValue.block(map.keys());
                             case "values" -> BlockValue.block(map.values());
+                            case "body" -> BlockValue.block(map.flattened());
                             default -> NoneValue.none();
                         };
                     }
                     if (arguments.get(0) instanceof FunctionValue written) {
                         return switch (field) {
                             case "spec" -> written.spec();
-                            case "body" -> written.body();
+                            // A deep copy, so a caller that clears or changes
+                            // what BODY-OF answers does not reach into the
+                            // function: `clear second body-of :f` must leave
+                            // :f as it was. R3's OF_BODY does Clone_Block.
+                            case "body" -> copied(written.body(), true);
+                            case "types" -> typesetsOf(written.parameters(), Set.of());
+                            default -> NoneValue.none();
+                        };
+                    }
+                    // A native answers SPEC too, rebuilt from its declared
+                    // parameters. In R3 every one of the 580 functions
+                    // answers SPEC-OF, because the spec is a real block the
+                    // boot read; JEBOL's natives are Java and hold a
+                    // parameter list instead, so the block is made from that.
+                    //
+                    // It is not decoration. Rebol's own mezz-types.reb builds
+                    // the whole TO-* family and branches on
+                    // `either string? first spec-of :make`, which is how it
+                    // asks whether this build carries doc strings. With SPEC
+                    // answering none that reads `first none` and stops the
+                    // file.
+                    if (arguments.get(0) instanceof NativeValue built) {
+                        return switch (field) {
+                            case "spec" -> specBlockOf(built.parameters());
+                            case "body" -> NoneValue.none();
+                            case "types" -> typesetsOf(
+                                    built.parameters(), built.declaredRefinements());
+                            default -> NoneValue.none();
+                        };
+                    }
+                    // An operator dispatches to something else, so it
+                    // answers what that answers.
+                    if (arguments.get(0) instanceof OperatorValue operator
+                            && operator.underlying() instanceof NativeValue behind) {
+                        return switch (field) {
+                            case "spec" -> specBlockOf(behind.parameters());
+                            case "types" -> typesetsOf(
+                                    behind.parameters(), behind.declaredRefinements());
                             default -> NoneValue.none();
                         };
                     }
@@ -3896,8 +5269,9 @@ public final class Natives {
 
         // PUT adds or replaces a key in place, and answers the value put.
         define("put", List.of(Parameter.required("target"),
-                        Parameter.required("key"), Parameter.required("value")),
-                Set.of("case"),
+                        Parameter.required("key"), Parameter.required("value"),
+                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
+                Set.of("case", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     // Anything that holds values by key: a map, an
                     // object's fields, or a block read as key and value
@@ -3920,22 +5294,60 @@ public final class Natives {
                             if (object.context().isClosedToNewNames()) {
                                 throw Raised.of(EvaluationFailure.PROTECTED, "put");
                             }
-                            object.context().set(field.canonical(), arguments.get(2));
+                            // The spelling and not the canonical form, so a
+                            // field put in as MySQL reads back as MySQL. Words
+                            // compare without regard to case and are written
+                            // with it, and `put system/catalog/errors 'MySQL
+                            // ...` in prot-mysql.reb is how a category gets its
+                            // name -- lowercasing it renamed the category.
+                            object.context().set(field.spelling(), arguments.get(2));
                         }
+                        case ObjectValue object -> throw Raised.of(
+                                EvaluationFailure.INVALID_ARG,
+                                Molder.mold(arguments.get(1))
+                                        + " is not a word an object can hold a field under");
                         case BlockValue block -> {
                             List<Value> items = block.remaining();
                             // /CASE matches the key exactly, so a block
                             // holding both "A" and "a" has two entries to
                             // it and one to a plain PUT.
                             boolean mindingCase = refinements.contains("case");
-                            for (int at = 0; at + 1 < items.size(); at += 2) {
+                            // `ret = IS_INTEGER(D_ARG(ARG_PUT_SIZE)) ?
+                            // Int32s(D_ARG(ARG_PUT_SIZE), 1) : 1;` -- one and
+                            // not two. Without /SKIP every position is a
+                            // candidate key, so `put [a b b c] 'b 0` writes
+                            // after the FIRST b and leaves the second alone.
+                            // Stepping in twos instead reads the block as pairs
+                            // and finds the wrong one.
+                            int stride = refinements.contains("skip")
+                                    ? Math.max(1, (int) ((IntegerValue) arguments
+                                            .get(arguments.size() - 1)).magnitude())
+                                    : 1;
+                            int found = -1;
+                            for (int at = 0; at < items.size(); at += stride) {
                                 if (mindingCase
-                                        ? Comparison.identicallyEqual(items.get(at), arguments.get(1))
-                                        : Comparison.looselyEqual(items.get(at), arguments.get(1))) {
-                                    block.storage().set(
-                                            block.index() + at + 1, arguments.get(2));
+                                        ? Comparison.identicallyEqual(
+                                                items.get(at), arguments.get(1))
+                                        : Comparison.looselyEqual(
+                                                items.get(at), arguments.get(1))) {
+                                    found = at;
                                     break;
                                 }
+                            }
+                            if (found < 0) {
+                                // `Expand_Series(ser, tail, 2)` and the key and
+                                // value go in at the end: a key PUT has never
+                                // seen is added rather than refused.
+                                block.storage().append(arguments.get(1));
+                                block.storage().append(arguments.get(2));
+                            } else if (found + 1 >= items.size()) {
+                                // "when key is last value in the block" --
+                                // `Expand_Series(ser, tail, 1)`. There is
+                                // nowhere to write, so the block grows.
+                                block.storage().append(arguments.get(2));
+                            } else {
+                                block.storage().set(
+                                        block.index() + found + 1, arguments.get(2));
                             }
                         }
                         default -> raiseCannotUse(arguments.get(0), "put");
@@ -3944,9 +5356,11 @@ public final class Natives {
                 });
 
         define("select", List.of(Parameter.required("series"), Parameter.required("value"),
-                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)),
-                        Parameter.belongingTo("with", "wildcards", Set.of(Datatype.STRING))),
-                Set.of("case", "skip", "any", "only", "last", "part", "same", "with"),
+                        Parameter.belongingTo("part", "range", PART_LIMIT),
+                        Parameter.belongingTo("with", "wild", Set.of(Datatype.STRING)),
+                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
+                Set.of("case", "skip", "any", "only", "last", "part", "same", "with",
+                        "reverse"),
                 (arguments, evaluator, context, refinements) -> {
                     // A map is asked about keys it may not have, so a miss
                     // is NONE rather than an error, exactly as it is here
@@ -3954,30 +5368,34 @@ public final class Natives {
                     if (arguments.get(0) instanceof MapValue map) {
                         return map.select(arguments.get(1));
                     }
-                    // A string is searched for a run of characters and
-                    // answers the one after the run, the same shape of
-                    // answer a block gives.
-                    if (arguments.get(0) instanceof StringValue text) {
-                        Value given = argumentFor(
-                                "with", List.of("skip", "with"), arguments, refinements, 2);
-                        return selectedFromText(text, arguments.get(1), refinements,
-                                given instanceof StringValue chosen ? chosen.text() : null);
-                    }
                     if (arguments.get(0) instanceof NoneValue) {
                         return NoneValue.none();
                     }
-                    // An error is an object with a fixed set of fields, so
-                    // the things that read an object's fields read one of
-                    // these too.
-                    if (arguments.getFirst() instanceof ErrorValue raised
-                            && arguments.get(1) instanceof WordValue field) {
-                        return raised.field(field.canonical()).orElseGet(NoneValue::none);
+                    // An object is asked about a field it may not have, and
+                    // answers none for one it has not got. t-object.c takes
+                    // SELECT and FIND through the same arm, so they agree
+                    // about which fields are there and part company only in
+                    // what they answer: the value here, TRUE there.
+                    //
+                    // MAKE-MODULE* asks this way -- `select spec 'exports` --
+                    // and so does every other reader of a module header.
+                    //
+                    // An error is an object with a fixed set of fields, so it
+                    // is asked the same way and answers from the same list.
+                    if (isAnyObject(arguments.getFirst())) {
+                        if (!objectHasFieldToFind(arguments.getFirst(), arguments.get(1))) {
+                            return NoneValue.none();
+                        }
+                        String field = ((WordValue) arguments.get(1)).canonical();
+                        return arguments.getFirst() instanceof ErrorValue raised
+                                ? raised.field(field).orElseGet(NoneValue::none)
+                                : fieldsOf(arguments.getFirst())
+                                        .ownSlotFor(field).value();
                     }
                     refuseUnbyteableNeedle(arguments.getFirst(), arguments.get(1), "select");
-                    if (!(arguments.get(0) instanceof BlockValue block)) {
+                    if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.get(0), "select");
                     }
-                    List<Value> items = block.remaining();
                     // The record width decides only WHERE to look: at the
                     // first element of each record and nowhere else. The
                     // answer is always the very next element, whatever the
@@ -3989,45 +5407,46 @@ public final class Natives {
                     // position is a record start. A default of two never
                     // looked at an even position, so `select [1 2 3] 2`
                     // answered none instead of 3.
-                    int stride = refinements.contains("skip") && arguments.size() > 2
-                            ? (int) ((IntegerValue) arguments.get(2)).magnitude()
-                            : 1;
-                    // A record width is a count of elements, so it starts
-                    // at one. Zero is the dangerous one: it reads as "do
-                    // not move", and a search that does not move does not
-                    // end. This loop ran forever on it, past the wall
-                    // clock bound, because nothing inside a native's own
-                    // loop asks whether the script should still be
-                    // running.
-                    if (stride < 1) {
-                        throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                                "select/skip needs a record width of at least "
-                                        + "one, not " + stride);
-                    }
-                    // /SAME asks for the very same value rather than an
-                    // equal one, so 1, 1.0 and 100% are three keys to it
-                    // and one key to everything else.
-                    boolean mindingCase = refinements.contains("case");
-                    boolean mindingIdentity = refinements.contains("same");
-                    for (int index = 0; index < items.size(); index += stride) {
-                        boolean matches;
-                        if (mindingIdentity) {
-                            matches = Comparison.identicallyEqual(items.get(index), arguments.get(1));
-                        } else if (mindingCase) {
-                            matches = items.get(index).equals(arguments.get(1));
-                        } else {
-                            matches = Comparison.looselyEqual(items.get(index), arguments.get(1));
+                    long stride = searchStride(arguments, refinements);
+                    boolean subOneForwardStride = refinements.contains("skip")
+                            && stride < 1 && !refinements.contains("reverse");
+                    if (subOneForwardStride) {
+                        if (series instanceof BlockValue) {
+                            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                                    "select/skip needs a record width of at least "
+                                            + "one, not " + stride);
                         }
-                        if (matches) {
-                            // A match with nothing after it has no answer,
-                            // which is none rather than a failure: SELECT
-                            // is asked a question it is allowed to miss.
-                            return index + 1 < items.size()
-                                    ? items.get(index + 1)
-                                    : NoneValue.none();
-                        }
+                        return NoneValue.none();
                     }
-                    return NoneValue.none();
+                    int limit = searchLimit(series, arguments, refinements);
+                    Wildcards wildcards = Wildcards.named(argumentFor(
+                            "with", SEARCH_ARGUMENTS, arguments, refinements, 2));
+                    int found = positionSearched(series, arguments.get(1), refinements,
+                            limit, stride, wildcards);
+                    if (found < 0) {
+                        return NoneValue.none();
+                    }
+                    // `ret += len;` and the item that lands on. Everything
+                    // above this line is FIND, which is why SELECT has
+                    // /PART, /LAST, /REVERSE and /ONLY at all.
+                    //
+                    // The length is the length of the MATCH and not of the
+                    // needle, so a wildcard needle steps over however much
+                    // it took.
+                    List<Value> items = itemsOf(series.head());
+                    int end = searchEnd(series, items, limit);
+                    int after = found - 1
+                            + matchLength(series, arguments.get(1), refinements,
+                                    found, wildcards, end);
+                    // A match with nothing after it has no answer, which is
+                    // none rather than a failure: SELECT is asked a question
+                    // it is allowed to miss. /PART bounds this as well as
+                    // the search, thus a match on the last item inside the
+                    // range answers none.
+                    if (after >= end) {
+                        return NoneValue.none();
+                    }
+                    return items.get(after);
                 });
 
         // /ANY answers the unset rather than refusing, which is how code
@@ -4309,6 +5728,8 @@ public final class Natives {
         List<Value> items = fields.remaining();
         ErrorCategory category = ErrorCategory.USER;
         String errorId = "user-error";
+        boolean namedAType = false;
+        boolean namedAnId = false;
         Optional<Value> subject = Optional.empty();
         Optional<Value> second = Optional.empty();
         Optional<Value> third = Optional.empty();
@@ -4324,8 +5745,14 @@ public final class Natives {
                     ? spelled.canonical()
                     : Molder.form(items.get(at + 1));
             switch (name.canonical()) {
-                case "type" -> category = ErrorCategory.named(said).orElse(category);
-                case "id" -> errorId = said;
+                case "type" -> {
+                    namedAType = true;
+                    category = ErrorCategory.named(said).orElse(category);
+                }
+                case "id" -> {
+                    namedAnId = true;
+                    errorId = said;
+                }
                 // What caused it. Dropped before, so an error raised
                 // through CAUSE-ERROR carried its name and nothing else.
                 //
@@ -4336,6 +5763,13 @@ public final class Natives {
                 case "arg3" -> third = Optional.of(items.get(at + 1));
                 default -> { }
             }
+        }
+        // `Trap0(RE_INVALID_ERROR)` when the spec names no type or no id:
+        // a spec that says neither is not an error a script meant, and
+        // half of one is no better.
+        if (!namedAType || !namedAnId) {
+            throw new Raised(ErrorValue.of(ErrorCategory.INTERNAL,
+                    "invalid-error", "an error spec names a type and an id"));
         }
         return new ErrorValue(category, errorId, errorId, subject, second, third,
                 Optional.empty(), Optional.empty());
@@ -4483,6 +5917,67 @@ public final class Natives {
         return block;
     }
 
+    /**
+     * An object with its empty fields dropped, as a new object.
+     *
+     * <p>{@code Trim_Object} builds a fresh frame holding the fields whose value
+     * is past none -- `if (VAL_TYPE(val) > REB_NONE && !VAL_GET_OPT(word,
+     * OPTS_HIDE))` -- so a field holding none or unset goes, and so does a
+     * hidden one. The original is left alone, which is the opposite of TRIM on a
+     * series and is why this answers a value rather than the argument.
+     *
+     * <p>A module and an error trim the same way, being objects underneath.
+     */
+    private static Value trimmedObject(Value subject) {
+        Context fields = subject instanceof ErrorValue raised
+                ? errorAsAContext(raised)
+                : fieldsOf(subject);
+        Context kept = Context.root();
+        for (ContextSlot slot : fields.slots()) {
+            if (slot.canonical().equals("self")
+                    || slot.value() instanceof NoneValue
+                    || slot.value() instanceof UnsetValue) {
+                continue;
+            }
+            kept.set(slot.spelling(), slot.value());
+        }
+        return new ObjectValue(kept);
+    }
+
+    /**
+     * The characters TRIM/WITH takes out, by datatype rather than by mold.
+     *
+     * <p>An integer is one code point, so `trim/with s 97` removes the
+     * letter a and not the digits 9 and 7 -- molding the integer gave its
+     * decimal spelling. A char is its own code point, a string each of its
+     * characters, and a none nothing.
+     */
+    private static Set<Integer> unwantedCodePoints(Value characters) {
+        return switch (characters) {
+            case CharacterValue character -> Set.of(character.codepoint());
+            case IntegerValue whole -> Set.of((int) whole.magnitude());
+            case StringValue text -> text.text().codePoints().boxed()
+                    .collect(java.util.stream.Collectors.toSet());
+            case BinaryValue bytes -> {
+                Set<Integer> octets = new java.util.HashSet<>();
+                for (byte octet : bytes.octetsFromHere()) {
+                    octets.add(octet & 0xFF);
+                }
+                yield octets;
+            }
+            default -> Set.of();
+        };
+    }
+
+    /** An error's fields as a context, so the object arms can read one. */
+    private static Context errorAsAContext(ErrorValue raised) {
+        Context fields = Context.root();
+        for (String name : ErrorValue.FIELDS) {
+            fields.set(name, raised.field(name).orElseGet(NoneValue::none));
+        }
+        return fields;
+    }
+
     /** A binary with its zero bytes dropped, from whichever end was asked for. */
     private static Value trimmedBinary(BinaryValue bytes, Set<String> refinements) {
         List<Integer> kept = new ArrayList<>();
@@ -4492,8 +5987,13 @@ public final class Natives {
         if (refinements.contains("all")) {
             kept.removeIf(octet -> octet == 0);
         } else {
-            boolean fromHead = !refinements.contains("tail");
-            boolean fromTail = !refinements.contains("head");
+            // Trim the head when /head is named, or when neither end is --
+            // the bare TRIM trims both. Reading it as "not /tail" made
+            // trim/head/tail trim nothing, because both flags went false.
+            boolean neitherEndNamed =
+                    !refinements.contains("head") && !refinements.contains("tail");
+            boolean fromHead = refinements.contains("head") || neitherEndNamed;
+            boolean fromTail = refinements.contains("tail") || neitherEndNamed;
             while (fromHead && !kept.isEmpty() && kept.getFirst() == 0) {
                 kept.removeFirst();
             }
@@ -4587,6 +6087,21 @@ public final class Natives {
                     case WordValue word -> IntegerValue.of(
                             word.spelling().codePointCount(0, word.spelling().length()));
                     case SeriesValue series -> IntegerValue.of(series.lengthFromHere());
+                    // An object answers how many fields it holds, which the C
+                    // gives as `SERIES_TAIL(VAL_OBJ_FRAME(value)) - 1` -- the
+                    // slot count without SELF. A module and a port answer the
+                    // same way, being objects underneath.
+                    //
+                    // Rebol's own INTERN opens with
+                    // `index: 1 + length? usr: system/contexts/user`, so LOAD
+                    // could not run at all without this.
+                    case ObjectValue object ->
+                            IntegerValue.of(object.context().fieldCount());
+                    case ModuleValue module ->
+                            IntegerValue.of(module.context().fieldCount());
+                    case PortValue port ->
+                            IntegerValue.of(port.context().fieldCount());
+                    case BitsetValue set -> IntegerValue.of(set.octets().length * 8);
                     // A pair has two halves rather than two items, which
                     // makes this the wrong argument rather than an
                     // operation a pair does not support.
@@ -4603,13 +6118,17 @@ public final class Natives {
         // false, which is how a rule chooses between two blocks without
         // an EITHER. Rebol's own REPLACE picks its condition that way,
         // and refusing a logic left that function unreachable.
+        // `aggregate<series! map! gob! pair! date! time! tuple! bitset! port!>`
+        // and `index` with no datatypes at all, because for four of those the
+        // selector is a field name rather than a number.
         define("pick", List.of(Parameter.required("series"),
-                        Parameter.required("index",
-                                Set.of(Datatype.INTEGER, Datatype.LOGIC))),
-                (arguments, evaluator, context) -> pick(arguments.get(0),
-                        arguments.get(1) instanceof LogicValue chosen
-                                ? (chosen.truth() ? 1 : 2)
-                                : (int) ((IntegerValue) arguments.get(1)).magnitude()));
+                        Parameter.required("index")),
+                (arguments, evaluator, context) -> arguments.get(1)
+                        instanceof LogicValue chosen
+                        // A logic picks the first or the second, which is how
+                        // `pick [a b] some-condition` reads as a choice.
+                        ? pick(arguments.get(0), chosen.truth() ? 1 : 2)
+                        : pickFrom(arguments.get(0), arguments.get(1)));
 
         // The z family counts from zero where the rest of the language
         // counts from one. Both spellings are legal at once, which is the
@@ -4621,14 +6140,31 @@ public final class Natives {
                         ? (Value) series.atIndex(clampedPosition(series,
                                 ((IntegerValue) arguments.get(1)).magnitude() + 1))
                         : raiseWrongArgument(arguments.get(0), "atz", "series"));
-        define("indexz?", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> arguments.get(0) instanceof SeriesValue series
-                        ? IntegerValue.of(series.index() - 1)
-                        : raiseWrongArgument(arguments.get(0), "indexz?", "series"));
+        // None is declared and refused: the none arm answers for A_INDEXQ and
+        // falls through to `Trap_Action` for A_INDEXZQ, which is cannot-use
+        // rather than a rejected argument.
+        define("indexz?", List.of(Parameter.required("series", positionable())),
+                Set.of("xy"),
+                (arguments, evaluator, context, refinements) ->
+                        arguments.get(0) instanceof SeriesValue series
+                                ? IntegerValue.of(series.index() - 1)
+                                : raiseCannotUse(arguments.get(0), "indexz?"));
+        // PICKZ counts from zero, and only forwards.
+        //
+        // `if (VAL_INT64(D_ARG(2)) >= 0 && !IS_BITSET(D_ARG(1)))
+        // VAL_INT64(D_ARG(2)) += 1;` and then the ordinary PICK. So a negative
+        // index is passed through untouched and means what it means to PICK --
+        // counting back from the position -- while zero and up are shifted by
+        // one. `pickz s -1` and `pick s -1` are the same question.
         define("pickz", List.of(Parameter.required("series"),
                         Parameter.required("index", Set.of(Datatype.INTEGER))),
-                (arguments, evaluator, context) -> pick(arguments.get(0),
-                        (int) ((IntegerValue) arguments.get(1)).magnitude() + 1));
+                (arguments, evaluator, context) -> {
+                    int wanted = (int) ((IntegerValue) arguments.get(1)).magnitude();
+                    return pick(arguments.get(0),
+                            wanted >= 0 && !(arguments.getFirst() instanceof BitsetValue)
+                                    ? wanted + 1
+                                    : wanted);
+                });
 
         // PAST? asks whether the position is beyond the tail, which an
         // ordinary series can never be: even the tail itself is not past
@@ -4641,6 +6177,13 @@ public final class Natives {
 
         define("swap", List.of(Parameter.required("series"), Parameter.required("with")),
                 (arguments, evaluator, context) -> {
+                    // SWAP names gob! in its spec and `REBTYPE(Gob)` has no arm
+                    // for it, so the declaration lets a gob through and
+                    // `Trap_Action` refuses it. Which is a different error from
+                    // the one COPY gives, and COPY does not name gob! at all.
+                    if (arguments.get(0) instanceof GobValue gob) {
+                        return raiseCannotUse(gob, "swap");
+                    }
                     if (arguments.get(0) instanceof StringValue here
                             && arguments.get(1) instanceof StringValue there) {
                         if (!here.atTail() && !there.atTail()) {
@@ -4711,6 +6254,17 @@ public final class Natives {
                     // admits a map, and EMPTY? is this same action under
                     // that wider spec.
                     case MapValue map -> LogicValue.of(map.pairCount() == 0);
+                    // A typeset answers TAIL? for one reason, and the C says
+                    // so in a comment: "Necessary to make EMPTY? work". There
+                    // is no position to be at the end of; the question is
+                    // whether the set holds anything.
+                    case TypesetValue kinds ->
+                            LogicValue.of(kinds.members().isEmpty());
+                    // And a bitset for the same reason and with the same
+                    // comment beside it: `return (VAL_TAIL(value) == 0) ?
+                    // R_TRUE : R_FALSE; // Necessary to make EMPTY? work`.
+                    case BitsetValue members ->
+                            LogicValue.of(members.octets().length == 0);
                     case SeriesValue series -> LogicValue.of(series.atTail());
                     default -> raiseCannotUse(arguments.get(0), "tail?");
                 });
@@ -4731,8 +6285,14 @@ public final class Natives {
         // three places in this family that forgives it -- LENGTH? and
         // EMPTY? are the others, and FIRST, HEAD, NEXT and the rest all
         // still raise. Three named exceptions, not a rule about none.
-        define("index?", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> switch (arguments.get(0)) {
+        // /XY asks for the position as a pair, and one typeclass answers it:
+        // `VAL_PAIR_X(D_RET) = index % VAL_IMAGE_WIDE(value)` in t-image.c.
+        // Every other one goes through f-series.c, whose arm never reads the
+        // refinement at all, so the answer is the plain number. There is no
+        // image datatype here, thus nothing to divide by a width.
+        define("index?", List.of(Parameter.required("series", positionable())),
+                Set.of("xy"),
+                (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
                     case NoneValue nothing -> nothing;
                     case SeriesValue series -> IntegerValue.of(series.index());
                     default -> raiseCannotUse(arguments.get(0), "index?");
@@ -4746,14 +6306,15 @@ public final class Natives {
         // consumed: it leaked out as the expression's value and the value
         // went in once.
         define("append", List.of(Parameter.required("series"), Parameter.required("value"),
-                        Parameter.belongingTo("part", "count", Set.of(Datatype.INTEGER)),
-                        Parameter.belongingTo("dup", "times", Set.of(Datatype.INTEGER))),
+                        Parameter.belongingTo("part", "range", PART_LIMIT),
+                        Parameter.belongingTo("dup", "count", DUP_COUNT)),
                 Set.of("part", "only", "dup"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
                     case BlockValue block -> {
                         if (duplicated(arguments.get(1), arguments, refinements)
                                 instanceof BlockValue added) {
-                            firstFew(added.remaining(), arguments, refinements, 2)
+                            firstFew(arguments.get(1), added.remaining(),
+                                    arguments, refinements, 2)
                                     .forEach(block.storage()::append);
                         } else {
                             block.storage().append(arguments.get(1));
@@ -4772,41 +6333,14 @@ public final class Natives {
                         }
                         yield bytes.head();
                     }
-                    // An object is not a series either, so APPEND on one
-                    // means "extend it". The block is read as set-word
-                    // and value pairs, and the set-word may have been
-                    // computed -- which is how an object gains a field
-                    // whose name is not in the source.
-                    case ObjectValue object -> {
-                        // Changing an object as a container, which REBOL
-                        // refuses as `protected` rather than as the
-                        // `locked-word` an assignment through a name gets.
-                        // Checked here rather than left to the slot,
-                        // because only this end knows which was asked.
-                        if (object.context().isClosedToNewNames()) {
-                            throw Raised.of(EvaluationFailure.PROTECTED, "append");
-                        }
-                        // /PART and /DUP mean here what they mean for a
-                        // block: how much of the source to read, and how
-                        // many times over. Ignored, `append/part obj [a 1
-                        // b 2] 2` added both pairs and looked right.
-                        refuseHiddenField(object, arguments.get(1));
-                        List<Value> pairs = duplicated(
-                                arguments.get(1), arguments, refinements)
-                                instanceof BlockValue added
-                                ? partOf(added, arguments, refinements)
-                                : List.of(arguments.get(1));
-                        for (int at = 0; at + 1 < pairs.size(); at += 2) {
-                            if (pairs.get(at) instanceof WordValue field) {
-                                object.context().set(field.canonical(), pairs.get(at + 1));
-                            }
-                        }
-                        yield object;
-                    }
-                    // A bitset gains members rather than gaining a tail,
-                    // because it has no end to put anything at.
+                    case ObjectValue object ->
+                            objectGainingFields(object, arguments, refinements, "append");
+                    // A map takes pairs rather than items, and has no tail to
+                    // add them at, so APPEND on one means "put these in".
+                    case MapValue map ->
+                            addPairsToMap(map, arguments, refinements, "append");
                     case BitsetValue members -> {
-                        members.addAll((BitsetValue) bitsetOf(arguments.get(1)));
+                        members.holdAll((BitsetValue) bitsetOf(arguments.get(1)), true);
                         yield members;
                     }
                     case StringValue string -> {
@@ -4825,12 +6359,22 @@ public final class Natives {
                                 && added.datatype() == Datatype.BLOCK
                                 ? runTogether(added)
                                 : Molder.form(adding);
-                        int wanted = howManyWanted(arguments, refinements, 2)
+                        int wanted = howManyWanted(
+                                arguments.get(1), arguments, refinements, 2)
                                 .map(count -> Math.min(count.intValue(), text.length()))
                                 .orElse(text.length());
                         text.substring(0, wanted).codePoints()
                                 .forEach(string.storage()::append);
                         yield string.head();
+                    }
+                    // A gob appends into its pane, and /part, /only and /dup are
+                    // all refused outright: `if (DS_REF(AN_PART) || DS_REF(AN_ONLY)
+                    // || DS_REF(AN_DUP)) Trap0(RE_NOT_DONE);`.
+                    case GobValue gob -> {
+                        refuseUnfinishedRefinements(refinements, "append");
+                        insertChildren(gob, gob.storage().length() + 1,
+                                arguments.get(1));
+                        yield gob;
                     }
                     default -> raiseCannotUse(arguments.get(0), "append");
                 });
@@ -4860,7 +6404,7 @@ public final class Natives {
         // a series skipped past its first two items keeps only what is
         // left. /PART bounds how much of the rest is kept.
         define("truncate", List.of(Parameter.required("series"),
-                        Parameter.belongingTo("part", "count", Set.of(Datatype.INTEGER))),
+                        Parameter.belongingTo("part", "count", PART_LIMIT)),
                 Set.of("part"),
                 (arguments, evaluator, context, refinements) -> {
                     if (!(arguments.getFirst() instanceof SeriesValue series)) {
@@ -4878,23 +6422,33 @@ public final class Natives {
 
         define("skip", List.of(
                         Parameter.required("series"),
-                        Parameter.required("offset", Set.of(Datatype.INTEGER))),
+                        Parameter.required("offset",
+                                Set.of(Datatype.INTEGER, Datatype.DECIMAL,
+                                        Datatype.PERCENT, Datatype.LOGIC,
+                                        Datatype.PAIR))),
                 (arguments, evaluator, context) -> {
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.get(0), "skip");
                     }
-                    long by = ((IntegerValue) arguments.get(1)).magnitude();
+                    long by = positionAskedFor(series, arguments.get(1), false);
                     return series.atIndex(clampToSeries(series, series.index() + by));
                 });
 
+        // `index [number! logic! pair!]` -- a pair because an image reads one as
+        // a coordinate: `diff = ((y - (action == A_AT ? 1 : 0)) * wide + x)` in
+        // t-image.c, which is the one place a navigation action consults a
+        // width. Every other series refuses a pair at the door.
         define("at", List.of(
                         Parameter.required("series"),
-                        Parameter.required("index", Set.of(Datatype.INTEGER))),
+                        Parameter.required("index",
+                                Set.of(Datatype.INTEGER, Datatype.DECIMAL,
+                                        Datatype.PERCENT, Datatype.LOGIC,
+                                        Datatype.PAIR))),
                 (arguments, evaluator, context) -> {
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.get(0), "at");
                     }
-                    long wanted = ((IntegerValue) arguments.get(1)).magnitude();
+                    long wanted = positionAskedFor(series, arguments.get(1), true);
                     return series.atIndex(clampToSeries(series, series.index() + wanted - 1));
                 });
 
@@ -4909,20 +6463,35 @@ public final class Natives {
         // written. A word with a slash in it is not a refinement: it
         // answers the one call it is named for, which is why `copy/part`
         // worked and `copy/deep` raised no-refine.
-        define("copy", List.of(Parameter.required("value"),
-                        Parameter.belongingTo("part", "limit", Set.of())),
-                Set.of("part", "deep"),
+        // /TYPES names which datatypes get copied and which are shared, and it
+        // changes what /DEEP means:
+        //     if (D_REF(ARG_COPY_DEEP))
+        //         types |= CP_DEEP | (D_REF(ARG_COPY_TYPES) ? 0 : TS_DEEP_COPIED);
+        //     if (D_REF(ARG_COPY_TYPES)) { ... types |= the named set ... }
+        //
+        // So /DEEP alone copies the standard set at every level, and
+        // /DEEP/TYPES copies only what was named -- recursing, but reaching into
+        // nothing else on the way. `copy/deep/types b string!` copies the
+        // strings and leaves every block inside shared, which no combination of
+        // the other refinements can express.
+        define("copy", List.of(Parameter.required("value", copyable()),
+                        Parameter.belongingTo("part", "limit", Set.of()),
+                        Parameter.belongingTo("types", "kinds",
+                                Set.of(Datatype.TYPESET, Datatype.DATATYPE))),
+                Set.of("part", "deep", "types"),
                 (arguments, evaluator, context, refinements) -> {
                     Value original = arguments.getFirst();
                     boolean deeply = refinements.contains("deep");
+                    Set<Datatype> kinds = whichDatatypesToCopy(arguments, refinements);
                     if (!refinements.contains("part")) {
-                        return copied(original, deeply);
+                        return copied(original, deeply, kinds);
                     }
                     if (!(original instanceof SeriesValue series)) {
                         return raiseCannotUse(original, "copy");
                     }
-                    Value limit = argumentFor("part", List.of("part"), arguments, refinements, 1);
-                    return copiedFront(series, limit, deeply);
+                    Value limit = argumentFor("part", List.of("part", "types"),
+                            arguments, refinements, 1);
+                    return copiedFront(series, limit, deeply, kinds);
                 });
 
         // FIND gives the series positioned where the match starts, so the
@@ -4936,22 +6505,37 @@ public final class Natives {
         // block.
         define("find",
                 List.of(Parameter.required("series"), Parameter.required("value"),
-                        Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER)),
-                        Parameter.belongingTo("skip", "stride", Set.of(Datatype.INTEGER))),
+                        Parameter.belongingTo("part", "range", PART_LIMIT),
+                        Parameter.belongingTo("with", "wild", Set.of(Datatype.STRING)),
+                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
                 Set.of("tail", "last", "only", "case", "any", "same", "part",
-                        "skip", "reverse", "match"),
+                        "with", "skip", "reverse", "match"),
                 (arguments, evaluator, context, refinements) -> {
                     // Looking in nothing finds nothing, so a result can be
                     // passed straight on without being tested first.
                     if (arguments.get(0) instanceof NoneValue) {
                         return NoneValue.none();
                     }
-                    // An error is an object with a fixed set of fields, so
-                    // asking whether it has one is an ordinary question,
-                    // and the answer is a logic rather than a position.
-                    if (arguments.getFirst() instanceof ErrorValue
-                            && arguments.get(1) instanceof WordValue field) {
-                        return LogicValue.of(ErrorValue.FIELDS.contains(field.canonical()));
+                    // An object answers whether it has the field, where
+                    // SELECT answers what the field holds. One arm of
+                    // t-object.c serves both and one line parts them:
+                    //     if (action == A_FIND) goto is_true;
+                    //
+                    // So the answer is TRUE or NONE, never the value, and a
+                    // field holding none still answers true. That is the
+                    // whole reason to ask FIND rather than SELECT.
+                    if (isAnyObject(arguments.getFirst())) {
+                        return objectHasFieldToFind(arguments.getFirst(), arguments.get(1))
+                                ? LogicValue.of(true)
+                                : NoneValue.none();
+                    }
+                    // A map answers the key it stored rather than TRUE, which
+                    // is the one thing FIND on a map is good for: the stored
+                    // key may not be the one that was asked for. `// find
+                    // returns the key` says so in the C, and a word key is
+                    // held as a set-word, so `find m 'a` answers `a:`.
+                    if (arguments.getFirst() instanceof MapValue map) {
+                        return map.storedKeyLike(arguments.get(1));
                     }
                     // A set has no position, so FIND cannot answer one.
                     // This is the one place it gives a logic.
@@ -4966,47 +6550,46 @@ public final class Natives {
                         return LogicValue.of(arguments.get(1) instanceof DatatypeValue wanted
                                 && typeset.holds(wanted.represents()));
                     }
+                    // A gob looks through its pane, and only for a gob:
+                    // `if (IS_GOB(arg)) { index = Find_Gob(...); } goto is_none;`
+                    // -- so anything else answers none rather than raising, and
+                    // none of FIND's ten refinements reaches the code at all.
+                    if (arguments.get(0) instanceof GobValue searched) {
+                        if (!(arguments.get(1) instanceof GobValue wanted)) {
+                            return NoneValue.none();
+                        }
+                        int at = searched.storage().positionOf(wanted.storage());
+                        return at == 0 ? NoneValue.none() : searched.atIndex(at);
+                    }
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.get(0), "find");
                     }
-                    int limit = refinements.contains("part") && arguments.size() > 2
-                            ? (int) ((IntegerValue) arguments.get(2)).magnitude()
-                            : Integer.MAX_VALUE;
+                    int limit = searchLimit(series, arguments, refinements);
                     // /skip makes the series records of that width and
                     // looks only at the first item of each, so a match
                     // halfway through a record is not a match at all.
-                    long stride = refinements.contains("skip")
-                            ? ((IntegerValue) arguments.get(arguments.size() - 1)).magnitude()
-                            : 1;
-                    // An error is an object with a fixed set of fields, so
-                    // asking whether it has one is an ordinary question.
-                    if (arguments.getFirst() instanceof ErrorValue raised
-                            && arguments.get(1) instanceof WordValue field) {
-                        return LogicValue.of(ErrorValue.FIELDS.contains(field.canonical()));
-                    }
+                    long stride = searchStride(arguments, refinements);
+                    // /ANY reads two of the needle's characters as
+                    // wildcards, and /WITH says which two.
+                    Wildcards wildcards = Wildcards.named(argumentFor(
+                            "with", SEARCH_ARGUMENTS, arguments, refinements, 2));
                     // A byte holds 0 to 255, so searching a binary for
                     // anything outside that is a mistake in the caller
                     // rather than a search that missed. Answering none
                     // would hide it.
                     refuseUnbyteableNeedle(arguments.getFirst(), arguments.get(1), "find");
-                    // A record width below one is refused rather than read
-                    // as counting backwards. Confirmed against a real R3:
-                    // find/skip with 0 and with -2 both raise out-of-range.
-                    //
-                    // Unless the search is already going backwards, where
-                    // a negative width is no contradiction: find/reverse
-                    // /skip accepts -2 and 2 alike, and answers none for
-                    // a width of zero rather than raising.
-                    if (refinements.contains("skip") && stride < 1
-                            && !refinements.contains("reverse")) {
-                        throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                                "find/skip needs a record width of at least "
-                                        + "one, not " + stride);
+                    boolean subOneForwardStride = refinements.contains("skip")
+                            && stride < 1 && !refinements.contains("reverse");
+                    if (subOneForwardStride) {
+                        if (series instanceof BlockValue) {
+                            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                                    "find/skip needs a record width of at least "
+                                            + "one, not " + stride);
+                        }
+                        return NoneValue.none();
                     }
-                    int found = stride == 1 || stride == 0
-                            ? positionOfMatch(series, arguments.get(1), refinements, limit)
-                            : positionOfMatchInRecords(
-                                    series, arguments.get(1), refinements, (int) stride);
+                    int found = positionSearched(series, arguments.get(1), refinements,
+                            limit, stride, wildcards);
                     // /match insists the needle be at the position rather
                     // than anywhere ahead of it, and answers the series
                     // from there so what follows can be read off.
@@ -5016,23 +6599,31 @@ public final class Natives {
                     // ret += len in the C: /TAIL steps over the whole
                     // needle, thus a run of two steps over two.
                     return series.atIndex(refinements.contains("tail")
-                            ? found + matchLength(series, arguments.get(1), refinements, found)
+                            ? found + matchLength(
+                                    series, arguments.get(1), refinements, found, wildcards,
+                                    searchEnd(series, itemsOf(series.head()), limit))
                             : found);
                 });
 
         // A block goes in item by item unless /only says to keep it
         // whole, which is the same way APPEND behaves.
         define("insert", List.of(Parameter.required("series"), Parameter.required("value"),
-                        Parameter.belongingTo("part", "count", Set.of(Datatype.INTEGER)),
-                        Parameter.belongingTo("dup", "times", Set.of(Datatype.INTEGER))),
+                        Parameter.belongingTo("part", "range", PART_LIMIT),
+                        Parameter.belongingTo("dup", "count", DUP_COUNT)),
                 Set.of("only", "part", "dup"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
+                    case BitsetValue members -> {
+                        members.holdAll((BitsetValue) bitsetOf(arguments.get(1)), true);
+                        yield members;
+                    }
+                    case ObjectValue object ->
+                            objectGainingFields(object, arguments, refinements, "insert");
                     case BlockValue block -> {
                         if (duplicated(arguments.get(1), arguments, refinements)
                                 instanceof BlockValue added
                                 && added.datatype() == Datatype.BLOCK
                                 && !refinements.contains("only")) {
-                            List<Value> items = added.remaining();
+                            List<Value> items = partOf(added, arguments, refinements);
                             for (int at = items.size(); at > 0; at--) {
                                 block.storage().insertAt(block.index(), items.get(at - 1));
                             }
@@ -5062,17 +6653,42 @@ public final class Natives {
                         }
                         yield bytes.atIndex(bytes.index() + octets.length);
                     }
+                    // A map has no position, so there is no difference
+                    // between adding at the front and adding at the end.
+                    // One arm of the C serves both: `case A_INSERT: case
+                    // A_APPEND:`.
+                    case MapValue map ->
+                            addPairsToMap(map, arguments, refinements, "insert");
+                    case GobValue gob -> {
+                        refuseUnfinishedRefinements(refinements, "insert");
+                        insertChildren(gob, gob.index(), arguments.get(1));
+                        yield gob;
+                    }
                     default -> raiseCannotUse(arguments.get(0), "insert");
                 });
 
         define("remove", List.of(Parameter.required("series"),
-                        Parameter.belongingTo("part", "count", Set.of(Datatype.INTEGER)),
+                        Parameter.belongingTo("part", "count", REMOVE_RANGE),
                         Parameter.belongingTo("key", "which", Set.of())),
                 Set.of("part", "key"),
                 (arguments, evaluator, context, refinements) -> {
-                    if (arguments.get(0) instanceof MapValue map && refinements.contains("key")) {
-                        map.remove(arguments.get(1));
+                    // Removing from nothing answers nothing.
+                    if (arguments.get(0) instanceof NoneValue nothing) {
+                        return nothing;
+                    }
+                    if (arguments.get(0) instanceof MapValue map) {
+                        // Without /KEY there is no key to remove, and the C does
+                        // nothing rather than refusing: `n = Find_Entry(series,
+                        // D_ARG(ARG_REMOVE_KEY_ARG), 0, TRUE);` is called with
+                        // none, and `if (IS_NONE(key)) return NOT_FOUND;` stops
+                        // it. The map comes back either way.
+                        if (refinements.contains("key")) {
+                            map.remove(arguments.get(1));
+                        }
                         return map;
+                    }
+                    if (arguments.get(0) instanceof BitsetValue members) {
+                        return membersCleared(members, arguments, refinements);
                     }
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseWrongArgument(arguments.get(0), "remove", "series");
@@ -5086,7 +6702,11 @@ public final class Natives {
                                 "key", List.of("part", "key"), arguments, refinements, 1));
                         return series;
                     }
-                    long howMany = howManyWanted(arguments, refinements, 1).orElse(1L);
+                    if (refinements.contains("key")) {
+                        throw Raised.of(EvaluationFailure.FEATURE_NA,
+                                "/key removes from a map or a bitset, not a series");
+                    }
+                    long howMany = howManyWanted(series, arguments, refinements, 1).orElse(1L);
                     for (long dropped = 0; dropped < howMany && !series.atTail(); dropped++) {
                         removeOneAt(series, series.index());
                     }
@@ -5115,6 +6735,12 @@ public final class Natives {
                     if (arguments.get(0) instanceof PairValue pair) {
                         return pair.reversed();
                     }
+                    // A gob turns its pane round and answers itself: the C swaps
+                    // the pointers in place and ends with `return R_ARG1`.
+                    if (arguments.get(0) instanceof GobValue gob) {
+                        gob.storage().turnRound();
+                        return gob;
+                    }
                     if (arguments.get(0) instanceof StringValue text) {
                         return reversedText(text);
                     }
@@ -5137,28 +6763,67 @@ public final class Natives {
         // /part says how much to take out, and the replacement need not
         // be the same length, so the series may grow or shrink.
         define("change", List.of(Parameter.required("series"), Parameter.required("value"),
-                        Parameter.belongingTo("part", "count", Set.of(Datatype.INTEGER)),
-                        Parameter.belongingTo("dup", "times", Set.of(Datatype.INTEGER))),
+                        Parameter.belongingTo("part", "range", PART_LIMIT),
+                        Parameter.belongingTo("dup", "count", DUP_COUNT)),
                 Set.of("part", "only", "dup"),
                 (arguments, evaluator, context, refinements) -> {
                     if (refinements.contains("part") && arguments.size() > 2
                             && arguments.get(0) instanceof SeriesValue series) {
-                        long taking = ((IntegerValue) arguments.get(2)).magnitude();
+                        Value replacement = copied(arguments.get(1),
+                                arguments.get(1) instanceof BlockValue);
+                        long taking = countUpTo(series, arguments.get(2));
                         for (long gone = 0; gone < taking && !series.atTail(); gone++) {
                             removeOneAt(series, series.index());
                         }
-                        return insertInto(series, arguments.get(1));
+                        int before = series.storageLength();
+                        insertInto(series, replacement);
+                        // CHANGE answers the position after what it wrote, where
+                        // INSERT answers the head. `change/part b 1.2.3.4 2` is
+                        // four bytes in and two out, so the answer is six along.
+                        return series.atIndex(
+                                series.index() + series.storageLength() - before);
+                    }
+                    // A gob changes its pane, and the C inserts rather than
+                    // replaces: the replacing code sits beside it commented out.
+                    // So `change g child` makes the pane one longer, and the child
+                    // gains a parent.
+                    if (arguments.get(0) instanceof GobValue gob) {
+                        refuseUnfinishedRefinements(refinements, "change");
+                        GobPath.poke(gob, gob.index(), arguments.get(1));
+                        return gob.atIndex(gob.index() + 1);
                     }
                     Value replacing = duplicated(
                             arguments.get(1), arguments, refinements);
-                    if (arguments.get(0) instanceof StringValue text && !text.atTail()) {
+                    // A binary is changed byte by byte, and the bytes come from
+                    // whatever was given by the same rules APPEND uses: a
+                    // string contributes its UTF-8, a tuple its octets, a
+                    // number one byte. `change #{} "^(1234)"` is three bytes
+                    // into an empty binary, so this grows the binary where the
+                    // replacement runs off the end rather than stopping.
+                    if (arguments.get(0) instanceof BinaryValue bytes) {
+                        int[] octets = octetsContributedBy(replacing, -1);
+                        for (int at = 0; at < octets.length; at++) {
+                            int where = bytes.index() + at;
+                            if (where > bytes.storage().length()) {
+                                bytes.storage().append(octets[at]);
+                            } else {
+                                bytes.storage().set(where, octets[at]);
+                            }
+                        }
+                        return bytes.atIndex(bytes.index() + octets.length);
+                    }
+                    if (arguments.get(0) instanceof StringValue text) {
                         String replacement = replacing instanceof BlockValue several
                                 ? runTogether(several)
                                 : Molder.form(replacing);
-                        for (int at = 0; at < replacement.length() && !text.atTail(); at++) {
-                            text.storage().set(text.index() + at, replacement.charAt(at));
+                        int overwritten = Math.min(replacement.length(), text.lengthFromHere());
+                        for (int gone = 0; gone < overwritten; gone++) {
+                            text.storage().removeAt(text.index());
                         }
-                        return text.head();
+                        for (int at = 0; at < replacement.length(); at++) {
+                            text.storage().insertAt(text.index() + at, replacement.charAt(at));
+                        }
+                        return text.atIndex(text.index() + replacement.length());
                     }
                     if (!(arguments.get(0) instanceof BlockValue block) || block.atTail()) {
                         return raiseCannotUse(arguments.get(0), "change");
@@ -5180,6 +6845,25 @@ public final class Natives {
         // why clearing the second position keeps the first value.
         define("clear", List.of(Parameter.required("series")),
                 (arguments, evaluator, context) -> switch (arguments.get(0)) {
+                    // Nothing to clear, and that is an answer rather than a
+                    // mistake: `if (IS_NONE(val)) return R_NONE;`.
+                    case NoneValue nothing -> nothing;
+                    // `Clear_Series(VAL_SERIES(value))` -- every bit goes, and
+                    // the length with it, so a cleared set holds nothing rather
+                    // than holding zeros. The C weighs the two readings in a
+                    // comment and takes this one.
+                    case BitsetValue members -> {
+                        members.clear();
+                        yield members;
+                    }
+                    // A map empties in place and answers itself, as a series
+                    // does: `Clear_Series(series); if (series->series)
+                    // Clear_Series(series->series);`.
+                    case MapValue map -> {
+                        requireChangeable(map);
+                        map.clear();
+                        yield map;
+                    }
                     case BlockValue block -> {
                         while (block.storage().length() >= block.index()) {
                             block.storage().removeAt(block.index());
@@ -5200,6 +6884,14 @@ public final class Natives {
                         }
                         yield bytes;
                     }
+                    // `if (tail > index) Remove_Gobs(gob, index, tail - index)` --
+                    // the children from the position on, so a gob standing at its
+                    // second child keeps the first.
+                    case GobValue gob -> {
+                        gob.storage().removeChildren(gob.index(),
+                                gob.storage().length() - gob.index() + 1);
+                        yield gob;
+                    }
                     default -> raiseCannotUse(arguments.get(0), "clear");
                 });
 
@@ -5209,10 +6901,12 @@ public final class Natives {
         // a function of two values, and /skip sorts records by their first
         // item so a flat block of pairs stays paired.
         define("sort",
-                List.of(Parameter.required("series"),
+                // `series [series!]` and no more, so a gob and a map are the
+                // wrong argument here rather than an operation they cannot do.
+                List.of(Parameter.required("series", Typeset.SERIES.members()),
                         Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)),
                         Parameter.belongingTo("compare", "comparator", Set.of()),
-                        Parameter.belongingTo("part", "count", Set.of(Datatype.INTEGER))),
+                        Parameter.belongingTo("part", "count", PART_LIMIT)),
                 // /UNSTABLE names a different algorithm rather than a
                 // different answer, so it is accepted and changes nothing.
                 Set.of("case", "compare", "skip", "reverse", "all", "part", "unstable"),
@@ -5290,6 +6984,27 @@ public final class Natives {
         defineSetOperation("intersect", Combination.INTERSECT);
         defineSetOperation("union", Combination.UNION);
         defineSetOperation("exclude", Combination.EXCLUDE);
+        // UNIQUE is the fifth flag on the same C function -- `return
+        // Do_Set_Operation(ds, SET_OP_UNIQUE);` -- and the only one that takes
+        // one series rather than two. Written as a union of the series with
+        // itself, which is what SET_OP_UNIQUE amounts to: walk it once, keep the
+        // first of each.
+        define("unique", List.of(
+                        Parameter.required("set1", Set.of(
+                                Datatype.BLOCK, Datatype.STRING, Datatype.BITSET,
+                                Datatype.TYPESET, Datatype.MAP)),
+                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
+                Set.of("case", "skip"),
+                (arguments, evaluator, context, refinements) -> {
+                    Value width = argumentFor("skip", List.of("skip"), arguments,
+                            refinements, 1);
+                    int stride = width instanceof IntegerValue wanted
+                            ? (int) Math.max(1, wanted.magnitude())
+                            : 1;
+                    return combined(
+                            List.of(arguments.getFirst(), arguments.getFirst()),
+                            Combination.UNION, refinements.contains("case"), stride);
+                });
 
         define("fourth", List.of(Parameter.required("series")),
                 (arguments, evaluator, context) -> pick(arguments.get(0), 4));
@@ -5303,7 +7018,7 @@ public final class Natives {
         // target nor the results and reads as though nothing happened
         // until you look at the target again.
         define("reduce", List.of(Parameter.required("block"),
-                        Parameter.belongingTo("into", "target", Set.of(Datatype.BLOCK)),
+                        Parameter.belongingTo("into", "target", Typeset.ANY_BLOCK.members()),
                         Parameter.belongingTo("only", "words", Set.of())),
                 Set.of("into", "only", "no-set"),
                 (arguments, evaluator, context, refinements) -> {
@@ -5367,7 +7082,7 @@ public final class Natives {
         // matters for generated code: a template may come out as a single
         // value, and the caller should not have to check before composing.
         define("compose", List.of(Parameter.required("block"),
-                        Parameter.belongingTo("into", "out", Set.of(Datatype.BLOCK))),
+                        Parameter.belongingTo("into", "out", Typeset.ANY_BLOCK.members())),
                 Set.of("only", "deep", "into"),
                 (arguments, evaluator, context, refinements) -> {
                     // Anything that is not a block composes to itself,
@@ -5387,12 +7102,12 @@ public final class Natives {
                             pairs.add(held.get(at));
                         }
                         return MapValue.of(composed(
-                                BlockValue.block(pairs), evaluator,
+                                BlockValue.block(pairs), evaluator, context,
                                 true, refinements.contains("deep")));
                     }
                     List<Value> built =
                             arguments.getFirst() instanceof BlockValue template
-                                    ? composed(template, evaluator,
+                                    ? composed(template, evaluator, context,
                                             refinements.contains("only"),
                                             refinements.contains("deep"))
                                     : List.of(arguments.getFirst());
@@ -5419,63 +7134,11 @@ public final class Natives {
         // adds. A script reaches source text as data through it.
         define("transcode",
                 List.of(Parameter.required("source"),
+                        Parameter.belongingTo("line", "count", Set.of(Datatype.INTEGER)),
                         Parameter.belongingTo("part", "length", Set.of(Datatype.INTEGER))),
                 Set.of("one", "error", "next", "part", "line", "only"),
-                (arguments, evaluator, context, refinements) -> {
-                    String whole = textOfSource(arguments.get(0));
-                    String source = whole;
-                    // /part bounds the text rather than the values, so
-                    // three characters of "1 23]" is "1 2" and reads as
-                    // two integers.
-                    //
-                    // It bounds only what is read. What /NEXT hands back
-                    // as unread is the rest of the whole source, not the
-                    // rest of the bounded piece -- otherwise a caller
-                    // walking a source with a bound would find it empty
-                    // after one step.
-                    if (refinements.contains("part") && arguments.size() > 1) {
-                        int howMany = (int) ((IntegerValue) arguments.get(1)).magnitude();
-                        source = whole.substring(0, Math.min(whole.length(), howMany));
-                    }
-                    // /next answers the first value and the text still
-                    // unread, so a caller can walk a source a value at a
-                    // time without counting characters itself.
-                    // Asking for a value where there is none left is a
-                    // failure rather than an answer of none, because none
-                    // is a value a source can genuinely hold. Both /NEXT
-                    // and /ONE ask for one.
-                    if (source.isBlank()
-                            && (refinements.contains("next") || refinements.contains("one"))) {
-                        throw new Raised(ErrorValue.of(ErrorCategory.SYNTAX,
-                                SyntaxFailure.PAST_END.errorId(),
-                                SyntaxFailure.PAST_END.description()));
-                    }
-                    // /next answers the first value and the text still
-                    // unread, and the unread part comes back as the kind
-                    // that went in: reading a binary leaves a binary.
-                    if (refinements.contains("next")) {
-                        return firstValueAndRest(source, whole,
-                                arguments.getFirst() instanceof BinaryValue);
-                    }
-                    // /error hands the failure back as a value instead of
-                    // raising it: TRY built into the reader, for a caller
-                    // reading text they did not write who wants to look at
-                    // what went wrong rather than catch it.
-                    Value read;
-                    try {
-                        read = transcodedText(source);
-                    } catch (Raised refused) {
-                        if (!refinements.contains("error")) {
-                            throw refused;
-                        }
-                        return refinements.contains("one")
-                                ? refused.error()
-                                : BlockValue.block(List.of(refused.error()));
-                    }
-                    return refinements.contains("one") && read instanceof BlockValue block
-                            ? (block.atTail() ? NoneValue.none() : block.first())
-                            : read;
-                });
+                (arguments, evaluator, context, refinements) ->
+                        SourceReading.asAskedFor(arguments, refinements).answer());
 
         // ROUND goes half away from zero, not to even. A JVM rounds 2.5 to
         // 2 by default and REBOL rounds it to 3, which is the kind of
@@ -5585,7 +7248,7 @@ public final class Natives {
      * values. {@code /only} turns that off and keeps the block whole.
      */
     private static List<Value> composed(
-            BlockValue template, Evaluator evaluator,
+            BlockValue template, Evaluator evaluator, Context context,
             boolean keepingBlocksWhole, boolean goingDeep) {
         List<Value> built = new ArrayList<>();
         for (Value item : template.remaining()) {
@@ -5596,14 +7259,17 @@ public final class Natives {
                 if (goingDeep && item instanceof BlockValue nested
                         && nested.datatype() == Datatype.BLOCK) {
                     built.add(BlockValue.block(composed(
-                            nested, evaluator, keepingBlocksWhole, true)));
+                            nested, evaluator, context, keepingBlocksWhole, true)));
                     continue;
                 }
                 built.add(item);
                 continue;
             }
+            // The paren runs in the caller's context, not the system's, so
+            // it can see the caller's words -- `compose [(x)]` inside a
+            // function reads that function's x.
             for (Value produced : evaluator.evaluateEachOrRaise(
-                    paren.as(Datatype.BLOCK), evaluator.systemContext())) {
+                    paren.as(Datatype.BLOCK), context)) {
                 // A paren that answers nothing contributes nothing, so
                 // `compose [x (print "") y]` is [x y] rather than a block
                 // with an unset sitting in the middle of it. An unset is
@@ -5631,63 +7297,166 @@ public final class Natives {
     private static String textOfSource(Value source) {
         return switch (source) {
             case StringValue given -> given.text();
-            case BinaryValue given -> given.asText();
+            case BinaryValue given -> strictlyUtf8(given.octetsFromHere());
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "transcode reads text, not " + source.datatype().literalSpelling());
         };
     }
 
+    private record SourceReading(
+            String whole,
+            String readable,
+            long firstLine,
+            Transcoder.Extent extent,
+            boolean countingLines,
+            boolean handingBackFailures,
+            boolean answeringTheValueAlone,
+            boolean sourceWasBinary) {
+
+        static SourceReading asAskedFor(List<Value> arguments, Set<String> refinements) {
+            String whole = textOfSource(arguments.getFirst());
+            return new SourceReading(
+                    whole,
+                    refinements.contains("part")
+                            ? boundedTo(whole, charactersPermittedIn(arguments, refinements))
+                            : whole,
+                    firstLineNumberIn(arguments, refinements),
+                    extentAskedFor(refinements),
+                    refinements.contains("line"),
+                    refinements.contains("error"),
+                    refinements.contains("one"),
+                    arguments.getFirst() instanceof BinaryValue);
+        }
+
+        private static Transcoder.Extent extentAskedFor(Set<String> refinements) {
+            if (refinements.contains("only")) {
+                return Transcoder.Extent.THE_FIRST_VALUE_AT_EVERY_DEPTH;
+            }
+            if (refinements.contains("next") || refinements.contains("one")) {
+                return Transcoder.Extent.THE_FIRST_VALUE;
+            }
+            return Transcoder.Extent.THE_WHOLE_SOURCE;
+        }
+
+        private static String boundedTo(String whole, int charactersPermitted) {
+            return whole.substring(0, Math.min(whole.length(), charactersPermitted));
+        }
+
+        Value answer() {
+            Transcoder.Reading reading = Transcoder.read(readable, firstLine, extent);
+            List<Value> values = valuesWithAnyFailureBesideThem(reading);
+            if (stopsBeforeTheEndOfTheSource() && values.isEmpty()) {
+                return handedBackOrRaised(pastEnd());
+            }
+            if (answeringTheValueAlone) {
+                return values.getFirst();
+            }
+            return BlockValue.block(stopsBeforeTheEndOfTheSource()
+                    ? withWhatWasLeftUnread(values, reading)
+                    : values);
+        }
+
+        private boolean stopsBeforeTheEndOfTheSource() {
+            return extent != Transcoder.Extent.THE_WHOLE_SOURCE || handingBackFailures;
+        }
+
+        private List<Value> valuesWithAnyFailureBesideThem(Transcoder.Reading reading) {
+            if (reading.whyItStopped().isEmpty()) {
+                return reading.valuesReadBeforeStopping();
+            }
+            ErrorValue failure =
+                    reading.whyItStopped().orElseThrow().error().orElseThrow();
+            if (!handingBackFailures) {
+                throw new Raised(failure);
+            }
+            List<Value> keptWithTheFailure =
+                    new ArrayList<>(reading.valuesReadBeforeStopping());
+            keptWithTheFailure.add(failure);
+            return keptWithTheFailure;
+        }
+
+        private List<Value> withWhatWasLeftUnread(
+                List<Value> values, Transcoder.Reading reading) {
+
+            List<Value> answer = new ArrayList<>(values);
+            answer.add(remainderOf(
+                    skippingCodePoints(whole, reading.endedAtCodePoint()),
+                    sourceWasBinary));
+            if (countingLines) {
+                answer.add(IntegerValue.of(reading.lineEndedOn()));
+            }
+            return answer;
+        }
+
+        private Value handedBackOrRaised(ErrorValue failure) {
+            if (handingBackFailures) {
+                return failure;
+            }
+            throw new Raised(failure);
+        }
+
+        private static ErrorValue pastEnd() {
+            return ErrorValue.of(ErrorCategory.SYNTAX,
+                    SyntaxFailure.PAST_END.errorId(),
+                    SyntaxFailure.PAST_END.description());
+        }
+    }
+
+    private static final List<String> TRANSCODE_ARGUMENT_ORDER = List.of("line", "part");
+
+    private static final long THE_FIRST_LINE_OF_ANY_SOURCE = 1;
+
+    private static long firstLineNumberIn(List<Value> arguments, Set<String> refinements) {
+        if (!refinements.contains("line")) {
+            return THE_FIRST_LINE_OF_ANY_SOURCE;
+        }
+        long asked = transcodeArgument("line", arguments, refinements);
+        if (asked < THE_FIRST_LINE_OF_ANY_SOURCE) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    "a source's first line is line one or later, not " + asked);
+        }
+        return asked;
+    }
+
+    private static int charactersPermittedIn(
+            List<Value> arguments, Set<String> refinements) {
+
+        long asked = transcodeArgument("part", arguments, refinements);
+        if (asked < 0) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    "a read cannot be bounded to fewer than no characters, and "
+                            + asked + " is fewer");
+        }
+        return (int) Math.min(asked, Integer.MAX_VALUE);
+    }
+
+    private static long transcodeArgument(
+            String refinement, List<Value> arguments, Set<String> refinements) {
+
+        return (long) asMagnitude(argumentFor(
+                refinement, TRANSCODE_ARGUMENT_ORDER, arguments, refinements, 1));
+    }
+
     private static Value transcodedText(String text) {
-        TranscodeResult read = Transcoder.transcode(text);
+        return transcodedText(text, 1);
+    }
+
+    private static Value transcodedText(String text, long firstLine) {
+        TranscodeResult read = Transcoder.transcode(text, firstLine);
         return read.values().orElseThrow(() -> new Raised(read.error().orElseThrow()));
     }
 
     /**
-     * The first value of a source and whatever is left after it.
+     * The rest of {@code whole} after the first {@code howMany} code points.
      *
-     * <p>Found by reading ever-longer prefixes, because the reader
-     * reports what it read and not where it stopped. Exposing a position
-     * would be the better answer and is a larger change than this
-     * refinement justifies on its own.
-     *
-     * <p>The longest run of text that still reads as one value, not the
-     * shortest. Stopping at the shortest reads "12" as the 1 and leaves
-     * the 2, because "1" is already a whole value on its own -- a value
-     * has to be taken as far as it goes.
-     *
-     * <p>Trailing whitespace is then given back, because it belongs to
-     * what follows rather than to the value: reading "1 23]" leaves
-     * " 23]" and not "23]".
-     *
-     * <p>{@code text} may be shorter than {@code whole} when /PART bounded
-     * the reading. The bound says how much may be read; what is left over
-     * is still the rest of the whole source.
+     * <p>Not {@code substring}, which counts UTF-16 units. The two part company at
+     * the first character above the Basic Multilingual Plane, which mold-test.r3 has
+     * and which cost sixty-six assertions when {@code topLevelSpans} got it wrong.
      */
-    private static Value firstValueAndRest(String text, String whole, boolean asBytes) {
-        int taken = -1;
-        Value first = NoneValue.none();
-        for (int upTo = 1; upTo <= text.length(); upTo++) {
-            TranscodeResult read = Transcoder.transcode(text.substring(0, upTo));
-            if (!read.succeeded()) {
-                continue;
-            }
-            BlockValue values = read.values().orElseThrow();
-            if (values.remaining().size() > 1) {
-                break;
-            }
-            if (values.remaining().size() == 1) {
-                taken = upTo;
-                first = values.first();
-            }
-        }
-        if (taken < 0) {
-            return BlockValue.block(List.of(NoneValue.none(), remainderOf(whole, asBytes)));
-        }
-        while (taken > 1 && Character.isWhitespace(text.charAt(taken - 1))) {
-            taken--;
-        }
-        return BlockValue.block(List.of(
-                first, remainderOf(whole.substring(taken), asBytes)));
+    private static String skippingCodePoints(String whole, int howMany) {
+        int[] codepoints = whole.codePoints().toArray();
+        int taken = Math.min(howMany, codepoints.length);
+        return new String(codepoints, taken, codepoints.length - taken);
     }
 
     /** What is left unread, as the kind of series that was handed in. */
@@ -5701,6 +7470,59 @@ public final class Natives {
             asNumbers[at] = octets[at] & 0xFF;
         }
         return BinaryValue.of(asNumbers);
+    }
+
+    /** The order FIND and SELECT declare their three arguments in. */
+    private static final List<String> SEARCH_ARGUMENTS = List.of("part", "with", "skip");
+
+    /**
+     * Where a needle sits, for FIND and SELECT alike.
+     *
+     * <p>{@code case A_FIND: case A_SELECT:} is one arm in {@code t-block.c}
+     * and again in {@code t-string.c}, so the whole of the search is shared
+     * and the two part company only in what they do with the answer.
+     */
+    private static int positionSearched(
+            SeriesValue series, Value wanted, Set<String> refinements,
+            int limit, long stride, Wildcards wildcards) {
+        boolean forcedToSingleStep = refinements.contains("reverse")
+                || refinements.contains("last");
+        return forcedToSingleStep || stride == 1 || stride == 0
+                ? positionOfMatch(series, wanted, refinements, limit, wildcards)
+                : positionOfMatchInRecords(
+                        series, wanted, refinements, (int) stride, limit, wildcards);
+    }
+
+    /** How far along /PART asked the search to look, or as far as it goes. */
+    private static int searchLimit(
+            SeriesValue series, List<Value> arguments, Set<String> refinements) {
+        if (!refinements.contains("part")) {
+            return Integer.MAX_VALUE;
+        }
+        return (int) countUpTo(series, argumentFor(
+                "part", SEARCH_ARGUMENTS, arguments, refinements, 2));
+    }
+
+    /** The record width /SKIP asked for, or one item at a time. */
+    private static long searchStride(List<Value> arguments, Set<String> refinements) {
+        if (!refinements.contains("skip")) {
+            return 1;
+        }
+        return ((IntegerValue) argumentFor(
+                "skip", SEARCH_ARGUMENTS, arguments, refinements, 2)).magnitude();
+    }
+
+    /**
+     * Where a search stops: the tail, or the /PART limit if it is nearer.
+     *
+     * <p>{@code tail = index + Partial1(value, range)} in the C. The limit
+     * is counted from the position rather than from the head, so the same
+     * range asks for less of a series that has already been walked into.
+     */
+    private static int searchEnd(SeriesValue series, List<Value> items, int limit) {
+        return limit < 0
+                ? items.size()
+                : (int) Math.min(items.size(), (long) series.index() - 1 + limit);
     }
 
     /**
@@ -5720,7 +7542,8 @@ public final class Natives {
      * whether the needle is here rather than anywhere ahead.
      */
     private static int positionOfMatch(
-            SeriesValue series, Value wanted, Set<String> refinements, int limit) {
+            SeriesValue series, Value wanted, Set<String> refinements, int limit,
+            Wildcards wildcards) {
 
         boolean lookingBehind = refinements.contains("reverse");
         boolean takingTheLast = refinements.contains("last");
@@ -5730,9 +7553,7 @@ public final class Natives {
 
         // The C works in [start, end) with a step. Everything below is
         // that, one for one.
-        int end = limit < 0
-                ? items.size()
-                : (int) Math.min(items.size(), (long) here + limit);
+        int end = searchEnd(series, items, limit);
         int step = 1;
         int start = here;
         int at = here;
@@ -5748,7 +7569,7 @@ public final class Natives {
         }
 
         for (; at >= start && at < end; at += step) {
-            if (matchesHere(series, items, at, wanted, refinements)) {
+            if (matchesHere(series, items, at, wanted, refinements, wildcards, end)) {
                 return at + 1;
             }
             // /MATCH looks at one place only.
@@ -5791,11 +7612,11 @@ public final class Natives {
      */
     private static boolean matchesHere(
             SeriesValue series, List<Value> items, int at, Value wanted,
-            Set<String> refinements) {
+            Set<String> refinements, Wildcards wildcards, int end) {
 
         if (series instanceof StringValue text && refinements.contains("any")) {
-            return patternEnd(text.head().text(), at, Molder.form(wanted),
-                    refinements.contains("case")) >= 0;
+            return patternEnd(text.head().text(), at, end, Molder.form(wanted),
+                    refinements.contains("case"), wildcards) >= 0;
         }
 
         // The C's datatype branch. A datatype or a typeset needle asks
@@ -5911,8 +7732,12 @@ public final class Natives {
             return false;
         }
         for (int step = 0; step < run.size(); step++) {
+            // /SAME asks series-storage identity, not content equality:
+            // Compare_Values mode 3 is the same node, so two equal but
+            // distinct strings do not match. isSameValue draws that line
+            // where identicallyEqual only compared content.
             boolean same = mindingIdentity
-                    ? Comparison.identicallyEqual(items.get(at + step), run.get(step))
+                    ? Comparison.isSameValue(items.get(at + step), run.get(step))
                     : Comparison.looselyEqual(items.get(at + step), run.get(step));
             if (!same) {
                 return false;
@@ -5953,7 +7778,8 @@ public final class Natives {
      * head, which is how a caller searches what it has already passed.
      */
     private static int positionOfMatchInRecords(
-            SeriesValue series, Value wanted, Set<String> refinements, int stride) {
+            SeriesValue series, Value wanted, Set<String> refinements, int stride,
+            int limit, Wildcards wildcards) {
         boolean backwards = stride < 0 || refinements.contains("reverse")
                 || refinements.contains("last");
         int width = Math.abs(stride);
@@ -5962,9 +7788,10 @@ public final class Natives {
         // search from the tail begins on the last item rather than a
         // record's worth past it.
         int from = backwards ? series.index() - 2 : series.index() - 1;
+        int end = searchEnd(series, items, limit);
 
-        for (int at = from; at >= 0 && at < items.size(); at += backwards ? -width : width) {
-            if (matchesAtRecord(items, at, wanted, refinements)) {
+        for (int at = from; at >= 0 && at < end; at += backwards ? -width : width) {
+            if (matchesAtRecord(series, items, at, wanted, refinements, wildcards, end)) {
                 return at + 1;
             }
         }
@@ -5979,10 +7806,20 @@ public final class Natives {
      * a record does. A match that starts mid-record is passed over.
      */
     private static boolean matchesAtRecord(
-            List<Value> items, int at, Value wanted, Set<String> refinements) {
+            SeriesValue series, List<Value> items, int at, Value wanted,
+            Set<String> refinements, Wildcards wildcards, int end) {
+        if (series instanceof StringValue text && refinements.contains("any")) {
+            return patternEnd(text.head().text(), at, end, Molder.form(wanted),
+                    refinements.contains("case"), wildcards) >= 0;
+        }
         if (wanted instanceof BitsetValue members) {
             return items.get(at) instanceof CharacterValue character
                     && members.holds(character.codepoint());
+        }
+        if (wanted instanceof BlockValue run
+                && run.datatype() == Datatype.BLOCK
+                && !refinements.contains("only")) {
+            return runMatchesAt(items, at, run.remaining(), refinements.contains("same"));
         }
         if (wanted instanceof StringValue needle && !refinements.contains("only")) {
             // Formed rather than taken as text, because a tag's text is
@@ -6013,17 +7850,37 @@ public final class Natives {
     }
 
     /**
-     * Whether a wildcard pattern matches the text from {@code from}.
+     * The two characters a needle may use to stand for others.
      *
-     * <p>A star stands for any run of characters including none, and a
-     * question mark for exactly one. Matched by walking both and letting
-     * a star try every length, which is enough for patterns this short and
-     * avoids turning them into regular expressions whose other characters
-     * would then mean something.
+     * <p>{@code c_some} and {@code c_one} in {@code Find_Str_Str_Any}. The
+     * first stands for any run of characters including none, the second for
+     * exactly one, and /ANY is what turns them on at all.
+     *
+     * <p>/WITH names them itself. That is the only way to search for a
+     * needle holding a star of its own, because renaming the run character
+     * leaves the star an ordinary letter again.
      */
-    private static boolean matchesPattern(
-            String within, int from, String pattern, boolean mindingCase) {
-        return patternEnd(within, from, pattern, mindingCase) >= 0;
+    private record Wildcards(char anyRun, char oneCharacter) {
+
+        private static final Wildcards STARS_AND_QUESTION_MARKS = new Wildcards('*', '?');
+
+        /**
+         * What /WITH named, keeping the default for whatever it left out.
+         *
+         * <p>The C reads the first character as the run one and the second
+         * as the single one, each behind its own bounds check. So a
+         * one-character /WITH renames the star and leaves the question mark
+         * standing, and an empty one changes nothing.
+         */
+        static Wildcards named(Value given) {
+            if (!(given instanceof StringValue chosen)) {
+                return STARS_AND_QUESTION_MARKS;
+            }
+            String characters = chosen.text();
+            return new Wildcards(
+                    characters.isEmpty() ? '*' : characters.charAt(0),
+                    characters.length() < 2 ? '?' : characters.charAt(1));
+        }
     }
 
     /**
@@ -6033,14 +7890,22 @@ public final class Natives {
      * took varies: /tail cannot land a fixed distance along the way it can
      * for a plain needle. A star tries its shortest length first, so the
      * end reported is the earliest one that works.
+     *
+     * <p>{@code upTo} is where the search stops, which /PART may bring in
+     * from the tail. A wildcard match may not run past it -- {@code while (n
+     * < len && pos < tail)} in the C -- and a star at the end of the pattern
+     * takes exactly as far as it: {@code pos = (skip > 0) ? tail : start;}.
+     * A plain needle is bounded by its own length instead, so that one may
+     * run past the range and still match.
      */
     private static int patternEnd(
-            String within, int from, String pattern, boolean mindingCase) {
+            String within, int from, int upTo, String pattern, boolean mindingCase,
+            Wildcards wildcards) {
         if (pattern.isEmpty()) {
             return from;
         }
         char first = pattern.charAt(0);
-        if (first == '*') {
+        if (first == wildcards.anyRun()) {
             // A star at the end of the pattern takes the rest of the
             // series; a star with anything after it takes as little as it
             // can. Both confirmed against a real R3 across every
@@ -6052,23 +7917,26 @@ public final class Natives {
             // finds the same positions and reports half the lengths
             // wrongly.
             if (pattern.length() == 1) {
-                return within.length();
+                return upTo;
             }
-            for (int taken = from; taken <= within.length(); taken++) {
-                int end = patternEnd(within, taken, pattern.substring(1), mindingCase);
+            for (int taken = from; taken <= upTo; taken++) {
+                int end = patternEnd(
+                        within, taken, upTo, pattern.substring(1), mindingCase, wildcards);
                 if (end >= 0) {
                     return end;
                 }
             }
             return -1;
         }
-        if (from >= within.length()) {
+        if (from >= upTo) {
             return -1;
         }
-        if (first != '?' && !sameCharacter(within.charAt(from), first, mindingCase)) {
+        if (first != wildcards.oneCharacter()
+                && !sameCharacter(within.charAt(from), first, mindingCase)) {
             return -1;
         }
-        return patternEnd(within, from + 1, pattern.substring(1), mindingCase);
+        return patternEnd(
+                within, from + 1, upTo, pattern.substring(1), mindingCase, wildcards);
     }
 
     private static boolean sameCharacter(char left, char right, boolean mindingCase) {
@@ -6108,6 +7976,20 @@ public final class Natives {
     }
 
     private static boolean matches(Value item, Value wanted, boolean mindingCase) {
+        // A handle is compared by `Cmp_Handle` and not by `CT_Handle`, because
+        // FIND and SORT go through `Cmp_Value` rather than through the equality
+        // dispatch: `case REB_HANDLE: return Cmp_Handle(s, t);` in `f-series.c`,
+        // and `if (0 == Cmp_Value(value+index, target, FALSE)) return index;` in
+        // `Find_Block`.
+        //
+        // Which matters, because the two comparisons disagree about handles more
+        // than about anything else: EQUAL? on a codec is false even against
+        // itself, so a search that used it could never find one. Rebol's own
+        // handle test walks a block of four with FIND and finds each at its own
+        // position, which only the ordering comparison can do.
+        if (item instanceof HandleValue found && wanted instanceof HandleValue looking) {
+            return found.compareWith(looking) == 0;
+        }
         // Minding case means minding the datatype too, so 1, 1.0 and 100%
         // stop being one another. Comparing with equals() alone left them
         // equal, because a decimal and a percent hold the same number.
@@ -6116,16 +7998,17 @@ public final class Natives {
 
     /** How far past the match /tail lands, which a substring makes more than one. */
     private static int matchLength(
-            SeriesValue series, Value wanted, Set<String> refinements, int found) {
+            SeriesValue series, Value wanted, Set<String> refinements, int found,
+            Wildcards wildcards, int end) {
         if (series instanceof StringValue patterned && refinements.contains("any")) {
             // Measured from the head in absolute terms, because under
             // /REVERSE the match sits BEHIND the position and an offset
             // measured from the position is negative.
             String within = patterned.head().text();
             int from = found - 1;
-            int end = patternEnd(within, from,
-                    Molder.form(wanted), refinements.contains("case"));
-            return end < 0 ? 1 : end - from;
+            int reached = patternEnd(within, from, end,
+                    Molder.form(wanted), refinements.contains("case"), wildcards);
+            return reached < 0 ? 1 : reached - from;
         }
         if (wanted instanceof BitsetValue) {
             return 1;
@@ -6212,7 +8095,7 @@ public final class Natives {
             int order = wholeRecord && comparator == null
                     ? compareWholeRecords(left, right, mindingCase)
                     : compareRecords(
-                            left, right, comparator, mindingCase, wholeRecord, evaluator);
+                            left, right, comparator, mindingCase, wholeRecord, series, evaluator);
             return reversed ? -order : order;
         });
 
@@ -6240,7 +8123,8 @@ public final class Natives {
      * beats picking one.
      */
     private static int compareRecords(List<Value> left, List<Value> right,
-            Value comparator, boolean mindingCase, boolean wholeRecord, Evaluator evaluator) {
+            Value comparator, boolean mindingCase, boolean wholeRecord,
+            SeriesValue series, Evaluator evaluator) {
 
         if (comparator instanceof IntegerValue column) {
             return compareByColumns(left, right, List.of(column), mindingCase);
@@ -6255,8 +8139,46 @@ public final class Natives {
         // single values, which is the only way it can reach a field
         // other than the first.
         return wholeRecord
-                ? askComparator(comparator, lentRecord(left), lentRecord(right), evaluator)
-                : askComparator(comparator, left.getFirst(), right.getFirst(), evaluator);
+                ? askComparator(comparator,
+                        lentRecordOf(series, left), lentRecordOf(series, right), evaluator)
+                : askComparator(comparator,
+                        lentElementOf(series, left.getFirst()),
+                        lentElementOf(series, right.getFirst()), evaluator);
+    }
+
+    /**
+     * A whole record handed to a /compare function, in the shape the C hands
+     * it: a binary series lends a binary, a string a string, anything else a
+     * block. So a comparator asking {@code binary? x} of a sorted binary sees
+     * a binary rather than a block of byte numbers.
+     */
+    private static Value lentRecordOf(SeriesValue series, List<Value> record) {
+        if (series instanceof BinaryValue) {
+            int[] octets = new int[record.size()];
+            for (int at = 0; at < record.size(); at++) {
+                octets[at] = (int) ((IntegerValue) record.get(at)).magnitude();
+            }
+            return BinaryValue.of(octets);
+        }
+        if (series instanceof StringValue) {
+            StringBuilder characters = new StringBuilder();
+            for (Value element : record) {
+                characters.appendCodePoint(((CharacterValue) element).codepoint());
+            }
+            return StringValue.of(characters.toString());
+        }
+        return lentRecord(record);
+    }
+
+    /**
+     * A single element handed to a /compare function without /ALL: a byte of a
+     * binary is lent as the character of that code point, the way the C hands
+     * a char rather than the byte's number.
+     */
+    private static Value lentElementOf(SeriesValue series, Value element) {
+        return series instanceof BinaryValue && element instanceof IntegerValue octet
+                ? CharacterValue.of((int) octet.magnitude())
+                : element;
     }
 
     /**
@@ -6404,6 +8326,12 @@ public final class Natives {
      * <p>A negative count takes backwards from the position toward the
      * head, so at the head it takes nothing at all.
      */
+    private static Value deepenedIfAsked(Value taken, Set<String> refinements) {
+        return refinements.contains("deep")
+                ? copied(taken, taken instanceof BlockValue)
+                : taken;
+    }
+
     private static Value takeSeveral(SeriesValue series, long wanted) {
         // Clamped to where the series actually reaches, not just to how
         // many are left. A position can be stranded past the end --
@@ -6430,7 +8358,29 @@ public final class Natives {
             case BinaryValue bytes -> BinaryValue.of(taken.stream()
                     .mapToInt(item -> (int) ((IntegerValue) item).magnitude()).toArray());
             case BlockValue block -> BlockValue.block(taken).as(block.datatype());
+            // Pixels taken out of an image come back as an image one pixel tall,
+            // because the width is fixed and the height follows the count.
+            case ImageValue image -> takenPixels(image, taken);
+            // `Set_Block(D_RET, Pane_To_Block(gob, index, len))` -- children come
+            // out as a block of gobs, not as a gob, because there is no gob for
+            // them to be the pane of.
+            case GobValue ignored -> BlockValue.block(taken);
         };
+    }
+
+    /**
+     * The pixels TAKE removed, as an image of their own.
+     *
+     * <p>A row rather than a rectangle: `Reset_Height` derives the height from
+     * the count and the width, and what was taken has no width of its own until
+     * something gives it one.
+     */
+    private static ImageValue takenPixels(ImageValue image, List<Value> taken) {
+        ImageValue made = ImageValue.of(taken.size(), taken.isEmpty() ? 0 : 1);
+        for (int at = 1; at <= taken.size(); at++) {
+            ImagePath.write(made, at, taken.get(at - 1));
+        }
+        return made;
     }
 
     private static void removeFrom(SeriesValue series, int oneBasedIndex, int howMany) {
@@ -6439,6 +8389,10 @@ public final class Natives {
                 case BlockValue block -> block.storage().removeAt(oneBasedIndex);
                 case StringValue text -> text.storage().removeAt(oneBasedIndex);
                 case BinaryValue bytes -> bytes.storage().removeAt(oneBasedIndex);
+                // `Remove_Series(series, VAL_INDEX(value), len)` and then
+                // `Reset_Height`, so the image loses pixels and gets shorter.
+                case ImageValue image -> image.storage().removeFrom(oneBasedIndex, 1);
+                case GobValue gob -> gob.storage().removeChildren(oneBasedIndex, 1);
             }
         }
     }
@@ -6456,11 +8410,56 @@ public final class Natives {
             case StringValue text -> BitsetValue.ofCharacters(text.text().codePoints().toArray());
             case CharacterValue character ->
                     BitsetValue.ofCharacters(character.codepoint());
-            case BinaryValue octets -> BitsetValue.of(octets.asText()
-                    .getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
-            case BlockValue members -> BitsetValue.ofCharacters(codePointsIn(members));
-            default -> raiseCannotUse(source, "make bitset!");
+            // A number names a bit by its position, which is what
+            // `Find_Max_Bit` makes of an integer: `case REB_INTEGER: maxi =
+            // (REBCNT)VAL_INT64(val) + 1;`. So `append bs 3` sets bit three, and
+            // a set built from a number holds that one bit.
+            case IntegerValue position ->
+                    BitsetValue.ofCharacters((int) position.magnitude());
+            case BinaryValue octets -> BitsetValue.of(octets.octetsFromHere());
+            case BlockValue members -> bitsetFromBlock(members);
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    Molder.mold(source) + " names no characters a set could hold");
         };
+    }
+
+    /**
+     * A bitset from a block, which may open with the word NOT.
+     *
+     * <p>Two things the block form can do that a bare string or binary
+     * cannot. The word NOT at the head complements the set:
+     *
+     * <pre>
+     * val = VAL_BLK_DATA(val);
+     * if (IS_SAME_WORD(val, SYM_NOT)) {
+     *     BITS_NOT(bset) = TRUE;
+     *     val++;
+     * }
+     * </pre>
+     *
+     * <p>And a binary inside it supplies the octets whole rather than naming
+     * code points one at a time, which is how a large set is written without
+     * listing it. Rebol's own JSON codec writes both at once:
+     * {@code to bitset! [not #{FFFFFFFF2000000000000008}]} is every character
+     * except the control codes, the double quote and the backslash.
+     *
+     * <p>Both were dropped here, so that set came out empty and every
+     * character of a string was escaped as a code point.
+     */
+    private static Value bitsetFromBlock(BlockValue members) {
+        List<Value> items = members.remaining();
+        boolean complemented = !items.isEmpty()
+                && items.getFirst() instanceof WordValue word
+                && word.canonical().equals("not");
+        BlockValue rest = complemented ? members.atIndex(members.index() + 1) : members;
+        // A block of nothing but NOT and a binary is the octets as written.
+        List<Value> named = rest.remaining();
+        if (named.size() == 1 && named.getFirst() instanceof BinaryValue octets) {
+            BitsetValue set = BitsetValue.of(octets.octetsFromHere());
+            return complemented ? set.complemented() : set;
+        }
+        BitsetValue set = BitsetValue.ofCharacters(codePointsIn(rest));
+        return complemented ? set.complemented() : set;
     }
 
     /**
@@ -6490,6 +8489,11 @@ public final class Natives {
             }
             if (items.get(at) instanceof CharacterValue || items.get(at) instanceof IntegerValue) {
                 points.add(codePointOf(items.get(at)));
+            } else if (items.get(at) instanceof StringValue text) {
+                // A string member adds each of its characters, so
+                // `charset ["ab"]` holds a and b. The C reads any-string
+                // this way -- REB_STRING and its siblings each spread.
+                text.text().codePoints().forEach(points::add);
             }
         }
         return points.stream().mapToInt(Integer::intValue).toArray();
@@ -6730,6 +8734,11 @@ public final class Natives {
                     text.storage().insertAt(text.index() + at, added.charAt(at));
                 }
             }
+            // `Modify_Image` puts pixels in and `Reset_Height` follows, so an
+            // image grows by whole pixels and its height is recomputed. A tuple
+            // is one pixel; an image contributes its own.
+            case ImageValue image -> insertPixels(image, value);
+            case GobValue gob -> insertChildren(gob, gob.index(), value);
             case BinaryValue bytes -> {
                 int[] octets = octetsContributedBy(value, -1);
                 for (int at = octets.length; at > 0; at--) {
@@ -6758,6 +8767,8 @@ public final class Natives {
             case BlockValue block -> block.storage().removeAt(index);
             case StringValue text -> text.storage().removeAt(index);
             case BinaryValue bytes -> bytes.storage().removeAt(index);
+            case ImageValue image -> image.storage().removeFrom(index, 1);
+            case GobValue gob -> gob.storage().removeChildren(index, 1);
         }
     }
 
@@ -6789,13 +8800,15 @@ public final class Natives {
      * is also what makes a protected series refuse.
      */
     private static Value removedEachFrom(
-            SeriesValue series, List<Value> arguments, Evaluator evaluator) {
+            SeriesValue series, List<Value> arguments, Evaluator evaluator,
+            Context within) {
 
         // Refused up front rather than on the first removal, so a series
         // whose body happens to match nothing still says no. A guard that
         // only fires when something changes is not a guard.
         refuseIfProtected(series);
-        Context locals = Context.childOf(evaluator.systemContext());
+        // As FOREACH: the body sees the frame it was written in.
+        Context locals = Context.childOf(within);
         WordValue word = (WordValue) arguments.getFirst();
         locals.define(word.spelling());
         BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
@@ -6811,12 +8824,56 @@ public final class Natives {
         return series;
     }
 
+    /**
+     * REMOVE-EACH over a map: pairs out, and pairs counted.
+     *
+     * <p>The count is halved -- {@code SET_INTEGER(DS_RETURN, IS_MAP(value) ?
+     * index / 2 : index);} -- for the same reason APPEND/PART is halved. A
+     * caller counting values would be told it removed twice what it removed.
+     *
+     * <p>The keys are gathered before any are taken out. Removing while walking
+     * would be reading a map that is changing underneath, and the result would
+     * depend on where in its storage each key happened to sit.
+     */
+    private static Value removedEachPairFrom(
+            MapValue map, List<Value> arguments, Set<String> refinements,
+            Evaluator evaluator, Context within) {
+
+        // Up front rather than on the first removal, so a map whose body
+        // matches nothing still says no. `if (mode==LM_REMOVE &&
+        // IS_PROTECT_SERIES(series)) Trap0(RE_PROTECTED);` is checked before
+        // the walk starts, for the same reason.
+        requireChangeable(map);
+        List<WordValue> names = loopNamesIn(arguments.getFirst(), "remove-each");
+        refuseMoreNamesThanAPairHas(map, names);
+        Context locals = Context.childOf(within);
+        names.forEach(name -> locals.define(name.spelling()));
+        BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
+        List<Value> pairs = map.walkable();
+        List<Value> takeOut = new ArrayList<>();
+        for (int at = 0; at < pairs.size(); at += 2) {
+            setLoopNames(locals, names, pairs, at);
+            if (evaluator.evaluateOrRaise(body, locals).isTruthy()) {
+                takeOut.add(pairs.get(at));
+            }
+        }
+        takeOut.forEach(map::remove);
+        return refinements.contains("count")
+                ? IntegerValue.of(takeOut.size())
+                : map;
+    }
+
     /** Refuses a change to a protected series before attempting it. */
     private static void refuseIfProtected(SeriesValue series) {
         boolean guarded = switch (series) {
             case BlockValue block -> block.storage().isProtected();
             case StringValue text -> text.storage().isProtected();
             case BinaryValue bytes -> bytes.storage().isProtected();
+            case ImageValue image -> image.storage().isProtected();
+            // A gob's pane is not a REBSER a script can PROTECT: PROTECT declares
+            // `[word! series! bitset! map! object! module!]` and a gob is on none
+            // of those lists, so there is no flag to read.
+            case GobValue ignored -> false;
         };
         if (guarded) {
             throw new org.jebol.domain.value.ProtectedFromChange();
@@ -6835,7 +8892,7 @@ public final class Natives {
 
         Value times = argumentFor(
                 "dup", List.of("part", "dup"), arguments, refinements, 2);
-        if (!(times instanceof IntegerValue count)) {
+        if (times == null) {
             return value;
         }
         List<Value> pieces = value instanceof BlockValue block
@@ -6843,10 +8900,21 @@ public final class Natives {
                 ? block.remaining()
                 : List.of(value);
         List<Value> repeated = new ArrayList<>();
-        for (long round = 0; round < count.magnitude(); round++) {
+        for (long round = 0; round < wholeCountOf(times); round++) {
             repeated.addAll(pieces);
         }
         return BlockValue.block(repeated);
+    }
+
+    /** What {@code Int32} makes of a count: whole, truncated, or refused. */
+    private static long wholeCountOf(Value times) {
+        return switch (times) {
+            case IntegerValue count -> count.magnitude();
+            case DecimalValue fraction when fraction.datatype() != Datatype.PERCENT ->
+                    (long) Comparison.asDouble(fraction);
+            default -> throw Raised.of(EvaluationFailure.INVALID_TYPE,
+                    Molder.mold(times) + " is not a count of repetitions");
+        };
     }
 
     /**
@@ -6902,11 +8970,11 @@ public final class Natives {
      */
     private static final Set<Datatype> SERIES_LIKE = EnumSet.of(
             Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL,
-            Datatype.TAG, Datatype.REF, Datatype.BINARY, Datatype.ISSUE,
+            Datatype.TAG, Datatype.REF, Datatype.BINARY,
             Datatype.BLOCK, Datatype.PAREN, Datatype.PATH, Datatype.SET_PATH,
             Datatype.GET_PATH, Datatype.LIT_PATH, Datatype.HASH,
-            Datatype.OBJECT, Datatype.PORT, Datatype.BITSET,
-            Datatype.TYPESET, Datatype.MAP, Datatype.GOB);
+            Datatype.PORT, Datatype.BITSET,
+            Datatype.TYPESET, Datatype.MAP, Datatype.GOB, Datatype.IMAGE);
 
     /**
      * UNION, INTERSECT or EXCLUDE, which differ only in what they keep.
@@ -6938,11 +9006,65 @@ public final class Natives {
      * on a block holding one.
      */
     private static Value copied(Value original, boolean deeply) {
+        return copied(original, deeply, DEEP_COPIED);
+    }
+
+    /**
+     * Which datatypes COPY duplicates rather than shares.
+     *
+     * <p>`TS_DEEP_COPIED` is the standard set -- every series and a map, less
+     * the four the C names as not copied: `TS_NOT_COPIED (TYPESET(REB_IMAGE) |
+     * TYPESET(REB_VECTOR) | TYPESET(REB_TASK) | TYPESET(REB_PORT))`. An image is
+     * shared because copying one is expensive, and a port because two ports on
+     * one connection would be two ways to close it.
+     */
+    private static final Set<Datatype> DEEP_COPIED = EnumSet.of(
+            Datatype.BLOCK, Datatype.PAREN, Datatype.PATH, Datatype.SET_PATH,
+            Datatype.GET_PATH, Datatype.LIT_PATH, Datatype.HASH,
+            Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL,
+            Datatype.TAG, Datatype.REF, Datatype.BINARY, Datatype.BITSET,
+            Datatype.MAP, Datatype.OBJECT, Datatype.FUNCTION);
+
+    /**
+     * The datatypes /TYPES named, or the standard set when it was not asked.
+     *
+     * <p>`types |= CP_DEEP | (D_REF(ARG_COPY_TYPES) ? 0 : TS_DEEP_COPIED);` --
+     * so naming any set replaces the standard one rather than adding to it, and
+     * that is the whole point of the refinement: `copy/deep/types b string!`
+     * reaches every level and copies only the strings it finds.
+     */
+    private static Set<Datatype> whichDatatypesToCopy(
+            List<Value> arguments, Set<String> refinements) {
+
+        if (!refinements.contains("types")) {
+            return DEEP_COPIED;
+        }
+        Value kinds = arguments.getLast();
+        return switch (kinds) {
+            case DatatypeValue one -> EnumSet.of(one.represents());
+            case TypesetValue several -> EnumSet.copyOf(several.members());
+            default -> DEEP_COPIED;
+        };
+    }
+
+    private static Value copied(Value original, boolean deeply, Set<Datatype> kinds) {
+        // The top level is always copied. What /DEEP and /TYPES decide is what
+        // happens to the values inside it: `Copy_Block_Values` copies the block
+        // and then `Copy_Deep_Values` walks the copy replacing the series of
+        // every value whose datatype is in the set.
+        if (!kinds.contains(original.datatype()) && original != null
+                && !(original instanceof SeriesValue) && !(original instanceof MapValue)
+                && !(original instanceof BitsetValue)) {
+            return original;
+        }
         return switch (original) {
             case BlockValue block -> new BlockValue(new BlockStorage(
                     deeply
                             ? block.remaining().stream()
-                                    .map(item -> copied(item, true)).toList()
+                                    .map(item -> kinds.contains(item.datatype())
+                                            ? copied(item, true, kinds)
+                                            : item)
+                                    .toList()
                             : block.remaining()),
                     1, block.datatype());
             case StringValue text -> StringValue.of(text.text(), text.datatype());
@@ -6957,20 +9079,46 @@ public final class Natives {
     }
 
     /** The first few of a series, copied, and deeply when asked. */
-    private static Value copiedFront(SeriesValue series, Value limit, boolean deeply) {
+    private static Value copiedFront(
+            SeriesValue series, Value limit, boolean deeply, Set<Datatype> kinds) {
         long wanted = countUpTo(series, limit);
         SeriesValue from = limit instanceof SeriesValue upTo
                 ? earlierOf(series, upTo)
                 : series;
+        // A negative count takes that many from BEHIND the position, and moves
+        // the start back to reach them. `Partial1` is three lines:
+        //     len = -len;
+        //     if (len > VAL_INDEX(sval)) len = VAL_INDEX(sval);
+        //     VAL_INDEX(sval) -= len;
+        //
+        // So `copy/part tail "ABC" -3` is "ABC". Clamping the count at zero
+        // instead made every negative /PART answer nothing, which looks like
+        // an empty series rather than a count read the wrong way round.
+        if (wanted < 0) {
+            int behind = from.index() - 1;
+            int reaching = (int) Math.min(-wanted, behind);
+            from = from.atIndex(from.index() - reaching);
+            wanted = reaching;
+        }
         int taking = (int) Math.max(0, Math.min(wanted, from.lengthFromHere()));
         return switch (from) {
             case BlockValue block -> new BlockValue(new BlockStorage(
                     block.remaining().subList(0, taking).stream()
-                            .map(item -> deeply ? copied(item, true) : item).toList()),
+                            .map(item -> deeply && kinds.contains(item.datatype())
+                                    ? copied(item, true, kinds)
+                                    : item)
+                            .toList()),
                     1, block.datatype());
             case StringValue text -> StringValue.of(
                     text.text().substring(0, taking), text.datatype());
             case BinaryValue bytes -> copiedBytes(bytes, taking);
+            // A copy of an image is an image, and `makeCopy2` keeps the width so
+            // the copy has the shape the original's first rows had.
+            case ImageValue image -> copiedPixels(image, taking);
+            // `REBTYPE(Gob)` has no A_COPY arm, so `Trap_Action` refuses it: a gob
+            // is a thing on a screen with one parent, and a copy of it would be a
+            // second gob claiming the same children.
+            case GobValue gob -> raiseCannotUse(gob, "copy");
         };
     }
 
@@ -7010,6 +9158,20 @@ public final class Natives {
                     block.storage().set(block.index() + at, front.get(at));
                 }
                 yield block;
+            }
+            // A gob's REVERSE arm takes no /PART: `for (index = 0; index <
+            // tail/2; index++)` walks the whole pane and nothing narrows it.
+            case GobValue gob -> raiseCannotUse(gob, "reverse/part");
+            // REVERSE has no arm in `t-image.c`, so the shared series one serves
+            // and it reverses pixels in place.
+            case ImageValue image -> {
+                for (int at = 0; at < howMany / 2; at++) {
+                    int[] near = image.pixelAt(at + 1);
+                    int[] far = image.pixelAt(howMany - at);
+                    writePixel(image, at + 1, far);
+                    writePixel(image, howMany - at, near);
+                }
+                yield image;
             }
             case StringValue text -> rewritten(text, whole ->
                     new StringBuilder(whole.substring(0, howMany)).reverse()
@@ -7068,96 +9230,6 @@ public final class Natives {
                 throw Raised.of(EvaluationFailure.HIDDEN, word.spelling());
             }
         }
-    }
-
-    /** Where a literal needle sits, as a start and an end, or null. */
-    private static int[] plainSpan(String haystack, String needle, boolean fromTheEnd) {
-        int found = fromTheEnd ? haystack.lastIndexOf(needle) : haystack.indexOf(needle);
-        return found < 0 ? null : new int[] {found, found + needle.length()};
-    }
-
-    /**
-     * Where a needle holding ? and * sits, as a start and an end.
-     *
-     * <p>A question mark stands for one character and a star for any run
-     * of them, including none. Built as a regular expression because the
-     * shapes are the same idea, with everything else in the needle quoted
-     * so a needle full of punctuation cannot become a pattern of its own.
-     *
-     * <p>The match is not greedy: "*d" against "abcde" ends at the d and
-     * not at the end of the text, which is what makes the character after
-     * it the e.
-     */
-    private static int[] spanMatchingShape(
-            String haystack, String needle, boolean fromTheEnd, String wildcards) {
-
-        char anyRun = wildcards.isEmpty() ? '*' : wildcards.charAt(0);
-        char oneCharacter = wildcards.length() < 2 ? '?' : wildcards.charAt(1);
-        StringBuilder shape = new StringBuilder();
-        for (int at = 0; at < needle.length(); at++) {
-            char letter = needle.charAt(at);
-            if (letter == oneCharacter) {
-                shape.append('.');
-            } else if (letter == anyRun) {
-                // A star at the end takes the rest and one in the middle
-                // takes as little as it can. `"*d"` against "abcde" ends
-                // at the d so the answer is the e; `"c*"` runs to the end
-                // so there is nothing after it to answer with. The same
-                // rule PARSE's star follows.
-                shape.append(at == needle.length() - 1 ? ".*" : ".*?");
-            } else {
-                shape.append(java.util.regex.Pattern.quote(String.valueOf(letter)));
-            }
-        }
-        java.util.regex.Matcher matcher =
-                java.util.regex.Pattern.compile(shape.toString()).matcher(haystack);
-        int[] span = null;
-        while (matcher.find()) {
-            span = new int[] {matcher.start(), matcher.end()};
-            if (!fromTheEnd) {
-                return span;
-            }
-        }
-        return span;
-    }
-
-    /**
-     * A string searched for a run of characters, answering the one after it.
-     *
-     * <p>The same shape of answer a block gives, and a miss is none rather
-     * than a failure for the same reason: SELECT is asked a question it is
-     * allowed to miss. /SAME and /CASE both stop the case folding, and
-     * /LAST searches from the end instead of the front.
-     */
-    private static Value selectedFromText(
-            StringValue text, Value needle, Set<String> refinements, String withCharacters) {
-
-        String haystack = text.text();
-        String wanted = needle instanceof CharacterValue character
-                ? Character.toString(character.codepoint())
-                : Molder.form(needle);
-        if (wanted.isEmpty()) {
-            return NoneValue.none();
-        }
-        boolean folding = !refinements.contains("case") && !refinements.contains("same");
-        String searched = folding ? haystack.toLowerCase(java.util.Locale.ROOT) : haystack;
-        String sought = folding ? wanted.toLowerCase(java.util.Locale.ROOT) : wanted;
-        // /ANY reads ? as one character and * as any run of them, so the
-        // needle is a shape rather than a literal and the match may be
-        // longer or shorter than what was asked for.
-        // /WITH names the two wildcard characters itself, the run one
-        // first and the single one second, so a needle full of stars can
-        // be searched for literally by choosing others.
-        String wildcards = refinements.contains("with") && withCharacters != null
-                ? withCharacters
-                : "*?";
-        int[] span = refinements.contains("any")
-                ? spanMatchingShape(searched, sought, refinements.contains("last"), wildcards)
-                : plainSpan(searched, sought, refinements.contains("last"));
-        if (span == null || span[1] >= haystack.length()) {
-            return NoneValue.none();
-        }
-        return CharacterValue.of(haystack.codePointAt(span[1]));
     }
 
     /**
@@ -7324,10 +9396,22 @@ public final class Natives {
 
         boolean values = refinements.contains("values");
         boolean words = refinements.contains("words");
-        if (!(target instanceof BlockValue named) || !(values || words)) {
+        if (!(values || words)) {
             return false;
         }
-        for (Value item : named.remaining()) {
+        // A lone word is a list of one. The C decides the same way, on
+        // whether the argument is a block rather than on the refinement:
+        // `if (IS_BLOCK(D_ARG(2)) && !D_REF(3))`. Rebol's own mezz-logger.reb
+        // writes `protect/words/lock 'log-levels`, one word and no block.
+        List<Value> items = switch (target) {
+            case BlockValue named -> named.remaining();
+            case WordValue only -> List.of(only);
+            default -> List.of();
+        };
+        if (items.isEmpty()) {
+            return false;
+        }
+        for (Value item : items) {
             if (!(item instanceof WordValue word) || !word.isBound()
                     || !word.binding().knows(word.canonical())) {
                 continue;
@@ -7342,10 +9426,16 @@ public final class Natives {
                         refinements.contains("deep"));
             }
             if (words) {
-                if (protectedNow) {
-                    slot.protectFromAssignment();
-                } else {
+                if (!protectedNow) {
                     slot.allowAssignment();
+                } else if (refinements.contains("lock")) {
+                    // /LOCK protects for good: UNPROTECT will not release it.
+                    // The C states it on the releasing side -- "unprotect
+                    // series only when not locked" -- so the flag lives with
+                    // the slot rather than with this call.
+                    slot.protectForGood();
+                } else {
+                    slot.protectFromAssignment();
                 }
             }
         }
@@ -7381,6 +9471,14 @@ public final class Natives {
             }
             case StringValue text -> text.storage().protectFromChange(protectedNow);
             case BinaryValue bytes -> bytes.storage().protectFromChange(protectedNow);
+            // A map is protected the way a series is, by the same line:
+            //     if (ANY_SERIES(value) || IS_MAP(value) || IS_BITSET(value))
+            //         Protect_Series(value, flags);
+            //
+            // /DEEP stops here. Protect_Series walks into what it holds only
+            // for a block -- `if (!ANY_BLOCK(val) || !GET_FLAG(flags,
+            // PROT_DEEP)) return;` -- and a map is not one.
+            case MapValue map -> map.protectFromChange(protectedNow);
             case ObjectValue object -> {
                 // Three separate things, and the refinements pick which
                 // an UNPROTECT releases: plain frees the object and its
@@ -7424,6 +9522,7 @@ public final class Natives {
             case BlockValue block -> block.storage().isProtected();
             case StringValue text -> text.storage().isProtected();
             case BinaryValue bytes -> bytes.storage().isProtected();
+            case MapValue map -> map.isProtected();
             default -> false;
         };
         if (refused) {
@@ -7449,10 +9548,16 @@ public final class Natives {
         if (howMuch instanceof IntegerValue count) {
             return count.magnitude();
         }
-        if (!(howMuch instanceof SeriesValue upTo)) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "/part wanted a count or a position, not "
-                            + howMuch.datatype().literalSpelling());
+        // `n = (REBINT)VAL_DECIMAL(val);` in Int32, which is a C cast and
+        // so cuts the fraction off rather than rounding it. A percent is
+        // not a decimal to Partial1 and is refused below.
+        if (howMuch instanceof DecimalValue count
+                && count.datatype() != Datatype.PERCENT) {
+            return (long) count.quantity();
+        }
+        if (!(howMuch instanceof SeriesValue upTo)
+                || !series.sharesStorageWith(upTo)) {
+            throw Raised.of(EvaluationFailure.INVALID_PART, Molder.mold(howMuch));
         }
         return Math.abs(upTo.index() - series.index());
     }
@@ -7472,6 +9577,62 @@ public final class Natives {
         return (int) Math.max(1, Math.min(wanted, series.storageLength() + 1));
     }
 
+    /**
+     * What PICK answers, which is not always about a position.
+     *
+     * <p>Four datatypes read PICK as a question about a field rather than an
+     * index, and each says so in its own dispatcher. A bitset asks whether it
+     * holds the value: `case A_PICK: case A_FIND:` share one arm. A map asks
+     * what a key holds, and the C comments the case with "same as SELECT for
+     * MAP! datatype". A date and a time send it to `Pick_Path`, which is the
+     * same field selection a path does -- so `pick 1-Jan-2000 'year` and
+     * `1-Jan-2000/year` are one question.
+     */
+    private static Value pickFrom(Value target, Value selector) {
+        return switch (target) {
+            case BitsetValue members -> LogicValue.of(
+                    selector instanceof CharacterValue letter
+                            && members.holds(letter.codepoint()));
+            case MapValue map -> map.select(selector);
+            case DateValue date -> DateParts.of(date, selector);
+            case TimeValue time -> pickTimePart(time, selector);
+            // `if (!IS_NUMBER(arg) && !IS_NONE(arg)) Trap_Arg(arg)` -- so a field
+            // name is the wrong argument rather than a field read, and NONE reads
+            // as a zero and answers none.
+            case GobValue gob -> GobPath.childOf(gob, positionPickedFrom(selector));
+            default -> selector instanceof IntegerValue position
+                    ? pick(target, (int) position.magnitude())
+                    : raiseCannotUse(target, "pick");
+        };
+    }
+
+    /** A time's part, by name or by position, as a path reads one. */
+    private static Value pickTimePart(TimeValue time, Value selector) {
+        long seconds = time.nanoseconds() / 1_000_000_000L;
+        String part = selector instanceof WordValue named
+                ? named.canonical()
+                : positionAsTimePartName(selector);
+        return switch (part) {
+            case "hour" -> IntegerValue.of(seconds / 3600);
+            case "minute" -> IntegerValue.of(seconds / 60 % 60);
+            case "second" -> IntegerValue.of(seconds % 60);
+            default -> NoneValue.none();
+        };
+    }
+
+    /** A time answers to positions as well as names: 1 is the hour. */
+    private static String positionAsTimePartName(Value selector) {
+        if (!(selector instanceof IntegerValue position)) {
+            return "";
+        }
+        return switch ((int) position.magnitude()) {
+            case 1 -> "hour";
+            case 2 -> "minute";
+            case 3 -> "second";
+            default -> "";
+        };
+    }
+
     private static Value pick(Value target, int oneBasedIndex) {
         if (target instanceof TupleValue tuple) {
             // Read as far as the shown length rather than the kept one,
@@ -7484,22 +9645,586 @@ public final class Natives {
         if (target instanceof PairValue pair) {
             return pair.halfAt(oneBasedIndex).orElseGet(NoneValue::none);
         }
+        // A gob picks out of its pane, and it counts differently from every other
+        // series here: `index` is unsigned in the C, so `pick g 0` and `pick g -1`
+        // wrap to something enormous and answer none rather than reaching behind
+        // the position.
+        if (target instanceof GobValue gob) {
+            return GobPath.childOf(gob, oneBasedIndex);
+        }
         if (!(target instanceof SeriesValue series)) {
             return raiseCannotUse(target, "pick");
         }
-        if (oneBasedIndex < 1 || oneBasedIndex > series.lengthFromHere()) {
+        // `Pick_Block`: `if (n == 0) return 0; if (n < 0) n++; n += VAL_INDEX
+        // (block) - 1; if (n < 0 || n >= VAL_TAIL(block)) return 0;`
+        //
+        // The same three lines PD_Block uses, so a PICK and a path agree. Two
+        // things follow that a count-from-one reading misses: there is no
+        // position zero, and a negative position counts back from where the
+        // series is and reaches behind it. `pick tail s -1` is the last item,
+        // and `pick s -1` at the head is none.
+        if (oneBasedIndex == 0) {
+            return NoneValue.none();
+        }
+        int counted = oneBasedIndex < 0 ? oneBasedIndex + 1 : oneBasedIndex;
+        int at = series.index() + counted - 1;
+        if (at < 1 || at > series.storageLength()) {
             return NoneValue.none();
         }
         return switch (series) {
-            case BlockValue block -> block.storage().at(block.index() + oneBasedIndex - 1);
-            case StringValue string -> CharacterValue.of(
-                    string.storage().at(string.index() + oneBasedIndex - 1));
-            case BinaryValue binary -> IntegerValue.of(
-                    binary.storage().at(binary.index() + oneBasedIndex - 1));
+            case BlockValue block -> block.storage().at(at);
+            case StringValue string -> CharacterValue.of(string.storage().at(at));
+            case BinaryValue binary -> IntegerValue.of(binary.storage().at(at));
+            // PICK on an image is its path handler: `Pick_Path(value, arg, 0)`,
+            // so a pixel comes back as a tuple.
+            case ImageValue image -> ImagePath.read(image.head(), IntegerValue.of(at));
+            // Unreachable: the gob branch above answers first, because a gob
+            // counts its positions the way the C's unsigned arithmetic does.
+            case GobValue gob -> GobPath.childOf(gob.head(), at);
         };
     }
 
-    private enum Combination { INTERSECT, UNION, EXCLUDE }
+    /**
+     * A number a position was given as, refusing anything else.
+     *
+     * <p>{@code Get_Num_Arg} in the C: an integer, a decimal it truncates, or a
+     * none it reads as zero. Anything else is {@code Trap_Arg}, which is
+     * {@code invalid-arg} -- the error a caller gets for `poke gob 'offset 1x1`.
+     */
+    private static long positionPokedAt(Value given) {
+        return switch (given) {
+            case IntegerValue whole -> whole.magnitude();
+            case DecimalValue fraction -> (long) fraction.quantity();
+            case NoneValue ignored -> 0;
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    "a position is a number, not "
+                            + given.datatype().literalSpelling());
+        };
+    }
+
+    /** The same reading, for PICK, whose arm refuses the same way. */
+    private static long positionPickedFrom(Value given) {
+        return positionPokedAt(given);
+    }
+
+    /**
+     * Refuses the three refinements a gob's arms will not carry out.
+     *
+     * <p>{@code if (DS_REF(AN_PART) || DS_REF(AN_ONLY) || DS_REF(AN_DUP))
+     * Trap0(RE_NOT_DONE);} on APPEND, INSERT and CHANGE. Rebol's own
+     * {@code not-done} is "reserved for future use (or not yet implemented)", so
+     * this is the C saying it never got round to them rather than that they mean
+     * nothing here.
+     */
+    private static void refuseUnfinishedRefinements(Set<String> refinements, String what) {
+        for (String unfinished : List.of("part", "only", "dup")) {
+            if (refinements.contains(unfinished)) {
+                throw Raised.of(EvaluationFailure.FEATURE_NA,
+                        what + "/" + unfinished + " on a gob is not implemented");
+            }
+        }
+    }
+
+    /**
+     * Puts one child or a block of them into a pane.
+     *
+     * <p>{@code if (IS_GOB(arg)) len = 1; else if (IS_BLOCK(arg)) { len =
+     * VAL_BLK_LEN(arg); ... } else goto is_arg_error;} -- and the error is
+     * {@code Trap_Types(RE_EXPECT_VAL, REB_GOB, VAL_TYPE(arg))}, which names the
+     * datatype the pane wanted rather than the argument position.
+     */
+    private static Value insertChildren(GobValue gob, int at, Value value) {
+        List<Value> children = switch (value) {
+            case GobValue only -> List.<Value>of(only);
+            case BlockValue block when block.datatype() == Datatype.BLOCK ->
+                    block.remaining();
+            default -> throw Raised.of(EvaluationFailure.EXPECT_VAL,
+                    "a pane holds gobs, not " + value.datatype().literalSpelling());
+        };
+        int goesAt = at;
+        for (Value child : children) {
+            if (!(child instanceof GobValue one)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG,
+                        "a pane holds gobs, not "
+                                + child.datatype().literalSpelling());
+            }
+            gob.storage().insertChild(goesAt, one);
+            goesAt = Math.min(goesAt + 1, gob.storage().length() + 1);
+        }
+        return gob;
+    }
+
+    /**
+     * MAKE GOB!, in its three forms.
+     *
+     * <p>A block is a spec of set-word and value pairs. A gob is cloned without
+     * its pane or its parent. A pair is a size and nothing else. Everything else
+     * is {@code Trap_Make(REB_GOB, arg)}.
+     *
+     * <p>The fields start where {@code Make_Gob} leaves them, which is a hundred
+     * square and opaque rather than empty.
+     */
+    private static Value madeGob(Value from, Evaluator evaluator, Context context) {
+        if (from instanceof GobValue cloned) {
+            return new GobValue(cloned.storage().copyWithoutPane(), 1);
+        }
+        GobValue made = GobValue.empty();
+        if (from instanceof PairValue size) {
+            made.storage().size(size);
+            return made;
+        }
+        if (from instanceof BlockValue spec && spec.datatype() == Datatype.BLOCK) {
+            fillGobFromSpec(made, spec.remaining(), evaluator, context);
+            return made;
+        }
+        throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
+                "a gob is made from a block, a gob or a pair, not "
+                        + from.datatype().literalSpelling());
+    }
+
+    /**
+     * The spec block a gob is made from: {@code Set_GOB_Vars}.
+     *
+     * <p>Walked in pairs, and each pair is checked twice before it is used. The
+     * name must be a set-word -- {@code Trap2(RE_EXPECT_VAL, Get_Type
+     * (REB_SET_WORD), Of_Type(var))} -- and the value must be there and must not
+     * be another set-word, which is what catches `[data: size: 10x10]`: a spec
+     * that reads as two fields is one field with no value.
+     */
+    private static void fillGobFromSpec(
+            GobValue gob, List<Value> spec, Evaluator evaluator, Context context) {
+        for (int at = 0; at < spec.size(); at += 2) {
+            Value name = spec.get(at);
+            if (!(name instanceof WordValue field)
+                    || field.datatype() != Datatype.SET_WORD) {
+                throw Raised.of(EvaluationFailure.EXPECT_VAL,
+                        DatatypeValue.of(Datatype.SET_WORD),
+                        DatatypeValue.of(name.datatype()));
+            }
+            Value given = at + 1 < spec.size() ? spec.get(at + 1) : UnsetValue.unset();
+            if (given.datatype() == Datatype.UNSET
+                    || given.datatype() == Datatype.SET_WORD) {
+                throw Raised.of(EvaluationFailure.NEED_VALUE, field.spelling());
+            }
+            // `val = Get_Simple_Value(val);` -- after the two checks above and
+            // before the setter, so a word standing for an unset raises need-value
+            // for the word rather than for what it holds.
+            Value written = simpleValueOf(given, evaluator, context);
+            if (!GobPath.accepted(gob.storage(), field.canonical(), written)) {
+                throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
+                        WordValue.of(field.spelling()),
+                        DatatypeValue.of(written.datatype()));
+            }
+        }
+    }
+
+    /**
+     * How deep a gob tree is walked before the walk gives up.
+     *
+     * <p>{@code REBINT max_depth = 1000; // avoid infinite loops} in both
+     * directions. A gob tree can hold itself -- nothing stops a script appending
+     * a gob to its own descendant -- so the count is the only thing between
+     * MAP-GOB-OFFSET and a hang.
+     */
+    private static final int DEEPEST_GOB_WALK = 1000;
+
+    /**
+     * The deepest gob holding a point, and the point in that gob's coordinates.
+     *
+     * <p>{@code Map_Gob_Inner}. Two details decide what it answers, and both are
+     * in the loop rather than in the name.
+     *
+     * <p>The pane is searched <em>backwards</em>: {@code gop = GOB_HEAD(gob) + len
+     * - 1} and then {@code gop--}. So where two children overlap, the one added
+     * last wins -- which is what "topmost" means on a screen.
+     *
+     * <p>And the rectangle is half-open: {@code xo >= x + GOB_X} together with
+     * {@code xo < x + GOB_X + GOB_W}. A point on a gob's left edge is inside it
+     * and a point on its right edge belongs to whatever is next along.
+     */
+    private static Value mappedInwards(GobValue from, PairValue point) {
+        GobValue reached = from;
+        double takenX = 0;
+        double takenY = 0;
+        for (int depth = 0; depth < DEEPEST_GOB_WALK; depth++) {
+            GobValue entered = null;
+            for (int at = reached.storage().length(); at >= 1 && entered == null; at--) {
+                if (!(reached.storage().childAt(at) instanceof GobValue child)) {
+                    continue;
+                }
+                double left = takenX + child.storage().offset().x();
+                double top = takenY + child.storage().offset().y();
+                if (point.x() >= left
+                        && point.x() < left + child.storage().size().x()
+                        && point.y() >= top
+                        && point.y() < top + child.storage().size().y()) {
+                    takenX = left;
+                    takenY = top;
+                    entered = child;
+                }
+            }
+            if (entered == null) {
+                break;
+            }
+            reached = entered;
+        }
+        return gobAndPoint(reached,
+                PairValue.of(point.x() - takenX, point.y() - takenY));
+    }
+
+    /**
+     * The outermost gob, and the point seen from there.
+     *
+     * <p>The /REVERSE arm, which is a plain climb: {@code xo += GOB_X(gob); gob =
+     * GOB_PARENT(gob);} until there is no parent left.
+     *
+     * <p>It also stops at a gob flagged as a window, and nothing here can set that
+     * flag: {@code GOBF_WINDOW} is not one of the nine words {@code Gob_Flag_Words}
+     * accepts, so only the host's own windowing code raises it. Until a host does,
+     * the climb always reaches the root.
+     */
+    private static Value mappedOutwards(GobValue from, PairValue point) {
+        GobValue reached = from;
+        double addedX = point.x();
+        double addedY = point.y();
+        for (int depth = 0; depth < DEEPEST_GOB_WALK
+                && reached.storage().parent() != null; depth++) {
+            addedX += reached.storage().offset().x();
+            addedY += reached.storage().offset().y();
+            reached = new GobValue(reached.storage().parent(), 1);
+        }
+        return gobAndPoint(reached, PairValue.of(addedX, addedY));
+    }
+
+    /**
+     * An event rewritten to name the deepest gob under its point.
+     *
+     * <p>Two conditions have to hold before anything happens: {@code if (gob &&
+     * GET_FLAG(VAL_EVENT_FLAGS(val), EVF_HAS_XY))}. So an event with no gob and a
+     * key event with no offset both go straight through, which is what lets a
+     * caller run every event through this without asking what kind it is.
+     *
+     * <p>{@code ROUND_TO_INT} is what puts the walk's floating result back into an
+     * event's two shorts, and a gob's offset is a float pair -- so a child at
+     * 1.6x1.6 moves the point by 2 and not by 1.
+     *
+     * <p>The HAS_DATA branch reaches for {@code OS_Get_Gob_Root()} under
+     * {@code #ifdef REB_VIEW}, so in a build with no window system it leaves the
+     * gob null and this does nothing. Which is what a console build does too.
+     */
+    private static Value mappedEvent(EventValue event) {
+        if (!(event.attached() instanceof GobValue gob)
+                || !event.has(EventValue.Flag.HAS_XY)) {
+            return event;
+        }
+        Value reached = mappedInwards(gob,
+                PairValue.of(event.offsetX(), event.offsetY()));
+        List<Value> gobAndPoint = ((BlockValue) reached).remaining();
+        PairValue inside = (PairValue) gobAndPoint.get(1);
+        return event
+                .withAttached(EventValue.Model.GUI, gobAndPoint.getFirst())
+                .withData(EventValue.packedOffset(
+                                (int) Math.round(inside.x()), (int) Math.round(inside.y())),
+                        EventValue.Flag.HAS_XY);
+    }
+
+    /**
+     * Whether a port is finished waiting, having been told about an event.
+     *
+     * <p>Two steps. The port's UPDATE action runs first, and only when its actor is
+     * a native: `if (IS_NATIVE(val)) Do_Port_Action(D_ARG(1), A_UPDATE);`, whose
+     * comment says why -- "makes the port object fully consistent with internal
+     * native structures (e.g. the actual length of data read)". Every actor a
+     * scheme here installs is REBOL rather than C, so nothing takes that step, and
+     * replicating the condition rather than the body is the faithful thing.
+     *
+     * <p>Then the AWAKE function, if there is one, is called with the event. The
+     * answer has to be a logic <em>and</em> be true: `if (!(IS_LOGIC(val) &&
+     * VAL_LOGIC(val))) return R_FALSE;`. A truthy non-logic does not count, which a
+     * reading of "if the awake function says so" would get wrong.
+     */
+    private static Value wokenPort(PortValue port, Value event, Evaluator evaluator) {
+        if (!port.context().holds("awake")) {
+            return LogicValue.yes();
+        }
+        Value awake = port.context().ownSlotFor("awake").value();
+        if (!awake.datatype().isAnyFunction()) {
+            return LogicValue.yes();
+        }
+        Value said = evaluator.applyFunction(awake, List.of(event));
+        return LogicValue.of(said instanceof LogicValue answered && answered.truth());
+    }
+
+    /**
+     * Where the codec handles' identities start.
+     *
+     * <p>A function handle's identity is its pointer in the C, which is what
+     * {@code same?} compares and what {@code Cmp_Handle} sorts on. Any distinct
+     * numbers do the same job, and starting them away from zero keeps them from
+     * colliding with a context handle's index when one exists.
+     */
+    private static final int CODEC_HANDLE_IDENTITY = 1000;
+
+    /**
+     * DO-CODEC: one codec, one action, one piece of data.
+     *
+     * <p>The action word is checked before the data is, and each of the three wants
+     * something different. IDENTIFY and DECODE both want a binary --
+     * `if (!IS_BINARY(val)) Trap1(RE_INVALID_ARG, val);`, which the two share by
+     * falling through. ENCODE wants an image and nothing else.
+     *
+     * <p>So a string is on the declared list and is refused by every arm, which is
+     * the declaration and the arm disagreeing on purpose: the spec was widened for
+     * a codec that could take one and none of them does.
+     */
+    private static Value ranCodec(HandleValue handle, WordValue action, Value data) {
+        if (!handle.typeName().equals("codec")) {
+            throw Raised.of(EvaluationFailure.INVALID_HANDLE,
+                    "a codec was wanted, not a " + handle.typeName() + " handle");
+        }
+        Codecs.Action asked = switch (action.canonical()) {
+            case "identify" -> Codecs.Action.IDENTIFY;
+            case "decode" -> Codecs.Action.DECODE;
+            case "encode" -> Codecs.Action.ENCODE;
+            default -> throw Raised.of(
+                    EvaluationFailure.INVALID_ARG, action.spelling());
+        };
+        if (asked == Codecs.Action.ENCODE) {
+            if (!(data instanceof ImageValue)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG,
+                        "encoding takes an image, not a "
+                                + data.datatype().literalSpelling());
+            }
+        } else if (!(data instanceof BinaryValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    "decoding takes a binary, not a "
+                            + data.datatype().literalSpelling());
+        }
+        Codecs.Answer answered = Codecs.run(
+                ((WordValue) handle.payload()).canonical(), asked, data);
+        // `if (codi.error != 0) { if (result == CODI_CHECK) return R_FALSE;
+        // Trap0(RE_BAD_MEDIA); }` -- so an error after an identify is an answer and
+        // an error after anything else is a failure.
+        if (answered.error() != 0 && answered.kind() != Codecs.Answer.Kind.CHECK) {
+            throw Raised.of(EvaluationFailure.BAD_MEDIA,
+                    action.spelling() + " is not something this codec does");
+        }
+        return answered.value();
+    }
+
+    /** The two-item block both walks answer: `Return_Gob_Pair`. */
+    private static Value gobAndPoint(GobValue reached, PairValue point) {
+        return BlockValue.block(List.of(reached, point));
+    }
+
+    /** Writes a pixel given as red, green, blue, alpha. */
+    private static void writePixel(ImageValue image, int pixel, int[] channels) {
+        image.storage().setColourAt(pixel, channels[0], channels[1], channels[2]);
+        image.storage().setAlphaAt(pixel, channels[3]);
+    }
+
+    /**
+     * Puts pixels into an image at its position.
+     *
+     * <p>What `Modify_Image` does for INSERT and APPEND, in the one shape a
+     * script can reach without the /part and /dup rectangle arithmetic: a tuple
+     * is one pixel and an image contributes its own, and the height follows the
+     * new count.
+     */
+    private static Value insertPixels(ImageValue image, Value value) {
+        List<int[]> pixels = new ArrayList<>();
+        if (value instanceof ImageValue added) {
+            for (int at = 1; at <= added.lengthFromHere(); at++) {
+                pixels.add(added.pixelAt(at));
+            }
+        } else if (value instanceof TupleValue colour) {
+            int[] parts = colour.segments();
+            pixels.add(new int[] {
+                    parts.length > 0 ? parts[0] : 0,
+                    parts.length > 1 ? parts[1] : 0,
+                    parts.length > 2 ? parts[2] : 0,
+                    parts.length > 3 ? parts[3] : 0xFF});
+        } else {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    "an image takes a pixel or another image, not "
+                            + value.datatype().literalSpelling());
+        }
+        for (int at = 0; at < pixels.size(); at++) {
+            int[] channels = pixels.get(at);
+            image.storage().insertAt(image.index() + at,
+                    channels[0], channels[1], channels[2], channels[3]);
+        }
+        return image.atIndex(image.index() + pixels.size());
+    }
+
+    /** The first pixels of an image, as an image of the same width. */
+    private static ImageValue copiedPixels(ImageValue image, int howMany) {
+        ImageStorage into = ImageStorage.of(
+                Math.max(1, Math.min(howMany, image.storage().wide())), 0);
+        ImageValue made = new ImageValue(into, 1);
+        for (int at = 1; at <= howMany; at++) {
+            int[] channels = image.pixelAt(at);
+            into.insertAt(at, channels[0], channels[1], channels[2], channels[3]);
+        }
+        return made;
+    }
+
+    private enum Combination { INTERSECT, UNION, EXCLUDE, DIFFERENCE }
+
+    /**
+     * A set operation over the characters of a string.
+     *
+     * <p>The same rules the block path uses, over codepoints instead of values,
+     * and the answer keeps the datatype of the first argument: a set operation
+     * on two files answers a file. The characters are compared without regard to
+     * case unless /CASE was asked for, which is what {@code Find_Str_Char} does
+     * with the flag.
+     */
+    private static Value combinedText(
+            Value left, Value right, Combination how, boolean mindingCase, int stride) {
+
+        List<Value> ours = charactersOf(left);
+        List<Value> theirs = charactersOf(right);
+        List<List<Value>> first = inRecords(ours, stride);
+        List<List<Value>> second = inRecords(theirs, stride);
+        StringBuilder kept = new StringBuilder();
+        List<List<Value>> keptRecords = new ArrayList<>();
+        for (List<Value> candidate : first) {
+            boolean inSecond = second.stream()
+                    .anyMatch(other -> sameRecord(other, candidate, mindingCase));
+            boolean wanted = how == Combination.UNION || how == Combination.DIFFERENCE
+                    ? !inSecond || how == Combination.UNION
+                    : how == Combination.INTERSECT == inSecond;
+            if (wanted && keptRecords.stream()
+                    .noneMatch(already -> sameRecord(already, candidate, mindingCase))) {
+                keptRecords.add(candidate);
+            }
+        }
+        if (how == Combination.UNION || how == Combination.DIFFERENCE) {
+            for (List<Value> candidate : second) {
+                boolean inFirst = first.stream()
+                        .anyMatch(other -> sameRecord(other, candidate, mindingCase));
+                if ((how == Combination.UNION || !inFirst) && keptRecords.stream()
+                        .noneMatch(already -> sameRecord(already, candidate, mindingCase))) {
+                    keptRecords.add(candidate);
+                }
+            }
+        }
+        keptRecords.stream().flatMap(List::stream).forEach(item ->
+                kept.appendCodePoint(((CharacterValue) item).codepoint()));
+        Datatype datatype = left instanceof StringValue text
+                ? text.datatype()
+                : Datatype.STRING;
+        return StringValue.of(kept.toString(), datatype);
+    }
+
+    /** A string as a list of its characters, and anything else as itself. */
+    private static List<Value> charactersOf(Value value) {
+        if (!(value instanceof StringValue text)) {
+            return value instanceof BlockValue block ? block.remaining() : List.of(value);
+        }
+        return text.text().codePoints()
+                .<Value>mapToObj(CharacterValue::of)
+                .toList();
+    }
+
+    /**
+     * A set operation over two maps, which the C reads as their keys.
+     *
+     * <p>`set1 [block! string! bitset! typeset! map!]`, and a map's members are
+     * its keys: the pairs come back with the keys the operation kept.
+     */
+    private static Value combinedMaps(
+            Value left, Value right, Combination how, boolean mindingCase) {
+
+        MapValue ours = left instanceof MapValue map ? map : MapValue.empty();
+        MapValue theirs = right instanceof MapValue map ? map : MapValue.empty();
+        MapValue kept = MapValue.empty();
+        for (Value key : ours.keys()) {
+            boolean inTheirs = theirs.holds(key);
+            boolean wanted = switch (how) {
+                case INTERSECT -> inTheirs;
+                case UNION -> true;
+                case EXCLUDE, DIFFERENCE -> !inTheirs;
+            };
+            if (wanted) {
+                kept.put(key, ours.select(key));
+            }
+        }
+        if (how == Combination.UNION || how == Combination.DIFFERENCE) {
+            for (Value key : theirs.keys()) {
+                if (how == Combination.UNION || !ours.holds(key)) {
+                    kept.put(key, theirs.select(key));
+                }
+            }
+        }
+        return kept;
+    }
+
+    /**
+     * Two typesets combined, as the four operators in n-sets.c combine them.
+     *
+     * <p>DIFFERENCE is the one worth naming: it is a symmetric difference,
+     * `^=`, so it keeps what is in one set or the other but not both. EXCLUDE
+     * is the asymmetric one, `&= ~`. The two agree whenever the second set is
+     * contained in the first, which is why a test written with either passes
+     * and the distinction stays hidden.
+     */
+    private static Value combinedTypesets(
+            TypesetValue ours, TypesetValue theirs, Combination how) {
+
+        Set<Datatype> mine = ours.members();
+        Set<Datatype> yours = theirs.members();
+        Set<Datatype> result = EnumSet.noneOf(Datatype.class);
+        for (Datatype each : Datatype.values()) {
+            boolean inMine = mine.contains(each);
+            boolean inYours = yours.contains(each);
+            boolean kept = switch (how) {
+                case UNION -> inMine || inYours;
+                case INTERSECT -> inMine && inYours;
+                case DIFFERENCE -> inMine ^ inYours;
+                case EXCLUDE -> inMine && !inYours;
+            };
+            if (kept) {
+                result.add(each);
+            }
+        }
+        return TypesetValue.of(Set.copyOf(result));
+    }
+
+
+    /**
+     * What COMPLEMENT accepts besides a logic and a number.
+     *
+     * <p>`complement | value<logic! integer! tuple! binary! bitset! typeset!>`.
+     */
+    private static Set<Datatype> complementableDatatypes() {
+        return Set.of(Datatype.LOGIC, Datatype.INTEGER, Datatype.TUPLE,
+                Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET);
+    }
+
+    /** What a set operation takes besides a block, plus whatever is named. */
+    private static Set<Datatype> setOperandOr(Datatype... alsoAccepted) {
+        Set<Datatype> accepted = EnumSet.of(
+                Datatype.BITSET, Datatype.TYPESET, Datatype.STRING,
+                Datatype.BINARY, Datatype.DATE);
+        accepted.addAll(List.of(alsoAccepted));
+        return Set.copyOf(accepted);
+    }
+
+    /**
+     * Every datatype a typeset does not hold.
+     *
+     * <p>`VAL_TYPESET(val) = ~VAL_TYPESET(val)` -- one line, and it covers
+     * every datatype the build knows rather than only the ones mentioned so
+     * far. So the complement of a typeset holding one datatype holds all the
+     * others, and `find complement make typeset! [block!] integer!` is true.
+     */
+    private static TypesetValue complementOfTypeset(TypesetValue members) {
+        Set<Datatype> rest = EnumSet.allOf(Datatype.class);
+        rest.removeAll(members.members());
+        return TypesetValue.of(Set.copyOf(rest));
+    }
 
     private static BitsetValue complementOf(BitsetValue members) {
         byte[] held = members.octets();
@@ -7522,6 +10247,9 @@ public final class Natives {
                 case UNION -> mine | yours;
                 case INTERSECT -> mine & yours;
                 case EXCLUDE -> mine & ~yours;
+                // Symmetric, where EXCLUDE is one-sided. Xandor_Bitset takes
+                // the same four operators over a bitset's octets.
+                case DIFFERENCE -> mine ^ yours;
             };
         }
         return BitsetValue.of(both);
@@ -7544,6 +10272,33 @@ public final class Natives {
                 && arguments.get(1) instanceof BitsetValue theirs) {
             return combinedBitsets(ours, theirs, how);
         }
+        // A typeset combines datatype by datatype, which n-sets.c does with
+        // four bitwise operators over the one word that holds the whole set:
+        //     UNION      |=
+        //     INTERSECT  &=
+        //     DIFFERENCE ^=
+        //     EXCLUDE    &= ~
+        if (arguments.get(0) instanceof TypesetValue oursByType
+                && arguments.get(1) instanceof TypesetValue theirsByType) {
+            return combinedTypesets(oursByType, theirsByType, how);
+        }
+        // `set1 [block! string! bitset! typeset! map!]` is what every one of
+        // these declares, so a string is an ordinary argument and not an
+        // afterthought: it is a series of characters and the same set rules
+        // apply. Casting straight to a block threw a ClassCastException out of
+        // the interpreter, which spec/embed.allium forbids outright.
+        if (arguments.get(0) instanceof StringValue || arguments.get(1) instanceof StringValue) {
+            return combinedText(arguments.get(0), arguments.get(1), how,
+                    mindingCase, stride);
+        }
+        if (arguments.get(0) instanceof MapValue || arguments.get(1) instanceof MapValue) {
+            return combinedMaps(arguments.get(0), arguments.get(1), how, mindingCase);
+        }
+        if (!(arguments.get(0) instanceof BlockValue)
+                || !(arguments.get(1) instanceof BlockValue)) {
+            return raiseCannotUse(arguments.get(0) instanceof BlockValue
+                    ? arguments.get(1) : arguments.get(0), "a set operation");
+        }
         List<List<Value>> first = inRecords(((BlockValue) arguments.get(0)).remaining(), stride);
         List<List<Value>> second = inRecords(((BlockValue) arguments.get(1)).remaining(), stride);
         List<List<Value>> result = new ArrayList<>();
@@ -7553,7 +10308,10 @@ public final class Natives {
                     .anyMatch(other -> sameRecord(other, candidate, mindingCase));
             boolean wanted = switch (how) {
                 case INTERSECT -> inSecond;
-                case UNION, EXCLUDE -> how == Combination.UNION || !inSecond;
+                // A block's DIFFERENCE is built by the native itself, from
+                // both directions, so it never reaches here.
+                case UNION, EXCLUDE, DIFFERENCE ->
+                        how == Combination.UNION || !inSecond;
             };
             if (wanted && result.stream()
                     .noneMatch(kept -> sameRecord(kept, candidate, mindingCase))) {
@@ -7649,12 +10407,1331 @@ public final class Natives {
     }
 
     private static Value raiseCannotUse(Value value, String nativeName) {
-        throw Raised.of(EvaluationFailure.CANNOT_USE,
+        throw new Raised(ErrorValue.about(
+                ErrorCategory.SCRIPT, "cannot-use",
                 "cannot use " + nativeName + " on "
-                        + value.datatype().literalSpelling() + " value");
+                        + value.datatype().literalSpelling() + " value",
+                WordValue.of(nativeName),
+                DatatypeValue.of(value.datatype())));
     }
 
     // ---- strings ---------------------------------------------------------
+
+    /**
+     * Turning bytes into text and back: ENHEX, DEHEX, ENBASE, DEBASE,
+     * CHECKSUM, COMPRESS, DECOMPRESS and SWAP-ENDIAN.
+     *
+     * <p>Every spec here is the one declared in the C, verbatim. The work is
+     * in {@link Encodings}, which knows nothing about REBOL values; these are
+     * the thinnest wrapper that reaches it.
+     */
+    private void defineEncodings() {
+        // enhex: value [any-string! binary!] /escape char [char!]
+        //        /except unescaped [bitset!] /uri
+        //
+        // The default unescaped set follows the datatype of the value: the URI
+        // set for a file or a url, the narrower component set for anything
+        // else. That is what makes `enhex http://a/b` keep its slashes and
+        // `enhex "a/b"` not have to.
+        define("enhex", List.of(
+                        Parameter.required("value", anyStringOr(Datatype.BINARY)),
+                        Parameter.belongingTo("escape", "char", Set.of(Datatype.CHAR)),
+                        Parameter.belongingTo("except", "unescaped", Set.of(Datatype.BITSET))),
+                Set.of("escape", "except", "uri"),
+                (arguments, evaluator, context, refinements) -> {
+                    Value value = arguments.getFirst();
+                    char escape = escapeCharacterIn(arguments, refinements);
+                    java.util.function.IntPredicate keep = unescapedSetFor(
+                            value, arguments, refinements);
+                    String encoded = Encodings.percentEncoded(
+                            octetsOf(value), keep, escape,
+                            refinements.contains("uri"));
+                    return StringValue.of(encoded, textDatatypeOf(value));
+                });
+
+        // dehex: value [any-string! binary!] /escape char [char!] /uri
+        define("dehex", List.of(
+                        Parameter.required("value", anyStringOr(Datatype.BINARY)),
+                        Parameter.belongingTo("escape", "char", Set.of(Datatype.CHAR))),
+                Set.of("escape", "uri"),
+                (arguments, evaluator, context, refinements) -> {
+                    Value value = arguments.getFirst();
+                    byte[] decoded = Encodings.percentDecoded(
+                            textOf(value), escapeCharacterIn(arguments, refinements),
+                            refinements.contains("uri"));
+                    return value instanceof BinaryValue
+                            ? binaryOfBytes(decoded)
+                            : StringValue.of(
+                                    new String(decoded, StandardCharsets.UTF_8),
+                                    textDatatypeOf(value));
+                });
+
+        // enbase: value [binary! any-string! integer!] base [integer!]
+        //         /url /part limit /flat
+        define("enbase", List.of(
+                        Parameter.required("value",
+                                anyStringOr(Datatype.BINARY, Datatype.INTEGER)),
+                        Parameter.required("base", Set.of(Datatype.INTEGER)),
+                        Parameter.belongingTo("part", "limit",
+                                anyStringOr(Datatype.BINARY, Datatype.INTEGER))),
+                Set.of("url", "part", "flat"),
+                (arguments, evaluator, context, refinements) -> {
+                    int base = (int) ((IntegerValue) arguments.get(1)).magnitude();
+                    requireAKnownBase(base);
+                    byte[] octets = boundedByAnyPart(
+                            octetsOf(arguments.getFirst()), arguments, refinements);
+                    String encoded = Encodings.enbase(
+                            octets, base, refinements.contains("url"));
+                    return StringValue.of(refinements.contains("flat")
+                            ? encoded
+                            : Encodings.brokenIntoLines(encoded));
+                });
+
+        // debase: value [binary! any-string!] base [integer!] /url /part limit
+        define("debase", List.of(
+                        Parameter.required("value", anyStringOr(Datatype.BINARY)),
+                        Parameter.required("base", Set.of(Datatype.INTEGER)),
+                        Parameter.belongingTo("part", "limit",
+                                anyStringOr(Datatype.BINARY, Datatype.INTEGER))),
+                Set.of("url", "part"),
+                (arguments, evaluator, context, refinements) -> {
+                    int base = (int) ((IntegerValue) arguments.get(1)).magnitude();
+                    requireAKnownBase(base);
+                    try {
+                        return binaryOfBytes(Encodings.debase(
+                                boundedTextByAnyPart(
+                                        textOf(arguments.getFirst()),
+                                        arguments, refinements),
+                                base, refinements.contains("url")));
+                    } catch (IllegalArgumentException malformed) {
+                        throw Raised.of(EvaluationFailure.INVALID_DATA,
+                                malformed.getMessage());
+                    }
+                });
+
+        // checksum: data [binary! string! file!] method [word!]
+        //           /with spec [any-string! binary! integer!] /part length
+        //
+        // A string is hashed as its UTF-8 bytes, so the same text hashes the
+        // same however it arrived. Hashing codepoints would make a file and
+        // the string read out of it disagree.
+        define("checksum", List.of(
+                        Parameter.required("data",
+                                anyStringOr(Datatype.BINARY)),
+                        Parameter.required("method", Set.of(Datatype.WORD)),
+                        Parameter.belongingTo("with", "spec",
+                                anyStringOr(Datatype.BINARY, Datatype.INTEGER)),
+                        Parameter.belongingTo("part", "length", PART_LIMIT)),
+                Set.of("with", "part"),
+                (arguments, evaluator, context, refinements) -> {
+                    String method = ((WordValue) arguments.get(1)).canonical();
+                    byte[] octets = partOfOctets(
+                            octetsOf(arguments.getFirst()), arguments, refinements, 2);
+                    if (Encodings.CYCLIC.contains(method)) {
+                        return IntegerValue.of(Encodings.cyclicOf(octets, method));
+                    }
+                    if (!Encodings.DIGESTS.containsKey(method)) {
+                        throw Raised.of(EvaluationFailure.INVALID_ARG, method);
+                    }
+                    Value key = refinements.contains("with")
+                            ? argumentFor("with", List.of("with", "part"),
+                                    arguments, refinements, 2)
+                            : null;
+                    return binaryOfBytes(key == null || key instanceof IntegerValue
+                            ? Encodings.digestOf(octets, method)
+                            : Encodings.keyedDigestOf(octets, method, octetsOf(key)));
+                });
+
+        // compress: data [binary! string!] method [word!] /part length
+        //           /level lvl [integer!]
+        define("compress", List.of(
+                        Parameter.required("data", anyStringOr(Datatype.BINARY)),
+                        Parameter.required("method", Set.of(Datatype.WORD)),
+                        Parameter.belongingTo("part", "length", PART_LIMIT),
+                        Parameter.belongingTo("level", "lvl", Set.of(Datatype.INTEGER))),
+                Set.of("part", "level"),
+                (arguments, evaluator, context, refinements) -> {
+                    String method = requireAKnownCompression(arguments.get(1));
+                    Value level = refinements.contains("level")
+                            ? argumentFor("level", List.of("part", "level"),
+                                    arguments, refinements, 2)
+                            : null;
+                    return binaryOfBytes(Encodings.compressed(
+                            partOfOctets(octetsOf(arguments.getFirst()),
+                                    arguments, refinements, 2),
+                            method,
+                            level instanceof IntegerValue asked
+                                    ? (int) asked.magnitude()
+                                    : java.util.zip.Deflater.DEFAULT_COMPRESSION));
+                });
+
+        // decompress: data [binary!] method [word!] /part length /size bytes
+        define("decompress", List.of(
+                        Parameter.required("data", Set.of(Datatype.BINARY)),
+                        Parameter.required("method", Set.of(Datatype.WORD)),
+                        Parameter.belongingTo("part", "length", PART_LIMIT),
+                        Parameter.belongingTo("size", "bytes", Set.of(Datatype.INTEGER))),
+                Set.of("part", "size"),
+                (arguments, evaluator, context, refinements) -> {
+                    String method = requireAKnownCompression(arguments.get(1));
+                    try {
+                        return binaryOfBytes(Encodings.decompressed(
+                                partOfOctets(octetsOf(arguments.getFirst()),
+                                        arguments, refinements, 2),
+                                method));
+                    } catch (IllegalArgumentException notCompressed) {
+                        throw Raised.of(EvaluationFailure.INVALID_DATA,
+                                notCompressed.getMessage());
+                    }
+                });
+
+        // encloak / decloak: data [binary!] "(modified)"
+        //                    key [string! binary! integer!] /with
+        //
+        // Rebol's own scrambler, in place. `Cloak` in s-ops.c does both
+        // directions, and the C returns R_ARG1 -- the binary it was given.
+        //
+        // A protected series is refused before anything is written:
+        // `if (IS_PROTECT_SERIES(VAL_SERIES(data))) Trap0(RE_PROTECTED);`
+        defineCloak("encloak", false);
+        defineCloak("decloak", true);
+
+        // iconv: data [binary!] codepage [word! integer! tag! string!]
+        //        /to target [word! integer! tag! string!]
+        //
+        // Two answers from one function, and the refinement chooses. Without
+        // /TO it answers a string; with /TO it answers a binary. Decoding and
+        // transcoding are different operations, and one of them has no text
+        // form to answer.
+        define("iconv", List.of(
+                        Parameter.required("data", Set.of(Datatype.BINARY)),
+                        Parameter.required("codepage", characterSetNames()),
+                        Parameter.belongingTo("to", "target", characterSetNames())),
+                Set.of("to"),
+                (arguments, evaluator, context, refinements) -> {
+                    byte[] octets = ((BinaryValue) arguments.getFirst()).octetsFromHere();
+                    java.nio.charset.Charset from = characterSetFor(arguments.get(1));
+                    String text = new String(octets, from);
+                    if (!refinements.contains("to")) {
+                        return StringValue.of(text);
+                    }
+                    Value target = argumentFor("to", List.of("to"),
+                            arguments, refinements, 2);
+                    return binaryOfBytes(text.getBytes(characterSetFor(target)));
+                });
+
+        // filter: data [binary!] width [number!] type [integer! word!]
+        //         /skip bpp [integer!]
+        //
+        // The five per-scanline transforms a PNG applies before compressing.
+        // Byte arithmetic and nothing else -- the work is in Encodings.
+        define("filter", List.of(
+                        Parameter.required("data", Set.of(Datatype.BINARY)),
+                        Parameter.required("width", Typeset.NUMBER.members()),
+                        Parameter.required("type",
+                                Set.of(Datatype.INTEGER, Datatype.WORD)),
+                        Parameter.belongingTo("skip", "bpp", Set.of(Datatype.INTEGER))),
+                Set.of("skip"),
+                (arguments, evaluator, context, refinements) -> {
+                    byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
+                    int width = (int) Comparison.asDouble(arguments.get(1));
+                    int bpp = bytesPerPixelIn(arguments, refinements, 3);
+                    requirePngGeometry(width, bpp, data.length);
+                    return binaryOfBytes(Encodings.pngFiltered(
+                            data, width, pngFilterNamedBy(arguments.get(2)), bpp));
+                });
+
+        // unfilter: data [binary!] width [number!]
+        //           /as type [integer! word!] /skip bpp [integer!]
+        //
+        // Without /AS each line opens with a byte naming its own filter, which
+        // is how a PNG stores it. So the two forms take different widths and
+        // the type byte is the difference -- the C adjusts before it checks:
+        // `if (!ref_as) width++;`.
+        define("unfilter", List.of(
+                        Parameter.required("data", Set.of(Datatype.BINARY)),
+                        Parameter.required("width", Typeset.NUMBER.members()),
+                        Parameter.belongingTo("as", "type",
+                                Set.of(Datatype.INTEGER, Datatype.WORD)),
+                        Parameter.belongingTo("skip", "bpp", Set.of(Datatype.INTEGER))),
+                Set.of("as", "skip"),
+                (arguments, evaluator, context, refinements) -> {
+                    byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
+                    int width = (int) Comparison.asDouble(arguments.get(1));
+                    boolean named = refinements.contains("as");
+                    int bpp = bytesPerPixelIn(arguments, refinements, 2);
+                    requirePngGeometry(named ? width : width + 1, bpp, data.length);
+                    int filter = -1;
+                    if (named) {
+                        filter = pngFilterNamedBy(argumentFor("as",
+                                List.of("as", "skip"), arguments, refinements, 2));
+                    }
+                    return binaryOfBytes(Encodings.pngUnfiltered(
+                            data, width, filter, bpp));
+                });
+
+        // swap-endian: value [binary!] "At position (modified)"
+        //              /width bytes [integer!] /part range
+        //
+        // In place, and it answers the binary it was given: the spec says
+        // "(modified)" and the C writes through `VAL_BIN_DATA`.
+        define("swap-endian", List.of(
+                        Parameter.required("value", Set.of(Datatype.BINARY)),
+                        Parameter.belongingTo("width", "bytes", Set.of(Datatype.INTEGER)),
+                        Parameter.belongingTo("part", "range", PART_LIMIT)),
+                Set.of("width", "part"),
+                (arguments, evaluator, context, refinements) -> {
+                    BinaryValue bytes = (BinaryValue) arguments.getFirst();
+                    Value asked = refinements.contains("width")
+                            ? argumentFor("width", List.of("width", "part"),
+                                    arguments, refinements, 1)
+                            : null;
+                    int width = asked instanceof IntegerValue given
+                            ? (int) given.magnitude()
+                            : 2;
+                    byte[] octets = bytes.octetsFromHere();
+                    try {
+                        Encodings.swapEndian(octets, 0, width);
+                    } catch (IllegalArgumentException badWidth) {
+                        throw Raised.of(EvaluationFailure.INVALID_ARG,
+                                "swap-endian takes a width of 2, 4 or 8");
+                    }
+                    for (int at = 0; at < octets.length; at++) {
+                        bytes.storage().set(bytes.index() + at, octets[at] & 0xFF);
+                    }
+                    return bytes;
+                });
+    }
+
+    /**
+     * ENCLOAK and DECLOAK, which are one function and a direction.
+     *
+     * <p>Defined together because the C defines them together: both call
+     * `Cloak` and differ in its first argument. Writing them apart would
+     * invite the two to drift.
+     */
+    private void defineCloak(String name, boolean decode) {
+        define(name, List.of(
+                        Parameter.required("data", Set.of(Datatype.BINARY)),
+                        Parameter.required("key", Set.of(Datatype.STRING,
+                                Datatype.BINARY, Datatype.INTEGER))),
+                Set.of("with"),
+                (arguments, evaluator, context, refinements) -> {
+                    BinaryValue data = (BinaryValue) arguments.getFirst();
+                    refuseIfProtected(data);
+                    byte[] octets = data.octetsFromHere();
+                    if (!Encodings.cloak(decode, octets, keyBytesFor(
+                            arguments.get(1), refinements.contains("with")))) {
+                        throw Raised.of(EvaluationFailure.INVALID_ARG,
+                                name + " needs a key with bytes in it");
+                    }
+                    for (int at = 0; at < octets.length; at++) {
+                        data.storage().set(data.index() + at, octets[at] & 0xFF);
+                    }
+                    return data;
+                });
+    }
+
+    /**
+     * The key bytes CLOAK actually scrambles against.
+     *
+     * <p>An integer is spelled out in decimal and then always hashed, whatever
+     * /WITH said. The C overrides the refinement rather than honouring it --
+     * `INT_TO_STR(VAL_INT64(val), dst); ... as_is = FALSE;` -- because the
+     * digits are not bytes a caller chose.
+     */
+    private static byte[] keyBytesFor(Value key, boolean asItStands) {
+        if (key instanceof IntegerValue whole) {
+            return Encodings.hashedKey(Long.toString(whole.magnitude())
+                    .getBytes(StandardCharsets.UTF_8));
+        }
+        byte[] bytes = key instanceof BinaryValue octets
+                ? octets.octetsFromHere()
+                : ((StringValue) key).text().getBytes(StandardCharsets.UTF_8);
+        return asItStands ? bytes : Encodings.hashedKey(bytes);
+    }
+
+    /** What names a character set: a word, a string, a tag or a number. */
+    private static Set<Datatype> characterSetNames() {
+        return Set.of(Datatype.WORD, Datatype.INTEGER, Datatype.TAG, Datatype.STRING);
+    }
+
+    /**
+     * The character set a value names, refusing one the host has not got.
+     *
+     * <p>A tag's own text, not its molded form: `<utf8>` names utf8, and the
+     * angle brackets are how it was written rather than part of the name.
+     * Going through FORM kept them and refused every tag.
+     */
+    private static java.nio.charset.Charset characterSetFor(Value named) {
+        String spelling = switch (named) {
+            case WordValue word -> word.canonical();
+            case StringValue text -> text.text();
+            default -> Molder.form(named);
+        };
+        java.nio.charset.Charset found = Encodings.charsetNamed(spelling);
+        if (found == null) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, spelling);
+        }
+        return found;
+    }
+
+    /**
+     * SET with an object on both sides: matched by name, not by position.
+     *
+     * <p>The only shape of SET where position plays no part. Each word of the
+     * target takes the value the source holds for that same word; a word the
+     * source has not got is left as it was, and a word only the source has is
+     * ignored. The C walks the target's words and looks each one up:
+     *
+     * <pre>
+     * tmp = Find_Word_Value(VAL_OBJ_FRAME(val), VAL_WORD_SYM(word));
+     * if (tmp) {
+     *     if (IS_UNSET(tmp) &amp;&amp; not_any) goto next_obj_val;
+     *     if (ref_some &amp;&amp; VAL_TYPE(obj_val) &gt; REB_NONE
+     *             &amp;&amp; VAL_TYPE(tmp) &lt;= REB_NONE) goto next_obj_val;
+     *     *obj_val = *tmp;
+     * }
+     * </pre>
+     *
+     * <p>Two skips, and each is a refinement's whole meaning. Without /ANY an
+     * unset in the source is passed over rather than copied, so the target
+     * keeps a real value instead of losing it to nothing. With /SOME a source
+     * value of none is passed over when the target already holds something
+     * more than none, which is what makes /SOME "fill in the gaps".
+     */
+    private static void setFieldsFromObject(
+            ObjectValue into, ObjectValue from, Set<String> refinements) {
+
+        boolean anyValue = refinements.contains("any");
+        boolean onlySome = refinements.contains("some");
+        for (ContextSlot slot : into.context().slots()) {
+            if (slot.canonical().equals("self")
+                    || !from.context().holds(slot.canonical())) {
+                continue;
+            }
+            Value supplied = from.context().ownSlotFor(slot.canonical()).value();
+            if (!anyValue && supplied.datatype() == Datatype.UNSET) {
+                continue;
+            }
+            // "More than none" is the C's `VAL_TYPE > REB_NONE`, which counts
+            // unset and none as the empty end of the order and everything else
+            // as a value.
+            boolean targetHoldsSomething = slot.value().datatype() != Datatype.NONE
+                    && slot.value().datatype() != Datatype.UNSET;
+            boolean sourceHoldsNothing = supplied.datatype() == Datatype.NONE
+                    || supplied.datatype() == Datatype.UNSET;
+            if (onlySome && targetHoldsSomething && sourceHoldsNothing) {
+                continue;
+            }
+            slot.setValue(supplied);
+        }
+    }
+
+    /**
+     * Which of the five PNG filters a value names.
+     *
+     * <p>A word or its number, and nothing else. An unknown one is refused
+     * rather than treated as "none", because a filter read wrongly corrupts
+     * every line after it and answers no error.
+     */
+    private static int pngFilterNamedBy(Value named) {
+        if (named instanceof IntegerValue whole) {
+            int which = (int) whole.magnitude();
+            if (which < 0 || which >= Encodings.PNG_FILTERS.size()) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, "filter type");
+            }
+            return which;
+        }
+        int found = Encodings.PNG_FILTERS.indexOf(((WordValue) named).canonical());
+        if (found < 0) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    ((WordValue) named).spelling());
+        }
+        return found;
+    }
+
+    /** /SKIP names the bytes per pixel, and one is the default. */
+    private static int bytesPerPixelIn(
+            List<Value> arguments, Set<String> refinements, int where) {
+
+        Value asked = refinements.contains("skip")
+                ? argumentFor("skip", List.of("as", "skip"),
+                        arguments, refinements, where)
+                : null;
+        return asked instanceof IntegerValue given ? (int) given.magnitude() : 1;
+    }
+
+    /**
+     * The geometry check both filters do before touching a byte.
+     *
+     * <pre>
+     * if ((REBINT)width &lt;= 1 || width &gt; bytes) Trap1(RE_INVALID_ARG, val_width);
+     * if (bpp &lt; 1 || bpp &gt; width) Trap1(RE_INVALID_ARG, val_bpp);
+     * </pre>
+     */
+    private static void requirePngGeometry(int width, int bytesPerPixel, int length) {
+        if (width <= 1 || width > length) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, "width " + width);
+        }
+        if (bytesPerPixel < 1 || bytesPerPixel > width) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    "bytes per pixel " + bytesPerPixel);
+        }
+    }
+
+    /** ENBASE and DEBASE know five bases and refuse the rest. */
+    private static void requireAKnownBase(int base) {
+        if (!Encodings.BASES.contains(base)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG,
+                        "base " + base + " is not 2, 16, 36, 64 or 85");
+        }
+    }
+
+    private static String requireAKnownCompression(Value method) {
+        String named = ((WordValue) method).canonical();
+        if (!Encodings.COMPRESSIONS.contains(named)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, named);
+        }
+        return named;
+    }
+
+    /** The escape character, which is a percent sign unless /ESCAPE says. */
+    private static char escapeCharacterIn(
+            List<Value> arguments, Set<String> refinements) {
+        Value asked = refinements.contains("escape")
+                ? argumentFor("escape", List.of("escape", "except"),
+                        arguments, refinements, 1)
+                : null;
+        return asked instanceof CharacterValue given
+                ? (char) given.codepoint()
+                : '%';
+    }
+
+    /**
+     * Which bytes ENHEX leaves alone.
+     *
+     * <p>/EXCEPT names the set outright. Without it the set follows the
+     * datatype, which the C states in the spec itself: "By default it is URI
+     * bitset when value is file or url, else URI-Component".
+     */
+    private static java.util.function.IntPredicate unescapedSetFor(
+            Value value, List<Value> arguments, Set<String> refinements) {
+
+        if (refinements.contains("except")) {
+            Value asked = argumentFor("except", List.of("escape", "except"),
+                    arguments, refinements, 1);
+            if (asked instanceof BitsetValue named) {
+                return octet -> Encodings.setHolds(named, octet);
+            }
+        }
+        return value.datatype() == Datatype.FILE || value.datatype() == Datatype.URL
+                ? Encodings::uriKeeps
+                : Encodings::uriComponentKeeps;
+    }
+
+    /** The bytes of a value: a binary as they stand, text as UTF-8. */
+    private static byte[] octetsOf(Value value) {
+        return switch (value) {
+            case BinaryValue bytes -> bytes.octetsFromHere();
+            case IntegerValue whole -> java.nio.ByteBuffer.allocate(8)
+                    .putLong(whole.magnitude()).array();
+            default -> Molder.form(value).getBytes(StandardCharsets.UTF_8);
+        };
+    }
+
+    /** The text of a value: a string as it stands, a binary read as UTF-8. */
+    private static String textOf(Value value) {
+        return value instanceof BinaryValue bytes
+                ? new String(bytes.octetsFromHere(), StandardCharsets.UTF_8)
+                : Molder.form(value);
+    }
+
+    /** The datatype the answer keeps, so a url stays a url. */
+    private static Datatype textDatatypeOf(Value value) {
+        return value.datatype().isAnyString() ? value.datatype() : Datatype.STRING;
+    }
+
+    /** /PART, applied to the bytes rather than to the value. */
+    private static byte[] partOfOctets(
+            byte[] octets, List<Value> arguments,
+            Set<String> refinements, int where) {
+
+        return howManyWanted(arguments, refinements, where)
+                .map(count -> java.util.Arrays.copyOf(octets,
+                        (int) Math.max(0, Math.min(count, octets.length))))
+                .orElse(octets);
+    }
+
+    /** The any-string datatypes, plus whatever else a spec names beside them. */
+    private static Set<Datatype> anyStringOr(Datatype... alsoAccepted) {
+        Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_STRING.members());
+        accepted.addAll(List.of(alsoAccepted));
+        return Set.copyOf(accepted);
+    }
+
+    /**
+     * The functions that ask the interpreter about itself.
+     *
+     * <p>VERSION, POKEZ, TO-REAL-FILE, RECYCLE, STATS, HALT and STACK. Each
+     * spec is the one declared in the C, verbatim.
+     *
+     * <p>STACK is the interesting one. It is answerable at all only because
+     * evaluation state lives in frames on the heap rather than in JVM stack
+     * frames -- see decision 1 -- so an implementation built on the host's own
+     * stack could not offer it.
+     */
+    private void defineInterpreterState() {
+        // version: /data "loadable version"
+        //
+        // Two forms because two callers want different things: a banner
+        // prints the text, and a module header compares the tuple against its
+        // Needs field. A string will not compare with a tuple.
+        define("version", List.of(), Set.of("data"),
+                (arguments, evaluator, context, refinements) ->
+                        refinements.contains("data")
+                                ? TupleValue.of(VERSION_PARTS)
+                                : StringValue.of(VERSION_TEXT));
+
+        // pokez: series [series! bitset! tuple!] index [integer!] value
+        //
+        // POKE underneath, counting from zero. The C is three lines and the
+        // condition on the first is all of it:
+        //     if (VAL_INT64(D_ARG(2)) >= 0 && !IS_BITSET(D_ARG(1)))
+        //         VAL_INT64(D_ARG(2)) += 1;
+        //
+        // A negative index is left alone, because counting back from the tail
+        // means the same in both conventions. A bitset is left alone too: its
+        // index is a character code rather than a position, so adding one
+        // would name a different character.
+        define("pokez", List.of(
+                        Parameter.required("series", pokeableDatatypes()),
+                        Parameter.required("index", Set.of(Datatype.INTEGER)),
+                        Parameter.required("value")),
+                (arguments, evaluator, context) -> {
+                    long index = ((IntegerValue) arguments.get(1)).magnitude();
+                    boolean shifts = index >= 0
+                            && !(arguments.getFirst() instanceof BitsetValue);
+                    return evaluator.applyFunction(
+                            libraryFunction(context, "poke"),
+                            List.of(arguments.getFirst(),
+                                    IntegerValue.of(shifts ? index + 1 : index),
+                                    arguments.get(2)));
+                });
+
+        // to-real-file: path [file! string!]
+        //
+        // None for a file that is not there. The C's own summary says so:
+        // "resolves symbolic links and returns NONE if file does not exists!".
+        // The question is "what is this really", and nothing is a true answer.
+        define("to-real-file", List.of(Parameter.required("path",
+                        Set.of(Datatype.FILE, Datatype.STRING))),
+                (arguments, evaluator, context) -> {
+                    requireService(HostService.FILES);
+                    return throughPort(() -> {
+                        String resolved = evaluator.files().canonicalPathOf(
+                                ((StringValue) arguments.getFirst()).text());
+                        return resolved == null
+                                ? NoneValue.none()
+                                : StringValue.of(resolved, Datatype.FILE);
+                    });
+                });
+
+        // recycle: /off /on /ballast size [integer!] /torture /pools
+        //
+        // Answers the bytes the collection RELEASED, not the bytes in use.
+        // The C ends `released_bytes = Recycle(TRUE, D_REF(6));
+        // DS_Ret_Int(released_bytes);` and the two readings move in opposite
+        // directions as a program allocates, so it matters which one this is.
+        //
+        // /OFF answers nothing and collects nothing. It is the first thing the
+        // C does: `if (D_REF(1)) { GC_Active = FALSE; return R_UNSET; }`.
+        //
+        // On a host that collects when it chooses, the collection is a request
+        // and the number is measured either side of it. A collector that did
+        // nothing answers zero, which is the truth rather than a placeholder.
+        define("recycle", List.of(
+                        Parameter.belongingTo("ballast", "size", Set.of(Datatype.INTEGER))),
+                Set.of("off", "on", "ballast", "torture", "pools"),
+                (arguments, evaluator, context, refinements) -> {
+                    if (refinements.contains("off")) {
+                        return UnsetValue.unset();
+                    }
+                    Runtime running = Runtime.getRuntime();
+                    long before = running.totalMemory() - running.freeMemory();
+                    System.gc();
+                    long after = running.totalMemory() - running.freeMemory();
+                    return IntegerValue.of(Math.max(0, before - after));
+                });
+
+        // stats: /show /profile /timer /evals /clear
+        // /DUMP-SERIES takes the pool to dump and answers none:
+        // `Dump_Series_In_Pool(VAL_INT32(pool_id)); return R_NONE;`. What it
+        // prints is a walk of Rebol's own memory pools, which a JVM does not
+        // have -- so the printing is what is missing here and the answer is
+        // not. There is no /CLEAR: JEBOL had declared one that no line read.
+        define("stats", List.of(
+                        Parameter.belongingTo("dump-series", "pool-id",
+                                Set.of(Datatype.INTEGER))),
+                Set.of("show", "profile", "timer", "evals", "dump-series"),
+                (arguments, evaluator, context, refinements) -> {
+                    if (refinements.contains("dump-series")) {
+                        return NoneValue.none();
+                    }
+                    // Time since this interpreter started, not the time of
+                    // day: `OS_Delta_Time(PG_Boot_Time, 0) * 1000`. That is
+                    // what makes it useful for measuring a stretch of work.
+                    if (refinements.contains("timer")) {
+                        return TimeValue.ofNanoseconds(System.nanoTime() - startedAt);
+                    }
+                    // /EVALS is the one with a rule rather than a reading: it
+                    // counts values the evaluator has walked, and it must
+                    // never go backwards inside one interpreter or a caller
+                    // timing a stretch of work reads a negative difference.
+                    if (refinements.contains("evals")) {
+                        return IntegerValue.of(evaluator.valuesWalked());
+                    }
+                    // /PROFILE fills in system/standard/stats and answers
+                    // that same object, refreshed in place. The C does exactly
+                    // that -- `stats = Get_System(SYS_STANDARD, STD_STATS);
+                    // *ds = *stats;` -- and DELTA-PROFILE depends on the
+                    // sharing: it copies the object, runs a block, asks again,
+                    // and differences the copy against the object it still
+                    // holds. Answering a fresh object each time would make
+                    // every difference zero.
+                    if (refinements.contains("profile")) {
+                        return filledInProfile(evaluator);
+                    }
+                    // The plain form is `Inspect_Series(flags)`, which
+                    // measures the interpreter's own series rather than the
+                    // whole heap. The JVM does not separate the two, so this
+                    // reports the heap in use and says so rather than
+                    // pretending to a figure it cannot get.
+                    Runtime running = Runtime.getRuntime();
+                    return IntegerValue.of(running.totalMemory() - running.freeMemory());
+                });
+
+        // echo: target [file! none! logic!]
+        //
+        // "Copies console output to a file" -- a copy, not a redirection, so a
+        // script that echoes still prints. NONE and FALSE turn it off; TRUE
+        // echoes to output.txt, which the C spells out:
+        //     else if (IS_LOGIC(val) && IS_TRUE(val))
+        //         ser = To_Local_Path("output.txt", 10, OS_WIDE, TRUE);
+        //
+        // And the C turns the previous echo off first, with `Echo_File(0)`
+        // before it looks at the argument, so echoing twice replaces rather
+        // than stacking.
+        define("echo", List.of(Parameter.required("target",
+                        Set.of(Datatype.FILE, Datatype.NONE, Datatype.LOGIC))),
+                (arguments, evaluator, context) -> {
+                    evaluator.stopEchoing();
+                    Value target = arguments.getFirst();
+                    if (target instanceof NoneValue || !target.isTruthy()) {
+                        return UnsetValue.unset();
+                    }
+                    requireService(HostService.FILES);
+                    String path = target instanceof StringValue named
+                            ? named.text()
+                            : "output.txt";
+                    FilePort files = evaluator.files();
+                    return throughPort(() -> {
+                        // Emptied first, so a second run does not read as one
+                        // long session. The C opens the file fresh too.
+                        files.write(path, new byte[0]);
+                        evaluator.alsoWriteTo(text -> files.appendTo(
+                                path, text.getBytes(StandardCharsets.UTF_8)));
+                        return UnsetValue.unset();
+                    });
+                });
+
+        // tty?: "Returns TRUE if standard input is connected to a terminal."
+        //
+        // Asked of the console port rather than of the JVM. Whether the input
+        // is a terminal is the host's to know, and `System.console()` answers
+        // a `java.io.Console` -- which the dependency rule keeps out of the
+        // domain, and rightly: a domain that can see a console can be written
+        // to depend on there being one.
+        define("tty?", List.of(),
+                (arguments, evaluator, context) ->
+                        LogicValue.of(evaluator.console().isATerminal()));
+
+        // wait: value [number! time! port! block! none!] /all /only
+        //
+        // A number is seconds, a decimal is fractional seconds, a time is
+        // itself, and a negative one is clamped to zero rather than refused:
+        //     case REB_INTEGER: timeout = 1000 * Int32(val); goto chk_neg;
+        //     chk_neg: if (timeout < 0) timeout = 0; //Trap_Range(val);
+        //
+        // Waiting on a port needs event polling, which JEBOL has not got. The
+        // C's own answer for a port with nothing pending is none --
+        // `if (!Pending_Port(val)) return R_NONE;` -- and nothing is pending
+        // here, so none is the truthful answer rather than a stub.
+        define("wait", List.of(Parameter.required("value",
+                        waitableDatatypes())),
+                Set.of("all", "only"),
+                (arguments, evaluator, context, refinements) -> {
+                    Value asked = arguments.getFirst();
+                    if (!(asked instanceof IntegerValue || asked instanceof DecimalValue
+                            || asked instanceof TimeValue)) {
+                        return NoneValue.none();
+                    }
+                    long milliseconds = asked instanceof TimeValue clock
+                            ? clock.nanoseconds() / 1_000_000L
+                            : (long) (1000 * Comparison.asDouble(asked));
+                    sleepInterruptibly(Math.max(0, milliseconds), evaluator);
+                    return NoneValue.none();
+                });
+
+        // read-key: "Reads a single keypress from the console without echoing it."
+        //
+        // A char, or none when the host cannot read one. The C also updates
+        // three state flags from the key's modifiers:
+        //     SET_LOGIC(...STATE_CONTROLQ, GET_FLAG(key.flags, EVF_CONTROL));
+        //     SET_LOGIC(...STATE_SHIFTQ,   GET_FLAG(key.flags, EVF_SHIFT));
+        //     SET_LOGIC(...STATE_ALTQ,     GET_FLAG(key.flags, EVF_ALT));
+        //
+        // Nothing reachable from the JDK reports a modifier separately from the
+        // character it produced, so all three are set false rather than left
+        // holding whatever the last call put there. False is a claim, and the
+        // honest one: this host did not see a modifier.
+        define("read-key", List.of(),
+                (arguments, evaluator, context) -> {
+                    requireService(HostService.CONSOLE);
+                    int code = evaluator.console().readKey();
+                    runState.set("control?", LogicValue.of(false));
+                    runState.set("shift?", LogicValue.of(false));
+                    runState.set("alt?", LogicValue.of(false));
+                    return code < 0
+                            ? NoneValue.none()
+                            : CharacterValue.of(code);
+                });
+
+        // halt: takes nothing, answers nothing.
+        //
+        // Not QUIT. Quitting ends the host's run; halting ends the script and
+        // leaves the host running, so a console that halts is a console
+        // afterwards. Both are signals rather than answers, which is the only
+        // thing they share.
+        define("halt", List.of(),
+                (arguments, evaluator, context) -> {
+                    throw new HaltRequested();
+                });
+
+        // === Colour: as-color and the functions of n-image.c ===
+        //
+        // A colour is a tuple and an image is a series of them, so each of these
+        // has two arms over one formula. Every one MODIFIES its target and
+        // answers it -- `return R_ARG1` -- which is why each argument's own doc
+        // string says "(modified)".
+        //
+        // as-color: r g b [integer! decimal! percent!]
+        //
+        // Runs a codec. The handle has to be a codec's and nothing else --
+        // `if (VAL_HANDLE_TYPE(hnd) != SYM_CODEC) Trap0(RE_INVALID_HANDLE);` -- and
+        // what comes back depends on which of three things the codec was asked and
+        // what it answered.
+        //
+        // The error code and the answer are read together. A non-zero error is
+        // `bad-media`, except after an IDENTIFY, where "error code is inverted
+        // result": no error means yes.
+        define("do-codec", List.of(
+                        Parameter.required("handle", Set.of(Datatype.HANDLE)),
+                        Parameter.required("action", Set.of(Datatype.WORD)),
+                        Parameter.required("data", Set.of(Datatype.BINARY,
+                                Datatype.IMAGE, Datatype.STRING))),
+                (arguments, evaluator, context) -> ranCodec(
+                        (HandleValue) arguments.get(0),
+                        (WordValue) arguments.get(1),
+                        arguments.get(2)));
+
+        // Gives up a handle's resources, and answers whether there were any. Two
+        // lines of C and the whole of the behaviour: `if (IS_CONTEXT_HANDLE(val)) {
+        // Free_Hob(...); return R_TRUE; } return R_FALSE;`.
+        //
+        // So it answers false for a function handle, which is every handle this
+        // build makes: a codec wraps a dispatcher rather than owning anything, and
+        // there is nothing to free. The true branch waits on a kind of handle that
+        // owns a resource -- a cipher's key schedule is the C's own example -- and
+        // that waits on a cipher.
+        define("release", List.of(Parameter.required("handle", Set.of(Datatype.HANDLE))),
+                (arguments, evaluator, context) ->
+                        LogicValue.of(((HandleValue) arguments.get(0)).isContext()));
+
+        // MAP-GOB-OFFSET with the gob and the point taken out of an event, and the
+        // result written back into it. The same `Map_Gob_Inner` walk, one caller
+        // along: a window system hands the language a click on a window and asks
+        // which of the window's children was actually clicked.
+        //
+        // The event comes back changed and the caller's own word does not, because
+        // an event is inline in a value cell rather than a series: `return R_ARG1`
+        // hands back the copy on the data stack. `e: map-event e` is how a script
+        // keeps the result.
+        define("map-event", List.of(Parameter.required("event", Set.of(Datatype.EVENT))),
+                (arguments, evaluator, context) -> mappedEvent(
+                        (EventValue) arguments.get(0)));
+
+        // Asks a port to deal with an event, and answers whether it is finished
+        // waiting. Two steps with a condition on each, and the second is the one
+        // that matters: a port with no AWAKE function is woken, and the function
+        // exists to say no.
+        define("wake-up", List.of(
+                        Parameter.required("port", Set.of(Datatype.PORT)),
+                        Parameter.required("event", Set.of(Datatype.EVENT))),
+                (arguments, evaluator, context) -> wokenPort(
+                        (PortValue) arguments.get(0), arguments.get(1), evaluator));
+
+        // What a window system asks when a click arrives: given a point in the
+        // outermost gob, which gob was actually clicked and where in that gob.
+        //
+        // So it walks down the tree by default and /REVERSE walks back up, and
+        // the two are one piece of arithmetic with the sign flipped: going down,
+        // each gob entered has its offset taken off the point; going up, each gob
+        // left has its offset added.
+        define("map-gob-offset", List.of(
+                        Parameter.required("gob", Set.of(Datatype.GOB)),
+                        Parameter.required("xy", Set.of(Datatype.PAIR))),
+                Set.of("reverse"),
+                (arguments, evaluator, context, refinements) -> {
+                    GobValue from = (GobValue) arguments.get(0);
+                    PairValue point = (PairValue) arguments.get(1);
+                    return refinements.contains("reverse")
+                            ? mappedOutwards(from, point)
+                            : mappedInwards(from, point);
+                });
+
+        // Three bytes into a three-part tuple, and each part is read differently:
+        // an integer as itself, a decimal ROUNDED -- `(REBI64)(VAL_DECIMAL(val) +
+        // 0.5)`, the opposite of every other decimal conversion here -- and a
+        // percent as a fraction of 255. Then clamped: `MAX(0, MIN(255, num))`.
+        define("as-color", List.of(
+                        Parameter.required("r", Typeset.NUMBER.members()),
+                        Parameter.required("g", Typeset.NUMBER.members()),
+                        Parameter.required("b", Typeset.NUMBER.members())),
+                (arguments, evaluator, context) -> TupleValue.of(
+                        colourByteOf(arguments.get(0)),
+                        colourByteOf(arguments.get(1)),
+                        colourByteOf(arguments.get(2))));
+
+        // grayscale: target [tuple! image!] -- the average of the three parts.
+        define("grayscale", List.of(Parameter.required("target",
+                        Set.of(Datatype.TUPLE, Datatype.IMAGE))),
+                (arguments, evaluator, context) -> overEveryColour(arguments.getFirst(),
+                        parts -> IntegerValue.of(
+                                Colours.grey(parts[0], parts[1], parts[2])),
+                        parts -> {
+                            int grey = Colours.grey(parts[0], parts[1], parts[2]);
+                            return new int[] {grey, grey, grey};
+                        }));
+
+        // luminosity: target [tuple! image!] /luma -- BT.709, or BT.601 with
+        // /LUMA. A tuple answers the one number; an image is turned grey.
+        define("luminosity", List.of(Parameter.required("target",
+                        Set.of(Datatype.TUPLE, Datatype.IMAGE))),
+                Set.of("luma"),
+                (arguments, evaluator, context, refinements) -> {
+                    boolean luma = refinements.contains("luma");
+                    return overEveryColour(arguments.getFirst(),
+                            parts -> IntegerValue.of(
+                                    Colours.luminosity(parts[0], parts[1], parts[2], luma)),
+                            parts -> {
+                                int grey = Colours.luminosity(
+                                        parts[0], parts[1], parts[2], luma);
+                                return new int[] {grey, grey, grey};
+                            });
+                });
+
+        // hsv-to-rgb and rgb-to-hsv: hsv [tuple!] -- the same three bytes read
+        // the other way about, and both change the tuple they were given.
+        define("hsv-to-rgb", List.of(Parameter.required("hsv", Set.of(Datatype.TUPLE))),
+                (arguments, evaluator, context) -> recolouredTuple(
+                        (TupleValue) arguments.getFirst(),
+                        parts -> Colours.hsvToRgb(parts[0], parts[1], parts[2])));
+        define("rgb-to-hsv", List.of(Parameter.required("rgb", Set.of(Datatype.TUPLE))),
+                (arguments, evaluator, context) -> recolouredTuple(
+                        (TupleValue) arguments.getFirst(),
+                        parts -> Colours.rgbToHsv(parts[0], parts[1], parts[2])));
+
+        // color-distance: a b [tuple!] -- weighted, so green counts most.
+        define("color-distance", List.of(
+                        Parameter.required("a", Set.of(Datatype.TUPLE)),
+                        Parameter.required("b", Set.of(Datatype.TUPLE))),
+                (arguments, evaluator, context) -> DecimalValue.of(Colours.distance(
+                        threeParts((TupleValue) arguments.get(0)),
+                        threeParts((TupleValue) arguments.get(1)))));
+
+        // tint: target [tuple! image!] rgb [tuple!] amount [number!]
+        define("tint", List.of(
+                        Parameter.required("target", Set.of(Datatype.TUPLE, Datatype.IMAGE)),
+                        Parameter.required("rgb", Set.of(Datatype.TUPLE)),
+                        Parameter.required("amount", Typeset.NUMBER.members())),
+                (arguments, evaluator, context) -> {
+                    int[] mixture = threeParts((TupleValue) arguments.get(1));
+                    double amount = Comparison.asDouble(arguments.get(2));
+                    return overEveryColour(arguments.getFirst(),
+                            parts -> TupleValue.of(Colours.tinted(parts, mixture, amount)),
+                            parts -> Colours.tinted(parts, mixture, amount));
+                });
+
+        // limit-usage: field [word!] "eval (count) or memory (bytes)"
+        //              limit [number!]
+        //
+        // Records a number and answers unset. Set-once, because the C tests for
+        // zero before it writes: `if (Eval_Limit == 0) Eval_Limit = Int64(...)`.
+        // A field that is neither of the two falls out of the bottom untouched --
+        // an if, an else-if and no else -- and SECURE is the only caller Rebol
+        // has, which passes one of the two.
+        //
+        // Nothing enforces it, here or there. The limit is read in one place,
+        // inside Do_Signals, and handed to `Check_Security(SYM_EVAL, POL_EXEC,
+        // 0)`; every policy in boot/sysobj.reb defaults to `0.0.0`, which is
+        // ALLOW, and an allowed policy does nothing. So a stock Rebol records the
+        // limit and runs past it, and `secure [eval throw]` is what changes that.
+        // JEBOL has no SECURE, so enforcing this would stop a script Rebol would
+        // let run.
+        //
+        // `number!` rather than `integer!` because `Int64` takes a decimal and
+        // cuts the fraction off.
+        define("limit-usage", List.of(
+                        Parameter.required("field", Set.of(Datatype.WORD)),
+                        Parameter.required("limit", Typeset.NUMBER.members())),
+                (arguments, evaluator, context) -> {
+                    UsageLimit which = switch (
+                            ((WordValue) arguments.getFirst()).canonical()) {
+                        case "eval" -> UsageLimit.EVALUATIONS;
+                        case "memory" -> UsageLimit.MEMORY_BYTES;
+                        default -> null;
+                    };
+                    if (which != null) {
+                        evaluator.recordLimitAskedFor(which,
+                                (long) Comparison.asDouble(arguments.get(1)));
+                    }
+                    return UnsetValue.unset();
+                });
+
+        // ds: "Temporary stack debug" -- `Dump_Stack(0, 0); return R_UNSET;`
+        //
+        // What it prints is the frame stack, not a C memory structure, and it is
+        // compiled into every build: one line per open frame giving the word the
+        // call was made through, how many slots it has and the function's
+        // datatype, then one line per slot with its value. So this is what STACK
+        // answers, printed instead of returned.
+        //
+        // The formats are Rebol's own, from the `stack` block of
+        // boot/strings.reb: `^/STACK[%d] %s[%d] %s` and `\t%s: %72r`.
+        define("ds", List.of(),
+                (arguments, evaluator, context) -> {
+                    printTheFrameStack(evaluator);
+                    return UnsetValue.unset();
+                });
+
+        // dump: v /fmt "only series format"
+        //
+        // The whole body is inside `#ifdef DEBUG`, so a released 3.22.1 reaches
+        // `return R_ARG1;` and nothing else: `dump [1 2]` prints nothing and
+        // answers `[1 2]`. That is the behaviour to port. The debug build's
+        // series walk is not something any shipped Rebol does, and writing it
+        // would mean reporting on a REBSER that is not there.
+        define("dump", List.of(Parameter.required("value")),
+                Set.of("fmt"),
+                (arguments, evaluator, context, refinements) -> arguments.getFirst());
+
+        // check: val [series!] -- "Temporary series debug check"
+        //
+        // Not debug-only. It walks the series looking for a terminator in the
+        // wrong place and raises `bad-series` when it finds one:
+        //
+        //     for (n = 0; n < SERIES_TAIL(ser); n++)
+        //         if (IS_END(BLK_SKIP(ser, n))) goto err;
+        //     if (!IS_END(BLK_SKIP(ser, n))) goto err;
+        //
+        // That is the C's own invariant -- every REBSER holds a terminator past
+        // its tail and none before it -- and a JEBOL series has no terminator to
+        // be in the wrong place. So the check holds for every series, always,
+        // and the answer is `*D_RET = *val`: the value, at the position it came
+        // in at.
+        define("check", List.of(Parameter.required("series", Typeset.SERIES.members())),
+                (arguments, evaluator, context) -> arguments.getFirst());
+
+        // evoke: chant [word! block! integer!] -- "Special guru meditations."
+        define("evoke", List.of(Parameter.required("chant",
+                        Set.of(Datatype.WORD, Datatype.BLOCK, Datatype.INTEGER))),
+                (arguments, evaluator, context) -> {
+                    List<Value> chants = arguments.getFirst() instanceof BlockValue several
+                            ? several.remaining()
+                            : List.of(arguments.getFirst());
+                    // Walked by position rather than by item, because one chant
+                    // takes an argument: `case SYM_STACK_SIZE: arg++;` reads the
+                    // next value as the size and steps over it, so the number in
+                    // `evoke [stack-size 100]` is never a chant of its own.
+                    for (int at = 0; at < chants.size(); at++) {
+                        at += obey(chants.get(at), evaluator);
+                    }
+                    return UnsetValue.unset();
+                });
+
+        // stack: offset [integer!] /block /word /func /args /size /depth /limit
+        define("stack", List.of(Parameter.required("offset", Set.of(Datatype.INTEGER))),
+                Set.of("block", "word", "func", "args", "size", "depth", "limit"),
+                (arguments, evaluator, context, refinements) -> {
+                    int offset = (int) ((IntegerValue) arguments.getFirst()).magnitude();
+                    // An offset naming no frame answers none, whatever was
+                    // asked for. The C tests it before it reads a single
+                    // refinement:
+                    //     sp = Stack_Frame(index);
+                    //     if (!sp) return R_NONE;
+                    // So a caller walking outwards can tell where the stack
+                    // ends; answering a number regardless would make the walk
+                    // run for ever.
+                    if (offset < 0 || offset >= evaluator.framesOpen()) {
+                        return NoneValue.none();
+                    }
+                    if (refinements.contains("word")) {
+                        // A call made on a value rather than through a word
+                        // carries no name, and answers none rather than an
+                        // empty word -- there is no such thing.
+                        return evaluator.functionBeingRun(offset)
+                                .filter(name -> !name.isEmpty())
+                                .<Value>map(WordValue::of)
+                                .orElseGet(NoneValue::none);
+                    }
+                    if (refinements.contains("depth")) {
+                        return IntegerValue.of(evaluator.framesOpen());
+                    }
+                    if (refinements.contains("limit")) {
+                        return IntegerValue.of(Evaluator.DEFAULT_MAXIMUM_DEPTH);
+                    }
+                    // /SIZE is in value units rather than frames, and a frame
+                    // is more than one value, so the two answers differ on
+                    // purpose.
+                    if (refinements.contains("size")) {
+                        return IntegerValue.of(evaluator.framesOpen() * FRAME_VALUE_UNITS);
+                    }
+                    return NoneValue.none();
+                });
+    }
+
+    /** `"^/STACK[%d] %s[%d] %s"` in the `stack` block of boot/strings.reb. */
+    private static final String FRAME_LINE = "%nSTACK[%d] %s[%d] %s";
+
+    /** `"\t%s: %72r"` -- a tab, the slot's name, and its value molded. */
+    private static final String SLOT_LINE = "\t%s: %s";
+
+    /** The width `%72r` allows a molded value in a stack dump. */
+    private static final int SLOT_MOLD_LIMIT = 72;
+
+    /** What the C prints where a call was made through no word at all. */
+    private static final String NO_NAME = "?";
+
+    /**
+     * Prints the frame stack, innermost frame first, as {@code Dump_Stack} does.
+     *
+     * <p>One line per open frame and one per slot under it. The C recurses into
+     * {@code PRIOR_DSF(dsf)} after printing the frame it is on, so the order is
+     * the order a caller reads a backtrace in.
+     *
+     * <p>The number in brackets is the C's data stack pointer at that frame: how
+     * many value slots are in use up to and including it, so it falls as the
+     * walk goes outwards. Measured here the way STACK/SIZE measures the same
+     * stack, because both read DSP in the C and two natives disagreeing about
+     * one stack would be worse than either being rough.
+     *
+     * <p>A line is printed even with nothing open, because the C prints before
+     * it tests {@code if (dsf > 0)}. Printing nothing there would read as a DS
+     * that did not run.
+     */
+    private void printTheFrameStack(Evaluator evaluator) {
+        List<Evaluator.OpenCall> open = evaluator.callsInProgress();
+        if (open.isEmpty()) {
+            evaluator.output().writeLine(String.format(
+                    FRAME_LINE, 0, NO_NAME, 0, Datatype.FUNCTION.literalSpelling()));
+            return;
+        }
+        int slotsInUse = open.size() * FRAME_VALUE_UNITS;
+        for (Evaluator.OpenCall call : open) {
+            List<String> slots = call.slotNames();
+            evaluator.output().writeLine(String.format(FRAME_LINE,
+                    slotsInUse,
+                    call.name().isEmpty() ? NO_NAME : call.name(),
+                    slots.size(),
+                    call.function().datatype().literalSpelling()));
+            for (String slot : slots) {
+                evaluator.output().writeLine(String.format(SLOT_LINE, slot,
+                        moldedWithin(call.locals().slotFor(
+                                Context.canonicalise(slot)).value(), SLOT_MOLD_LIMIT)));
+            }
+            slotsInUse -= FRAME_VALUE_UNITS;
+        }
+    }
+
+    /** A value molded and cut to a width, the way the C's `%72r` does. */
+    private static String moldedWithin(Value value, int width) {
+        String written = Molder.mold(value);
+        return written.length() <= width ? written : written.substring(0, width);
+    }
+
+    /**
+     * The chants EVOKE has and this build cannot perform.
+     *
+     * <p>All six are inside {@code #ifdef DEBUG}, and the {@code #else} gives
+     * them one line between them: {@code Trap0(RE_FEATURE_NA)}. So a released
+     * 3.22.1 refuses these too, and refuses them by name rather than pretending
+     * to have done something.
+     */
+    private static final Set<String> DEBUG_ONLY_CHANTS = Set.of(
+            "crash-dump", "watch-recycle", "watch-alloc",
+            "watch-obj-copy", "watch-expand", "crash");
+
+    /**
+     * The list of chants, printed for anything the dialect does not know.
+     *
+     * <p>Assembled by the preprocessor in the C, so a release build lists
+     * `stack-size` and the two numbered checks and not the watch chants: those
+     * sit inside the same {@code #ifdef DEBUG} that refuses them.
+     */
+    private static final String EVOKE_HELP = """
+            Evoke values:
+            [stack-size n]
+
+            1: check memory pools
+            2: check bind table
+            """;
+
+    /**
+     * Does what one chant asks, or says why it cannot, and answers how many
+     * values after it the chant took as its own.
+     *
+     * <p>Three answers and no more. A debug-only chant raises `feature-na`.
+     * A chant naming something this interpreter does by itself -- `stack-size`,
+     * which grows a buffer the C also grows unasked, and the numbered checks
+     * over pools that cannot be wrong here -- is accepted and needs nothing
+     * done. Anything else prints the list, which is the C's own default.
+     *
+     * <p>`stack-size` takes the value after it. The C steps over it without
+     * counting it, and then reads one value past the end of the block; the
+     * stepping is the behaviour and the overrun is not, so the count comes back
+     * here and the walk stays inside the block.
+     */
+    private int obey(Value chant, Evaluator evaluator) {
+        if (chant instanceof WordValue named) {
+            if (DEBUG_ONLY_CHANTS.contains(named.canonical())) {
+                throw Raised.of(EvaluationFailure.FEATURE_NA, named.spelling());
+            }
+            if (named.canonical().equals("stack-size")) {
+                return 1;
+            }
+            if (named.canonical().equals("delect")) {
+                return 0;
+            }
+            evaluator.output().write(EVOKE_HELP);
+            return 0;
+        }
+        // The C tests IS_WORD and IS_INTEGER separately on the same item, so a
+        // block carries both forms. 0 runs both memory checks, 1 the pools and
+        // 2 the bind table; anything else prints the list.
+        if (chant instanceof IntegerValue which
+                && (which.magnitude() < 0 || which.magnitude() > 2)) {
+            evaluator.output().write(EVOKE_HELP);
+        }
+        return 0;
+    }
+
+    /**
+     * system/standard/stats, refreshed in place and answered.
+     *
+     * <p>Four of the thirteen fields are real measurements here: the timer,
+     * the count of values walked, and the counts of native and function calls.
+     * The other nine name Rebol's own series pool -- series-made, series-freed,
+     * series-expanded, series-bytes, series-recycled, made-blocks,
+     * made-objects, recycles, collisions -- and JEBOL has no such pool. Those
+     * are left at zero.
+     *
+     * <p>Zero is not a claim that nothing was allocated. It is the absence of
+     * a figure, and it reads the same as one, which is worth knowing before
+     * trusting a profile taken here. What the JVM allocates is the JVM's
+     * business and is not countable per REBOL value without instrumenting
+     * every constructor.
+     */
+    private Value filledInProfile(Evaluator evaluator) {
+        Value standing = pathInto(evaluator.systemContext(), "system", "standard", "stats");
+        if (!(standing instanceof ObjectValue profile)) {
+            return NoneValue.none();
+        }
+        Context fields = profile.context();
+        setIfPresent(fields, "timer",
+                TimeValue.ofNanoseconds(System.nanoTime() - startedAt));
+        setIfPresent(fields, "evals", IntegerValue.of(evaluator.valuesWalked()));
+        setIfPresent(fields, "eval-natives", IntegerValue.of(evaluator.nativesCalled()));
+        setIfPresent(fields, "eval-functions", IntegerValue.of(evaluator.functionsCalled()));
+        return profile;
+    }
+
+    /** Writes a field only when the object has it, so a short prototype is safe. */
+    private static void setIfPresent(Context fields, String name, Value written) {
+        if (fields.holds(name)) {
+            fields.set(name, written);
+        }
+    }
+
+    /** What WAIT accepts: `value [number! time! port! block! none!]`. */
+    private static Set<Datatype> waitableDatatypes() {
+        Set<Datatype> accepted = EnumSet.copyOf(Typeset.NUMBER.members());
+        accepted.addAll(List.of(Datatype.TIME, Datatype.PORT,
+                Datatype.BLOCK, Datatype.NONE));
+        return Set.copyOf(accepted);
+    }
+
+    /**
+     * Sleeps, in slices, asking between each whether the script should stop.
+     *
+     * <p>One long sleep would outlive the bounds the host set: the evaluator
+     * checks the deadline between steps, and a sleeping thread takes no steps.
+     * A script that waited an hour under a one-second limit would run for the
+     * hour, which breaks the promise that running too long arrives as an
+     * outcome rather than as a hung thread.
+     */
+    private static void sleepInterruptibly(long milliseconds, Evaluator evaluator) {
+        long slice = 50;
+        long remaining = milliseconds;
+        while (remaining > 0) {
+            if (evaluator.reasonToStop().isPresent()) {
+                return;
+            }
+            try {
+                Thread.sleep(Math.min(slice, remaining));
+            } catch (InterruptedException stopped) {
+                // The host asked, through the thread rather than through the
+                // interruption hook. Both mean stop, so honour it and restore
+                // the flag for whatever is above.
+                Thread.currentThread().interrupt();
+                return;
+            }
+            remaining -= slice;
+        }
+    }
+
+    /**
+     * Roughly how many values a frame occupies, for STACK/SIZE and for DS.
+     *
+     * <p>Both, because the C reads the same DSP for both and a caller who asks
+     * one and then the other has to be told the same thing.
+     */
+    private static final int FRAME_VALUE_UNITS = 8;
+
+    /** When this interpreter started, for STATS/TIMER. */
+    private final long startedAt = System.nanoTime();
+
+    /** JEBOL's version, as text and as the tuple /DATA answers. */
+    private static final String VERSION_TEXT = "0.1.0";
+    private static final int[] VERSION_PARTS = {0, 1, 0};
+
+    /** What POKE and POKEZ will write into. */
+    private static Set<Datatype> pokeableDatatypes() {
+        Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
+        accepted.add(Datatype.BITSET);
+        accepted.add(Datatype.TUPLE);
+        return Set.copyOf(accepted);
+    }
 
     private void defineStrings() {
         // These change the string they were given and answer it, rather
@@ -7707,14 +11784,32 @@ public final class Natives {
         // characters it is given. /HEAD and /TAIL bound the plain form.
         // A binary drops zero bytes and a block drops nones, which is the
         // same idea as a string dropping spaces.
+        // `series<series! object! error! module!>` is what TRIM declares, and
+        // series! is the whole family: the any-path datatypes and a hash trim
+        // as a block does, because they are blocks. An object, an error and a
+        // module trim differently -- see trimmedObject.
         define("trim", List.of(
                         Parameter.required("text", Set.of(
                                 Datatype.STRING, Datatype.FILE, Datatype.URL,
                                 Datatype.EMAIL, Datatype.TAG, Datatype.REF,
-                                Datatype.BINARY, Datatype.BLOCK)),
+                                Datatype.BINARY, Datatype.BLOCK, Datatype.PAREN,
+                                Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH,
+                                Datatype.LIT_PATH, Datatype.HASH,
+                                Datatype.OBJECT, Datatype.ERROR, Datatype.MODULE)),
                         Parameter.belongingTo("with", "characters", Set.of())),
                 Set.of("head", "tail", "auto", "lines", "all", "with"),
                 (arguments, evaluator, context, refinements) -> {
+                    // An object takes no refinements at all:
+                    // `if (Find_Refines(ds, ALL_TRIM_REFS)) Trap0(RE_BAD_REFINES);`
+                    if (arguments.getFirst() instanceof ObjectValue
+                            || arguments.getFirst() instanceof ModuleValue
+                            || arguments.getFirst() instanceof ErrorValue) {
+                        if (!refinements.isEmpty()) {
+                            throw Raised.of(EvaluationFailure.BAD_REFINES,
+                                    "trim on an object takes no refinements");
+                        }
+                        return trimmedObject(arguments.getFirst());
+                    }
                     refuseContradictoryTrim(arguments.getFirst(), refinements);
                     if (arguments.getFirst() instanceof BlockValue block) {
                         return trimmedBlock(block, refinements);
@@ -7726,11 +11821,11 @@ public final class Natives {
                             refinements.contains("head") != refinements.contains("tail");
                     return rewritten((StringValue) arguments.getFirst(), text -> {
                         if (refinements.contains("with") && arguments.size() > 1) {
-                            String unwanted = Molder.form(arguments.get(1));
+                            Set<Integer> unwanted = unwantedCodePoints(arguments.get(1));
                             StringBuilder kept = new StringBuilder();
-                            text.chars()
-                                    .filter(letter -> unwanted.indexOf(letter) < 0)
-                                    .forEach(letter -> kept.append((char) letter));
+                            text.codePoints()
+                                    .filter(letter -> !unwanted.contains(letter))
+                                    .forEach(kept::appendCodePoint);
                             return kept.toString();
                         }
                         if (refinements.contains("all")) {
@@ -7765,27 +11860,43 @@ public final class Natives {
         // ones given names. A script that computes which type it wants can
         // only use this one.
         define("to", List.of(Parameter.required("type"), Parameter.required("value")),
-                (arguments, evaluator, context) -> convertedTo(
-                        arguments.get(0), arguments.get(1)));
+                (arguments, evaluator, context) -> {
+                    // `if (action == A_MAKE || action == A_TO)` -- an event's one
+                    // arm serves both, so TO does exactly what MAKE does here.
+                    // Which is unusual: for most datatypes the two part company on
+                    // whether a number is a capacity or a value.
+                    if (arguments.get(0) instanceof DatatypeValue wanted
+                            && wanted.represents() == Datatype.EVENT) {
+                        return EventPath.made(wanted, arguments.get(1),
+                                value -> simpleValueOf(value, evaluator, context));
+                    }
+                    return convertedTo(arguments.get(0), arguments.get(1));
+                });
 
-        define("as-pair", takesNumbers("x", "y"),
+        define("as-pair", takesOnlyNumbers("x", "y"),
                 (arguments, evaluator, context) -> PairValue.of(
                         Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1))));
 
         // The answer is an issue rather than a string, padded to the
         // full width of a whole number unless /size narrows it.
         define("to-hex", List.of(
-                        Parameter.required("value", Set.of(Datatype.INTEGER)),
+                        Parameter.required("value", Set.of(
+                                Datatype.INTEGER, Datatype.CHAR, Datatype.TUPLE)),
                         Parameter.belongingTo("size", "width", Set.of(Datatype.INTEGER))),
                 Set.of("size"),
                 (arguments, evaluator, context, refinements) -> {
-                    String hex = "%016X".formatted(
-                            ((IntegerValue) arguments.get(0)).magnitude());
-                    if (refinements.contains("size") && arguments.size() > 1) {
-                        int width = (int) ((IntegerValue) arguments.get(1)).magnitude();
-                        hex = hex.substring(Math.max(0, hex.length() - width));
-                    }
-                    return WordValue.of(hex, Datatype.ISSUE);
+                    java.util.OptionalInt width =
+                            refinements.contains("size") && arguments.size() > 1
+                            ? java.util.OptionalInt.of(
+                                    (int) ((IntegerValue) arguments.get(1)).magnitude())
+                            : java.util.OptionalInt.empty();
+                    return WordValue.of(switch (arguments.getFirst()) {
+                        case TupleValue tuple -> hexOfEachSegment(tuple);
+                        case CharacterValue character -> hexSizedToItsMagnitude(
+                                character.codepoint(), width);
+                        default -> hexSixteenWide(
+                                ((IntegerValue) arguments.getFirst()).magnitude(), width);
+                    }, Datatype.ISSUE);
                 });
 
         // Four spaces to a tab by default, which is not the eight a
@@ -7799,7 +11910,8 @@ public final class Natives {
         // new one, so a caller holding it sees the change and a protected
         // string refuses. /LINES answers the lines as a block instead of
         // rewriting anything.
-        define("deline", List.of(Parameter.required("text", Set.of(Datatype.STRING))),
+        // `string [any-string!]` -- a file or a url holds line breaks too.
+        define("deline", List.of(Parameter.required("text", Typeset.ANY_STRING.members())),
                 Set.of("lines"),
                 (arguments, evaluator, context, refinements) -> {
                     StringValue text = (StringValue) arguments.getFirst();
@@ -7824,10 +11936,13 @@ public final class Natives {
         // AS reads a value as a sibling type without copying it. Two
         // datatypes that hold different things cannot be read as each
         // other, and that is where AS stops and TO starts.
-        define("as", List.of(Parameter.required("type", Set.of(Datatype.DATATYPE)),
+        define("as", List.of(
+                        Parameter.required("type", asTypeOrExample()),
                         Parameter.required("value")),
                 (arguments, evaluator, context) -> {
-                    Datatype wanted = ((DatatypeValue) arguments.get(0)).represents();
+                    Datatype wanted = arguments.get(0) instanceof DatatypeValue named
+                            ? named.represents()
+                            : arguments.get(0).datatype();
                     Value value = arguments.get(1);
                     if (value.datatype() == wanted) {
                         return value;
@@ -7836,7 +11951,7 @@ public final class Natives {
                         return block.as(wanted);
                     }
                     if (value instanceof StringValue text && wanted.isAnyString()) {
-                        return StringValue.of(text.text(), wanted);
+                        return text.as(wanted);
                     }
                     throw Raised.of(EvaluationFailure.NOT_SAME_CLASS,
                             value.datatype().literalSpelling() + " and "
@@ -7876,6 +11991,19 @@ public final class Natives {
         if (parts.isEmpty() || !(parts.getFirst() instanceof BlockValue spec)) {
             return raiseCannotUse(given, "make on a function");
         }
+        // Deriving from a native replaces only what it says about itself,
+        // because its behaviour is C and there is no REBOL body to give. A
+        // second block is a body, and `make :read [[][]]` is refused for
+        // exactly that -- issue-1052. Rebol's own `empty?: make :tail? [[...]]`
+        // gives the one spec block and no more.
+        //
+        // cannot-use rather than bad-make-arg: the prototype form reaches
+        // Copy_Function, which fails and reports through Trap_Reflect. The
+        // datatype forms `make native! [...]` are the bad-make-arg door,
+        // refused earlier in Make_Function.
+        if (original instanceof NativeValue && parts.size() > 1) {
+            return raiseCannotUse(given, "make");
+        }
         List<Parameter> parameters = FunctionSpec.parametersIn(spec);
         return switch (original) {
             case NativeValue built -> new NativeValue(built.nativeName(), parameters);
@@ -7886,7 +12014,287 @@ public final class Natives {
         };
     }
 
-    private static Value makeOfDatatype(DatatypeValue wanted, Value from) {
+    /**
+     * MAKE IMAGE!, in the four forms `t-image.c` accepts.
+     *
+     * <p>An image is copied. A pair is a size, and the image it makes is opaque
+     * white -- `CLEAR_IMAGE` is a memset of 0xFF and the comment beside it says
+     * so. A block is a size followed by its contents, which `Create_Image` reads
+     * in a fixed order: a binary of RGB triples, then a binary of alpha bytes,
+     * then a starting index; or a tuple to fill with, then an alpha to fill with;
+     * or a block of tuples, one a pixel.
+     *
+     * <p>Anything else is `malconstruct`, which is the fall-through of every
+     * branch: `Trap1(RE_MALCONSTRUCT, arg)`.
+     */
+    private static Value madeImage(Value from) {
+        if (from instanceof ImageValue original) {
+            return new ImageValue(original.storage().copy(), 1);
+        }
+        if (from instanceof PairValue size) {
+            return ImageValue.of(sideOf(size.x()), sideOf(size.y()));
+        }
+        if (from instanceof BlockValue parts && !parts.remaining().isEmpty()) {
+            return imageFromParts(parts.remaining());
+        }
+        return raiseMalconstruct(from);
+    }
+
+    /**
+     * A side of a new image, clamped below and refused above.
+     *
+     * <p>`w = MAX(w, 0)` for a negative one, and `if (w > 0xFFFF || h > 0xFFFF)
+     * Trap1(RE_SIZE_LIMIT, ...)` for one too big. The two go different ways on
+     * purpose: a negative size is a mistake with an obvious reading and an
+     * oversized one is not.
+     */
+    private static int sideOf(double given) {
+        int side = (int) given;
+        if (side > ImageStorage.LONGEST_SIDE) {
+            throw Raised.of(EvaluationFailure.SIZE_LIMIT, "image!");
+        }
+        return Math.max(side, 0);
+    }
+
+    /** `Create_Image`: a size, and then whichever contents follow it. */
+    private static Value imageFromParts(List<Value> parts) {
+        if (!(parts.getFirst() instanceof PairValue size)) {
+            return raiseMalconstruct(parts.getFirst());
+        }
+        ImageValue made = ImageValue.of(sideOf(size.x()), sideOf(size.y()));
+        int at = 1;
+        if (at < parts.size() && parts.get(at) instanceof BinaryValue colours) {
+            fillColoursFrom(made, colours);
+            at++;
+            if (at < parts.size() && parts.get(at) instanceof BinaryValue alphas) {
+                fillAlphasFrom(made, alphas);
+                at++;
+            }
+            if (at < parts.size() && parts.get(at) instanceof IntegerValue start) {
+                // `VAL_INDEX(val) = (Int32s(block, 1) - 1)` -- one-based, and
+                // Int32s refuses anything below one.
+                made = made.atIndex(Math.max(1, (int) start.magnitude()));
+                at++;
+            }
+        } else if (at < parts.size() && parts.get(at) instanceof TupleValue colour) {
+            fillWith(made, colour);
+            at++;
+            if (at < parts.size() && parts.get(at) instanceof IntegerValue alpha) {
+                for (int pixel = 1; pixel <= made.storageLength(); pixel++) {
+                    made.storage().setAlphaAt(pixel, (int) alpha.magnitude() & 0xFF);
+                }
+                at++;
+            }
+        } else if (at < parts.size() && parts.get(at) instanceof BlockValue tuples) {
+            fillFromTuples(made, tuples.remaining());
+            at++;
+        }
+        // `if (!IS_END(block)) return 0;` and the caller traps: anything left
+        // over means the block was not one of the four shapes.
+        return at == parts.size() ? made : raiseMalconstruct(parts.get(at));
+    }
+
+    /** `Bin_To_RGB`: three bytes a pixel, and the alpha already there is kept. */
+    private static void fillColoursFrom(ImageValue made, BinaryValue colours) {
+        int pixels = Math.min(made.storageLength(), colours.lengthFromHere() / 3);
+        for (int pixel = 1; pixel <= pixels; pixel++) {
+            int at = colours.index() + (pixel - 1) * 3;
+            made.storage().setColourAt(pixel,
+                    colours.storage().at(at),
+                    colours.storage().at(at + 1),
+                    colours.storage().at(at + 2));
+        }
+    }
+
+    /** `Bin_To_Channel(..., SYM_ALPHA)`: one byte a pixel. */
+    private static void fillAlphasFrom(ImageValue made, BinaryValue alphas) {
+        int pixels = Math.min(made.storageLength(), alphas.lengthFromHere());
+        for (int pixel = 1; pixel <= pixels; pixel++) {
+            made.storage().setAlphaAt(pixel,
+                    alphas.storage().at(alphas.index() + pixel - 1));
+        }
+    }
+
+    /**
+     * `Fill_Rect` with the tuple, keeping the alpha when the tuple had none.
+     *
+     * <p>The last argument of `Fill_Rect` is `VAL_TUPLE_LEN(block) == 3`, which
+     * is how a three-part tuple leaves the alpha alone and a four-part one
+     * writes it.
+     */
+    private static void fillWith(ImageValue made, TupleValue colour) {
+        int[] parts = colour.segments();
+        for (int pixel = 1; pixel <= made.storageLength(); pixel++) {
+            made.storage().setColourAt(pixel,
+                    parts.length > 0 ? parts[0] : 0,
+                    parts.length > 1 ? parts[1] : 0,
+                    parts.length > 2 ? parts[2] : 0);
+            if (parts.length > 3) {
+                made.storage().setAlphaAt(pixel, parts[3]);
+            }
+        }
+    }
+
+    /** `Tuples_To_RGBA`: the pixels one by one, as far as either side reaches. */
+    private static void fillFromTuples(ImageValue made, List<Value> tuples) {
+        int pixels = Math.min(made.storageLength(), tuples.size());
+        for (int pixel = 1; pixel <= pixels; pixel++) {
+            if (!(tuples.get(pixel - 1) instanceof TupleValue colour)) {
+                raiseMalconstruct(tuples.get(pixel - 1));
+                return;
+            }
+            int[] parts = colour.segments();
+            made.storage().setColourAt(pixel,
+                    parts.length > 0 ? parts[0] : 0,
+                    parts.length > 1 ? parts[1] : 0,
+                    parts.length > 2 ? parts[2] : 0);
+            made.storage().setAlphaAt(pixel, parts.length > 3 ? parts[3] : 0xFF);
+        }
+    }
+
+    private static Value raiseMalconstruct(Value from) {
+        throw Raised.of(EvaluationFailure.MALCONSTRUCT,
+                Molder.mold(from));
+    }
+
+    /**
+     * How far along a navigation action was asked to go.
+     *
+     * <p>An integer, a decimal or a logic is the offset itself, and every series
+     * reads them the same way. A pair is a coordinate and only an image can read
+     * one: {@code diff = ((y - 1) * wide + x)} for AT, and without the 1 for SKIP
+     * and ATZ, because one counts from one and the others from zero.
+     */
+    private static long positionAskedFor(SeriesValue series, Value given, boolean fromOne) {
+        if (given instanceof PairValue coordinate) {
+            if (!(series instanceof ImageValue image)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG,
+                        series.datatype().literalSpelling()
+                                + " has no width, so a pair names no position in it");
+            }
+            return ((long) coordinate.y() - (fromOne ? 1 : 0)) * image.storage().wide()
+                    + (long) coordinate.x();
+        }
+        return switch (given) {
+            case IntegerValue number -> number.magnitude();
+            case DecimalValue number -> (long) number.quantity();
+            // `else if (IS_LOGIC(val)) n = (VAL_LOGIC(val) ? 1 : 2);` in
+            // Get_Num_Arg -- false counts two, however odd that reads.
+            case LogicValue yesOrNo -> yesOrNo.isTruthy() ? 1 : 2;
+            default -> 1;
+        };
+    }
+
+    /**
+     * A colour part as a byte, the three ways `arg_to_byte` reads one.
+     *
+     * <p>An integer as itself, a decimal rounded -- and rounding is the surprise,
+     * because every other decimal-to-integer conversion in the C truncates -- and
+     * a percent as a fraction of 255. Then clamped at both ends.
+     */
+    private static int colourByteOf(Value given) {
+        double number = switch (given) {
+            case IntegerValue whole -> whole.magnitude();
+            case DecimalValue fraction -> fraction.datatype() == Datatype.PERCENT
+                    ? fraction.quantity() * 255.0 + 0.5
+                    : fraction.quantity() + 0.5;
+            default -> 0;
+        };
+        return Math.max(0, Math.min(255, (int) number));
+    }
+
+    /** The first three parts of a tuple, which is what a colour is. */
+    private static int[] threeParts(TupleValue colour) {
+        int[] parts = colour.segments();
+        return new int[] {
+                parts.length > 0 ? parts[0] : 0,
+                parts.length > 1 ? parts[1] : 0,
+                parts.length > 2 ? parts[2] : 0};
+    }
+
+    /**
+     * The tuple, recoloured in place and answered.
+     *
+     * <p>`return R_ARG1` after writing through `(REBCLR*)VAL_TUPLE(...)`. A tuple
+     * here is immutable, so the answer is a new one with the same identity as far
+     * as a script can tell -- except that the C's caller keeps its own copy
+     * changed, which a script sees only if it held the tuple in a word. Pinned in
+     * the tests either way.
+     */
+    private static Value recolouredTuple(
+            TupleValue colour, java.util.function.UnaryOperator<int[]> formula) {
+        int[] made = formula.apply(threeParts(colour));
+        return TupleValue.of(made);
+    }
+
+    /**
+     * One formula over a colour or over every pixel of an image.
+     *
+     * <p>The two arms of each of these natives: `if (IS_TUPLE(value))` answers
+     * something about the colour, and the else walks the image from its position
+     * -- `len = VAL_IMAGE_LEN(value)`, `rgba = VAL_IMAGE_DATA(value)` -- writing
+     * each pixel and answering the image itself.
+     */
+    private static Value overEveryColour(
+            Value target,
+            java.util.function.Function<int[], Value> ofAColour,
+            java.util.function.UnaryOperator<int[]> ofAPixel) {
+        if (target instanceof TupleValue colour) {
+            return ofAColour.apply(threeParts(colour));
+        }
+        ImageValue image = (ImageValue) target;
+        for (int pixel = 1; pixel <= image.lengthFromHere(); pixel++) {
+            int[] channels = image.pixelAt(pixel);
+            int[] recoloured = ofAPixel.apply(new int[] {
+                    channels[0], channels[1], channels[2]});
+            image.storage().setColourAt(image.index() + pixel - 1,
+                    recoloured[0], recoloured[1], recoloured[2]);
+        }
+        return image;
+    }
+
+    /**
+     * A spec block's value, with a word or a path resolved first.
+     *
+     * <p>{@code Get_Simple_Value}: "Does easy lookup, else just returns the value
+     * as is." A word or a get-word becomes what it holds and a path becomes what
+     * it reads; everything else is left alone.
+     *
+     * <p>Both spec walkers that build a datatype from set-word pairs call it --
+     * {@code Set_GOB_Vars} and {@code Set_Event_Vars} -- and without it a spec can
+     * only carry values the source spelled out. Rebol's own gob test relies on it:
+     * `g2: make gob! [size: g1/size]` under "simple paths inside GOB".
+     *
+     * <p>Easy is the operative word. A function is answered rather than called and
+     * a paren is left as a paren, so a spec block is data with names in it rather
+     * than code.
+     */
+    private static Value simpleValueOf(Value given, Evaluator evaluator, Context context) {
+        if (given instanceof WordValue named
+                && (named.datatype() == Datatype.WORD
+                        || named.datatype() == Datatype.GET_WORD)) {
+            return evaluator.valueOfWordIn(named, context);
+        }
+        if (given instanceof BlockValue path
+                && (path.datatype() == Datatype.PATH
+                        || path.datatype() == Datatype.GET_PATH)) {
+            return evaluator.valueOfPathIn(path, context);
+        }
+        return given;
+    }
+
+    private static Value makeOfDatatype(
+            DatatypeValue wanted, Value from, Evaluator evaluator, Context context) {
+        if (wanted.represents() == Datatype.IMAGE) {
+            return madeImage(from);
+        }
+        if (wanted.represents() == Datatype.GOB) {
+            return madeGob(from, evaluator, context);
+        }
+        if (wanted.represents() == Datatype.EVENT) {
+            return EventPath.made(wanted, from,
+                    value -> simpleValueOf(value, evaluator, context));
+        }
         if (from instanceof IntegerValue && wanted.represents().isSeries()) {
             return switch (wanted.represents()) {
                 case BLOCK, PAREN, PATH -> BlockValue.block(List.of()).as(wanted.represents());
@@ -7968,12 +12376,23 @@ public final class Natives {
             // is 10000% and `make money! 100%` is $1. The two conversions are
             // inverses and neither multiplies by a hundred.
             case PERCENT -> DecimalValue.percent(Comparison.asDouble(value));
-            case STRING -> StringValue.of(runTogether(value));
+            // A binary is DECODED as UTF-8, never printed as hexadecimal.
+            // `make_string` in t-string.c reads it with `Decode_UTF_String`
+            // and raises invalid-utf if the bytes are not valid.
+            //
+            // Printing the hex instead is what stopped DECODE-URL: Rebol's
+            // url-parser works on a binary throughout and ends every rule
+            // with `to string! dehex value`, so a host came back as
+            // "6578616D706C65".
+            case STRING -> value instanceof BinaryValue octets
+                    ? StringValue.of(textDecodedFrom(octets))
+                    : StringValue.of(runTogether(value));
             // The rest of the string family takes the text of the value
             // the same way, so `to file! [a b]` is %ab: nothing inserts
             // separators between the parts.
-            case FILE, URL, EMAIL, TAG, REF ->
-                    StringValue.of(runTogether(value), wanted.represents());
+            case FILE, URL, EMAIL, TAG, REF -> value instanceof BinaryValue octets
+                    ? StringValue.of(textDecodedFrom(octets), wanted.represents())
+                    : StringValue.of(runTogether(value), wanted.represents());
             // TO BINARY! reads bytes rather than text. A string gives its
             // UTF-8 and a block gives one byte per number, but an integer
             // gives its whole machine width -- 65 is eight bytes, not one.
@@ -8007,10 +12426,45 @@ public final class Natives {
             // A paren and a hash hold what a block holds and differ only
             // in how they are written and run, so the same conversion
             // serves all three and keeps the one that was asked for.
-            case BLOCK, PAREN, HASH -> (value instanceof BlockValue block
-                    ? block
-                    : BlockValue.block(value)).as(wanted.represents());
-            case MAP -> MapValue.of(itemsOf(value));
+            // The whole any-block family, not just the three that hold data.
+            // A path is a block with a different spelling, and `to path!` of a
+            // block is how code builds one it could not write literally:
+            // Rebol's own ANY-OF and ALL-OF do `to path! reduce [...]`.
+            case BLOCK, PAREN, HASH, PATH, SET_PATH, GET_PATH, LIT_PATH ->
+                    // A typeset becomes the datatypes it holds, not a block
+                    // holding the typeset. That is what makes
+                    // `exclude reduce [integer! decimal!] to-block scalar!`
+                    // the ordinary way to ask which datatypes a family covers.
+                    // In the boot table's order rather than alphabetical,
+                    // because the C keeps every datatype list in types.reb
+                    // order and the suite compares the tails of two of them.
+                    (value instanceof TypesetValue kinds
+                            ? BlockValue.block(kinds.members().stream()
+                                    .sorted()
+                                    .<Value>map(DatatypeValue::of).toList())
+                            // A map becomes its pairs, which is the same
+                            // question BODY-OF asks: `Set_Block(arg,
+                            // Map_To_Block(mapser, 0))`. A block holding the
+                            // map would be the answer to no question anyone
+                            // asks, and is what a conversion that did not know
+                            // about maps produces.
+                            : value instanceof MapValue map
+                                    ? BlockValue.block(map.flattened())
+                            : value instanceof BlockValue block
+                                    ? block
+                                    : BlockValue.block(value)).as(wanted.represents());
+            // TO MAP! is MAKE MAP! without the room-count reading. The C parts
+            // them on one line -- `if (action == A_TO) Trap_Arg(arg);` inside
+            // the number arm -- because a conversion answers something made of
+            // what it was given, and there are no pairs in a number.
+            case MAP -> {
+                if (value instanceof IntegerValue || value instanceof DecimalValue) {
+                    throw Raised.of(EvaluationFailure.INVALID_ARG,
+                            "to map! wants pairs, and a number is room for pairs "
+                                    + "rather than any: make map! reads it that way");
+                }
+                yield mapMadeFrom(value);
+            }
             case CHAR -> asCharacter(value);
             case PAIR -> asPair(value);
             case MONEY -> asMoney(value);
@@ -8021,6 +12475,17 @@ public final class Natives {
             case PORT -> value instanceof ObjectValue built
                     ? new PortValue(built.context())
                     : raiseBadMakeArg(value, "port!");
+            // And MAKE-MODULE* in sys-base.reb ends with
+            // `to module! reduce [spec context]`, so this is the last step of
+            // building every module. The block holds the header first and the
+            // words second, and t-object.c refuses anything else:
+            //     if (!IS_BLOCK(arg) || IS_EMPTY(arg)) Trap_Make(REB_MODULE, arg);
+            //     val = VAL_BLK_DATA(arg);
+            //     if (!IS_OBJECT(val)) Trap_Arg(val);
+            //     obj = VAL_OBJ_FRAME(val);
+            //     val++;
+            //     if (!IS_OBJECT(val)) Trap_Arg(val);
+            case MODULE -> moduleFromHeaderAndWords(value);
             case BITSET -> bitsetOf(value);
             // A typeset need not be one of the named families: code can
             // build its own from whichever datatypes it cares about, and
@@ -8130,6 +12595,11 @@ public final class Natives {
         String spelling = switch (value) {
             case CharacterValue letter -> Character.toString(letter.codepoint());
             case StringValue text -> text.text();
+            // A datatype answers the word that names it, exclamation mark and
+            // all: `to word! logic!` is `logic!`. Which is what makes a
+            // datatype comparable against a name a script wrote down, and it
+            // is the pair of `to datatype! 'logic!` going the other way.
+            case DatatypeValue named -> named.represents().literalSpelling();
             default -> null;
         };
         if (spelling == null) {
@@ -8497,6 +12967,168 @@ public final class Natives {
         return pair;
     }
 
+    /**
+     * What the clock says, in the part NOW was asked for.
+     *
+     * <p>One reading answers all ten questions, which is why only one of them
+     * may be asked: {@code Assert_Max_Refines(ds, D_REF(9) ? 2 : 1); // prevent
+     * too many refines like: now/year/month}. /PRECISE is exempt because it
+     * says how to read the clock rather than which part to answer.
+     *
+     * <p>The parts are read from the local date rather than from the instant
+     * underneath -- {@code Adjust_Date_Zone(ret, FALSE)} for every part
+     * refinement -- so within an hour of midnight the day this answers is the
+     * local day and not the UTC one.
+     */
+    private static Value whatTheClockSays(Set<String> refinements) {
+        boolean precise = refinements.contains("precise");
+        long asked = refinements.size() - (precise ? 1 : 0);
+        if (asked > 1) {
+            throw Raised.of(EvaluationFailure.BAD_REFINES,
+                    "now answers one part of the clock at a time, and was asked for "
+                            + asked);
+        }
+        java.time.ZonedDateTime here = java.time.ZonedDateTime.now();
+        // `if (!D_REF(9)) dat.nano = 0; // Not /precise` -- dropped rather than
+        // rounded, so a caller timing something short and not asking for
+        // precision measures nothing at all.
+        if (!precise) {
+            here = here.withNano(0);
+        }
+        if (refinements.contains("utc")) {
+            java.time.ZonedDateTime there =
+                    here.withZoneSameInstant(java.time.ZoneOffset.UTC);
+            return dateWithZone(there, 0);
+        }
+        int offsetMinutes = here.getOffset().getTotalSeconds() / 60;
+        if (refinements.contains("date")) {
+            return DateValue.of(here.getYear(), here.getMonthValue(), here.getDayOfMonth());
+        }
+        if (refinements.contains("time")) {
+            return TimeValue.ofNanoseconds(here.toLocalTime().toNanoOfDay());
+        }
+        if (refinements.contains("zone")) {
+            return TimeValue.ofNanoseconds(offsetMinutes * 60L * NANOSECONDS_A_SECOND);
+        }
+        // Monday is day one, which the C says in as many words and which is not
+        // what every calendar does. A JVM agrees, so this is a coincidence
+        // worth naming rather than relying on quietly.
+        if (refinements.contains("weekday")) {
+            return IntegerValue.of(here.getDayOfWeek().getValue());
+        }
+        if (refinements.contains("yearday")) {
+            return IntegerValue.of(here.getDayOfYear());
+        }
+        if (refinements.contains("year")) {
+            return IntegerValue.of(here.getYear());
+        }
+        if (refinements.contains("month")) {
+            return IntegerValue.of(here.getMonthValue());
+        }
+        if (refinements.contains("day")) {
+            return IntegerValue.of(here.getDayOfMonth());
+        }
+        return dateWithZone(here, offsetMinutes);
+    }
+
+    /** A moment as a date carrying the time of day and an offset in minutes. */
+    private static DateValue dateWithZone(java.time.ZonedDateTime moment, int offsetMinutes) {
+        return new DateValue(moment.getYear(), moment.getMonthValue(),
+                moment.getDayOfMonth(),
+                java.util.Optional.of(
+                        TimeValue.ofNanoseconds(moment.toLocalTime().toNanoOfDay())),
+                java.util.Optional.of(offsetMinutes));
+    }
+
+    /**
+     * A map made from whatever MAKE MAP! was given.
+     *
+     * <p>Five things and no others. A block, a paren or another map hold pairs
+     * already: {@code if (!(IS_BLOCK(data) || IS_MAP(data) || IS_PAREN(data)))
+     * return FALSE;}. An object is turned into a block of its fields first --
+     * {@code Set_Block(arg, Make_Object_Block(...)); goto map_from_block;} --
+     * and a number is room rather than content.
+     *
+     * <p>Everything else is {@code Trap_Make}, which matters: a string walked
+     * one character at a time would make {@code make map! "ab"} into a map of
+     * a to b, and a caller who passed the wrong thing would never find out.
+     */
+    private static Value mapMadeFrom(Value given) {
+        if (given instanceof IntegerValue || given instanceof DecimalValue) {
+            // `Int32s(arg, 0)` is the signed read with a floor of zero, and it
+            // raises rather than clamping: there is no negative amount of room.
+            if (Comparison.asDouble(given) < 0) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                        "a map cannot have room for " + Molder.form(given) + " pairs");
+            }
+            return MapValue.empty();
+        }
+        List<Value> pairs = switch (given) {
+            case MapValue already -> already.flattened();
+            case ObjectValue object -> object.context().slots().stream()
+                    .filter(slot -> !slot.canonical().equals("self"))
+                    .<Value>mapMulti((slot, accept) -> {
+                        accept.accept(WordValue.of(slot.spelling()));
+                        accept.accept(slot.value());
+                    })
+                    .toList();
+            case BlockValue block when block.datatype() == Datatype.BLOCK
+                    || block.datatype() == Datatype.PAREN -> block.remaining();
+            default -> null;
+        };
+        if (pairs == null) {
+            return raiseBadMakeArg(given, "map!");
+        }
+        // An odd number of items is a key with no value, which is a typo
+        // rather than a map: `if (n & 1) return FALSE;` and the caller
+        // raises on it.
+        if (pairs.size() % 2 != 0) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    "a map needs a value for every key, and this has "
+                            + pairs.size() + " items");
+        }
+        return MapValue.of(pairs);
+    }
+
+    /**
+     * Refuses a set-word or a set-path handed to DO on its own.
+     *
+     * <p>`case REB_SET_WORD: case REB_SET_PATH: Trap_Arg(value);` -- there is
+     * nothing after it to assign, so the caller has handed over half an
+     * expression rather than something to evaluate.
+     */
+    private static Value raiseHalfAnExpression(Value assigning) {
+        throw Raised.of(EvaluationFailure.INVALID_ARG,
+                Molder.mold(assigning) + " assigns, and there is nothing here to assign");
+    }
+
+    /**
+     * A number as a byte, refusing one that will not fit.
+     *
+     * <p>`if (VAL_INT64(arg) < 0 || VAL_INT64(arg) > 255) Trap_Range(arg);`
+     * wherever a number reaches a binary. Truncating instead is the silent
+     * kind of wrong: writing 300 stored 44 and answered 300, so the caller was
+     * told the write had happened as asked.
+     */
+    private static int asAnOctet(IntegerValue number) {
+        long wanted = number.magnitude();
+        // A negative is refused as a wrong argument and a large one as out of
+        // range, which is the distinction a real R3 makes: only the second ever
+        // reaches `if (c > 0xff) Trap_Range(val);`.
+        if (wanted < 0) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    wanted + " is not a byte: a binary holds 0 to 255");
+        }
+        if (wanted > 255) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    wanted + " is not a byte: a binary holds 0 to 255");
+        }
+        return (int) wanted;
+    }
+
+    /** The largest codepoint a character can hold, as MAX_CHAR does. */
+    private static final long MAXIMUM_CODEPOINT = 0x10FFFF;
+
     private static Value raiseBadMakeArg(Value value, String wanted) {
         throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
                 "cannot make a " + wanted + " out of "
@@ -8619,6 +13251,29 @@ public final class Natives {
         if (value instanceof MoneyValue amount) {
             return amount.amount().longValue();
         }
+        // Three datatypes have a parity of their own, each in its own
+        // dispatcher, and each counts something different.
+        //
+        // A character counts its codepoint: `case A_EVENQ: chr = ~chr; case
+        // A_ODDQ: DECIDE(chr & 1);`.
+        //
+        // A time counts its whole seconds: `DECIDE((SECS_IN(secs) & 1) != 0)`.
+        //
+        // A date counts the day of the month, and the C gets there by two
+        // inversions that cancel. It counts from zero -- `day = VAL_DAY(val) -
+        // 1` at the top of the dispatcher -- and then asks the opposite
+        // question: `case A_ODDQ: DECIDE((day & 1) == 0);`. So ODD? is true when
+        // the zero-based day is even, which is when the calendar day is odd.
+        // The first of the month is odd, as a person would say it is.
+        if (value instanceof CharacterValue letter) {
+            return letter.codepoint();
+        }
+        if (value instanceof TimeValue time) {
+            return time.nanoseconds() / 1_000_000_000L;
+        }
+        if (value instanceof DateValue date) {
+            return date.day();
+        }
         if (value instanceof DecimalValue fractional) {
             double magnitude = fractional.quantity();
             // Past the point where a double can tell neighbouring whole
@@ -8653,14 +13308,62 @@ public final class Natives {
      */
     private static Optional<Long> howManyWanted(
             List<Value> arguments, Set<String> refinements, int where) {
+        return howManyWanted(NoneValue.none(), arguments, refinements, where);
+    }
+
+    /**
+     * How much /PART asked for, counted from the value being read.
+     *
+     * <p>/PART takes a position as readily as a count, and then means "up to
+     * here". {@code Partial1} decides it in three lines, and the last one is
+     * the reason the source has to be passed in:
+     *
+     * <pre>
+     * if (is_ser &amp;&amp; VAL_TYPE(sval) == VAL_TYPE(lval) &amp;&amp; VAL_SERIES(sval) == VAL_SERIES(lval))
+     *     len = (REBINT)VAL_INDEX(lval) - (REBINT)VAL_INDEX(sval);
+     * else
+     *     Trap1(RE_INVALID_PART, lval);
+     * </pre>
+     *
+     * <p>The position must be into the same series, so the difference of the
+     * two indexes is a length. A position into some other series names no
+     * length at all and is refused rather than guessed at.
+     *
+     * <p>Rebol's own JSON codec copies a matched run this way:
+     * {@code mark1: some normal-chars mark2: (append/part output mark1 mark2)}.
+     * Refusing a string where a count was declared stopped TO-JSON on every
+     * string it was given.
+     */
+    private static Optional<Long> howManyWanted(
+            Value source, List<Value> arguments, Set<String> refinements, int where) {
         // Found by which refinements were asked for rather than by a
         // fixed position: adding /DUP after /PART moved everything along,
         // and a fixed index then read one for the other.
         Value count = argumentFor(
                 "part", List.of("part", "dup"), arguments, refinements, where);
-        return count instanceof IntegerValue wanted
-                ? Optional.of(wanted.magnitude())
-                : Optional.empty();
+        if (count instanceof IntegerValue wanted) {
+            long magnitude = wanted.magnitude();
+            if (magnitude > Integer.MAX_VALUE || magnitude < Integer.MIN_VALUE) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Long.toString(magnitude));
+            }
+            return Optional.of(magnitude);
+        }
+        if (count instanceof DecimalValue fraction
+                && fraction.datatype() != Datatype.PERCENT) {
+            return Optional.of((long) Comparison.asDouble(fraction));
+        }
+        if (count instanceof DecimalValue || count instanceof PairValue) {
+            throw Raised.of(EvaluationFailure.INVALID_PART, Molder.mold(count));
+        }
+        if (count instanceof SeriesValue upTo) {
+            if (!(source instanceof SeriesValue from)
+                    || from.datatype() != upTo.datatype()
+                    || !from.sharesStorageWith(upTo)) {
+                throw Raised.of(EvaluationFailure.INVALID_PART, "part");
+            }
+            return Optional.of((long) (upTo.index() - from.index()));
+        }
+        return Optional.empty();
     }
 
     /**
@@ -8689,10 +13392,207 @@ public final class Natives {
                 .orElseGet(block::remaining);
     }
 
+    /**
+     * Putting key and value pairs into a map, which is what APPEND and INSERT
+     * both do to one.
+     *
+     * <p>The checks run in the order the C runs them, and the C says why on
+     * the line above the first: "Check must be in this order (to avoid
+     * checking a non-series value)". So a protected map refuses a call before
+     * anyone looks at what the call was trying to add.
+     */
+    private static Value addPairsToMap(
+            MapValue map, List<Value> arguments,
+            Set<String> refinements, String nativeName) {
+
+        requireChangeable(map);
+        // `if (!IS_BLOCK(arg)) Trap_Arg(val);` -- a block, and not any block:
+        // a paren of the same words is refused, and so is another map. One
+        // value is not half a pair, so there is nothing sensible to do with
+        // anything else.
+        if (!(arguments.get(1) instanceof BlockValue pairs)
+                || pairs.datatype() != Datatype.BLOCK) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    nativeName + " puts pairs into a map, and needs a block of them, "
+                            + "not a " + arguments.get(1).datatype().literalSpelling());
+        }
+        // `if (DS_REF(AN_DUP)) Trap0(RE_BAD_REFINES);` -- adding the same key
+        // twice would set it once and answer as though it had done the work
+        // twice, so the C refuses rather than picking a meaning.
+        if (refinements.contains("dup")) {
+            throw Raised.of(EvaluationFailure.BAD_REFINES,
+                    nativeName + "/dup means nothing for a map, where adding a key "
+                            + "twice over leaves one key");
+        }
+        List<Value> wanted = pairsWantedBy(pairs, arguments, refinements);
+        for (int at = 0; at + 1 < wanted.size(); at += 2) {
+            map.put(wanted.get(at), wanted.get(at + 1));
+        }
+        // `*D_RET = *val;` is set before the work is done, so the answer is
+        // the map rather than a position: a map has not got one.
+        return map;
+    }
+
+    /**
+     * Which of a block's values a map is being asked to take.
+     *
+     * <p>/PART counts pairs rather than values, and the halving is one line:
+     * {@code len >>= 1; // part must be number of key/value pairs}. So a /PART
+     * of one asks for half a pair and gets nothing, and a /PART of three adds
+     * as much as a /PART of two.
+     *
+     * <p>An odd count loses its last value for the same reason the loop drops
+     * a trailing key: {@code NOT_END(val) && NOT_END(val+1)} needs both halves
+     * of a pair before it will take a step.
+     */
+    private static List<Value> pairsWantedBy(
+            BlockValue pairs, List<Value> arguments, Set<String> refinements) {
+
+        List<Value> whole = pairs.head().remaining();
+        int here = pairs.index() - 1;
+        long asked = howManyWanted(pairs, arguments, refinements, 2)
+                .orElse((long) (whole.size() - here));
+        // Partial1 clamps a count to what is there and reads a negative one
+        // as the values behind the position, which is how
+        // `append/part m tail block -2` adds the last pair.
+        int from = here;
+        int count;
+        if (asked >= 0) {
+            count = (int) Math.min(asked, whole.size() - here);
+        } else {
+            count = (int) Math.min(-asked, here);
+            from = here - count;
+        }
+        count -= count % 2;
+        return whole.subList(from, from + count);
+    }
+
+    private static String hexOfEachSegment(TupleValue tuple) {
+        StringBuilder hex = new StringBuilder();
+        for (int segment : tuple.segments()) {
+            hex.append("%02X".formatted(segment));
+        }
+        for (int padded = tuple.segmentCount();
+                padded < TupleValue.MINIMUM_SHOWN_SEGMENTS; padded++) {
+            hex.append("00");
+        }
+        return hex.toString();
+    }
+
+    private static String hexSizedToItsMagnitude(
+            int codepoint, java.util.OptionalInt width) {
+        int digits = codepoint <= 0xFF ? 2
+                : codepoint <= 0xFFFF ? 4
+                : codepoint <= 0xFFFFFF ? 6
+                : 8;
+        return trimmedToWidth("%016X".formatted((long) codepoint),
+                width.orElse(digits));
+    }
+
+    private static String hexSixteenWide(long magnitude, java.util.OptionalInt width) {
+        String hex = "%016X".formatted(magnitude);
+        return width.isPresent() ? trimmedToWidth(hex, width.getAsInt()) : hex;
+    }
+
+    private static String trimmedToWidth(String hex, int width) {
+        return hex.substring(Math.max(0, hex.length() - width));
+    }
+
+    private static byte[] boundedByAnyPart(
+            byte[] octets, List<Value> arguments, Set<String> refinements) {
+        return howManyWanted(arguments.getFirst(), arguments, refinements, 2)
+                .map(count -> java.util.Arrays.copyOf(octets,
+                        (int) Math.max(0, Math.min(count, octets.length))))
+                .orElse(octets);
+    }
+
+    private static String boundedTextByAnyPart(
+            String text, List<Value> arguments, Set<String> refinements) {
+        return howManyWanted(arguments.getFirst(), arguments, refinements, 2)
+                .map(count -> text.substring(0,
+                        (int) Math.max(0, Math.min(count, text.length()))))
+                .orElse(text);
+    }
+
+    private static boolean isExactlyABlock(Value value) {
+        return value instanceof BlockValue && value.datatype() == Datatype.BLOCK;
+    }
+
+    private static Value unbound(Value value, boolean deeply) {
+        if (value instanceof WordValue word) {
+            return WordValue.of(word.spelling(), word.datatype());
+        }
+        if (value instanceof BlockValue block) {
+            List<Value> loosened = block.remaining().stream()
+                    .map(item -> deeply || item instanceof WordValue
+                            ? unbound(item, deeply)
+                            : item)
+                    .toList();
+            return new BlockValue(new BlockStorage(loosened), 1, block.datatype());
+        }
+        return value;
+    }
+
+    private static boolean isExactlyAString(Value value) {
+        return value instanceof StringValue && value.datatype() == Datatype.STRING;
+    }
+
+    private static Value membersCleared(
+            BitsetValue members, List<Value> arguments, Set<String> refinements) {
+        if (refinements.contains("key") && refinements.contains("part")) {
+            throw Raised.of(EvaluationFailure.BAD_REFINES,
+                    "/key and /part each say what to remove, and only one can");
+        }
+        if (refinements.contains("key")) {
+            members.clearAllDirectly((BitsetValue) bitsetOf(argumentFor(
+                    "key", List.of("part", "key"), arguments, refinements, 1)));
+            return members;
+        }
+        if (refinements.contains("part")) {
+            Value range = argumentFor(
+                    "part", List.of("part", "key"), arguments, refinements, 1);
+            if (!(range instanceof BlockValue || range instanceof BinaryValue
+                    || range instanceof CharacterValue
+                    || isExactlyAString(range))) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG,
+                        Molder.mold(range) + " names no range of members");
+            }
+            members.clearAllDirectly((BitsetValue) bitsetOf(range));
+            return members;
+        }
+        throw Raised.of(EvaluationFailure.MISSING_ARG,
+                "/key or /part must say what to remove from the set");
+    }
+
+    private static Value objectGainingFields(
+            ObjectValue object, List<Value> arguments,
+            Set<String> refinements, String verb) {
+        if (object.context().isClosedToNewNames()) {
+            throw Raised.of(EvaluationFailure.PROTECTED, verb);
+        }
+        refuseHiddenField(object, arguments.get(1));
+        if (arguments.get(1) instanceof WordValue only) {
+            object.context().set(only.canonical(), UnsetValue.unset());
+            return object;
+        }
+        List<Value> pairs = duplicated(arguments.get(1), arguments, refinements)
+                instanceof BlockValue added
+                ? partOf(added, arguments, refinements)
+                : List.of(arguments.get(1));
+        for (int at = 0; at + 1 < pairs.size(); at += 2) {
+            if (pairs.get(at) instanceof WordValue field) {
+                object.context().set(field.canonical(), pairs.get(at + 1));
+            }
+        }
+        return object;
+    }
+
     private static List<Value> firstFew(
-            List<Value> items, List<Value> arguments, Set<String> refinements, int where) {
-        return howManyWanted(arguments, refinements, where)
-                .map(count -> items.subList(0, (int) Math.min(count, items.size())))
+            Value source, List<Value> items, List<Value> arguments,
+            Set<String> refinements, int where) {
+        return howManyWanted(source, arguments, refinements, where)
+                .map(count -> items.subList(0,
+                        (int) Math.max(0, Math.min(count, items.size()))))
                 .orElse(items);
     }
 
@@ -8733,29 +13633,51 @@ public final class Natives {
         // READ takes a file or a port. A port sends the action to its actor,
         // which is what Do_Port_Action does: one verb reaches every kind of
         // thing a script can open, and the actor decides what reading means.
-        define("read", List.of(Parameter.required("source",
-                        Set.of(Datatype.FILE, Datatype.PORT))),
-                Set.of("string", "lines", "binary", "seek", "part", "with"),
+        define("read", List.of(
+                        Parameter.required("source",
+                                Set.of(Datatype.FILE, Datatype.PORT, Datatype.URL,
+                                        Datatype.BLOCK, Datatype.WORD)),
+                        Parameter.belongingTo("part", "length",
+                                Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
+                        Parameter.belongingTo("seek", "index",
+                                Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT))),
+                Set.of("part", "seek", "string", "binary", "lines", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof PortValue port) {
                         return readFromPort(port, evaluator);
                     }
+                    if (routesToAScheme(arguments.getFirst())) {
+                        throw schemeRefusal("reads", arguments.getFirst());
+                    }
                     requireService(HostService.FILES);
-                    return throughPort(() ->
-                            StringValue.of(evaluator.files().read(
-                                    ((StringValue) arguments.get(0)).text())));
+                    return throughPort(() -> FileReading
+                            .asAskedFor(arguments, refinements)
+                            .answerThrough(evaluator.files()));
                 });
 
         define("write", List.of(
-                        Parameter.required("destination", Set.of(Datatype.FILE)),
-                        Parameter.required("contents")),
-                (arguments, evaluator, context) -> {
+                        Parameter.required("destination",
+                                Set.of(Datatype.FILE, Datatype.PORT, Datatype.URL,
+                                        Datatype.BLOCK, Datatype.WORD)),
+                        Parameter.required("data"),
+                        Parameter.belongingTo("part", "length",
+                                Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
+                        Parameter.belongingTo("seek", "index",
+                                Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
+                        Parameter.belongingTo("allow", "access", Set.of(Datatype.BLOCK))),
+                Set.of("part", "seek", "append", "allow", "lines", "binary", "all"),
+                (arguments, evaluator, context, refinements) -> {
+                    if (arguments.getFirst() instanceof PortValue port) {
+                        return writeToPort(port, arguments.get(1), evaluator);
+                    }
+                    if (routesToAScheme(arguments.getFirst())) {
+                        throw schemeRefusal("writes", arguments.getFirst());
+                    }
                     requireService(HostService.FILES);
                     return throughPort(() -> {
-                        evaluator.files().write(
-                                ((StringValue) arguments.get(0)).text(),
-                                Molder.form(arguments.get(1)));
-                        return arguments.get(0);
+                        FileWriting.asAskedFor(arguments, refinements)
+                                .performThrough(evaluator.files());
+                        return arguments.getFirst();
                     });
                 });
 
@@ -8763,11 +13685,30 @@ public final class Natives {
         // A local path uses whatever the machine uses. On a machine that
         // already uses a slash the two are the same text, which is why
         // these look as though they do nothing here.
+        // /FULL puts the current directory in front of a relative path, and
+        // is also what turns on the reading of `.` and `..`: the dot loop in
+        // To_Local_Path is inside `if (full)`, so without it a dot is just a
+        // character in a name. Asking for the full path is asking where the
+        // process is, thus it needs the same grant WHAT-DIR does.
         define("to-local-file", List.of(Parameter.required("path",
                         Set.of(Datatype.FILE, Datatype.STRING))),
-                (arguments, evaluator, context) -> StringValue.of(
-                        ((StringValue) arguments.getFirst()).text()
-                                .replace('/', localFileSeparator)));
+                Set.of("full"),
+                (arguments, evaluator, context, refinements) -> {
+                    String path = ((StringValue) arguments.getFirst()).text();
+                    boolean resolvingDots = refinements.contains("full");
+                    String from = "";
+                    if (resolvingDots && !path.startsWith("/")) {
+                        requireService(HostService.WORKING_DIRECTORY);
+                        from = ((StringValue) throughPort(() -> StringValue.of(
+                                evaluator.files().workingDirectory()))).text();
+                    }
+                    // The answer is a string whatever came in, because the C
+                    // sets one: `Set_Series(REB_STRING, D_RET, ser)`. A local
+                    // path is not a REBOL file and molding it as one would put
+                    // a percent sign in front of a Windows drive letter.
+                    return StringValue.of(
+                            localPathOf(from + path, resolvingDots, localFileSeparator));
+                });
 
         define("to-rebol-file", List.of(Parameter.required("path",
                         Set.of(Datatype.FILE, Datatype.STRING))),
@@ -8776,34 +13717,27 @@ public final class Natives {
                                 .replace(localFileSeparator, '/'),
                         Datatype.FILE));
 
-        // Starting another program. A string is one word by itself and a
-        // block is the program and its arguments already separated. The
-        // block is the safe form: a string handed to a shell is read as
-        // text, thus anything the script put in it becomes part of the
-        // command.
-        //
-        // /WAIT answers the exit code and /OUTPUT answers what the
-        // program wrote. Without either, the answer is the number the
-        // host gave the new process.
-        define("call", List.of(Parameter.required("command",
-                        Set.of(Datatype.STRING, Datatype.BLOCK, Datatype.FILE))),
-                Set.of("wait", "shell", "output"),
+        define("call", List.of(
+                        Parameter.required("command",
+                                Set.of(Datatype.STRING, Datatype.BLOCK, Datatype.FILE,
+                                        Datatype.EMAIL, Datatype.REF, Datatype.TAG,
+                                        Datatype.URL)),
+                        Parameter.belongingTo("input", "in",
+                                Set.of(Datatype.STRING, Datatype.BINARY,
+                                        Datatype.FILE, Datatype.NONE)),
+                        Parameter.belongingTo("output", "out",
+                                Set.of(Datatype.STRING, Datatype.BINARY,
+                                        Datatype.FILE, Datatype.NONE)),
+                        Parameter.belongingTo("error", "err",
+                                Set.of(Datatype.STRING, Datatype.BINARY,
+                                        Datatype.FILE, Datatype.NONE))),
+                Set.of("wait", "console", "shell", "info", "input", "output", "error"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.PROCESSES);
-                    List<String> command = wordsOfCommand(arguments.getFirst());
-                    boolean throughShell = refinements.contains("shell")
-                            || arguments.getFirst() instanceof StringValue;
-                    return throughPort(() -> {
-                        if (!refinements.contains("wait") && !refinements.contains("output")) {
-                            return IntegerValue.of(
-                                    evaluator.processes().start(command, throughShell));
-                        }
-                        ProcessPort.Finished done =
-                                evaluator.processes().runAndWait(command, throughShell);
-                        return refinements.contains("output")
-                                ? StringValue.of(done.output())
-                                : IntegerValue.of(done.exitCode());
-                    });
+                    ProgramCalling calling = ProgramCalling.asAskedFor(
+                            arguments, refinements, evaluator, context);
+                    return throughPort(() ->
+                            calling.answerThrough(evaluator.processes(), evaluator));
                 });
 
         // A script that stops and waits for a person is a script a host
@@ -8826,7 +13760,9 @@ public final class Natives {
         // The question is written out first, then the line is read. One
         // call rather than two, because the two must not be separated by
         // anything else the script prints.
-        define("ask", List.of(Parameter.required("question", Set.of(Datatype.STRING))),
+        // `question [series!]` -- a block is reformed into the prompt, which
+        // is how a caller builds one from parts without joining it first.
+        define("ask", List.of(Parameter.required("question", Typeset.SERIES.members())),
                 Set.of("hide"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.CONSOLE);
@@ -8918,6 +13854,30 @@ public final class Natives {
                     });
                 });
 
+        // create: path [file! url!] -- makes a directory, or an empty file.
+        //
+        // Rebol's own MAKE-DIR is written on top of it: `if any [not deep
+        // url? path] [create path return path]`. So JEBOL's MAKE-DIR native
+        // is what MAKE-DIR used to be, and is now what CREATE is for. Both
+        // are here because the mezzanine one shadows the native and calls it
+        // back through CREATE.
+        define("create", List.of(Parameter.required("path",
+                        Set.of(Datatype.FILE, Datatype.URL))),
+                (arguments, evaluator, context) -> {
+                    requireService(HostService.FILES);
+                    return throughPort(() -> {
+                        String path = ((StringValue) arguments.getFirst()).text();
+                        // A trailing slash means a directory, which is the
+                        // same distinction every other file native draws.
+                        if (path.endsWith("/")) {
+                            evaluator.files().makeDirectory(path, false);
+                        } else {
+                            evaluator.files().write(path, new byte[0]);
+                        }
+                        return arguments.getFirst();
+                    });
+                });
+
         define("delete", List.of(Parameter.required("path", Set.of(Datatype.FILE))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.FILES);
@@ -8928,9 +13888,16 @@ public final class Natives {
                 });
 
         define("rename", List.of(
-                        Parameter.required("from", Set.of(Datatype.FILE)),
-                        Parameter.required("to", Set.of(Datatype.FILE))),
+                        Parameter.required("from", Set.of(Datatype.FILE, Datatype.BLOCK,
+                                Datatype.PORT, Datatype.URL)),
+                        Parameter.required("to", Set.of(Datatype.FILE, Datatype.BLOCK,
+                                Datatype.PORT, Datatype.URL))),
                 (arguments, evaluator, context) -> {
+                    for (Value end : List.of(arguments.getFirst(), arguments.get(1))) {
+                        if (end.datatype() != Datatype.FILE) {
+                            throw schemeRefusal("renames", end);
+                        }
+                    }
                     requireService(HostService.FILES);
                     return throughPort(() -> {
                         evaluator.files().rename(
@@ -8994,11 +13961,16 @@ public final class Natives {
         // native calls back into the library rather than doing the work.
         // That is what Rebol's C does too: Make_Port is four lines and one of
         // them is `Do_Sys_Func(SYS_CTX_MAKE_PORT_P, spec, 0)`.
-        define("open", List.of(Parameter.required("spec")),
+        // /ALLOW takes a block of "protection attributes" that nothing reads.
+        // `args = Find_Refines(ds, ALL_OPEN_REFS)` collects the refinement
+        // FLAGS and hands them to Setup_File, and no arm anywhere looks up the
+        // block itself. Declared because a script written for Rebol passes one.
+        define("open", List.of(Parameter.required("spec"),
+                        Parameter.belongingTo("allow", "access", Set.of(Datatype.BLOCK))),
                 Set.of("new", "read", "write", "seek", "allow"),
                 (arguments, evaluator, context, refinements) -> {
                     Value built = evaluator.applyFunction(
-                            libraryFunction(context, "make-port*"),
+                            systemInternalFunction(context, "make-port*"),
                             List.of(arguments.getFirst()));
                     if (!(built instanceof PortValue port)) {
                         throw Raised.of(EvaluationFailure.INVALID_ARG,
@@ -9016,6 +13988,25 @@ public final class Natives {
         // The answer is a string rather than a binary because /STRING is the
         // shape INPUT asks for, and none at the end of the input, because
         // Console_Actor answers none for a line that is not there.
+        // update: port [port!] -- "Updates external and internal states".
+        //
+        // The console actor answers none and does nothing, and says why in a
+        // comment: "no wake-up, events should be handled by user defined
+        // port's awake function". So this is a real answer rather than a stub.
+        define("update", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
+                (arguments, evaluator, context) -> NoneValue.none());
+
+        // flush: port [port!] -- "Flush output stream buffer."
+        //
+        // The console actor pushes the device and answers the port. Nothing is
+        // buffered in the domain, so the work is the adapter's; a port that
+        // writes straight through has nothing held back.
+        define("flush", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
+                (arguments, evaluator, context) -> {
+                    evaluator.output().flush();
+                    return arguments.getFirst();
+                });
+
         define("open?", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
                 (arguments, evaluator, context) -> LogicValue.of(
                         ((PortValue) arguments.getFirst()).isOpen()));
@@ -9080,16 +14071,21 @@ public final class Natives {
         // none, so `read request-file` works.
         define("request-file", List.of(
                         Parameter.belongingTo("file", "name", Set.of(Datatype.FILE)),
-                        Parameter.belongingTo("title", "text", Set.of(Datatype.STRING))),
+                        Parameter.belongingTo("title", "text", Set.of(Datatype.STRING)),
+                        Parameter.belongingTo("filter", "list", Set.of(Datatype.BLOCK))),
                 Set.of("save", "multi", "file", "title", "filter"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.WINDOWS);
+                    List<String> filters = filterPairsIn(arguments, refinements);
                     return throughWindow(() -> {
                         List<String> chosen = evaluator.windows().chooseFiles(
                                 refinements.contains("save"),
                                 refinements.contains("multi"),
-                                textOfArgument(arguments, refinements, "file"),
-                                textOfArgument(arguments, refinements, "title"));
+                                textOfArgument(arguments, refinements,
+                                        List.of("file", "title", "filter"), "file"),
+                                textOfArgument(arguments, refinements,
+                                        List.of("file", "title", "filter"), "title"),
+                                filters);
                         if (refinements.contains("multi")) {
                             return BlockValue.block(chosen.stream()
                                     .<Value>map(one -> StringValue.of(one, Datatype.FILE))
@@ -9108,8 +14104,10 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.WINDOWS);
                     return throughWindow(() -> evaluator.windows().chooseDirectory(
-                                    textOfArgument(arguments, refinements, "dir"),
-                                    textOfArgument(arguments, refinements, "title"))
+                                    textOfArgument(arguments, refinements,
+                                            List.of("title", "dir"), "dir"),
+                                    textOfArgument(arguments, refinements,
+                                            List.of("title", "dir"), "title"))
                             .<Value>map(where -> StringValue.of(where, Datatype.FILE))
                             .orElseGet(NoneValue::none));
                 });
@@ -9134,13 +14132,15 @@ public final class Natives {
 
         // What the operator types must not reach the screen, which is the
         // whole reason this is its own request rather than a text dialog.
-        define("request-password", List.of(
-                        Parameter.belongingTo("title", "text", Set.of(Datatype.STRING))),
-                Set.of("title"),
-                (arguments, evaluator, context, refinements) -> {
+        // No prompt, because the C declares no argument at all:
+        // `request-password: native [{Asks user for input without echoing...}]`
+        // and nothing else. A caller that wants a prompt prints one, which is
+        // what Rebol's own ASK-PASSWORD does -- `prin question` and then this.
+        define("request-password", List.of(),
+                (arguments, evaluator, context) -> {
                     requireService(HostService.WINDOWS);
                     return throughWindow(() -> evaluator.windows()
-                            .askForPassword(textOfArgument(arguments, refinements, "title"))
+                            .askForPassword()
                             .<Value>map(StringValue::of)
                             .orElseGet(NoneValue::none));
                 });
@@ -9152,17 +14152,41 @@ public final class Natives {
         //
         // The shape of the second argument decides the shape of the answer.
         // See queryAnswerFor.
+        //
+        // /MODE is declared and does nothing, and the C says why in the spec
+        // itself: `/mode "** DEPRECATED **"`. No arm reads it -- there is no
+        // ARG_QUERY_MODE anywhere in the source -- so a script that still asks
+        // for it gets the same answer as one that does not. Declared so that
+        // script can be run at all.
         define("query", List.of(
-                        Parameter.required("target", Set.of(Datatype.FILE)),
+                        Parameter.required("target", Set.of(Datatype.FILE, Datatype.DATE,
+                                Datatype.HANDLE, Datatype.PORT, Datatype.URL,
+                                Datatype.BLOCK, Datatype.WORD)),
                         Parameter.required("field",
-                                Set.of(Datatype.WORD, Datatype.GET_WORD, Datatype.LIT_WORD,
-                                        Datatype.BLOCK, Datatype.NONE))),
-                (arguments, evaluator, context) -> {
+                                Set.of(Datatype.WORD, Datatype.BLOCK,
+                                        Datatype.NONE, Datatype.DATATYPE))),
+                Set.of("mode"),
+                (arguments, evaluator, context, refinements) -> {
+                    Value target = arguments.getFirst();
+                    Value field = arguments.get(1);
+                    if (target instanceof DateValue date) {
+                        return questionedByField(field, evaluator,
+                                DateParts.partNames(),
+                                part -> DateParts.of(date, WordValue.of(part)));
+                    }
+                    if (target instanceof HandleValue handle) {
+                        return questionedByField(field, evaluator,
+                                List.of("type"),
+                                part -> WordValue.of(handle.typeName()));
+                    }
+                    if (target instanceof PortValue || routesToAScheme(target)) {
+                        throw schemeRefusal("queries", target);
+                    }
                     requireService(HostService.FILES);
                     return throughPort(() -> queryAnswerFor(
                             evaluator.files().informationAbout(
-                                    ((StringValue) arguments.getFirst()).text()),
-                            arguments.get(1)));
+                                    ((StringValue) target).text()),
+                            field));
                 });
     }
 
@@ -9258,18 +14282,198 @@ public final class Natives {
         }).orElseGet(NoneValue::none);
     }
 
-    /**
-     * A command as the separate words a host needs.
-     *
-     * <p>A block is already separated and each item is taken as it
-     * stands. A string is one word, because splitting it here would guess
-     * at quoting that only a shell knows the rules for.
-     */
-    private static List<String> wordsOfCommand(Value command) {
-        if (command instanceof BlockValue given) {
-            return given.remaining().stream().map(Molder::form).toList();
+    private record ProgramCalling(
+            List<String> command,
+            boolean readByTheShell,
+            boolean attachedToTheHostsConsole,
+            boolean waits,
+            boolean answersAnObject,
+            Optional<Value> input,
+            Optional<Value> output,
+            Optional<Value> errors) {
+
+        private static final List<String> ARGUMENT_ORDER =
+                List.of("input", "output", "error");
+
+        static ProgramCalling asAskedFor(
+                List<Value> arguments, Set<String> refinements,
+                Evaluator evaluator, Context context) {
+
+            Optional<Value> input = redirection("input", arguments, refinements);
+            Optional<Value> output = redirection("output", arguments, refinements);
+            Optional<Value> errors = redirection("error", arguments, refinements);
+            boolean aSeriesIsAtOneEnd =
+                    isASeries(input) || isASeries(output) || isASeries(errors);
+            return new ProgramCalling(
+                    commandWordsOf(arguments.getFirst(), evaluator, context),
+                    refinements.contains("shell"),
+                    refinements.contains("console"),
+                    refinements.contains("wait") || aSeriesIsAtOneEnd,
+                    refinements.contains("info"),
+                    input, output, errors);
         }
-        return List.of(Molder.form(command));
+
+        private static Optional<Value> redirection(
+                String refinement, List<Value> arguments, Set<String> refinements) {
+            return Optional.ofNullable(
+                    argumentFor(refinement, ARGUMENT_ORDER, arguments, refinements, 1));
+        }
+
+        private static boolean isASeries(Optional<Value> redirection) {
+            return redirection
+                    .filter(value -> value instanceof BinaryValue
+                            || value.datatype() == Datatype.STRING)
+                    .isPresent();
+        }
+
+        private static List<String> commandWordsOf(
+                Value command, Evaluator evaluator, Context context) {
+            if (!(command instanceof BlockValue block)
+                    || command.datatype() != Datatype.BLOCK) {
+                return List.of(((StringValue) command).text());
+            }
+            List<Value> items = block.remaining();
+            if (items.isEmpty()) {
+                throw Raised.of(EvaluationFailure.TOO_SHORT,
+                        "a command needs at least the program's name");
+            }
+            return items.stream()
+                    .map(item -> commandWordOf(item, evaluator, context))
+                    .toList();
+        }
+
+        private static String commandWordOf(
+                Value item, Evaluator evaluator, Context context) {
+            Value resolved = item;
+            if (item instanceof WordValue word
+                    && word.datatype() == Datatype.GET_WORD) {
+                resolved = slotOf(word).value();
+            } else if (item instanceof BlockValue path
+                    && path.datatype() == Datatype.GET_PATH) {
+                resolved = evaluator.evaluateOrRaise(
+                        BlockValue.block(List.of(path)), context);
+            }
+            return switch (resolved) {
+                case StringValue text -> text.text();
+                case WordValue word when word.datatype() == Datatype.WORD ->
+                        word.spelling();
+                default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
+                        Molder.mold(resolved) + " names nothing a command line can hold");
+            };
+        }
+
+        Value answerThrough(ProcessPort port, Evaluator evaluator) {
+            ProcessPort.ProgramResult result = port.run(toStart(evaluator));
+            output.ifPresent(buffer -> result.capturedOutput()
+                    .ifPresent(bytes -> appendedInto(buffer, bytes)));
+            errors.ifPresent(buffer -> result.capturedError()
+                    .ifPresent(bytes -> appendedInto(buffer, bytes)));
+            if (answersAnObject) {
+                return informationObject(result, evaluator);
+            }
+            if (result.refusalMessage().isPresent()) {
+                throw Raised.of(EvaluationFailure.CALL_FAIL,
+                        result.refusalMessage().orElseThrow());
+            }
+            if (waits && result.exitCode().isEmpty()) {
+                throw Raised.of(EvaluationFailure.CALL_FAIL,
+                        "the host waited for the program and answered no exit code");
+            }
+            return IntegerValue.of(waits
+                    ? result.exitCode().orElseThrow()
+                    : result.processNumber());
+        }
+
+        private ProcessPort.ProgramToStart toStart(Evaluator evaluator) {
+            return new ProcessPort.ProgramToStart(
+                    command, readByTheShell, attachedToTheHostsConsole, waits,
+                    inputKindOf(input), pipedBytesOf(input), fileOf(input, evaluator),
+                    outputKindOf(output), fileOf(output, evaluator),
+                    outputKindOf(errors), fileOf(errors, evaluator));
+        }
+
+        private static ProcessPort.ProgramInput inputKindOf(Optional<Value> redirection) {
+            if (redirection.isEmpty()) {
+                return ProcessPort.ProgramInput.THE_HOSTS_OWN;
+            }
+            return switch (redirection.orElseThrow()) {
+                case BinaryValue piped -> ProcessPort.ProgramInput.SUPPLIED_BYTES;
+                case StringValue text when text.datatype() == Datatype.STRING ->
+                        ProcessPort.ProgramInput.SUPPLIED_BYTES;
+                case StringValue named -> ProcessPort.ProgramInput.A_FILES_CONTENTS;
+                default -> ProcessPort.ProgramInput.NOTHING_AT_ALL;
+            };
+        }
+
+        private static ProcessPort.ProgramOutput outputKindOf(Optional<Value> redirection) {
+            if (redirection.isEmpty()) {
+                return ProcessPort.ProgramOutput.THE_HOSTS_OWN;
+            }
+            return switch (redirection.orElseThrow()) {
+                case BinaryValue captured -> ProcessPort.ProgramOutput.CAPTURED;
+                case StringValue text when text.datatype() == Datatype.STRING ->
+                        ProcessPort.ProgramOutput.CAPTURED;
+                case StringValue named -> ProcessPort.ProgramOutput.INTO_A_FILE;
+                default -> ProcessPort.ProgramOutput.DISCARDED;
+            };
+        }
+
+        private static Optional<byte[]> pipedBytesOf(Optional<Value> redirection) {
+            return redirection.map(value -> switch (value) {
+                case BinaryValue binary -> binary.octetsFromHere();
+                case StringValue text when text.datatype() == Datatype.STRING ->
+                        text.text().getBytes(StandardCharsets.UTF_8);
+                default -> null;
+            });
+        }
+
+        private static Optional<String> fileOf(
+                Optional<Value> redirection, Evaluator evaluator) {
+            return redirection
+                    .filter(value -> value.datatype() == Datatype.FILE)
+                    .map(value -> whereReadWouldResolveIt(
+                            ((StringValue) value).text(), evaluator));
+        }
+
+        private static String whereReadWouldResolveIt(String path, Evaluator evaluator) {
+            if (path.startsWith("/")) {
+                return path;
+            }
+            try {
+                return evaluator.files().workingDirectory() + path;
+            } catch (FilePort.Denied noDirectoryToAsk) {
+                return path;
+            }
+        }
+
+        private static void appendedInto(Value buffer, byte[] bytes) {
+            switch (buffer) {
+                case BinaryValue binary -> {
+                    for (byte octet : bytes) {
+                        binary.storage().append(octet & 0xFF);
+                    }
+                }
+                case StringValue text when text.datatype() == Datatype.STRING ->
+                        new String(bytes, StandardCharsets.UTF_8)
+                                .codePoints().forEach(text.storage()::append);
+                default -> { }
+            }
+        }
+
+        private Value informationObject(
+                ProcessPort.ProgramResult result, Evaluator evaluator) {
+            Context fields = Context.childOf(evaluator.systemContext());
+            ObjectValue built = new ObjectValue(fields);
+            fields.set("self", built);
+            fields.set("id", IntegerValue.of(result.processNumber()));
+            if (waits && result.exitCode().isPresent()) {
+                fields.set("exit-code",
+                        IntegerValue.of(result.exitCode().orElseThrow()));
+            }
+            result.refusalMessage().ifPresent(message ->
+                    fields.set("error", StringValue.of(message)));
+            return built;
+        }
     }
 
     /**
@@ -9306,6 +14510,7 @@ public final class Natives {
         return switch (value) {
             case ObjectValue object -> object.context();
             case PortValue port -> port.context();
+            case ModuleValue module -> module.context();
             case ErrorValue raised -> contextOfError(raised);
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "in wanted an object, an error, a port or a block, not "
@@ -9353,6 +14558,237 @@ public final class Natives {
         return NoneValue.none();
     }
 
+    /**
+     * ASSERT/TYPE: word and datatype in pairs, each word's value checked.
+     *
+     * <p>A different function under the same name. Plain ASSERT evaluates the
+     * block and refuses a false result; /TYPE reads the block as pairs and
+     * never evaluates it as code. The C splits on the refinement before it
+     * looks at the block at all.
+     *
+     * <p>The refinement was declared and ignored, so `assert/type [x string!]`
+     * evaluated `x string!`, saw a datatype at the end and passed. Every
+     * caller of it was unguarded, MAKE-MODULE*'s header check among them:
+     * that is eight fields it is supposed to reject and did not.
+     */
+    private static Value assertedTypes(
+            BlockValue pairs, Evaluator evaluator, Context context) {
+
+        List<Value> items = pairs.remaining();
+        for (int at = 0; at < items.size(); at += 2) {
+            Value named = items.get(at);
+            // A word or a path names what to check. Anything else is the
+            // caller having written the block wrongly.
+            Value held = switch (named) {
+                case WordValue word when word.datatype() == Datatype.WORD ->
+                        evaluator.evaluateOrRaise(
+                                BlockValue.block(List.of(named)), context);
+                case BlockValue path when path.datatype() == Datatype.PATH ->
+                        evaluator.evaluateOrRaise(
+                                BlockValue.block(List.of(named)), context);
+                default -> raiseWrongArgument(named, "assert/type", "word or path");
+            };
+            if (at + 1 >= items.size()) {
+                throw Raised.of(EvaluationFailure.NO_ARG, "assert/type wants a type");
+            }
+            if (!isOfType(held, items.get(at + 1), context)) {
+                throw Raised.of(EvaluationFailure.WRONG_TYPE, Molder.mold(named));
+            }
+        }
+        return LogicValue.of(true);
+    }
+
+    /**
+     * Whether a value is of a type, named as a datatype, a word, a block of
+     * either, or a typeset.
+     *
+     * <p>{@code Is_Of_Type} in the C, and the four spellings are what
+     * ASSERT/TYPE's block may hold:
+     * {@code if (IS_BLOCK(type) || IS_WORD(type) || IS_TYPESET(type) || IS_DATATYPE(type))}.
+     */
+    private static boolean isOfType(Value held, Value type, Context context) {
+        return switch (type) {
+            case DatatypeValue named -> held.datatype() == named.represents();
+            case TypesetValue set -> set.holds(held.datatype());
+            case WordValue named -> {
+                Value resolved = context.knows(named.canonical())
+                        ? context.slotFor(named.canonical()).value()
+                        : NoneValue.none();
+                yield resolved != type && isOfType(held, resolved, context);
+            }
+            case BlockValue any -> any.remaining().stream()
+                    .anyMatch(one -> isOfType(held, one, context));
+            default -> raiseWrongArgumentBoolean(type);
+        };
+    }
+
+    private static boolean raiseWrongArgumentBoolean(Value type) {
+        throw Raised.of(EvaluationFailure.EXPECT_ARG,
+                "assert/type wants a datatype, not "
+                        + type.datatype().literalSpelling());
+    }
+
+    /** What a refinement's own slot can hold: none unasked, a logic asked. */
+    private static final Set<Datatype> A_REFINEMENTS_SLOT =
+            EnumSet.of(Datatype.NONE, Datatype.LOGIC);
+
+    private static Value typesetsOf(
+            List<Parameter> parameters, Set<String> refinementsApart) {
+        List<Value> types = new ArrayList<>();
+        Set<String> woven = new java.util.LinkedHashSet<>();
+        for (Parameter parameter : parameters) {
+            parameter.owningRefinement().ifPresent(owner -> {
+                if (refinementsApart.contains(owner) && woven.add(owner)) {
+                    types.add(TypesetValue.of(A_REFINEMENTS_SLOT));
+                }
+            });
+            types.add(parameter.kind() == ParameterKind.REFINEMENT
+                    ? TypesetValue.of(A_REFINEMENTS_SLOT)
+                    : TypesetValue.of(parameter.acceptedTypes().isEmpty()
+                            ? Typeset.ANY_TYPE.members()
+                            : parameter.acceptedTypes()));
+        }
+        for (String leftover : refinementsApart) {
+            if (!woven.contains(leftover)) {
+                types.add(TypesetValue.of(A_REFINEMENTS_SLOT));
+            }
+        }
+        return BlockValue.block(types);
+    }
+
+    /**
+     * A spec block built from a parameter list, as SPEC-OF answers it.
+     *
+     * <p>The shape R3 writes: a word per argument, a block of datatype words
+     * after one that is narrowed, and a refinement written as a refinement
+     * with its own argument following. No doc strings, because a native's
+     * documentation lives in its Java comment rather than in the spec, and
+     * inventing one here would make `first spec-of` answer a string that
+     * says nothing.
+     */
+    private static Value specBlockOf(List<Parameter> parameters) {
+        List<Value> spec = new ArrayList<>();
+        for (Parameter parameter : parameters) {
+            switch (parameter.kind()) {
+                case REFINEMENT -> spec.add(
+                        WordValue.of(parameter.name(), Datatype.REFINEMENT));
+                case HARD_QUOTED -> spec.add(
+                        WordValue.of(parameter.name(), Datatype.GET_WORD));
+                case SOFT_QUOTED -> spec.add(
+                        WordValue.of(parameter.name(), Datatype.LIT_WORD));
+                case RETURN_TYPE -> spec.add(
+                        WordValue.of("return", Datatype.SET_WORD));
+                default -> spec.add(WordValue.of(parameter.name()));
+            }
+            if (!parameter.acceptedTypes().isEmpty()) {
+                spec.add(BlockValue.block(parameter.acceptedTypes().stream()
+                        .sorted(java.util.Comparator.comparing(Datatype::spelling))
+                        .<Value>map(type -> WordValue.of(type.literalSpelling()))
+                        .toList()));
+            }
+        }
+        return BlockValue.block(spec);
+    }
+
+    /** Where a bound word lives, or null when it is unbound. */
+    private static Context boundContextOf(WordValue named) {
+        return named.isBound() ? named.binding() : null;
+    }
+
+    /**
+     * A binary read as UTF-8 text, refusing bytes that are not valid.
+     *
+     * <p>`Decode_UTF_String` in the C, and the refusal matters as much as the
+     * decoding: `if (!ser) Trap1(RE_INVALID_UTF, arg)`. Bytes that are not
+     * text have no text form, and answering the replacement character instead
+     * would make a round trip through a binary lossy without saying so.
+     */
+    private static String textDecodedFrom(BinaryValue octets) {
+        java.nio.charset.CharsetDecoder strictly =
+                StandardCharsets.UTF_8.newDecoder()
+                        .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT);
+        try {
+            return strictly.decode(
+                    java.nio.ByteBuffer.wrap(octets.octetsFromHere())).toString();
+        } catch (java.nio.charset.CharacterCodingException notText) {
+            throw Raised.of(EvaluationFailure.INVALID_UTF, "binary");
+        }
+    }
+
+    /**
+     * Which encoding a byte order mark names, negative for little-endian.
+     *
+     * <p>{@code What_UTF} in s-unicode.c. Zero for no mark, which is the
+     * ordinary answer: a mark is optional and UTF-8 rarely carries one.
+     */
+    private static int byteOrderMarkOf(byte[] octets) {
+        if (startsWith(octets, 0xEF, 0xBB, 0xBF)) {
+            return 8;
+        }
+        if (startsWith(octets, 0xFE, 0xFF)) {
+            return 16;
+        }
+        if (startsWith(octets, 0xFF, 0xFE)) {
+            return startsWith(octets, 0xFF, 0xFE, 0x00, 0x00) ? -32 : -16;
+        }
+        if (startsWith(octets, 0x00, 0x00, 0xFE, 0xFF)) {
+            return 32;
+        }
+        return 0;
+    }
+
+    private static boolean startsWith(byte[] octets, int... expected) {
+        if (octets.length < expected.length) {
+            return false;
+        }
+        for (int at = 0; at < expected.length; at++) {
+            if ((octets[at] & 0xFF) != expected[at]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** The word datatypes, which is the range /AS on COLLECT-WORDS allows. */
+    private static final Set<Datatype> ANY_WORD_DATATYPES = Typeset.ANY_WORD.members();
+
+    /**
+     * The any-object datatypes, plus whatever else a spec names beside them.
+     *
+     * <p>`any-object!` in a spec is five datatypes, and writing them out at
+     * each site is how one gets left off. `collect-words/ignore` takes
+     * `[any-object! block! none!]`.
+     */
+    private static Set<Datatype> anyObjectOr(Datatype... alsoAccepted) {
+        Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_OBJECT.members());
+        accepted.addAll(List.of(alsoAccepted));
+        return Set.copyOf(accepted);
+    }
+
+    /**
+     * What /PART accepts: a count, or a position to read up to.
+     *
+     * <p>{@code Partial1} takes an integer, a decimal or a series position,
+     * and the position form is the one Rebol's own code leans on. Declaring
+     * the argument as an integer refused a string before the body ever saw
+     * it, so the position form could not be reached at all.
+     */
+    private static final Set<Datatype> PART_LIMIT = java.util.stream.Stream.concat(
+            java.util.stream.Stream.of(Datatype.INTEGER, Datatype.DECIMAL,
+                    Datatype.PERCENT, Datatype.PAIR),
+            java.util.Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+    /** REMOVE's declared range: {@code [number! series! pair! char!]}. */
+    private static final Set<Datatype> REMOVE_RANGE = java.util.stream.Stream.concat(
+            PART_LIMIT.stream(), java.util.stream.Stream.of(Datatype.CHAR))
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+    /** The declared /dup count: {@code [number! pair!]}. */
+    private static final Set<Datatype> DUP_COUNT = Set.of(
+            Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT, Datatype.PAIR);
+
     /** The three modes a console port has, from Console_Actor's A_MODIFY. */
     private static final Set<String> CONSOLE_MODES = Set.of("echo", "line", "error");
 
@@ -9369,6 +14805,608 @@ public final class Natives {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
         }
         return context.slotFor(name).value();
+    }
+
+    /**
+     * Whether the value is an object underneath: an object, a module, a port
+     * or an error.
+     *
+     * <p>All four are one frame of words and values in R3, which is why one
+     * arm of {@code t-object.c} answers for all of them. An error is the odd
+     * one here only because JEBOL holds its fields in a record rather than in
+     * a context.
+     */
+    private static boolean isAnyObject(Value value) {
+        return value instanceof ErrorValue || fieldsOf(value) != null;
+    }
+
+    /**
+     * Whether an object has a field of this name for FIND and SELECT to
+     * report, which is narrower than whether the name can be read through it.
+     *
+     * <p>Three things make it narrower, each a line of the C rather than a
+     * choice made here. Only a plain word asks -- {@code if (IS_WORD(arg))} --
+     * so a set-word or a lit-word spelled the same finds nothing. A hidden
+     * field is not there: {@code return (!always && VAL_GET_OPT(word,
+     * OPTS_HIDE)) ? 0 : n;}. And SELF is not there either, because the search
+     * starts one slot past it: {@code word = FRM_WORDS(frame) + 1;}.
+     */
+    private static boolean objectHasFieldToFind(Value subject, Value wanted) {
+        if (!(wanted instanceof WordValue named) || named.datatype() != Datatype.WORD) {
+            return false;
+        }
+        String field = named.canonical();
+        if (field.equals("self")) {
+            return false;
+        }
+        if (subject instanceof ErrorValue) {
+            return ErrorValue.FIELDS.contains(field);
+        }
+        return fieldsOf(subject).holds(field);
+    }
+
+    /**
+     * The fields of anything that is an object underneath, or null.
+     *
+     * <p>An object, an error, a port and a module all are. {@code types.reb}
+     * puts every one of them in the {@code object} typeset, which is what
+     * makes SELECT, FIND and IN work the same way on all four.
+     */
+    private static Context fieldsOf(Value value) {
+        return switch (value) {
+            case ObjectValue object -> object.context();
+            case ModuleValue module -> module.context();
+            case PortValue port -> port.context();
+            default -> null;
+        };
+    }
+
+    /**
+     * A helper the library keeps to itself, reached through
+     * {@code system/contexts/sys}.
+     *
+     * <p>MAKE-MODULE* and MAKE-PORT* are not standard functions and a script
+     * has no business calling either by a bare name. R3 reaches them as
+     * {@code sys/make-module*}, which is what loading the sys files into
+     * their own context means, so this reads them the same way rather than
+     * hoping the library context happens to hold them.
+     */
+    private static Value systemInternalFunction(Context context, String name) {
+        if (!(pathInto(context, "system", "contexts", "sys")
+                instanceof ObjectValue internals)) {
+            throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
+        }
+        if (!internals.context().knows(name)) {
+            throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
+        }
+        return internals.context().slotFor(name).value();
+    }
+
+    /**
+     * Puts what /ARGS carried where a script reads it.
+     *
+     * <p>`system/script/args`, which is where the vendored `sys/do*` writes it
+     * and the only place a script looks: `system/script: make
+     * system/standard/script compose [... args: :arg]`.
+     */
+    private static void recordTheScriptArguments(Evaluator evaluator, Value given) {
+        if (pathInto(evaluator.systemContext(), "system", "script")
+                instanceof ObjectValue script) {
+            script.context().set("args", given);
+        }
+    }
+
+    /**
+     * Where the first byte sequence that is not UTF-8 begins, or -1.
+     *
+     * <p>{@code UTF8_Check} in {@code s-unicode.c}, which answers {@code acc +
+     * 1}: one past the last whole character it accepted. So the position is the
+     * START of the sequence that failed rather than the byte that gave it away,
+     * and a two-byte sequence with a bad second byte is reported at its lead.
+     *
+     * <p>An unfinished sequence at the end counts as a failure. The C's loop
+     * ends with the decoder part way through a character and the line after it
+     * answers the position regardless: `if (state == UTF8_ACCEPT) return 0;`
+     * and then `return acc + 1;`.
+     *
+     * <p>The one thing accepted that well-formed UTF-8 does not allow is a
+     * surrogate pair written as two three-byte sequences. The C rejects the
+     * first half in the decoder and then gives it a second chance:
+     * {@code Decode_Surrogate_Pair} reads all six bytes and lets them through
+     * when they are a high half followed by a low one. The C reads those six
+     * bytes without checking that they are there; this asks first, because
+     * reading past the end is not behaviour worth keeping.
+     *
+     * <p>Answered as a one-based index into the whole binary, because that is
+     * what the caller gets: `VAL_INDEX(arg) = bp - VAL_BIN_HEAD(arg)` measures
+     * from the head while the walk began at the position.
+     */
+    private static int firstMalformedUtf8(BinaryValue bytes) {
+        int end = bytes.storageLength() + 1;
+        int at = bytes.index();
+        while (at < end) {
+            int width = utf8SequenceWidth(bytes.storage().at(at) & 0xFF);
+            if (width > 0 && at + width <= end
+                    && continuesCorrectly(bytes, at, width)) {
+                at += width;
+                continue;
+            }
+            if (isSurrogateHalfAt(bytes, at, end) && !isLowSurrogateAt(bytes, at)
+                    && isSurrogateHalfAt(bytes, at + 3, end)
+                    && isLowSurrogateAt(bytes, at + 3)) {
+                at += 6;
+                continue;
+            }
+            return at;
+        }
+        return -1;
+    }
+
+    /**
+     * How many bytes a sequence with this lead byte takes, or 0 for a byte that
+     * cannot lead one.
+     *
+     * <p>The ranges the C's table refuses outright: a continuation byte with
+     * nothing in front of it, C0 and C1 -- which could only ever be an overlong
+     * spelling of an ASCII character -- and F5 upwards, which would decode
+     * above the last codepoint Unicode has.
+     */
+    private static int utf8SequenceWidth(int lead) {
+        if (lead < 0x80) {
+            return 1;
+        }
+        if (lead < 0xC2 || lead > 0xF4) {
+            return 0;
+        }
+        if (lead < 0xE0) {
+            return 2;
+        }
+        return lead < 0xF0 ? 3 : 4;
+    }
+
+    /**
+     * Whether the bytes after the lead one are continuations, and the sequence
+     * spells a codepoint that is allowed to be spelled that way.
+     *
+     * <p>The three exclusions the state machine makes beyond counting
+     * continuation bytes: an overlong three-byte or four-byte form, a surrogate
+     * (which is refused here and reconsidered as half of a pair), and anything
+     * above the top of Unicode.
+     */
+    private static boolean continuesCorrectly(BinaryValue bytes, int at, int width) {
+        int lead = bytes.storage().at(at) & 0xFF;
+        if (width == 1) {
+            return true;
+        }
+        for (int step = 1; step < width; step++) {
+            int following = bytes.storage().at(at + step) & 0xFF;
+            if (following < 0x80 || following > 0xBF) {
+                return false;
+            }
+        }
+        int second = bytes.storage().at(at + 1) & 0xFF;
+        if (lead == 0xE0 && second < 0xA0) {
+            return false;
+        }
+        if (lead == 0xED && second > 0x9F) {
+            return false;
+        }
+        if (lead == 0xF0 && second < 0x90) {
+            return false;
+        }
+        return lead != 0xF4 || second <= 0x8F;
+    }
+
+    /** Whether a three-byte sequence spelling a surrogate begins here. */
+    private static boolean isSurrogateHalfAt(BinaryValue bytes, int at, int end) {
+        if (at + 3 > end || (bytes.storage().at(at) & 0xFF) != 0xED) {
+            return false;
+        }
+        int second = bytes.storage().at(at + 1) & 0xFF;
+        int third = bytes.storage().at(at + 2) & 0xFF;
+        return second >= 0xA0 && second <= 0xBF && third >= 0x80 && third <= 0xBF;
+    }
+
+    /**
+     * Whether the surrogate beginning here is a low half, which pairs second.
+     *
+     * <p>{@code c1 >= 0xD800 && c1 <= 0xDBFF && c2 >= 0xDC00 && c2 <= 0xDFFF}:
+     * the high half first and the low one after it. Two of the same kind are
+     * not a pair, so the order is part of the test.
+     */
+    private static boolean isLowSurrogateAt(BinaryValue bytes, int at) {
+        return (bytes.storage().at(at + 1) & 0xFF) >= 0xB0;
+    }
+
+    /**
+     * A REBOL path as the local system writes one, from {@code To_Local_Path}.
+     *
+     * <p>Two things happen whatever is asked for: the separator changes to the
+     * one this system uses, and a run of slashes becomes a single one --
+     * {@code if (n == 0 || out[n-1] != OS_DIR_SEP) out[n++] = OS_DIR_SEP;}.
+     *
+     * <p>The dots are read only when /FULL asked for them. A single dot, alone
+     * or with a slash after it, is dropped. A double dot backs out of the
+     * directory built so far and leaves a separator behind it, so the answer
+     * ends with one.
+     *
+     * <p>One divergence, and it is the C that is wrong. A segment such as
+     * {@code ..x} falls through the double-dot branch into a line that writes
+     * the character it looked ahead at and then copies the segment anyway, so
+     * the C answers {@code x..x}. Here it is copied as it stands.
+     */
+    private static String localPathOf(String path, boolean resolvingDots, char separator) {
+        StringBuilder built = new StringBuilder();
+        int at = 0;
+        while (at < path.length()) {
+            // The top of the C's loop "always follows / or start", which is
+            // what makes a dot here the beginning of a segment rather than a
+            // character inside one.
+            if (resolvingDots) {
+                at = pastAnyDots(path, at, built, separator);
+            }
+            while (at < path.length()) {
+                char letter = path.charAt(at);
+                at++;
+                if (letter == '/') {
+                    if (built.isEmpty()
+                            || built.charAt(built.length() - 1) != separator) {
+                        built.append(separator);
+                    }
+                    break;
+                }
+                built.append(letter);
+            }
+        }
+        return built.toString();
+    }
+
+    /**
+     * Past a leading {@code .} or {@code ..} segment, having acted on it.
+     *
+     * <p>Answers where the segment that follows begins, which is the same
+     * place it was given for anything that is not one of those two.
+     */
+    private static int pastAnyDots(
+            String path, int at, StringBuilder built, char separator) {
+        if (at >= path.length() || path.charAt(at) != '.') {
+            return at;
+        }
+        boolean twoDots = at + 1 < path.length() && path.charAt(at + 1) == '.';
+        int after = at + (twoDots ? 2 : 1);
+        boolean wholeSegment = after >= path.length() || path.charAt(after) == '/';
+        if (!wholeSegment) {
+            return at;
+        }
+        if (twoDots) {
+            backOutOneDirectory(built, separator);
+        }
+        // The slash after the segment is left where it is, because the loop
+        // that copies a segment is what consumes one -- and that is what brings
+        // the walk back to the top of the loop, where the next segment gets its
+        // own look for dots. Stepping over it here read `../../c` as `../c`,
+        // because the second pair of dots was copied as a name.
+        return after;
+    }
+
+    /**
+     * Drops the last directory from what has been built, leaving a separator.
+     *
+     * <p>{@code n -= (n > 2) ? 2 : n;} and then a walk back to the separator
+     * before it. The two characters are the trailing separator and the last
+     * character of the name, so the walk cannot stop on the separator it
+     * started from.
+     */
+    private static void backOutOneDirectory(StringBuilder built, char separator) {
+        int length = built.length() > 2 ? built.length() - 2 : 0;
+        while (length > 0 && built.charAt(length) != separator) {
+            length--;
+        }
+        built.setLength(length);
+        built.append(separator);
+    }
+
+    /**
+     * Which of the target's words RESOLVE may write, and where its walk starts.
+     *
+     * <p>The C keeps this in a bind table both contexts share, and a mark of -1
+     * means "named, and the source has not got it". Both shapes of /ONLY are
+     * marks, which is why one rule covers them both: a marked word the source
+     * lacks is unset in the target, where an unmarked one is left as it was.
+     */
+    private record WordsToResolve(int startAt, Set<String> named, boolean limited) {
+
+        /** No /ONLY: every word the source has, from the first onwards. */
+        static WordsToResolve everything() {
+            return new WordsToResolve(1, Set.of(), false);
+        }
+
+        boolean allows(String canonical) {
+            return !limited || named.contains(canonical);
+        }
+    }
+
+    /**
+     * What /ONLY asked for, in either of its two shapes.
+     *
+     * <p>A block names the words outright. An integer is a position in the
+     * target -- "an index to tail" -- and marks its words from there on, which
+     * is how the C resolves the words a binding has just added: it records the
+     * context's length, binds, and resolves from that length.
+     *
+     * <p>{@code if (i == 0) i = 1;} and a position past the end is nothing to
+     * do rather than a failure.
+     */
+    private static WordsToResolve wordsToResolve(
+            Context into, List<ContextSlot> targetSlots,
+            Set<String> refinements, Value onlyThese) {
+
+        if (!refinements.contains("only")) {
+            return WordsToResolve.everything();
+        }
+        if (onlyThese instanceof IntegerValue position) {
+            int startAt = Math.max(1, (int) position.magnitude());
+            if (startAt > targetSlots.size()) {
+                return new WordsToResolve(startAt, Set.of(), true);
+            }
+            return new WordsToResolve(startAt,
+                    targetSlots.subList(startAt - 1, targetSlots.size()).stream()
+                            .map(ContextSlot::canonical)
+                            .collect(java.util.stream.Collectors.toUnmodifiableSet()),
+                    true);
+        }
+        if (onlyThese instanceof BlockValue named) {
+            // `if (IS_WORD(words) || IS_SET_WORD(words))` -- anything else in
+            // the block is passed over rather than refused.
+            return new WordsToResolve(1, named.remaining().stream()
+                    .filter(word -> word instanceof WordValue spelled
+                            && (spelled.datatype() == Datatype.WORD
+                                    || spelled.datatype() == Datatype.SET_WORD))
+                    .map(word -> ((WordValue) word).canonical())
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet()),
+                    true);
+        }
+        return WordsToResolve.everything();
+    }
+
+    /**
+     * Copies one context's values into another, as {@code Resolve_Context}.
+     *
+     * <p>The C walks the TARGET and asks the bind table where each of its words
+     * sits in the source, which is why a word the source has not got is
+     * ordinarily left as it was: nothing marked it.
+     *
+     * <p>A protected slot is skipped without complaint --
+     * {@code if (!VAL_PROTECTED(words) && ...)} -- and a hidden source word is
+     * not a source of anything: {@code && !VAL_HIDDEN(words)}.
+     *
+     * <p>/EXTEND then adds the source words the target has not got at all,
+     * limited the same way: a word /ONLY did not name was never marked, so the
+     * expand loop does not see it either.
+     */
+    private static Value resolvedFrom(
+            Context into, Context from, Value target,
+            Set<String> refinements, Value onlyThese) {
+
+        List<ContextSlot> targetSlots = into.slots();
+        WordsToResolve writable =
+                wordsToResolve(into, targetSlots, refinements, onlyThese);
+        Map<String, Value> available = new LinkedHashMap<>();
+        for (ContextSlot slot : from.slots()) {
+            if (!slot.canonical().equals("self")) {
+                available.put(slot.canonical(), slot.value());
+            }
+        }
+
+        for (int at = writable.startAt(); at <= targetSlots.size(); at++) {
+            ContextSlot slot = targetSlots.get(at - 1);
+            if (slot.canonical().equals("self") || slot.isProtected()) {
+                continue;
+            }
+            boolean known = available.containsKey(slot.canonical());
+            if (!writable.allows(slot.canonical())
+                    || (!known && !writable.limited())) {
+                continue;
+            }
+            if (!refinements.contains("all") && !(slot.value() instanceof UnsetValue)) {
+                continue;
+            }
+            slot.setValue(known ? available.get(slot.canonical()) : UnsetValue.unset());
+        }
+
+        if (refinements.contains("extend")) {
+            available.forEach((name, value) -> {
+                if (!into.holds(name) && writable.allows(name)) {
+                    into.set(name, value);
+                }
+            });
+        }
+        return target;
+    }
+
+    /**
+     * What COPY will duplicate: the eight datatypes its spec names.
+     *
+     * <p>{@code value [series! port! map! object! bitset! any-function! error!
+     * struct!]}. Declared rather than left open, because the list is what decides
+     * the error: a gob is not on it, so `copy make gob! []` is the wrong argument
+     * rather than an operation a gob does not support. STRUCT is absent here for
+     * the reason it is absent everywhere -- the datatype belongs to a build with
+     * the FFI in it.
+     */
+    private Value questionedByField(
+            Value field, Evaluator evaluator, List<String> partNames,
+            java.util.function.Function<String, Value> partOf) {
+        return switch (field) {
+            case WordValue named when named.canonical().equals("words") ->
+                    namesAsWords(partNames);
+            case WordValue named -> oneKnownPart(named, partNames, partOf);
+            case BlockValue asked -> {
+                List<Value> answer = new ArrayList<>();
+                for (Value item : asked.remaining()) {
+                    if (!(item instanceof WordValue named)) {
+                        throw Raised.of(EvaluationFailure.INVALID_ARG,
+                                Molder.mold(item) + " names no part");
+                    }
+                    if (named.datatype() != Datatype.GET_WORD) {
+                        answer.add(named.as(Datatype.SET_WORD));
+                    }
+                    answer.add(oneKnownPart(named, partNames, partOf));
+                }
+                yield BlockValue.block(answer);
+            }
+            case NoneValue names -> namesAsWords(partNames);
+            default -> {
+                Context fields = Context.childOf(evaluator.systemContext());
+                ObjectValue built = new ObjectValue(fields);
+                fields.set("self", built);
+                for (String part : partNames) {
+                    fields.set(part, partOf.apply(part));
+                }
+                yield built;
+            }
+        };
+    }
+
+    private static Value namesAsWords(List<String> partNames) {
+        return BlockValue.block(
+                partNames.stream().<Value>map(WordValue::of).toList());
+    }
+
+    private static Value oneKnownPart(WordValue named, List<String> partNames,
+            java.util.function.Function<String, Value> partOf) {
+        if (!partNames.contains(named.canonical())) {
+            throw Raised.of(EvaluationFailure.CANNOT_USE,
+                    "query has no " + named.canonical() + " to answer here");
+        }
+        return partOf.apply(named.canonical());
+    }
+
+    private static boolean routesToAScheme(Value source) {
+        return source.datatype() == Datatype.URL
+                || source.datatype() == Datatype.BLOCK
+                || source instanceof WordValue;
+    }
+
+    private static Raised schemeRefusal(String verbs, Value routed) {
+        return Raised.of(EvaluationFailure.NO_SERVICE,
+                "nothing here " + verbs + " " + schemeNameOf(routed));
+    }
+
+    private static String schemeNameOf(Value routed) {
+        return switch (routed) {
+            case WordValue word -> "the " + word.canonical() + " scheme";
+            case BlockValue specification -> Molder.mold(specification);
+            case PortValue port -> "the " + port.schemeName() + " scheme";
+            default -> "the " + ((StringValue) routed).text().split(":", 2)[0]
+                    + " scheme";
+        };
+    }
+
+    private Value writeToPort(PortValue port, Value data, Evaluator evaluator) {
+        if (!port.schemeName().equals("console")) {
+            throw schemeRefusal("writes", port);
+        }
+        requireService(HostService.CONSOLE);
+        evaluator.output().write(Molder.form(data));
+        return port;
+    }
+
+    private static Set<Datatype> asTypeOrExample() {
+        Set<Datatype> accepted = EnumSet.of(Datatype.DATATYPE);
+        accepted.addAll(Typeset.ANY_BLOCK.members());
+        accepted.addAll(Typeset.ANY_STRING.members());
+        return Set.copyOf(accepted);
+    }
+
+    private static Set<Datatype> copyable() {
+        Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
+        accepted.addAll(Typeset.ANY_FUNCTION.members());
+        accepted.addAll(Set.of(Datatype.ACTION, Datatype.CLOSURE,
+                Datatype.COMMAND, Datatype.REBCODE, Datatype.STRUCT));
+        accepted.add(Datatype.PORT);
+        accepted.add(Datatype.MAP);
+        accepted.add(Datatype.OBJECT);
+        accepted.add(Datatype.BITSET);
+        accepted.add(Datatype.ERROR);
+        return Set.copyOf(accepted);
+    }
+
+    /**
+     * What INDEX? and INDEXZ? accept: `series! gob! port! none!`.
+     *
+     * <p>Declaring it matters, because the declaration and the arm refuse
+     * differently and a script can tell them apart. An integer is not on the
+     * list at all, so it never reaches an arm: `indexz? 5` is `expect-arg`,
+     * which the corpus confirms against 3.22.1. NONE is on the list, so it does
+     * reach one -- and the none arm answers for INDEX? and falls through to
+     * `Trap_Action` for INDEXZ?, which is `cannot-use`.
+     *
+     * <p>GOB is here now that the datatype is, and it has to be named rather than
+     * arrive with the series: `boot/types.reb` gives a gob no typeset, so
+     * `series? make gob! []` is false while `index?` still answers.
+     */
+    private static Set<Datatype> positionable() {
+        Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
+        accepted.add(Datatype.PORT);
+        accepted.add(Datatype.NONE);
+        // A gob has a position and is not a series: `boot/types.reb` gives it no
+        // typeset at all, so `series? make gob! []` is false while `index?` still
+        // answers. Every one of the eleven navigation actions names it by hand,
+        // and so must this.
+        accepted.add(Datatype.GOB);
+        return Set.copyOf(accepted);
+    }
+
+    /** Walks a path of field names, answering none where any of them is absent. */
+    private static Value pathInto(Context context, String... names) {
+        Value reached = context.knows(names[0])
+                ? context.slotFor(names[0]).value()
+                : NoneValue.none();
+        for (int step = 1; step < names.length; step++) {
+            if (!(reached instanceof ObjectValue holder)
+                    || !holder.context().holds(names[step])) {
+                return NoneValue.none();
+            }
+            reached = holder.context().ownSlotFor(names[step]).value();
+        }
+        return reached;
+    }
+
+    /**
+     * MAKE MODULE!, which asks the library to do the work.
+     *
+     * <p>MAKE-MODULE* answers none for a header it will not accept, and none
+     * is not a module. Answering it would hand the caller a value of the
+     * wrong datatype and no reason why, so this raises invalid-spec about the
+     * spec, which is what {@code Make_Module} does:
+     * {@code if (IS_NONE(value)) Trap1(RE_INVALID_SPEC, spec);}
+     */
+    private static Value moduleFromSpec(
+            Value spec, Evaluator evaluator, Context context) {
+        if (!(spec instanceof BlockValue given)) {
+            return raiseBadMakeArg(spec, "module!");
+        }
+        Value built = evaluator.applyFunction(
+                systemInternalFunction(context, "make-module*"), List.of(given));
+        if (!(built instanceof ModuleValue module)) {
+            throw Raised.of(EvaluationFailure.INVALID_SPEC, "module!");
+        }
+        return module;
+    }
+
+    /** TO MODULE!, which joins a header object and a words object. */
+    private static Value moduleFromHeaderAndWords(Value value) {
+        if (!(value instanceof BlockValue parts)) {
+            return raiseBadMakeArg(value, "module!");
+        }
+        List<Value> given = parts.remaining();
+        if (given.size() < 2
+                || !(given.get(0) instanceof ObjectValue header)
+                || !(given.get(1) instanceof ObjectValue words)) {
+            return raiseBadMakeArg(value, "module!");
+        }
+        return new ModuleValue(words.context(), header);
     }
 
     /**
@@ -9394,13 +15432,272 @@ public final class Natives {
         }
     }
 
+    private record FileReading(
+            String path,
+            Optional<Long> bound,
+            Optional<Long> position,
+            boolean answersText,
+            boolean answersLines) {
+
+        private static final List<String> ARGUMENT_ORDER = List.of("part", "seek");
+
+        static FileReading asAskedFor(List<Value> arguments, Set<String> refinements) {
+            return new FileReading(
+                    ((StringValue) arguments.getFirst()).text(),
+                    numberFor("part", arguments, refinements),
+                    refusingANegative(numberFor("seek", arguments, refinements)),
+                    refinements.contains("string"),
+                    refinements.contains("lines"));
+        }
+
+        private static Optional<Long> numberFor(
+                String refinement, List<Value> arguments, Set<String> refinements) {
+            Value asked = argumentFor(refinement, ARGUMENT_ORDER, arguments, refinements, 1);
+            return asked == null
+                    ? Optional.empty()
+                    : Optional.of((long) asMagnitude(asked));
+        }
+
+        private static Optional<Long> refusingANegative(Optional<Long> asked) {
+            if (asked.isPresent() && asked.orElseThrow() < 0) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                        "a read cannot start before the beginning, and "
+                                + asked.orElseThrow() + " is before it");
+            }
+            return asked;
+        }
+
+        Value answerThrough(FilePort files) {
+            if (path.endsWith("/") || files.isDirectory(path)) {
+                return namesWithin(files);
+            }
+            byte[] chosen = theBytesAskedFor(files.readBytes(path));
+            if (answersLines || answersText) {
+                Optional<String> text = decodedUtfText(chosen);
+                if (text.isPresent()) {
+                    return answersLines
+                            ? linesOf(text.orElseThrow())
+                            : StringValue.of(text.orElseThrow());
+                }
+            }
+            return new BinaryValue(new BinaryStorage(chosen), 1);
+        }
+
+        private Value namesWithin(FilePort files) {
+            return BlockValue.block(files.namesIn(path).stream()
+                    .<Value>map(name -> StringValue.of(name, Datatype.FILE))
+                    .toList());
+        }
+
+        private byte[] theBytesAskedFor(byte[] whole) {
+            int from = (int) Math.min(position.orElse(0L), whole.length);
+            if (bound.isEmpty()) {
+                return java.util.Arrays.copyOfRange(whole, from, whole.length);
+            }
+            long asked = bound.orElseThrow();
+            if (asked >= 0) {
+                int to = (int) Math.min(from + asked, whole.length);
+                return java.util.Arrays.copyOfRange(whole, from, to);
+            }
+            long backwards = -asked;
+            if (backwards > from) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                        "a backwards read of " + backwards
+                                + " reaches before the file's start");
+            }
+            return java.util.Arrays.copyOfRange(whole, (int) (from - backwards), from);
+        }
+
+        private static Optional<String> decodedUtfText(byte[] bytes) {
+            try {
+                return Optional.of(
+                        strictlyDecodedByItsMark(bytes).replace("\r\n", "\n"));
+            } catch (java.nio.charset.CharacterCodingException undecodable) {
+                return Optional.empty();
+            }
+        }
+
+        private static String strictlyDecodedByItsMark(byte[] bytes)
+                throws java.nio.charset.CharacterCodingException {
+            if (startsWith(bytes, 0xEF, 0xBB, 0xBF)) {
+                return strictlyDecoded(bytes, 3, StandardCharsets.UTF_8);
+            }
+            if (startsWith(bytes, 0xFE, 0xFF)) {
+                return strictlyDecoded(bytes, 2, StandardCharsets.UTF_16BE);
+            }
+            if (startsWith(bytes, 0xFF, 0xFE)) {
+                return strictlyDecoded(bytes, 2, StandardCharsets.UTF_16LE);
+            }
+            return strictlyDecoded(bytes, 0, StandardCharsets.UTF_8);
+        }
+
+        private static String strictlyDecoded(
+                byte[] bytes, int from, java.nio.charset.Charset charset)
+                throws java.nio.charset.CharacterCodingException {
+            return charset.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                    .decode(java.nio.ByteBuffer.wrap(bytes, from, bytes.length - from))
+                    .toString();
+        }
+
+        private static boolean startsWith(byte[] bytes, int... mark) {
+            if (bytes.length < mark.length) {
+                return false;
+            }
+            for (int at = 0; at < mark.length; at++) {
+                if ((bytes[at] & 0xFF) != mark[at]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static Value linesOf(String text) {
+            List<Value> lines = new ArrayList<>();
+            StringBuilder line = new StringBuilder();
+            for (int at = 0; at < text.length(); at++) {
+                char letter = text.charAt(at);
+                if (letter == '\n' || letter == '\r') {
+                    lines.add(StringValue.of(line.toString()));
+                    line.setLength(0);
+                } else {
+                    line.append(letter);
+                }
+            }
+            if (!line.isEmpty()) {
+                lines.add(StringValue.of(line.toString()));
+            }
+            return BlockValue.block(lines);
+        }
+    }
+
+    private record FileWriting(
+            String path,
+            Value data,
+            Optional<Long> bound,
+            Optional<Long> position,
+            boolean atTheEnd,
+            boolean oneValuePerLine) {
+
+        private static final List<String> ARGUMENT_ORDER = List.of("part", "seek", "allow");
+
+        static FileWriting asAskedFor(List<Value> arguments, Set<String> refinements) {
+            return new FileWriting(
+                    ((StringValue) arguments.getFirst()).text(),
+                    arguments.get(1),
+                    refusingANegative("bounded to", numberFor("part", arguments, refinements)),
+                    refusingANegative("written at", numberFor("seek", arguments, refinements)),
+                    refinements.contains("append"),
+                    refinements.contains("lines"));
+        }
+
+        private static Optional<Long> numberFor(
+                String refinement, List<Value> arguments, Set<String> refinements) {
+            Value asked = argumentFor(refinement, ARGUMENT_ORDER, arguments, refinements, 2);
+            return asked == null
+                    ? Optional.empty()
+                    : Optional.of((long) asMagnitude(asked));
+        }
+
+        private static Optional<Long> refusingANegative(String what, Optional<Long> asked) {
+            if (asked.isPresent() && asked.orElseThrow() < 0) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                        "a write cannot be " + what + " a place before the start, and "
+                                + asked.orElseThrow() + " is one");
+            }
+            return asked;
+        }
+
+        void performThrough(FilePort files) {
+            byte[] bytes = bytesToWrite();
+            if (position.isPresent()) {
+                files.writeAt(path, clippedToTheFileSize(files), bytes);
+            } else if (atTheEnd) {
+                files.appendTo(path, bytes);
+            } else {
+                files.write(path, bytes);
+            }
+        }
+
+        private long clippedToTheFileSize(FilePort files) {
+            long size = files.informationAbout(path)
+                    .flatMap(FileInformation::size)
+                    .orElse(0L);
+            return Math.min(position.orElseThrow(), size);
+        }
+
+        private byte[] bytesToWrite() {
+            if (data instanceof BinaryValue binary) {
+                return withTheLineFeedByteLinesAsks(
+                        boundedOctets(binary.octetsFromHere()));
+            }
+            if (data instanceof CharacterValue character) {
+                return utf8(Character.toString(character.codepoint()));
+            }
+            if (data instanceof BlockValue block && oneValuePerLine) {
+                return utf8(eachValueFormedOnItsOwnLine(block));
+            }
+            return utf8(withTheLineFeedLinesAsks(boundedText(asTextToWrite())));
+        }
+
+        private String asTextToWrite() {
+            return isExactlyAString(data)
+                    ? ((StringValue) data).text()
+                    : Molder.mold(data);
+        }
+
+        private String eachValueFormedOnItsOwnLine(BlockValue block) {
+            return block.remaining().stream()
+                    .map(each -> Molder.form(each) + "\n")
+                    .collect(Collectors.joining());
+        }
+
+        private String withTheLineFeedLinesAsks(String text) {
+            return oneValuePerLine ? text + "\n" : text;
+        }
+
+        private byte[] withTheLineFeedByteLinesAsks(byte[] octets) {
+            if (!oneValuePerLine) {
+                return octets;
+            }
+            byte[] fed = java.util.Arrays.copyOf(octets, octets.length + 1);
+            fed[octets.length] = '\n';
+            return fed;
+        }
+
+        private String boundedText(String text) {
+            if (bound.isEmpty()) {
+                return text;
+            }
+            int codePoints = text.codePointCount(0, text.length());
+            int kept = (int) Math.min(bound.orElseThrow(), codePoints);
+            return text.substring(0, text.offsetByCodePoints(0, kept));
+        }
+
+        private byte[] boundedOctets(byte[] octets) {
+            if (bound.isEmpty() || bound.orElseThrow() >= octets.length) {
+                return octets;
+            }
+            return java.util.Arrays.copyOf(octets, (int) (long) bound.orElseThrow());
+        }
+
+        private static byte[] utf8(String text) {
+            return text.getBytes(StandardCharsets.UTF_8);
+        }
+    }
+
     /** Turns a port's refusal into an error the script can catch. */
     private static Value throughPort(Supplier<Value> operation) {
         try {
             return operation.get();
         } catch (FilePort.Denied denied) {
-            throw new Raised(ErrorValue.of(
-                    ErrorCategory.ACCESS, denied.errorId(), denied.getMessage()));
+            throw new Raised(denied.subject().isEmpty()
+                    ? ErrorValue.of(ErrorCategory.ACCESS,
+                            denied.errorId(), denied.getMessage())
+                    : ErrorValue.about(ErrorCategory.ACCESS,
+                            denied.errorId(), denied.getMessage(),
+                            StringValue.of(denied.subject(), Datatype.FILE)));
         }
     }
 
@@ -9428,21 +15725,37 @@ public final class Natives {
      * A refinement's string argument, or empty when the refinement was not
      * asked for.
      *
-     * <p>The dialogs take four optional arguments between them and every one
-     * of them is "use the host's own default if I say nothing", so an absent
-     * refinement has to arrive as an absence rather than as an empty string.
+     * <p>The dialogs take several optional arguments between them and every
+     * one of them is "use the host's own default if I say nothing", so an
+     * absent refinement has to arrive as an absence rather than as an empty
+     * string.
      */
     private static Optional<String> textOfArgument(
-            List<Value> arguments, Set<String> refinements, String refinement) {
+            List<Value> arguments, Set<String> refinements,
+            List<String> declaredOrder, String refinement) {
 
-        if (!refinements.contains(refinement)) {
-            return Optional.empty();
+        return argumentFor(refinement, declaredOrder, arguments, refinements, 0)
+                instanceof StringValue text
+                ? Optional.of(text.text())
+                : Optional.empty();
+    }
+
+    private static List<String> filterPairsIn(
+            List<Value> arguments, Set<String> refinements) {
+        if (!refinements.contains("filter")) {
+            return List.of();
         }
-        return arguments.stream()
-                .filter(StringValue.class::isInstance)
-                .map(StringValue.class::cast)
-                .map(StringValue::text)
-                .findFirst();
+        BlockValue listed = (BlockValue) arguments.stream()
+                .filter(BlockValue.class::isInstance)
+                .findFirst()
+                .orElseThrow();
+        List<Value> items = listed.remaining();
+        if (items.size() % 2 != 0) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    "a filter list pairs a name with a pattern, and "
+                            + items.size() + " items do not pair up");
+        }
+        return items.stream().map(Molder::form).toList();
     }
 
     // ---- parse -----------------------------------------------------------
@@ -9558,12 +15871,33 @@ public final class Natives {
         // JEBOL's MOLD already writes that -- construction syntax for the
         // values with no literal spelling -- so the refinement is accepted
         // and changes nothing rather than being refused.
-        define("mold", List.of(Parameter.required("value")),
+        // /ONLY drops a block's own brackets, /FLAT drops the indentation, and
+        // /PART cuts the answer to a length. /PART declared no argument here, so
+        // asking for it did nothing at all -- a caller molding a large value to
+        // a bounded width got the whole of it.
+        define("mold", List.of(Parameter.required("value"),
+                        Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER))),
                 Set.of("all", "only", "flat", "part"),
-                (arguments, evaluator, context, refinements) -> StringValue.of(
-                        refinements.contains("flat")
-                                ? Molder.moldFlat(arguments.get(0))
-                                : Molder.mold(arguments.get(0))));
+                (arguments, evaluator, context, refinements) -> {
+                    String written = refinements.contains("flat")
+                            ? Molder.moldFlat(arguments.get(0))
+                            : refinements.contains("all")
+                                    ? Molder.moldAll(arguments.get(0))
+                                    : Molder.mold(arguments.get(0));
+                    if (refinements.contains("only")
+                            && arguments.getFirst() instanceof BlockValue block
+                            && block.datatype() == Datatype.BLOCK) {
+                        written = Molder.moldOnly(block);
+                    }
+                    if (refinements.contains("part") && arguments.size() > 1
+                            && arguments.get(1) instanceof IntegerValue limit) {
+                        int wanted = (int) Math.max(0, limit.magnitude());
+                        written = written.length() <= wanted
+                                ? written
+                                : written.substring(0, wanted);
+                    }
+                    return StringValue.of(written);
+                });
         define("form", takes("value"),
                 (arguments, evaluator, context) -> StringValue.of(Molder.form(arguments.get(0))));
 
@@ -9577,9 +15911,24 @@ public final class Natives {
         define("quit", List.of(Parameter.belongingTo("return", "value", Set.of())),
                 Set.of("now", "return"),
                 (arguments, evaluator, context, refinements) -> {
+                    // A plain QUIT carries UNSET, on the authority of Rebol's
+                    // own test suite: `unset? catch/quit [quit]`, five
+                    // assertions in evaluation-test.r3.
+                    //
+                    // The C's comment on the line that does it says otherwise
+                    // -- `Halt_Code(RE_QUIT, val); // NONE if /return not set`
+                    // -- and `val` really is /RETURN's argument, which an
+                    // unsupplied refinement leaves as none. So the comment
+                    // describes what QUIT hands over and not what a caller
+                    // gets back; something between there and CATCH turns it
+                    // into unset.
+                    //
+                    // Measured both ways: none costs five suite assertions and
+                    // unset costs none. The suite is Rebol's own and is the
+                    // stronger authority, so it decides.
                     throw new QuitRequested(refinements.contains("return")
                             ? arguments.getFirst()
-                            : NoneValue.none());
+                            : UnsetValue.unset());
                 });
         define("print", takes("value"),
                 (arguments, evaluator, context) -> {

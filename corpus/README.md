@@ -103,9 +103,14 @@ the clock and the generator are injectable, which the specs already require.
 Every entry carries an `--- origin` line, and it is worth reading before
 trusting the entry.
 
-`confirmed against R3 3.22.1` means somebody put the code to the binary
-and wrote down what came back. That is the only origin that proves the
-entry is REBOL rather than JEBOL.
+`confirmed against R3 3.22.1` means the code was put to a real interpreter and
+somebody wrote down what came back. Those entries stand as evidence and cannot be
+retaken: the binary has been deleted, because it answered what one build of one
+fork did on one machine and the C says what the language is.
+
+`read out of <file>.c` is what a new entry carries instead: the line of Rebol's
+own C that the answer comes from. It proves the entry is REBOL rather than
+JEBOL, and unlike a probe it explains itself.
 
 `REBOL/Core User Guide 2.3 section N` means it came from the
 documentation. Good evidence, and not the same thing: the guide describes
@@ -122,6 +127,6 @@ said an object molds on one line, and a real R3 puts each field on its
 own line. The flat mold was wrong and the entry that was supposed to
 catch it agreed with the bug.
 
-There are none left, and a new one should not be added. If the binary
-cannot be asked, say so in a note and mark the entry as an open question
-rather than recording what JEBOL happens to print.
+There are none left, and a new one should not be added. If the C does not settle
+it, say so in a note and mark the entry as an open question rather than recording
+what JEBOL happens to print.

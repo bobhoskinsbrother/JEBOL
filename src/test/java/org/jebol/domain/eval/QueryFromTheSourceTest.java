@@ -223,6 +223,19 @@ class QueryFromTheSourceTest {
         }
 
         @Test
+        @DisplayName("/MODE is declared, deprecated and does nothing")
+        void theDeprecatedModeRefinement() throws Exception {
+            // `/mode "** DEPRECATED **"` in the spec, and no arm of the C reads
+            // it: there is no ARG_QUERY_MODE in the source at all. So the only
+            // thing that changes when a script asks for it is whether the call
+            // is possible, and here it was not.
+            givenAFile("a.txt", "hello");
+            assertThat(answerTo("query/mode %a.txt 'size"))
+                    .isEqualTo(answerTo("query %a.txt 'size"))
+                    .isEqualTo("5");
+        }
+
+        @Test
         @DisplayName("a script not granted the filesystem cannot ask at all")
         void anUngrantedScriptIsRefused() {
             // The refusal is for the service and not for the field. A QUERY

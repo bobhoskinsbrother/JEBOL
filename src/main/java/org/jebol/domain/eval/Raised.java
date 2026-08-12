@@ -1,6 +1,8 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.value.ErrorValue;
+import org.jebol.domain.value.Molder;
+import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
 /**
@@ -53,5 +55,20 @@ public final class Raised extends RuntimeException {
                 detail.isEmpty()
                         ? org.jebol.domain.value.StringValue.of(detail)
                         : WordValue.of(detail)));
+    }
+
+    /**
+     * A failure naming two things, which several catalogue entries word with.
+     *
+     * <p>{@code expect-val: [{expected} :arg1 {not} :arg2]} is the example, and a
+     * script reads both: Rebol's own gob test asserts {@code err/arg1 = set-word!}
+     * rather than reading the datatype back out of the message.
+     */
+    public static Raised of(EvaluationFailure failure, Value first, Value second) {
+        return new Raised(ErrorValue.about(
+                failure.category(), failure.errorId(),
+                failure.description() + ": " + Molder.mold(first)
+                        + " and " + Molder.mold(second),
+                first, second));
     }
 }
