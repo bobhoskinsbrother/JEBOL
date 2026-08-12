@@ -7563,7 +7563,8 @@ public final class Natives {
             boolean countingLines,
             boolean handingBackFailures,
             boolean answeringTheValueAlone,
-            boolean sourceWasBinary) {
+            boolean sourceWasBinary,
+            Value source) {
 
         static SourceReading asAskedFor(List<Value> arguments, Set<String> refinements) {
             String whole = textOfSource(arguments.getFirst());
@@ -7577,7 +7578,8 @@ public final class Natives {
                     refinements.contains("line"),
                     refinements.contains("error"),
                     refinements.contains("one"),
-                    arguments.getFirst() instanceof BinaryValue);
+                    arguments.getFirst() instanceof BinaryValue,
+                    arguments.getFirst());
         }
 
         private static Transcoder.Extent extentAskedFor(Set<String> refinements) {
@@ -7631,13 +7633,26 @@ public final class Natives {
                 List<Value> values, Transcoder.Reading reading) {
 
             List<Value> answer = new ArrayList<>(values);
-            answer.add(remainderOf(
-                    skippingCodePoints(whole, reading.endedAtCodePoint()),
-                    sourceWasBinary));
+            // The remainder is the SOURCE advanced, not a copy of what is
+            // left: the C's `Append_Val(blk, src)` hands back a position in
+            // the very series it was given, which is what lets sys-load
+            // measure `checksum/part mark remaining` between two of them.
+            String left = skippingCodePoints(whole, reading.endedAtCodePoint());
+            answer.add(switch (source) {
+                case BinaryValue bytes -> bytes.atIndex(bytes.index()
+                        + utf8LengthOf(whole) - utf8LengthOf(left));
+                case StringValue text ->
+                        text.atIndex(text.index() + whole.length() - left.length());
+                default -> remainderOf(left, sourceWasBinary);
+            });
             if (countingLines) {
                 answer.add(IntegerValue.of(reading.lineEndedOn()));
             }
             return answer;
+        }
+
+        private static int utf8LengthOf(String text) {
+            return text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
         }
 
         private Value handedBackOrRaised(ErrorValue failure) {
@@ -15242,6 +15257,16 @@ public final class Natives {
             case ObjectValue object -> object.context();
             case ModuleValue module -> module.context();
             case PortValue port -> port.context();
+            // An error binds like the object its fields make -- `else if
+            // (IS_ERROR(arg)) frame = VAL_ERR_OBJECT(arg);` -- which is how
+            // the catalogue's :arg1 get-words read a caught error's values.
+            case ErrorValue error -> {
+                Context fields = Context.root();
+                for (String name : ErrorValue.FIELDS) {
+                    fields.set(name, error.field(name).orElseGet(NoneValue::none));
+                }
+                yield fields;
+            }
             default -> null;
         };
     }
@@ -16072,6 +16097,13 @@ public final class Natives {
         }
     }
 
+    /**
+     * The reason code a failed open reports as the error's second argument:
+     * {@code RFE_OPEN_FAIL} is 3, and {@code Trap_Port} pushes it, so the
+     * catalogue's {@code "reason:" :arg2} reduces to the number 3.
+     */
+    private static final int OPEN_FAILED = 3;
+
     /** Turns a port's refusal into an error the script can catch. */
     private static Value throughPort(Supplier<Value> operation) {
         try {
@@ -16082,7 +16114,8 @@ public final class Natives {
                             denied.errorId(), denied.getMessage())
                     : ErrorValue.about(ErrorCategory.ACCESS,
                             denied.errorId(), denied.getMessage(),
-                            StringValue.of(denied.subject(), Datatype.FILE)));
+                            StringValue.of(denied.subject(), Datatype.FILE),
+                            IntegerValue.of(OPEN_FAILED)));
         }
     }
 
