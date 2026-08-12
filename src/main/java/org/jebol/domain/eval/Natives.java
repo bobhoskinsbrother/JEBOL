@@ -9501,6 +9501,21 @@ public final class Natives {
             // to the original, and Rebol's own url-parser silently added a
             // percent sign to the catalogue's URI set.
             case BitsetValue members -> members.duplicate();
+            // A copied object holds its own slots. Sharing them made
+            // `copy stats/profile` no snapshot at all, and DELTA-PROFILE
+            // subtracted a window from itself.
+            case ObjectValue object -> {
+                Context fields = Context.root();
+                ObjectValue duplicate = new ObjectValue(fields);
+                fields.set("self", duplicate);
+                object.context().slots().stream()
+                        .filter(slot -> !slot.canonical().equals("self"))
+                        .forEach(slot -> fields.set(slot.spelling(),
+                                deeply && kinds.contains(slot.value().datatype())
+                                        ? copied(slot.value(), true, kinds)
+                                        : slot.value()));
+                yield duplicate;
+            }
             default -> original;
         };
     }
