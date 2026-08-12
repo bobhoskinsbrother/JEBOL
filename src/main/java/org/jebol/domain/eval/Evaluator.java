@@ -387,6 +387,9 @@ public final class Evaluator {
         return switch (callee) {
             case FunctionValue function -> {
                 Context locals = Context.childOf(function.closedOver());
+                if (!function.closure()) {
+                    locals.markAsCallFrameOf(function);
+                }
                 List<Parameter> parameters = function.parameters();
                 // Every parameter is defined, whether or not a value came
                 // for it. A name the body mentions and nobody supplied
@@ -1127,6 +1130,9 @@ public final class Evaluator {
         checkArgumentTypes(function.parameters(),
                 new java.util.HashSet<>(refinements), arguments, "function");
         Context locals = Context.childOf(function.closedOver());
+        if (!function.closure()) {
+            locals.markAsCallFrameOf(function);
+        }
 
         // Only the arguments the call site actually supplied line up with
         // the values: a parameter belonging to a refinement nobody asked

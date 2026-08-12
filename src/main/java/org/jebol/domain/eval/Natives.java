@@ -3177,9 +3177,16 @@ public final class Natives {
                     // CLOSURE with `make closure! reduce [spec body]`, and
                     // without it that file stops there -- taking LIST-DIR,
                     // and then everything mezz-shell.reb defines, with it.
-                    case DatatypeValue wanted when wanted.represents() == Datatype.FUNCTION
-                            || wanted.represents() == Datatype.CLOSURE ->
+                    case DatatypeValue wanted when wanted.represents() == Datatype.FUNCTION ->
                             functionFrom(arguments.get(1), context);
+                    // A closure's call frame is a real object, which is the
+                    // whole observable difference here: CONTEXT? of its
+                    // words answers that object rather than the function.
+                    case DatatypeValue wanted when wanted.represents() == Datatype.CLOSURE ->
+                            functionFrom(arguments.get(1), context)
+                                    instanceof FunctionValue made
+                                    ? made.asClosure()
+                                    : NoneValue.none();
                     case DatatypeValue wanted when wanted.represents() == Datatype.ERROR ->
                             errorFromSpec(arguments.get(1), evaluator, context);
                     // A string over an existing error re-messages it: the
@@ -3305,12 +3312,18 @@ public final class Natives {
         define("context?", List.of(Parameter.required("word", Typeset.ANY_WORD.members())),
                 (arguments, evaluator, context) -> {
                     WordValue word = (WordValue) arguments.getFirst();
-                    // A loop's own frame is internal, not an object:
-                    // `if (IS_INT_SERIES(VAL_WORD_FRAME(word))) return
-                    // R_NONE;` names `foreach x [1] [context? 'x]` itself.
-                    return word.isBound() && !word.binding().isALoopFrame()
-                            ? new ObjectValue(word.binding())
-                            : NoneValue.none();
+                    if (!word.isBound() || word.binding().isALoopFrame()) {
+                        // A loop's own frame is internal, not an object:
+                        // `if (IS_INT_SERIES(VAL_WORD_FRAME(word))) return
+                        // R_NONE;` names `foreach x [1] [context? 'x]`.
+                        return NoneValue.none();
+                    }
+                    // A word bound into a call frame answers the function
+                    // itself, so a body can reach its own spec.
+                    if (word.binding().functionOwningThisFrame() != null) {
+                        return word.binding().functionOwningThisFrame();
+                    }
+                    return new ObjectValue(word.binding());
                 });
 
         // RESOLVE fills in only what the target has no value for. /ALL

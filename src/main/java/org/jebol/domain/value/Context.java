@@ -62,6 +62,21 @@ public final class Context {
     }
 
     /**
+     * The function whose call this frame belongs to, or null. CONTEXT? of a
+     * word bound into a call frame answers the function itself, which is
+     * what lets a body reach its own SPEC-OF.
+     */
+    private Value ownedByFunction;
+
+    public void markAsCallFrameOf(Value function) {
+        this.ownedByFunction = function;
+    }
+
+    public Value functionOwningThisFrame() {
+        return ownedByFunction;
+    }
+
+    /**
      * The context an unbound word carries. It holds nothing, accepts nothing,
      * and reports itself as unbound.
      */
