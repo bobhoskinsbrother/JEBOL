@@ -5436,15 +5436,25 @@ public final class Natives {
                         // field as a set-word with its value after it, so
                         // `body-of make object! [a: 1]` is `[a: 1]`. It is
                         // what MAKE OBJECT! would take to build the same
-                        // object again, which is the point of it.
-                        case "body" -> BlockValue.block(
-                                object.context().slots().stream()
-                                        .filter(slot -> !slot.canonical().equals("self"))
-                                        .flatMap(slot -> java.util.stream.Stream.of(
-                                                WordValue.of(slot.spelling(),
-                                                        Datatype.SET_WORD),
-                                                slot.value()))
-                                        .toList());
+                        // object again, which is the point of it. Every
+                        // set-word carries a line break -- `VAL_SET_LINE` in
+                        // Make_Object_Block -- so the body molds one field
+                        // a line, which is how SAVE writes its header.
+                        case "body" -> {
+                            BlockValue body = BlockValue.block(
+                                    object.context().slots().stream()
+                                            .filter(slot -> !slot.canonical()
+                                                    .equals("self"))
+                                            .flatMap(slot -> java.util.stream.Stream.of(
+                                                    (Value) WordValue.of(slot.spelling(),
+                                                            Datatype.SET_WORD),
+                                                    slot.value()))
+                                            .toList());
+                            for (int at = 1; at <= body.storageLength(); at += 2) {
+                                body.storage().setLineBreakAt(at, true);
+                            }
+                            yield body;
+                        }
                         // SELF is the word every object holds for itself.
                         // It is never listed, or every object would report
                         // a field containing itself.

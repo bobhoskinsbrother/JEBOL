@@ -566,7 +566,55 @@ public final class Molder {
         return forReading ? "#{" + hex + "}" : hex.toString();
     }
 
+    /** How deep the mold is inside line-broken blocks, for the indent. */
+    private static final ThreadLocal<Integer> LINED_DEPTH =
+            ThreadLocal.withInitial(() -> 0);
+
+    private static final String ONE_INDENT = "    ";
+
+    private static boolean carriesLineBreaks(BlockValue block) {
+        for (int at = block.index(); at <= block.storageLength(); at++) {
+            if (block.storage().breaksLineAt(at)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A block whose positions carry line breaks molds one line per flagged
+     * item, indented four spaces a level, with the closing bracket on its
+     * own line -- {@code Mold_Block_Series} through
+     * {@code New_Indented_Line}. NEW-LINE sets the flags and BODY-OF an
+     * object carries them, which is how SAVE writes a header a person can
+     * read.
+     */
+    private static String renderLined(BlockValue block, boolean forReading) {
+        int outer = LINED_DEPTH.get();
+        LINED_DEPTH.set(outer + 1);
+        StringBuilder out = new StringBuilder("[");
+        try {
+            List<Value> items = block.remaining();
+            for (int at = 0; at < items.size(); at++) {
+                if (block.storage().breaksLineAt(block.index() + at)) {
+                    out.append('\n').append(ONE_INDENT.repeat(outer + 1));
+                } else if (at > 0) {
+                    out.append(' ');
+                }
+                out.append(render(items.get(at), forReading));
+            }
+        } finally {
+            LINED_DEPTH.set(outer);
+        }
+        out.append('\n').append(ONE_INDENT.repeat(outer)).append(']');
+        return out.toString();
+    }
+
     private static String renderBlock(BlockValue block, boolean forReading) {
+        if (block.datatype() == Datatype.BLOCK && forReading
+                && carriesLineBreaks(block)) {
+            return renderLined(block, forReading);
+        }
         String items = block.remaining().stream()
                 .map(item -> render(item, forReading))
                 .collect(Collectors.joining(" "));
