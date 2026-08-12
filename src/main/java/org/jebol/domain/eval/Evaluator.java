@@ -1279,6 +1279,17 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.NEED_VALUE,
                     "a set-path has nothing after it to assign");
         }
+        // The right side runs before the path is walked -- `index =
+        // Do_Next(block, index+1, 0);` then `Do_Path(&word, DS_TOP);` -- so
+        // a paren in the path reads what the assignment just computed:
+        // `b/(c: 2): c + 1` computes with the old c and then selects with
+        // the new one.
+        frame.pendingCalls.push(PendingCall.assignmentInto(
+                written -> writeThroughPath(frame, path, written)));
+        return StepOutcome.waiting();
+    }
+
+    private void writeThroughPath(Frame frame, BlockValue path, Value written) {
         List<Value> segments = path.remaining();
         BlockValue allButLast = BlockValue.path(
                 segments.subList(0, segments.size() - 1), Datatype.PATH);
@@ -1303,10 +1314,9 @@ public final class Evaluator {
                 && select(BlockValue.path(segments.subList(0, 1), Datatype.PATH),
                         frame.context).value() instanceof ImageValue image) {
             Value pixelSegment = selectorFor(segments.get(1), frame.context);
-            frame.pendingCalls.push(PendingCall.assignmentInto(
-                    written -> ImagePath.writeOneChannel(
-                            image, pixelSegment, (int) channel.magnitude(), written)));
-            return StepOutcome.waiting();
+            ImagePath.writeOneChannel(
+                    image, pixelSegment, (int) channel.magnitude(), written);
+            return;
         }
 
         // An event's fields, which a path is also the only way to reach. The event
@@ -1318,20 +1328,16 @@ public final class Evaluator {
                 && segments.getFirst() instanceof WordValue holder) {
             ContextSlot slot = resolve(
                     holder.isBound() ? holder : holder.boundTo(frame.context));
-            frame.pendingCalls.push(PendingCall.assignmentInto(
-                    written -> slot.setValue(
-                            EventPath.written(event, field.canonical(), written)
-                                    .orElseThrow(() -> Raised.of(
-                                            EvaluationFailure.BAD_PATH_SET,
-                                            field.spelling())))));
-            return StepOutcome.waiting();
+            slot.setValue(EventPath.written(event, field.canonical(), written)
+                    .orElseThrow(() -> Raised.of(
+                            EvaluationFailure.BAD_PATH_SET, field.spelling())));
+            return;
         }
         // A gob's own fields, which a path is the only way to reach: `if
         // (!Set_GOB_Var(gob, pvs->select, pvs->setval)) return PE_BAD_SET;`.
         if (target instanceof GobValue gob && lastSegment instanceof WordValue field) {
-            frame.pendingCalls.push(PendingCall.assignmentInto(
-                    written -> GobPath.write(gob, field, written)));
-            return StepOutcome.waiting();
+            GobPath.write(gob, field, written);
+            return;
         }
         // One half of a pair field: `g/size/x: 5`. PD_Gob reads the whole pair
         // out, lets the next segment write a half of the copy, and puts the copy
@@ -1351,10 +1357,9 @@ public final class Evaluator {
                 && select(BlockValue.path(segments.subList(0, 1), Datatype.PATH),
                         frame.context).value() instanceof GobValue holdingPair
                 && GobPath.field(holdingPair, pairField) instanceof PairValue half) {
-            frame.pendingCalls.push(PendingCall.assignmentInto(
-                    written -> GobPath.write(holdingPair, pairField,
-                            withHalfWritten(half, lastSegment, written))));
-            return StepOutcome.waiting();
+            GobPath.write(holdingPair, pairField,
+                    withHalfWritten(half, lastSegment, written));
+            return;
         }
         // An object, a port, a module and an error all take the object path
         // handler: `boot/types.reb` names `object` in the Path column of all four.
@@ -1370,9 +1375,15 @@ public final class Evaluator {
             if (!fields.holds(field.canonical())) {
                 throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
             }
-            frame.pendingCalls.push(
-                    PendingCall.assignment(fields.ownSlotFor(field.canonical())));
-            return StepOutcome.waiting();
+            ContextSlot slot = fields.ownSlotFor(field.canonical());
+            // A protected slot refuses as a REBOL error rather than as a
+            // host exception, exactly as a set-word does.
+            if (slot.isProtected()) {
+                throw Raised.of(EvaluationFailure.LOCKED_WORD,
+                        "the field is protected");
+            }
+            slot.setValue(written);
+            return;
         }
         // A block takes every kind of selector a read takes, and writes over
         // whatever the read would have answered. So `b: [a 1] b/a: 9` leaves
@@ -1396,15 +1407,13 @@ public final class Evaluator {
             // where `b/zz: 5` refuses, and a caller cannot tell the first from
             // a write that worked.
             if (BlockPath.isNowhereAtAll(selector)) {
-                frame.pendingCalls.push(PendingCall.assignmentInto(value -> { }));
-                return StepOutcome.waiting();
+                return;
             }
             int at = BlockPath.positionOf(block, selector)
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
                             Molder.mold(selector)));
-            frame.pendingCalls.push(PendingCall.assignmentInto(
-                    value -> replaceInSeries(block, at, value)));
-            return StepOutcome.waiting();
+            replaceInSeries(block, at, written);
+            return;
         }
         // A file and a URL refuse the write outright, which is the first line
         // of PD_File: `if (pvs->setval) return PE_BAD_SET;`. A path on a file
@@ -1421,10 +1430,9 @@ public final class Evaluator {
         // Rebol's own base-defs.reb rewrites strings this way, having no
         // REPLACE that early in its boot.
         if (target instanceof SeriesValue series && lastSegment instanceof IntegerValue where) {
-            int at = series.index() + (int) where.magnitude() - 1;
-            frame.pendingCalls.push(PendingCall.assignmentInto(
-                    value -> replaceInSeries(series, at, value)));
-            return StepOutcome.waiting();
+            replaceInSeries(series,
+                    series.index() + (int) where.magnitude() - 1, written);
+            return;
         }
         // A tuple is a value rather than a series, so writing an octet
         // makes a new tuple and puts it back where the old one came
@@ -1434,10 +1442,8 @@ public final class Evaluator {
                 && segments.getFirst() instanceof WordValue holder && segments.size() == 2) {
             ContextSlot slot = resolve(
                     holder.isBound() ? holder : holder.boundTo(frame.context));
-            frame.pendingCalls.push(PendingCall.assignmentInto(
-                    value -> slot.setValue(
-                            withOctetWritten(tuple, (int) where.magnitude(), value))));
-            return StepOutcome.waiting();
+            slot.setValue(withOctetWritten(tuple, (int) where.magnitude(), written));
+            return;
         }
         // A set is changed in place rather than replaced, because a parse rule
         // that already names the word has to see the change. Rebol's own
@@ -1458,10 +1464,8 @@ public final class Evaluator {
                     throw Raised.of(EvaluationFailure.PROTECTED,
                             "bitset! is protected");
                 }
-                int wantedBit = bit;
-                frame.pendingCalls.push(PendingCall.assignmentInto(
-                        value -> set.hold(wantedBit, value.isTruthy())));
-                return StepOutcome.waiting();
+                set.hold(bit, written.isTruthy());
+                return;
             }
         }
         // A pair is a value rather than a series, so writing a half makes a
@@ -1473,9 +1477,8 @@ public final class Evaluator {
                 && segments.getFirst() instanceof WordValue holder) {
             ContextSlot slot = resolve(
                     holder.isBound() ? holder : holder.boundTo(frame.context));
-            frame.pendingCalls.push(PendingCall.assignmentInto(
-                    value -> slot.setValue(withHalfWritten(pair, lastSegment, value))));
-            return StepOutcome.waiting();
+            slot.setValue(withHalfWritten(pair, lastSegment, written));
+            return;
         }
         // A map takes a write through a path, and the key may be any value.
         // `PD_Map` puts the whole question in two lines:
@@ -1494,10 +1497,8 @@ public final class Evaluator {
             if (map.isProtected()) {
                 throw Raised.of(EvaluationFailure.PROTECTED, "map is protected");
             }
-            Value key = selectorFor(lastSegment, frame.context);
-            frame.pendingCalls.push(PendingCall.assignmentInto(
-                    value -> storeUnderKey(map, key, value)));
-            return StepOutcome.waiting();
+            storeUnderKey(map, selectorFor(lastSegment, frame.context), written);
+            return;
         }
         throw Raised.of(EvaluationFailure.INVALID_PATH,
                 "cannot assign through " + target.datatype().literalSpelling());
