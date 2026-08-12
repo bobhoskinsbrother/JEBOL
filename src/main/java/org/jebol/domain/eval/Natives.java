@@ -11821,6 +11821,11 @@ public final class Natives {
                 Set.of("block", "word", "func", "args", "size", "depth", "limit"),
                 (arguments, evaluator, context, refinements) -> {
                     int offset = (int) ((IntegerValue) arguments.getFirst()).magnitude();
+                    // Offset zero is the STACK call itself. The C counts
+                    // every call including this native's own frame; JEBOL
+                    // opens no frame for a native, so the innermost entry
+                    // is put back here and everything outward shifts one.
+                    //
                     // An offset naming no frame answers none, whatever was
                     // asked for. The C tests it before it reads a single
                     // refinement:
@@ -11829,14 +11834,17 @@ public final class Natives {
                     // So a caller walking outwards can tell where the stack
                     // ends; answering a number regardless would make the walk
                     // run for ever.
-                    if (offset < 0 || offset >= evaluator.framesOpen()) {
+                    if (offset < 0 || offset > evaluator.framesOpen()) {
                         return NoneValue.none();
                     }
                     if (refinements.contains("word")) {
+                        if (offset == 0) {
+                            return WordValue.of("stack");
+                        }
                         // A call made on a value rather than through a word
                         // carries no name, and answers none rather than an
                         // empty word -- there is no such thing.
-                        return evaluator.functionBeingRun(offset)
+                        return evaluator.functionBeingRun(offset - 1)
                                 .filter(name -> !name.isEmpty())
                                 .<Value>map(WordValue::of)
                                 .orElseGet(NoneValue::none);
@@ -11853,7 +11861,20 @@ public final class Natives {
                     if (refinements.contains("size")) {
                         return IntegerValue.of(evaluator.framesOpen() * FRAME_VALUE_UNITS);
                     }
-                    return NoneValue.none();
+                    // No refinement asks for the backtrace: a block of frame
+                    // words from the offset inward-to-outward --
+                    // `Set_Block(D_RET, Make_Backtrace(index));`.
+                    List<Value> backtrace = new ArrayList<>();
+                    if (offset == 0) {
+                        backtrace.add(WordValue.of("stack"));
+                    }
+                    for (int at = Math.max(0, offset - 1);
+                            at < evaluator.framesOpen(); at++) {
+                        evaluator.functionBeingRun(at)
+                                .filter(name -> !name.isEmpty())
+                                .ifPresent(name -> backtrace.add(WordValue.of(name)));
+                    }
+                    return BlockValue.block(backtrace);
                 });
     }
 
