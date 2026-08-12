@@ -26,6 +26,7 @@ public enum SyntaxFailure {
     // which a script catches by id whatever the category.
     INVALID_ARG("invalid-arg", "a map literal whose keys and values do not pair up"),
     NESTING_TOO_DEEP("nesting-too-deep", "blocks nested deeper than the reader accepts"),
+    NEEDS("needs", "a script whose needs: header this interpreter does not meet"),
     PAST_END("past-end", "a read asked for a value where the source has none left");
 
     private final String errorId;

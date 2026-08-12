@@ -2585,6 +2585,11 @@ public final class Natives {
                                 yield returned.value();
                             }
                         }
+                        // A binary is a script: the C routes it through
+                        // sys/do* -> load/header, which honors the header's
+                        // length and refuses an unmet needs.
+                        case BinaryValue bytes ->
+                                doneAsAScript(bytes, evaluator, context);
                         // DO of an error raises it. That is how a script
                         // raises an error it built itself, and Rebol's own
                         // CAUSE-ERROR is written as `do make error! [...]`
@@ -9013,6 +9018,58 @@ public final class Natives {
         } catch (java.io.IOException | RuntimeException unreadable) {
             return List.of();
         }
+    }
+
+    /**
+     * DO of a binary, run as the script it is: the header is read by
+     * sys/load-header, its length bounds the body, an unmet needs refuses,
+     * and a top-level RETURN unwinds to the DO.
+     */
+    private static Value doneAsAScript(
+            BinaryValue bytes, Evaluator evaluator, Context context) {
+        Value loadHeader = systemInternalFunction(
+                evaluator.systemContext(), "load-header");
+        Value read = evaluator.applyFunction(loadHeader, List.of(bytes));
+        if (read instanceof WordValue why) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, why.spelling());
+        }
+        List<Value> parts = ((BlockValue) read).remaining();
+        if (parts.getFirst() instanceof ObjectValue header
+                && header.context().holds("needs")
+                && header.context().slotFor("needs").value()
+                        instanceof TupleValue wanted
+                && !interpreterMeets(wanted, evaluator)) {
+            throw new Raised(ErrorValue.of(ErrorCategory.SYNTAX,
+                    SyntaxFailure.NEEDS.errorId(),
+                    SyntaxFailure.NEEDS.description()));
+        }
+        String body = parts.get(1) instanceof BinaryValue mark
+                && parts.get(2) instanceof BinaryValue remaining
+                && mark.sharesStorageWith(remaining)
+                ? strictlyUtf8(spanOfOctets(mark, remaining.index()))
+                : strictlyUtf8(((BinaryValue) parts.get(1)).octetsFromHere());
+        try {
+            return evaluator.evaluateSource(body);
+        } catch (ReturnSignal returned) {
+            return returned.value();
+        }
+    }
+
+    /** Whether this interpreter's version reaches what needs: asks for. */
+    private static boolean interpreterMeets(TupleValue wanted, Evaluator evaluator) {
+        Value version = pathInto(evaluator.systemContext(), "system", "version");
+        return version instanceof TupleValue own
+                && !Comparison.holds(wanted, own, Comparison.Strictness.GREATER);
+    }
+
+    /** The bytes between a position and an end index in the same binary. */
+    private static byte[] spanOfOctets(BinaryValue from, int endIndex) {
+        int howMany = Math.max(0, endIndex - from.index());
+        byte[] span = new byte[howMany];
+        for (int at = 0; at < howMany; at++) {
+            span[at] = (byte) from.storage().at(from.index() + at);
+        }
+        return span;
     }
 
     /** A string DO/NEXT steps through, loaded and bound the way DO loads it. */
