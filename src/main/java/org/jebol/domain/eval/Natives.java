@@ -568,18 +568,29 @@ public final class Natives {
         state.set("last-error", NoneValue.none());
         state.set("last-result", NoneValue.none());
 
-        // The catalogue as data a script can walk: one object per
-        // category holding its code and one field per error id. Rebol's
-        // own suite reaches for both.
+        // The catalogue as data a script can walk: one object per category
+        // holding its code and one field per error id, each holding the
+        // message template errors.reb declares -- a string, or a block whose
+        // :arg1 get-words a script binds against a caught error. Rebol's own
+        // suite reduces exactly that.
         Context errors = Context.root();
-        ErrorCatalogue.categories().forEach(category -> {
+        List<Value> catalogued = catalogueEntries();
+        for (int at = 0; at + 1 < catalogued.size(); at += 2) {
+            if (!(catalogued.get(at) instanceof WordValue category)
+                    || category.datatype() != Datatype.SET_WORD
+                    || !(catalogued.get(at + 1) instanceof BlockValue body)) {
+                continue;
+            }
             Context inside = Context.root();
-            inside.set("code", IntegerValue.of(ErrorCatalogue.baseCodeOf(category)));
-            inside.set("type", StringValue.of(category.toLowerCase(Locale.ROOT)));
-            ErrorCatalogue.idsIn(category)
-                    .forEach(errorId -> inside.set(errorId, StringValue.of(errorId)));
-            errors.set(category, new ObjectValue(inside));
-        });
+            List<Value> fields = body.remaining();
+            for (int pair = 0; pair + 1 < fields.size(); pair += 2) {
+                if (fields.get(pair) instanceof WordValue name
+                        && name.datatype() == Datatype.SET_WORD) {
+                    inside.set(name.spelling(), fields.get(pair + 1));
+                }
+            }
+            errors.set(category.spelling(), new ObjectValue(inside));
+        }
         catalog.set("errors", new ObjectValue(errors));
 
         Context system = Context.root();
@@ -8983,6 +8994,24 @@ public final class Natives {
     private static void addUtf8(String text, List<Integer> into) {
         for (byte encoded : text.getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
             into.add(encoded & 0xFF);
+        }
+    }
+
+    /**
+     * The error catalogue as errors.reb declares it: category set-words each
+     * holding a block of id set-words and their message templates. Read from
+     * the vendored copy, past its own header.
+     */
+    private static List<Value> catalogueEntries() {
+        try (java.io.InputStream stream =
+                Natives.class.getResourceAsStream("/org/jebol/errors.reb")) {
+            String source = new String(stream.readAllBytes(),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            TranscodeResult read = Transcoder.transcode(source);
+            List<Value> values = read.values().orElseThrow().remaining();
+            return values.subList(2, values.size());
+        } catch (java.io.IOException | RuntimeException unreadable) {
+            return List.of();
         }
     }
 
