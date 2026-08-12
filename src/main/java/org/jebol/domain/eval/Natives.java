@@ -5089,9 +5089,7 @@ public final class Natives {
                         // caller holds something the series no longer
                         // shares. A block is cloned all the way down and
                         // any other series is copied once.
-                        return refinements.contains("deep")
-                                ? copied(taken, taken instanceof BlockValue)
-                                : taken;
+                        return deepenedIfAsked(taken, refinements);
                     }
                     if (arguments.size() > 1 && arguments.get(1) instanceof SeriesValue upTo) {
                         return deepenedIfAsked(takeSeveral(earlierOf(series, upTo),
@@ -8633,7 +8631,9 @@ public final class Natives {
      * head, so at the head it takes nothing at all.
      */
     private static Value deepenedIfAsked(Value taken, Set<String> refinements) {
-        return refinements.contains("deep")
+        // An object taken out is the object, not a copy: /DEEP copies with
+        // TS_DEEP_COPIED, and objects sit outside it.
+        return refinements.contains("deep") && !(taken instanceof ObjectValue)
                 ? copied(taken, taken instanceof BlockValue)
                 : taken;
     }
@@ -9450,7 +9450,7 @@ public final class Natives {
             Datatype.GET_PATH, Datatype.LIT_PATH, Datatype.HASH,
             Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL,
             Datatype.TAG, Datatype.REF, Datatype.BINARY, Datatype.BITSET,
-            Datatype.MAP, Datatype.OBJECT, Datatype.FUNCTION);
+            Datatype.MAP, Datatype.FUNCTION);
 
     /**
      * The datatypes /TYPES named, or the standard set when it was not asked.
@@ -9479,9 +9479,14 @@ public final class Natives {
         // happens to the values inside it: `Copy_Block_Values` copies the block
         // and then `Copy_Deep_Values` walks the copy replacing the series of
         // every value whose datatype is in the set.
+        // A top-level object still copies -- `copy stats/profile` is a real
+        // snapshot -- but a nested one inside a deep copy stays shared:
+        // objects are outside TS_DEEP_COPIED, so the block arm's recursion
+        // passes them through, which is what take/deep relies on.
         if (!kinds.contains(original.datatype()) && original != null
                 && !(original instanceof SeriesValue) && !(original instanceof MapValue)
-                && !(original instanceof BitsetValue)) {
+                && !(original instanceof BitsetValue)
+                && !(original instanceof ObjectValue)) {
             return original;
         }
         return switch (original) {
