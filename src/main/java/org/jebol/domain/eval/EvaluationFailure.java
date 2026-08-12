@@ -6,6 +6,8 @@ import org.jebol.domain.value.ErrorCategory;
 public enum EvaluationFailure {
     NO_VALUE(ErrorCategory.SCRIPT, "no-value", "a word whose slot holds unset was evaluated"),
     NOT_DEFINED(ErrorCategory.SCRIPT, "not-defined", "a word with no binding was evaluated"),
+    NOT_IN_CONTEXT(ErrorCategory.SCRIPT, "not-in-context",
+            "a word the specified context does not hold"),
     NEED_VALUE(ErrorCategory.SCRIPT, "need-value", "a set-word with nothing after it to assign"),
     NO_ARG(ErrorCategory.SCRIPT, "no-arg", "a call reached the end of the block still short"),
     NO_OP_ARG(ErrorCategory.SCRIPT, "no-op-arg", "an operator with nothing on its left"),

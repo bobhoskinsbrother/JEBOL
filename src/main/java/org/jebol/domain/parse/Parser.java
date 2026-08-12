@@ -19,6 +19,7 @@ import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.TypesetValue;
+import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -96,6 +97,15 @@ public final class Parser {
         this.context = context;
         this.input = new ArrayList<>(input);
         this.source = source;
+    }
+
+    private void refreshInputFromSource() {
+        if (source == null) {
+            return;
+        }
+        input.clear();
+        input.addAll(source.remaining());
+        position = Math.min(position, input.size());
     }
 
     /** Whether the whole of the input matches the whole of the rule. */
@@ -244,6 +254,18 @@ public final class Parser {
             }
             return matchNamedRule(word) ? 1 : NO_MATCH;
         }
+        // An unset or a function is no rule at all -- `if (VAL_TYPE(item)
+        // <= REB_UNSET || VAL_TYPE(item) >= REB_NATIVE) goto bad_rule;`.
+        if (rule instanceof UnsetValue || rule.datatype().isAnyFunction()) {
+            throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
+        }
+        // A path is evaluated and its value is the rule, so `a/b` naming
+        // a datatype matches by that datatype.
+        if (rule instanceof BlockValue path && path.datatype() == Datatype.PATH) {
+            Value resolved = evaluator.evaluateOrRaise(
+                    BlockValue.block(List.of(path)), context);
+            return matchValue(resolved) ? 1 : NO_MATCH;
+        }
         return matchValue(rule) ? 1 : NO_MATCH;
     }
 
@@ -266,8 +288,7 @@ public final class Parser {
             countItems = 2;
         }
         if (at + countItems >= rules.size()) {
-            throw Raised.of(EvaluationFailure.PARSE_END,
-                    "a repeat count has no rule after it to repeat");
+            throw Raised.of(EvaluationFailure.PARSE_END, rules.get(at));
         }
 
         int matched = 0;
@@ -363,6 +384,7 @@ public final class Parser {
             case "change" -> changeMatched(rules, at);
             case "insert" -> insertValue(rules, at);
             case "return" -> returnFrom(rules, at);
+            case "fail" -> NO_MATCH;
             default -> null;
         };
     }
@@ -414,6 +436,13 @@ public final class Parser {
             throw Raised.of(EvaluationFailure.PARSE_RULE,
                     "only says how to put the replacement in, so it goes "
                             + "before the replacement and not before the rule");
+        }
+        // A word naming a position in this very series is a span, not a
+        // rule: CHANGE replaces everything between the current position
+        // and the mark, whichever is the earlier.
+        Integer markOffset = sameStorageOffset(rule);
+        if (markOffset != null) {
+            return changedSpan(rules, at, markOffset);
         }
         int replacementAt = at + 1 + ruleSpan(rules, at + 1);
         if (replacementAt >= rules.size()) {
@@ -544,20 +573,94 @@ public final class Parser {
      * input, so the series is shorter afterwards.
      */
     private int removeMatched(List<Value> rules, int at) {
-        following(rules, at, "remove");
+        Integer markOffset = sameStorageOffset(following(rules, at, "remove"));
+        if (markOffset != null) {
+            int begin = Math.min(position, markOffset);
+            removeSpan(begin, Math.abs(position - markOffset));
+            position = begin;
+            return 2;
+        }
         int before = position;
         if (matchOne(rules, at + 1) == NO_MATCH) {
             position = before;
             return NO_MATCH;
         }
-        for (int taken = position; taken > before; taken--) {
+        removeSpan(before, position - before);
+        position = before;
+        return 1 + ruleSpan(rules, at + 1);
+    }
+
+    private void removeSpan(int begin, int count) {
+        for (int taken = begin + count; taken > begin; taken--) {
             input.remove(taken - 1);
             if (source != null) {
                 source.storage().removeAt(source.index() + taken - 1);
             }
         }
-        position = before;
-        return 1 + ruleSpan(rules, at + 1);
+    }
+
+    /** The parse command words a mark-position argument can never be. */
+    private static final java.util.Set<String> COMMAND_WORDS = java.util.Set.of(
+            "end", "skip", "any", "while", "some", "opt", "to", "thru", "into",
+            "set", "copy", "collect", "keep", "quote", "and", "ahead", "if",
+            "remove", "change", "insert", "return", "case", "no-case", "then",
+            "not", "limit", "reject", "accept", "break", "only");
+
+    /**
+     * The offset a word names when it holds a position in the series being
+     * parsed, or null when it names anything else.
+     */
+    private Integer sameStorageOffset(Value item) {
+        if (source == null
+                || !(item instanceof WordValue word)
+                || (word.datatype() != Datatype.WORD
+                        && word.datatype() != Datatype.GET_WORD)
+                || (word.datatype() == Datatype.WORD
+                        && COMMAND_WORDS.contains(word.canonical()))) {
+            return null;
+        }
+        Context holder = word.isBound() ? word.binding() : context;
+        if (!holder.knows(word.canonical())) {
+            return null;
+        }
+        return holder.slotFor(word.canonical()).value() instanceof BlockValue marked
+                && marked.sharesStorageWith(source)
+                ? marked.index() - source.index()
+                : null;
+    }
+
+    /** CHANGE of a marked span: replace between the mark and the position. */
+    private int changedSpan(List<Value> rules, int at, int markOffset) {
+        if (at + 2 >= rules.size()) {
+            throw Raised.of(EvaluationFailure.PARSE_END,
+                    "change needs a value to put where the match was");
+        }
+        int begin = Math.min(position, markOffset);
+        int count = Math.abs(position - markOffset);
+        int replacementSlot = at + 2;
+        boolean wholeBlock = false;
+        int lastRuleAt = replacementSlot;
+        if (rules.get(replacementSlot) instanceof WordValue modifier
+                && modifier.datatype() == Datatype.WORD
+                && modifier.canonical().equals("only")
+                && replacementSlot + 1 < rules.size()) {
+            wholeBlock = true;
+            lastRuleAt = replacementSlot + 1;
+        }
+        Value replacement = valueToPutIn(rules.get(lastRuleAt));
+        List<Value> putting = !wholeBlock && replacement instanceof BlockValue spread
+                && spread.datatype() == Datatype.BLOCK
+                ? spread.remaining()
+                : List.of(replacement);
+        removeSpan(begin, count);
+        for (int added = putting.size(); added > 0; added--) {
+            input.add(begin, putting.get(added - 1));
+            if (source != null) {
+                source.storage().insertAt(source.index() + begin, putting.get(added - 1));
+            }
+        }
+        position = begin + putting.size();
+        return lastRuleAt + 1 - at;
     }
 
     /**
@@ -637,6 +740,14 @@ public final class Parser {
                     "collect has no rule after it to apply to");
         }
 
+        // SET assigns its word a fresh block BEFORE the rule runs --
+        // `Make_Block` then `Set_Var_Series` -- so a nested collect set of
+        // the same word assigns second and stays.
+        BlockValue destination = null;
+        if (into != null) {
+            destination = BlockValue.block(new ArrayList<>());
+            assign(into, destination);
+        }
         collecting.push(new ArrayList<>());
         int consumed = matchOne(rules, ruleAt);
         List<Value> mine = collecting.pop();
@@ -663,7 +774,9 @@ public final class Parser {
                 }
             }
         } else if (into != null) {
-            assign(into, BlockValue.block(mine));
+            for (Value item : mine) {
+                destination.storage().insertAt(destination.storageLength() + 1, item);
+            }
         } else if (!collecting.isEmpty()) {
             collecting.peek().add(BlockValue.block(mine));
         } else if (gathered == null) {
@@ -708,6 +821,16 @@ public final class Parser {
         }
         if (kept instanceof WordValue modifier && modifier.datatype() == Datatype.WORD
                 && modifier.canonical().equals("pick")) {
+            // A paren after PICK keeps its value whole, exactly as plain
+            // KEEP of the expression would: the C sets the pick flag, then
+            // finds the paren and the flag never matters.
+            if (at + 2 < rules.size()
+                    && rules.get(at + 2) instanceof BlockValue expression
+                    && expression.datatype() == Datatype.PAREN) {
+                collecting.peek().add(evaluator.evaluateOrRaise(
+                        expression.as(Datatype.BLOCK), context));
+                return 3;
+            }
             return keepIndividually(rules, at + 2);
         }
         if (kept instanceof WordValue capture && capture.datatype() == Datatype.WORD
@@ -801,12 +924,16 @@ public final class Parser {
             // shortens the input, which is progress of a different kind and
             // has to count as progress or `some [remove x | skip]` removes
             // only the first match.
-            if (matchOne(rules, at + 1) == NO_MATCH
-                    || (position == before && input.size() == wasLong)) {
+            if (matchOne(rules, at + 1) == NO_MATCH) {
                 position = before;
                 break;
             }
+            // A round that matched without advancing counts first --
+            // `count++` precedes the no-progress break in the C.
             matched++;
+            if (position == before && input.size() == wasLong) {
+                break;
+            }
         }
         return matched >= leastNeeded ? 1 + ruleSpan(rules, at + 1) : NO_MATCH;
     }
@@ -924,6 +1051,12 @@ public final class Parser {
             return false;
         }
         Value named = target.slotFor(word.canonical()).value();
+        // `if (VAL_TYPE(item) <= REB_UNSET || VAL_TYPE(item) >= REB_NATIVE)
+        // goto bad_rule;` -- a word naming an unset or a function is no
+        // rule at all, and the error names the word as written.
+        if (named instanceof UnsetValue || named.datatype().isAnyFunction()) {
+            throw Raised.of(EvaluationFailure.PARSE_RULE, (Value) word);
+        }
         return named instanceof BlockValue rule
                 ? matchSequence(rule.remaining())
                 : matchValue(named);
@@ -935,7 +1068,11 @@ public final class Parser {
             case BlockValue nested when nested.datatype() == Datatype.PAREN -> {
                 // A paren runs while matching, and always "matches", which is
                 // how PARSE does something as it goes rather than only after.
+                // It may also have changed the very series being parsed, so
+                // the walk re-reads it -- the C clamps `if (index >
+                // series->tail) index = series->tail;` after every paren.
                 evaluator.evaluateOrRaise(nested.as(Datatype.BLOCK), context);
+                refreshInputFromSource();
                 yield true;
             }
             case BlockValue nested when nested.datatype() == Datatype.BLOCK ->

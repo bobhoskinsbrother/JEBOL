@@ -29,8 +29,23 @@ public final class BitsetValue implements Value {
      */
     private boolean complemented;
 
+    /**
+     * Whether PROTECT locked this set. A bitset is protected the way a
+     * series is -- {@code IS_BITSET(value)} sits in the same line of
+     * {@code Protect_Value} as the series -- and every mutation asks first.
+     */
+    private boolean protectedFromChange;
+
     private BitsetValue(byte[] octets) {
         this.octets = octets;
+    }
+
+    public void protectFromChange(boolean wanted) {
+        this.protectedFromChange = wanted;
+    }
+
+    public boolean isProtected() {
+        return protectedFromChange;
     }
 
     /** Whether this set means everything except what its bits name. */

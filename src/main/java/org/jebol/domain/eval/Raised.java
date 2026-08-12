@@ -58,6 +58,18 @@ public final class Raised extends RuntimeException {
     }
 
     /**
+     * A failure whose subject is a value rather than a word coined from
+     * prose, so {@code e/arg1} compares equal to the very thing that
+     * offended -- the integer 0 in a parse rule, or the get-word itself.
+     */
+    public static Raised of(EvaluationFailure failure, Value subject) {
+        return new Raised(ErrorValue.about(
+                failure.category(), failure.errorId(),
+                failure.description() + ": " + Molder.mold(subject),
+                subject));
+    }
+
+    /**
      * A failure naming two things, which several catalogue entries word with.
      *
      * <p>{@code expect-val: [{expected} :arg1 {not} :arg2]} is the example, and a

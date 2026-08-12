@@ -7,8 +7,11 @@ import java.util.Set;
 /**
  * One parameter of a function's interface, derived from its spec block.
  *
- * <p>An empty {@code acceptedTypes} means the parameter accepts anything,
- * which is what a spec word with no type block means.
+ * <p>An empty {@code acceptedTypes} means the parameter accepts any value
+ * except unset, which is what a spec word with no type block means: the C
+ * gives a bare word {@code TS_VALUE}, every type but unset. A parameter that
+ * really takes unset declares {@code any-type!}, which arrives here as the
+ * full member set.
  */
 public record Parameter(
         String name,
@@ -87,6 +90,8 @@ public record Parameter(
 
     /** Whether a value of this datatype is acceptable here. */
     public boolean accepts(Datatype datatype) {
-        return acceptedTypes.isEmpty() || acceptedTypes.contains(datatype);
+        return acceptedTypes.isEmpty()
+                ? datatype != Datatype.UNSET
+                : acceptedTypes.contains(datatype);
     }
 }

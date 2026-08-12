@@ -14,7 +14,9 @@ import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Molder;
+import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.SeriesValue;
+import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
@@ -214,6 +216,28 @@ public final class StringParser {
         if (at + 1 >= rules.size()) {
             return NO_MATCH;
         }
+        // A word naming a position in this very series is a span, not a
+        // rule: CHANGE replaces everything between the current position
+        // and the mark, whichever is the earlier.
+        Integer markOffset = sameStorageOffset(rules.get(at + 1));
+        if (markOffset != null) {
+            if (at + 2 >= rules.size()) {
+                return NO_MATCH;
+            }
+            int begin = Math.min(position, markOffset);
+            int count = Math.abs(position - markOffset);
+            for (int taken = begin + count; taken > begin; taken--) {
+                removeFromSource(source.index() + taken - 1);
+            }
+            String swapped = replacementFor(rules.get(at + 2));
+            int[] written = swapped.codePoints().toArray();
+            for (int added = 0; added < written.length; added++) {
+                insertIntoSource(source.index() + begin + added, written[added]);
+            }
+            text = textOfSeries(source);
+            position = begin + written.length;
+            return 3;
+        }
         // Through matchOne and ruleSpan rather than matchValue, so the
         // rule being replaced may be anything a rule can be. Reading it
         // as one value meant `change copy v "b" "X"` saw COPY as the
@@ -241,6 +265,29 @@ public final class StringParser {
         return 1 + span + 1;
     }
 
+    /**
+     * The offset a word names when it holds a position in the series being
+     * parsed, or null when it names anything else. What lets CHANGE and
+     * REMOVE take a marked span instead of a rule.
+     */
+    private Integer sameStorageOffset(Value item) {
+        if (!(item instanceof WordValue word)
+                || (word.datatype() != Datatype.WORD
+                        && word.datatype() != Datatype.GET_WORD)
+                || (word.datatype() == Datatype.WORD
+                        && PARSE_COMMANDS.contains(word.canonical()))) {
+            return null;
+        }
+        Context holder = word.isBound() ? word.binding() : context;
+        if (!holder.knows(word.canonical())) {
+            return null;
+        }
+        return holder.slotFor(word.canonical()).value() instanceof SeriesValue marked
+                && marked.sharesStorageWith(source)
+                ? marked.index() - source.index()
+                : null;
+    }
+
     /** A paren in the replacement slot is evaluated; anything else stands. */
     private String replacementFor(Value replacement) {
         if (replacement instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
@@ -253,6 +300,17 @@ public final class StringParser {
     private int removeMatched(List<Value> rules, int at) {
         if (at + 1 >= rules.size()) {
             return NO_MATCH;
+        }
+        Integer markOffset = sameStorageOffset(rules.get(at + 1));
+        if (markOffset != null) {
+            int begin = Math.min(position, markOffset);
+            int count = Math.abs(position - markOffset);
+            for (int taken = begin + count; taken > begin; taken--) {
+                removeFromSource(source.index() + taken - 1);
+            }
+            text = textOfSeries(source);
+            position = begin;
+            return 2;
         }
         int span = ruleSpan(rules, at + 1);
         int before = position;
@@ -388,6 +446,7 @@ public final class StringParser {
                 case "keep" -> keep(rules, at);
                 case "not" -> negate(rules, at);
                 case "then" -> 1;
+                case "fail" -> NO_MATCH;
                 case "limit" -> {
                     throw Raised.of(EvaluationFailure.NOT_DONE,
                             "limit is a parse command reserved for future use");
@@ -412,6 +471,18 @@ public final class StringParser {
             return countedRepeat(rules, ruleAt, (int) least.magnitude(), atMost,
                     ruleAt - at);
         }
+        // An unset or a function is no rule at all -- `if (VAL_TYPE(item)
+        // <= REB_UNSET || VAL_TYPE(item) >= REB_NATIVE) goto bad_rule;`.
+        if (rule instanceof UnsetValue || rule.datatype().isAnyFunction()) {
+            throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
+        }
+        // A path is evaluated and its value is the rule, so `a/b` naming
+        // a datatype matches by that datatype.
+        if (rule instanceof BlockValue path && path.datatype() == Datatype.PATH) {
+            Value resolved = evaluator.evaluateOrRaise(
+                    BlockValue.block(List.of(path)), context);
+            return matchValue(resolved) ? 1 : -1;
+        }
         return matchValue(rule) ? 1 : -1;
     }
 
@@ -421,7 +492,7 @@ public final class StringParser {
 
         if (ruleAt >= rules.size()) {
             throw Raised.of(EvaluationFailure.PARSE_END,
-                    "a repeat count has no rule after it to repeat");
+                    rules.get(ruleAt - countWidth));
         }
         int startedAt = position;
         int matched = 0;
@@ -483,24 +554,49 @@ public final class StringParser {
         if (at + 2 >= rules.size() || !(rules.get(at + 1) instanceof WordValue target)) {
             return NO_MATCH;
         }
+        // A set-word between the capture and its rule marks the place and
+        // the capture carries on to the next real rule -- the C processes
+        // it without touching the pending flags.
+        int ruleAt = at + 2;
+        while (rules.get(ruleAt) instanceof WordValue mark
+                && mark.datatype() == Datatype.SET_WORD) {
+            assign(mark, source.atIndex(source.index() + position));
+            ruleAt++;
+            if (ruleAt >= rules.size()) {
+                throw Raised.of(EvaluationFailure.PARSE_END,
+                        "a capture has no rule after its marks to apply to");
+            }
+        }
         // A get-word marks a place rather than matching anything, so it
         // cannot say what to capture. Allowed through, it moved the
         // position backwards and left COPY reading a span that runs the
         // wrong way -- which failed as a Java exception rather than as a
-        // REBOL error. A real R3 refuses the rule.
-        if (rules.get(at + 2) instanceof WordValue asRule
+        // REBOL error. A real R3 refuses the rule, naming the get-word.
+        if (rules.get(ruleAt) instanceof WordValue asRule
                 && asRule.datatype() == Datatype.GET_WORD) {
-            throw Raised.of(EvaluationFailure.PARSE_RULE,
-                    ":" + asRule.spelling() + " marks a place and matches nothing, "
-                            + "so it cannot say what to capture");
+            throw Raised.of(EvaluationFailure.PARSE_RULE, (Value) asRule);
         }
         int before = position;
-        if (matchOne(rules, at + 2) == NO_MATCH) {
+        if (matchOne(rules, ruleAt) == NO_MATCH) {
             position = before;
             return NO_MATCH;
         }
-        assign(target, wholeSlice ? sliceFrom(before) : oneOrSliceFrom(before));
-        return 2 + ruleSpan(rules, at + 2);
+        assign(target, wholeSlice ? sliceFrom(before) : oneCapturedFrom(before));
+        return (ruleAt - at) + ruleSpan(rules, ruleAt);
+    }
+
+    /**
+     * What SET without COPY assigns: the first matched character alone --
+     * a byte's number for a binary -- and none for a match of nothing.
+     * {@code GET_UTF8_CHAR(series, begin)} however long the span was.
+     */
+    private Value oneCapturedFrom(int before) {
+        if (position == before) {
+            return NoneValue.none();
+        }
+        return walkingBytes
+                ? IntegerValue.of(text.charAt(before))
+                : CharacterValue.of(text.charAt(before));
     }
 
     /**
@@ -543,6 +639,15 @@ public final class StringParser {
                     "collect has no rule after it to apply to");
         }
 
+        // SET assigns its word a fresh block BEFORE the rule runs --
+        // `Make_Block` then `Set_Var_Series` -- so a nested collect set of
+        // the same word assigns second and stays, and nothing overwrites
+        // it at collect end.
+        BlockValue destination = null;
+        if (into != null) {
+            destination = BlockValue.block(new ArrayList<>());
+            assign(into, destination);
+        }
         collecting.push(new ArrayList<>());
         int consumed = matchOne(rules, ruleAt);
         List<Value> mine = collecting.pop();
@@ -552,7 +657,9 @@ public final class StringParser {
         } else if (appendTo != null) {
             deliver(appendTo, mine, true);
         } else if (into != null) {
-            assign(into, BlockValue.block(mine));
+            for (Value item : mine) {
+                destination.storage().insertAt(destination.storageLength() + 1, item);
+            }
         } else if (!collecting.isEmpty()) {
             collecting.peek().add(BlockValue.block(mine));
         } else if (gathered == null) {
@@ -594,16 +701,34 @@ public final class StringParser {
         }
         if (kept instanceof WordValue modifier && modifier.datatype() == Datatype.WORD
                 && modifier.canonical().equals("pick")) {
+            // A paren after PICK keeps its value whole, exactly as plain
+            // KEEP of the expression would: the C sets the pick flag,
+            // then finds the paren and the flag never matters.
+            if (at + 2 < rules.size()
+                    && rules.get(at + 2) instanceof BlockValue expression
+                    && expression.datatype() == Datatype.PAREN) {
+                collecting.peek().add(evaluator.evaluateOrRaise(
+                        expression.as(Datatype.BLOCK), context));
+                return 3;
+            }
             return keepIndividually(rules, at + 2);
         }
 
+        // KEEP COPY keeps the series the copy produced, so one matched
+        // character arrives as a one-character string of the input's own
+        // kind rather than as a char.
+        boolean keptViaCopy = kept instanceof WordValue copying
+                && copying.datatype() == Datatype.WORD
+                && copying.canonical().equals("copy");
         int before = position;
         if (matchOne(rules, at + 1) == NO_MATCH) {
             position = before;
             return NO_MATCH;
         }
         if (!collecting.isEmpty() && position > before) {
-            collecting.peek().add(oneOrSliceFrom(before));
+            collecting.peek().add(keptViaCopy
+                    ? sliceFrom(before)
+                    : oneOrSliceFrom(before));
         }
         return 1 + ruleSpan(rules, at + 1);
     }
@@ -615,8 +740,12 @@ public final class StringParser {
             return NO_MATCH;
         }
         if (!collecting.isEmpty()) {
+            // A binary keeps its bytes as their numbers -- `SET_INTEGER(val,
+            // BIN_HEAD(series)[i])` -- where a string keeps characters.
             for (int character = before; character < position; character++) {
-                collecting.peek().add(CharacterValue.of(text.charAt(character)));
+                collecting.peek().add(walkingBytes
+                        ? IntegerValue.of(text.charAt(character))
+                        : CharacterValue.of(text.charAt(character)));
             }
         }
         return (at - (at - 2)) + ruleSpan(rules, at);
@@ -706,6 +835,22 @@ public final class StringParser {
                     existing.storage().insertAt(where, text.codePointAt(at - 1));
                 }
             }
+            case BinaryValue existing -> {
+                List<Integer> octets = new ArrayList<>();
+                for (Value item : gathered) {
+                    if (item instanceof IntegerValue octet) {
+                        octets.add((int) octet.magnitude());
+                    } else if (item instanceof BinaryValue slice) {
+                        for (byte octet : slice.octetsFromHere()) {
+                            octets.add(octet & 0xFF);
+                        }
+                    }
+                }
+                int where = past ? existing.storageLength() + 1 : existing.index();
+                for (int at = octets.size(); at > 0; at--) {
+                    existing.storage().insertAt(where, octets.get(at - 1));
+                }
+            }
             default -> { }
         }
     }
@@ -721,6 +866,12 @@ public final class StringParser {
             return matchValue(word);
         }
         Value named = target.slotFor(word.canonical()).value();
+        // `if (VAL_TYPE(item) <= REB_UNSET || VAL_TYPE(item) >= REB_NATIVE)
+        // goto bad_rule;` -- a word naming an unset or a function is no
+        // rule at all, and the error names the word as written.
+        if (named instanceof UnsetValue || named.datatype().isAnyFunction()) {
+            throw Raised.of(EvaluationFailure.PARSE_RULE, (Value) word);
+        }
         return named instanceof BlockValue rule
                 ? matchSequence(rule.remaining())
                 : matchValue(named);
@@ -780,24 +931,36 @@ public final class StringParser {
                 matched++;
                 break;
             }
-            if (consumed == NO_MATCH
-                    || (position == before && text.length() == wasLong)) {
+            if (consumed == NO_MATCH) {
                 position = before;
                 break;
             }
+            // A round that matched without advancing counts first --
+            // `count++` precedes the no-progress break -- so
+            // `parse "" [some [(a: true)]]` succeeds with one round.
             matched++;
+            if (position == before && text.length() == wasLong) {
+                break;
+            }
         }
-        return matched >= leastNeeded ? 2 : NO_MATCH;
+        return matched >= leastNeeded ? 1 + ruleSpan(rules, at + 1) : NO_MATCH;
     }
 
     private static final int NO_MATCH = -1;
 
     private int optional(List<Value> rules, int at) {
+        if (at + 1 >= rules.size()) {
+            throw Raised.of(EvaluationFailure.PARSE_END,
+                    "opt has no rule after it to apply to");
+        }
+        // Through matchOne, so a word after OPT is resolved to the rule it
+        // names -- `if (IS_WORD(item)) item = Get_Var(item);` -- and a
+        // grammar can recurse through `opt tags`.
         int before = position;
-        if (!matchValue(rules.get(at + 1))) {
+        if (matchOne(rules, at + 1) == NO_MATCH) {
             position = before;
         }
-        return 2;
+        return 1 + ruleSpan(rules, at + 1);
     }
 
     /** The parse command words TO and THRU cannot seek to. */
@@ -829,6 +992,9 @@ public final class StringParser {
         // cannot use. A real R3 refuses `thru some "0"` and `thru 1.2`
         // rather than searching for the text of them.
         if (wanted instanceof DecimalValue
+                || (wanted instanceof WordValue marker
+                        && (marker.datatype() == Datatype.GET_WORD
+                                || marker.datatype() == Datatype.SET_WORD))
                 || (wanted instanceof WordValue keyword
                         && keyword.datatype() == Datatype.WORD
                         && PARSE_COMMANDS.contains(keyword.canonical()))) {
@@ -932,6 +1098,8 @@ public final class StringParser {
     private boolean matchValue(Value rule) {
         if (rule instanceof BlockValue nested && nested.datatype() == Datatype.PAREN) {
             evaluator.evaluateOrRaise(nested.as(Datatype.BLOCK), context);
+            text = textOfSeries(source);
+            position = Math.min(position, text.length());
             return true;
         }
         if (rule instanceof BlockValue nested) {

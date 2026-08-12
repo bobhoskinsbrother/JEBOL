@@ -527,7 +527,7 @@ IN declare the unmakeable typeclasses as R3 does. The append/insert/change
 
 The vector!/task! lines remain datatype backlog, not surface work.
 
-## 5c. The suite: 168 failing of 3721
+## 5c. The suite: 42 failing of 3721
 
 **A malformed number is refused now, and it took three changes that only work
 together.** The one-line refusal had been tried twice before and cost about twenty

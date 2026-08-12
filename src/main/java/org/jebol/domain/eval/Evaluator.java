@@ -891,8 +891,19 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
         }
         if (bound.datatype() == Datatype.OP) {
-            throw Raised.of(EvaluationFailure.NO_OP_ARG,
-                    "the operator " + word.spelling() + " has nothing on its left");
+            // `if (DSP <= 0 || index == 0) Trap1(RE_NO_OP_ARG, word);` -- the
+            // friendly error names the operator only at the very head of the
+            // series. Reached mid-series, the C grabs a bogus stack value and
+            // the imbalance surfaces as missing-arg, so `do next [1 <> 0]`
+            // says missing-arg where `do "<> 0"` says no-op-arg.
+            boolean atTheVeryHead = frame.position - 1 <= 1;
+            throw atTheVeryHead
+                    ? Raised.of(EvaluationFailure.NO_OP_ARG,
+                            "the operator " + word.spelling()
+                                    + " has nothing on its left")
+                    : Raised.of(EvaluationFailure.MISSING_ARG,
+                            "the operator " + word.spelling()
+                                    + " has nothing on its left");
         }
         if (!bound.datatype().isAnyFunction()) {
             return StepOutcome.of(bound);
@@ -1435,12 +1446,23 @@ public final class Evaluator {
         // character in a paren, which is the only way a path reaches a
         // character the source did not spell out -- and Rebol's own
         // url-parser writes it exactly that way.
-        if (target instanceof BitsetValue set
-                && selectorFor(lastSegment, frame.context)
-                        instanceof CharacterValue letter) {
-            frame.pendingCalls.push(PendingCall.assignmentInto(
-                    value -> set.hold(letter.codepoint(), value.isTruthy())));
-            return StepOutcome.waiting();
+        if (target instanceof BitsetValue set) {
+            Value chosen = selectorFor(lastSegment, frame.context);
+            Integer bit = switch (chosen) {
+                case CharacterValue letter -> letter.codepoint();
+                case IntegerValue number -> (int) number.magnitude();
+                default -> null;
+            };
+            if (bit != null) {
+                if (set.isProtected()) {
+                    throw Raised.of(EvaluationFailure.PROTECTED,
+                            "bitset! is protected");
+                }
+                int wantedBit = bit;
+                frame.pendingCalls.push(PendingCall.assignmentInto(
+                        value -> set.hold(wantedBit, value.isTruthy())));
+                return StepOutcome.waiting();
+            }
         }
         // A pair is a value rather than a series, so writing a half makes a
         // new pair and puts it back where the old one came from -- the same

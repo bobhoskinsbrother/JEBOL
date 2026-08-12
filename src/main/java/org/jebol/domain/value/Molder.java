@@ -53,9 +53,29 @@ public final class Molder {
     public static String moldAll(Value value) {
         if (value instanceof SeriesValue series && series.index() > 1) {
             return "#(" + value.datatype().literalSpelling() + " "
-                    + mold(series.head()) + " " + series.index() + ")";
+                    + constructBodyOf(series) + " " + series.index() + ")";
+        }
+        if (value instanceof StringValue tag && tag.datatype() == Datatype.TAG
+                && tag.storageLength() == 0) {
+            return "#(tag! " + moldedText("") + ")";
         }
         return render(value, true);
+    }
+
+    /**
+     * The content of a positioned construct form, molded in the construct
+     * body's own notation rather than the value's literal one.
+     * {@code Mold_All_String} forces the type to a plain string and
+     * {@code Mold_Block} brackets a path, so {@code mold/all next next 'p/p}
+     * is {@code #(path! [p p] 3)} and a positioned url quotes its text.
+     */
+    private static String constructBodyOf(SeriesValue series) {
+        return switch (series) {
+            case StringValue text -> moldedText(text.head().text());
+            case BlockValue block -> "[" + block.head().remaining().stream()
+                    .map(Molder::mold).collect(Collectors.joining(" ")) + "]";
+            default -> mold(series.head());
+        };
     }
 
     /** Text for a person: strings unquoted, blocks without their brackets. */
@@ -350,11 +370,56 @@ public final class Molder {
         }
         return switch (string.datatype()) {
             case FILE -> moldedFile(text);
-            case URL, EMAIL -> text;
+            case URL, EMAIL -> wouldNotReadBackAsItself(string)
+                    ? constructedString(string)
+                    : text;
             case TAG -> "<" + text + ">";
             case REF -> "@" + text;
             default -> moldedText(text);
         };
+    }
+
+    /**
+     * Whether a url or an email needs construction syntax to survive a
+     * round trip. {@code Mold_Url}: the text is emitted bare only when the
+     * lexer would read it back as the same value, so an empty one, one
+     * missing its colon or at-sign, one holding a delimiter, and the other
+     * shapes the scanner refuses all fall back to {@code #(url! "...")}.
+     */
+    private static boolean wouldNotReadBackAsItself(StringValue string) {
+        char required = string.datatype() == Datatype.EMAIL ? '@' : ':';
+        String remaining = string.text();
+        String whole = string.head().text();
+        if (remaining.isEmpty() || whole.isEmpty() || remaining.charAt(0) == '%') {
+            return true;
+        }
+        int found = -1;
+        for (int at = 0; at < remaining.length(); at++) {
+            char letter = remaining.charAt(at);
+            if (letter <= 0x20 || letter == 0x7F
+                    || "()[]{}\";".indexOf(letter) >= 0
+                    || (letter == '/' && required == '@')) {
+                return true;
+            }
+            if (letter == required) {
+                if (at == 0) {
+                    return true;
+                }
+                if (found >= 0 && (required == '@' || at == 1)) {
+                    return true;
+                }
+                if (found < 0) {
+                    found = at;
+                }
+            }
+        }
+        return found < 0 || found == remaining.length() - 1;
+    }
+
+    private static String constructedString(StringValue string) {
+        String whole = string.head().text();
+        return "#(" + string.datatype().literalSpelling() + " " + moldedText(whole)
+                + (string.index() > 1 ? " " + string.index() : "") + ")";
     }
 
     /** The longest string molded with quotes before braces are used. */

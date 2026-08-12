@@ -237,7 +237,8 @@ public final class Transcoder {
 
             if (next == END_OF_INPUT) {
                 if (closing != NO_TERMINATOR) {
-                    throw failure(SyntaxFailure.MISSING_CLOSE, delimiterFor(closing));
+                    throw failureReading(SyntaxFailure.MISSING_CLOSE,
+                            "end-of-script", String.valueOf((char) closing));
                 }
                 return values;
             }
@@ -259,9 +260,13 @@ public final class Transcoder {
 
             if (isClosingDelimiter(next)) {
                 if (next != closing) {
-                    throw failure(closing == NO_TERMINATOR
-                            ? SyntaxFailure.EXTRA_CLOSE
-                            : SyntaxFailure.MISMATCHED_CLOSE, delimiterFor(next));
+                    throw failureReading(closing == NO_TERMINATOR
+                                    ? SyntaxFailure.EXTRA_CLOSE
+                                    : SyntaxFailure.MISMATCHED_CLOSE,
+                            next == ']' ? "end-of-block" : "end-of-paren",
+                            String.valueOf((char) (closing == NO_TERMINATOR
+                                    ? (next == ']' ? '[' : '(')
+                                    : closing)));
                 }
                 advance();
                 if (enclosing.isEmpty()) {
@@ -690,6 +695,12 @@ public final class Transcoder {
         try {
             contents = readSequence(')');
         } catch (MalformedSource unreadable) {
+            // An unclosed construct is the one failure that stays what it
+            // is: the C's construct handler leaves the missing error
+            // standing rather than wrapping it as a malconstruct.
+            if (unreadable.failure == SyntaxFailure.MISSING_CLOSE) {
+                throw unreadable;
+            }
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
         }
         if (contents.isEmpty()) {
@@ -858,7 +869,17 @@ public final class Transcoder {
             throw failure(SyntaxFailure.UNTERMINATED_STRING, OpenDelimiter.QUOTE);
         }
         advance();
+        if (codepoint > LAST_UNICODE_CODEPOINT || isSurrogate(codepoint)) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "char");
+        }
         return CharacterValue.of(codepoint);
+    }
+
+    private static final int LAST_UNICODE_CODEPOINT = 0x10FFFF;
+
+    /** The UTF-16 range no character may hold: `IS_SURROGATE` in the C. */
+    private static boolean isSurrogate(int codepoint) {
+        return codepoint >= 0xD800 && codepoint <= 0xDFFF;
     }
 
     /** The only three bases a binary may be written in. */
@@ -887,7 +908,7 @@ public final class Transcoder {
         while (true) {
             int next = peek();
             if (next == END_OF_INPUT) {
-                throw failure(SyntaxFailure.MISSING_CLOSE, OpenDelimiter.BINARY_BRACE);
+                throw failureReading(SyntaxFailure.INVALID_BINARY, "binary");
             }
             advance();
             if (next == '}') {
@@ -1018,6 +1039,13 @@ public final class Transcoder {
             scout++;
         }
         if (scout >= codepoints.length) {
+            // An at-sign right after the angle is a tag the scanner cannot
+            // close -- `Skip_Tag` finds no '>' and answers -TOKEN_TAG. A
+            // symbol run like `<~~~` never reaches Skip_Tag and stays a
+            // word, so only the at-sign shape is refused here.
+            if (position + 1 < codepoints.length && codepoints[position + 1] == '@') {
+                throw failureReading(SyntaxFailure.INVALID_LEXEME, "tag", readLexeme());
+            }
             return classify(readLexeme());
         }
         advance();
@@ -1236,6 +1264,14 @@ public final class Transcoder {
      * as far as the reader is concerned, and none of them is a number.
      */
     private MoneyValue moneyOf(String digits, boolean negative, String token) {
+        // `if (*ep == '/') {ep++; goto syntax_error;}` -- a money followed
+        // by a slash is refused whatever the amount, and the reported token
+        // runs up to and including that slash, because the C's token ends
+        // there.
+        if (digits.indexOf('/') >= 0) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "money",
+                    token.substring(0, token.indexOf('/') + 1));
+        }
         try {
             BigDecimal amount = new BigDecimal(digits);
             return MoneyValue.of(negative ? amount.negate() : amount);
@@ -1403,6 +1439,21 @@ public final class Transcoder {
     }
 
     private Value classify(String lexeme) {
+        // `if (*cp == '_' && IS_LEX_DELIMIT(cp[1])) return TOKEN_WORD;` --
+        // a slash before a lone underscore is the word / and the underscore
+        // reads separately as the none literal, so "/_" is two values and
+        // "/__" is still the refinement __.
+        if (lexeme.startsWith("/_")
+                && (lexeme.length() == 2 || lexeme.charAt(2) == '/')) {
+            position -= lexeme.length() - 1;
+            column -= lexeme.length() - 1;
+            return WordValue.of("/");
+        }
+        if (lexeme.startsWith("_/")) {
+            position -= lexeme.length() - 1;
+            column -= lexeme.length() - 1;
+            return NoneValue.none();
+        }
         // A word may not hold < > % # $ \ or a comma, so a lexeme that
         // mixes one of those with letters is refused rather than becoming
         // a word with an impossible name. Confirmed against a real R3:
@@ -1650,6 +1701,17 @@ public final class Transcoder {
             return WordValue.of(named, Datatype.SET_WORD);
         }
         if (lexeme.startsWith(":") && lexeme.length() > 1) {
+            // `case LEX_SPECIAL_COLON: if (IS_LEX_NUMBER(cp[1])) return
+            // TOKEN_TIME;` -- a colon before a digit is never a get-word.
+            // ":12" is the time 0:12, and ":2nd" is a time the scanner
+            // cannot finish, refused as one.
+            if (Character.isDigit(lexeme.charAt(1))) {
+                var time = TIME.matcher("0" + lexeme);
+                if (time.matches()) {
+                    return readTime(time.group(1), time.group(2), time.group(3));
+                }
+                throw failureReading(SyntaxFailure.INVALID_LEXEME, "time", lexeme);
+            }
             refuseTheNoneWordAsAName(lexeme.substring(1), "word-get", lexeme);
             return WordValue.of(lexeme.substring(1), Datatype.GET_WORD);
         }

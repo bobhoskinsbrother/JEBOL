@@ -5,6 +5,7 @@ import java.util.List;
 import org.jebol.domain.value.BlockStorage;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
+import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -96,6 +97,15 @@ public final class Binder {
             // arrived with, including none at all.
             case WordValue word -> word;
             case BlockValue nested -> bindOnly(nested, context, names);
+            // The walk descends into a map's stored values -- the C's
+            // ANY_BLOCK_OR_MAP -- so a paren held in a map literal binds
+            // like one held in a block. Keys stay as written.
+            case MapValue map -> {
+                for (Value key : map.keys()) {
+                    map.put(key, bindValueOnly(map.select(key), context, names));
+                }
+                yield map;
+            }
             default -> value;
         };
     }
@@ -106,6 +116,12 @@ public final class Binder {
                     ? word.boundTo(context.holderOf(word.canonical()))
                     : word;
             case BlockValue block -> bind(block, context);
+            case MapValue map -> {
+                for (Value key : map.keys()) {
+                    map.put(key, bindValue(map.select(key), context));
+                }
+                yield map;
+            }
             default -> value;
         };
     }
@@ -141,6 +157,11 @@ public final class Binder {
             case BlockValue nested -> {
                 for (Value item : nested.remaining()) {
                     defineWordsIn(item, context);
+                }
+            }
+            case MapValue map -> {
+                for (Value stored : map.values()) {
+                    defineWordsIn(stored, context);
                 }
             }
             default -> {

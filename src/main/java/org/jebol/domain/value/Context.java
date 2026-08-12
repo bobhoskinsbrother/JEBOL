@@ -25,6 +25,13 @@ public final class Context {
     private final Context parent;
     private final boolean unbound;
 
+    /**
+     * Whether this is a loop's own frame. The C marks one as an internal
+     * series -- {@code INT_SERIES(frame)} -- so it is not reachable as an
+     * object: {@code foreach x [1] [context? 'x]} answers none.
+     */
+    private boolean loopFrame;
+
     private Context(Context parent, boolean unbound) {
         this.parent = parent;
         this.unbound = unbound;
@@ -41,6 +48,17 @@ public final class Context {
             throw new IllegalArgumentException("a child context needs a parent");
         }
         return new Context(parent, false);
+    }
+
+    /** A loop's own frame, hidden from CONTEXT?. */
+    public static Context loopFrameOf(Context parent) {
+        Context frame = childOf(parent);
+        frame.loopFrame = true;
+        return frame;
+    }
+
+    public boolean isALoopFrame() {
+        return loopFrame;
     }
 
     /**
