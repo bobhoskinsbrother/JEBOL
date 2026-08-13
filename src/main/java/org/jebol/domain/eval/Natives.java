@@ -3053,6 +3053,10 @@ public final class Natives {
     // ---- making functions ------------------------------------------------
 
     private void defineFunctionMaking() {
+        // The reader builds `#(function! [[spec][body]])` through this,
+        // because spec parsing lives on this side of the boundary.
+        Transcoder.buildFunctionsWith(
+                (spec, body) -> makeFunction(spec, body, Context.root()));
         // FUNC takes its spec and body unevaluated, which is why they are
         // blocks in the source and blocks here: a spec that had been
         // evaluated would have looked its own words up.

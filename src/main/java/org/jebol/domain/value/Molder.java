@@ -164,6 +164,8 @@ public final class Molder {
             case ModuleValue module -> renderObject(
                     new ObjectValue(module.context()), forReading);
             case ErrorValue error -> "#[error! " + error.errorId() + "]";
+            case StructValue struct -> "make struct! "
+                    + render(struct.layout(), forReading);
             case JavaObjectValue host -> "#[java-object! " + host.className() + "]";
         };
     }

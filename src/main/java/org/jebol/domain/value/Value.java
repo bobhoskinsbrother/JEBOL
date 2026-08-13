@@ -39,6 +39,7 @@ public sealed interface Value permits
         MapValue,
         BitsetValue,
         ErrorValue,
+        StructValue,
         JavaObjectValue {
 
     /** The datatype this value reports to {@code type?}. */

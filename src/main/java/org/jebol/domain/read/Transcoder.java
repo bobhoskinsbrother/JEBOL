@@ -26,6 +26,7 @@ import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.SeriesValue;
 import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.StructValue;
 import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Typeset;
@@ -822,8 +823,51 @@ public final class Transcoder {
                     only instanceof BlockValue items
                             ? items.as(datatype)
                             : requireDatatype(only, datatype);
+            // MT_Struct: a layout block of field words each declaring one
+            // scalar type, refused as a malconstruct when it declares none.
+            case STRUCT -> {
+                StructValue struct = only instanceof BlockValue layout
+                        ? StructValue.from(layout)
+                        : null;
+                if (struct == null) {
+                    throw failure(SyntaxFailure.MALCONSTRUCT, null);
+                }
+                yield struct;
+            }
+            // MT_Function: one block holding exactly [spec body], built by
+            // whatever the evaluator registered -- the reader cannot parse
+            // a spec itself without depending on the layer above it.
+            case FUNCTION, CLOSURE -> {
+                if (functionBuilder == null
+                        || !(only instanceof BlockValue definition)
+                        || definition.remaining().size() != 2
+                        || !(definition.remaining().get(0) instanceof BlockValue spec)
+                        || !(definition.remaining().get(1) instanceof BlockValue body)
+                        || spec.datatype() != Datatype.BLOCK
+                        || body.datatype() != Datatype.BLOCK) {
+                    throw failure(SyntaxFailure.MALCONSTRUCT, null);
+                }
+                try {
+                    yield functionBuilder.apply(spec, body);
+                } catch (RuntimeException badSpec) {
+                    throw failure(SyntaxFailure.MALCONSTRUCT, null);
+                }
+            }
             default -> throw failure(SyntaxFailure.MALCONSTRUCT, null);
         };
+    }
+
+    /**
+     * How a function construct is built. The evaluator owns spec parsing,
+     * so it hands the reader a builder at boot rather than the reader
+     * reaching upward for one.
+     */
+    private static volatile
+            java.util.function.BiFunction<BlockValue, BlockValue, Value> functionBuilder;
+
+    public static void buildFunctionsWith(
+            java.util.function.BiFunction<BlockValue, BlockValue, Value> builder) {
+        functionBuilder = builder;
     }
 
     /**
