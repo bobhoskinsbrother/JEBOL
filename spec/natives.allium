@@ -4757,7 +4757,21 @@ open question "A real R3 keeps whichever spelling of the type word it was given,
 -- /ALL and /COMPARE together are refused with bad-refines: /COMPARE says
 -- how to compare records, which leaves /ALL nothing to mean.
 
-open question "PROTECT/DEEP/WORDS on a block of words: a real R3 refuses `insert a/b \"x\"` with protected after `protect/deep/words [a]`, so /DEEP plainly reaches what each word holds. Implementing it costs six of Rebol's own UNPROTECT assertions in object-test.r3 and gains two, and three explanations have now been ruled out by measurement: it is not asymmetry between guarding and releasing (restricting it to the protecting direction changes nothing), it is not the object-versus-words distinction below (adding that changed nothing here), and those UNPROTECT assertions do not go through this code path at all -- they protect an object directly, not a block of words. So something else in the run is reaching it. Left unimplemented rather than half-implemented. The probe is `a: make object! [b: \"abc\"] protect/deep/words [a] insert a/b \"x\"`, and the six assertions are object-test.r3 UNPROTECT #174 #175 #179 #182 #183 #187."
+-- Resolved: PROTECT/DEEP/WORDS on a block of words does reach what each word
+-- holds, and it reaches it as WORDS rather than as a whole container. That
+-- last part is what the earlier attempt got wrong and what cost the six
+-- UNPROTECT assertions in object-test.r3.
+--
+-- The two halves have to travel together. /DEEP says "go inside what each
+-- word holds"; /WORDS says "lock the names you find, not the container". A
+-- version that went deep and closed the object as well made
+-- `protect/deep/words [a]` also refuse a new field on a, which
+-- unprotect/words could not then release -- the object flag is not a word
+-- flag and no refinement combination reaches it.
+--
+-- The probe is `a: make object! [b: "abc"] protect/deep/words [a] insert a/b
+-- "x"`, which now refuses with `protected`, and the assertions are
+-- object-test.r3 UNPROTECT #174 #175 #179 #182 #183 #187.
 
 -- Resolved against a real R3: protection on an object covers three
 -- separate things, and no two of them are the same question:
@@ -5301,22 +5315,32 @@ rule MoldAllKeepsASeriesPosition {
 }
 
 -- A series already at its head molds as plain MOLD does, and so does
--- anything that is not a series. There is no position to keep, so the
--- construct form would add ceremony and say nothing.
+-- anything that is not a series -- unless the literal form would not read
+-- back as the same value. There is no position to keep, so the construct
+-- form would otherwise add ceremony and say nothing.
+--
+-- Two values fall outside it, and they fall outside for the same reason /ALL
+-- exists: the literal spelling does not survive the reader. An empty tag
+-- molds as `#(tag! "")`, because `<>` reads back as the word `<>`. And a url
+-- or an email the reader would not read back molds as a construct by
+-- AUrlOrEmailThatWouldNotReadBackMoldsAsAConstruct below -- which applies to
+-- plain MOLD as well, because MOLD's promise is the round trip whether or not
+-- /ALL was asked for.
 rule MoldAllIsPlainMoldWhereThereIsNoPositionToKeep {
     when: EvaluateMold(subject)
     requires: refinement_asked(all)
     requires: not is_series(subject) or subject.index = 1
+    requires: the_literal_form_would_read_back_as_itself(subject)
 
     ensures: MoldResult(text: what_plain_mold_writes(subject))
 
     @guidance
-        -- The positioned series is the whole of what JEBOL's /ALL does
-        -- today, and it is the part that round-trips. A real R3 also writes
-        -- construct syntax under /ALL for other values that have no literal
-        -- spelling of their own, and that is not here yet. So a mold/all of
-        -- something outside this rule matches R3 by accident rather than by
-        -- construction, and the gap is worth knowing before leaning on it.
+        -- The positioned series, the empty tag and the unreadable url are
+        -- what JEBOL's /ALL writes as constructs today. A real R3 also writes
+        -- construct syntax for other values that have no literal spelling of
+        -- their own, and those are not here yet -- so a mold/all of something
+        -- outside these matches R3 by accident rather than by construction,
+        -- and the gap is worth knowing before leaning on it.
 }
 
 -- A url or an email that would not read back as itself molds as construction

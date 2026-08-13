@@ -527,20 +527,16 @@ IN declare the unmakeable typeclasses as R3 does. The append/insert/change
 
 The vector!/task! lines remain datatype backlog, not surface work.
 
-## 5c. The suite: 7 failing of 3721
+## 5c. DONE - the suite is green: 3721 of 3721, zero skipped
 
-The seven that remain, and what each needs:
-- catch/quit [quit] #293/#294: the test shells out to a real Rebol binary
-  through CALL; needs a process host and an executable the machine lacks.
-- dyn-ref-1 #409: a truthy dynamic refinement forwarded through
-  `repend/:only` to a native; needs the PendingCall arity alignment traced.
-- wish-2440 #53: `same? :do context? p` after the function returned - a
-  frame-reuse artifact of the C's stack frames.
-- construction syntax any-string! #326: needs a struct! value class.
-- construction syntax function! #339: the reader would need the spec
-  parser, which lives on the evaluator's side of the boundary.
-- SORT unstable #947: pins the exact permutation of the C's
-  symmetry-partition sort; needs f-adp-symmetry-psort.c ported.
+Every assertion in Rebol's own test files passes. The last seven fell to:
+a struct! value and a reader-registered function builder for the two
+construction forms; a boot launcher script plus a REPL --do argument so
+CALL system/options/boot runs a real child JEBOL; the symmetry-partition
+sort ported whole for SORT/UNSTABLE's pinned permutation; APPEND/ONLY
+honoring its refinement (which was also the whole of the dyn-ref failure);
+and CONTEXT? answering DO for a word bound into a returned call's frame,
+the C's frame reuse read faithfully.
 
 **A malformed number is refused now, and it took three changes that only work
 together.** The one-line refusal had been tried twice before and cost about twenty
