@@ -200,6 +200,12 @@ class SuiteFailureReportTest {
                 .forEach(entry -> System.out.printf("  %5d  %s%n",
                         entry.getValue(), entry.getKey()));
 
-        assertThat(byReason).as("nothing to report means nothing ran").isNotEmpty();
+        // An empty report used to mean the runner found nothing, and the
+        // guard asserted non-empty to catch that. The suite has since gone
+        // green, so an empty report is now the wanted answer and the guard
+        // asks its real question instead: did the assertions run at all?
+        assertThat(RebolSuiteTest.everyAssertion().toList())
+                .as("nothing to report must mean everything held, not that nothing ran")
+                .isNotEmpty();
     }
 }

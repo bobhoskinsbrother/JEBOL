@@ -75,9 +75,13 @@ class ErrorCatalogueTest {
     }
 
     @Test
-    @DisplayName("a category names itself in its type field")
+    @DisplayName("a category names itself in its type field, as errors.reb writes it")
     void eachCategoryNamesItself() {
-        assertThat(answerTo("system/catalog/errors/Math/type")).isEqualTo("\"math\"");
+        // errors.reb line 142: `type: "math error"`. This test used to
+        // expect "math", which was JEBOL's own earlier invention; the
+        // catalogue now carries the declaration verbatim.
+        assertThat(answerTo("system/catalog/errors/Math/type"))
+                .isEqualTo("\"math error\"");
     }
 
     @Test

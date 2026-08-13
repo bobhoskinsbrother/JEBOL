@@ -252,13 +252,15 @@ class InterpreterStateFromTheSourceTest {
             // The C tests this before it reads a single refinement:
             //     sp = Stack_Frame(index);
             //     if (!sp) return R_NONE;
-            // At the top level there is no frame at all -- `for (dsf = DSF;
-            // dsf > 0; ...)` does not run when DSF is zero -- so every form
-            // answers none there, and a caller walking outwards can tell
-            // where the stack ends.
-            assertThat(answerTo("none? stack/depth 0")).isEqualTo(TRUE);
-            assertThat(answerTo("none? stack/size 0")).isEqualTo(TRUE);
+            // Offset zero always names a frame -- the STACK call's own --
+            // so the walk outwards ends one past the outermost call, not
+            // at the top level. This test used to expect none at offset
+            // zero, which was wrong: Rebol's own evaluation-test.r3
+            // asserts `'stack = stack/word 0` at the top level, twice.
+            assertThat(answerTo("none? stack/depth 99")).isEqualTo(TRUE);
+            assertThat(answerTo("none? stack/size 99")).isEqualTo(TRUE);
             assertThat(answerTo("none? stack/word 99")).isEqualTo(TRUE);
+            assertThat(answerTo("none? stack/word 1")).isEqualTo(TRUE);
         }
 
         @Test
@@ -266,6 +268,9 @@ class InterpreterStateFromTheSourceTest {
         void depthCountsFrames() {
             assertThat(answerTo("f: func [] [integer? stack/depth 0] f"))
                     .isEqualTo(TRUE);
+            // `Stack_Depth()` walks every DSF frame including STACK's own,
+            // so the answer at the top level is one, never zero or none.
+            assertThat(answerTo("1 = stack/depth 0")).isEqualTo(TRUE);
         }
 
         @Test
@@ -286,15 +291,21 @@ class InterpreterStateFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("/WORD names the function being run, when there is one")
+        @DisplayName("/WORD at offset one names the function being run")
         void wordNamesTheFunction() {
-            assertThat(answerTo("f: func [] [stack/word 0] 'f = f")).isEqualTo(TRUE);
+            // Offset zero is the STACK call itself; the enclosing call is
+            // one out. This test used to ask at zero, which was JEBOL's
+            // earlier off-by-one, corrected when the suite pinned zero.
+            assertThat(answerTo("f: func [] [stack/word 1] 'f = f")).isEqualTo(TRUE);
         }
 
         @Test
-        @DisplayName("and answers none at the top, where no frame is open")
-        void wordIsNoneAtTheTop() {
-            assertThat(answerTo("none? stack/word 0")).isEqualTo(TRUE);
+        @DisplayName("and offset zero names STACK itself, even at the top")
+        void wordAtZeroIsStackItself() {
+            // Rebol's own evaluation-test.r3: `'stack = stack/word 0` and
+            // `'stack = first stack 0`, asked at the top level of the file.
+            assertThat(answerTo("'stack = stack/word 0")).isEqualTo(TRUE);
+            assertThat(answerTo("'stack = first stack 0")).isEqualTo(TRUE);
         }
 
         @Test
@@ -306,7 +317,7 @@ class InterpreterStateFromTheSourceTest {
             // be cleared as the call is made or the frame reports whichever
             // word was called before it.
             assertThat(answerTo(
-                    "f: func [] [stack/word 0] g: func [] [do reduce [:f]] none? g"))
+                    "f: func [] [stack/word 1] g: func [] [do reduce [:f]] none? g"))
                     .isEqualTo(TRUE);
         }
     }

@@ -9459,19 +9459,22 @@ public final class Natives {
     }
 
     /**
-     * What TAIL? will look at: everything with a position or a size.
+     * What TAIL? admits: `series [series! gob! port! bitset! typeset!
+     * map!]`, actions.reb line 143.
      *
      * <p>Written out rather than taken as "every series", because the
-     * list is what decides whether `tail? none` refuses. NONE is
-     * deliberately absent: EMPTY? is the same action under a spec that
-     * adds it.
+     * list is what decides whether `tail? none` refuses. NONE and OBJECT
+     * are deliberately absent: EMPTY? is the same action under a spec
+     * that adds them -- mezz-series.reb writes `make :tail? [...]` with
+     * the wider list -- so the body below answers for an object while
+     * this list turns one away at the word TAIL? itself.
      */
     private static final Set<Datatype> SERIES_LIKE = EnumSet.of(
             Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL,
             Datatype.TAG, Datatype.REF, Datatype.BINARY,
             Datatype.BLOCK, Datatype.PAREN, Datatype.PATH, Datatype.SET_PATH,
             Datatype.GET_PATH, Datatype.LIT_PATH, Datatype.HASH,
-            Datatype.PORT, Datatype.BITSET, Datatype.OBJECT, Datatype.MODULE,
+            Datatype.PORT, Datatype.BITSET,
             Datatype.TYPESET, Datatype.MAP, Datatype.GOB, Datatype.IMAGE);
 
     /**
@@ -12040,7 +12043,7 @@ public final class Natives {
                     // every call including this native's own frame; JEBOL
                     // opens no frame for a native, so the innermost entry
                     // is put back here and everything outward shifts one.
-                    //
+                    int callsOpen = evaluator.callsInProgress().size();
                     // An offset naming no frame answers none, whatever was
                     // asked for. The C tests it before it reads a single
                     // refinement:
@@ -12049,7 +12052,7 @@ public final class Natives {
                     // So a caller walking outwards can tell where the stack
                     // ends; answering a number regardless would make the walk
                     // run for ever.
-                    if (offset < 0 || offset > evaluator.framesOpen()) {
+                    if (offset < 0 || offset > callsOpen) {
                         return NoneValue.none();
                     }
                     if (refinements.contains("word")) {
@@ -12064,8 +12067,12 @@ public final class Natives {
                                 .<Value>map(WordValue::of)
                                 .orElseGet(NoneValue::none);
                     }
+                    // `Stack_Depth()` walks every DSF frame including the
+                    // STACK call's own, so the answer at the top level is
+                    // one, never zero: asking the question opens the frame
+                    // that answers it.
                     if (refinements.contains("depth")) {
-                        return IntegerValue.of(evaluator.framesOpen());
+                        return IntegerValue.of(callsOpen + 1);
                     }
                     if (refinements.contains("limit")) {
                         return IntegerValue.of(Evaluator.DEFAULT_MAXIMUM_DEPTH);
@@ -12074,7 +12081,7 @@ public final class Natives {
                     // is more than one value, so the two answers differ on
                     // purpose.
                     if (refinements.contains("size")) {
-                        return IntegerValue.of(evaluator.framesOpen() * FRAME_VALUE_UNITS);
+                        return IntegerValue.of((callsOpen + 1) * FRAME_VALUE_UNITS);
                     }
                     // No refinement asks for the backtrace: a block of frame
                     // words from the offset inward-to-outward --
@@ -12083,8 +12090,7 @@ public final class Natives {
                     if (offset == 0) {
                         backtrace.add(WordValue.of("stack"));
                     }
-                    for (int at = Math.max(0, offset - 1);
-                            at < evaluator.framesOpen(); at++) {
+                    for (int at = Math.max(0, offset - 1); at < callsOpen; at++) {
                         evaluator.functionBeingRun(at)
                                 .filter(name -> !name.isEmpty())
                                 .ifPresent(name -> backtrace.add(WordValue.of(name)));
