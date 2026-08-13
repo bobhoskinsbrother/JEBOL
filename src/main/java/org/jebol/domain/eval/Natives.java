@@ -292,6 +292,35 @@ public final class Natives {
         this.localFileSeparator = separator;
     }
 
+    /**
+     * What {@code system/options/boot} names: something that starts this
+     * very interpreter.
+     *
+     * <p>The C's boot is the running executable. JEBOL's is a JVM plus a
+     * classpath, and only the application knows how to package those into
+     * one path, so it tells the domain rather than the domain finding out.
+     */
+    private String bootLauncher = "";
+
+    /** Tells the natives what starts this interpreter from a shell. */
+    public void useBootLauncher(String launcherPath) {
+        this.bootLauncher = launcherPath;
+    }
+
+    /**
+     * The text of errors.reb, handed in by whoever can read files.
+     *
+     * <p>The catalogue is data the domain interprets, not a file the
+     * domain reads: transcoding it is language work and fetching it is
+     * not.
+     */
+    private String errorCatalogueSource = "";
+
+    /** Tells the natives what the vendored errors.reb says. */
+    public void useErrorCatalogue(String source) {
+        this.errorCatalogueSource = source;
+    }
+
     /** The natives with a set of host services granted. */
     public static Natives standard(Set<HostService> granted) {
         Natives natives = standard();
@@ -533,12 +562,16 @@ public final class Natives {
         // relative to itself.
         options.set("home", StringValue.of(
                 System.getProperty("user.home", "") + "/", Datatype.FILE));
-        // BOOT is always a file in a real R3 -- Init_Main_Args sets it from
-        // the exe path unconditionally -- and here it names a launcher that
-        // runs THIS interpreter, so `call system/options/boot` starts a
-        // JEBOL the way it starts a Rebol there. The path is absolute, so
-        // the CLEAN-PATH mezz-tail runs over it changes nothing.
-        options.set("boot", StringValue.of(bootLauncherPath(), Datatype.FILE));
+        // BOOT names a launcher that runs THIS interpreter, when the host
+        // provided one: `call system/options/boot` then starts a JEBOL the
+        // way it starts a Rebol. Without one it is none, the state this
+        // fork's own sysobj.reb allows for -- "boot (path to the exe) may
+        // be none if not resolved!" -- and the state that keeps mezz-tail
+        // alive, whose CLEAN-PATH over a non-none boot needs a working
+        // directory an ungranted host has not got.
+        options.set("boot", bootLauncher.isEmpty()
+                ? NoneValue.none()
+                : StringValue.of(bootLauncher, Datatype.FILE));
         options.set("path", StringValue.of(
                 System.getProperty("user.dir", "") + "/", Datatype.FILE));
         options.set("data", StringValue.of(
@@ -9067,46 +9100,16 @@ public final class Natives {
     }
 
     /**
-     * A launcher that starts this very interpreter, written once per run.
-     *
-     * <p>The C's boot is the running executable, and a script may CALL it:
-     * Rebol's own suite shells out `boot --do "quit/return 100"` and reads
-     * the exit code. JEBOL's executable is a JVM plus a classpath, so the
-     * equivalent is one small script that carries both.
-     */
-    private static String bootLauncherPath() {
-        String jvm = ProcessHandle.current().info().command()
-                .orElse(System.getProperty("java.home", "") + "/bin/java");
-        try {
-            java.nio.file.Path launcher =
-                    java.nio.file.Files.createTempFile("jebol-boot", ".sh");
-            java.nio.file.Files.writeString(launcher, "#!/bin/sh\nexec \"" + jvm
-                    + "\" -cp \"" + System.getProperty("java.class.path", "")
-                    + "\" org.jebol.adapter.cli.Repl \"$@\"\n");
-            if (!launcher.toFile().setExecutable(true)) {
-                return jvm.replace('\\', '/');
-            }
-            launcher.toFile().deleteOnExit();
-            return launcher.toString().replace('\\', '/');
-        } catch (java.io.IOException unwritable) {
-            return jvm.replace('\\', '/');
-        }
-    }
-
-    /**
      * The error catalogue as errors.reb declares it: category set-words each
      * holding a block of id set-words and their message templates. Read from
-     * the vendored copy, past its own header.
+     * the source {@link #useErrorCatalogue} handed in, past its own header.
      */
-    private static List<Value> catalogueEntries() {
-        try (java.io.InputStream stream =
-                Natives.class.getResourceAsStream("/org/jebol/errors.reb")) {
-            String source = new String(stream.readAllBytes(),
-                    java.nio.charset.StandardCharsets.UTF_8);
-            TranscodeResult read = Transcoder.transcode(source);
+    private List<Value> catalogueEntries() {
+        try {
+            TranscodeResult read = Transcoder.transcode(errorCatalogueSource);
             List<Value> values = read.values().orElseThrow().remaining();
             return values.subList(2, values.size());
-        } catch (java.io.IOException | RuntimeException unreadable) {
+        } catch (RuntimeException unreadable) {
             return List.of();
         }
     }

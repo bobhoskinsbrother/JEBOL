@@ -93,6 +93,11 @@ public final class Interpreter {
         duringTheBoot.addAll(bounds.grantedServices());
         Natives natives = Natives.standard(duringTheBoot);
         natives.useFileSeparator(java.io.File.separatorChar);
+        if (bounds.grantedServices().contains(HostService.PROCESSES)) {
+            natives.useBootLauncher(writtenBootLauncher());
+        }
+        String catalogue = resourceText("/org/jebol/errors.reb");
+        natives.useErrorCatalogue(catalogue == null ? "" : catalogue);
         this.bounds = bounds;
         this.systemContext = natives.asContext();
         this.systemInternals = natives.systemInternals();
@@ -476,6 +481,37 @@ public final class Interpreter {
     private static String fileNameIn(String entry) {
         int marker = entry.indexOf("->");
         return marker < 0 ? entry : entry.substring(0, marker).strip();
+    }
+
+    /**
+     * A launcher script that starts this very interpreter, written once
+     * per run and told to the natives as {@code system/options/boot}.
+     *
+     * <p>The C's boot is the running executable. JEBOL's executable is a
+     * JVM plus a classpath, so the equivalent is one small script that
+     * carries both. Written only for a host that granted the process
+     * service, because CALL is the one thing that runs the field: without
+     * that grant the script would be an unusable file in a shared
+     * temporary directory. When it cannot be written, the field stays
+     * none, which is the state Rebol's own boot files guard for.
+     */
+    private static String writtenBootLauncher() {
+        String jvm = ProcessHandle.current().info().command()
+                .orElse(System.getProperty("java.home", "") + "/bin/java");
+        try {
+            java.nio.file.Path launcher =
+                    java.nio.file.Files.createTempFile("jebol-boot", ".sh");
+            java.nio.file.Files.writeString(launcher, "#!/bin/sh\nexec \"" + jvm
+                    + "\" -cp \"" + System.getProperty("java.class.path", "")
+                    + "\" org.jebol.adapter.cli.Repl \"$@\"\n");
+            if (!launcher.toFile().setExecutable(true)) {
+                return "";
+            }
+            launcher.toFile().deleteOnExit();
+            return launcher.toString().replace('\\', '/');
+        } catch (IOException unwritable) {
+            return "";
+        }
     }
 
     private static String resourceText(String path) {

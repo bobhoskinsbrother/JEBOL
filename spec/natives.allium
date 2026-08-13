@@ -5839,23 +5839,30 @@ rule ToRealFileNeedsTheFilesService {
     ensures: CallFails(error: no_service, about: files)
 }
 
--- `system/options/boot` is a FILE naming the executable the interpreter is
--- running as, and it is always a file.
+-- `system/options/boot` is a FILE naming what this interpreter was started
+-- as, or NONE when the host provided nothing runnable.
 --
--- Rebol sets it unconditionally from the executable path -- Init_Main_Args
--- does it whatever else is or is not known -- so a script reading it never
--- has to test whether it is there. Here it names the host runtime running the
--- interpreter, because that is what the field means: the thing that was
--- started.
+-- A real Rebol sets it unconditionally from the executable path --
+-- Init_Main_Args does it whatever else is or is not known. An embedded
+-- interpreter has no executable of its own to name, and this fork allows
+-- for exactly that: sysobj.reb reads "boot (path to the exe) may be none
+-- if not resolved!", and mezz-tail guards `if system/options/boot` before
+-- touching it.
 --
--- Always a file is the part that matters to a caller. Rebol's own mezz-tail
--- runs CLEAN-PATH over it during boot, and CLEAN-PATH of none stops the file
--- and everything below it -- so a field left as none is not a missing
--- convenience, it takes out the rest of the boot.
+-- None when nothing runnable exists is not a shortcut, it is what keeps
+-- the boot alive. Rebol's own mezz-tail runs CLEAN-PATH over a non-none
+-- boot, CLEAN-PATH consults the working directory even for an absolute
+-- path, and an interpreter whose host granted no filesystem cannot answer
+-- that -- so a real path in the field stops mezz-tail partway, while the
+-- none the guard was written for costs nothing.
 rule TheBootOptionNamesTheRunningExecutableAsAFile {
     when: ReadSystemOption(boot)
-    ensures: OptionValue(value: the_path_of_the_running_host_runtime())
-    ensures: OptionValue(datatype: file)
+
+    ensures:
+        if a_startable_launcher_can_be_provided():
+            OptionValue(datatype: file)
+        else:
+            OptionValue(value: none)
 }
 
 -- What that file names has to be runnable, because scripts run it. A real
@@ -5876,10 +5883,12 @@ rule TheBootOptionNamesTheRunningExecutableAsAFile {
 -- half is worth anything alone, and together they are what makes
 -- `call/shell/wait system/options/boot --do "quit/return 100"` answer 100.
 --
--- Where that cannot be arranged, the field still has to be a file, because
--- TheBootOptionNamesTheRunningExecutableAsAFile is what keeps the rest of the
--- boot alive. The fallback is the host runtime's own path: a file that exists
--- and can be run, that simply will not be an interpreter when it is.
+-- Where that cannot be arranged the field is none, as
+-- TheBootOptionNamesTheRunningExecutableAsAFile says. A launcher is worth
+-- providing exactly when the host granted the process service: CALL is the
+-- only thing that runs the field, a host that refused CALL gets no use from
+-- it, and writing a script into a shared temporary directory on behalf of a
+-- host that granted nothing is an action nobody asked for.
 rule TheBootOptionNamesSomethingThatStartsThisInterpreter {
     when: ReadSystemOption(boot)
 
@@ -5888,7 +5897,9 @@ rule TheBootOptionNamesSomethingThatStartsThisInterpreter {
             running_the_option_value_starts_a_fresh_interpreter() = true
             the_started_interpreter_takes_the_same_arguments_as_the_console() = true
         else:
-            OptionValue(value: the_path_of_the_running_host_runtime())
+            OptionValue(value: none)
+
+    ensures: a_startable_launcher_can_be_provided() = service_granted(processes)
 
     @guidance
         -- Once per interpreter, not once per read: the field is read often
