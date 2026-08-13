@@ -32,8 +32,10 @@ enum EvaluationFailure {
     | not_defined       -- a word with no binding was evaluated
     | need_value        -- a set-word with nothing after it to assign
     | no_arg            -- a call reached the end of the block still short
-    | no_op_arg         -- an operator with nothing on its left
+    | no_op_arg         -- an operator at the head of a series, nothing on its left
+    | missing_arg       -- an operator further in, nothing on its left
     | expect_arg        -- an argument of the wrong datatype
+    | not_in_context    -- a word an object does not have among its own fields
     | invalid_path      -- a path segment that selects nothing
     | cannot_use        -- an operation this datatype does not support
     | locked_word       -- an assignment to a slot marked protected
@@ -380,6 +382,37 @@ rule InfixOperatorContinuesTheWalk {
         -- supplying. Without that, `total: 1 + 2` would store 1 and then
         -- evaluate the addition into nothing, and `add 1 2 * 3` would pass
         -- 2 rather than 6.
+}
+
+-- An operator reached with nothing on its left fails, and which failure it
+-- is depends on where in the series it was reached.
+--
+-- At the very head of the series it is `no-op-arg`, which names the operator
+-- and says what is wrong. Anywhere further in it is `missing-arg`, which says
+-- an argument is missing without naming the operator. Both mean the same
+-- thing to a reader; only the reported id and the wording differ.
+--
+-- This is not a distinction JEBOL chose, and it is worth knowing that it is
+-- an artefact rather than a design. The C's guard is
+-- `if (DSP <= 0 || index == 0) Trap1(RE_NO_OP_ARG, word);` -- the friendly
+-- error fires only when nothing at all has been pushed or the walk is at the
+-- head. Reached mid-series the C takes a value off the stack that was never
+-- meant for it and the imbalance surfaces later as missing-arg. So
+-- `do "<> 0"` says no-op-arg and `do next [1 <> 0]` says missing-arg, on the
+-- same mistake.
+--
+-- Specified because a script catching by id sees the difference, and because
+-- an implementation that reported one id everywhere would look tidier and be
+-- wrong against every assertion in Rebol's own suite.
+rule AnOperatorWithNothingOnItsLeftFails {
+    when: step: EvaluationStep.status transitions_to raised
+    requires: is_operator(step.bound_value)
+    requires: step.infix_left = null
+
+    ensures:
+        step.failure =
+            if step.input_position <= 1: no_op_arg
+            else: missing_arg
 }
 
 -- === Dispatch ==============================================
@@ -768,6 +801,56 @@ rule SetPathAssignsFollowingValue {
 -- unwinds to the catch, and the store never happens. The path is not
 -- malformed, it is computed.
 --
+-- The value being assigned is computed before any segment of the path is
+-- walked. So a paren inside the path sees whatever the assignment's own
+-- expression just did.
+--
+-- `b/(c: 2): c + 1` is the case that pins it. The right side runs first and
+-- computes `c + 1` from the OLD c, and only then is the path walked, so the
+-- paren's `c: 2` decides which field is written but not what is written into
+-- it. Walking the path first inverts both halves: the selector would be
+-- chosen before the assignment ran and the value would be computed after,
+-- which is a different answer on every path holding a paren with a side
+-- effect.
+--
+-- The C is explicit about the order and does it in two consecutive lines:
+-- `index = Do_Next(block, index+1, 0);` then `Do_Path(&word, DS_TOP);`. Every
+-- kind of target follows from that one ordering -- an object field, a series
+-- position, a map key, a bitset bit, a tuple octet, a pair half -- because
+-- the path resolution as a whole is what waits, not the store alone.
+rule ASetPathComputesItsValueBeforeWalkingItsPath {
+    when: selection: PathEvaluation.created
+    requires: selection.path.datatype = set_path
+
+    ensures:
+        the_value_to_store_is_computed_before(
+            any_segment_of(selection.path) is_resolved)
+}
+
+-- A protected field refuses a write through a path as a REBOL error, with
+-- the same id a protected word gives a set-word: `locked-word`.
+--
+-- Two failures are easy to confuse here and only one of them is right. A
+-- protected object as a CONTAINER refuses a new field with `protected`; a
+-- protected SLOT refuses a reassignment with `locked-word`. Writing through
+-- a path to a field that already exists is the second, so `o/a: 1` on a
+-- protected object is locked-word, exactly as `a: 1` on a protected word is.
+--
+-- Worth stating as behaviour rather than leaving to the storage layer,
+-- because the refusal has to be a value a script can catch. Letting the slot
+-- machinery raise it made the failure a host exception, which unwinds past
+-- every TRY in the script.
+rule WritingThroughAPathToAProtectedFieldIsRefused {
+    when: selection: PathEvaluation.status transitions_to selected
+    requires: selection.path.datatype = set_path
+    requires: target_is_an_object(selection)
+    requires: the_named_field_is_protected(selection)
+
+    ensures:
+        selection.step.status = raised
+        selection.step.failure = locked_word
+}
+
 -- The mistake this corrects matched only a plain word as a valid last
 -- segment, so a paren fell through every branch to invalid-path without ever
 -- being evaluated -- a computed field name reported as a broken path.
@@ -850,6 +933,66 @@ rule EachGatheredArgumentIsCheckedAgainstItsOwnParameter {
         parameter_accepts(
             parameter_named(argument.application.applied, argument.parameter_name),
             argument.value)
+}
+
+-- A parameter written with no datatypes beside it accepts every value
+-- EXCEPT unset. A parameter that really takes unset has to say `any-type!`.
+--
+-- The two are easy to conflate and they are not the same set. A bare word in
+-- a spec means "any value", and "any value" in REBOL does not include the
+-- absence of one: the C gives such a parameter `TS_VALUE`, which is every
+-- datatype but unset. `any-type!` is the wider set, and a function declaring
+-- it is saying it can be handed nothing at all and will cope.
+--
+-- Getting this wrong is silent in the direction that matters. Treating a
+-- bare parameter as accepting unset lets `f: func [x] [...] f ()` through,
+-- and the body then works on a value that is not there -- so the failure
+-- surfaces somewhere inside the function rather than at its door, where the
+-- caller could act on it. Treating any-type! as if it were bare breaks the
+-- functions that exist precisely to handle nothing: IF and EITHER take a
+-- condition that may be unset, DO takes a value that may be, and
+-- TYPE?/UNSET?/NONE?/ERROR? and every other datatype predicate exist to be
+-- asked about one.
+--
+-- The natives that declare any-type! are the ones whose C spec says so, and
+-- they are a short list rather than a convenience: the conditionals IF,
+-- EITHER and UNLESS; DO; the control signals RETURN, THROW and BREAK/return;
+-- the reflectors TYPE?, TO-VALUE, NOT, ALSO and the datatype and typeset
+-- predicates; the value-taking series and map verbs SET, PUT, SELECT, FIND,
+-- APPEND, INSERT, CHANGE, POKE and AJOIN/with; MAKE, TO, FORM, MOLD, PRINT
+-- and PRIN. Everything else takes a value and refuses nothing.
+rule ABareParameterAcceptsAnyValueButUnset {
+    when: CheckParameterAccepts(parameter, candidate)
+
+    ensures:
+        parameter_accepts(parameter, candidate) =
+            if parameter.accepted_types.count = 0:
+                candidate.datatype != unset
+            else:
+                candidate.datatype in parameter.accepted_types
+}
+
+-- A call to a function opens a frame that knows which function it belongs
+-- to. A call to a closure does not.
+--
+-- Both build a context for the call's own words; the difference is only
+-- whether that context is marked as the function's frame. It is observable
+-- through one question: CONTEXT? of a word bound into the call. A function's
+-- frame answers the function itself, which is how a body reaches its own
+-- SPEC-OF from inside; a closure's frame is a real object, so CONTEXT?
+-- answers that object.
+--
+-- That single difference is the whole of what separates the two datatypes
+-- here, and something depends on it: USE builds its scope as a closure's
+-- frame, so the words it introduces live in an object a script can reach
+-- rather than in a function's private word list.
+rule ACallFrameKnowsItsFunctionUnlessItIsAClosure {
+    when: application: Application.status transitions_to invoked
+    requires: is_a_written_function(application.applied)
+
+    ensures:
+        frame_is_marked_as_belonging_to_its_function(the_call_frame_of(application))
+            = not is_a_closure(application.applied)
 }
 
 -- The single place a call's gathering outcome is decided. Running out of

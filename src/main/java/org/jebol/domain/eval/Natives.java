@@ -534,14 +534,11 @@ public final class Natives {
         options.set("home", StringValue.of(
                 System.getProperty("user.home", "") + "/", Datatype.FILE));
         // BOOT is always a file in a real R3 -- Init_Main_Args sets it from
-        // the exe path unconditionally -- and here it names the JVM running
-        // the interpreter. The path is already absolute, so the CLEAN-PATH
-        // mezz-tail runs over it changes nothing.
-        options.set("boot", StringValue.of(
-                ProcessHandle.current().info().command()
-                        .orElse(System.getProperty("java.home", "") + "/bin/java")
-                        .replace('\\', '/'),
-                Datatype.FILE));
+        // the exe path unconditionally -- and here it names a launcher that
+        // runs THIS interpreter, so `call system/options/boot` starts a
+        // JEBOL the way it starts a Rebol there. The path is absolute, so
+        // the CLEAN-PATH mezz-tail runs over it changes nothing.
+        options.set("boot", StringValue.of(bootLauncherPath(), Datatype.FILE));
         options.set("path", StringValue.of(
                 System.getProperty("user.dir", "") + "/", Datatype.FILE));
         options.set("data", StringValue.of(
@@ -9026,6 +9023,33 @@ public final class Natives {
     private static void addUtf8(String text, List<Integer> into) {
         for (byte encoded : text.getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
             into.add(encoded & 0xFF);
+        }
+    }
+
+    /**
+     * A launcher that starts this very interpreter, written once per run.
+     *
+     * <p>The C's boot is the running executable, and a script may CALL it:
+     * Rebol's own suite shells out `boot --do "quit/return 100"` and reads
+     * the exit code. JEBOL's executable is a JVM plus a classpath, so the
+     * equivalent is one small script that carries both.
+     */
+    private static String bootLauncherPath() {
+        String jvm = ProcessHandle.current().info().command()
+                .orElse(System.getProperty("java.home", "") + "/bin/java");
+        try {
+            java.nio.file.Path launcher =
+                    java.nio.file.Files.createTempFile("jebol-boot", ".sh");
+            java.nio.file.Files.writeString(launcher, "#!/bin/sh\nexec \"" + jvm
+                    + "\" -cp \"" + System.getProperty("java.class.path", "")
+                    + "\" org.jebol.adapter.cli.Repl \"$@\"\n");
+            if (!launcher.toFile().setExecutable(true)) {
+                return jvm.replace('\\', '/');
+            }
+            launcher.toFile().deleteOnExit();
+            return launcher.toString().replace('\\', '/');
+        } catch (java.io.IOException unwritable) {
+            return jvm.replace('\\', '/');
         }
     }
 

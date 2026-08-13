@@ -155,6 +155,7 @@ class RebolSuiteTest {
             throw new java.io.UncheckedIOException(noDirectory);
         }
         interpreter.useEnvironment(new ProcessEnvironment());
+        interpreter.useProcesses(new org.jebol.adapter.host.JavaProcesses());
         return interpreter;
     }
 
