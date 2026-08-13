@@ -36,6 +36,35 @@ entity Session {
     is_open: Boolean
 }
 
+-- The console's other way in, and it is not a conversation. A caller asks for
+-- one piece of source to be run and for the process to end with a number that
+-- says how it went, which is what makes the console usable from a shell script
+-- and from another REBOL.
+--
+-- It is here rather than in embed.allium because it is the console being
+-- driven without a person at it, conveniences and all: a fresh set-word still
+-- gets a slot, exactly as it would if the same line had been typed. A caller
+-- who wanted the strict evaluator has an interpreter to embed and does not
+-- need a process.
+--
+-- Asking for the mode without giving anything to run is not a batch run of
+-- nothing. There is no source, so there is nothing to conclude and no number
+-- to leave with, and the console opens as it always does.
+entity BatchRun {
+    source_text: String
+    user_context: values/Context
+
+    status: running | finished
+
+    -- What the process leaves behind for whoever started it.
+    exit_status: Integer when status = finished
+
+    transitions status {
+        running -> finished
+        terminal: finished
+    }
+}
+
 entity Submission {
     session: Session
     source_text: String
@@ -128,6 +157,65 @@ rule SubmissionResolves {
             submission.displayed = mold(result_of(submission.source_text))
 }
 
+rule BatchRunBegins {
+    when: RunAndLeave(user_context, source_text)
+    ensures: BatchRun.created(
+        source_text: source_text,
+        user_context: user_context,
+        status: running
+    )
+}
+
+-- Every batch run gets the same convenience an interactive line gets. Without
+-- it `--do "x: 1 print x"` fails where typing the same thing works, and the
+-- difference has nothing a caller could have predicted behind it.
+rule BatchRunExtendsContextForFreshWords {
+    when: run: BatchRun.created
+    requires: run.status = running
+    requires: reads_successfully(run.source_text)
+
+    ensures:
+        for word in set_words_within(run.source_text):
+            values/ContextSlot.created(
+                context: run.user_context,
+                spelling: word.spelling,
+                canonical: word.canonical,
+                value: unset_value(),
+                is_protected: false
+            )
+}
+
+-- What QUIT carried decides the exit status, and that is the whole point of
+-- the mode. Rebol's own suite shells out to a second interpreter, has it run
+-- `quit/return 100`, and asserts the number 100 comes back -- so the number a
+-- script chose has to survive being turned into a process exit code.
+--
+-- Four cases and only the first is interesting. A quit carrying a whole number
+-- leaves with that number. A quit carrying anything else, or nothing, leaves
+-- with zero, because REBOL's QUIT without /RETURN means "stop, and nothing
+-- went wrong". An error leaves with one, the ordinary shell convention for a
+-- failure with no more to say about it. Anything else finished, so zero.
+--
+-- Zero for a quit carrying a none rather than one is worth being deliberate
+-- about: `quit` and `quit/return 0` mean the same thing to the caller, and a
+-- script that stops early on purpose has not failed.
+rule BatchRunConcludesWithWhatQuitCarried {
+    when: run: BatchRun.evaluation_settled
+    requires: run.status = running
+
+    ensures:
+        run.status = finished
+        run.exit_status =
+            if quit_carried_a_whole_number(run):
+                the_whole_number_quit_carried(run)
+            else if quit_was_asked_for(run):
+                0
+            else if evaluation_raised(run):
+                1
+            else:
+                0
+}
+
 -- An error ends the expression, never the session. A console that exited
 -- on a typo would be unusable, and the guarantee that errors are values
 -- is what makes carrying on safe rather than reckless.
@@ -174,6 +262,7 @@ surface Console {
 
     provides:
         Submit(session, source_text) when operator.is_open
+        RunAndLeave(user_context, source_text)
 
     exposes:
         SubmissionOutcome

@@ -6,9 +6,15 @@
 -- values share mutable storage, how words carry bindings, and when two
 -- values count as equal. It specifies no evaluation; see eval.allium.
 --
--- Scope is milestone 1. Datatypes deliberately left out for now:
--- port!, event!, module!, library!, routine!, struct!, handle!,
--- vector!, image!, gob!, bitset!, closure!, command!, task!.
+-- Some datatypes here are names and nothing more. `#(vector!)` is a datatype
+-- value and `datatype? #(vector!)` is true, because the reader has no
+-- business deciding which datatypes exist -- but no value of one can be made,
+-- so there is nothing to specify beyond the name. Eight of them: library!,
+-- routine!, vector!, command!, task!, utype!, rebcode! and frame!.
+--
+-- struct! is neither a full datatype nor a bare name. A value of it can be
+-- made and STRUCT? affirms it, but only the layout is held. StructValue below
+-- says what that leaves out and why.
 
 ------------------------------------------------------------
 -- Enumerations
@@ -294,7 +300,7 @@ entity Value {
         | AnyStringValue | BinaryValue | AnyBlockValue | AnyWordValue
         | DatatypeValue | NativeValue | FunctionValue | OpValue | ObjectValue
         | ErrorValue | JavaObjectValue | MapValue | BitsetValue
-        | ModuleValue | PortValue
+        | ModuleValue | PortValue | StructValue
 
     -- The concrete datatype this value reports to TYPE?. Each variant
     -- narrows this to the datatypes it can carry.
@@ -615,6 +621,43 @@ variant GobValue : Value {
     index: Integer              -- 1-based child; storage.length + 1 is the tail
 }
 
+-- The layout of a C record: field names, each declaring one scalar type.
+--
+-- Construction is the whole of it, and that is deliberate rather than
+-- unfinished-for-now. `#(struct! [a [uint8!]])` reads back as a value
+-- STRUCT? affirms, which is what Rebol's own lexer test asks for and all it
+-- asks for. Reading a field, writing one, molding the layout back out and
+-- handing a record to a foreign library are all absent, because every one
+-- of them is a foreign-function interface in disguise and JEBOL offers
+-- none.
+--
+-- What that leaves out is worth naming, because a real R3 does more with
+-- the same spelling. It carries the field values beside the layout, which
+-- is why it molds as two blocks -- `#(struct! [a [uint8!]] [a: 0])` -- and
+-- why LENGTH? of one answers the record's width in bytes. It reads an array
+-- count inside the type block, `[uint8! [2]]`. And it accepts the aliases
+-- `boot/words.reb` lists beside the canonical names -- float!, double!,
+-- byte!, single!, i8!, u8! and the rest. None of the three is read here, so
+-- a layout a real R3 accepts can be a malformed construct to JEBOL.
+variant StructValue : Value {
+    -- The block the construct carried, held exactly as it was written:
+    -- pairs of a field word and a one-element block naming its type.
+    layout: Value
+
+    -- The type each of those pairs declared, in the order they were written.
+    declared_field_types: List<StructFieldType>
+}
+
+-- The scalar types a struct field may declare, spelled as the canonical
+-- names in `boot/words.reb`. Thirteen, and a field naming anything else
+-- makes the whole layout a malformed construct.
+enum StructFieldType {
+    int8 | int16 | int32 | int64
+    | uint8 | uint16 | uint32 | uint64
+    | float32 | float64
+    | pointer | word | rebval
+}
+
 variant AnyBlockValue : Value {
     block_type: BlockDatatype
     storage: BlockStorage
@@ -811,6 +854,21 @@ invariant BlockDatatypeMatchesVariant {
 invariant WordDatatypeMatchesVariant {
     for value in Values:
         value.kind = AnyWordValue implies value.is_any_word
+}
+
+-- A struct exists only where every field of its layout declared one of the
+-- thirteen scalar types. A layout where one did not is refused by the reader
+-- as a malformed construct rather than built into a value with an unreadable
+-- field, so there is no such thing as a struct with a field nobody can name.
+--
+-- Worth stating because it is what makes STRUCT? worth asking. A value that
+-- answers it has a layout that could be laid over bytes, whether or not
+-- anything here does the laying, and a caller can rely on that much without
+-- having to check the block itself.
+invariant StructFieldsDeclareOneOfTheThirteenScalarTypes {
+    for value in Values:
+        value.kind = StructValue
+            implies value.declared_field_types.count = fields_in(value.layout)
 }
 
 -- Word comparison is case-insensitive, so every word carries the
@@ -1012,6 +1070,8 @@ invariant RefinementArgumentsHaveOwners {
 -- caller may construct through conversion. See docs/decisions.md item 7.
 
 open question "A malformed map literal such as #[none] is refused by the reader with a syntax malconstruct, where a real Rebol refuses it with a script invalid-arg. Rebol reads the brackets into a block and builds the map afterwards; JEBOL builds it while reading. Is the reader the right place to build a map at all, or should #[...] read as a block that something later turns into one?"
+
+open question "Should a struct! ever be more than its layout here? Everything a real R3 does with one past construction exists to serve a foreign-function interface: the field values are there so a record can be filled and handed to a C library, the byte width is there so the library can be told how much to read, and the array counts are there because C arrays are laid out that way. An interpreter embedded in a host application already has a way to reach foreign code -- the host calls in and hands values across -- so a second one modelled on C's memory layout would be a parallel road to the same place, and a worse one, since it would put pointer arithmetic in a language that has none. The argument the other way is that a script that reads or writes a struct field is not asking for an FFI at all: it is asking to lay a record over a binary, which is a reasonable thing to want when parsing a file format, and STRUCT is the only place REBOL offers it. So the question is really whether struct! is a foreign-call fixture or a binary-layout tool, and only the second is worth building here."
 
 open question "Nothing may cross between interpreter instances yet, because a block carries its storage and its bindings with it. Is passing values between instances supported at all, and if so is it by deep copy, or by a handle that only the owning instance may follow?"
 

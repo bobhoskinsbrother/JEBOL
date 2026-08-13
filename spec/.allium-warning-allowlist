@@ -14,6 +14,7 @@ Value 'BlockDatatype' is declared but not referenced elsewhere.
 Value 'WordDatatype' is declared but not referenced elsewhere.
 Value 'ErrorCategory' is declared but not referenced elsewhere.
 Value 'HandleKind' is declared but not referenced elsewhere.
+Value 'StructFieldType' is declared but not referenced elsewhere.
 Value 'EventFlag' is declared but not referenced elsewhere.
 Value 'EventModel' is declared but not referenced elsewhere.
 Entity 'BlockStorage' is declared but not referenced elsewhere in this specification.

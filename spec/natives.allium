@@ -3854,6 +3854,8 @@ open question "A wildcard in a path read as a directory listing in the C, and ca
 
 open question "What should REMOVE do to a complemented bitset? Three of the four ways of writing bits go through one inversion -- APPEND, INSERT and POKE all reach the `set_bits` label, where `if (BITS_NOT(...)) diff = !diff` turns \"hold this\" into \"clear the octet\" for a complemented set -- and REMOVE does not. It jumps straight to `Set_Bits(..., FALSE)`, so it clears the octet whatever the set's sense is, which on a complemented set means the character it was told to remove becomes one the set holds. Two readings and neither is obviously the C's intent: REMOVE is meant to clear octets rather than to remove members, in which case the asymmetry is deliberate and the name is misleading; or it is meant to remove members like every other verb and the missing inversion is an oversight nobody has hit, because complemented sets are made by COMPLEMENT and rarely written to afterwards. Worth measuring against a real R3 before either is built, since the two disagree on every call."
 
+open question "ContextOfAWordAnswersWhicheverKindOfFrameHoldsIt answers DO for a word whose call has ended, and DO is not really the answer -- it is what the C's answer collapses to under the one caller that asks. The C reads the frame one below CONTEXT? on the stack, so what comes back is whichever call is innermost and still open at the moment of asking: DO when a script asks at the top level, but the enclosing function when the question is asked from inside another call. Answering the innermost still-open call would reproduce that in general rather than in the single case Rebol's own suite exercises, and it costs nothing to work out, since the frames are already there to be counted. Two things argue against doing it now. The first is that neither answer is about the word, so the more faithful one is faithful to an accident, and a script that relied on it would be relying on where it happened to be standing. The second is that a third reading is arguably better than both: answer the function the word was actually bound in, which is a fact about the word, is stable, and is what someone reading `context? p` plainly expects -- at the cost of not being what a real Rebol says. It wants measuring against a real R3 from inside a nested call before either the general form or the honest form is built."
+
 open question "TheBootOptionNamesTheRunningExecutableAsAFile says system/options/boot is the path of the host runtime running the interpreter, because Rebol sets that field from its own executable path and scripts read it to find things relative to themselves. For an embedded interpreter the two readings come apart: the host runtime's binary is not where the interpreter's own resources live, and a script resolving a sibling file against it lands somewhere unrelated. Three candidates and none is obviously right -- the host runtime binary as now, the archive or directory JEBOL itself was loaded from, or the embedding application's own executable. It wants deciding by what a script actually does with the field rather than by which is most faithful to Rebol."
 
 open question "AnEmptyTagUnderAllMoldsAsAConstruct and AUrlOrEmailThatWouldNotReadBackMoldsAsAConstruct are two members of a set that has no stated boundary: the values whose literal form would not read back. A real R3 writes construct syntax for others too, and the guidance under MoldAllIsPlainMoldWhereThereIsNoPositionToKeep already records that the rest are not here. What is undecided is whether the set should be enumerated in this spec at all, or stated once as the property -- MOLD writes whatever reads back as the same value, and construct syntax wherever the literal form would not -- with the enumeration left to the round-trip invariant to enforce. The property reads better and is harder to test; the enumeration is testable and goes stale."
@@ -5854,6 +5856,49 @@ rule TheBootOptionNamesTheRunningExecutableAsAFile {
     when: ReadSystemOption(boot)
     ensures: OptionValue(value: the_path_of_the_running_host_runtime())
     ensures: OptionValue(datatype: file)
+}
+
+-- What that file names has to be runnable, because scripts run it. A real
+-- Rebol's boot field is the executable, so `call system/options/boot` starts
+-- a second Rebol, and Rebol's own suite does exactly that to check what QUIT
+-- carries: it shells out to the boot path, gives it a script to run and reads
+-- the exit code back.
+--
+-- Naming the host runtime alone does not survive that. Starting a JVM with no
+-- classpath and no class to run gets a usage message, not an interpreter, so
+-- a script following Rebol's own idiom gets a child that was never JEBOL. The
+-- field therefore names something that starts THIS interpreter -- the same
+-- runtime, the same classpath, the console adapter as its entry point -- and
+-- accepts the same arguments a REPL does.
+--
+-- The other half of that round trip is in repl.allium: the console run with
+-- one piece of source to evaluate leaves with the number QUIT carried. Neither
+-- half is worth anything alone, and together they are what makes
+-- `call/shell/wait system/options/boot --do "quit/return 100"` answer 100.
+--
+-- Where that cannot be arranged, the field still has to be a file, because
+-- TheBootOptionNamesTheRunningExecutableAsAFile is what keeps the rest of the
+-- boot alive. The fallback is the host runtime's own path: a file that exists
+-- and can be run, that simply will not be an interpreter when it is.
+rule TheBootOptionNamesSomethingThatStartsThisInterpreter {
+    when: ReadSystemOption(boot)
+
+    ensures:
+        if a_startable_launcher_can_be_provided():
+            running_the_option_value_starts_a_fresh_interpreter() = true
+            the_started_interpreter_takes_the_same_arguments_as_the_console() = true
+        else:
+            OptionValue(value: the_path_of_the_running_host_runtime())
+
+    @guidance
+        -- Once per interpreter, not once per read: the field is read often
+        -- and by mezzanine code during boot, so working it out each time
+        -- would put a file write inside an option lookup.
+
+    @guidance
+        -- Whatever provides it goes away with the interpreter. A launcher
+        -- left behind is litter in a shared temporary directory, and a stale
+        -- one naming a classpath that has since changed is worse than none.
 }
 
 -- `system/catalog/errors` holds the message templates the error catalogue
@@ -7946,6 +7991,24 @@ rule StackWithoutARefinementAnswersTheBacktrace {
 -- the whole observable difference between the two datatypes, and USE depends
 -- on it: USE builds its scope as a closure's frame precisely so the words it
 -- introduces live somewhere a script can reach.
+--
+-- There is a fourth answer, and it is the one nobody expects. A word can
+-- outlive the call it was bound in -- `f: func [a] [p: 'a]  f 1` leaves P
+-- holding a word bound into a frame whose call is long over -- and asked where
+-- that word lives, a real Rebol answers DO.
+--
+-- The reason is that the C is not answering a question about the word at all.
+-- It reads whichever call frame sits one below CONTEXT? on the stack and hands
+-- back the function that frame belongs to: `REBVAL *frame = Stack_Frame(1);
+-- *D_RET = frame[3];`. While the call is alive that frame IS the call, so the
+-- answer comes out as the word's own function and the whole thing looks
+-- deliberate. Once the call has returned, the frame underneath belongs to
+-- whatever is running now -- and what is running is DO.
+--
+-- So the answer is a fact about who is asking, not about the word, and the two
+-- only coincide for as long as the call lasts. Answering none instead would be
+-- the tidy reading and it is not what happens; the C reaches none only when
+-- there is no frame on the stack at all.
 rule ContextOfAWordAnswersWhicheverKindOfFrameHoldsIt {
     when: EvaluateCall(context_question, subject)
     requires: is_any_word(subject)
@@ -7954,7 +8017,10 @@ rule ContextOfAWordAnswersWhicheverKindOfFrameHoldsIt {
         if not is_bound(subject): none_value()
         else if the_binding_is_a_loop_frame(subject): none_value()
         else if the_binding_is_a_functions_call_frame(subject):
-            the_function_that_frame_belongs_to(subject)
+            if the_call_that_frame_belonged_to_has_ended(subject):
+                the_do_native()
+            else:
+                the_function_that_frame_belongs_to(subject)
         else: the_object_of(the_binding_of(subject)))
 }
 
@@ -8360,4 +8426,121 @@ rule ReplaceCopiesAReplacementThatAliasesTheTarget {
     ensures:
         the_string_holds(target) =
             search_replaced_by(target, search, a_copy_taken_before_writing(replacement))
+}
+
+-- === Sorting: two algorithms, and which one is promised ==========
+
+-- Every sort here keeps the same items and arranges the ones that took part
+-- so that nothing comes before something the comparison puts ahead of it.
+-- That is the weak property, the one any correct sort has, and it is worth
+-- stating on its own because it is the only thing the two algorithms below
+-- have in common.
+--
+-- "The ones that took part" is doing real work in that sentence. /PART limits
+-- the sort to the first so many items and leaves the rest where they were, and
+-- /SKIP makes the unit a record of several items rather than one, so neither
+-- the span nor the unit can be assumed.
+rule SortingKeepsTheItemsAndOrdersTheOnesThatTookPart {
+    when: EvaluateCall(sort, series)
+
+    ensures:
+        the_items_of(series) = the_items_it_started_with(series)
+        for neighbouring_pair in the_records_that_took_part(series):
+            not_out_of_order_by_the_comparison(neighbouring_pair) = true
+}
+
+-- Plain SORT promises one thing more: items the comparison calls equal come
+-- out in the order they went in. That is what makes sorting twice a way of
+-- sorting on two keys, and it is stated already with the other resolutions
+-- above.
+--
+-- /UNSTABLE does not promise less. It promises something else, and something
+-- far more specific: the exact arrangement that Jingchao Chen's Adaptive
+-- Symmetry Partition Sort produces. The algorithm IS the contract.
+--
+-- That reads like a mistake and it is not. "Some unstable sort" would be the
+-- honest thing to promise if nothing could see the difference, but something
+-- can: Rebol's own suite sorts a block of equal keys with /UNSTABLE and
+-- asserts on the arrangement that comes back. A second unstable algorithm --
+-- quicksort, heapsort, an introsort -- would satisfy every word of the weak
+-- property above and fail that assertion, because equal keys land in a
+-- different order under each. So the only implementation that answers is the
+-- one that makes the same swaps, which is why the C's `f-adp-symmetry-psort.c`
+-- was ported step for step rather than replaced by something equivalent.
+--
+-- What that costs is worth being clear-eyed about. It ties the specification
+-- to a particular algorithm, which is exactly the thing a specification is
+-- meant not to do, and it means an optimisation that changed the swaps would
+-- be a behaviour change. The alternative is worse: promise the weak property,
+-- pass every test written against the weak property, and be wrong for every
+-- script that ever compared its answer with a real Rebol's.
+rule UnstableSortingIsOneNamedAlgorithmRatherThanAnyUnstableOne {
+    when: EvaluateCall(sort, series)
+    requires: the_call_asked_for_unstable_sorting()
+
+    ensures:
+        the_records_that_took_part(series) =
+            what_adaptive_symmetry_partition_sort_produces(
+                the_records_it_started_with(series), the_comparison())
+
+    @guidance
+        -- Ported index for index from the C rather than reimplemented from
+        -- the paper. The paper describes the family; the file decides where
+        -- each equal key lands, and it is the file that is being matched.
+}
+
+-- A binary is sorted that way whether or not anyone asked. `(D_REF(11) ||
+-- IS_BINARY(value))` -- the C passes the unstable flag for every binary, so a
+-- caller who wrote plain `sort` on one gets the unstable arrangement, and a
+-- caller who wrote `sort/unstable` on one gets exactly the same thing.
+--
+-- There is no reason in the language for it. Bytes that compare equal are
+-- equal in every respect, so no script can tell which of two identical bytes
+-- came first, and stability on a binary is a distinction without a
+-- difference. It shows up only when the comparison is a function that looks
+-- at something other than the byte -- which /COMPARE allows -- and then the
+-- arrangement is the algorithm's rather than the arrival order's.
+rule SortingABinaryIsAlwaysUnstable {
+    when: EvaluateCall(sort, series)
+    requires: series.datatype = binary
+
+    ensures: the_sorting_used_was_unstable() = true
+}
+
+-- === Adding a block to a block, whole or item by item ==========
+
+-- APPEND reads /ONLY exactly as INSERT does, and nothing about being at the
+-- tail changes it. A block goes in item by item -- `append [a] [b c]` is
+-- [a b c] -- and /ONLY keeps it whole, giving [a [b c]].
+--
+-- Spreading is what makes APPEND usable for building a block up from pieces,
+-- which is most of what a REBOL program does with one, and it is what REPEND
+-- and the collect family are built on. The two verbs having one rule between
+-- them matters more than either rule: a caller who has learnt INSERT should
+-- not have to learn APPEND separately, and the C gives them one code path for
+-- exactly that reason.
+--
+-- Only a true block spreads. A paren, a path or any of the other block-shaped
+-- datatypes goes in whole, because spreading one would lose the very thing
+-- that made it a paren rather than a block. So `append [a] first [(b c)]` is
+-- `[a (b c)]` with or without /ONLY.
+rule AppendingABlockSpreadsItUnlessOnlyKeepsItWhole {
+    when: EvaluateCall(append, series, value)
+    requires: series.datatype = block
+    requires: value.datatype = block
+
+    ensures:
+        if the_call_asked_for_only():
+            the_items_of(series) = what_it_held_then_the_block_as_one_item()
+        else:
+            the_items_of(series) = what_it_held_then_each_item_of_the_block()
+}
+
+rule AppendingAParenOrPathKeepsItWhole {
+    when: EvaluateCall(append, series, value)
+    requires: series.datatype = block
+    requires: value.is_any_block
+    requires: value.datatype != block
+
+    ensures: the_items_of(series) = what_it_held_then_the_value_as_one_item()
 }

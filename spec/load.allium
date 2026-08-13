@@ -274,11 +274,56 @@ contract LexicalResolution {
         -- way: `#(integer! 1 5)` would answer 1 and say nothing about the 5,
         -- so a caller who wrote something meaningless is told it worked.
 
+    @invariant AStructConstructIsPairsOfAFieldNameAndOneScalarType
+        -- `#(struct! [a [uint8!]])` reads as a struct. The body is one
+        -- block holding an even number of values, alternating a word that
+        -- names a field with a one-element block that names that field's
+        -- scalar type -- one of the thirteen in values/StructFieldType.
+        --
+        -- Anything else is a malformed construct rather than a struct with
+        -- something missing. An odd number of values, a type block holding
+        -- two words or none, a type name outside the thirteen, or a field
+        -- name that is not a word: each of them leaves a layout that
+        -- declares nothing, and a value carrying one would answer STRUCT?
+        -- while having no fields to speak of.
+        --
+        -- The thirteen are narrower than a real R3 accepts, which also
+        -- takes the alias spellings and an array count inside the type
+        -- block. That is stated where the datatype is, in values.allium.
+
+    @invariant AFunctionConstructIsExactlyASpecAndABody
+        -- `#(function! [[spec][body]])` reads as a function, and
+        -- `#(closure! ...)` the same way. The body is one block holding
+        -- exactly two blocks: the spec first, the body second, and both
+        -- have to be plain blocks rather than parens or paths.
+        --
+        -- A spec the evaluator will not accept leaves a malformed
+        -- construct, not the evaluator's own complaint about the spec. The
+        -- reader is answering whether this text is a value, and text that
+        -- does not name one is malformed however far into it the trouble
+        -- lies.
+        --
+        -- The body is bound where a function read on its own can be run:
+        -- against the interpreter's own words, not against whatever the
+        -- caller happened to be reading into. Reading is not evaluating and
+        -- the reader has no caller's context to reach for -- see
+        -- TranscodedWordsAreUnbound, of which this is the one exception,
+        -- because a function whose body was left unbound could not be
+        -- called at all.
+
     @guidance
         -- Every resolution here needs corpus cases on both sides of the
         -- decision, not just the surprising side. A corpus that proves
         -- 1.2.3 is a tuple without also proving 1.2 is a decimal has
         -- tested the exception and left the rule untested.
+
+    @guidance
+        -- Reading a function construct needs a spec parsed, and parsing a
+        -- spec is the evaluator's job -- so the reader is handed a way to
+        -- build one when the interpreter starts, rather than reaching up a
+        -- layer to find it. The direction matters beyond tidiness: a reader
+        -- that knew how to build functions would be a reader that could not
+        -- be used on its own, and TRANSCODE is offered on its own.
 }
 
 ------------------------------------------------------------
@@ -814,11 +859,18 @@ rule AMapLiteralWithAnOddItemCountIsRefused {
 -- that comes back from LOAD, because LOAD is this and then some unwrapping.
 -- This is the property that lets a caller build code as data and choose a
 -- context later.
+--
+-- The one exception is inside a function a construct built. Its body is bound
+-- against the interpreter's own words, because a function nobody could call is
+-- not a function, and a body left unbound could never be bound afterwards --
+-- nothing hands a caller the inside of a function value to bind. Every word
+-- the reader hands back as data is still unbound; a function is not data.
 rule TranscodedWordsAreUnbound {
     when: request: TranscodeRequest.status transitions_to succeeded
     ensures:
         for word in words_within(request.result):
-            word.binding = null
+            not word_is_inside_a_function_a_construct_built(word)
+                implies word.binding = null
 }
 
 -- A series value read from source starts at its head. Nothing in the

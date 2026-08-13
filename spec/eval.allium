@@ -704,6 +704,7 @@ rule PathGathersRefinement {
     requires: selection.status = selecting
     requires: not selection.reached_end
     requires: selection.selects_a_function
+    requires: not segment_at_is_a_get_word(selection.path, selection.position)
 
     ensures:
         if not selection.current.has_refinement_named(
@@ -713,6 +714,60 @@ rule PathGathersRefinement {
         else:
             selection.refinements.add(refinement_name_at(selection.path, selection.position))
             selection.position = selection.position + 1
+}
+
+-- A refinement can be named by a get-word, and then whether it is asked for
+-- is decided when the call runs rather than when the code was written.
+-- `insert/:only` takes the ONLY refinement when the word ONLY holds something
+-- true and leaves it off otherwise.
+--
+-- It exists so that a function passing its own refinements on does not have
+-- to write the call twice. Rebol's own library leans on it: REPEND's whole
+-- body is `append/:part/:only/:dup`, forwarding three of its own refinements
+-- in one call, and the form appears seven more times in mezz-series.reb
+-- alone. Without it each of those would need a branch per combination --
+-- eight of them for REPEND -- so a function that forwards a refinement is the
+-- ordinary case here rather than a clever one.
+--
+-- The grant has to reach the whole way. It is not enough for the path to
+-- record that a refinement was requested: the function that runs has to see
+-- it in the set it asks about, natives included. This was wrong once and the
+-- failure is instructive -- `repend/:only` forwarded the grant perfectly, the
+-- path recorded it, and APPEND never looked at its own /ONLY, so every
+-- forwarded refinement in Rebol's own library was silently dropped one step
+-- short of the thing it was meant to reach. Nothing about the path looked
+-- broken, because nothing about it was.
+--
+-- What the call consumes is decided by what was written, not by what was
+-- granted. A refinement named by a get-word that turns out false still had
+-- its argument written after the path, and that argument is still consumed;
+-- it simply belongs to a refinement nobody asked for. Reading it the other
+-- way would make the number of values a call swallows depend on a word's
+-- value, which is not something a reader of the block could work out.
+rule AGetWordNamesARefinementTheCallDecidesOn {
+    when: selection: PathEvaluation.created
+    requires: selection.status = selecting
+    requires: not selection.reached_end
+    requires: selection.selects_a_function
+    requires: segment_at_is_a_get_word(selection.path, selection.position)
+
+    ensures:
+        if the_get_word_resolves_to_something_truthy(
+                selection.path, selection.position):
+            selection.refinements.add(
+                refinement_name_at(selection.path, selection.position))
+        selection.position = selection.position + 1
+}
+
+-- The set a function is told about is the set the path granted, and that
+-- holds for every kind of callable. A native asked whether it was given a
+-- refinement gets the same answer a written function's parameter would carry.
+rule TheGrantedRefinementsAreWhatTheCalleeIsToldAbout {
+    when: application: Application.status transitions_to invoked
+
+    ensures:
+        the_refinements_the_callee_can_ask_about(application)
+            = application.requested_refinements
 }
 
 -- The path is finished. What happens next depends on what it landed on: a
@@ -1003,6 +1058,26 @@ rule ACallFrameKnowsItsFunctionUnlessItIsAClosure {
             = not is_a_closure(application.applied)
 }
 
+-- A call's frame stops being the frame of a call when the call returns, and
+-- it stops however the call left: normally, through RETURN, or through an
+-- error thrown out of the body.
+--
+-- A word can outlive the call it was bound in. `f: func [a] [p: 'a]  f 1`
+-- leaves P holding a word bound into a frame whose call is long over, and
+-- something has to answer when that word is asked where it lives.
+rule ACallFrameKnowsWhenItsCallHasEnded {
+    when: application: Application.call_returned
+    requires: application.status = invoked
+    requires: is_a_written_function(application.applied)
+
+    ensures: the_call_frame_of(application).call_has_ended = true
+}
+
+-- Whether a call has ended is a question about the frame, and it is asked
+-- from outside the evaluator: CONTEXT? of a word bound into one answers
+-- differently once the call is over, which is specified with the other
+-- natives in natives.allium.
+
 -- The single place a call's gathering outcome is decided. Running out of
 -- block beats a type error, because a missing argument means the type
 -- check never had a value to look at. There is no currying in REBOL, so
@@ -1272,6 +1347,8 @@ surface Evaluating {
 -- stack for nested blocks; that is a known gap rather than a design.
 
 open question "An operator with nothing on its left reports two different error ids depending on where in the series it was reached -- no-op-arg at the head, missing-arg anywhere else -- and AnOperatorWithNothingOnItsLeftFails specifies that faithfully. It is an artefact rather than a design: the C's friendly error fires only when nothing has been pushed, and reached mid-series the C takes a bogus stack value whose imbalance surfaces later as the other id. A script cannot act differently on the two, because the mistake is identical; what it can do is catch by id and miss half the cases. So: does JEBOL reproduce the artefact because scripts and Rebol's own suite already depend on the exact id, or normalise both to no-op-arg on the grounds that one mistake should have one name? Reproducing costs nothing today and pins JEBOL to a detail of the C's stack discipline that has no meaning here."
+
+open question "AGetWordNamesARefinementTheCallDecidesOn and PathGathersRefinement disagree about a misspelled refinement, and it is not settled which of them is right. Written plainly, `append/bogus` raises no-refine, because PathGathersRefinement checks the name against the function before granting it. Written as a get-word, `append/:bogus` raises only when BOGUS holds something true; when it holds false the name is never checked at all and the call runs as though the refinement had not been written. So the same misspelling is caught or not caught depending on a value, which is precisely the kind of silence PathGathersRefinement exists to prevent -- and a script forwarding a refinement it spelled wrong would go years without hearing about it, because the false branch is the common one. Two readings. Check the name whatever the word holds, on the grounds that a refinement the function has not got is a mistake in the code rather than a fact about the run; or leave it, on the grounds that a get-word refinement is a request rather than an assertion and asking for nothing cannot be wrong. The first is almost certainly right and wants measuring against a real R3 before it is built, because Rebol's own library forwards refinements constantly and a newly strict check would raise on any of them that names something the callee dropped."
 
 open question "ACallFrameKnowsItsFunctionUnlessItIsAClosure makes the function-versus-closure difference observable through CONTEXT?, and nothing says whether that is the only observable difference or merely the only one built so far. If it is the only one, the two datatypes are one value with a flag and the spec should say so plainly; if more differences are coming -- lifetime of the frame, what a returned function closes over -- then modelling it as a flag is a shortcut that will have to be undone. Worth settling before anything else is hung off the distinction."
 
