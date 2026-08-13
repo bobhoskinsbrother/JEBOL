@@ -325,6 +325,12 @@ config {
     -- At this many newlines or more a plain string molds braced, so the
     -- lines stay real line breaks rather than becoming a run of `^/`.
     newlines_forcing_braces: Integer = 3
+
+    -- Spaces of indent per level of nesting when a block carries line breaks
+    -- into its mold. Pinned rather than left to taste because a saved
+    -- script's header is molded and then checksummed, so the exact bytes are
+    -- compared.
+    mold_indent_width: Integer = 4
 }
 
 ------------------------------------------------------------
@@ -3839,7 +3845,12 @@ open question "What should REMOVE do to a complemented bitset? Three of the four
 
 open question "Does /console on CALL differ observably from plain inheritance on a host that has no console? The C passes a flag and leaves the host to decide, so both readings are open. A console-less host could treat the request as ordinary inheritance, which keeps a script portable and gives the operator nothing it would not have had anyway; or it could refuse and say there is no console to attach to, which is honest and stops a script that would otherwise have worked. It matters more for JEBOL than for Rebol, because a server with no console is the ordinary case here and the opposite of the case the refinement was drawn for. The same question decides whether /console on a host that does have one is worth distinguishing from the default at all, or is only a way for a caller to say the inheritance was meant."
 
-open question "BIND given an object and a word the object does not itself have raises in a real R3, because an object there is a flat context and the word is simply not in it. Contexts nest here, so an object reaches its parent and JEBOL places the word in whichever ancestor holds it. Matching R3 means asking an object only for its own fields, which is a change with a wide blast radius and no test pressing on it yet. Which behaviour does JEBOL want, and is the nesting an implementation detail that binding should not be able to see? Note that R3 is not consistent about this itself: given a WORD as the target rather than an object, it returns an unplaceable word unchanged instead of raising."
+-- Resolved: an object is asked only for its own fields, and a word it has
+-- not got raises not-in-context. The nesting JEBOL stores an object in is an
+-- implementation detail and binding does not see it. A WORD as the target is
+-- the other question and keeps the outward search, because "wherever this
+-- word is bound" is a scope rather than a list. See
+-- BindingAWordToAnObjectAsksThatObjectAlone.
 
 -- Resolved against a real R3: ROUND/TO rounds to a multiple of what it
 -- is given rather than to a number of places, so `round/to 1.234 0.01`
@@ -4442,10 +4453,31 @@ open question "PROTECT/HIDE takes a field out of WORDS-OF and makes the path to 
 -- Threading the caller's context through is what makes COMPOSE usable inside
 -- a function rather than only at the top level.
 --
--- The same threading is meant to reach a map template's value parens, so
--- `compose #[k (a)]` would read the caller's a too, but that path has a
--- separate defect still open and is not specified as working yet. A block
--- template is the whole of what this covers today.
+-- The same threading now reaches a map template's value parens, so
+-- `compose #[k (a)]` reads the caller's a as a block template's paren does.
+-- A map composes as the block of pairs it holds: each key stays as written
+-- and each value is composed, /DEEP descending into a nested block or a
+-- nested map alike.
+--
+-- One difference from a block, and the C states it as a guard rather than as
+-- a rule -- `&& !IS_MAP(block)`: a paren inside a map is never spread. A
+-- paren answering a block in a block template splices its contents in; in a
+-- map template the block is the value stored under that key. There is no
+-- other way for a map value to be a block, and spreading would silently
+-- corrupt the pairing of every key after it.
+
+-- Resolved: a binding walk descends into a map's stored values, and leaves
+-- its keys as written.
+--
+-- The C's traversal condition is ANY_BLOCK_OR_MAP, so a paren held in a map
+-- literal binds exactly as one held in a block does, and it applies to all
+-- three walks -- binding, binding only the names given, and defining fresh
+-- names. Keys stay as written because a key is a value being compared rather
+-- than code being run, and rebinding one would change what it matches.
+--
+-- Without the descent a map literal is a hole in the binding: every word
+-- inside one stays unbound, and the failure surfaces later as a word with no
+-- value, pointing at the word rather than at the map that never got bound.
 
 -- Resolved against a real R3: FOR does not step a character range.
 -- `for c #"a" #"e" 1 [...]` raises expect_arg, so it is not a way to walk
@@ -5287,6 +5319,112 @@ rule MoldAllIsPlainMoldWhereThereIsNoPositionToKeep {
         -- construction, and the gap is worth knowing before leaning on it.
 }
 
+-- A url or an email that would not read back as itself molds as construction
+-- syntax instead of bare.
+--
+-- MOLD's promise is that what it writes reads back as the same value, and a
+-- url is the datatype where the promise is hardest to keep: its literal form
+-- has no delimiters, so the reader decides where it ends by looking at the
+-- characters. A url holding a space, a bracket, a quote or a control
+-- character would be cut short or misread; an empty one, or one with no colon
+-- at all, would come back as a word; an email with no at-sign, or with the
+-- at-sign at either end, is not an email.
+--
+-- Every one of those falls back to `#(url! "...")`, which reads back exactly.
+-- The C decides the same way and for the same reason -- Mold_Url writes the
+-- text bare only when the scanner would read it back as the same value.
+--
+-- Writing it bare regardless is the failure this replaces, and it breaks the
+-- round trip in the direction nobody notices: the text looks right, and only
+-- loading it again shows a word, a truncated url, or a syntax error.
+--
+-- The same fallback carries the position, so a positioned url molds as
+-- `#(url! "whole" 3)`.
+rule AUrlOrEmailThatWouldNotReadBackMoldsAsAConstruct {
+    when: EvaluateMold(subject)
+    requires: is_url(subject) or is_email(subject)
+    requires: not the_reader_would_read_it_back_as_itself(subject)
+
+    ensures: MoldResult(text: the_construct_form_naming(
+        subject.datatype, the_whole_text_of(subject), subject.index))
+}
+
+-- A positioned series molds its construct body in the BODY's notation, not
+-- in the value's own literal one.
+--
+-- `mold/all next next 'p/p` is `#(path! [p p] 3)` -- square brackets, because
+-- Mold_Block writes a path's segments as a block inside a construct. And a
+-- positioned string, file, url or email writes its whole text quoted, because
+-- Mold_All_String forces the type to a plain string first.
+--
+-- The reason is the reader's, not the molder's. Inside `#(...)` the datatype
+-- is already named by the first word, so the body only has to carry the
+-- content; writing the content in its own literal form would name the
+-- datatype twice and, for a path, would not read back at all -- `#(path! p/p
+-- 3)` is a construct of three values where two were meant.
+rule APositionedSeriesMoldsItsBodyInConstructNotation {
+    when: EvaluateMold(subject)
+    requires: refinement_asked(all)
+    requires: is_series(subject)
+    requires: subject.index > 1
+
+    ensures: MoldResult(construct_body:
+        if is_any_block(subject): bracketed_as_a_block(the_items_of(subject.head))
+        else if is_any_string(subject): quoted_as_a_string(the_whole_text_of(subject))
+        else: what_plain_mold_writes(subject.head))
+}
+
+-- An empty tag molds as a construct under /ALL, because `<>` reads back as
+-- the word `<>` rather than as a tag.
+rule AnEmptyTagUnderAllMoldsAsAConstruct {
+    when: EvaluateMold(subject)
+    requires: refinement_asked(all)
+    requires: is_tag(subject)
+    requires: subject.length = 0
+
+    ensures: MoldResult(text: the_construct_form_naming(tag, ""))
+}
+
+-- A block whose positions carry line breaks molds one item to a line, four
+-- spaces an indent level, with the closing bracket on its own line.
+--
+-- A block carries a line-break flag per position: NEW-LINE sets it, and the
+-- molder renders it. `Mold_Block_Series` calls `New_Indented_Line` at each
+-- flagged position, so the flags are what turn a molded block from one long
+-- line into something a person reads.
+--
+-- BODY-OF an object sets the flag on every set-word, which is
+-- `VAL_SET_LINE` in Make_Object_Block. That is the pairing that matters: a
+-- header written out by SAVE is BODY-OF an object molded, so a field a line
+-- falls out of the two rules together rather than from anything SAVE does.
+--
+-- Specified as behaviour rather than left to formatting taste, because the
+-- exact bytes are compared: a saved script's header is checksummed, and a
+-- molder that laid it out differently would produce a file that fails its own
+-- integrity check.
+rule ABlockWithLineBreaksMoldsOneItemToALine {
+    when: EvaluateMold(subject)
+    requires: is_block(subject)
+    requires: any_position_carries_a_line_break(subject)
+
+    ensures:
+        for position in the_positions_of(subject):
+            begins_a_new_line(item_at(subject, position)) =
+                carries_a_line_break(subject, position)
+        the_indent_of_each_new_line(subject) =
+            config.mold_indent_width * the_nesting_depth(subject)
+        the_closing_bracket_stands_on_its_own_line(subject)
+}
+
+rule BodyOfAnObjectFlagsEachSetWordWithALineBreak {
+    when: EvaluateCall(body_of, subject)
+    requires: is_object(subject)
+
+    ensures:
+        for field in the_own_fields_of(subject):
+            carries_a_line_break(the_body, the_set_word_position_of(field))
+}
+
 -- The two spellings a plain string molds as.
 enum StringMoldForm {
     quoted      -- "..." with every awkward character caret-escaped
@@ -5637,6 +5775,52 @@ rule ToRealFileNeedsTheFilesService {
     when: EvaluateCall(to_real_file, path)
     requires: not service_granted(files)
     ensures: CallFails(error: no_service, about: files)
+}
+
+-- `system/options/boot` is a FILE naming the executable the interpreter is
+-- running as, and it is always a file.
+--
+-- Rebol sets it unconditionally from the executable path -- Init_Main_Args
+-- does it whatever else is or is not known -- so a script reading it never
+-- has to test whether it is there. Here it names the host runtime running the
+-- interpreter, because that is what the field means: the thing that was
+-- started.
+--
+-- Always a file is the part that matters to a caller. Rebol's own mezz-tail
+-- runs CLEAN-PATH over it during boot, and CLEAN-PATH of none stops the file
+-- and everything below it -- so a field left as none is not a missing
+-- convenience, it takes out the rest of the boot.
+rule TheBootOptionNamesTheRunningExecutableAsAFile {
+    when: ReadSystemOption(boot)
+    ensures: OptionValue(value: the_path_of_the_running_host_runtime())
+    ensures: OptionValue(datatype: file)
+}
+
+-- `system/catalog/errors` holds the message templates the error catalogue
+-- declares, as data a script can walk.
+--
+-- One object per category, each holding one field per error id, each field
+-- holding the template that id was declared with -- a string, or a block
+-- whose `:arg1` and `:arg2` get-words a script binds against a caught error
+-- and reduces.
+--
+-- The get-word form is what makes this data rather than documentation. A
+-- script catching an error can reduce the template against the error itself
+-- and get the sentence Rebol would have printed, which is how a script builds
+-- its own reporting without duplicating the wording. Rebol's own suite
+-- reduces exactly that, and it is why BIND accepts an error as its context.
+--
+-- The templates are read from the catalogue declaration rather than restated
+-- here. Two copies of a hundred-odd messages drift, and the drift is silent
+-- until someone compares one printed sentence with another.
+rule TheErrorCatalogueHoldsItsDeclaredMessageTemplates {
+    when: ReadSystemCatalogue(errors)
+
+    ensures:
+        for category in the_declared_error_categories():
+            for identifier in the_ids_declared_under(category):
+                the_field_holds(category, identifier) =
+                    the_template_declared_for(category, identifier)
 }
 
 -- The datatype catalogue holds every datatype including end!, and the
@@ -7243,6 +7427,30 @@ rule APartCountOutsideThirtyTwoBitsIsRefused {
     ensures: CallFails(error: out_of_range, about: part_count)
 }
 
+-- CHECKSUM, COMPRESS and DECOMPRESS take /part the same way, and their
+-- reference series is the data they were given.
+--
+-- These three read a run of bytes rather than modifying a series, so it is
+-- easy to build them with a /part that is only a count -- and then a caller
+-- handing a position gets a refusal for something the rest of the language
+-- accepts everywhere. Every /part in the language is read through one
+-- function; these are not an exception to it.
+--
+-- Rebol's own sys-load is the caller that needs it. It marks a position after
+-- reading a header, reads again, and then measures `checksum/part mark
+-- remaining` -- a checksum of the bytes between two positions in one binary.
+-- The count is the difference of the two indexes, so both positions have to
+-- be into the same series, which is what
+-- TheRemainderIsThePositionInTheSourceRatherThanACopy in load.allium
+-- guarantees for the second of them.
+rule ChecksumAndCompressionMeasureTheirPartAgainstTheirInput {
+    when: EvaluateCall(verb, data, method)
+    requires: verb in {checksum, compress, decompress}
+    requires: refinement_asked(part)
+
+    ensures: the_reference_series(verb) = data
+}
+
 -- A /dup count is an integer, or a decimal truncated to one. A percent or a
 -- pair raises invalid-type, which is a different refusal from /part's and
 -- worth knowing: the same wrong value gets a different complaint depending
@@ -7451,6 +7659,446 @@ rule ConstructFloorsAnUnsetToNoneAndFillsTrailingSetWords {
                     else: the_named_constant_or_the_value_itself(value_after(field))
                 else if refinement_asked(only): defined_with_no_value()
                 else: none_value()
+}
+
+-- === Naming a word that may not be there ==========
+
+-- UNSET of NONE answers none and does nothing, rather than refusing.
+--
+-- `if (IS_NONE(word)) return R_NONE;` is the first line of the native, and it
+-- is there so that `unset in ctx 'absent` passes straight through. IN answers
+-- none for a word an object has not got, so the composition of the two is the
+-- ordinary way to say "clear this field if it is there". Refusing the none
+-- would force every such caller to test first, for a call that has nothing to
+-- do.
+--
+-- UNSET of a word or a block of words clears them and answers UNSET itself,
+-- which is the other half: a word that names nothing after the call is
+-- exactly what the caller asked for, and the answer says so.
+rule UnsettingNoneAnswersNone {
+    when: EvaluateCall(unset, subject)
+    requires: is_none(subject)
+    ensures: CallResult(value: none_value())
+}
+
+-- EMPTY? of an object asks whether it holds any field of its own.
+--
+-- An object has no position, so "at the end" means nothing for one; the
+-- question EMPTY? is really asking is "does this hold anything", and for an
+-- object that is "has it any field but SELF". The C measures it as
+-- `SERIES_TAIL(VAL_OBJ_FRAME(value)) <= 1`, slot one being SELF.
+--
+-- EMPTY? is TAIL? under a wider spec -- Rebol defines it as
+-- `empty?: make :tail? [[...]]` -- so this belongs with the other answers
+-- TAIL? gives for things that have no tail: a map answers on its pair count,
+-- a typeset and a bitset on whether they hold anything, and the C says so in
+-- a comment beside each: "Necessary to make EMPTY? work".
+rule EmptyOfAnObjectAsksWhetherItHasAnyFieldOfItsOwn {
+    when: EvaluateCall(verb, subject)
+    requires: verb in {empty_question, tail_question}
+    requires: is_object(subject)
+
+    ensures: CallResult(value: the_own_fields_of(subject).count = 0)
+}
+
+-- BIND given an OBJECT and a word the object does not itself have raises
+-- not-in-context. Given a WORD as the target it keeps searching outwards.
+--
+-- Two targets, two questions, and they are genuinely different. An object is
+-- a place with a fixed word list: `Bind_Word` searches that frame's own words
+-- and refuses anything else -- `else Trap1(RE_NOT_IN_CONTEXT, arg);` -- and
+-- only /NEW or /SET may add a name to it. A word target means "wherever this
+-- word is bound", which is a scope rather than a list, so the search runs
+-- outwards through the enclosing scopes; base-defs.reb relies on that to hang
+-- six generated words off REFLECT's own context without naming it.
+--
+-- This resolves an open question that stood here: whether an object should
+-- reach its parent scopes because JEBOL's contexts nest. It should not.
+-- Nesting is how the implementation stores an object, and binding should not
+-- be able to see it -- otherwise `bind 'anything obj` succeeds against
+-- whatever happens to be in scope where the object was written, and a
+-- misspelt field name binds silently to a global.
+rule BindingAWordToAnObjectAsksThatObjectAlone {
+    when: EvaluateCall(bind, subject, target)
+    requires: is_any_word(subject)
+    requires: is_object(target)
+    requires: not refinement_asked(new) and not refinement_asked(set)
+
+    ensures:
+        if holds_own_field(target, subject):
+            CallResult(value: subject_bound_to(target))
+        else:
+            CallFails(error: not_in_context, about: subject)
+}
+
+-- BIND accepts an ERROR as its context, and binds through the error's own
+-- fields.
+--
+-- `else if (IS_ERROR(arg)) frame = VAL_ERR_OBJECT(arg);` -- an error binds
+-- like the object its fields make, one slot per field: id, type, arg1, arg2,
+-- arg3, near, where.
+--
+-- It exists for one caller and that caller explains it. The error catalogue's
+-- message templates are blocks holding get-words -- `["cannot open:" :arg1
+-- "reason:" :arg2]` -- and a script turns one into a sentence by binding it
+-- to a caught error and reducing it. Without this, a script wanting the
+-- message Rebol would have printed has to pick the fields out by hand and
+-- restate the wording, which is the duplication the templates exist to avoid.
+rule BindingThroughAnErrorReachesItsFields {
+    when: EvaluateCall(bind, subject, target)
+    requires: is_error(target)
+
+    ensures:
+        for name in the_fields_of(target):
+            words_spelled(name) = bound_to_the_field(target, name)
+}
+
+-- === Calling a function from a block, and asking where you are ==========
+
+-- APPLY makes the block exactly as long as the function's argument list:
+-- extra values are dropped and missing ones are filled with none.
+--
+-- The whole frame is filled, not just the declared parameters -- refinements
+-- and their arguments included -- so the block's positions line up with the
+-- function's argument list from end to end.
+--
+-- Both halves of the length adjustment matter and the second is the one that
+-- was backwards here. The C does it in two lines:
+--
+--     if (len < n) n = len;              -- drop the extra
+--     for (; n < len; n++) DS_PUSH_NONE; -- pad out missing args
+--
+-- Refusing a short block instead makes APPLY unusable for what it exists for.
+-- Rebol's own library calls APPLY with a block whose length it does not know,
+-- precisely because APPLY is the call that does not mind: base-defs.reb and
+-- mezz-types.reb both stop dead on a strict version.
+--
+-- The block is reduced first unless /ONLY asks for the values as written.
+rule ApplyFillsTheWholeFramePositionally {
+    when: EvaluateCall(apply, callee, supplied)
+
+    ensures:
+        the_values_handed_over =
+            if supplied.length > the_frame_size_of(callee):
+                the_first_few_of(supplied, the_frame_size_of(callee))
+            else:
+                supplied_padded_with_none_to(the_frame_size_of(callee))
+}
+
+-- APPLY of DO to a function re-applies that function to the rest of the
+-- block.
+--
+-- `apply :do [:add 1 1]` is 2, not the function value that `do :add` would
+-- answer. The C jumps -- `goto reapply` -- rather than calling DO at all, and
+-- it keeps jumping while the head of what is left is another function, so a
+-- chain of DOs collapses.
+--
+-- It is what makes DO usable as a value in a table of callable things. A
+-- dispatcher holding :do beside other functions applies each the same way,
+-- and without the re-application the DO entry alone answers a function
+-- instead of calling it.
+rule ApplyingDoToAFunctionAppliesThatFunctionInstead {
+    when: EvaluateCall(apply, callee, supplied)
+    requires: callee = the_do_native()
+    requires: is_any_function(first_of(supplied))
+
+    ensures: SameOutcomeAs(apply, first_of(supplied), the_rest_of(supplied))
+}
+
+-- APPLY knows an operator's arity, which is two.
+--
+-- An operator's first argument arrives on the call rather than in the
+-- gathered list everywhere else in the evaluator, so an implementation that
+-- counts a frame by "how many arguments does a call gather" reports one for
+-- an operator. APPLY hands the whole frame over at once and there is no call
+-- site to carry the left-hand value, so it needs the declared count: two.
+--
+-- `apply :+ [1 2]` is 3. With an arity of one it is 1, silently -- the second
+-- value is dropped as an extra by the rule above, and nothing raises.
+rule ApplyCountsAnOperatorsFrameAsTwo {
+    when: EvaluateCall(apply, callee, supplied)
+    requires: callee.datatype = op
+
+    ensures: the_frame_size_of(callee) = 2
+}
+
+-- STACK counts its own call as frame zero.
+--
+-- Offset zero is the STACK call itself -- `stack 0` names the word `stack` --
+-- and everything outward shifts one from there. The C counts every call
+-- including the native's own frame, and an implementation that opens no frame
+-- for a native has to put that entry back or every offset a script writes is
+-- off by one against the same script running under Rebol.
+--
+-- An offset naming no frame answers NONE, whatever refinement was asked for.
+-- The C tests it before it reads a single refinement:
+--
+--     sp = Stack_Frame(index);
+--     if (!sp) return R_NONE;
+--
+-- That is what lets a caller walk outwards until the answer is none. A number
+-- answered regardless would make the walk run for ever, and a raised error
+-- would make the ordinary end of the stack look like a fault.
+rule StackOffsetZeroIsTheStackCallItself {
+    when: EvaluateCall(stack, offset)
+
+    ensures:
+        if offset < 0 or offset > the_number_of_open_frames():
+            CallResult(value: none_value())
+        else if offset = 0 and refinement_asked(word):
+            CallResult(value: the_word_stack())
+        else:
+            CallResult(value: what_the_refinement_asked_about(offset))
+}
+
+-- STACK with no refinement answers the backtrace: a block of the words the
+-- open calls were made through, from the offset inwards to outwards.
+--
+-- `Set_Block(D_RET, Make_Backtrace(index));` -- no refinement is not "no
+-- question", it is the question a caller most often has. A call made on a
+-- value rather than through a word contributes nothing to the block, because
+-- there is no name to write down; an empty word would read as a call through
+-- a word spelled with nothing.
+rule StackWithoutARefinementAnswersTheBacktrace {
+    when: EvaluateCall(stack, offset)
+    requires: no_refinement_asked()
+    requires: offset >= 0 and offset <= the_number_of_open_frames()
+
+    ensures: CallResult(value: block_of(
+        the_words_the_open_calls_were_made_through(from: offset)))
+}
+
+-- CONTEXT? answers none for a word bound into a loop's frame, the function
+-- for a word bound into a function's call, and the object for a closure's.
+--
+-- Three answers because there are three kinds of frame and only one of them
+-- is an object a script may hold.
+--
+-- A loop's frame is internal machinery -- `if (IS_INT_SERIES(VAL_WORD_FRAME(
+-- word))) return R_NONE;` -- so `foreach x [1] [context? 'x]` is none. Handing
+-- the loop's own storage back as an object would let a script reach inside the
+-- loop's bookkeeping, and there is nothing there worth reaching.
+--
+-- A function's call frame answers the FUNCTION, which is how a body reaches
+-- its own SPEC-OF from inside without being told its own name.
+--
+-- A closure's call frame is a real object, so it answers that object. This is
+-- the whole observable difference between the two datatypes, and USE depends
+-- on it: USE builds its scope as a closure's frame precisely so the words it
+-- introduces live somewhere a script can reach.
+rule ContextOfAWordAnswersWhicheverKindOfFrameHoldsIt {
+    when: EvaluateCall(context_question, subject)
+    requires: is_any_word(subject)
+
+    ensures: CallResult(value:
+        if not is_bound(subject): none_value()
+        else if the_binding_is_a_loop_frame(subject): none_value()
+        else if the_binding_is_a_functions_call_frame(subject):
+            the_function_that_frame_belongs_to(subject)
+        else: the_object_of(the_binding_of(subject)))
+}
+
+-- COPY of an object answers a duplicate holding its OWN slots.
+--
+-- Sharing the slots makes a copy no copy at all, and the failure is quiet: a
+-- caller writing `copy stats/profile` to take a snapshot gets a second name
+-- for the standing object, and a later difference between "the snapshot" and
+-- "now" subtracts a value from itself. Rebol's own DELTA-PROFILE does exactly
+-- that, and answered minus the raw counter.
+--
+-- /DEEP reaches the values the standard copied set names, and objects are not
+-- in that set -- see the next rule.
+rule CopyOfAnObjectDuplicatesItsSlots {
+    when: EvaluateCall(copy, subject)
+    requires: is_object(subject)
+
+    ensures:
+        CallResult(value: an_object_whose_slots_are_its_own(subject))
+        writing_a_field_of(the_copy) = leaves(subject, unchanged)
+}
+
+-- An object sits OUTSIDE the set of datatypes a deep copy duplicates, so a
+-- nested object stays shared and TAKE/DEEP hands a taken object through
+-- untouched.
+--
+-- `TS_DEEP_COPIED` names the series datatypes, the map and the function, and
+-- not the object. Two consequences follow, and they only look inconsistent
+-- until the set is the thing being read:
+--
+--   `copy/deep b` where b holds an object copies the block and leaves the
+--   object shared, because the recursion passes over what is not in the set;
+--   `take/deep b` of that object answers the object itself and not a copy.
+--
+-- A top-level `copy obj` still answers a real duplicate, by the rule above.
+-- COPY of an object is an operation on the object; a deep copy of something
+-- else is an operation on that thing, and objects are not among what it
+-- reaches into.
+rule ObjectsAreOutsideTheDeepCopiedSet {
+    when: EvaluateCall(verb, subject)
+    requires: verb in {copy, take}
+    requires: refinement_asked(deep)
+
+    ensures:
+        for held in the_values_inside(subject):
+            if is_object(held): the_copy_holds(held) = held
+            else: the_copy_holds(held) = a_duplicate_of(held)
+}
+
+-- === What protection covers, and what each refinement reaches ==========
+
+-- A bitset carries protection like a series, so a protected set refuses every
+-- write and answers every read.
+--
+-- The C protects it in the same line that protects a series and a map --
+-- `if (ANY_SERIES(value) || IS_MAP(value) || IS_BITSET(value))
+-- Protect_Series(value, flags);` -- and every verb that changes one refuses:
+-- APPEND, INSERT, REMOVE, CLEAR, POKE and a path write.
+--
+-- Worth stating because a bitset is not a series in any other respect. It has
+-- no position, no order, and FIND asks it "is this in you" rather than
+-- "where". Every one of those differences is a reason someone would leave it
+-- out of the protection machinery, and a charset a script protected and then
+-- silently mutated is exactly the kind of shared value protection exists for.
+rule ProtectionCoversABitset {
+    when: EvaluateCall(protect, subject)
+    requires: is_bitset(subject)
+
+    ensures:
+        every_write_to(subject) = refused_with(protected)
+        every_read_of(subject) = unaffected
+}
+
+-- PROTECT/DEEP given a word reaches what the word HOLDS, not just its slot.
+--
+-- The two are different requests and always have been: `protect 'b` locks the
+-- slot so `b: something` is refused, and `protect b` locks the series so
+-- changing it is refused. /DEEP on a word asks for both -- `if (GET_FLAG(flags,
+-- PROT_DEEP)) { val = Get_Var(word); ... Protect_Value(val, flags); }` -- so
+-- `protect/deep 'obj` locks the object as well as the name.
+--
+-- Without it /DEEP on a word means nothing at all, because a slot has no
+-- inside to go deeply into. A caller writing `protect/deep 'config` plainly
+-- means the configuration and not the name, and leaving the value open is the
+-- silent half of a lock that reads as complete.
+rule ProtectDeepOfAWordReachesWhatTheWordHolds {
+    when: EvaluateCall(protect, subject)
+    requires: is_word(subject)
+    requires: refinement_asked(deep)
+
+    ensures:
+        the_slot_named_by(subject) = protected_from_assignment
+        the_value_the_word_holds(subject) = protected_as_well
+}
+
+-- Protection on an object is three separate things, and /WORDS asks for only
+-- the middle one, leaving the object open to new names.
+--
+-- The three are: whether a NEW word may be added to the object; whether an
+-- EXISTING word may be reassigned; and whether a series one of them holds may
+-- be changed. Nothing makes them one question, and the refinements exist to
+-- tell them apart.
+--
+-- /WORDS locks the words the object has and leaves the container open --
+-- `if (!GET_FLAG(flags, PROT_WORDS)) PROTECT_SERIES(series);`. So EXTEND and
+-- APPEND still add fields to a protect/words object while every existing
+-- field refuses reassignment. That combination is the whole point of the
+-- refinement, and collapsing it into "protected means closed" loses the only
+-- way to express it.
+rule ProtectWordsLocksTheFieldsAndLeavesTheObjectOpen {
+    when: EvaluateCall(protect, subject)
+    requires: is_object(subject)
+    requires: refinement_asked(words)
+
+    ensures:
+        for field in the_own_fields_of(subject):
+            the_slot_of(subject, field) = protected_from_assignment
+        adding_a_new_field_to(subject) = still_allowed
+}
+
+-- PROTECT/VALUES given a path protects the PATH VALUE itself as a series,
+-- rather than the field the path leads to.
+--
+-- Every other refinement combination reads a path as a route to a field:
+-- `protect/words 'o/b` locks o's field b. /VALUES does not, because the C
+-- decides which of the two it is by asking about the refinement, not about
+-- the value: `IS_WORD(val) || (ANY_PATH(val) && !D_REF(4))`. A path WITH
+-- /VALUES falls through to the plain series protection, and a path is a
+-- series of its segments.
+--
+-- Stated because it looks like an inconsistency and is not one. /VALUES means
+-- "protect what this holds", and what a path value holds is its own segments.
+-- A caller who wanted the field's value locked writes `protect/deep 'o/b`.
+rule ProtectValuesOfAPathProtectsThePathSeries {
+    when: EvaluateCall(protect, subject)
+    requires: is_any_path(subject)
+    requires: refinement_asked(values)
+
+    ensures:
+        the_segments_of(subject) = protected_from_change
+        the_field_the_path_leads_to(subject) = unaffected
+}
+
+-- A path that leads nowhere protects nothing and raises nothing.
+--
+-- A missing field, or a segment that is a number and so cannot be walked
+-- into, leaves the state alone and answers the path. Confirmed against a real
+-- R3, which answers the path either way.
+--
+-- Silence is right here and only here. PROTECT answers the value it was given
+-- so a caller can build a protected value in one step, and a path naming a
+-- field that is not there has nothing to lock -- there is no half-locked
+-- state to leave behind, and nothing later can be wrong because of it.
+rule ProtectingAPathThatNamesNothingChangesNothing {
+    when: EvaluateCall(protect, subject)
+    requires: is_any_path(subject)
+    requires: not the_path_names_a_field(subject)
+
+    ensures: CallResult(value: subject)
+}
+
+-- /HIDE conceals a word or a field and nothing else. Asked of anything that
+-- is not one, it raises bad-refines.
+--
+-- Hiding and locking are separate: a hidden field is not locked and a locked
+-- one is not hidden. Hiding is about binding and lookup -- the word stops
+-- being findable -- which is a question only a NAME can answer. A series or
+-- an object has no name to hide, so `protect/hide #{01}` is a request that
+-- cannot be met, and the C says so outright: `if (GET_FLAG(flags, PROT_HIDE))
+-- Trap0(RE_BAD_REFINES);`.
+--
+-- Refusing rather than ignoring is the point. A /HIDE that quietly did
+-- nothing would leave the caller believing a value was concealed when
+-- anything can still reach it.
+--
+-- There is no UNPROTECT/HIDE. Hiding is not a lock to be lifted and Rebol
+-- offers no native that reveals a hidden word again, so offering the undoing
+-- is a promise the language does not make.
+rule HidingSomethingThatIsNotANameIsRefused {
+    when: EvaluateCall(protect, subject)
+    requires: refinement_asked(hide)
+    requires: not is_word(subject) and not names_a_field(subject)
+
+    ensures: CallFails(error: bad_refines, about: subject)
+}
+
+-- DELECT checks its output block's protection before it does anything else,
+-- and then declines, because the dialect parse itself is not built.
+--
+-- The order is the specified part. The C's first act is
+-- `if (IS_PROTECT_SERIES(dia.out)) Trap0(RE_PROTECTED);`, before a single
+-- rule is read, so a caller handing a protected output gets `protected` and
+-- not whatever the parse would have said. Keeping the gate first is what lets
+-- the rest be unbuilt honestly: the caller who did the one thing DELECT
+-- refuses is told exactly that, and the caller who did not is told the
+-- feature is not here rather than given a wrong answer.
+rule DelectGatesOnItsOutputThenDeclines {
+    when: EvaluateCall(delect, dialect, input, output)
+
+    ensures:
+        if is_protected(output):
+            CallFails(error: protected, about: output)
+        else:
+            CallFails(error: feature_na, about: delect)
 }
 
 -- === Reading and writing a series by position ==========

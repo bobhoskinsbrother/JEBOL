@@ -412,6 +412,8 @@ public final class Evaluator {
                     // escaped the interpreter as a Java exception, which
                     // spec/embed.allium says cannot happen.
                     yield returned.value();
+                } finally {
+                    locals.markCallEnded();
                 }
             }
             case NativeValue built -> runNative(built, arguments, systemContext);
@@ -692,6 +694,9 @@ public final class Evaluator {
                 Value finished = frame.lastResult;
                 if (frame.functionBody && !functionsBeingRun.isEmpty()) {
                     functionsBeingRun.pop();
+                }
+                if (frame.functionBody) {
+                    frame.context.markCallEnded();
                 }
                 frames.pop();
                 framesOpen = frames.size();

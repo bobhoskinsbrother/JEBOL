@@ -37,6 +37,10 @@ enum SyntaxFailure {
                             -- (R3's generic syntax failure; JEBOL called
                             -- this invalid, which names nothing in
                             -- R3's catalogue)
+    -- The next three are all reported to a script under the one id
+    -- `missing`, and are kept apart here only because the arguments the
+    -- error carries differ. See
+    -- UnbalancedDelimitersAreOneIdWithTheTokenAndDelimiterAsArguments.
     | missing_close         -- end of input inside an open series
     | extra_close           -- a closing delimiter with no opener
     | mismatched_close      -- a bracket closing a parenthesis, or the reverse
@@ -189,6 +193,87 @@ contract LexicalResolution {
         -- and the parenthesised codepoints, so "a^ b" is three
         -- characters. JEBOL refused it as an escape naming no character.
 
+    @invariant ACharLiteralMustNameARealUnicodeCharacter
+        -- A character escape naming a code point above the last Unicode one,
+        -- or one inside the surrogate range from D800 to DFFF, is refused as
+        -- an invalid char rather than read.
+        --
+        -- A surrogate is half of an encoding, not a character. It exists only
+        -- inside UTF-16 as one of a pair, and a value carrying one on its own
+        -- cannot be encoded, compared or written out -- so admitting it puts
+        -- something in a string that every later operation has to have an
+        -- opinion about. The C refuses it at the door with IS_SURROGATE, and
+        -- so does this.
+
+    @invariant ASlashBeforeALoneUnderscoreIsTwoValues
+        -- `/_` reads as the word `/` followed by the none literal `_`, not as
+        -- the refinement `/_`.
+        --
+        -- The underscore is the none literal only when it stands alone, which
+        -- is what the C's `if (*cp == '_' && IS_LEX_DELIMIT(cp[1])) return
+        -- TOKEN_WORD;` decides: a lone underscore ends the word before it. So
+        -- `/__` is still the refinement `__`, because the underscores are not
+        -- alone. The mirror case reads the same way: `_/` is the none value
+        -- followed by the word `/`.
+        --
+        -- Worth stating because it is a place where longest-match is wrong
+        -- and looks right: `/_` is a perfectly plausible refinement spelling,
+        -- and reading it as one makes the none literal unreachable after a
+        -- slash.
+
+    @invariant AMoneyIsCutAtASlash
+        -- A money amount followed by a slash is refused whatever the amount,
+        -- and the offending text the error reports runs up to and including
+        -- that slash.
+        --
+        -- `if (*ep == '/') {ep++; goto syntax_error;}` -- the C advances past
+        -- the slash before failing, so the token it names ends there. Rebol's
+        -- own money group compares that text directly -- `e/arg2 = "$1*$2"` --
+        -- so where the token ends is behaviour a script reads, not a detail
+        -- of the message.
+
+    @invariant AColonBeforeADigitIsATimeAndNeverAGetWord
+        -- `:12` is the time 0:12, not a get-word named 12.
+        --
+        -- `case LEX_SPECIAL_COLON: if (IS_LEX_NUMBER(cp[1])) return
+        -- TOKEN_TIME;` -- the digit after the colon decides, before any
+        -- get-word reading is considered. A colon-and-digits run that is not
+        -- a whole time is refused as a time rather than falling back to
+        -- anything else, so `:2nd` is an invalid time.
+        --
+        -- A get-word cannot be spelled with a digit first anyway, so nothing
+        -- is lost, and the leading-colon time is how a duration under a
+        -- minute is written.
+
+    @invariant ACarriageReturnEndsACommentAsALineFeedDoes
+        -- A comment runs to the end of its line, and either terminator ends
+        -- it. The C's test is NOT_NEWLINE, which covers both.
+        --
+        -- Source written on a system that ends lines with a carriage return
+        -- alone would otherwise have its first comment swallow the rest of
+        -- the file, and the failure reads as a file with no content rather
+        -- than as a line-ending problem. It applies inside a binary body as
+        -- well as at the top level, because a comment is allowed in both.
+
+    @invariant ABitsetConstructTakesALeadingNot
+        -- `#(bitset! not #{FF})` builds the complemented set: the construct
+        -- body is an optional leading NOT, then the binary, and nothing
+        -- after it.
+        --
+        -- It is what MOLD writes for a complemented set, so without it the
+        -- round trip is broken for every set COMPLEMENT produced -- and
+        -- broken silently, because reading the body as two unrelated values
+        -- gives a malformed construct rather than a wrong set.
+
+    @invariant ATrailingNumberBelongsOnlyToASeriesConstruct
+        -- The second value of a construct is a position, and only a series
+        -- has one. On anything else the trailing number is a malformed
+        -- construct rather than a value to drop quietly.
+        --
+        -- Dropping it is the tempting reading and it is wrong in the usual
+        -- way: `#(integer! 1 5)` would answer 1 and say nothing about the 5,
+        -- so a caller who wrote something meaningless is told it worked.
+
     @guidance
         -- Every resolution here needs corpus cases on both sides of the
         -- decision, not just the surprising side. A corpus that proves
@@ -202,6 +287,13 @@ contract LexicalResolution {
 
 entity TranscodeRequest {
     source_text: String
+
+    -- The series the caller handed in, as opposed to the text inside it. Held
+    -- separately because the remainder a stepping read answers is that very
+    -- series advanced, sharing its storage -- see
+    -- TheRemainderIsThePositionInTheSourceRatherThanACopy.
+    source: values/Value
+
     status: reading | succeeded | failed
 
     -- Set when this read was started on behalf of a LOAD, absent when a
@@ -480,6 +572,33 @@ rule TheUnreadTextComesBackWhenTheReaderStopsEarly {
         -- would find it empty after a single step.
 }
 
+-- The remainder is the SOURCE the caller handed in, advanced to where the
+-- reader stopped -- not a fresh series holding the same text.
+--
+-- `Append_Val(blk, src)` in the C: the value appended is the scanner's own
+-- source position, so the remainder and the original share storage and the
+-- difference of their indexes is a length.
+--
+-- That sharing is load-bearing rather than incidental. Rebol's own sys-load
+-- reads a header, keeps the remainder as a mark, reads again, and then
+-- measures `checksum/part mark remaining` between the two positions. A /part
+-- given as a position is refused unless it points into the same series as
+-- what is being measured, so a remainder that was a fresh copy makes that
+-- measurement fail outright -- the two positions look like positions in two
+-- unrelated series, which is exactly what they would be.
+--
+-- The remainder is still the kind that went in: a binary source leaves a
+-- binary, a string source leaves a string.
+rule TheRemainderIsThePositionInTheSourceRatherThanACopy {
+    when: request: TranscodeRequest.status transitions_to succeeded
+    requires: request.carries_the_unread_text
+
+    ensures:
+        request.unread_remainder = the_same_series_as(request.source)
+        index_of(request.unread_remainder) =
+            index_of(request.source) + characters_read(request)
+}
+
 -- Reading one value stops at one value everywhere, not only at the top. So
 -- a block yields its first element and nothing more, and asking for one
 -- value out of `[1 2]` gives a block holding 1.
@@ -732,6 +851,37 @@ rule SyntaxFailureIsAnErrorValue {
     ensures:
         request.error_value.datatype = error
         request.error_value.category = syntax
+}
+
+-- Every unbalanced delimiter is reported under the ONE id `missing`, with the
+-- token kind in the first argument and the delimiter in the second.
+--
+-- Three situations reach it and a real R3 does not distinguish them by id:
+-- the input ending inside an open series, a closing delimiter with no opener,
+-- and a bracket closing a parenthesis or the reverse. All three go through
+-- RE_MISSING, and what tells them apart is the two arguments -- `end-of-script`,
+-- `end-of-block` or `end-of-paren` in the first, and the delimiter itself in
+-- the second.
+--
+-- Three ids of JEBOL's own invention -- missing-close, extra-close,
+-- mismatched-close -- read better and are useless: nothing in R3's catalogue
+-- carries them, so a script catching one by id never fires, and Rebol's own
+-- suite asserts on `missing`. The arguments carry the same information, and
+-- they carry it in the place a script already looks.
+--
+-- An unclosed CONSTRUCT stays `missing` rather than becoming `malconstruct`.
+-- The construct handler leaves the missing error standing when the failure
+-- inside was an unclosed series, because "you did not close this" is the true
+-- and useful thing to say -- wrapping it as "this datatype cannot be built
+-- that way" points at the wrong mistake entirely.
+rule UnbalancedDelimitersAreOneIdWithTheTokenAndDelimiterAsArguments {
+    when: request: TranscodeRequest.status transitions_to failed
+    requires: request.failure in {missing_close, extra_close, mismatched_close}
+
+    ensures:
+        request.error_value.id = missing
+        request.error_value.arg1 = the_token_kind_that_was_open(request)
+        request.error_value.arg2 = the_delimiter_involved(request)
 }
 
 -- === Loading ===============================================

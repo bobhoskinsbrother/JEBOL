@@ -45,6 +45,7 @@ enum ParseKeyword {
     | insert        -- put a value in at the position, consuming nothing
     | case          -- mind case from here on
     | no_case       -- fold case from here on
+    | fail          -- match nothing ever, sending the walk to the next branch
     | limit         -- reserved for future use, and raises until it exists
 }
 
@@ -62,8 +63,9 @@ enum ParseFailure {
     | expect_arg    -- the input or rule argument is the wrong datatype
     | no_refine     -- a refinement PARSE no longer has
     | not_done      -- a reserved keyword that is not yet implemented (LIMIT)
-    | parse_rule    -- a rule that names no searchable target, such as a
-                    -- command word after TO or THRU
+    | parse_rule    -- a rule item that is no rule at all: a command word
+                    -- after TO or THRU, an unset, or a function
+    | no_value      -- a CHANGE or INSERT whose word replacement holds nothing
 }
 
 ------------------------------------------------------------
@@ -233,6 +235,19 @@ rule NamedCountsDifferOnlyInTheirMinimum {
 -- (x: x + 1) keep (x)]]` runs both rounds and gives [[] 1 [] 2], even
 -- though the first round consumes nothing at all. With the guard it
 -- stops after one and gives [[] 1].
+-- A round that matched but got nowhere is COUNTED before the repeat stops.
+-- The guard ends the loop; it does not disown the round that triggered it.
+--
+-- The C's order is `count++` and then the no-progress break, and the order is
+-- the whole of the difference. `parse "" [some [(a: true)]]` succeeds: the
+-- round matched, so SOME has its one round, and only then does the walk
+-- notice nothing moved and stop. Breaking first makes the same rule fail,
+-- because SOME needs one round and would have counted none.
+--
+-- This does not weaken the loop guard. A round that FAILS still ends the
+-- repeat without counting, so `parse "" [some [remove "a"]]` is still false:
+-- the removal never matched, no round counted, and SOME went unsatisfied.
+-- What changed is only the round that succeeded and stood still.
 rule ARepeatStopsWhenARoundChangesNothing {
     when: attempt: ParseAttempt.round_finished
     requires: attempt.status = null
@@ -422,6 +437,155 @@ rule ALitWordInsertedBecomesAPlainWord {
     ensures: RuleMatched(inserted: as_plain_word(rule.value))
 }
 
+-- REMOVE and CHANGE take a MARKED POSITION where a rule would go, and then
+-- the span they work on is everything between that mark and where the parse
+-- has reached.
+--
+-- A set-word marks a position and the word then holds the input at that
+-- place. Handing that word to REMOVE or CHANGE says "everything from there to
+-- here", which is how a rule takes out or replaces a run it measured as it
+-- went: `parse s [mark: some digit! remove mark]`.
+--
+-- Which of the two positions is earlier does not matter. The span runs
+-- between them, so a mark behind the position and a mark ahead of it both
+-- name the same run, and the parse ends up at the earlier of the two.
+--
+-- The word has to name a position in the SERIES BEING PARSED. A word holding
+-- some other series names no span at all, and is read as an ordinary rule
+-- instead. So is a parse command word, which can never be a mark -- otherwise
+-- `remove skip` would be read as a span rather than as "remove what SKIP
+-- matches", and the dialect would lose its most ordinary form.
+rule RemoveAndChangeTakeAMarkedPositionAsASpan {
+    when: MatchRule(rule, input)
+    requires: rule.keyword in {remove, change}
+    requires: names_a_position_in_the_input_being_parsed(rule.value)
+
+    ensures: RuleMatched(
+        span: the_input_between(rule.value, the_current_position),
+        position: the_earlier_of(rule.value, the_current_position))
+}
+
+-- A CHANGE replacement written as a word is fetched from its binding, and a
+-- word holding nothing raises no-value.
+--
+-- Fetching is InsertAndChangeLookTheirValueUp above; what is added here is
+-- what happens when the fetch finds nothing. `do_modify` traps an unset
+-- before it writes, so the rule fails loudly rather than putting an absent
+-- value into the series.
+--
+-- Refusing is the right half of "look the value up". A rule that fetched and
+-- then silently wrote nothing would leave a hole in the input that no later
+-- rule could distinguish from a change that was never asked for.
+rule ChangingToAWordThatHoldsNothingRaises {
+    when: MatchRule(rule, input)
+    requires: rule.keyword in {insert, change}
+    requires: is_word(rule.value) and not is_parse_keyword(rule.value)
+    requires: value_of(rule.value).datatype = unset
+
+    ensures: ParseFails(failure: no_value, about: rule.value)
+}
+
+-- === Rules that are not rules ==============================
+
+-- A rule item that is an UNSET or a FUNCTION is no rule at all, and raises
+-- parse-rule naming the item as it was written.
+--
+-- `if (VAL_TYPE(item) <= REB_UNSET || VAL_TYPE(item) >= REB_NATIVE) goto
+-- bad_rule;` -- the two ends of the datatype order, and everything between
+-- them is something a rule can be. It applies both to an item written in the
+-- rule block and to what a word in the rule block names, and the error names
+-- the WORD in the second case rather than the value it found, because the
+-- word is what the author wrote and can go and look at.
+--
+-- The unset half is the one that catches real mistakes: a rule holding a word
+-- nobody assigned, or a word assigned from an expression that answered
+-- nothing. Read as a value to match instead, it fails silently against
+-- whatever is there and the rule looks like a grammar that does not fit.
+--
+-- The function half exists because a function in a rule looks plausible --
+-- somewhere for a predicate to go -- and the dialect has no such place. Being
+-- told so beats being told the input did not match.
+rule AnUnsetOrAFunctionInARuleIsRefused {
+    when: MatchRule(rule, input)
+    requires: rule.item.datatype = unset or is_any_function(rule.item)
+
+    ensures: ParseFails(failure: parse_rule, about: as_written(rule.item))
+}
+
+-- A PATH in a rule is evaluated, and what it answers is the rule.
+--
+-- So `a/b` naming a datatype matches by that datatype, and a path into an
+-- object reaches a rule the object holds. It is the same treatment a word
+-- gets -- looked up and the value used -- one segment deeper, and Rebol's own
+-- Get_Parse_Value already does it for the value slot of INSERT and CHANGE.
+--
+-- Without it a path in a rule is compared as a value, so a rule held in
+-- `rules/digit` fails against every input and looks like a grammar that does
+-- not match.
+rule APathInARuleIsEvaluatedAndItsValueIsTheRule {
+    when: MatchRule(rule, input)
+    requires: is_path(rule.item)
+
+    ensures: RuleAppliedIs(result_of(rule.item))
+}
+
+-- TO and THRU refuse a get-word or a set-word as their target, raising
+-- parse-rule.
+--
+-- They already refuse a command word, for the reason given above: their
+-- target is a place or something to look for, and a command word is neither.
+-- A marker word is neither for the same reason and one more -- a set-word
+-- marks a position and a get-word returns to one, so both are instructions
+-- about where the parse is, not things that appear in the input.
+--
+-- Allowed through, a get-word moved the position backwards and left the seek
+-- reading a span running the wrong way, which surfaced as a host-language
+-- failure rather than as a REBOL error. END remains the one word they take.
+rule ToAndThruRefuseAMarkerWord {
+    when: MatchRule(rule, input)
+    requires: rule.keyword in {to, thru}
+    requires: is_get_word(rule.value) or is_set_word(rule.value)
+
+    ensures: ParseFails(failure: parse_rule, about: rule.value)
+}
+
+-- FAIL matches nothing, ever, so the walk goes to the current block's next
+-- alternative.
+--
+-- It is the deliberate way to end a branch, where an ordinary failure is
+-- something that happened to the rule. `[thing fail | other]` says "having
+-- got this far, take the other branch", which a rule cannot otherwise say
+-- without writing a condition that is guaranteed not to match.
+--
+-- FAIL and REJECT are the two ways to fail on purpose and they differ in
+-- reach: FAIL fails the current rule and the alternatives are tried, REJECT
+-- abandons the whole block and they are not.
+rule FailNeverMatchesAndSendsTheWalkToTheNextAlternative {
+    when: MatchRule(rule, input)
+    requires: rule.keyword = fail
+
+    ensures: RuleDidNotMatch(consuming: 0)
+}
+
+-- OPT resolves a word after it to the rule the word names, rather than
+-- matching the word as a value.
+--
+-- `if (IS_WORD(item)) item = Get_Var(item);` -- the same resolution every
+-- other keyword's following rule gets. Which matters most for a recursive
+-- grammar: `opt tags` where TAGS is a rule that mentions itself is how an
+-- optional repetition is written, and matching the literal word `tags`
+-- against the input instead makes the whole grammar fail with nothing to
+-- point at.
+--
+-- OPT with nothing after it raises parse-end, like every other keyword that
+-- needs a rule.
+rule OptResolvesTheRuleAWordNames {
+    when: MatchRule(rule, input)
+    requires: rule.keyword = opt
+
+    ensures: RuleAppliedIs(the_rule_the_following_item_names(rule))
+}
+
 -- === Case, chosen part way through =========================
 
 -- CASE and NO-CASE change how the rules after them compare, and they
@@ -549,6 +713,106 @@ rule CollectingIsNotUndoneByBacktracking {
         and attempt.collected_count >= attempt.keeps_attempted
 }
 
+-- COLLECT SET assigns the word its fresh collection BEFORE the rule below it
+-- runs, and everything kept goes into that same block.
+--
+-- The C makes the block and sets the word in one breath -- `Make_Block` then
+-- `Set_Var_Series` -- and only then applies the rule. Two things follow, and
+-- neither is reachable if the word is assigned at the end instead.
+--
+-- A rule below can read what has been collected so far, because the word
+-- already names the block being filled.
+--
+-- And nested COLLECT SETs of the SAME word settle the right way round. The
+-- outer assigns first and the inner assigns second, so the word is left
+-- holding the inner collection -- which is what a reader expects, the inner
+-- one being the nearer. Assigning at the end reverses it: the inner finishes
+-- first, the outer finishes last and overwrites it, and the word holds the
+-- collection further away.
+rule CollectSetAssignsItsWordBeforeTheRuleRuns {
+    when: attempt: ParseAttempt.collect_read
+    requires: the_collect_named_a_word_to_set(attempt)
+
+    ensures:
+        the_word_holds(attempt) = a_fresh_empty_block()
+        and that_assignment_happens_before(the_rule_below_it_runs)
+        and everything_kept_goes_into(the_block_already_assigned)
+}
+
+-- KEEP COPY keeps the SERIES the copy produced, not the single value a plain
+-- KEEP would keep.
+--
+-- The difference shows on a match of exactly one item, which is where the two
+-- would otherwise agree. `keep copy` of one character keeps a one-character
+-- string of the input's own kind; plain `keep` of one character keeps a char.
+-- Same match, two datatypes, and a caller appending the results finds out
+-- which they got only when something downstream reads them.
+--
+-- It follows from COPY meaning "the whole span as a series" rather than from
+-- anything about KEEP: KEEP of a COPY keeps what COPY made.
+rule KeepCopyKeepsTheTypedSlice {
+    when: MatchRule(rule, input)
+    requires: rule.keyword = keep
+    requires: the_next_item_is(rule, copy)
+
+    ensures: RuleMatched(kept: the_matched_span_as_a_series_of(input.datatype))
+}
+
+-- KEEP PICK of a paren keeps the paren's value whole, exactly as a plain KEEP
+-- of the same expression would.
+--
+-- PICK asks for the items of what was matched to be kept one by one rather
+-- than as a series, and a paren matches nothing -- it is an expression, not a
+-- span. So the flag has nothing to act on and the value goes in whole. The C
+-- reaches the same place by setting the pick flag, then finding a paren, and
+-- never consulting the flag again.
+--
+-- Worth stating because `keep pick (...)` reads as though it should spread a
+-- block the paren answered, and it does not.
+rule KeepPickOfAParenKeepsItsValueWhole {
+    when: MatchRule(rule, input)
+    requires: rule.keyword = keep
+    requires: the_next_item_is(rule, pick)
+    requires: is_paren(the_item_after_pick(rule))
+
+    ensures: RuleMatched(kept: result_of(the_item_after_pick(rule)))
+}
+
+-- Parsing a BINARY, KEEP keeps each byte as its NUMBER, and a COLLECT INTO a
+-- binary delivers those numbers back as bytes.
+--
+-- `SET_INTEGER(val, BIN_HEAD(series)[i])` -- one byte is a number where one
+-- character of a string is a char. The span form keeps a binary, by the same
+-- rule COPY follows, so `parse #{010203} [collect any [keep 1 2 skip]]` is
+-- `[#{0102} 3]`: a binary and a number in one block.
+--
+-- Delivering into a binary target completes the pair. A collection made of
+-- byte numbers and binary slices goes into a binary as bytes, so a caller can
+-- collect from one binary into another. Without it the delivery quietly did
+-- nothing, which is the same silence PARSE refuses elsewhere with
+-- parse-into-type.
+rule KeepingFromABinaryKeepsBytesAsNumbers {
+    when: MatchRule(rule, input)
+    requires: rule.keyword = keep
+    requires: input.datatype = binary
+
+    ensures: RuleMatched(kept:
+        if the_match_is_one_item: the_byte_as_a_number
+        else: the_matched_span_as_a_binary)
+}
+
+rule CollectingIntoABinaryDeliversBytes {
+    when: attempt: ParseAttempt.collect_read
+    let target = the_series_the_collect_delivers_into(attempt)
+    requires: target.datatype = binary
+
+    ensures:
+        for kept in the_collection(attempt):
+            the_bytes_added_to(target) =
+                if is_integer(kept): the_one_byte(kept)
+                else: the_bytes_of(kept)
+}
+
 -- Confirmed against a real R3: REJECT fails the current block at once and
 -- tries none of that block's later alternatives. That is exactly where it
 -- differs from an ordinary match failure: a plain failure lets the block go
@@ -651,6 +915,22 @@ surface ParseDialect {
         ParseKeyword
         ParseOutcome
         ParseAttempt
+
+    @guarantee AParenMayChangeTheInputAndTheWalkRereadsIt
+        -- A paren in a rule runs arbitrary code, and that code may change the
+        -- very series being parsed. So after every paren the walk re-reads
+        -- the input and brings its position back to the tail if the series
+        -- got shorter -- the C clamps `if (index > series->tail) index =
+        -- series->tail;` after each one.
+        --
+        -- Without it a walk holds its own stale copy of the input, and a rule
+        -- whose paren appended or removed goes on matching against what was
+        -- there before. Nothing raises; the rule simply matches the wrong
+        -- text, and the mismatch between the parse's answer and the series
+        -- the caller ends up holding is the only evidence.
+        --
+        -- Both walkers do it, the block one and the string one, because a
+        -- paren can shorten either.
 
     @guarantee ParenEffectsSurviveBacktracking
         -- A paren in a rule runs the moment the walk reaches it, and

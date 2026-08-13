@@ -68,12 +68,27 @@ public final class Context {
      */
     private Value ownedByFunction;
 
+    /**
+     * Whether the call this frame belonged to has returned. The C reuses a
+     * returned function's stack frame, so a word still bound into one
+     * answers whatever call took the frame over -- under DO, that is DO.
+     */
+    private boolean callEnded;
+
     public void markAsCallFrameOf(Value function) {
         this.ownedByFunction = function;
     }
 
     public Value functionOwningThisFrame() {
         return ownedByFunction;
+    }
+
+    public void markCallEnded() {
+        this.callEnded = true;
+    }
+
+    public boolean callHasEnded() {
+        return callEnded;
     }
 
     /**

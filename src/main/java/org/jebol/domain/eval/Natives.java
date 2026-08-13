@@ -3320,8 +3320,16 @@ public final class Natives {
                         return NoneValue.none();
                     }
                     // A word bound into a call frame answers the function
-                    // itself, so a body can reach its own spec.
+                    // itself, so a body can reach its own spec. After the
+                    // call returns, the C's stack frame is reused by
+                    // whatever runs next -- under DO, that is DO -- so a
+                    // word still bound into a dead frame answers DO.
                     if (word.binding().functionOwningThisFrame() != null) {
+                        if (word.binding().callHasEnded()) {
+                            return evaluator.systemContext().knows("do")
+                                    ? evaluator.systemContext().slotFor("do").value()
+                                    : NoneValue.none();
+                        }
                         return word.binding().functionOwningThisFrame();
                     }
                     return new ObjectValue(word.binding());
@@ -6551,8 +6559,12 @@ public final class Natives {
                 Set.of("part", "only", "dup"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
                     case BlockValue block -> {
+                        // A block goes in item by item unless /ONLY says to
+                        // keep it whole, exactly as INSERT reads it.
                         if (duplicated(arguments.get(1), arguments, refinements)
-                                instanceof BlockValue added) {
+                                instanceof BlockValue added
+                                && added.datatype() == Datatype.BLOCK
+                                && !refinements.contains("only")) {
                             firstFew(arguments.get(1), added.remaining(),
                                     arguments, refinements, 2)
                                     .forEach(block.storage()::append);
