@@ -7004,6 +7004,90 @@ rule DoingABlockAnswersWhatItEvaluatesTo {
     ensures: CallResult(value: what_the_block_evaluates_to)
 }
 
+-- DO/NEXT steps a string exactly as it steps a block, and answers a plain
+-- value with the word set to none for anything that is neither.
+--
+-- The refinement's contract is "take one expression and move this word on to
+-- what is left", and a string can honour it: it is loaded and bound the way
+-- DO loads it, and then stepped. That is what the C does, routing a string
+-- through sys/do*, which loads and then runs `do/next body mark`. So
+-- `do/next "1 + 1 5" 'rest` answers 2 and leaves rest holding what is left,
+-- exactly as the block form does.
+--
+-- Anything that is neither a block nor a loadable string answers itself and
+-- sets the word to NONE -- `Set_Var(D_ARG(5), NONE_VALUE)`. The none is the
+-- signal that stepping is over, and it is what lets a caller loop on the word
+-- rather than test the value: a word that came back none says there is
+-- nothing further to step, where an empty series would say "step me again".
+rule DoNextStepsAStringAndAnswersNoneForAnythingUnsteppable {
+    when: EvaluateCall(do, subject, stepping_word)
+    requires: refinement_asked(next)
+
+    ensures:
+        if is_block(subject) or is_string(subject):
+            CallResult(value: what_the_first_expression_answers(subject))
+            the_word_holds(stepping_word) = what_is_left_after_that_expression(subject)
+        else:
+            CallResult(value: subject)
+            the_word_holds(stepping_word) = none_value()
+}
+
+-- A top-level RETURN inside a DO'd string unwinds to the DO, and DO answers
+-- the returned value.
+--
+-- The reason is structural rather than special-cased. The C runs a string
+-- through sys/do*, which is an ordinary REBOL function, so a RETURN written
+-- at the top level of the source lands on that function's own frame and its
+-- value comes back out as DO's answer. `do "return 5"` is 5.
+--
+-- Letting the RETURN escape instead is the failure this replaces, and it is
+-- the worse kind: the signal unwinds past whatever called DO, so a script
+-- that evaluated a fragment of source found its own function returning the
+-- fragment's value.
+rule ATopLevelReturnInADoneStringIsCaughtByTheDo {
+    when: EvaluateCall(do, subject)
+    requires: is_string(subject)
+    requires: a_top_level_return_runs_in(subject)
+
+    ensures: CallResult(value: what_the_return_was_given)
+}
+
+-- DO of a binary runs it as the script it is, header and all.
+--
+-- The bytes go through the same load-header the loader uses, and three things
+-- follow from that rather than from anything DO does itself:
+--
+--   the header's `length:` bounds the body, so trailing bytes after the
+--   declared length are not evaluated;
+--   an unmet `needs:` refuses the script with the syntax failure `needs`,
+--   rather than running it and failing somewhere inside;
+--   a header that cannot be read at all refuses with invalid-arg naming why.
+--
+-- A top-level RETURN is caught here as it is for a string, for the same
+-- reason: the body runs inside sys/do*.
+--
+-- Why a binary rather than a string: a script arrives from a file or a socket
+-- as bytes, and its header is what says how to read the rest of them. Decoding
+-- first and then looking for a header inverts that -- the encoding declaration
+-- is inside the thing being decoded.
+rule DoingABinaryRunsItAsAScript {
+    when: EvaluateCall(do, subject)
+    requires: is_binary(subject)
+
+    ensures:
+        the_header_is_read_by(load_header)
+        the_body_evaluated = bounded_by_the_headers_length(subject)
+        CallResult(value: what_the_body_answers_or_what_a_top_level_return_gave)
+}
+
+rule ABinaryScriptWhoseNeedsAreNotMetIsRefused {
+    when: EvaluateCall(do, subject)
+    requires: is_binary(subject)
+    requires: the_headers_needs_version_is_above(the_interpreters_own_version)
+
+    ensures: CallFails(error: needs, about: subject)
+}
+
 -- TO WORD! of a datatype is the word that names it, exclamation mark and all.
 --
 -- Which makes a datatype comparable against a name a script wrote down, and it
@@ -7236,6 +7320,139 @@ rule AsRefusesToCrossAClassBoundary {
     ensures: CallFails(error: not_same_class, about: subject)
 }
 
+-- === Building an object, and filling one from another ==========
+
+-- SET with a path for a target writes through the path into an object's
+-- field, rather than reading the path's segments as a list of words.
+--
+-- The order matters and is easy to get wrong. SET's other shapes take a block
+-- of words or an object and spread values across them, and a path IS a block
+-- underneath, so a reading that checks for a block first turns `set 'a/b 1`
+-- into "assign to the words a and b" -- two writes to the wrong places, and
+-- no error to say so. The C tests the path shape first: `if (ANY_PATH(word))
+-- { Do_Path(&word, val); return R_ARG2; }`.
+--
+-- A field the object has not got refuses with invalid-path. SET does not
+-- create fields; an object's word list is fixed once it is built, and a write
+-- to a name it never had is a mistake in the caller rather than a request to
+-- extend it.
+rule SetThroughAPathWritesTheFieldThePathNames {
+    when: EvaluateCall(set, target, written)
+    requires: is_any_path(target)
+
+    ensures:
+        if the_path_names_a_field_of_an_object(target):
+            the_field_holds(target) = written
+            CallResult(value: written)
+        else:
+            CallFails(error: invalid_path, about: last_segment_of(target))
+}
+
+-- SET from one object to another copies BY NAME, and every value it copies
+-- is cloned and rebound to the target.
+--
+-- Two rules in one, and both are about not sharing.
+--
+-- By name rather than by position is the first: each word of the TARGET takes
+-- the value the source holds under that same word, and a word the source has
+-- not got is left alone. Position plays no part, which is what makes this the
+-- one shape of SET that does not spread a list. Two objects with the same
+-- fields in different orders copy correctly.
+--
+-- Cloned and rebound is the second. `Copy_Deep_Values(obj, 1, tail,
+-- TS_CLONE)` then `Rebind_Block`: the target shares no series with the source,
+-- and a method that came across reads the TARGET's fields rather than the
+-- source's. Without the rebind a copied method still closes over the object it
+-- was written in, so calling it on the copy reads -- and writes -- the
+-- original. That is the defect this exists to prevent, and it is invisible
+-- until the copy is mutated.
+--
+-- Only words bound to the SOURCE frame are rebound. A word bound anywhere
+-- else -- the library, an enclosing function -- keeps the binding its author
+-- gave it. Rebinding by name instead captures globals whose spelling the
+-- object happens to share, so a cloned method reads the object's field where
+-- its author wrote the library's function.
+rule SettingAnObjectFromAnObjectCopiesByNameAndClones {
+    when: EvaluateCall(set, target, source)
+    requires: is_object(target) and is_object(source)
+    requires: not refinement_asked(only)
+
+    ensures:
+        for field in the_own_fields_of(target):
+            if holds_field(source, field):
+                the_field_holds(target, field) =
+                    cloned_and_rebound(
+                        the_field_of(source, field),
+                        from: the_frame_of(source),
+                        into: the_frame_of(target))
+}
+
+-- MAKE of an object from a prototype, and a merge of two objects, clone the
+-- same way and rebind by the same rule.
+--
+-- One rule for three callers -- MAKE from a prototype, a merge of a prototype
+-- with another object, and SET object-to-object above -- because it is one
+-- operation in the C and three places that disagreed about it would be three
+-- places to get it wrong. Every value taken from a source object is copied
+-- deeply, so the result shares no series with what it was made from; every
+-- word inside those values that was bound to a SOURCE frame is rebound to the
+-- new one, and every other word is left exactly as written.
+--
+-- SELF is set before any method is rehomed. A method saying `self` has to
+-- reach the copy, and setting SELF afterwards leaves it bound to the
+-- prototype -- which made Rebol's own ENUM read the shape it was made from
+-- rather than the one it made.
+--
+-- For a merge, both objects' fields are in place before any method is
+-- rehomed, because a method the second object brought may need a field the
+-- prototype has never heard of.
+rule MakingAnObjectFromAPrototypeClonesAndRebinds {
+    when: EvaluateCall(make, prototype, body)
+    requires: is_object(prototype)
+
+    ensures:
+        for field in the_own_fields_of(prototype):
+            the_field_holds(the_new_object, field) =
+                cloned_and_rebound(
+                    the_field_of(prototype, field),
+                    from: the_frame_of(prototype),
+                    into: the_frame_of(the_new_object))
+        the_new_object_shares_no_series_with(prototype)
+        words_bound_outside(the_frame_of(prototype)) = left_as_written
+}
+
+-- CONSTRUCT floors an unset to none, and a set-word with nothing after it
+-- holds none as well.
+--
+-- CONSTRUCT evaluates nothing, so it is tempting to say it stores what it
+-- finds. It does not: an object's slots begin as none -- `SET_NONE` on every
+-- one in Create_Frame -- and a field can never hold unset by construction. So
+-- a value below none floors to none on the way in, and a trailing set-word
+-- with no value after it holds none rather than nothing at all.
+--
+-- Which matters because "holds none" and "holds nothing" are different to
+-- every caller: a field holding none reads, molds and compares; a field
+-- holding unset raises on the first read. A header field a person left blank
+-- should read as absent, not blow up whoever reads it.
+--
+-- /ONLY does NOT change this. /ONLY switches off the reading of the seven
+-- named constants -- none, true, on, yes, false, off, no -- so a block that
+-- arrived from somewhere untrusted keeps its words as words. It is a rule
+-- about words, not about the floor, and a trailing set-word under /ONLY is
+-- defined with no value rather than being given none.
+rule ConstructFloorsAnUnsetToNoneAndFillsTrailingSetWords {
+    when: EvaluateCall(construct, body)
+
+    ensures:
+        for field in the_fields_declared_in(body):
+            the_field_holds(field) =
+                if a_value_followed(field) and value_after(field).datatype != unset:
+                    if refinement_asked(only): value_after(field)
+                    else: the_named_constant_or_the_value_itself(value_after(field))
+                else if refinement_asked(only): defined_with_no_value()
+                else: none_value()
+}
+
 -- === Reading and writing a series by position ==========
 
 -- PICK counts from one, and answers none for a position that is not there.
@@ -7361,6 +7578,56 @@ rule ChangingAStringWritesOverAndAnswersPastTheChange {
             the_smaller_of(length_of(replacement), characters_left_from(subject))
         the_string_holds(subject) = the_replacement_written_over(subject, replacement)
         CallResult(value: the_position_just_past_what_was_written(subject, replacement))
+}
+
+-- A series standing past its own tail is brought back to the tail before
+-- anything is written, so a CHANGE or an INSERT there appends.
+--
+-- A position can end up past the tail without anyone asking for it: another
+-- value sharing the storage removes items, and a view that was at position
+-- four is now beyond a series of two. The C brings every series action back
+-- in the setup it shares -- `if (index > tail) VAL_INDEX(value) = index =
+-- tail;` -- so the write lands at the end rather than failing or writing into
+-- a gap.
+--
+-- The clamp is the whole reason a stranded position is usable at all rather
+-- than an error waiting to happen. Refusing instead would make an ordinary
+-- aliasing pattern -- hold a view, shorten the series through another view,
+-- keep appending -- into a failure at a distance, and the caller would have
+-- no way to tell a genuinely wrong index from one the world moved out from
+-- under it.
+rule APositionPastTheTailIsBroughtBackToTheTail {
+    when: EvaluateCall(verb, subject, written)
+    requires: verb in {change, insert}
+    requires: is_series(subject)
+    requires: subject.index > subject.length + 1
+
+    ensures: SameOutcomeAs(verb, at_the_tail_of(subject), written)
+}
+
+-- CHANGE/PART with a negative count replaces the span BEHIND the position
+-- rather than the one ahead of it.
+--
+-- The count is turned round rather than treated as an error or as zero: the
+-- position moves back by that many and the count becomes positive, so the
+-- span always runs forwards from wherever it ends up. It is clamped to what
+-- is behind the position, so at the head a negative count replaces nothing.
+--
+-- This is `Partial1` in the C, and it is the same rule TAKE/PART already
+-- follows, which is the point of stating it here: a negative /part means
+-- "backwards from here" everywhere it appears, and a caller who computed a
+-- count that came out negative gets the span they meant rather than an empty
+-- one.
+rule ANegativeChangePartReplacesTheSpanBehind {
+    when: EvaluateCall(change, subject, replacement)
+    requires: refinement_asked(part)
+    requires: the_part_count < 0
+
+    ensures:
+        the_span_replaced =
+            the_items_between(
+                the_later_of(subject.index - absolute(the_part_count), 1),
+                subject.index)
 }
 
 -- REPLACE copies a replacement that is a view into the same series before it

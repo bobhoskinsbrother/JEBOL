@@ -962,14 +962,16 @@ rule EachGatheredArgumentIsCheckedAgainstItsOwnParameter {
 -- APPEND, INSERT, CHANGE, POKE and AJOIN/with; MAKE, TO, FORM, MOLD, PRINT
 -- and PRIN. Everything else takes a value and refuses nothing.
 rule ABareParameterAcceptsAnyValueButUnset {
-    when: CheckParameterAccepts(parameter, candidate)
+    when: argument: Argument.created
+    let parameter = parameter_named(
+        argument.application.applied, argument.parameter_name)
 
     ensures:
-        parameter_accepts(parameter, candidate) =
+        argument.type_accepted =
             if parameter.accepted_types.count = 0:
-                candidate.datatype != unset
+                argument.value.datatype != unset
             else:
-                candidate.datatype in parameter.accepted_types
+                argument.value.datatype in parameter.accepted_types
 }
 
 -- A call to a function opens a frame that knows which function it belongs

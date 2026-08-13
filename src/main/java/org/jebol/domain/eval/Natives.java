@@ -7235,7 +7235,9 @@ public final class Natives {
                             refinements.contains("case"),
                             refinements.contains("reverse"),
                             refinements.contains("all"),
-                            howMany, evaluator);
+                            howMany, evaluator,
+                            refinements.contains("unstable")
+                                    || series instanceof BinaryValue);
                 });
 
         // /CASE stops the case folding, so "a" and "A" are two members
@@ -8384,7 +8386,7 @@ public final class Natives {
      */
     private static Value sorted(SeriesValue series, int stride, Value comparator,
             boolean mindingCase, boolean reversed, boolean wholeRecord,
-            int howMany, Evaluator evaluator) {
+            int howMany, Evaluator evaluator, boolean unstably) {
         // A stride of zero would step nowhere and loop for ever, so a
         // caller asking for one gets records of a single item instead.
         int step = Math.max(1, stride);
@@ -8396,13 +8398,21 @@ public final class Natives {
         for (int at = 0; at + step <= items.size(); at += step) {
             records.add(List.copyOf(items.subList(at, at + step)));
         }
-        records = mergeSorted(records, (left, right) -> {
+        java.util.Comparator<List<Value>> ordering = (left, right) -> {
             int order = wholeRecord && comparator == null
                     ? compareWholeRecords(left, right, mindingCase)
                     : compareRecords(
                             left, right, comparator, mindingCase, wholeRecord, series, evaluator);
             return reversed ? -order : order;
-        });
+        };
+        // /UNSTABLE runs a genuinely different algorithm -- `if (uns)
+        // unstable_sort(...)` -- whose equal-key order the suite pins, and
+        // a binary is always sorted that way.
+        if (unstably) {
+            SymmetryPartitionSort.sort(records, ordering);
+        } else {
+            records = mergeSorted(records, ordering);
+        }
 
         List<Value> ordered = records.stream().flatMap(List::stream).toList();
         for (int at = 0; at < ordered.size(); at++) {

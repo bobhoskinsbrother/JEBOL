@@ -76,6 +76,15 @@ enum ParameterKind {
 ------------------------------------------------------------
 
 -- A parameter of a function's interface, derived from its spec block.
+--
+-- An empty accepted_types is not "no constraint". A spec word written with
+-- no type block beside it accepts every value except unset, which is what
+-- the C gives it -- `TS_VALUE`, every datatype but unset. A parameter that
+-- really takes unset writes `any-type!` in its spec, and that arrives here
+-- as the full member set rather than as emptiness.
+--
+-- So emptiness carries meaning and has to be read, not skipped over. The
+-- acceptance rule is ABareParameterAcceptsAnyValueButUnset in eval.allium.
 value Parameter {
     name: String
     kind: ParameterKind
@@ -636,11 +645,27 @@ variant OpValue : Value {
     underlying: Value           -- the native! or function! it dispatches to
 }
 
+-- A function, and a closure, which is the same value with one flag set.
+--
+-- The two datatypes differ in nothing a caller passes or receives; they
+-- differ in what a call's own frame is. A function's frame is its private
+-- word list, so CONTEXT? of a word bound into a running function answers the
+-- function itself -- which is how a body reaches its own SPEC-OF from
+-- inside. A closure's frame is a real object, so CONTEXT? of a word bound
+-- into one answers that object.
+--
+-- Modelled as a flag rather than as two variants because everything else
+-- about them is identical, and because something depends on the difference:
+-- USE builds its scope as a closure's frame, so the words it introduces live
+-- in an object a script can reach rather than in a word list it cannot.
 variant FunctionValue : Value {
     spec: Value                 -- the block! the function was defined with
     body: Value                 -- the block! the function evaluates
     parameters: List<Parameter>
     closed_over: Context
+
+    -- True for a closure, false for an ordinary function.
+    is_closure: Boolean
 }
 
 variant ObjectValue : Value {
