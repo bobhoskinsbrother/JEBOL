@@ -538,11 +538,24 @@ public final class Transcoder {
                 return StringValue.of(text.toString());
             }
             if (next == '^') {
-                text.appendCodePoint(readEscape());
+                text.appendCodePoint(readEscapeRefusingInvalidCodePoints());
             } else {
                 text.appendCodePoint(next);
             }
         }
+    }
+
+    /**
+     * An escape whose code point no string may hold is a syntax failure,
+     * not a host exception: {@code if (IS_INVALID_CHAR(chr)) return 0;} in
+     * {@code Scan_Quote}, the same range {@code readCharacter} refuses.
+     */
+    private int readEscapeRefusingInvalidCodePoints() {
+        int codepoint = readEscape();
+        if (codepoint > LAST_UNICODE_CODEPOINT || isSurrogate(codepoint)) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "string");
+        }
+        return codepoint;
     }
 
     /** Braced strings nest and may span lines, which is what they are for. */
@@ -557,7 +570,7 @@ public final class Transcoder {
             }
             advance();
             if (next == '^') {
-                text.appendCodePoint(readEscape());
+                text.appendCodePoint(readEscapeRefusingInvalidCodePoints());
                 continue;
             }
             if (next == '{') {

@@ -5221,6 +5221,24 @@ public final class Natives {
                                 arguments.get(2));
                         return arguments.get(2);
                     }
+                    // A bitset pokes the bit a character or a number names,
+                    // through the same Set_Bits every other write takes --
+                    // and the protection check comes first, as it does
+                    // there.
+                    if (arguments.get(0) instanceof BitsetValue members) {
+                        requireChangeable(members);
+                        Integer bit = switch (arguments.get(1)) {
+                            case CharacterValue letter -> letter.codepoint();
+                            case IntegerValue number -> (int) number.magnitude();
+                            default -> null;
+                        };
+                        if (bit == null) {
+                            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                                    Molder.mold(arguments.get(1)));
+                        }
+                        members.hold(bit, arguments.get(2).isTruthy());
+                        return arguments.get(2);
+                    }
                     long at = positionPokedAt(arguments.get(1));
                     // POKE names an element rather than a place to stand,
                     // so outside the series there is nothing to write to.
