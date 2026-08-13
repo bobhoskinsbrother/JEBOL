@@ -970,6 +970,8 @@ surface ParseDialect {
 -- disagree the fork decides, which so far means only the splitting form
 -- above. See docs/decisions.md item 10.
 
+open question "RemoveAndChangeTakeAMarkedPositionAsASpan says a word holding a position in the series being parsed names a span. A word holding a position in some OTHER series falls through and is read as an ordinary rule instead, silently. That is defensible -- it is the only reading that leaves `remove some-rule` working when SOME-RULE happens to hold a series -- and it is also exactly the shape of mistake a rule author makes: mark a position, parse a different series, then reach for the mark. Should a foreign position raise instead, the way a get-word naming a place in a different series already fails to match rather than moving? The two are the same mistake and today they are handled differently."
+
 open question "Backtracking is specified here only by what survives it. Nothing says how far PARSE backs up when an alternative fails, or whether a partially applied repeat count is retried at a lower count. The corpus reaches the common cases and the implementation makes a choice; the choice is not written down."
 
 -- Resolved against a real R3: two mistakes PARSE refuses that JEBOL used

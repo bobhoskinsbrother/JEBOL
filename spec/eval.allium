@@ -958,9 +958,15 @@ rule EachGatheredArgumentIsCheckedAgainstItsOwnParameter {
 -- they are a short list rather than a convenience: the conditionals IF,
 -- EITHER and UNLESS; DO; the control signals RETURN, THROW and BREAK/return;
 -- the reflectors TYPE?, TO-VALUE, NOT, ALSO and the datatype and typeset
--- predicates; the value-taking series and map verbs SET, PUT, SELECT, FIND,
--- APPEND, INSERT, CHANGE, POKE and AJOIN/with; MAKE, TO, FORM, MOLD, PRINT
--- and PRIN. Everything else takes a value and refuses nothing.
+-- predicates; the four equality natives and their negations; the value-taking
+-- series and map verbs SET, PUT, SELECT, FIND, APPEND, INSERT, CHANGE, POKE
+-- and AJOIN/with; MAKE, TO, FORM, MOLD, PRINT and PRIN. Everything else takes
+-- a value and refuses nothing.
+--
+-- The equality-versus-ordering split is the sharpest illustration and it is
+-- in the declarations rather than in the comparison: `equal? () ()` answers
+-- and `greater? () 1` is refused at the argument check. An absence can be
+-- compared for sameness and cannot be placed in an order.
 rule ABareParameterAcceptsAnyValueButUnset {
     when: argument: Argument.created
     let parameter = parameter_named(
@@ -1264,5 +1270,9 @@ surface Evaluating {
 -- source nested deeper than its own limit. The reader's is the one that
 -- fires in practice, because the evaluator still recurses on the host
 -- stack for nested blocks; that is a known gap rather than a design.
+
+open question "An operator with nothing on its left reports two different error ids depending on where in the series it was reached -- no-op-arg at the head, missing-arg anywhere else -- and AnOperatorWithNothingOnItsLeftFails specifies that faithfully. It is an artefact rather than a design: the C's friendly error fires only when nothing has been pushed, and reached mid-series the C takes a bogus stack value whose imbalance surfaces later as the other id. A script cannot act differently on the two, because the mistake is identical; what it can do is catch by id and miss half the cases. So: does JEBOL reproduce the artefact because scripts and Rebol's own suite already depend on the exact id, or normalise both to no-op-arg on the grounds that one mistake should have one name? Reproducing costs nothing today and pins JEBOL to a detail of the C's stack discipline that has no meaning here."
+
+open question "ACallFrameKnowsItsFunctionUnlessItIsAClosure makes the function-versus-closure difference observable through CONTEXT?, and nothing says whether that is the only observable difference or merely the only one built so far. If it is the only one, the two datatypes are one value with a flag and the spec should say so plainly; if more differences are coming -- lifetime of the frame, what a returned function closes over -- then modelling it as a flag is a shortcut that will have to be undone. Worth settling before anything else is hung off the distinction."
 
 open question "Evaluation state lives on the heap, so a running evaluation could in principle be suspended, resumed or moved between threads. Nothing here says whether JEBOL promises any of that, or at what granularity a script can be interrupted. A server that wants to bound how long one script runs needs an answer."

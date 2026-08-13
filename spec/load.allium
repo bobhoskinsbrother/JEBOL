@@ -1380,6 +1380,10 @@ open question "A real R3 refuses % # $ \\ and a comma inside a word as well as a
 -- Without the refinement the same source raises, which is what makes the
 -- refinement worth having rather than being the only behaviour.
 
+open question "UnbalancedDelimitersAreOneIdWithTheTokenAndDelimiterAsArguments says the first argument carries the token kind, and the implementation writes the three spellings the C uses -- end-of-script, end-of-block, end-of-paren. Whether those exact words are behaviour a script may depend on, or a message detail free to change, is not settled. Rebol's own suite compares the second argument (the delimiter) directly and the money group compares an offending token's text directly, so at least some of these arguments are read; nothing yet shows the first argument being read. If it is behaviour, the three spellings belong in an enumeration here rather than as literals in the reader."
+
+open question "TranscodeRequest now carries both source_text and source, because the remainder a stepping read answers has to be the caller's own series advanced rather than a copy of its text. Two fields for one thing is a smell, and the honest alternative is to drop source_text and derive the text from the series. What stops that today is that every other rule in this module reads source_text and several measure lengths against it, so the change is wide. Which of the two is the real field?"
+
 open question "A path may begin with a paren: `(make object! [q: 7])/q` is 7 in a real R3, and `(transcode/one/error \"2#12\")/id` reads the error's field the same way. JEBOL reads a paren followed by /id as two values, the paren and the refinement, so the path is never formed. A paren is already handled as a path segment in the middle -- `data/(k)` works -- so this is the same idea at the front. Is the leading form worth supporting, and does it change how a lone refinement after any value should be read?"
 
 -- Resolved against a real R3: TRANSCODE/NEXT answers the first value and

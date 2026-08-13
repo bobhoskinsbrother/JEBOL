@@ -3060,6 +3060,17 @@ rule PowerRefusesATuple {
 -- including which datatypes refuse to be ordered at all -- holds for < and
 -- <= as much as for > and >=.
 
+-- Equality takes an unset and ordering does not, and the split is in the
+-- declarations rather than in the comparison. The four equality natives and
+-- their negations declare any-type!, so `equal? () ()` is a question with an
+-- answer; the four ordering natives declare a bare value, so `greater? () 1`
+-- is refused at the argument check before any comparison happens.
+--
+-- Which is right both ways round. "Are these the same" is answerable of two
+-- absences and of an absence against a value. "Is this one below that one"
+-- is not: an absence has no place in an order, and answering either way would
+-- put it somewhere.
+
 -- There are two comparisons, not one, and the rules below are the looser
 -- one. A comparison native reaches it. A series function -- FIND, SELECT,
 -- SWITCH, SORT, UNIQUE, and the walk that compares two objects field by
@@ -3842,6 +3853,12 @@ open question "What does QUERY with a none field answer -- the information objec
 open question "A wildcard in a path read as a directory listing in the C, and cannot-open here. `read %*.r3` in a real R3 lists the matching files, because the path goes to the directory scheme and the pattern is handed to the operating system's own matcher. JEBOL takes the path literally, finds no file spelled that way and raises cannot-open. Three things to settle before it is built: whether the matching belongs in JEBOL or in the host, given that the JVM's own path matcher and a Windows shell disagree about several patterns; whether a wildcard should list only where the path names no real file, since a file genuinely called `*.r3` is legal on every system JEBOL runs on; and whether the answer is the plain names a directory listing gives, which is what would make the two forms interchangeable. Backlogged rather than open in the sense of blocking: nothing in Rebol's own library reads a wildcard, so this costs no assertions today."
 
 open question "What should REMOVE do to a complemented bitset? Three of the four ways of writing bits go through one inversion -- APPEND, INSERT and POKE all reach the `set_bits` label, where `if (BITS_NOT(...)) diff = !diff` turns \"hold this\" into \"clear the octet\" for a complemented set -- and REMOVE does not. It jumps straight to `Set_Bits(..., FALSE)`, so it clears the octet whatever the set's sense is, which on a complemented set means the character it was told to remove becomes one the set holds. Two readings and neither is obviously the C's intent: REMOVE is meant to clear octets rather than to remove members, in which case the asymmetry is deliberate and the name is misleading; or it is meant to remove members like every other verb and the missing inversion is an oversight nobody has hit, because complemented sets are made by COMPLEMENT and rarely written to afterwards. Worth measuring against a real R3 before either is built, since the two disagree on every call."
+
+open question "TheBootOptionNamesTheRunningExecutableAsAFile says system/options/boot is the path of the host runtime running the interpreter, because Rebol sets that field from its own executable path and scripts read it to find things relative to themselves. For an embedded interpreter the two readings come apart: the host runtime's binary is not where the interpreter's own resources live, and a script resolving a sibling file against it lands somewhere unrelated. Three candidates and none is obviously right -- the host runtime binary as now, the archive or directory JEBOL itself was loaded from, or the embedding application's own executable. It wants deciding by what a script actually does with the field rather than by which is most faithful to Rebol."
+
+open question "AnEmptyTagUnderAllMoldsAsAConstruct and AUrlOrEmailThatWouldNotReadBackMoldsAsAConstruct are two members of a set that has no stated boundary: the values whose literal form would not read back. A real R3 writes construct syntax for others too, and the guidance under MoldAllIsPlainMoldWhereThereIsNoPositionToKeep already records that the rest are not here. What is undecided is whether the set should be enumerated in this spec at all, or stated once as the property -- MOLD writes whatever reads back as the same value, and construct syntax wherever the literal form would not -- with the enumeration left to the round-trip invariant to enforce. The property reads better and is harder to test; the enumeration is testable and goes stale."
+
+open question "config.mold_indent_width is declared as configuration and is in practice a pinned constant: a saved script's header is molded and then checksummed, so changing it changes bytes something else compares. Is it configuration a caller may set, in which case the checksum guarantee has to be stated as holding only for a fixed width, or is it a named constant that happens to live in the config block? The same question applies to longest_quoted_string and newlines_forcing_braces beside it, which are equally load-bearing for a round trip."
 
 open question "Does /console on CALL differ observably from plain inheritance on a host that has no console? The C passes a flag and leaves the host to decide, so both readings are open. A console-less host could treat the request as ordinary inheritance, which keeps a script portable and gives the operator nothing it would not have had anyway; or it could refuse and say there is no console to attach to, which is honest and stops a script that would otherwise have worked. It matters more for JEBOL than for Rebol, because a server with no console is the ordinary case here and the opposite of the case the refinement was drawn for. The same question decides whether /console on a host that does have one is worth distinguishing from the default at all, or is only a way for a caller to say the inheritance was meant."
 
@@ -5018,8 +5035,20 @@ open question "Searching a binary for 255 answers none even when the byte is the
 -- TAKE/LAST takes from the tail rather than the head, so `take/last
 -- [1 2 3]` is 3. Taking one item without /LAST is the head.
 --
--- The counts clamp rather than failing. A count of zero or a negative one
--- takes nothing, and a count past the end takes what there is.
+-- The counts clamp rather than failing. A count of zero takes nothing and a
+-- count past the end takes what there is.
+--
+-- A NEGATIVE count takes the span behind the position, not nothing. Partial1
+-- moves the series back by that many and makes the count positive, so the
+-- span always runs forwards from wherever it lands, clamped to what is behind
+-- rather than to what is ahead. At the head there is nothing behind, so a
+-- negative count there does take nothing -- which is the case the earlier
+-- reading generalised from and got wrong for every other position.
+--
+-- /LAST with /PART moves where the taking starts rather than clamping it, so
+-- `take/last/part tail "123" -3` is "123". This entry said a negative count
+-- took nothing, and clamping to the position made that call answer the empty
+-- string; Rebol's own tests say otherwise.
 
 -- Resolved against a real R3: PROTECT and UNPROTECT answer the value they
 -- were given, not unset, so `b: protect #{0102}` is a way to build a
@@ -5039,13 +5068,20 @@ open question "Searching a binary for 255 answers none even when the byte is the
 -- wants to keep stepping the same variable.
 
 -- Resolved against a real R3: CONSTRUCT builds an object without
--- evaluating, but it still reads `none`, `true` and `false` as the values
--- they name. /ONLY turns even that off, so `construct/only [b: none]`
--- gives b the WORD none rather than the none value.
+-- evaluating, but it still reads seven named words as the values they name:
+-- `none`, and three spellings each of true and false -- `true on yes` and
+-- `false off no`. Three spellings because a header written by a person says
+-- `yes` where a program says `true`, and CONSTRUCT is what reads a header.
+-- /ONLY turns even that off, so `construct/only [b: none]` gives b the WORD
+-- none rather than the none value.
 --
 -- Which is the whole point of the plainer form: data that arrived from
 -- somewhere untrusted and happens to be shaped like a spec should not
 -- have its words quietly become values.
+--
+-- What /ONLY does NOT change is the floor: see
+-- ConstructFloorsAnUnsetToNoneAndFillsTrailingSetWords. /ONLY is a rule
+-- about words, not about what an empty field holds.
 
 -- Resolved against a real R3: CONTEXT? answers the object a bound word
 -- lives in, which is how code holding a word can reach the rest of what
