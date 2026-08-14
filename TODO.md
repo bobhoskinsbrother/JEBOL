@@ -91,7 +91,99 @@ does.
 
 ---
 
-# Goal 1. Un-smear the domain: one datatype, one place
+# Goal 1. The bugs. Before any refactoring
+
+A refactor over known-wrong behaviour preserves the wrongness and makes it
+harder to find. These go first.
+
+## 1a. SYSTEM/STANDARD is missing sixteen of its twenty-nine fields
+
+`boot/sysobj.reb` declares twenty-nine fields under `standard:` and JEBOL's
+carries thirteen. Missing:
+
+```
+codec error script port-spec-serial port-spec-audio net-info console-info
+vector-info date-info handle-info midi-info extension type-spec bincode
+utype font para
+```
+
+**Six of them are reached by vendored Rebol code JEBOL loads**, so this is a
+live defect rather than an omission nobody meets:
+
+| Field | Reached by |
+| --- | --- |
+| `script` | `sys-base.reb:132` inside `do*`, `sys-start.reb:289` |
+| `port-spec-serial` | `sys-ports.reb:495` |
+| `port-spec-audio` | `sys-ports-audio.reb:23,33` |
+| `net-info` | `sys-ports.reb:408,416` |
+| `font` `para` | `view-funcs.reb:18,28` -- the whole of that file's stop |
+
+`script` is the sharpest. Rebol's own `do*` runs `system/script: make
+system/standard/script compose [...]`, which raises `invalid-path` here --
+and `system/script` exists anyway with exactly the five fields that line
+builds, so something in JEBOL is standing in for Rebol's own line.
+
+**Nothing tests this, and one test hides it.** `BorrowedFilesLoadWholeTest`
+records `view-funcs.reb` as stopping on `font`, which reads as "waiting on
+the view dialect" rather than "sixteen fields were never ported". The fix
+carries its own test: walk the field list `sysobj.reb` declares and assert
+JEBOL has each one.
+
+## 1b. A map matches a string key case-sensitively
+
+`Find_Entry` is called with `cased` false for FIND, SELECT and a path read --
+only `find/case` and `put/case` pass true. The fix is a lookup that knows the
+flag, not a line in a native. Reproducer: `m: make map! [] m/("k"): 1
+select m "K"` answers 1 in Rebol and none here.
+
+## 1c. LOAD-JSON cannot read a JSON array or an object
+
+`load-json "5"`, `"true"` and `"[]"` work; `load-json "[1]"` raises the
+codec's own error. `to-json` works both directions, so the encoder is the one
+to trust; points at PARSE rather than the codec. Reproducer:
+`load-json "[1]"`.
+
+## 1d. Two measures report things that are not so
+
+Both have the same disease, and it is the one that hid 1a for months: they
+record **what a failure said** rather than what is actually missing. A
+number or a word gets written down, it reads like a work queue, and nobody
+checks it against the thing it claims to measure.
+
+**`PortingBacklogTest` says 24 functions are missing. The real number is
+zero.** Checked all twenty-four on 2026-08-14:
+
+- **twenty-one are in `system/contexts/sys`** -- `do*`, `do-needs`, `export`,
+  `export-words`, `init-schemes`, `load-header`, `load-module`,
+  `make-module*`, `make-port*`, `make-scheme`, `start`, `bind-lib`, `log`,
+  `read-decode`, `assert-utf8`, `mixin?`, `remove-ansi`,
+  `download-extension`, `load-boot-exts`, `load-ext-module`,
+  `locate-extension`. That is where Rebol puts them too. The test asks the
+  library context alone, so it counts a correctly-placed function as a gap.
+- **`limit-usage` is absent because Rebol removes it** --
+  `mezz-secure.reb:334` is `unset in lib 'limit-usage`, which JEBOL runs
+  faithfully. Its absence is the port working.
+- **`completion!` and `line-editor!` are not functions.** They are objects in
+  the console module, collected by `c-surface.py` as though they were.
+
+The javadoc already admits a blind spot -- "a few of those JEBOL does have in
+its `sys` context" -- but "a few" is twenty-one of twenty-four, and the
+number asserted is the number people read. Fix the measure to ask both
+contexts, drop the non-functions from the collector, and let the ratchet
+say zero honestly.
+
+**`c-parity.py` says MISSING: 0 over an incomplete input.** `binary` is
+`REBNATIVE(binary)` in `u-bincode.c`, declared in the C rather than in
+`boot/natives.reb`, so `c-surface.py` never collects it and the report
+cannot name it. Widen the collector to the `REBNATIVE(...)` definitions and
+find out what else is behind that zero.
+
+**Two measures are clean and worth keeping as they are:**
+`ActionParityTest.KNOWN_GAPS` is 0 with nothing parked behind it, and
+`spec/.allium-warning-allowlist` holds fourteen entries that are all one
+documented checker gap, each confirmed with a minimal repro.
+
+# Goal 2. Un-smear the domain: one datatype, one place
 
 The port grew action-major -- POKE holds a bitset arm, a gob arm, an image
 arm; APPEND holds another bitset arm; the Evaluator and Comparison hold more
