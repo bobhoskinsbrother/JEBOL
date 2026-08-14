@@ -91,7 +91,7 @@ does.
 
 ---
 
-# Goal 7. Un-smear the domain: one datatype, one place
+# Goal 1. Un-smear the domain: one datatype, one place
 
 The port grew action-major -- POKE holds a bitset arm, a gob arm, an image
 arm; APPEND holds another bitset arm; the Evaluator and Comparison hold more
@@ -125,9 +125,7 @@ Per increment: find every arm (`instanceof XValue` / `case XValue` through
 the IDE), move verbatim -- no improving while moving -- suite loop while
 working, one full gate, commit.
 
-# Goal 5 remainder
-
-## 5d. Two live defects, each with a reproducer
+# Goal 2. Two live defects, each with a reproducer
 
 - **A map matches a string key case-sensitively.** `Find_Entry` is called
   with `cased` false for FIND, SELECT and a path read -- only `find/case` and
@@ -139,14 +137,40 @@ working, one full gate, commit.
   `to-json` works both directions, so the encoder is the one to trust; points
   at PARSE rather than the codec. Reproducer: `load-json "[1]"`.
 
-## 5e. Two Rebol files still stop partway
+# Goal 3. Two Rebol files still stop partway
 
-`BorrowedFilesLoadWholeTest` names them; each waits on a named feature:
+`BorrowedFilesLoadWholeTest` names them, and the two are nothing like each
+other in size. Verified 2026-08-14 by printing `borrowedLoadFailures()`.
 
-| Wants | File |
-| --- | --- |
-| `binary`, the bincode dialect (`u-bincode.c`) | `prot-tls.reb` |
-| the view dialect's `font` object | `view-funcs.reb` |
+**`view-funcs.reb` stops on a field JEBOL's own SYSTEM object never got, and
+is small.** The failure is `a path segment that selects nothing: font`, on
+line 18: `system/standard/font: construct [...]`. The file is *writing* the
+field, not asking for a dialect -- `sysobj.reb` line 642 declares
+`font: none` in `system/standard`, so in a real Rebol the field is there to
+be written. JEBOL's `system/standard` carries 13 of Rebol's 29 fields and is
+missing sixteen:
+
+```
+codec error script port-spec-serial port-spec-audio net-info console-info
+vector-info date-info handle-info midi-info extension type-spec bincode
+utype font para
+```
+
+Port those from `sysobj.reb`, then see how much further the file gets. It may
+stop again further down, which is fine: that is the next real gap rather than
+this one.
+
+**`prot-tls.reb` wants a native JEBOL has not got, and is not small.** The
+failure is `a word with no binding was evaluated: binary`, on line 16:
+`in: binary 16104`. That is `REBNATIVE(binary)` in `u-bincode.c` -- the
+bincode dialect, a whole binary reader and writer.
+
+**And that native is invisible to the parity measure.** `binary` is declared
+in the C rather than in `boot/natives.reb`, so `c-surface.py` never collects
+it and `c-parity.py` cannot report it. MISSING: 0 means "of what
+natives.reb and actions.reb declare", which is less than what the C ships.
+Worth widening the collector to the `REBNATIVE(...)` definitions before
+trusting that zero.
 
 **One file is deliberately not loaded.** `mezz-osx-dialogs.reb` shells out to
 `osascript`; JEBOL serves REQUEST-DIR/FILE/COLOR through the WINDOWS port,
@@ -157,7 +181,7 @@ Rebol boots (it sets aliases the on-demand imports read, and PROTECT-SYSTEM
 ends by unprotecting what REGISTER-CODEC writes to); codec-der.reb goes
 before codec-crt.reb.
 
-## 5f. The forks still in the prelude
+# Goal 4. The forks still in the prelude
 
 Forty-six functions JEBOL implements that Rebol writes in REBOL. Each blocks
 the R3 file that defines it from being loaded over the top.
@@ -208,7 +232,7 @@ in Java. The generator is the one to keep.
 `abs` is the smallest and a good first move: `base-constants.reb` is already
 loaded, so deleting the Java definition should need nothing.
 
-## 5g. Loose ends
+# Goal 5. Loose ends
 
 - **Datatype backlog: `vector!` and `task!`**, the next two in table order.
   They carry the last TYPES lines in the parity report.
@@ -228,7 +252,57 @@ loaded, so deleting the Java definition should need nothing.
 - **`draw` dialect to SVG.** One renderer. Milestone 5's open fork in
   `docs/milestones.md` covers the thinking.
 
-## Working notes
+# Goal 6. The boot is 68ms, and everything is boot-bound
+
+An embedding that builds an interpreter per request pays this on every one,
+and nearly every test asks for a fresh interpreter, so the test wall clock is
+close to 68ms times the test count.
+
+**`Interpreter.create()` costs about 68 milliseconds**; `run("1 + 1")` on a
+warm one is too fast to measure. What the 68ms buys is loading and evaluating
+the whole imported library, which produces the same result every time and is
+thrown away after every use.
+
+There are two separate fixes and they compose. Do the first one first.
+
+## 6a. A pool, so nobody waits for the boot
+
+Keep a few built interpreters ready. A caller takes one, uses it, throws it
+away, and a builder thread starts its replacement. The 68ms still happens; it
+happens off the critical path, on a core that was idle anyway -- the full run
+sat idle on eleven of twelve cores.
+
+Cheap and safe, because it changes nothing about what an interpreter is:
+every caller still gets a genuinely fresh one, so no word from a previous use
+can leak. That is the property the caching fix has to work for and this one
+gets for free.
+
+Three things to get right:
+
+- **The handoff is not sharing.** `Interpreter`'s contract is one instance,
+  one thread. Building on a pool thread and using on a caller thread is fine
+  where the queue that carries it establishes a happens-before -- a
+  `BlockingQueue` does. Two threads holding one instance at once is still a
+  mistake, and the pool must make it impossible rather than merely unlikely.
+- **It bounds latency, not total work.** The CPU cost is unchanged, so a
+  caller arriving faster than a builder can replace what it took waits
+  anyway. Size the pool and the builder count against the arrival rate, and
+  measure rather than guess.
+- **It belongs to the host, not the domain.** A pool is an application-layer
+  concern with a thread in it; keep it out of `domain`.
+
+Worth having in the test run and in any server embedding, and it needs
+nothing from 6b.
+
+## 6b. Cache the built library, so the boot is cheaper
+
+The remaining prize is the 68ms itself. Two things would have to be true:
+the library context copied cheaply rather than rebuilt, and the copy deep
+enough that one user mutating a library value cannot be seen by the next.
+REBOL series are shared and mutable, so the second part is the whole
+difficulty, and it is why this is a goal rather than a tidy-up.
+
+# Working notes
 
 - **Multi-line REBOL collapsed onto one line feeds the first call the next
   one's arguments.** Write a probe to a file and run the file.
@@ -236,18 +310,3 @@ loaded, so deleting the Java definition should need nothing.
   javadoc and its declaration fails the build.
 - **zsh `no matches found` kills a `until ls *.xml` wait loop.** Use
   `find ... | wc -l`.
-
-# Goal 6. The boot is 68ms, and everything is boot-bound
-
-**Last on purpose.** An embedding that builds an interpreter per request pays
-this on every one, and nearly every test asks for a fresh interpreter, so the
-test wall clock is close to 68ms times the test count.
-
-**`Interpreter.create()` costs about 68 milliseconds**; `run("1 + 1")` on a
-warm one is too fast to measure. What the 68ms buys is loading and evaluating
-the whole imported library, which produces the same result every time and is
-thrown away after every test. Two things would have to be true to cache it:
-the library context copied cheaply rather than rebuilt, and the copy deep
-enough that a test mutating a library value cannot be seen by the next one.
-REBOL series are shared and mutable, so the second part is the whole
-difficulty and is why this is a goal rather than a tidy-up.
