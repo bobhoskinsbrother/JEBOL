@@ -60,7 +60,6 @@ class TryAndBreakRefinementsTest {
     @Test
     @DisplayName("plain TRY still lets a throw past")
     void plainTryDoesNotCatchAThrow() {
-        // The default stays honest: a throw is a decision, not a failure.
         assertThat(answerTo("catch [try [throw 5] 99]")).isEqualTo("5");
     }
 
@@ -135,10 +134,6 @@ class TryAndBreakRefinementsTest {
     @Test
     @DisplayName("a disarmed throw carries what was thrown, and the name it was thrown under")
     void aDisarmedThrowCarriesItsValue() {
-        // `Make_Error(code, arg1, sym ? &word : 0, 0)` in Disarm_Throw_Error:
-        // the value thrown becomes arg1 and the name arg2. Without them a
-        // handler can see that something was thrown and not what, which is the
-        // half that matters. Every answer here is measured against a real R3.
         assertThat(answerTo("reduce [string? try/all/with [throw 1] :mold "
                 + "system/state/last-error/id system/state/last-error/arg1]"))
                 .isEqualTo("[#(true) throw 1]");
@@ -169,9 +164,6 @@ class TryAndBreakRefinementsTest {
     @Test
     @DisplayName("TRY clears the last error on the way in, so a success leaves none")
     void tryClearsTheLastErrorOnTheWayIn() {
-        // `SET_NONE(error); // reset the last error` before the block runs. So
-        // last-error describes this call and not some earlier one, and code
-        // reading it after a TRY that worked reads none.
         assertThat(answerTo("try [1 / 0] try [1] none? system/state/last-error"))
                 .isEqualTo("#(true)");
     }
@@ -179,12 +171,6 @@ class TryAndBreakRefinementsTest {
     @Test
     @DisplayName("a signal nothing caught becomes its own error at the top of the script")
     void anUncaughtSignalBecomesAnError() {
-        // The whole Throw category of boot/errors.reb is these four: `break:
-        // {no loop to break}`, `continue:`, `return:` and `throw:`. Each is
-        // reported when the signal reaches the top with nothing having caught
-        // it, so the run ends as a failed script rather than as a host
-        // exception -- which spec/embed.allium forbids outright. The helper
-        // above asserts that on every call in this class.
         assertThat(errorIdFrom("break")).isEqualTo("break");
         assertThat(errorIdFrom("continue")).isEqualTo("continue");
         assertThat(errorIdFrom("return 5")).isEqualTo("return");
@@ -195,10 +181,6 @@ class TryAndBreakRefinementsTest {
     @Test
     @DisplayName("and one reached through a path built at runtime is no different")
     void aSignalReachedThroughAPathIsTheSame() {
-        // How Rebol's own ANY-OF and ALL-OF break out of a FOREACH: `to path!
-        // reduce [:break 'return]` builds `break/return` with the native value
-        // at its head rather than the word. That escaped as a Java exception,
-        // and it is the same signal by another road.
         assertThat(errorIdFrom("p: to path! reduce [:break 'return] do reduce [p 7]"))
                 .isEqualTo("break");
     }
@@ -214,9 +196,6 @@ class TryAndBreakRefinementsTest {
     @Test
     @DisplayName("a block handler reads the error through system/state/last-error")
     void aBlockHandlerReadsTheLastError() {
-        // A block has no argument to receive the error, so this is the only way
-        // it can see what it is handling -- and Rebol's own suite handles all
-        // five signals this way.
         assertThat(answerTo(
                 "h: [system/state/last-error/id] reduce [try/all/with [break] :h "
                 + "try/all/with [continue] :h try/all/with [exit] :h "

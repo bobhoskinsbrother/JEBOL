@@ -33,8 +33,6 @@ class LoadSourcesTest {
     @Test
     @DisplayName("a binary is read as UTF-8")
     void aBinaryIsReadAsText() {
-        // 22 33 22 is a quote, a three, and a quote, so this is the
-        // string "3" written as bytes.
         assertThat(answerTo("\"3\" = load #{223322}")).isEqualTo("#(true)");
         assertThat(answerTo("load #{31}")).isEqualTo("1");
     }
@@ -42,8 +40,6 @@ class LoadSourcesTest {
     @Test
     @DisplayName("a byte order mark at the front is dropped")
     void aByteOrderMarkIsNotPartOfTheSource() {
-        // Without this the mark becomes a character of the first value,
-        // and the answer is a string nobody can match against.
         assertThat(answerTo("\"3\" = load #{EFBBBF223322}")).isEqualTo("#(true)");
     }
 
@@ -59,8 +55,6 @@ class LoadSourcesTest {
     @Test
     @DisplayName("a source holding two values arrives nested")
     void aMultipleValuedSourceKeepsItsBlock() {
-        // The case that shows each answer is added whole rather than run
-        // together. If the answers were spliced this would be four words.
         assertThat(answerTo("(load [\"print 'a\" \"print 'b\"]) = [[print 'a] [print 'b]]"))
                 .isEqualTo("#(true)");
     }
@@ -93,8 +87,6 @@ class LoadSourcesTest {
     @Test
     @DisplayName("a string with several values loads as a block either way")
     void severalValuesAreABlockWithOrWithoutAll() {
-        // The off point for /ALL: it only has anything to say when the
-        // source held exactly one value.
         assertThat(answerTo("(load \"1 2\") = [1 2]")).isEqualTo("#(true)");
         assertThat(answerTo("(load/all \"1 2\") = [1 2]")).isEqualTo("#(true)");
     }

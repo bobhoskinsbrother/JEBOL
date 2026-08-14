@@ -77,8 +77,6 @@ class ConsoleNativesTest {
     @Test
     @DisplayName("nothing more to read answers none")
     void theEndIsNone() {
-        // None and not an empty string, thus a script can tell the end
-        // from a line with nothing on it.
         assertThat(answerTo(reaching(true), "none? input")).isEqualTo("#(true)");
     }
 

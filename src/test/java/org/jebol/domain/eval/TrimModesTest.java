@@ -50,8 +50,6 @@ class TrimModesTest {
     @Test
     @DisplayName("/auto keeps the shape of what is indented deeper")
     void autoKeepsRelativeIndentation() {
-        // The first line's four spaces come off every line, so the "b"
-        // keeps the two it had beyond them.
         assertThat(answerTo(
                 "(trim/auto copy \"    a^/      b^/    c\") = \"a^/  b^/c\""))
                 .isEqualTo("#(true)");

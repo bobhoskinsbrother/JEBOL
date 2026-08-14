@@ -43,12 +43,6 @@ public final class Raised extends RuntimeException {
      * the word DIVISION.
      */
     public static Raised of(EvaluationFailure failure, String detail) {
-        // A word has to be called something, so a detail of nothing at
-        // all becomes a string rather than a word. Building the word
-        // regardless threw a host exception out of the very code that
-        // was reporting a script error, which is the one thing an
-        // interpreter must never do: `to word! ""` crashed rather than
-        // raising, and the raise was already on its way.
         return new Raised(ErrorValue.about(
                 failure.category(), failure.errorId(),
                 failure.description() + ": " + detail,

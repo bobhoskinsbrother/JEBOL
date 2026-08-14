@@ -40,9 +40,6 @@ class BinaryParseTest {
     @Test
     @DisplayName("a count that does not match the length fails")
     void theLengthStillHasToMatch() {
-        // The off point. A walker that saw the whole binary as one item
-        // would answer true for both of these as readily as for the pair
-        // above.
         assertThat(answerTo("parse #{0102} [3 skip]")).isEqualTo("#(false)");
         assertThat(answerTo("parse #{0102} [1 skip]")).isEqualTo("#(false)");
     }
@@ -68,8 +65,6 @@ class BinaryParseTest {
     @Test
     @DisplayName("SET of one byte answers its number")
     void setAnswersTheByte() {
-        // The one place a single item is not a binary, and the difference
-        // from COPY is the whole of it.
         assertThat(answerTo("parse #{0102} [set v skip skip] v = 1")).isEqualTo("#(true)");
     }
 
@@ -98,9 +93,6 @@ class BinaryParseTest {
     @Test
     @DisplayName("a byte of zero is an ordinary byte")
     void zeroIsNotSpecial() {
-        // A byte standing in for a character makes a zero byte the null
-        // character, which is the one that string handling tends to treat
-        // as an ending.
         assertThat(answerTo("parse #{000100} [3 skip]")).isEqualTo("#(true)");
         assertThat(answerTo("parse #{000100} [#{00} #{01} #{00}]")).isEqualTo("#(true)");
     }
@@ -127,10 +119,6 @@ class BinaryParseTest {
     @Test
     @DisplayName("parsing a binary minds case from the start")
     void bytesAreBytes() {
-        // A string folds case and a binary does not, because a byte is a
-        // number rather than a letter. Letting each byte stand in for a
-        // character makes the folding apply by accident, which is the
-        // mistake this pins.
         assertThat(answerTo("parse to binary! \"aB\" [#{61} #{42}]")).isEqualTo("#(true)");
         assertThat(answerTo("parse to binary! \"aB\" [#{41} #{62}]")).isEqualTo("#(false)");
         assertThat(answerTo("parse \"aB\" [\"A\" \"b\"]"))

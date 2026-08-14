@@ -1,7 +1,8 @@
 package org.jebol.adapter.host;
 
-import java.util.Map;
 import org.jebol.domain.eval.EnvironmentPort;
+
+import java.util.Map;
 
 /**
  * The environment of the Java process this interpreter runs in.

@@ -57,9 +57,6 @@ class MezzanineLoadTest {
                 .forEach(a -> System.out.printf("    %s (%d definitions)%n",
                         a.file(), a.definitions()));
         System.out.println("what stops the rest:");
-        // Every one, not the first twenty. A truncated list hid
-        // mezz-series.reb entirely, and that is the file defining CHARSET
-        // that three other files are waiting on.
         attempts.stream().filter(a -> !a.outcome().equals("loaded"))
                 .sorted(java.util.Comparator.comparingInt(
                         (Attempt a) -> a.definitions()).reversed())
@@ -93,8 +90,6 @@ class MezzanineLoadTest {
         int definitions = (int) source.lines()
                 .filter(line -> line.matches("^[a-z][a-z0-9?!*+-]*:.*"))
                 .count();
-        // The REBOL [...] header is data, not code; evaluating it calls
-        // whatever REBOL happens to be bound to, which is nothing.
         String body = source.replaceFirst("(?is)^\\s*rebol\\s*\\[", "[");
         int afterHeader = body.indexOf(']');
         body = afterHeader >= 0 ? withHeaderRemoved(body) : source;
@@ -106,8 +101,6 @@ class MezzanineLoadTest {
             if (outcome.succeeded()) {
                 return new Attempt(file.getFileName().toString(), definitions, "loaded");
             }
-            // The message names the word, which is the whole point: a file
-            // that stops on a missing word says what to build next.
             String said = outcome.value().toString();
             int named = said.lastIndexOf(": ");
             return new Attempt(file.getFileName().toString(), definitions,

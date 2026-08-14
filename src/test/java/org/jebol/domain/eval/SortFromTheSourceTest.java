@@ -70,9 +70,6 @@ class SortFromTheSourceTest {
         @Test
         @DisplayName("a comparator answering zero leaves the two where they were")
         void zeroIsATie() {
-            // The only answer that means "these two are equal". A
-            // predicate never gives it, which is why the false branch
-            // has to mean something specific.
             assertThat(answerTo("(sort/compare [3 1 2] func [a b] [0]) = [3 1 2]"))
                     .isEqualTo("#(true)");
         }
@@ -80,9 +77,6 @@ class SortFromTheSourceTest {
         @Test
         @DisplayName("equal keys keep the order they arrived in")
         void theSortIsStable() {
-            // Every key is equal, so a stable sort changes nothing at
-            // all. A comparator read the obvious way round shuffles
-            // this and still looks like it sorted.
             assertThat(answerTo("""
                     blk: copy [] repeat i 32 [repend blk [i 0]]
                     (sort/skip/all/compare copy blk 2 func [a b] [a/2 < b/2]) = blk
@@ -191,17 +185,12 @@ class SortFromTheSourceTest {
         @Test
         @DisplayName("without /all, the first field of a record decides alone")
         void theFirstFieldDecides() {
-            // The off point. Both records begin with 1, so a stable sort
-            // leaves them exactly as they were.
             assertThat(answerTo("(sort/skip [1 9 1 2] 2) = [1 9 1 2]")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("/all with a comparator hands it whole records")
         void aRecordIsAnArgument() {
-            // Each argument is a block of SKIP values rather than one
-            // value, which is what lets the comparator reach a field
-            // other than the first.
             assertThat(answerTo("""
                     db: ["A3" 41 "B2" 8 "C4" 6]
                     (sort/skip/compare/all db 2 func [a b] [a/2 < b/2])
@@ -222,9 +211,6 @@ class SortFromTheSourceTest {
         @Test
         @DisplayName("the record a comparator is handed cannot be changed")
         void theRecordsAreProtected() {
-            // The C locks the two blocks it lends out, because they are
-            // reused for every comparison and a comparator that grew one
-            // would corrupt the next call.
             assertThat(errorIdOf("""
                     db: ["A3" 41 "B2" 8 "C4" 6]
                     sort/skip/compare/all db 2 func [a b] [append a 'x  a/2 < b/2]
@@ -238,9 +224,6 @@ class SortFromTheSourceTest {
         @Test
         @DisplayName("/all with a column number is refused")
         void aColumnLeavesAllNothingToSay() {
-            // /ALL says compare everything and a column says compare
-            // that one, so asking for both is a contradiction rather
-            // than a preference.
             assertThat(errorIdOf("sort/skip/compare/all [3 4 1 2] 2 1"))
                     .isEqualTo("bad-refines");
             assertThat(errorIdOf("sort/compare/skip/all \"ba ab aa \" 1 3"))
@@ -280,8 +263,6 @@ class SortFromTheSourceTest {
         @Test
         @DisplayName("a series of one or none is left alone whatever was asked")
         void theDegenerateSeries() {
-            // The C leaves before it validates anything, so a width that
-            // would otherwise be refused is not looked at.
             assertThat(answerTo("(sort/skip [] 3) = []")).isEqualTo("#(true)");
             assertThat(answerTo("(sort/skip [1] 3) = [1]")).isEqualTo("#(true)");
         }

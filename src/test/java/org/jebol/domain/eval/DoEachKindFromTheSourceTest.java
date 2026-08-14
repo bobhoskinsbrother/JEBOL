@@ -51,8 +51,6 @@ class DoEachKindFromTheSourceTest {
         @Test
         @DisplayName("and calls it when the word holds a function")
         void itCallsAFunction() {
-            // The whole point of OPTS_REVAL: the function is not answered, it
-            // is called, and its arguments come from after the DO.
             assertThat(answerTo("a: does [\"OK\"] do 'a")).isEqualTo("\"OK\"");
             assertThat(answerTo("f: func [x] [x * 2] do 'f 5")).isEqualTo("10");
         }
@@ -60,16 +58,12 @@ class DoEachKindFromTheSourceTest {
         @Test
         @DisplayName("a word holding a block answers the block rather than running it")
         void aBlockIsNotRun() {
-            // Only a function is re-evaluated. A block is a value like any
-            // other, so this answers it whole.
             assertThat(answerTo("b: [print \"x\"] block? do 'b")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and IN names a word in an object, which DO then runs")
         void inThenDo() {
-            // How a script reaches into an object it was given: IN answers a
-            // word bound to the field and DO runs it.
             assertThat(answerTo(
                     "o: make object! [a: does [\"OK\"] b: 23] "
                     + "reduce [do in o 'a do in o 'b]")).isEqualTo("[\"OK\" 23]");
@@ -110,9 +104,6 @@ class DoEachKindFromTheSourceTest {
         @Test
         @DisplayName("answers the plain name, having spent its quote")
         void itSpendsTheQuote() {
-            // `*D_RET = *value; SET_TYPE(D_RET, REB_WORD);` -- one step of
-            // evaluation is what a quote holds back, so DO spends it and stops
-            // rather than going on to look the word up.
             assertThat(answerTo("b: ['a 'a/1] reduce [type? do first b type? do second b]"))
                     .isEqualTo("[#(word!) #(path!)]");
         }
@@ -125,7 +116,6 @@ class DoEachKindFromTheSourceTest {
         @Test
         @DisplayName("is refused, because there is nothing to assign")
         void itIsRefused() {
-            // `case REB_SET_WORD: case REB_SET_PATH: Trap_Arg(value);`
             assertThat(errorIdFrom("do quote a:")).isEqualTo("invalid-arg");
             assertThat(errorIdFrom("do quote a/1:")).isEqualTo("invalid-arg");
         }

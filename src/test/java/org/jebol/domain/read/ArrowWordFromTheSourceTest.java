@@ -41,8 +41,6 @@ class ArrowWordFromTheSourceTest {
         @Test
         @DisplayName("the short ones the C names as its common cases")
         void theCommonCases() {
-            // `if (IS_LEX_DELIMIT(cp[2]) && (cp[1] == '>' || cp[1] == '=' ||
-            // cp[1] == '<')) return TOKEN_WORD; // common cases: <> <= <<`
             assertThat(answerTo("""
                     (load {<>}) = to word! "<>\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -54,10 +52,6 @@ class ArrowWordFromTheSourceTest {
         @Test
         @DisplayName("and a lone angle bracket, which has its own guard")
         void aLoneAngle() {
-            // `if (IS_LEX_ANY_SPACE(cp[1]) || cp[1] == ']' || cp[1] == ')' ||
-            // cp[1] == 0) return TOKEN_WORD; // CES.9121 Was LEX_DELIMIT --
-            // changed for </tag>` -- the comment records that the guard was
-            // narrowed from every delimiter, so that `</tag>` still reads as a tag.
             assertThat(answerTo("""
                     (load {<}) = to word! "<\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -67,9 +61,6 @@ class ArrowWordFromTheSourceTest {
         @Test
         @DisplayName("and a longer run of arrow characters, however long")
         void theLongerRuns() {
-            // `while (*cp == '<') cp++;` and then a loop over `- = > ~`. So the
-            // arrows a dialect invents are words without the reader knowing about
-            // the dialect.
             assertThat(answerTo("""
                     (load {<-->}) = to word! "<-->\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -81,8 +72,6 @@ class ArrowWordFromTheSourceTest {
         @Test
         @DisplayName("but a run that closes with a name inside it is a tag")
         void aTagIsStillATag() {
-            // Which is the whole reason the character list is short: `<a>` has to
-            // stay a tag, and only a run of arrow characters may be a word.
             assertThat(answerTo("""
                     tag? load {<a>}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -97,8 +86,6 @@ class ArrowWordFromTheSourceTest {
         @Test
         @DisplayName("all four spellings Rebol's own test asserts")
         void theFourSpellings() {
-            // `return (np[-1] == ':' ? TOKEN_SET : TOKEN_WORD);` -- the last
-            // character of what the skipper consumed decides it.
             assertThat(answerTo("""
                     set-word? load {<-->:}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -112,11 +99,6 @@ class ArrowWordFromTheSourceTest {
         @Test
         @DisplayName("and it is one value, naming the run without the colon")
         void itIsOneValue() {
-            // The failure this replaces was two values: the word and a stray
-            // colon. Which reads as an assignment and is not one, so a dialect
-            // defining `<-->:` got a word it never asked for.
-            // Counted inside a block, because `length?` on a word answers the
-            // length of its spelling: `length? load {<-->:}` is 4 either way.
             assertThat(answerTo("""
                     length? load {[<-->:]}""")).isEqualTo("1");
             assertThat(answerTo("""
@@ -126,8 +108,6 @@ class ArrowWordFromTheSourceTest {
         @Test
         @DisplayName("and the right-pointing ones take one too")
         void theRightArrows() {
-            // `case LEX_SPECIAL_GREATER:` calls `Skip_Right_Arrow` and reads the
-            // same last character, so the rule is one rule seen from either end.
             assertThat(answerTo("""
                     set-word? load {-->:}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -137,8 +117,6 @@ class ArrowWordFromTheSourceTest {
         @Test
         @DisplayName("but a colon with a name after it is not the end of a word")
         void aColonInTheMiddle() {
-            // The skipper stops at the colon, so what follows it is a separate
-            // token rather than part of the name.
             assertThat(answerTo("""
                     length? load {[<-->:x]}""")).isEqualTo("2");
         }

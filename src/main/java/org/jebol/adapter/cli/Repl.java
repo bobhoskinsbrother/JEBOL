@@ -1,15 +1,12 @@
 package org.jebol.adapter.cli;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import org.jebol.application.Conclusion;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.value.IntegerValue;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 
 /**
  * The console: read a line, evaluate it, print the result, repeat.
@@ -38,9 +35,6 @@ public final class Repl {
     public static void main(String[] arguments) {
         PrintStream out = System.out;
         Interpreter interpreter = Interpreter.writingTo(new StreamOutput(out));
-        // `jebol --do "quit/return 100"` runs the code and exits with what
-        // QUIT carried, which is how a real R3 binary behaves and what
-        // Rebol's own catch/quit test shells out to check.
         if (arguments.length >= 2 && arguments[0].equals("--do")) {
             interpreter.defineFreshWordsIn(arguments[1]);
             System.exit(exitCodeOf(interpreter.run(arguments[1])));

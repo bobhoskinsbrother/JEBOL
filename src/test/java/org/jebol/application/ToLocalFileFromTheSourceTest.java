@@ -68,7 +68,6 @@ class ToLocalFileFromTheSourceTest {
         @Test
         @DisplayName("and a run of slashes becomes one")
         void slashesCollapse() {
-            // `if (n == 0 || out[n-1] != OS_DIR_SEP) out[n++] = OS_DIR_SEP;`
             assertThat(answerTo("to-local-file %/a//b")).isEqualTo("\"/a/b\"");
             assertThat(answerTo("to-local-file %///a")).isEqualTo("\"/a\"");
         }
@@ -108,9 +107,6 @@ class ToLocalFileFromTheSourceTest {
         @Test
         @DisplayName("a relative path gets the current directory in front of it")
         void theCurrentDirectoryGoesInFront(@TempDir Path directory) {
-            // `if (full) l = OS_Get_Current_Dir(&lpath);` and then the path is
-            // appended to it, with a separator put in between if the directory
-            // did not end with one.
             Interpreter interpreter = reaching(directory, HostService.WORKING_DIRECTORY);
             assertThat(answerTo(interpreter, "(to-local-file/full %a) = "
                     + "rejoin [to-local-file what-dir \"a\"]"))
@@ -120,8 +116,6 @@ class ToLocalFileFromTheSourceTest {
         @Test
         @DisplayName("an absolute path keeps its own root")
         void anAbsolutePathIsLeftAlone(@TempDir Path directory) {
-            // The prepending is in the `else` branch of the leading-slash
-            // prescan, so a path that starts at the root never reaches it.
             assertThat(answerTo("to-local-file/full %/a/b")).isEqualTo("\"/a/b\"");
         }
 
@@ -135,9 +129,6 @@ class ToLocalFileFromTheSourceTest {
         @Test
         @DisplayName("a double dot backs out of a directory and leaves a separator behind")
         void aDoubleDotBacksOut() {
-            // `n -= (n > 2) ? 2 : n;` and then a walk back to the separator
-            // before that, and `c = c ? 0 : OS_DIR_SEP` puts one back. So the
-            // answer to a path ending in .. ends with a separator.
             assertThat(answerTo("to-local-file/full %/a/../b")).isEqualTo("\"/b\"");
             assertThat(answerTo("to-local-file/full %/a/b/..")).isEqualTo("\"/a/\"");
             assertThat(answerTo("to-local-file/full %/a/b/../../c")).isEqualTo("\"/c\"");
@@ -152,8 +143,6 @@ class ToLocalFileFromTheSourceTest {
         @Test
         @DisplayName("a name that begins with a dot is a name")
         void aDotIsOnlyASegmentWhenItIsTheWholeSegment() {
-            // The dot branch only fires when the segment is `.` or `..`
-            // exactly: what follows has to be a slash or the end of the path.
             assertThat(answerTo("to-local-file/full %/a/.hidden")).isEqualTo("\"/a/.hidden\"");
             assertThat(answerTo("to-local-file/full %/a/..x")).isEqualTo("\"/a/..x\"");
         }
@@ -161,7 +150,6 @@ class ToLocalFileFromTheSourceTest {
         @Test
         @DisplayName("and asking where the process is needs the grant that answers it")
         void theGrantIsNeeded(@TempDir Path directory) {
-            // Only for a relative path: an absolute one never asks.
             Interpreter refused = reaching(directory);
             assertThat(errorIdOf(refused, "to-local-file/full %a")).isEqualTo("no-service");
             assertThat(answerTo(refused, "to-local-file/full %/a")).isEqualTo("\"/a\"");

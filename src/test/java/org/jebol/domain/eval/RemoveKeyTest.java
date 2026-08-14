@@ -34,8 +34,6 @@ class RemoveKeyTest {
     @Test
     @DisplayName("a value is not a key, even when it looks like one")
     void onlyAnOddPlaceHoldsAKey() {
-        // The c in [a b b c] sits at the fourth place, so it is the value
-        // of b and not a key of its own.
         assertThat(answerTo("b: copy [a b b c] remove/key b 'c b = [a b b c]"))
                 .isEqualTo("#(true)");
     }
@@ -43,7 +41,6 @@ class RemoveKeyTest {
     @Test
     @DisplayName("the key is matched exactly")
     void theKeyMindsCase() {
-        // A word folds case everywhere else in REBOL and not here.
         assertThat(answerTo("b: copy [a b b c] remove/key b 'B b = [a b b c]"))
                 .isEqualTo("#(true)");
     }

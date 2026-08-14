@@ -26,13 +26,9 @@ class FindFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    // ---- the walk: start, end and step -------------------------------
-
     @Test
     @DisplayName("a forward search starts where the series is")
     void theWalkStartsAtThePosition() {
-        // start = index in the C, thus an item before the position is
-        // never reached.
         assertThat(answerTo("(find skip [1 2 1] 1 1) = [1]")).isEqualTo("#(true)");
     }
 
@@ -46,8 +42,6 @@ class FindFromTheSourceTest {
     @Test
     @DisplayName("/LAST starts at the end less the needle's width")
     void theLastSearchStartsAtTheEnd() {
-        // index = end - len in the C. A needle of three cannot begin in
-        // the last two places, thus the width has to be known first.
         assertThat(answerTo("(find/last [1 2 1] 1) = [1]")).isEqualTo("#(true)");
         assertThat(answerTo("(find/last [1 2 1 2] [1 2]) = [1 2]")).isEqualTo("#(true)");
     }
@@ -55,16 +49,12 @@ class FindFromTheSourceTest {
     @Test
     @DisplayName("/LAST walks back only as far as the position")
     void theLastSearchStopsAtThePosition() {
-        // start = index in the C for /LAST, thus it never answers a place
-        // behind where the series is.
         assertThat(answerTo("none? find/last skip [1 2 3] 2 1")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("/REVERSE starts one before the position and reaches the head")
     void theReverseSearchLooksBehind() {
-        // start = 0 and index-- in the C. It is the only search that
-        // answers a place the series has passed.
         assertThat(answerTo("(find/reverse tail [1 2 1] 1) = [1]")).isEqualTo("#(true)");
         assertThat(answerTo("(find/reverse tail \"abc\" \"a\") = \"abc\"")).isEqualTo("#(true)");
     }
@@ -72,7 +62,6 @@ class FindFromTheSourceTest {
     @Test
     @DisplayName("/PART bounds the end, counted from the position")
     void thePartBoundsTheEnd() {
-        // end = index + Partial1(...) in the C.
         assertThat(answerTo("none? find/part [1 2 3] 3 2")).isEqualTo("#(true)");
         assertThat(answerTo("(find/part [1 2 3] 3 3) = [3]")).isEqualTo("#(true)");
     }
@@ -87,26 +76,19 @@ class FindFromTheSourceTest {
     @Test
     @DisplayName("/MATCH looks at one place and then stops")
     void theMatchLooksOnlyHere() {
-        // The C breaks out of the loop after the first item when
-        // AM_FIND_MATCH is set.
         assertThat(answerTo("(find/match [x y] 'x) = [x y]")).isEqualTo("#(true)");
         assertThat(answerTo("none? find/match [y x] 'x")).isEqualTo("#(true)");
     }
 
-    // ---- the needle branches ----------------------------------------
-
     @Test
     @DisplayName("a word matches another word of any type, unless /CASE or /SAME")
     void aWordMatchesAcrossTypes() {
-        // The C's word branch: without /CASE or /SAME it compares the
-        // canonical spelling, thus a set-word matches a word.
         assertThat(answerTo("(find [a: b] 'a) = [a: b]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("with /CASE a word must be the same type as well")
     void aWordMindsItsTypeWhenAsked() {
-        // "Must be same type and spelling" in the C.
         assertThat(answerTo("none? find/case [a: b] 'a")).isEqualTo("#(true)");
     }
 
@@ -128,16 +110,12 @@ class FindFromTheSourceTest {
     @Test
     @DisplayName("a datatype needle matches any value of that type")
     void aDatatypeMatchesItsValues() {
-        // The C's datatype branch compares VAL_TYPE against the datatype
-        // rather than comparing the values.
         assertThat(answerTo("(find [1 \"a\" 2] string!) = [\"a\" 2]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("with /ONLY a datatype needle looks for the datatype itself")
     void aDatatypeCanBeLookedForAsAValue() {
-        // "not checking value types, only if value and target are really
-        // same" in the C.
         assertThat(answerTo("(find/only reduce [1 string!] string!) = reduce [string!]"))
                 .isEqualTo("#(true)");
         assertThat(answerTo("none? find/only [1 \"a\"] string!"))
@@ -159,13 +137,9 @@ class FindFromTheSourceTest {
     @Test
     @DisplayName("/SAME compares by identity rather than by value")
     void sameUsesTheStricterComparison() {
-        // The C calls Compare_Values with mode 3 for /SAME and Cmp_Value
-        // otherwise, thus 1 and 1.0 stop being one another.
         assertThat(answerTo("(index? find [1.0 1] 1) = 1")).isEqualTo("#(true)");
         assertThat(answerTo("(index? find/same [1.0 1] 1) = 2")).isEqualTo("#(true)");
     }
-
-    // ---- what the answer is ------------------------------------------
 
     @Test
     @DisplayName("FIND answers the series at the match")
@@ -176,7 +150,6 @@ class FindFromTheSourceTest {
     @Test
     @DisplayName("/TAIL answers the series past the match")
     void tailStepsOverTheNeedle() {
-        // ret += len in the C, thus a run of two steps over two.
         assertThat(answerTo("(find/tail [1 2 3] 1) = [2 3]")).isEqualTo("#(true)");
         assertThat(answerTo("(find/tail [1 2 3] [1 2]) = [3]")).isEqualTo("#(true)");
     }
@@ -190,13 +163,6 @@ class FindFromTheSourceTest {
     @Test
     @DisplayName("/SAME asks for the very same value, not an equal one")
     void sameIsIdentityAndNotEquality() {
-        // `Compare_Values(value, val, 3)` in the C, and 3 is "same
-        // (identical bits)" by its own comment.
-        //
-        // Two objects holding the same fields are equal and are not the
-        // same object, thus /SAME finds the one that was handed in and
-        // not the copy beside it. Comparing by value finds the copy,
-        // which looks right until two copies sit in the same block.
         assertThat(answerTo("""
                 one: context [a: 1] two: context [a: 1]
                 b: reduce [one two]
@@ -207,8 +173,6 @@ class FindFromTheSourceTest {
     @Test
     @DisplayName("a plain FIND takes the first equal value")
     void theOffPointForSame() {
-        // Both objects are equal, thus the first is found. This is what
-        // makes the pair above a test of identity rather than of order.
         assertThat(answerTo("""
                 one: context [a: 1] two: context [a: 1]
                 b: reduce [one two]
@@ -219,8 +183,6 @@ class FindFromTheSourceTest {
     @Test
     @DisplayName("/CASE is not /SAME")
     void caseDoesNotAskAboutIdentity() {
-        // The suite says so in a comment beside the assertion: "/case is
-        // not /same in this case".
         assertThat(answerTo("""
                 one: context [a: 1] two: context [a: 1]
                 b: reduce [one two]
@@ -241,8 +203,6 @@ class FindFromTheSourceTest {
     @Test
     @DisplayName("/SAME on a string minds case, which is what the C says")
     void sameOnAStringIsCase() {
-        // "/SAME has same functionality as /CASE for any-string!" in
-        // t-string.c. A string is compared by its characters either way.
         assertThat(answerTo("(find/same \"aAbcdAe\" \"A\") = \"AbcdAe\"")).isEqualTo("#(true)");
     }
 }

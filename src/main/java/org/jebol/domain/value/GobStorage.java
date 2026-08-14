@@ -1,10 +1,6 @@
 package org.jebol.domain.value;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 
 /**
  * What a {@code gob!} holds: a place on a screen, one piece of content, and a

@@ -67,8 +67,6 @@ class BinariesAreSeriesTest {
     @Test
     @DisplayName("REMOVE-EACH refuses even when it would remove nothing")
     void theGuardDoesNotDependOnTheData() {
-        // bin holds 202 and 254, so nothing here is below 3. A guard that
-        // fires only when something changes is not a guard.
         assertThat(errorIdOf("b: protect #{cafe} remove-each a b [a < 3]"))
                 .isEqualTo("protected");
     }

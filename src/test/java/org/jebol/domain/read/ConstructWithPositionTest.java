@@ -60,8 +60,6 @@ class ConstructWithPositionTest {
     @Test
     @DisplayName("a construct naming a block and holding something else is refused")
     void aWrongContentIsRefused() {
-        // Not a block of one item. Guessing here would make a typo read
-        // as something plausible.
         assertThat(answerTo("e: try [load {#(block! 1)}] either error? e [e/id] ['no-error]"))
                 .isEqualTo("malconstruct");
     }

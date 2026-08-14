@@ -51,8 +51,6 @@ class DirectoryNativesTest {
     @Test
     @DisplayName("MAKE-DIR says nothing when the directory is there already")
     void makeDirIsQuietTheSecondTime() {
-        // R3 says so in its own help text, thus a script can call it
-        // without asking first.
     }
 
     @Test
@@ -127,8 +125,6 @@ class DirectoryNativesTest {
     @Test
     @DisplayName("CHANGE-DIR cannot leave the directory the port was given")
     void theRootStillHolds(@TempDir Path directory) {
-        // Moving must not widen what a script can reach. The test is
-        // against the root and not against where the script is now.
         Interpreter interpreter = reaching(
                 directory, HostService.WORKING_DIRECTORY, HostService.FILES);
         assertThat(errorIdOf(interpreter, "change-dir %../")).isEqualTo("outside-root");
@@ -146,7 +142,6 @@ class DirectoryNativesTest {
     @Test
     @DisplayName("the two grants are separate")
     void readingDoesNotLetAScriptWander(@TempDir Path directory) {
-        // A host can want a script to read files and not want it to move.
         Interpreter interpreter = reaching(directory, HostService.FILES);
         assertThat(errorIdOf(interpreter, "what-dir")).isEqualTo("no-service");
         assertThat(errorIdOf(interpreter, "change-dir %.")).isEqualTo("no-service");

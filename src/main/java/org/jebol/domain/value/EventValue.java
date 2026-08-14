@@ -1,11 +1,6 @@
 package org.jebol.domain.value;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 /**
  * A thing that happened, waiting to be answered: a click, a key, a connection
@@ -113,9 +108,6 @@ public record EventValue(
      * are how the C says which it currently is.
      */
     public EventValue withData(int given, Flag raised) {
-        // noneOf and addAll rather than copyOf, which cannot read an empty
-        // collection: it takes the element type from the first element, and a fresh
-        // event has no flags at all.
         Set<Flag> now = EnumSet.noneOf(Flag.class);
         now.addAll(flags);
         now.remove(raised == Flag.HAS_XY ? Flag.HAS_CODE : Flag.HAS_XY);

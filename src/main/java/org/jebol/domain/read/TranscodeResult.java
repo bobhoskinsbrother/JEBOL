@@ -1,12 +1,8 @@
 package org.jebol.domain.read;
 
+import org.jebol.domain.value.*;
+
 import java.util.Optional;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.ErrorCategory;
-import org.jebol.domain.value.ErrorValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Value;
 
 /**
  * What a whole-source read produced: either every value in the source, or an
@@ -118,16 +114,6 @@ public sealed interface TranscodeResult {
                     failure.errorId(),
                     failure.description() + " at " + position);
             if (tokenKind.isPresent()) {
-                // ARG2 is the offending *token*, not the line. `Scan_Error` sets
-                // the three from three different places:
-                //
-                //     Set_String(&error->nearest, "(line N) " + the whole line);
-                //     Set_String(&error->arg1, the token's name);
-                //     Set_String(&error->arg2, Copy_Bytes(arg, size));  // bp..ep
-                //
-                // Giving ARG2 the line put the same text in two fields and left
-                // the one a script actually compares -- `e/arg2 = "$1*$2"` in
-                // Rebol's money group -- with the wrong thing in it.
                 built = ErrorValue.about(
                         ErrorCategory.SYNTAX,
                         failure.errorId(),

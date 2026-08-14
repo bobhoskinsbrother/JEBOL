@@ -45,9 +45,6 @@ class SyntaxErrorArgumentsFromTheSourceTest {
         @Test
         @DisplayName("names money as the kind and the whole token as the text")
         void anOperatorRunIntoMoney() {
-            // Rebol's money group, three of its four spellings: a money literal run
-            // into an operator with no space between. Each is one token as far as
-            // the reader is concerned, and none of them is a number.
             assertThat(answerTo("""
                     e: try [load {$1*$2}] all [e/id = 'invalid e/arg2 = "$1*$2"]"""))
                     .isEqualTo(TRUE);
@@ -77,8 +74,6 @@ class SyntaxErrorArgumentsFromTheSourceTest {
                     money? load {$1.50}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
                     money? load {-$1}""")).isEqualTo(TRUE);
-            // With spaces it is three values and no failure at all, which is the
-            // shape the four refusals above are contrasted with.
             assertThat(answerTo("""
                     length? load {$1 + $2}""")).isEqualTo("3");
         }
@@ -91,8 +86,6 @@ class SyntaxErrorArgumentsFromTheSourceTest {
         @Test
         @DisplayName("ARG1 is the kind, ARG2 the token, NEAR the line")
         void eachFieldItsOwn() {
-            // Asserted together, because the defect this replaces was ARG2 holding
-            // what NEAR holds. Two fields agreeing is the symptom.
             assertThat(answerTo("""
                     e: try [load {$1*$2}] e/arg1""")).isEqualTo("\"money\"");
             assertThat(answerTo("""
@@ -104,8 +97,6 @@ class SyntaxErrorArgumentsFromTheSourceTest {
         @Test
         @DisplayName("and NEAR carries the whole line, not the token")
         void nearIsTheLine() {
-            // Which is what makes them different fields: the token alone does not
-            // say where to look, and the line alone does not say what was wrong.
             assertThat(answerTo("""
                     e: try [load {1 $1*$2}] e/near"""))
                     .isEqualTo("\"(line 1) 1 $1*$2\"");

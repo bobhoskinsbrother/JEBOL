@@ -32,14 +32,6 @@ class QuitEndsTheRunTest {
         ScriptOutcome outcome = quitting("quit");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
-        // Unset, on the authority of Rebol's own suite: five assertions in
-        // evaluation-test.r3 read `unset? catch/quit [quit]`.
-        //
-        // This test used to assert none, citing the C's comment on the line
-        // that raises it -- `Halt_Code(RE_QUIT, val); // NONE if /return not
-        // set`. Both were measured: none costs five suite assertions and unset
-        // costs nothing, so the comment describes what QUIT hands over rather
-        // than what a caller gets back.
         assertThat(outcome.value().datatype().literalSpelling())
                 .as("a bare QUIT carries nothing, which is unset and not none")
                 .isEqualTo("unset!");
@@ -57,8 +49,6 @@ class QuitEndsTheRunTest {
     @Test
     @DisplayName("QUIT/RETURN carries values that look like nothing")
     void quitReturnCarriesDegenerateValues() {
-        // Zero, the empty string and the empty block each mold to something
-        // a careless implementation could confuse with "no value at all".
         assertThat(Interpreter.create().display(quitting("quit/return 0"))).isEqualTo("0");
         assertThat(Interpreter.create().display(quitting("quit/return \"\"")))
                 .isEqualTo("\"\"");
@@ -120,9 +110,6 @@ class QuitEndsTheRunTest {
     @Test
     @DisplayName("QUIT/NOW is accepted and behaves the same")
     void quitNowIsAccepted() {
-        // REBOL's /NOW skips its shutdown work. There is none to skip here,
-        // so the refinement exists to keep borrowed code running rather
-        // than to change anything.
         ScriptOutcome outcome = quitting("quit/now");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);

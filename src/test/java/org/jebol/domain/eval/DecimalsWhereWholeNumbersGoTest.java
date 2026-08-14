@@ -37,7 +37,6 @@ class DecimalsWhereWholeNumbersGoTest {
     @Test
     @DisplayName("EVEN? rounds a half away from zero before asking")
     void halvesRoundAwayFromZero() {
-        // 1.5 rounds to 2 and is even; 2.5 rounds to 3 and is not.
         assertThat(answerTo("mold reduce [even? 1.5 even? 2.5 even? 0.5]"))
                 .isEqualTo("\"[#(true) #(false) #(false)]\"");
     }

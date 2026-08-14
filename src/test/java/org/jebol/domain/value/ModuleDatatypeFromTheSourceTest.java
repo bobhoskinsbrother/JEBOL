@@ -60,9 +60,6 @@ class ModuleDatatypeFromTheSourceTest {
         @Test
         @DisplayName("a module is not an object, because the datatype is the difference")
         void aModuleIsNotAnObject() {
-            // types.reb gives module! its own row. Answering true here would
-            // make `object? m` a useless question and would send an OBJECT?
-            // branch down a path that expects no header.
             assertThat(answerTo("object? " + A_MODULE)).isEqualTo(FALSE);
         }
 
@@ -87,8 +84,6 @@ class ModuleDatatypeFromTheSourceTest {
         @Test
         @DisplayName("a private word is still the module's own, just not the library's")
         void aPrivateWordIsStillTheModulesOwn() {
-            // Private means it does not escape. It does not mean it is gone:
-            // the module's own code has to be able to call its own helpers.
             assertThat(answerTo("m: " + A_MODULE + " m/hidden-one")).isEqualTo("2");
         }
     }
@@ -107,11 +102,6 @@ class ModuleDatatypeFromTheSourceTest {
         @Test
         @DisplayName("the body runs, proved by a side effect that leaves the module")
         void theBodyRuns() {
-            // Appending to a block the module did not define, because that is
-            // the only kind of effect that escapes. `n: 9` in a body would
-            // not: a top-level set-word in a module body is a module variable
-            // and writes nothing outside, which is the isolation working
-            // rather than the body failing to run.
             assertThat(answerTo(
                     "b: copy [] make module! [[Title: \"t\"] [append b 9]] length? b"))
                     .isEqualTo("1");
@@ -128,10 +118,6 @@ class ModuleDatatypeFromTheSourceTest {
         @Test
         @DisplayName("the EXPORT keyword in a body works, which only MAKE-MODULE* implements")
         void theExportKeywordWorks() {
-            // The proof that this goes through Rebol's own function rather
-            // than a host-language copy. Nothing in the Java layer knows what
-            // the word EXPORT means in a module body; MAKE-MODULE* parses it
-            // out and appends to spec/exports.
             assertThat(answerTo(
                     "m: make module! [[Title: \"t\"] [export shown: 1 private: 2]] "
                     + "find mold spec-of m \"shown\"")).isNotEqualTo("_");
@@ -140,10 +126,6 @@ class ModuleDatatypeFromTheSourceTest {
         @Test
         @DisplayName("a name in the header is kept as a word")
         void theNameIsAWord() {
-            // MAKE-MODULE* asserts `spec/name [any-word! none!]` before it
-            // converts, so a header naming itself with a string is refused
-            // rather than coerced. Rebol's own headers write a word:
-            // codec-json.reb says `Name: json`.
             assertThat(answerTo(
                     "m: make module! [[Title: \"t\" Name: jots] [a: 1]] "
                     + "'jots = select spec-of m 'name")).isEqualTo(TRUE);
@@ -178,8 +160,6 @@ class ModuleDatatypeFromTheSourceTest {
         @Test
         @DisplayName("a block holding a spec and no body is refused")
         void aBlockWithNoBodyIsRefused() {
-            // `set [spec body mixins] spec` leaves body as none, and a module
-            // with no body is not a smaller module: it is a caller mistake.
             assertThat(errorIdFrom("make module! [[Title: \"t\"]]"))
                     .isNotEqualTo("no-error");
         }
@@ -202,10 +182,6 @@ class ModuleDatatypeFromTheSourceTest {
         @Test
         @DisplayName("a header field of the wrong datatype is refused")
         void aHeaderFieldOfTheWrongTypeIsRefused() {
-            // The header arrives as data read from source, so nothing has
-            // checked it. MAKE-MODULE*'s ASSERT/TYPE is what checks it, and
-            // a version that is not a tuple is the case that catches a
-            // hand-written header.
             assertThat(errorIdFrom("make module! [[Title: \"t\" Version: 5] [a: 1]]"))
                     .isNotEqualTo("no-error");
             assertThat(errorIdFrom("make module! [[Title: \"t\" Options: 5] [a: 1]]"))
@@ -240,9 +216,6 @@ class ModuleDatatypeFromTheSourceTest {
         @Test
         @DisplayName("two objects make a module")
         void toJoinsAHeaderAndAContext() {
-            // Not a convenience for scripts. MAKE-MODULE* finishes with
-            // `to module! reduce [spec context]`, so this is the step that
-            // turns the object it has been filling in into a module.
             assertThat(answerTo(
                     "module? to module! reduce [" + HEADER + " " + BODY + "]"))
                     .isEqualTo(TRUE);

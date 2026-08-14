@@ -84,9 +84,6 @@ class BinaryModifyFromTheSourceTest {
         @Test
         @DisplayName("a character above ASCII is its UTF-8 bytes")
         void aWideCharacterIsSeveralBytes() {
-            // U+2190 is three bytes. Writing the code point straight
-            // into the binary gives one, which is the reading to get
-            // wrong and looks right for every ASCII character.
             assertThat(answerTo("#{00E28690} = append #{00} \"^(2190)\""))
                     .isEqualTo("#(true)");
             assertThat(answerTo("#{E2869000} = head insert #{00} \"^(2190)\""))
@@ -116,9 +113,6 @@ class BinaryModifyFromTheSourceTest {
         @Test
         @DisplayName("/part on a character changes nothing, however large")
         void aCharacterHasNoParts() {
-            // A character is not a series, so there is nothing to take
-            // part of and the count is ignored rather than clamping the
-            // bytes it encodes to.
             assertThat(answerTo("#{0001} = append/part #{00} #\"^(01)\" 10"))
                     .isEqualTo("#(true)");
             assertThat(answerTo("#{00E28690} = append/part #{00} #\"^(2190)\" 10"))

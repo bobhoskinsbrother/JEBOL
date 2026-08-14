@@ -72,9 +72,6 @@ class WordThenAngleFromTheSourceTest {
         @Test
         @DisplayName("a tag after a name is a name and a tag")
         void aWordThenATag() {
-            // `scan_state->end = cp;` -- the token ends at the bracket and the
-            // bracket begins a new one. Rebol's own test asserts the pair with
-            // `parse b [word! tag!]`.
             assertThat(answerTo("""
                     mold load {a<a>}""")).isEqualTo("\"[a <a>]\"");
             assertThat(answerTo("""
@@ -84,9 +81,6 @@ class WordThenAngleFromTheSourceTest {
         @Test
         @DisplayName("and a closing tag too, which is the one delimiter excused")
         void aWordThenAClosingTag() {
-            // `(cp[1] != '/' && IS_LEX_DELIMIT(cp[1]))` -- the slash is let off the
-            // delimiter test on purpose, and the arm above says why in its own
-            // comment: "changed for </tag>".
             assertThat(answerTo("""
                     mold load {a</a>}""")).isEqualTo("\"[a </a>]\"");
         }
@@ -94,8 +88,6 @@ class WordThenAngleFromTheSourceTest {
         @Test
         @DisplayName("and an arrow word after a name is two words")
         void aWordThenAnArrow() {
-            // Which is what lets a dialect write `from<--to` without spaces.
-            // Rebol's own test asserts `parse b [word! word!]`.
             assertThat(answerTo("""
                     mold load {a<--}""")).isEqualTo("\"[a <--]\"");
             assertThat(answerTo("""
@@ -105,9 +97,6 @@ class WordThenAngleFromTheSourceTest {
         @Test
         @DisplayName("but a comparison written hard against a name is refused, not split")
         void anOperatorAgainstAName() {
-            // `return -type;`. Refusing rather than splitting is the point: `a<=b`
-            // reads as a comparison to a person, and splitting it would quietly
-            // make three values out of what somebody meant as one thought.
             assertThat(refusedAsAWord("""
                     {a<=}""")).isEqualTo(TRUE);
             assertThat(refusedAsAWord("""
@@ -119,8 +108,6 @@ class WordThenAngleFromTheSourceTest {
         @Test
         @DisplayName("and so is a bracket with nothing after it")
         void aBracketAtTheEnd() {
-            // `IS_LEX_DELIMIT(cp[1])` holds at the end of input, because
-            // `LEX_DELIMIT_END_FILE` is one of the delimiters.
             assertThat(refusedAsAWord("""
                     {a<}""")).isEqualTo(TRUE);
         }
@@ -133,8 +120,6 @@ class WordThenAngleFromTheSourceTest {
         @Test
         @DisplayName("a number ends at the bracket, whatever follows it")
         void aNumberEnds() {
-            // A number stops at anything that is not a digit, so the word rule
-            // never runs and the character after the bracket does not matter.
             assertThat(answerTo("""
                     mold load {1<}""")).isEqualTo("\"[1 <]\"");
             assertThat(answerTo("""
@@ -146,9 +131,6 @@ class WordThenAngleFromTheSourceTest {
         @Test
         @DisplayName("and so does anything else that is not a word")
         void aScalarEnds() {
-            // A date and an infinity are numbers as far as this is concerned, and
-            // `1.#INF<` is the case where splitting at the first illegal character
-            // would leave `1.` -- which is nothing at all.
             assertThat(answerTo("""
                     mold load {19-Jan-2010<}""")).isEqualTo("\"[19-Jan-2010 <]\"");
             assertThat(answerTo("""
@@ -163,7 +145,6 @@ class WordThenAngleFromTheSourceTest {
         @Test
         @DisplayName("a numeric last segment ends at the bracket")
         void aNumericSegment() {
-            // `[a/3 <] == try [load {a/3<}]` in Rebol's own test.
             assertThat(answerTo("""
                     mold load {a/3<}""")).isEqualTo("\"[a/3 <]\"");
             assertThat(answerTo("""
@@ -173,9 +154,6 @@ class WordThenAngleFromTheSourceTest {
         @Test
         @DisplayName("and a word last segment is refused, which is the same bracket")
         void aWordSegment() {
-            // `all [error? e: try [load {a/b<}] e/id = 'invalid e/arg1 = "word"]`,
-            // asserted by Rebol immediately after the case above. The bracket sits
-            // in the same place in both.
             assertThat(refusedAsAWord("""
                     {a/b<}""")).isEqualTo(TRUE);
         }
@@ -183,8 +161,6 @@ class WordThenAngleFromTheSourceTest {
         @Test
         @DisplayName("and the pair together, because either alone reads as a rule about paths")
         void thePairSideBySide() {
-            // Neither is a rule about paths. Asserted as a pair so that a change
-            // which makes one work by making the other wrong cannot pass.
             assertThat(answerTo("""
                     block? load {a/3<}""")).isEqualTo(TRUE);
             assertThat(answerTo("""

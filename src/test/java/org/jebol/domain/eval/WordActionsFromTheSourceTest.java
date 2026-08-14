@@ -46,10 +46,6 @@ class WordActionsFromTheSourceTest {
         @Test
         @DisplayName("the decoration is not counted")
         void theSigilIsNotPartOfIt() {
-            // A lit-word, a set-word, a get-word and an issue all count
-            // the same as the plain word. The C has the line that would
-            // count the decoration commented out beside the one that
-            // does not.
             assertThat(answerTo("length? quote 'a")).isEqualTo("1");
             assertThat(answerTo("length? #a")).isEqualTo("1");
             assertThat(answerTo("length? first [a:]")).isEqualTo("1");
@@ -59,8 +55,6 @@ class WordActionsFromTheSourceTest {
         @Test
         @DisplayName("a letter outside ASCII counts as one")
         void codePointsRatherThanBytes() {
-            // Counted in code points, so the two-byte letter counts
-            // once. Counting the UTF-8 bytes gives three here.
             assertThat(answerTo("length? #ša")).isEqualTo("2");
             assertThat(answerTo("length? quote 'ša")).isEqualTo("2");
         }
@@ -105,8 +99,6 @@ class WordActionsFromTheSourceTest {
         @Test
         @DisplayName("a string the scanner cannot read as one word is refused")
         void theRefusal() {
-            // Every one of these would build a word that no reader could
-            // load back, which is what the check exists to stop.
             assertThat(errorIdOf("to word! \"a,\"")).isEqualTo("invalid-chars");
             assertThat(errorIdOf("to word! \"a;\"")).isEqualTo("invalid-chars");
             assertThat(errorIdOf("to word! \"a[\"")).isEqualTo("invalid-chars");
@@ -138,8 +130,6 @@ class WordActionsFromTheSourceTest {
         @Test
         @DisplayName("spaces at the end are dropped rather than refused")
         void trailingSpaceIsForgiven() {
-            // The scanner takes the word and stops, and the leftover
-            // space is not held against it.
             assertThat(answerTo("(to word! \"x \") = 'x")).isEqualTo("#(true)");
             assertThat(answerTo("(to word! \"x^-\") = 'x")).isEqualTo("#(true)");
         }
@@ -167,9 +157,6 @@ class WordActionsFromTheSourceTest {
         @Test
         @DisplayName("an issue takes the laxer rule and keeps its punctuation")
         void fromAStringToAnIssue() {
-            // Scan_Issue allows a handful of specials that a word does
-            // not, which is why an issue can hold a version or a
-            // reference number.
             assertThat(answerTo("(to issue! \"a.b\") = #a.b")).isEqualTo("#(true)");
             assertThat(answerTo("(to issue! \"1+2\") = #1+2")).isEqualTo("#(true)");
             assertThat(errorIdOf("to issue! \"a b\"")).isEqualTo("invalid-chars");
@@ -191,9 +178,6 @@ class WordActionsFromTheSourceTest {
         @Test
         @DisplayName("every word TO WORD! makes reads back as the same word")
         void theWholePointOfTheCheck() {
-            // The reason the refusal exists: a word that cannot be read
-            // back is a value that cannot be saved. The suite walks all
-            // 256 bytes in three positions and asserts it for each.
             assertThat(answerTo("""
                     bad: copy []
                     for n 0 255 1 [

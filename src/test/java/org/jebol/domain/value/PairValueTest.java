@@ -57,14 +57,6 @@ class PairValueTest {
     @DisplayName("halves narrowed to single precision")
     class SinglePrecisionHalves {
 
-        // These two used to assert the opposite: that an infinite or
-        // not-a-number half was refused on construction, on the grounds
-        // that it would not mold back. Both mold back perfectly well --
-        // 1.#INF and 1.#NaN are readable literals -- and Rebol keeps
-        // them, so refusing made `as-pair 1e300 -1e300` fail where Rebol
-        // answers a pair. A pair's halves are C floats and a C float
-        // overflows to infinity; nothing in that path can refuse.
-
         @Test
         @DisplayName("a half too large for a float becomes infinite")
         void aLargeHalfOverflows() {
@@ -88,8 +80,6 @@ class PairValueTest {
         @Test
         @DisplayName("a fraction loses the digits a float cannot carry")
         void aFractionIsNarrowed() {
-            // 0.1 as a float and then widened again, which is what makes
-            // `first 0.1x0.2` print as 0.100000001490116.
             assertThat(PairValue.of(0.1, 0.2).x()).isEqualTo(0.10000000149011612d);
             assertThat(PairValue.of(0.1, 0.2).x()).isNotEqualTo(0.1d);
         }
@@ -190,8 +180,6 @@ class PairValueTest {
             assertThat(PairValue.of(1, 2)).isEqualTo(PairValue.of(1.0, 2.0));
         }
     }
-
-    // ---- laws ------------------------------------------------------------
 
     @Property
     void reversingTwiceGivesTheSamePair(

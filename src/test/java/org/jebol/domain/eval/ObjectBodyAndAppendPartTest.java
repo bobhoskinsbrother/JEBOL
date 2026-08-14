@@ -41,16 +41,12 @@ class ObjectBodyAndAppendPartTest {
     @Test
     @DisplayName("SELF is not in the body")
     void selfIsLeftOut() {
-        // Every object holds a word for itself, and listing it would make
-        // the body describe an object containing itself.
         assertThat(answerTo("(body-of make object! [a: 1]) = [a: 1]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("APPEND/PART reads only that many items of the source")
     void appendPartCountsItems() {
-        // Counted in items and not in pairs, so an odd count leaves a key
-        // with no value and that key is not added.
         String from = " [a 1 b 2 c 3] ";
         assertThat(answerTo("empty? body-of append/part make object! []" + from + "1"))
                 .isEqualTo("#(true)");
@@ -75,8 +71,6 @@ class ObjectBodyAndAppendPartTest {
     @Test
     @DisplayName("a negative /PART counts backwards from where the source is")
     void aNegativePartReadsBackwards() {
-        // From the tail there is nothing ahead, so counting forward would
-        // answer nothing at all.
         assertThat(answerTo(
                 "(body-of append/part make object! [] tail [a 1 b 2 c 3] -4) = [b: 2 c: 3]"))
                 .isEqualTo("#(true)");

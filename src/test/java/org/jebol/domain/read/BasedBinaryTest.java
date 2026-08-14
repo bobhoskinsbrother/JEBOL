@@ -53,9 +53,6 @@ class BasedBinaryTest {
     @Test
     @DisplayName("whitespace inside the braces is ignored")
     void whitespaceIsSkipped() {
-        // Read from strings, because a caret escape only becomes a
-        // newline or a tab inside one. Written straight into the source
-        // the reader would see the caret and the slash themselves.
         assertThat(answerTo("#{00} = 2#{0000 00 00}")).isEqualTo("#(true)");
         assertThat(answerTo("#{00} = load {2#^{0000^/0000^}}")).isEqualTo("#(true)");
         assertThat(answerTo("#{01} = load {2#^{0000^-0001^}}")).isEqualTo("#(true)");
@@ -74,7 +71,6 @@ class BasedBinaryTest {
     @Test
     @DisplayName("a body that does not fill its last byte is padded")
     void shortBodiesArePadded() {
-        // Refusing these is the tempting reading, and it is wrong.
         assertThat(answerTo("#{00} = 2#{000}")).isEqualTo("#(true)");
         assertThat(answerTo("#{00} = 16#{0}")).isEqualTo("#(true)");
     }
@@ -96,21 +92,12 @@ class BasedBinaryTest {
     @Test
     @DisplayName("a base with leading zeros is refused")
     void theBaseMustBeWrittenPlainly() {
-        // The base is read as a number first, which is why this is a
-        // complaint about the integer rather than about the binary.
         assertThat(errorIdOf("load \"0016#{FF}\"")).isEqualTo("invalid");
     }
 
     @Test
     @DisplayName("and a signed base is refused, because a base sits at the start of the token")
     void aSignedBaseIsRefused() {
-        // `if (cp == scan_state->begin) { // no +2 +16 +64 allowed`.
-        //
-        // This test asserted `no-error` until the divergence was closed: `+2#{}`
-        // used to read as the integer 2 and an empty binary. The check that catches
-        // `0016#` never saw it, because the reader takes the hash into the lexeme
-        // when a sign is present and leaves it ahead when one is not, so the two
-        // spellings arrive in different shapes.
         assertThat(errorIdOf("load \"+2#{}\"")).isEqualTo("invalid");
         assertThat(errorIdOf("load \"-2#{01}\"")).isEqualTo("invalid");
     }

@@ -49,7 +49,6 @@ class FindScriptTest {
     @Test
     @DisplayName("other text on the same line means there is no header")
     void theHeaderMustBeginALine() {
-        // This is the case that makes it more than a search for a word.
         assertThat(answerTo("none? find-script to binary! \"xx rebol [] 1\""))
                 .isEqualTo("#(true)");
     }

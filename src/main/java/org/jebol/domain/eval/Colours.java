@@ -119,7 +119,7 @@ final class Colours {
      * the same place.
      */
     static int[] tinted(int[] target, int[] mixture, double amount) {
-        double towards = Math.max(0.0, Math.min(1.0, amount));
+        double towards = Math.clamp(amount, 0.0, 1.0);
         double away = 1.0 - towards;
         int[] mixed = new int[3];
         for (int part = 0; part < 3; part++) {
@@ -128,7 +128,7 @@ final class Colours {
             double moved = from >= to
                     ? to + ((from - to) * away)
                     : from + ((to - from) * towards);
-            mixed[part] = Math.max(0, Math.min(255, (int) (0.5 + moved)));
+            mixed[part] = Math.clamp((int) (0.5 + moved), 0, 255);
         }
         return mixed;
     }

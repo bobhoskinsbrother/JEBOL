@@ -72,8 +72,6 @@ class DuplicatingRefinementTest {
     @Test
     @DisplayName("/part still finds its own argument when /dup is there too")
     void theTwoRefinementsDoNotCollide() {
-        // Only the refinements a caller names contribute arguments, so a
-        // fixed position reads one for the other.
         assertThat(answerTo("mold append/part copy [1] [2 3 4] 2"))
                 .isEqualTo("\"[1 2 3]\"");
         assertThat(answerTo("mold append/dup copy [1] 2 2")).isEqualTo("\"[1 2 2]\"");

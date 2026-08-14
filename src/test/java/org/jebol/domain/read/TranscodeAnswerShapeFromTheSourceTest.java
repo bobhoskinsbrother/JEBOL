@@ -61,8 +61,6 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("and an empty source is an empty block rather than a failure")
         void anEmptySourceIsAnEmptyBlock() {
-            // Asking what is in nothing has an answer. Asking for the next value of
-            // nothing does not, which is the group below.
             assertThat(answerTo("""
                     [] = transcode "\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -86,9 +84,6 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("/only reads one value too, and answers a block as /next does")
         void onlyReadsOneValueAndTheRest() {
-            // `if (GET_FLAG(scan_state->opts, SCAN_ONLY) || just_once) goto
-            // exit_block` -- the same line ends the loop for both. JEBOL ignored
-            // /ONLY entirely and read the whole source.
             assertThat(answerTo("""
                     [1 " 2"] = transcode/only "1 2\"""")).isEqualTo(TRUE);
         }
@@ -96,16 +91,6 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("but /only takes one value at every depth, so a block is dissected")
         void onlyDissectsBlocks() {
-            // The one place the two ways of asking for one value part company.
-            // SCAN_NEXT is switched off for anything nested -- `if (just_once)
-            // CLR_FLAG(scan_state->opts, SCAN_NEXT); // no deeper` -- and SCAN_ONLY
-            // is not, so it keeps stopping after one value inside the brackets too.
-            //
-            // The docstrings name it: /next is "blocks as single value" and /only is
-            // "blocks dissected".
-            // And the closing bracket is never consumed, so it turns up in what the
-            // caller is told remains unread. `goto exit_block` steps over the
-            // `if (mode_char == ']' || mode_char == ')') goto missing_error` check.
             assertThat(answerTo("""
                     [[1] " 2]"] = transcode/only "[1 2]\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -115,8 +100,6 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("and skipping that check means an unclosed block is not a failure")
         void anUnclosedBlockIsNotAFailureUnderOnly() {
-            // The consequence of the line above, and the one that would never be
-            // guessed: `transcode "["` raises, and `transcode/only "["` does not.
             assertThat(answerTo("""
                     error? try [transcode "[1"]""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -135,9 +118,6 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("/one answers the value alone, with no room for the rest")
         void oneAnswersTheValueAlone() {
-            // `if (one) { *D_RET = *BLK_SKIP(blk, 0); return R_RET; }` -- it returns
-            // before anything is appended, so the caller who asked for one value and
-            // nothing else gets exactly that.
             assertThat(answerTo("""
                     1 = transcode/one "1 2\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -163,9 +143,6 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("/error alone appends the unread text, with no other refinement")
         void errorAloneAppendsTheRest() {
-            // The case that makes the rule readable as one idea rather than three.
-            // A caller who wanted the failure handed to them is reading text they
-            // did not write, and wants to know where the reader got to.
             assertThat(answerTo("""
                     [1 2 ""] = transcode/error "1 2\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -175,8 +152,6 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("and the values read before the failure survive it")
         void theValuesBeforeTheFailureSurvive() {
-            // Rebol's own assertion. The tempting shape for a failing read is "the
-            // failure and nothing else", and it throws away work the reader did.
             assertThat(answerTo("""
                     all [
                         block? blk: transcode/error "1 2d"
@@ -200,8 +175,6 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("and Rebol's own binary case, where the remainder is the unread byte")
         void theBinaryCaseFromRebolsSuite() {
-            // load-test.r3: an unterminated string, and the newline it never reached
-            // handed back as a binary.
             assertThat(answerTo("""
                     all [
                         block? e: transcode/error to binary! {"test^/}
@@ -224,9 +197,6 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("and a failure under /next is not an answer of none")
         void aFailureIsNotNone() {
-            // JEBOL answered `[none "1d"]` here: the reader failed, the failure was
-            // dropped, and a caller walking a source was handed a value that looks
-            // like a value the source could have held.
             assertThat(answerTo("""
                     not error? transcode/next/error "1d\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -270,9 +240,6 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("and /error alone, which answers the failure rather than raising it")
         void errorAloneAnswersPastEnd() {
-            // `if (next && IS_END(BLK_SKIP(blk, 0))) { if (relax) { ... RE_PAST_END
-            // ... return } Trap0(RE_PAST_END); }`. So the empty source that answers
-            // an empty block to a plain caller answers a failure to this one.
             assertThat(answerTo("""
                     all [error? e: transcode/error "" e/id = 'past-end]"""))
                     .isEqualTo(TRUE);
@@ -297,9 +264,6 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("under /only, which is the shape Rebol's own loader reads headers with")
         void underOnly() {
-            // `sys-load.reb` line 204: `set/any [keyword: mark: line:]
-            // transcode/only/line start 1`. Three items, and the loader needs all
-            // three to walk a script header.
             assertThat(answerTo("""
                     [1 " 2" 1] = transcode/only/line "1 2" 1""")).isEqualTo(TRUE);
             assertThat(answerTo("""

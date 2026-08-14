@@ -34,8 +34,6 @@ class TranscodeNextTest {
     @Test
     @DisplayName("asking for a value where there is none is a failure")
     void anEmptySourceIsPastItsEnd() {
-        // None would be the wrong answer, because none is a value a
-        // source can genuinely hold.
         assertThat(errorIdOf("transcode/next \"\"")).isEqualTo("past-end");
         assertThat(errorIdOf("transcode/one \"\"")).isEqualTo("past-end");
     }
@@ -43,8 +41,6 @@ class TranscodeNextTest {
     @Test
     @DisplayName("a value is taken as far as it goes")
     void theLongestReadingWins() {
-        // "1" is already a whole value, so stopping at the first thing
-        // that reads leaves the 2 behind and answers the wrong number.
         assertThat(answerTo("(transcode/part/next \"123]\" 2) = [12 \"3]\"]"))
                 .isEqualTo("#(true)");
         assertThat(answerTo("(transcode/part/next \"123]\" 3) = [123 \"]\"]"))
@@ -62,8 +58,6 @@ class TranscodeNextTest {
     @Test
     @DisplayName("/PART bounds what is read, not what is left")
     void theBoundIsOnTheReading() {
-        // Otherwise a caller walking a source with a bound would find it
-        // empty after one step.
         assertThat(answerTo("(transcode/part/next \"123]\" 1) = [1 \"23]\"]"))
                 .isEqualTo("#(true)");
     }
@@ -78,8 +72,6 @@ class TranscodeNextTest {
     @Test
     @DisplayName("what is left comes back as the kind that went in")
     void theRemainderKeepsItsType() {
-        // Reading a binary leaves a binary. A string would be an answer
-        // the caller cannot feed back in.
         assertThat(answerTo(
                 "(transcode/next to binary! \"1 + 1\") = reduce [1 to binary! \" + 1\"]"))
                 .isEqualTo("#(true)");

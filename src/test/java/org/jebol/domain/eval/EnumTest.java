@@ -40,15 +40,6 @@ class EnumTest {
     @Test
     @DisplayName("a bare number after a name is refused, not read as that name's value")
     void aBareNumberIsRefused() {
-        // This asserted `e: enum [a 5 b] "x" e/b` was 6, and Rebol raises
-        // invalid-data for it -- confirmed by running the same source through
-        // the binary. Rebol's own rule wants a SET-WORD before a number:
-        //
-        //     | some set-word! pos: [integer! | issue! | binary! | char!]
-        //
-        // so a value is given as `a: 5` and a bare `a 5` is two names, the
-        // second of which is not a name. The third alternative in the rule
-        // exists to say so: `pos: 1 skip (cause-error 'Script 'invalid-data)`.
         assertThat(errorIdOf("enum [a 5 b] \"x\"")).isEqualTo("invalid-data");
         assertThat(answerTo("e: enum [a: 5 b] \"x\" e/b")).isEqualTo("6");
     }

@@ -1,14 +1,9 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.util.List;
 import java.util.Optional;
-import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * The parts a date answers to, read out of {@code PD_Date} in {@code t-date.c}.
@@ -55,16 +50,12 @@ final class DateParts {
     static Value of(DateValue date, Value selector) {
         String part = switch (selector) {
             case WordValue named -> named.canonical();
-            // `sym = SYM_YEAR + Int32(arg) - 1` with the range checked after,
-            // so a position outside the list answers none like an unknown name.
             case IntegerValue position -> position.magnitude() >= 1
                     && position.magnitude() <= IN_ORDER.size()
                     ? IN_ORDER.get((int) position.magnitude() - 1)
                     : "";
             default -> "";
         };
-        // `if (secs == NO_TIME && (sym == SYM_TIME || (sym >= SYM_HOUR && sym
-        // <= SYM_SECOND) || sym == SYM_ZONE)) return PE_NONE;`
         boolean aboutTheClock = List.of("time", "zone", "timezone", "hour", "minute", "second")
                 .contains(part);
         if (date.timeOfDay().isEmpty() && aboutTheClock) {
@@ -75,18 +66,12 @@ final class DateParts {
             case "month" -> IntegerValue.of(date.month());
             case "day" -> IntegerValue.of(date.day());
             case "time" -> date.timeOfDay().get();
-            // Both the time and the offset go, because a day is not an instant:
-            // `VAL_TIME(val) = NO_TIME; VAL_ZONE(val) = 0;`.
             case "date" -> DateValue.of(date.year(), date.month(), date.day());
-            // A written offset of zero and no written offset are one thing
-            // here, as they are in the written form, so this answers 0:00
-            // rather than none whenever there is a time.
             case "zone", "timezone" -> TimeValue.ofNanoseconds(
                     date.zoneMinutes().orElse(0) * 60L * NANOSECONDS_A_SECOND);
             case "hour" -> IntegerValue.of(hoursOf(date));
             case "minute" -> IntegerValue.of(minutesOf(date));
             case "second" -> secondOf(date);
-            // Monday is day one, which the C says in as many words.
             case "weekday" -> IntegerValue.of(asLocalDate(date).getDayOfWeek().getValue());
             case "yearday" -> IntegerValue.of(asLocalDate(date).getDayOfYear());
             case "utc" -> atZoneZero(date);
@@ -168,15 +153,11 @@ final class DateParts {
         long nanoseconds = date.timeOfDay().isEmpty()
                 ? 12L * 3600 * NANOSECONDS_A_SECOND
                 : nanosecondsOf(date) - date.zoneMinutes().orElse(0) * 60L * NANOSECONDS_A_SECOND;
-        // `if (t < 0) t = -t;` in Split_Time: "note: negative sign will be
-        // lost". An offset that carries the universal time back past midnight
-        // is read as its distance from it instead.
         long seconds = Math.abs(nanoseconds) / NANOSECONDS_A_SECOND;
         long hours = seconds / 3600;
         long minutes = seconds / 60 % 60;
         long wholeSeconds = seconds % 60;
         java.time.LocalDate day = asLocalDate(date);
-        // `if (time.h <= 12) { d--; time.h += 12; } else { time.h -= 12; }`
         if (hours <= 12) {
             day = day.minusDays(1);
             hours += 12;

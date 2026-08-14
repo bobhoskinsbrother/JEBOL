@@ -34,8 +34,6 @@ class DeclaredRefinementsTest {
     @Test
     @DisplayName("PI is a constant to the last bit, not to the digits it prints")
     void piKeepsItsBits() {
-        // It prints as fifteen digits and holds seventeen, so a script
-        // that writes the long form has to meet the same value.
         assertThat(answerTo("pi = 3.141592653589793")).isEqualTo("#(true)");
     }
 
@@ -51,8 +49,6 @@ class DeclaredRefinementsTest {
     @Test
     @DisplayName("CASE/ALL with an empty branch answers unset")
     void caseAllAnswersUnsetForAnEmptyBranch() {
-        // The boundary the suite pins: the last branch ran and produced
-        // nothing, which is different from no branch running at all.
         assertThat(answerTo("unset? case/all [true [1] true []]")).isEqualTo("#(true)");
     }
 
@@ -80,7 +76,6 @@ class DeclaredRefinementsTest {
     @Test
     @DisplayName("GET/ANY of a word that has a value answers the value")
     void getAnyIsUnchangedForAnOrdinaryWord() {
-        // The off point, so /ANY cannot be answering unset for everything.
         assertThat(answerTo("q: 5 get/any 'q")).isEqualTo("5");
     }
 
@@ -116,8 +111,6 @@ class DeclaredRefinementsTest {
     @Test
     @DisplayName("the inverse trigonometric natives answer radians when asked")
     void theInverseTrigonometryAnswersRadians() {
-        // A quarter turn, which is 90 in degrees and pi over 2 here. The
-        // two are far enough apart that no rounding could confuse them.
         assertThat(answerTo("(arccosine/radians 0) - (pi / 2) < 1E-13")).isEqualTo("#(true)");
         assertThat(answerTo("0.0 = arcsine/radians 0")).isEqualTo("#(true)");
         assertThat(answerTo("0.0 = arctangent/radians 0")).isEqualTo("#(true)");
@@ -141,8 +134,6 @@ class DeclaredRefinementsTest {
     @Test
     @DisplayName("SHIFT keeps the sign without the refinement")
     void shiftIsUnchangedWithoutTheRefinement() {
-        // The pair that tells them apart: the same right shift of a
-        // negative number, signed and unsigned.
         assertThat(answerTo("shift -8 -1")).isEqualTo("-4");
         assertThat(answerTo("shift/logical 8 -1")).isEqualTo("4");
     }
@@ -157,8 +148,6 @@ class DeclaredRefinementsTest {
     @Test
     @DisplayName("PUT/CASE matches its key exactly")
     void putCaseDoesNotFoldCase() {
-        // Compared in REBOL, because a molded block of strings has to
-        // survive two rounds of quoting to reach an assertion here.
         assertThat(answerTo(
                 "v: reduce [\"A\" 1 \"a\" 2] put/case v \"A\" 4 v = reduce [\"A\" 4 \"a\" 2]"))
                 .isEqualTo("#(true)");
@@ -167,7 +156,6 @@ class DeclaredRefinementsTest {
     @Test
     @DisplayName("PUT folds case without the refinement")
     void putFoldsCaseWithoutTheRefinement() {
-        // The same block and the same key, and a different entry changes.
         assertThat(answerTo(
                 "w: reduce [\"A\" 1 \"a\" 2] put w \"a\" 9 w = reduce [\"A\" 9 \"a\" 2]"))
                 .isEqualTo("#(true)");
@@ -184,8 +172,6 @@ class DeclaredRefinementsTest {
     @Test
     @DisplayName("plain SELECT treats them as one key")
     void selectFoldsTheNumbersTogether() {
-        // Without this the test above proves nothing: it would pass just
-        // as well if SELECT already compared exactly.
         assertThat(answerTo("first select [1.0 [1] 1 [2]] 1")).isEqualTo("1");
     }
 

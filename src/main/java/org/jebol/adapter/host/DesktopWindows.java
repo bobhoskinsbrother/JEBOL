@@ -1,8 +1,9 @@
 package org.jebol.adapter.host;
 
-import java.awt.Color;
-import java.awt.Desktop;
-import java.awt.GraphicsEnvironment;
+import org.jebol.domain.eval.WindowPort;
+
+import javax.swing.*;
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -11,11 +12,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import javax.swing.JColorChooser;
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
-import javax.swing.JPasswordField;
-import org.jebol.domain.eval.WindowPort;
 
 /**
  * The operator's own screen, through the JDK's desktop and Swing.
@@ -51,8 +47,6 @@ public final class DesktopWindows implements WindowPort {
             throw new Denied("no-service", "this machine has no browser to open");
         }
         try {
-            // A file and a URL reach the browser differently: a file has to
-            // become a file URI first, and a bare path is not one.
             URI where = target.startsWith("/") || target.startsWith("./")
                     ? new File(target).toURI()
                     : new URI(target);
@@ -117,8 +111,6 @@ public final class DesktopWindows implements WindowPort {
         if (chooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) {
             return Optional.empty();
         }
-        // A directory ends with a slash, which is how everything else in the
-        // language tells one from a file.
         String chosen = chooser.getSelectedFile().getPath();
         return Optional.of(chosen.endsWith("/") ? chosen : chosen + "/");
     }
@@ -140,9 +132,6 @@ public final class DesktopWindows implements WindowPort {
     @Override
     public Optional<String> askForPassword() {
         requireADisplay();
-        // A password field rather than a text field, so what the operator
-        // types does not appear on the screen. That is the whole reason this
-        // is a separate request.
         JPasswordField typing = new JPasswordField();
         int chose = JOptionPane.showConfirmDialog(
                 null, typing, "Password",
@@ -150,8 +139,6 @@ public final class DesktopWindows implements WindowPort {
         if (chose != JOptionPane.OK_OPTION) {
             return Optional.empty();
         }
-        // Cleared after reading, because a char array is the reason
-        // JPasswordField hands one back rather than a String.
         char[] typed = typing.getPassword();
         String secret = new String(typed);
         Arrays.fill(typed, '\0');

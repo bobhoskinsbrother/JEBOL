@@ -1,20 +1,11 @@
 package org.jebol.application;
 
+import org.jebol.domain.value.*;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.JavaObjectValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
 
 /**
  * Converting between REBOL values and host values.

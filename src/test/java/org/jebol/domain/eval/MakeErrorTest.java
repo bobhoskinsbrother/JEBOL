@@ -26,10 +26,6 @@ class MakeErrorTest {
     @Test
     @DisplayName("a block spec gives an error of that type and id")
     void aBlockSpecIsHonoured() {
-        // Compared as words rather than as text. A real R3 keeps whichever
-        // spelling the caller wrote -- `Math` for one it raised itself and
-        // `math` for one built from a spec saying 'math -- and word
-        // equality ignores case, so nothing depends on which.
         assertThat(answerTo(
                 "e: make error! [type: 'math id: 'positive] "
                         + "mold reduce [e/type = 'math e/id = 'positive]"))
@@ -46,8 +42,6 @@ class MakeErrorTest {
     @Test
     @DisplayName("a code in the spec is ignored")
     void aCodeInTheSpecIsIgnored() {
-        // The code follows from the type. Letting a caller set it would
-        // let an error claim a category its code contradicts.
         assertThat(answerTo(
                 "e: make error! [code: 500 type: 'math id: 'overflow] e/type = 'math"))
                 .isEqualTo("#(true)");
@@ -64,11 +58,6 @@ class MakeErrorTest {
     @Test
     @DisplayName("an empty block raises, and what is caught is invalid-error")
     void anEmptyBlockRaises() {
-        // This test asserted that the call ANSWERS an error, which was
-        // wrong: the C's Find_Error_Info reaches Trap0(RE_INVALID_ERROR)
-        // for a spec that names no type or no id, so the call raises and
-        // only a TRY holds the internal invalid-error. error-test.r3
-        // asserts the raised shape twice.
         assertThat(answerTo("""
                 e: try [make error! []] reduce [e/type e/id]"""))
                 .isEqualTo("[Internal invalid-error]");

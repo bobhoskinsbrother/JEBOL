@@ -46,8 +46,6 @@ class BitsetPathFromTheSourceTest {
         @Test
         @DisplayName("a character it does not hold answers false, never none")
         void anAbsentCharacterAnswersFalse() {
-            // `SET_LOGIC(pvs->store, Check_Bits(...))` -- a logic either way.
-            // The two look alike in a condition and part company here.
             assertThat(answerTo("b: charset \"abc\" b/(#\"z\")")).isEqualTo(FALSE);
             assertThat(answerTo("b: charset \"abc\" logic? b/(#\"z\")")).isEqualTo(TRUE);
             assertThat(answerTo("b: charset \"abc\" none? b/(#\"z\")")).isEqualTo(FALSE);
@@ -84,8 +82,6 @@ class BitsetPathFromTheSourceTest {
         @Test
         @DisplayName("the set the word holds changes, so a parse rule sees it")
         void theSetItselfChanges() {
-            // The point of writing rather than building a new set: the rule
-            // that already refers to the word picks the change up.
             assertThat(answerTo("b: charset \"a\" b/(#\"z\"): true "
                     + "parse \"z\" [some b]")).isEqualTo(TRUE);
         }
@@ -93,15 +89,10 @@ class BitsetPathFromTheSourceTest {
         @Test
         @DisplayName("writing to a complemented set inverts what true means")
         void writingToAComplementedSetIsInverted() {
-            // `t = IS_TRUE(val); if (BITS_NOT(ser)) t = !t;` -- a complemented
-            // set holds what its octets do not name, so putting a character in
-            // means clearing the octet for it. The inversion changes nothing
-            // for an ordinary set, which is why it is easy to leave out.
             assertThat(answerTo("b: complement charset \"a\" b/(#\"z\"): true b/(#\"z\")"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("b: complement charset \"a\" b/(#\"z\"): false b/(#\"z\")"))
                     .isEqualTo(FALSE);
-            // And the character that was already outside stays outside.
             assertThat(answerTo("b: complement charset \"a\" b/(#\"z\"): true b/(#\"a\")"))
                     .isEqualTo(FALSE);
         }
@@ -114,9 +105,6 @@ class BitsetPathFromTheSourceTest {
         @Test
         @DisplayName("the URI set can be copied and widened by one character")
         void theUriSetCanBeWidened() {
-            // The line in sys-ports.reb, exactly:
-            //     enhex-bits: copy system/catalog/bitsets/uri
-            //     enhex-bits/(#"%"): true
             assertThat(answerTo("bits: copy system/catalog/bitsets/uri "
                     + "bits/(#\"%\"): true bits/(#\"%\")")).isEqualTo(TRUE);
         }
@@ -124,8 +112,6 @@ class BitsetPathFromTheSourceTest {
         @Test
         @DisplayName("and the copy is independent of the catalogue's own set")
         void theCopyIsIndependent() {
-            // COPY is in that line for a reason. Widening the catalogue's set
-            // would change every later use of it.
             assertThat(answerTo("bits: copy system/catalog/bitsets/uri "
                     + "bits/(#\"%\"): true system/catalog/bitsets/uri/(#\"%\")"))
                     .isEqualTo(FALSE);
@@ -134,9 +120,6 @@ class BitsetPathFromTheSourceTest {
         @Test
         @DisplayName("the four bitsets Rebol has in its catalogue and JEBOL had not")
         void theCatalogueIsComplete() {
-            // sys-ports.reb reads URI. NOT-CRLF, URI-COMPONENT and
-            // QUOTED-PRINTABLE come from the same object in sysobj.reb and
-            // were missing for the same reason.
             assertThat(answerTo("bitset? system/catalog/bitsets/uri")).isEqualTo(TRUE);
             assertThat(answerTo("bitset? system/catalog/bitsets/uri-component"))
                     .isEqualTo(TRUE);
@@ -151,8 +134,6 @@ class BitsetPathFromTheSourceTest {
             assertThat(answerTo("system/catalog/bitsets/uri/(#\"a\")")).isEqualTo(TRUE);
             assertThat(answerTo("system/catalog/bitsets/uri/(#\"9\")")).isEqualTo(TRUE);
             assertThat(answerTo("system/catalog/bitsets/uri/(#\"/\")")).isEqualTo(TRUE);
-            // A space and a percent sign both need encoding, so neither is in
-            // the set. The percent sign is what the url-parser adds.
             assertThat(answerTo("system/catalog/bitsets/uri/(#\" \")")).isEqualTo(FALSE);
             assertThat(answerTo("system/catalog/bitsets/uri/(#\"%\")")).isEqualTo(FALSE);
         }

@@ -50,7 +50,6 @@ class RemainderAndModuloTest {
     @Test
     @DisplayName("MOD is REMAINDER too, despite the name")
     void modIsInTheRemainderGroup() {
-        // The first three letters of MODULO, and the other function.
         assertThat(answerTo("mold reduce [mod -7 3  mod 7 -3  mod -7 -3  mod 7 3]"))
                 .isEqualTo("\"[-1 1 -1 1]\"");
     }
@@ -73,7 +72,6 @@ class RemainderAndModuloTest {
     @Test
     @DisplayName("the two agree when both operands are positive")
     void theyAgreeOnPositives() {
-        // Which is why getting this wrong survives most test suites.
         assertThat(answerTo(
                 "mold reduce [7 % 3  7 %% 3  mod 7 3  remainder 7 3  modulo 7 3]"))
                 .isEqualTo("\"[1 1 1 1 1]\"");
@@ -89,7 +87,6 @@ class RemainderAndModuloTest {
     @Test
     @DisplayName("% walks the whole range the way R3 does")
     void percentAcrossARange() {
-        // The suite's own case, which is what pointed at this.
         assertThat(answerTo("b: copy [] for i -7 7 1 [append b i % -3] mold b"))
                 .isEqualTo("\"[-1 0 -2 -1 0 -2 -1 0 1 2 0 1 2 0 1]\"");
     }

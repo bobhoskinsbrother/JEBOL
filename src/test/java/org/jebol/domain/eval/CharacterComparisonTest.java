@@ -41,9 +41,6 @@ class CharacterComparisonTest {
     @Test
     @DisplayName("ordering goes by code point and folds nothing")
     void orderingDoesNotFoldCase() {
-        // The pair that would go the other way under a folding compare:
-        // small a sorts after capital B by code point and before it by
-        // letter. R3 goes by code point.
         assertThat(answerTo("#\"a\" < #\"B\"")).isEqualTo("#(false)");
         assertThat(answerTo("#\"a\" > #\"B\"")).isEqualTo("#(true)");
     }
@@ -77,8 +74,6 @@ class CharacterComparisonTest {
     @Test
     @DisplayName("/CASE turns the folding off where it is offered")
     void caseTurnsTheFoldingOff() {
-        // Without this the tests above would pass just as well on a FIND
-        // that could not tell the two apart at all.
         assertThat(answerTo("first first find/case/tail [#\"A\" [1] #\"a\" [2]] #\"a\""))
                 .isEqualTo("2");
     }
@@ -100,8 +95,6 @@ class CharacterComparisonTest {
     @Test
     @DisplayName("the rest of the family still refuses none")
     void theOthersAreNotSoForgiving() {
-        // Named exceptions rather than a rule about none, so the ones that are
-        // not exceptions have to be pinned too. FIRST, HEAD and NEXT all raise.
         assertThat(errorIdOf("first none")).isNotEqualTo("no-error");
         assertThat(errorIdOf("head none")).isNotEqualTo("no-error");
         assertThat(errorIdOf("next none")).isNotEqualTo("no-error");
@@ -110,12 +103,6 @@ class CharacterComparisonTest {
     @Test
     @DisplayName("and TAIL? refuses none: the declaration is the door")
     void tailRefusesNone() {
-        // This test asserted true here twice, each time from half the C.
-        // REBTYPE(None) has the arm -- `case A_TAILQ: if (IS_NONE(val))
-        // return R_TRUE;` -- but the declared spec in actions.reb has no
-        // none!, so a direct call never reaches the arm. EMPTY? reaches it,
-        // because Rebol's own mezz builds EMPTY? as `make :tail?` with a
-        // spec that adds none!. Line 97 above pins that half.
         assertThat(errorIdOf("tail? none")).isEqualTo("expect-arg");
     }
 }

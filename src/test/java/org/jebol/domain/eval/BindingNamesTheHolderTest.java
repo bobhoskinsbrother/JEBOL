@@ -137,9 +137,6 @@ class BindingNamesTheHolderTest {
         interpreter.defineFreshWordsIn("outer-value: 10 holder: make object! [a: 1]");
         interpreter.run("outer-value: 10 holder: make object! [a: 1]");
 
-        // OUTER-VALUE lives above the object, so neither branch may claim
-        // the object is its home. Asking each where it lives, and hanging
-        // a new name there, must reach the same place.
         String throughAWord = "bind/new 'left-by-word bind 'outer-value holder";
         String throughABlock = "bind/new 'left-by-block first bind [outer-value] holder";
         for (String each : List.of(throughAWord, throughABlock)) {

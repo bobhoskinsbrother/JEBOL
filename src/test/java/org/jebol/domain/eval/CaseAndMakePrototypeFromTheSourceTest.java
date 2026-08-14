@@ -45,11 +45,6 @@ class CaseAndMakePrototypeFromTheSourceTest {
         @Test
         @DisplayName("a truthy condition with nothing after it answers logic true")
         void aTrailingTruthyConditionAnswersTrue() {
-            // `if (index >= SERIES_TAIL(block)) return R_TRUE;` -- reached
-            // after a condition came out truthy and the walk found no branch
-            // to pair with it. This is what makes a trailing expression a
-            // default clause whose side effect is the point, and Rebol's own
-            // CLEAN-PATH ends with exactly that shape.
             assertThat(answerTo("case [true]")).isEqualTo(TRUE);
             assertThat(answerTo("case [false [1] true]")).isEqualTo(TRUE);
             assertThat(errorIdOf("case [true]")).isEqualTo(NO_ERROR);
@@ -58,8 +53,6 @@ class CaseAndMakePrototypeFromTheSourceTest {
         @Test
         @DisplayName("the trailing condition is still evaluated, so its effect happens")
         void theTrailingConditionIsEvaluated() {
-            // The point of the shape: the answer is thrown away and the
-            // assignment is not.
             assertThat(answerTo("x: 0 case [false [1] x: 9] x")).isEqualTo("9");
             assertThat(answerTo("x: 0 case [true [1] x: 9] x")).isEqualTo("0");
         }
@@ -67,9 +60,6 @@ class CaseAndMakePrototypeFromTheSourceTest {
         @Test
         @DisplayName("a false condition skips its branch without evaluating it")
         void aFalseConditionSkipsWithoutEvaluating() {
-            // `if (IS_FALSE(ds)) index++;` -- the branch is stepped over, not
-            // run. So a branch that would fail is harmless behind a false
-            // condition.
             assertThat(answerTo("x: 0 case [false [x: 1] true [x: 2]] x")).isEqualTo("2");
             assertThat(errorIdOf("case [false [1 / 0] true [1]]")).isEqualTo(NO_ERROR);
         }
@@ -77,8 +67,6 @@ class CaseAndMakePrototypeFromTheSourceTest {
         @Test
         @DisplayName("a branch that is not a block is its own answer")
         void aBareBranchAnswersItself() {
-            // The branch is evaluated once as a value and run a second time
-            // only `if (IS_BLOCK(ds))`. So a bare value is not a mistake.
             assertThat(answerTo("case [true 1]")).isEqualTo("1");
             assertThat(answerTo("case [true \"a\"]")).isEqualTo("\"a\"");
             assertThat(answerTo("case [true [1]]")).isEqualTo("1");
@@ -87,7 +75,6 @@ class CaseAndMakePrototypeFromTheSourceTest {
         @Test
         @DisplayName("no condition truthy answers none")
         void nothingTruthyAnswersNone() {
-            // `return R_NONE;` after the loop runs out.
             assertThat(answerTo("case [false [1] false [2]]")).isEqualTo("_");
             assertThat(answerTo("case []")).isEqualTo("_");
         }
@@ -115,22 +102,8 @@ class CaseAndMakePrototypeFromTheSourceTest {
         @Test
         @DisplayName("MAKE on a series value builds an empty series of that datatype")
         void aValueStandsForItsOwnDatatype() {
-            // `type = VAL_TYPE(value); if (type == REB_DATATYPE) type =
-            // VAL_DATATYPE(value);` -- two lines, and the first is the one
-            // that matters: MAKE takes a value as readily as a datatype and
-            // reads the value's own datatype off it.
-            //
-            // Rebol's own CLEAN-PATH writes `out: make file length? file` with
-            // the comment "same datatype", which is the whole reason the rule
-            // exists: it wants an empty series of whatever kind it was handed.
             assertThat(answerTo("file? make %a/b 10")).isEqualTo(TRUE);
             assertThat(answerTo("empty? make %a/b 10")).isEqualTo(TRUE);
-            // Not asserted here: R3 molds the empty file as %"" and JEBOL
-            // molds it as a bare %, which does not read back. That is a
-            // molder defect rather than a MAKE one -- s-mold.c quotes a file
-            // that needs it -- and it belongs to the reader and molder work
-            // in TODO.md. Found by this test, recorded rather than widened
-            // into it.
         }
 
         @Test
@@ -155,9 +128,6 @@ class CaseAndMakePrototypeFromTheSourceTest {
         @Test
         @DisplayName("the number is a capacity and not a value, which is MAKE's whole difference from TO")
         void theNumberIsACapacity() {
-            // `make_string(arg, action == A_MAKE, type)` -- the MAKE flag is
-            // what turns the number into a capacity. TO would read it as
-            // something to convert.
             assertThat(answerTo("length? make [1 2] 10")).isEqualTo("0");
             assertThat(answerTo("length? make \"ab\" 10")).isEqualTo("0");
         }
@@ -172,8 +142,6 @@ class CaseAndMakePrototypeFromTheSourceTest {
         @Test
         @DisplayName("MAKE on a value with none is refused")
         void noneIsRefused() {
-            // `if (IS_NONE(arg)) Trap_Make(type, arg);` -- before anything
-            // else, so it applies to the prototype form as well.
             assertThat(errorIdOf("make %a none")).isNotEqualTo(NO_ERROR);
             assertThat(errorIdOf("make \"a\" none")).isNotEqualTo(NO_ERROR);
         }

@@ -70,10 +70,6 @@ final class CodepointBuffer {
     }
 
     String text(int zeroBasedFrom, int zeroBasedTo) {
-        // The caller's position may sit past the end, because shortening
-        // the buffer underneath a string value leaves that value
-        // stranded. REBOL treats such a value as empty and asks PAST?
-        // about it; this used to build a StringBuilder of negative size.
         if (zeroBasedFrom >= zeroBasedTo) {
             return "";
         }

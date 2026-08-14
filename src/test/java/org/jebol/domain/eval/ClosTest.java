@@ -35,8 +35,6 @@ class ClosTest {
     @Test
     @DisplayName("the names of a call outlive the call")
     void theFrameOutlivesTheCall() {
-        // This is what makes a closure a closure. The inner function
-        // still reads x after the outer call has finished.
         assertThat(answerTo("f: clos [x] [does [x]] g: f 1 g")).isEqualTo("1");
     }
 
@@ -56,8 +54,6 @@ class ClosTest {
     @Test
     @DisplayName("the spec and the body are copied")
     void neitherIsShared() {
-        // COPY/DEEP, so a caller that changes the block afterwards does
-        // not change the function.
         assertThat(answerTo("b: [1] f: clos [] b append b 2 f")).isEqualTo("1");
     }
 }

@@ -1,9 +1,10 @@
 package org.jebol.domain.eval;
 
-import java.util.List;
-import java.util.Set;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Value;
+
+import java.util.List;
+import java.util.Set;
 
 /**
  * What a native does when it is called, told which refinements were used.

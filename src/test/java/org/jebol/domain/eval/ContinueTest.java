@@ -47,8 +47,6 @@ class ContinueTest {
     @Test
     @DisplayName("WHILE re-tests its condition")
     void theConditionIsAskedAgain() {
-        // The round ends and the loop does not, so the condition still
-        // decides whether there is another.
         assertThat(answerTo(
                 "n: 0 r: copy [] while [n < 3] [n: n + 1 continue append r n] "
                         + "all [empty? r n = 3]"))
@@ -58,8 +56,6 @@ class ContinueTest {
     @Test
     @DisplayName("BREAK still stops the loop outright")
     void breakIsNotContinue() {
-        // The off point. If CONTINUE were caught where BREAK is, the two
-        // would be the same word.
         assertThat(answerTo(
                 "r: copy [] repeat i 3 [if i = 2 [break] append r i] r = [1]"))
                 .isEqualTo("#(true)");
@@ -76,8 +72,6 @@ class ContinueTest {
     @Test
     @DisplayName("a loop whose last round continued answers none")
     void theCutShortRoundAnswersNothing() {
-        // Not whatever the round before it happened to leave, which is
-        // what a skipped round would answer if it were simply passed over.
         assertThat(answerTo("none? loop 2 [continue 5]")).isEqualTo("#(true)");
     }
 

@@ -90,8 +90,6 @@ class WordCharactersTest {
     @Test
     @DisplayName("a tag may follow a number as readily as a word can")
     void aTagFollowsANumber() {
-        // The remainder need not be all symbols. Requiring that got
-        // `1.0<` right and refused `1.0<a>`, because a tag has letters.
         assertThat(answerTo("(load {1.0<a>}) = [1.0 <a>]")).isEqualTo("#(true)");
         assertThat(answerTo("(load {1.#INF<a>}) = [1.#INF <a>]")).isEqualTo("#(true)");
     }
@@ -99,16 +97,12 @@ class WordCharactersTest {
     @Test
     @DisplayName("the angle bracket wins over an earlier illegal character")
     void theBracketEndsTheValue() {
-        // `1.#INF<` holds a hash at index two and a bracket at index six.
-        // Splitting at the hash leaves "1.", which is nothing at all.
         assertThat(answerTo("(load {1.#INF<}) = [1.#INF <]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a lexeme starting with a bracket is a word only if it is all symbols")
     void aBracketLedLexemeNeedsSymbolsThroughout() {
-        // `<2` is neither a word nor a tag, and reading it as a word is
-        // what let `1<2` split into two values R3 refuses outright.
         assertThat(idOf("{1<2}")).isEqualTo("invalid");
     }
 }

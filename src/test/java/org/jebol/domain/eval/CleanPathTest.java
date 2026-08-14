@@ -70,8 +70,6 @@ class CleanPathTest {
     @Test
     @DisplayName("without /ONLY the current directory is needed")
     void theWorkingDirectoryGrantIsNeeded() {
-        // A relative path is put after the current directory, thus a host
-        // that did not grant the working directory gets a refusal.
         String source = "e: try [clean-path %a/b] either error? e [e/id] ['no-error]";
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard());
         interpreter.defineFreshWordsIn(source);

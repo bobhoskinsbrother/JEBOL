@@ -53,7 +53,6 @@ class SystemStateTest {
     @Test
     @DisplayName("a block handler reaches the thrown value through last-result")
     void aBlockHandlerCanReadIt() {
-        // The whole reason the pair exists: a block has no argument.
         assertThat(answerTo("catch/with [throw 3] [system/state/last-result * 10]"))
                 .isEqualTo("30");
     }
@@ -69,11 +68,6 @@ class SystemStateTest {
     @Test
     @DisplayName("system/options names the places the interpreter was started from")
     void theOptionsAreFiles() {
-        // HOME, PATH and DATA are files. BOOT is none, and sysobj.reb says
-        // why on the line that reads it: "boot (path to the exe) may be none
-        // if not resolved!". An embedded interpreter has no path to its own
-        // executable to give, and mezz-tail.reb guards on that before calling
-        // CLEAN-PATH -- which needs the working directory it may not have.
         assertThat(answerTo("mold reduce [file? system/options/home "
                 + "file? system/options/path  file? system/options/data]"))
                 .isEqualTo("\"[#(true) #(true) #(true)]\"");

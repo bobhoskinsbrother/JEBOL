@@ -39,8 +39,6 @@ class AjoinKeepsTheFirstDatatypeTest {
     @Test
     @DisplayName("a tag gives a string, brackets and all")
     void aTagGivesAString() {
-        // By design, and the suite says so. A tag's text carries its own
-        // markers, and running two together stops reading as one.
         assertThat(answerTo("(ajoin [<a> \"b\" 3]) = \"<a>b3\"")).isEqualTo("#(true)");
     }
 

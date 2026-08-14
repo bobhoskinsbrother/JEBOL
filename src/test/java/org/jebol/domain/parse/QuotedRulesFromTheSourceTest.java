@@ -25,15 +25,12 @@ class QuotedRulesFromTheSourceTest {
     @Test
     @DisplayName("a lit-word in a rule matches a plain word")
     void aLitWordMatchesAWord() {
-        // "patch to search for word, not lit" in the C, thus the rule is
-        // written with a tick and the input has none.
         assertThat(answerTo("parse [a] ['a]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a lit-word folds case unless the parse minds it")
     void aLitWordFollowsTheParseCase() {
-        // `Compare_Word(blk, item, HAS_CASE(parse))` in the C.
         assertThat(answerTo("parse [a] ['A]")).isEqualTo("#(true)");
         assertThat(answerTo("parse/case [a] ['A]")).isEqualTo("#(false)");
         assertThat(answerTo("parse/case [a] ['a]")).isEqualTo("#(true)");
@@ -42,16 +39,12 @@ class QuotedRulesFromTheSourceTest {
     @Test
     @DisplayName("a lit-path in a rule matches a path")
     void aLitPathMatchesAPath() {
-        // `case REB_LIT_PATH: if (IS_PATH(blk) && !Cmp_Block(...))`.
-        // Without this the lit-path was read as a sub-rule instead.
         assertThat(answerTo("parse [p/a] ['p/a]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a path is compared item by item, and each item folds case")
     void aPathComparesPiecewise() {
-        // Cmp_Block walks both paths and compares each pair, thus a word
-        // inside a path folds case the same way a bare word does.
         assertThat(answerTo("parse [p/a] ['p/A]")).isEqualTo("#(true)");
         assertThat(answerTo("parse/case [p/a] ['p/A]")).isEqualTo("#(false)");
     }
@@ -65,8 +58,6 @@ class QuotedRulesFromTheSourceTest {
     @Test
     @DisplayName("QUOTE takes the next rule item as a value")
     void quoteTakesAValue() {
-        // `case SYM_QUOTE` in the C. It is how a rule looks for a word
-        // that would otherwise name a rule to run.
         assertThat(answerTo("parse [a] [quote a]")).isEqualTo("#(true)");
         assertThat(answerTo("parse [p/a] [quote p/a]")).isEqualTo("#(true)");
     }
@@ -81,8 +72,6 @@ class QuotedRulesFromTheSourceTest {
     @Test
     @DisplayName("QUOTE of a paren matches what the paren answered")
     void quoteEvaluatesAParen() {
-        // `if (IS_PAREN(rules)) item = Do_Block_Value_Throw(rules)` in
-        // the C, thus a rule can look for a value it works out as it goes.
         assertThat(answerTo("parse [2] [quote (1 + 1)]")).isEqualTo("#(true)");
     }
 

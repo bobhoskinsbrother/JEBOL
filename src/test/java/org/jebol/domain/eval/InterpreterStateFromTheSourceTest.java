@@ -64,9 +64,6 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("/DATA answers a tuple, which is what a header can compare")
         void theDataFormIsATuple() {
-            // A module header writes `Needs: 3.5.0` and compares it against
-            // this. A string will not compare with a tuple, which is why the
-            // C has two forms rather than one.
             assertThat(answerTo("tuple? version/data")).isEqualTo(TRUE);
         }
 
@@ -102,17 +99,12 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("a negative index is not shifted, because it counts from the tail")
         void aNegativeIndexIsNotShifted() {
-            // `if (VAL_INT64(D_ARG(2)) >= 0 && !IS_BITSET(D_ARG(1))) ... += 1;`
-            // -- counting back from the tail means the same in both
-            // conventions, so there is nothing to adjust.
             assertThat(answerTo("b: [1 2 3] e: try [pokez b -1 9] error? e")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a bitset is not shifted either, because its index is a code")
         void aBitsetIsNotShifted() {
-            // A bitset's index is a character code rather than a position, so
-            // adding one to it would name a different character.
             assertThat(answerTo("b: charset \"a\" pokez b 122 true b/(#\"z\")"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("b: charset \"a\" pokez b 122 true b/(#\"a\")"))
@@ -150,9 +142,6 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("and none for a file that is not")
         void itAnswersNoneForAMissingFile(@TempDir Path directory) {
-            // None rather than a failure: the question is "what is this
-            // really", and "nothing" is a true answer to it. The C's own
-            // summary says so.
             assertThat(withFilesUnder(directory,
                     "none? to-real-file %nowhere.txt")).isEqualTo(TRUE);
         }
@@ -179,10 +168,6 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("RECYCLE answers the bytes the collection released")
         void recycleAnswersWhatItReleased() {
-            // Released, not in use. `released_bytes = Recycle(TRUE, ...);
-            // DS_Ret_Int(released_bytes);` -- and the two readings move in
-            // opposite directions as a program allocates, so which one it is
-            // matters. A collector that freed nothing answers zero.
             assertThat(answerTo("integer? recycle")).isEqualTo(TRUE);
             assertThat(answerTo("0 <= recycle")).isEqualTo(TRUE);
         }
@@ -190,8 +175,6 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("/OFF answers nothing at all, and is the one form that does not collect")
         void offAnswersUnset() {
-            // `if (D_REF(1)) { GC_Active = FALSE; return R_UNSET; }` -- the
-            // first thing the C does, before it collects anything.
             assertThat(answerTo("unset? recycle/off")).isEqualTo(TRUE);
         }
 
@@ -210,9 +193,6 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("/EVALS counts values the evaluator walked, and only rises")
         void theEvaluationCountOnlyRises() {
-            // The one refinement with a rule rather than a reading. It must
-            // never go backwards inside one interpreter, or a caller timing a
-            // stretch of work would read a negative difference.
             assertThat(answerTo(
                     "before: stats/evals loop 20 [1 + 1] before <= stats/evals"))
                     .isEqualTo(TRUE);
@@ -227,14 +207,6 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("/DUMP-SERIES takes a pool number and answers none")
         void theSeriesDumpAnswersNone() {
-            // `Dump_Series_In_Pool(VAL_INT32(pool_id)); return R_NONE;` -- the
-            // answer is none in Rebol too. What is missing here is the printing,
-            // which walks Rebol's own memory pools: a JVM has not got them, so
-            // there is nothing to walk and nothing to print. The value a caller
-            // gets is the same either way.
-            //
-            // `-1` means every pool, says the help text, and it is not a
-            // special case in the answer.
             assertThat(answerTo("none? stats/dump-series 1")).isEqualTo(TRUE);
             assertThat(answerTo("none? stats/dump-series -1")).isEqualTo(TRUE);
             assertThat(errorIdFrom("stats/dump-series")).isEqualTo("no-arg");
@@ -249,14 +221,6 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("an offset naming no frame answers none, whatever was asked for")
         void noFrameAnswersNone() {
-            // The C tests this before it reads a single refinement:
-            //     sp = Stack_Frame(index);
-            //     if (!sp) return R_NONE;
-            // Offset zero always names a frame -- the STACK call's own --
-            // so the walk outwards ends one past the outermost call, not
-            // at the top level. This test used to expect none at offset
-            // zero, which was wrong: Rebol's own evaluation-test.r3
-            // asserts `'stack = stack/word 0` at the top level, twice.
             assertThat(answerTo("none? stack/depth 99")).isEqualTo(TRUE);
             assertThat(answerTo("none? stack/size 99")).isEqualTo(TRUE);
             assertThat(answerTo("none? stack/word 99")).isEqualTo(TRUE);
@@ -268,16 +232,12 @@ class InterpreterStateFromTheSourceTest {
         void depthCountsFrames() {
             assertThat(answerTo("f: func [] [integer? stack/depth 0] f"))
                     .isEqualTo(TRUE);
-            // `Stack_Depth()` walks every DSF frame including STACK's own,
-            // so the answer at the top level is one, never zero or none.
             assertThat(answerTo("1 = stack/depth 0")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and it is deeper the further in the call went")
         void itIsDeeperFurtherIn() {
-            // The property worth testing: the number tracks the real nesting
-            // rather than being a constant that happens to be plausible.
             assertThat(answerTo(
                     "shallow: func [] [stack/depth 0] "
                     + "deep: func [] [shallow] shallow < deep")).isEqualTo(TRUE);
@@ -293,17 +253,12 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("/WORD at offset one names the function being run")
         void wordNamesTheFunction() {
-            // Offset zero is the STACK call itself; the enclosing call is
-            // one out. This test used to ask at zero, which was JEBOL's
-            // earlier off-by-one, corrected when the suite pinned zero.
             assertThat(answerTo("f: func [] [stack/word 1] 'f = f")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and offset zero names STACK itself, even at the top")
         void wordAtZeroIsStackItself() {
-            // Rebol's own evaluation-test.r3: `'stack = stack/word 0` and
-            // `'stack = first stack 0`, asked at the top level of the file.
             assertThat(answerTo("'stack = stack/word 0")).isEqualTo(TRUE);
             assertThat(answerTo("'stack = first stack 0")).isEqualTo(TRUE);
         }
@@ -311,11 +266,6 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("and none for a call no word made, rather than the word before it")
         void wordIsNoneForANamelessCall() {
-            // `if (!word) word = ROOT_NONAME;` -- a function value standing in a
-            // block is called with no name attached, and Rebol's own ALL-OF
-            // builds exactly that with `reduce [:unless ...]`. The name has to
-            // be cleared as the call is made or the frame reports whichever
-            // word was called before it.
             assertThat(answerTo(
                     "f: func [] [stack/word 1] g: func [] [do reduce [:f]] none? g"))
                     .isEqualTo(TRUE);
@@ -329,8 +279,6 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("what is printed reaches the file as well as the output")
         void itCopiesRatherThanRedirects(@TempDir Path directory) throws Exception {
-            // A copy, not a redirection: the C's own summary is "Copies
-            // console output to a file", so a script that echoes still prints.
             StringBuilder printed = new StringBuilder();
             Interpreter interpreter = Interpreter.writingTo(
                     printed::append, Bounds.standard().granting(HostService.FILES));
@@ -360,8 +308,6 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("echoing again replaces rather than stacking")
         void echoingAgainReplaces(@TempDir Path directory) throws Exception {
-            // `Echo_File(0)` runs before the C looks at the argument, so the
-            // previous echo is off by the time the new one starts.
             Interpreter interpreter = Interpreter.withBounds(
                     Bounds.standard().granting(HostService.FILES));
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
@@ -379,15 +325,12 @@ class InterpreterStateFromTheSourceTest {
         @DisplayName("it needs the files service, but turning it off does not")
         void theGrantIsForWritingOnly() {
             assertThat(errorIdFrom("echo %x.txt")).isEqualTo("no-service");
-            // Turning echoing off writes nothing, so it asks for nothing.
             assertThat(answerTo("unset? echo none")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("TTY? answers whether the input is a terminal")
         void ttyAnswersALogic() {
-            // Under a test runner it is not one, which is the answer that
-            // matters: a script asking this is deciding whether to prompt.
             assertThat(answerTo("logic? tty?")).isEqualTo(TRUE);
         }
     }
@@ -399,9 +342,6 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("a halted run reports that it halted, not that it failed")
         void aHaltedRunSaysSo() {
-            // Not QUIT: quitting ends the host's run and halting does not, so
-            // a console that halts is a console afterwards. Both are signals
-            // rather than answers, which is the only thing they share.
             Interpreter interpreter = Interpreter.create();
             assertThat(interpreter.run("1 halt 2").conclusion().toString().toLowerCase())
                     .contains("halt");

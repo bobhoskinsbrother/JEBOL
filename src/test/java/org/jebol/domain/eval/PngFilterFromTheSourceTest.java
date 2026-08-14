@@ -44,36 +44,24 @@ class PngFilterFromTheSourceTest {
         @Test
         @DisplayName("SUB takes the byte one pixel to the left")
         void subTakesTheLeft() {
-            // One line, bpp 1: the first byte stands, then each byte less the
-            // one before it. 10 20 30 40 becomes 10 10 10 10.
             assertThat(answerTo("filter #{0A141E28} 4 'sub")).isEqualTo("#{0A0A0A0A}");
         }
 
         @Test
         @DisplayName("and leaves the first pixel of a line alone")
         void subLeavesTheFirstPixel() {
-            // `for (c = 0; c < bpp; c++) out[c] = scan[c];` -- there is
-            // nothing to its left, so it encodes as itself.
             assertThat(answerTo("first filter #{0A141E28} 4 'sub")).isEqualTo("10");
         }
 
         @Test
         @DisplayName("UP takes the byte on the line above, and zero above the first")
         void upTakesTheLineAbove() {
-            // Two lines of two. The first encodes as itself because the line
-            // above it is treated as zeros; the second is the difference.
             assertThat(answerTo("filter #{0A14 0B16} 2 'up")).isEqualTo("#{0A140102}");
         }
 
         @Test
         @DisplayName("AVERAGE floors the mean with a shift rather than rounding")
         void averageFloorsTheMean() {
-            // `out[c] = scan[c] - ((scan[c - bpp] + prev[c]) >> 1)`, floored
-            // by the shift. Two lines of two: 00 03 then 00 05. The last byte
-            // has a left of 0 and an above of 3, so the prediction is
-            // (0 + 3) >> 1 = 1 and the byte encodes as 5 - 1 = 4. Rounding the
-            // mean would predict 2 and encode 3, which is wrong on every pixel
-            // where the two neighbours differ by an odd amount.
             assertThat(answerTo("filter #{0003 0005} 2 'average"))
                     .isEqualTo("#{00030004}");
             assertThat(answerTo(
@@ -83,9 +71,6 @@ class PngFilterFromTheSourceTest {
         @Test
         @DisplayName("PAETH breaks a tie towards the left, then above, then above-left")
         void paethBreaksTiesInOrder() {
-            // `if ((pa <= pb) && (pa <= pc)) return a; else if (pb <= pc)
-            // return b; return c;` -- the order matters when two distances are
-            // equal, and equal distances are common in flat colour.
             assertThat(answerTo(
                     "b: #{0A0A 0A0A} f: filter b 2 'paeth "
                     + "b = unfilter/as f 2 'paeth")).isEqualTo(TRUE);
@@ -143,8 +128,6 @@ class PngFilterFromTheSourceTest {
         @Test
         @DisplayName("the leading byte of each line names that line's filter")
         void theLeadingByteNamesIt() {
-            // How a PNG actually stores it. Two lines of two, each led by a
-            // zero meaning no filter, so the bytes come back as they went in.
             assertThat(answerTo("unfilter #{00 0A14 00 0B16} 2"))
                     .isEqualTo("#{0A140B16}");
         }
@@ -159,8 +142,6 @@ class PngFilterFromTheSourceTest {
         @Test
         @DisplayName("the width excludes the type byte, so the two forms differ")
         void theWidthExcludesTheTypeByte() {
-            // `if (!ref_as) width++;` before the check. A caller passing the
-            // same width to both forms is passing two different things.
             assertThat(answerTo("4 = length? unfilter #{00 0A14 00 0B16} 2"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("6 = length? unfilter/as #{00 0A14 00 0B16} 2 'none"))
@@ -175,7 +156,6 @@ class PngFilterFromTheSourceTest {
         @Test
         @DisplayName("a width of one or less")
         void tooNarrow() {
-            // `if ((REBINT)width <= 1 || width > bytes) Trap1(RE_INVALID_ARG, ...)`
             assertThat(errorIdFrom("filter #{0A141E28} 1 'sub")).isEqualTo("invalid-arg");
             assertThat(errorIdFrom("filter #{0A141E28} 0 'sub")).isEqualTo("invalid-arg");
         }

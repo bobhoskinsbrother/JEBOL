@@ -1,27 +1,13 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.IntPredicate;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.HandleValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.SeriesValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * The one comparison every comparison native reaches, ported from
@@ -172,9 +158,6 @@ public final class Comparison {
                     : Optional.empty();
             case TIME -> fromATime((TimeValue) left, right, theirs);
             default -> {
-                // The word labels share one test and so do the string ones,
-                // which is why a set-word equals a word and a file equals a
-                // string of the same letters.
                 if (left.datatype().isAnyWord() && theirs.isAnyWord()) {
                     yield both(left, right);
                 }
@@ -192,9 +175,6 @@ public final class Comparison {
         return switch (theirs) {
             case DECIMAL, PERCENT -> both(DecimalValue.of(left.magnitude()), right);
             case MONEY -> both(asMoney(left.magnitude(), (MoneyValue) right), right);
-            // A character needs no widening: the comparison reads its code
-            // point where it would read an integer's magnitude, so the
-            // integer's own branch answers about the two numbers.
             case CHAR -> both(left, IntegerValue.of(((CharacterValue) right).codepoint()));
             case TIME -> both(DecimalValue.of(left.magnitude()), asSeconds((TimeValue) right));
             default -> Optional.empty();
@@ -206,9 +186,6 @@ public final class Comparison {
 
         return switch (theirs) {
             case INTEGER -> both(left, DecimalValue.of(((IntegerValue) right).magnitude()));
-            // A money pulls the decimal its way rather than the other way
-            // about, which is the only coercion in the table that moves the
-            // left value when the right one could have moved instead.
             case MONEY -> both(asMoney(left.quantity(), (MoneyValue) right), right);
             case DECIMAL, PERCENT -> both(left, right);
             case TIME -> both(left, asSeconds((TimeValue) right));
@@ -222,9 +199,6 @@ public final class Comparison {
         return switch (theirs) {
             case INTEGER -> both(left, asMoney(((IntegerValue) right).magnitude(), left));
             case DECIMAL, PERCENT -> both(left, asMoney(((DecimalValue) right).quantity(), left));
-            // No time, deliberately. The money branch names three datatypes
-            // and the time branch names three, and neither names the other,
-            // so `equal? 0:0:1 $1` is false and `$1 < 0:0:2` refuses.
             default -> Optional.empty();
         };
     }
@@ -275,8 +249,6 @@ public final class Comparison {
             case GREATER -> ordersAs(left, right, ordering -> ordering > 0);
         };
     }
-
-    // ---- the CT_ functions -----------------------------------------------
 
     /**
      * How many steps of the floating point representation {@code =} allows
@@ -352,27 +324,14 @@ public final class Comparison {
     private static boolean equalValues(
             Value left, Value right, long stepsAllowed, boolean approved) {
 
-        // A handle is equal to another when both are context handles of the same
-        // kind. Which means a function handle -- a codec, an extension entry point
-        // -- is equal to nothing, including itself, because it publishes no kind
-        // for equality to compare. `equal? h h` is false for a codec, and that is
-        // `CT_Handle` at mode zero rather than a slip here.
         if (left instanceof HandleValue first && right instanceof HandleValue second) {
             return first.isEqualHandleTo(second);
         }
 
-        // A character folds case for this question and not for the ordering
-        // one, which is the opposite way round from what the code points
-        // suggest. Everything built on this comparison inherits the folding,
-        // which is what makes `switch #"a"` take a branch written with a
-        // capital.
         if (left instanceof CharacterValue && right instanceof CharacterValue) {
             return foldedCodepointsAgree(left, right);
         }
         if (left instanceof CharacterValue && approved) {
-            // Only the comparison natives get here, with an integer on the
-            // right that the table let through unwidened. Both sides go
-            // through LO_CASE, which is why `#"A" = 97` is true.
             return foldedCodepointsAgree(left, right);
         }
         if (left instanceof StringValue leftText && right instanceof StringValue rightText) {
@@ -383,17 +342,9 @@ public final class Comparison {
             return leftWord.namesSameAs(rightWord);
         }
         if (numbersMeet(left, right, approved)) {
-            // Whether the two are the same number, minding neither the sign
-            // of a zero nor the hardware's refusal to call a NaN itself.
-            // Both are what the strict == exists to mind, and ordering()
-            // cannot answer this: it puts NaN below everything, and it puts
-            // -0.0 below 0.0.
             double first = asDouble(left);
             double second = asDouble(right);
             if (Double.isNaN(first) || Double.isNaN(second)) {
-                // almost_equal answers `max_diff > 0` for two NaNs, so = says
-                // they are one number and EQUIV? says they are not. That is
-                // the whole of the difference between the two on this case.
                 return Double.isNaN(first) && Double.isNaN(second) && stepsAllowed > 0;
             }
             if (left instanceof DecimalValue || right instanceof DecimalValue) {
@@ -414,9 +365,6 @@ public final class Comparison {
                 return false;
             }
             for (int at = 0; at < ours.size(); at++) {
-                // The items go through Cmp_Value however the block was
-                // reached, which is why `equal? ["a"] [%a]` is false even
-                // though `equal? "a" %a` is true.
                 if (!equalValues(ours.get(at), theirs.get(at), stepsAllowed, UNAPPROVED)) {
                     return false;
                 }
@@ -517,19 +465,9 @@ public final class Comparison {
             return !Double.isNaN(first.quantity())
                     && Double.compare(first.quantity(), second.quantity()) == 0;
         }
-        // CT_Pair answers the same question at every mode from nought up: it
-        // subtracts the halves rather than comparing their bits, so a
-        // negative zero half equals a zero one under all four of =, ==,
-        // EQUIV? and SAME?. A decimal is the opposite -- the three part
-        // company there -- so the pair case cannot be left to the decimal
-        // one to answer.
         if (left instanceof PairValue && right instanceof PairValue) {
             return ordering(left, right) == 0;
         }
-        // Two tuples holding the same octets differ when one was written
-        // longer than the other, which nothing else can see: 1.2.3 and
-        // 1.2.3.0 are equal and are not strictly equal. CT_Tuple asks about
-        // the length from mode 2 upwards and not below it.
         if (left instanceof TupleValue first && right instanceof TupleValue second) {
             return first.equals(second) && first.segmentCount() == second.segmentCount();
         }
@@ -562,9 +500,6 @@ public final class Comparison {
         if (left.datatype() != right.datatype()) {
             return false;
         }
-        // Identity, which for a handle is the only question that always has an
-        // answer: `(VAL_HANDLE_FLAGS(a) == VAL_HANDLE_FLAGS(b)) &&
-        // (VAL_HANDLE_DATA(a) == VAL_HANDLE_DATA(b))`.
         if (left instanceof HandleValue first && right instanceof HandleValue second) {
             return first.isTheSameHandleAs(second);
         }
@@ -574,27 +509,16 @@ public final class Comparison {
         if (left instanceof WordValue first && right instanceof WordValue second) {
             return first.isSameAs(second);
         }
-        // Two decimals are the same value when their bits are identical,
-        // which makes two NaNs the same and the two zeroes different -- the
-        // reverse of the loose = on both counts.
         if (left instanceof DecimalValue first && right instanceof DecimalValue second) {
             return Double.doubleToRawLongBits(first.quantity())
                     == Double.doubleToRawLongBits(second.quantity());
         }
-        // Two objects are the same object only when they are one object.
-        // ObjectValue.equals compares fields, which is what EQUAL? wants and
-        // the opposite of what this asks: a copy holding identical fields is
-        // equal and is not the same.
         if (left instanceof ObjectValue first && right instanceof ObjectValue second) {
             return first.context() == second.context();
         }
-        // The same question as == for a tuple, because CT_Tuple treats every
-        // mode above 1 alike.
         if (left instanceof TupleValue first && right instanceof TupleValue second) {
             return first.equals(second) && first.segmentCount() == second.segmentCount();
         }
-        // And CT_Pair treats every mode from nought up alike, so SAME? on two
-        // pairs asks about the halves rather than about the values.
         if (left instanceof PairValue && right instanceof PairValue) {
             return ordering(left, right) == 0;
         }
@@ -628,10 +552,6 @@ public final class Comparison {
      * until the C was read.
      */
     private static int ordering(Value left, Value right) {
-        // `Cmp_Handle`, which puts every context handle before every function one,
-        // sorts context handles of different kinds by name, and everything else by
-        // identity. Which is what makes SORT on a block of handles group them by
-        // kind rather than leave them where they were.
         if (left instanceof HandleValue first && right instanceof HandleValue second) {
             return first.compareWith(second);
         }
@@ -641,10 +561,6 @@ public final class Comparison {
                     ? acrossTheX
                     : signOfTheDifference(leftPair.y(), rightPair.y());
         }
-        // A character orders by code point, folding nothing, so `#"a"` is
-        // above `#"B"` however the two compare for equality. The ordering
-        // path in CT_Char sits below the `mode >= 0` block and never reaches
-        // LO_CASE, so this and the equality above disagree on purpose.
         if (left instanceof CharacterValue) {
             return Integer.compare(codepointOf(left), codepointOf(right));
         }
@@ -654,17 +570,11 @@ public final class Comparison {
         if (isNumeric(left) && isNumeric(right)) {
             double first = asDouble(left);
             double second = asDouble(right);
-            // A comparison against NaN orders it below, whichever side it is
-            // on, so `1.#NaN < 1` and `1 < 1.#NaN` are both true and neither
-            // > holds. That is what a real R3 answers; the JVM's own compare
-            // sorts NaN above everything instead.
             if (Double.isNaN(first) || Double.isNaN(second)) {
                 return -1;
             }
             return Double.compare(first, second);
         }
-        // The operators ask a different question from SORT and must not share
-        // its answer, which is why SORT keeps its own rule for NaN above.
         return compareForSorting(left, right, false);
     }
 
@@ -696,14 +606,6 @@ public final class Comparison {
      */
     public static int compareForSorting(Value left, Value right, boolean mindingCase) {
         if (isNumeric(left) && isNumeric(right)) {
-            // Sorting needs a real ordering, and comparison does not provide
-            // one. `1.#NaN < 1` and `1 < 1.#NaN` are both true in REBOL, so
-            // ordering() answers "less" whichever way round it is asked --
-            // fine for the operator and useless for a sort, which needs the
-            // two answers to disagree.
-            //
-            // Confirmed against a real R3: sorting puts every NaN last and
-            // treats two of them as equal.
             boolean leftIsNaN = Double.isNaN(asDouble(left));
             boolean rightIsNaN = Double.isNaN(asDouble(right));
             if (leftIsNaN || rightIsNaN) {
@@ -772,10 +674,6 @@ public final class Comparison {
     public static double asDouble(Value value) {
         return switch (value) {
             case IntegerValue integer -> integer.magnitude();
-            // A time counts as its seconds, which is what `to integer! 1:00`
-            // gives. Widening the parameter checks to accept a time without
-            // widening this let it past the door and refused it inside, which
-            // is the same error from a less useful place.
             case TimeValue time -> (double) time.nanoseconds() / NANOSECONDS_PER_SECOND;
             case DecimalValue decimal -> decimal.quantity();
             case MoneyValue money -> money.amount().doubleValue();

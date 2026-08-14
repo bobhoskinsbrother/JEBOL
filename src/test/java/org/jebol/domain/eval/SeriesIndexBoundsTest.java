@@ -50,8 +50,6 @@ class SeriesIndexBoundsTest {
         return Interpreter.create().display(outcome);
     }
 
-    // === POKE, which refuses an index outside the series ===
-
     @Test
     @DisplayName("POKE one below the first element raises out-of-range")
     void pokeAtZeroRaises() {
@@ -105,18 +103,9 @@ class SeriesIndexBoundsTest {
     @Test
     @DisplayName("POKE with a string where the index belongs is rejected, not coerced")
     void pokeWithAWrongTypeIndexRaises() {
-        // The index arrives from the script, so nothing has vetted it.
-        // Rejection is what matters here; silently reading "1" as 1 would
-        // be the worst answer available.
-        //
-        // JEBOL says expect-arg where a real R3 says invalid-arg. That is
-        // one of the error-id divergences being reconciled separately, and
-        // it is deliberately not papered over by asserting the wrong id.
         assertThat(errorIdOf("poke b: [1 2 3] \"x\" 9"))
                 .isIn("expect-arg", "invalid-arg");
     }
-
-    // === PICK, which shrugs at the same index ===
 
     @Test
     @DisplayName("PICK past the end gives none rather than raising")
@@ -130,8 +119,6 @@ class SeriesIndexBoundsTest {
         assertThat(answerTo("pick [1 2 3] 0")).isEqualTo("_");
         assertThat(answerTo("pick [1 2 3] -1")).isEqualTo("_");
     }
-
-    // === A step size is an element count, so it has the same floor ===
 
     @Test
     @DisplayName("SELECT/SKIP with a step of zero raises out-of-range")
@@ -154,9 +141,6 @@ class SeriesIndexBoundsTest {
     @Test
     @DisplayName("SELECT answers the element after the match, whatever the record width")
     void selectAnswersTheNextElementNotTheRecordEnd() {
-        // The width decides only where SELECT may look. Returning the
-        // record's last field instead agrees at a width of two and is
-        // wrong at every other width, which is why three are checked.
         assertThat(answerTo("select/skip [1 2 3 4 5 6] 5 2")).isEqualTo("6");
         assertThat(answerTo("select/skip [1 2 3 4 5 6] 3 2")).isEqualTo("4");
         assertThat(answerTo("select/skip [1 2 3 4 5 6] 4 3")).isEqualTo("5");
@@ -166,8 +150,6 @@ class SeriesIndexBoundsTest {
     @Test
     @DisplayName("SELECT with no record width looks at every position")
     void selectWithoutSkipLooksEverywhere() {
-        // A default width of two would never look at an even position and
-        // would answer none here.
         assertThat(answerTo("select [1 2 3 4 5 6] 2")).isEqualTo("3");
         assertThat(answerTo("select [1 2 3 4 5 6] 3")).isEqualTo("4");
     }
@@ -184,8 +166,6 @@ class SeriesIndexBoundsTest {
     void selectIgnoresMidRecordValues() {
         assertThat(answerTo("select/skip [1 2 3 4 5 6] 2 2")).isEqualTo("_");
     }
-
-    // === Emptiness is ordinary, not an error path ===
 
     @Test
     @DisplayName("TAKE/ALL on an empty block gives an empty block")

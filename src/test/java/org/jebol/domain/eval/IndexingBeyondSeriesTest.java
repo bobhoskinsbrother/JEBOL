@@ -27,7 +27,6 @@ class IndexingBeyondSeriesTest {
     @Test
     @DisplayName("a pair answers its halves by number")
     void aPairAnswersItsHalves() {
-        // A pair's halves are decimals, so these are 1.0 and 2.0.
         assertThat(answerTo("p: 1x2 mold reduce [p/1 p/2]")).isEqualTo("\"[1.0 2.0]\"");
     }
 
@@ -55,7 +54,6 @@ class IndexingBeyondSeriesTest {
     @Test
     @DisplayName("INTEGER-DIVIDE throws away a decimal's fraction")
     void integerDivideTakesDecimals() {
-        // The name says integer, and refusing one is the tempting reading.
         assertThat(answerTo("mold reduce [integer-divide 23.5 10 integer-divide 23 10.5]"))
                 .isEqualTo("\"[2 2]\"");
     }

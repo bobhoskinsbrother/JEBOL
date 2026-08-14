@@ -47,8 +47,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("a plain word goes in and a set-word is stored")
         void aWordIsStoredAsASetWord() {
-            // `if (ANY_WORD(key) && VAL_TYPE(key) != REB_SET_WORD) ...
-            // VAL_SET(set, REB_SET_WORD);`
             assertThat(answerTo("set-word? first body-of make map! [a 1]"))
                     .isEqualTo(TRUE);
         }
@@ -56,9 +54,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("and the four kinds of word are one key, not four")
         void everyWordSpellingIsTheSameKey() {
-            // Which is the point of normalising rather than a side effect of
-            // it: a map read from source and a map written through a path have
-            // to agree, and the path may carry any kind of word.
             assertThat(answerTo(
                     "m: make map! [] m/(to lit-word! 'a): 1 select m 'a"))
                     .isEqualTo("1");
@@ -85,8 +80,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("so the colon a map molds with belongs to the key")
         void theColonBelongsToTheKey() {
-            // A word key molds with one and every other key molds without,
-            // which is only explicable once the key is known to be a set-word.
             assertThat(answerTo("find mold make map! [a 1] \"a: 1\""))
                     .isNotEqualTo("#(none)");
             assertThat(answerTo("none? find mold make map! [1 2] \"1: 2\""))
@@ -98,10 +91,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("and what a map molds to reads back as an equal map")
         void aMoldedMapReadsBack() {
-            // The round trip is what the storage has to satisfy, and it is the
-            // reason the keys carry their colons rather than the molder adding
-            // one: a molder that added a colon to an integer key would write
-            // `1: 2`, which does not read back as a map at all.
             assertThat(answerTo("m: make map! [a 1 \"k\" 2 3 4] m = load mold m"))
                     .isEqualTo(TRUE);
         }
@@ -114,9 +103,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("a number answers an empty map")
         void aNumberAnswersAnEmptyMap() {
-            // `else if (IS_NUMBER(arg)) { ... n = Int32s(arg, 0); }` and then
-            // `Make_Map(n)`. Rebol's own MIME type table opens with
-            // `make map! 111` and stopped the whole file here.
             assertThat(answerTo("m: make map! 111 reduce [map? m length? m]"))
                     .isEqualTo("[#(true) 0]");
             assertThat(answerTo("m: make map! 0 reduce [map? m length? m]"))
@@ -139,9 +125,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("TO MAP! refuses a number on the same line MAKE reads it")
         void toMapRefusesANumber() {
-            // `if (action == A_TO) Trap_Arg(arg);` -- a conversion answers
-            // something made of what it was given, and there are no pairs in
-            // a number.
             assertThat(errorIdFrom("to map! 111")).isEqualTo("invalid-arg");
             assertThat(errorIdFrom("to map! 10.5")).isEqualTo("invalid-arg");
         }
@@ -160,8 +143,6 @@ class MapPairsFromTheSourceTest {
         void anythingElseIsRefused() {
             assertThat(errorIdFrom("make map! \"ab\"")).isEqualTo("bad-make-arg");
             assertThat(errorIdFrom("make map! none")).isEqualTo("bad-make-arg");
-            // An odd block is a key with no value, which is a typo rather
-            // than a map: `if (n & 1) return FALSE;` and the caller raises.
             assertThat(errorIdFrom("make map! [a]")).isEqualTo("invalid-arg");
         }
     }
@@ -173,9 +154,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("KEYS-OF turns the set-words back into plain words")
         void keysOfAnswersPlainWords() {
-            // `if (ANY_WORD(val)) VAL_SET(out - 1, REB_WORD);` and only for
-            // this question: the flag Map_To_Block takes is -1 for the keys,
-            // +1 for the values and 0 for the pairs, and only -1 normalises.
             assertThat(answerTo("keys-of make map! [a 1 b 2]")).isEqualTo("[a b]");
             assertThat(answerTo("word? first keys-of make map! [a 1]")).isEqualTo(TRUE);
             assertThat(answerTo("words-of make map! [a 1 b 2]")).isEqualTo("[a b]");
@@ -196,8 +174,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("and TO BLOCK! asks the same question")
         void toBlockAsksTheSameQuestion() {
-            // Not "a block holding the map", which is what a conversion that
-            // did not know about maps would produce.
             assertThat(answerTo("to block! make map! [a 1 b 2]"))
                     .isEqualTo("[a: 1 b: 2]");
             assertThat(answerTo("to block! make map! [1 2]")).isEqualTo("[1 2]");
@@ -216,9 +192,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("a removed key is in none of them")
         void aRemovedKeyIsGone() {
-            // REMOVE/KEY hides the key rather than closing the gap, so every
-            // reader has to know to skip it. Any one of them that did not would
-            // report a pair that LENGTH? says is not there.
             assertThat(answerTo(
                     "m: make map! [a 1 b 2] remove/key m 'a "
                     + "reduce [length? m keys-of m values-of m body-of m]"))
@@ -242,10 +215,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("one word walks the keys, as plain words")
         void oneWordWalksTheKeys() {
-            // `*vars = *BLK_SKIP(series, index & ~1)` reads the key from the
-            // even slot, and `if (IS_SET_WORD(vars)) SET_TYPE(vars, REB_WORD);`
-            // hands out the plain word. So what the walk gives back can be
-            // compared against a word the caller wrote.
             assertThat(answerTo(
                     "c: copy [] foreach k make map! [a 1 b 2] [append c k] c"))
                     .isEqualTo("[a b]");
@@ -275,9 +244,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("three words are refused, a pair having only two halves")
         void threeWordsAreRefused() {
-            // `else Trap_Arg(words);` -- there is nothing for a third name to
-            // be set to, and setting it to none would make a malformed loop
-            // look like a working one.
             assertThat(errorIdFrom(
                     "foreach [k v x] make map! [a 1 b 2] [k]")).isEqualTo("invalid-arg");
         }
@@ -285,7 +251,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("a removed key is stepped over")
         void aRemovedKeyIsSteppedOver() {
-            // `index += 2; goto skip_hidden;`
             assertThat(answerTo(
                     "m: make map! [a 1 b 2] remove/key m 'a "
                     + "c: copy [] foreach [k v] m [append c reduce [k v]] c"))
@@ -328,10 +293,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("a map never has a short last round, because a pair is never half there")
         void aMapNeverRunsShort() {
-            // Worth pinning next to the block case below it: over a block the
-            // last round can run with a name holding none, and over a map it
-            // cannot, because the walk steps two slots at a time over a series
-            // that always holds whole pairs.
             assertThat(answerTo(
                     "c: copy [] foreach [k v] make map! [a 1 b 2] "
                     + "[append c v] c")).isEqualTo("[1 2]");
@@ -340,11 +301,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("over a block the last round runs short, filling the rest with none")
         void aBlockRunsAShortLastRound() {
-            // `else SET_NONE(vars);` -- the walk is over the series and the
-            // names that have nothing left to take hold none. The body runs one
-            // more time than a caller counting pairs would expect, which is the
-            // opposite of dropping the odd item and easy to get wrong the
-            // convenient way.
             assertThat(answerTo(
                     "c: copy [] foreach [k v] [1 2 3] [append c reduce [k v]] c"))
                     .isEqualTo("[1 2 3 _]");
@@ -381,9 +337,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("and /COUNT counts pairs, not values")
         void countCountsPairs() {
-            // `SET_INTEGER(DS_RETURN, IS_MAP(value) ? index / 2 : index);` --
-            // a caller counting values would be told it removed twice what it
-            // removed.
             assertThat(answerTo(
                     "m: make map! [a 1 b 2] "
                     + "reduce [remove-each/count [k v] m [v > 1] length? m]"))
@@ -402,9 +355,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("MAP-EACH will not take a map at all")
         void mapEachRefusesAMap() {
-            // Not a decision in the walk but in the spec above it: MAP-EACH
-            // declares `data [block! vector!]` where FOREACH declares
-            // `data [series! any-object! map! none!]`.
             assertThat(errorIdFrom("map-each [k v] make map! [a 1] [v]"))
                     .isEqualTo("expect-arg");
         }
@@ -412,9 +362,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("but it does take a block of words, and answers one value a round")
         void mapEachTakesABlockOfWords() {
-            // One Loop_Each serves all four walks, and the names are read
-            // before the mode is looked at. Refusing a block here threw a Java
-            // exception out of the interpreter rather than answering anything.
             assertThat(answerTo("map-each [a b] [1 2 3 4] [a + b]"))
                     .isEqualTo("[3 7]");
             assertThat(answerTo("map-each [a b] [1 2 3 4] [reduce [b a]]"))
@@ -424,11 +371,6 @@ class MapPairsFromTheSourceTest {
         @Test
         @DisplayName("a last round with nothing left over still runs, filling with none")
         void aShortLastRoundStillRuns() {
-            // `else SET_NONE(vars);` when the walk has passed the tail. So the
-            // body runs one more time than a caller counting whole rounds
-            // expects, and the leftover names hold none rather than the round
-            // being dropped. Two walks over the same block with different
-            // numbers of names therefore do different numbers of rounds.
             assertThat(answerTo("map-each [a b] [1 2 3] [a]")).isEqualTo("[1 3]");
             assertThat(answerTo("map-each [a b] [1 2 3] [reduce [a b]]"))
                     .isEqualTo("[[1 2] [3 _]]");

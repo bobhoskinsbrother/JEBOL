@@ -73,8 +73,6 @@ class ConstructFromTheSourceTest {
         @Test
         @DisplayName("any other word stays a word")
         void everythingElseIsLeftAlone() {
-            // The off point for the list of seven, and the whole reason
-            // CONSTRUCT is safe: a word is never looked up.
             assertThat(answerTo("word? get in construct [a: b] 'a")).isEqualTo("#(true)");
             assertThat(answerTo("(get in construct [a: b] 'a) = 'b")).isEqualTo("#(true)");
             assertThat(answerTo("word? get in construct [a: print] 'a"))
@@ -127,9 +125,6 @@ class ConstructFromTheSourceTest {
         @Test
         @DisplayName("several set-words in a row all take the value that follows")
         void cascadingSetWords() {
-            // The C pushes each set-word onto a stack and empties the
-            // stack when a value arrives, which is what makes a cascade
-            // work at all.
             assertThat(answerTo("""
                     o: construct [a: b: 1]
                     all [1 = get in o 'a  1 = get in o 'b]
@@ -220,8 +215,6 @@ class ConstructFromTheSourceTest {
         @Test
         @DisplayName("without a newline it is all one value")
         void theOffPointForAField() {
-            // The whole line after the colon is the value, so what looks
-            // like a second field is part of the first.
             assertThat(answerTo("[\"1 b: yes\"] = values-of construct \"a: 1 b: yes\""))
                     .isEqualTo("#(true)");
         }
@@ -229,9 +222,6 @@ class ConstructFromTheSourceTest {
         @Test
         @DisplayName("a line that begins with whitespace continues the one before")
         void continuationLines() {
-            // Joined with a single space however much indenting there
-            // is, which is what an internet header means by a folded
-            // line.
             assertThat(answerTo("[\"a b c\"] = values-of construct \"f: a b^M^/ c\""))
                     .isEqualTo("#(true)");
             assertThat(answerTo("[\"a b c\"] = values-of construct \"f: a b^M^/    c\""))

@@ -69,10 +69,6 @@ public final class CorpusReader {
         EntryBuilder building = null;
 
         for (String line : read(file).lines().toList()) {
-            // A comment is a hash followed by a space, or a hash alone.
-            // "#(true)" is a value, not a comment: construction syntax
-            // begins with the same character, and treating it as a comment
-            // silently emptied every entry whose expected result was a logic.
             if (isComment(line) || (line.isBlank() && building == null)) {
                 continue;
             }

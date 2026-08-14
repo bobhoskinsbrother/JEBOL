@@ -58,16 +58,12 @@ class BlockMarksTest {
     @Test
     @DisplayName("a get-word naming no place does not match")
     void anUnsetMarkIsNoMatch() {
-        // No match rather than a failure, and above all not a position
-        // left somewhere the walker cannot read.
         assertThat(answerTo("parse [1 2] [:nowhere 2 skip]")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("a rule after a mark still changes the series")
     void aChangeAfterAMarkStillWorks() {
-        // The case that showed the gap: with the mark in, the whole rule
-        // failed and the series came back untouched.
         assertThat(answerTo(
                 "parse b: [1 2 3 4 5] [skip mark: change [2 skip] ('x) to end] b = [1 x 4 5]"))
                 .isEqualTo("#(true)");

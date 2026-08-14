@@ -1,8 +1,9 @@
 package org.jebol.domain.eval;
 
-import java.util.Optional;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.Value;
+
+import java.util.Optional;
 
 /**
  * What evaluation produced: a value, or the error that stopped it.

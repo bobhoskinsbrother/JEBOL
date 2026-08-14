@@ -1,27 +1,14 @@
 package org.jebol.domain.parse;
 
+import org.jebol.domain.eval.EvaluationFailure;
+import org.jebol.domain.eval.Evaluator;
+import org.jebol.domain.eval.Raised;
+import org.jebol.domain.value.*;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import org.jebol.domain.eval.EvaluationFailure;
-import org.jebol.domain.eval.Evaluator;
-import org.jebol.domain.eval.Raised;
-import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.ContextSlot;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.TypesetValue;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * PARSE: matching input against a rule, and pulling it apart.
@@ -234,10 +221,6 @@ public final class Parser {
         if (rule instanceof IntegerValue) {
             return matchCountedRule(rules, at);
         }
-        // A set-word marks where the parse has reached and consumes
-        // nothing; a get-word seeks back to what one recorded. The string
-        // walker had both and this one had neither, so `p:` was taken as
-        // a value to match and failed against whatever was there.
         if (rule instanceof WordValue mark && mark.datatype() == Datatype.SET_WORD) {
             assign(mark, source == null
                     ? BlockValue.block(input.subList(position, input.size()))
@@ -254,13 +237,9 @@ public final class Parser {
             }
             return matchNamedRule(word) ? 1 : NO_MATCH;
         }
-        // An unset or a function is no rule at all -- `if (VAL_TYPE(item)
-        // <= REB_UNSET || VAL_TYPE(item) >= REB_NATIVE) goto bad_rule;`.
         if (rule instanceof UnsetValue || rule.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
         }
-        // A path is evaluated and its value is the rule, so `a/b` naming
-        // a datatype matches by that datatype.
         if (rule instanceof BlockValue path && path.datatype() == Datatype.PATH) {
             Value resolved = evaluator.evaluateOrRaise(
                     BlockValue.block(List.of(path)), context);
@@ -294,11 +273,6 @@ public final class Parser {
         int matched = 0;
         while (matched < most) {
             int before = position;
-            // No no-progress guard here, unlike ANY and SOME. The count
-            // bounds this loop already, so it cannot run for ever, and
-            // stopping early on a round that consumed nothing loses rounds
-            // that were explicitly asked for: `collect 2 [collect [] (...)
-            // keep (...)]` must run both although neither round moves.
             if (matchOne(rules, at + countItems) == NO_MATCH) {
                 position = before;
                 break;
@@ -325,11 +299,6 @@ public final class Parser {
             return counts + ruleSpan(rules, at + counts);
         }
         if (rules.get(at) instanceof WordValue word && word.datatype() == Datatype.WORD) {
-            // COLLECT may be followed by SET, INTO or AFTER and a word
-            // before its rule, and then it occupies two more items than
-            // the plain form. Measuring it as two left the walk resuming
-            // on the word and trying to match it as a rule, which is why
-            // `collect into a [...]` collected nothing at all.
             if (word.canonical().equals("collect")
                     && at + 2 < rules.size()
                     && rules.get(at + 1) instanceof WordValue keyword
@@ -342,8 +311,6 @@ public final class Parser {
                 case "any", "some", "opt", "to", "thru", "into", "collect", "keep",
                      "and", "ahead", "remove", "if", "insert", "while" ->
                         1 + ruleSpan(rules, at + 1);
-                // CHANGE takes a rule and then the value to put in its
-                // place, so it spans both.
                 case "quote" -> 2;
                 case "set", "copy", "change" -> 2 + ruleSpan(rules, at + 2);
                 default -> 1;
@@ -357,10 +324,6 @@ public final class Parser {
         return switch (keyword) {
             case "end" -> atEnd() ? 1 : NO_MATCH;
             case "skip" -> advanceOne() ? 1 : NO_MATCH;
-            // WHILE is ANY under another name, and every keyword the two
-            // parsers share must be in both. Five were in one and not the
-            // other, which made a rule that worked on a string fail on a
-            // block and the reverse.
             case "any", "while" -> repeat(rules, at, 0);
             case "case" -> setCaseMode(true);
             case "no-case" -> setCaseMode(false);
@@ -373,10 +336,6 @@ public final class Parser {
             case "copy" -> capture(rules, at, true);
             case "collect" -> collect(rules, at);
             case "keep" -> keep(rules, at);
-            // `case SYM_QUOTE` in the C: the next rule item is a value
-            // to match rather than a rule to run, and a paren there is
-            // evaluated first. It is how a rule matches a word that would
-            // otherwise name a rule.
             case "quote" -> quoted(rules, at);
             case "and", "ahead" -> lookahead(rules, at);
             case "if" -> guard(rules, at);
@@ -428,18 +387,12 @@ public final class Parser {
      */
     private int changeMatched(List<Value> rules, int at) {
         Value rule = following(rules, at, "change");
-        // ONLY belongs before the replacement and not before the rule.
-        // `change only ['a 'b] [z p]` reads as a rule called only, which
-        // is no rule at all, and a real R3 says so.
         if (rule instanceof WordValue misplaced && misplaced.datatype() == Datatype.WORD
                 && misplaced.canonical().equals("only")) {
             throw Raised.of(EvaluationFailure.PARSE_RULE,
                     "only says how to put the replacement in, so it goes "
                             + "before the replacement and not before the rule");
         }
-        // A word naming a position in this very series is a span, not a
-        // rule: CHANGE replaces everything between the current position
-        // and the mark, whichever is the earlier.
         Integer markOffset = sameStorageOffset(rule);
         if (markOffset != null) {
             return changedSpan(rules, at, markOffset);
@@ -454,9 +407,6 @@ public final class Parser {
             position = before;
             return NO_MATCH;
         }
-        // ONLY here means put the block in whole. Without it a block
-        // replacement is spread, so `change some word! [z p]` leaves two
-        // words where the match was and not one block holding them.
         int lastRuleAt = replacementAt;
         boolean wholeBlock = false;
         if (rules.get(replacementAt) instanceof WordValue modifier
@@ -513,10 +463,6 @@ public final class Parser {
         if (written instanceof WordValue named) {
             return switch (named.datatype()) {
                 case LIT_WORD -> named.as(Datatype.WORD);
-                // No keyword test here, and the C does not have one either.
-                // It deals with ONLY before this point and treats any other
-                // parse command in the value position as a bad rule, so by
-                // the time the value is fetched it is never a keyword.
                 case WORD -> evaluator.evaluateOrRaise(
                         BlockValue.block(List.of(named)), context);
                 default -> named;
@@ -537,13 +483,6 @@ public final class Parser {
      */
     private int insertValue(List<Value> rules, int at) {
         following(rules, at, "insert");
-        // ONLY puts a block in whole. Without it a block is spread, which is
-        // the same rule CHANGE follows and for the same reason: the C passes
-        // AN_ONLY to Modify_Block only when the word is there, and
-        // Modify_Block spreads a block otherwise.
-        //
-        // JEBOL inserted a block whole either way, so `v: [1 2]` gave
-        // [[1 2] a] where Rebol gives [1 2 a].
         int valueAt = at + 1;
         boolean wholeBlock = false;
         if (rules.get(valueAt) instanceof WordValue modifier
@@ -709,10 +648,6 @@ public final class Parser {
     private int collect(List<Value> rules, int at) {
         Value next = following(rules, at, "collect");
 
-        // COLLECT SET word [...] puts the collection in the word instead
-        // of answering it, so the parse goes back to answering whether it
-        // matched -- full-consumption rule and all, which a bare COLLECT
-        // suspends.
         WordValue into = null;
         WordValue insertInto = null;
         WordValue appendTo = null;
@@ -724,13 +659,9 @@ public final class Parser {
                 into = name;
                 ruleAt = at + 3;
             } else if (keyword.canonical().equals("into")) {
-                // INTO an existing series rather than a fresh one, at its
-                // position, so what was already there is pushed along.
                 insertInto = name;
                 ruleAt = at + 3;
             } else if (keyword.canonical().equals("after")) {
-                // AFTER is the counterpart: past what is already there
-                // rather than in front of it.
                 appendTo = name;
                 ruleAt = at + 3;
             }
@@ -740,9 +671,6 @@ public final class Parser {
                     "collect has no rule after it to apply to");
         }
 
-        // SET assigns its word a fresh block BEFORE the rule runs --
-        // `Make_Block` then `Set_Var_Series` -- so a nested collect set of
-        // the same word assigns second and stays.
         BlockValue destination = null;
         if (into != null) {
             destination = BlockValue.block(new ArrayList<>());
@@ -752,13 +680,6 @@ public final class Parser {
         int consumed = matchOne(rules, ruleAt);
         List<Value> mine = collecting.pop();
 
-        // The collection is handed over whether or not the rule matched.
-        // Matching backtracks and collecting does not, so a COLLECT whose
-        // rule fails still leaves its block behind:
-        // `parse [] [collect [collect [keep 2 skip]]]` answers [[]], and
-        // a SOME that attempts one round too many leaves a trailing empty
-        // block for the round that failed. Discarding it here is what made
-        // sixty-five of Rebol's own COLLECT assertions disagree.
         if (appendTo != null) {
             refuseWrongIntoTarget(valueOf(appendTo));
             if (valueOf(appendTo) instanceof BlockValue existing) {
@@ -780,12 +701,8 @@ public final class Parser {
         } else if (!collecting.isEmpty()) {
             collecting.peek().add(BlockValue.block(mine));
         } else if (gathered == null) {
-            // The first COLLECT establishes what the parse answers.
             gathered = mine;
         } else {
-            // Any after it add their block to that rather than replacing
-            // it or starting a list of their own, so two collects answer
-            // [1 [2]] and not [[1] [2]].
             gathered.add(BlockValue.block(mine));
         }
         return consumed == NO_MATCH
@@ -804,9 +721,6 @@ public final class Parser {
      */
     private int keep(List<Value> rules, int at) {
         Value kept = following(rules, at, "keep");
-        // KEEP needs somewhere to keep into. Without a COLLECT around it
-        // the value was quietly dropped and the rule went on matching, so
-        // a rule with the COLLECT left off looked like it worked.
         if (collecting.isEmpty()) {
             throw Raised.of(EvaluationFailure.PARSE_NO_COLLECT,
                     "keep has no collect around it");
@@ -821,9 +735,6 @@ public final class Parser {
         }
         if (kept instanceof WordValue modifier && modifier.datatype() == Datatype.WORD
                 && modifier.canonical().equals("pick")) {
-            // A paren after PICK keeps its value whole, exactly as plain
-            // KEEP of the expression would: the C sets the pick flag, then
-            // finds the paren and the flag never matters.
             if (at + 2 < rules.size()
                     && rules.get(at + 2) instanceof BlockValue expression
                     && expression.datatype() == Datatype.PAREN) {
@@ -844,10 +755,6 @@ public final class Parser {
             return NO_MATCH;
         }
         if (!collecting.isEmpty()) {
-            // One item is kept as itself and several are kept together as a
-            // block, so a caller can tell one run from two. The count
-            // decides the shape, not the kind of rule: an ANY that matched
-            // once keeps the value.
             List<Value> matched = input.subList(before, position);
             if (matched.size() == 1) {
                 collecting.peek().add(matched.getFirst());
@@ -919,17 +826,10 @@ public final class Parser {
         while (true) {
             int before = position;
             int wasLong = input.size();
-            // A rule that consumes nothing would repeat for ever, so the
-            // loop stops when nothing moved. REMOVE moves nothing but
-            // shortens the input, which is progress of a different kind and
-            // has to count as progress or `some [remove x | skip]` removes
-            // only the first match.
             if (matchOne(rules, at + 1) == NO_MATCH) {
                 position = before;
                 break;
             }
-            // A round that matched without advancing counts first --
-            // `count++` precedes the no-progress break in the C.
             matched++;
             if (position == before && input.size() == wasLong) {
                 break;
@@ -1051,9 +951,6 @@ public final class Parser {
             return false;
         }
         Value named = target.slotFor(word.canonical()).value();
-        // `if (VAL_TYPE(item) <= REB_UNSET || VAL_TYPE(item) >= REB_NATIVE)
-        // goto bad_rule;` -- a word naming an unset or a function is no
-        // rule at all, and the error names the word as written.
         if (named instanceof UnsetValue || named.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, (Value) word);
         }
@@ -1066,11 +963,6 @@ public final class Parser {
     private boolean matchValue(Value rule) {
         return switch (rule) {
             case BlockValue nested when nested.datatype() == Datatype.PAREN -> {
-                // A paren runs while matching, and always "matches", which is
-                // how PARSE does something as it goes rather than only after.
-                // It may also have changed the very series being parsed, so
-                // the walk re-reads it -- the C clamps `if (index >
-                // series->tail) index = series->tail;` after every paren.
                 evaluator.evaluateOrRaise(nested.as(Datatype.BLOCK), context);
                 refreshInputFromSource();
                 yield true;
@@ -1085,28 +977,14 @@ public final class Parser {
             case TypesetValue wanted -> !atEnd()
                     && wanted.holds(current().datatype())
                     && advanceOne();
-            // `if (IS_WORD(blk) && !Compare_Word(blk, item, ...))` in the
-            // C, under a comment that says "patch to search for word, not
-            // lit". A lit-word in a rule matches a plain word in the
-            // input, thus `parse [a] ['a]` holds.
             case WordValue word when word.datatype() == Datatype.LIT_WORD ->
                     matchesLiteral(word.as(Datatype.WORD));
-            // A plain word inside SOME, TO or a repeat count names a rule,
-            // exactly as it does at the top level. Without this a grammar
-            // could not be built out of named parts, which is most of what
-            // PARSE is for. The two keywords that stand alone have to be
-            // recognised here too, so that `[3 skip]` counts skips rather
-            // than looking for a rule named skip.
             case WordValue word when word.datatype() == Datatype.WORD ->
                     switch (word.canonical()) {
                         case "end" -> atEnd();
                         case "skip" -> advanceOne();
                         default -> matchNamedRule(word);
                     };
-            // `case REB_LIT_PATH: if (IS_PATH(blk) && !Cmp_Block(...))`
-            // in the C. A lit-path matches a path, the same way a
-            // lit-word matches a word. Left out, it fell to the block
-            // case and was read as a sub-rule.
             case BlockValue path when path.datatype() == Datatype.LIT_PATH ->
                     matchesLiteral(path.as(Datatype.PATH));
             default -> matchesLiteral(rule);
@@ -1170,13 +1048,6 @@ public final class Parser {
         if (wanted instanceof IntegerValue count && !(current() instanceof IntegerValue)) {
             return false;
         }
-        // A parse folds case unless CASE has been reached, and that holds
-        // for a block parse as much as a string one: `parse ["A"]
-        // [case ["A"]]` minds it and `[no-case ["a"]]` does not.
-        // Cmp_Block in the C compares a path item for item, thus each
-        // word inside it folds case the same way a bare word does.
-        // Comparing the two paths with equals() minded case whatever the
-        // parse had been told.
         boolean fits = wanted instanceof BlockValue path
                 && path.datatype() == Datatype.PATH
                 && current() instanceof BlockValue here
@@ -1206,10 +1077,6 @@ public final class Parser {
 
     private static boolean looselyEqual(Value left, Value right) {
         if (left instanceof StringValue leftText && right instanceof StringValue rightText) {
-            // The datatype counts here, because matching a rule against an
-            // item of a block follows Cmp_Value rather than Compare_Values,
-            // and Cmp_Value exempts only the numbers and the words from the
-            // datatype check. So a %a rule does not match a "a" item.
             return leftText.datatype() == rightText.datatype()
                     && leftText.equalsIgnoringCase(rightText);
         }

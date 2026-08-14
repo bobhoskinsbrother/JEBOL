@@ -41,10 +41,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("a date and a time read as a date")
         void aDateAndATimeAreADate() {
-            // The separator between the day and the time is a slash, so this
-            // read as a path of a date and a time -- which molds identically to
-            // the date and so looked right, while every field read off it was
-            // none.
             assertThat(answerTo("type? first load \"[1-Jan-2000/12:00]\""))
                     .isEqualTo("#(date!)");
             assertThat(answerTo("type? first load \"[1-Jan-2000/12:30:15+2:00]\""))
@@ -74,9 +70,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("an offset of zero is written as nothing")
         void anOffsetOfZeroIsWrittenAsNothing() {
-            // Which is what a real R3 does, and it means the written form cannot
-            // tell an offset of zero from a date that never carried one. Both
-            // read their zone back as 0:00.
             assertThat(answerTo("mold 1-Jan-2000/12:00+0:00"))
                     .isEqualTo("\"1-Jan-2000/12:00\"");
             assertThat(answerTo("d: 1-Jan-2000/12:00+0:00 d/zone")).isEqualTo("0:00");
@@ -86,8 +79,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("an offset needs its colon, and Z is not an offset")
         void anOffsetNeedsItsColon() {
-            // A real R3 reads `+2` and `Z` as no offset rather than as two hours
-            // or as Zulu, so both come out at zero.
             assertThat(answerTo("d: first load \"[1-Jan-2000/12:00+2]\" d/zone"))
                     .isEqualTo("0:00");
             assertThat(answerTo("d: first load \"[1-Jan-2000/12:00Z]\" d/zone"))
@@ -97,9 +88,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("a path that looks like a date is still a path")
         void aPathIsStillAPath() {
-            // The guard that keeps this working is that the time needs its
-            // colon: `system/options` and `a/b/c` have no business becoming
-            // dates.
             assertThat(answerTo("type? first load \"[a/b/c]\"")).isEqualTo("#(path!)");
             assertThat(answerTo("type? first load \"[system/options]\""))
                     .isEqualTo("#(path!)");
@@ -122,9 +110,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("hour, minute and second read the local clock")
         void theClockParts() {
-            // Local rather than universal: `Adjust_Date_Zone(data, FALSE)` runs
-            // for every part except UTC, so these are the numbers on the face
-            // of a clock where the date was written.
             assertThat(answerTo(NOON + "reduce [d/hour d/minute d/second]"))
                     .isEqualTo("[12 30 15]");
         }
@@ -139,8 +124,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("weekday counts from Monday and yearday from January")
         void weekdayAndYearday() {
-            // The first of January 2000 was a Saturday, which is day six when
-            // Monday is day one.
             assertThat(answerTo(NOON + "reduce [d/weekday d/yearday]"))
                     .isEqualTo("[6 1]");
             assertThat(answerTo("d: 31-Dec-2000 d/yearday")).isEqualTo("366");
@@ -149,8 +132,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("date drops both the time and the offset")
         void dateDropsTheTime() {
-            // `VAL_TIME(val) = NO_TIME; VAL_ZONE(val) = 0;` -- so a day taken
-            // off a date cannot be asked what time it was.
             assertThat(answerTo(NOON + "d/date")).isEqualTo("1-Jan-2000");
             assertThat(answerTo(NOON + "e: d/date none? e/time")).isEqualTo(TRUE);
         }
@@ -158,7 +139,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("utc moves the clock back by the offset")
         void utcMovesTheClock() {
-            // The same instant, not the local time relabelled.
             assertThat(answerTo(NOON + "d/utc")).isEqualTo("1-Jan-2000/10:30:15");
             assertThat(answerTo("d: 1-Jan-2000/12:00-5:00 d/utc"))
                     .isEqualTo("1-Jan-2000/17:00");
@@ -169,9 +149,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("second is whole until there is a fraction, and then it is a decimal")
         void theSecondChangesDatatype() {
-            // `if (time.n == 0) num = time.s; else { SET_DECIMAL(...) }`. Code
-            // comparing this against a whole number is right until the first
-            // fractional second reaches it.
             assertThat(answerTo("d: 1-Jan-2000/12:00:01 reduce [d/second integer? d/second]"))
                     .isEqualTo("[1 #(true)]");
             assertThat(answerTo("d: 1-Jan-2000/12:00:01.5 reduce [d/second decimal? d/second]"))
@@ -181,10 +158,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("julian is a decimal, counted from noon")
         void julianCountsFromNoon() {
-            // A bare day is given twelve hours before the conversion, which then
-            // adds twelve again -- so it lands on a whole number and not on a
-            // half. Where there is a time the count is in universal time, so it
-            // moves with the offset.
             assertThat(answerTo("d: 1-Jan-2000 d/julian")).isEqualTo("2451545.0");
             assertThat(answerTo(NOON + "d/julian")).isEqualTo("2451544.93767361");
         }
@@ -192,9 +165,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("a number names a part by its place in the C's word list")
         void aNumberNamesAPart() {
-            // `sym = SYM_YEAR + Int32(arg) - 1` -- so the numbering is the order
-            // the words happen to sit in, and it runs straight past the two
-            // that are commented out there.
             assertThat(answerTo(NOON + "reduce [d/1 d/2 d/3 d/4]"))
                     .isEqualTo("[2000 1 1 12:30:15]");
             assertThat(answerTo(NOON + "reduce [d/5 d/6 d/7 d/8 d/9]"))
@@ -220,10 +190,6 @@ class DatePartsFromTheSourceTest {
         @Test
         @DisplayName("time, hour, minute, second and zone are all none")
         void theClockPartsAreNone() {
-            // `if (secs == NO_TIME && (sym == SYM_TIME || (sym >= SYM_HOUR &&
-            // sym <= SYM_SECOND) || sym == SYM_ZONE)) return PE_NONE;` -- none
-            // rather than zero, because a day names no instant and midnight
-            // would be an answer to a question nobody asked.
             assertThat(answerTo(
                     "d: 1-Jan-2000 reduce [none? d/time none? d/hour none? d/minute "
                     + "none? d/second none? d/zone]"))

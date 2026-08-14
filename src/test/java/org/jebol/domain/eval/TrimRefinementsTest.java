@@ -43,7 +43,6 @@ class TrimRefinementsTest {
     @Test
     @DisplayName("/AUTO is not in that quarrel")
     void autoCombinesWithAnEnd() {
-        // The exception that stops the rule being "any two refinements".
         assertThat(answerTo("(trim/auto/tail \"  a  \") = \"a\"")).isEqualTo("#(true)");
     }
 
@@ -60,8 +59,6 @@ class TrimRefinementsTest {
     @Test
     @DisplayName("a binary and a block still take the other three")
     void theEndRefinementsWorkOnBoth() {
-        // The off point. If the refusal were about the datatype rather
-        // than about the refinement, none of these would work either.
         assertThat(answerTo("(trim #{0011}) = #{11}")).isEqualTo("#(true)");
         assertThat(answerTo("(trim/head #{0011}) = #{11}")).isEqualTo("#(true)");
         assertThat(answerTo("(trim/tail #{0011}) = #{0011}")).isEqualTo("#(true)");
@@ -81,8 +78,6 @@ class TrimRefinementsTest {
     @Test
     @DisplayName("an empty series is refused for the same reason, not a different one")
     void theDegenerateSeriesStillChecksTheRefinements() {
-        // The check has to come before the work, or an empty block makes
-        // a contradictory call look fine.
         assertThat(errorIdOf("trim/head/all []")).isEqualTo("bad-refines");
         assertThat(errorIdOf("trim/tail/all []")).isEqualTo("bad-refines");
     }

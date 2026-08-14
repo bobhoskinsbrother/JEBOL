@@ -163,10 +163,6 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency) implement
         byte[] twelve = new byte[BINARY_WIDTH];
 
         byte[] significandBytes = significand.toByteArray();
-        // toByteArray is signed and so may carry a leading zero byte, and it
-        // is only as long as the number needs. Both are why the copy is
-        // right-aligned into the low eleven bytes rather than being used as
-        // it stands.
         int wanted = Math.min(significandBytes.length, BINARY_WIDTH - 1);
         System.arraycopy(significandBytes, significandBytes.length - wanted,
                 twelve, BINARY_WIDTH - wanted, wanted);

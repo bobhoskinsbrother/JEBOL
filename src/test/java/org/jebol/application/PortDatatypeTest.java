@@ -102,10 +102,6 @@ class PortDatatypeTest {
         @Test
         @DisplayName("/ALLOW takes a block of attributes that nothing reads")
         void theAllowBlockIsDeclaredAndUnread() {
-            // `access [block!]`, and the C never looks it up: `args =
-            // Find_Refines(ds, ALL_OPEN_REFS)` collects the refinement flags
-            // and Setup_File reads those. So the block changes nothing, and
-            // being unable to pass one was the only difference here.
             assertThat(answerFrom(withAConsole(),
                     "open? open/allow [scheme: 'console] [read]")).isEqualTo(TRUE);
             assertThat(errorIdFrom(withAConsole(),
@@ -127,8 +123,6 @@ class PortDatatypeTest {
         @Test
         @DisplayName("the console scheme is registered, through Rebol's own MAKE-SCHEME")
         void theConsoleSchemeIsRegistered() {
-            // Registered after the library loads, because MAKE-SCHEME comes
-            // from it. Rebol does the same thing in INIT-SCHEMES.
             assertThat(answerFrom(withAConsole(),
                     "find mold words-of system/schemes \"console\"")).isNotEqualTo("_");
         }
@@ -136,8 +130,6 @@ class PortDatatypeTest {
         @Test
         @DisplayName("a scheme nothing can serve is refused rather than opened")
         void anUnservedSchemeIsRefused() {
-            // A port is a way out of the interpreter. Answering a port that
-            // nothing can read would let a script think it had one.
             assertThat(errorIdFrom(withAConsole(), "open [scheme: 'carrier-pigeon]"))
                     .isNotEqualTo("no-error");
         }
@@ -172,8 +164,6 @@ class PortDatatypeTest {
         @Test
         @DisplayName("READ still reads a file, because the verb dispatches on the datatype")
         void readStillTakesAFile() {
-            // One verb, two actors. A port sends the action to its own actor
-            // and a file goes to the filesystem.
             assertThat(errorIdFrom(withAConsole(), "read %nowhere.txt"))
                     .isEqualTo("no-service");
         }
@@ -188,7 +178,6 @@ class PortDatatypeTest {
         @Test
         @DisplayName("MODIFY refuses a mode a console has not got")
         void modifyRefusesAnUnknownMode() {
-            // Rebol's Console_Actor names three: echo, line and error.
             assertThat(errorIdFrom(withAConsole(),
                     "p: open [scheme: 'console] modify p 'colour true"))
                     .isEqualTo("invalid-arg");
@@ -210,14 +199,6 @@ class PortDatatypeTest {
         @Test
         @DisplayName("INPUT is Rebol's, and it reads through the port")
         void inputIsRebols() {
-            // mezz-files.reb defines INPUT on the port datatype:
-            //     port: system/ports/input
-            //     if any [not port? port  not open? port] [
-            //         system/ports/input: port: open [scheme: 'console]
-            //     ]
-            //     modify port 'line true
-            //     all [line: read port  to string! line]
-            // Every line of that needed something JEBOL had not got.
             assertThat(answerFrom(withAConsole("typed"), "input")).isEqualTo("\"typed\"");
         }
 

@@ -1,7 +1,8 @@
 package org.jebol.adapter.cli;
 
-import java.io.PrintStream;
 import org.jebol.domain.eval.OutputPort;
+
+import java.io.PrintStream;
 
 /**
  * The output port, wired to a stream.

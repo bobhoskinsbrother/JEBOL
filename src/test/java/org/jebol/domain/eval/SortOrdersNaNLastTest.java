@@ -59,7 +59,6 @@ class SortOrdersNaNLastTest {
     @Test
     @DisplayName("the comparison itself still answers true both ways")
     void comparisonIsUnchanged() {
-        // The ordering rule belongs to SORT and must not leak into <.
         assertThat(answerTo("mold reduce [1.#NaN < 1 1 < 1.#NaN]"))
                 .isEqualTo("\"[#(true) #(true)]\"");
     }

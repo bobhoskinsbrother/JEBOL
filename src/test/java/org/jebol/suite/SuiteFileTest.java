@@ -73,8 +73,6 @@ class SuiteFileTest {
 
         @Test
         void theHarnessWordsAreNotThemselvesAssertions() {
-            // ===start-group=== and friends read as ordinary words, so a
-            // slicer that did not know them would count four more.
             assertThat(fileHolding("\t--assert true").steps())
                     .allSatisfy(step -> assertThat(step.isAssertion()
                             || step.setup() != null).isTrue());
@@ -94,7 +92,6 @@ class SuiteFileTest {
 
         @Test
         void setupBetweenAssertionsIsKeptAsAStep() {
-            // A test file is a script: assertions lean on lines above them.
             SuiteFile read = fileHolding("\ta: 5\n\t--assert a = 5");
 
             assertThat(read.steps()).anySatisfy(step ->
@@ -122,10 +119,6 @@ class SuiteFileTest {
     @Nested
     @DisplayName("keeping the source the file wrote")
     class Fidelity {
-
-        // The source an assertion carries is what gets run. Anything the
-        // slicer changes on the way is a change to the test, and a change
-        // nobody asked for and nothing reports.
 
         @Test
         void aDecimalKeepsEveryDigitItWasWrittenWith() {
@@ -176,17 +169,6 @@ class SuiteFileTest {
     @DisplayName("across the whole vendored suite")
     class EveryFile {
 
-        // Not text identity. The slicer reads the file into values and
-        // writes them back out, so `0:0:1` comes back as `0:00:01` -- a
-        // different spelling of the same time, which changes nothing about
-        // what the assertion asks. Nine hundred assertions differ that
-        // way and none of them is a problem.
-        //
-        // What matters is whether the meaning survived. An assertion whose
-        // source no longer reads, or reads as something else, is not the
-        // assertion the file wrote, and whatever it scores says nothing
-        // about JEBOL.
-
         @Test
         @DisplayName("every assertion's source can still be read")
         void everySourceStillReads() {
@@ -209,13 +191,6 @@ class SuiteFileTest {
         @Test
         @DisplayName("every assertion's source is text the file actually contains")
         void nothingIsRewrittenOnTheWayOut() {
-            // The whole point. An assertion carrying source the file does
-            // not contain is not that file's assertion, and whatever it
-            // scores says nothing about JEBOL.
-            //
-            // Whitespace is ignored because the spans of one assertion are
-            // joined with a single space, and the file may have used a tab
-            // or several. Nothing but spacing may differ.
             List<String> rewritten = new java.util.ArrayList<>();
 
             for (SuiteFile file : RebolSuiteTest.filesInSuite()) {

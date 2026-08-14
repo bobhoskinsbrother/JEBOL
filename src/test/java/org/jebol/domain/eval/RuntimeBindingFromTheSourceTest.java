@@ -47,9 +47,6 @@ class RuntimeBindingFromTheSourceTest {
     @Test
     @DisplayName("a word the source did not assign to holds nothing rather than being unknown")
     void anUnassignedWordIsUnset() {
-        // Every word gets a slot, so a name nobody set is a value that
-        // is not there rather than a word nobody has heard of. That is
-        // what turns "not defined" into "has no value" for a typo.
         assertThat(errorIdOf("do \"never-set-anywhere\"")).isEqualTo("no-value");
     }
 
@@ -68,8 +65,6 @@ class RuntimeBindingFromTheSourceTest {
     @Test
     @DisplayName("words nested inside blocks are bound too")
     void bindingGoesDeep() {
-        // BIND_DEEP as well as BIND_ALL, so a word inside a block in the
-        // source is reached the same way as one at the top.
         assertThat(answerTo("do \"if true [deep-one: 5] deep-one\"")).isEqualTo("5");
     }
 

@@ -94,12 +94,6 @@ class SuiteFailureReportTest {
     @Test
     @DisplayName("every assertion that escaped as a Java exception, named")
     void theHostExceptionsAreNamed() {
-        // These are in a class of their own. Every other line in the work
-        // list is something JEBOL has not got yet; this is something JEBOL
-        // has and got wrong, and spec/embed.allium promises it cannot
-        // happen -- a script failure must arrive as an outcome so a host
-        // can tell it apart from a bug in the interpreter. Counting them
-        // was not enough, because a count cannot be fixed.
         List<SuiteFile.Assertion> escaping = RebolSuiteTest.everyAssertion()
                 .filter(assertion -> !RebolSuiteTest.holds(assertion))
                 .filter(assertion -> reasonFor(assertion).startsWith("host exception"))
@@ -115,9 +109,6 @@ class SuiteFailureReportTest {
     @Test
     @DisplayName("every failing assertion's name, for diffing two runs")
     void everyFailureNamed() {
-        // A plain list, so two runs can be compared. Which assertions a
-        // change costs is not answerable from counts, and "it was passing
-        // for the wrong reason" is a claim that needs checking.
         RebolSuiteTest.everyAssertion()
                 .filter(assertion -> !RebolSuiteTest.holds(assertion))
                 .map(SuiteFile.Assertion::toString)
@@ -128,10 +119,6 @@ class SuiteFailureReportTest {
     @Test
     @DisplayName("the assertions that answer false, named, group by group")
     void theQuietDisagreementsAreNamed() {
-        // The largest bucket by far, and the only one a count says nothing
-        // about: "answered false" is the same reason for every one of them.
-        // Each has to be traced to the C on its own, and that needs the
-        // source. Grouped so a whole area can be worked through at once.
         Map<String, List<String>> byGroup = new LinkedHashMap<>();
         for (SuiteFile.Assertion assertion : RebolSuiteTest.everyAssertion().toList()) {
             if (RebolSuiteTest.holds(assertion)
@@ -157,11 +144,6 @@ class SuiteFailureReportTest {
     @Test
     @DisplayName("the assertions that raised, named, so the reason can be checked")
     void theRaisingAssertionsAreNamed() {
-        // A count of "error expect-arg" says nothing about whether JEBOL
-        // was right to raise at all. Each of these has to be put to the
-        // binary one at a time, and that needs the source rather than a
-        // tally. Capped and the cap reported, so a truncated list cannot
-        // read as the whole of it.
         List<SuiteFile.Assertion> raising = RebolSuiteTest.everyAssertion()
                 .filter(assertion -> !RebolSuiteTest.holds(assertion))
                 .filter(assertion -> reasonFor(assertion).startsWith("error "))
@@ -200,10 +182,6 @@ class SuiteFailureReportTest {
                 .forEach(entry -> System.out.printf("  %5d  %s%n",
                         entry.getValue(), entry.getKey()));
 
-        // An empty report used to mean the runner found nothing, and the
-        // guard asserted non-empty to catch that. The suite has since gone
-        // green, so an empty report is now the wanted answer and the guard
-        // asks its real question instead: did the assertions run at all?
         assertThat(RebolSuiteTest.everyAssertion().toList())
                 .as("nothing to report must mean everything held, not that nothing ran")
                 .isNotEmpty();

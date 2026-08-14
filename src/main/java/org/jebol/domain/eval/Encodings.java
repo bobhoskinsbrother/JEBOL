@@ -1,11 +1,12 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.BitsetValue;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.jebol.domain.value.BitsetValue;
 
 /**
  * Turning bytes into text and back: percent encoding, the numeric bases,
@@ -63,8 +64,6 @@ final class Encodings {
         }
     }
 
-    // === Percent encoding ================================================
-
     /**
      * The characters a URI may carry without escaping.
      *
@@ -119,10 +118,6 @@ final class Encodings {
                 encoded.append(spaceStandsForUnder(escape));
                 continue;
             }
-            // The set decides, escape character included. That is the whole
-            // point of /EXCEPT: sys-ports.reb copies the URI set and adds the
-            // percent sign so that a url which is already encoded is left
-            // alone rather than encoded twice.
             if (keep.test(octet)) {
                 encoded.append((char) octet);
                 continue;
@@ -158,7 +153,6 @@ final class Encodings {
                     continue;
                 }
             }
-            // Not an escape after all, so the character stands for itself.
             for (byte each : String.valueOf(here).getBytes(StandardCharsets.UTF_8)) {
                 octets.write(each & 0xFF);
             }
@@ -170,8 +164,6 @@ final class Encodings {
     static boolean setHolds(BitsetValue set, int octet) {
         return set.holds(octet);
     }
-
-    // === The numeric bases ===============================================
 
     /** The five bases ENBASE and DEBASE know, and no others. */
     static final List<Integer> BASES = List.of(2, 16, 36, 64, 85);
@@ -394,8 +386,6 @@ final class Encodings {
         return wrapped.toString();
     }
 
-    // === Checksums =======================================================
-
     /**
      * The methods this host offers, in the order the catalogue lists them.
      *
@@ -459,9 +449,6 @@ final class Encodings {
         return switch (method) {
             case "crc32" -> checksumValue(new java.util.zip.CRC32(), octets);
             case "adler32" -> checksumValue(new java.util.zip.Adler32(), octets);
-            // CRC24 is what an OpenPGP armour trailer carries, and TCP is the
-            // sixteen-bit one's complement sum a packet header uses. Both are
-            // short enough to write out and neither is in the JDK.
             case "crc24" -> crc24Of(octets);
             case "tcp" -> tcpSumOf(octets);
             default -> throw new IllegalArgumentException(method);
@@ -500,8 +487,6 @@ final class Encodings {
         }
         return (~running) & 0xFFFF;
     }
-
-    // === Compression =====================================================
 
     /** The methods this host offers, as {@code system/catalog/compressions}. */
     static final List<String> COMPRESSIONS = List.of("zlib", "gzip", "deflate");
@@ -544,9 +529,6 @@ final class Encodings {
         into.write(GZIP_MAGIC_FIRST);
         into.write(GZIP_MAGIC_SECOND);
         into.write(GZIP_DEFLATE);
-        // Flags, then a four-byte modification time, then the compression
-        // strength and the operating system. All zero: no name is carried and
-        // no time is recorded, so the same input always gives the same output.
         for (int each = 0; each < GZIP_HEADER_LENGTH - 3; each++) {
             into.write(0);
         }
@@ -573,8 +555,6 @@ final class Encodings {
         }
         int from = GZIP_HEADER_LENGTH;
         int flags = octets[3] & 0xFF;
-        // FEXTRA, FNAME and FCOMMENT each add a variable-length field, and a
-        // gzip written by another tool may carry all three.
         if ((flags & 0x04) != 0) {
             int extra = (octets[from] & 0xFF) | ((octets[from + 1] & 0xFF) << 8);
             from += 2 + extra;
@@ -647,8 +627,6 @@ final class Encodings {
         }
     }
 
-    // === Rebol's own scrambler ===========================================
-
     /**
      * Scrambles or unscrambles octets in place, against a key.
      *
@@ -674,9 +652,6 @@ final class Encodings {
         for (int at = octets.length - 1; decode && at > 0; at--) {
             octets[at] ^= (byte) (octets[at - 1] ^ key[at % keyLength]);
         }
-        // Change the starting byte based on all the others. Unsigned
-        // arithmetic that wraps at 32 bits, then narrowed to a byte, which is
-        // what REBCNT does here.
         int running = 0xA5;
         for (int at = 1; at < octets.length; at++) {
             running += octets[at] & 0xFF;
@@ -708,8 +683,6 @@ final class Encodings {
         return digestOf(cycled, "sha1");
     }
 
-    // === Changing character set ==========================================
-
     /** Whether this host has a character set by that name. */
     static boolean hasCharacterSet(String named) {
         return charsetNamed(named) != null;
@@ -739,8 +712,6 @@ final class Encodings {
             return null;
         }
     }
-
-    // === The PNG delta filters ===========================================
 
     /** The five filters, numbered as the PNG format numbers them. */
     static final List<String> PNG_FILTERS = List.of("none", "sub", "up", "average", "paeth");
@@ -783,9 +754,6 @@ final class Encodings {
                     previous, true);
             previous = java.util.Arrays.copyOfRange(data, from, from + width);
         }
-        // Bytes past the last whole line are copied rather than filtered, as
-        // the C leaves them: it walks whole rows and the binary keeps its
-        // original length.
         System.arraycopy(data, rows * width, out, rows * width,
                 data.length - rows * width);
         return out;
@@ -847,9 +815,6 @@ final class Encodings {
             int prediction = switch (filter) {
                 case 1 -> at >= bytesPerPixel ? left : 0;
                 case 2 -> above;
-                // Floored by a shift rather than rounded. With a left of 3 and
-                // an above of 4 the prediction is 3: the sum is 7 and the shift
-                // discards the odd bit.
                 case 3 -> at >= bytesPerPixel ? (left + above) >> 1 : above >> 1;
                 case 4 -> at >= bytesPerPixel
                         ? paethPredictor(left, above, aboveLeft)
@@ -859,8 +824,6 @@ final class Encodings {
             out[into + at] = (byte) (forward ? here - prediction : here + prediction);
         }
     }
-
-    // === Byte order ======================================================
 
     /**
      * Reverses each group of bytes, in place.

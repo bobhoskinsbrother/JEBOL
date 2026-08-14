@@ -50,8 +50,6 @@ class TranscodeOneFromTheSourceTest {
         @Test
         @DisplayName("a closing bracket that opens nothing is not noticed")
         void anExtraCloseIsNotNoticed() {
-            // Rebol's tag group asserts both of these as the word `<`, which is
-            // only reachable if the reader stops after it.
             assertThat(answerTo("""
                     '< = transcode/one/error {<]>}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -72,8 +70,6 @@ class TranscodeOneFromTheSourceTest {
         @Test
         @DisplayName("and a second good value is left alone too")
         void aSecondValueIsLeft() {
-            // The ordinary case, and the one that shows this is about stopping
-            // rather than about tolerating rubbish.
             assertThat(answerTo("""
                     1 = transcode/one {1 2}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -83,10 +79,6 @@ class TranscodeOneFromTheSourceTest {
         @Test
         @DisplayName("and /PART with a bracket inside the bound still answers the value")
         void withAPartBound() {
-            // `123 == transcode/part/one "123]" 4` in Rebol's own test: four
-            // characters is the whole of `123]`, so the bracket is inside the bound
-            // and still not read. A bound past the end is the same answer, which is
-            // the second assertion there.
             assertThat(answerTo("""
                     123 == transcode/part/one {123]} 4""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -96,8 +88,6 @@ class TranscodeOneFromTheSourceTest {
         @Test
         @DisplayName("and a whole block counts as one value")
         void aBlockIsOneValue() {
-            // Stopping "after one value" has to mean after the block closes, not
-            // after the first thing inside it.
             assertThat(answerTo("""
                     (transcode/one {[1 2] 3}) = [1 2]""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -112,9 +102,6 @@ class TranscodeOneFromTheSourceTest {
         @Test
         @DisplayName("a token that fails still fails, however well a shorter piece of it reads")
         void aFailingTokenStillFails() {
-            // The case that rules out the prefix walk. `'%` is a perfectly good
-            // lit-word two characters in, and `'%/` is still a refused path,
-            // because the reader never stops between them.
             assertThat(answerTo("""
                     e: try [transcode/one {'%/}] all [error? e e/arg1 = "path"]"""))
                     .isEqualTo(TRUE);
@@ -125,8 +112,6 @@ class TranscodeOneFromTheSourceTest {
         @Test
         @DisplayName("and an unfinished value is a failure rather than an answer of none")
         void anUnfinishedValue() {
-            // Stopping quietly would answer none here -- and none is a value a
-            // source can genuinely hold, so a caller could not tell the two apart.
             assertThat(answerTo("""
                     error? transcode/one/error {#(}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -143,8 +128,6 @@ class TranscodeOneFromTheSourceTest {
         @Test
         @DisplayName("while a source that really holds none answers none")
         void aRealNone() {
-            // Which is the distinction those two exist to keep. Both spellings of
-            // the none literal read as the value.
             assertThat(answerTo("""
                     none? transcode/one {_}""")).isEqualTo(TRUE);
             assertThat(answerTo("""

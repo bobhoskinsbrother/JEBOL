@@ -54,16 +54,12 @@ class DecimalBitPatternTest {
     @Test
     @DisplayName("negative zero keeps its sign")
     void negativeZeroKeepsItsSign() {
-        // The whole reason the sign bit is worth carrying separately.
         assertThat(answerTo("mold to decimal! #{8000000000000000}")).isEqualTo("\"-0.0\"");
     }
 
     @Test
     @DisplayName("the two zeroes are the same number, differently signed")
     void theTwoZeroesDiffer() {
-        // Three comparisons, three answers. Loose asks whether they are
-        // the same number; strict minds the sign as well; SAME? asks
-        // whether the bits are identical.
         assertThat(answerTo("z: to decimal! #{8000000000000000} 0.0 = z"))
                 .isEqualTo("#(true)");
         assertThat(answerTo("z: to decimal! #{8000000000000000} 0.0 == z"))
@@ -76,9 +72,6 @@ class DecimalBitPatternTest {
     @Test
     @DisplayName("two NaNs answer the other way round from the two zeroes")
     void theNaNsAnswerTheOppositeWay() {
-        // Where the zeroes were equal, unequal, not-same, the NaNs are
-        // equal, unequal, same. No two of the three comparisons agree on
-        // both pairs, which is why each has its own rule.
         assertThat(answerTo("1.#NaN = 1.#NaN")).isEqualTo("#(true)");
         assertThat(answerTo("1.#NaN == 1.#NaN")).isEqualTo("#(false)");
         assertThat(answerTo("same? 1.#NaN 1.#NaN")).isEqualTo("#(true)");
@@ -100,7 +93,6 @@ class DecimalBitPatternTest {
     @Test
     @DisplayName("a short binary is read right-aligned")
     void aShortBinaryIsRightAligned() {
-        // One byte holding 1 is the smallest subnormal, not the number 1.
         assertThat(answerTo("mold to decimal! #{01}"))
                 .isEqualTo("\"4.94065645841247e-324\"");
     }

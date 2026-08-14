@@ -28,14 +28,6 @@ class ErrorCatalogueTest {
     @Test
     @DisplayName("the catalogue holds the ten categories R3 has, and any a module added")
     void theCategoriesAreThere() {
-        // Eleven, not ten: prot-mysql.reb ends with `put system/catalog/errors
-        // 'MySQL make object! [...]`, and a real R3 grows the same eleventh
-        // category the moment that module is imported. The categories are a
-        // register a module may add to, so the assertion is that the ten are
-        // all there and in Rebol's order rather than that there are ten.
-        // Braces, not quotes: the category list is over fifty characters
-        // and MOLD switches to the braced form past that length, which is
-        // Mold_String_Series' MAX_QUOTED_STR.
         assertThat(answerTo("mold words-of system/catalog/errors"))
                 .startsWith("{[Throw Note Syntax Script Math Access Command "
                         + "resv700 User Internal");
@@ -62,14 +54,12 @@ class ErrorCatalogueTest {
     @Test
     @DisplayName("a later id is offset by its position")
     void aLaterIdIsOffset() {
-        // THROW is the third id under Throw, whose base is 0.
         assertThat(answerTo("e: try/all [throw 5] e/code")).isEqualTo("2");
     }
 
     @Test
     @DisplayName("the type field is not counted as an id")
     void theTypeFieldDoesNotShiftTheCodes() {
-        // Counting it would make every code in the category one too high.
         assertThat(answerTo("e: try [1 / 0] e/code = system/catalog/errors/Math/code"))
                 .isEqualTo("#(true)");
     }
@@ -77,9 +67,6 @@ class ErrorCatalogueTest {
     @Test
     @DisplayName("a category names itself in its type field, as errors.reb writes it")
     void eachCategoryNamesItself() {
-        // errors.reb line 142: `type: "math error"`. This test used to
-        // expect "math", which was JEBOL's own earlier invention; the
-        // catalogue now carries the declaration verbatim.
         assertThat(answerTo("system/catalog/errors/Math/type"))
                 .isEqualTo("\"math error\"");
     }

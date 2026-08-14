@@ -72,7 +72,6 @@ class CountedRepeatRunsItsCountTest {
     @Test
     @DisplayName("SOME still stops when a round gets nowhere")
     void theOpenEndedGuardIsUntouched() {
-        // Without this guard the parse would never finish.
         assertThat(answerTo("parse \"\" [some [remove \"a\"]]")).isEqualTo("#(false)");
     }
 

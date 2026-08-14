@@ -10,8 +10,6 @@ import java.util.Set;
  * mirror the standard R3-Alpha typesets rather than being invented here.
  */
 public enum Datatype {
-    // END first, as Rebol numbers them: it is the marker for no value at
-    // all, and system/catalog/datatypes is read in this order.
     END("end"),
     UNSET("unset"),
     NONE("none"),
@@ -52,11 +50,6 @@ public enum Datatype {
     OBJECT("object"),
     MAP("map"),
     ERROR("error"),
-    // Named but not built. No value of these exists yet, and the names
-    // still have to: #(bitset!) is a datatype value and datatype? answers
-    // true for it, whether or not a bitset can be made. A bare bitset! in
-    // source is a word, which is a different question the reader settles
-    // by not settling it.
     ACTION("action"),
     BITSET("bitset"),
     CLOSURE("closure"),
@@ -79,17 +72,6 @@ public enum Datatype {
 
     private static final Set<Datatype> ANY_STRING =
             Set.of(STRING, FILE, URL, EMAIL, TAG, REF);
-    // hash! belongs here, as `boot/types.reb` says: its typeclass is `block`,
-    // so every arm in REBTYPE(Block) serves it and it is in the any-block!
-    // typeset with the other six. Leaving it out meant JEBOL declared a
-    // datatype it could not build -- every operation on one threw an
-    // IllegalArgumentException out of the interpreter, which is the failure
-    // mode spec/embed.allium forbids outright.
-    //
-    // A hash in Rebol is a block that keeps a hash table beside it for fast
-    // lookup. Nothing a script can see distinguishes it from a block except
-    // its datatype, so it is a block here too and the table is a performance
-    // question JEBOL has not had to answer yet.
     private static final Set<Datatype> ANY_BLOCK =
             Set.of(BLOCK, PAREN, PATH, SET_PATH, GET_PATH, LIT_PATH, HASH);
     private static final Set<Datatype> ANY_PATH =

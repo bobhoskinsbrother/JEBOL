@@ -113,10 +113,6 @@ class ConditionalTruthTest {
         @Test
         @DisplayName("an unset is true, as IS_FALSE in the C says")
         void unsetIsTrue() {
-            // `#define IS_FALSE(v) (IS_NONE(v) || (IS_LOGIC(v) &&
-            // !VAL_LOGIC(v)))` in sys-value.h. It never asks whether a
-            // value is unset, thus an unset is not false and every
-            // conditional takes its true branch for one.
             assertThat(UnsetValue.unset().isTruthy()).isTrue();
         }
 

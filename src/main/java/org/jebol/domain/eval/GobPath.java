@@ -1,22 +1,9 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.util.ArrayList;
 import java.util.List;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.GobStorage;
-import org.jebol.domain.value.GobValue;
-import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * A gob's fields and its children, from {@code PD_Gob}, {@code Get_GOB_Var} and
@@ -50,8 +37,6 @@ final class GobPath {
             return field(gob, named);
         }
         if (!(selector instanceof IntegerValue position)) {
-            // `return PE_BAD_SELECT` -- a pair means nothing to a gob, unlike an
-            // image where it is a coordinate.
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     "cannot select " + selector.datatype().literalSpelling()
                             + " from a gob");
@@ -84,8 +69,6 @@ final class GobPath {
             case "alpha" -> IntegerValue.of(storage.alpha());
             case "image" -> storage.contentIfKind(GobStorage.Content.IMAGE);
             case "draw" -> storage.contentIfKind(GobStorage.Content.DRAW);
-            // One field name over two type tags: a block came in as GOBT_TEXT and
-            // a string as GOBT_STRING, and each reads back as what went in.
             case "text" -> storage.contentKind() == GobStorage.Content.STRING
                     ? storage.contentIfKind(GobStorage.Content.STRING)
                     : storage.contentIfKind(GobStorage.Content.TEXT);
@@ -95,8 +78,6 @@ final class GobPath {
             case "parent" -> parentOf(storage);
             case "data" -> storage.data();
             case "flags" -> flagsOf(storage);
-            // `default: return FALSE` in Get_GOB_Var, which PD_Gob turns into
-            // PE_BAD_SELECT. OWNER lands here: it can be written and not read.
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH, named.spelling());
         };
     }
@@ -150,8 +131,6 @@ final class GobPath {
                 storage.size(pair);
                 return true;
             }).orElse(false);
-            // `Clip_Int(Int32(val), 0, 255)`, and Int32 refuses anything that is
-            // not a number at all.
             case "alpha" -> {
                 if (!(written instanceof IntegerValue given)) {
                     yield false;
@@ -174,9 +153,6 @@ final class GobPath {
                 storage.owner(owner.storage());
                 yield true;
             }
-            // Every other name, PARENT among them: `default: return FALSE`. So a
-            // parent is read-only, and writing one is the same refusal as writing
-            // a field the gob never had.
             default -> false;
         };
     }
@@ -312,10 +288,6 @@ final class GobPath {
             default -> GobStorage.Held.NONE;
         };
         if (kind == GobStorage.Held.NONE) {
-            // `else if (IS_NONE(val)) SET_GOB_TYPE(gob, GOBT_NONE); else return
-            // FALSE;` -- and note which tag that clears. Writing none to DATA
-            // empties the *content*, not the data, which is the C reaching for
-            // the wrong setter and is what a script sees.
             return emptied(storage, written);
         }
         storage.data(kind, written);
@@ -344,8 +316,6 @@ final class GobPath {
             }
             return true;
         }
-        // Neither a word nor a block, and the arm ends in `break` rather than in
-        // `return FALSE`, so the write is accepted and does nothing.
         return true;
     }
 

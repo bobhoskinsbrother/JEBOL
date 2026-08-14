@@ -1,18 +1,11 @@
 package org.jebol.domain.render;
 
+import org.jebol.domain.value.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * Reads a VID layout block into the faces it describes.
@@ -143,10 +136,6 @@ public final class Layout {
         switch (item) {
             case StringValue text -> face.setCaption(text.text());
             case PairValue size -> {
-                // A pair's halves are decimals, and a browser wants 200px
-                // rather than 200.0px. Molding a pair already drops the
-                // point from a whole half, so this asks it rather than
-                // printing the double.
                 face.style("width", Molder.moldHalf(size.x()) + "px");
                 face.style("height", Molder.moldHalf(size.y()) + "px");
             }
@@ -154,14 +143,9 @@ public final class Layout {
             case WordValue word -> colourNamed(word.canonical())
                     .ifPresent(rgb -> face.style("background-color", rgb));
             case IntegerValue ignored -> {
-                // A bare number in a layout is a position or a rate, neither
-                // of which a browser lays out. Dropped rather than guessed at.
             }
             case CharacterValue character -> face.setCaption(character.toString());
             case BlockValue block -> {
-                // The first block after a face is what happens when it is
-                // acted on. Later ones are effect and feel, which describe a
-                // desktop toolkit and have nothing to draw here.
                 if (face.action().isEmpty()) {
                     face.setAction(block);
                 }
@@ -178,8 +162,6 @@ public final class Layout {
     }
 
     private static String asRgb(TupleValue colour) {
-        // Three octets whatever the tuple keeps, because a colour written
-        // as a tuple of one is still a colour and the rest are zeros.
         return "rgb(" + colour.octetAt(1) + "," + colour.octetAt(2)
                 + "," + colour.octetAt(3) + ")";
     }

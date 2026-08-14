@@ -38,9 +38,6 @@ class TranscodeErrorTest {
     @Test
     @DisplayName("the error says what was wrong with it")
     void theErrorCarriesItsId() {
-        // Written through a word rather than as `(...)/id`, because a
-        // path whose first segment is a paren is a separate gap: JEBOL
-        // reads it as the paren followed by the refinement /id.
         assertThat(answerTo("e: transcode/one/error \"2#12\" e/id")).isEqualTo("invalid");
     }
 

@@ -71,8 +71,6 @@ class CountersAndConversionsTest {
     @Test
     @DisplayName("TO BINARY! of an integer is its whole machine width")
     void integerToBinaryIsEightBytes() {
-        // Not #{41}. The shorter reading is the useful one and the wrong
-        // one, and the two agree for anything under 256 written as a block.
         assertThat(answerTo("mold to binary! 65"))
                 .isEqualTo("\"#{0000000000000041}\"");
     }

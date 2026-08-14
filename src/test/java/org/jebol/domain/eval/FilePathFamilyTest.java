@@ -64,7 +64,6 @@ class FilePathFamilyTest {
     @Test
     @DisplayName("a dot in a directory name is not a suffix")
     void theDotMustFollowTheLastSlash() {
-        // This is the case that makes SUFFIX? more than a search for a dot.
         assertThat(answerTo("none? suffix? %a.b/c")).isEqualTo("#(true)");
         assertThat(answerTo("none? suffix? %a/b")).isEqualTo("#(true)");
     }
@@ -79,8 +78,6 @@ class FilePathFamilyTest {
     @Test
     @DisplayName("DIR? of none is false, and not none")
     void theAnswerIsAlwaysALogic() {
-        // ALL gives none when a condition does not hold, thus the answer
-        // must be made into a logic value.
         assertThat(answerTo("dir? none")).isEqualTo("#(false)");
         assertThat(answerTo("logic? dir? none")).isEqualTo("#(true)");
     }

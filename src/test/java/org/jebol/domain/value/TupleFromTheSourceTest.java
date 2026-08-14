@@ -47,8 +47,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("a tuple keeping fewer than three shows zeros up to three")
         void theShownLengthHasAFloor() {
-            // Emit_Tuple writes each kept octet, then keeps writing "0."
-            // until three have gone out.
             assertThat(answerTo("mold to tuple! #{01}")).isEqualTo("\"1.0.0\"");
             assertThat(answerTo("mold to tuple! #{0102}")).isEqualTo("\"1.2.0\"");
         }
@@ -67,9 +65,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("a string of one number keeps three octets")
         void aShortStringIsPaddedToThree() {
-            // Scan_Tuple counts the dots for the length and then raises
-            // the length to three, which no other source does. So a
-            // string is the one place a short tuple cannot come from.
             assertThat(answerTo("(to tuple! \"1\") == 1.0.0")).isEqualTo("#(true)");
             assertThat(answerTo("length? to tuple! \"1\"")).isEqualTo("3");
         }
@@ -104,8 +99,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("a number above 255 is refused")
         void anOctetHasACeiling() {
-            // Scan_Tuple refuses rather than clamping, which is the
-            // opposite of what a write through a path does.
             assertThat(errorIdOf("to tuple! \"1.2.256\"")).isNotEqualTo("no-error");
             assertThat(answerTo("(to tuple! \"1.2.255\") == 1.2.255")).isEqualTo("#(true)");
         }
@@ -125,8 +118,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("a block of numbers keeps exactly what it holds")
         void aBlockIsNotPadded() {
-            // MT_Tuple sets the length to the count of items with no
-            // floor, so a block is a way to build a tuple of one octet.
             assertThat(answerTo("(to tuple! [1 2 3]) == 1.2.3")).isEqualTo("#(true)");
             assertThat(answerTo("mold to tuple! [1]")).isEqualTo("\"1.0.0\"");
             assertThat(answerTo("(to tuple! [1]) == 1.0.0"))
@@ -146,8 +137,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("a decimal rounds to the nearest whole octet")
         void aDecimalIsRounded() {
-            // round() in the C rounds half away from zero, so 0.5 is 1
-            // and not 0.
             assertThat(answerTo("(to tuple! [0.5 25.4 200.01]) == 1.25.200"))
                     .isEqualTo("#(true)");
         }
@@ -190,8 +179,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("a binary of more than twelve bytes is cut short")
         void aLongBinaryIsTruncated() {
-            // The one over-long source that does not raise: the C sets
-            // len to MAX_TUPLE and reads that many.
             assertThat(answerTo("mold to tuple! #{0102030405060708090A0B0C}"))
                     .isEqualTo("\"1.2.3.4.5.6.7.8.9.10.11.12\"");
             assertThat(answerTo("mold to tuple! #{0102030405060708090A0B0C0D}"))
@@ -221,8 +208,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("an issue of more than twelve pairs is refused, not cut short")
         void aLongIssueRaises() {
-            // A binary truncates and an issue raises. The two branches
-            // sit beside each other in the C and do not agree.
             assertThat(errorIdOf("to tuple! #0102030405060708090A0B0C0D"))
                     .isNotEqualTo("no-error");
         }
@@ -236,9 +221,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("anything else is refused")
         void thereAreNoOtherSources() {
-            // Five sources and no sixth: the C falls through to
-            // Trap_Make for everything else, including a number, which
-            // is the one a caller is most likely to try.
             assertThat(errorIdOf("to tuple! 1")).isNotEqualTo("no-error");
             assertThat(errorIdOf("to tuple! none")).isNotEqualTo("no-error");
             assertThat(errorIdOf("to tuple! 1x2")).isNotEqualTo("no-error");
@@ -291,8 +273,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("an octet past the kept ones reads as zero, not none")
         void pastTheKeptOctets() {
-            // PD_Tuple raises the length to three before it checks, and
-            // the octets behind the kept ones are zeros.
             assertThat(answerTo("t: to tuple! [1] t/2")).isEqualTo("0");
             assertThat(answerTo("t: to tuple! [1] t/3")).isEqualTo("0");
         }
@@ -364,8 +344,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("a written octet is clamped rather than refused")
         void theBoundaryOnTheValue() {
-            // The opposite of every way of building a tuple, all of
-            // which refuse a number outside an octet.
             assertThat(answerTo("t: 1.2.3 t/1: 300")).isEqualTo("300");
             assertThat(answerTo("t: 1.2.3 t/1: 300 t/2: -10 t == 255.0.3")).isEqualTo("#(true)");
         }
@@ -373,8 +351,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("writing NONE cuts the tuple short")
         void noneShortens() {
-            // The only way to shorten a tuple, and the reason the kept
-            // length is worth holding on to at all.
             assertThat(answerTo("t: 1.2.3.4 t/4: none t == 1.2.3")).isEqualTo("#(true)");
             assertThat(answerTo("t: 1.2.3.4 t/4: none (t + 0.0.0.0) == 1.2.3.0"))
                     .as("and the octet behind it was zeroed, not left at 4")
@@ -397,8 +373,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("POKE is refused where a set-path is allowed")
         void pokeIsNotAWrite() {
-            // POKE asks for a series and a tuple is not one, so the
-            // argument is rejected before any write is considered.
             assertThat(errorIdOf("t: 1.2.3.4 poke t 2 99")).isEqualTo("expect-arg");
         }
     }
@@ -443,10 +417,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("dividing by a decimal rounds each octet")
         void decimalDivisionRounds() {
-            // Round_Dec, not a truncation: 1 / 0.625 is 1.6 and the
-            // octet is 2. Truncating gives 1 and agrees with the
-            // rounding on every case where the answer is already whole,
-            // which is what makes this worth pinning.
             assertThat(answerTo("(1.1.1 / 0.625) == 2.2.2")).isEqualTo("#(true)");
             assertThat(answerTo("(1.1.1 / 0.1) == 10.10.10")).isEqualTo("#(true)");
         }
@@ -470,9 +440,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("a factor above 255 saturates without being multiplied out")
         void multiplicationSaturates() {
-            // The C stops before the multiplication rather than after
-            // it, so a factor that would leave the range of a machine
-            // integer never gets there.
             assertThat(answerTo("(1.1.1 * 2147483648.0) == 255.255.255")).isEqualTo("#(true)");
             assertThat(answerTo("(1.1.1 * 4.656612873077e+100) == 255.255.255"))
                     .isEqualTo("#(true)");
@@ -488,10 +455,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("REMAINDER works octet by octet too")
         void remainderIsOctetWise() {
-            // The operator is %, not //. This used to be written with //,
-            // which JEBOL had mapped to REMAINDER; ops.reb reads
-            // `// integer-divide`, and integer-divide takes a number rather
-            // than a tuple.
             assertThat(answerTo("(10.20.30 % 7) == 3.6.2")).isEqualTo("#(true)");
             assertThat(answerTo("(remainder 10.20.30 7) == 3.6.2")).isEqualTo("#(true)");
         }
@@ -510,8 +473,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("OR works on the whole integer and then clamps")
         void orIsSixtyFourBitThenClamped() {
-            // The integer is not cut to an octet first. -1 is all ones,
-            // so every octet comes out negative and clamps to zero.
             assertThat(answerTo("(1.2.3.255 or -1) == 0.0.0.0")).isEqualTo("#(true)");
             assertThat(answerTo("(1.2.3.255 or -11111111111) == 0.0.0.0")).isEqualTo("#(true)");
             assertThat(answerTo("(1.2.3.4 or 1) == 1.3.3.5")).isEqualTo("#(true)");
@@ -537,9 +498,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("a decimal is not a logic operand")
         void aDecimalIsRefused() {
-            // OR takes integer!, char!, tuple! and the rest, and does
-            // not take decimal!, so this is turned away at the argument
-            // rather than inside the operation.
             assertThat(errorIdOf("1.2.3 or 1.0")).isEqualTo("expect-arg");
         }
 
@@ -558,8 +516,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("RANDOM keeps each octet between zero and what it was")
         void eachOctetStaysWithinItself() {
-            // Each octet on its own rather than one number spread over
-            // all of them, so an octet never grows.
             assertThat(answerTo("t: random 9.9.9 all [t/1 <= 9 t/2 <= 9 t/3 <= 9]"))
                     .isEqualTo("#(true)");
             assertThat(answerTo("tuple? random 1.2.3")).isEqualTo("#(true)");
@@ -591,8 +547,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("REVERSE works over the kept length, zeros and all")
         void theZerosAreReversedToo() {
-            // A string pads to three on the way in, so the tuple here
-            // keeps 1.0.0 and reversing it moves the one to the end.
             assertThat(answerTo("(reverse to tuple! \"1\") == 0.0.1")).isEqualTo("#(true)");
         }
 
@@ -638,7 +592,6 @@ class TupleFromTheSourceTest {
         @Test
         @DisplayName("a factor between them interpolates and truncates")
         void theMiddle() {
-            // A cast to a byte in the C, so 83.5 is 83 rather than 84.
             assertThat(answerTo("(lerp 10.100.255 255.128.64 0.3) == 83.108.197"))
                     .isEqualTo("#(true)");
         }

@@ -1,12 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.util.Optional;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * Reaching into a block through a path, out of {@code PD_Block} in
@@ -51,24 +47,12 @@ final class BlockPath {
      */
     static Optional<Integer> positionOf(BlockValue block, Value selector) {
         int at = switch (selector) {
-            // `if (i == 0) return PE_NONE; // like in case: path/0` and then
-            // `if (i < 0) i++; n = i + VAL_INDEX(pvs->value) - 1;`. So a
-            // negative position counts back from where the block is and can
-            // reach behind it, and there is no zero: `b/0` is nothing at all.
             case IntegerValue position -> positionFrom(position.magnitude(), block.index());
-            // A decimal is truncated, which is what Int32 does to one, so
-            // `b/2.7` and `b/2` are the same request.
             case DecimalValue fraction ->
                     positionFrom((long) fraction.quantity(), block.index());
-            // `n = Find_Word(...); if (n != NOT_FOUND) n++;` -- the answer is
-            // the item after the name. Find_Word takes "word (of any type)", so
-            // `[a: 1]/a` and `['a 1]/a` both answer 1: what is being matched is
-            // the spelling and not how it was written.
             case WordValue name -> afterTheFirst(block, item ->
                     item instanceof WordValue held
                             && held.canonical().equals(name.canonical()));
-            // `Find_Block_Simple(...) + 1` -- anything else is looked for by
-            // value, so a block of strings and values reads by string.
             default -> afterTheFirst(block, item ->
                     Comparison.looselyEqual(item, selector));
         };

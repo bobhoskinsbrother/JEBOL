@@ -29,8 +29,6 @@ class AuditedRefinementsTest {
     @Test
     @DisplayName("COPY/DEEP copies what the block holds, not just the block")
     void copyDeepReachesInside() {
-        // The change goes through the copy, and the original must not see
-        // it. Without /DEEP the two blocks hold the very same inner one.
         assertThat(answerTo(
                 "b: [[1]] c: copy/deep b append first c 2 (first b) = [1]"))
                 .isEqualTo("#(true)");
@@ -39,8 +37,6 @@ class AuditedRefinementsTest {
     @Test
     @DisplayName("COPY without /DEEP shares what the block holds")
     void copyWithoutDeepSharesTheInsides() {
-        // The off point. If this passed as well, /DEEP would be doing
-        // nothing and the test above would prove nothing.
         assertThat(answerTo(
                 "b: [[1]] c: copy b append first c 2 (first b) = [1 2]"))
                 .isEqualTo("#(true)");
@@ -56,8 +52,6 @@ class AuditedRefinementsTest {
     @Test
     @DisplayName("COPY/PART and /DEEP work together")
     void copyPartAndDeepCombine() {
-        // The combination is the thing a slash-named function cannot do:
-        // `copy/part` as its own word answers one call and no other.
         assertThat(answerTo("(copy/part/deep [[1] [2] [3]] 2) = [[1] [2]]"))
                 .isEqualTo("#(true)");
     }
@@ -65,16 +59,6 @@ class AuditedRefinementsTest {
     @Test
     @DisplayName("and COPY refuses what its own declaration does not name")
     void copyOfANonSeriesIsRefused() {
-        // This test used to assert `(copy 5) = 5`, which was a guess and not an
-        // audit. The same declaration pass this file is named after settles it:
-        // `value [series! port! map! object! bitset! any-function! error!
-        // struct!]`, and an integer is on none of those lists. So a copy of a
-        // number never reaches an arm.
-        //
-        // Found while building `gob!`. A gob is not on the list either, and
-        // narrowing the declaration to the C's eight was what made this one
-        // answer, which is the whole reason to declare a typeset rather than
-        // leave it open: the list decides the error.
         assertThat(answerTo(
                 "e: try [copy 5] either error? e [e/id] ['no-error]"))
                 .isEqualTo("expect-arg");
@@ -113,7 +97,6 @@ class AuditedRefinementsTest {
     @Test
     @DisplayName("REVERSE changes the series it was given")
     void reversePartChangesInPlace() {
-        // Not a new series. A caller holding the original must see it.
         assertThat(answerTo("b: [1 2 3 4] reverse/part b 2 b = [2 1 3 4]")).isEqualTo("#(true)");
     }
 
@@ -165,8 +148,6 @@ class AuditedRefinementsTest {
     @Test
     @DisplayName("the set operations fold case without the refinement")
     void theSetOperationsFoldCaseOtherwise() {
-        // The off point for all four. Without it /CASE could be doing
-        // nothing and every assertion above would still hold.
         assertThat(answerTo("(union [\"a\"] [\"A\"]) = [\"a\"]")).isEqualTo("#(true)");
         assertThat(answerTo("empty? difference [\"a\"] [\"A\"]")).isEqualTo("#(true)");
     }
@@ -174,9 +155,6 @@ class AuditedRefinementsTest {
     @Test
     @DisplayName("/SKIP reads records and the first field decides")
     void skipComparesByTheRecordsKey() {
-        // [1 2] and [1 3] are one record to this, because the key is the
-        // same. Comparing whole records would keep both, which is the
-        // answer for a plain UNION and not for this one.
         assertThat(answerTo("(union/skip [1 2 1 3] [1 2] 2) = [1 2]")).isEqualTo("#(true)");
     }
 

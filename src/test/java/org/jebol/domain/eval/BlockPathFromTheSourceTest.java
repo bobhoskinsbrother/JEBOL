@@ -56,16 +56,12 @@ class BlockPathFromTheSourceTest {
         @Test
         @DisplayName("and there is no position zero")
         void thereIsNoPositionZero() {
-            // `if (i == 0) return PE_NONE; // like in case: path/0`
             assertThat(answerTo("b: [a 1] none? b/0")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a negative position counts back, and may reach behind the block")
         void aNegativePositionCountsBack() {
-            // `if (i < 0) i++; n = i + VAL_INDEX(pvs->value) - 1;` -- so -1 is
-            // the item before the position rather than the last item, and a
-            // block at its head has nothing there.
             assertThat(answerTo("b: next next [a 1 c 2] b/-1")).isEqualTo("1");
             assertThat(answerTo("b: [a 1 c 2] none? b/-1")).isEqualTo(TRUE);
         }
@@ -91,7 +87,6 @@ class BlockPathFromTheSourceTest {
         @Test
         @DisplayName("so a block is a lookup table")
         void aBlockIsALookupTable() {
-            // `n = Find_Word(...); if (n != NOT_FOUND) n++;`
             assertThat(answerTo("b: [a 1 c 2] b/a")).isEqualTo("1");
             assertThat(answerTo("b: [a 1 c 2] b/c")).isEqualTo("2");
         }
@@ -99,8 +94,6 @@ class BlockPathFromTheSourceTest {
         @Test
         @DisplayName("and how the word in the block was written makes no difference")
         void anyKindOfWordMatches() {
-            // Find_Word takes "word (of any type)" and compares the spelling,
-            // so a block written with colons reads the same as one without.
             assertThat(answerTo("b: [a: 1] b/a")).isEqualTo("1");
             assertThat(answerTo("b: reduce ['a 1] b/a")).isEqualTo("1");
         }
@@ -122,9 +115,6 @@ class BlockPathFromTheSourceTest {
         @Test
         @DisplayName("and a name at the tail with nothing after it answers none too")
         void aNameWithNothingAfterItIsNone() {
-            // One line covers both: `if (n < 0 || (REBCNT)n >= VAL_TAIL(...))`.
-            // The name is there and the answer is not, which is the same
-            // outcome as the name not being there at all.
             assertThat(answerTo("b: [a] none? b/a")).isEqualTo(TRUE);
         }
 
@@ -142,7 +132,6 @@ class BlockPathFromTheSourceTest {
         @Test
         @DisplayName("a string, a character or a block, each answering what follows it")
         void byValue() {
-            // `Find_Block_Simple(...) + 1`
             assertThat(answerTo("b: [\"k\" 5] b/(\"k\")")).isEqualTo("5");
             assertThat(answerTo("b: reduce [#\"x\" 5] b/(#\"x\")")).isEqualTo("5");
             assertThat(answerTo("b: reduce [[1 2] 5] b/([1 2])")).isEqualTo("5");
@@ -177,9 +166,6 @@ class BlockPathFromTheSourceTest {
         @Test
         @DisplayName("a selector that finds nothing is refused rather than added")
         void anUnknownSelectorIsRefused() {
-            // `if (pvs->setval) return PE_BAD_SELECT;` -- the one place a write
-            // and a read part company. Appending would be the other defensible
-            // answer and the C does not take it.
             assertThat(errorIdFrom("b: [a 1] b/zz: 5")).isEqualTo("invalid-path");
             assertThat(errorIdFrom("b: [a 1] b/9: 5")).isEqualTo("invalid-path");
         }
@@ -187,9 +173,6 @@ class BlockPathFromTheSourceTest {
         @Test
         @DisplayName("except through position zero, which quietly does nothing")
         void positionZeroDoesNothing() {
-            // `if (i == 0) return PE_NONE;` is tested before the write check,
-            // so this one selector is not refused -- and a caller cannot tell it
-            // from a write that worked.
             assertThat(errorIdFrom("b: [a 1] b/0: 5")).isEqualTo("no-error");
             assertThat(answerTo("b: [a 1] b/0: 5 b")).isEqualTo("[a 1]");
         }
@@ -197,10 +180,6 @@ class BlockPathFromTheSourceTest {
         @Test
         @DisplayName("and a protected block is refused as an error a script can catch")
         void aProtectedBlockIsRefused() {
-            // `if (pvs->setval) TRAP_PROTECT(VAL_SERIES(pvs->value));`. This
-            // reached the host as a Java exception before, which
-            // spec/embed.allium forbids outright: nothing a script does may
-            // leave the interpreter as a throwable.
             assertThat(errorIdFrom("b: protect [a 1] b/a: 5")).isEqualTo("protected");
             assertThat(answerTo("b: protect [a 1] e: try [b/a: 5] b"))
                     .isEqualTo("[a 1]");

@@ -32,8 +32,6 @@ class PathConversionTest {
     @Test
     @DisplayName("a name with no slash sits in the current directory")
     void theDirectoryIsNeverEmpty() {
-        // %./ and not an empty path, thus the two parts can always be put
-        // back together.
         assertThat(answerTo("(split-path %c.txt) = [%./ %c.txt]")).isEqualTo("#(true)");
     }
 
@@ -58,8 +56,6 @@ class PathConversionTest {
     @Test
     @DisplayName("TO-REBOL-FILE answers a file and TO-LOCAL-FILE answers a string")
     void theTwoAnswerDifferentTypes() {
-        // The datatype is the point of the pair. A local path is text
-        // that only the machine reads.
         assertThat(answerTo("file? to-rebol-file \"a/b.txt\"")).isEqualTo("#(true)");
         assertThat(answerTo("string? to-local-file %a/b.txt")).isEqualTo("#(true)");
     }
@@ -80,8 +76,6 @@ class PathConversionTest {
     @Test
     @DisplayName("a path of only slashes and dots is a directory with no name")
     void theWholePathCanBeTheDirectory() {
-        // Rebol's own tests, in series-test.r3. This is the rule that is
-        // easy to miss, and its own PARSE rule in base-files.reb.
         assertThat(answerTo("(split-path %/) = [%/ %\"\"]")).isEqualTo("#(true)");
         assertThat(answerTo("(split-path %./) = [%./ %\"\"]")).isEqualTo("#(true)");
         assertThat(answerTo("(split-path %../) = [%../ %\"\"]")).isEqualTo("#(true)");

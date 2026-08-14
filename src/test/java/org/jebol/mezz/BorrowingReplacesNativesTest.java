@@ -25,10 +25,6 @@ class BorrowingReplacesNativesTest {
     @Test
     @DisplayName("a borrowed definition takes the word from the native")
     void theBorrowedDefinitionWins() {
-        // SPLIT is still registered as a native and is no longer the
-        // one anybody reaches: Rebol's own, loaded afterwards into the
-        // same context, has the word. That is what makes the Java one
-        // dead code rather than a divergence.
         Interpreter interpreter = Interpreter.create();
 
         assertThat(interpreter.display(interpreter.run("type? :split")))

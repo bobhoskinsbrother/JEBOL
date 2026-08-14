@@ -7,23 +7,14 @@ package org.jebol.domain.read;
  */
 public enum SyntaxFailure {
     INVALID_LEXEME("invalid", "characters that begin no known literal"),
-    // Every unbalanced delimiter is the one id `missing` in a real R3:
-    // an unclosed series and a stray closer both go through RE_MISSING,
-    // with the token name in arg1 and the delimiter in arg2.
     MISSING_CLOSE("missing", "end of input inside an open series"),
     EXTRA_CLOSE("missing", "a closing delimiter with no opener"),
     MISMATCHED_CLOSE("missing", "a bracket closing a parenthesis, or the reverse"),
     UNTERMINATED_STRING("unterminated-string", "end of input inside a string"),
     INVALID_ESCAPE("invalid-escape", "a caret escape naming no known character"),
     INTEGER_OUT_OF_RANGE("integer-out-of-range", "digits beyond the 64-bit range"),
-    // A real R3 reports every bad binary body as plain `invalid`, naming
-    // "binary" as the thing it could not read. There is no invalid-binary
-    // in its catalogue, so a script catching one by id would never fire.
     INVALID_BINARY("invalid", "contents that are not a binary in the base given"),
     MALCONSTRUCT("malconstruct", "a construct whose datatype cannot be built that way"),
-    // A map literal with an odd number of items has a key without a value.
-    // R3 reads this as `invalid-arg` rather than a construction failure,
-    // which a script catches by id whatever the category.
     INVALID_ARG("invalid-arg", "a map literal whose keys and values do not pair up"),
     NESTING_TOO_DEEP("nesting-too-deep", "blocks nested deeper than the reader accepts"),
     NEEDS("needs", "a script whose needs: header this interpreter does not meet"),

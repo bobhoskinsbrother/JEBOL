@@ -1,12 +1,9 @@
 package org.jebol.domain.read;
 
+import org.jebol.domain.value.*;
+
 import java.util.List;
 import java.util.Locale;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * The {@code REBOL [...]} block at the top of a library file, read as data.
@@ -62,14 +59,7 @@ public record LibraryFileHeader(
             }
             Value given = items.get(at + 1);
             switch (named.canonical()) {
-                // A word, because `Type: module` writes one. A string is
-                // taken too: a hand-written header may quote it, and reading
-                // one form and not the other would be a trap.
                 case "type" -> declaredType = plainTextOf(given);
-                // What the module is called, which is how IMPORT asks for it
-                // and how LOAD-MODULE files it: `repend system/modules [name
-                // module]`. A file with no name is still a module and is simply
-                // not filed anywhere.
                 case "name" -> moduleName = plainTextOf(given);
                 case "exports" -> exported = wordsIn(given);
                 default -> { }

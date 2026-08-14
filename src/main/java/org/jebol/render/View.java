@@ -1,22 +1,18 @@
 package org.jebol.render;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.time.Duration;
 import org.jebol.application.Conclusion;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.render.Face;
 import org.jebol.domain.render.Html;
 import org.jebol.domain.render.Layout;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.ErrorCategory;
-import org.jebol.domain.value.ErrorValue;
-import org.jebol.domain.value.Molder;
+import org.jebol.domain.value.*;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A layout that stays on the server and answers events.

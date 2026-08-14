@@ -1,20 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.util.List;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.EventCatalogue;
-import org.jebol.domain.value.EventValue;
-import org.jebol.domain.value.GobValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * An event's fields, from {@code Get_Event_Var} and {@code Set_Event_Var}.
@@ -62,7 +50,6 @@ final class EventPath {
                     ? NoneValue.none()
                     : WordValue.of(EventCatalogue.typeAt(event.typeIndex()));
             case "port" -> portOf(event, guiPort, callbackPort, consolePort);
-            // Two names for one field, sharing one arm in each direction.
             case "window", "gob" -> gobOf(event);
             case "offset" -> event.has(EventValue.Flag.HAS_XY)
                     ? PairValue.of(event.offsetX(), event.offsetY())
@@ -98,9 +85,6 @@ final class EventPath {
             case OBJECT -> event.attached();
             case CALLBACK -> callbackPort;
             case CONSOLE -> consolePort;
-            // "assumes EVM_DEVICE ... Event holds the IO-Request, which has the
-            // PORT" and `if (!req || !req->port) goto is_none`. A device request is
-            // the host's own structure, and nothing here builds one.
             case DEVICE -> NoneValue.none();
         };
     }
@@ -162,8 +146,6 @@ final class EventPath {
                     ? java.util.Optional.of(event.withData(
                             (int) given.magnitude(), EventValue.Flag.HAS_CODE))
                     : java.util.Optional.empty();
-            // FLAGS and DATA among them: `default: return FALSE`. Both can be read
-            // and neither can be written, because both say what the host saw.
             default -> java.util.Optional.empty();
         };
     }
@@ -203,8 +185,6 @@ final class EventPath {
             return java.util.Optional.of(
                     event.withAttached(EventValue.Model.OBJECT, object));
         }
-        // `else if (IS_NONE(val)) { VAL_EVENT_MODEL(value) = EVM_GUI; }` -- and it
-        // leaves the slot alone, so an event that held a gob keeps it.
         if (value instanceof NoneValue) {
             return java.util.Optional.of(event.withModel(EventValue.Model.GUI));
         }
@@ -268,10 +248,6 @@ final class EventPath {
                         || named.datatype() == Datatype.LIT_WORD)) {
             java.util.Optional<Integer> at =
                     EventCatalogue.keyIndexOf(named.canonical());
-            // `if (IS_END(arg)) return FALSE;` -- a word the key catalogue has not
-            // got is a bad field set, where a *type* the type catalogue has not got
-            // raises invalid-arg. The two loops fail differently and the C does not
-            // tidy that up.
             return at.map(position -> readied.withData(
                     (position + 1) << 16, EventValue.Flag.HAS_CODE));
         }
@@ -294,15 +270,9 @@ final class EventPath {
         for (int at = 0; at < spec.size(); at += 2) {
             Value name = spec.get(at);
             Value given = at + 1 < spec.size() ? spec.get(at + 1) : NoneValue.none();
-            // `if (IS_END(val)) val = NONE_VALUE; else val = Get_Simple_Value(val);`
-            // -- so a word or a path in a spec block becomes what it holds, and a
-            // set-word with nothing after it becomes none.
             Value written = given.datatype() == Datatype.UNSET
                     ? NoneValue.none()
                     : simpleValueOf.apply(given);
-            // Every name is passed to the setter, whatever its datatype: unlike a
-            // gob, an event does not check for a set-word first, so a spec block of
-            // plain words fails as a field the event has not got.
             String field = name instanceof WordValue named ? named.canonical() : "";
             java.util.Optional<EventValue> after = written(built, field, written);
             if (after.isEmpty()) {
@@ -337,8 +307,6 @@ final class EventPath {
                     DatatypeValue.of(Datatype.EVENT),
                     DatatypeValue.of(spec.datatype()));
         }
-        // `from` is either the datatype or an event, and neither contributes a
-        // field: `CLEARS(&(D_RET->data.event))` runs for both.
         if (!(from instanceof EventValue) && !(from instanceof DatatypeValue)) {
             throw Raised.of(EvaluationFailure.EXPECT_VAL,
                     DatatypeValue.of(Datatype.EVENT),

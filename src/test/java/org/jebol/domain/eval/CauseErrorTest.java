@@ -46,10 +46,6 @@ class CauseErrorTest {
     @Test
     @DisplayName("all three arguments are carried, because a catalogue entry words three")
     void allThreeArgumentsAreCarried() {
-        // This used to assert that arg2 and arg3 were always none, because
-        // an error held one subject where Rebol holds three. That made
-        // `e/arg3 = integer!` false for every expect-arg, which is an
-        // assertion Rebol's own suite makes.
         assertThat(answerTo(
                 "e: try [cause-error 'script 'invalid-arg [1 2]] e/arg1")).isEqualTo("1");
         assertThat(answerTo(
@@ -68,8 +64,6 @@ class CauseErrorTest {
     @Test
     @DisplayName("MAKE ERROR! evaluates its spec")
     void theSpecIsEvaluated() {
-        // The bug behind the above: read as written, `type: kind` gives
-        // an error whose type is the word "kind".
         assertThat(answerTo(
                 "kind: 'math which: 'zero-divide "
                         + "e: make error! [type: kind id: which] e/id"))

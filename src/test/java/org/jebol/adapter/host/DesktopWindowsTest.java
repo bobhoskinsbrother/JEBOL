@@ -81,9 +81,6 @@ class DesktopWindowsTest {
         @Test
         @DisplayName("and reaches a script as a catchable error, not a throwable")
         void theRefusalReachesTheScriptAsAnError() {
-            // The whole point of doing the headless check in the adapter. Left
-            // to Swing this is an AWTError, which is not an Exception and would
-            // travel straight out through the interpreter.
             Interpreter interpreter = Interpreter.withBounds(
                     Bounds.standard().granting(HostService.WINDOWS));
             interpreter.useWindows(DesktopWindows.onThisMachine());
@@ -103,9 +100,6 @@ class DesktopWindowsTest {
         @Test
         @DisplayName("the adapter is a WindowPort, so a host can hand it straight over")
         void itFitsThePort() {
-            // The gap this class closed: every other service had an adapter
-            // and this one had none, so BROWSE was reachable and could never
-            // succeed in any shipped configuration.
             assertThat(DesktopWindows.onThisMachine()).isInstanceOf(WindowPort.class);
         }
 
@@ -124,9 +118,6 @@ class DesktopWindowsTest {
         @Test
         @DisplayName("a declined dialog is an empty answer, which the port models as empty")
         void decliningIsModelledAsEmpty() {
-            // Asserted against the contract rather than the screen: the three
-            // Swing ways of saying no all become an empty Optional or list, so
-            // the domain never learns what CANCEL_OPTION is.
             WindowPort declining = new WindowPort() {
                 @Override
                 public void browse(String target) {
@@ -170,9 +161,6 @@ class DesktopWindowsTest {
     @Test
     @DisplayName("this build knows whether it has a display, so the skips are honest")
     void theHeadlessCheckIsMeaningful() {
-        // Recorded rather than asserted either way: a green run on a machine
-        // with a display has skipped the refusal tests, and this says so in
-        // the report rather than leaving it to be guessed.
         assertThat(GraphicsEnvironment.isHeadless())
                 .as("headless here: %s", GraphicsEnvironment.isHeadless())
                 .isIn(true, false);

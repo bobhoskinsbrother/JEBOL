@@ -68,9 +68,6 @@ class CollectIntoTest {
     @Test
     @DisplayName("the rule after the target really runs")
     void theWalkResumesInTheRightPlace() {
-        // Measuring these forms as a plain COLLECT left the walk matching
-        // the target word as a rule, which collected nothing and still
-        // reported a match.
         assertThat(answerTo(
                 "e: [] parse \"12\" [collect into e [some [keep skip]]] e = [#\"1\" #\"2\"]"))
                 .isEqualTo("#(true)");

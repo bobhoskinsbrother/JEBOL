@@ -242,9 +242,6 @@ class ReplEndToEndTest {
         @Test
         @DisplayName("a walk through three lines names each line it reaches")
         void aWalkKeepsItsOwnLineCount() {
-            // What a script that reads another script does: take a value, keep the
-            // rest and keep the count, then hand both back. The count is the caller's
-            // to carry, so the whole point is that it survives the round trip.
             String session = session(
                     "code: rejoin [{first} newline {second} newline {third}]",
                     "line: 1",
@@ -264,9 +261,6 @@ class ReplEndToEndTest {
         @Test
         @DisplayName("and a mistake on the fourth line is reported as the fourth line")
         void aFailureNamesTheLineInTheWholeFile() {
-            // The reason the count is handed round at all. A reader given only the
-            // last fragment would call it line one and send the person looking in
-            // the wrong place.
             assertThat(session(
                     "e: try [transcode/line \"1d\" 4]",
                     "e/near"))
@@ -296,15 +290,6 @@ class ReplEndToEndTest {
         @Test
         @DisplayName("none of a module's words are left behind in the session")
         void noModuleWordEscapesIntoTheSession() {
-            // The session is where a person would notice. A module that
-            // leaked its words would answer here, and the answer would look
-            // like the module having worked rather than having broken
-            // something.
-            //
-            // Not even the exported one. MAKE MODULE! builds the module and
-            // stops there; putting a module's exports into the library is
-            // IMPORT's job, and IMPORT is sys-load.reb's. So a module made
-            // at the prompt is reached through the value it answered.
             String transcript = session(
                     "m: make module! [[Title: \"t\" Exports: [shown]] "
                             + "[shown: 1 kept-back: 2]]",
@@ -323,17 +308,12 @@ class ReplEndToEndTest {
         @Test
         @DisplayName("EXP answers a number at the prompt, not a block")
         void expAnswersANumber() {
-            // What a person sees when the JSON codec has overwritten the
-            // library's EXP: `exp 0` answers the parse rule rather than one.
             assertThat(session("exp 0")).contains("== 1");
         }
 
         @Test
         @DisplayName("DECODE-URL is a function at the prompt, not none")
         void decodeUrlIsAFunction() {
-            // Calling it needs ENHEX, which JEBOL has not got. What a person
-            // can see today is that the name holds a function rather than
-            // none, which is what the sys context bought.
             assertThat(session("any-function? :decode-url")).contains("== #(true)");
         }
 

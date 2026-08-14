@@ -187,9 +187,6 @@ class ActionParityTest {
                     interpreter.defineFreshWordsIn(source);
                     answered = interpreter.display(interpreter.run(source)).trim();
                 } catch (RuntimeException escaped) {
-                    // A script's call reaching the host as a Java exception is
-                    // a defect of its own -- spec/embed.allium forbids it -- so
-                    // it is recorded rather than allowed to stop the probe.
                     answered = "threw " + escaped.getClass().getSimpleName();
                 }
                 if (MEANS_NO_ARM.contains(answered) || answered.startsWith("threw ")) {
@@ -260,7 +257,6 @@ class ActionParityTest {
                 declaredFor.put(parts[0].trim(), firstArgumentsTypes(parts[1]));
             }
         }
-        // A declared type may be a typeset, so expand before comparing.
         declaredFor.replaceAll((action, declared) -> {
             Set<String> expanded = new TreeSet<>();
             declared.forEach(name -> expanded.addAll(typesets.getOrDefault(
@@ -270,8 +266,6 @@ class ActionParityTest {
 
         Map<String, Set<String>> wanted = new LinkedHashMap<>();
         typeclassOf.forEach((datatype, typeclass) -> {
-            // The column holds the typeclass in lower case and REBTYPE names it
-            // capitalised: `string` is served by `REBTYPE(String)`.
             String named = typeclass.isEmpty() ? "" : Character.toUpperCase(
                     typeclass.charAt(0)) + typeclass.substring(1);
             Set<String> arms = armsOf.get(named);
@@ -295,9 +289,6 @@ class ActionParityTest {
     private static Set<String> firstArgumentsTypes(String shape) {
         int opens = shape.indexOf('<');
         int firstRefinement = shape.indexOf('/');
-        // A block after a refinement constrains that refinement's argument, not
-        // the first one, so a spec whose only block sits there declares nothing
-        // about what it takes.
         if (opens < 0 || (firstRefinement >= 0 && firstRefinement < opens)) {
             return Set.of();
         }

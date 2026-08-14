@@ -71,8 +71,6 @@ class TimeLiteralFromTheSourceTest {
         @Test
         @DisplayName("so the first number moves along one place")
         void theFractionChangesTheMeaning() {
-            // The pair worth reading together: the same two numbers, and a fraction
-            // is all that stands between twelve hours and twelve minutes.
             assertThat(answerTo("""
                     12:34.5 = 0:12:34.5""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -82,10 +80,6 @@ class TimeLiteralFromTheSourceTest {
         @Test
         @DisplayName("and the smallest one Rebol's own library writes")
         void theOneInTheLibrary() {
-            // `mezz-debug.reb` line 114: `return form round/to time 0:0.001`. The
-            // only place in the borrowed library that uses the shape, and the reason
-            // the gap was found at all -- refusing digit-leading words made this
-            // file stop loading.
             assertThat(answerTo("""
                     0:0.001 = 0:00:00.001""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -104,9 +98,6 @@ class TimeLiteralFromTheSourceTest {
         @Test
         @DisplayName("but a fraction of zero does not count, so it is hours again")
         void aZeroFraction() {
-            // `Grab_Int_Scale` is followed by `if (part4 == 0) part4 = -1;`, and the
-            // mode test reads `part4 < 0`. So a zero fraction is no fraction, and
-            // `12:34.0` is twelve hours -- which is not what the spelling suggests.
             assertThat(answerTo("""
                     12:34.0 = 12:34:00""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -130,12 +121,6 @@ class TimeLiteralFromTheSourceTest {
         @Test
         @DisplayName("and two is a malformed time, which the C calls a hole")
         void twoSigns() {
-            // `if (*cp == '-' || *cp == '+') return 0; // small hole: --1:23` -- the
-            // second sign is tested after the first has been taken, and the comment
-            // names the spelling somebody filed. Rebol's own test asserts it.
-            //
-            // A malformed *time* rather than the word it looks like, because a sign
-            // and a colon make the token a time before the amount is read.
             assertThat(answerTo("""
                     error? try [load {--1:23}]""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -156,14 +141,10 @@ class TimeLiteralFromTheSourceTest {
         @Test
         @DisplayName("but a double sign without a time is still an ordinary word")
         void whatStaysAWord() {
-            // `--` is a word the library binds to a stepper, so the refusal has to
-            // need the colon. Without one there is no time to be malformed.
             assertThat(answerTo("""
                     (load {--}) = to word! "--\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
                     (load {--a}) = to word! "--a\"""")).isEqualTo(TRUE);
-            // And a trailing colon is a set-word, not a time: the colon has to have
-            // something after it.
             assertThat(answerTo("""
                     set-word? load {--a:}""")).isEqualTo(TRUE);
         }
@@ -176,8 +157,6 @@ class TimeLiteralFromTheSourceTest {
         @Test
         @DisplayName("with or without a fraction on the seconds")
         void theThreePartForms() {
-            // `part3 >= 0` alone picks HH:MM mode, so a third component settles it
-            // and the fraction has no say.
             assertThat(answerTo("""
                     time? load {12:34:56}""")).isEqualTo(TRUE);
             assertThat(answerTo("""

@@ -1,14 +1,10 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Value;
 
 /**
  * The two codecs the boot registers, from {@code Init_Codecs} in {@code b-init.c}.
@@ -166,7 +162,6 @@ final class Codecs {
             }
             int closed = endOfTag(source, opened + 1);
             if (closed < 0) {
-                // "Note: if final tag does not end, then it is treated as text."
                 textFrom = opened;
                 at = source.length();
                 break;

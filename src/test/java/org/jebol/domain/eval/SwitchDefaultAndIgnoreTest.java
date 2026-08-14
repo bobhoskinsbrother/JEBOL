@@ -43,7 +43,6 @@ class SwitchDefaultAndIgnoreTest {
     @Test
     @DisplayName("/default is how a none branch is told apart from a miss")
     void defaultDistinguishesAMissFromANoneBranch() {
-        // Both answer none without it, and they are not the same thing.
         assertThat(answerTo("switch/default 1 [1 [none]] ['missed]")).isEqualTo("_");
         assertThat(answerTo("mold switch/default 9 [1 [none]] ['missed]"))
                 .isEqualTo("\"missed\"");

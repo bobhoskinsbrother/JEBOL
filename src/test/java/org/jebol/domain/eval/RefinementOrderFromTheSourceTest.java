@@ -73,10 +73,8 @@ class RefinementOrderFromTheSourceTest {
     @Test
     @DisplayName("SORT reads its comparator and its record size in path order")
     void sortFollowsThePath() {
-        // Records of three, ordered by the first character of each.
         assertThat(answerTo("(sort/compare/skip \"ba ab aa \" 1 3) == \"ab aa ba \""))
                 .isEqualTo("#(true)");
-        // The same records ordered by their second character.
         assertThat(answerTo("(sort/compare/skip \"ba ab aa \" 2 3) == \"ba aa ab \""))
                 .isEqualTo("#(true)");
     }

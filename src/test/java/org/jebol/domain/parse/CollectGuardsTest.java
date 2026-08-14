@@ -62,8 +62,6 @@ class CollectGuardsTest {
     @Test
     @DisplayName("COLLECT INTO a series of the wrong kind is refused")
     void theTargetMustSuitTheInput() {
-        // Each of the three ways round, because a check that only looked
-        // at the target would pass one of them by accident.
         assertThat(errorIdOf("a: #{} parse \"1\" [collect into a keep skip]"))
                 .isEqualTo("parse-into-type");
         assertThat(errorIdOf("a: \"1\" parse #{01} [collect into a keep skip]"))
@@ -75,8 +73,6 @@ class CollectGuardsTest {
     @Test
     @DisplayName("a block or a paren takes whatever a parse yields")
     void aBlockTargetAlwaysSuits() {
-        // The off point. A refusal that caught these would make COLLECT
-        // INTO useless for the case it exists for.
         assertThat(errorIdOf("a: copy [] parse [1] [collect into a keep skip]"))
                 .isEqualTo("no-error");
         assertThat(errorIdOf("a: quote () parse #{01} [collect into a keep skip]"))

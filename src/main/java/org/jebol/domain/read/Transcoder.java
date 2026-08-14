@@ -1,39 +1,10 @@
 package org.jebol.domain.read;
 
+import org.jebol.domain.value.*;
+
 import java.math.BigDecimal;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Pattern;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.SeriesValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.StructValue;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.TypesetValue;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * Turns REBOL source text into values.
@@ -132,11 +103,6 @@ public final class Transcoder {
         for (int at = 0; at < reader.topLevelStarts.size(); at++) {
             int from = reader.topLevelStarts.get(at);
             int to = reader.topLevelEnds.get(at);
-            // Cut from the code points rather than from the string. The
-            // walk counts code points and String.substring counts UTF-16
-            // units, and the two part company at the first character above
-            // the Basic Multilingual Plane -- which mold-test.r3 has, and
-            // which sliced sixty-six assertions in half.
             spans.add(new SourceSpan(new String(reader.codepoints, from, to - from), from, to));
         }
         return List.copyOf(spans);
@@ -209,8 +175,6 @@ public final class Transcoder {
                 .orElseGet(() -> new TranscodeResult.Success(
                         BlockValue.block(reading.valuesReadBeforeStopping())));
     }
-
-    // ---- the walk over the source ----------------------------------------
 
     /**
      * Reads values until the input ends, keeping open blocks on a stack of its
@@ -393,11 +357,6 @@ public final class Transcoder {
      * malformed file rather than reading a word.
      */
     private Value readFileOrPercentWord() {
-        // A run of percent signs followed by a brace opens a raw string, where
-        // nothing is escaped and a brace need not be matched:
-        //     if (cp[n] == '{') { // raw-string scan; values like: %%{...}%%
-        // The run's length is what closes it, which is how a raw string can
-        // hold the closing sequence of a shorter one.
         int percents = 0;
         while (peekAt(percents) == '%') {
             percents++;
@@ -410,10 +369,6 @@ public final class Transcoder {
             return percentWord("%");
         }
         if (peekAt(1) == '%') {
-            // A slash may follow the double word and may not follow the
-            // single one: `o/%%` is a path ending in the word, while
-            // `%/tmp/a` is an absolute file. The sigil means one thing
-            // when a name follows it and another when nothing does.
             if (peekAt(2) != '/' && !beginsNoFilename(peekAt(2))) {
                 throw failure(SyntaxFailure.INVALID_LEXEME, null);
             }
@@ -464,8 +419,6 @@ public final class Transcoder {
             held.appendCodePoint(peek());
             advance();
         }
-        // Ran out of source with the string still open, which is the same
-        // mistake an unclosed quote is.
         throw failure(SyntaxFailure.UNTERMINATED_STRING, null);
     }
 
@@ -489,8 +442,6 @@ public final class Transcoder {
      */
     private StringValue readRef() {
         advance();
-        // An @ on its own is an empty ref rather than an error, so the
-        // lexeme is only read when there is something to read.
         boolean hasName = peek() != END_OF_INPUT
                 && !Character.isWhitespace(peek())
                 && !isClosingDelimiter(peek());
@@ -522,8 +473,6 @@ public final class Transcoder {
             return;
         }
     }
-
-    // ---- strings ---------------------------------------------------------
 
     private StringValue readQuotedString() {
         advance();
@@ -599,15 +548,8 @@ public final class Transcoder {
             case '{' -> '{';
             case '}' -> '}';
             case '@' -> 0;
-            // A caret takes a space as well as the named characters, so
-            // "a^ b" is three characters. Refusing it cost mold-test.r3
-            // all 217 of its assertions.
             case ' ' -> ' ';
             case '(' -> readParenthesisedEscape();
-            // The control codes: a caret before anything from @ to _
-            // escapes to that character less sixty-four. Handling only the
-            // letters left ^[ invalid, and that one omission is what
-            // stopped most of Rebol's own library from loading.
             case '~' -> 127;
             default -> {
                 if (escaped >= '@' && escaped <= '_') {
@@ -616,10 +558,6 @@ public final class Transcoder {
                 if (escaped >= 'a' && escaped <= 'z') {
                     yield escaped - 'a' + 1;
                 }
-                // Anything the table does not name is itself, so there is
-                // no such thing as an unknown escape for a character that
-                // is there. Refusing them is what stopped several of
-                // Rebol's own library files from reading.
                 yield escaped;
             }
         };
@@ -636,8 +574,6 @@ public final class Transcoder {
         }
         advance();
         String name = digits.toString();
-        // The named forms REBOL documents, then a hexadecimal codepoint.
-        // Uppercase and lowercase are equivalent.
         try {
             return switch (name.toLowerCase(Locale.ROOT)) {
                 case "null" -> 0;
@@ -653,8 +589,6 @@ public final class Transcoder {
             throw failure(SyntaxFailure.INVALID_ESCAPE, null);
         }
     }
-
-    // ---- the forms with their own opening character ----------------------
 
     private Value readHashPrefixed() {
         int following = peekAt(1);
@@ -702,16 +636,10 @@ public final class Transcoder {
     private Value readConstruct() {
         advance();
         advance();
-        // A datatype spelling that names nothing is an invalid-lexeme to the
-        // lexer and a malconstruct inside a construct, because the construct
-        // is the thing that is malformed rather than the word.
         List<Value> contents;
         try {
             contents = readSequence(')');
         } catch (MalformedSource unreadable) {
-            // An unclosed construct is the one failure that stays what it
-            // is: the C's construct handler leaves the missing error
-            // standing rather than wrapping it as a malconstruct.
             if (unreadable.failure == SyntaxFailure.MISSING_CLOSE) {
                 throw unreadable;
             }
@@ -722,10 +650,6 @@ public final class Transcoder {
         }
         Value first = contents.getFirst();
 
-        // Everything inside a construct arrives as a word now, including
-        // the datatype names, so the name is resolved here rather than by
-        // the lexer. Named values first, then datatypes: `#(none)` is the
-        // value and `#(none!)` would be the datatype.
         if (!(first instanceof WordValue named)) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
         }
@@ -783,25 +707,15 @@ public final class Transcoder {
      * would be obvious.
      */
     private Value builtFrom(Datatype datatype, List<Value> contents) {
-        // `#(bitset! not #{FF})` is the complemented set: MT_Bitset takes an
-        // optional leading NOT, then the binary, and nothing after it.
         if (datatype == Datatype.BITSET && contents.size() == 2
                 && contents.getFirst() instanceof WordValue complementing
                 && complementing.canonical().equals("not")
                 && contents.get(1) instanceof BinaryValue octets) {
             return BitsetValue.of(bytesOf(octets)).complemented();
         }
-        // A series construct may carry its position as a second value, so
-        // `#(string! "ab" 2)` is that string standing at its second
-        // character rather than at its head. It is how MOLD/ALL writes a
-        // series that was not at its head, and without it such a mold
-        // does not read back.
         if (contents.size() == 2 && contents.get(1) instanceof IntegerValue at) {
             Value whole = builtFrom(datatype, List.of(contents.getFirst()));
             if (!(whole instanceof SeriesValue series)) {
-                // Only a series has a position to stand at, so a trailing
-                // number on anything else is a malformed construct rather
-                // than a value to quietly drop -- `return IS_END(++data);`.
                 throw failure(SyntaxFailure.MALCONSTRUCT, null);
             }
             long wanted = Math.max(1, Math.min(at.magnitude(),
@@ -821,23 +735,13 @@ public final class Transcoder {
             case BITSET -> only instanceof BinaryValue octets
                     ? BitsetValue.of(bytesOf(octets))
                     : requireDatatype(only, Datatype.BITSET);
-            // A string-family construct takes text and answers it as the
-            // datatype named, so #(file! "ab") is a file rather than the
-            // string it was built from.
             case STRING, FILE, URL, EMAIL, TAG, REF -> only instanceof StringValue text
                     ? text.as(datatype)
                     : requireDatatype(only, datatype);
-            // The block family converts within itself the same way, so
-            // `#(paren! [1 2])` is a paren holding what the block held.
-            // A construct naming one of these and holding anything else
-            // is refused rather than guessed at: `#(block! 1)` is a
-            // malconstruct, not a block of one.
             case BLOCK, PAREN, PATH, SET_PATH, GET_PATH, LIT_PATH, HASH ->
                     only instanceof BlockValue items
                             ? items.as(datatype)
                             : requireDatatype(only, datatype);
-            // MT_Struct: a layout block of field words each declaring one
-            // scalar type, refused as a malconstruct when it declares none.
             case STRUCT -> {
                 StructValue struct = only instanceof BlockValue layout
                         ? StructValue.from(layout)
@@ -847,9 +751,6 @@ public final class Transcoder {
                 }
                 yield struct;
             }
-            // MT_Function: one block holding exactly [spec body], built by
-            // whatever the evaluator registered -- the reader cannot parse
-            // a spec itself without depending on the layer above it.
             case FUNCTION, CLOSURE -> {
                 if (functionBuilder == null
                         || !(only instanceof BlockValue definition)
@@ -1085,14 +986,6 @@ public final class Transcoder {
                 && SYMBOL_CHARACTERS.indexOf(codepoints[scout]) >= 0) {
             scout++;
         }
-        // A colon after the run belongs to the word and makes it a set-word.
-        // `Skip_Left_Arrow` consumes it and stops -- `if (*cp == ':') { cp++;
-        // break; }` -- and the caller reads the last character to decide:
-        // `return (np[-1] == ':' ? TOKEN_SET : TOKEN_WORD);`.
-        //
-        // So `<-->:` is one value and not two. Rebol's own lexer test asserts four
-        // spellings of it, and without this each came back as the word and a
-        // stray colon, which is a set-word nobody can write.
         if (scout > position && scout < codepoints.length && codepoints[scout] == ':'
                 && (scout + 1 >= codepoints.length
                         || isDelimiterOrSpace(codepoints[scout + 1]))) {
@@ -1112,10 +1005,6 @@ public final class Transcoder {
             scout++;
         }
         if (scout >= codepoints.length) {
-            // An at-sign right after the angle is a tag the scanner cannot
-            // close -- `Skip_Tag` finds no '>' and answers -TOKEN_TAG. A
-            // symbol run like `<~~~` never reaches Skip_Tag and stays a
-            // word, so only the at-sign shape is refused here.
             if (position + 1 < codepoints.length && codepoints[position + 1] == '@') {
                 throw failureReading(SyntaxFailure.INVALID_LEXEME, "tag", readLexeme());
             }
@@ -1173,31 +1062,16 @@ public final class Transcoder {
         StringBuilder text = new StringBuilder();
         while (peek() != END_OF_INPUT) {
             int character = peek();
-            // `while (src < end && *src != term)` -- the closing quote ends a
-            // quoted name, and whitespace ends an unquoted one.
             if (quoted && character == '"') {
                 advance();
                 return StringValue.of(text.toString(), Datatype.FILE);
             }
-            // A delimiter ends the name before the refused set is consulted, and
-            // that ordering is the whole of why the refused set looks stranger
-            // than it is. The lexer finds the token's extent first --
-            // `scan_state->end` stops at `IS_LEX_DELIMIT`, which is whitespace and
-            // `( ) [ ] { } " ;` -- and only then does `Scan_File` check what it
-            // found. So five of the eight characters `Scan_File` refuses can never
-            // appear inside an unquoted name, because they ended it.
-            //
-            // Which leaves the colon and the caret as the two that really bite.
-            // Refusing the delimiters instead turned `(clean-path %a/b) = %a/b`
-            // into a syntax error, because the closing bracket was read as part of
-            // the name.
             if (!quoted && endsLexeme(character)) {
                 break;
             }
             text.appendCodePoint(nextFileCharacter(refused, quoted));
         }
         if (quoted) {
-            // A quoted name whose quote never arrives.
             throw failure(SyntaxFailure.UNTERMINATED_STRING, null);
         }
         return StringValue.of(text.toString(), Datatype.FILE);
@@ -1212,25 +1086,16 @@ public final class Transcoder {
      */
     private int nextFileCharacter(String refused, boolean quoted) {
         int character = peek();
-        // `if (chr < ' ') return 0; // invalid char`
         if (character < ' ') {
             throw failure(SyntaxFailure.INVALID_LEXEME, null);
         }
-        // `if (chr == '\\') chr = '/';` -- one line and no comment, so a
-        // Windows-shaped path comes out with the separators the language uses and
-        // a script never sees a backslash in a file it loaded.
         if (character == '\\') {
             advance();
             return '/';
         }
-        // `if (!Scan_Hex2(src, &chr)) return 0; src += 2;`
         if (character == '%') {
             return escapedByPercent();
         }
-        // `if (src + 1 == end || (invalid && strchr(cs_cast(invalid), chr)))
-        // return 0; // nothing follows ^ or used in unquoted file` -- two
-        // failures in one test, and for an unquoted file it is the second that
-        // fires, because the caret is in that refused set.
         if (character == '^') {
             if (!quoted || peekAt(1) == END_OF_INPUT) {
                 throw failure(SyntaxFailure.INVALID_LEXEME, null);
@@ -1291,22 +1156,6 @@ public final class Transcoder {
             advance();
             return moneyOf(readLexeme(), negative);
         }
-        // A sign against a hash form is the sign alone, as a word, and the hash
-        // form is read afresh. One line of the C, in the plus and minus case:
-        //
-        //     cp++;
-        //     if (IS_LEX_AT_LEAST_NUMBER(*cp)) goto num;
-        //     if (IS_LEX_SPECIAL(*cp)) {
-        //         if (*cp == '#') {
-        //             scan_state->end = cp;
-        //             return TOKEN_WORD;
-        //         }
-        //
-        // So `-#"a"` is the word `-` and the character, which is Rebol's issue
-        // #2319. It matters because of what it unblocks rather than for its own
-        // sake: `charset [#"a"-#"z"]` is how a range is written without spaces, and
-        // that has to mean the same as `charset [#"a" - #"z"]`. Read as `-#` and a
-        // string, it meant nothing at all.
         if ((peek() == '-' || peek() == '+') && peekAt(1) == '#') {
             String sign = String.valueOf((char) peek());
             advance();
@@ -1337,10 +1186,6 @@ public final class Transcoder {
      * as far as the reader is concerned, and none of them is a number.
      */
     private MoneyValue moneyOf(String digits, boolean negative, String token) {
-        // `if (*ep == '/') {ep++; goto syntax_error;}` -- a money followed
-        // by a slash is refused whatever the amount, and the reported token
-        // runs up to and including that slash, because the C's token ends
-        // there.
         if (digits.indexOf('/') >= 0) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "money",
                     token.substring(0, token.indexOf('/') + 1));
@@ -1353,16 +1198,9 @@ public final class Transcoder {
         }
     }
 
-    // ---- lexemes and their classification --------------------------------
-
     private String readLexeme() {
         StringBuilder lexeme = new StringBuilder();
         while (peek() != END_OF_INPUT) {
-            // A parenthesised group belongs to the lexeme when it is a
-            // path segment: `data/(k)` is one path, and stopping at the
-            // bracket read it as the word DATA followed by a paren.
-            // Five of Rebol's own files use the form and hold a hundred
-            // and seventeen definitions between them.
             if (peek() == '(' && lexeme.indexOf("/") >= 0) {
                 takeParenthesisedGroup(lexeme);
                 continue;
@@ -1438,15 +1276,6 @@ public final class Transcoder {
             "(\\d{1,4}[-/](?:[A-Za-z]{3,}|\\d{1,2})[-/]\\d{1,4})"
                     + "(?:/(\\d{1,2}:\\d{1,2}(?::\\d{1,2}(?:\\.\\d+)?)?))?"
                     + "([-+]\\d{1,2}:\\d{2}|[-+]\\d{1,2}|[Zz])?");
-    // Either half may be fractional, because a pair holds two decimals
-    // rather than two integers. 1.5x2 is a legal pair and was unreadable
-    // while this pattern only took digits.
-    //
-    // Either half may also carry an exponent, so 3.4e38x1 reads. That form
-    // matters more for a pair than for a decimal, because a pair's halves
-    // are single precision and 3.4e38 is where they run out: writing the
-    // boundary down is how the overflow to 1.#INF can be tested at all.
-    // The exponent binds before the x, so 1e3x1 is a pair of 1000 and 1.
     private static final Pattern PAIR = Pattern.compile(
             "([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)"
                     + "[xX]([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)");
@@ -1469,10 +1298,6 @@ public final class Transcoder {
     private static final Pattern TIME = Pattern.compile(
             "([-+]?\\d+):(\\d{1,2}(?:\\.\\d+)?)(?::(\\d{1,2}(?:\\.\\d+)?))?");
     private static final Pattern TUPLE = Pattern.compile("\\d+(?:\\.\\d+){2,}");
-    // A quote inside the digits is a separator, so 1'000 reads as 1000 and
-    // 99'504'028'301'131 reads as one integer. Rebol's own suite writes large
-    // numbers this way, and without it the whole lexeme reads as a word --
-    // which fails later as an unset word rather than as a syntax error.
     private static final Pattern INTEGER = Pattern.compile("[-+]?\\d+(?:'\\d+)*");
     private static final Pattern DECIMAL =
             Pattern.compile("[-+]?(?:\\d+\\.\\d*|\\.\\d+|\\d+)(?:[eE][-+]?\\d+)?");
@@ -1512,10 +1337,6 @@ public final class Transcoder {
     }
 
     private Value classify(String lexeme) {
-        // `if (*cp == '_' && IS_LEX_DELIMIT(cp[1])) return TOKEN_WORD;` --
-        // a slash before a lone underscore is the word / and the underscore
-        // reads separately as the none literal, so "/_" is two values and
-        // "/__" is still the refinement __.
         if (lexeme.startsWith("/_")
                 && (lexeme.length() == 2 || lexeme.charAt(2) == '/')) {
             position -= lexeme.length() - 1;
@@ -1527,37 +1348,6 @@ public final class Transcoder {
             column -= lexeme.length() - 1;
             return NoneValue.none();
         }
-        // A word may not hold < > % # $ \ or a comma, so a lexeme that
-        // mixes one of those with letters is refused rather than becoming
-        // a word with an impossible name. Confirmed against a real R3:
-        // a<b, a>b, a%b, a#b, a$b and a,b all raise.
-        //
-        // A run made only of symbols is a word however it is spelled, so
-        // <, <=, <> and --> are all words. That exception is why the test
-        // is on the mixture rather than on the characters alone.
-        //
-        // And a number followed by such a run splits in two: `1<` is the
-        // integer and the word <, while `1<2` raises -- what follows the
-        // number has to be a symbol run of its own to be worth splitting
-        // off. A word prefix never splits, which is the whole difference
-        // between `1<` and `a<`.
-        // A lexeme of digits ending in a hash, with a brace next, is a
-        // binary saying which base it is written in. It has to be caught
-        // here because the reader has already taken `2#` as a lexeme by
-        // the time anything can look at it, and the brace is still to
-        // come.
-        // Digits then a hash is a base, and a base belongs to a binary.
-        // `2#{01}` is the binary; `2#"a"` and `1#(logic! 1)` are a number
-        // with a hash-form stuck to it, and a real R3 refuses those rather
-        // than reading two values that happen to be adjacent.
-        //
-        // Only digits, because plenty of ordinary words end in a hash --
-        // Rebol's own CSS codec has one -- and those are not bases.
-        // A base may not carry a sign. `if (cp == scan_state->begin) { // no +2 +16
-        // +64 allowed` -- the base has to sit at the very start of the token, so a
-        // sign in front of it makes the whole thing a malformed number. Two spellings
-        // reach here, depending on whether the hash came into the lexeme or is still
-        // ahead of it.
         if (lexeme.matches("[+-][0-9]+#?") && (peek() == '#' || peek() == '{')) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "integer", lexeme);
         }
@@ -1569,10 +1359,6 @@ public final class Transcoder {
                 throw failureReading(SyntaxFailure.INVALID_LEXEME, "integer", lexeme);
             }
         }
-        // A digit-leading lexeme is a number, and the C cuts it at an angle bracket
-        // before it classifies anything -- `case LEX_CLASS_NUMBER: /* order of tests
-        // is important */`. So `1<` and `1.1<tag>` are settled here, and only then
-        // may the fallback refuse what is left.
         if (Character.isDigit(lexeme.charAt(0))) {
             int angle = firstAngleBracket(lexeme);
             if (angle > 0) {
@@ -1582,17 +1368,7 @@ public final class Transcoder {
             }
         }
         Value read = classifyPlain(lexeme);
-        // Checked on the answer rather than on the text, because plenty
-        // of legitimate literals hold these characters: 1.#INF and 1.#NaN
-        // hold a hash, and so does every based number like 2#01. Only a
-        // lexeme that came out as a plain WORD had no other reading, and
-        // only then is an illegal character a mistake rather than part of
-        // something else.
         int offending = firstOffendingCharacter(lexeme);
-        // An angle bracket wins over anything earlier, because it is the
-        // one that ends a value rather than spoiling it. `1.#INF<` holds
-        // a hash at index two and a bracket at index six, and splitting
-        // at the hash leaves "1." -- which is nothing at all.
         int bracket = firstAngleBracket(lexeme);
         if (bracket > 0 && (offending < 0 || bracket < offending
                 || !(classifyPlain(lexeme.substring(0, offending)) instanceof WordValue))) {
@@ -1601,16 +1377,9 @@ public final class Transcoder {
                 offending = bracket;
             }
         }
-        // A lexeme that starts with one is a word only if it is symbols
-        // all the way. `<2` is neither a word nor a tag, and reading it
-        // as a word is what let `1<2` split into two values a real R3
-        // refuses outright.
         if (offending == 0 && !allSymbols(lexeme)) {
             throw failure(SyntaxFailure.INVALID_LEXEME, null);
         }
-        // An angle bracket is looked at even when the lexeme already read as
-        // something -- a path, most often. `a/b<` read as the path `a/b<`, with the
-        // bracket swallowed into the last segment, where the C refuses it.
         boolean angleToSettle = offending > 0 && !allSymbols(lexeme)
                 && (lexeme.charAt(offending) == '<' || lexeme.charAt(offending) == '>');
         if (!angleToSettle
@@ -1619,25 +1388,13 @@ public final class Transcoder {
         }
         String before = lexeme.substring(0, offending);
         String after = lexeme.substring(offending);
-        // A number ends where an angle bracket begins, and what follows
-        // is read afresh: `1.0<` gives the word < and `1.0<a>` gives a
-        // tag. Requiring the remainder to be all symbols got the first
-        // right and refused the second, because a tag has letters in it.
         boolean startsAnAngleBracket = after.charAt(0) == '<' || after.charAt(0) == '>';
         if ((allSymbols(after) || startsAnAngleBracket)
                 && splitsHereRatherThanFailing(before, after)) {
-            // Put the symbol run back for the next read rather than
-            // holding it aside: the reader has one place it takes
-            // characters from, and giving it a second would mean every
-            // path checking both.
             position -= after.length();
             column -= after.length();
             return classifyPlain(before);
         }
-        // `-type` in the C is the token kind negated, and a script reads it as
-        // ARG1: Rebol's own test asserts `e/arg1 = "word"` beside the id for
-        // `a/b<`. Only where a word was what the reader was building, which is
-        // every case that reaches here with an angle bracket.
         if (startsAnAngleBracket) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "word");
         }
@@ -1703,29 +1460,12 @@ public final class Transcoder {
 
     private Value classifyPlain(String lexeme) {
         refuseAMisplacedSigil(lexeme);
-        // A lone underscore is NONE, and it is what MOLD writes for one.
-        // Only on its own: _a and a_ are ordinary words. Without this the
-        // round trip is broken in the direction nobody looks, because a
-        // molded NONE reads back as a word nothing has bound.
         if (lexeme.equals("_")) {
             return NoneValue.none();
         }
-        // Slashes alone are ordinary words: / divides and // takes a
-        // remainder. Only a slash with a name after it is a refinement, and
-        // only a slash with something before it makes a path.
         if (lexeme.chars().allMatch(character -> character == '/')) {
             return WordValue.of(lexeme);
         }
-        // A run of slashes can be assigned to and read from, and both spellings
-        // have their own arm in the C because a slash is a delimiter and would
-        // otherwise end the token. `/:` is `TOKEN_SET` --
-        // `if (*cp == ':' && IS_LEX_DELIMIT(cp[1])) { scan_state->end = cp+1;
-        // return TOKEN_SET; }` -- and `:/` is `TOKEN_GET`, whose arm says why it
-        // needs one: "must be modified, because / is delimiter!".
-        //
-        // Both matter because `/` and `//` are ordinary words: they are what
-        // divides and what takes a remainder. A script that rebinds either writes
-        // `/: :my-divide`, and that is unspellable without this.
         if (lexeme.length() > 1 && lexeme.endsWith(":")
                 && lexeme.chars().limit(lexeme.length() - 1L)
                         .allMatch(character -> character == '/')) {
@@ -1736,11 +1476,6 @@ public final class Transcoder {
                 && lexeme.chars().skip(1).allMatch(character -> character == '/')) {
             return WordValue.of(lexeme.substring(1), Datatype.GET_WORD);
         }
-        // A tick and then slashes is a lit-word of them: `'///` is the word
-        // `///` quoted, which the C allows on purpose -- `if (*cp == '/') {
-        // // allow '///` -- and only refuses when something that is not a
-        // delimiter follows the run. Refusing the whole shape read `'//` and
-        // `'///` as syntax errors, and MOLD writes both.
         if (lexeme.length() > 1 && lexeme.charAt(0) == '\''
                 && lexeme.chars().skip(1).allMatch(character -> character == '/')) {
             return WordValue.of(lexeme.substring(1), Datatype.LIT_WORD);
@@ -1748,19 +1483,12 @@ public final class Transcoder {
         if (lexeme.startsWith("/") && lexeme.indexOf('/', 1) < 0) {
             return WordValue.of(lexeme.substring(1), Datatype.REFINEMENT);
         }
-        // No guard against a trailing colon: the pattern already needs
-        // something after the colon, so `a:` cannot match it and does not
-        // need excluding. The guard only ever excluded a url that ends in
-        // one -- `tls://:` is how Rebol writes its TLS scheme, and that
-        // single character stopped fifty-three of its definitions.
         if (URL.matcher(lexeme).matches()) {
             return StringValue.of(lexeme, Datatype.URL);
         }
         if (SLASHED_DATE.matcher(lexeme).matches()) {
             return readDate(lexeme, "/");
         }
-        // Before the path reader, because the slash between the day and the
-        // time belongs to the date.
         var dated = DATE_WITH_TIME.matcher(lexeme);
         if (dated.matches() && (dated.group(2) != null || dated.group(3) != null)) {
             return readDateWithTime(dated.group(1), dated.group(2), dated.group(3));
@@ -1774,10 +1502,6 @@ public final class Transcoder {
             return WordValue.of(named, Datatype.SET_WORD);
         }
         if (lexeme.startsWith(":") && lexeme.length() > 1) {
-            // `case LEX_SPECIAL_COLON: if (IS_LEX_NUMBER(cp[1])) return
-            // TOKEN_TIME;` -- a colon before a digit is never a get-word.
-            // ":12" is the time 0:12, and ":2nd" is a time the scanner
-            // cannot finish, refused as one.
             if (Character.isDigit(lexeme.charAt(1))) {
                 var time = TIME.matcher("0" + lexeme);
                 if (time.matches()) {
@@ -1821,8 +1545,6 @@ public final class Transcoder {
                 }
                 seenAnAtSign = true;
             }
-            // `if (len <= 2 || !Scan_Hex2(cp+1, &n)) return 0;` -- the length test
-            // is what refuses a percent with fewer than two characters after it.
             if (character == '%') {
                 if (at + 2 >= lexeme.length()) {
                     throw failure(SyntaxFailure.INVALID_LEXEME, null);
@@ -1883,48 +1605,20 @@ public final class Transcoder {
         char sigil = lexeme.charAt(0);
         char following = lexeme.charAt(1);
         if (sigil == '\'' || sigil == ':') {
-            // `'2nd` and, for a colon, the time forms are handled before this --
-            // `:12` is a time and reaches its own reader.
             if (sigil == '\'' && Character.isDigit(following)) {
                 throw failure(SyntaxFailure.INVALID_LEXEME, null);
             }
-            // A sigil after a sigil: `''foo`, `:'foo`, `::foo`, `':a`.
             if (following == '\'' || following == ':') {
                 throw failure(SyntaxFailure.INVALID_LEXEME, null);
             }
-            // No arm for `'_` and `:_`, though the C refuses both. They are
-            // already refused downstream by refuseTheNoneWordAsAName, which
-            // carries what this cannot: the error names which kind of word was
-            // being read, and a script reads that as ARG1. Refusing them here
-            // first only lost the name.
-            // A ref cannot be named either. `@foo` is a ref, a datatype of its own,
-            // and the C refuses a sigil in front of one before it looks at anything
-            // else -- the very first line of the special class:
-            //
-            //     if (HAS_LEX_FLAG(flags, LEX_SPECIAL_AT) && *cp != '<' && *cp != '%') {
-            //         if (*cp == '\'' || *cp == ':') return -TOKEN_WORD; // no '@foo abd :@foo
-            //
-            // The at-sign anywhere in the lexeme is what the flag means, not just
-            // straight after the sigil. And the two exceptions in that condition are
-            // the reason it is a flag test: `<a@b>` is a tag and `%61@b` is a file
-            // whose escape happens to decode to an at-sign, and neither is a ref.
             if (lexeme.indexOf('@') > 0) {
                 throw failure(SyntaxFailure.INVALID_LEXEME, null);
             }
-            // A signed number is not a word to quote: `'-1` and `'+1`.
             if ((following == '-' || following == '+') && lexeme.length() > 2
                     && Character.isDigit(lexeme.charAt(2))) {
                 throw failure(SyntaxFailure.INVALID_LEXEME, null);
             }
         }
-        // A refinement cannot end in a colon: `/a:`, from
-        // `if (*(scan_state->end - 1) == ':') return -type;`.
-        //
-        // Only when a name sits between the slashes and the colon, though. That
-        // check is inside the arm the C reaches when a *word* follows the slash
-        // run; a colon immediately after the run is a different arm two cases
-        // down, and it makes a set-word. So `/a:` is refused and `/:` is the
-        // set-word of the word `/`. Refusing both cost the three slash set-words.
         if (sigil == '/' && lexeme.endsWith(":")
                 && !lexeme.chars().limit(lexeme.length() - 1L)
                         .allMatch(character -> character == '/')) {
@@ -1941,12 +1635,6 @@ public final class Transcoder {
         if (based.matches()) {
             return basedInteger(Integer.parseInt(based.group(1)), based.group(2));
         }
-        // A name ending in "!" is a word. integer! is a word the system
-        // context binds to a datatype, which is why an unknown spelling is
-        // a word rather than an error and why #(integer!) exists at all.
-        // This used to produce a datatype value here and refuse anything it
-        // did not recognise, which is the reader deciding what datatypes
-        // exist. See the EveryDatatypeSpellingIsAWord invariant.
         if (HYPHENATED_DATE.matcher(lexeme).matches()) {
             return readDate(lexeme, "-");
         }
@@ -1973,9 +1661,6 @@ public final class Transcoder {
                 throw failure(SyntaxFailure.INTEGER_OUT_OF_RANGE, null);
             }
         }
-        // The three decimals that are not written as digits. They are
-        // decimal! values, they mold back exactly as written, and nothing
-        // else in the language spells them.
         Value special = specialDecimal(lexeme);
         if (special != null) {
             return special;
@@ -1983,16 +1668,6 @@ public final class Transcoder {
         if (DECIMAL.matcher(lexeme).matches() && lexeme.matches(".*[\\d].*")) {
             return DecimalValue.of(Double.parseDouble(lexeme));
         }
-        // A digit-leading lexeme reaching here is a malformed number in R3, not a
-        // name, and refusing it has now been measured twice. Both attempts cost
-        // about twenty assertions to gain six, and the second had the angle bracket
-        // already settled first -- so the ordering was not what was missing.
-        //
-        // What breaks is real code: `mezz-debug.reb` stops partway and
-        // evaluation-test.r3 loses twenty-one, so some digit-leading spelling the
-        // library relies on is a word here. Find that spelling before trying a
-        // third time; the refusal is one line and the reason it cannot go in yet is
-        // not in this function.
         if (Character.isDigit(lexeme.charAt(0))) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "integer", lexeme);
         }
@@ -2019,17 +1694,10 @@ public final class Transcoder {
      * rather than quietly ending the number early.
      */
     private Value basedInteger(int written, String digits) {
-        // Zero is not a base, so it stands for the default one.
         int base = written == 0 ? 16 : written;
         if (base < 2 || base > 16) {
             throw failure(SyntaxFailure.INVALID_LEXEME, null);
         }
-        // Base ten is a number and reads signed, so nineteen nines is too
-        // big for the word. The others are bit patterns: they fill the word
-        // and the top bit is the sign, so sixty-four ones in base two is
-        // minus one. What bounds them is how many digits can address the
-        // word at all -- twenty-two octal digits reach it, twenty-three
-        // cannot mean anything more.
         if (base == 10) {
             try {
                 return IntegerValue.of(Long.parseLong(digits));
@@ -2066,7 +1734,6 @@ public final class Transcoder {
                 return DatatypeValue.of(candidate);
             }
         }
-        // number! and series! name several datatypes rather than one.
         return Typeset.named(name)
                 .map(typeset -> (Value) TypesetValue.of(typeset))
                 .orElseThrow(() -> failure(SyntaxFailure.MALCONSTRUCT, null));
@@ -2088,11 +1755,6 @@ public final class Transcoder {
         List<Value> segments = new ArrayList<>();
         for (String segment : splitOutsideParens(body)) {
             if (segment.isEmpty()) {
-                // A segment that is not there: `a/`, `a//b`, `'%/`. The error names
-                // the token being read, which for anything path-shaped is "path" --
-                // `-TOKEN_PATH` in the C, and a script reads the kind as ARG1.
-                // Rebol's own test asserts `e/arg1 = "path"` for four spellings of
-                // a sigil'd percent word with a trailing slash.
                 throw failureReading(SyntaxFailure.INVALID_LEXEME, "path");
             }
             segments.add(readPathSegment(segment));
@@ -2124,9 +1786,6 @@ public final class Transcoder {
     }
 
     private Value readPathSegment(String segment) {
-        // A paren segment is read now and evaluated when the path is
-        // walked, which is what lets a path select something the source
-        // never spelled out.
         if (segment.startsWith("(") && segment.endsWith(")")) {
             TranscodeResult inside = transcode(segment.substring(1, segment.length() - 1));
             if (!inside.succeeded()) {
@@ -2143,21 +1802,9 @@ public final class Transcoder {
         if (INTEGER.matcher(segment).matches()) {
             return IntegerValue.of(Long.parseLong(segment));
         }
-        // A decimal is a legal index too, and truncates towards zero when
-        // the path is walked, so `b/1.6` is the first item. Read as a word
-        // it selected nothing and raised instead.
         if (DECIMAL.matcher(segment).matches() && segment.matches(".*[\\d].*")) {
             return DecimalValue.of(Double.parseDouble(segment));
         }
-        // Anything else is read with the ordinary scanner, because that is what
-        // Rebol does: a path segment is scanned like any other lexeme and a word
-        // is what is left when nothing else fits. This list used to end here, so
-        // every datatype not named above arrived as a word -- `img/1x2` selected
-        // with the word `1x2` rather than with the pair, and an image reads a
-        // pair as a coordinate.
-        //
-        // One value only. A lexeme the scanner splits in two is not a segment:
-        // whatever it means, it does not mean either half.
         TranscodeResult read = transcode(segment);
         if (read.succeeded()) {
             List<Value> values = read.values().orElseThrow().remaining();
@@ -2178,9 +1825,6 @@ public final class Transcoder {
             }
             segments[index] = segment;
         }
-        // A written tuple always has at least two dots, so the floor here
-        // is on the lexeme rather than on the datatype: a tuple keeping
-        // fewer than three octets exists, and cannot be written down.
         if (segments.length < TupleValue.MINIMUM_SHOWN_SEGMENTS
                 || segments.length > TupleValue.MAXIMUM_SEGMENTS) {
             throw failure(SyntaxFailure.INVALID_LEXEME, null);
@@ -2192,8 +1836,6 @@ public final class Transcoder {
         if (!isMinutesAndSeconds(second, third)) {
             return timeOf(first, second, third);
         }
-        // `MIN_TIME(part1) + SEC_TIME(part2)` -- the first number is minutes, so it
-        // moves along one slot and the hours are the sign's only carrier.
         boolean negative = first.startsWith("-");
         String minutes = first.startsWith("-") || first.startsWith("+")
                 ? first.substring(1)
@@ -2323,8 +1965,6 @@ public final class Transcoder {
         }
         throw failure(SyntaxFailure.INVALID_LEXEME, null);
     }
-
-    // ---- cursor ----------------------------------------------------------
 
     private int peek() {
         return position < codepoints.length ? codepoints[position] : END_OF_INPUT;

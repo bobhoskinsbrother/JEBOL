@@ -41,8 +41,6 @@ class RawStringFromTheSourceTest {
     @Test
     @DisplayName("a caret is a caret, not an escape")
     void aCaretIsACaret() {
-        // The reason the form exists. In a braced string `^b` is a control
-        // character; here it is two characters.
         assertThat(answerTo("2 = length? transcode/one \"%{a^^b}%\""))
                 .isEqualTo("#(false)");
         assertThat(answerTo("3 = length? transcode/one \"%{a^^b}%\""))
@@ -59,7 +57,6 @@ class RawStringFromTheSourceTest {
     @Test
     @DisplayName("and a longer run can hold a shorter one whole")
     void aLongerRunHoldsAShorterOne() {
-        // One string holding another, terminator and all, with nothing escaped.
         assertThat(answerTo("\" %{^^}% \" == transcode/one \"%%{ %{^^}% }%%\""))
                 .isEqualTo("#(true)");
     }
@@ -67,8 +64,6 @@ class RawStringFromTheSourceTest {
     @Test
     @DisplayName("a line ending is whatever the source had")
     void lineEndingsSurvive() {
-        // A braced string normalises a carriage return and a line feed to one
-        // line feed. A raw string is raw: both characters are there afterwards.
         assertThat(answerTo("\"^/\" == transcode/one rejoin [\"%{\" LF \"}%\"]"))
                 .isEqualTo("#(true)");
         assertThat(answerTo("\"^M^/\" == transcode/one rejoin [\"%{\" CR LF \"}%\"]"))
@@ -78,8 +73,6 @@ class RawStringFromTheSourceTest {
     @Test
     @DisplayName("a closing run longer than the opening one is refused")
     void aLongerClosingRunIsRefused() {
-        // `if (n > num) return 0;` -- the terminator has gone past, so reading
-        // on would swallow the rest of the source.
         assertThat(answerTo(
                 "e: try [transcode/one \"%{a}%%\"] error? e")).isEqualTo("#(true)");
     }
@@ -87,8 +80,6 @@ class RawStringFromTheSourceTest {
     @Test
     @DisplayName("and a percent sign still reads as a file and as a word")
     void thePercentSignStillDoesItsOtherJobs() {
-        // The run only opens a raw string when a brace follows it, so nothing
-        // else that starts with a percent changes meaning.
         assertThat(answerTo("%a = first [%a]")).isEqualTo("#(true)");
         assertThat(answerTo("file? first [%/tmp/x]")).isEqualTo("#(true)");
         assertThat(answerTo("-7 %% 3")).isEqualTo("2");

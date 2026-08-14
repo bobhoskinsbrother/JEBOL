@@ -84,9 +84,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
     private static boolean isHarnessWord(Value value) {
         return value instanceof WordValue word && switch (word.spelling()) {
             case START_FILE, END_FILE, START_GROUP, END_GROUP, TEST, ASSERT -> true;
-            // --assertf~= compares floats approximately. It is a different
-            // question from the one this runner asks, and there are only
-            // seventeen of them, so they are left out rather than guessed at.
             default -> word.spelling().startsWith("--assertf");
         };
     }
@@ -164,8 +161,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         while (at < values.size()) {
             Value current = values.get(at);
             if (!(current instanceof WordValue word) || !isHarnessWord(current)) {
-                // Anything outside the dialect is setup the assertions below
-                // it depend on, so it is kept in order rather than dropped.
                 List<Value> run = valuesUntilNextHarnessWord(values, at);
                 found.add(new Step(null, sourceOf(source, spans, at, run.size())));
                 at += Math.max(1, run.size());
@@ -176,10 +171,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             int next = at + 1 + until.size();
 
             switch (spelling) {
-                // The name is the first value; anything after it and before
-                // the next dialect word is setup the assertions below lean
-                // on. Taking only the name and dropping the rest is what
-                // lost every `a:` and `obj:` in the suite.
                 case START_GROUP -> {
                     group = onlyString(until, group);
                     found.add(new Step(null,
@@ -198,8 +189,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                             endOf(spans, at + 1, until.size())), null));
                 }
                 default -> {
-                    // start-file, end-file, end-group and the float variants
-                    // carry nothing this runner needs.
                 }
             }
             at = next;

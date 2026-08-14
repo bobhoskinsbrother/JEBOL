@@ -59,7 +59,6 @@ class SeekToARuleTest {
     @Test
     @DisplayName("what is left over still has to be consumed")
     void theRestOfTheInputStillCounts() {
-        // THRU matching is not the same as the parse succeeding.
         assertThat(answerTo("parse \"abc\" [thru [\"b\" | \"q\"]]")).isEqualTo("#(false)");
     }
 

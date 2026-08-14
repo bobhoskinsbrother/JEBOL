@@ -1,16 +1,9 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import org.jebol.domain.value.ContextSlot;
-import org.jebol.domain.value.FunctionValue;
-import org.jebol.domain.value.NativeValue;
-import org.jebol.domain.value.OperatorValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.ParameterKind;
-import org.jebol.domain.value.Value;
 
 /**
  * Something in the block that is waiting for values: a call gathering its
@@ -266,16 +259,9 @@ final class PendingCall {
                 || (named.size() < 2 && named.size() == refinements.size())) {
             return List.copyOf(arguments);
         }
-        // CONSUMING is in arrival order and the readers downstream count
-        // along the declared one, so each value is put back beside the
-        // parameter it was gathered for.
         List<Parameter> declared = declaredParametersOf(callee);
         List<Value> lined = new ArrayList<>(arguments.size());
         for (Parameter wanted : declared) {
-            // A parameter belonging to a refinement that was named and
-            // turned down has a value here, and the call must not see
-            // it: the whole point of turning the refinement down is
-            // that the function is called as though it were absent.
             boolean granted = wanted.owningRefinement()
                     .map(refinements::contains).orElse(true);
             int at = consuming.indexOf(wanted);

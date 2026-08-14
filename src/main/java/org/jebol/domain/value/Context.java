@@ -1,10 +1,6 @@
 package org.jebol.domain.value;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 /**
  * A set of named slots that words resolve through. The global environment and

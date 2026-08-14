@@ -70,9 +70,6 @@ class QueryFromTheSourceTest {
         void theSizeField() throws Exception {
             givenAFile("five.txt", "12345");
             assertThat(answerTo("query %five.txt 'size")).isEqualTo("5");
-            // `if (file->file.size == MIN_I64) SET_NONE(ret);` -- a size the
-            // host cannot report is none rather than zero, because zero is a
-            // real answer an empty file gives.
             Files.createDirectory(directory.resolve("sub"));
             assertThat(answerTo("none? query %sub/ 'size")).isEqualTo(TRUE);
         }
@@ -80,9 +77,6 @@ class QueryFromTheSourceTest {
         @Test
         @DisplayName("type is the word dir or the word file, never a logic")
         void theTypeField() throws Exception {
-            // `Init_Word(ret, GET_FLAG(..., RFM_DIR) ? SYM_DIR : SYM_FILE)`.
-            // Both words are truthy, so `if 'dir = query ...` is the only way
-            // to tell them apart and `if query ... 'type` tells you nothing.
             givenAFile("a.txt", "x");
             Files.createDirectory(directory.resolve("sub"));
             assertThat(answerTo("'file = query %a.txt 'type")).isEqualTo(TRUE);
@@ -93,9 +87,6 @@ class QueryFromTheSourceTest {
         @Test
         @DisplayName("date and modified are the same fact under two names")
         void theDateAndModifiedFields() throws Exception {
-            // Two case labels falling through to one body, and the object
-            // form fills both from the same source. The C's own comment says
-            // date is there for backward compatibility.
             givenAFile("a.txt", "x");
             assertThat(answerTo("date? query %a.txt 'modified")).isEqualTo(TRUE);
             assertThat(answerTo("date? query %a.txt 'date")).isEqualTo(TRUE);
@@ -123,9 +114,6 @@ class QueryFromTheSourceTest {
         @Test
         @DisplayName("a field name that is not one of the seven raises invalid-arg")
         void anUnknownFieldRaises() throws Exception {
-            // `if (!Set_File_Mode_Value(...)) Trap1(RE_INVALID_ARG, info);`
-            // A misspelled field is a mistake in the script. Answering none
-            // would let the script read its own typo as a missing file.
             givenAFile("a.txt", "x");
             assertThat(errorIdOf("query %a.txt 'colour")).isEqualTo("invalid-arg");
             assertThat(errorIdOf("query %a.txt 'sizes")).isEqualTo("invalid-arg");
@@ -147,8 +135,6 @@ class QueryFromTheSourceTest {
         @Test
         @DisplayName("a block of plain words labels each value with a set-word")
         void aBlockOfPlainWordsIsLabelled() throws Exception {
-            // The C keeps the word as a key, converted to a set-word, then
-            // appends the value. So the answer reads back by name.
             givenAFile("five.txt", "12345");
             assertThat(answerTo("mold query %five.txt [type size]"))
                     .isEqualTo("\"[type: file size: 5]\"");
@@ -158,9 +144,6 @@ class QueryFromTheSourceTest {
         @Test
         @DisplayName("a block of get-words gives the values alone")
         void aBlockOfGetWordsIsBare() throws Exception {
-            // `if (!IS_GET_WORD(word))` guards the key, so a get-word skips
-            // it. Rebol's own list-dir asks `query value [:name :size :date]`
-            // and reads the answer by position, which only works this way.
             givenAFile("five.txt", "12345");
             assertThat(answerTo("mold query %five.txt [:type :size]"))
                     .isEqualTo("\"[file 5]\"");
@@ -169,8 +152,6 @@ class QueryFromTheSourceTest {
         @Test
         @DisplayName("the two may be mixed in one block")
         void aMixedBlockLabelsOnlyThePlainWords() throws Exception {
-            // The C's own example: `query file [type: :size]` is
-            // `[type: file 1234]`. The decision is per word, not per block.
             givenAFile("five.txt", "12345");
             assertThat(answerTo("mold query %five.txt [type :size]"))
                     .isEqualTo("\"[type: file 5]\"");
@@ -192,7 +173,6 @@ class QueryFromTheSourceTest {
             assertThat(answerTo("info: query %five.txt none 5 = info/size")).isEqualTo(TRUE);
             assertThat(answerTo("info: query %five.txt none 'file = info/type"))
                     .isEqualTo(TRUE);
-            // Both names for the one fact are filled.
             assertThat(answerTo("info: query %five.txt none "
                     + "info/date = info/modified")).isEqualTo(TRUE);
         }
@@ -200,8 +180,6 @@ class QueryFromTheSourceTest {
         @Test
         @DisplayName("something in the block that is not a word at all raises")
         void aNonWordInTheBlockRaises() throws Exception {
-            // `} else Trap1(RE_INVALID_ARG, word);` -- a block of fields is a
-            // block of names, and a number in it is not an unknown name.
             givenAFile("a.txt", "x");
             assertThat(errorIdOf("query %a.txt [1]")).isEqualTo("invalid-arg");
             assertThat(errorIdOf("query %a.txt [\"size\"]")).isEqualTo("invalid-arg");
@@ -215,8 +193,6 @@ class QueryFromTheSourceTest {
         @Test
         @DisplayName("a file that is not there answers none rather than raising")
         void aMissingFileAnswersNone() {
-            // "There is nothing there" is an answer a script has to be able
-            // to act on. Rebol's own delete-dir leans on exactly this.
             assertThat(answerTo("none? query %nowhere.txt 'size")).isEqualTo(TRUE);
             assertThat(answerTo("none? query %nowhere.txt none")).isEqualTo(TRUE);
             assertThat(errorIdOf("query %nowhere.txt 'size")).isEqualTo(NO_ERROR);
@@ -225,10 +201,6 @@ class QueryFromTheSourceTest {
         @Test
         @DisplayName("/MODE is declared, deprecated and does nothing")
         void theDeprecatedModeRefinement() throws Exception {
-            // `/mode "** DEPRECATED **"` in the spec, and no arm of the C reads
-            // it: there is no ARG_QUERY_MODE in the source at all. So the only
-            // thing that changes when a script asks for it is whether the call
-            // is possible, and here it was not.
             givenAFile("a.txt", "hello");
             assertThat(answerTo("query/mode %a.txt 'size"))
                     .isEqualTo(answerTo("query %a.txt 'size"))
@@ -238,9 +210,6 @@ class QueryFromTheSourceTest {
         @Test
         @DisplayName("a script not granted the filesystem cannot ask at all")
         void anUngrantedScriptIsRefused() {
-            // The refusal is for the service and not for the field. A QUERY
-            // that quietly answered none would read as a missing file, and a
-            // script could not tell a refusal from an empty directory.
             Interpreter walled = Interpreter.create();
             String source = "e: try [query %a.txt 'size] either error? e [e/id] ['no-error]";
             walled.defineFreshWordsIn(source);
@@ -248,10 +217,4 @@ class QueryFromTheSourceTest {
         }
     }
 
-    // SIZE? and MODIFIED? are QUERY with the field already chosen, and both
-    // are Rebol's own REBOL in base-files.reb. They are not asserted here
-    // because they are not written here: copying them into JEBOL's prelude
-    // would be a fork, and decision 13 in docs/decisions.md says why that is
-    // worse than waiting. They arrive when base-files.reb is imported, and
-    // the assertions arrive with them.
 }

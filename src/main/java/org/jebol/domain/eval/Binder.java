@@ -1,13 +1,9 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.util.ArrayList;
 import java.util.List;
-import org.jebol.domain.value.BlockStorage;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * Binds the words in a block to a context.
@@ -93,13 +89,8 @@ public final class Binder {
                     word.boundTo(context.knows(word.canonical())
                             ? context.holderOf(word.canonical())
                             : context);
-            // A word the function does not own keeps whatever binding it
-            // arrived with, including none at all.
             case WordValue word -> word;
             case BlockValue nested -> bindOnly(nested, context, names);
-            // The walk descends into a map's stored values -- the C's
-            // ANY_BLOCK_OR_MAP -- so a paren held in a map literal binds
-            // like one held in a block. Keys stay as written.
             case MapValue map -> {
                 for (Value key : map.keys()) {
                     map.put(key, bindValueOnly(map.select(key), context, names));

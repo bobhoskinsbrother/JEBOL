@@ -64,8 +64,6 @@ class CatchWithHandlerTest {
     @Test
     @DisplayName("an unnamed throw gives the handler none, not nothing")
     void anUnnamedThrowStillNamesSomething() {
-        // The handler asks about the name, so it has to be a value. Left
-        // undefined, the body fails on a missing word instead.
         assertThat(answerTo(
                 "seen: none h: func [value [any-type!] name] [seen: :name 1] "
                         + "catch/with [throw 3] :h none? seen"))
@@ -75,8 +73,6 @@ class CatchWithHandlerTest {
     @Test
     @DisplayName("the handler does not run when nothing was thrown")
     void theHandlerIsNotAFinally() {
-        // /WITH runs on a throw and not on the way out, so this answers
-        // the block's own value.
         assertThat(answerTo(HANDLER + "catch/with [1 + 1] :on-catch")).isEqualTo("2");
     }
 
@@ -95,8 +91,6 @@ class CatchWithHandlerTest {
     @Test
     @DisplayName("a function applied with too few arguments gets unset, not a missing word")
     void theMissingArgumentsAreUnset() {
-        // The same fix seen from the other side: every parameter is
-        // defined whether or not a value came for it.
         assertThat(answerTo(
                 "h: func [value [any-type!] name] [unset? :name] catch/with [throw 3] :h"))
                 .isEqualTo("#(false)");

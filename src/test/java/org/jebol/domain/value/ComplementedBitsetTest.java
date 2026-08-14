@@ -59,8 +59,6 @@ class ComplementedBitsetTest {
     @Test
     @DisplayName("the two forms mold the same bits")
     void onlyTheWordDiffers() {
-        // The bits are the ones the caller named either way, which is
-        // what makes the molded form readable.
         assertThat(answerTo(
                 "bits: \"00000000000000000000000040\" "
                         + "true? all [find mold charset \"a\" bits "

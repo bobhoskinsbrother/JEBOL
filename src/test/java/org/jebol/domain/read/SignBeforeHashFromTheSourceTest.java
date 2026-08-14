@@ -51,8 +51,6 @@ class SignBeforeHashFromTheSourceTest {
         @Test
         @DisplayName("from a character, either sign")
         void aCharacter() {
-            // Rebol's own test asserts both signs: `[- #"a"] = (load {-#"a"})` and
-            // the same for plus.
             assertThat(answerTo("""
                     [- #"a"] = load {-#"a"}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -69,8 +67,6 @@ class SignBeforeHashFromTheSourceTest {
         @Test
         @DisplayName("from a construction form")
         void aConstructionForm() {
-            // `#(none)` is a value with no literal spelling of its own, and the
-            // sign in front of it is still just a word.
             assertThat(answerTo("""
                     [- #(none)] = load {-#(none)}""")).isEqualTo(TRUE);
         }
@@ -78,8 +74,6 @@ class SignBeforeHashFromTheSourceTest {
         @Test
         @DisplayName("and from an issue")
         void anIssue() {
-            // The fourth hash form. `#hhh` is an issue, and there is nothing about
-            // it that a sign could be part of.
             assertThat(answerTo("""
                     [- #hhh] = load {-#hhh}""")).isEqualTo(TRUE);
         }
@@ -92,17 +86,6 @@ class SignBeforeHashFromTheSourceTest {
         @Test
         @DisplayName("a character range written without spaces means what the spaced one means")
         void aCharsetRange() {
-            // The case behind issue #2319, and Rebol's own test says so in a
-            // comment beside it: "this failed before fix of #2319". A range is
-            // three values -- a character, the word `-`, a character -- and
-            // reading `-#"z"` as one word broke the middle of it.
-            //
-            // Asserted through the charset itself rather than through
-            // `bitset? load {...}`, which is how Rebol's own test writes it and
-            // which cannot be true: LOAD does not evaluate, so it answers the
-            // two-value block `[charset [...]]` in JEBOL and in a real R3 alike.
-            // That assertion of theirs looks defective; this one is the thing it
-            // was reaching for.
             assertThat(answerTo("""
                     (charset [#"a"-#"z"]) = (charset [#"a" - #"z"])"""))
                     .isEqualTo(TRUE);
@@ -113,8 +96,6 @@ class SignBeforeHashFromTheSourceTest {
         @Test
         @DisplayName("and the range really holds the characters between its ends")
         void theRangeWorks() {
-            // Worth going one step past the suite: equal bitsets could both be
-            // empty. This is the thing a caller wanted.
             assertThat(answerTo("""
                     find charset [#"a"-#"z"] #"m\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -129,8 +110,6 @@ class SignBeforeHashFromTheSourceTest {
         @Test
         @DisplayName("a signed number is one value")
         void aSignedNumber() {
-            // `if (IS_LEX_AT_LEAST_NUMBER(*cp)) goto num;` comes first, so this is
-            // the line the hash rule sits underneath rather than a case it changes.
             assertThat(answerTo("""
                     -1""")).isEqualTo("-1");
             assertThat(answerTo("""

@@ -52,8 +52,6 @@ class BinariesAndShufflingTest {
     @Test
     @DisplayName("RANDOM shuffles the series the caller holds")
     void randomShufflesInPlace() {
-        // Which order comes out is chance; that it is the same series is
-        // not.
         assertThat(answerTo("s: \"abc\" t: s random s same? s t")).isEqualTo("#(true)");
     }
 

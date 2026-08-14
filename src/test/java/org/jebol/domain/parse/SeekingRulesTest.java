@@ -41,7 +41,6 @@ class SeekingRulesTest {
     @Test
     @DisplayName("THRU a number goes past that item")
     void thruANumberGoesOneFurther() {
-        // The pair that tells them apart: THRU 1 lands where TO 2 does.
         assertThat(answerTo("parse \"abcd\" [thru 0 \"abcd\"]")).isEqualTo("#(true)");
         assertThat(answerTo("parse \"abcd\" [thru 1 \"bcd\"]")).isEqualTo("#(true)");
         assertThat(answerTo("parse \"abcd\" [thru 4 end]")).isEqualTo("#(true)");
@@ -50,8 +49,6 @@ class SeekingRulesTest {
     @Test
     @DisplayName("a number is counted from the head, so it can go backwards")
     void aPlaceIsAbsolute() {
-        // Two characters in, and TO 1 returns to the start. A target
-        // searched forward could never do that.
         assertThat(answerTo("parse \"abcd\" [\"ab\" to 1 \"abcd\"]")).isEqualTo("#(true)");
     }
 
@@ -65,8 +62,6 @@ class SeekingRulesTest {
     @Test
     @DisplayName("a tag is sought with its brackets")
     void aTagStandsForItsBrackets() {
-        // FORM of a tag is the letter alone, so matching on that found
-        // the letter without the brackets and stopped a character early.
         assertThat(answerTo("parse \"<a>\" [thru <a>]")).isEqualTo("#(true)");
         assertThat(answerTo("parse \"a<a>\" [to <a> 3 skip]")).isEqualTo("#(true)");
         assertThat(answerTo("parse \"a<a>\" [thru [<b> | <a>]]")).isEqualTo("#(true)");
@@ -82,8 +77,6 @@ class SeekingRulesTest {
     @Test
     @DisplayName("a fraction cannot be sought either")
     void aDecimalIsRefused() {
-        // A whole number is a place; a fraction is not a place and not
-        // something to look for, so it is neither.
         assertThat(errorIdOf("parse \"foo\" [thru 1.2]")).isEqualTo("parse-rule");
     }
 

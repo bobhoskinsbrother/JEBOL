@@ -40,8 +40,6 @@ class WildcardSearchTest {
     @Test
     @DisplayName("the star is not greedy")
     void theStarStopsAtTheFirstMatch() {
-        // "*d" against "abcde" ends at the d and not at the end of the
-        // text, which is what makes the character after it the e.
         assertThat(answerTo("(select/any \"abcde\" \"*d\") = #\"e\"")).isEqualTo("#(true)");
     }
 
@@ -54,7 +52,6 @@ class WildcardSearchTest {
     @Test
     @DisplayName("a needle full of punctuation is not a pattern of its own")
     void everythingElseIsLiteral() {
-        // Only ? and * mean anything. A dot is a dot.
         assertThat(answerTo("none? select/any \"abc\" \"a.c\"")).isEqualTo("#(true)");
         assertThat(answerTo("(select/any \"a.cd\" \"a.c\") = #\"d\"")).isEqualTo("#(true)");
     }
@@ -62,8 +59,6 @@ class WildcardSearchTest {
     @Test
     @DisplayName("without /ANY the needle is literal")
     void theOrdinaryNeedleIsUnaffected() {
-        // The off point. Without this the tests above would pass on a
-        // SELECT that always read wildcards.
         assertThat(answerTo("none? select \"abcde\" \"b?d\"")).isEqualTo("#(true)");
         assertThat(answerTo("(select \"abcde\" \"bcd\") = #\"e\"")).isEqualTo("#(true)");
     }

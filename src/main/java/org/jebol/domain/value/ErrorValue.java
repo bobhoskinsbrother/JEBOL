@@ -135,9 +135,6 @@ public record ErrorValue(
      * a maths error is what a script compares against.
      */
     private long codeNumber() {
-        // R3 numbers each id within its category, so the number depends on
-        // the id and not only on the family it belongs to. The catalogue
-        // that says which is R3's own, held in the eval layer.
         int fromCatalogue = ErrorCatalogue.codeFor(
                 category.name().charAt(0) + category.name().substring(1).toLowerCase(
                         java.util.Locale.ROOT),
@@ -152,10 +149,6 @@ public record ErrorValue(
             case ACCESS -> 500;
             case USER -> 800;
             case INTERNAL -> 900;
-            // The one category not numbered in hundreds. A real R3 gives
-            // `try/all [throw 5]` the code 2, so this family counts from
-            // zero. Which id sits at which number is part of the wider
-            // error-catalogue reconciliation, not settled here.
             case THROW -> 0;
         };
     }

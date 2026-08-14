@@ -1,7 +1,8 @@
 package org.jebol.application;
 
-import java.time.Duration;
 import org.jebol.domain.host.HostService;
+
+import java.time.Duration;
 
 /**
  * What a host decides before a script runs.

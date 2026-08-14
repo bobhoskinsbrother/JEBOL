@@ -41,8 +41,6 @@ class FindWithWildcardsTest {
     @Test
     @DisplayName("a star with something after it takes as little as it can")
     void anInnerStarTakesTheLeast() {
-        // Not the sixth character: the star gives back everything the
-        // rest of the pattern does not need.
         assertThat(answerTo("find/any/tail \"abcabc\" \"*bc\"")).isEqualTo("\"abc\"");
         assertThat(answerTo("find/any/tail \"abcabc\" \"a*c\"")).isEqualTo("\"abc\"");
         assertThat(answerTo("find/any/tail \"abcdabcd\" \"b*d\"")).isEqualTo("\"abcd\"");
@@ -76,8 +74,6 @@ class FindWithWildcardsTest {
     @Test
     @DisplayName("/reverse looks behind the position for a pattern")
     void reverseSearchesBehind() {
-        // A series at its tail has the whole string behind it and nothing
-        // ahead, so searching forwards answers none for all of these.
         assertThat(answerTo("find/any/reverse tail \"abcdabcd\" \"?c\""))
                 .isEqualTo("\"bcd\"");
         assertThat(answerTo("find/any/reverse tail \"abcdabcd\" \"b*\""))

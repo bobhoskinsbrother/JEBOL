@@ -1,10 +1,11 @@
 package org.jebol.application;
 
-import java.time.Duration;
-import java.util.Optional;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Value;
+
+import java.time.Duration;
+import java.util.Optional;
 
 /**
  * What running a script produced, in terms a host can act on without knowing

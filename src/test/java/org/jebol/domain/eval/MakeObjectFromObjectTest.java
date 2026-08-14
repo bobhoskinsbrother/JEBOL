@@ -50,7 +50,6 @@ class MakeObjectFromObjectTest {
     @Test
     @DisplayName("a method from the prototype reads the merged values")
     void methodsAreReboundToTheResult() {
-        // The whole point. A method still closed over O1 would answer 1.
         assertThat(answerTo(TWO_OBJECTS + "o3/f")).isEqualTo("2");
     }
 
@@ -72,8 +71,6 @@ class MakeObjectFromObjectTest {
     @Test
     @DisplayName("a method that needs a field only the second object brought still works")
     void aMethodCanReachAFieldTheOtherObjectAdded() {
-        // B's SHOW reads x and y; A has no y at all. It works because B's
-        // fields all arrive before any method is asked anything.
         String source = "a: make object! [x: 1 show: does [x]] "
                 + "b: make object! [x: 2 show: does [reduce [x y]] y: 3] "
                 + "c: make a b ";

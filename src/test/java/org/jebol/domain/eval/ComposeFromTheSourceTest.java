@@ -31,8 +31,6 @@ class ComposeFromTheSourceTest {
     @Test
     @DisplayName("a block a paren answered is spread")
     void aBlockAnswerIsSpread() {
-        // `if (IS_BLOCK(DS_TOP) && !only && !IS_MAP(block))` then
-        // Append_Series in the C.
         assertThat(answerTo("(compose [a (reduce [1 2]) b]) = [a 1 2 b]")).isEqualTo("#(true)");
     }
 
@@ -46,8 +44,6 @@ class ComposeFromTheSourceTest {
     @Test
     @DisplayName("an unset a paren answered is dropped")
     void anUnsetLeavesNothingBehind() {
-        // `else if (IS_UNSET(DS_TOP)) DS_DROP` in the C. The paren is
-        // gone and nothing takes its place.
         assertThat(answerTo("(compose [a (()) b]) = [a b]")).isEqualTo("#(true)");
     }
 
@@ -61,8 +57,6 @@ class ComposeFromTheSourceTest {
     @Test
     @DisplayName("/DEEP copies every block it passes over")
     void theDeepWalkCopies() {
-        // `VAL_SERIES(DS_TOP) = Copy_Block(...)` in the C's deep branch,
-        // thus the answer shares nothing with the template.
         assertThat(answerTo(
                 "inner: [1] outer: reduce [inner] not same? inner first compose/deep outer"))
                 .isEqualTo("#(true)");
@@ -80,8 +74,6 @@ class ComposeFromTheSourceTest {
     @Test
     @DisplayName("a map composes as the pairs it holds")
     void aMapIsComposed() {
-        // `if (IS_BLOCK(value) || IS_MAP(value))` in the C. The map's
-        // keys and values are walked as one block of pairs.
         assertThat(answerTo("m: make map! [a (1 + 1)] (select compose m 'a) = 2"))
                 .isEqualTo("#(true)");
     }
@@ -89,8 +81,6 @@ class ComposeFromTheSourceTest {
     @Test
     @DisplayName("a paren in a map is never spread")
     void aMapNeverSpreads() {
-        // `&& !IS_MAP(block)` guards the spreading, thus a block answer
-        // stays one value and the pairs stay paired.
         assertThat(answerTo(
                 "m: make map! [a (reduce [1 2])] (select compose m 'a) = [1 2]"))
                 .isEqualTo("#(true)");

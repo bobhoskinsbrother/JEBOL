@@ -47,9 +47,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("an integer becomes a whole money with no decimal places")
         void anIntegerMakesAWholeMoney() {
-            // int_to_deci puts the whole number in the significand and
-            // leaves the exponent at nought, so deci_to_string prints the
-            // digits and no point at all.
             assertThat(answerTo("mold to money! 1234")).isEqualTo("\"$1234\"");
             assertThat(answerTo("mold to money! 987")).isEqualTo("\"$987\"");
             assertThat(answerTo("m: to money! 987 mold to money! m * 12"))
@@ -61,9 +58,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("a decimal and a percent both go through decimal_to_deci")
         void aDecimalAndAPercentMakeAMoney() {
-            // The two share a case label, and a percent's stored value is
-            // the fraction rather than the printed number, so 100% is $1 and
-            // not $100.
             assertThat(answerTo("(to money! 1.5) = $1.5")).isEqualTo(TRUE);
             assertThat(answerTo("$0 = make money! 0%")).isEqualTo(TRUE);
             assertThat(answerTo("$1 = make money! 100%")).isEqualTo(TRUE);
@@ -73,7 +67,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("a money makes itself")
         void aMoneyMakesItself() {
-            // `case REB_MONEY: return R_ARG2;` -- handed straight back.
             assertThat(answerTo("$1 = to money! $1")).isEqualTo(TRUE);
             assertThat(answerTo("mold to money! $1.50")).isEqualTo("\"$1.50\"");
         }
@@ -81,8 +74,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("a string is scanned, and a string that does not scan is refused")
         void aStringIsScanned() {
-            // string_to_deci, and then `if (end == str || *end != 0) goto err`
-            // -- so trailing rubbish is a failure rather than being ignored.
             assertThat(answerTo("(to money! \"1.5\") = $1.5")).isEqualTo(TRUE);
             assertThat(errorIdOf("to money! \"abc\"")).isEqualTo("bad-make-arg");
             assertThat(errorIdOf("to money! \"\"")).isEqualTo("bad-make-arg");
@@ -91,8 +82,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("a logic makes a money through MAKE, true being one and false nothing")
         void aLogicMakesAMoney() {
-            // `if (action != A_MAKE) goto err;` -- MAKE takes a logic and TO
-            // does not, which is the only place the two part company.
             assertThat(answerTo("$1 = make money! true")).isEqualTo(TRUE);
             assertThat(answerTo("$0 = make money! false")).isEqualTo(TRUE);
         }
@@ -100,9 +89,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("an issue is refused, and the refusal is a decision rather than a gap")
         void anIssueIsRefused() {
-            // The case label is commented out with the issue number that
-            // removed it. It reads like the obvious way to write a money in
-            // hexadecimal, and it is not supported.
             assertThat(errorIdOf("to money! #ff")).isEqualTo("bad-make-arg");
             assertThat(errorIdOf("to-money #0")).isEqualTo("bad-make-arg");
         }
@@ -123,11 +109,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("twelve bytes are read as sign, exponent and significand")
         void twelveBytesAreRead() {
-            // byte 0 holds the sign in its top bit and the exponent's high
-            // seven; byte 1 holds the exponent's last bit and the top of the
-            // significand; the remaining ten bytes are the rest of it. All
-            // zeros but a trailing 0x0F is therefore a significand of fifteen
-            // at an exponent of nought.
             assertThat(answerTo("$15 = make money! #{00000000000000000000000F}"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("$15 = to money! #{00000000000000000000000F}"))
@@ -137,8 +118,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("a shorter binary is padded from the left, not the right")
         void aShorterBinaryIsRightAligned() {
-            // `memmove(buf + 12 - len, buf, len)` then zero the front. Padding
-            // the other way would make #{0F} into 15 times a power of ten.
             assertThat(answerTo("$15 = make money! #{0F}")).isEqualTo(TRUE);
             assertThat(answerTo("$15 = to money! #{0F}")).isEqualTo(TRUE);
             assertThat(answerTo("$1 = to money! #{01}")).isEqualTo(TRUE);
@@ -148,8 +127,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("a longer binary keeps its first twelve bytes")
         void alongerBinaryIsTruncated() {
-            // `if (len > 12) len = 12;` -- taken from the front, so the extra
-            // bytes are dropped rather than being an error.
             assertThat(answerTo("(to money! #{00000000000000000000000F}) "
                     + "= to money! #{00000000000000000000000FFF}")).isEqualTo(TRUE);
         }
@@ -166,11 +143,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("the significand carries across its three fields")
         void theSignificandCarriesAcrossItsFields() {
-            // #{0000FFFFFFFFFFFFFFFFFFFF} is the significand two to the
-            // eightieth minus one, spread across all three fields with every
-            // bit set. Adding one has to carry out of the lowest field, through
-            // the middle one, and into the top -- which is the whole point of
-            // the assertion.
             assertThat(answerTo("(to-money #{000100000000000000000000}) "
                     + "= ($1 + to-money #{0000FFFFFFFFFFFFFFFFFFFF})")).isEqualTo(TRUE);
         }
@@ -178,9 +150,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("twelve bytes naming more than twenty-six digits are refused")
         void aBinaryPastTheBoundIsRefused() {
-            // The validity checks at the end of binary_to_deci, which compare
-            // the three fields against the largest significand that holds
-            // twenty-six digits.
             assertThat(errorIdOf("to money! #{00FFFFFFFFFFFFFFFFFFFFFF}"))
                     .isEqualTo("overflow");
         }
@@ -193,9 +162,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("the answer stays a money whichever number met it")
         void theAnswerStaysAMoney() {
-            // `SET_TYPE(D_RET, REB_MONEY)` after the switch, with no branch
-            // out of it. So dividing two moneys gives a money and not the
-            // plain number the division suggests.
             assertThat(answerTo("$8.00 == add $4.00 $4.00")).isEqualTo(TRUE);
             assertThat(answerTo("$0.00 == subtract $4.00 $4.00")).isEqualTo(TRUE);
             assertThat(answerTo("$16.00 == multiply $4.00 $4.00")).isEqualTo(TRUE);
@@ -208,10 +174,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("multiplying by a time reads the time as hours")
         void multiplyingByATimeReadsHours() {
-            // `decimal_to_deci(VAL_TIME(arg) * NANO / 3600.0)` -- the
-            // nanoseconds are scaled to seconds and then divided by an hour,
-            // so 1:30:0 is 1.5. Reading it as seconds gives $27000, which is
-            // the wrong answer a wage calculation would carry quietly.
             assertThat(answerTo("$7.5 = ($5 * 1:30:0)")).isEqualTo(TRUE);
             assertThat(answerTo("$5 = ($5 * 1:0:0)")).isEqualTo(TRUE);
             assertThat(answerTo("$10 = ($5 * 2:0:0)")).isEqualTo(TRUE);
@@ -220,9 +182,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("every other operation refuses a time")
         void everyOtherOperationRefusesATime() {
-            // `else if (IS_TIME(arg) && action == A_MULTIPLY)` -- the action
-            // is part of the test, so the same argument is accepted by one
-            // operation and refused by the other four.
             assertThat(errorIdOf("$5 / 1:30:0")).isNotEqualTo(NO_ERROR);
             assertThat(errorIdOf("$5 + 1:30:0")).isNotEqualTo(NO_ERROR);
             assertThat(errorIdOf("$5 - 1:30:0")).isNotEqualTo(NO_ERROR);
@@ -248,7 +207,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("EVEN? and ODD? ask about the whole number the money truncates to")
         void parityLooksAtTheWholeNumber() {
-            // `1 & (REBINT)deci_to_int(VAL_DECI(val))`
             assertThat(answerTo("even? $2")).isEqualTo(TRUE);
             assertThat(answerTo("odd? $3")).isEqualTo(TRUE);
         }
@@ -269,9 +227,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("doubling once more raises overflow")
         void pastTheBoundItRaises() {
-            // The one assertion an unbounded decimal cannot pass. It answers
-            // the five-hundred-and-ninth value happily, and every assertion
-            // about smaller amounts still passes, so nothing else catches it.
             assertThat(answerTo(
                     "m: $1 for i 1 508 1 [m: m * 2] e: try [m * 2] e/id")).isEqualTo("overflow");
         }
@@ -310,8 +265,6 @@ class MoneyFromTheSourceTest {
         @Test
         @DisplayName("a decimal scale gives a decimal back")
         void aDecimalScaleGivesADecimal() {
-            // `SET_TYPE(D_RET, VAL_TYPE(arg))` after converting -- the answer
-            // takes the scale's datatype rather than the subject's.
             assertThat(answerTo("1.375 = round/to $1.333 .125")).isEqualTo(TRUE);
             assertThat(answerTo("1.33 = round/to $1.333 .01")).isEqualTo(TRUE);
             assertThat(answerTo("decimal? round/to $1.333 .01")).isEqualTo(TRUE);

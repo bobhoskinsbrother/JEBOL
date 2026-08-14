@@ -32,9 +32,6 @@ class PreludeTest {
     void aPreludeFunctionIsAValue() {
         Interpreter interpreter = Interpreter.create();
 
-        // EMPTY? rather than MAX. MAX was here and moved to Java, because
-        // MIN of 1x2 and 2x1 is 1x1 and choosing between two whole
-        // arguments cannot produce a third value.
         assertThat(interpreter.display(interpreter.run("type? :rejoin")))
                 .isEqualTo("#(function!)");
     }

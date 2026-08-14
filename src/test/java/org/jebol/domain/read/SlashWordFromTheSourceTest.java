@@ -49,8 +49,6 @@ class SlashWordFromTheSourceTest {
         @Test
         @DisplayName("is a word, however long the run")
         void aRunOfSlashesIsAWord() {
-            // `scan_state->end = cp; return TOKEN_WORD;` -- the last arm of the
-            // slash case, reached when neither a name nor a colon follows.
             assertThat(answerTo("""
                     (load {/}) = to word! "/\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -62,18 +60,6 @@ class SlashWordFromTheSourceTest {
         @Test
         @DisplayName("and the first two are operators the boot table binds")
         void theyAreRealOperators() {
-            // Which is the reason all of this matters. `/` and `//` are not
-            // punctuation the reader invented a rule for; they are two of the rows
-            // of `boot/ops.reb`, which "maps infix operator symbols to function
-            // names":
-            //
-            //     /  divide
-            //     // integer-divide
-            //     %  remainder
-            //
-            // So `//` is integer division and *not* remainder, which is `%`. Worth
-            // pinning, because the spelling suggests the other one -- it is what
-            // this test claimed before the table was read.
             assertThat(answerTo("""
                     9 / 2""")).isEqualTo("4.5");
             assertThat(answerTo("""
@@ -88,8 +74,6 @@ class SlashWordFromTheSourceTest {
         @Test
         @DisplayName("a colon after the run makes a set-word")
         void aRunThenAColon() {
-            // `if (*cp == ':' && IS_LEX_DELIMIT(cp[1])) { scan_state->end = cp+1;
-            // return TOKEN_SET; }` -- Rebol's own lexer test asserts all three.
             assertThat(answerTo("""
                     set-word? load {/:}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -108,13 +92,6 @@ class SlashWordFromTheSourceTest {
         @Test
         @DisplayName("but a name between the slash and the colon is refused")
         void aNamedRefinementWithAColon() {
-            // The other arm of the same case: `if (*(scan_state->end - 1) == ':')
-            // return -type;`, reached only when a word follows the slash run. So
-            // `/a:` is a refused refinement and `/:` is a set-word, and what sits
-            // between the slashes and the colon is the whole difference.
-            //
-            // Reading the two as one rule refuses both, which cost the three
-            // set-words above.
             assertThat(errorIdFromLoading("""
                     {/a:}""")).isEqualTo("invalid");
         }
@@ -127,9 +104,6 @@ class SlashWordFromTheSourceTest {
         @Test
         @DisplayName("a colon before the run makes a get-word")
         void aColonThenARun() {
-            // `if (cp[1] == '/') { do { ++cp; } while (*cp == '/'); if
-            // (IS_LEX_DELIMIT(*cp)) { scan_state->end = cp; // must be modified,
-            // because / is delimiter! return TOKEN_GET; } }`
             assertThat(answerTo("""
                     get-word? load {:/}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -148,8 +122,6 @@ class SlashWordFromTheSourceTest {
         @Test
         @DisplayName("and it answers the function rather than calling it")
         void itDoesNotCall() {
-            // The point of the spelling. `:/` hands over the divide function, so a
-            // script can pass it to SORT or rebind it.
             assertThat(answerTo("""
                     any-function? :/""")).isEqualTo(TRUE);
         }
@@ -157,8 +129,6 @@ class SlashWordFromTheSourceTest {
         @Test
         @DisplayName("but something that is not a delimiter after the run is refused")
         void aNameAfterTheRun() {
-            // `else cp = scan_state->begin;` and then the ordinary word scan, which
-            // fails: the delimiter test is what parts a slash word from a path.
             assertThat(errorIdFromLoading("""
                     {://x}""")).isNotEqualTo("no-error");
         }

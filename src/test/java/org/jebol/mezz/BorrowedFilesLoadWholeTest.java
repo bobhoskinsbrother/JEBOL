@@ -46,9 +46,7 @@ class BorrowedFilesLoadWholeTest {
      * shortest piece that names the gap rather than the whole message.
      */
     private static final Map<String, String> STOPS_ON = Map.ofEntries(
-            // The font object of the view dialect, which nothing builds yet.
             Map.entry("view-funcs.reb", "font"),
-            // BINARY is the bincode dialect, u-bincode.c, and is not ported.
             Map.entry("prot-tls.reb", "binary"));
 
     @Test

@@ -45,8 +45,6 @@ class HiddenFieldTest {
     @Test
     @DisplayName("the object's own code still reaches it")
     void theObjectKeepsUsingIt() {
-        // Without this the field would simply be gone, and hiding would
-        // be the same as removing.
         assertThat(answerTo(CONCEALED + "o/test")).isEqualTo("1");
     }
 
@@ -77,8 +75,6 @@ class HiddenFieldTest {
     @Test
     @DisplayName("adding a field over a hidden one is refused")
     void nothingOutsideMayWriteOverIt() {
-        // It is invisible from outside, so nothing outside may replace it
-        // either -- the object's own code would find something else there.
         assertThat(errorIdOf(CONCEALED, "extend o 'f 2")).isEqualTo("hidden");
         assertThat(errorIdOf(CONCEALED, "append o [f: 2]")).isEqualTo("hidden");
         assertThat(errorIdOf(CONCEALED, "put o to-set-word 'f 2")).isEqualTo("hidden");
@@ -87,8 +83,6 @@ class HiddenFieldTest {
     @Test
     @DisplayName("adding an ordinary field is still allowed")
     void theObjectIsNotOtherwiseClosed() {
-        // The off point. A refusal that caught everything would make the
-        // object unextendable rather than the field private.
         assertThat(errorIdOf(CONCEALED, "extend o 'h 3")).isEqualTo("no-error");
     }
 
@@ -102,8 +96,6 @@ class HiddenFieldTest {
     @Test
     @DisplayName("two objects hiding a field are equal whatever they hide")
     void hidingIsNotComparable() {
-        // A hidden field has no name and no value to compare, so two
-        // objects hiding different things are the same to EQUAL?.
         assertThat(answerTo(
                 "equal? context [a: 1 protect/hide 'a] context [a: 2 protect/hide 'a]"))
                 .isEqualTo("#(true)");
@@ -115,8 +107,6 @@ class HiddenFieldTest {
     @Test
     @DisplayName("hiding a field is still not the same as not having one")
     void aHiddenFieldIsStillThere() {
-        // The pair that stops the comparison simply ignoring hidden
-        // fields: it has to count them even though it cannot read them.
         assertThat(answerTo("equal? context [a: 1 protect/hide 'a] context [a: 1]"))
                 .isEqualTo("#(false)");
         assertThat(answerTo("equal? context [a: 1 protect/hide 'a] context []"))

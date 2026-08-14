@@ -58,16 +58,12 @@ class FilePathReadFromTheSourceTest {
         @Test
         @DisplayName("and none goes in when it already ends with one")
         void anExistingSlashIsKept() {
-            // `if (n == 0 || c != '/')` -- so the two forms of the same
-            // directory build the same path.
             assertThat(answerTo("p: %a/ d: %b p/:d")).isEqualTo("%a/b");
         }
 
         @Test
         @DisplayName("one leading slash on the selector is dropped, so there is never a double")
         void aLeadingSlashOnTheSelectorIsDropped() {
-            // `n += (c == '/' || c == '\\') ? 1 : 0;` -- one, not all of
-            // them, and a backslash counts as one too.
             assertThat(answerTo("p: %a d: %/b p/:d")).isEqualTo("%a/b");
             assertThat(answerTo("p: %a/ d: %/b p/:d")).isEqualTo("%a/b");
             assertThat(answerTo("p: %a d: %//b p/:d")).isEqualTo("%a//b");
@@ -76,26 +72,18 @@ class FilePathReadFromTheSourceTest {
         @Test
         @DisplayName("an empty file leaves the slash it added, so the path is absolute")
         void anEmptyFileBecomesRooted() {
-            // The `n == 0` half of the same line: an empty series gets the
-            // slash as well, so joining onto nothing gives a rooted path
-            // rather than a bare name.
             assertThat(answerTo("p: %\"\" d: %b p/:d")).isEqualTo("%/b");
         }
 
         @Test
         @DisplayName("a string selector goes in as its text")
         void aStringSelectorIsItsText() {
-            // `if (ANY_STR(pvs->select))` takes the series and the index, so
-            // a string, a file, a URL or a tag all contribute their own
-            // characters.
             assertThat(answerTo("p: %a d: \"b\" p/:d")).isEqualTo("%a/b");
         }
 
         @Test
         @DisplayName("and anything else is molded into one")
         void anythingElseIsMolded() {
-            // `Mold_Value(&mo, pvs->select, 0)`, thus a number joins as its
-            // digits and a word as its spelling.
             assertThat(answerTo("p: %a d: 5 p/:d")).isEqualTo("%a/5");
             assertThat(answerTo("p: %a d: 'b p/:d")).isEqualTo("%a/b");
             assertThat(answerTo("p: %a d: 1.2.3 p/:d")).isEqualTo("%a/1.2.3");
@@ -104,9 +92,6 @@ class FilePathReadFromTheSourceTest {
         @Test
         @DisplayName("a word written straight into the path is molded the same way")
         void aWrittenWordJoinsToo() {
-            // Which is the whole difference from PD_String: `p/length` on a
-            // string answers how long it is, and on a file it is a file named
-            // length. A file has no path form that asks about the text.
             assertThat(answerTo("p: %a p/length")).isEqualTo("%a/length");
             assertThat(answerTo("p: %a p/size")).isEqualTo("%a/size");
         }
@@ -121,16 +106,12 @@ class FilePathReadFromTheSourceTest {
         @Test
         @DisplayName("segment after segment builds the whole path")
         void severalSegmentsInOnePath() {
-            // Each read answers a file, so the next segment joins onto that.
-            // This is the shape MAKE-DIR/DEEP walks.
             assertThat(answerTo("p: %a b: %b c: %c p/:b/:c")).isEqualTo("%a/b/c");
         }
 
         @Test
         @DisplayName("a URL joins the same way and stays a URL")
         void aUrlKeepsItsDatatype() {
-            // `Set_Series(VAL_TYPE(pvs->value), ...)` -- the datatype comes
-            // from the left, so the join never turns one into the other.
             assertThat(answerTo("p: http://example.com d: %b p/:d"))
                     .isEqualTo("http://example.com/b");
             assertThat(answerTo("p: %a d: %b type? p/:d")).isEqualTo("#(file!)");
@@ -139,8 +120,6 @@ class FilePathReadFromTheSourceTest {
         @Test
         @DisplayName("and the join reads the file from where it stands, not from its head")
         void aSkippedFileJoinsFromWhereItIs() {
-            // `Copy_Series_Value` copies from the index, so a file that has
-            // been walked into joins from there.
             assertThat(answerTo("p: skip %ab/ 1 d: %c p/:d")).isEqualTo("%b/c");
         }
     }
@@ -152,9 +131,6 @@ class FilePathReadFromTheSourceTest {
         @Test
         @DisplayName("writing through a file path, which is the first line of the handler")
         void aPathSetIsRefused() {
-            // `if (pvs->setval) return PE_BAD_SET;` -- there is nothing to
-            // write to, because the path names a new value rather than a place
-            // inside the old one.
             assertThat(errorIdFrom("p: %a d: %b p/:d: 5")).isEqualTo("bad-path-set");
         }
 
@@ -172,11 +148,6 @@ class FilePathReadFromTheSourceTest {
         @Test
         @DisplayName("builds each level from the one above")
         void deepBuildsEachLevel() {
-            // `path: either empty? path [dir][path/:dir]` in base-files.reb.
-            // Without the join this raised on the first level and the borrowed
-            // file's own function could not run at all. Tested here without
-            // touching the disk: the same expression, with the file grant left
-            // out of it.
             assertThat(answerTo(
                     "path: copy %\"\" foreach dir [%a %b %c] "
                     + "[path: either empty? path [dir][path/:dir] append path \"/\"] "

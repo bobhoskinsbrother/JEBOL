@@ -29,14 +29,12 @@ class TakeFromTheSourceTest {
     @Test
     @DisplayName("without /PART the answer is one value, not a series")
     void oneValueComesBackBare() {
-        // `*D_RET = BLK_HEAD(ser)[index]` in the C.
         assertThat(answerTo("b: copy [1 2 3] (take b) = 1")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("with /PART the answer is a series, even of one")
     void aPartAlwaysAnswersASeries() {
-        // Set_Series in the C, thus a count of one gives a block of one.
         assertThat(answerTo("b: copy [1 2 3] (take/part b 1) = [1]")).isEqualTo("#(true)");
     }
 
@@ -50,8 +48,6 @@ class TakeFromTheSourceTest {
     @Test
     @DisplayName("a part of zero answers an empty series and changes nothing")
     void theZeroPart() {
-        // `if (len == 0) goto zero_blk` in the C, before anything is
-        // taken.
         assertThat(answerTo("b: copy [1 2 3] all [empty? take/part b 0  b = [1 2 3]]"))
                 .isEqualTo("#(true)");
     }
@@ -59,8 +55,6 @@ class TakeFromTheSourceTest {
     @Test
     @DisplayName("/ALL takes everything and implies /PART")
     void allTakesTheRest() {
-        // `SET_TRUE(D_ARG(ARG_TAKE_PART))` in the C, thus /ALL always
-        // answers a series.
         assertThat(answerTo("b: copy [1 2 3] all [(take/all b) = [1 2 3]  empty? b]"))
                 .isEqualTo("#(true)");
     }
@@ -68,8 +62,6 @@ class TakeFromTheSourceTest {
     @Test
     @DisplayName("/ALL of an empty series answers an empty series")
     void theDegenerateAll() {
-        // `if (tail <= index) goto zero_blk` in the C: an empty series
-        // gives an empty block and not none.
         assertThat(answerTo("b: copy [] empty? take/all b")).isEqualTo("#(true)");
     }
 
@@ -83,9 +75,6 @@ class TakeFromTheSourceTest {
     @Test
     @DisplayName("/LAST with /PART takes the last few, not the first few")
     void lastMovesWhereTheTakingStarts() {
-        // `if (D_REF(ARG_TAKE_LAST)) index = tail - len` in the C. The
-        // two refinements together move the index, thus this is not the
-        // same as taking from the front and reading backwards.
         assertThat(answerTo("b: copy [1 2 3] all [(take/last/part b 2) = [2 3]  b = [1]]"))
                 .isEqualTo("#(true)");
     }
@@ -93,17 +82,12 @@ class TakeFromTheSourceTest {
     @Test
     @DisplayName("taking from a series at its end answers none")
     void theEmptyTakeIsNone() {
-        // `if (tail <= index) goto is_none` in the C.
         assertThat(answerTo("b: tail copy [1 2] none? take b")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("taking a part from a series at its end answers an empty series")
     void theEmptyPartIsASeries() {
-        // The same place in the C answers zero_blk rather than is_none
-        // when /PART was asked for. None and an empty block are different
-        // answers to the same question, and which one comes back depends
-        // on the refinement.
         assertThat(answerTo("b: tail copy [1 2] empty? take/part b 2")).isEqualTo("#(true)");
     }
 
@@ -126,9 +110,6 @@ class TakeFromTheSourceTest {
     @Test
     @DisplayName("from the tail, a negative count reads backwards")
     void aNegativeCountReadsBack() {
-        // `index = tail - len` in the C with no clamp, thus a negative
-        // count moves the index above the tail and the span runs back
-        // into the series. Rebol's own series-test.r3 asserts these.
         assertThat(answerTo("(take/last/part tail \"123\" -3) = \"123\"")).isEqualTo("#(true)");
         assertThat(answerTo("(take/last/part tail [1 2 3] -3) = [1 2 3]")).isEqualTo("#(true)");
     }
@@ -136,8 +117,6 @@ class TakeFromTheSourceTest {
     @Test
     @DisplayName("from the tail, a positive count reads nothing")
     void aPositiveCountFromTheTailIsEmpty() {
-        // The off point for the pair above. There is nothing ahead of the
-        // tail, thus a forward span from there is empty.
         assertThat(answerTo("empty? take/last/part tail \"123\" 3")).isEqualTo("#(true)");
         assertThat(answerTo("empty? take/last/part tail [1 2 3] 3")).isEqualTo("#(true)");
     }
@@ -152,8 +131,6 @@ class TakeFromTheSourceTest {
     @Test
     @DisplayName("without /DEEP the taken value is the one the series held")
     void aPlainTakeSharesWhatItTook() {
-        // The C reads the value out of the block and answers it. Nothing
-        // is copied, thus the caller and whatever else held it share.
         assertThat(answerTo("a: [1 [2]] b: reduce [a] c: take b same? a c"))
                 .isEqualTo("#(true)");
     }
@@ -161,8 +138,6 @@ class TakeFromTheSourceTest {
     @Test
     @DisplayName("/DEEP copies what it took, all the way down")
     void deepTakesACopy() {
-        // `if (D_REF(ARG_TAKE_DEEP) && ANY_SERIES(D_RET))` in the C,
-        // which calls Clone_Block for a block and Copy_Series otherwise.
         assertThat(answerTo("a: [1 [2]] b: reduce [a] c: take/deep b not same? a c"))
                 .isEqualTo("#(true)");
         assertThat(answerTo("a: [1 [2]] b: reduce [a] c: take/deep b not same? a/2 c/2"))

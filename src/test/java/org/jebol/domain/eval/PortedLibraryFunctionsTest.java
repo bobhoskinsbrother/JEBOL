@@ -25,8 +25,6 @@ class PortedLibraryFunctionsTest {
     @Test
     @DisplayName("FRACTION keeps the sign of what it came from")
     void fractionIsSigned() {
-        // The fraction of -1.25 is -0.25 and not 0.75, which is the one
-        // that goes the other way if you reach for a modulus.
         assertThat(answerTo("(fraction 1.25) = 0.25")).isEqualTo("#(true)");
         assertThat(answerTo("(fraction -1.25) = -0.25")).isEqualTo("#(true)");
         assertThat(answerTo("(fraction 2.0) = 0.0")).isEqualTo("#(true)");
@@ -47,7 +45,6 @@ class PortedLibraryFunctionsTest {
     @Test
     @DisplayName("DEFAULT answers the default whether or not it was needed")
     void defaultAlwaysAnswersTheDefault() {
-        // It reads oddly and it is what a real R3 does.
         assertThat(answerTo("q: 1 default q 5")).isEqualTo("5");
     }
 
@@ -70,7 +67,6 @@ class PortedLibraryFunctionsTest {
     @Test
     @DisplayName("ANY-OF answers the first value that passes")
     void anyOfAnswersTheValue() {
-        // The value and not true, which is what makes it worth having.
         assertThat(answerTo("(any-of v [1 2 3] [v > 2]) = 3")).isEqualTo("#(true)");
         assertThat(answerTo("none? any-of v [1 2 3] [v > 9]")).isEqualTo("#(true)");
     }
@@ -85,12 +81,6 @@ class PortedLibraryFunctionsTest {
     @Test
     @DisplayName("an empty series answers none from both of them")
     void theEmptySeriesGoesBothWays() {
-        // This used to assert that ALL-OF holds for an empty series, because
-        // nothing in it failed. That is what "all" ought to mean and it is not
-        // what the code does. Both are `if data [foreach ...]`, and FOREACH
-        // over an empty series answers none: `SET_NONE(D_RET)` sits above the
-        // walk in Loop_Each and the body never runs to replace it. An empty
-        // block is truthy, so the IF does not shortcut it either.
         assertThat(answerTo("none? all-of v [] [false]")).isEqualTo("#(true)");
         assertThat(answerTo("none? any-of v [] [true]")).isEqualTo("#(true)");
     }
@@ -111,8 +101,6 @@ class PortedLibraryFunctionsTest {
     @Test
     @DisplayName("TO PAREN! makes a paren from a block")
     void aParenCanBeMade() {
-        // Needed by ALL-OF and ANY-OF, which build their loop body with
-        // the caller's test inside it.
         assertThat(answerTo("paren? to paren! [1 + 1]")).isEqualTo("#(true)");
         assertThat(answerTo("(to paren! [1 2]) = quote (1 2)")).isEqualTo("#(true)");
     }

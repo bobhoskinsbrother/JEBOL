@@ -73,9 +73,6 @@ class DeepProtectionTest {
     @Test
     @DisplayName("the four UNPROTECT shapes release three different things")
     void theRefinementsSeparateTheThreeThings() {
-        // May a word be added, may one be reassigned, may a value change.
-        // No two are the same question, and each shape frees a different
-        // subset -- which is how they can be told apart at all.
         assertThat(allowedAfter("unprotect"))
                 .as("frees the object and its words, not the values")
                 .isEqualTo("no-error no-error protected");

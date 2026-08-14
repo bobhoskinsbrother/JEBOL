@@ -60,8 +60,6 @@ class TakeFromAStrandedPositionTest {
     @Test
     @DisplayName("TAKE/ALL from a series that still has items is unaffected")
     void theOrdinaryCaseStillWorks() {
-        // The off point. A clamp that answered empty for everything would
-        // pass every test above.
         assertThat(answerTo("s: copy [1 2] (take/all s) = [1 2]")).isEqualTo("#(true)");
         assertThat(answerTo("s: skip copy [1 2 3] 1 (take/all s) = [2 3]")).isEqualTo("#(true)");
     }
@@ -76,7 +74,6 @@ class TakeFromAStrandedPositionTest {
     @Test
     @DisplayName("a plain TAKE from a stranded position answers none")
     void takingOneFromNowhereIsNone() {
-        // The other way in, and it must not fail either.
         assertThat(answerTo("s: next [1 2] clear head s none? take s")).isEqualTo("#(true)");
     }
 }

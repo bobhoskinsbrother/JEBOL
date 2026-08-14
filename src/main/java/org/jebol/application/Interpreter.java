@@ -1,45 +1,18 @@
 package org.jebol.application;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import org.jebol.domain.eval.Binder;
-import org.jebol.domain.eval.Evaluator;
-import org.jebol.domain.eval.FilePort;
-import org.jebol.domain.eval.HaltRequested;
-import org.jebol.domain.eval.Natives;
-import org.jebol.domain.eval.Outcome;
-import org.jebol.domain.eval.OutputPort;
-import org.jebol.domain.eval.QuitRequested;
-import org.jebol.domain.eval.Raised;
-import org.jebol.domain.eval.Stopped;
+import org.jebol.domain.eval.*;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.read.LibraryFileHeader;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.JavaObjectValue;
-import org.jebol.domain.value.NativeValue;
-import org.jebol.domain.value.ModuleValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.ErrorCategory;
-import org.jebol.domain.value.ErrorValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * One REBOL interpreter, embedded in a host application.
@@ -76,19 +49,6 @@ public final class Interpreter {
     private final Context systemInternals;
 
     private Interpreter(OutputPort output, Bounds bounds) {
-        // The library may read the clock while it loads, whatever the host
-        // granted, because loading it is building the interpreter rather than
-        // running a script. Rebol's own prot-mysql.reb opens with
-        // `last-activity: now/precise` inside a top-level MAKE OBJECT!, so a
-        // host that grants nothing would otherwise get a language with no
-        // MySQL scheme in it -- and the grants exist to confine what a script
-        // can reach, not to decide which of Rebol's own files exist.
-        //
-        // The clock and nothing else. Reading it cannot leak anything and
-        // cannot change anything outside, which is not true of files, the
-        // network, or starting another program: if a library file ever wants
-        // one of those at load time, that is a decision to take with the file
-        // in hand. See decision 19.
         Set<HostService> duringTheBoot = EnumSet.of(HostService.CLOCK);
         duringTheBoot.addAll(bounds.grantedServices());
         Natives natives = Natives.standard(duringTheBoot);
@@ -114,11 +74,7 @@ public final class Interpreter {
         loadPrelude();
         loadRebolsOwnLibrary();
         registerTheSchemesJebolCanServe();
-        // The boot is over, so the host's grants take effect. Everything the
-        // script can reach from here asks the bounds and not this set.
         natives.grantOnly(bounds.grantedServices());
-        // What the library's own loading caught is not what the script
-        // did, and system/state is the script's view.
         natives.forgetStartupState();
     }
 
@@ -136,18 +92,9 @@ public final class Interpreter {
      * calls {@code make-port*}.
      */
     private void registerTheSchemesJebolCanServe() {
-        // MAKE-SCHEME is sys-ports.reb's, so it is in sys and not in the
-        // library. R3 calls it the same way, from INIT-SCHEMES in that file.
         if (!systemInternals.knows("make-scheme")) {
             return;
         }
-        // INIT-SCHEMES opens with a line that is not about schemes at all:
-        //     sys/decode-url: lib/decode-url: :sys/url-parser/parse-url
-        // Rebol builds DECODE-URL as a method of its url-parser object and
-        // publishes it from there. JEBOL does not run INIT-SCHEMES, because
-        // that function registers every scheme Rebol's host can reach and
-        // JEBOL has an actor for one, so this line has to be run here or
-        // DECODE-URL stays none.
         run("sys/decode-url: lib/decode-url: :sys/url-parser/parse-url");
         run("sys/make-scheme [title: \"Console Access\" name: 'console]");
     }
@@ -181,16 +128,9 @@ public final class Interpreter {
         TranscodeResult read = Transcoder.transcode(source);
         BlockValue values = read.values().orElseThrow(() -> new IllegalStateException(
                 "the prelude does not read: " + read.error().orElseThrow()));
-        // The header is data, not code. Everything after it defines the
-        // library, into the system context so it sits beside the natives.
         BlockValue body = values.remaining().size() >= 2
                 ? values.atIndex(3)
                 : values;
-        // Only the words the prelude assigns, not every word it mentions.
-        // Defining them all put a slot in the system context for every
-        // parameter name inside every function spec, and those slots then
-        // shadowed the real parameters: a loop body inside a prelude
-        // function could not see an argument called `body`.
         defineAssignedWordsIn(body, systemContext);
         Outcome outcome = evaluator.evaluate(Binder.bind(body, systemContext), systemContext);
         if (outcome instanceof Outcome.Raised raised) {
@@ -244,12 +184,7 @@ public final class Interpreter {
                 continue;
             }
             BlockValue values = read.values().orElseThrow();
-            // The REBOL [...] header is data, not code. It is read all the
-            // same, because it says where the file's words belong.
             boolean hasHeader = startsWithARebolHeader(values);
-            // The second value, not the block positioned at it: atIndex gives
-            // a position, which is what the body wants and the header does
-            // not.
             LibraryFileHeader header = hasHeader
                     ? LibraryFileHeader.readFrom(values.remaining().get(1))
                     : LibraryFileHeader.none();
@@ -287,15 +222,6 @@ public final class Interpreter {
      * the two lines became the same word and the none, being last, won.
      */
     private Outcome loadAsASystemFile(BlockValue body) {
-        // Pass one: the file's own set-words get a slot in sys, whether or
-        // not the library already holds that spelling. BIND_SET builds its
-        // table from sys alone, so a spelling lib also has still becomes a
-        // sys word. sys-ports.reb writes `decode-url: none` and the library
-        // already has DECODE-URL, and in R3 those stay two different words.
-        //
-        // Shallow, and the C says why: "BIND_SET must be used carefully,
-        // because it does not bind prior instances of the word before the
-        // set-word."
         for (Value item : body.remaining()) {
             if (item instanceof WordValue word
                     && word.datatype() == Datatype.SET_WORD
@@ -303,16 +229,6 @@ public final class Interpreter {
                 systemInternals.define(word.spelling());
             }
         }
-        // Passes two and three: bind deep to lib, then deep to sys. Binding
-        // into sys does both at once, because sys is a child of lib and a
-        // word binds to whichever context actually holds its slot. Sys wins
-        // where sys has the word, which is pass three, and lib supplies the
-        // rest, which is pass two.
-        //
-        // Pass three is not optional. Leaving it out bound EXPORT to lib,
-        // where it does not exist: EXPORT is sys-base.reb's, and it is how
-        // sys-codec.reb gets REGISTER-CODEC into lib for all fourteen codec
-        // files to call.
         return evaluator.evaluate(
                 Binder.bind(body, systemInternals), systemInternals);
     }
@@ -346,27 +262,11 @@ public final class Interpreter {
      */
     private Outcome loadAsAModule(BlockValue body, LibraryFileHeader header) {
         Context own = Context.childOf(systemContext);
-        // The exported words get their slots before the body is bound, which is
-        // one line of MAKE-MODULE* with the reason written beside it:
-        //     bind/new spec/exports context
-        //     ; Add exported words at top of context (performance)
-        //
-        // Performance is not the half that matters. A module may define an
-        // exported word with `set 'name func [...]` rather than with a
-        // set-word, and prot-mysql.reb defines five of its six that way. The
-        // set-word pass below cannot see those, so without this the word is
-        // unbound where the body refers to it later and the file stops on the
-        // first such reference.
         for (String exported : header.exportedNames()) {
             if (!own.holds(exported)) {
                 own.define(exported);
             }
         }
-        // Every word the body assigns gets a slot here, whether or not the
-        // library already holds that spelling. Skipping the ones the library
-        // knows is what a plain load does, and it is exactly wrong for a
-        // module: EXP is a native, so the JSON codec's `exp:` bound to the
-        // library's slot and overwrote the function with a parse rule.
         for (Value item : body.remaining()) {
             if (item instanceof WordValue word
                     && word.datatype() == Datatype.SET_WORD
@@ -376,9 +276,6 @@ public final class Interpreter {
         }
         Outcome outcome = evaluator.evaluate(Binder.bind(body, own), own);
         if (outcome instanceof Outcome.Raised) {
-            // A module that stopped partway publishes nothing. Half its
-            // exports would be worse than none: a caller cannot tell a
-            // function that is missing from one that is missing its helpers.
             return outcome;
         }
         for (String exported : header.exportedNames()) {
@@ -411,9 +308,6 @@ public final class Interpreter {
                 || !(pathInto("system", "modules") instanceof ObjectValue modules)) {
             return;
         }
-        // Enough of a header for SPEC-OF to answer: what it is called, what it
-        // is, and what it publishes. The rest of a real header is copyright
-        // text, and this is not a place to keep a second copy of it.
         Context spec = Context.root();
         spec.set("name", WordValue.of(name));
         spec.set("type", WordValue.of("module"));
@@ -567,9 +461,6 @@ public final class Interpreter {
                     Conclusion.QUIT_EARLY,
                     quit.answer(),
                     Duration.ofNanos(System.nanoTime() - startedAt));
-        // HALT ends the script and leaves the interpreter usable, which is the
-        // whole difference from QUIT. It carries no value, so the outcome
-        // carries none.
         } catch (HaltRequested halted) {
             return new ScriptOutcome(
                     Conclusion.HALTED,
@@ -634,9 +525,6 @@ public final class Interpreter {
                         conclude(new Outcome.Completed(taken.value()), startedAt),
                         Molder.moldOnly(bound.atIndex(taken.nextIndex())));
             } catch (Raised raised) {
-                // What follows a failed expression is still handed back, so
-                // a caller walking a script can carry on past one that went
-                // wrong rather than losing the rest of the source.
                 return new Step(
                         conclude(new Outcome.Raised(raised.error()), startedAt),
                         Molder.moldOnly(bound.atIndex(2)));
@@ -749,8 +637,6 @@ public final class Interpreter {
             }
         }
     }
-
-    // ---- interop ---------------------------------------------------------
 
     /**
      * Hands the script a value under a name of the host's choosing.

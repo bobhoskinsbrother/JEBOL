@@ -187,8 +187,6 @@ class WindowServiceTest {
         @Test
         @DisplayName("BROWSE takes a url, a file or none")
         void browseTakesThreeDatatypes() {
-            // `url [url! file! none!]` -- none is in the spec, so browsing
-            // nothing is a call rather than a mistake.
             Screen screen = Screen.answering("x");
             assertThat(errorIdFrom(withAScreen(screen), "browse http://a"))
                     .isEqualTo("no-error");
@@ -203,9 +201,6 @@ class WindowServiceTest {
         @Test
         @DisplayName("REQUEST-FILE answers one file, and a block only with /MULTI")
         void requestFileAnswersOneFileUnlessAskedForMany() {
-            // The spec says "returns full file path (or block of paths)", and
-            // /multi is what chooses between them. One file as a bare file is
-            // what a caller reading `read request-file` depends on.
             Interpreter one = withAScreen(Screen.answering("/chosen/a.txt"));
             assertThat(answerFrom(one, "file? request-file")).isEqualTo(TRUE);
 
@@ -223,8 +218,6 @@ class WindowServiceTest {
         @Test
         @DisplayName("REQUEST-COLOR answers a tuple")
         void requestColourAnswersATuple() {
-            // `/default color [tuple!]` in the spec, so a colour goes in as a
-            // tuple and comes back as one.
             Interpreter interpreter = withAScreen(Screen.answering("x"));
             assertThat(answerFrom(interpreter, "tuple? request-color")).isEqualTo(TRUE);
             assertThat(answerFrom(withAScreen(Screen.answering("x")),
@@ -237,10 +230,6 @@ class WindowServiceTest {
             Interpreter interpreter = withAScreen(Screen.answering("x"));
             assertThat(answerFrom(interpreter, "string? request-password"))
                     .isEqualTo(TRUE);
-            // `request-password: native [{...}]` and nothing else: no argument
-            // and no refinement. JEBOL had offered a /TITLE, which is a promise
-            // Rebol does not make and a call Rebol would refuse -- a script
-            // written here would not have run there.
             assertThat(errorIdFrom(interpreter, "request-password/title \"q\""))
                     .isEqualTo("no-refine");
         }
@@ -253,10 +242,6 @@ class WindowServiceTest {
         @Test
         @DisplayName("every dialog answers none rather than raising")
         void aDeclinedDialogAnswersNone() {
-            // The rule this file exists for. Closing a chooser is an answer,
-            // and a script has to be able to act on it: `if file: request-file
-            // [...]` is the ordinary shape and it needs none to be falsey
-            // rather than an error to catch.
             assertThat(answerFrom(withAScreen(Screen.decliningEverything()),
                     "request-file")).isEqualTo(NONE);
             assertThat(answerFrom(withAScreen(Screen.decliningEverything()),
@@ -279,9 +264,6 @@ class WindowServiceTest {
         @Test
         @DisplayName("/MULTI declined answers an empty block, not none")
         void decliningTheManyFormAnswersAnEmptyBlock() {
-            // The datatype of the answer follows the refinement rather than
-            // the outcome, so code walking the block does not have to test
-            // for none first.
             assertThat(answerFrom(withAScreen(Screen.decliningEverything()),
                     "mold request-file/multi")).isEqualTo("\"[]\"");
         }
@@ -294,9 +276,6 @@ class WindowServiceTest {
         @Test
         @DisplayName("without the grant, every one of the five raises")
         void withoutTheGrantEveryDialogRaises() {
-            // A script that has not been granted a screen cannot put a window
-            // on one, and it must not be told that by silence. A REQUEST-FILE
-            // quietly answering none reads as a cancelled dialog.
             Interpreter walled = Interpreter.create();
             for (String call : new String[] {
                     "browse http://a", "request-file", "request-dir",
@@ -311,9 +290,6 @@ class WindowServiceTest {
         @Test
         @DisplayName("granted with no screen behind it is not-present, not not-granted")
         void grantedWithNoScreenIsNotPresent() {
-            // Two different facts about the host, and a script may act on
-            // either: the first can be fixed by granting and the second
-            // cannot. The message says which.
             Interpreter granted = Interpreter.withBounds(
                     Bounds.standard().granting(HostService.WINDOWS));
 
@@ -330,8 +306,6 @@ class WindowServiceTest {
         @Test
         @DisplayName("the windows grant does not open anything else")
         void oneGrantIsOneService() {
-            // Granting a screen must not grant a filesystem. Each kind is a
-            // separate decision.
             Interpreter interpreter = Interpreter.withBounds(
                     Bounds.standard().granting(HostService.WINDOWS));
             interpreter.useWindows(Screen.answering("x"));

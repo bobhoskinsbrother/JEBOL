@@ -29,8 +29,6 @@ class DecimalEqualityTest {
     @Test
     @DisplayName("a computed decimal equals the one it was meant to be")
     void aComputedDecimalEqualsItsWrittenForm() {
-        // Neither of these is exact underneath: the sum is
-        // 0.30000000000000004 and the cosine is 0.5000000000000001.
         assertThat(answerTo("(0.1 + 0.2) = 0.3")).isEqualTo("#(true)");
         assertThat(answerTo("0.5 = cosine 60")).isEqualTo("#(true)");
     }
@@ -38,8 +36,6 @@ class DecimalEqualityTest {
     @Test
     @DisplayName("the allowance runs out ten steps away")
     void theAllowanceEndsAtTenSteps() {
-        // The ON and OFF points, measured against the binary rather than
-        // reasoned about. Between these two the answer changes.
         assertThat(answerTo("1.0 = 1.000000000000002"))
                 .as("about nine steps apart")
                 .isEqualTo("#(true)");
@@ -51,8 +47,6 @@ class DecimalEqualityTest {
     @Test
     @DisplayName("the allowance scales with the size of the numbers")
     void theAllowanceIsRelativeNotFixed() {
-        // The same absolute gap, at two very different magnitudes. A
-        // fixed tolerance could not answer both of these the way R3 does.
         assertThat(answerTo("1000000.0 = 1000000.0000000002")).isEqualTo("#(true)");
         assertThat(answerTo("0.0001 = 0.0001000000000002")).isEqualTo("#(false)");
     }
@@ -77,8 +71,6 @@ class DecimalEqualityTest {
     @Test
     @DisplayName("a zero equals a negative zero and a NaN equals a NaN")
     void theHardwareIsOverruledAtBothEnds() {
-        // Both are cases where the floating point rules say one thing and
-        // REBOL says another, so neither can be left to the hardware.
         assertThat(answerTo("0.0 = -0.0")).isEqualTo("#(true)");
         assertThat(answerTo("(1.#NaN) = (1.#NaN)")).isEqualTo("#(true)");
     }
@@ -86,8 +78,6 @@ class DecimalEqualityTest {
     @Test
     @DisplayName("numbers that are plainly different are still different")
     void ordinaryInequalityIsUnaffected() {
-        // The degenerate direction. An allowance that swallowed these
-        // would pass every test above and be useless.
         assertThat(answerTo("1.0 = 1.1")).isEqualTo("#(false)");
         assertThat(answerTo("0.0 = 0.0000001")).isEqualTo("#(false)");
         assertThat(answerTo("1.0 = -1.0")).isEqualTo("#(false)");
@@ -103,8 +93,6 @@ class DecimalEqualityTest {
     @Test
     @DisplayName("EQUIV? is loose about the datatype and exact about the bits")
     void equivalenceSplitsTheDifference() {
-        // The only comparison that goes each way on the two questions, so
-        // it needs both halves asserted or the split is not pinned.
         assertThat(answerTo("equiv? 1 1.0")).isEqualTo("#(true)");
         assertThat(answerTo("equiv? 0.5 0.5000000000000001")).isEqualTo("#(false)");
     }

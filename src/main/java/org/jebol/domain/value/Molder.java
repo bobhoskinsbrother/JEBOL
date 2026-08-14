@@ -99,14 +99,6 @@ public final class Molder {
 
     private static String render(Value value, boolean forReading) {
         return switch (value) {
-            // The values with no literal spelling of their own. MOLD writes
-            // them as construction syntax so they read back as themselves;
-            // FORM writes the bare word, because FORM is for people. Molding
-            // these as bare words is what JEBOL did, and it broke
-            // round-tripping in the direction nobody checks: `true` read back
-            // as a word bound to a function rather than as the logic.
-            // NONE is the odd one, a single underscore rather than #(none),
-            // though #(none) still reads.
             case UnsetValue ignored -> forReading ? "#(unset)" : "";
             case NoneValue ignored -> forReading ? "_" : "none";
             case LogicValue logic -> forReading
@@ -120,10 +112,6 @@ public final class Molder {
                     : character.toString();
             case PairValue pair -> moldHalf(pair.x()) + "x" + moldHalf(pair.y());
             case EventValue event -> renderEvent(event, forReading);
-            // `Mold_Handle`: "#(handle! " then the type name, then a bracket, with
-            // a context handle's own molder allowed to add to it. A handle with no
-            // name at all falls back to `Emit(mold, "+T", value)`, the bare
-            // datatype -- and nothing here makes a nameless one.
             case HandleValue handle -> "#(handle! " + handle.typeName() + ")";
             case TupleValue tuple -> tuple.toString();
             case TimeValue time -> time.toString();
@@ -133,10 +121,6 @@ public final class Molder {
             case ImageValue image -> renderImage(image, forReading);
             case GobValue gob -> renderGob(gob, forReading);
             case BlockValue block -> renderBlock(block, forReading);
-            // MOLD keeps a word's sigil so it reads back; FORM drops it,
-            // because FORM is for a person: `form ['a b: :c] is "a b c".
-            // Every any-word datatype -- lit, set, get, refinement, issue --
-            // forms to its bare spelling in the C's Mold_Value.
             case WordValue word -> forReading ? word.toString() : word.spelling();
             case DatatypeValue datatype -> forReading
                     ? "#(" + datatype.represents().literalSpelling() + ")"
@@ -146,21 +130,12 @@ public final class Molder {
             case FunctionValue function -> "#[function! " + function.arity() + "]";
             case OperatorValue operator -> "#[op! " + operator.operatorName() + "]";
             case MapValue map -> renderMap(map, forReading);
-            // A complemented set prints the bits it names and the word
-            // NOT before them, because that is what a caller wrote. The
-            // flipped bits would print as a wall of FF and say nothing.
             case BitsetValue bitset -> "#(bitset! "
                     + (bitset.isComplemented() ? "not " : "")
                     + "#{" + hexOf(bitset.octets()) + "})";
             case ObjectValue object -> renderObject(object, forReading);
-            // A port molds as an object, which is what types.reb says: its
-            // mold column reads "object". Underneath it is one.
             case PortValue port -> renderObject(
                     new ObjectValue(port.context()), forReading);
-            // And a module molds as one for the same reason. Its header is
-            // not printed: SPEC-OF is how a caller reads that, and molding it
-            // here would make the words a module defines hard to find among
-            // ten fields of copyright text.
             case ModuleValue module -> renderObject(
                     new ObjectValue(module.context()), forReading);
             case ErrorValue error -> "#[error! " + error.errorId() + "]";
@@ -265,9 +240,6 @@ public final class Molder {
                 .stripTrailingZeros();
         int exponent = rounded.precision() - rounded.scale() - 1;
 
-        // Emit_Decimal switches to the e-format once there are more digits
-        // before the point than it was asked to print, so the threshold moves
-        // with the digit count and is not a constant of the format.
         return exponent < SMALLEST_PLAIN_EXPONENT || exponent > digits - 1
                 ? withExponent(rounded, exponent, minimal)
                 : pointAsWanted(rounded.toPlainString(), minimal);
@@ -297,7 +269,6 @@ public final class Molder {
     }
 
     private static String renderMoney(MoneyValue money) {
-        // The sign goes before the currency, not after it: -$1, never $-1.
         String sign = money.amount().signum() < 0 ? "-" : "";
         return sign + money.currency().orElse("$")
                 + money.amount().abs().toPlainString();
@@ -308,11 +279,6 @@ public final class Molder {
         if (map.pairCount() == 0) {
             return "#[]";
         }
-        // The pairs and nothing else. A word key carries its own colon,
-        // because it is stored as a set-word, so adding one here would write
-        // `a:: 1` for a word and `1: 2` for an integer -- and the second does
-        // not read back as a map at all. R3 molds `#[a: 1]` and `#[1 2]` for
-        // exactly this reason.
         StringBuilder rendered = new StringBuilder("#[\n");
         List<Value> flat = map.flattened();
         for (int at = 0; at < flat.size(); at += 2) {
@@ -333,12 +299,7 @@ public final class Molder {
         StringBuilder escaped = new StringBuilder();
         text.codePoints().forEach(codepoint -> {
             switch (codepoint) {
-                // A newline and a quote are themselves inside braces -- the
-                // whole reason the braced form exists is to spare them.
                 case '\n', '"' -> escaped.appendCodePoint(codepoint);
-                // A brace is escaped only when the braces do not pair up;
-                // a balanced pair stays literal, so `{a{b}c}` reads as
-                // written.
                 case '{', '}' -> escaped.append(
                         bracesAreUnbalanced ? "^" + (char) codepoint : (char) codepoint);
                 default -> escaped.append(escapedCodepoint(codepoint));
@@ -363,11 +324,6 @@ public final class Molder {
     private static String renderString(StringValue string, boolean forReading) {
         String text = string.text();
         if (!forReading) {
-            // A tag is the odd one in the family: its brackets are part of
-            // its text, where a file's percent and a ref's at-sign are
-            // punctuation the reader needs and a person does not. That is
-            // what lets a tag be looked for inside a string and match the
-            // brackets as written.
             return string.datatype() == Datatype.TAG ? "<" + text + ">" : text;
         }
         return switch (string.datatype()) {
@@ -494,15 +450,9 @@ public final class Molder {
      * are what a person reading the output expects to see.
      */
     private static String escapedCodepoint(int codepoint) {
-        // The hex form for 0x1E and for 0x7F to 0x9F, which is the C's
-        // `chr == 0x1e || (chr >= 0x7f && chr < 0xA0)`. 0x1E is the hole in
-        // the caret-letter range: sixty-four above it is the caret itself,
-        // so `^^` would read back as a caret and lose the value.
         if (codepoint == 0x1E || (codepoint >= 0x7F && codepoint <= 0x9F)) {
             return "^(" + "%02X".formatted(codepoint) + ")";
         }
-        // The caret-letter escapes: the control range with its own letters
-        // for tab and newline, and the doubled caret and quote.
         return switch (codepoint) {
             case '\t' -> "^-";
             case '\n' -> "^/";
@@ -553,10 +503,6 @@ public final class Molder {
         String pixels = shown.storage().wide() + "x" + shown.storage().high()
                 + " #{" + colours + "}"
                 + (shown.storage().hasAlpha() ? " #{" + alphas + "}" : "");
-        // MOLD and FORM write the same thing: the image arm of the C's mold
-        // switch never looks at `molded`. The construction form `#(image! ...)`
-        // belongs to MOLD/ALL, which is not implemented for any datatype here --
-        // see 5c's MOLD/ALL cluster -- so it is not written for this one either.
         return "make image! [" + pixels + "]";
     }
 
@@ -629,10 +575,6 @@ public final class Molder {
             case SET_PATH -> joinPath(block, "", ":");
             case GET_PATH -> joinPath(block, ":", "");
             case LIT_PATH -> joinPath(block, "'", "");
-            // A hash names its datatype, which is what the Mold column of
-            // `boot/types.reb` means by `+`: `Pre_Mold` emits "make T " for a
-            // plain mold and "#(T " for MOLD/ALL. Without it a hash molds as a
-            // block and reads back as one, which loses the datatype.
             case HASH -> "make hash! [" + items + "]";
             default -> "[" + items + "]";
         };
@@ -727,9 +669,6 @@ public final class Molder {
             return "make object! [...]";
         }
         try {
-            // One field per line, indented four, as a real R3 writes it.
-            // The layout is part of what MOLD answers: a script that
-            // compares molded text is comparing this too.
             String fields = object.context().slots().stream()
                     .filter(slot -> !slot.canonical().equals(SELF))
                     .map(slot -> "    " + slot.spelling() + ": "

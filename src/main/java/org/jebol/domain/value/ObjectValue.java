@@ -25,10 +25,6 @@ public record ObjectValue(Context context) implements Value {
     public boolean equals(Object other) {
         return other instanceof ObjectValue object
                 && context.fieldsExcludingSelf().equals(object.context.fieldsExcludingSelf())
-                // Two objects with the same visible fields are still
-                // different if one is hiding something. A hidden field
-                // has no name and no value to compare -- but it is there,
-                // and an object with one is not an empty object.
                 && context.fieldCount() == object.context.fieldCount();
     }
 

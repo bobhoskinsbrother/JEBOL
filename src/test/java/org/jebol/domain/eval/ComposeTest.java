@@ -88,8 +88,6 @@ class ComposeTest {
     @Test
     @DisplayName("a paren that answers nothing contributes nothing")
     void anUnsetParenLeavesNothingBehind() {
-        // Not [x #(unset) y]. An unset is not a value a block can hold
-        // and go on being usable.
         assertThat(answerTo("mold compose [x (print \"\") y]")).isEqualTo("\"[x y]\"");
     }
 
@@ -142,9 +140,6 @@ class ComposeTest {
     @Test
     @DisplayName("something that is not a block is handed straight back")
     void aNonBlockPassesThrough() {
-        // Refusing this looks like good hygiene and is not what REBOL
-        // does. It matters for generated code, where a template may come
-        // out as a single value and the caller should not have to check.
         assertThat(answerTo("compose 1")).isEqualTo("1");
         assertThat(answerTo("compose \"a-string\"")).isEqualTo("\"a-string\"");
         assertThat(answerTo("compose none")).isEqualTo("_");

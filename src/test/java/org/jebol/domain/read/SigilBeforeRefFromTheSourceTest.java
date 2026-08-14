@@ -51,8 +51,6 @@ class SigilBeforeRefFromTheSourceTest {
         @Test
         @DisplayName("in front of a ref")
         void beforeARef() {
-            // Rebol's own test has these in two different groups -- `'@foo` under
-            // Ref and `:@foo` under Get-word -- and they are one line of C.
             assertThat(errorIdFromLoading("""
                     {'@foo}""")).isEqualTo("invalid");
             assertThat(errorIdFromLoading("""
@@ -62,9 +60,6 @@ class SigilBeforeRefFromTheSourceTest {
         @Test
         @DisplayName("and in front of an email, because the test is on the at-sign anywhere")
         void beforeAnEmail() {
-            // `HAS_LEX_FLAG(flags, LEX_SPECIAL_AT)` is set by an at-sign anywhere in
-            // the lexeme, not only straight after the sigil. So a quoted email is
-            // refused too, and for the same reason: an email is not a word.
             assertThat(errorIdFromLoading("""
                     {'a@b}""")).isEqualTo("invalid");
             assertThat(errorIdFromLoading("""
@@ -98,8 +93,6 @@ class SigilBeforeRefFromTheSourceTest {
         @Test
         @DisplayName("a tag may hold an at-sign")
         void aTagMayHoldOne() {
-            // `*cp != '<'` in the condition. A tag is delimited text and what is
-            // inside it is not scanned for datatypes at all.
             assertThat(answerTo("""
                     tag? load {<a@b>}""")).isEqualTo(TRUE);
         }
@@ -107,10 +100,6 @@ class SigilBeforeRefFromTheSourceTest {
         @Test
         @DisplayName("and so may a file, including one whose escape decodes to it")
         void aFileMayHoldOne() {
-            // `*cp != '%'`, and the C's comment says which case put it there: "for
-            // case like: %61@b which is actually: a@b". The escape decodes after the
-            // token is classified, so the flag is set on a lexeme the reader has
-            // already decided is a file.
             assertThat(answerTo("""
                     file? load {%a@b}""")).isEqualTo(TRUE);
             assertThat(answerTo("""

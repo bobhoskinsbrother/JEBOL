@@ -56,9 +56,6 @@ class DeclinedRefinementFromTheSourceTest {
     @Test
     @DisplayName("a declined refinement still eats its argument")
     void theArgumentIsConsumed() {
-        // If it were left in the block, the 1 would be read as the next
-        // expression rather than as an argument, and everything after
-        // the call would shift by one.
         assertThat(answerTo("ref1: off (reduce [fce/:ref1 \"a\" 1]) = reduce [fce \"a\"]"))
                 .isEqualTo("#(true)");
     }
@@ -66,8 +63,6 @@ class DeclinedRefinementFromTheSourceTest {
     @Test
     @DisplayName("the argument it eats is evaluated all the same")
     void theArgumentIsStillEvaluated() {
-        // Only the storing is skipped, not the evaluation, so an
-        // assignment written as the argument still happens.
         assertThat(answerTo("ref1: off fce/:ref1 \"a\" x: 1 + 1 x = 2"))
                 .isEqualTo("#(true)");
         assertThat(answerTo("ref1: yes fce/:ref1 \"a\" x: 1 + 1 x = 2"))
@@ -78,8 +73,6 @@ class DeclinedRefinementFromTheSourceTest {
     @Test
     @DisplayName("a declined refinement takes a wrong-typed argument without complaint")
     void theTypeIsNotChecked() {
-        // The value never reaches the parameter, so there is nothing for
-        // a type to be wrong for.
         assertThat(errorIdOf("ref1: off fce/:ref1 \"a\" \"\"")).isEqualTo("no-error");
     }
 
@@ -95,10 +88,6 @@ class DeclinedRefinementFromTheSourceTest {
     @Test
     @DisplayName("a quoted argument of a declined refinement is taken as written")
     void quotingStillApplies() {
-        // REF2 takes a get-word and a lit-word parameter, so neither of
-        // its arguments is looked up. Evaluating them instead would fail
-        // on a word nobody has set, which is what makes this the case
-        // that shows the quoting is still being obeyed.
         assertThat(answerTo("ref2: off (fce/:ref2 \"a\" never-set also-never) = fce \"a\""))
                 .isEqualTo("#(true)");
     }
@@ -127,9 +116,6 @@ class DeclinedRefinementFromTheSourceTest {
     @Test
     @DisplayName("the same four written the other way round")
     void theCombinationsInPathOrder() {
-        // The arguments follow the path, so writing REF2 first puts its
-        // two arguments first. A declined refinement holds its place in
-        // that order as surely as a granted one.
         assertThat(answerTo("""
                 ref1: yes ref2: yes
                 (fce/:ref2/:ref1 "a" x y 1 + 1) = reduce ["a" true 2 true 'x 'y]

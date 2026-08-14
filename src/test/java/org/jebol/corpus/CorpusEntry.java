@@ -40,9 +40,6 @@ public record CorpusEntry(
      * {@code requires} tag names has since been built, so the tag is now a
      * record of when the entry was written rather than a reason to skip it.
      */
-    // Capabilities nothing here implements yet. An entry needing one is
-    // reported by CorpusCoverageReportTest rather than run, so the gap stays
-    // countable instead of becoming a quietly passing suite.
     private static final Set<String> NOT_BUILT_YET =
             Set.of("clock", "random", "file", "network", "gui", "r2-only", "mutable-strings");
 

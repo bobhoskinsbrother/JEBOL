@@ -1,11 +1,12 @@
 package org.jebol.adapter.host;
 
+import org.jebol.domain.eval.ProcessPort;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.jebol.domain.eval.ProcessPort;
 
 /**
  * Starts a program with the JDK, and nothing else.

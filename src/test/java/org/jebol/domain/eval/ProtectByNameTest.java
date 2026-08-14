@@ -92,17 +92,12 @@ class ProtectByNameTest {
     @Test
     @DisplayName("PROTECT of a path leaves the fields around it free")
     void aPathLeavesItsNeighboursAlone() {
-        // The off point. A path read as a list of names would take both
-        // ends of it, so this is what tells the two apart.
         assertThat(errorIdOf(NESTED + "protect 'o/a ", "o/o/a: 9")).isEqualTo("no-error");
     }
 
     @Test
     @DisplayName("PROTECT of a path leaves the enclosing word assignable")
     void aPathDoesNotProtectTheWordItStartsFrom() {
-        // The failure that cost six assertions in the suite, and nowhere
-        // near where it was noticed: every later `o: something` was
-        // refused, so the tests after it ran against a stale object.
         assertThat(errorIdOf(NESTED + "protect/words/deep 'o/o ", "o: 5"))
                 .isEqualTo("no-error");
     }
@@ -119,8 +114,6 @@ class ProtectByNameTest {
     @Test
     @DisplayName("a path that names nothing changes nothing and raises nothing")
     void aPathThatNamesNothingIsIgnored() {
-        // Both degenerate shapes: a field that is not there, and a walk
-        // through a number, which cannot be walked into at all.
         assertThat(errorIdOf(NESTED, "protect 'o/missing")).isEqualTo("no-error");
         assertThat(errorIdOf(NESTED, "protect 'o/a/deeper")).isEqualTo("no-error");
     }

@@ -79,8 +79,6 @@ class SurfaceReportTest {
         switch (value) {
             case NativeValue asNative -> {
                 appendArguments(shape, asNative.parameters());
-                // Declared separately from the parameters, so a refinement
-                // that takes no argument would otherwise not appear at all.
                 asNative.declaredRefinements().stream().sorted()
                         .forEach(refinement -> shape.append(" /").append(refinement));
             }

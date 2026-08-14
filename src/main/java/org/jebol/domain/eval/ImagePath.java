@@ -1,18 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.BinaryStorage;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.ImageStorage;
-import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 /**
  * Reading and writing an image through a path, from {@code PD_Image}.
@@ -51,15 +39,9 @@ final class ImagePath {
         }
         int pixel = pixelNamedBy(image, selector);
         if (pixel < 1 || pixel > image.lengthFromHere()) {
-            // `if (n == 0 || index < 0 || index >= series->tail) return PE_NONE;`
             return NoneValue.none();
         }
         int[] channels = image.pixelAt(pixel);
-        // Four parts always, alpha included: `Set_Tuple_Pixel` writes
-        // `VAL_TUPLE_LEN(tuple) = 4` before it writes a byte, and `Emit_Tuple`
-        // shows every part a tuple keeps. So an opaque pixel reads as
-        // `255.0.0.255` rather than as `255.0.0`, which Rebol's own image test
-        // asserts twice: `--assert 255.0.0.255 = img/1`.
         return TupleValue.of(channels[0], channels[1], channels[2], channels[3]);
     }
 
@@ -71,9 +53,6 @@ final class ImagePath {
      */
     static void write(ImageValue image, int pixelFromHead, Value written) {
         ImageStorage storage = image.storage();
-        // `if (n == 0 || index < 0 || index >= series->tail) { if (val) return
-        // PE_BAD_SET; ... }` -- reading past the end answers none and writing
-        // past it refuses, which is the one place the two part company.
         if (pixelFromHead < 1 || pixelFromHead > storage.length()) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "pixel " + pixelFromHead + " is outside the image");
@@ -82,15 +61,11 @@ final class ImagePath {
             int[] parts = colour.segments();
             storage.setColourAt(pixelFromHead,
                     partOr(parts, 0, 0), partOr(parts, 1, 0), partOr(parts, 2, 0));
-            // `Set_Pixel_Tuple` writes the alpha only when the tuple carried
-            // one, so `img/1: 1.2.3` leaves a transparent pixel transparent.
             if (parts.length > 3) {
                 storage.setAlphaAt(pixelFromHead, parts[3]);
             }
             return;
         }
-        // "Set the alpha only", says the C, and then it does exactly that. A
-        // char is accepted too, and the C's own comment doubts it should be.
         int alpha = alphaFrom(written);
         storage.setAlphaAt(pixelFromHead, alpha);
     }

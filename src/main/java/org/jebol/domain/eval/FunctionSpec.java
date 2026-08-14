@@ -1,21 +1,8 @@
 package org.jebol.domain.eval;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.ParameterKind;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.TypesetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
+
+import java.util.*;
 
 /**
  * Reads a function's spec block into the parameters it declares.
@@ -64,38 +51,17 @@ final class FunctionSpec {
                         "a function spec holds words, not "
                                 + item.datatype().literalSpelling());
             }
-            // The interface -- parameters, refinements and the return
-            // annotation -- may name nothing twice. A /local word may:
-            // Rebol's own FUNCTION collects the body's set-words into
-            // /local and a body that assigns the same name in two branches
-            // hands it two occurrences, which R3 tolerates there.
             if (!LOCALS_REFINEMENT.equals(currentRefinement)) {
                 refuseADuplicate(word, alreadyNamed);
             }
             if (word.datatype() == Datatype.REFINEMENT) {
                 currentRefinement = word.canonical();
-                // /local is a refinement like any other, and its own word is
-                // readable in the frame: none when the caller did not supply
-                // it. What is special is only that the words after it are the
-                // function's own rather than arguments, which localNamesIn
-                // collects and the walk below skips.
-                //
-                // Skipping the refinement itself left `local` holding unset,
-                // and Rebol's own LOAD opens with
-                //     assert/type [local none!]  ; protect against /local hacks
-                // which reads that word to check nobody passed /local. Every
-                // caller of LOAD and IMPORT stopped there.
                 parameters.add(Parameter.refinement(word.spelling()));
                 continue;
             }
             if (LOCALS_REFINEMENT.equals(currentRefinement)) {
                 continue;
             }
-            // `return:` says what the function answers, not what it
-            // takes. Counting it as a parameter made every function
-            // carrying one want an argument it never uses. The spec has
-            // always named this kind; the walk did not honour it. It must
-            // carry a type block: `func [return:]` is no definition at all.
             if (word.datatype() == Datatype.SET_WORD && word.canonical().equals("return")) {
                 requireAReturnAnnotationBlock(spec, items, index);
                 continue;
@@ -160,10 +126,6 @@ final class FunctionSpec {
         if (index + 1 >= items.size() || !(items.get(index + 1) instanceof BlockValue types)) {
             return Set.of();
         }
-        // A `return:` annotation may describe what comes back alongside
-        // the datatypes: `return: [string! "the answer"]`. An ordinary
-        // parameter may not, so the string is allowed here only for that
-        // one word rather than in every type block.
         boolean describesTheReturn = items.get(index) instanceof WordValue word
                 && word.datatype() == Datatype.SET_WORD
                 && word.canonical().equals("return");
@@ -175,9 +137,6 @@ final class FunctionSpec {
             switch (resolveTypeName(declared)) {
                 case DatatypeValue datatype -> accepted.add(datatype.represents());
                 case TypesetValue typeset -> accepted.addAll(typeset.members());
-                // INVALID_ARG rather than CANNOT_USE: the spec is the
-                // argument being refused, not an operation the value
-                // does not support.
                 default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                         "a type block holds datatypes, not "
                                 + declared.datatype().literalSpelling());

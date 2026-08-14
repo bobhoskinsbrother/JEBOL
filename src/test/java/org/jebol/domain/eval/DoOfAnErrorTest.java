@@ -44,8 +44,6 @@ class DoOfAnErrorTest {
     @Test
     @DisplayName("the raise stops what follows it")
     void nothingAfterItRuns() {
-        // The case that shows the difference. Answering a value rather
-        // than raising leaves this "after", and the script goes on.
         assertThat(outcomeOf("do make error! [type: 'script id: 'invalid-data] \"after\""))
                 .isEqualTo("\"raised invalid-data\"");
     }

@@ -47,9 +47,6 @@ public sealed interface SeriesValue extends Value
 
     /** Whether this value sits one past the last element. */
     default boolean atTail() {
-        // At or past it. A position left stranded by the storage being
-        // shortened has nothing ahead of it either, so TAIL? and EMPTY?
-        // both answer true for it, as they do in a real R3.
         return index() >= storageLength() + 1;
     }
 

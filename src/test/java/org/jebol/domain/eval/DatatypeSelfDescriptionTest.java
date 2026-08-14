@@ -65,8 +65,6 @@ class DatatypeSelfDescriptionTest {
     @Test
     @DisplayName("a datatype JEBOL has not built still describes itself")
     void anUnbuiltDatatypeStillDescribesItself() {
-        // The table is R3's, so it covers the names JEBOL carries without
-        // having implemented.
         assertThat(answerTo("reflect gob! 'title")).isEqualTo("\"graphical object\"");
     }
 

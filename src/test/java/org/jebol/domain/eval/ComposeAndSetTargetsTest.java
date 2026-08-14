@@ -39,8 +39,6 @@ class ComposeAndSetTargetsTest {
     @Test
     @DisplayName("COMPOSE/INTO answers the target after what it put there")
     void theAnswerIsAPosition() {
-        // Not the source and not the head. The position is what lets a
-        // run of these build one series, each carrying on from the last.
         assertThat(answerTo("x: copy [] tail? compose/into \"a\" x")).isEqualTo("#(true)");
     }
 
@@ -53,8 +51,6 @@ class ComposeAndSetTargetsTest {
     @Test
     @DisplayName("COMPOSE without /INTO answers a non-block source unchanged")
     void aNonBlockSourceComposesToItself() {
-        // The off point. Without /INTO there is nowhere to put it, and
-        // the answer is the source rather than a block wrapping it.
         assertThat(answerTo("(compose \"a\") = \"a\"")).isEqualTo("#(true)");
     }
 
@@ -75,8 +71,6 @@ class ComposeAndSetTargetsTest {
     @Test
     @DisplayName("the same targets inside a block carry a different id")
     void insideABlockItIsAWrongItemNotAWrongArgument() {
-        // A wrong argument to SET and a wrong item inside a right
-        // argument are two mistakes, and R3 names them differently.
         assertThat(errorIdOf("set [#f][6]")).isEqualTo("invalid-arg");
         assertThat(errorIdOf("set [/e][5]")).isEqualTo("invalid-arg");
     }

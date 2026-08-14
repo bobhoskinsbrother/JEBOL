@@ -84,8 +84,6 @@ class HostServiceGrantTest {
     @Test
     @DisplayName("the same script works once the service is granted")
     void aGrantedServiceAnswers() {
-        // The off point. Without it the test above would pass on a NOW
-        // that never works at all.
         assertThat(answerTo(Bounds.standard().granting(HostService.CLOCK),
                 "date? now")).isEqualTo("#(true)");
     }
@@ -93,8 +91,6 @@ class HostServiceGrantTest {
     @Test
     @DisplayName("the four natives that call C code are refused whatever is granted")
     void theExtensionPointsAreNeverAvailable() {
-        // Nothing can offer these and no grant turns them on, thus they
-        // are refused before the grant is looked at.
         Bounds everything = Bounds.standard();
         for (HostService service : HostService.values()) {
             everything = everything.granting(service);

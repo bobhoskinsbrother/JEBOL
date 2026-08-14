@@ -30,8 +30,6 @@ class MorePortedFunctionsTest {
     @Test
     @DisplayName("it goes to -180 rather than round to 225")
     void theAngleIsSigned() {
-        // A point behind and below is at -135, not at 225. The whole
-        // interval is -180 to 180.
         assertThat(answerTo("(arctangent2 -1x-1) = -135.0")).isEqualTo("#(true)");
     }
 
@@ -45,8 +43,6 @@ class MorePortedFunctionsTest {
     @Test
     @DisplayName("SPLIT-LINES takes a carriage return with the newline")
     void aCarriageReturnGoesWithTheNewline() {
-        // Not a SPLIT on "^/", which would leave the return on the end of
-        // the line before it.
         assertThat(answerTo("(split-lines \"a^/b^M^/c\") = [\"a\" \"b\" \"c\"]"))
                 .isEqualTo("#(true)");
     }
@@ -54,8 +50,6 @@ class MorePortedFunctionsTest {
     @Test
     @DisplayName("one line is one line, and nothing is no lines")
     void theDegenerateStrings() {
-        // Nothing at all gives no lines rather than one empty one, which
-        // is the boundary a split usually gets wrong.
         assertThat(answerTo("(split-lines \"abc\") = [\"abc\"]")).isEqualTo("#(true)");
         assertThat(answerTo("empty? split-lines \"\"")).isEqualTo("#(true)");
     }
@@ -80,9 +74,6 @@ class MorePortedFunctionsTest {
     @Test
     @DisplayName("MAKE OBJECT! with a number gives an empty object")
     void aNumberIsASizeAndNotABody() {
-        // Rebol's own WRAP asks for `make object! 0`, and the cast this
-        // used to do turned that into a Java exception -- which
-        // spec/embed.allium says cannot happen.
         assertThat(answerTo("empty? words-of make object! 0")).isEqualTo("#(true)");
         assertThat(answerTo("object? make object! 0")).isEqualTo("#(true)");
     }

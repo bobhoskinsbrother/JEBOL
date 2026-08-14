@@ -40,8 +40,6 @@ class ChangeReplacementTest {
     @Test
     @DisplayName("ONLY puts the block in whole")
     void onlyKeepsTheBlockTogether() {
-        // The off point. Without this the test above would pass on a
-        // CHANGE that could only ever nest.
         assertThat(answerTo("parse s: [a b] [change ['a 'b] only [z p]] s = [[z p]]"))
                 .isEqualTo("#(true)");
     }
@@ -56,8 +54,6 @@ class ChangeReplacementTest {
     @Test
     @DisplayName("ONLY before the rule is refused")
     void onlyBelongsBeforeTheReplacement() {
-        // It says how to put the replacement in, so before the rule it
-        // reads as a rule called only, which is no rule at all.
         assertThat(errorIdOf("parse s: [a b] [change only ['a 'b] [z p]]"))
                 .isEqualTo("parse-rule");
     }
@@ -77,8 +73,6 @@ class ChangeReplacementTest {
     @Test
     @DisplayName("an empty block replacement takes the match out")
     void theDegenerateReplacementRemoves() {
-        // Spreading nothing is how a CHANGE deletes, and a nesting
-        // CHANGE could not do it at all.
         assertThat(answerTo("parse s: [a b] [change 'a [] 'b] s = [b]")).isEqualTo("#(true)");
     }
 }

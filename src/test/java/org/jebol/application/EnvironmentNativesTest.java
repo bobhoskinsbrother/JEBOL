@@ -61,8 +61,6 @@ class EnvironmentNativesTest {
     @Test
     @DisplayName("a name the host has not got answers none")
     void aMissingNameIsNone() {
-        // None and not an empty string, thus a script can tell a name
-        // that is absent from one that holds nothing.
         assertThat(answerTo(reaching(true), "none? get-env \"NOWHERE\"")).isEqualTo("#(true)");
     }
 
@@ -90,8 +88,6 @@ class EnvironmentNativesTest {
     @Test
     @DisplayName("the refusal says that no host can offer it")
     void theReasonIsNotThisHost() {
-        // A script that reads the reason must be able to tell a decision
-        // that could change from one that cannot.
         assertThat(answerTo(reaching(true),
                 "e: try [set-env \"HOME\" \"/x\"] true? find form e/arg1 \"not present\""))
                 .isEqualTo("#(true)");

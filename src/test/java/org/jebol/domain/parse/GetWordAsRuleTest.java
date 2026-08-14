@@ -55,8 +55,6 @@ class GetWordAsRuleTest {
     @Test
     @DisplayName("a get-word on its own still seeks back to the mark")
     void seekingBackIsUnaffected() {
-        // The off point. The refusal is about asking a mark to match, not
-        // about marks, and JEBOL's own span measuring still works.
         assertThat(answerTo("parse \"abc\" [x: \"a\" :x \"abc\"]")).isEqualTo("#(true)");
     }
 

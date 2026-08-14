@@ -53,11 +53,6 @@ class ReaderNeverThrowsTest {
         }
     }
 
-    // The two properties that used to live here are in ReaderNeverThrowsProperties,
-    // and they had to move to run at all: a class holding both jqwik's @Property
-    // and Jupiter's @Test is claimed by Jupiter, and the properties are reported as
-    // skipped without ever executing. See that class for the whole story.
-
     @Test
     @DisplayName("a bare hash is a mistake, not a crash")
     void bareHashIsAMistake() {
@@ -67,10 +62,6 @@ class ReaderNeverThrowsTest {
     @Test
     @DisplayName("construction syntax reads back what MOLD wrote")
     void constructionSyntaxReadsBack() {
-        // Asserted as the round trip rather than as three spellings. The
-        // spellings moved from #[none] to #(none) between R3-Alpha and
-        // Rebol 3.x, and a test naming them passed while the property it
-        // was there for had quietly stopped holding.
         assertThat(readBack(NoneValue.none())).isEqualTo(NoneValue.none());
         assertThat(readBack(LogicValue.yes())).isEqualTo(LogicValue.yes());
         assertThat(readBack(LogicValue.no())).isEqualTo(LogicValue.no());

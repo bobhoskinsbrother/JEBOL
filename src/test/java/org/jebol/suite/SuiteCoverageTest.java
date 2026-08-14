@@ -136,9 +136,6 @@ class SuiteCoverageTest {
                 .filter(entry -> entry.missed() > 0)
                 .toList();
 
-        // Reported rather than asserted. The goal is for this to be empty,
-        // and a test that fails until then would be red for weeks and stop
-        // being read. reachabilityHasNotGoneBackwards is the one with teeth.
         System.out.printf("%nreader reaches %d of %d assertions (%d%%)%n",
                 read, written, written == 0 ? 100 : read * 100 / written);
         incomplete.forEach(entry -> System.out.printf("  %-24s %4d of %4d  (%s)%n",

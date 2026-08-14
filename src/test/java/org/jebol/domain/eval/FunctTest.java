@@ -32,8 +32,6 @@ class FunctTest {
     @Test
     @DisplayName("FUNC lets the same assignment out")
     void funcIsDifferent() {
-        // The off point. Without it the test above says nothing about
-        // FUNCT, only about how the interpreter binds a body.
         assertThat(answerTo("x: 1 f: func [] [x: 2] f x")).isEqualTo("2");
     }
 

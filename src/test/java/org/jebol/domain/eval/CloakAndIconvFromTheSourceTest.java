@@ -60,8 +60,6 @@ class CloakAndIconvFromTheSourceTest {
         @Test
         @DisplayName("it changes the binary it was given, and answers it")
         void itChangesInPlace() {
-            // `data [binary!] "Binary series to scramble (modified)"`, and the
-            // C returns R_ARG1.
             assertThat(answerTo(
                     "b: #{0011223344} was: copy b encloak b \"k\" b <> was"))
                     .isEqualTo(TRUE);
@@ -86,9 +84,6 @@ class CloakAndIconvFromTheSourceTest {
         @Test
         @DisplayName("a one-byte key works, because the key is hashed to twenty")
         void aShortKeyWorks() {
-            // `for (i = 0; i < 20; i++) src[i] = kp[i % klen]; SHA1(src, 20, dst);`
-            // -- the key is cycled to twenty bytes and hashed, so its byte
-            // count stops mattering before the scrambling starts.
             assertThat(answerTo(
                     "b: #{00112233} was: copy b "
                     + "was = decloak encloak b \"k\" \"k\"")).isEqualTo(TRUE);
@@ -97,8 +92,6 @@ class CloakAndIconvFromTheSourceTest {
         @Test
         @DisplayName("/WITH uses the key's own bytes rather than hashing them")
         void withUsesTheKeyAsItStands() {
-            // A different key schedule, so the same key gives a different
-            // result with and without it.
             assertThat(answerTo(
                     "a: #{00112233} b: copy a "
                     + "(encloak a \"key\") <> encloak/with b \"key\"")).isEqualTo(TRUE);
@@ -124,8 +117,6 @@ class CloakAndIconvFromTheSourceTest {
         @Test
         @DisplayName("an integer key is spelled in decimal, and always hashed")
         void anIntegerKeyIsAlwaysHashed() {
-            // `INT_TO_STR(VAL_INT64(val), dst); ... as_is = FALSE;` -- the C
-            // overrides /WITH rather than honouring it, so both forms agree.
             assertThat(answerTo(
                     "b: #{00112233} was: copy b "
                     + "was = decloak encloak b 1234 1234")).isEqualTo(TRUE);
@@ -145,25 +136,18 @@ class CloakAndIconvFromTheSourceTest {
         @Test
         @DisplayName("empty data is left alone rather than refused")
         void emptyDataIsLeftAlone() {
-            // `if (dlen == 0) return TRUE;` before anything else. There is
-            // nothing to scramble and nothing went wrong.
             assertThat(answerTo("#{} = encloak #{} \"key\"")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a one-byte binary scrambles, because the first byte is always touched")
         void oneByteStillScrambles() {
-            // `n = 0xa5; for (i = 1; i < dlen; i++) n += cp[i]; cp[0] ^= n;`
-            // runs whatever the length, so a single byte changes.
             assertThat(answerTo("#{00} <> encloak #{00} \"key\"")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("an empty key is refused")
         void anEmptyKeyIsRefused() {
-            // `if (klen == 0) return FALSE;` and the caller raises on it.
-            // Scrambling against nothing would answer the data back and look
-            // as though it had worked.
             assertThat(errorIdFrom("encloak #{0011} \"\"")).isNotEqualTo("no-error");
             assertThat(errorIdFrom("encloak #{0011} #{}")).isNotEqualTo("no-error");
         }
@@ -195,8 +179,6 @@ class CloakAndIconvFromTheSourceTest {
         @Test
         @DisplayName("a set where the bytes mean something else gives different text")
         void theSetMatters() {
-            // 0xE9 is e-acute in Latin-1 and not valid UTF-8 on its own, so
-            // the two readings cannot agree.
             assertThat(answerTo("(iconv #{41E9} 'latin1) <> \"A\"")).isEqualTo(TRUE);
             assertThat(answerTo("2 = length? iconv #{41E9} 'latin1")).isEqualTo(TRUE);
         }

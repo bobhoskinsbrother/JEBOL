@@ -54,9 +54,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("a fresh gob is a hundred square and opaque, at no offset")
         void theFreshGob() {
-            // `CLEAR(gob, sizeof(REBGOB)); GOB_W(gob) = 100; GOB_H(gob) = 100;
-            // GOB_ALPHA(gob) = 255;` -- so an empty spec block is not an empty
-            // gob, and only the offset comes out of the clear.
             assertThat(answerTo("gob? make gob! []")).isEqualTo(TRUE);
             assertThat(answerTo("g: make gob! [] g/offset")).isEqualTo("0x0");
             assertThat(answerTo("g: make gob! [] g/size")).isEqualTo("100x100");
@@ -66,7 +63,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("a block of set-words fills the fields")
         void aBlockOfFields() {
-            // `Set_GOB_Vars` walks the block in pairs.
             assertThat(answerTo("g: make gob! [offset: 10x20 size: 30x40] g/offset"))
                     .isEqualTo("10x20");
             assertThat(answerTo("g: make gob! [offset: 10x20 size: 30x40] g/size"))
@@ -76,9 +72,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("a pair on its own is a size")
         void aPairIsASize() {
-            // `ngob->size.x = VAL_PAIR_X(arg)` -- so `make gob! 1x1` is the short
-            // way to a gob of a given shape, and Rebol's own test builds three
-            // that way.
             assertThat(answerTo("g: make gob! 1x1 g/size")).isEqualTo("1x1");
             assertThat(answerTo("g: make gob! 1x1 g/offset")).isEqualTo("0x0");
         }
@@ -86,9 +79,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and anything that is not a set-word is refused")
         void aBadBlockIsRefused() {
-            // `if (!IS_SET_WORD(var)) Trap2(RE_EXPECT_VAL, Get_Type(REB_SET_WORD),
-            // Of_Type(var))`, which Rebol's own test pins down to the argument:
-            // `err/id = 'expect-val` and `err/arg1 = set-word!`.
             assertThat(errorIdFrom("make gob! [color 127.0.127]")).isEqualTo("expect-val");
             assertThat(answerTo(
                     "e: try [make gob! [color 127.0.127]] e/arg1 = set-word!"))
@@ -98,9 +88,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and a set-word with nothing usable after it needs a value")
         void aSetWordNeedsAValue() {
-            // `if (IS_END(val) || IS_UNSET(val) || IS_SET_WORD(val))
-            // Trap1(RE_NEED_VALUE, var)` -- all three of Rebol's own cases, and
-            // the second is the one that reads like a working spec block.
             assertThat(errorIdFrom("make gob! [data:]")).isEqualTo("need-value");
             assertThat(errorIdFrom("make gob! [data: size: 10x10]"))
                     .isEqualTo("need-value");
@@ -109,11 +96,7 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("a field it does not know is a bad field set")
         void anUnknownFieldIsRefused() {
-            // `if (!Set_GOB_Var(gob, var, val)) Trap2(RE_BAD_FIELD_SET, ...)`
             assertThat(errorIdFrom("make gob! [nonsense: 1]")).isEqualTo("bad-field-set");
-            // And a known field given a value it will not hold: `Set_Pair`
-            // answers FALSE for anything that is not a pair, an integer or a
-            // decimal, and the same trap catches it.
             assertThat(errorIdFrom("make gob! [offset: \"here\"]"))
                     .isEqualTo("bad-field-set");
         }
@@ -121,9 +104,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and nothing else makes a gob at all")
         void anythingElseIsRefused() {
-            // `else Trap_Make(REB_GOB, arg)` -- a block, a gob and a pair are the
-            // three, and the trap is the ordinary bad-make-arg every datatype
-            // raises for a spec it cannot read.
             assertThat(errorIdFrom("make gob! \"10x20\"")).isEqualTo("bad-make-arg");
             assertThat(errorIdFrom("make gob! 5")).isEqualTo("bad-make-arg");
         }
@@ -131,9 +111,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and a gob is cloned without its pane or its parent")
         void aGobIsCloned() {
-            // `*ngob = *gob; ngob->pane = 0; ngob->parent = 0;` -- the children
-            // are not copied, because a child has one parent and cloning cannot
-            // give it two.
             assertThat(answerTo(
                     "a: make gob! [offset: 5x5] append a make gob! [] "
                     + "b: make gob! a reduce [b/offset length? b]"))
@@ -148,7 +125,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("alpha is a byte, clipped on the way in")
         void alphaIsClipped() {
-            // `GOB_ALPHA(gob) = Clip_Int(Int32(val), 0, 255)`.
             assertThat(answerTo("g: make gob! [alpha: 128] g/alpha")).isEqualTo("128");
             assertThat(answerTo("g: make gob! [alpha: 300] g/alpha")).isEqualTo("255");
             assertThat(answerTo("g: make gob! [alpha: -1] g/alpha")).isEqualTo("0");
@@ -157,9 +133,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("the offset and size keep fractions, and one number sets both halves")
         void theShapeIsFloating() {
-            // `REBXYF offset` is a pair of floats, so a fractional offset is not
-            // rounded away. And `Set_Pair` takes a lone number for both halves:
-            // `pair->x = pair->y = (REBD32)VAL_INT64(val)`.
             assertThat(answerTo("g: make gob! [offset: 1.5x2.5] g/offset"))
                     .isEqualTo("1.5x2.5");
             assertThat(answerTo("g: make gob! [size: 7] g/size")).isEqualTo("7x7");
@@ -169,8 +142,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("content is one thing at a time: an image takes the place of a draw block")
         void contentIsAUnion() {
-            // All five content fields write GOB_CONTENT and set GOB_TYPE, so the
-            // last one written is the only one there.
             assertThat(answerTo(
                     "g: make gob! [draw: [1 2]] g/image: make image! 1x1 none? g/draw"))
                     .isEqualTo(TRUE);
@@ -191,9 +162,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("text takes a string or a block, and reads back as whichever went in")
         void textIsTwoKinds() {
-            // Two type tags for one field name: `IS_STRING(val)` is GOBT_STRING
-            // and `IS_BLOCK(val)` is GOBT_TEXT. Rebol's own test writes
-            // `make gob! [text: "A"]`, so the string arm is the used one.
             assertThat(answerTo("g: make gob! [text: \"A\"] g/text")).isEqualTo("\"A\"");
             assertThat(answerTo("g: make gob! [text: [1 2]] mold g/text"))
                     .isEqualTo("\"[1 2]\"");
@@ -202,8 +170,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("an image sets the gob's size to the image's")
         void anImageSetsTheSize() {
-            // `GOB_W(gob) = (REBD32)VAL_IMAGE_WIDE(val)` and the height beside
-            // it, so a gob given an image is the shape of that image.
             assertThat(answerTo("g: make gob! [] g/image: make image! 20x10 g/size"))
                     .isEqualTo("20x10");
         }
@@ -211,10 +177,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("a colour is kept as a pixel and read back with its alpha")
         void aColourRoundTrips() {
-            // `Set_Pixel_Tuple((REBYTE*)&GOB_CONTENT(gob), val)` going in and
-            // `Set_Tuple_Pixel` coming out. The colour lives in the content slot
-            // itself rather than in a series, and the read sets the tuple's
-            // length to four, so a three-part colour comes back with an alpha.
             assertThat(answerTo("g: make gob! [color: 255.128.0] g/color"))
                     .isEqualTo("255.128.0.255");
             assertThat(answerTo("g: make gob! [color: 1.2.3.4] g/color"))
@@ -224,9 +186,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and none takes the content away again")
         void noneEmptiesTheContent() {
-            // `else if (IS_NONE(val)) SET_GOB_TYPE(gob, GOBT_NONE)` on every one
-            // of the content fields. Rebol's own test sets a colour and then
-            // clears it, and asks only that molding the gob afterwards works.
             assertThat(answerTo(
                     "g: make gob! [] g/color: 255.0.0 g/color: none none? g/color"))
                     .isEqualTo(TRUE);
@@ -235,8 +194,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("data holds one of five kinds of thing, and refuses the rest")
         void dataIsWhateverYouLike() {
-            // An object, a block, a string, a binary or an integer, each with its
-            // own GOBD tag. Anything else is `return FALSE` and a bad field set.
             assertThat(answerTo("g: make gob! [data: [1 2 3]] mold g/data"))
                     .isEqualTo("\"[1 2 3]\"");
             assertThat(answerTo("g: make gob! [data: 42] g/data")).isEqualTo("42");
@@ -246,9 +203,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("draw and effect are blocks, and each is a content of its own")
         void drawAndEffectAreBlocks() {
-            // Two more arms of the same union, both taking a block and nothing
-            // else. EFFECT has no other reader in the language, so this is the
-            // only thing that says it is there.
             assertThat(answerTo("g: make gob! [effect: [1 2]] mold g/effect"))
                     .isEqualTo("\"[1 2]\"");
             assertThat(answerTo(
@@ -263,8 +217,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("data takes an object, a string and a binary too")
         void dataTakesFiveKinds() {
-            // The five GOBD tags, and each reads back as the datatype that went
-            // in: `SET_OBJECT`, `Set_String`, `SET_BINARY` on the way out.
             assertThat(answerTo("g: make gob! [] g/data: make object! [a: 1] g/data/a"))
                     .isEqualTo("1");
             assertThat(answerTo("g: make gob! [data: \"hi\"] g/data"))
@@ -276,9 +228,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("data does not join the content union")
         void dataStandsApart() {
-            // `SET_GOB_DTYPE` and `SET_GOB_DATA` are a second slot with a tag of
-            // their own, which is what lets one gob carry a draw block and a
-            // block of data at once.
             assertThat(answerTo(
                     "g: make gob! [draw: [1 2] data: [3 4]] mold reduce [g/draw g/data]"))
                     .isEqualTo("\"[[1 2] [3 4]]\"");
@@ -287,10 +236,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("parent is none until the gob is in someone's pane")
         void parentFollowsThePane() {
-            // `SET_GOB(val, GOB_PARENT(gob))` or none, and `Insert_Gobs` is what
-            // sets it -- so a parent is a fact about being in a pane rather than
-            // a field a script writes. Rebol's own test checks it after all three
-            // of APPEND, CHANGE and POKE.
             assertThat(answerTo("g: make gob! [] none? g/parent")).isEqualTo(TRUE);
             assertThat(answerTo(
                     "p: make gob! [] c: make gob! [] append p c same? p c/parent"))
@@ -298,8 +243,6 @@ class GobFromTheSourceTest {
             assertThat(answerTo(
                     "p: make gob! [] append p make gob! [] c: make gob! [] "
                     + "change p c same? p c/parent")).isEqualTo(TRUE);
-            // And a CHANGE with nothing there to change is past the end rather
-            // than an append.
             assertThat(errorIdFrom("change make gob! [] make gob! []"))
                     .isEqualTo("past-end");
             assertThat(errorIdFrom("g: make gob! [] g/parent: make gob! []"))
@@ -309,10 +252,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and flags answer as a block, which a block of them replaces wholesale")
         void flagsReadAsABlock() {
-            // `Set_Block(val, Flags_To_Block(gob))` reading, and writing a block
-            // starts from nothing: `gob->flags = 0;` before the loop. So the
-            // second `g/flags: [popup]` does not add to the first, and Rebol's
-            // own test asserts exactly that.
             assertThat(answerTo("g: make gob! [flags: [hidden]] mold g/flags"))
                     .isEqualTo("\"[hidden]\"");
             assertThat(answerTo("g: make gob! [] mold g/flags")).isEqualTo("\"[]\"");
@@ -324,11 +263,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("a single flag word adds to what is there, and an unknown one is ignored")
         void oneFlagWordAtATime() {
-            // `if (IS_WORD(val)) Set_Gob_Flag(gob, val);` with no clearing first,
-            // so a word adds where a block replaces. `Set_Gob_Flag` walks a table
-            // and simply stops at the end, so a word that is not a flag does
-            // nothing rather than raising -- and neither does a value that is
-            // neither a word nor a block, because that arm has no `return FALSE`.
             assertThat(answerTo(
                     "g: make gob! [] g/flags: 'resize g/flags: 'popup mold g/flags"))
                     .isEqualTo("\"[resize popup]\"");
@@ -341,9 +275,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and the flags come back in the table's order, not the order they were set")
         void flagsComeBackInTheTablesOrder() {
-            // `Flags_To_Block` walks `Gob_Flag_Words` from the top, so the block
-            // it builds is in that fixed order: resize, no-title, no-border,
-            // dropable, transparent, popup, modal, on-top, hidden.
             assertThat(answerTo(
                     "g: make gob! [flags: [hidden resize modal]] mold g/flags"))
                     .isEqualTo("\"[resize modal hidden]\"");
@@ -352,10 +283,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("owner can be written and cannot be read")
         void ownerIsWriteOnly() {
-            // `case SYM_OWNER: if (IS_GOB(val)) GOB_TMP_OWNER(gob) = VAL_GOB(val);
-            // else return FALSE;` in the setter, and no case for it at all in
-            // `Get_GOB_Var`. So the write is accepted and the read is a bad
-            // select, which is the one field where the two disagree.
             assertThat(errorIdFrom("g: make gob! [] g/owner: make gob! []"))
                     .isEqualTo("no-error");
             assertThat(errorIdFrom("make gob! [owner: 1]")).isEqualTo("bad-field-set");
@@ -365,11 +292,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and a half of a pair field can be written through the path")
         void oneHalfOfAPairField() {
-            // The one place PD_Gob does something a plain field write does not:
-            // `if (pvs->setval && IS_PAIR(pvs->store)) { ... Next_Path(pvs);
-            // Set_GOB_Var(gob, sel, pvs->store); }`. The pair is read out, the
-            // next segment writes its half, and the whole pair goes back in --
-            // which is why `g/size/x: 5` works on a value that is not a series.
             assertThat(answerTo("g: make gob! [size: 10x20] g/size/x: 5 g/size"))
                     .isEqualTo("5x20");
             assertThat(answerTo("g: make gob! [offset: 1x2] g/offset/y: 9 g/offset"))
@@ -384,9 +306,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("length counts children, and an empty gob has none")
         void lengthCountsChildren() {
-            // `tail = GOB_PANE(gob) ? GOB_TAIL(gob) : 0` -- the pane is allocated
-            // when the first child arrives, so an empty gob is not a gob with an
-            // empty pane and both answer zero anyway.
             assertThat(answerTo("length? make gob! []")).isEqualTo("0");
             assertThat(answerTo(
                     "g: make gob! [] append g make gob! [] length? g")).isEqualTo("1");
@@ -403,9 +322,6 @@ class GobFromTheSourceTest {
                     "g: make gob! [] a: make gob! 1x1 b: make gob! 2x2 "
                     + "append g a insert g b c: pick g 1 c/size"))
                     .isEqualTo("2x2");
-            // `a = append a b` twice over, which Rebol's own test asserts: APPEND
-            // answers the gob it was given, and appending a child that is already
-            // there moves it rather than duplicating it.
             assertThat(answerTo(
                     "a: make gob! 1x1 b: make gob! 2x2 same? a append a b"))
                     .isEqualTo(TRUE);
@@ -417,16 +333,12 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("a pane given as a block puts them all in")
         void aPaneFromABlock() {
-            // `Insert_Gobs(gob, VAL_BLK_DATA(val), 0, VAL_BLK_LEN(val), 0)`, and
-            // the pane it had is cleared first.
             assertThat(answerTo(
                     "g: make gob! reduce [to set-word! 'pane "
                     + "reduce [make gob! [] make gob! []]] length? g")).isEqualTo("2");
             assertThat(answerTo(
                     "g: make gob! [] append g make gob! [] g/pane: none length? g"))
                     .isEqualTo("0");
-            // A lone gob is a pane of one: `else if (IS_GOB(val))
-            // Insert_Gobs(gob, val, 0, 1, 0)`.
             assertThat(answerTo(
                     "g: make gob! [] g/pane: make gob! [] length? g")).isEqualTo("1");
             assertThat(errorIdFrom("make gob! [pane: 1]")).isEqualTo("bad-field-set");
@@ -435,9 +347,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("APPEND takes a block of children, and refuses anything but a gob")
         void appendTakesABlock() {
-            // `else if (IS_BLOCK(arg)) { len = VAL_BLK_LEN(arg); arg =
-            // VAL_BLK_DATA(arg); } else goto is_arg_error;` and the error is
-            // `Trap_Types(RE_EXPECT_VAL, REB_GOB, VAL_TYPE(arg))`.
             assertThat(answerTo(
                     "g: make gob! [] append g reduce [make gob! [] make gob! []] "
                     + "length? g")).isEqualTo("2");
@@ -449,14 +358,11 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("PICK answers a child, and none past the end")
         void pickAnswersAChild() {
-            // `if (!GOB_PANE(gob)) goto is_none;`
             assertThat(answerTo("g: make gob! [] none? pick g 1")).isEqualTo(TRUE);
             assertThat(answerTo(
                     "g: make gob! [] append g make gob! [] gob? pick g 1")).isEqualTo(TRUE);
             assertThat(answerTo(
                     "g: make gob! [] append g make gob! [] none? pick g 2")).isEqualTo(TRUE);
-            // A path segment asks the same question: `c/1 = a` in Rebol's own
-            // test, and the same three lines of PD_Gob answer it.
             assertThat(answerTo(
                     "g: make gob! [] a: make gob! [] append g a same? a g/1"))
                     .isEqualTo(TRUE);
@@ -465,10 +371,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and a field name is the wrong argument for PICK, not a field read")
         void pickWillNotReadAField() {
-            // `if (!IS_NUMBER(arg) && !IS_NONE(arg)) Trap_Arg(arg)`, which
-            // Rebol's own test pins for both PICK and POKE: `e/id = 'invalid-arg`.
-            // So a gob's fields are reachable through a path and through nothing
-            // else.
             assertThat(errorIdFrom("pick make gob! [] 'offset")).isEqualTo("invalid-arg");
             assertThat(errorIdFrom("poke make gob! [] 'offset 1x1"))
                     .isEqualTo("invalid-arg");
@@ -477,11 +379,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("PICK with none, and past the end, both answer none")
         void pickAtTheEdges() {
-            // NONE is on PICK's declared list, and `Get_Num_Arg` reads it as
-            // zero: `index += 0 - 1` on an unsigned count is a very large number,
-            // which fails `index >= tail` and answers none. So does a zero and so
-            // does a negative, and a gob is the one series where none of the
-            // three reaches behind the position.
             assertThat(answerTo(
                     "g: make gob! [] append g make gob! [] none? pick g none"))
                     .isEqualTo(TRUE);
@@ -491,16 +388,12 @@ class GobFromTheSourceTest {
             assertThat(answerTo(
                     "g: make gob! [] append g make gob! [] none? pick tail g -1"))
                     .isEqualTo(TRUE);
-            // And a path segment past the end answers none the same way:
-            // `if (index >= tail) return PE_NONE;`
             assertThat(answerTo("g: make gob! [] none? g/1")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("POKE puts a child at a position and answers the child")
         void pokePutsAChildIn() {
-            // `if (action == A_POKE) { *DS_RETURN = *arg; return R_RET; }`, and
-            // Rebol's own test checks the parent afterwards.
             assertThat(answerTo(
                     "g: make gob! [] append g make gob! 1x1 c: make gob! 2x2 "
                     + "same? c poke g 1 c")).isEqualTo(TRUE);
@@ -512,14 +405,8 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and an arm the gob has not got is an operation it cannot do")
         void anArmItHasNotGot() {
-            // `default: Trap_Action(REB_GOB, action)` -- 24 arms and no more, so
-            // the ones every other series has are the wrong question here rather
-            // than a missing feature.
             assertThat(errorIdFrom("swap make gob! [] make gob! []"))
                     .isEqualTo("cannot-use");
-            // And an arm whose spec does not name gob! at all refuses one
-            // earlier, at the declaration: COPY lists eight datatypes and a gob
-            // is on none of them.
             assertThat(errorIdFrom("copy make gob! []")).isEqualTo("expect-arg");
             assertThat(errorIdFrom("sort make gob! []")).isEqualTo("expect-arg");
         }
@@ -533,21 +420,15 @@ class GobFromTheSourceTest {
             assertThat(answerTo(
                     "g: make gob! [] append g make gob! [] append g make gob! [] "
                     + "clear g length? g")).isEqualTo("0");
-            // And the child it took out has no parent afterwards:
-            // `GOB_PARENT(*ptr) = 0` for every one removed.
             assertThat(answerTo(
                     "g: make gob! [] c: make gob! [] append g c remove g none? c/parent"))
                     .isEqualTo(TRUE);
-            // /PART takes several, and a count past the end takes what is there:
-            // `if (index + len > tail) len = tail - index;`
             assertThat(answerTo(
                     "g: make gob! [] loop 3 [append g make gob! []] "
                     + "remove/part g 2 length? g")).isEqualTo("1");
             assertThat(answerTo(
                     "g: make gob! [] loop 2 [append g make gob! []] "
                     + "remove/part g 99 length? g")).isEqualTo("0");
-            // And removing at the tail does nothing rather than raising:
-            // `if (index < tail && len != 0) Remove_Gobs(...)`.
             assertThat(answerTo(
                     "g: make gob! [] append g make gob! [] "
                     + "remove tail g length? g")).isEqualTo("1");
@@ -556,10 +437,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("TAKE answers one child, or a block of them with /PART")
         void takeAnswersChildren() {
-            // Two shapes in one arm: without /part `VAL_GOB(val) = *GOB_SKIP(gob,
-            // index)` answers the gob, and with it `Pane_To_Block` answers a
-            // block. Rebol's own test asserts both, and that taking at the tail
-            // answers none.
             assertThat(answerTo(
                     "g: make gob! [] a: make gob! 1x1 b: make gob! 2x2 "
                     + "append g a append g b c: take next g c/size")).isEqualTo("2x2");
@@ -575,8 +452,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("REVERSE puts the children in the other order")
         void reverseTurnsThePaneRound() {
-            // The C swaps them in place and answers the gob itself: `return
-            // R_ARG1`. Rebol's own test walks it through `c/1` and `c/2`.
             assertThat(answerTo(
                     "c: make gob! [] a: make gob! 1x1 b: make gob! 2x2 "
                     + "append c a append c b reverse c same? b c/1")).isEqualTo(TRUE);
@@ -588,8 +463,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("FIND answers the pane standing at the child it found")
         void findLooksThroughThePane() {
-            // `index = Find_Gob(gob, VAL_GOB(arg)); if (index == NOT_FOUND) goto
-            // is_none;` -- so the answer is a position rather than the child.
             assertThat(answerTo(
                     "g: make gob! [] a: make gob! [] b: make gob! [] "
                     + "append g a append g b index? find g b")).isEqualTo("2");
@@ -600,8 +473,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and the gob navigates its own pane")
         void itNavigatesThePane() {
-            // Rebol's own test walks all of these on a gob with two children:
-            // index? is 1, 1 for back, 2 for next, 3 for tail, 2 for `at g 2`.
             assertThat(answerTo(
                     "g: make gob! [] loop 2 [append g make gob! []] index? g"))
                     .isEqualTo("1");
@@ -627,9 +498,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("SKIP steps the position, and PAST? asks whether it went too far")
         void skipAndPast() {
-            // `case A_SKIP: index += VAL_INT32(arg)`, and `case A_PASTQ: if (index
-            // > tail) goto is_true`. PAST? is the only one of the three questions
-            // that can be true where TAIL? is also true.
             assertThat(answerTo(
                     "g: make gob! [] loop 3 [append g make gob! []] index? skip g 2"))
                     .isEqualTo("3");
@@ -644,8 +512,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("a child knows its parent, and moving it moves the knowledge")
         void aChildHasOneParent() {
-            // `Detach_Gob` runs before every insert, so appending a child
-            // somewhere else takes it out of where it was.
             assertThat(answerTo(
                     "one: make gob! [] two: make gob! [] c: make gob! [] "
                     + "append one c append two c same? two c/parent"))
@@ -664,8 +530,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("a gob molds as the spec block that would remake it")
         void itMoldsAsASpec() {
-            // `Pre_Mold`, `Gob_To_Block`, `End_Mold`. Offset and size always, and
-            // the content field it has after those.
             assertThat(answerTo("mold make gob! []"))
                     .isEqualTo("\"make gob! [offset: 0x0 size: 100x100]\"");
             assertThat(answerTo("mold/flat make gob! 2x2"))
@@ -677,9 +541,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("and the alpha it molds is the opposite of the alpha it holds")
         void theMoldedAlphaIsInverted() {
-            // `SET_INTEGER(val, 255 - GOB_ALPHA(gob))`, and only when the gob is
-            // not opaque. So molding a gob does not round-trip its alpha, and
-            // that is the C rather than a slip here.
             assertThat(answerTo("mold/flat make gob! [alpha: 200]"))
                     .isEqualTo("\"make gob! [offset: 0x0 size: 100x100 alpha: 55]\"");
             assertThat(answerTo("mold/flat make gob! [alpha: 255]"))
@@ -689,9 +550,6 @@ class GobFromTheSourceTest {
         @Test
         @DisplayName("two gobs are equal only when they are the same gob")
         void equalityIsIdentity() {
-            // `return VAL_GOB(a) == VAL_GOB(b) && VAL_GOB_INDEX(a) ==
-            // VAL_GOB_INDEX(b);` -- Rebol's own test says "not equal by design",
-            // because a gob is a thing on a screen rather than a set of fields.
             assertThat(answerTo("equal? (make gob! []) (make gob! [])"))
                     .isEqualTo("#(false)");
             assertThat(answerTo("g: make gob! [] equal? g g")).isEqualTo(TRUE);

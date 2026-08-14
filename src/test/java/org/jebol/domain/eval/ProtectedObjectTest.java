@@ -72,8 +72,6 @@ class ProtectedObjectTest {
     @Test
     @DisplayName("an unprotected object still takes all three")
     void anUnprotectedObjectIsUnaffected() {
-        // The off point. Without PROTECT every route must still work, or
-        // the guard is refusing more than it was asked to.
         String open = "p: make object! [a: 1] ";
         assertThat(errorIdOf(open, "set in p 'a 99")).isEqualTo("no-error");
         assertThat(errorIdOf(open, "p/a: 5")).isEqualTo("no-error");
@@ -90,9 +88,6 @@ class ProtectedObjectTest {
     @Test
     @DisplayName("PUT onto a protected object raises protected, new word or old")
     void puttingIntoAProtectedObjectRaisesProtected() {
-        // PUT changes the object as a container, so it goes with APPEND
-        // rather than with the assignments, and it asks one question
-        // only: is the object open to new names.
         assertThat(errorIdOf(PROTECTED, "put p to-set-word 'a 2")).isEqualTo("protected");
         assertThat(errorIdOf(PROTECTED, "put p to-set-word 'c 3")).isEqualTo("protected");
     }
@@ -100,9 +95,6 @@ class ProtectedObjectTest {
     @Test
     @DisplayName("UNPROTECT/WORDS frees an assignment but not a PUT")
     void releasingTheWordsLeavesTheObjectClosed() {
-        // The case that shows PUT is asking about the object and not
-        // about the word: after this, o/a: 0 goes through and the PUT of
-        // that same word does not.
         String released = "o: unprotect/words protect/deep o: object [a: 10] ";
         assertThat(errorIdOf(released, "o/a: 0")).isEqualTo("no-error");
         assertThat(errorIdOf(released, "put o to-set-word 'a 0")).isEqualTo("protected");
@@ -111,8 +103,6 @@ class ProtectedObjectTest {
     @Test
     @DisplayName("EXTEND is refused for the same reason, being written as a PUT")
     void extendingAProtectedObjectIsRefused() {
-        // Reached through the mezzanine rather than the native, because
-        // this is the route the failure actually arrived by.
         assertThat(errorIdOf("o: unprotect/words protect/deep o: object [a: 10] ",
                 "extend o 'c 3")).isEqualTo("protected");
     }
@@ -120,7 +110,6 @@ class ProtectedObjectTest {
     @Test
     @DisplayName("PUT onto an open object still works")
     void puttingIntoAnOpenObjectIsUnaffected() {
-        // The off point, so the guard cannot be refusing everything.
         assertThat(errorIdOf("o: object [a: 1] ", "put o to-set-word 'c 3"))
                 .isEqualTo("no-error");
     }

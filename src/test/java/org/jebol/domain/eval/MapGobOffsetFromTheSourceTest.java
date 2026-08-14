@@ -55,7 +55,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("a block of the gob it reached and the point inside it")
         void aGobAndAPair() {
-            // `blk = Make_Block(2); SET_GOB(val, gob); ... VAL_SET(val, REB_PAIR)`
             assertThat(answerTo("length? map-gob-offset make gob! [] 5x5"))
                     .isEqualTo("2");
             assertThat(answerTo(
@@ -66,8 +65,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("a gob with no children answers itself and the point untouched")
         void nothingToDescendInto() {
-            // `while (GOB_PANE(gob) ...)` never runs, so x and y stay zero and
-            // the offset comes back as it went in.
             assertThat(answerTo(
                     "g: make gob! [] b: map-gob-offset g 5x7 same? g b/1"))
                     .isEqualTo(TRUE);
@@ -78,7 +75,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("and it takes a gob and a pair, and nothing else")
         void itsArguments() {
-            // `gob [gob!]` and `xy [pair!]`.
             assertThat(errorIdFrom("map-gob-offset 1 5x5")).isEqualTo("expect-arg");
             assertThat(errorIdFrom("map-gob-offset make gob! [] 5")).isEqualTo("expect-arg");
         }
@@ -91,8 +87,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("a point inside a child answers the child, in the child's coordinates")
         void oneLevelDown() {
-            // `x += GOB_X(*gop); gob = *gop;` and then `offset->x -= x`, so the
-            // point comes back relative to the gob that was reached.
             assertThat(answerTo(ONE_CHILD + "same? c first map-gob-offset p 15x15"))
                     .isEqualTo(TRUE);
             assertThat(answerTo(ONE_CHILD + "second map-gob-offset p 15x15"))
@@ -102,7 +96,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("a point outside every child stops at the parent")
         void nothingHoldsThePoint() {
-            // `if (n >= len) break; // not found`
             assertThat(answerTo(ONE_CHILD + "same? p first map-gob-offset p 50x50"))
                     .isEqualTo(TRUE);
             assertThat(answerTo(ONE_CHILD + "second map-gob-offset p 50x50"))
@@ -112,9 +105,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("the rectangle is closed on the left and open on the right")
         void theEdges() {
-            // `(xo >= x + GOB_X(*gop)) && (xo < x + GOB_X(*gop) + GOB_W(*gop))`.
-            // The child sits at 10x10 and is 20 by 20, so 10 is inside, 29 is
-            // inside, 30 is not, and 9 is not.
             assertThat(answerTo(ONE_CHILD + "same? c first map-gob-offset p 10x10"))
                     .isEqualTo(TRUE);
             assertThat(answerTo(ONE_CHILD + "same? c first map-gob-offset p 29x29"))
@@ -128,8 +118,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("both halves have to hold, not either one")
         void bothHalvesAtOnce() {
-            // One test with four clauses joined by AND, so a point in the child's
-            // column but above its rows is not in it.
             assertThat(answerTo(ONE_CHILD + "same? p first map-gob-offset p 15x50"))
                     .isEqualTo(TRUE);
             assertThat(answerTo(ONE_CHILD + "same? p first map-gob-offset p 50x15"))
@@ -139,9 +127,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("where two children overlap, the last one added wins")
         void theTopmostChildWins() {
-            // `gop = GOB_HEAD(gob) + len - 1;` and `gop--` -- the pane is
-            // searched from its end, which is what puts the most recently added
-            // gob on top.
             assertThat(answerTo(
                     "p: make gob! [size: 100x100] "
                     + "under: make gob! [offset: 0x0 size: 50x50] "
@@ -153,8 +138,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("and it keeps going as deep as the tree does")
         void severalLevelsDown() {
-            // The `while` loop runs again on whatever it just entered, and the
-            // offsets accumulate: 5 + 10 taken off a point at 20x20 leaves 5x5.
             assertThat(answerTo(
                     "p: make gob! [size: 100x100] "
                     + "mid: make gob! [offset: 5x5 size: 50x50] "
@@ -177,8 +160,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("each parent's offset is added on the way out")
         void offsetsAccumulate() {
-            // `xo += GOB_X(gob); gob = GOB_PARENT(gob);` -- so a point inside the
-            // child comes back as the same place seen from the top.
             assertThat(answerTo(ONE_CHILD
                     + "second map-gob-offset/reverse c 5x5")).isEqualTo("15x15");
             assertThat(answerTo(ONE_CHILD
@@ -188,9 +169,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("and it is the exact inverse of walking down")
         void itUndoesTheDescent() {
-            // Worth pinning as a pair rather than as two facts: the two
-            // directions are the same arithmetic with the sign flipped, and a
-            // sign error passes one test and fails this one.
             assertThat(answerTo(ONE_CHILD
                     + "b: map-gob-offset p 15x15 "
                     + "second map-gob-offset/reverse b/1 b/2")).isEqualTo("15x15");
@@ -199,7 +177,6 @@ class MapGobOffsetFromTheSourceTest {
         @Test
         @DisplayName("a gob with no parent answers itself and the point untouched")
         void nothingToAscendTo() {
-            // `while (GOB_PARENT(gob) && ...)` never runs.
             assertThat(answerTo(
                     "g: make gob! [offset: 9x9] second map-gob-offset/reverse g 5x5"))
                     .isEqualTo("5x5");

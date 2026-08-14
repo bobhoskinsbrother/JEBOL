@@ -58,19 +58,12 @@ class LimitUsageFromTheSourceTest {
         @Test
         @DisplayName("nothing: the boot takes the word away")
         void theWordIsGoneByTheTimeAScriptRuns() {
-            // `unset in lib 'limit-usage`, the last line but one of
-            // PROTECT-SYSTEM, which MEZZ-TAIL.REB calls at the end of the boot.
             assertThat(answerTo("value? 'limit-usage")).isEqualTo("#(false)");
         }
 
         @Test
         @DisplayName("and its only caller is left broken, in Rebol too")
         void secureCannotReachItEither() {
-            // SECURE's `eval` and `memory` cases call it -- `limit-usage target
-            // pol` -- and SECURE is bound to the slot PROTECT-SYSTEM unset. So
-            // this raises in a stock 3.22.1 as well. Pinned rather than fixed:
-            // fixing it means deciding what SECURE is here, which is its own
-            // piece of work.
             assertThat(answerTo(
                     "e: try [secure [eval 100]] either error? e [e/id] ['no-error]"))
                     .isEqualTo("no-value");
@@ -79,9 +72,6 @@ class LimitUsageFromTheSourceTest {
         @Test
         @DisplayName("while PROTECT-SYSTEM removes itself the same way")
         void protectSystemGoesToo() {
-            // The line above it: `unset in lib 'protect-system`. Worth pinning
-            // beside the other, because a boot that stopped calling it would
-            // leave both words in place and nothing else would notice.
             assertThat(answerTo("value? 'protect-system")).isEqualTo("#(false)");
         }
     }
@@ -140,7 +130,6 @@ class LimitUsageFromTheSourceTest {
         @Test
         @DisplayName("a field it does not know records nothing and still answers unset")
         void anUnknownFieldIsIgnored() {
-            // An if, an else-if and no else.
             Evaluator evaluator = anEvaluator();
             assertThat(called(evaluator, "nonsense", IntegerValue.of(5)))
                     .isInstanceOf(UnsetValue.class);

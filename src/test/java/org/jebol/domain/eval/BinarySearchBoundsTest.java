@@ -71,10 +71,6 @@ class BinarySearchBoundsTest {
     @Test
     @DisplayName("the largest byte is inside the range and is not refused")
     void twoFiftyFiveIsNotRefused() {
-        // A real R3 answers none here even when the byte is present, which
-        // is neither this rule nor an ordinary miss. Recorded as an open
-        // question in spec/natives.allium; what is asserted here is only
-        // that the search is allowed to happen.
         assertThat(errorIdOf("find #{00FF} 255")).isEqualTo("no-error");
     }
 

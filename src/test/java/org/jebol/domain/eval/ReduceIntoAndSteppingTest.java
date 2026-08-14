@@ -80,15 +80,9 @@ class ReduceIntoAndSteppingTest {
     @Test
     @DisplayName("but a DECIMAL zero rounds nothing and keeps the fraction")
     void aDecimalZeroScaleRoundsNothing() {
-        // The zero is not what truncates: a scale of zero rounds nothing at
-        // all, and the datatype conversion afterwards is what throws the
-        // fraction away. So the integer zero above gives 11 and the decimal
-        // zero here gives 11.65, from the same subject and the same amount of
-        // rounding, which is none.
         assertThat(answerTo("mold round/to 11.65 0.0")).isEqualTo("\"11.65\"");
         assertThat(answerTo("mold type? round/to 11.65 0.0"))
                 .isEqualTo("\"#(decimal!)\"");
-        // A scale too small to represent underflows to zero and lands here.
         assertThat(answerTo("mold round/to 11.65 1e-400")).isEqualTo("\"11.65\"");
     }
 

@@ -1,12 +1,9 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * Evaluation tracing, read out of {@code c-do.c}.
@@ -81,9 +78,6 @@ final class Trace {
     void level(int wanted, boolean functionsOnly) {
         this.level = Math.max(0, wanted);
         this.callsOnly = level > 0 && functionsOnly;
-        // The block TRACE was called in becomes depth zero. The C takes
-        // `Eval_Depth() - 1` for the same reason -- one less for TRACE's own
-        // frame -- and the walk is already telling this how deep it is.
         this.depthWhenTraceBegan = depthNow;
         if (level == 0) {
             keepingRatherThanPrinting = false;
@@ -137,14 +131,9 @@ final class Trace {
             return;
         }
         StringBuilder written = new StringBuilder(" ".repeat(3 * depth));
-        // "%-02d" in the C is a two-wide left-aligned number. Java's Formatter
-        // refuses '-' and '0' together, so the padding is done by hand rather
-        // than by changing what the output looks like.
         written.append(String.format("%-2d", position))
                 .append(": ")
                 .append(molded(value));
-        // A word is followed by what it holds, because the word alone says
-        // nothing about what is about to happen.
         if (value instanceof WordValue named
                 && (named.datatype() == Datatype.WORD
                         || named.datatype() == Datatype.GET_WORD)) {
@@ -161,9 +150,6 @@ final class Trace {
         }
         StringBuilder written = new StringBuilder(" ".repeat(3 * depth));
         written.append("--> ").append(name);
-        // `if (GET_FLAG(Trace_Flags, 1)) Debug_Values(...)` -- /FUNCTION is the
-        // shorter output and yet it is the one that shows the arguments, which
-        // is the opposite of what the name suggests.
         if (callsOnly) {
             for (Value argument : arguments) {
                 written.append(' ').append(molded(argument));
@@ -212,9 +198,6 @@ final class Trace {
             return "";
         }
         Value held = holder.slotFor(named.canonical()).value();
-        // Three formats, and which one is used depends on what the word holds:
-        // a plain value molds, a function names its type and its arguments, and
-        // anything else names only its type.
         if (held.datatype().isAnyFunction()) {
             return " : " + held.datatype().literalSpelling() + " " + molded(held);
         }

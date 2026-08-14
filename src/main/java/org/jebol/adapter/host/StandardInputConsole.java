@@ -1,11 +1,12 @@
 package org.jebol.adapter.host;
 
+import org.jebol.domain.eval.ConsolePort;
+import org.jebol.domain.eval.FilePort;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import org.jebol.domain.eval.ConsolePort;
-import org.jebol.domain.eval.FilePort;
 
 /**
  * A console that reads the standard input of the Java process.

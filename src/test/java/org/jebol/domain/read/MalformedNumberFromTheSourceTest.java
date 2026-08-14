@@ -58,9 +58,6 @@ class MalformedNumberFromTheSourceTest {
         @Test
         @DisplayName("which is the token Rebol's own suite uses as its canonical bad one")
         void theCanonicalBadToken() {
-            // `1d` appears all through the TRANSCODE group as the thing that must
-            // fail: `transcode "1 1d"`, `transcode "1^/1d"`, `transcode/line ...`.
-            // It read as a word here, so those had no error to report at all.
             assertThat(refusedAsAnInteger("""
                     {1d}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -79,8 +76,6 @@ class MalformedNumberFromTheSourceTest {
         @Test
         @DisplayName("but letters after a letter are an ordinary word")
         void aWordIsStillAWord() {
-            // The rule is about the *first* character, because that is what the C
-            // classifies on. `a1` is a name; `1a` cannot be.
             assertThat(answerTo("""
                     (load {a1}) = to word! "a1\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -106,9 +101,6 @@ class MalformedNumberFromTheSourceTest {
         @Test
         @DisplayName("and every other datatype that opens with a digit")
         void theOtherDigitLeadingDatatypes() {
-            // Each of these holds a character that is not a digit, and each has to
-            // find its own reading before the fallback is reached. A refusal that
-            // fires too early takes the lot.
             assertThat(answerTo("""
                     pair? load {1x2}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -126,9 +118,6 @@ class MalformedNumberFromTheSourceTest {
         @Test
         @DisplayName("and the time shape that had to be fixed first")
         void theTimeThatWasAWord() {
-            // `0:0.001` was falling through to a word, so refusing words stopped
-            // `mezz-debug.reb` loading. It is a time now, which is what let the
-            // refusal in at all.
             assertThat(answerTo("""
                     time? load {0:0.001}""")).isEqualTo(TRUE);
         }
@@ -141,9 +130,6 @@ class MalformedNumberFromTheSourceTest {
         @Test
         @DisplayName("a base that is not 2, 16 or 64")
         void anUnsupportedBase() {
-            // Rebol's BINARY group asserts the kind: `e/arg1 = "integer"`. The base
-            // is read as a number before the braces are looked at, so a base nobody
-            // supports is a malformed number rather than a malformed binary.
             assertThat(refusedAsAnInteger("""
                     {000016#{FF}}""")).isEqualTo(TRUE);
             assertThat(refusedAsAnInteger("""
@@ -153,8 +139,6 @@ class MalformedNumberFromTheSourceTest {
         @Test
         @DisplayName("and a base may not carry a sign")
         void aSignedBase() {
-            // `if (cp == scan_state->begin) { // no +2 +16 +64 allowed` -- the base
-            // has to sit at the very start of the token. Rebol's own case is `+2#{}`.
             assertThat(refusedAsAnInteger("""
                     {+2#{}}""")).isEqualTo(TRUE);
             assertThat(refusedAsAnInteger("""
@@ -164,8 +148,6 @@ class MalformedNumberFromTheSourceTest {
         @Test
         @DisplayName("and a hash form other than a binary is not a base at all")
         void aHashThatIsNotABinary() {
-            // `2#"a"` and `1#(logic! 1)` are a number with a hash form stuck to it,
-            // and R3 refuses them rather than reading two adjacent values.
             assertThat(refusedAsAnInteger("""
                     {2#"a"}""")).isEqualTo(TRUE);
             assertThat(refusedAsAnInteger("""
@@ -191,9 +173,6 @@ class MalformedNumberFromTheSourceTest {
         @Test
         @DisplayName("a number ends at the bracket and what follows is read afresh")
         void theBracketStillSplits() {
-            // All five shapes an earlier attempt lost. The C cuts the token at the
-            // bracket under its own "order of tests is important", and doing the
-            // same here is what leaves these alone.
             assertThat(answerTo("""
                     mold load {1<}""")).isEqualTo("\"[1 <]\"");
             assertThat(answerTo("""
@@ -209,8 +188,6 @@ class MalformedNumberFromTheSourceTest {
         @Test
         @DisplayName("and what the bracket leaves behind still has to be a value")
         void whatIsLeftMustReadToo() {
-            // Cutting is not tolerating: `1<2` is still refused, because `<2` is
-            // neither a word nor a tag.
             assertThat(answerTo("""
                     error? try [load {1<2}]""")).isEqualTo(TRUE);
         }

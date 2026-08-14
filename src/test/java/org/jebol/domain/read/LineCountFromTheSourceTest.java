@@ -85,8 +85,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("and a start further down the file carries through")
         void aStartFurtherDownTheFile() {
-            // Rebol's own two assertions for the refinement, which are the pair that
-            // proves the offset is added rather than replacing the count.
             assertThat(answerTo("""
                     all [error? e: try [transcode/line "1 1d" 10] \
                     e/near = "(line 10) 1 1d"]""")).isEqualTo(TRUE);
@@ -98,9 +96,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("zero is refused, and so is anything below it")
         void zeroAndBelowAreRefused() {
-            // `if (0 >= VAL_INT64(count)) Trap1(RE_OUT_OF_RANGE, count)`. A line number
-            // is a counting number, so zero is not "do not count" and minus one is not
-            // "count backwards".
             assertThat(errorIdOf("""
                     transcode/line "1 1d" 0""")).isEqualTo("out-of-range");
             assertThat(errorIdOf("""
@@ -139,9 +134,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("a break inside a string counts, because the reader crossed it")
         void aBreakInsideAStringCounts() {
-            // A braced string spans lines, and the lines it spans are lines of the
-            // file like any other. Built with REJOIN because a caret escape in the
-            // outer source would be read by the outer reader, not this one.
             assertThat(lineNamedBy("""
                     transcode rejoin ["{x" newline "y} 1d"]""")).isEqualTo("2");
             assertThat(lineNamedBy("""
@@ -152,9 +144,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("a bare carriage return is a line of its own")
         void aCarriageReturnIsALineBreakToo() {
-            // `case LEX_DELIMIT_RETURN: if (cp[1] == LF) cp++; /* fall thru */` into
-            // the line feed's `line_count++`. So a carriage return counts, and it
-            // ends the token as a line feed does.
             assertThat(lineNamedBy("""
                     transcode rejoin ["1" cr "1d"]""")).isEqualTo("2");
             assertThat(lineNamedBy("""
@@ -164,8 +153,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("but a carriage return and a line feed together are one line")
         void theTwoTogetherCountOnce() {
-            // The `if (cp[1] == LF) cp++` steps over the line feed before the count
-            // rises, so a file written on Windows is not counted twice over.
             assertThat(lineNamedBy("""
                     transcode rejoin ["1" cr lf "1d"]""")).isEqualTo("2");
             assertThat(lineNamedBy("""
@@ -175,9 +162,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("and a line feed followed by a carriage return is two lines")
         void theTwoTheOtherWayRoundAreTwoLines() {
-            // Only the carriage return looks ahead for its partner. A line feed
-            // counts and then the carriage return counts again, so the pair in this
-            // order is two lines where the other order is one.
             assertThat(lineNamedBy("""
                     transcode rejoin ["1" lf cr "1d"]""")).isEqualTo("3");
         }
@@ -185,9 +169,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("and a break inside a binary counts")
         void aBreakInsideABinaryCounts() {
-            // A long binary is written across lines with a note beside it, which is
-            // the reason whitespace inside the braces is ignored at all. Ignored for
-            // the value is not ignored for the count.
             assertThat(lineNamedBy("""
                     transcode rejoin ["#{00" newline "00} 1d"]""")).isEqualTo("2");
         }
@@ -195,8 +176,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("and the break that ends a comment counts")
         void aBreakAfterACommentCounts() {
-            // `while (NOT_NEWLINE(*cp)) cp++; if (*cp == LF) goto line_feed;` -- the
-            // comment eats the line and then the break is counted anyway.
             assertThat(lineNamedBy("""
                     transcode ";note^/1d\"""")).isEqualTo("2");
         }
@@ -209,9 +188,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("as a third item, so a walk can pass it straight in again")
         void theWalkHandsBackTheLineItStoppedOn() {
-            // Rebol's own walk, which is the whole reason the count comes back at
-            // all. The break belongs to the step that crosses it: the value on line
-            // one reports one, and the step that crosses the break reports two.
             assertThat(answerTo("""
                     all [
                         code: "1^/2" line: 1
@@ -241,10 +217,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("but it does not come back to a caller reading the whole source")
         void theCountOnlyComesBackWhenWalking() {
-            // The C appends it to the same block that carries the unread text, and
-            // builds that block only when a refinement asked to stop after one value.
-            // So asking where the reader finished a whole source is not a question
-            // this native answers.
             assertThat(answerTo("""
                     [1 2] = transcode/line "1 2" 10""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -254,8 +226,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("and a value spanning lines reports the line it ended on")
         void aValueThatSpansLines() {
-            // The step reports where the reader is afterwards, not where the value
-            // began. A block written across two lines leaves the reader on the second.
             assertThat(answerTo("""
                     all [
                         result: transcode/next/line rejoin ["[1" newline "2] 3"] 1
@@ -267,8 +237,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("and asking for a value where there is none left still raises past-end")
         void nothingLeftToWalk() {
-            // The count changes nothing about the failure: the refinement adds a
-            // number to the answer, and there is no answer to add it to.
             assertThat(errorIdOf("""
                     transcode/next/line "" 10""")).isEqualTo("past-end");
             assertThat(answerTo("""
@@ -304,8 +272,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("and both arguments arrive in the order they were declared")
         void bothArgumentsAtOnce() {
-            // The count is declared before the length, so a native reading them by
-            // position gets them the wrong way round the moment both are asked for.
             assertThat(answerTo("""
                     [1 1] = transcode/line/part "1 1d" 10 3""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -332,10 +298,6 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("but a negative bound is refused")
         void aNegativeBoundIsRefused() {
-            // `if (0 > VAL_INT64(length)) Trap1(RE_OUT_OF_RANGE, length)`. Zero is
-            // permitted here and refused for the line number, which is the pair worth
-            // reading together: no characters is a legal amount to read, and no lines
-            // is not a line.
             assertThat(errorIdOf("""
                     transcode/part "1 2" -1""")).isEqualTo("out-of-range");
         }

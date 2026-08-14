@@ -130,11 +130,6 @@ public final class BitsetValue implements Value {
 
     /** A bitset holding every code in the text. */
     public static BitsetValue ofCharacters(int... codes) {
-        // No codes means no octets, which is what makes `empty? charset ""`
-        // true: `Find_Max_Bit` answers 0 for an empty string and `Make_Bitset(0)`
-        // allocates nothing. Rounding up to one octet regardless would give a
-        // set of eight bits that holds none of them, and TAIL? would say the
-        // empty set is not empty.
         if (codes.length == 0) {
             return new BitsetValue(new byte[0]);
         }
@@ -154,8 +149,6 @@ public final class BitsetValue implements Value {
         if (octet >= octets.length) {
             octets = Arrays.copyOf(octets, octet + 1);
         }
-        // The highest bit of an octet is the lowest code in it, which is
-        // the order the molded form reads in.
         octets[octet] |= (byte) (1 << (7 - code % BITS_PER_OCTET));
     }
 

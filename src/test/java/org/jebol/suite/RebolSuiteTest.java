@@ -170,8 +170,6 @@ class RebolSuiteTest {
             try {
                 interpreter.defineFreshWordsIn(source);
                 if (step.isAssertion()) {
-                    // Only the first expression is the assertion; the rest
-                    // of the line is ordinary code that still has to run.
                     Interpreter.Step taken = interpreter.runNext(source);
                     verdict = taken.outcome().succeeded() && taken.outcome().value().isTruthy()
                             ? Verdict.passed()
@@ -234,10 +232,6 @@ class RebolSuiteTest {
     @Test
     @DisplayName("the suite was found and read, so this test is doing something")
     void theSuiteIsNotEmpty() {
-        // A floor on the harness working, not a measure of coverage. How
-        // much of the suite the reader can take in is SuiteCoverageTest's
-        // question, and putting a coverage number here would mean editing
-        // two places every time the reader improves.
         assertThat(everyAssertion().toList()).hasSizeGreaterThan(500);
     }
 

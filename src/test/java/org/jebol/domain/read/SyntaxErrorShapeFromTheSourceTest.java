@@ -81,8 +81,6 @@ class SyntaxErrorShapeFromTheSourceTest {
         @Test
         @DisplayName("written the way R3 writes it")
         void theShapeOfNear() {
-            // The whole line rather than the offending token, because that is
-            // what a person reading the error needs in order to look.
             assertThat(answerTo("e: try [transcode \"#(\"] e/near"))
                     .isEqualTo("\"(line 1) #(\"");
         }
@@ -102,9 +100,6 @@ class SyntaxErrorShapeFromTheSourceTest {
         @Test
         @DisplayName("including a source with nothing left to read")
         void nothingLeftToRead() {
-            // /ERROR is TRY built into the reader, and it covers this failure
-            // as it covers the rest. It used to raise instead, so a caller who
-            // had asked for errors as values still had to catch one.
             assertThat(answerTo("e: transcode/one/error \"\" reduce [error? e e/id]"))
                     .isEqualTo("[#(true) past-end]");
             assertThat(answerTo("e: transcode/next/error \"\" reduce [error? e e/id]"))

@@ -1,7 +1,8 @@
 package org.jebol.domain.eval;
 
-import java.util.Optional;
 import org.jebol.domain.value.Value;
+
+import java.util.Optional;
 
 /**
  * THROW, travelling out to the nearest CATCH.

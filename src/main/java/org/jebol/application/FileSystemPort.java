@@ -1,12 +1,12 @@
 package org.jebol.application;
 
+import org.jebol.domain.eval.FileInformation;
+import org.jebol.domain.eval.FilePort;
+
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import org.jebol.domain.eval.FileInformation;
-import org.jebol.domain.eval.FilePort;
 
 /**
  * A filesystem a script may reach, rooted at one directory.
@@ -271,9 +271,6 @@ public final class FileSystemPort implements FilePort {
      */
     private Path within(String path) {
         try {
-            // Resolved against where the script is now and not against
-            // the root, so CHANGE-DIR means something. The test is still
-            // against the root, thus moving cannot widen what is reachable.
             Path resolved = here.resolve(path).toAbsolutePath().normalize();
             if (!resolved.startsWith(root)) {
                 throw new Denied("outside-root", path + " is outside what this port allows");

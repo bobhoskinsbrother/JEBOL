@@ -59,11 +59,6 @@ class FileServiceGrantTest {
     void existsFollowsTheWrite(@TempDir Path directory) {
         Interpreter interpreter = readingUnder(
                 Bounds.standard().granting(HostService.FILES), directory);
-        // Rebol's own EXISTS? answers the type word or none, not a logic:
-        //     all [word? target: try [query target 'type] target]
-        // Both still read as false and true in a condition, which is all any
-        // caller does with it, so this asserts truthiness rather than the
-        // logic values JEBOL's own version used to give.
         assertThat(answerTo(interpreter,
                 "before: exists? %b.txt write %b.txt \"x\" "
                 + "reduce [true? before  true? exists? %b.txt]"))
@@ -82,8 +77,6 @@ class FileServiceGrantTest {
     @Test
     @DisplayName("a path outside the directory is refused")
     void theAdapterKeepsTheScriptInside(@TempDir Path directory) {
-        // The port holds the directory, thus a script cannot reach above
-        // it by asking for a path with two dots in it.
         Interpreter interpreter = readingUnder(
                 Bounds.standard().granting(HostService.FILES), directory);
         assertThat(errorIdOf(interpreter, "read %../secret.txt")).isEqualTo("outside-root");
@@ -100,8 +93,6 @@ class FileServiceGrantTest {
     @Test
     @DisplayName("with the grant and no adapter, reading still raises")
     void anAdapterIsAlsoNeeded() {
-        // The grant says the host is willing. It does not say where the
-        // reading goes.
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().granting(HostService.FILES));
         assertThat(errorIdOf(interpreter, "read %a.txt")).isNotEqualTo("no-error");

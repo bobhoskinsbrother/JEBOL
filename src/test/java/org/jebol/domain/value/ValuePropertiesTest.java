@@ -25,8 +25,6 @@ import org.jebol.domain.read.Transcoder;
  */
 class ValuePropertiesTest {
 
-    // ---- series positions ------------------------------------------------
-
     @Property
     void everyLegalPositionIsAcceptedAndNoOtherIs(
             @ForAll @Size(max = 12) List<@IntRange(min = -50, max = 50) Integer> contents,
@@ -83,8 +81,6 @@ class ValuePropertiesTest {
         assertThat(block.atIndex(position).sharesStorageWith(block)).isTrue();
     }
 
-    // ---- words -----------------------------------------------------------
-
     @Property
     void aWordAlwaysComparesByItsLowercasedSpelling(@ForAll("wordSpellings") String spelling) {
         WordValue word = WordValue.of(spelling);
@@ -118,8 +114,6 @@ class ValuePropertiesTest {
                 .ofMaxLength(8);
         return Combinators.combine(first, rest).as((head, tail) -> head + tail);
     }
-
-    // ---- reading and molding --------------------------------------------
 
     @Property
     void moldingAnIntegerAlwaysReadsBackEqual(@ForAll long magnitude) {

@@ -52,8 +52,6 @@ class PercentWordFromTheSourceTest {
         @Test
         @DisplayName("on its own, however long the run")
         void theRunAlone() {
-            // `%` is also what begins a file, so the reader has to choose. A run
-            // followed by a delimiter is the word; anything else starts a file.
             assertThat(answerTo("""
                     (transcode/one {%}) = to word! "%\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -63,8 +61,6 @@ class PercentWordFromTheSourceTest {
         @Test
         @DisplayName("and it takes a sigil like any other word")
         void withASigil() {
-            // The same arm appears in the tick case and the colon case, which is
-            // what makes `'%` and `:%` spellable at all.
             assertThat(answerTo("""
                     (transcode/one {'%}) = to lit-word! "%\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -76,8 +72,6 @@ class PercentWordFromTheSourceTest {
         @Test
         @DisplayName("but a percent that begins a name is a file, not a word")
         void aFileInstead() {
-            // Which is the reason the run needs a delimiter after it: `%a` has to
-            // stay a file, and only a bare run may be a word.
             assertThat(answerTo("""
                     file? transcode/one {%a}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -92,9 +86,6 @@ class PercentWordFromTheSourceTest {
         @Test
         @DisplayName("all four spellings Rebol's own test asserts")
         void theFourSpellings() {
-            // A slash *is* a delimiter, so the percent arm is satisfied and the
-            // lit-word is formed. The slash then makes it a path, and the path has
-            // nothing after the slash to be a second segment.
             assertThat(refusedAsAPath("""
                     {'%/}""")).isEqualTo(TRUE);
             assertThat(refusedAsAPath("""
@@ -108,9 +99,6 @@ class PercentWordFromTheSourceTest {
         @Test
         @DisplayName("and the error says path rather than word, because that is how far it got")
         void theKindReported() {
-            // The distinction is the point of asserting ARG1 at all. The reader had
-            // a perfectly good lit-word and then went on to build a path from it;
-            // what failed was the path, and that is what it reports.
             assertThat(answerTo("""
                     e: try [transcode/one {'%/}] e/arg1""")).isEqualTo("\"path\"");
         }
@@ -118,8 +106,6 @@ class PercentWordFromTheSourceTest {
         @Test
         @DisplayName("and every other missing segment reports the same kind")
         void anyMissingSegment() {
-            // Nothing about the percent, in the end. A segment that is not there is
-            // a path that cannot finish, however it was spelled.
             assertThat(refusedAsAPath("""
                     {a/}""")).isEqualTo(TRUE);
             assertThat(refusedAsAPath("""

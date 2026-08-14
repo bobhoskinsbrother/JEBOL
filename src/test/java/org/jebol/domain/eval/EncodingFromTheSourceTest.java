@@ -61,8 +61,6 @@ class EncodingFromTheSourceTest {
         @Test
         @DisplayName("a percent sign that is not an escape stands for itself")
         void aLonePercentStandsForItself() {
-            // A URL that was never encoded has to survive being decoded, so
-            // two hex digits are required before the escape is read as one.
             assertThat(answerTo("dehex \"100%\"")).isEqualTo("\"100%\"");
             assertThat(answerTo("dehex \"a%zz\"")).isEqualTo("\"a%zz\"");
         }
@@ -77,8 +75,6 @@ class EncodingFromTheSourceTest {
         @Test
         @DisplayName("a file and a url keep the characters a path needs")
         void aUrlKeepsItsPunctuation() {
-            // The default set follows the datatype. A url keeps its slashes
-            // and colon; a plain string does not have to.
             assertThat(answerTo("enhex http://a.com/b")).isEqualTo("http://a.com/b");
         }
 
@@ -92,8 +88,6 @@ class EncodingFromTheSourceTest {
         @Test
         @DisplayName("/EXCEPT names the set to leave alone")
         void exceptNamesTheSet() {
-            // What sys-ports.reb does: it copies the URI set and adds the
-            // percent sign, so a url that is already encoded is left alone.
             assertThat(answerTo(
                     "b: copy system/catalog/bitsets/uri b/(#\"%\"): true "
                     + "enhex/except \"a%20b\" b")).isEqualTo("\"a%20b\"");
@@ -117,8 +111,6 @@ class EncodingFromTheSourceTest {
         @Test
         @DisplayName("a character above ASCII becomes its UTF-8 bytes, one escape each")
         void aWideCharacterBecomesItsBytes() {
-            // Percent encoding names bytes, never codepoints, so a character
-            // that takes two bytes takes two escapes.
             assertThat(answerTo("enhex \"é\"")).isEqualTo("\"%C3%A9\"");
         }
     }
@@ -158,8 +150,6 @@ class EncodingFromTheSourceTest {
         @Test
         @DisplayName("/URL is base 64 with the filename-safe alphabet")
         void base64Url() {
-            // Minus and underscore in place of plus and slash, which is what
-            // makes it safe in a path.
             assertThat(answerTo("find enbase/flat/url #{FBFF} 64 \"_\"")).isNotEqualTo("_");
             assertThat(answerTo("debase/url enbase/flat/url #{FBFF} 64 64"))
                     .isEqualTo("#{FBFF}");
@@ -186,8 +176,6 @@ class EncodingFromTheSourceTest {
         @Test
         @DisplayName("a base that is not one of the five is refused")
         void anUnknownBaseIsRefused() {
-            // `Trap1(RE_INVALID_ARG, ...)` naming the base, so the complaint
-            // is about the number rather than about the data.
             assertThat(errorIdFrom("enbase #{00} 8")).isNotEqualTo("no-error");
             assertThat(errorIdFrom("debase \"00\" 8")).isNotEqualTo("no-error");
             assertThat(errorIdFrom("enbase #{00} 0")).isNotEqualTo("no-error");
@@ -220,8 +208,6 @@ class EncodingFromTheSourceTest {
         void theShaFamily() {
             assertThat(answerTo("enbase/flat checksum \"abc\" 'sha1 16"))
                     .isEqualTo("\"A9993E364706816ABA3E25717850C26C9CD0D89D\"");
-            // Braces, not quotes: the SHA-256 digest is 64 characters and
-            // MOLD uses the braced form past fifty.
             assertThat(answerTo("enbase/flat checksum \"abc\" 'sha256 16"))
                     .isEqualTo("{BA7816BF8F01CFEA414140DE5DAE2223"
                             + "B00361A396177A9CB410FF61F20015AD}");
@@ -360,7 +346,6 @@ class EncodingFromTheSourceTest {
         @Test
         @DisplayName("it changes the binary it was given, and answers it")
         void itChangesInPlace() {
-            // `value [binary!] "At position (modified)"`.
             assertThat(answerTo("b: #{0102} swap-endian b b")).isEqualTo("#{0201}");
         }
 

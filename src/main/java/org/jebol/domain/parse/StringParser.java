@@ -1,26 +1,12 @@
 package org.jebol.domain.parse;
 
+import org.jebol.domain.eval.EvaluationFailure;
+import org.jebol.domain.eval.Evaluator;
+import org.jebol.domain.eval.Raised;
+import org.jebol.domain.value.*;
+
 import java.util.ArrayList;
 import java.util.List;
-import org.jebol.domain.eval.Evaluator;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.eval.Raised;
-import org.jebol.domain.eval.EvaluationFailure;
-import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.SeriesValue;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * PARSE over a string, which matches substrings rather than characters.
@@ -160,9 +146,6 @@ public final class StringParser {
             boolean mindingCase) {
 
         StringParser parser = new StringParser(evaluator, context, source);
-        // Bytes are bytes: parsing a binary minds case from the start,
-        // where parsing a string folds it. NO-CASE inside the rule still
-        // turns the folding on, which is how the suite asks for it.
         parser.mindingCase = mindingCase || parser.walkingBytes;
         boolean matched = parser.matchSequence(rule.remaining());
         if (parser.gathered != null) {
@@ -189,9 +172,6 @@ public final class StringParser {
             boolean mindingCase) {
 
         StringParser parser = new StringParser(evaluator, context, source);
-        // Bytes are bytes: parsing a binary minds case from the start,
-        // where parsing a string folds it. NO-CASE inside the rule still
-        // turns the folding on, which is how the suite asks for it.
         parser.mindingCase = mindingCase || parser.walkingBytes;
         return parser.matchSequence(rule.remaining()) && parser.atEnd();
     }
@@ -216,9 +196,6 @@ public final class StringParser {
         if (at + 1 >= rules.size()) {
             return NO_MATCH;
         }
-        // A word naming a position in this very series is a span, not a
-        // rule: CHANGE replaces everything between the current position
-        // and the mark, whichever is the earlier.
         Integer markOffset = sameStorageOffset(rules.get(at + 1));
         if (markOffset != null) {
             if (at + 2 >= rules.size()) {
@@ -238,10 +215,6 @@ public final class StringParser {
             position = begin + written.length;
             return 3;
         }
-        // Through matchOne and ruleSpan rather than matchValue, so the
-        // rule being replaced may be anything a rule can be. Reading it
-        // as one value meant `change copy v "b" "X"` saw COPY as the
-        // whole rule and the word as the replacement.
         int span = ruleSpan(rules, at + 1);
         int replacementAt = at + 1 + span;
         if (replacementAt >= rules.size()) {
@@ -396,10 +369,6 @@ public final class StringParser {
 
     private int matchOne(List<Value> rules, int at) {
         Value rule = rules.get(at);
-        // A set-word marks where the parse has reached and consumes
-        // nothing; a get-word seeks back to what one recorded. Together
-        // they are how a rule measures a span, which is what Rebol's own
-        // SPLIT does and could not do here.
         if (rule instanceof WordValue mark && mark.datatype() == Datatype.SET_WORD) {
             assign(mark, source.atIndex(source.index() + position));
             return 1;
@@ -412,11 +381,6 @@ public final class StringParser {
                     adoptInput(marked);
                     return 1;
                 }
-                // A mark from before where this parse began is not a
-                // position this rule can seek to. Left unchecked it made
-                // the position negative and the next read of the source
-                // failed as a Java exception, which spec/embed.allium says
-                // cannot happen. A real R3 refuses the rule instead.
                 int sought = marked.index() - source.index();
                 if (sought < 0 || sought > source.lengthFromHere()) {
                     throw Raised.of(EvaluationFailure.PARSE_RULE,
@@ -434,18 +398,10 @@ public final class StringParser {
                 case "skip" -> advanceOne() ? 1 : -1;
                 case "to" -> seek(rules, at, false);
                 case "thru" -> seek(rules, at, true);
-                // WHILE is ANY under another name: repeat until the rule
-                // stops matching, and succeed either way. The two are
-                // written differently by convention and behave alike.
                 case "any", "while" -> repeat(rules, at, 0);
                 case "some" -> repeat(rules, at, 1);
                 case "opt" -> optional(rules, at);
                 case "and", "ahead" -> lookahead(rules, at);
-                // BREAK stops the repeat around it. What matched before
-                // it stands; the repeat simply stops asking for more.
-                // Thrown rather than returned because the repeat may be
-                // several rules up, and every rule between would have to
-                // pass a signal along.
                 case "break" -> {
                     throw new RepeatEnded();
                 }
@@ -469,16 +425,9 @@ public final class StringParser {
                     throw Raised.of(EvaluationFailure.NOT_DONE,
                             "limit is a parse command reserved for future use");
                 }
-                // A word that names something is that thing: a rule can
-                // be held in a word, and a bitset almost always is. The
-                // block parser has always resolved these and this one
-                // matched the word's own text instead.
                 default -> matchNamedRule(word) ? 1 : -1;
             };
         }
-        // An integer in a rule is a count of how many times to apply what
-        // follows, never a value to match. One integer is exact; two are a
-        // range, inclusive at both ends.
         if (rule instanceof IntegerValue least) {
             int atMost = at + 1 < rules.size() && rules.get(at + 1) instanceof IntegerValue most
                     ? (int) most.magnitude()
@@ -489,13 +438,9 @@ public final class StringParser {
             return countedRepeat(rules, ruleAt, (int) least.magnitude(), atMost,
                     ruleAt - at);
         }
-        // An unset or a function is no rule at all -- `if (VAL_TYPE(item)
-        // <= REB_UNSET || VAL_TYPE(item) >= REB_NATIVE) goto bad_rule;`.
         if (rule instanceof UnsetValue || rule.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
         }
-        // A path is evaluated and its value is the rule, so `a/b` naming
-        // a datatype matches by that datatype.
         if (rule instanceof BlockValue path && path.datatype() == Datatype.PATH) {
             Value resolved = evaluator.evaluateOrRaise(
                     BlockValue.block(List.of(path)), context);
@@ -544,10 +489,6 @@ public final class StringParser {
             return counts + ruleSpan(rules, at + counts);
         }
         if (rules.get(at) instanceof WordValue word && word.datatype() == Datatype.WORD) {
-            // COLLECT may take SET, INTO or AFTER and a word before its
-            // rule, and then it occupies two more items. Measuring it as
-            // two leaves the walk resuming on the word and matching it as
-            // a rule of its own.
             if (word.canonical().equals("collect")
                     && at + 2 < rules.size()
                     && rules.get(at + 1) instanceof WordValue keyword
@@ -572,9 +513,6 @@ public final class StringParser {
         if (at + 2 >= rules.size() || !(rules.get(at + 1) instanceof WordValue target)) {
             return NO_MATCH;
         }
-        // A set-word between the capture and its rule marks the place and
-        // the capture carries on to the next real rule -- the C processes
-        // it without touching the pending flags.
         int ruleAt = at + 2;
         while (rules.get(ruleAt) instanceof WordValue mark
                 && mark.datatype() == Datatype.SET_WORD) {
@@ -585,11 +523,6 @@ public final class StringParser {
                         "a capture has no rule after its marks to apply to");
             }
         }
-        // A get-word marks a place rather than matching anything, so it
-        // cannot say what to capture. Allowed through, it moved the
-        // position backwards and left COPY reading a span that runs the
-        // wrong way -- which failed as a Java exception rather than as a
-        // REBOL error. A real R3 refuses the rule, naming the get-word.
         if (rules.get(ruleAt) instanceof WordValue asRule
                 && asRule.datatype() == Datatype.GET_WORD) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, (Value) asRule);
@@ -633,9 +566,6 @@ public final class StringParser {
                 && rules.get(at + 1) instanceof WordValue keyword
                 && keyword.datatype() == Datatype.WORD
                 && rules.get(at + 2) instanceof WordValue name) {
-            // SET puts the collection in the word. INTO puts it into a
-            // series the caller already has, at its position, so what was
-            // there is pushed along; AFTER puts it past what is there.
             switch (keyword.canonical()) {
                 case "set" -> {
                     into = name;
@@ -657,10 +587,6 @@ public final class StringParser {
                     "collect has no rule after it to apply to");
         }
 
-        // SET assigns its word a fresh block BEFORE the rule runs --
-        // `Make_Block` then `Set_Var_Series` -- so a nested collect set of
-        // the same word assigns second and stays, and nothing overwrites
-        // it at collect end.
         BlockValue destination = null;
         if (into != null) {
             destination = BlockValue.block(new ArrayList<>());
@@ -700,9 +626,6 @@ public final class StringParser {
             throw Raised.of(EvaluationFailure.PARSE_END,
                     "keep has no rule after it to apply to");
         }
-        // KEEP needs somewhere to keep into. Without a COLLECT around
-        // it the value was quietly dropped and the rule went on matching,
-        // so a rule with the COLLECT left off looked like it worked.
         if (collecting.isEmpty()) {
             throw Raised.of(EvaluationFailure.PARSE_NO_COLLECT,
                     "keep has no collect around it");
@@ -719,9 +642,6 @@ public final class StringParser {
         }
         if (kept instanceof WordValue modifier && modifier.datatype() == Datatype.WORD
                 && modifier.canonical().equals("pick")) {
-            // A paren after PICK keeps its value whole, exactly as plain
-            // KEEP of the expression would: the C sets the pick flag,
-            // then finds the paren and the flag never matters.
             if (at + 2 < rules.size()
                     && rules.get(at + 2) instanceof BlockValue expression
                     && expression.datatype() == Datatype.PAREN) {
@@ -732,9 +652,6 @@ public final class StringParser {
             return keepIndividually(rules, at + 2);
         }
 
-        // KEEP COPY keeps the series the copy produced, so one matched
-        // character arrives as a one-character string of the input's own
-        // kind rather than as a char.
         boolean keptViaCopy = kept instanceof WordValue copying
                 && copying.datatype() == Datatype.WORD
                 && copying.canonical().equals("copy");
@@ -758,8 +675,6 @@ public final class StringParser {
             return NO_MATCH;
         }
         if (!collecting.isEmpty()) {
-            // A binary keeps its bytes as their numbers -- `SET_INTEGER(val,
-            // BIN_HEAD(series)[i])` -- where a string keeps characters.
             for (int character = before; character < position; character++) {
                 collecting.peek().add(walkingBytes
                         ? IntegerValue.of(text.charAt(character))
@@ -774,8 +689,6 @@ public final class StringParser {
         if (position - before != 1) {
             return sliceFrom(before);
         }
-        // One byte is its number and one character is itself, which is
-        // what a real R3 answers for `set v skip` either way round.
         return walkingBytes
                 ? IntegerValue.of(text.charAt(before))
                 : CharacterValue.of(text.charAt(before));
@@ -807,10 +720,6 @@ public final class StringParser {
      */
     private void refuseWrongIntoTarget(Value target) {
         Datatype kind = target.datatype();
-        // A parse whose input this walker never recorded says nothing
-        // about what a binary target can hold, so only a target it
-        // positively contradicts is refused. Guessing "string" instead
-        // turned away `collect into a` on a perfectly ordinary binary.
         Datatype parsing = source == null ? null : source.datatype();
         boolean suits = kind == Datatype.BLOCK || kind == Datatype.PAREN
                 || kind == Datatype.HASH
@@ -884,9 +793,6 @@ public final class StringParser {
             return matchValue(word);
         }
         Value named = target.slotFor(word.canonical()).value();
-        // `if (VAL_TYPE(item) <= REB_UNSET || VAL_TYPE(item) >= REB_NATIVE)
-        // goto bad_rule;` -- a word naming an unset or a function is no
-        // rule at all, and the error names the word as written.
         if (named instanceof UnsetValue || named.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, (Value) word);
         }
@@ -930,22 +836,10 @@ public final class StringParser {
         while (true) {
             int before = position;
             int wasLong = text.length();
-            // Through matchOne, so the rule being repeated gets the same
-            // treatment as one at the top level -- a word that names a
-            // rule is resolved rather than matched as its own text.
-            //
-            // A round gets somewhere when the position moved OR the input
-            // got shorter. REMOVE takes what it matched out and leaves the
-            // position where it was, so reading progress as "the position
-            // moved" ends the repeat after one round and makes
-            // `parse "aa" [some [remove "a"]]` false. The block walk has
-            // always had this test; this one had half of it.
             int consumed;
             try {
                 consumed = matchOne(rules, at + 1);
             } catch (RepeatEnded ended) {
-                // What matched before the BREAK stands, and this round
-                // counts, so `some [skip break]` has matched once.
                 matched++;
                 break;
             }
@@ -953,9 +847,6 @@ public final class StringParser {
                 position = before;
                 break;
             }
-            // A round that matched without advancing counts first --
-            // `count++` precedes the no-progress break -- so
-            // `parse "" [some [(a: true)]]` succeeds with one round.
             matched++;
             if (position == before && text.length() == wasLong) {
                 break;
@@ -971,9 +862,6 @@ public final class StringParser {
             throw Raised.of(EvaluationFailure.PARSE_END,
                     "opt has no rule after it to apply to");
         }
-        // Through matchOne, so a word after OPT is resolved to the rule it
-        // names -- `if (IS_WORD(item)) item = Get_Var(item);` -- and a
-        // grammar can recurse through `opt tags`.
         int before = position;
         if (matchOne(rules, at + 1) == NO_MATCH) {
             position = before;
@@ -994,10 +882,6 @@ public final class StringParser {
             position = text.length();
             return 2;
         }
-        // A whole number after TO or THRU is a place rather than
-        // something to look for: `to 3` goes to the third item and
-        // `thru 3` goes past it. Counted from the head, so it can move
-        // backwards -- `"ab" to 1` returns to the start.
         if (wanted instanceof IntegerValue where) {
             long asked = where.magnitude() - (past ? 0 : 1);
             if (asked < 0 || asked > text.length()) {
@@ -1006,9 +890,6 @@ public final class StringParser {
             position = (int) asked;
             return 2;
         }
-        // Anything else that is not a value to look for is a rule these
-        // cannot use. A real R3 refuses `thru some "0"` and `thru 1.2`
-        // rather than searching for the text of them.
         if (wanted instanceof DecimalValue
                 || (wanted instanceof WordValue marker
                         && (marker.datatype() == Datatype.GET_WORD
@@ -1020,13 +901,6 @@ public final class StringParser {
                     "to and thru take a place or something to look for, not "
                             + Molder.mold(wanted));
         }
-        // TO and THRU take a whole rule, not only a value: `thru [x | y]`
-        // walks forward until either alternative matches. Reading the
-        // target as text made every such rule fail, because a block has
-        // no text form that appears in the input.
-        //
-        // A bitset is the same idea seen from the other side and was
-        // already reached through matchValue; both go through it now.
         if (wanted instanceof BlockValue || wanted instanceof BitsetValue) {
             for (int from = position; from <= text.length(); from++) {
                 position = from;
@@ -1087,8 +961,6 @@ public final class StringParser {
         for (int step = 0; step < codepoints.length; step++) {
             insertIntoSource(source.index() + position + step, codepoints[step]);
         }
-        // The parser walks a snapshot of the text, so it has to be taken
-        // again after the series underneath has changed.
         this.text = textOfSeries(source);
         position += codepoints.length;
         return 2;
@@ -1123,8 +995,6 @@ public final class StringParser {
         if (rule instanceof BlockValue nested) {
             return matchSequence(nested.remaining());
         }
-        // A bitset matches one character that is in it, which is how a
-        // rule says "any of these" without writing them as alternatives.
         if (rule instanceof BitsetValue members) {
             if (position >= text.length() || !bitsetHolds(members, text.charAt(position))) {
                 return false;
@@ -1142,20 +1012,12 @@ public final class StringParser {
     }
 
     private static String textOf(Value value) {
-        // A tag stands for its brackets and all. `form <a>` is "a" and
-        // what the input holds is "<a>", so matching on the formed text
-        // found the letter on its own -- stopping a character early, or
-        // finding a letter that was never part of a tag at all.
         if (value.datatype() == Datatype.TAG) {
             return Molder.mold(value);
         }
         if (value instanceof StringValue text) {
             return text.text();
         }
-        // A binary written as a rule stands for its bytes, not for the
-        // text "01" that MOLD would give. Left to MOLD, `parse #{01}
-        // [#{01}]` compared one byte against two characters and never
-        // matched.
         if (value instanceof BinaryValue bytes) {
             return textOfSeries(bytes);
         }

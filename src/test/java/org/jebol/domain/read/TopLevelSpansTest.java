@@ -87,27 +87,18 @@ class TopLevelSpansTest {
     @Test
     @DisplayName("source the reader refuses has no spans rather than some")
     void unreadableSourceGivesNone() {
-        // Half a file's expressions would let a caller run half a script,
-        // which is the same reason TranscodeResult has no partial case.
         assertThat(textsOf("[1 2")).isEmpty();
     }
 
     @Test
     @DisplayName("construction syntax is one span, not one per part")
     void constructionSyntaxIsNotSplit() {
-        // #(...) re-enters the same walk with a terminator of its own, and
-        // the stack is empty inside that call too. Treating it as the top
-        // level gave five extra spans in one file and no value to pair
-        // them with.
         assertThat(textsOf("#(true) 1")).containsExactly("#(true)", "1");
     }
 
     @Test
     @DisplayName("a character above the Basic Multilingual Plane does not shift the cut")
     void astralCharactersDoNotMisalignTheSpans() {
-        // The walk counts code points; String.substring counts UTF-16
-        // units. An emoji is two units and one code point, so anything
-        // after it lands in the wrong place if the two are mixed.
         assertThat(textsOf("\"a\uD83D\uDE00b\" second"))
                 .containsExactly("\"a\uD83D\uDE00b\"", "second");
     }
