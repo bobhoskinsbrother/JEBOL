@@ -1,0 +1,209 @@
+--- title The templates under system/standard
+--- about A script builds its own values from these: an error, a script
+--- about record, a port spec, a font. boot/sysobj.reb declares
+--- about twenty-nine of them and the C compiles that into the boot
+--- about block, so their existence is the interpreter's own work.
+--- about
+--- about What is here is the REBOL half: the templates a borrowed
+--- about REBOL file fills after the declaration, and what a script
+--- about does with any of them. The Java side asserts the shapes,
+--- about because that is the side that has to build them.
+--- about
+--- about Written after seventeen of the twenty-nine turned out to be
+--- about missing with nothing testing any of it. Rebol's own suite
+--- about never asks the SYSTEM object anything.
+--- about
+--- about Every result below was run on a real 3.22.1 before being
+--- about written down. That caught four wrong expectations out of
+--- about twenty-two, all of them a guess about which layer fills a
+--- about slot: font and para are none without VID, and bincode and
+--- about utype are objects where sysobj.reb declares none.
+
+--- id system-standard/a-template-is-an-object
+--- origin boot/sysobj.reb, the standard object
+--- code
+object? system/standard/script
+--- result
+#(true)
+
+--- id system-standard/make-over-a-template-answers-an-object
+--- origin sys-base.reb line 132, which is how DO builds system/script
+--- code
+object? make system/standard/script [title: "a title"]
+--- result
+#(true)
+
+--- id system-standard/make-over-a-template-keeps-its-words
+--- origin boot/sysobj.reb, script: construct [title header parent path args]
+--- code
+mold words-of make system/standard/script [title: "a title"]
+--- result
+"[title header parent path args]"
+
+--- id system-standard/a-field-set-through-make-holds-what-was-given
+--- origin sys-base.reb line 132
+--- code
+s: make system/standard/script [title: "a title"]
+s/title
+--- result
+"a title"
+
+--- id system-standard/a-field-not-set-stays-none
+--- note A template is a record of empty slots, so what MAKE leaves
+--- note alone reads as none rather than raising.
+--- origin boot/sysobj.reb
+--- code
+s: make system/standard/script [title: "a title"]
+none? s/args
+--- result
+#(true)
+
+--- id system-standard/make-does-not-change-the-template
+--- note The one property that makes a template reusable. A MAKE that
+--- note wrote through would give the next caller the last caller's
+--- note values.
+--- origin boot/sysobj.reb
+--- code
+make system/standard/script [title: "changed"]
+none? system/standard/script/title
+--- result
+#(true)
+
+--- id system-standard/do-builds-its-script-record-this-way
+--- note The whole line from sys-base.reb, which is Rebol's own DO.
+--- origin sys-base.reb lines 132 to 138
+--- code
+s: make system/standard/script compose [
+    title: "a title"
+    header: none
+    parent: none
+    path: none
+    args: none
+]
+mold words-of s
+--- result
+"[title header parent path args]"
+
+--- id system-standard/the-error-template-names-what-an-error-carries
+--- origin boot/sysobj.reb, error: construct [code type id arg1 arg2 arg3 near where]
+--- code
+mold words-of system/standard/error
+--- result
+"[code type id arg1 arg2 arg3 near where]"
+
+--- id system-standard/a-raised-error-carries-the-templates-fields
+--- note The template is only worth having if a real error matches it.
+--- origin boot/sysobj.reb and boot/errors.reb together
+--- code
+e: try [1 / 0]
+all [
+    true? find words-of system/standard/error 'code
+    true? find words-of system/standard/error 'id
+    true? find words-of system/standard/error 'near
+    e/id = 'zero-divide
+]
+--- result
+#(true)
+
+--- id system-standard/a-port-spec-derives-from-the-head
+--- note port-spec-file is `make port-spec-head [path]`, so it carries
+--- note the head's three words before its own one.
+--- origin boot/sysobj.reb
+--- code
+mold words-of system/standard/port-spec-file
+--- result
+"[title scheme ref path]"
+
+--- id system-standard/a-derived-spec-is-its-own-object
+--- note MAKE over a prototype copies rather than aliases, or writing
+--- note one port's spec would write every port's.
+--- origin boot/sysobj.reb
+--- code
+same? system/standard/port-spec-head system/standard/port-spec-file
+--- result
+#(false)
+
+--- id system-standard/enum-is-filled-by-a-borrowed-rebol-file
+--- note sysobj.reb declares `enum: none` and mezz-func.reb line 110
+--- note replaces it with an object. This is the layer rule working:
+--- note the interpreter declares the slot and REBOL fills it.
+--- origin mezz-func.reb line 110
+--- code
+object? system/standard/enum
+--- result
+#(true)
+
+--- id system-standard/enum-carries-what-mezz-func-gives-it
+--- origin mezz-func.reb line 110
+--- code
+mold words-of system/standard/enum
+--- result
+"[title* assert name]"
+
+--- id system-standard/enum-is-what-the-enum-function-builds-from
+--- note Which is why the template is there rather than the object
+--- note being built inline: ENUM makes one per call.
+--- origin mezz-func.reb line 105
+--- code
+object? make system/standard/enum [name: 'colours]
+--- result
+#(true)
+
+--- id system-standard/font-is-none-without-vid
+--- note Six entries here asserted that font and para are objects,
+--- note filled by view-funcs.reb. The binary says otherwise: that
+--- note file is in vid-files in make/pre-make.r3 and is included only
+--- note when include-vid is set, so a stock 3.22.1 answers none and
+--- note has no VIEW at all. JEBOL loads the file unconditionally,
+--- note which is a fork to settle rather than a result to assert.
+--- origin confirmed against R3 3.22.1 (Rebol/Bulk, 2026-05-27)
+--- code
+none? system/standard/font
+--- result
+#(true)
+
+--- id system-standard/para-is-none-without-vid
+--- origin confirmed against R3 3.22.1 (Rebol/Bulk, 2026-05-27)
+--- code
+none? system/standard/para
+--- result
+#(true)
+
+--- id system-standard/bincode-is-an-object-the-c-fills
+--- note Declared `bincode: none` in sysobj.reb and replaced by the
+--- note base-code block at u-bincode.c line 178. So a stock build
+--- note answers an object, and this one is the C's rather than a
+--- note REBOL file's.
+--- origin confirmed against R3 3.22.1 (Rebol/Bulk, 2026-05-27)
+--- code
+mold words-of system/standard/bincode
+--- result
+"[type buffer buffer-write r-mask w-mask]"
+
+--- id system-standard/every-template-is-reachable-by-path
+--- note The list from boot/sysobj.reb, in its own order. A missing
+--- note one raises invalid-path rather than answering none, so this
+--- note names the first gap.
+--- origin boot/sysobj.reb, the standard object
+--- code
+found: copy []
+foreach name [
+    codec enum error script header scheme port
+    port-spec-head port-spec-file port-spec-net port-spec-checksum
+    port-spec-crypt port-spec-midi port-spec-serial port-spec-audio
+    file-info net-info console-info vector-info date-info handle-info
+    midi-info extension stats type-spec bincode utype font para
+] [
+    unless find words-of system/standard name [append found name]
+]
+mold found
+--- result
+"[]"
+
+--- id system-standard/there-are-twenty-nine-of-them
+--- note So a field invented here shows up as well as one missing.
+--- origin boot/sysobj.reb, the standard object
+--- code
+length? words-of system/standard
+--- result
+29
