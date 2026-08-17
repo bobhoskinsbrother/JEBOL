@@ -406,8 +406,8 @@ public final class Natives {
         catalog.set("bitsets", new ObjectValue(bitsets));
 
         catalog.set("handles", BlockValue.block(List.of(
-                WordValue.of(RC4_HANDLE_TYPE), WordValue.of(RSA_HANDLE_TYPE),
-                WordValue.of("codec"))));
+                WordValue.of(RC4_HANDLE_TYPE), WordValue.of(DHM_HANDLE_TYPE),
+                WordValue.of(RSA_HANDLE_TYPE), WordValue.of("codec"))));
 
         catalog.set("event-types", EventCatalogue.typesBlock());
         catalog.set("event-keys", EventCatalogue.keysBlock());
@@ -3646,6 +3646,50 @@ public final class Natives {
         define("form-oid", List.of(Parameter.required("oid", Set.of(Datatype.BINARY))),
                 (arguments, evaluator, context) -> StringValue.of(objectIdentifierWritten(
                         ((BinaryValue) arguments.getFirst()).octetsFromHere())));
+
+        define("dh-init", List.of(
+                        Parameter.required("g", Set.of(Datatype.BINARY)),
+                        Parameter.required("p", Set.of(Datatype.BINARY))),
+                (arguments, evaluator, context) -> DiffieHellmanKey.generatedFor(
+                                ((BinaryValue) arguments.get(0)).octetsFromHere(),
+                                ((BinaryValue) arguments.get(1)).octetsFromHere())
+                        .<Value>map(key -> HandleValue.context(DHM_HANDLE_TYPE,
+                                nextCipherIdentity(), JavaObjectValue.of(key)))
+                        .orElseGet(NoneValue::none));
+
+        define("dh", List.of(
+                        Parameter.required("dh-key", Set.of(Datatype.HANDLE)),
+                        Parameter.belongingTo("secret", "public-key",
+                                Set.of(Datatype.BINARY))),
+                Set.of("public", "secret"),
+                (arguments, evaluator, context, refinements) -> {
+                    if (refinements.contains("public") && refinements.contains("secret")) {
+                        throw Raised.of(EvaluationFailure.BAD_REFINES,
+                                "dh publishes or agrees, not both");
+                    }
+                    if (!(arguments.getFirst() instanceof HandleValue held)
+                            || !DHM_HANDLE_TYPE.equals(held.typeName())
+                            || !(held.payload() instanceof JavaObjectValue carried)
+                            || !(carried.held().orElse(null) instanceof DiffieHellmanKey key)) {
+                        return NoneValue.none();
+                    }
+                    if (refinements.contains("public")) {
+                        return BinaryValue.of(unsignedOctets(key.published()));
+                    }
+                    if (refinements.contains("secret")) {
+                        return key.agreedWith(((BinaryValue) arguments.get(1))
+                                        .octetsFromHere())
+                                .<Value>map(secret -> BinaryValue.of(unsignedOctets(secret)))
+                                .orElseGet(NoneValue::none);
+                    }
+                    // Neither refinement. The C reaches `return R_RET` without
+                    // having written the return slot, so a real 3.22.1 hands
+                    // back whatever that memory held -- a binary of nothing in
+                    // particular, and a crash when two contexts were built in
+                    // one expression. None is what the rest of this family
+                    // answers when asked to do nothing.
+                    return NoneValue.none();
+                });
 
         define("rsa-init", List.of(
                         Parameter.required("n", Set.of(Datatype.BINARY)),
@@ -9768,6 +9812,8 @@ public final class Natives {
     private static final String RC4_HANDLE_TYPE = "rc4";
 
     private static final String RSA_HANDLE_TYPE = "rsa";
+
+    private static final String DHM_HANDLE_TYPE = "dhm";
 
     /** The four things RSA does, exactly one of which a caller must name. */
     private static final List<String> RSA_ACTIONS =

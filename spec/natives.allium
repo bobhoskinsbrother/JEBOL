@@ -8880,3 +8880,91 @@ rule RsaReadsAStringAsItsBytes {
     requires: data.is_any_string
     ensures: the_bytes_operated_on = the_utf8_of(data)
 }
+
+-- Diffie-Hellman is the third of these pairs: DH-INIT makes a key and DH uses
+-- it, once to publish and once to agree.
+--
+-- What it is for is worth stating, because the shape follows from it. Two
+-- parties who have never met need a shared secret over a line anyone can
+-- read. Each makes a private number, publishes something derived from it, and
+-- combines the other's published value with their own private one. Both
+-- arrive at the same secret and a listener who saw both published values
+-- cannot work it out. So a context here is not a key a caller supplies -- it
+-- is a key the interpreter generates, and the private half never leaves it.
+rule DhInitGeneratesAKeyPairInAContext {
+    when: EvaluateCall(dh_init, generator, field_prime)
+    requires: the_parameters_are_usable()
+
+    ensures: CallResult(datatype: handle)
+    ensures: CallResult(value: a_context_handle_of_type(dhm))
+}
+
+-- Parameters that cannot carry an exchange answer NONE, as RSA-INIT does for
+-- numbers that are not a key. The C bounds the prime's width and gives up
+-- outside it.
+rule DhInitAnswersNoneWhenTheParametersWillNotDo {
+    when: EvaluateCall(dh_init, generator, field_prime)
+    requires: not the_parameters_are_usable()
+    ensures: CallResult(value: none)
+}
+
+-- Two contexts made from one pair of parameters hold different private
+-- numbers, which is the whole point: a generated key that repeated would give
+-- every party the same secret.
+rule EachDhContextHoldsItsOwnPrivateNumber {
+    when: making_two_contexts_from_one_pair_of_parameters()
+    ensures: their_published_values_differ = true
+}
+
+-- /PUBLIC hands out the value to send, and hands out the same one every time
+-- it is asked. It is derived from the private number, so a context that
+-- published two different values would have changed key underneath its owner.
+rule DhPublicAnswersTheValueToSendAndDoesNotChangeIt {
+    when: EvaluateCall(dh, dh_key)
+    requires: the_call_asked_for_public()
+
+    ensures: CallResult(datatype: binary)
+    ensures: length_of(result) = the_field_prime_width(dh_key)
+    ensures: asking_again_gives_the_same_value = true
+}
+
+-- /SECRET combines the peer's published value with the private number, and
+-- both sides reach the same answer. That is the property the whole exchange
+-- exists for and the only one worth testing.
+rule DhSecretReachesTheSameSecretOnBothSides {
+    when: each_side_combines_the_others_public_value()
+    ensures: the_two_secrets_are_equal = true
+}
+
+-- Naming both is refused before anything is computed.
+rule DhRefusesBothRefinementsAtOnce {
+    when: EvaluateCall(dh, dh_key)
+    requires: the_call_asked_for_public()
+    requires: the_call_asked_for_secret()
+    ensures: CallFails(error: bad_refines)
+}
+
+-- Naming neither answers NONE.
+--
+-- The C does something else, and this is a place not to follow it. Its
+-- branches are `if (refPublic)` and `if (refSecret)`, and with neither taken
+-- it reaches `return R_RET` having never written the return slot -- so a real
+-- 3.22.1 hands back whatever that memory held. Observed: a binary of nothing
+-- in particular, and a crash when two contexts were built in the same
+-- expression. Reading uninitialised memory is not a rule to port; none is
+-- what the rest of this family answers when asked to do nothing.
+rule DhWithNoRefinementAnswersNone {
+    when: EvaluateCall(dh, dh_key)
+    requires: not the_call_asked_for_public()
+    requires: not the_call_asked_for_secret()
+    ensures: CallResult(value: none)
+}
+
+-- A handle of another type answers NONE rather than raising, which is where
+-- this differs from RC4 and RSA. The C says so and doubts itself in the same
+-- line: `return R_NONE; //or? Trap0(RE_INVALID_HANDLE);`
+rule DhAnswersNoneForAHandleOfAnotherType {
+    when: EvaluateCall(dh, dh_key)
+    requires: dh_key.handle_type != dhm
+    ensures: CallResult(value: none)
+}
