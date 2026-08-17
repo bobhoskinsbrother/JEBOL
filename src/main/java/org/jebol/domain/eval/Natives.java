@@ -9966,6 +9966,18 @@ public final class Natives {
         }
     }
 
+    /**
+     * The schemes this build has an actor for.
+     *
+     * <p>A scheme is a doorway to something outside the interpreter, and
+     * registering one that leads nowhere is worse than leaving it out: a
+     * script reads {@code system/schemes} to find what it can open, and a
+     * name there is a promise. So this lists what JEBOL really serves and
+     * grows only when an actor does.
+     */
+    private static final Set<String> SCHEMES_THIS_BUILD_SERVES =
+            Set.of("console", "tcp", "dns");
+
     /** The types a cipher context publishes. */
     private static final String RC4_HANDLE_TYPE = "rc4";
 
@@ -12626,10 +12638,10 @@ public final class Natives {
                             ? scheme.context().ownSlotFor("name").value()
                             : NoneValue.none();
                     if (!(named instanceof WordValue name)
-                            || !name.canonical().equals("console")) {
+                            || !SCHEMES_THIS_BUILD_SERVES.contains(name.canonical())) {
                         return NoneValue.none();
                     }
-                    scheme.context().set("actor", WordValue.of("console"));
+                    scheme.context().set("actor", WordValue.of(name.canonical()));
                     return LogicValue.of(true);
                 });
 
@@ -12649,6 +12661,9 @@ public final class Natives {
                                 "nothing knows how to open that");
                     }
                     requireServiceForScheme(port.schemeName());
+                    if (port.schemeName().equals("tcp")) {
+                        connectTheTcpPort(port, evaluator);
+                    }
                     port.markOpen(true);
                     return port;
                 });
@@ -13095,14 +13110,52 @@ public final class Natives {
      * must be able to tell that from an empty line.
      */
     private Value readFromPort(PortValue port, Evaluator evaluator) {
-        if (!port.schemeName().equals("console")) {
-            throw Raised.of(EvaluationFailure.NO_SERVICE,
+        return switch (port.schemeName()) {
+            case "console" -> lineReadFromTheConsole(evaluator);
+            case "tcp" -> bytesReadFromTheConnection(port);
+            case "dns" -> addressesOfTheNameThePortNames(port, evaluator);
+            default -> throw Raised.of(EvaluationFailure.NO_SERVICE,
                     "nothing here reads the " + port.schemeName() + " scheme");
-        }
+        };
+    }
+
+    private Value lineReadFromTheConsole(Evaluator evaluator) {
         requireService(HostService.CONSOLE);
         return throughPort(() -> {
             String line = evaluator.console().readLine();
             return line == null ? NoneValue.none() : StringValue.of(line);
+        });
+    }
+
+    /**
+     * The bytes that have arrived on a connection.
+     *
+     * <p>An empty binary means the other end has finished and closed, which
+     * is how a reader knows to stop rather than waiting for ever.
+     */
+    private Value bytesReadFromTheConnection(PortValue port) {
+        requireService(HostService.NETWORK);
+        NetworkPort.Connection connection = connectionBehind(port);
+        return throughNetwork(() -> BinaryValue.of(unsignedOctets(connection.read())));
+    }
+
+    /**
+     * The addresses a name stands for, or none.
+     *
+     * <p>None rather than a failure, because "there is no such host" is a
+     * true answer a script has to act on and one it will meet often. The
+     * refusal is for the service not being granted, and it has already
+     * happened by here.
+     */
+    private Value addressesOfTheNameThePortNames(PortValue port, Evaluator evaluator) {
+        requireService(HostService.NETWORK);
+        String hostName = hostNamedBy(port);
+        return throughNetwork(() -> {
+            List<String> found = evaluator.network().addressesFor(hostName);
+            return found.isEmpty()
+                    ? NoneValue.none()
+                    : BlockValue.block(found.stream()
+                            .<Value>map(StringValue::of).toList());
         });
     }
 
@@ -13908,12 +13961,28 @@ public final class Natives {
     }
 
     private Value writeToPort(PortValue port, Value data, Evaluator evaluator) {
-        if (!port.schemeName().equals("console")) {
-            throw schemeRefusal("writes", port);
-        }
+        return switch (port.schemeName()) {
+            case "console" -> writtenToTheConsole(port, data, evaluator);
+            case "tcp" -> sentDownTheConnection(port, data);
+            default -> throw schemeRefusal("writes", port);
+        };
+    }
+
+    private Value writtenToTheConsole(
+            PortValue port, Value data, Evaluator evaluator) {
         requireService(HostService.CONSOLE);
         evaluator.output().write(Molder.form(data));
         return port;
+    }
+
+    /** Sends bytes and answers the port, so writes chain as a caller expects. */
+    private Value sentDownTheConnection(PortValue port, Value data) {
+        requireService(HostService.NETWORK);
+        NetworkPort.Connection connection = connectionBehind(port);
+        return throughNetwork(() -> {
+            connection.write(octetsOf(data));
+            return port;
+        });
     }
 
     private static Set<Datatype> asTypeOrExample() {
@@ -14020,6 +14089,7 @@ public final class Natives {
         switch (scheme) {
             case "console" -> requireService(HostService.CONSOLE);
             case "file", "dir" -> requireService(HostService.FILES);
+            case "tcp", "dns" -> requireService(HostService.NETWORK);
             default -> {
                 throw Raised.of(EvaluationFailure.NO_SERVICE,
                         scheme.isEmpty()
@@ -14290,6 +14360,98 @@ public final class Natives {
      * catalogue's {@code "reason:" :arg2} reduces to the number 3.
      */
     private static final int OPEN_FAILED = 3;
+
+    /**
+     * Makes the connection a TCP port stands for, and keeps it in the port.
+     *
+     * <p>In EXTRA, which sysobj.reb describes as "the host's own storage" --
+     * exactly what a socket is. The port then reads and writes through it,
+     * and CLOSE gives it back.
+     */
+    private void connectTheTcpPort(PortValue port, Evaluator evaluator) {
+        String host = hostNamedBy(port);
+        int number = portNumberOf(port);
+        throughNetwork(() -> {
+            port.setField("extra", JavaObjectValue.of(
+                    evaluator.network().connectTo(host, number)));
+            return port;
+        });
+    }
+
+    /**
+     * Which numbered port a spec names, or the one its scheme is known by.
+     *
+     * <p>A URL need not say: {@code tcp://example.com} is a whole address to
+     * a person and half of one to a socket, and the well-known number is what
+     * fills the gap.
+     */
+    private static int portNumberOf(PortValue port) {
+        if (port.fieldNamed("spec") instanceof ObjectValue spec
+                && spec.context().holds("port")
+                && spec.context().ownSlotFor("port").value()
+                        instanceof IntegerValue given) {
+            return (int) given.magnitude();
+        }
+        return NetworkPort.wellKnownPortFor(port.schemeName()).orElse(0);
+    }
+
+    /**
+     * Turns a network refusal into an ordinary error a script can catch.
+     *
+     * <p>The same shape {@link #throughPort} gives a filesystem refusal: the
+     * adapter throws its own kind and nothing of the host's escapes into a
+     * script.
+     */
+    private static Value throughNetwork(Supplier<Value> operation) {
+        try {
+            return operation.get();
+        } catch (NetworkPort.Refused refused) {
+            throw new Raised(ErrorValue.about(ErrorCategory.ACCESS,
+                    refused.errorId(), refused.getMessage(),
+                    StringValue.of(refused.subject()),
+                    IntegerValue.of(OPEN_FAILED)));
+        }
+    }
+
+    /**
+     * The connection a TCP port is holding, or a refusal saying it has none.
+     *
+     * <p>A port that was never opened, or has been closed, has nothing to
+     * read from -- and saying so is better than answering no bytes, which a
+     * caller cannot tell from a quiet connection.
+     */
+    private static NetworkPort.Connection connectionBehind(PortValue port) {
+        if (port.fieldNamed("extra") instanceof JavaObjectValue carried
+                && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
+            return open;
+        }
+        throw Raised.of(EvaluationFailure.NOT_OPEN, port.schemeName());
+    }
+
+    /**
+     * The host a port's spec names.
+     *
+     * <p>From the spec's HOST field where there is one, and from its REF
+     * otherwise -- a DNS port is usually opened as {@code dns://name} and the
+     * name is all of it.
+     */
+    private static String hostNamedBy(PortValue port) {
+        if (port.fieldNamed("spec") instanceof ObjectValue spec) {
+            if (spec.context().holds("host")
+                    && spec.context().ownSlotFor("host").value()
+                            instanceof StringValue named) {
+                return named.text();
+            }
+            if (spec.context().holds("ref")
+                    && spec.context().ownSlotFor("ref").value()
+                            instanceof StringValue reference) {
+                String written = reference.text();
+                int afterScheme = written.indexOf("://");
+                return afterScheme < 0 ? written : written.substring(afterScheme + 3);
+            }
+        }
+        return "";
+    }
 
     /** Turns a port's refusal into an error the script can catch. */
     private static Value throughPort(Supplier<Value> operation) {

@@ -52,6 +52,12 @@ public final class Evaluator {
 
     /** How a script starts another program. Not at all, by default. */
     private ProcessPort processes = ProcessPort.none();
+
+    /**
+     * Where a script's network reaches. Nothing until a host says otherwise,
+     * for the same reason the filesystem is nothing until then.
+     */
+    private NetworkPort network = NetworkPort.none();
     private int stepsSinceLastCheck;
 
     /**
@@ -283,6 +289,14 @@ public final class Evaluator {
     /** How a script starts another program. Not at all, by default. */
     public ProcessPort processes() {
         return processes;
+    }
+
+    public NetworkPort network() {
+        return network;
+    }
+
+    public void useNetwork(NetworkPort port) {
+        this.network = port;
     }
 
     /** Gives the script a way to start another program. */

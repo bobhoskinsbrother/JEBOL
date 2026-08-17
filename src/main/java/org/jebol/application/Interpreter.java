@@ -97,6 +97,8 @@ public final class Interpreter {
         }
         run("sys/decode-url: lib/decode-url: :sys/url-parser/parse-url");
         run("sys/make-scheme [title: \"Console Access\" name: 'console]");
+        run("sys/make-scheme [title: \"TCP Networking\" name: 'tcp]");
+        run("sys/make-scheme [title: \"DNS Lookup\" name: 'dns]");
     }
 
     /** Where the REBOL half of the standard library lives. */
@@ -715,6 +717,11 @@ public final class Interpreter {
                     ErrorCategory.USER, "host-error",
                     name + " failed: " + thrown.getMessage()));
         }
+    }
+
+    /** Tells this interpreter where its script's network may reach. */
+    public void useNetwork(org.jebol.domain.eval.NetworkPort port) {
+        evaluator.useNetwork(port);
     }
 
     /** Gives the script a way to start another program. */

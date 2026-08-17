@@ -9493,3 +9493,61 @@ invariant EverythingInTheSchemesIsAScheme {
     for named in SystemSchemes:
         named.value.is_a_scheme_object = true
 }
+
+-- Looking a name up answers the addresses it stands for, or nothing.
+--
+-- Nothing rather than a failure, because "there is no such host" is a true
+-- answer a script has to act on, and one it will meet often. A refusal is for
+-- the service not being granted, which is a different thing and happens
+-- before the lookup.
+rule ResolvingANameAnswersItsAddressesOrNothing {
+    when: EvaluateCall(read, a_dns_url)
+    requires: service_granted(network)
+
+    ensures:
+        if the_name_is_known():
+            CallResult(value: the_addresses_it_stands_for())
+        else:
+            CallResult(value: none)
+}
+
+-- Opening a connection is a port like any other, so it is opened, read,
+-- written and closed by the same four words a file is.
+rule ATcpConnectionIsAPortLikeAnyOther {
+    when: EvaluateCall(open, a_tcp_url)
+    requires: service_granted(network)
+
+    ensures: CallResult(datatype: port)
+    ensures: the_port_answers_to(read, write, close, open?)
+}
+
+-- Reading a connection answers the bytes that have arrived, and blocks until
+-- some have. Writing sends bytes and answers the port, so writes chain.
+rule ReadingAConnectionAnswersBytesAndWritingAnswersThePort {
+    when: EvaluateCall(read, an_open_tcp_port)
+    ensures: CallResult(datatype: binary)
+}
+
+-- A connection that could not be made raises rather than answering none,
+-- which is where this differs from a name lookup. A name that is not there is
+-- an ordinary answer; a connection that was refused, timed out or was reset
+-- is a failure of the thing the script asked for.
+rule AConnectionThatCannotBeMadeRaises {
+    when: EvaluateCall(open, a_tcp_url)
+    requires: service_granted(network)
+    requires: not the_connection_can_be_made()
+
+    ensures: CallFails(error: cannot_connect)
+}
+
+-- Without the grant, every one of them refuses before anything is attempted.
+--
+-- Before, not during: a script with no network grant must not be able to tell
+-- whether a host exists by timing how long the refusal took.
+rule TheNetworkSchemesRefuseWithoutTheGrant {
+    when: EvaluateCall(open, a_network_url)
+    requires: not service_granted(network)
+
+    ensures: CallFails(error: no_service)
+    ensures: nothing_was_attempted() = true
+}

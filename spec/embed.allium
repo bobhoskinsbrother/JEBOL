@@ -239,6 +239,7 @@ enum WindowRequest {
 entity Interpreter {
     bounds: Bounds
     user_context: values/Context
+    network: NetworkPort
 
     runs: ScriptRun with interpreter = this
     active_runs: runs where status = running
@@ -721,3 +722,16 @@ open question "How often does the evaluator check whether it should stop? Every 
 open question "Is there a memory bound as well as a time bound? A script can allocate without nesting, so a depth limit does not stop it. Bounding heap per interpreter needs something the JVM does not offer directly."
 
 open question "What does a host see of a script's progress while it runs? Nothing at all is simplest; a partial result or a progress callback would need the boundary to be crossed while the script is still running, which the one-thread rule forbids."
+
+-- A host may let a script reach the network, and what that means is two
+-- different things.
+--
+-- Naming and carrying. Asking what host a name stands for is a lookup and
+-- costs one round trip; opening a connection and moving bytes over it is a
+-- conversation that lasts. They are separated here because a host may
+-- reasonably want the first without the second -- resolving a name leaks only
+-- the name, while a connection can carry anything.
+entity NetworkPort {
+    resolves_names: boolean
+    carries_connections: boolean
+}
