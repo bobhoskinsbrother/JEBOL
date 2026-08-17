@@ -167,6 +167,19 @@ prot-whois.reb
 repl-completion.reb
 repl-line-editor.reb
 repl-rebol-console.reb
-sys-ports-audio.reb
-sys-ports-midi.reb
 view-funcs.reb
+
+# sys-ports-audio.reb and sys-ports-midi.reb are deliberately not loaded,
+# for the same reason mezz-osx-dialogs.reb is not.
+#
+# Both end with `append/only system/schemes [title: ... name: ...]`, and in
+# a real R3 that appends to a BLOCK: init-schemes moves the pending schemes
+# aside, makes system/schemes an object, registers the common schemes and
+# only then works through what the optional files collected. JEBOL does not
+# run init-schemes -- it registers the one scheme it has an actor for --
+# so system/schemes is already an object when these load, and appending a
+# block of set-words to an object writes each set-word in as though it were
+# a scheme. That is how system/schemes/title came to answer "MIDI".
+#
+# Loading them would only be worth the trouble if JEBOL served audio or
+# MIDI ports, and it serves neither.

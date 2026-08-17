@@ -316,6 +316,31 @@ public final class Natives {
                 .toList());
     }
 
+    /**
+     * The sixty names actions.reb declares, in the order it declares them.
+     *
+     * <p>An action is the polymorphic kind of function, with an arm per
+     * datatype, and the list is a fact about Rebol's declarations rather than
+     * about this code. JEBOL answers native! for all of them, so nothing here
+     * could tell them apart without being told.
+     */
+    private static final List<String> ACTION_NAMES = List.of(
+            "add", "subtract", "multiply", "divide", "remainder", "power",
+            "and~", "or~", "xor~", "negate", "complement", "absolute", "round",
+            "random", "odd?", "even?", "head", "tail", "head?", "tail?",
+            "past?", "next", "back", "skip", "at", "atz", "index?", "indexz?",
+            "length?", "pick", "find", "select", "reflect", "make", "to",
+            "copy", "take", "put", "insert", "append", "remove", "change",
+            "poke", "clear", "trim", "swap", "reverse", "sort", "create",
+            "delete", "open", "close", "read", "write", "open?", "query",
+            "modify", "update", "rename", "flush");
+
+    /** A block of plain words, where typeNames would add a datatype suffix. */
+    private static BlockValue typeNamesWithoutSuffix(String... spellings) {
+        return BlockValue.block(java.util.Arrays.stream(spellings)
+                .<Value>map(WordValue::of).toList());
+    }
+
     /** A set holding exactly the characters of a string. */
     private static BitsetValue charactersIn(String characters) {
         return BitsetValue.ofCharacters(characters.chars().toArray());
@@ -410,6 +435,39 @@ public final class Natives {
         // function", so an empty map here is the finished state and not a
         // gap.
         catalog.set("structs", MapValue.empty());
+
+        // The two halves of the function set this interpreter carries in its
+        // host language. The split is Rebol's declaration rather than a fact
+        // about the code here -- JEBOL answers native! for both where a real
+        // R3 answers action! for the sixty -- so actions.reb is the authority
+        // for which name is which.
+        catalog.set("actions", BlockValue.block(ACTION_NAMES.stream()
+                .filter(definitions::containsKey)
+                .<Value>map(WordValue::of).toList()));
+
+        catalog.set("natives", BlockValue.block(definitions.keySet().stream()
+                .filter(named -> !ACTION_NAMES.contains(named))
+                .sorted()
+                .<Value>map(WordValue::of).toList()));
+
+        // What a boot flag may be, rather than what was passed. sysobj.reb
+        // says so on the line above it: "Official list of
+        // system/options/flags that can appear".
+        catalog.set("boot-flags", typeNamesWithoutSuffix(
+                "script", "args", "do", "import", "version", "debug", "secure",
+                "help", "vers", "quiet", "verbose", "secure-min", "secure-max",
+                "trace", "halt", "cgi", "boot-level", "no-window", "no-color",
+                "legacy-repl"));
+
+        // Empty, and empty is the answer rather than a missing field. A real
+        // 3.22.1 lists forty-two ciphers and fifteen resize filters, and both
+        // describe a port this build has not got: there is no block cipher
+        // here, and RESIZE samples one way with no choice of filter. Naming
+        // them would be the catalogue lying about what asking for one does,
+        // which is worse than an empty list -- a script reads a catalogue so
+        // it need not guess.
+        catalog.set("ciphers", BlockValue.block(List.of()));
+        catalog.set("filters", BlockValue.block(List.of()));
 
         catalog.set("elliptic-curves", BlockValue.block(
                 EllipticCurveKey.curveNames().stream()
@@ -549,6 +607,18 @@ public final class Natives {
                 "language", "language*", "locale", "locale*"}) {
             locale.set(field, NoneValue.none());
         }
+        // The words a date needs when it is written for a person to read.
+        // sysobj.reb holds both lists and the week begins at Monday there,
+        // which is what DATE's WEEKDAY counts from.
+        locale.set("months", BlockValue.block(java.util.stream.Stream.of(
+                        "January", "February", "March", "April", "May", "June",
+                        "July", "August", "September", "October", "November",
+                        "December")
+                .<Value>map(StringValue::of).toList()));
+        locale.set("days", BlockValue.block(java.util.stream.Stream.of(
+                        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+                        "Saturday", "Sunday")
+                .<Value>map(StringValue::of).toList()));
         system.set("locale", new ObjectValue(locale));
         Context codecs = Context.root();
         for (int at = 0; at < Codecs.REGISTERED.size(); at++) {
@@ -557,7 +627,13 @@ public final class Natives {
                     "codec", CODEC_HANDLE_IDENTITY + at, WordValue.of(named)));
         }
         system.set("codecs", new ObjectValue(codecs));
-        system.set("console", new ObjectValue(Context.root()));
+        // What the console is doing: the line being edited and the ones
+        // already entered. Both stay as they are until a console adapter
+        // fills them, which is the state a program with no console is in.
+        Context console = Context.root();
+        console.set("history", BlockValue.block(List.of()));
+        console.set("current", NoneValue.none());
+        system.set("console", new ObjectValue(console));
 
         Context internals = Context.childOf(systemContext);
         systemContext.set("native", NoneValue.none());
@@ -565,6 +641,11 @@ public final class Natives {
         Context contexts = Context.root();
         contexts.set("lib", new ObjectValue(systemContext));
         contexts.set("sys", new ObjectValue(internals));
+        // Declared and none, which is what a real 3.22.1 answers. Worth
+        // having as a field rather than absent: code walking the contexts
+        // finds three names, one of them holding nothing, instead of a path
+        // that fails.
+        contexts.set("root", NoneValue.none());
         system.set("contexts", new ObjectValue(contexts));
         this.systemInternals = internals;
         return new ObjectValue(system);

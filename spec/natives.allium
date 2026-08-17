@@ -9400,3 +9400,96 @@ rule TheDialectContextMayBeAnObjectABinaryOrASize {
     requires: ctx.datatype in [object, binary, integer, none]
     ensures: the_call_proceeds()
 }
+
+-- The catalogues under SYSTEM/CATALOG say what this interpreter has, so a
+-- script can ask rather than be told.
+--
+-- That is the whole point of them and it decides what goes in each. A
+-- catalogue naming something this build cannot do would be worse than an
+-- empty one: a script reads a catalogue precisely so it need not guess, and a
+-- list of ciphers nobody can use sends it down a path that fails later and
+-- further away.
+rule ACatalogueNamesWhatThisBuildCanActuallyDo {
+    when: ReadSystemCatalogue(name)
+    ensures: every_entry_is_something_this_build_performs()
+}
+
+-- ACTIONS and NATIVES are the two halves of the function set the interpreter
+-- carries in its host language, and the split is Rebol's declaration rather
+-- than a fact about the code here. actions.reb declares sixty and natives.reb
+-- the rest; an action is the polymorphic kind, with an arm per datatype.
+rule TheActionCatalogueNamesTheSixtyActionsRebolDeclares {
+    when: ReadSystemCatalogue(actions)
+    ensures: CallResult(datatype: block)
+    ensures: every_entry_is_declared_in(the_actions_file)
+}
+
+rule TheNativeCatalogueNamesTheRest {
+    when: ReadSystemCatalogue(natives)
+    ensures: CallResult(datatype: block)
+    ensures: no_entry_is_also_in(the_action_catalogue)
+}
+
+-- BOOT-FLAGS is a fixed list rather than a report: sysobj.reb declares it
+-- with the comment "Official list of system/options/flags that can appear",
+-- so it names what a flag may be and not what was passed.
+rule TheBootFlagCatalogueNamesWhatAFlagMayBe {
+    when: ReadSystemCatalogue(boot_flags)
+    ensures: CallResult(datatype: block)
+    ensures: the_entries_do_not_depend_on_how_the_interpreter_was_started()
+}
+
+-- CIPHERS and FILTERS are empty here, and empty is the honest answer rather
+-- than a missing field.
+--
+-- A real 3.22.1 lists forty-two ciphers and fifteen resize filters, and both
+-- lists describe a port this build has not got: there is no block cipher
+-- here, and RESIZE samples one way with no choice of filter. Naming them
+-- would be the catalogue lying about what asking for one would do. The field
+-- exists so a script reading it gets an empty list instead of a path failure,
+-- and it grows when the capability does.
+rule TheCipherAndFilterCataloguesAreEmptyUntilThereIsSomethingToName {
+    when: ReadSystemCatalogue(name)
+    requires: name in [ciphers, filters]
+    ensures: CallResult(datatype: block)
+    ensures: is_empty(result)
+}
+
+-- SYSTEM/LOCALE names the days and months, because a date formatted for a
+-- person needs words and the interpreter is where they live.
+rule TheLocaleNamesTheDaysAndMonths {
+    when: ReadSystemField(locale)
+    ensures: the_days_hold(seven_names_beginning_with_monday)
+    ensures: the_months_hold(twelve_names_beginning_with_january)
+}
+
+-- SYSTEM/CONSOLE carries what the console is doing: the line being edited and
+-- the lines already entered. Both are none and empty until a console adapter
+-- fills them, which is the state a program with no console at all is in.
+rule TheConsoleCarriesItsCurrentLineAndItsHistory {
+    when: ReadSystemField(console)
+    ensures: the_console_holds_a_field_called(current)
+    ensures: the_console_holds_a_field_called(history)
+}
+
+-- SYSTEM/CONTEXTS/ROOT is declared and is none, which is what a real 3.22.1
+-- answers. Worth having as a field rather than absent: code walking the
+-- contexts finds three names and one of them holding nothing, rather than a
+-- path that fails.
+rule TheRootContextIsDeclaredAndEmpty {
+    when: ReadSystemField(contexts)
+    ensures: the_contexts_hold_a_field_called(root)
+    ensures: the_root_context = none
+}
+
+-- SYSTEM/SCHEMES holds schemes and nothing else.
+--
+-- Stated because it was not true: the fields of a scheme -- title, name,
+-- spec, init, find -- had leaked in beside the schemes themselves, so
+-- `system/schemes/title` answered "MIDI". A script walking the schemes to see
+-- what it can open finds five things that are not schemes and cannot be
+-- opened.
+invariant EverythingInTheSchemesIsAScheme {
+    for named in SystemSchemes:
+        named.value.is_a_scheme_object = true
+}
