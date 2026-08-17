@@ -8659,3 +8659,92 @@ rule FormOidReadsFromThePosition {
     when: EvaluateCall(form_oid, oid)
     ensures: the_bytes_read = what_lies_at_and_after(oid.position)
 }
+
+-- RC4 is a stream cipher, and it is two calls rather than one: /KEY makes a
+-- context and /STREAM runs data through it.
+--
+-- The split exists because the cipher has state. RC4 mixes a key into a
+-- 256-byte permutation once, and every byte enciphered afterwards advances
+-- that permutation -- so the same key applied to two halves of a message
+-- gives a different answer from the key applied to the whole. A caller that
+-- had to hand the key in on every call could never encipher a stream, which
+-- is the one thing this cipher is for.
+--
+-- The context comes back as a HANDLE, which is what a script can hold and
+-- cannot look inside. Its only readable field is its type, and that type is
+-- RC4 -- see the rules about what a handle publishes.
+rule Rc4WithAKeyAnswersAStreamContext {
+    when: EvaluateCall(rc4, crypt_key)
+    requires: the_call_asked_for_key()
+
+    ensures: CallResult(datatype: handle)
+    ensures: CallResult(value: a_context_handle_of_type(rc4))
+}
+
+-- Enciphering rewrites the binary where it stands and answers that same
+-- binary rather than a fresh one.
+--
+-- `RC4_crypt(ctx, data, data, len)` reads and writes one buffer, and
+-- `DS_RET_VALUE(val_data)` hands back the argument. So a caller holding the
+-- binary sees it change, which is what the declaration's "(modifies)" is
+-- warning about, and there is no copy to compare against afterwards.
+rule Rc4StreamEnciphersInPlaceAndAnswersTheSameBinary {
+    when: EvaluateCall(rc4, context, data)
+    requires: the_call_asked_for_stream()
+
+    ensures: the_bytes_of(data) = enciphered_through(context, what_data_held)
+    ensures: CallResult(value: data)
+    ensures: the_answer_is_the_same_value_as(data)
+}
+
+-- It reads and writes from where the binary stands, so the bytes before the
+-- position are left as they were.
+rule Rc4StreamWorksFromThePosition {
+    when: EvaluateCall(rc4, context, data)
+    requires: the_call_asked_for_stream()
+
+    ensures: the_bytes_before(data.position) = unchanged
+}
+
+-- Because the permutation advances, a context is spent as it is used: the
+-- same key in a fresh context turns the ciphertext back into the plaintext,
+-- and the same context used twice does not.
+rule Rc4IsItsOwnInverseThroughAFreshContext {
+    when: enciphering_twice_through_two_contexts_made_from_one_key(plain)
+    ensures: the_result = plain
+}
+
+-- A handle of the wrong kind is refused by name rather than misread.
+--
+-- `NOT_VALID_CONTEXT_HANDLE(val_ctx, SYM_RC4)` tests the type the handle was
+-- registered under, so a codec's handle -- the other kind this build hands
+-- out -- raises invalid-handle rather than being treated as a cipher context.
+-- Worth stating because the alternative is not an error at all: reading a
+-- codec's payload as a permutation would encipher something, and the answer
+-- would be rubbish nobody could trace.
+rule Rc4RefusesAHandleOfAnotherType {
+    when: EvaluateCall(rc4, context, data)
+    requires: the_call_asked_for_stream()
+    requires: context.handle_type != rc4
+    ensures: CallFails(error: invalid_handle)
+}
+
+-- Asked for neither, it does nothing and answers nothing. Both refinements
+-- are optional in the declaration and the C's branch falls through to
+-- `return R_RET` with the return slot untouched.
+rule Rc4WithNoRefinementAnswersUnset {
+    when: EvaluateCall(rc4)
+    requires: not the_call_asked_for_key()
+    requires: not the_call_asked_for_stream()
+    ensures: CallResult(value: unset)
+}
+
+-- An empty key and empty data are both accepted rather than refused. There is
+-- a permutation for a key of no bytes, and enciphering nothing writes
+-- nothing, so neither is a mistake in the asking.
+rule Rc4AcceptsEmptyKeyAndEmptyData {
+    when: EvaluateCall(rc4, crypt_key)
+    requires: the_call_asked_for_key()
+    requires: is_empty(crypt_key)
+    ensures: CallResult(datatype: handle)
+}

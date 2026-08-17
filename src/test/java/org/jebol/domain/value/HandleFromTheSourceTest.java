@@ -78,8 +78,23 @@ class HandleFromTheSourceTest {
         @Test
         @DisplayName("and the kinds of handle are a catalogue, as an event's types are")
         void theKindsAreACatalogue() {
-            assertThat(answerTo("mold system/catalog/handles"))
-                    .isEqualTo("\"[codec]\"");
+            // Named rather than counted, so a kind arriving is progress
+            // instead of a failure. This asserted "[codec]" exactly, written
+            // when codecs were the only kind here; RC4 registers its cipher
+            // context beside them and a real 3.22.1 lists six.
+            assertThat(answerTo("true? find system/catalog/handles 'codec"))
+                    .isEqualTo("#(true)");
+            assertThat(answerTo("true? find system/catalog/handles 'rc4"))
+                    .isEqualTo("#(true)");
+        }
+
+        @Test
+        @DisplayName("and every kind in it is a word, as Register_Handle appends one")
+        void everyKindIsAWord() {
+            assertThat(answerTo("block? system/catalog/handles")).isEqualTo("#(true)");
+            assertThat(answerTo("""
+                    empty? remove-each k copy system/catalog/handles [word? k]"""))
+                    .isEqualTo("#(true)");
         }
 
         @Test

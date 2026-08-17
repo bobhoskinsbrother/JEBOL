@@ -367,13 +367,22 @@ public final class Natives {
                         .map(datatype -> (Value) DatatypeValue.of(datatype))
                         .toList()));
 
+        // The lists sysobj.reb declares, less vector! wherever it appears,
+        // because there is no such datatype here to name. base-defs.reb
+        // generates SPEC-OF, BODY-OF and the rest straight from this, so a
+        // datatype left out is a datatype the generated function refuses --
+        // which is how WORDS-OF came to turn away the handle whose only
+        // readable field is its type.
         catalog.set("reflectors", BlockValue.block(List.of(
-                WordValue.of("spec"), typeNames("any-function", "any-object", "datatype"),
-                WordValue.of("body"), typeNames("any-function", "any-object", "map"),
-                WordValue.of("words"), typeNames("any-function", "any-object", "map", "date"),
-                WordValue.of("values"), typeNames("any-object", "map"),
+                WordValue.of("spec"),
+                typeNames("any-function", "any-object", "datatype", "struct"),
+                WordValue.of("body"),
+                typeNames("any-function", "any-object", "map", "struct"),
+                WordValue.of("words"),
+                typeNames("any-function", "any-object", "map", "date", "handle", "struct"),
+                WordValue.of("values"), typeNames("any-object", "map", "struct"),
                 WordValue.of("types"), typeNames("any-function"),
-                WordValue.of("title"), typeNames("any-function", "datatype"))));
+                WordValue.of("title"), typeNames("any-function", "datatype", "module"))));
 
         Context bitsets = Context.root();
         bitsets.set("crlf", BitsetValue.ofCharacters('\r', '\n'));
@@ -396,7 +405,8 @@ public final class Natives {
         bitsets.set("quoted-printable", quotedPrintableOctets());
         catalog.set("bitsets", new ObjectValue(bitsets));
 
-        catalog.set("handles", BlockValue.block(List.of(WordValue.of("codec"))));
+        catalog.set("handles", BlockValue.block(List.of(
+                WordValue.of(RC4_HANDLE_TYPE), WordValue.of("codec"))));
 
         catalog.set("event-types", EventCatalogue.typesBlock());
         catalog.set("event-keys", EventCatalogue.keysBlock());
@@ -3636,6 +3646,32 @@ public final class Natives {
                 (arguments, evaluator, context) -> StringValue.of(objectIdentifierWritten(
                         ((BinaryValue) arguments.getFirst()).octetsFromHere())));
 
+        define("rc4", List.of(
+                        Parameter.belongingTo("key", "crypt-key", Set.of(Datatype.BINARY)),
+                        Parameter.belongingTo("stream", "ctx", Set.of(Datatype.HANDLE)),
+                        Parameter.belongingTo("stream", "data", Set.of(Datatype.BINARY))),
+                Set.of("key", "stream"),
+                (arguments, evaluator, context, refinements) -> {
+                    // No required arguments, so the list holds exactly the
+                    // asked-for refinements' arguments in declaration order:
+                    // crypt-key first when /KEY was named, then ctx and data
+                    // when /STREAM was.
+                    int streamBeginsAt = refinements.contains("key") ? 1 : 0;
+                    if (refinements.contains("stream")) {
+                        return encipheredThroughTheStream(
+                                (HandleValue) arguments.get(streamBeginsAt),
+                                (BinaryValue) arguments.get(streamBeginsAt + 1));
+                    }
+                    if (refinements.contains("key")) {
+                        return HandleValue.context(RC4_HANDLE_TYPE,
+                                nextCipherIdentity(),
+                                JavaObjectValue.of(StreamCipher.keyedWith(
+                                        ((BinaryValue) arguments.getFirst())
+                                                .octetsFromHere())));
+                    }
+                    return UnsetValue.unset();
+                });
+
         define("utf?", List.of(Parameter.required("data", Set.of(Datatype.BINARY))),
                 (arguments, evaluator, context) -> IntegerValue.of(
                         byteOrderMarkOf(((BinaryValue) arguments.getFirst())
@@ -4075,6 +4111,20 @@ public final class Natives {
                             case "words" -> BlockValue.block(map.keys());
                             case "values" -> BlockValue.block(map.values());
                             case "body" -> BlockValue.block(map.flattened());
+                            default -> NoneValue.none();
+                        };
+                    }
+                    // A handle publishes its type and nothing else, so that is
+                    // the whole of what WORDS-OF and VALUES-OF find on one.
+                    // `PD_Handle` serves the same single field through a path.
+                    if (arguments.get(0) instanceof HandleValue held) {
+                        return switch (field) {
+                            case "words" -> BlockValue.block(
+                                    List.of(WordValue.of("type")));
+                            case "values" -> BlockValue.block(
+                                    List.of(held.isContext()
+                                            ? WordValue.of(held.typeName())
+                                            : NoneValue.none()));
                             default -> NoneValue.none();
                         };
                     }
@@ -9680,6 +9730,49 @@ public final class Natives {
             }
             slotsInUse -= FRAME_VALUE_UNITS;
         }
+    }
+
+    /** The type a cipher context publishes. */
+    private static final String RC4_HANDLE_TYPE = "rc4";
+
+    /**
+     * Identities for cipher contexts, kept apart from the codecs' block.
+     *
+     * <p>Two handles are the same handle when they share an identity, so
+     * every context made needs one of its own: a caller holding two ciphers
+     * has to be able to tell them apart even though EQUAL? compares only
+     * their type.
+     */
+    private static final int CIPHER_HANDLE_IDENTITY = 2000;
+
+    private static final java.util.concurrent.atomic.AtomicInteger CIPHER_IDENTITIES =
+            new java.util.concurrent.atomic.AtomicInteger(CIPHER_HANDLE_IDENTITY);
+
+    private static int nextCipherIdentity() {
+        return CIPHER_IDENTITIES.incrementAndGet();
+    }
+
+    /**
+     * Enciphers a binary where it stands and answers that same binary.
+     *
+     * <p>{@code RC4_crypt(ctx, data, data, len)} reads and writes one buffer
+     * and {@code DS_RET_VALUE(val_data)} hands back the argument, so a caller
+     * holding the binary sees it change and there is no copy to compare
+     * against. A handle registered under another type is refused by name
+     * rather than read as a permutation, which would encipher something and
+     * give an answer nobody could trace.
+     */
+    private static Value encipheredThroughTheStream(HandleValue held, BinaryValue data) {
+        if (!RC4_HANDLE_TYPE.equals(held.typeName())
+                || !(held.payload() instanceof JavaObjectValue carried)
+                || !(carried.held().orElse(null) instanceof StreamCipher cipher)) {
+            throw Raised.of(EvaluationFailure.INVALID_HANDLE, held.typeName());
+        }
+        requireChangeable(data);
+        for (int at = data.index(); at <= data.storageLength(); at++) {
+            data.storage().set(at, data.storage().at(at) ^ cipher.nextKeystreamByte());
+        }
+        return data;
     }
 
     /**

@@ -47,6 +47,20 @@ public record HandleValue(
      */
     public enum Kind { FUNCTION, CONTEXT }
 
+    /**
+     * A handle wrapping state a script holds and cannot look inside, named by
+     * kind.
+     *
+     * <p>{@code MAKE_HANDLE(ret, SYM_RC4)} and its like. A cipher context is
+     * the example: the caller needs to keep it between calls, because the
+     * permutation advances, and must not be able to read or write it, because
+     * that is the key material. So the payload goes behind the handle and the
+     * only thing published is which kind it is.
+     */
+    public static HandleValue context(String typeName, int identity, Value payload) {
+        return new HandleValue(typeName, Kind.CONTEXT, identity, payload);
+    }
+
     /** A handle wrapping something callable, named by kind. */
     public static HandleValue function(String typeName, int identity, Value payload) {
         return new HandleValue(typeName, Kind.FUNCTION, identity, payload);
