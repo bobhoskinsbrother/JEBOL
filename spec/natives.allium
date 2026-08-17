@@ -6123,10 +6123,33 @@ rule DsPrintsTheFrameStackFromTheInnermostOutwards {
     ensures: CallResult(value: unset)
 }
 
--- At the top level there is nothing open, so it prints one line and no more.
-rule DsAtTheTopLevelPrintsOnlyTheTopLine {
+-- The innermost line is DS's own call, named DS and typed as a native.
+--
+-- `Dump_Stack(0, 0)` starts at DSF, which is the frame of the call being
+-- made -- so the first line a real 3.22.1 prints is `ds[0] native!`, before
+-- any frame belonging to the code that asked. Rebol prints it whether or not
+-- anything else is open.
+--
+-- The same reading STACK already obeys, and the reason to state it here is
+-- that the two were disagreeing. STACK counts its own call, which is what
+-- makes `stack/word 0` answer 'stack -- pinned twice by Rebol's own
+-- evaluation test. DS printed a nameless placeholder line instead, so the
+-- two halves of one idea, the same frames answered and printed, did not
+-- describe the same stack.
+--
+-- A native opens no frame of its own here, so the line is composed rather
+-- than walked. That is the same compensation STACK makes at offset zero and
+-- it belongs in both or neither.
+rule DsPrintsItsOwnCallAsTheInnermostLine {
+    when: EvaluateCall(ds)
+    ensures: printed_first(FrameLine(name: ds, argument_count: 0, kind: native))
+}
+
+-- At the top level nothing else is open, so DS's own line is the whole of it.
+rule DsAtTheTopLevelPrintsOnlyItsOwnLine {
     when: EvaluateCall(ds)
     requires: no_frame_is_open()
+    ensures: printed(FrameLine(name: ds, argument_count: 0, kind: native))
     ensures: CallResult(value: unset)
 }
 

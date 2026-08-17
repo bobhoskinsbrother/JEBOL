@@ -9646,18 +9646,22 @@ public final class Natives {
      * stack, because both read DSP in the C and two natives disagreeing about
      * one stack would be worse than either being rough.
      *
-     * <p>A line is printed even with nothing open, because the C prints before
-     * it tests {@code if (dsf > 0)}. Printing nothing there would read as a DS
-     * that did not run.
+     * <p>The first line is DS's own call. {@code Dump_Stack(0, 0)} starts at
+     * DSF, the frame of the call being made, and prints before it tests
+     * {@code if (dsf > 0)} -- so a real 3.22.1 opens with {@code ds[0]
+     * native!} whether or not anything else is open. A native opens no frame
+     * here, so the line is composed rather than walked, which is the same
+     * compensation STACK makes when it answers 'stack at offset zero. The two
+     * disagreed until now: STACK named itself and this printed a nameless
+     * placeholder, so the frames answered and the frames printed described
+     * different stacks.
      */
     private void printTheFrameStack(Evaluator evaluator) {
         List<Evaluator.OpenCall> open = evaluator.callsInProgress();
-        if (open.isEmpty()) {
-            evaluator.output().writeLine(String.format(
-                    FRAME_LINE, 0, NO_NAME, 0, Datatype.FUNCTION.literalSpelling()));
-            return;
-        }
-        int slotsInUse = open.size() * FRAME_VALUE_UNITS;
+        int slotsInUse = (open.size() + 1) * FRAME_VALUE_UNITS;
+        evaluator.output().writeLine(String.format(FRAME_LINE,
+                slotsInUse, "ds", 0, Datatype.NATIVE.literalSpelling()));
+        slotsInUse -= FRAME_VALUE_UNITS;
         for (Evaluator.OpenCall call : open) {
             List<String> slots = call.slotNames();
             evaluator.output().writeLine(String.format(FRAME_LINE,

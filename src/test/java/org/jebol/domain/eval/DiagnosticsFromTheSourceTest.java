@@ -78,14 +78,19 @@ class DiagnosticsFromTheSourceTest {
         @Test
         @DisplayName("the count in brackets falls as the walk goes outwards")
         void theSlotCountFallsOutwards() {
+            // Three lines, not two: DS's own frame leads, then INNER, then
+            // OUTER. This test expected two while DS was omitting its own
+            // line, so it was wrong rather than the code -- the property it
+            // was written for, that the count falls, held either way and
+            // still does.
             String printed = outputOf(
                     "inner: func [y] [ds] outer: func [x] [inner 2] outer 1");
             java.util.List<Integer> counts = java.util.regex.Pattern
                     .compile("STACK\\[(\\d+)]").matcher(printed).results()
                     .map(found -> Integer.valueOf(found.group(1)))
                     .toList();
-            assertThat(counts).hasSize(2);
-            assertThat(counts.get(0)).isGreaterThan(counts.get(1));
+            assertThat(counts).hasSize(3);
+            assertThat(counts).isSortedAccordingTo(java.util.Comparator.reverseOrder());
         }
 
         @Test
@@ -105,6 +110,50 @@ class DiagnosticsFromTheSourceTest {
         @DisplayName("and prints at the top level too, where no frame is open")
         void thereIsAlwaysALine() {
             assertThat(outputOf("ds")).contains("STACK[");
+        }
+
+        @Test
+        @DisplayName("the innermost line is DS's own call, named and typed as a native")
+        void theInnermostLineIsDsItself() {
+            // `Dump_Stack(0, 0)` starts at DSF, the frame of the call being
+            // made, so a real 3.22.1 opens with `ds[0] native!` before any
+            // frame belonging to the code that asked. Checked against the
+            // binary, which prints `STACK[33] ds[0] native!` at its top
+            // level.
+            assertThat(outputOf("ds")).contains("ds[0]").contains("native!");
+        }
+
+        @Test
+        @DisplayName("and it is there ahead of the caller's own frames")
+        void dsComesBeforeTheCallersFrames() {
+            String printed = outputOf("f: func [x] [ds] f 5");
+
+            assertThat(printed).contains("ds[0]").contains("f[1]");
+            assertThat(printed.indexOf("ds[0]")).isLessThan(printed.indexOf("f[1]"));
+        }
+
+        @Test
+        @DisplayName("which is what STACK already says, so the two agree")
+        void dsAndStackDescribeTheSameStack() {
+            // STACK counts its own call -- `stack/word 0` answers 'stack,
+            // which Rebol's own evaluation test pins twice. DS printed a
+            // nameless placeholder where STACK named itself, so the frames
+            // answered and the frames printed described different stacks.
+            assertThat(answerTo("'stack = stack/word 0")).isEqualTo(TRUE);
+            assertThat(outputOf("ds")).doesNotContain("?[0]");
+        }
+
+        @Test
+        @DisplayName("and no frame goes missing under it")
+        void everyOpenCallIsStillPrinted() {
+            String printed = outputOf(
+                    "inner: func [y] [ds] middle: func [z] [inner 2] outer: func [x] [middle 3] outer 1");
+
+            assertThat(printed)
+                    .contains("ds[0]")
+                    .contains("inner[1]")
+                    .contains("middle[1]")
+                    .contains("outer[1]");
         }
 
         @Test
