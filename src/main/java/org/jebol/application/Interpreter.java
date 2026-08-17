@@ -190,7 +190,7 @@ public final class Interpreter {
                     : LibraryFileHeader.none();
             BlockValue body = hasHeader ? values.atIndex(3) : values;
 
-            Outcome outcome = header.declaresAModule()
+            Outcome outcome = header.declaresAModule() || isAProtocol(name)
                     ? loadAsAModule(body, header)
                     : entry.endsWith(INTO_SYS)
                             ? loadAsASystemFile(body)
@@ -359,6 +359,26 @@ public final class Interpreter {
 
     /** Where a file's new words go, as ORDER.txt says. */
     private static final String INTO_SYS = "-> sys";
+
+    /**
+     * Whether a file is one of the protocols, which are modules whatever
+     * their headers say.
+     *
+     * <p>{@code sys-start.reb} line 187 is the whole reason: {@code foreach
+     * [spec body] boot-prot [module spec body]}. R3 forces module semantics
+     * on that group rather than reading each header, and its own files show
+     * why -- {@code prot-tls.reb} declares {@code Yype: 'module}, a typo in
+     * Rebol's own source, so header-based detection could never have worked.
+     *
+     * <p>Without this the group's words go to the library, and the damage is
+     * not theoretical: {@code prot-tls.reb} ends with {@code log-error:
+     * log-info: log-more: log-debug: log-----: none}, which is fine inside a
+     * module of its own and wipes five working functions out of the library
+     * from anywhere else.
+     */
+    private static boolean isAProtocol(String fileName) {
+        return fileName.startsWith("prot-");
+    }
 
     private List<String> borrowedFileNames() {
         String order = resourceText(MEZZANINE + "ORDER.txt");

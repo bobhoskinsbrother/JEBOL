@@ -21,6 +21,8 @@ public enum EvaluationFailure {
             "a change at a position the series does not reach"),
     INVALID_HANDLE(ErrorCategory.SCRIPT, "invalid-handle",
             "a handle of the wrong kind for what was asked of it"),
+    ALREADY_USED(ErrorCategory.SCRIPT, "already-used",
+            "a name that something else in the same catalogue already holds"),
     BAD_MEDIA(ErrorCategory.SCRIPT, "bad-media",
             "data a codec could not read, or an action it does not do"),
     CANNOT_USE(ErrorCategory.SCRIPT, "cannot-use", "an operation this datatype does not support"),

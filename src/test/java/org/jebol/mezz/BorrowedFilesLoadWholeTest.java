@@ -45,6 +45,12 @@ class BorrowedFilesLoadWholeTest {
      * <p>The words are matched as substrings of the failure, so each is the
      * shortest piece that names the gap rather than the whole message.
      *
+     * <p>prot-tls.reb makes the same point twice over. It stopped on
+     * {@code binary} until the binary dialect was ported, and now stops on
+     * {@code system/catalog/ciphers} -- one of the seven fields sysobj.reb
+     * declares under CATALOG that were never copied across. Neither word was
+     * ever the whole of what that file wants.
+     *
      * <p>A word here names a gap and nothing more, which is worth saying
      * because this list once hid one. view-funcs.reb stopped on {@code font}
      * for months and that read as "waiting on the view dialect"; the truth
@@ -60,7 +66,7 @@ class BorrowedFilesLoadWholeTest {
      */
     private static final Map<String, String> STOPS_ON = Map.ofEntries(
             Map.entry("view-funcs.reb", "init-top-window"),
-            Map.entry("prot-tls.reb", "binary"));
+            Map.entry("prot-tls.reb", "ciphers"));
 
     @Test
     @DisplayName("no borrowed file stops partway except the ones known to")

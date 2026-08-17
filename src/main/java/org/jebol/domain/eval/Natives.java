@@ -405,6 +405,12 @@ public final class Natives {
         bitsets.set("quoted-printable", quotedPrintableOctets());
         catalog.set("bitsets", new ObjectValue(bitsets));
 
+        // Filled by REGISTER rather than at boot: sysobj.reb declares it
+        // `make map! []` with the comment "filled using `register` native
+        // function", so an empty map here is the finished state and not a
+        // gap.
+        catalog.set("structs", MapValue.empty());
+
         catalog.set("elliptic-curves", BlockValue.block(
                 EllipticCurveKey.curveNames().stream()
                         .<Value>map(WordValue::of).toList()));
@@ -3651,6 +3657,33 @@ public final class Natives {
         define("form-oid", List.of(Parameter.required("oid", Set.of(Datatype.BINARY))),
                 (arguments, evaluator, context) -> StringValue.of(objectIdentifierWritten(
                         ((BinaryValue) arguments.getFirst()).octetsFromHere())));
+
+        define("binary", List.of(
+                        Parameter.required("ctx", Set.of(Datatype.OBJECT,
+                                Datatype.BINARY, Datatype.INTEGER, Datatype.NONE)),
+                        Parameter.belongingTo("init", "spec", Set.of(Datatype.BINARY,
+                                Datatype.INTEGER, Datatype.NONE)),
+                        Parameter.belongingTo("write", "data",
+                                Set.of(Datatype.BINARY, Datatype.BLOCK)),
+                        Parameter.belongingTo("read", "code", Set.of(Datatype.WORD,
+                                Datatype.BLOCK, Datatype.INTEGER, Datatype.BINARY)),
+                        Parameter.belongingTo("into", "out", Set.of(Datatype.BLOCK)),
+                        Parameter.belongingTo("with", "num", Set.of(Datatype.INTEGER))),
+                Set.of("init", "write", "read", "into", "with"),
+                (arguments, evaluator, context, refinements) ->
+                        theBinaryDialect(arguments, refinements, evaluator));
+
+        define("register", List.of(
+                        Parameter.hardQuoted("name"),
+                        Parameter.required("value", Set.of(Datatype.STRUCT))),
+                (arguments, evaluator, context) ->
+                        structLayoutFiledUnder(arguments, evaluator));
+
+        define("xtest", List.of(),
+                (arguments, evaluator, context) -> {
+                    throw Raised.of(EvaluationFailure.FEATURE_NA,
+                            "xtest exercises the C's own handle structures");
+                });
 
         define("premultiply", List.of(
                         Parameter.required("image", Set.of(Datatype.IMAGE))),
@@ -9864,6 +9897,140 @@ public final class Natives {
     /** The four things ECDH does, exactly one of which a caller may name. */
     private static final List<String> ECDH_ACTIONS =
             List.of("init", "curve", "public", "secret");
+
+    /**
+     * The binary dialect: lay numbers into bytes, or read them back.
+     *
+     * <p>A protocol is a sequence of fields of stated widths, and writing one
+     * by hand means shifting and masking at every field. The dialect says the
+     * widths instead, which is why {@code prot-tls.reb} is built on it.
+     *
+     * <p>The context can be an object made earlier, a binary to work on
+     * directly, or a number of bytes to make room for. All three end up as
+     * bytes and a position.
+     */
+    private static Value theBinaryDialect(
+            List<Value> arguments, Set<String> refinements, Evaluator evaluator) {
+        BinaryValue buffer = bufferOfTheDialectContext(arguments.getFirst());
+        if (refinements.contains("write")) {
+            return writtenThroughTheDialect(buffer,
+                    dialectBlockIn(arguments, refinements, "write"));
+        }
+        if (refinements.contains("read")) {
+            return readThroughTheDialect(buffer,
+                    dialectBlockIn(arguments, refinements, "read"));
+        }
+        return theDialectContextFor(buffer);
+    }
+
+    /** Where a dialect context keeps its bytes. */
+    private static BinaryValue bufferOfTheDialectContext(Value given) {
+        if (given instanceof BinaryValue bytes) {
+            return bytes;
+        }
+        if (given instanceof ObjectValue object
+                && object.context().knows("buffer")
+                && object.context().slotFor("buffer").value()
+                        instanceof BinaryValue held) {
+            return held;
+        }
+        return BinaryValue.of();
+    }
+
+    /**
+     * A context object shaped like {@code system/standard/bincode}, so what
+     * BINARY answers can be handed back to it.
+     */
+    private static Value theDialectContextFor(BinaryValue buffer) {
+        Context made = Context.root();
+        made.set("type", WordValue.of("bincode"));
+        made.set("buffer", buffer);
+        made.set("buffer-write", buffer);
+        made.set("r-mask", IntegerValue.of(0));
+        made.set("w-mask", IntegerValue.of(0));
+        return new ObjectValue(made);
+    }
+
+    private static List<Value> dialectBlockIn(
+            List<Value> arguments, Set<String> refinements, String which) {
+        int at = refinements.contains("init") ? 2 : 1;
+        if (which.equals("read") && refinements.contains("write")) {
+            at++;
+        }
+        Value given = arguments.get(at);
+        return given instanceof BlockValue block
+                ? block.remaining()
+                : List.of(given);
+    }
+
+    /**
+     * Writes through the dialect and answers the context, not the bytes.
+     *
+     * <p>The context, because a caller writing a protocol writes field after
+     * field and each call has to be able to take the last one's answer. The
+     * bytes are in its BUFFER, which is where the next call reads them from.
+     */
+    private static Value writtenThroughTheDialect(
+            BinaryValue buffer, List<Value> dialect) {
+        List<Integer> octets = new ArrayList<>();
+        for (byte octet : buffer.octetsFromHere()) {
+            octets.add(octet & 0xFF);
+        }
+        Bincode.Cursor cursor = new Bincode.Cursor(octets, octets.size());
+        Bincode.write(cursor, dialect);
+        return theDialectContextFor(BinaryValue.of(
+                cursor.octets().stream().mapToInt(Integer::intValue).toArray()));
+    }
+
+    private static Value readThroughTheDialect(
+            BinaryValue buffer, List<Value> dialect) {
+        List<Integer> octets = new ArrayList<>();
+        for (byte octet : buffer.octetsFromHere()) {
+            octets.add(octet & 0xFF);
+        }
+        List<Long> read = Bincode.read(new Bincode.Cursor(octets, 0), dialect);
+        return BlockValue.block(read.stream().<Value>map(IntegerValue::of).toList());
+    }
+
+    /**
+     * REGISTER: a struct's layout filed in the catalogue under a name.
+     *
+     * <p>A layout describes how bytes are arranged, and code laying that
+     * description over a binary wants the description rather than an instance
+     * of it. So the catalogue is a map from names to layouts, and this is how
+     * one gets in.
+     *
+     * <p>The same layout under the same name again does nothing, so a file
+     * loaded twice does not fail on its second pass. A different layout under
+     * a name already taken is refused, because a name here is how other code
+     * finds a layout and replacing one quietly would change what that code
+     * reads without it knowing.
+     */
+    private static Value structLayoutFiledUnder(
+            List<Value> arguments, Evaluator evaluator) {
+        if (!(arguments.getFirst() instanceof WordValue name)) {
+            return raiseWrongArgument(arguments.getFirst(), "register", "name");
+        }
+        StructValue given = (StructValue) arguments.get(1);
+        MapValue catalogue = structCatalogueOf(evaluator);
+        WordValue filedAs = WordValue.of(name.spelling());
+        Value alreadyThere = catalogue.select(filedAs);
+        if (alreadyThere instanceof BlockValue held) {
+            if (!held.equals(given.layout())) {
+                throw Raised.of(EvaluationFailure.ALREADY_USED, name.spelling());
+            }
+            return given;
+        }
+        catalogue.put(filedAs, given.layout());
+        return given;
+    }
+
+    private static MapValue structCatalogueOf(Evaluator evaluator) {
+        return pathInto(evaluator.systemContext(), "system", "catalog", "structs")
+                instanceof MapValue catalogue
+                ? catalogue
+                : MapValue.empty();
+    }
 
     /**
      * RESIZE's new size, from a pair, a percentage or a width.

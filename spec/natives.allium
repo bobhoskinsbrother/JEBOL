@@ -9253,3 +9253,150 @@ rule ImageWithNoRefinementAnswersUnset {
     requires: not the_call_asked_for_load_or_save()
     ensures: CallResult(value: unset)
 }
+
+-- REGISTER puts a struct's layout in a catalogue under a name, so the layout
+-- can be reached later without the value that carried it.
+--
+-- What it is for: a struct's layout is a description of how bytes are
+-- arranged, and code laying that description over a binary needs the
+-- description rather than an instance of it. Registering names one, and
+-- system/catalog/structs is a map from those names to the layouts.
+rule RegisterFilesAStructsLayoutUnderAName {
+    when: EvaluateCall(register, name, value)
+    requires: value.datatype = struct
+    requires: not the_catalogue_already_holds(name)
+
+    ensures: the_structs_catalogue_holds(name) = the_layout_of(value)
+    ensures: CallResult(value: value)
+}
+
+-- Registering the same layout under the same name again is allowed and does
+-- nothing, so a file loaded twice does not fail on its second pass. The C
+-- compares the layouts and returns the value when they match.
+rule RegisteringTheSameLayoutAgainIsAllowed {
+    when: EvaluateCall(register, name, value)
+    requires: the_catalogue_already_holds(name)
+    requires: the_layout_held_matches(value)
+    ensures: CallResult(value: value)
+}
+
+-- A different layout under a name already taken is refused, because a name in
+-- this catalogue is how other code finds a layout and quietly replacing one
+-- would change what that code reads without it knowing.
+rule RegisteringADifferentLayoutUnderATakenNameIsRefused {
+    when: EvaluateCall(register, name, value)
+    requires: the_catalogue_already_holds(name)
+    requires: not the_layout_held_matches(value)
+    ensures: CallFails(error: already_used)
+}
+
+-- The name is taken literally rather than evaluated, which is what the
+-- apostrophe on its declaration means, and a set-word both names the entry
+-- and assigns the struct to that word.
+rule RegisterTakesItsNameLiterally {
+    when: EvaluateCall(register, name, value)
+    ensures: name = as_written_rather_than_what_it_would_evaluate_to()
+}
+
+rule RegisterWithASetWordAlsoAssignsTheStruct {
+    when: EvaluateCall(register, name, value)
+    requires: name.datatype = set_word
+    ensures: the_word_named_by(name) = value
+}
+
+-- XTEST is a self-test of the C's own handle machinery, and this build has
+-- none of it.
+--
+-- It takes no arguments and prints a coloured report of building a handle,
+-- reading its data, its length and its identity. Those are the C's structures
+-- rather than the language's, so there is nothing here for it to exercise --
+-- the same position the debug chants of EVOKE are in, and it gets the same
+-- answer by the same name.
+rule XtestRefusesBecauseThereIsNothingHereToTest {
+    when: EvaluateCall(xtest)
+    ensures: CallFails(error: feature_na)
+}
+
+-- BINARY is the entry point of a little language for laying numbers into
+-- bytes and reading them back.
+--
+-- A protocol is a sequence of fields of stated widths, and writing one by
+-- hand means shifting and masking at every field. The dialect states the
+-- widths instead: `[UI8 5 UI16 300]` writes one byte then two, and
+-- `[UI8 UI16]` reads them back. That is what prot-tls.reb is built on, TLS
+-- being nothing but framed fields of stated widths.
+rule TheBinaryDialectLaysFieldsOfStatedWidths {
+    when: EvaluateCall(binary, ctx)
+    requires: the_call_asked_for_write()
+
+    ensures: the_buffer_holds(each_value_written_at_the_width_its_code_names())
+}
+
+-- Most significant byte first unless a code says otherwise, because that is
+-- the order a wire protocol is written in. An LE suffix is the same field the
+-- other way round.
+rule TheBinaryDialectWritesMostSignificantByteFirst {
+    when: EvaluateCall(binary, ctx)
+    requires: the_call_asked_for_write()
+    requires: the_code_has_no_endian_suffix()
+
+    ensures: the_bytes_written = most_significant_first()
+}
+
+-- Writing answers the context rather than the bytes.
+--
+-- Which is what lets a caller write field after field: each call takes the
+-- last one's answer, and the bytes live in the context's BUFFER where the
+-- next call finds them. A dialect that answered the bytes would make every
+-- caller unpack and repack between fields.
+rule WritingThroughTheDialectAnswersTheContext {
+    when: EvaluateCall(binary, ctx)
+    requires: the_call_asked_for_write()
+
+    ensures: CallResult(datatype: object)
+    ensures: the_result_holds_a_field_called(buffer)
+}
+
+-- Reading answers a block of what it read, one entry per code that produces
+-- a value. The position codes produce none, which is why it is a block
+-- gathered rather than one value per code.
+rule ReadingThroughTheDialectAnswersABlock {
+    when: EvaluateCall(binary, ctx)
+    requires: the_call_asked_for_read()
+
+    ensures: CallResult(datatype: block)
+    ensures: length_of(result) = how_many_codes_produce_a_value()
+}
+
+-- A signed field whose top bit is set reads back as a negative number.
+-- Without that an SI8 of -1 reads as 255, which is the same eight bits and a
+-- different number.
+rule ASignedFieldReadsBackNegative {
+    when: EvaluateCall(binary, ctx)
+    requires: the_call_asked_for_read()
+    requires: the_code_is_signed_and_the_top_bit_is_set()
+
+    ensures: the_value_read < 0
+}
+
+-- A code the dialect has not got raises rather than being skipped.
+--
+-- The decision worth defending here. Eighty-one codes exist in the C and this
+-- carries the ones for whole numbers, position and raw bytes. Skipping the
+-- rest would be the friendlier-looking choice and the wrong one: a dialect
+-- that ignores what it does not understand writes a message of the wrong
+-- length, and the reader at the far end is left to discover it. Refusing by
+-- name puts the failure where the mistake is.
+rule AnUnknownDialectCodeIsRefusedByName {
+    when: EvaluateCall(binary, ctx)
+    requires: the_dialect_names_a_code_this_build_has_not_got()
+    ensures: CallFails(error: feature_na)
+}
+
+-- The context may be an object made earlier, a binary to work on directly, or
+-- a number of bytes to make room for. All three are bytes and a position.
+rule TheDialectContextMayBeAnObjectABinaryOrASize {
+    when: EvaluateCall(binary, ctx)
+    requires: ctx.datatype in [object, binary, integer, none]
+    ensures: the_call_proceeds()
+}
