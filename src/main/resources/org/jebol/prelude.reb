@@ -515,6 +515,29 @@ append system reduce [
     ]
 ]
 
+;; system/view, the twentieth and last of sysobj.reb's top-level fields and
+;; the one JEBOL never copied. view-funcs.reb reads SCREEN-GOB on its own
+;; first line of INIT-VIEW-SYSTEM and walks METRICS with FOREACH straight
+;; after, so its absence is why VIEW raises invalid-path rather than doing
+;; anything.
+;;
+;; All none, as a stock 3.22.1 has them until a graphics host fills them in.
+append system reduce [
+    to set-word! 'view
+    make object! [
+        screen-gob: none
+        handler: none
+        metrics: construct [
+            screen-size:
+            border-size:
+            border-fixed:
+            title-size:
+            work-origin:
+            work-size:
+        ]
+    ]
+]
+
 append system reduce [
     to set-word! 'standard
     make object! [
@@ -674,6 +697,153 @@ append system reduce [
                 ]
             ]
         ]
+
+        ;; The rest of sysobj.reb's standard object. Seventeen of its
+        ;; twenty-nine fields were never copied across, and a set-path cannot
+        ;; create a field, so every one of them stopped whatever wrote to it:
+        ;; view-funcs.reb died on its eighteenth line writing FONT, and
+        ;; sys-base.reb's DO* builds `make system/standard/script` on every
+        ;; script it runs.
+        ;;
+        ;; Declared here rather than in Java because sysobj.reb is REBOL and
+        ;; this is the file that speaks it. Nothing about a record of empty
+        ;; slots needs the host language.
+
+        codec: construct [
+            name:
+            type:
+            title:
+            suffixes:
+            decode:
+            encode:
+            identify:
+        ]
+
+        ;; The template every error is built from. CODE and TYPE and ID carry
+        ;; sysobj.reb's own defaults rather than none, because that is what a
+        ;; MAKE over this has to start from.
+        error: construct [
+            code: 0
+            type: 'user
+            id: 'message
+            arg1:
+            arg2:
+            arg3:
+            near:
+            where:
+        ]
+
+        ;; What DO* fills in for each script it runs, and what system/script
+        ;; holds afterwards.
+        script: construct [
+            title:
+            header:
+            parent:
+            path:
+            args:
+        ]
+
+        port-spec-serial: make port-spec-head [
+            path: none
+            speed: 115200
+            data-size: 8
+            parity: none
+            stop-bits: 1
+            flow-control: none
+        ]
+
+        port-spec-audio: make port-spec-head [
+            scheme: 'audio
+            source: none
+            channels: 2
+            rate: 44100
+            bits: 16
+            sample-type: 1
+            loop-count: 0
+        ]
+
+        net-info: construct [
+            local-ip:
+            local-port:
+            remote-ip:
+            remote-port:
+        ]
+
+        console-info: construct [
+            buffer-cols:
+            buffer-rows:
+            window-cols:
+            window-rows:
+            length:
+        ]
+
+        vector-info: construct [
+            signed:
+            type:
+            size:
+            length:
+            minimum:
+            maximum:
+            range:
+            sum:
+            mean:
+            median:
+            variance:
+            sample-variance:
+            population-deviation:
+            sample-deviation:
+        ]
+
+        date-info: construct [
+            year:
+            month:
+            day:
+            time:
+            date:
+            zone:
+            hour:
+            minute:
+            second:
+            weekday:
+            yearday:
+            timezone:
+            utc:
+            julian:
+        ]
+
+        handle-info: construct [
+            type:
+        ]
+
+        midi-info: construct [
+            devices-in:
+            devices-out:
+        ]
+
+        extension: construct [
+            lib-base:
+            lib-file:
+            lib-boot:
+            command:
+            cmd-index:
+            words:
+        ]
+
+        type-spec: construct [
+            title:
+            type:
+        ]
+
+        ;; The last four are none in sysobj.reb and something else fills each.
+        ;; BINCODE is the C's, written by the base-code block at
+        ;; u-bincode.c:178, so it stays none until the bincode dialect is
+        ;; ported. UTYPE is the C's dispatch table for a datatype JEBOL has
+        ;; not got. FONT and PARA are view-funcs.reb's, and a real 3.22.1
+        ;; leaves both none unless the build included VID.
+        bincode: none
+        utype: none
+        font: none
+        para: none
     ]
 ]
 

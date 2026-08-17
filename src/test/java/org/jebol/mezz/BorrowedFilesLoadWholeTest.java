@@ -44,9 +44,22 @@ class BorrowedFilesLoadWholeTest {
      *
      * <p>The words are matched as substrings of the failure, so each is the
      * shortest piece that names the gap rather than the whole message.
+     *
+     * <p>A word here names a gap and nothing more, which is worth saying
+     * because this list once hid one. view-funcs.reb stopped on {@code font}
+     * for months and that read as "waiting on the view dialect"; the truth
+     * was that seventeen of sysobj.reb's twenty-nine standard templates had
+     * never been copied into the prelude, and a set-path cannot make a field.
+     * With those declared the file runs a hundred lines further, to
+     * {@code init-top-window} -- a native from the {@code window} host
+     * extension in {@code boot/window.reb}, which binds an operating
+     * system's own widget toolkit and is in no build here. That one is a
+     * boundary rather than a backlog item: the graphics target is a renderer
+     * of JEBOL's own. Read an entry as the first thing in the way, never as
+     * the whole of what is missing.
      */
     private static final Map<String, String> STOPS_ON = Map.ofEntries(
-            Map.entry("view-funcs.reb", "font"),
+            Map.entry("view-funcs.reb", "init-top-window"),
             Map.entry("prot-tls.reb", "binary"));
 
     @Test

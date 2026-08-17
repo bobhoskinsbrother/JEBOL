@@ -149,36 +149,62 @@ object? make system/standard/enum [name: 'colours]
 --- result
 #(true)
 
---- id system-standard/font-is-none-without-vid
---- note Six entries here asserted that font and para are objects,
---- note filled by view-funcs.reb. The binary says otherwise: that
---- note file is in vid-files in make/pre-make.r3 and is included only
---- note when include-vid is set, so a stock 3.22.1 answers none and
---- note has no VIEW at all. JEBOL loads the file unconditionally,
---- note which is a fork to settle rather than a result to assert.
---- origin confirmed against R3 3.22.1 (Rebol/Bulk, 2026-05-27)
+--- id system-standard/font-is-filled-because-jebol-loads-view-funcs
+--- note A deliberate divergence, recorded rather than hidden. A stock
+--- note 3.22.1 answers NONE here: view-funcs.reb sits in vid-files in
+--- note make/pre-make.r3 and ships only when include-vid is set, and
+--- note the binary confirms it has no VIEW at all. JEBOL keeps the
+--- note file in its load order because the graphics target is a
+--- note renderer of its own, so the file runs and writes this field.
+--- note
+--- note It is a partial load either way: view-funcs.reb still stops
+--- note further down on init-top-window, a native from the window
+--- note host extension that no build here has.
+--- origin view-funcs.reb line 18; divergence confirmed against R3 3.22.1
 --- code
-none? system/standard/font
+object? system/standard/font
 --- result
 #(true)
 
---- id system-standard/para-is-none-without-vid
---- origin confirmed against R3 3.22.1 (Rebol/Bulk, 2026-05-27)
+--- id system-standard/font-carries-view-funcs-defaults
+--- origin view-funcs.reb lines 18 to 26
 --- code
-none? system/standard/para
+mold words-of system/standard/font
+--- result
+"[name style size color offset space shadow]"
+
+--- id system-standard/para-is-filled-for-the-same-reason
+--- origin view-funcs.reb line 28; divergence confirmed against R3 3.22.1
+--- code
+object? system/standard/para
 --- result
 #(true)
 
---- id system-standard/bincode-is-an-object-the-c-fills
---- note Declared `bincode: none` in sysobj.reb and replaced by the
---- note base-code block at u-bincode.c line 178. So a stock build
---- note answers an object, and this one is the C's rather than a
---- note REBOL file's.
---- origin confirmed against R3 3.22.1 (Rebol/Bulk, 2026-05-27)
+--- id system-standard/para-carries-view-funcs-defaults
+--- note Braces rather than quotes because the molded text is longer
+--- note than the quoted-string limit, which is why the shorter FONT
+--- note entry above reads with quotes and this one does not.
+--- origin view-funcs.reb lines 28 to 37
 --- code
-mold words-of system/standard/bincode
+mold words-of system/standard/para
 --- result
-"[type buffer buffer-write r-mask w-mask]"
+{[origin margin indent tabs wrap? scroll align valign]}
+
+--- id system-standard/bincode-waits-on-the-dialect
+--- note sysobj.reb declares `bincode: none` and the C replaces it from
+--- note the base-code block at u-bincode.c line 178, so a real 3.22.1
+--- note answers an object with [type buffer buffer-write r-mask
+--- note w-mask]. JEBOL answers none because the bincode dialect is not
+--- note ported: its BINARY native is one of the seventeen library
+--- note functions still missing, and it is what stops prot-tls.reb.
+--- note
+--- note Asserted as JEBOL is, with the target written here. When
+--- note BINARY lands this entry changes to the shape above.
+--- origin boot/sysobj.reb; target confirmed against R3 3.22.1
+--- code
+none? system/standard/bincode
+--- result
+#(true)
 
 --- id system-standard/every-template-is-reachable-by-path
 --- note The list from boot/sysobj.reb, in its own order. A missing

@@ -607,13 +607,28 @@ public final class Evaluator {
      * That is what lets the depth limit be a promise rather than a hope, and
      * it is why {@code forever: func [n] [forever n]} reports an error instead
      * of killing the process.
+     *
+     * <p>The frames themselves are local and go when this returns, however it
+     * returns. The record of which calls are open is not: it is a field, so a
+     * raise that unwinds past the loop leaves every call it passed through
+     * still recorded. That made STACK/DEPTH climb by one for every error a
+     * script caught and never come back down, and the same entries were what
+     * DS printed. Closing the record here rather than where a frame is popped
+     * covers the exceptional way out as well as the ordinary one.
      */
     private Value walk(BlockValue code, Context context, int depth, ResultSink sink) {
         Deque<Frame> frames = new ArrayDeque<>();
         Frame root = new Frame(code, context, depth);
         root.sink = sink;
         frames.push(root);
-        return walkFrames(frames);
+        int callsOpenBeforeTheWalk = functionsBeingRun.size();
+        try {
+            return walkFrames(frames);
+        } finally {
+            while (functionsBeingRun.size() > callsOpenBeforeTheWalk) {
+                functionsBeingRun.pop();
+            }
+        }
     }
 
     private Value walkFrames(Deque<Frame> frames) {
