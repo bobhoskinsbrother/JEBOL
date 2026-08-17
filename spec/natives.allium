@@ -8968,3 +8968,119 @@ rule DhAnswersNoneForAHandleOfAnotherType {
     requires: dh_key.handle_type != dhm
     ensures: CallResult(value: none)
 }
+
+-- ECDH is Diffie-Hellman again over an elliptic curve, and it takes its
+-- refinements where DH-INIT took a separate native.
+--
+-- The exchange is the same idea and the arithmetic is different: instead of
+-- raising a generator to a private power in a field of integers, each side
+-- multiplies a point on a curve by a private number. The published value is a
+-- point and the secret is one coordinate of the point both sides reach. What
+-- follows from that is the shape below: a curve has to be named, a context
+-- remembers which one, and two contexts on different curves cannot agree on
+-- anything.
+rule EcdhInitMakesAKeyPairOnANamedCurve {
+    when: EvaluateCall(ecdh, key)
+    requires: the_call_asked_for_init()
+    requires: the_named_curve_is_one_this_build_has()
+
+    ensures: CallResult(datatype: handle)
+    ensures: CallResult(value: a_context_handle_of_type(ecdh))
+}
+
+-- A curve this build has not got answers NONE rather than raising, as
+-- DH-INIT does for parameters it cannot use.
+rule EcdhAnswersNoneForACurveItHasNot {
+    when: EvaluateCall(ecdh, key)
+    requires: the_call_asked_for_init()
+    requires: not the_named_curve_is_one_this_build_has()
+    ensures: CallResult(value: none)
+}
+
+-- /CURVE asks a context which curve it was made on. It is the one piece of
+-- itself the context will name, and a caller needs it because a public value
+-- means nothing without knowing the curve it lies on.
+rule EcdhCurveNamesTheCurveTheContextWasMadeOn {
+    when: EvaluateCall(ecdh, key)
+    requires: the_call_asked_for_curve()
+
+    ensures: CallResult(datatype: word)
+    ensures: CallResult(value: the_curve_named_when_it_was_made(key))
+}
+
+-- /PUBLIC hands out the point to send, written out in full rather than
+-- compressed: a lead byte saying so, then both coordinates. So its width
+-- follows the curve, and a wider curve gives a wider value.
+rule EcdhPublicAnswersTheUncompressedPoint {
+    when: EvaluateCall(ecdh, key)
+    requires: the_call_asked_for_public()
+
+    ensures: CallResult(datatype: binary)
+    ensures: length_of(result) = 1 + (2 * the_coordinate_width(key))
+}
+
+-- /SECRET is one coordinate of the point both sides reach, so it is half the
+-- width of the published value and both sides get the same bytes.
+rule EcdhSecretIsOneCoordinateAndBothSidesAgree {
+    when: each_side_combines_the_others_public_point()
+    ensures: the_two_secrets_are_equal = true
+    ensures: length_of(secret) = the_coordinate_width(key)
+}
+
+-- Two contexts on different curves cannot agree, and the attempt answers NONE
+-- rather than a secret neither side can use.
+rule EcdhAnswersNoneAcrossDifferentCurves {
+    when: EvaluateCall(ecdh, key)
+    requires: the_call_asked_for_secret()
+    requires: the_peers_point_is_not_on(the_curve_of(key))
+    ensures: CallResult(value: none)
+}
+
+rule EcdhRefusesTwoActionsAtOnce {
+    when: EvaluateCall(ecdh, key)
+    requires: the_call_named_more_than_one_of(init, curve, public, secret)
+    ensures: CallFails(error: bad_refines)
+}
+
+-- ECDSA signs and verifies with a context ECDH made.
+--
+-- The signature is ASN.1: two numbers wrapped in the encoding a certificate
+-- uses, rather than the two numbers laid end to end. That matters to a caller
+-- passing one to anything else, and it is why the length varies by a byte or
+-- two between signatures of the same key.
+rule EcdsaSignAnswersAnAsn1Signature {
+    when: EvaluateCall(ecdsa, key, hash)
+    requires: the_call_asked_for_sign()
+
+    ensures: CallResult(datatype: binary)
+    ensures: CallResult(value: an_asn1_sequence_of_two_numbers())
+}
+
+-- Signing is randomised, unlike RSA's. Each signature draws a fresh number,
+-- so the same data signed twice under one key gives two different answers and
+-- both verify. A caller comparing two signatures for equality is testing the
+-- wrong thing.
+rule EcdsaSignIsRandomised {
+    when: signing_the_same_hash_twice_under_one_key()
+    ensures: the_two_signatures_differ = true
+    ensures: both_verify = true
+}
+
+-- /VERIFY answers TRUE when the signature holds, and NONE when it does not.
+--
+-- Not false, which is what the declaration's "returns true or false" leads a
+-- reader to expect and what RSA's /VERIFY actually does. Checked against a
+-- real 3.22.1: a signature over other data of the same length answers none,
+-- and so does one checked against a hash of the wrong length. Worth stating
+-- because `if ecdsa/verify ...` reads the same either way and `= false` does
+-- not.
+rule EcdsaVerifyAnswersTrueOrNone {
+    when: EvaluateCall(ecdsa, key, hash)
+    requires: the_call_asked_for_verify()
+
+    ensures:
+        if the_signature_holds_for(hash, key):
+            CallResult(value: true)
+        else:
+            CallResult(value: none)
+}

@@ -405,9 +405,14 @@ public final class Natives {
         bitsets.set("quoted-printable", quotedPrintableOctets());
         catalog.set("bitsets", new ObjectValue(bitsets));
 
+        catalog.set("elliptic-curves", BlockValue.block(
+                EllipticCurveKey.curveNames().stream()
+                        .<Value>map(WordValue::of).toList()));
+
         catalog.set("handles", BlockValue.block(List.of(
                 WordValue.of(RC4_HANDLE_TYPE), WordValue.of(DHM_HANDLE_TYPE),
-                WordValue.of(RSA_HANDLE_TYPE), WordValue.of("codec"))));
+                WordValue.of(RSA_HANDLE_TYPE), WordValue.of(ECDH_HANDLE_TYPE),
+                WordValue.of("codec"))));
 
         catalog.set("event-types", EventCatalogue.typesBlock());
         catalog.set("event-keys", EventCatalogue.keysBlock());
@@ -3647,6 +3652,27 @@ public final class Natives {
                 (arguments, evaluator, context) -> StringValue.of(objectIdentifierWritten(
                         ((BinaryValue) arguments.getFirst()).octetsFromHere())));
 
+        define("ecdh", List.of(
+                        Parameter.required("key",
+                                Set.of(Datatype.HANDLE, Datatype.NONE)),
+                        Parameter.belongingTo("init", "type", Set.of(Datatype.WORD)),
+                        Parameter.belongingTo("secret", "public-key",
+                                Set.of(Datatype.BINARY))),
+                Set.of("init", "curve", "public", "secret"),
+                (arguments, evaluator, context, refinements) ->
+                        ellipticExchange(arguments, refinements));
+
+        define("ecdsa", List.of(
+                        Parameter.required("key",
+                                Set.of(Datatype.HANDLE, Datatype.BINARY)),
+                        Parameter.required("hash", Set.of(Datatype.BINARY)),
+                        Parameter.belongingTo("verify", "signature",
+                                Set.of(Datatype.BINARY)),
+                        Parameter.belongingTo("curve", "type", Set.of(Datatype.WORD))),
+                Set.of("sign", "verify", "curve"),
+                (arguments, evaluator, context, refinements) ->
+                        ellipticSignature(arguments, refinements));
+
         define("dh-init", List.of(
                         Parameter.required("g", Set.of(Datatype.BINARY)),
                         Parameter.required("p", Set.of(Datatype.BINARY))),
@@ -3662,34 +3688,8 @@ public final class Natives {
                         Parameter.belongingTo("secret", "public-key",
                                 Set.of(Datatype.BINARY))),
                 Set.of("public", "secret"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (refinements.contains("public") && refinements.contains("secret")) {
-                        throw Raised.of(EvaluationFailure.BAD_REFINES,
-                                "dh publishes or agrees, not both");
-                    }
-                    if (!(arguments.getFirst() instanceof HandleValue held)
-                            || !DHM_HANDLE_TYPE.equals(held.typeName())
-                            || !(held.payload() instanceof JavaObjectValue carried)
-                            || !(carried.held().orElse(null) instanceof DiffieHellmanKey key)) {
-                        return NoneValue.none();
-                    }
-                    if (refinements.contains("public")) {
-                        return BinaryValue.of(unsignedOctets(key.published()));
-                    }
-                    if (refinements.contains("secret")) {
-                        return key.agreedWith(((BinaryValue) arguments.get(1))
-                                        .octetsFromHere())
-                                .<Value>map(secret -> BinaryValue.of(unsignedOctets(secret)))
-                                .orElseGet(NoneValue::none);
-                    }
-                    // Neither refinement. The C reaches `return R_RET` without
-                    // having written the return slot, so a real 3.22.1 hands
-                    // back whatever that memory held -- a binary of nothing in
-                    // particular, and a crash when two contexts were built in
-                    // one expression. None is what the rest of this family
-                    // answers when asked to do nothing.
-                    return NoneValue.none();
-                });
+                (arguments, evaluator, context, refinements) ->
+                        modularExchange(arguments, refinements));
 
         define("rsa-init", List.of(
                         Parameter.required("n", Set.of(Datatype.BINARY)),
@@ -3698,19 +3698,8 @@ public final class Natives {
                         Parameter.belongingTo("private", "p", Set.of(Datatype.BINARY)),
                         Parameter.belongingTo("private", "q", Set.of(Datatype.BINARY))),
                 Set.of("private"),
-                (arguments, evaluator, context, refinements) -> {
-                    byte[] modulus = ((BinaryValue) arguments.get(0)).octetsFromHere();
-                    byte[] publicExponent = ((BinaryValue) arguments.get(1)).octetsFromHere();
-                    java.util.Optional<RsaKey> built = refinements.contains("private")
-                            ? RsaKey.privateKeyFrom(modulus, publicExponent,
-                                    ((BinaryValue) arguments.get(2)).octetsFromHere(),
-                                    ((BinaryValue) arguments.get(3)).octetsFromHere(),
-                                    ((BinaryValue) arguments.get(4)).octetsFromHere())
-                            : RsaKey.publicKeyFrom(modulus, publicExponent);
-                    return built.<Value>map(key -> HandleValue.context(RSA_HANDLE_TYPE,
-                                    nextCipherIdentity(), JavaObjectValue.of(key)))
-                            .orElseGet(NoneValue::none);
-                });
+                (arguments, evaluator, context, refinements) ->
+                        rsaKeyBuiltFrom(arguments, refinements));
 
         define("rsa", List.of(
                         Parameter.required("rsa-key", Set.of(Datatype.HANDLE)),
@@ -9814,6 +9803,196 @@ public final class Natives {
     private static final String RSA_HANDLE_TYPE = "rsa";
 
     private static final String DHM_HANDLE_TYPE = "dhm";
+
+    private static final String ECDH_HANDLE_TYPE = "ecdh";
+
+    /** The four things ECDH does, exactly one of which a caller may name. */
+    private static final List<String> ECDH_ACTIONS =
+            List.of("init", "curve", "public", "secret");
+
+    /**
+     * Diffie-Hellman over a modular group: publish, or agree.
+     *
+     * <p>Neither refinement answers none. The C reaches {@code return R_RET}
+     * having never written the return slot, so a real 3.22.1 hands back
+     * whatever that memory held -- a binary of nothing in particular, and a
+     * crash when two contexts were built in one expression.
+     */
+    private static Value modularExchange(List<Value> arguments, Set<String> refinements) {
+        if (refinements.contains("public") && refinements.contains("secret")) {
+            throw Raised.of(EvaluationFailure.BAD_REFINES,
+                    "dh publishes or agrees, not both");
+        }
+        DiffieHellmanKey key = modularKeyHeldBy(arguments.getFirst());
+        if (key == null) {
+            return NoneValue.none();
+        }
+        if (refinements.contains("public")) {
+            return BinaryValue.of(unsignedOctets(key.published()));
+        }
+        if (refinements.contains("secret")) {
+            return secretAgreedBetween(key,
+                    ((BinaryValue) arguments.get(1)).octetsFromHere());
+        }
+        return NoneValue.none();
+    }
+
+    private static Value secretAgreedBetween(DiffieHellmanKey key, byte[] peersValue) {
+        return key.agreedWith(peersValue)
+                .<Value>map(secret -> BinaryValue.of(unsignedOctets(secret)))
+                .orElseGet(NoneValue::none);
+    }
+
+    /**
+     * The modular key a handle carries, or null when it carries something
+     * else.
+     *
+     * <p>Null rather than a refusal, because the C declines rather than
+     * raising here and doubts itself in the same line: {@code return R_NONE;
+     * //or? Trap0(RE_INVALID_HANDLE);}
+     */
+    private static DiffieHellmanKey modularKeyHeldBy(Value given) {
+        return given instanceof HandleValue held
+                && DHM_HANDLE_TYPE.equals(held.typeName())
+                && held.payload() instanceof JavaObjectValue carried
+                && carried.held().orElse(null) instanceof DiffieHellmanKey key
+                ? key
+                : null;
+    }
+
+    /** An RSA context from raw numbers, or none when they do not form a key. */
+    private static Value rsaKeyBuiltFrom(List<Value> arguments, Set<String> refinements) {
+        byte[] modulus = ((BinaryValue) arguments.get(0)).octetsFromHere();
+        byte[] publicExponent = ((BinaryValue) arguments.get(1)).octetsFromHere();
+        java.util.Optional<RsaKey> built = refinements.contains("private")
+                ? RsaKey.privateKeyFrom(modulus, publicExponent,
+                        ((BinaryValue) arguments.get(2)).octetsFromHere(),
+                        ((BinaryValue) arguments.get(3)).octetsFromHere(),
+                        ((BinaryValue) arguments.get(4)).octetsFromHere())
+                : RsaKey.publicKeyFrom(modulus, publicExponent);
+        return built.<Value>map(key -> HandleValue.context(RSA_HANDLE_TYPE,
+                        nextCipherIdentity(), JavaObjectValue.of(key)))
+                .orElseGet(NoneValue::none);
+    }
+
+    /**
+     * ECDH: whichever one thing the call named.
+     *
+     * <p>Exactly one, which is why the count is taken before anything else is
+     * looked at. /INIT is apart from the other three because it is the only
+     * one that makes a context rather than using one.
+     */
+    private static Value ellipticExchange(List<Value> arguments, Set<String> refinements) {
+        refuseUnlessExactlyOneOf(ECDH_ACTIONS, refinements, "ecdh");
+        if (refinements.contains("init")) {
+            return curveKeyMadeOn(((WordValue) arguments.get(1)).canonical());
+        }
+        EllipticCurveKey key = curveKeyHeldBy(arguments.getFirst());
+        if (key == null) {
+            return NoneValue.none();
+        }
+        if (refinements.contains("curve")) {
+            return WordValue.of(key.curveName());
+        }
+        if (refinements.contains("public")) {
+            return BinaryValue.of(unsignedOctets(key.publishedPoint()));
+        }
+        if (refinements.contains("secret")) {
+            return secretAgreedBetween(key, peersPointGivenTo(arguments, refinements));
+        }
+        return UnsetValue.unset();
+    }
+
+    /** A fresh context on a named curve, or none where there is no such curve. */
+    private static Value curveKeyMadeOn(String curveName) {
+        return EllipticCurveKey.onCurve(curveName)
+                .<Value>map(key -> HandleValue.context(ECDH_HANDLE_TYPE,
+                        nextCipherIdentity(), JavaObjectValue.of(key)))
+                .orElseGet(NoneValue::none);
+    }
+
+    private static Value secretAgreedBetween(EllipticCurveKey key, byte[] peersPoint) {
+        return key.agreedWith(peersPoint)
+                .<Value>map(secret -> BinaryValue.of(unsignedOctets(secret)))
+                .orElseGet(NoneValue::none);
+    }
+
+    /**
+     * Where the peer's point sits in the argument list.
+     *
+     * <p>After the key, and after /INIT's curve name when that was asked for
+     * as well. It cannot be in practice, because naming two actions is
+     * refused, but the position is worked out rather than assumed: reading
+     * index two unconditionally cost four tests that had a perfectly good
+     * secret to agree on.
+     */
+    private static byte[] peersPointGivenTo(
+            List<Value> arguments, Set<String> refinements) {
+        int at = refinements.contains("init") ? 2 : 1;
+        return ((BinaryValue) arguments.get(at)).octetsFromHere();
+    }
+
+    /**
+     * ECDSA: a signature over a hash, or whether one holds.
+     *
+     * <p>Signing is what a call with neither refinement does, which is what a
+     * real 3.22.1 does rather than a choice made here.
+     */
+    private static Value ellipticSignature(
+            List<Value> arguments, Set<String> refinements) {
+        EllipticCurveKey key = curveKeyHeldBy(arguments.getFirst());
+        if (key == null) {
+            return NoneValue.none();
+        }
+        byte[] hash = ((BinaryValue) arguments.get(1)).octetsFromHere();
+        return refinements.contains("verify")
+                ? whetherTheSignatureHolds(key, hash,
+                        ((BinaryValue) arguments.get(2)).octetsFromHere())
+                : signatureOver(key, hash);
+    }
+
+    /**
+     * TRUE or NONE, not TRUE or FALSE.
+     *
+     * <p>The declaration says "returns true or false" and a real 3.22.1
+     * answers none for a signature that does not hold. It matters because
+     * {@code if ecdsa/verify ...} reads the same either way and a comparison
+     * against FALSE does not.
+     */
+    private static Value whetherTheSignatureHolds(
+            EllipticCurveKey key, byte[] hash, byte[] signature) {
+        return key.verifies(hash, signature) ? LogicValue.yes() : NoneValue.none();
+    }
+
+    private static Value signatureOver(EllipticCurveKey key, byte[] hash) {
+        return key.signed(hash)
+                .<Value>map(signature -> BinaryValue.of(unsignedOctets(signature)))
+                .orElseGet(NoneValue::none);
+    }
+
+    /** Refuses a call that named two of a set of actions meant to be exclusive. */
+    private static void refuseUnlessExactlyOneOf(
+            List<String> actions, Set<String> refinements, String nativeName) {
+        if (actions.stream().filter(refinements::contains).count() > 1) {
+            throw Raised.of(EvaluationFailure.BAD_REFINES,
+                    nativeName + " does one thing per call");
+        }
+    }
+
+    /**
+     * The curve key a handle carries, or null when it carries something else.
+     *
+     * <p>Null rather than a refusal because both natives that ask answer none
+     * for a handle they cannot use, as the C does.
+     */
+    private static EllipticCurveKey curveKeyHeldBy(Value given) {
+        return given instanceof HandleValue held
+                && ECDH_HANDLE_TYPE.equals(held.typeName())
+                && held.payload() instanceof JavaObjectValue carried
+                && carried.held().orElse(null) instanceof EllipticCurveKey key
+                ? key
+                : null;
+    }
 
     /** The four things RSA does, exactly one of which a caller must name. */
     private static final List<String> RSA_ACTIONS =
