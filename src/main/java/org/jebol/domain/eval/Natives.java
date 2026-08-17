@@ -3652,6 +3652,61 @@ public final class Natives {
                 (arguments, evaluator, context) -> StringValue.of(objectIdentifierWritten(
                         ((BinaryValue) arguments.getFirst()).octetsFromHere())));
 
+        define("premultiply", List.of(
+                        Parameter.required("image", Set.of(Datatype.IMAGE))),
+                (arguments, evaluator, context) -> {
+                    ImageOperations.premultiply((ImageValue) arguments.getFirst());
+                    return arguments.getFirst();
+                });
+
+        define("blur", List.of(
+                        Parameter.required("image", Set.of(Datatype.IMAGE)),
+                        Parameter.required("radius", Typeset.NUMBER.members())),
+                (arguments, evaluator, context) -> {
+                    ImageOperations.blur((ImageValue) arguments.getFirst(),
+                            (int) Math.round(asMagnitude(arguments.get(1))));
+                    return arguments.getFirst();
+                });
+
+        define("resize", List.of(
+                        Parameter.required("image", Set.of(Datatype.IMAGE)),
+                        Parameter.required("size", Set.of(Datatype.PAIR,
+                                Datatype.PERCENT, Datatype.INTEGER)),
+                        Parameter.belongingTo("filter", "name",
+                                Set.of(Datatype.WORD, Datatype.INTEGER)),
+                        Parameter.belongingTo("blur", "factor", Typeset.NUMBER.members())),
+                Set.of("filter", "blur"),
+                (arguments, evaluator, context, refinements) ->
+                        resizedImage(arguments));
+
+        define("image-diff", List.of(
+                        Parameter.required("a", Set.of(Datatype.IMAGE)),
+                        Parameter.required("b", Set.of(Datatype.IMAGE)),
+                        Parameter.belongingTo("part", "offset", Set.of(Datatype.PAIR)),
+                        Parameter.belongingTo("part", "size", Set.of(Datatype.PAIR))),
+                Set.of("part"),
+                (arguments, evaluator, context, refinements) ->
+                        DecimalValue.percent(ImageOperations.differenceBetween(
+                                (ImageValue) arguments.get(0),
+                                (ImageValue) arguments.get(1))));
+
+        define("image", List.of(
+                        Parameter.belongingTo("load", "src-file",
+                                Set.of(Datatype.FILE, Datatype.BINARY)),
+                        Parameter.belongingTo("save", "dst-file",
+                                Set.of(Datatype.NONE, Datatype.FILE, Datatype.BINARY)),
+                        Parameter.belongingTo("save", "dst-image",
+                                Set.of(Datatype.NONE, Datatype.IMAGE)),
+                        Parameter.belongingTo("frame", "num", Set.of(Datatype.INTEGER)),
+                        Parameter.belongingTo("as", "type", Set.of(Datatype.WORD))),
+                Set.of("load", "save", "frame", "as"),
+                (arguments, evaluator, context, refinements) ->
+                        theOperatingSystemsImageCodec(refinements));
+
+        define("generate", List.of(Parameter.required("type", Set.of(Datatype.WORD))),
+                (arguments, evaluator, context) ->
+                        theKeyGenerateWouldHaveMade((WordValue) arguments.getFirst()));
+
         define("ecdh", List.of(
                         Parameter.required("key",
                                 Set.of(Datatype.HANDLE, Datatype.NONE)),
@@ -9809,6 +9864,84 @@ public final class Natives {
     /** The four things ECDH does, exactly one of which a caller may name. */
     private static final List<String> ECDH_ACTIONS =
             List.of("init", "curve", "public", "secret");
+
+    /**
+     * RESIZE's new size, from a pair, a percentage or a width.
+     *
+     * <p>An integer is a width and the height follows from it, keeping the
+     * shape: the declaration says so -- "integer value is used as width" --
+     * and a resize that squashed a photograph because only one number was
+     * given would be a surprise nobody wants.
+     */
+    private static Value resizedImage(List<Value> arguments) {
+        ImageValue image = (ImageValue) arguments.getFirst();
+        int wasWide = image.storage().wide();
+        int wasHigh = image.storage().high();
+        Value asked = arguments.get(1);
+        int wide;
+        int high;
+        if (asked instanceof PairValue size) {
+            wide = (int) size.x();
+            high = (int) size.y();
+        } else if (asked instanceof DecimalValue portion
+                && portion.datatype() == Datatype.PERCENT) {
+            wide = (int) Math.round(wasWide * portion.quantity());
+            high = (int) Math.round(wasHigh * portion.quantity());
+        } else {
+            wide = (int) Math.round(asMagnitude(asked));
+            high = wasWide == 0 ? 0 : Math.max(1, (wide * wasHigh) / wasWide);
+        }
+        if (wide <= 0 || high <= 0) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
+        }
+        return ImageOperations.resized(image, wide, high);
+    }
+
+    /**
+     * IMAGE reaches the operating system's own encoder, which this build has
+     * not got.
+     *
+     * <p>The same answer the C gives where {@code INCLUDE_IMAGE_OS_CODEC} is
+     * undefined -- {@code Trap0(RE_FEATURE_NA)} -- and it is only defined for
+     * Windows and macOS there, as the declaration's own summary says. Asked
+     * for nothing it answers unset, because the C's branches are all on
+     * refinements and it falls out of the bottom.
+     *
+     * <p>Not a gap to fill with an encoder of JEBOL's own: the codec family
+     * in {@code system/codecs} is where a portable one belongs, and this
+     * native is the shim onto a platform's.
+     */
+    private static Value theOperatingSystemsImageCodec(Set<String> refinements) {
+        if (refinements.contains("load") || refinements.contains("save")) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA,
+                    "image encoding through the operating system");
+        }
+        return UnsetValue.unset();
+    }
+
+    /**
+     * What GENERATE answers: a single zero byte, whatever curve was named.
+     *
+     * <p>Copied rather than finished, and the C shows why on its own lines.
+     * {@code mbedtls_ecdsa_genkey} is commented out, the group is loaded as
+     * SECP192R1 whichever curve was asked for, and the point written out is
+     * one nobody set -- so a real 3.22.1 answers the point at infinity for
+     * every curve in the catalogue.
+     *
+     * <p>The declaration is why finishing it here would be wrong rather than
+     * generous. The answer is one binary with nowhere in it for a private
+     * key, so a GENERATE that really made a pair would hand back the public
+     * half and discard the private half, which is an answer nothing can use.
+     * ECDH/INIT already makes a usable elliptic-curve key.
+     *
+     * <p>The curve name is still checked, which is the part of it that works.
+     */
+    private static Value theKeyGenerateWouldHaveMade(WordValue curveNamed) {
+        if (!EllipticCurveKey.curveNames().contains(curveNamed.canonical())) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, curveNamed.spelling());
+        }
+        return BinaryValue.of(0);
+    }
 
     /**
      * Diffie-Hellman over a modular group: publish, or agree.

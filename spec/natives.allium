@@ -9084,3 +9084,172 @@ rule EcdsaVerifyAnswersTrueOrNone {
         else:
             CallResult(value: none)
 }
+
+-- GENERATE names a curve and answers a point that is not on it.
+--
+-- This is a stub upstream rather than a defect, and the difference decides
+-- what to do with it. `mbedtls_ecdsa_genkey` is commented out in the C, the
+-- group is loaded as SECP192R1 whatever curve was asked for, and what gets
+-- written out is a point nobody set -- so a real 3.22.1 answers a single zero
+-- byte, the point at infinity, for every curve in the catalogue.
+--
+-- Copied as it stands rather than finished here, and the reason is in the
+-- declaration. The answer is one binary and there is nowhere in it for a
+-- private key, so a GENERATE that really made a key pair would hand back the
+-- public half and throw the private half away -- an answer nothing can use.
+-- ECDH/INIT is how a usable elliptic-curve key is made, and it already works.
+-- Writing something better here would invent behaviour no caller asked for
+-- and no other Rebol has.
+rule GenerateAnswersThePointAtInfinity {
+    when: EvaluateCall(generate, type)
+    requires: names_a_curve_in_the_catalogue(type)
+
+    ensures: CallResult(datatype: binary)
+    ensures: CallResult(value: the_single_zero_byte)
+}
+
+-- The curve word is still checked, which is the one part of it that works.
+rule GenerateRefusesAWordThatNamesNoCurve {
+    when: EvaluateCall(generate, type)
+    requires: not names_a_curve_in_the_catalogue(type)
+    ensures: CallFails(error: invalid_arg)
+}
+
+rule GenerateRefusesAnythingThatIsNotAWord {
+    when: EvaluateCall(generate, type)
+    requires: type.datatype != word
+    ensures: CallFails(error: expect_arg)
+}
+
+-- The five image functions work on the whole image, never from where it
+-- stands.
+--
+-- One property shared by all of them and worth stating once. An image is a
+-- series, so it has a position, and every other series function respects it.
+-- These do not: the C flags it in a comment of its own -- "All pixels are
+-- modified even when the input image is not at its head!" -- so an image
+-- standing at its third pixel is still blurred, premultiplied and compared
+-- from its first.
+invariant ImageOperationsIgnoreThePosition {
+    for operation in ImageOperations:
+        operation.pixels_affected = operation.image.every_pixel
+}
+
+-- PREMULTIPLY scales each colour by that pixel's own alpha, in place.
+--
+-- What a renderer wants before it composites. A half-transparent red stored
+-- as a full red with an alpha of 128 has to become a half red, or blending it
+-- over a background counts the red twice and the edge glows.
+rule PremultiplyScalesEachColourByItsAlpha {
+    when: EvaluateCall(premultiply, image)
+
+    ensures: each_colour_of(image) = (what_it_was * its_alpha) / 255
+    ensures: CallResult(value: image)
+}
+
+-- A fully opaque pixel is left exactly as it was, which the C shortcuts and
+-- which matters because the division would otherwise lose a little.
+rule PremultiplyLeavesAnOpaquePixelAlone {
+    when: EvaluateCall(premultiply, image)
+    requires: the_pixels_alpha = 255
+    ensures: the_pixel = unchanged
+}
+
+-- BLUR blurs in place by a radius in pixels, and a radius of nothing does
+-- nothing: `if (radius > 0)`. So a caller whose computed radius came out zero
+-- or negative gets the image back untouched rather than an error.
+rule BlurDoesNothingForARadiusOfNoneOrLess {
+    when: EvaluateCall(blur, image, radius)
+    requires: radius <= 0
+    ensures: image = unchanged
+    ensures: CallResult(value: image)
+}
+
+-- RESIZE is the one of the five that answers a new image, because the old one
+-- is the wrong size to hold the answer.
+rule ResizeAnswersANewImageAtTheGivenSize {
+    when: EvaluateCall(resize, image, size)
+
+    ensures: CallResult(datatype: image)
+    ensures: the_answer_is_not_the_same_value_as(image)
+    ensures: size_of(result) = the_size_asked_for(size)
+}
+
+-- A pair is a size, a percentage is a proportion of what it was, and a plain
+-- number is a width with the height following so the shape is kept. The
+-- declaration says the last part: "integer value is used as width".
+rule ResizeReadsAWholeNumberAsAWidthAndKeepsTheShape {
+    when: EvaluateCall(resize, image, size)
+    requires: size.datatype = integer
+
+    ensures: width_of(result) = size
+    ensures: height_of(result) = (size * the_height_it_had) / the_width_it_had
+}
+
+-- IMAGE-DIFF is how far apart two images look, nought per cent to a hundred.
+--
+-- Not a plain distance in red, green and blue, because equal steps in those
+-- numbers do not look equal. It is the redmean approximation the C cites --
+-- green weighted at four throughout, and the red and blue weights sliding
+-- with how red the pair already is.
+--
+-- Alpha takes no part at all. Two images differing only in transparency are
+-- nought per cent apart, which is not what a reader of "weighted RGB
+-- distance" would assume and is checked against a real 3.22.1.
+rule ImageDiffWeighsColourTheWayTheEyeDoes {
+    when: EvaluateCall(image_diff, a, b)
+
+    ensures: CallResult(datatype: percent)
+    ensures: only_the_colour_channels_count()
+}
+
+rule TwoImagesTheSameAreNoughtPerCentApart {
+    when: EvaluateCall(image_diff, a, b)
+    requires: every_pixel_matches(a, b)
+    ensures: CallResult(value: nought_per_cent)
+}
+
+-- Black against white is a hundred per cent exactly, and it is exact only
+-- because the mean is rounded to a whole number of picounits before it is
+-- divided. The C says why beside the line: "used rounding to have nice 100%
+-- when completely different". Without it the answer is a true
+-- 99.9999999999999% that reads as a mistake.
+rule BlackAgainstWhiteIsExactlyAHundredPerCent {
+    when: EvaluateCall(image_diff, a, b)
+    requires: is_wholly_black(a)
+    requires: is_wholly_white(b)
+    ensures: CallResult(value: one_hundred_per_cent)
+}
+
+-- Where the sizes differ only the overlap is compared, which the declaration
+-- states in its own argument comments.
+rule ImageDiffComparesOnlyTheOverlap {
+    when: EvaluateCall(image_diff, a, b)
+    requires: size_of(a) != size_of(b)
+    ensures: the_pixels_compared = the_smaller_of_each_dimension(a, b)
+}
+
+-- IMAGE is a shim onto the operating system's own encoder, and this build has
+-- not got one.
+--
+-- The C only compiles its body where INCLUDE_IMAGE_OS_CODEC is defined, which
+-- its own summary says is "only on Windows and macOS so far", and gives
+-- `Trap0(RE_FEATURE_NA)` everywhere else. That is the answer here: the same
+-- refusal, by the same name, for the same reason.
+--
+-- Not a gap to fill with an encoder of JEBOL's own. The codec family in
+-- system/codecs is where a portable one belongs; this native is the shim onto
+-- a platform's.
+rule ImageRefusesTheOperatingSystemsCodec {
+    when: EvaluateCall(image)
+    requires: the_call_asked_for_load_or_save()
+    ensures: CallFails(error: feature_na)
+}
+
+-- Asked for nothing it answers nothing: every branch in the C is on a
+-- refinement and it falls out of the bottom with the return slot untouched.
+rule ImageWithNoRefinementAnswersUnset {
+    when: EvaluateCall(image)
+    requires: not the_call_asked_for_load_or_save()
+    ensures: CallResult(value: unset)
+}
