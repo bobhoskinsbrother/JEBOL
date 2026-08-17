@@ -8748,3 +8748,135 @@ rule Rc4AcceptsEmptyKeyAndEmptyData {
     requires: is_empty(crypt_key)
     ensures: CallResult(datatype: handle)
 }
+
+-- RSA is two natives as RC4 is: RSA-INIT builds a key context, RSA uses it.
+--
+-- The split is not about state here -- an RSA operation carries nothing from
+-- one call to the next -- but about cost and about shape. The key arrives as
+-- raw numbers, each a binary, and turning those into something that can
+-- encipher means checking they really are a key: that the modulus and
+-- exponent agree, and for a private key that the primes multiply back to the
+-- modulus. Doing that per call would repeat the expensive part of every
+-- operation, and a caller holding a context has somewhere to be told the key
+-- was wrong before any data is handed over.
+rule RsaInitBuildsAKeyContext {
+    when: EvaluateCall(rsa_init, modulus, public_exponent)
+    requires: the_numbers_form_a_usable_key()
+
+    ensures: CallResult(datatype: handle)
+    ensures: CallResult(value: a_context_handle_of_type(rsa))
+}
+
+-- /PRIVATE takes the three numbers that make a key able to decrypt and sign:
+-- the private exponent and the two primes.
+rule RsaInitPrivateTakesTheDecryptingNumbers {
+    when: EvaluateCall(rsa_init, modulus, public_exponent)
+    requires: the_call_asked_for_private()
+    requires: the_numbers_form_a_usable_key()
+
+    ensures: CallResult(value: a_context_that_can_decrypt_and_sign())
+}
+
+-- Key material that is not a key answers NONE rather than raising.
+--
+-- `return R_NONE` after `mbedtls_rsa_check_pubkey` or `check_privkey` fails.
+-- Worth stating because it is the opposite of what the rest of this family
+-- does: a wrong handle raises, wrong refinements raise, but numbers that do
+-- not form a key come back as nothing. A caller has to test the answer rather
+-- than trusting a context it did not check.
+rule RsaInitAnswersNoneWhenTheNumbersAreNotAKey {
+    when: EvaluateCall(rsa_init, modulus, public_exponent)
+    requires: not the_numbers_form_a_usable_key()
+    ensures: CallResult(value: none)
+}
+
+-- RSA does one of four things and the caller must name exactly one.
+--
+-- Encrypt and verify need only the public numbers; decrypt and sign need the
+-- private ones. Naming two of the four, or naming a padding refinement
+-- without an action, is refused as bad-refines before anything is looked at.
+rule RsaDoesExactlyOneOfFourThings {
+    when: EvaluateCall(rsa, rsa_key, data)
+    requires: the_call_named_more_than_one_of(encrypt, decrypt, sign, verify)
+    ensures: CallFails(error: bad_refines)
+}
+
+rule RsaRefusesPaddingWithoutAnAction {
+    when: EvaluateCall(rsa, rsa_key, data)
+    requires: the_call_asked_for_padding_or_hash()
+    requires: not the_call_named_any_of(encrypt, decrypt, sign, verify)
+    ensures: CallFails(error: bad_refines)
+}
+
+-- Enciphering answers a binary as wide as the modulus, whatever it was given.
+rule RsaEncryptAnswersAsManyBytesAsTheModulusHolds {
+    when: EvaluateCall(rsa, rsa_key, data)
+    requires: the_call_asked_for_encrypt()
+
+    ensures: CallResult(datatype: binary)
+    ensures: length_of(result) = the_modulus_width(rsa_key)
+}
+
+-- And deciphering with the matching private context gives back what went in.
+rule RsaDecryptUndoesEncrypt {
+    when: deciphering_what_was_enciphered_for(a_key)
+    ensures: the_result = what_was_enciphered
+}
+
+-- Enciphering the same thing twice gives two different answers, because the
+-- padding carries fresh random bytes each time. That is the property the
+-- padding exists for, and a test comparing two ciphertexts for equality is
+-- testing the wrong thing.
+rule RsaEncryptIsRandomised {
+    when: enciphering_the_same_data_twice_under_one_key()
+    ensures: the_two_results_differ = true
+}
+
+-- Signing is not randomised, so the same data under the same key signs the
+-- same way every time. PKCS#1 v1.5 has no random component, and a caller
+-- comparing a stored signature against a fresh one depends on it.
+rule RsaSignIsDeterministic {
+    when: signing_the_same_data_twice_under_one_key()
+    ensures: the_two_results_are_equal = true
+}
+
+rule RsaVerifyAnswersWhetherTheSignatureHolds {
+    when: EvaluateCall(rsa, rsa_key, data)
+    requires: the_call_asked_for_verify()
+
+    ensures: CallResult(datatype: logic)
+    ensures: CallResult(value: the_signature_matches(data, rsa_key))
+}
+
+-- An operation needing the private numbers, asked of a context that has only
+-- the public ones, answers NONE rather than raising -- the same shape
+-- RSA-INIT uses for a key it could not build.
+rule RsaAnswersNoneWhenTheContextCannotDoIt {
+    when: EvaluateCall(rsa, rsa_key, data)
+    requires: the_call_asked_for_decrypt_or_sign()
+    requires: not rsa_key.has_the_private_numbers
+
+    ensures: CallResult(value: none)
+}
+
+-- Asked for no action at all it answers nothing, as RC4 does with neither of
+-- its refinements.
+rule RsaWithNoActionAnswersNone {
+    when: EvaluateCall(rsa, rsa_key, data)
+    requires: not the_call_named_any_of(encrypt, decrypt, sign, verify)
+    ensures: CallResult(value: none)
+}
+
+-- A handle of another type is refused by name, as RC4 refuses one.
+rule RsaRefusesAHandleOfAnotherType {
+    when: EvaluateCall(rsa, rsa_key, data)
+    requires: rsa_key.handle_type != rsa
+    ensures: CallFails(error: invalid_handle)
+}
+
+-- The data may be a string as well as a binary, and is read as its bytes.
+rule RsaReadsAStringAsItsBytes {
+    when: EvaluateCall(rsa, rsa_key, data)
+    requires: data.is_any_string
+    ensures: the_bytes_operated_on = the_utf8_of(data)
+}

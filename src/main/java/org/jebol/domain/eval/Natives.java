@@ -406,7 +406,8 @@ public final class Natives {
         catalog.set("bitsets", new ObjectValue(bitsets));
 
         catalog.set("handles", BlockValue.block(List.of(
-                WordValue.of(RC4_HANDLE_TYPE), WordValue.of("codec"))));
+                WordValue.of(RC4_HANDLE_TYPE), WordValue.of(RSA_HANDLE_TYPE),
+                WordValue.of("codec"))));
 
         catalog.set("event-types", EventCatalogue.typesBlock());
         catalog.set("event-keys", EventCatalogue.keysBlock());
@@ -3645,6 +3646,37 @@ public final class Natives {
         define("form-oid", List.of(Parameter.required("oid", Set.of(Datatype.BINARY))),
                 (arguments, evaluator, context) -> StringValue.of(objectIdentifierWritten(
                         ((BinaryValue) arguments.getFirst()).octetsFromHere())));
+
+        define("rsa-init", List.of(
+                        Parameter.required("n", Set.of(Datatype.BINARY)),
+                        Parameter.required("e", Set.of(Datatype.BINARY)),
+                        Parameter.belongingTo("private", "d", Set.of(Datatype.BINARY)),
+                        Parameter.belongingTo("private", "p", Set.of(Datatype.BINARY)),
+                        Parameter.belongingTo("private", "q", Set.of(Datatype.BINARY))),
+                Set.of("private"),
+                (arguments, evaluator, context, refinements) -> {
+                    byte[] modulus = ((BinaryValue) arguments.get(0)).octetsFromHere();
+                    byte[] publicExponent = ((BinaryValue) arguments.get(1)).octetsFromHere();
+                    java.util.Optional<RsaKey> built = refinements.contains("private")
+                            ? RsaKey.privateKeyFrom(modulus, publicExponent,
+                                    ((BinaryValue) arguments.get(2)).octetsFromHere(),
+                                    ((BinaryValue) arguments.get(3)).octetsFromHere(),
+                                    ((BinaryValue) arguments.get(4)).octetsFromHere())
+                            : RsaKey.publicKeyFrom(modulus, publicExponent);
+                    return built.<Value>map(key -> HandleValue.context(RSA_HANDLE_TYPE,
+                                    nextCipherIdentity(), JavaObjectValue.of(key)))
+                            .orElseGet(NoneValue::none);
+                });
+
+        define("rsa", List.of(
+                        Parameter.required("rsa-key", Set.of(Datatype.HANDLE)),
+                        Parameter.required("data", anyStringOr(Datatype.BINARY)),
+                        Parameter.belongingTo("verify", "signature", Set.of(Datatype.BINARY)),
+                        Parameter.belongingTo("hash", "algorithm",
+                                Set.of(Datatype.WORD, Datatype.NONE))),
+                Set.of("encrypt", "decrypt", "sign", "verify", "hash", "oaep", "pss"),
+                (arguments, evaluator, context, refinements) ->
+                        rsaOperation(arguments, refinements));
 
         define("rc4", List.of(
                         Parameter.belongingTo("key", "crypt-key", Set.of(Datatype.BINARY)),
@@ -9732,8 +9764,90 @@ public final class Natives {
         }
     }
 
-    /** The type a cipher context publishes. */
+    /** The types a cipher context publishes. */
     private static final String RC4_HANDLE_TYPE = "rc4";
+
+    private static final String RSA_HANDLE_TYPE = "rsa";
+
+    /** The four things RSA does, exactly one of which a caller must name. */
+    private static final List<String> RSA_ACTIONS =
+            List.of("encrypt", "decrypt", "sign", "verify");
+
+    /**
+     * One RSA operation, or nothing when the context cannot perform it.
+     *
+     * <p>The refusals divide in a way worth keeping straight. Naming two
+     * actions, or a padding refinement with no action, is {@code
+     * Trap0(RE_BAD_REFINES)} and raises before anything is looked at. A
+     * handle of another type raises too. But a public-only context asked to
+     * decrypt or sign answers none, as RSA-INIT answers none for numbers that
+     * are not a key -- so a caller has to test the answer rather than trust
+     * that no error meant success.
+     */
+    private static Value rsaOperation(List<Value> arguments, Set<String> refinements) {
+        List<String> named = RSA_ACTIONS.stream().filter(refinements::contains).toList();
+        boolean padded = refinements.contains("oaep") || refinements.contains("pss");
+        if (named.size() > 1 || ((padded || refinements.contains("hash")) && named.isEmpty())) {
+            throw Raised.of(EvaluationFailure.BAD_REFINES,
+                    "rsa does one thing per call");
+        }
+        if (!(arguments.getFirst() instanceof HandleValue held)
+                || !RSA_HANDLE_TYPE.equals(held.typeName())
+                || !(held.payload() instanceof JavaObjectValue carried)
+                || !(carried.held().orElse(null) instanceof RsaKey key)) {
+            throw Raised.of(EvaluationFailure.INVALID_HANDLE,
+                    arguments.getFirst() instanceof HandleValue other
+                            ? other.typeName() : "rsa-key");
+        }
+        if (named.isEmpty()) {
+            return NoneValue.none();
+        }
+        String action = named.getFirst();
+        if (!key.canDecryptAndSign() && (action.equals("decrypt") || action.equals("sign"))) {
+            return NoneValue.none();
+        }
+        byte[] data = octetsOf(arguments.get(1));
+        try {
+            return switch (action) {
+                case "encrypt" -> BinaryValue.of(unsignedOctets(
+                        key.enciphered(data, refinements.contains("oaep"))));
+                case "decrypt" -> BinaryValue.of(unsignedOctets(
+                        key.deciphered(data, refinements.contains("oaep"))));
+                case "sign" -> BinaryValue.of(unsignedOctets(key.signed(data,
+                        digestNamedIn(arguments, refinements),
+                        refinements.contains("pss"))));
+                default -> LogicValue.of(key.verifies(data,
+                        signatureGivenTo(arguments, refinements),
+                        digestNamedIn(arguments, refinements),
+                        refinements.contains("pss")));
+            };
+        } catch (Exception refused) {
+            return NoneValue.none();
+        }
+    }
+
+    /** The digest /HASH named, or the SHA-256 the C falls back to. */
+    private static String digestNamedIn(List<Value> arguments, Set<String> refinements) {
+        if (!refinements.contains("hash")) {
+            return "sha256";
+        }
+        Value named = arguments.get(refinements.contains("verify") ? 3 : 2);
+        return named instanceof WordValue digest ? digest.canonical() : "sha256";
+    }
+
+    private static byte[] signatureGivenTo(List<Value> arguments, Set<String> refinements) {
+        return arguments.get(2) instanceof BinaryValue signature
+                ? signature.octetsFromHere()
+                : new byte[0];
+    }
+
+    private static int[] unsignedOctets(byte[] octets) {
+        int[] widened = new int[octets.length];
+        for (int at = 0; at < octets.length; at++) {
+            widened[at] = octets[at] & 0xFF;
+        }
+        return widened;
+    }
 
     /**
      * Identities for cipher contexts, kept apart from the codecs' block.
