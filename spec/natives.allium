@@ -8578,3 +8578,84 @@ rule AppendingAParenOrPathKeepsItWhole {
 
     ensures: the_items_of(series) = what_it_held_then_the_value_as_one_item()
 }
+
+-- FORM-OID reads an object identifier out of its encoded bytes and writes it
+-- the way people write one: numbers separated by full stops.
+--
+-- An object identifier names a thing in a registry that every certificate and
+-- key format leans on -- `1.2.840.113549.1.1.1` is RSA encryption, and it is
+-- what a script has to recognise to know what a certificate holds. The bytes
+-- it arrives in are the ASN.1 encoding, and nothing else here decodes them.
+--
+-- Two rules make the encoding, and the first is the surprising one.
+--
+-- The first byte carries TWO numbers, not one: `oid[0] / 40` and
+-- `oid[0] % 40`. So a single byte 42 is the two arcs 1 and 2, and there is no
+-- one-arc identifier. That is why every identifier anyone writes begins with
+-- `0.`, `1.` or `2.` -- the first arc cannot exceed 2 without the division
+-- carrying, and 2 is as far as the byte reaches.
+--
+-- Every byte after that is base 128, seven bits at a time, high bit set on
+-- every byte but the last of its group: `value = (value << 7) + (byte & 7F)`,
+-- written out when a byte arrives with the high bit clear.
+rule FormOidWritesTheArcsSeparatedByStops {
+    when: EvaluateCall(form_oid, oid)
+    requires: not is_empty(oid)
+
+    ensures: CallResult(value:
+        the_first_byte_as_two_arcs(oid) then each_base128_group_after_it(oid))
+    ensures: CallResult(datatype: string)
+
+    @guidance
+        -- A real 3.22.1 gets this wrong for one shape and JEBOL does not follow
+        -- it there. `form-oid #{2A64}` answers "1.2.10" with a NUL byte after it
+        -- rather than "1.2.100", and `#{2A7F}` answers "1.2.12" and a NUL rather
+        -- than "1.2.127". The fault is buffer arithmetic: the output is sized at
+        -- three bytes per input byte, which is one short for a two-byte
+        -- identifier whose second group needs three digits, and the retry after
+        -- the truncated write does not take. It bites only at that exact shape --
+        -- `#{2A63}` is "1.2.99" and correct, and three input bytes are correct at
+        -- any width.
+        --
+        -- A string carrying a NUL in the middle of a number is not a rule anyone
+        -- meant, so JEBOL writes what the C meant and this note records what it
+        -- does. See the decision about the C's own bugs.
+}
+
+-- The first byte is two arcs, always, and the division is by forty.
+rule TheFirstByteOfAnOidIsTwoArcs {
+    when: EvaluateCall(form_oid, oid)
+    requires: not is_empty(oid)
+
+    ensures: the_first_arc(result) = whole_part_of(byte_at(oid, 1) / 40)
+    ensures: the_second_arc(result) = remainder_of(byte_at(oid, 1) / 40)
+}
+
+-- No bytes, no arcs. The C prints nothing before its loop when the length is
+-- zero and the loop does not run, so what comes back is an empty string
+-- rather than a refusal: an empty identifier is a thing a caller can be
+-- handed and has to cope with, not a mistake in the asking.
+rule AnEmptyOidWritesAnEmptyString {
+    when: EvaluateCall(form_oid, oid)
+    requires: is_empty(oid)
+    ensures: CallResult(value: the_empty_string)
+}
+
+-- A group whose last byte never arrives is dropped.
+--
+-- The accumulator is only written out when a byte turns up with its high bit
+-- clear, so bytes that run off the end of the binary leave their part-built
+-- number behind. `#{2A81}` is `1.2` and the trailing 81 contributes nothing.
+-- Silently, which is worth stating rather than assuming: a truncated
+-- identifier reads as a shorter valid one instead of refusing.
+rule AnUnterminatedGroupIsDropped {
+    when: EvaluateCall(form_oid, oid)
+    requires: the_last_byte_has_its_high_bit_set(oid)
+    ensures: CallResult(value: the_arcs_of(oid_without_its_trailing_group))
+}
+
+-- It reads from where the binary stands, not from its head.
+rule FormOidReadsFromThePosition {
+    when: EvaluateCall(form_oid, oid)
+    ensures: the_bytes_read = what_lies_at_and_after(oid.position)
+}

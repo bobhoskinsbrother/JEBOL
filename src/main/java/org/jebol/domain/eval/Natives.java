@@ -3632,6 +3632,10 @@ public final class Natives {
 
         defineCodepointRange("ascii?", 0x7F);
         defineCodepointRange("latin1?", 0xFF);
+        define("form-oid", List.of(Parameter.required("oid", Set.of(Datatype.BINARY))),
+                (arguments, evaluator, context) -> StringValue.of(objectIdentifierWritten(
+                        ((BinaryValue) arguments.getFirst()).octetsFromHere())));
+
         define("utf?", List.of(Parameter.required("data", Set.of(Datatype.BINARY))),
                 (arguments, evaluator, context) -> IntegerValue.of(
                         byteOrderMarkOf(((BinaryValue) arguments.getFirst())
@@ -9676,6 +9680,62 @@ public final class Natives {
             }
             slotsInUse -= FRAME_VALUE_UNITS;
         }
+    }
+
+    /**
+     * How many arcs the first byte of an object identifier carries, and what
+     * it is divided by to find them.
+     *
+     * <p>{@code oid[0] / 40} and {@code oid[0] % 40} in {@code n-oid.c}. It
+     * is why every identifier a script meets begins 0, 1 or 2: a first arc of
+     * 3 would need a byte of 120 or more, and 2 is as far as one byte reaches
+     * before the division carries past what the registry allots.
+     */
+    private static final int ARCS_PACKED_INTO_THE_FIRST_BYTE = 40;
+
+    /** The seven bits of a base-128 group, and the bit that says more follow. */
+    private static final int GROUP_BITS = 7;
+    private static final int GROUP_MASK = 0x7F;
+    private static final int MORE_GROUPS_FOLLOW = 0x80;
+
+    /**
+     * An object identifier written the way people write one: its arcs
+     * separated by full stops.
+     *
+     * <p>{@code n-oid.c}. Two rules make the encoding. The first byte holds
+     * two arcs rather than one, and every byte after is base 128, seven bits
+     * at a time, with the high bit set on all but the last of its group.
+     *
+     * <p>A group whose last byte never arrives contributes nothing: the
+     * accumulator is written out only when a byte turns up with its high bit
+     * clear, so a truncated identifier reads as a shorter whole one rather
+     * than refusing.
+     *
+     * <p>A long accumulates where the C uses a 32-bit unsigned and guards
+     * against wrapping. The guard cannot fire before the accumulator has
+     * taken more bytes than any real identifier carries, and answering the
+     * argument unchanged as the C does there would hand back a binary where
+     * every other path answers a string.
+     */
+    private static String objectIdentifierWritten(byte[] encoded) {
+        if (encoded.length == 0) {
+            return "";
+        }
+        StringBuilder written = new StringBuilder();
+        int first = encoded[0] & 0xFF;
+        written.append(first / ARCS_PACKED_INTO_THE_FIRST_BYTE)
+                .append('.')
+                .append(first % ARCS_PACKED_INTO_THE_FIRST_BYTE);
+        long group = 0;
+        for (int at = 1; at < encoded.length; at++) {
+            int octet = encoded[at] & 0xFF;
+            group = (group << GROUP_BITS) + (octet & GROUP_MASK);
+            if ((octet & MORE_GROUPS_FOLLOW) == 0) {
+                written.append('.').append(group);
+                group = 0;
+            }
+        }
+        return written.toString();
     }
 
     /** A value molded and cut to a width, the way the C's `%72r` does. */
