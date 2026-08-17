@@ -45,16 +45,13 @@ class BorrowedFilesLoadWholeTest {
      * <p>The words are matched as substrings of the failure, so each is the
      * shortest piece that names the gap rather than the whole message.
      *
-     * <p>prot-tls.reb makes the same point three times over. It stopped on
+     * <p>prot-tls.reb makes the same point four times over. It stopped on
      * {@code binary} until the binary dialect was ported, then on
-     * {@code system/catalog/ciphers} until the catalogues were filled, and
-     * now on an argument type further in still. Each word named the first
-     * thing in the way and never the whole of what that file wants.
-     *
-     * <p>This entry is a message rather than a word because the failure names
-     * no word: it is an argument a function would not take. That is itself
-     * worth seeing -- a stop can be a type error rather than a missing name,
-     * and a list that only ever held words would have had to distort it.
+     * {@code system/catalog/ciphers} until the catalogues were filled, then
+     * inside {@code decode-list} until a single-word read answered a value
+     * rather than a block, and now on a get-path inside a dialect block. Each
+     * word named the first thing in the way and never the whole of what that
+     * file wants.
      *
      * <p>A word here names a gap and nothing more, which is worth saying
      * because this list once hid one. view-funcs.reb stopped on {@code font}
@@ -71,7 +68,7 @@ class BorrowedFilesLoadWholeTest {
      */
     private static final Map<String, String> STOPS_ON = Map.ofEntries(
             Map.entry("view-funcs.reb", "init-top-window"),
-            Map.entry("prot-tls.reb", "does not allow block!"));
+            Map.entry("prot-tls.reb", "*EllipticCurves"));
 
     @Test
     @DisplayName("no borrowed file stops partway except the ones known to")

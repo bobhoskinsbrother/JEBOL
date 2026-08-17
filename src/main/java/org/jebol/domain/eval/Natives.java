@@ -10010,8 +10010,8 @@ public final class Natives {
                     dialectBlockIn(arguments, refinements, "write"));
         }
         if (refinements.contains("read")) {
-            return readThroughTheDialect(buffer,
-                    dialectBlockIn(arguments, refinements, "read"));
+            Value asked = dialectCodeIn(arguments, refinements);
+            return readThroughTheDialect(buffer, asked);
         }
         return theDialectContextFor(buffer);
     }
@@ -10065,24 +10065,68 @@ public final class Natives {
      */
     private static Value writtenThroughTheDialect(
             BinaryValue buffer, List<Value> dialect) {
-        List<Integer> octets = new ArrayList<>();
-        for (byte octet : buffer.octetsFromHere()) {
-            octets.add(octet & 0xFF);
-        }
+        List<Integer> octets = octetsOfTheBuffer(buffer);
         Bincode.Cursor cursor = new Bincode.Cursor(octets, octets.size());
         Bincode.write(cursor, dialect);
         return theDialectContextFor(BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray()));
     }
 
-    private static Value readThroughTheDialect(
-            BinaryValue buffer, List<Value> dialect) {
+    /**
+     * Reads through the dialect, answering the shape the asking had.
+     *
+     * <p>A block of codes answers a block; a single word answers that one
+     * value. The shape follows the asking because that is what makes the
+     * dialect bearable to write against -- {@code binary/read ctx 'UI16} is a
+     * caller saying "one number, please", and prot-tls.reb reads a field that
+     * way inside a loop and appends the answer straight into a list, where a
+     * block of one would quietly nest.
+     */
+    private static Value readThroughTheDialect(BinaryValue buffer, Value asked) {
+        List<Long> read = Bincode.read(
+                new Bincode.Cursor(octetsOfTheBuffer(buffer), 0),
+                codesWrittenIn(asked));
+        return shapedLikeTheAsking(asked,
+                read.stream().<Value>map(IntegerValue::of).toList());
+    }
+
+    /** The buffer's bytes as the dialect works on them: unsigned, and growable. */
+    private static List<Integer> octetsOfTheBuffer(BinaryValue buffer) {
         List<Integer> octets = new ArrayList<>();
         for (byte octet : buffer.octetsFromHere()) {
             octets.add(octet & 0xFF);
         }
-        List<Long> read = Bincode.read(new Bincode.Cursor(octets, 0), dialect);
-        return BlockValue.block(read.stream().<Value>map(IntegerValue::of).toList());
+        return octets;
+    }
+
+    /** A block of codes as written, or the one code that was. */
+    private static List<Value> codesWrittenIn(Value asked) {
+        return asked instanceof BlockValue block ? block.remaining() : List.of(asked);
+    }
+
+    /**
+     * The answer shaped the way the asking was.
+     *
+     * <p>A block of codes answers a block; a single word answers that one
+     * value. Which is what makes the dialect bearable to write against --
+     * prot-tls.reb reads one field inside a loop and appends the answer
+     * straight into a list, where a block of one would quietly nest.
+     */
+    private static Value shapedLikeTheAsking(Value asked, List<Value> values) {
+        if (asked instanceof BlockValue) {
+            return BlockValue.block(values);
+        }
+        return values.isEmpty() ? NoneValue.none() : values.getFirst();
+    }
+
+    /** The code a read was given, as written rather than wrapped. */
+    private static Value dialectCodeIn(
+            List<Value> arguments, Set<String> refinements) {
+        int at = refinements.contains("init") ? 2 : 1;
+        if (refinements.contains("write")) {
+            at++;
+        }
+        return arguments.get(at);
     }
 
     /**

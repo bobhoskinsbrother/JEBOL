@@ -191,22 +191,44 @@ final class PendingCall {
      * `f: func [a /into b] [...]` demanded two arguments from every
      * caller and Rebol's own COLLECT could not be written.
      */
-    private static int arityOf(Value callee, List<String> asked) {
-        if (callee instanceof FunctionValue function) {
-            return (int) function.parameters().stream()
-                    .filter(Parameter::consumesAnArgument)
-                    .filter(parameter -> parameter.owningRefinement()
-                            .map(asked::contains).orElse(true))
-                    .count();
-        }
+    private static int arityOf(Value callee, List<String> named) {
         return switch (callee) {
-            case NativeValue built -> built.arity();
-            case FunctionValue function -> function.arity();
+            case FunctionValue function ->
+                    argumentsWrittenFor(function.parameters(), named);
+            case NativeValue built ->
+                    argumentsWrittenFor(built.parameters(), named);
             case OperatorValue operator -> operator.arity();
             default -> throw Raised.of(
                     EvaluationFailure.CANNOT_USE,
                     callee.datatype().literalSpelling() + " is not callable");
         };
+    }
+
+    /**
+     * How many values the call site wrote, granted or not.
+     *
+     * <p>Named rather than granted, which is the whole of the rule above and
+     * which the native path did not obey. A declined refinement's argument is
+     * still written and still taken -- {@code append/:part s v 1} with part
+     * declined appends and swallows the 1 -- so counting only the granted
+     * ones left the extra values standing in the block as expressions of
+     * their own.
+     *
+     * <p>What that cost: REPEND is
+     * {@code append/:part/:only/:dup :series reduce :value :length :count},
+     * and with all three declined the two spare words were evaluated
+     * separately, making the last of them the function's answer. So
+     * {@code repend [1 2] [3 4]} came back as NONE, and every port opened by
+     * URL failed with no-scheme, because make-port* decodes a URL through
+     * REPEND.
+     */
+    private static int argumentsWrittenFor(
+            List<Parameter> parameters, List<String> named) {
+        return (int) parameters.stream()
+                .filter(Parameter::consumesAnArgument)
+                .filter(parameter -> parameter.owningRefinement()
+                        .map(named::contains).orElse(true))
+                .count();
     }
 
     void accept(Value argument) {

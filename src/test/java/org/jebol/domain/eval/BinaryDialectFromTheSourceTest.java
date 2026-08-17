@@ -120,6 +120,23 @@ class BinaryDialectFromTheSourceTest {
         }
 
         @Test
+        @DisplayName("but a single word answers that value, not a block holding it")
+        void aSingleWordAnswersTheValueItself() {
+            // The shape follows the asking. `binary/read ctx 'UI16` is a
+            // caller saying "one number, please", and prot-tls.reb reads a
+            // field this way inside a loop and appends the answer straight
+            // into a list -- a block there would quietly nest.
+            assertThat(answerTo("mold binary/read #{0102} 'UI16")).isEqualTo("\"258\"");
+            assertThat(answerTo("integer? binary/read #{0102} 'UI16")).isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("while the same code in a block still answers a block")
+        void theSameCodeInABlockAnswersABlock() {
+            assertThat(answerTo("mold binary/read #{0102} [UI16]")).isEqualTo("\"[258]\"");
+        }
+
+        @Test
         @DisplayName("and it round trips whatever was written")
         void itRoundTrips() {
             assertThat(answerTo("""

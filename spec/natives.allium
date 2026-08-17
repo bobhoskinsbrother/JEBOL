@@ -9357,15 +9357,32 @@ rule WritingThroughTheDialectAnswersTheContext {
     ensures: the_result_holds_a_field_called(buffer)
 }
 
--- Reading answers a block of what it read, one entry per code that produces
+-- Reading a BLOCK of codes answers a block, one entry per code that produces
 -- a value. The position codes produce none, which is why it is a block
 -- gathered rather than one value per code.
-rule ReadingThroughTheDialectAnswersABlock {
+rule ReadingABlockOfCodesAnswersABlock {
     when: EvaluateCall(binary, ctx)
     requires: the_call_asked_for_read()
+    requires: the_code_given_is_a_block()
 
     ensures: CallResult(datatype: block)
     ensures: length_of(result) = how_many_codes_produce_a_value()
+}
+
+-- Reading a single WORD answers that one value, not a block holding it.
+--
+-- The shape follows the asking, which is what makes the dialect bearable to
+-- write against. `binary/read ctx 'UI16` is a caller saying "one number,
+-- please", and handing back a block of one would make every such caller
+-- unwrap it -- prot-tls.reb reads a single field this way inside a loop and
+-- appends the answer straight into a list, so a block there quietly nests.
+rule ReadingASingleWordAnswersTheValueItself {
+    when: EvaluateCall(binary, ctx)
+    requires: the_call_asked_for_read()
+    requires: the_code_given_is_a_word()
+
+    ensures: CallResult(value: the_one_value_that_code_produces())
+    ensures: CallResult(datatype) != block
 }
 
 -- A signed field whose top bit is set reads back as a negative number.
