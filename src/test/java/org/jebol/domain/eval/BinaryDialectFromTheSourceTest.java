@@ -184,6 +184,59 @@ class BinaryDialectFromTheSourceTest {
     }
 
     @Nested
+    @DisplayName("a get-word or get-path in the dialect is looked up")
+    class TheValuesACallerAlreadyHas {
+
+        @Test
+        @DisplayName("a get-word writes what the word holds")
+        void aGetWordIsLookedUp() {
+            assertThat(answerTo("""
+                    n: 300
+                    b: binary/write #{} [UI16 :n]
+                    mold b/buffer""")).isEqualTo("\"#{012C}\"");
+        }
+
+        @Test
+        @DisplayName("and a plain word is not, because a word there names a code")
+        void aPlainWordIsNotLookedUp() {
+            assertThat(answerTo("""
+                    n: 300
+                    e: try [binary/write #{} [UI16 n]] error? e""")).isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("a get-path reaches into a table of constants")
+        void aGetPathIsLookedUp() {
+            assertThat(answerTo("""
+                    table: make object! [secp256r1: 23]
+                    b: binary/write #{} [UI16BE :table/secp256r1]
+                    mold b/buffer""")).isEqualTo("\"#{0017}\"");
+        }
+
+        @Test
+        @DisplayName("including one whose own segment is a get-word, as prot-tls writes it")
+        void aGetPathWithAGetWordSegment() {
+            // `binary/write tail supported-elliptic-curves
+            //     [UI16BE :*EllipticCurves/:curve]` -- a curve's number looked
+            // up in an enumeration by a word the loop is holding.
+            assertThat(answerTo("""
+                    table: make object! [secp256r1: 23 secp384r1: 24]
+                    curve: 'secp384r1
+                    b: binary/write #{} [UI16BE :table/:curve]
+                    mold b/buffer""")).isEqualTo("\"#{0018}\"");
+        }
+
+        @Test
+        @DisplayName("and a get-word may give the count a position code takes")
+        void aGetWordServesAPositionCode() {
+            assertThat(answerTo("""
+                    where: 2
+                    mold binary/read #{0102030405} [SKIP :where UI8]"""))
+                    .isEqualTo("\"[3]\"");
+        }
+    }
+
+    @Nested
     @DisplayName("what it refuses")
     class TheRefusals {
 

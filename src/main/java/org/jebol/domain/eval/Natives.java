@@ -3752,7 +3752,7 @@ public final class Natives {
                         Parameter.belongingTo("with", "num", Set.of(Datatype.INTEGER))),
                 Set.of("init", "write", "read", "into", "with"),
                 (arguments, evaluator, context, refinements) ->
-                        theBinaryDialect(arguments, refinements, evaluator));
+                        theBinaryDialect(arguments, refinements, evaluator, context));
 
         define("register", List.of(
                         Parameter.hardQuoted("name"),
@@ -10002,18 +10002,58 @@ public final class Natives {
      * directly, or a number of bytes to make room for. All three end up as
      * bytes and a position.
      */
-    private static Value theBinaryDialect(
-            List<Value> arguments, Set<String> refinements, Evaluator evaluator) {
+    private static Value theBinaryDialect(List<Value> arguments,
+            Set<String> refinements, Evaluator evaluator, Context context) {
         BinaryValue buffer = bufferOfTheDialectContext(arguments.getFirst());
         if (refinements.contains("write")) {
             return writtenThroughTheDialect(buffer,
-                    dialectBlockIn(arguments, refinements, "write"));
+                    dialectBlockIn(arguments, refinements, "write").stream()
+                            .map(item -> valueLookedUp(item, evaluator, context))
+                            .toList());
         }
         if (refinements.contains("read")) {
             Value asked = dialectCodeIn(arguments, refinements);
-            return readThroughTheDialect(buffer, asked);
+            return readThroughTheDialect(buffer, eachValueLookedUp(asked,
+                    evaluator, context));
         }
         return theDialectContextFor(buffer);
+    }
+
+    /**
+     * The dialect with its get-words and get-paths resolved, everything else
+     * as written.
+     *
+     * <p>The block arrives unevaluated, which is what lets a code be named
+     * rather than computed. But a caller writing a protocol has values in
+     * hand -- a length worked out a line earlier, a constant from a table --
+     * and the get sigil is how they reach the dialect: {@code [UI16 :length]}
+     * writes the number LENGTH holds, where {@code [UI16 length]} would be an
+     * error because LENGTH is not a code.
+     *
+     * <p>Resolved here rather than inside the dialect, because looking a word
+     * up is the language's work and the dialect's job is bytes.
+     */
+    private static Value eachValueLookedUp(
+            Value asked, Evaluator evaluator, Context context) {
+        if (!(asked instanceof BlockValue block)) {
+            return valueLookedUp(asked, evaluator, context);
+        }
+        return BlockValue.block(block.remaining().stream()
+                .map(item -> valueLookedUp(item, evaluator, context))
+                .toList());
+    }
+
+    private static Value valueLookedUp(
+            Value item, Evaluator evaluator, Context context) {
+        boolean fetches = item instanceof WordValue word
+                        && word.datatype() == Datatype.GET_WORD
+                || item instanceof BlockValue path
+                        && path.datatype() == Datatype.GET_PATH;
+        if (!fetches) {
+            return item;
+        }
+        return evaluator.evaluateOrRaise(
+                Binder.bind(BlockValue.block(List.of(item)), context), context);
     }
 
     /** Where a dialect context keeps its bytes. */

@@ -9410,6 +9410,26 @@ rule AnUnknownDialectCodeIsRefusedByName {
     ensures: CallFails(error: feature_na)
 }
 
+-- A get-word or a get-path in the dialect is looked up, and everything else
+-- is taken as written.
+--
+-- The dialect block arrives unevaluated, which is what lets a code be named
+-- rather than computed. But a caller writing a protocol has values in hand --
+-- a length worked out a line earlier, a constant from a table -- and no way
+-- to put them in a block that is not evaluated. The get sigil is that way:
+-- `[UI16 :length]` writes the number LENGTH holds, and `[UI16 length]` would
+-- be an error, because LENGTH is not a code.
+--
+-- Both forms, because a table of constants is reached by path.
+-- prot-tls.reb writes `[UI16BE :*EllipticCurves/:curve]`, which is a curve's
+-- number looked up in an enumeration by a word the loop is holding.
+rule AGetWordOrGetPathInTheDialectIsLookedUp {
+    when: EvaluateCall(binary, ctx)
+    requires: the_dialect_holds_a_get_word_or_get_path()
+
+    ensures: the_value_used = what_that_word_or_path_holds()
+}
+
 -- The context may be an object made earlier, a binary to work on directly, or
 -- a number of bytes to make room for. All three are bytes and a position.
 rule TheDialectContextMayBeAnObjectABinaryOrASize {

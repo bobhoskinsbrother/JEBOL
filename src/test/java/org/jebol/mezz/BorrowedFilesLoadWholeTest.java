@@ -45,13 +45,14 @@ class BorrowedFilesLoadWholeTest {
      * <p>The words are matched as substrings of the failure, so each is the
      * shortest piece that names the gap rather than the whole message.
      *
-     * <p>prot-tls.reb makes the same point four times over. It stopped on
-     * {@code binary} until the binary dialect was ported, then on
+     * <p>prot-tls.reb made the point five times and is now off the list. It
+     * stopped on {@code binary} until the binary dialect was ported, then on
      * {@code system/catalog/ciphers} until the catalogues were filled, then
      * inside {@code decode-list} until a single-word read answered a value
-     * rather than a block, and now on a get-path inside a dialect block. Each
-     * word named the first thing in the way and never the whole of what that
-     * file wants.
+     * rather than a block, then on a get-path in a dialect block, and under
+     * all of it REPEND answered NONE because a declined refinement's argument
+     * was not being taken. Not one of those five words was the whole of what
+     * that file wanted, and the last of them was not a word at all.
      *
      * <p>A word here names a gap and nothing more, which is worth saying
      * because this list once hid one. view-funcs.reb stopped on {@code font}
@@ -67,8 +68,7 @@ class BorrowedFilesLoadWholeTest {
      * the whole of what is missing.
      */
     private static final Map<String, String> STOPS_ON = Map.ofEntries(
-            Map.entry("view-funcs.reb", "init-top-window"),
-            Map.entry("prot-tls.reb", "*EllipticCurves"));
+            Map.entry("view-funcs.reb", "init-top-window"));
 
     @Test
     @DisplayName("no borrowed file stops partway except the ones known to")
