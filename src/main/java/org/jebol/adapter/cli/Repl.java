@@ -1,8 +1,10 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
+import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.IntegerValue;
 
 import java.io.*;
@@ -34,14 +36,32 @@ public final class Repl {
 
     public static void main(String[] arguments) {
         PrintStream out = System.out;
-        Interpreter interpreter = Interpreter.writingTo(new StreamOutput(out));
-        if (arguments.length >= 2 && arguments[0].equals("--do")) {
-            interpreter.defineFreshWordsIn(arguments[1]);
-            System.exit(exitCodeOf(interpreter.run(arguments[1])));
+        Interpreter interpreter = anInterpreterFor(arguments, out);
+        String[] rest = ChosenScreen.withoutTheSwitch(arguments);
+        if (rest.length >= 2 && rest[0].equals("--do")) {
+            interpreter.defineFreshWordsIn(rest[1]);
+            System.exit(exitCodeOf(interpreter.run(rest[1])));
         }
         BufferedReader in = new BufferedReader(
                 new InputStreamReader(System.in, StandardCharsets.UTF_8));
         new Repl(interpreter, in, out).run();
+    }
+
+    /**
+     * An interpreter with whatever screen was asked for, and none otherwise.
+     *
+     * <p>The screen is the only thing this grants, and only when somebody said
+     * so. A console session that never mentions graphics gets exactly what it
+     * always got.
+     */
+    private static Interpreter anInterpreterFor(String[] arguments, PrintStream out) {
+        if (!ChosenScreen.wasAskedFor(arguments)) {
+            return Interpreter.writingTo(new StreamOutput(out));
+        }
+        Interpreter interpreter = Interpreter.writingTo(new StreamOutput(out),
+                Bounds.standard().granting(HostService.WINDOWS));
+        ChosenScreen.attachTo(interpreter, arguments, out);
+        return interpreter;
     }
 
     private static int exitCodeOf(ScriptOutcome outcome) {

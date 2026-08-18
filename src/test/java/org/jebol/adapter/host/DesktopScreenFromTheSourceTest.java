@@ -48,7 +48,7 @@ class DesktopScreenFromTheSourceTest {
                 new BufferedImage(wide, high, BufferedImage.TYPE_INT_ARGB);
         Graphics2D onto = surface.createGraphics();
         try {
-            GobPainter.paint(onto, gob);
+            DesktopPainting.paint(onto, gob);
         } finally {
             onto.dispose();
         }

@@ -28,6 +28,13 @@ dependencies {
     testImplementation("net.jqwik:jqwik:1.9.2")
     testImplementation("org.assertj:assertj-core:3.26.3")
     testImplementation("com.tngtech.archunit:archunit-junit5:1.4.1")
+
+    // Drives a real browser, so that "the page and the window show the same
+    // picture" is a thing the build checks rather than a thing anybody says.
+    // testImplementation and not implementation: the shipped jar has no
+    // dependencies and this does not change that.
+    testImplementation("org.seleniumhq.selenium:selenium-java:4.27.0")
+
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -36,8 +43,29 @@ tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
 }
 
+// Drives a real browser, so it needs one, and it needs the network the first
+// time it fetches a driver. Kept out of `check` for that reason and for no
+// other: it is a second gate rather than a skipped test, it runs everything it
+// holds every time it runs, and `./gradlew browserCheck` is the whole of how.
+//
+// What it is for: proving that the page and the desktop window show the same
+// picture. They are handed the same paint list, so the only way they can
+// differ is in how one of them draws a stated rectangle in a stated place --
+// and this is what looks.
+val browserCheck by tasks.registering(Test::class) {
+    group = "verification"
+    description = "Render the same paint list in Java2D and in a real browser, and compare"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform { includeTags("browser") }
+    systemProperty("java.awt.headless", "true")
+    outputs.upToDateWhen { false }
+}
+
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags("browser")
+    }
 
     // The tests run with no display, which is what a server has and what CI
     // has. Two reasons, and the second is the one that cost a killed build.

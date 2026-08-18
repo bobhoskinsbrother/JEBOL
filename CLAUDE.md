@@ -126,6 +126,22 @@ Do not `rm -rf build/test-results` to force a re-run -- it makes Gradle fail wit
 `NoSuchFileException` on its own binary results directory. Use `./gradlew
 cleanTest` instead.
 
+**`./gradlew browserCheck` is the second gate, and it is not optional -- it is
+separate.** It drives a real Chrome through WebDriver, renders the same paint
+list in Java2D and in the browser, and compares the two pixel for pixel. That is
+how "a page and a window show the same picture" is a thing the build knows
+rather than a thing anybody says.
+
+It is out of `check` because it needs a browser installed and a network the
+first time it fetches a driver, and the ordinary gate should need neither. That
+makes it a second gate rather than a skipped test: everything it holds runs
+every time it runs, and it is never quietly excluded. Run it after any change to
+`PaintList`, to either renderer, or to the page.
+
+Selenium is a `testImplementation` dependency and nothing else. **The shipped jar
+has no dependencies and this does not change that** -- about 917 KB, of which 239
+KB is the borrowed REBOL library.
+
 ## Code comments: never
 
 **Never write a code comment. Make the variable, method and type names carry the
@@ -153,3 +169,31 @@ assertThat(errorIdFromLoading("""
 
 The text block still escapes a `"` at the very end of the block, so prefer braces
 for REBOL strings where the source allows it -- `{...}` reads as itself.
+
+## Java strings: text blocks, and never an escaped closing quote
+
+**Use a text block for anything with a quote in it, and never write `\"""`.**
+The rule above is about REBOL; this one is about every Java string in the
+project, test or production.
+
+A text block whose last character is a `"` has to escape it, and the result --
+`fill\"""` -- is the single most misread piece of punctuation in the language.
+It is three quotes closing the block, one quote of content, and a backslash,
+and nobody reads it correctly at a glance. If a block would end with a quote,
+change the block rather than escape it: put a trailing comma or newline inside
+it, or move the final quote into the assertion.
+
+Where a string is short and interleaved with expressions, a text block does not
+help, and the answer is not a pile of `\"` either -- it is a name. Building
+JSON as `"\"kind\":\"" + kind + "\""` is punctuation pretending to be code;
+extract a `field(name, value)` and the escaping disappears along with the
+question of whether it is right.
+
+```java
+// no
+assertThat(json).contains("\"kind\":\"fill\"");
+
+// yes -- the block ends on a comma, so nothing is escaped
+assertThat(json).contains("""
+        "kind":"fill",""");
+```

@@ -306,7 +306,7 @@ public final class DesktopScreen implements ScreenPort {
             @Override
             protected void paintComponent(Graphics onto) {
                 super.paintComponent(onto);
-                GobPainter.paint((Graphics2D) onto, gob);
+                DesktopPainting.paintTheContentsOf((Graphics2D) onto, gob);
             }
         };
         surface.setPreferredSize(new Dimension(

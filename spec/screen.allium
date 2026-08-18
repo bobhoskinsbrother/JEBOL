@@ -112,7 +112,36 @@ entity ScreenPort {
     root_gob: values.GobStorage?     -- what INIT-TOP-WINDOW was handed
     windows: ScreenWindow with port = this
 
+    -- The last thing this port was asked to paint, which is the same list
+    -- every other port would have been handed for the same tree.
+    last_painted: PaintList?
+
+    -- Which renderer sits behind it. The kinds differ in how they execute a
+    -- paint list and in nothing else a script can see, which is the whole
+    -- claim this spec makes.
+    renderer: DesktopScreen | BrowserScreen
+
     open_windows: windows where standing = showing
+}
+
+-- A window on the operator's own machine, painted by a widget toolkit.
+variant DesktopScreen : ScreenPort {
+    toolkit: String          -- which one, for a person reading a log
+}
+
+-- A browser somewhere else, painted by whatever the page runs.
+--
+-- The path that existed before this read a layout block straight into markup
+-- and never made a gob at all. It worked, and it was a second implementation
+-- of the dialect rather than a third renderer of one: the two would drift,
+-- and only one of them was what REBOL's own library talks to.
+--
+-- So a browser implements the same port the desktop does. VIEW, UNVIEW,
+-- DO-EVENTS and the handler list are the same borrowed REBOL either way, and
+-- the only difference is which adapter executes the paint list.
+variant BrowserScreen : ScreenPort {
+    connected: boolean       -- whether a browser is attached right now
+    reported_size: Integer   -- what the browser said its viewport measures
 }
 
 -- One window on the operator's screen, backing one gob.
@@ -432,6 +461,240 @@ rule TheWaitEndsWhenTheScreenHasNoWindowsLeft {
     requires: run.interpreter.screen_port.open_windows.count = 0
 
     ensures: the_wait_returns(run)
+}
+
+------------------------------------------------------------
+-- The paint list
+------------------------------------------------------------
+
+-- What a gob tree becomes before anything paints it.
+--
+-- Three renderers are wanted -- a desktop window, a phone and a browser --
+-- and the question that decides whether they stay alike is where the tree
+-- gets walked. If each renderer walks it, each has its own opinion about
+-- offsets, clipping and opacity, and the three drift apart in ways only a
+-- person comparing screenshots would notice.
+--
+-- So the tree is walked once, here, into a flat list of instructions that
+-- carry absolute positions. A renderer executes the list and decides nothing.
+-- The three cannot disagree about where a thing goes, because none of them
+-- works it out.
+--
+-- It is also what makes the DRAW dialect tractable later: thirty commands
+-- become thirty instruction kinds added once rather than three times.
+enum PaintKind {
+    fill          -- a rectangle of one colour
+    | writing     -- a line of characters
+    | picture     -- an image, pixel for pixel
+}
+
+-- One thing to paint, with everywhere it needs to go already worked out.
+--
+-- Absolute rather than relative, and its own clip rather than a stack. Both
+-- for the same reason: an instruction that means the same thing on its own,
+-- out of order and with no state carried between them, is one a renderer
+-- cannot execute differently from its neighbour. A clip stack would need
+-- push and pop to survive the wire and would let a renderer lose its place.
+value PaintInstruction {
+    kind: PaintKind
+    across: Integer          -- from the left of the whole surface
+    down: Integer            -- from the top of it
+    wide: Integer
+    high: Integer
+    clip: ClipRectangle      -- absolute, already intersected with every parent
+    opacity: Integer         -- 0 to 255, already multiplied down the tree
+}
+
+value ClipRectangle {
+    across: Integer
+    down: Integer
+    wide: Integer
+    high: Integer
+}
+
+-- One gob tree, walked once, as the thing every renderer is handed.
+--
+-- It exists as a thing with a name rather than as a step inside SHOW because
+-- it is the seam the three renderers meet at. A test can build one and assert
+-- on it without a screen of any kind, which is how the desktop renderer and
+-- the browser are held to the same picture without either of them running.
+entity PaintList {
+    for_gob: values.GobStorage
+    instructions: List<PaintInstruction>
+
+    count: instructions.count
+}
+
+-- A gob paints itself before its children, and its children in pane order.
+--
+-- The order is the whole of what "in front" means, and the C's compositor
+-- relies on it too. A list in the wrong order is a picture with the wrong
+-- thing on top, which reads as a rendering bug in whichever renderer the
+-- person happened to be looking at.
+rule AGobIsPaintedBeforeItsChildren {
+    when: FlattenTheTree(root)
+    ensures:
+        for gob in every_gob_under(root):
+            the_instruction_for(gob) comes before every_instruction_for(gob.pane)
+}
+
+-- Every position in the list is measured from the surface, not from a parent.
+--
+-- A renderer that had to add up offsets would be doing the one piece of
+-- arithmetic the three must agree on. Doing it once means a renderer that
+-- gets it wrong cannot exist.
+rule EveryPositionIsAbsolute {
+    when: FlattenTheTree(root)
+    ensures:
+        for instruction in the_list:
+            instruction.across = sum_of_offsets_from(root)
+}
+
+-- Every instruction carries the clip it is subject to, already narrowed by
+-- every parent between it and the root.
+rule EveryInstructionCarriesItsOwnClip {
+    when: FlattenTheTree(root)
+    ensures:
+        for instruction in the_list:
+            instruction.clip = the_overlap_of_every_parents_area(instruction)
+}
+
+-- A gob with no width or no height contributes nothing, and neither does
+-- anything under it.
+--
+-- Its children would be clipped to nothing anyway, so walking them would
+-- produce instructions that paint nothing and cost every renderer the work
+-- of discovering that separately.
+rule AGobOfNoSizeContributesNothing {
+    when: FlattenTheTree(root)
+    requires: some_gob_has_no_area(root)
+    ensures:
+        for gob in every_gob_with_no_area(root):
+            no_instruction_exists_for(gob)
+            no_instruction_exists_for(gob.pane)
+}
+
+-- Opacity multiplies down the tree, so a half-transparent gob inside another
+-- half-transparent one is a quarter.
+--
+-- Multiplied here rather than by each renderer, because compositing is where
+-- toolkits differ most and the arithmetic is the part that must not.
+rule OpacityMultipliesDownTheTree {
+    when: FlattenTheTree(root)
+    ensures:
+        for instruction in the_list:
+            instruction.opacity = every_ancestors_alpha_multiplied_together
+}
+
+-- A content kind nothing can paint yet produces no instruction at all.
+--
+-- Four of the eight paint: a colour, a string, a rich-text block and an
+-- image. A draw block, an effect, a native widget and nothing itself produce
+-- nothing, and that gap is the same gap in all three renderers because it is
+-- decided here.
+rule AContentKindWithNothingToPaintProducesNoInstruction {
+    when: FlattenTheTree(root)
+    ensures:
+        for gob in every_gob_under(root) where content_is_not_paintable(gob):
+            no_instruction_exists_for(gob)
+}
+
+-- A window's text is its title, and the screen's text is a label. Neither is
+-- painted.
+--
+-- The same field means two things depending on where the gob sits, which is
+-- why this needs saying. On an ordinary gob {@code text} is content and the
+-- C paints it: GOBT_STRING. On a window it is what goes in the title bar --
+-- VIEW writes {@code window/text: any [opts/title window/text "REBOL:
+-- untitled"]} and the host reads it when it opens the window. And the screen
+-- gob carries {@code text: "Top Gob"}, which is a name for the thing rather
+-- than anything anybody should see.
+--
+-- Painting them is the failure this rule exists to stop, and it is a quiet
+-- one: a window shows its own title written across its top left corner, in
+-- black, over whatever was meant to be there. It was in the desktop renderer
+-- and nobody noticed, because no test gob had any text. The browser found it
+-- the first time a real VIEW ran through it, which is what sharing one paint
+-- list is for.
+rule TheScreensTextAndAWindowsTitleAreNotPainted {
+    when: FlattenTheTree(root)
+    ensures:
+        no_instruction_exists_for(the_text_of(root))
+        for window in root.pane:
+            no_instruction_exists_for(the_text_of(window))
+}
+
+-- Every renderer executes the same list, and that is the whole mechanism.
+--
+-- Not a promise to be checked afterwards by comparing pictures. The list is
+-- the single input, so a difference between two renderers can only be a
+-- difference in how one of them draws a stated rectangle at a stated place --
+-- never a difference of opinion about where the rectangle is.
+--
+-- What comparing pictures is still for: glyph shapes and anti-aliased edges,
+-- which no two rasterisers agree on and which no amount of shared input
+-- fixes. Those want a tolerance. Geometry and colour want none.
+rule EveryRendererExecutesTheSameList {
+    when: script_shows(run, gob)
+    requires: windows_are_granted(run)
+
+    ensures:
+        for renderer in every_renderer_attached(run):
+            renderer_is_given(the_list_flattened_from(gob))
+}
+
+------------------------------------------------------------
+-- The browser as a screen
+------------------------------------------------------------
+
+-- Nothing about how the list reaches a browser belongs in the port.
+--
+-- The port hands over a paint list and takes events back. Whether that
+-- travels as server-sent events, as a socket, or through a host's own web
+-- framework is the host's business, and JEBOL exists to run inside a host
+-- that already has one. A transport in the domain would be a decision made
+-- for every host by a language.
+rule TheTransportIsNotThePortsBusiness {
+    when: script_shows(run, gob)
+    requires: windows_are_granted(run)
+    requires: the_screen_is_a_browser(run)
+    ensures: the_paint_list_is_offered_to_whatever_is_attached(run)
+}
+
+-- A browser that is not attached is a screen that is not there.
+--
+-- The same split every screen makes: measurements answer zero and taking the
+-- root gob is accepted, so the library still loads, and showing refuses. A
+-- host that started a browser screen and has nobody looking at it is in
+-- exactly the position of a machine with no display.
+rule ABrowserWithNobodyAttachedIsAScreenThatIsNotThere {
+    when: script_shows(run, gob)
+    requires: windows_are_granted(run)
+    requires: the_screen_is_a_browser(run)
+
+    requires: not the_browser_is_attached(run)
+
+    ensures:
+        run.conclusion = raised
+        run.refusal_reason = not_present
+        run.refused_service = windows
+}
+
+-- An event from a browser names a gob and joins the same queue every other
+-- event joins.
+--
+-- Which is what lets one handler block work on a desktop and in a browser
+-- without knowing which it is running under. The round trip is real and the
+-- script cannot see it: an event arrives, the interpreter's own thread takes
+-- it inside WAIT, and the handlers run exactly where they always run.
+rule AnEventFromABrowserJoinsTheSameQueue {
+    when: the_browser_reports(port, kind, window)
+
+    ensures: ScreenEvent.created(
+        port: port,
+        kind: kind,
+        window: window,
+        delivered: false)
 }
 
 ------------------------------------------------------------
