@@ -1,0 +1,394 @@
+-- allium: 3
+--
+-- JEBOL: DELECT, the parser every REBOL dialect is read by.
+--
+-- Scope: how a block of words and values becomes commands with their
+-- arguments in a known order. One native, and the machinery behind it.
+--
+-- Why it comes before anything that uses it: DRAW, EFFECT, TEXT and REBCODE
+-- are all read this way. {@code system/dialects} holds one object per dialect
+-- and each object's fields are its commands, so writing a bespoke reader for
+-- DRAW would be writing the first of four.
+--
+-- The idea worth stating plainly, because it is not how any other parser
+-- works. A command declares the *types* of its arguments rather than their
+-- order, and DELECT puts whatever it finds into whichever slot accepts it. So
+-- {@code box 10x10 3.0 20x20} and {@code box 10x10 20x20 3.0} produce the same
+-- answer, and a slot nobody filled comes back as none. That is what lets a
+-- dialect read like a description instead of like a call.
+--
+-- Authorities: {@code src/core/u-dialect.c} is the whole implementation, 560
+-- lines. {@code src/tests/units/delect-test.r3} is Rebol's own test and is the
+-- third authority. Every expectation here was also run against a real 3.22.1
+-- before it was written down.
+--
+-- Excludes:
+--   - The dialects themselves. What DRAW's commands mean is
+--     spec/draw.allium; this says only how the block is read.
+--   - TRACE/DELECT's counting of missed arguments, which is debugging output
+--     with no effect on what is parsed.
+
+use "./values.allium" as values
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- How a value came to sit in a slot.
+--
+-- Two of the five are conversions rather than matches, and they are the only
+-- place DELECT changes a value rather than moving it. Both are one-way and
+-- neither is symmetric with the other: a decimal into a whole-number slot is
+-- truncated, not rounded.
+enum SlotFit {
+    exactly              -- the value's type is the slot's type
+    | a_whole_number_from_a_fraction  -- 3.7 into an integer slot becomes 3
+    | a_fraction_from_a_whole_number  -- 4 into a decimal slot becomes 4.0
+    | the_named_refinement            -- the word is the slot's own name
+    | nothing_accepted_it             -- no slot would take it
+}
+
+-- What a command's declaration can say a slot is.
+enum SlotKind {
+    a_datatype       -- pair!, tuple!, integer!
+    | a_typeset      -- any-string!, number!
+    | a_refinement   -- a bare word that is its own name, such as `closed`
+    | a_repeater     -- `*` before a type: as many of that type as are written
+}
+
+------------------------------------------------------------
+-- Entities
+------------------------------------------------------------
+
+-- One dialect: an object whose fields are its commands.
+--
+-- {@code system/dialects/draw} is one of these and so is anything a script
+-- builds with {@code context [...]}. A field holding a block is a command and
+-- the block is its slots; a field holding none is a keyword rather than a
+-- command, which is how DRAW's option words -- {@code closed}, {@code
+-- even-odd}, {@code bilinear} -- are known without being commands.
+entity Dialect {
+    commands: DialectCommand with dialect = this
+
+    -- Every dialect has one, and values written before any command reach it.
+    default_command: DialectCommand
+}
+
+entity DialectCommand {
+    dialect: Dialect
+    name: String
+    slots: List<CommandSlot>
+
+    -- A word whose field is none. It names something without taking anything.
+    is_a_keyword: boolean
+}
+
+value CommandSlot {
+    kind: SlotKind
+    accepts: List<values.Datatype>
+}
+
+-- One call of DELECT: one command read, or the whole block when asked.
+entity DelectRun {
+    dialect: Dialect
+    input: values.BlockStorage
+    output: values.BlockStorage
+    reads_the_whole_block: boolean      -- the /all refinement
+    searches_contexts: boolean          -- the /in refinement
+}
+
+------------------------------------------------------------
+-- Reading one command
+------------------------------------------------------------
+
+-- A command runs until the next command, or the end of the block.
+--
+-- Not until its slots are full, which is the difference that makes a dialect
+-- readable. `box 10x10 20x20 circle 5x5 3` needs no punctuation between the
+-- two commands because the reader stops at CIRCLE, and BOX's third slot is
+-- simply never filled.
+--
+-- Only a command ends a command. A keyword does not, which is what lets
+-- `spline 1x1 2x2 closed` finish with an option word.
+rule ACommandRunsUntilTheNextOne {
+    when: script_delects(run)
+    requires: the_next_value_names_a_command(run)
+    ensures: the_arguments_taken_are(everything_before_the_next_command(run))
+}
+
+-- Each argument goes into the first slot that will accept it, and the answer
+-- is in slot order however the arguments were written.
+--
+-- The whole of what a dialect is for. Rebol's own test says it in one line:
+-- with `cmd: [any-string! integer!]`, the input `cmd 3 a@b` answers
+-- `[cmd a@b 3]`. Neither argument moved to where it was written; both went to
+-- where they fit.
+rule AnArgumentGoesToTheFirstSlotThatAcceptsIt {
+    when: script_delects(run)
+    ensures:
+        for argument in the_arguments_taken(run):
+            argument_sits_in(the_first_unfilled_slot_accepting(argument))
+}
+
+-- A slot nobody filled is none, and the command's answer is always as long as
+-- its declaration.
+--
+-- Padded rather than truncated, because a reader of the answer counts along
+-- the slots. A short answer would make the caller check the length before
+-- every field, and a caller that forgot would read the wrong argument.
+rule AnUnfilledSlotIsNone {
+    when: script_delects(run)
+    requires: some_slot_was_not_filled(run)
+    ensures: every_unfilled_slot_holds(none)
+}
+
+-- The command's own word comes first in the answer.
+rule TheAnswerBeginsWithTheCommand {
+    when: script_delects(run)
+    ensures: the_first_value_of(run.output) = the_command_that_was_read(run)
+}
+
+-- A command written as a lit-word answers as a lit-word.
+--
+-- `'box` rather than `box`, and it survives into the output. It is how a
+-- caller marks a command it wants named rather than acted on, and losing the
+-- mark would make the two indistinguishable to whatever reads the answer.
+rule ALitWordCommandStaysALitWord {
+    when: script_delects(run)
+    requires: the_command_was_written_as_a_lit_word(run)
+    ensures: the_first_value_of(run.output) = the_command_as_a_lit_word(run)
+}
+
+------------------------------------------------------------
+-- What a value is, before it is placed
+------------------------------------------------------------
+
+-- A word that is not the dialect's own stands for whatever it holds.
+--
+-- Which is what lets a dialect be written with variables: `box origin size`
+-- reads the two pairs those words hold. A word that *is* in the dialect is
+-- never looked up, or every option word would have to be a defined variable.
+rule AWordOutsideTheDialectIsLookedUp {
+    when: script_delects(run)
+    requires: some_argument_is_a_word_the_dialect_does_not_know(run)
+    ensures: the_argument_placed_is(what_the_word_holds)
+}
+
+-- A paren is evaluated, so a dialect can carry a computed value.
+rule AParenArgumentIsEvaluated {
+    when: script_delects(run)
+    requires: some_argument_is_a_paren(run)
+    ensures: the_argument_placed_is(what_the_paren_answered)
+}
+
+-- A path is followed, and a lit-word becomes a plain word.
+rule APathIsFollowedAndALitWordLosesItsMark {
+    when: script_delects(run)
+    ensures:
+        for argument in the_arguments_taken(run) where is_a_path(argument):
+            the_argument_placed_is(what_the_path_reached)
+        for argument in the_arguments_taken(run) where is_a_lit_word(argument):
+            the_argument_placed_is(the_same_word_without_its_mark)
+}
+
+------------------------------------------------------------
+-- Fitting a value to a slot
+------------------------------------------------------------
+
+-- A whole number offered to a fraction's slot becomes a fraction, and a
+-- fraction offered to a whole number's slot is cut down to one.
+--
+-- Truncated and not rounded: `(REBI64)VAL_DECIMAL(value)`, so 3.7 becomes 3.
+-- Worth pinning because rounding is the reasonable guess and it is wrong.
+--
+-- The two conversions are what make a dialect writable by hand. Nobody typing
+-- `line-width 2` wants to be told it should have been `2.0`.
+rule NumbersAreConvertedBetweenTheTwoNumericSlots {
+    when: script_delects(run)
+    ensures:
+        for argument in the_arguments_taken(run):
+            if a_fraction_meets_a_whole_number_slot(argument):
+                the_argument_placed_is(the_fraction_with_its_part_cut_off)
+            if a_whole_number_meets_a_fraction_slot(argument):
+                the_argument_placed_is(the_whole_number_as_a_fraction)
+}
+
+-- A slot that names a word accepts that word and nothing else.
+--
+-- How DRAW's option words work: `spline: [integer! word! * pair!]` takes any
+-- word, but a slot written as a bare name -- the refinement kind -- takes only
+-- itself. Reaching one stops the search, so a word that is not it does not
+-- fall through to a later slot.
+rule ANamedSlotTakesOnlyItsOwnWord {
+    when: script_delects(run)
+    requires: some_slot_is_a_refinement(run)
+    ensures:
+        for argument in the_arguments_taken(run):
+            if argument_is_that_slots_word(argument):
+                argument_sits_in(that_slot)
+}
+
+-- A repeating slot takes as many as are written, and none when there are none.
+--
+-- `line: [* pair!]` and `polygon: [* pair!]` are how a dialect takes a list
+-- without a block around it. A repeater that took nothing adds nothing, which
+-- is the one place a slot does not pad with none: `many` on its own answers
+-- `[many]` rather than `[many none]`.
+rule ARepeatingSlotTakesAsManyAsAreWritten {
+    when: script_delects(run)
+    requires: some_slot_repeats(run)
+    ensures:
+        the_repeating_slot_holds(every_argument_of_that_type_in_a_row)
+}
+
+------------------------------------------------------------
+-- Values before any command
+------------------------------------------------------------
+
+-- Values written before a command reach the dialect's DEFAULT.
+--
+-- Which is what lets a dialect start with data. Its answer is named DEFAULT
+-- like any other command, so a reader of the answer needs no special case.
+rule ValuesBeforeACommandGoToTheDefault {
+    when: script_delects(run)
+    requires: the_next_value_does_not_name_a_command(run)
+    ensures:
+        the_command_that_was_read(run) = run.dialect.default_command
+        one_value_is_taken(run)
+}
+
+-- A word the dialect does not know, that the default will not take either, is
+-- refused.
+--
+-- Refused rather than skipped, and this is the decision in DELECT most worth
+-- defending. A dialect is a description somebody typed, and a word nobody
+-- serves is almost always a misspelling. Skipping it would draw a picture
+-- missing one shape, with nothing anywhere saying which.
+rule AWordNothingAcceptsIsRefused {
+    when: script_delects(run)
+    requires: the_next_value_does_not_name_a_command(run)
+    requires: the_default_command_will_not_take_it(run)
+
+    ensures:
+        run.conclusion = raised
+        run.error_id = invalid_arg
+        the_error_names(run.input)
+}
+
+------------------------------------------------------------
+-- What a call answers, and how far it got
+------------------------------------------------------------
+
+-- One call reads one command and answers the input standing after it.
+--
+-- Which is what makes a walk a loop: a caller passes the answer back in and
+-- gets the next command. It answers none at the end of the block, so the loop
+-- has something to stop on.
+rule ACallAnswersTheInputAdvancedPastWhatItRead {
+    when: script_delects(run)
+    requires: not run.reads_the_whole_block
+    ensures: DelectResult(value: run.input positioned after the command read)
+}
+
+rule AtTheEndOfTheBlockItAnswersNone {
+    when: script_delects(run)
+    requires: nothing_is_left_of(run.input)
+    ensures: DelectResult(value: none)
+}
+
+-- The output block is rebuilt each call, not added to.
+--
+-- So a caller may keep one block and walk a whole dialect through it without
+-- clearing it, and each command's answer stands alone.
+rule TheOutputHoldsOnlyTheCommandJustRead {
+    when: script_delects(run)
+    requires: not run.reads_the_whole_block
+    ensures: run.output = only_what_this_call_read(run)
+}
+
+-- Asked for the whole block, it reads every command into one answer.
+--
+-- The commands run together in the order they were written, each still
+-- beginning with its own name, so the answer is a flat block a reader walks
+-- once. That is what a renderer wants: one pass, no loop around the parser.
+rule ReadingTheWholeBlockGathersEveryCommand {
+    when: script_delects(run)
+    requires: run.reads_the_whole_block
+    ensures:
+        for command in every_command_in(run.input):
+            run.output holds command followed by its arguments
+}
+
+-- An output block that may not be changed is refused before anything is read.
+rule AProtectedOutputIsRefused {
+    when: script_delects(run)
+    requires: the_output_is_protected(run)
+    ensures: run.conclusion = raised
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- However the arguments were written, the answer is in slot order.
+--
+-- The one property everything downstream rests on. A renderer reading a DRAW
+-- command counts along the slots, so an answer that was ever in written order
+-- would put a radius where a corner belongs.
+invariant TheAnswerIsAlwaysInSlotOrder {
+    for run in DelectRun:
+        for command in commands_read_by(run):
+            the_values_after(command) line up with the_slots_of(command)
+}
+
+-- A call never reads past the command it answers for.
+--
+-- Or a walk would skip commands, and the caller would have no way to know: the
+-- answer looks the same whether one command was read or three.
+invariant ACallNeverReadsPastWhatItAnswersFor {
+    for run in DelectRun:
+        run.reads_the_whole_block or one_command_was_read(run)
+}
+
+------------------------------------------------------------
+-- Surface
+------------------------------------------------------------
+
+surface TheDialectReader {
+    facing script: DelectRun
+
+    provides:
+        Delect(script, dialect, input, output)
+        DelectTheWholeBlock(script, dialect, input, output)
+
+    exposes:
+        SlotKind
+        SlotFit
+
+    @guarantee ADialectDeclaresTypesRatherThanAnOrder
+        -- A command says what kinds of value it takes and DELECT puts each
+        -- argument wherever it fits. So the same command can be written
+        -- several ways and read one way, which is what makes a dialect read
+        -- as a description rather than as a call with its arguments in a
+        -- remembered sequence.
+        --
+        -- The cost is that two slots of the same type cannot be told apart by
+        -- anything but their order, and a caller who writes them the wrong way
+        -- round gets no complaint. DRAW lives with that: `box` takes two pairs
+        -- and the first is the corner because it was written first.
+
+    @guarantee OneReaderServesEveryDialect
+        -- DRAW, EFFECT, TEXT and REBCODE are read by this and nothing else.
+        -- A dialect is an object whose fields are its commands, so adding one
+        -- is adding an object rather than adding a parser.
+}
+
+------------------------------------------------------------
+-- Open questions
+------------------------------------------------------------
+
+open question "Two slots of the same datatype are told apart only by the order they were written in, and a caller who swaps them is not told. `box: [pair! pair! decimal!]` takes a corner and an end, and `box 20x20 10x10 0` is a backwards box that reads as valid. Nothing in the C checks it and nothing could without the dialect saying more than a type. Is this worth a warning somewhere, or is it the price of the whole idea?"
+
+open question "What should a repeating slot do when a later slot could also have taken the value? The C stops repeating at the first value the repeater will not take and removes the unused output slot, then carries on with the next slot. That is faithful and it means `line: [* pair!]` followed by another slot is order-sensitive in a way the rest of the dialect is not. No dialect in the tree has a slot after a repeater, so this is currently theoretical."
+
+open question "TRACE/DELECT counts arguments that found no slot and prints a running total. It changes nothing about what is parsed, so it is out of scope here. Is a count of near-misses worth having as anything other than debugging output -- could a dialect report `you wrote three things BOX could not use` rather than silently padding with none?"

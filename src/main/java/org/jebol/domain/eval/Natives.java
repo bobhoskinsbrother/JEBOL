@@ -4057,8 +4057,12 @@ public final class Natives {
                 Set.of("in", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     requireChangeable(arguments.get(2));
-                    throw Raised.of(EvaluationFailure.FEATURE_NA,
-                            "the delect dialect parse is not built");
+                    return Delect.read(
+                            (ObjectValue) arguments.getFirst(),
+                            (BlockValue) arguments.get(1),
+                            (BlockValue) arguments.get(2),
+                            refinements.contains("all"),
+                            evaluator, context);
                 });
 
         defineSet();
