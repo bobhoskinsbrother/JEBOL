@@ -6843,6 +6843,62 @@ rule TheBodyOfAMapIsItsPairs {
     ensures: CallResult(value: pairs_of(subject))
 }
 
+-- A set-word in a walk's name list is set to the series where it stands, and
+-- takes no value out of it.
+--
+-- Two names in the list mean two different things, decided by how each is
+-- written. `Init_Loop` accepts a word or a set-word and remembers which --
+-- `VAL_SET(word, VAL_TYPE(spec))` -- and `Loop_Each` then has an arm for each.
+-- A word takes the next value and moves on. A set-word is handed the series
+-- itself, positioned where the walk has got to, and the index is left alone:
+-- the C's own note is "do not increment block."
+--
+-- So `foreach [here: value] [a b c]` walks one value a round with HERE
+-- standing at it, which is how a walk can insert or remove where it is.
+-- Rebol's own HANDLE-EVENTS is written on it: it walks the handler list
+-- looking for the first with a lower priority and does `insert here handler`.
+--
+-- Without this the set-word reads as an ordinary name, so the pair takes two
+-- values a round and the second name gets the wrong one. That is not a loud
+-- failure -- the loop runs, half the values are skipped, and whatever the
+-- second name holds is a value from the series rather than nothing.
+rule ASetWordInAWalkIsSetToTheSeriesWhereItStands {
+    when: WalkOver(subject, names, body)
+    requires: is_a_series(subject)
+    requires: some_name_is_a_set_word(names)
+
+    ensures:
+        for name in names where is_a_set_word(name):
+            EachRound(sets: name, to: subject_positioned_where_the_walk_has_got_to)
+        EachRound(takes: count_of_plain_words_in(names) values)
+}
+
+-- Over an object or a map, a set-word is set to the whole thing rather than
+-- to a position, because neither is walked by index:
+-- `if (ANY_OBJECT(value) || IS_MAP(value)) *vars = *value;`.
+rule ASetWordWalkingAnObjectOrAMapIsSetToTheWholeThing {
+    when: WalkOver(subject, names, body)
+    requires: is_map(subject) or is_object(subject)
+    requires: some_name_is_a_set_word(names)
+
+    ensures:
+        for name in names where is_a_set_word(name):
+            EachRound(sets: name, to: subject)
+}
+
+-- A list of nothing but set-words still advances, one value a round.
+--
+-- Because nothing else would: no name takes a value, so the index would stand
+-- still and the walk would never end. The C says so in a comment beside the
+-- line that fixes it -- `if (index == rindex) index++; //the word block has
+-- only set-words: foreach [a:] [1 2 3][]`.
+rule AWalkOfOnlySetWordsStillAdvances {
+    when: WalkOver(subject, names, body)
+    requires: is_a_series(subject)
+    requires: every_name_is_a_set_word(names)
+    ensures: EachRound(takes: 1 value)
+}
+
 -- Walking a map with one word walks the keys, as plain words.
 --
 -- The key is read from an even slot -- `*vars = *BLK_SKIP(series, index & ~1)`

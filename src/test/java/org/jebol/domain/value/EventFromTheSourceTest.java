@@ -304,11 +304,32 @@ class EventFromTheSourceTest {
         @Test
         @DisplayName("and none means the event belongs to the GUI, whose port is the host's")
         void noneMeansTheGui() {
-            assertThat(answerTo("none? system/ports/event")).isEqualTo(TRUE);
-            assertThat(answerTo("e: make event! [port: none] none? e/port"))
+            // Writing none is not clearing the field. `else if (IS_NONE(val))
+            // VAL_EVENT_MODEL(value) = EVM_GUI;` -- it says which of the
+            // seven models this event uses, and reading the field back then
+            // answers the one port every GUI event belongs to: `if
+            // (IS_EVENT_MODEL(value, EVM_GUI)) *val = *Get_System(SYS_PORTS,
+            // PORTS_EVENT);`.
+            //
+            // This asserted `none? system/ports/event` until that port
+            // existed, which pinned a gap in JEBOL rather than anything the C
+            // does. A real 3.22.1 has the port even in a console build.
+            assertThat(answerTo("port? system/ports/event")).isEqualTo(TRUE);
+            assertThat(answerTo(
+                    "e: make event! [port: none] same? e/port system/ports/event"))
                     .isEqualTo(TRUE);
             assertThat(errorIdFrom("make event! [port: 1]"))
                     .isEqualTo("bad-field-set");
+        }
+
+        @Test
+        @DisplayName("and a gob puts the event in the same model, so it answers the same port")
+        void agobMeansTheGuiToo() {
+            assertThat(answerTo(
+                    "g: make gob! [] e: make event! [gob: g] "
+                            + "same? e/port system/ports/event"))
+                    .as("`case SYM_WINDOW: case SYM_GOB:` sets EVM_GUI as well")
+                    .isEqualTo(TRUE);
         }
 
         @Test

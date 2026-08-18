@@ -1,0 +1,531 @@
+-- allium: 3
+--
+-- JEBOL: putting a gob tree on a real screen, and getting events back.
+--
+-- Scope: the three commands a windowing host must answer -- INIT-TOP-WINDOW,
+-- GUI-METRIC and SHOW -- the port behind them, and the queue that carries
+-- events from the screen back to the script. Together these are what
+-- `view-funcs.reb` needs, and that file is REBOL's own: VIEW, UNVIEW,
+-- DO-EVENTS and the handler list are borrowed and never rewritten here.
+--
+-- Excludes:
+--   - The DRAW dialect. A gob whose content is a draw block carries thirty
+--     commands declared in boot/draw.reb, and painting them is a separate
+--     piece of work with a spec of its own. Here a gob paints its colour,
+--     its text and its image, and a draw block paints nothing yet.
+--   - VID. There is no VID in REBOL 3: LAYOUT is defined nowhere in the
+--     mezzanine or the boot files, and `view-funcs.reb` calls it anyway.
+--     Whatever JEBOL grows there is JEBOL's own and is written in REBOL.
+--   - The five dialogs that ask the operator a question. Those are
+--     WindowRequest in embed.allium and share this grant and nothing else.
+--   - Native widgets. GOBT_WIDGET is a content kind and the win32 host
+--     serves thirteen of them; no gob painted here is one.
+--
+-- Dependencies: GobStorage and GobContent in values.allium. The `windows`
+-- member of HostService, and ServiceRefusal, in embed.allium.
+--
+-- The authority is the C, and for this area the C is the host rather than
+-- the core: src/os/posix/host-window.c dispatches all three commands, and
+-- src/os/win32/host-window.c serves the same twelve metrics a different way.
+-- Where the two hosts disagree, they disagree about how much they implement
+-- and never about what a command means.
+
+use "./values.allium" as values
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- What GUI-METRIC can be asked for.
+--
+-- Twelve, and both hosts serve exactly these twelve. `virtual-screen-size` is
+-- in the word list boot/window.reb hands the host and is in neither host's
+-- switch, so asking for it is refused everywhere; it is not a member here for
+-- that reason.
+--
+-- Eleven answer a pair. `screens` answers a count and is the only one that
+-- does not, which is why it cannot be folded into the others.
+enum ScreenMetric {
+    screen_size          -- the whole display, in pixels
+    | screen_origin      -- where this display starts in the desktop
+    | screen_dpi         -- dots per inch, across and down
+    | screens            -- how many displays there are; a count, not a pair
+    | work_origin        -- where the usable area starts, inside the furniture
+    | work_size          -- how big the usable area is
+    | title_size         -- the height of a title bar
+    | border_size        -- the frame around a window that can be resized
+    | border_fixed       -- the frame around a window that cannot
+    | window_min_size    -- the smallest a window is allowed to be
+    | log_size           -- the scaling factor from logical to physical pixels
+    | phys_size          -- its reciprocal
+}
+
+-- Where a gob stands in relation to a window on the screen.
+--
+-- The C holds this as two independent bits rather than as a state: whether
+-- the gob has a parent, and whether GOBF_WINDOW is set on it. SHOW reads the
+-- pair and decides what to do, which is why its comment has to explain that
+-- "a new window will be in Gob_Root/pane but will not have GOBF_WINDOW set"
+-- and that "a closed window will have no PARENT and will not be in the
+-- Gob_Root/pane but will have GOBF_WINDOW set". Naming the three combinations
+-- that mean something is the same fact said once.
+enum WindowStanding {
+    asked_for      -- in the root's pane, with no window yet: open it
+    | showing      -- in the root's pane, with a window: refresh it
+    | dismissed    -- has a window and has left the root's pane: close it
+}
+
+-- What the screen tells a script about. The names are EventCatalogue's,
+-- which are the C's, and the order there cannot change because reb-evtypes.h
+-- is generated from it.
+--
+-- These eight are what a window can say in this increment. The catalogue has
+-- forty-odd; the rest belong to ports, to the console and to devices.
+enum ScreenEventKind {
+    close          -- the operator asked for the window to go away
+    | resize       -- the window changed size
+    | offset       -- the window moved
+    | key          -- a key went down
+    | key_up       -- a key came up
+    | down         -- a pointer button went down
+    | up           -- a pointer button came up
+    | move         -- the pointer moved
+}
+
+------------------------------------------------------------
+-- Entities
+------------------------------------------------------------
+
+-- The screen a host is willing to let scripts draw on. A port the domain
+-- owns and an adapter implements, in the shape every other host service
+-- already has.
+--
+-- It speaks gobs and events and nothing else. That is what lets one gob tree
+-- reach a desktop window, a phone and a browser without the tree knowing
+-- which: the toolkit lives entirely on the far side, and swapping it is
+-- swapping an adapter.
+entity ScreenPort {
+    -- Whether there is a display behind this port at all. A machine with no
+    -- screen still answers questions about one; see the metric rules.
+    has_a_display: boolean
+
+    root_gob: values.GobStorage?     -- what INIT-TOP-WINDOW was handed
+    windows: ScreenWindow with port = this
+
+    open_windows: windows where standing = showing
+}
+
+-- One window on the operator's screen, backing one gob.
+entity ScreenWindow {
+    port: ScreenPort
+    gob: values.GobStorage
+    standing: WindowStanding
+
+    transitions standing {
+        asked_for -> showing
+        showing -> dismissed
+        terminal: dismissed
+    }
+}
+
+-- Something that happened on the screen, waiting for the script to be told.
+--
+-- It is an entity rather than a value because it has a lifetime: the toolkit
+-- makes it on its own thread and the interpreter takes it on another, and
+-- the gap between those two moments is the whole reason this queue exists.
+entity ScreenEvent {
+    port: ScreenPort
+    kind: ScreenEventKind
+    window: ScreenWindow
+    delivered: boolean
+}
+
+------------------------------------------------------------
+-- Taking the root gob
+------------------------------------------------------------
+
+-- INIT-TOP-WINDOW is handed `system/view/screen-gob` and makes it the root
+-- everything else hangs under. It does three things and the C does them in
+-- three lines: it remembers the gob, it clears its parent, and it writes the
+-- screen's size onto it.
+--
+-- Writing the size matters more than it looks. VIEW centres a window with
+-- `screen/size - window/size / 2`, so a root of the wrong size puts every
+-- centred window in the wrong place, and a root of no size puts them all at
+-- the same place.
+rule TheRootGobIsRememberedAndTakesTheScreensSize {
+    when: script_initialises_the_top_window(run, gob)
+    requires: windows_are_granted(run)
+    requires: run.interpreter.screen_port.has_a_display
+
+    ensures:
+        run.interpreter.screen_port.root_gob = gob
+        gob.parent = absent
+        gob.size = the_size_of_display(run.interpreter.screen_port, 0)
+}
+
+-- A machine with no screen accepts the root gob and sizes it at nothing.
+--
+-- This is the decision in this spec most worth defending, because refusing
+-- would have been the obvious reading. `view-funcs.reb` calls
+-- INIT-VIEW-SYSTEM on its own last line, so INIT-TOP-WINDOW runs while the
+-- file is still loading. If it raised on a machine with no display, the file
+-- would stop partway and define nothing below the line it stopped on -- and
+-- a build server has no display, which means the library would be a
+-- different library in the one place it is tested.
+--
+-- Zero is a real answer rather than a stand-in, which is what makes this
+-- honest rather than convenient. The posix host implements two metrics and
+-- returns 0 for the other ten, so a script that reads `work-size` and gets
+-- 0x0 is reading exactly what a GTK build tells it. Asking about a screen
+-- that is not there is answerable; putting a window on it is not, and that
+-- is the request that refuses.
+rule TheRootGobOfAScreenThatIsNotThereIsSizedAtNothing {
+    when: script_initialises_the_top_window(run, gob)
+    requires: windows_are_granted(run)
+    requires: not run.interpreter.screen_port.has_a_display
+
+    ensures:
+        run.interpreter.screen_port.root_gob = gob
+        gob.parent = absent
+        gob.size = zero_pair()
+}
+
+------------------------------------------------------------
+-- Asking about the screen
+------------------------------------------------------------
+
+-- Eleven of the twelve metrics answer a pair, and both hosts answer them by
+-- asking the operating system two questions and putting the answers side by
+-- side.
+rule AMetricOfTwoNumbersAnswersAPair {
+    when: script_asks_for_a_metric(run, metric, display)
+    requires: windows_are_granted(run)
+    requires: metric != screens
+
+    ensures: MetricResult(value: the_pair_for(run.interpreter.screen_port, metric, display))
+}
+
+-- The count of displays is the one metric that is not a measurement, so it
+-- answers an integer. The C writes it into the frame as RXT_INTEGER and
+-- returns before reaching the code that would have made a pair of it.
+rule TheNumberOfDisplaysAnswersAnInteger {
+    when: script_asks_for_a_metric(run, metric, display)
+    requires: windows_are_granted(run)
+    requires: metric = screens
+
+    ensures: MetricResult(value: the_count_of_displays(run.interpreter.screen_port))
+}
+
+-- A title bar has a height and no width, so the pair's first number is
+-- always zero. Both hosts set `x = 0` and ask the system only for the
+-- height, and VIEW then uses the whole pair as a window's offset --
+-- `window/offset: system/view/metrics/title-size` -- which is what makes the
+-- zero load-bearing rather than decorative. A width there would push every
+-- window sideways.
+rule TheTitleBarHasNoWidth {
+    when: script_asks_for_a_metric(run, metric, display)
+    requires: windows_are_granted(run)
+    requires: metric = title_size
+
+    ensures: MetricResult(value: a_pair_whose_first_number_is_zero())
+}
+
+-- A word that is not one of the twelve is refused rather than answered.
+--
+-- Refused rather than answered with none, because the C returns
+-- RXR_BAD_ARGS, and because a metric is a number a caller is about to
+-- compute with. A none flowing into `screen/size - window/size / 2` fails
+-- somewhere else entirely, and the script's author reads a subtraction
+-- error rather than the name they got wrong.
+--
+-- `virtual-screen-size` is the case that shows this is not hypothetical: it
+-- is in the word list boot/window.reb hands the host, so it looks supported,
+-- and neither host has a branch for it.
+rule AMetricNameNoHostServesIsRefused {
+    when: script_asks_for_a_metric(run, metric, display)
+    requires: windows_are_granted(run)
+    requires: not the_metric_is_one_of_the_twelve(metric)
+
+    ensures: run.conclusion = raised
+}
+
+-- A display index outside the range of displays that exist is refused.
+--
+-- A departure from the C, and stated as one. Both hosts read the index and
+-- the posix one then ignores it entirely, so asking about display seven on a
+-- laptop answers the laptop's numbers. That is silently wrong in the way this
+-- project keeps finding: the caller gets a plausible number, computes a
+-- window position from it, and the window appears on the wrong screen with
+-- nothing anywhere saying why.
+--
+-- Counting from zero, so a machine with one display serves index 0 and
+-- nothing else, and a negative index is refused like any other.
+rule ADisplayThatIsNotThereIsRefused {
+    when: script_asks_for_a_metric(run, metric, display)
+    requires: windows_are_granted(run)
+    requires: run.interpreter.screen_port.has_a_display
+    requires: display < 0 or display >= the_count_of_displays(run.interpreter.screen_port)
+
+    ensures: run.conclusion = raised
+}
+
+-- Every metric of a screen that is not there is zero. See
+-- TheRootGobOfAScreenThatIsNotThereIsSizedAtNothing for why this answers
+-- rather than refusing.
+rule EveryMetricOfAScreenThatIsNotThereIsZero {
+    when: script_asks_for_a_metric(run, metric, display)
+    requires: windows_are_granted(run)
+    requires: not run.interpreter.screen_port.has_a_display
+    requires: the_metric_is_one_of_the_twelve(metric)
+
+    ensures: MetricResult(value: zero_for(metric))
+}
+
+------------------------------------------------------------
+-- Showing
+------------------------------------------------------------
+
+-- SHOW makes the operating system's windows match the gob tree. It is one
+-- verb doing three jobs -- opening, refreshing and closing -- and which job
+-- it does is read off the gob rather than said by the caller.
+--
+-- That is why UNVIEW can be four lines. It removes the window's gob from the
+-- screen's pane and calls SHOW on it, and the removal is what turns the same
+-- call from "refresh this" into "close this". Nothing anywhere says "close".
+
+-- Given the root gob, reconcile everything: close every window whose gob has
+-- left the pane, then open every gob in the pane that has not got one yet.
+--
+-- Closing before opening, which is the order the C walks and is not
+-- arbitrary. A host with a fixed number of window slots that opened first
+-- could run out while holding slots for windows already dismissed.
+rule ShowingTheRootReconcilesEveryWindow {
+    when: script_shows(run, gob)
+    requires: windows_are_granted(run)
+    requires: run.interpreter.screen_port.has_a_display
+    requires: gob = run.interpreter.screen_port.root_gob
+
+    ensures:
+        for window in run.interpreter.screen_port.windows where standing = dismissed:
+            window_is_closed(window)
+        for child in gob.pane where has_no_window(child):
+            ScreenWindow.created(
+                port: run.interpreter.screen_port,
+                gob: child,
+                standing: showing)
+}
+
+-- Given a gob in the root's pane with no window yet, open one for it.
+rule ShowingAGobAskedForOpensItsWindow {
+    when: script_shows(run, gob)
+    requires: windows_are_granted(run)
+    requires: run.interpreter.screen_port.has_a_display
+    requires: the_window_for(gob).standing = asked_for
+
+    ensures: the_window_for(gob).standing = showing
+}
+
+-- Given a gob whose window is already open, repaint it where it stands.
+rule ShowingAGobAlreadyOpenRefreshesIt {
+    when: script_shows(run, gob)
+    requires: windows_are_granted(run)
+    requires: run.interpreter.screen_port.has_a_display
+    requires: the_window_for(gob).standing = showing
+
+    ensures: the_window_is_repainted(the_window_for(gob))
+}
+
+-- Given a gob that has a window and has left the root's pane, close it.
+rule ShowingAGobThatLeftTheScreenClosesItsWindow {
+    when: script_shows(run, gob)
+    requires: windows_are_granted(run)
+    requires: run.interpreter.screen_port.has_a_display
+    requires: the_window_for(gob).standing = dismissed
+
+    ensures: window_is_closed(the_window_for(gob))
+}
+
+-- SHOW answers whatever it was given, whether or not it did anything.
+--
+-- The C returns RXR_VALUE without touching the argument slot, so the gob
+-- comes straight back out. It matters because VIEW ends `show window` and
+-- then `window`, and a caller reading either gets the same thing.
+--
+-- The declaration accepts none and a block as well as a gob, and the C has a
+-- branch for the gob alone. So showing none does nothing and answers none,
+-- and that is not an oversight to correct: UNVIEW calls `show window` where
+-- window may be none, under a comment saying "none ok".
+rule ShowingAnswersWhatItWasGiven {
+    when: script_shows(run, gob)
+    requires: windows_are_granted(run)
+
+    ensures: ShowResult(value: gob)
+}
+
+-- Showing needs a screen, and a granted service with nothing behind it is
+-- not_present rather than not_granted. The two are different facts about the
+-- host and a script may act on either: the first can be fixed by granting
+-- and the second cannot.
+--
+-- This is the one command of the three that refuses without a display,
+-- because it is the one that needs one. Asking how big a screen is has an
+-- answer when there is no screen; putting a window on it does not.
+rule ShowingNeedsADisplay {
+    when: script_shows(run, gob)
+    requires: windows_are_granted(run)
+    requires: not run.interpreter.screen_port.has_a_display
+    requires: gob_is_a_gob(gob)
+
+    ensures:
+        run.conclusion = raised
+        run.refusal_reason = not_present
+        run.refused_service = windows
+}
+
+------------------------------------------------------------
+-- Events
+------------------------------------------------------------
+
+-- The screen's own thread never enters the interpreter. It puts an event on
+-- a queue and returns, and the interpreter's thread takes it later.
+--
+-- This is forced rather than chosen. embed.allium already says an
+-- interpreter is owned by one thread and that this is what lets series share
+-- mutable storage with no synchronisation at all. A toolkit calls a listener
+-- on its own thread, so a handler block run from there would be a second
+-- thread inside the interpreter, and the damage would be silent: two threads
+-- appending to one block corrupt it without either of them failing.
+rule AnEventFromTheScreenIsQueuedRatherThanDelivered {
+    when: the_screen_reports(port, kind, window)
+
+    ensures: ScreenEvent.created(
+        port: port,
+        kind: kind,
+        window: window,
+        delivered: false)
+}
+
+-- Waiting on the event port is where queued events become handler calls, and
+-- it happens on the thread that started the run. So a block written in a
+-- handler sees the same interpreter every other block sees.
+rule WaitingOnTheEventPortDeliversWhatIsQueued {
+    when: script_waits_on_the_event_port(run)
+    requires: windows_are_granted(run)
+
+    ensures:
+        for event in undelivered_events_of(run.interpreter.screen_port):
+            the_handlers_are_run_for(event)
+            event.delivered = true
+}
+
+-- The wait ends when the last window has closed, and not before.
+--
+-- REBOL's own words: `ep/awake` in `init-view-system` ends with `tail?
+-- system/view/screen-gob`, and that is true exactly when the screen has no
+-- children left. So VIEW returns when the operator closes the window, which
+-- is what makes a script ending in `view [...]` a program rather than a
+-- statement.
+rule TheWaitEndsWhenTheScreenHasNoWindowsLeft {
+    when: script_waits_on_the_event_port(run)
+    requires: windows_are_granted(run)
+    requires: run.interpreter.screen_port.open_windows.count = 0
+
+    ensures: the_wait_returns(run)
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- A window on the screen is a window the root gob knows about. The two can
+-- disagree for as long as it takes SHOW to run and no longer, which is what
+-- makes SHOW a reconciliation rather than a command.
+invariant EveryOpenWindowHangsUnderTheRootGob {
+    for port in ScreenPort:
+        for window in port.open_windows:
+            window.gob.parent = port.root_gob
+}
+
+-- Nothing the screen reports is acted on until the interpreter's own thread
+-- takes it. An event created by the toolkit and already delivered would mean
+-- a handler had run somewhere else.
+invariant AnEventIsOnlyDeliveredByTheInterpretersOwnThread {
+    for event in ScreenEvent:
+        event.delivered implies event_was_taken_inside_a_wait(event)
+}
+
+------------------------------------------------------------
+-- Surface
+------------------------------------------------------------
+
+surface TheScreen {
+    facing host: ScreenPort
+
+    provides:
+        InitialiseTheTopWindow(host, gob)
+        AskForAMetric(host, metric, display)
+        Show(host, gob)
+        TakeQueuedEvents(host)
+
+    exposes:
+        ScreenMetric
+        WindowStanding
+        ScreenEventKind
+
+    @guarantee TheToolkitLivesEntirelyBehindThisPort
+        -- Four requests cross this boundary and every one of them is about
+        -- gobs, metrics and events. Nothing on this side names a widget
+        -- toolkit, a drawing surface or a window handle.
+        --
+        -- That is what makes the three targets one design rather than three
+        -- programs. A desktop window, a phone and a browser differ in how
+        -- they paint a gob and in nothing else a script can see, so the same
+        -- description reaches all three and the difference is which adapter
+        -- is supplied.
+        --
+        -- The alternative was tried and is still in the tree: the existing
+        -- web renderer reads a layout block straight into markup and never
+        -- makes a gob at all. It works, and it is a second implementation of
+        -- the dialect rather than a third renderer of one, so the two will
+        -- drift and only one of them will be the one that REBOL's own
+        -- library talks to.
+
+    @guarantee AScreenThatIsNotThereAnswersAboutItselfAndRefusesToDrawOnItself
+        -- The three commands split on whether they need pixels. Taking the
+        -- root gob and answering a metric do not, and they answer zeros.
+        -- Showing does, and it refuses with not_present.
+        --
+        -- The split is what lets the library load on a machine with no
+        -- display, which every build server is and which is therefore the
+        -- only machine the library is ever tested on. A port that refused
+        -- all three would make `view-funcs.reb` stop partway there and run
+        -- whole everywhere else, so the tested library and the shipped
+        -- library would be different libraries.
+
+    @guarantee TheScreensThreadNeverEntersTheInterpreter
+        -- Events are queued by the toolkit and taken by the interpreter's
+        -- own thread inside WAIT. A handler block therefore runs on the
+        -- thread that started the run, sees the same bindings every other
+        -- block sees, and is bounded by the same deadline.
+        --
+        -- One thread per interpreter is what embed.allium relies on to let
+        -- series share mutable storage without synchronising. A listener
+        -- running a handler on the toolkit's thread would break that
+        -- silently: two threads appending to one block leave it wrong
+        -- without either of them failing.
+}
+
+------------------------------------------------------------
+-- Open questions
+------------------------------------------------------------
+
+open question "VIEW without /no-wait ends in DO-EVENTS, which is `wait system/ports/event`, and that returns only when the last window has closed. This spec says it blocks, which is what the C does and what a desktop script wants. It sits badly with the rest of JEBOL: a host runs a script under a deadline and a nesting limit precisely so that a request thread cannot be parked, and a granted screen would be the one way past that. FinishedRunsRespectTheirDeadline in embed.allium says a finished run respected its deadline, so either the wait is interruptible by the deadline or that invariant has an exception in it. The reading taken here is that a run with no deadline waits forever and a run with one is ended by it, because that keeps both true and needs no special case. Whether blocking at all is the right default is the part to revisit: it may make a poor experience for a host that expected to keep serving requests."
+
+open question "Should a metric of a screen that is not there be zero, or should the three commands split some other way? Zero is what the posix host answers for the ten metrics it does not implement, so it is a real answer rather than a stand-in, and it is what lets the library load on a build server. The cost is that a script cannot tell 'this display is genuinely at the origin' from 'there is no display'. Nothing in REBOL's own library reads a metric and branches on whether it is zero, so the cost is currently theoretical."
+
+open question "Which gob content kinds paint in this increment? Colour, text and image, because those need no dialect. A gob whose content is a draw block currently paints nothing at all rather than refusing, which is the quiet failure this project keeps finding elsewhere: it will look like a blank window rather than like a missing feature. Should it refuse until the DRAW dialect lands, so that the gap has a name?"
+
+open question "GUI-METRIC declares a /set refinement for the writable keywords -- restore, minimize, maximize and activate are in the word list -- and neither host reads the value it is given. The posix host reads the /display index and nothing else. Are those four words window controls that were never finished, or metrics that were never made writable? Nothing in the mezzanine calls GUI-METRIC/SET, so there is no second reading to check against."
+
+open question "What size is a window, as against the gob inside it? VIEW builds a parent gob at the child's size and then offsets it by title-size, which reads as though the gob's size is the drawable area and the title bar sits outside it. Both hosts also serve border-size and border-fixed, which only matter if something is meant to add them. Nothing in view-funcs.reb adds them, so either the host is expected to, or they are there for a layout engine that was never written."

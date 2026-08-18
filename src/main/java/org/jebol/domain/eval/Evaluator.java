@@ -49,6 +49,7 @@ public final class Evaluator {
 
     /** Where a script puts a window on a screen. Nowhere, by default. */
     private WindowPort windows = WindowPort.none();
+    private ScreenPort screen = ScreenPort.none();
 
     /** How a script starts another program. Not at all, by default. */
     private ProcessPort processes = ProcessPort.none();
@@ -322,6 +323,16 @@ public final class Evaluator {
     /** Gives the script a screen to put a window on. */
     public void useWindows(WindowPort port) {
         this.windows = port;
+    }
+
+    /** Where a script puts a gob tree. On no screen at all, by default. */
+    public ScreenPort screen() {
+        return screen;
+    }
+
+    /** Gives the script a screen to draw a gob tree on. */
+    public void useScreen(ScreenPort port) {
+        this.screen = port;
     }
 
     /** The names the host was started with. None, by default. */

@@ -59,16 +59,20 @@ class BorrowedFilesLoadWholeTest {
      * for months and that read as "waiting on the view dialect"; the truth
      * was that seventeen of sysobj.reb's twenty-nine standard templates had
      * never been copied into the prelude, and a set-path cannot make a field.
-     * With those declared the file runs a hundred lines further, to
-     * {@code init-top-window} -- a native from the {@code window} host
-     * extension in {@code boot/window.reb}, which binds an operating
-     * system's own widget toolkit and is in no build here. That one is a
-     * boundary rather than a backlog item: the graphics target is a renderer
-     * of JEBOL's own. Read an entry as the first thing in the way, never as
+     * With those declared the file ran a hundred lines further, to
+     * {@code init-top-window}, and that read as "waiting on a widget
+     * toolkit". It was not that either: what the file wanted was three
+     * commands from {@code boot/window.reb}, a port behind them, and an event
+     * port to exist. Read an entry as the first thing in the way, never as
      * the whole of what is missing.
+     *
+     * <p>The list is empty, and it is the first time it has been. Twelve
+     * files were on it. Keeping the empty map rather than deleting the test
+     * is the point of the ratchet: a file that starts stopping again fails
+     * here and names itself, rather than quietly defining less than it used
+     * to.
      */
-    private static final Map<String, String> STOPS_ON = Map.ofEntries(
-            Map.entry("view-funcs.reb", "init-top-window"));
+    private static final Map<String, String> STOPS_ON = Map.of();
 
     @Test
     @DisplayName("no borrowed file stops partway except the ones known to")

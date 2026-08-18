@@ -151,6 +151,21 @@ public final class GobStorage {
     }
 
     /**
+     * Takes this gob out of whatever pane it was in. {@code Detach_Gob}.
+     *
+     * <p>What INIT-TOP-WINDOW does to the gob it is handed, because a root has
+     * no parent by definition: {@code Gob_Root->parent = NULL}.
+     */
+    public void detachFromParent() {
+        if (parent == null) {
+            return;
+        }
+        parent.pane.removeIf(held ->
+                held instanceof GobValue gob && gob.storage() == this);
+        parent = null;
+    }
+
+    /**
      * The gob that owns this one for the host's purposes.
      *
      * <p>{@code GOB_TMP_OWNER} -- writable and not readable, because

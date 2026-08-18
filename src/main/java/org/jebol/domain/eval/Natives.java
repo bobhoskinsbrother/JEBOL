@@ -164,6 +164,7 @@ public final class Natives {
         definePorts();
         defineParse();
         defineLayout();
+        defineScreen();
         defineOutput();
         defineOperators();
     }
@@ -264,6 +265,15 @@ public final class Natives {
      * host said so, and the two are not the same question: loading Rebol's own
      * files is part of making the language, and the grants are about what a
      * script can reach once there is one. See decision 19.
+     *
+     * <p>The screen is granted while loading for the same reason and it looks
+     * more alarming than it is. {@code view-funcs.reb} ends by calling
+     * INIT-VIEW-SYSTEM, which takes a root gob and opens the event port, and
+     * without that the file stops on its last line and defines none of VIEW,
+     * UNVIEW or DO-EVENTS. Nothing reaches a screen: the port an interpreter
+     * starts with has no display, so the root gob is sized at nothing and
+     * SHOW is never called. Once this runs, a script with no grant cannot
+     * call any of the three commands.
      */
     public void grantOnly(Set<HostService> granted) {
         this.grantedServices = Set.copyOf(granted);
@@ -3153,21 +3163,23 @@ public final class Natives {
                     List<Value> items = series.remaining();
                     List<Value> kept = new ArrayList<>();
                     int taken = 0;
-                    for (int at = 0; at < items.size(); at += names.size()) {
-                        setLoopNames(locals, names, items, at);
-                        int through = Math.min(at + names.size(), items.size());
+                    int at = 0;
+                    while (at < items.size()) {
+                        int reached = setLoopNames(locals, names, items, at, series);
+                        int through = Math.min(reached, items.size());
                         if (evaluator.evaluateOrRaise(bound, locals).isTruthy()) {
                             taken += through - at;
                         } else {
                             kept.addAll(items.subList(at, through));
                         }
+                        at = reached;
                     }
                     int had = series.lengthFromHere();
                     for (int removed = 0; removed < had; removed++) {
                         series.storage().removeAt(series.index());
                     }
-                    for (int at = kept.size(); at > 0; at--) {
-                        series.storage().insertAt(series.index(), kept.get(at - 1));
+                    for (int back = kept.size(); back > 0; back--) {
+                        series.storage().insertAt(series.index(), kept.get(back - 1));
                     }
                     return refinements.contains("count")
                             ? IntegerValue.of(taken)
@@ -3186,8 +3198,10 @@ public final class Natives {
                             (BlockValue) arguments.get(2), locals);
                     List<Value> items = itemsOf(arguments.get(1));
                     List<Value> gathered = new ArrayList<>();
-                    for (int at = 0; at < items.size(); at += names.size()) {
-                        setLoopNames(locals, names, items, at);
+                    int at = 0;
+                    while (at < items.size()) {
+                        at = setLoopNames(
+                                locals, names, items, at, arguments.get(1));
                         gathered.add(evaluator.evaluateOrRaise(bound, locals));
                     }
                     return BlockValue.block(gathered);
@@ -3390,8 +3404,9 @@ public final class Natives {
             Value target, Value series, BlockValue body) {
 
         List<WordValue> names = loopNamesIn(target, "foreach");
-        refuseMoreNamesThanAPairHas(series, names);
-        List<Value> items = keysOnly(series, names.size());
+        List<WordValue> taking = namesThatTakeAValue(names);
+        refuseMoreNamesThanAPairHas(series, taking);
+        List<Value> items = keysOnly(series, taking.size());
 
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.define(name.spelling()));
@@ -3399,8 +3414,9 @@ public final class Natives {
         Value last = NoneValue.none();
 
         try {
-            for (int at = 0; at < items.size(); at += names.size()) {
-                setLoopNames(locals, names, items, at);
+            int at = 0;
+            while (at < items.size()) {
+                at = setLoopNames(locals, names, items, at, series);
                 last = oneRound(evaluator, bound, locals);
             }
         } catch (LoopSignal stopped) {
@@ -3450,6 +3466,11 @@ public final class Natives {
                     nativeName + " walks with a word or a block of words, not a "
                             + target.datatype().literalSpelling());
         }
+        if (block.lengthFromHere() == 0) {
+            throw Raised.of(EvaluationFailure.EXPECT_ARG,
+                    nativeName + " walks with at least one name, and this list "
+                            + "is empty");
+        }
         List<WordValue> names = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
             if (!(item instanceof WordValue name)) {
@@ -3471,15 +3492,51 @@ public final class Natives {
      * is the convenient reading and it is not what the C does: REMOVE-EACH over
      * `[1 2 3]` with two names reaches the 3.
      */
-    private static void setLoopNames(
-            Context locals, List<WordValue> names, List<Value> items, int at) {
+    private static int setLoopNames(
+            Context locals, List<WordValue> names, List<Value> items,
+            int at, Value walked) {
 
-        for (int which = 0; which < names.size(); which++) {
-            locals.set(names.get(which).spelling(),
-                    at + which < items.size()
-                            ? items.get(at + which)
-                            : NoneValue.none());
+        int reached = at;
+        for (WordValue name : names) {
+            if (name.datatype() == Datatype.SET_WORD) {
+                locals.set(name.spelling(), positionWithin(walked, reached));
+                continue;
+            }
+            locals.set(name.spelling(),
+                    reached < items.size() ? items.get(reached) : NoneValue.none());
+            reached++;
         }
+        return reached == at ? at + 1 : reached;
+    }
+
+    /**
+     * Where a walk has got to, as the thing a set-word is handed.
+     *
+     * <p>The series itself standing at the current item, which is what makes
+     * {@code insert here handler} work: it shares storage with what is being
+     * walked. An object or a map is handed over whole instead, because neither
+     * is walked by index -- {@code if (ANY_OBJECT(value) || IS_MAP(value))
+     * *vars = *value;}.
+     */
+    private static Value positionWithin(Value walked, int reached) {
+        if (!(walked instanceof SeriesValue series)) {
+            return walked;
+        }
+        return series.atIndex(Math.min(
+                series.index() + reached, series.storageLength() + 1));
+    }
+
+    /**
+     * The names that take a value out of the series, which is not all of them.
+     *
+     * <p>A set-word takes none, so it does not count towards how wide a round
+     * is. Counting it would make {@code foreach [p: v] [a b c]} step two at a
+     * time and walk half the block.
+     */
+    private static List<WordValue> namesThatTakeAValue(List<WordValue> names) {
+        return names.stream()
+                .filter(name -> name.datatype() != Datatype.SET_WORD)
+                .toList();
     }
 
     /**
@@ -7568,14 +7625,14 @@ public final class Natives {
 
         requireChangeable(map);
         List<WordValue> names = loopNamesIn(arguments.getFirst(), "remove-each");
-        refuseMoreNamesThanAPairHas(map, names);
+        refuseMoreNamesThanAPairHas(map, namesThatTakeAValue(names));
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.define(name.spelling()));
         BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
         List<Value> pairs = map.walkable();
         List<Value> takeOut = new ArrayList<>();
         for (int at = 0; at < pairs.size(); at += 2) {
-            setLoopNames(locals, names, pairs, at);
+            setLoopNames(locals, names, pairs, at, map);
             if (evaluator.evaluateOrRaise(body, locals).isTruthy()) {
                 takeOut.add(pairs.get(at));
             }
@@ -8643,6 +8700,66 @@ public final class Natives {
     }
 
     /**
+     * WAIT on the event port: where the screen's queue becomes handler calls.
+     *
+     * <p>This is the one place a script's own thread takes what the screen's
+     * thread put down, and it is why the queue exists at all. An interpreter
+     * is owned by one thread, and that is what lets series share mutable
+     * storage with nothing synchronising them, so a toolkit's listener must
+     * never run a handler where it stands.
+     *
+     * <p>It returns when the port's AWAKE says so. REBOL's own AWAKE, written
+     * in {@code init-view-system}, ends with {@code tail?
+     * system/view/screen-gob} -- true exactly when the last window has closed.
+     * That is what makes a script ending in VIEW a program rather than a
+     * statement.
+     *
+     * <p>A screen with nothing open does not wait at all, and a run under a
+     * deadline is ended by it: the pause between drains goes through the same
+     * interruptible sleep every long-running native uses, so a granted screen
+     * is not a way past the bounds a host set.
+     */
+    private static Value waitedOnTheScreen(PortValue port, Evaluator evaluator) {
+        while (theScreenStillHasSomethingToSay(evaluator)) {
+            for (ScreenEvent reported : evaluator.screen().takeQueuedEvents()) {
+                if (wokenPort(port, guiEventFor(reported), evaluator)
+                        instanceof LogicValue said && said.truth()) {
+                    return NoneValue.none();
+                }
+            }
+            if (!theScreenStillHasSomethingToSay(evaluator)) {
+                return NoneValue.none();
+            }
+            sleepInterruptibly(SCREEN_POLL_MILLISECONDS, evaluator);
+        }
+        return NoneValue.none();
+    }
+
+    /**
+     * Whether there is any point waiting: a screen with no window open has
+     * nothing left to report and nobody left to close.
+     */
+    private static boolean theScreenStillHasSomethingToSay(Evaluator evaluator) {
+        Value root = pathInto(
+                evaluator.systemContext(), "system", "view", "screen-gob");
+        return root instanceof GobValue gob && gob.storage().length() > 0;
+    }
+
+    /** How long to pause between drains of the screen's queue. */
+    private static final long SCREEN_POLL_MILLISECONDS = 10;
+
+    /** One reported event as the {@code event!} a handler reads. */
+    private static EventValue guiEventFor(ScreenEvent reported) {
+        return EventValue.fresh()
+                .withType(EventCatalogue.typeIndexOf(reported.kind().spelling())
+                        .orElse(0))
+                .withAttached(EventValue.Model.GUI,
+                        reported.window() == null
+                                ? NoneValue.none()
+                                : reported.window());
+    }
+
+    /**
      * Where the codec handles' identities start.
      *
      * <p>A function handle's identity is its pointer in the C, which is what
@@ -9702,6 +9819,10 @@ public final class Natives {
                 Set.of("all", "only"),
                 (arguments, evaluator, context, refinements) -> {
                     Value asked = arguments.getFirst();
+                    if (asked instanceof PortValue port
+                            && port.schemeName().equals("event")) {
+                        return waitedOnTheScreen(port, evaluator);
+                    }
                     if (!(asked instanceof IntegerValue || asked instanceof DecimalValue
                             || asked instanceof TimeValue)) {
                         return NoneValue.none();
@@ -9976,7 +10097,7 @@ public final class Natives {
      * grows only when an actor does.
      */
     private static final Set<String> SCHEMES_THIS_BUILD_SERVES =
-            Set.of("console", "tcp", "dns");
+            Set.of("console", "tcp", "dns", "event");
 
     /** The types a cipher context publishes. */
     private static final String RC4_HANDLE_TYPE = "rc4";
@@ -14174,6 +14295,7 @@ public final class Natives {
             case "console" -> requireService(HostService.CONSOLE);
             case "file", "dir" -> requireService(HostService.FILES);
             case "tcp", "dns" -> requireService(HostService.NETWORK);
+            case "event" -> requireService(HostService.WINDOWS);
             default -> {
                 throw Raised.of(EvaluationFailure.NO_SERVICE,
                         scheme.isEmpty()
@@ -14564,12 +14686,26 @@ public final class Natives {
         try {
             return operation.get();
         } catch (WindowPort.Denied denied) {
-            throw new Raised(ErrorValue.of(
-                    ErrorCategory.ACCESS, denied.errorId(),
-                    denied.getMessage() + ", which is "
-                            + ServiceRefusal.NOT_PRESENT.name()
-                                    .toLowerCase(java.util.Locale.ROOT).replace('_', ' ')));
+            throw refusedByTheHost(denied.errorId(), denied.getMessage());
         }
+    }
+
+    /**
+     * A host service that is there to grant and has nothing behind it.
+     *
+     * <p>The reason goes into ARG1 and not only into the message, for the same
+     * reason {@link Raised#of(EvaluationFailure, String)} says: a script that
+     * has to read the reason back out of prose cannot tell the three refusals
+     * apart, and telling them apart is the whole point of having three. A host
+     * that granted the screen and supplied none can be fixed by supplying one;
+     * a host that granted nothing cannot.
+     */
+    private static Raised refusedByTheHost(String errorId, String because) {
+        String reason = because + ", which is "
+                + ServiceRefusal.NOT_PRESENT.name()
+                        .toLowerCase(java.util.Locale.ROOT).replace('_', ' ');
+        return new Raised(ErrorValue.about(
+                ErrorCategory.ACCESS, errorId, reason, StringValue.of(reason)));
     }
 
     /**
@@ -14671,9 +14807,155 @@ public final class Natives {
     private void defineLayout() {
         define("layout", List.of(Parameter.required("description", Set.of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> arguments.get(0));
+    }
 
-        define("view", takes("layout"),
-                (arguments, evaluator, context) -> arguments.get(0));
+    /**
+     * The three commands a windowing host must answer, from
+     * {@code boot/window.reb}.
+     *
+     * <p>VIEW, UNVIEW, DO-EVENTS and the handler list are not here. Those are
+     * REBOL's own, in {@code view-funcs.reb}, and they are borrowed and loaded
+     * rather than rewritten. These three are what that file calls out to.
+     */
+    private void defineScreen() {
+        define("init-top-window",
+                List.of(Parameter.required("gob", Set.of(Datatype.GOB))),
+                (arguments, evaluator, context) -> {
+                    requireService(HostService.WINDOWS);
+                    return theRootGobTakenBy(evaluator.screen(), arguments.getFirst());
+                });
+
+        define("gui-metric",
+                List.of(Parameter.required("keyword", Set.of(Datatype.WORD)),
+                        Parameter.belongingTo("set", "val", ANYTHING),
+                        Parameter.belongingTo("display", "idx", Set.of(Datatype.INTEGER))),
+                Set.of("set", "display"),
+                (arguments, evaluator, context, refinements) -> {
+                    requireService(HostService.WINDOWS);
+                    return measurementOf(evaluator.screen(),
+                            metricNamedBy(arguments.getFirst()),
+                            displayAskedFor(arguments, refinements));
+                });
+
+        define("show",
+                List.of(Parameter.required("gob",
+                        Set.of(Datatype.GOB, Datatype.NONE, Datatype.BLOCK))),
+                (arguments, evaluator, context) -> {
+                    requireService(HostService.WINDOWS);
+                    return whatWasShown(evaluator.screen(), arguments.getFirst());
+                });
+    }
+
+    /**
+     * INIT-TOP-WINDOW: the gob every window hangs under.
+     *
+     * <p>Three things, and the C does them in three lines. The gob is
+     * remembered, its parent is cut loose because a root has none, and the
+     * screen's size is written onto it.
+     *
+     * <p>The size is the one that matters downstream. VIEW centres a window
+     * with {@code screen/size - window/size / 2}, so a root of the wrong size
+     * puts every centred window in the wrong place.
+     */
+    private static Value theRootGobTakenBy(ScreenPort screen, Value given) {
+        if (!(given instanceof GobValue root)) {
+            throw Raised.of(EvaluationFailure.EXPECT_ARG,
+                    "init-top-window takes a gob, not "
+                            + given.datatype().literalSpelling());
+        }
+        ScreenPort.takeAsTheRoot(screen, root);
+        return NoneValue.none();
+    }
+
+    /**
+     * GUI-METRIC: one measurement of the screen.
+     *
+     * <p>Eleven of the twelve keywords measure and answer a pair. SCREENS
+     * counts and answers an integer, which is why the C writes it into the
+     * frame and returns before reaching the code that makes a pair.
+     */
+    private static Value measurementOf(
+            ScreenPort screen, ScreenMetric metric, int display) {
+
+        if (metric.isACount()) {
+            return IntegerValue.of(screen.displayCount());
+        }
+        if (screen.hasADisplay() && !servesDisplay(screen, display)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    "there is no display " + display);
+        }
+        if (!screen.hasADisplay()) {
+            return PairValue.of(0, 0);
+        }
+        return screen.measure(metric, display);
+    }
+
+    private static boolean servesDisplay(ScreenPort screen, int display) {
+        return display >= 0 && display < screen.displayCount();
+    }
+
+    /**
+     * A word no host serves is refused rather than answered with none.
+     *
+     * <p>Because a metric is a number the caller is about to compute with. A
+     * none reaching {@code screen/size - window/size / 2} fails somewhere
+     * else entirely, and blames the subtraction rather than the misspelling.
+     *
+     * <p>{@code virtual-screen-size} is the case that proves this is not
+     * hypothetical. It is in the word list {@code boot/window.reb} hands the
+     * host, so it reads as supported, and neither host has a branch for it.
+     */
+    private static ScreenMetric metricNamedBy(Value asked) {
+        if (!(asked instanceof WordValue word)
+                || word.datatype() != Datatype.WORD) {
+            throw Raised.of(EvaluationFailure.EXPECT_ARG,
+                    "gui-metric takes a word, not "
+                            + asked.datatype().literalSpelling());
+        }
+        return ScreenMetric.named(word.canonical()).orElseThrow(() ->
+                Raised.of(EvaluationFailure.INVALID_ARG,
+                        "no host serves the metric " + word.canonical()));
+    }
+
+    /** Which display was asked about. The first, unless /display said. */
+    private static int displayAskedFor(List<Value> arguments, Set<String> refinements) {
+        if (!refinements.contains("display")) {
+            return 0;
+        }
+        Value written = arguments.getLast();
+        if (!(written instanceof IntegerValue index)) {
+            throw Raised.of(EvaluationFailure.EXPECT_ARG,
+                    "a display is numbered with an integer, not "
+                            + written.datatype().literalSpelling());
+        }
+        return (int) index.magnitude();
+    }
+
+    /**
+     * SHOW: makes the screen's windows match the gob tree, and answers what it
+     * was given.
+     *
+     * <p>Answering the argument is the C returning {@code RXR_VALUE} without
+     * touching the frame slot, and VIEW depends on it. Showing a none does
+     * nothing and answers none, which UNVIEW depends on under a comment
+     * reading "none ok".
+     */
+    private static Value whatWasShown(ScreenPort screen, Value given) {
+        if (given instanceof GobValue gob) {
+            throughScreen(() -> {
+                screen.show(gob);
+                return NoneValue.none();
+            });
+        }
+        return given;
+    }
+
+    private static Value throughScreen(Supplier<Value> operation) {
+        try {
+            return operation.get();
+        } catch (ScreenPort.Denied denied) {
+            throw refusedByTheHost(denied.errorId(), denied.getMessage());
+        }
     }
 
     /**

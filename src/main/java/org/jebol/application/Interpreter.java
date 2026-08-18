@@ -49,7 +49,8 @@ public final class Interpreter {
     private final Context systemInternals;
 
     private Interpreter(OutputPort output, Bounds bounds) {
-        Set<HostService> duringTheBoot = EnumSet.of(HostService.CLOCK);
+        Set<HostService> duringTheBoot =
+                EnumSet.of(HostService.CLOCK, HostService.WINDOWS);
         duringTheBoot.addAll(bounds.grantedServices());
         Natives natives = Natives.standard(duringTheBoot);
         natives.useFileSeparator(java.io.File.separatorChar);
@@ -74,6 +75,7 @@ public final class Interpreter {
         loadPrelude();
         loadRebolsOwnLibrary();
         registerTheSchemesJebolCanServe();
+        openTheEventPort();
         natives.grantOnly(bounds.grantedServices());
         natives.forgetStartupState();
     }
@@ -91,15 +93,54 @@ public final class Interpreter {
      * is the seam the other way about: Java calls REBOL, exactly as Rebol's C
      * calls {@code make-port*}.
      */
+    private boolean theSchemesAreRegistered;
+
     private void registerTheSchemesJebolCanServe() {
-        if (!systemInternals.knows("make-scheme")) {
+        if (theSchemesAreRegistered || !systemInternals.knows("make-scheme")) {
             return;
         }
+        theSchemesAreRegistered = true;
         run("sys/decode-url: lib/decode-url: :sys/url-parser/parse-url");
         run("sys/make-scheme [title: \"Console Access\" name: 'console]");
         run("sys/make-scheme [title: \"TCP Networking\" name: 'tcp]");
         run("sys/make-scheme [title: \"DNS Lookup\" name: 'dns]");
+        run("sys/make-scheme [title: \"GUI Events\" name: 'event]");
     }
+
+    /**
+     * Opens {@code system/ports/event}, which the view system needs to exist.
+     *
+     * <p>{@code init-schemes} in {@code sys-ports.reb} ends with a run of these
+     * and JEBOL serves one of them. It has to be open before the borrowed
+     * library runs, because INIT-VIEW-SYSTEM reads
+     * {@code system/ports/event/extra} on its ninth line and none has no
+     * extra.
+     *
+     * <p>Opened even when no host has supplied a screen, and a real 3.22.1
+     * does the same: the console build has a whole event port with a default
+     * AWAKE that prints, and no graphics behind it at all.
+     */
+    private void openTheEventPort() {
+        if (!systemInternals.knows("make-scheme")) {
+            return;
+        }
+        run("unless port? system/ports/event "
+                + "[system/ports/event: lib/open [scheme: 'event]]");
+    }
+
+    /**
+     * The borrowed file that brings the view system up, and the reason the
+     * schemes are registered partway through the load rather than after it.
+     *
+     * <p>It ends by calling INIT-VIEW-SYSTEM, which reads
+     * {@code system/ports/event/extra} on its ninth line. So the event port
+     * has to be open by the time this file runs, and MAKE-SCHEME -- which
+     * opening it needs -- comes from {@code sys-ports.reb}, loaded earlier in
+     * the same walk. Registering afterwards would be too late for exactly one
+     * file, and this is it.
+     */
+    private static final String THE_FILE_THAT_STARTS_THE_VIEW_SYSTEM =
+            "view-funcs.reb";
 
     /** Where the REBOL half of the standard library lives. */
     private static final String PRELUDE = "/org/jebol/prelude.reb";
@@ -176,6 +217,10 @@ public final class Interpreter {
     private void loadRebolsOwnLibrary() {
         for (String entry : borrowedFileNames()) {
             String name = fileNameIn(entry);
+            if (name.equals(THE_FILE_THAT_STARTS_THE_VIEW_SYSTEM)) {
+                registerTheSchemesJebolCanServe();
+                openTheEventPort();
+            }
             String source = resourceText(MEZZANINE + name);
             if (source == null) {
                 continue;
@@ -748,6 +793,45 @@ public final class Interpreter {
      */
     public void useWindows(org.jebol.domain.eval.WindowPort port) {
         evaluator.useWindows(port);
+    }
+
+    /**
+     * Gives the script a screen to draw a gob tree on.
+     *
+     * <p>Behind the same grant as the five dialogs, and a separate port
+     * because it is a different conversation: a dialog asks the operator one
+     * question and answers it, while this holds windows open and sends events
+     * back for as long as the script wants them.
+     */
+    public void useScreen(org.jebol.domain.eval.ScreenPort port) {
+        evaluator.useScreen(port);
+        handOverTheRootGobTo(port);
+    }
+
+    /**
+     * Tells a newly arrived screen which gob is the root, and sizes it.
+     *
+     * <p>Needed because of when {@code view-funcs.reb} runs its own last line
+     * and what that line does. INIT-VIEW-SYSTEM makes the root gob and hands
+     * it to INIT-TOP-WINDOW while the library is still loading, which is
+     * before any host can have supplied a screen, and then it spends the
+     * command: {@code init-top-window: init-view-system: 'done}. A real 3.22.1
+     * can do that safely because its graphics host was registered before the
+     * library loaded. Here the screen arrives afterwards, by which time the
+     * word holds {@code 'done} and calling it would quietly do nothing.
+     *
+     * <p>So this goes through the port rather than through the word, and the
+     * work itself lives in {@code ScreenPort.takeAsTheRoot} where the native
+     * reaches it too. Without it, a host that supplies a screen gets a root
+     * still sized at nothing, and every window VIEW centres lands in the same
+     * place with nothing saying why.
+     */
+    private void handOverTheRootGobTo(org.jebol.domain.eval.ScreenPort port) {
+        ScriptOutcome standing = run("system/view/screen-gob");
+        if (standing.conclusion() == Conclusion.PRODUCED_A_VALUE
+                && standing.value() instanceof org.jebol.domain.value.GobValue root) {
+            org.jebol.domain.eval.ScreenPort.takeAsTheRoot(port, root);
+        }
     }
 
     /**

@@ -521,7 +521,13 @@ append system reduce [
 ;; after, so its absence is why VIEW raises invalid-path rather than doing
 ;; anything.
 ;;
-;; All none, as a stock 3.22.1 has them until a graphics host fills them in.
+;; The six metrics start at 0x0 and never at none. sysobj.reb writes them as
+;; one chained run of set-words ending in a single value, so all six take that
+;; value, and a real 3.22.1 with no graphics host answers 0x0 for every one of
+;; them. This was copied without the trailing value and read as none for as
+;; long as it existed, which VIEW would have found the hard way: it centres a
+;; window with `screen/size - window/size / 2` and offsets it by title-size,
+;; and neither subtraction works on none.
 append system reduce [
     to set-word! 'view
     make object! [
@@ -533,7 +539,7 @@ append system reduce [
             border-fixed:
             title-size:
             work-origin:
-            work-size:
+            work-size: 0x0
         ]
     ]
 ]
