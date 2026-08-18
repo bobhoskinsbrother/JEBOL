@@ -806,6 +806,23 @@ public final class Interpreter {
     public void useScreen(org.jebol.domain.eval.ScreenPort port) {
         evaluator.useScreen(port);
         handOverTheRootGobTo(port);
+        handOverTheDrawDialectTo(port);
+    }
+
+    /**
+     * Tells a screen how to read a gob's draw block.
+     *
+     * <p>{@code system/dialects/draw}, which {@code dial-draw.reb} builds
+     * while the library loads. Handed over rather than reached, because
+     * flattening a gob tree has no way to a system object and should not learn
+     * one, and per screen rather than anywhere shared, because a host runs
+     * many interpreters and each has its own.
+     */
+    private void handOverTheDrawDialectTo(org.jebol.domain.eval.ScreenPort port) {
+        ScriptOutcome declared = run("system/dialects/draw");
+        if (declared.conclusion() == Conclusion.PRODUCED_A_VALUE) {
+            port.useDrawDialect(declared.value());
+        }
     }
 
     /**

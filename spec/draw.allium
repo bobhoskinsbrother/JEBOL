@@ -1,0 +1,428 @@
+-- allium: 3
+--
+-- JEBOL: the DRAW dialect.
+--
+-- Scope: what a gob's draw block paints. The commands, what each of them
+-- means, and how a block of them becomes paint instructions every renderer
+-- executes the same way.
+--
+-- It is read by DELECT, which is spec/dialect.allium and had to come first.
+-- {@code system/dialects/draw} declares the commands and their argument types
+-- and this says what they do with them.
+--
+-- Where it lands: one arm of PaintList, in spec/screen.allium. That is the
+-- whole reason DRAW is affordable at all. A renderer executes instructions and
+-- decides nothing, so thirty commands are read once here rather than written
+-- three times -- once for a window, once for a page and once for a phone.
+-- Rebol's own C fused the reading and the drawing in host-draw.c, which is
+-- why only Windows ever got it: no posix host-draw.c exists, so a stock R3 on
+-- macOS or Linux draws nothing at all.
+--
+-- Includes: the paint state, the shapes, the paths, and the transforms.
+-- Excludes, and each is named rather than hidden:
+--   - grad-pen. Both toolkits do linear and radial gradients and neither does
+--     conic, diamond or cubic the same way.
+--   - line-pattern. Dash phase and how a pattern restarts at a join differ.
+--   - image, image-filter, image-pattern, image-options. Scaling quality is
+--     a rasteriser's own business and the two disagree.
+--   - text. Glyph shapes never match between rasterisers, and it needs the
+--     TEXT sub-dialect, which is another entry in system/dialects.
+--   - arrow, gamma, effect, spline, and triangle's Gouraud shading.
+--   - invert-matrix and transform.
+--
+-- Authorities: {@code src/boot/draw.reb} declares the commands,
+-- {@code src/mezz/dial-draw.reb} their argument types, and
+-- {@code src/os/win32/host-draw.c} what each one does. The defaults below come
+-- from that C and several are surprising.
+
+use "./values.allium" as values
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- What a path is made of. Six steps, and both a desktop toolkit and a browser
+-- canvas execute all six directly rather than approximating any of them.
+--
+-- An ellipse is a step rather than four Bézier curves on purpose. Both
+-- toolkits draw one exactly, and four curves would be two different
+-- approximations of a circle -- the kind of difference that shows up as a
+-- fuzzy edge in one renderer and not the other.
+enum PathStepKind {
+    move_to        -- start a new subpath here
+    | line_to      -- a straight segment
+    | quadratic_to -- one control point
+    | cubic_to     -- two control points
+    | ellipse_at   -- a whole ellipse, as its own subpath
+    | arc_to       -- part of an ellipse, from where the path stands
+    | close        -- back to where this subpath started
+}
+
+-- How the inside of a path is decided where it crosses itself.
+enum FillRule { non_zero | even_odd }
+
+-- How a line ends.
+enum LineCap { butt | square | rounded }
+
+-- How two segments meet.
+enum LineJoin { miter | miter_bevel | round | bevel }
+
+------------------------------------------------------------
+-- The paint state
+------------------------------------------------------------
+
+-- What a shape is painted with, at the moment it is reached.
+--
+-- A draw block is a sequence of state changes and shapes, and a shape takes
+-- the state as it stands. So `pen red box 0x0 10x10 box 20x20 30x30` draws two
+-- red boxes: the pen is not consumed by the first.
+--
+-- Both a stroke and a fill, or either, or neither. A shape with neither paints
+-- nothing at all, which is worth knowing because `pen off fill-pen off` is a
+-- legal way to say so.
+value PaintState {
+    stroke_colour: values.Value?     -- absent means no line is drawn
+    fill_colour: values.Value?       -- absent means the inside is not filled
+    line_width: Decimal
+    line_cap: LineCap
+    line_join: LineJoin
+    fill_rule: FillRule
+    anti_aliased: boolean
+}
+
+-- What a draw block starts with, before it says anything.
+--
+-- A block that draws a box without setting a pen still draws a visible box,
+-- which is what makes the dialect usable in one line.
+rule ADrawBlockStartsWithADefaultState {
+    when: a_draw_block_is_read(gob)
+    ensures:
+        the_starting_state_has(stroke_colour: black)
+        the_starting_state_has(fill_colour: absent)
+        the_starting_state_has(line_width: 1)
+        the_starting_state_has(line_cap: butt)
+        the_starting_state_has(line_join: miter)
+        the_starting_state_has(fill_rule: non_zero)
+        the_starting_state_has(anti_aliased: true)
+}
+
+-- PEN sets the line colour, and PEN with a logic turns the line off.
+--
+-- `[tuple! image! logic!]` is three slots, so a caller writes one of the three
+-- and the other two come back none. A tuple is a colour; anything else is the
+-- pen turned off, which is what the C does by passing NULL.
+rule PenSetsTheLineColourOrTurnsItOff {
+    when: the_command_is(pen)
+    ensures:
+        if a_colour_was_given: the_state_has(stroke_colour: that_colour)
+        if no_colour_was_given: the_state_has(stroke_colour: absent)
+}
+
+-- FILL-PEN says the same thing about the inside.
+--
+-- A shape is not filled until something says so, which is why the starting
+-- state has no fill: an unfilled outline is what somebody drawing a diagram
+-- expects, and a filled one would hide whatever it was drawn over.
+rule FillPenSetsTheInsideColourOrTurnsItOff {
+    when: the_command_is(fill_pen)
+    ensures:
+        if a_colour_was_given: the_state_has(fill_colour: that_colour)
+        if no_colour_was_given: the_state_has(fill_colour: absent)
+}
+
+-- A width of zero or less is a width of one.
+--
+-- boot/draw.reb says so in the declaration itself: "Zero, or negative values,
+-- produce a line-width of 1." A hairline is what a rasteriser draws for zero
+-- anyway, and a negative width has no meaning at all.
+rule AWidthOfZeroOrLessIsOne {
+    when: the_command_is(line_width)
+    requires: the_width_given_is_zero_or_less
+    ensures: the_state_has(line_width: 1)
+}
+
+-- The state a shape is painted with is the state as it stands when the shape
+-- is reached, and a shape does not consume it.
+rule AShapeTakesTheStateAsItStandsAndLeavesIt {
+    when: a_shape_command_is_read(state)
+    ensures:
+        the_instruction_carries(state)
+        the_state_after_is(state)
+}
+
+------------------------------------------------------------
+-- The shapes, and what they default to
+------------------------------------------------------------
+
+-- Every shape's arguments default to the gob it is being drawn on.
+--
+-- The detail that makes the dialect terse, and the one nothing in the
+-- documentation says. `box` on its own fills the whole gob, because its
+-- origin defaults to 0x0 and its end to the gob's size. `circle` on its own
+-- is the biggest circle that fits, centred. The C reads them off `size_pair`
+-- and `center_pair`, which is the gob being painted.
+--
+-- It means the flattening has to know the gob's size, which it does: it is
+-- flattening that gob.
+rule AShapeWithNoArgumentsFillsTheGob {
+    when: a_shape_command_is_read(state)
+    requires: no_arguments_were_given
+    ensures: the_shape_covers(the_whole_gob)
+}
+
+-- BOX takes two corners and a corner radius. A radius of nothing is square
+-- corners.
+rule ABoxIsTwoCornersAndARadius {
+    when: the_command_is(box)
+    ensures:
+        the_path_is(a_rectangle_from(first_corner, second_corner))
+        if a_radius_was_given: the_corners_are_rounded_by(that_radius)
+}
+
+-- CIRCLE takes a centre and one or two radii, and one radius means a circle.
+--
+-- With no radius at all it is the biggest that fits: `min(centre.x, centre.y)`
+-- in the C, the centre being half the gob. With one it is round; with two it
+-- is an ellipse. So CIRCLE draws ellipses and ELLIPSE is the other way of
+-- saying it, from a corner rather than a centre.
+rule ACircleTakesOneRadiusOrTwo {
+    when: the_command_is(circle)
+    ensures:
+        if no_radius_was_given: the_radius_is(the_largest_that_fits_the_gob)
+        if one_radius_was_given: the_shape_is_round
+        if two_radii_were_given: the_shape_is_an_ellipse
+}
+
+-- ELLIPSE takes a corner and a diameter, where CIRCLE takes a centre and a
+-- radius. The same shape said the other way round, and both are in the dialect
+-- because a caller has one or the other to hand.
+rule AnEllipseIsACornerAndADiameter {
+    when: the_command_is(ellipse)
+    ensures: the_path_is(an_ellipse_within(the_corner, the_diameter))
+}
+
+-- LINE draws through its points and does not close. POLYGON does the same and
+-- closes.
+--
+-- Both take a repeating slot, so the points are written bare rather than in a
+-- block. That is the whole reason DELECT has a repeater.
+rule ALineIsOpenAndAPolygonIsClosed {
+    when: the_command_is(line) or the_command_is(polygon)
+    ensures:
+        the_path_runs_through(every_point_given)
+        if the_command_is(polygon): the_path_is_closed
+}
+
+-- A line or a polygon of fewer than two points paints nothing.
+--
+-- One point is a position rather than a shape, and nothing sensible can be
+-- drawn from it. Painting a dot would be inventing a decision the dialect
+-- never made.
+rule ALineOfFewerThanTwoPointsPaintsNothing {
+    when: the_command_is(line) or the_command_is(polygon)
+    requires: fewer_than_two_points_were_given
+    ensures: no_instruction_is_produced
+}
+
+-- CURVE takes three points or four: a quadratic or a cubic.
+--
+-- The C switches on how many arrived -- `case 3: agg_curve3` and
+-- `case 4: agg_curve4` -- so the same word means two different curves
+-- depending on what was written, which is the dialect's argument counting
+-- doing real work.
+rule ACurveOfThreePointsIsQuadraticAndFourIsCubic {
+    when: the_command_is(curve)
+    ensures:
+        if three_points_were_given: the_path_is(a_quadratic_curve)
+        if four_points_were_given: the_path_is(a_cubic_curve)
+}
+
+-- ARC takes a centre, a radius, where to begin and how far to go, and whether
+-- to close.
+--
+-- Its length defaults to ninety degrees rather than to nothing, which is the
+-- one default here that is a decision rather than a dimension: `IS_NONE(arg+3)
+-- ? 90`. An arc of no length would draw nothing and be indistinguishable from
+-- a command nobody wrote.
+rule AnArcDefaultsToAQuarterTurn {
+    when: the_command_is(arc)
+    requires: no_length_was_given
+    ensures: the_arc_turns(90 degrees)
+}
+
+------------------------------------------------------------
+-- Paths written by hand
+------------------------------------------------------------
+
+-- SHAPE takes a block of its own sub-dialect and builds one path from it.
+--
+-- Ten commands, and each has a relative form written as a lit-word: `move` is
+-- absolute and `'move` is from where the path stands. That is what the
+-- lit-word marking in DELECT is for, and it is why losing the mark would have
+-- silently turned every relative path into an absolute one.
+rule AShapeBlockBuildsOnePath {
+    when: the_command_is(shape)
+    ensures: one_instruction_is_produced_for(every_step_in_the_block)
+}
+
+rule ALitWordShapeCommandIsRelativeToWhereThePathStands {
+    when: a_shape_step_is_read(step)
+    requires: the_step_was_written_as_a_lit_word(step)
+    ensures: the_point_is_measured_from(where_the_path_stands)
+}
+
+-- HLINE and VLINE take one number, because the other coordinate is wherever
+-- the path already is.
+rule AHorizontalOrVerticalLineTakesOneNumber {
+    when: a_shape_step_is_read(step)
+    requires: the_step_is_hline_or_vline(step)
+    ensures: the_other_coordinate_is(where_the_path_stands)
+}
+
+-- CLOSE ends the subpath by returning to where it started.
+rule ClosingReturnsToWhereTheSubpathStarted {
+    when: a_shape_step_is_read(step)
+    requires: the_step_is_close(step)
+    ensures: the_path_returns_to(where_this_subpath_started)
+}
+
+------------------------------------------------------------
+-- Transforms
+------------------------------------------------------------
+
+-- The transforms multiply together, and every shape carries the one standing
+-- when it was reached.
+--
+-- Carried on the instruction as six numbers rather than baked into the
+-- coordinates, which is a decision worth defending. Baking would keep the
+-- "renderers decide nothing" rule absolutely, but a stroke is not a stroke of
+-- a transformed path: under a non-uniform scale a baked path draws a line of
+-- even width where the toolkit would draw one that thickens. Six numbers
+-- applied identically by both is faithful and still decides nothing.
+rule EveryShapeCarriesTheTransformStandingWhenItWasReached {
+    when: a_shape_command_is_read(state)
+    ensures: the_instruction_carries(the_transform_as_it_stands)
+}
+
+rule TransformsMultiplyRatherThanReplace {
+    when: a_transform_command_is_read(command)
+    ensures: the_transform_becomes(the_previous_transform combined_with command)
+}
+
+-- RESET-MATRIX puts it back to nothing, which is the only way to undo them
+-- short of PUSH.
+rule ResettingTheMatrixUndoesEveryTransform {
+    when: the_command_is(reset_matrix)
+    ensures: the_transform_becomes(nothing)
+}
+
+-- PUSH runs a block with the state and the transform saved, and puts both
+-- back afterwards.
+--
+-- Which is what makes a draw block composable: a piece of drawing can set
+-- whatever it likes inside a PUSH and nothing after it is affected. Without it
+-- every command would have to undo itself.
+rule PushRestoresBothTheStateAndTheTransform {
+    when: the_command_is(push)
+    ensures:
+        the_block_is_drawn_with(the_state_and_transform_as_they_stand)
+        the_state_after_is(the_state_before)
+        the_transform_after_is(the_transform_before)
+}
+
+------------------------------------------------------------
+-- What a command nobody serves does
+------------------------------------------------------------
+
+-- A command this build does not paint is skipped, and the rest of the block
+-- still draws.
+--
+-- The opposite of the decision the binary dialect made, and deliberately so.
+-- There, an unknown code writes a message of the wrong length and the far end
+-- cannot read it, so refusing is the only safe answer. Here the cost of
+-- skipping is a picture missing one thing, and the cost of refusing is a
+-- picture missing everything -- including the parts that would have shown
+-- somebody what was going on.
+--
+-- What makes it honest rather than convenient is that the gap is the same gap
+-- in every renderer, because it is decided here rather than three times.
+rule ACommandThisBuildDoesNotPaintIsSkipped {
+    when: the_command_is_not_served(command)
+    ensures:
+        no_instruction_is_produced_for(command)
+        every_other_command_still_paints
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- Nothing a draw block does escapes the gob it was written on.
+--
+-- A draw block is a gob's content, so its shapes are clipped to that gob
+-- exactly as a child gob's paint is. A block that drew outside its gob could
+-- paint over a sibling, and which sibling would depend on the order the tree
+-- happened to be walked in.
+invariant DrawingNeverEscapesItsGob {
+    for instruction in instructions_from_a_draw_block:
+        instruction.clip is_within the_gobs_own_area
+}
+
+-- Reading a draw block twice gives the same instructions.
+--
+-- The whole arrangement rests on it, as it does for the rest of the paint
+-- list: instructions that varied between two readings could not hold two
+-- renderers to one picture however faithfully each executed what it was given.
+invariant ReadingADrawBlockIsRepeatable {
+    for block in draw_blocks:
+        instructions_from(block) = instructions_from(block)
+}
+
+------------------------------------------------------------
+-- Surface
+------------------------------------------------------------
+
+surface TheDrawDialect {
+    facing script: PaintState
+
+    provides:
+        DrawOnto(script, gob)
+
+    exposes:
+        PathStepKind
+        FillRule
+        LineCap
+        LineJoin
+
+    @guarantee ThirtyCommandsAreReadOnceAndDrawnThreeTimes
+        -- The dialect is read here, in the domain, into paint instructions.
+        -- A desktop window, a browser and a phone each execute those and
+        -- decide nothing, so a command is understood once and drawn as many
+        -- times as there are renderers.
+        --
+        -- Rebol's C fused the two in host-draw.c, and the cost of that is
+        -- visible in the source we vendor: there is a win32 host-draw.c and no
+        -- posix one, so a stock R3 on macOS or Linux draws nothing at all.
+
+    @guarantee WhatIsNotPaintedYetIsNamedRatherThanHidden
+        -- Gradients, dash patterns, images, text, arrows and Gouraud shading
+        -- are not painted. Each is left out because the two renderers would
+        -- not agree about it, not because it was forgotten, and a command
+        -- nobody serves is skipped so that the rest of a block still draws.
+        --
+        -- The gap is the same gap everywhere, because it is decided in one
+        -- place. A renderer cannot quietly support something the others do
+        -- not.
+}
+
+------------------------------------------------------------
+-- Open questions
+------------------------------------------------------------
+
+open question "Should a command this build does not paint be skipped or refused? Skipped is what this says, on the grounds that a picture missing one shape is more use than no picture. But the binary dialect made the opposite call for a reason that half applies here: a caller who writes `grad-pen` and gets a flat fill has been told nothing, and may ship it. Would a way to ask -- draw/strict, or a warning collected somewhere a script can read -- be better than either?"
+
+open question "A stroked curve will not compare pixel for pixel between Java2D and a browser canvas. Line joins, miter limits and how a cap is drawn on a curve all differ slightly, and no shared input fixes it because the difference is in the rasteriser. The flat-rectangle comparison in browserCheck needs a stated tolerance for these, or the curve cases need to assert the path rather than the pixels. Which?"
+
+open question "The C's defaults read the gob's size, so `box` alone fills the gob and `circle` alone is the biggest circle that fits. That is lovely for writing by hand and it means a draw block means different things on gobs of different sizes -- which is either the point or a trap, depending on whether somebody expected a block to be portable between gobs. Nothing in the C or the documentation says which."
+
+open question "SPLINE takes a segmentation count and draws a curve through its points, and nothing anywhere says which interpolation. AGG has a specific one; a browser has none built in. Implementing it means picking a spline and being wrong somewhere. Is it worth having at all, or is CURVE enough?"

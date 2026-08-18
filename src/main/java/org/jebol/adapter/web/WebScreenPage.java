@@ -63,9 +63,64 @@ final class WebScreenPage {
                       step.down + Math.min(step.high - 2, 14));
                 } else if (step.kind === 'picture') {
                   brush.putImageData(asImageData(step), step.across, step.down);
+                } else if (step.kind === 'drawing') {
+                  drawShape(step);
                 }
                 brush.restore();
               }
+            }
+
+            const capNames = { 'butt': 'butt', 'square': 'square', 'rounded': 'round' };
+            const joinNames = { 'miter': 'miter', 'miter-bevel': 'miter',
+                                'round': 'round', 'bevel': 'bevel' };
+
+            function drawShape(step) {
+              const shape = asPath(step.path);
+              const t = step.transform;
+              brush.transform(t[0], t[1], t[2], t[3], t[4], t[5]);
+              if (step.fill) {
+                brush.fillStyle = step.fill.colour;
+                brush.fill(shape, step.fill.rule === 'even-odd' ? 'evenodd' : 'nonzero');
+              }
+              if (step.stroke) {
+                brush.strokeStyle = step.stroke.colour;
+                brush.lineWidth = step.stroke.width;
+                brush.lineCap = capNames[step.stroke.cap];
+                brush.lineJoin = joinNames[step.stroke.join];
+                brush.stroke(shape);
+              }
+            }
+
+            function asPath(steps) {
+              const shape = new Path2D();
+              const turn = Math.PI / 180;
+              for (const piece of steps) {
+                if (piece.step === 'move-to') {
+                  shape.moveTo(piece.across, piece.down);
+                } else if (piece.step === 'line-to') {
+                  shape.lineTo(piece.across, piece.down);
+                } else if (piece.step === 'quadratic-to') {
+                  shape.quadraticCurveTo(piece['control-across'], piece['control-down'],
+                      piece.across, piece.down);
+                } else if (piece.step === 'cubic-to') {
+                  shape.bezierCurveTo(piece['control-across'], piece['control-down'],
+                      piece['second-across'], piece['second-down'],
+                      piece.across, piece.down);
+                } else if (piece.step === 'ellipse-at') {
+                  shape.moveTo(piece.across + piece['radius-across'], piece.down);
+                  shape.ellipse(piece.across, piece.down,
+                      piece['radius-across'], piece['radius-down'], 0, 0, Math.PI * 2);
+                } else if (piece.step === 'arc-to') {
+                  if (piece.closes) shape.moveTo(piece.across, piece.down);
+                  shape.ellipse(piece.across, piece.down,
+                      piece['radius-across'], piece['radius-down'], 0,
+                      piece.begins * turn, (piece.begins + piece.turns) * turn);
+                  if (piece.closes) shape.closePath();
+                } else if (piece.step === 'close') {
+                  shape.closePath();
+                }
+              }
+              return shape;
             }
 
             function asImageData(step) {

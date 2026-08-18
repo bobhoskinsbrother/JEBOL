@@ -152,7 +152,7 @@ class BrowserScreenFromTheSourceTest {
             GobValue window = (GobValue) interpreter.run(describing).value();
 
             assertThat(viewer.lastPainted().instructions())
-                    .isEqualTo(PaintList.ofAWindow(window).instructions());
+                    .isEqualTo(PaintList.ofAWindow(window, null).instructions());
         }
 
         @Test

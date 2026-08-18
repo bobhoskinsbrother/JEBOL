@@ -1,8 +1,10 @@
 package org.jebol.domain.render;
 
+import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.GobStorage;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ImageValue;
+import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.TupleValue;
@@ -44,16 +46,35 @@ public record PaintList(List<PaintInstruction> instructions) {
         return instructions.isEmpty();
     }
 
-    /** A gob tree flattened, clipped to the gob's own area. */
+    /**
+     * A gob tree flattened, clipped to the gob's own area.
+     *
+     * <p>With no dialect, so a gob carrying a draw block paints nothing. Every
+     * flattening that might meet one takes the dialect, and the ones that
+     * cannot -- a lone coloured gob in a test -- do not have to invent it.
+     */
     public static PaintList of(GobValue root) {
+        return of(root, null);
+    }
+
+    /**
+     * The same, reading any draw block it meets against a dialect.
+     *
+     * <p>The dialect is {@code system/dialects/draw} and it is passed rather
+     * than reached, because flattening a gob tree has no way to a system
+     * object and should not learn one. Threaded rather than held somewhere
+     * shared, because a host runs many interpreters at once and each has its
+     * own.
+     */
+    public static PaintList of(GobValue root, ObjectValue drawDialect) {
         int wide = whole(root.storage().size().x());
         int high = whole(root.storage().size().y());
-        return within(root, ClipRectangle.wholeSurface(wide, high), 0);
+        return within(root, ClipRectangle.wholeSurface(wide, high), 0, drawDialect);
     }
 
     /** The same, clipped to a surface of a stated size. */
     public static PaintList onASurface(GobValue root, int wide, int high) {
-        return within(root, ClipRectangle.wholeSurface(wide, high), 0);
+        return within(root, ClipRectangle.wholeSurface(wide, high), 0, null);
     }
 
     /**
@@ -72,16 +93,18 @@ public record PaintList(List<PaintInstruction> instructions) {
      * was in the desktop renderer and nobody noticed, because no test gob had
      * any text.
      */
-    public static PaintList ofTheScreen(GobValue root, int wide, int high) {
+    public static PaintList ofTheScreen(
+            GobValue root, int wide, int high, ObjectValue drawDialect) {
+
         return within(root, ClipRectangle.wholeSurface(wide, high),
-                DEPTHS_WHOSE_TEXT_IS_A_TITLE);
+                DEPTHS_WHOSE_TEXT_IS_A_TITLE, drawDialect);
     }
 
     /** One window and its contents, with its own title left out. */
-    public static PaintList ofAWindow(GobValue window) {
+    public static PaintList ofAWindow(GobValue window, ObjectValue drawDialect) {
         int wide = whole(window.storage().size().x());
         int high = whole(window.storage().size().y());
-        return within(window, ClipRectangle.wholeSurface(wide, high), 1);
+        return within(window, ClipRectangle.wholeSurface(wide, high), 1, drawDialect);
     }
 
     /**
@@ -91,10 +114,12 @@ public record PaintList(List<PaintInstruction> instructions) {
     private static final int DEPTHS_WHOSE_TEXT_IS_A_TITLE = 2;
 
     private static PaintList within(
-            GobValue root, ClipRectangle surface, int titledDepths) {
+            GobValue root, ClipRectangle surface, int titledDepths,
+            ObjectValue drawDialect) {
 
         List<PaintInstruction> gathered = new ArrayList<>();
-        gather(gathered, root.storage(), 0, 0, surface, Placement.OPAQUE, titledDepths);
+        gather(gathered, root.storage(), 0, 0, surface, Placement.OPAQUE,
+                titledDepths, drawDialect);
         return new PaintList(gathered);
     }
 
@@ -109,7 +134,7 @@ public record PaintList(List<PaintInstruction> instructions) {
     private static void gather(
             List<PaintInstruction> gathered, GobStorage gob,
             int across, int down, ClipRectangle within, int inheritedOpacity,
-            int titledDepths) {
+            int titledDepths, ObjectValue drawDialect) {
 
         int wide = whole(gob.size().x());
         int high = whole(gob.size().y());
@@ -124,7 +149,10 @@ public record PaintList(List<PaintInstruction> instructions) {
         int opacity = multipliedOpacity(inheritedOpacity, gob.alpha());
         Placement where = new Placement(across, down, wide, high, own, opacity);
 
-        if (titledDepths <= 0 || !itsTextIsATitle(gob)) {
+        if (gob.contentKind() == GobStorage.Content.DRAW) {
+            gathered.addAll(
+                    whatItsDrawBlockPaints(gob, where, wide, high, drawDialect));
+        } else if (titledDepths <= 0 || !itsTextIsATitle(gob)) {
             instructionFor(gob, where).ifPresent(gathered::add);
         }
 
@@ -133,7 +161,7 @@ public record PaintList(List<PaintInstruction> instructions) {
                 gather(gathered, held.storage(),
                         across + whole(held.storage().offset().x()),
                         down + whole(held.storage().offset().y()),
-                        own, opacity, titledDepths - 1);
+                        own, opacity, titledDepths - 1, drawDialect);
             }
         }
     }
@@ -150,6 +178,18 @@ public record PaintList(List<PaintInstruction> instructions) {
     private static boolean itsTextIsATitle(GobStorage gob) {
         return gob.contentKind() == GobStorage.Content.STRING
                 || gob.contentKind() == GobStorage.Content.TEXT;
+    }
+
+    private static List<PaintInstruction> whatItsDrawBlockPaints(
+            GobStorage gob, Placement where, int wide, int high,
+            ObjectValue drawDialect) {
+
+        if (drawDialect == null
+                || !(gob.contentIfKind(GobStorage.Content.DRAW)
+                        instanceof BlockValue block)) {
+            return List.of();
+        }
+        return DrawDialect.instructionsFor(block, drawDialect, where, wide, high);
     }
 
     /**

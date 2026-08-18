@@ -3,11 +3,15 @@ package org.jebol.adapter.web;
 import org.jebol.domain.render.ClipRectangle;
 import org.jebol.domain.render.PaintInstruction;
 import org.jebol.domain.render.PaintList;
+import org.jebol.domain.render.PaintState;
+import org.jebol.domain.render.PathStep;
 import org.jebol.domain.render.Placement;
+import org.jebol.domain.render.Transform;
 import org.jebol.domain.value.ImageValue;
 
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -61,7 +65,100 @@ final class PaintListAsJson {
             case PaintInstruction.Picture shown -> anObject(
                     placed(shown),
                     saying("pixels", asOctets(shown.pixels())));
+            case PaintInstruction.Drawn drawing -> anObject(
+                    placed(drawing),
+                    holding("transform", asSixNumbers(drawing.transform())),
+                    holding("path", asSteps(drawing.path())),
+                    holding("stroke", asAStroke(drawing.painted())),
+                    holding("fill", asAFill(drawing.painted())),
+                    holding("smooth", String.valueOf(drawing.painted().antiAliased())));
         };
+    }
+
+    private static String asSixNumbers(Transform transform) {
+        return "[" + String.join(",",
+                measuring(transform.acrossScale()), measuring(transform.downSkew()),
+                measuring(transform.acrossSkew()), measuring(transform.downScale()),
+                measuring(transform.acrossMove()), measuring(transform.downMove()))
+                + "]";
+    }
+
+    private static String asSteps(List<PathStep> path) {
+        return path.stream().map(PaintListAsJson::asAStep)
+                .collect(Collectors.joining(",", "[", "]"));
+    }
+
+    private static String asAStep(PathStep step) {
+        String named = saying("step", step.kind().spelling());
+        return switch (step) {
+            case PathStep.MoveTo to -> anObject(named, at(to.across(), to.down()));
+            case PathStep.LineTo to -> anObject(named, at(to.across(), to.down()));
+            case PathStep.QuadraticTo to -> anObject(named,
+                    at(to.across(), to.down()),
+                    controlling(to.controlAcross(), to.controlDown()));
+            case PathStep.CubicTo to -> anObject(named,
+                    at(to.across(), to.down()),
+                    controlling(to.firstControlAcross(), to.firstControlDown()),
+                    secondControl(to.secondControlAcross(), to.secondControlDown()));
+            case PathStep.EllipseAt ellipse -> anObject(named,
+                    at(ellipse.centreAcross(), ellipse.centreDown()),
+                    radiating(ellipse.radiusAcross(), ellipse.radiusDown()));
+            case PathStep.ArcTo arc -> anObject(named,
+                    at(arc.centreAcross(), arc.centreDown()),
+                    radiating(arc.radiusAcross(), arc.radiusDown()),
+                    measuring("begins", arc.beginsAt()),
+                    measuring("turns", arc.turnsThrough()),
+                    holding("closes", String.valueOf(arc.closes())));
+            case PathStep.Close ignored -> anObject(named);
+        };
+    }
+
+    private static String at(double across, double down) {
+        return measuring("across", across) + "," + measuring("down", down);
+    }
+
+    private static String controlling(double across, double down) {
+        return measuring("control-across", across) + ","
+                + measuring("control-down", down);
+    }
+
+    private static String secondControl(double across, double down) {
+        return measuring("second-across", across) + ","
+                + measuring("second-down", down);
+    }
+
+    private static String radiating(double across, double down) {
+        return measuring("radius-across", across) + ","
+                + measuring("radius-down", down);
+    }
+
+    private static String asAStroke(PaintState painted) {
+        return painted.strokeColour()
+                .map(colour -> anObject(
+                        saying("colour", colour.asHexTriplet()),
+                        measuring("width", painted.lineWidth()),
+                        saying("cap", painted.lineCap().spelling()),
+                        saying("join", painted.lineJoin().spelling())))
+                .orElse("null");
+    }
+
+    private static String asAFill(PaintState painted) {
+        return painted.fillColour()
+                .map(colour -> anObject(
+                        saying("colour", colour.asHexTriplet()),
+                        saying("rule", painted.fillRule().spelling())))
+                .orElse("null");
+    }
+
+    /** A field whose value is a number that may have a fraction. */
+    private static String measuring(String name, double value) {
+        return asAString(name) + ":" + measuring(value);
+    }
+
+    private static String measuring(double value) {
+        return value == Math.rint(value) && !Double.isInfinite(value)
+                ? String.valueOf((long) value)
+                : String.valueOf(value);
     }
 
     /** Everything every kind carries: what it is, where it goes, what it may cover. */

@@ -117,9 +117,7 @@ class PageRendersLikeTheDesktopTest {
     @Test
     @DisplayName("what the browser paints is what Java2D paints, pixel for pixel")
     void thePageMatchesTheWindow() throws Exception {
-        Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
-        interpreter.useScreen(screen);
+        Interpreter interpreter = anInterpreterOnThisPage();
         interpreter.defineFreshWordsIn(A_PICTURE_WORTH_COMPARING);
         GobValue root = (GobValue) interpreter.run(A_PICTURE_WORTH_COMPARING).value();
 
@@ -148,9 +146,7 @@ class PageRendersLikeTheDesktopTest {
         // The child of `inner` is four hundred pixels square inside a parent
         // ninety high. A renderer that worked the clip out for itself would
         // paint over half the picture; both are told the answer instead.
-        Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
-        interpreter.useScreen(screen);
+        Interpreter interpreter = anInterpreterOnThisPage();
         interpreter.defineFreshWordsIn(A_PICTURE_WORTH_COMPARING);
         interpreter.run(A_PICTURE_WORTH_COMPARING);
 
@@ -164,6 +160,54 @@ class PageRendersLikeTheDesktopTest {
                 .isEqualTo(new Color(30, 34, 44));
     }
 
+    /**
+     * A gob whose content is a draw block rather than a colour.
+     *
+     * <p>Filled rectangles and no strokes, deliberately. A stroked or curved
+     * shape will not compare pixel for pixel between two rasterisers -- joins,
+     * miter limits and how a cap meets a curve all differ slightly, and no
+     * shared input fixes that because the difference is in the drawing rather
+     * than in what was asked for. Those want a stated tolerance and are not
+     * asserted here; flat axis-aligned fills need none, so they are.
+     */
+    private static final String A_DRAWING_WORTH_COMPARING = """
+            system/view/screen-gob/color: 0.0.0
+            view/no-wait make gob! [
+                size: 420x260
+                draw: [
+                    fill-pen 30.34.44  pen off  box 0x0 420x260
+                    fill-pen 58.140.208 box 0x0 420x44
+                    fill-pen 232.93.74  box 20x70 140x160
+                    fill-pen 96.198.128 box 155x70 275x160
+                    push [
+                        translate 20x190
+                        fill-pen 70.76.92 box 0x0 380x40
+                    ]
+                ]
+            ]
+            system/view/screen-gob
+            """;
+
+    @Test
+    @DisplayName("and a DRAW block paints the same in both, shape for shape")
+    void adrawBlockMatchesToo() throws Exception {
+        Interpreter interpreter = anInterpreterOnThisPage();
+        interpreter.defineFreshWordsIn(A_DRAWING_WORTH_COMPARING);
+        GobValue root = (GobValue) interpreter.run(A_DRAWING_WORTH_COMPARING).value();
+
+        BufferedImage fromTheBrowser = whatTheCanvasShows();
+        BufferedImage fromJava2D = whatJava2DPaints(root,
+                fromTheBrowser.getWidth(), fromTheBrowser.getHeight());
+
+        assertThat(howManyColoursAreIn(fromTheBrowser))
+                .as("a blank canvas would match a blank surface and mean nothing")
+                .isGreaterThanOrEqualTo(5);
+        assertThat(howManyPixelsDiffer(fromTheBrowser, fromJava2D))
+                .as("the dialect was read once and executed twice, so the only "
+                        + "way these can differ is in the drawing itself")
+                .isZero();
+    }
+
     /** The canvas as pixels, taken from the browser. */
     private BufferedImage whatTheCanvasShows() throws IOException {
         WebElement canvas = browser.findElement(By.id("screen"));
@@ -172,18 +216,38 @@ class PageRendersLikeTheDesktopTest {
     }
 
     /** The same paint list, drawn by the renderer a desktop window uses. */
-    private static BufferedImage whatJava2DPaints(GobValue root, int wide, int high) {
+    private BufferedImage whatJava2DPaints(GobValue root, int wide, int high) {
         BufferedImage surface =
                 new BufferedImage(wide, high, BufferedImage.TYPE_INT_RGB);
         Graphics2D onto = surface.createGraphics();
         try {
             onto.setColor(Color.WHITE);
             onto.fillRect(0, 0, wide, high);
-            DesktopPainting.execute(onto, PaintList.ofTheScreen(root, wide, high));
+            DesktopPainting.execute(onto,
+                    PaintList.ofTheScreen(root, wide, high, theDrawDialect));
         } finally {
             onto.dispose();
         }
         return surface;
+    }
+
+    /**
+     * The dialect a draw block is read against, taken from the same
+     * interpreter that built the tree.
+     *
+     * <p>Both renderers must read the block against the same one, or the
+     * comparison would be between two different drawings rather than between
+     * two drawings of one.
+     */
+    private org.jebol.domain.value.ObjectValue theDrawDialect;
+
+    private Interpreter anInterpreterOnThisPage() {
+        Interpreter interpreter = Interpreter.withBounds(
+                Bounds.standard().granting(HostService.WINDOWS));
+        interpreter.useScreen(screen);
+        theDrawDialect = (org.jebol.domain.value.ObjectValue)
+                interpreter.run("system/dialects/draw").value();
+        return interpreter;
     }
 
     private static Color colourAt(BufferedImage surface, int across, int down) {

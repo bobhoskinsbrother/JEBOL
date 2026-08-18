@@ -59,6 +59,14 @@ public final class BrowserScreen implements ScreenPort {
 
     private GobValue root;
     private PairValue viewport = PairValue.of(0, 0);
+    private org.jebol.domain.value.ObjectValue drawDialect;
+
+    @Override
+    public void useDrawDialect(Value dialect) {
+        this.drawDialect = dialect instanceof org.jebol.domain.value.ObjectValue named
+                ? named
+                : null;
+    }
 
     private BrowserScreen(Viewer viewer) {
         this.viewer = viewer;
@@ -179,7 +187,8 @@ public final class BrowserScreen implements ScreenPort {
      */
     private PaintList everythingOnThePage() {
         return PaintList.ofTheScreen(root,
-                (int) Math.round(viewport.x()), (int) Math.round(viewport.y()));
+                (int) Math.round(viewport.x()), (int) Math.round(viewport.y()),
+                drawDialect);
     }
 
     private List<GobValue> childrenOfTheRoot() {

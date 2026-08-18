@@ -33,7 +33,7 @@ import java.util.Optional;
  *
  * <p>Specified in {@code spec/dialect.allium}.
  */
-final class Delect {
+public final class Delect {
 
     private Delect() {
     }
@@ -44,7 +44,7 @@ final class Delect {
      * <p>Answers the input standing after what was read, so a caller loops on
      * it, and none at the end so the loop has something to stop on.
      */
-    static Value read(
+    public static Value read(
             ObjectValue dialect, BlockValue input, BlockValue output,
             boolean readsWholeBlock, Evaluator evaluator, Context where) {
 
@@ -314,13 +314,36 @@ final class Delect {
             };
         }
 
+        /**
+         * What a word holds, by its own binding first.
+         *
+         * <p>Its own first because that is what the C reads --
+         * {@code Get_Var_No_Trap(val)} follows the word's binding rather than
+         * a context anybody passed in. It also matters for a draw block, which
+         * is a gob's content and may be read long after and far from wherever
+         * it was written.
+         */
         private Optional<Value> whateverTheWordHolds(WordValue word) {
+            if (!word.binding().isUnbound() && word.binding().holds(word.canonical())) {
+                return Optional.of(word.binding().slotFor(word.canonical()).value());
+            }
             return where.holds(word.canonical())
                     ? Optional.of(where.slotFor(word.canonical()).value())
                     : Optional.empty();
         }
 
+        /**
+         * A paren, run.
+         *
+         * <p>Empty when there is no evaluator, which is the case when a draw
+         * block is being read while a gob is flattened: flattening is a pure
+         * walk of values and running a script inside it would make what a
+         * picture looks like depend on when it was drawn.
+         */
         private Optional<Value> evaluated(BlockValue block) {
+            if (evaluator == null) {
+                return Optional.empty();
+            }
             try {
                 return Optional.of(evaluator.evaluateOrRaise(
                         Binder.bind(BlockValue.block(List.of(block)), where), where));

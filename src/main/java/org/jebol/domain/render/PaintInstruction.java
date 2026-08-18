@@ -57,4 +57,33 @@ public sealed interface PaintInstruction {
             return PaintKind.PICTURE;
         }
     }
+
+    /**
+     * A path, painted with a stroke or a fill or both.
+     *
+     * <p>What the whole DRAW dialect comes to. Thirty commands and ten
+     * sub-commands are read once into these, and a renderer executes them
+     * without knowing a dialect exists: a box, a circle, a polygon and a
+     * hand-written path all arrive here as the same thing.
+     *
+     * <p>Either paint may be absent and both may be. A shape with neither is
+     * not a mistake -- {@code pen off fill-pen off} says exactly that -- and it
+     * is dropped before it reaches a renderer rather than being drawn
+     * invisibly.
+     */
+    record Drawn(
+            Placement where,
+            java.util.List<PathStep> path,
+            Transform transform,
+            PaintState painted) implements PaintInstruction {
+
+        public Drawn {
+            path = java.util.List.copyOf(path);
+        }
+
+        @Override
+        public PaintKind kind() {
+            return PaintKind.DRAWING;
+        }
+    }
 }

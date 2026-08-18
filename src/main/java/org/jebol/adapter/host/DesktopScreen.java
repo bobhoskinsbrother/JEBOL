@@ -67,6 +67,14 @@ public final class DesktopScreen implements ScreenPort {
     private final Deque<ScreenEvent> queued = new ArrayDeque<>();
 
     private GobValue root;
+    private org.jebol.domain.value.ObjectValue drawDialect;
+
+    @Override
+    public void useDrawDialect(Value dialect) {
+        this.drawDialect = dialect instanceof org.jebol.domain.value.ObjectValue named
+                ? named
+                : null;
+    }
 
     private DesktopScreen(boolean present) {
         this.present = present;
@@ -298,7 +306,13 @@ public final class DesktopScreen implements ScreenPort {
                 : "REBOL: untitled";
     }
 
-    private static JPanel aSurfacePainting(GobValue gob) {
+    private JPanel aSurfacePainting(GobValue gob) {
+        org.jebol.domain.value.ObjectValue reading = drawDialect;
+        return aSurfacePainting(gob, reading);
+    }
+
+    private static JPanel aSurfacePainting(
+            GobValue gob, org.jebol.domain.value.ObjectValue drawDialect) {
         JPanel surface = new JPanel() {
 
             private static final long serialVersionUID = 1L;
@@ -306,7 +320,8 @@ public final class DesktopScreen implements ScreenPort {
             @Override
             protected void paintComponent(Graphics onto) {
                 super.paintComponent(onto);
-                DesktopPainting.paintTheContentsOf((Graphics2D) onto, gob);
+                DesktopPainting.paintTheContentsOf(
+                        (Graphics2D) onto, gob, drawDialect);
             }
         };
         surface.setPreferredSize(new Dimension(

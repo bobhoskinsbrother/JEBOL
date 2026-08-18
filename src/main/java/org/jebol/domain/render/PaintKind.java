@@ -12,7 +12,8 @@ public enum PaintKind {
 
     FILL,
     WRITING,
-    PICTURE;
+    PICTURE,
+    DRAWING;
 
     /** The word this kind travels under. */
     public String spelling() {

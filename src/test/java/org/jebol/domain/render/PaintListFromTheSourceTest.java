@@ -487,7 +487,7 @@ class PaintListFromTheSourceTest {
         void everyKindHasAWord() {
             assertThat(java.util.Arrays.stream(PaintKind.values())
                     .map(PaintKind::spelling))
-                    .containsExactly("fill", "writing", "picture");
+                    .containsExactly("fill", "writing", "picture", "drawing");
         }
     }
 }

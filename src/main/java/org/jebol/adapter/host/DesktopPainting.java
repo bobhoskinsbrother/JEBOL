@@ -1,19 +1,29 @@
 package org.jebol.adapter.host;
 
 import org.jebol.domain.render.ClipRectangle;
+import org.jebol.domain.render.FillRule;
 import org.jebol.domain.render.PaintInstruction;
 import org.jebol.domain.render.PaintList;
+import org.jebol.domain.render.PaintState;
+import org.jebol.domain.render.PathStep;
 import org.jebol.domain.render.Placement;
+import org.jebol.domain.render.Transform;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ImageValue;
 import org.jebol.domain.value.PairValue;
 
 import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Arc2D;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
+import java.util.List;
 
 /**
  * Executes a paint list on a Java2D surface.
@@ -53,8 +63,11 @@ public final class DesktopPainting {
      * its top left corner in black. That was happening and nobody noticed,
      * because no test gob had any text until a browser rendered a real VIEW.
      */
-    static void paintTheContentsOf(Graphics2D onto, GobValue window) {
-        execute(onto, PaintList.ofAWindow(window));
+    static void paintTheContentsOf(
+            Graphics2D onto, GobValue window,
+            org.jebol.domain.value.ObjectValue drawDialect) {
+
+        execute(onto, PaintList.ofAWindow(window, drawDialect));
     }
 
     /**
@@ -91,6 +104,7 @@ public final class DesktopPainting {
                 case PaintInstruction.Fill filled -> fill(own, where, filled);
                 case PaintInstruction.Writing written -> write(own, where, written);
                 case PaintInstruction.Picture shown -> show(own, where, shown);
+                case PaintInstruction.Drawn drawing -> draw(own, drawing);
             }
         } finally {
             own.dispose();
@@ -131,6 +145,106 @@ public final class DesktopPainting {
             Graphics2D onto, Placement where, PaintInstruction.Picture shown) {
 
         onto.drawImage(asJavaImage(shown.pixels()), where.across(), where.down(), null);
+    }
+
+    /**
+     * A path, filled then stroked, under whatever transform it carried.
+     *
+     * <p>Filled before stroked because a stroke straddles the outline: half of
+     * it lies inside the shape, so filling afterwards would paint over the
+     * inner half of every line and make every stroke look half as wide as it
+     * was asked to be.
+     */
+    private static void draw(Graphics2D onto, PaintInstruction.Drawn drawing) {
+        Path2D.Double path = pathFrom(drawing.path(), drawing.painted());
+        onto.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                drawing.painted().antiAliased()
+                        ? RenderingHints.VALUE_ANTIALIAS_ON
+                        : RenderingHints.VALUE_ANTIALIAS_OFF);
+        onto.transform(javaTransformOf(drawing.transform()));
+
+        drawing.painted().fillColour().ifPresent(colour -> {
+            onto.setColor(javaColourOf(colour));
+            onto.fill(path);
+        });
+        drawing.painted().strokeColour().ifPresent(colour -> {
+            onto.setColor(javaColourOf(colour));
+            onto.setStroke(javaStrokeOf(drawing.painted()));
+            onto.draw(path);
+        });
+    }
+
+    private static Path2D.Double pathFrom(
+            List<PathStep> steps, PaintState painted) {
+
+        Path2D.Double path = new Path2D.Double(
+                painted.fillRule() == FillRule.EVEN_ODD
+                        ? Path2D.WIND_EVEN_ODD
+                        : Path2D.WIND_NON_ZERO);
+        for (PathStep step : steps) {
+            obeyOnThePath(path, step);
+        }
+        return path;
+    }
+
+    private static void obeyOnThePath(Path2D.Double path, PathStep step) {
+        switch (step) {
+            case PathStep.MoveTo to -> path.moveTo(to.across(), to.down());
+            case PathStep.LineTo to -> lineOrMoveTo(path, to);
+            case PathStep.QuadraticTo to -> path.quadTo(
+                    to.controlAcross(), to.controlDown(), to.across(), to.down());
+            case PathStep.CubicTo to -> path.curveTo(
+                    to.firstControlAcross(), to.firstControlDown(),
+                    to.secondControlAcross(), to.secondControlDown(),
+                    to.across(), to.down());
+            case PathStep.EllipseAt ellipse -> path.append(new Ellipse2D.Double(
+                    ellipse.centreAcross() - ellipse.radiusAcross(),
+                    ellipse.centreDown() - ellipse.radiusDown(),
+                    ellipse.radiusAcross() * 2, ellipse.radiusDown() * 2), false);
+            case PathStep.ArcTo arc -> path.append(new Arc2D.Double(
+                    arc.centreAcross() - arc.radiusAcross(),
+                    arc.centreDown() - arc.radiusDown(),
+                    arc.radiusAcross() * 2, arc.radiusDown() * 2,
+                    -arc.beginsAt(), -arc.turnsThrough(),
+                    arc.closes() ? Arc2D.PIE : Arc2D.OPEN), false);
+            case PathStep.Close ignored -> path.closePath();
+        }
+    }
+
+    /**
+     * A line with nothing before it starts the path instead of raising.
+     *
+     * <p>Java2D refuses a {@code lineTo} on an empty path, and a draw block
+     * that opens with one is a person's mistake rather than something worth
+     * ending the picture over.
+     */
+    private static void lineOrMoveTo(Path2D.Double path, PathStep.LineTo to) {
+        if (path.getCurrentPoint() == null) {
+            path.moveTo(to.across(), to.down());
+            return;
+        }
+        path.lineTo(to.across(), to.down());
+    }
+
+    private static BasicStroke javaStrokeOf(PaintState painted) {
+        return new BasicStroke((float) painted.lineWidth(),
+                switch (painted.lineCap()) {
+                    case BUTT -> BasicStroke.CAP_BUTT;
+                    case SQUARE -> BasicStroke.CAP_SQUARE;
+                    case ROUNDED -> BasicStroke.CAP_ROUND;
+                },
+                switch (painted.lineJoin()) {
+                    case MITER, MITER_BEVEL -> BasicStroke.JOIN_MITER;
+                    case ROUND -> BasicStroke.JOIN_ROUND;
+                    case BEVEL -> BasicStroke.JOIN_BEVEL;
+                });
+    }
+
+    private static AffineTransform javaTransformOf(Transform transform) {
+        return new AffineTransform(
+                transform.acrossScale(), transform.downSkew(),
+                transform.acrossSkew(), transform.downScale(),
+                transform.acrossMove(), transform.downMove());
     }
 
     private static Color javaColourOf(org.jebol.domain.render.Colour colour) {

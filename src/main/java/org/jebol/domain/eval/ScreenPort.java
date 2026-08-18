@@ -2,6 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
+import org.jebol.domain.value.Value;
 
 import java.util.List;
 
@@ -97,6 +98,21 @@ public interface ScreenPort {
         root.storage().size(screen.hasADisplay()
                 ? screen.measure(ScreenMetric.SCREEN_SIZE, 0)
                 : PairValue.of(0, 0));
+    }
+
+    /**
+     * Tells the screen how to read a gob's draw block.
+     *
+     * <p>{@code system/dialects/draw}, handed over once, exactly as the root
+     * gob is and for the same reason: flattening a gob tree has no way to
+     * reach a system object and should not learn one. A screen never told
+     * paints no draw blocks, which is a gap rather than a failure -- every
+     * other kind of gob still shows.
+     *
+     * <p>Held per screen rather than anywhere shared, because a host runs many
+     * interpreters at once and each has its own {@code system}.
+     */
+    default void useDrawDialect(Value dialect) {
     }
 
     /** Why the screen refused. Carries an error id the boundary reports. */
