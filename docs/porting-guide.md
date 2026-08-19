@@ -30,7 +30,13 @@ two disagreed during the port, the C was right. The sources, in order:
 1. `rebol3-source/src/boot/types.reb` -- the datatype table: each datatype's
    typeclass, path handler, MAKE support, and typesets.
 2. `src/boot/actions.reb` and `src/boot/natives.reb` -- the declared specs of
-   all 224 C functions, with every argument's datatypes and every refinement.
+   60 actions and 164 natives, with every argument's datatypes and every
+   refinement. **They are not the whole C surface.** 54 more natives carry
+   their spec in a comment above the function in `src/core/*.c` --
+   `//\tclamp: native [...]` -- and are mentioned in no boot file, which is
+   279 in all. A collector that reads only the boot files cannot see them, and
+   that is how `binary` stayed missing while the parity report said
+   MISSING: 0.
 3. `src/core/*.c` -- the arms themselves. `t-*.c` for datatypes, `n-*.c` for
    natives, `c-do.c` for the evaluator, `l-scan.c` for the reader, `s-mold.c`
    for molding, `boot/errors.reb` for the error catalogue. The host is in
@@ -56,13 +62,16 @@ All of these stay where they are. A change that moves one is wrong.
 
 - **`ActionParityTest`** -- the datatype table times the arms table, ratchet at
   zero, nothing parked behind it.
-- **`scripts/c-parity.py`** -- MISSING, WRONG LAYER, REFINEMENTS and ARGUMENTS
-  all empty. TYPES prints 101 lines and every one is a known shape: 41 are
-  JEBOL enumerating concrete datatypes where R3 writes `any-type!`, and 60 are
-  `vector!` refusals from the datatype backlog. **That MISSING is over an
-  incomplete input** -- see the measures in Goal 1.
+- **`scripts/c-parity.py`** -- 279 C functions. MISSING is empty. What is left
+  is named in the TODO: `dir?` in the wrong layer, two refinement differences,
+  and 110 TYPES lines of which 60 are `vector!` refusals from the datatype
+  backlog and the rest are JEBOL enumerating concrete datatypes where R3 writes
+  `any-type!`.
+- **`PortingBacklogTest`** -- 3 of R3's 404 functions, and it asks both `lib`
+  and `sys`. It has been wrong three times, each because a number was believed
+  and the question behind it was not.
 
-`./gradlew check` is the gate before a commit: 9297 tests, 0 failed,
+`./gradlew check` is the gate before a commit: 9363 tests, 0 failed,
 0 skipped, about three minutes.
 
 `./gradlew browserCheck` is the second gate and is not optional, only

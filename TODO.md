@@ -13,25 +13,27 @@ Four things were already done and one "live defect" had fixed itself:
 and round-trips, both borrowed files load whole, the five `n-image.c`
 functions are ported, and the Java `view` stub is gone.
 
-That is the same disease as the measures below: something gets written down
+That is the same disease as the measures were: something gets written down
 and nobody checks it against the thing it claims to describe.
-
-## Found while checking
-
-**`layout` is a Java native that returns its argument.** A VID program runs,
-reports success and draws nothing. Worse than a fork, because `layout` is
-defined nowhere in Rebol either -- JEBOL invented a stub that says yes. Its
-twin, the `view` identity stub, has been replaced by the real thing; this one
-has not. A `feature-na` refusal would be better than what is there.
 
 ---
 
-# Goal 1. The bugs
+# Goal 1. The bugs -- DONE
 
-A map matching a string key case-sensitively. Two measures that lie --
-`PortingBacklogTest` asserting 24 missing where the number is zero, and
-`c-parity`'s `MISSING: 0` over an input that cannot see `REBNATIVE(...)`.
-`LAYOUT`. And an error's fields being a record rather than a context.
+The map key case, the two lying measures, the three natives they found, an
+error's fields, and LAYOUT. Fixed in `6e9c9a7` and `2bb77e0`.
+
+Worth keeping from it. The measures had four separate things wrong and between
+them they hid five real gaps: `c-surface.py` read only the boot files and so
+could not see the 54 natives the C declares in its own comments; it counted
+two objects as functions; `PortingBacklogTest` asked one context of two; and
+`limit-usage` was counted as work when Rebol deletes it on purpose. The
+backlog now reads 3 of 404 rather than 24 of 353, and those three -- `clamp`,
+`distance`, `factorial` -- are ported.
+
+Two smaller things the measures turned up are still open and are in Goal 5:
+`dir?` is written in the wrong layer, and `access-os` and `request-color` have
+the wrong refinements.
 
 # Goal 2. The type-major refactor
 
@@ -54,8 +56,10 @@ events-name-the-wrong-window one.
 
 # Goal 5. Loose ends
 
-`vector!` and `task!` carry 60 of the 101 TYPES lines. Seven more schemes the
-JDK could serve. TLS loaded but not connected. 48 open questions across ten
+`dir?` written in REBOL where Rebol writes it in C. `access-os` missing its
+`/set` and its second argument; `request-color` with an `/rgb16` R3 has not
+got. `vector!` and `task!` carry 60 of the 110 TYPES lines. Seven more schemes
+the JDK could serve. TLS loaded but not connected. 48 open questions across ten
 spec files.
 
 # Goal 6. The 68ms boot
