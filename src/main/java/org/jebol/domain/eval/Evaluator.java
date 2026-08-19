@@ -1279,6 +1279,17 @@ public final class Evaluator {
             storeUnderKey(map, selectorFor(lastSegment, frame.context), written);
             return;
         }
+        if (target instanceof ErrorValue raised && lastSegment instanceof WordValue field) {
+            // An error is an object -- boot/types.reb gives error! the object
+            // path handler -- so a field write is ordinary rather than a
+            // special case anybody had to allow. A field the frame has not got
+            // is PE_BAD_SELECT, which reads as invalid-path.
+            if (!ErrorValue.FIELDS.contains(field.canonical())) {
+                throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
+            }
+            raised.write(field.canonical(), written);
+            return;
+        }
         throw Raised.of(EvaluationFailure.INVALID_PATH,
                 "cannot assign through " + target.datatype().literalSpelling());
     }

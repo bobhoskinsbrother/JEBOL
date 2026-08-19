@@ -1,6 +1,8 @@
 package org.jebol.domain.value;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -22,7 +24,8 @@ public record ErrorValue(
         Optional<Value> secondArgument,
         Optional<Value> thirdArgument,
         Optional<Value> near,
-        Optional<String> whereWord) implements Value {
+        Optional<String> whereWord,
+        Map<String, Value> writtenFields) implements Value {
 
     public ErrorValue {
         if (category == null) {
@@ -43,7 +46,7 @@ public record ErrorValue(
     public static ErrorValue of(ErrorCategory category, String errorId, String message) {
         return new ErrorValue(category, errorId, message,
                 Optional.empty(), Optional.empty(), Optional.empty(),
-                Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), new LinkedHashMap<>());
     }
 
     /** The same, naming what the failure was about. */
@@ -51,7 +54,7 @@ public record ErrorValue(
             ErrorCategory category, String errorId, String message, Value subject) {
         return new ErrorValue(category, errorId, message,
                 Optional.of(subject), Optional.empty(), Optional.empty(),
-                Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), new LinkedHashMap<>());
     }
 
     /**
@@ -69,7 +72,7 @@ public record ErrorValue(
 
         return new ErrorValue(category, errorId, message,
                 Optional.of(first), Optional.of(second), Optional.empty(),
-                Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), new LinkedHashMap<>());
     }
 
     /**
@@ -88,7 +91,7 @@ public record ErrorValue(
 
         return new ErrorValue(category, errorId, message,
                 Optional.of(first), Optional.of(second), Optional.of(third),
-                Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), new LinkedHashMap<>());
     }
 
     /**
@@ -103,7 +106,28 @@ public record ErrorValue(
             "code", "type", "id", "arg1", "arg2", "arg3", "near", "where");
 
     /**
+     * A field written over the top of the derived one.
+     *
+     * <p>An error is an object and an object is shared, so this writes through
+     * every name holding it. The map is the shared part, held the way a block
+     * holds its storage: the record is a value and what it points at is not.
+     *
+     * <p>Refuses a field the frame has not got, which is {@code PE_BAD_SELECT}
+     * in {@code PD_Object} and reads as {@code invalid-path} to a script.
+     */
+    public void write(String name, Value value) {
+        if (!FIELDS.contains(name)) {
+            throw new IllegalArgumentException(
+                    "an error has no field called " + name);
+        }
+        writtenFields.put(name, value);
+    }
+
+    /**
      * What one field holds, or empty when the error has no such field.
+     *
+     * <p>What was written over the top comes first, because an error is an
+     * object and a field somebody set is the field.
      *
      * <p>ARG1 carries whatever the failure was about -- the word that had
      * no value, the function that refused an argument -- and is none when
@@ -116,6 +140,9 @@ public record ErrorValue(
      * which is an assertion Rebol's own suite makes.
      */
     public Optional<Value> field(String name) {
+        if (writtenFields.containsKey(name)) {
+            return Optional.of(writtenFields.get(name));
+        }
         return switch (name) {
             case "code" -> Optional.of(IntegerValue.of(codeNumber()));
             case "type" -> Optional.of(WordValue.of(categoryWord()));
@@ -180,16 +207,24 @@ public record ErrorValue(
         return of(ErrorCategory.SYNTAX, errorId, message);
     }
 
-    /** The same error, carrying the block fragment it came from. */
+    /**
+     * The same error, carrying the block fragment it came from.
+     *
+     * <p>The written fields carry over by reference rather than being copied,
+     * because this is the same error rather than another like it: an error
+     * that picked up its NEAR on the way out must not lose an id somebody set.
+     */
     public ErrorValue near(Value fragment) {
         return new ErrorValue(category, errorId, message, subject,
-                secondArgument, thirdArgument, Optional.of(fragment), whereWord);
+                secondArgument, thirdArgument, Optional.of(fragment), whereWord,
+                writtenFields);
     }
 
     /** The same error, naming the function it was raised in. */
     public ErrorValue raisedIn(String functionName) {
         return new ErrorValue(category, errorId, message, subject,
-                secondArgument, thirdArgument, near, Optional.of(functionName));
+                secondArgument, thirdArgument, near, Optional.of(functionName),
+                writtenFields);
     }
 
     @Override

@@ -33,7 +33,7 @@ class InteractiveRenderingTest {
         @Test
         @DisplayName("a face with an action block gets a handle the browser can name")
         void actionableFacesAreNamed() {
-            View view = viewOf("layout [button \"Press\" [count: 1]]");
+            View view = viewOf("[button \"Press\" [count: 1]]");
 
             assertThat(view.markup()).contains("data-jebol-action=");
         }
@@ -41,7 +41,7 @@ class InteractiveRenderingTest {
         @Test
         @DisplayName("a face without one does not")
         void inertFacesAreNotNamed() {
-            View view = viewOf("layout [text \"just words\"]");
+            View view = viewOf("[text \"just words\"]");
 
             assertThat(view.markup()).doesNotContain("data-jebol-action=");
         }
@@ -50,7 +50,7 @@ class InteractiveRenderingTest {
         @DisplayName("each actionable face gets its own handle")
         void handlesAreDistinct() {
             View view = viewOf(
-                    "layout [button \"one\" [x: 1] button \"two\" [x: 2]]");
+                    "[button \"one\" [x: 1] button \"two\" [x: 2]]");
 
             assertThat(view.actionHandles()).hasSize(2).doesNotHaveDuplicates();
         }
@@ -63,7 +63,7 @@ class InteractiveRenderingTest {
         @Test
         void anEventRunsItsAction() {
             View view = viewOf(
-                    "count: 0 layout [button \"Press\" [count: add count 1]]");
+                    "count: 0 [button \"Press\" [count: add count 1]]");
 
             view.raise(view.actionHandles().get(0));
 
@@ -74,7 +74,7 @@ class InteractiveRenderingTest {
         @DisplayName("pressing twice runs it twice")
         void eventsAccumulate() {
             View view = viewOf(
-                    "count: 0 layout [button \"Press\" [count: add count 1]]");
+                    "count: 0 [button \"Press\" [count: add count 1]]");
             String handle = view.actionHandles().get(0);
 
             view.raise(handle);
@@ -87,7 +87,7 @@ class InteractiveRenderingTest {
         @DisplayName("the right block runs, not merely a block")
         void theRightActionRuns() {
             View view = viewOf(
-                    "chosen: \"none\" layout ["
+                    "chosen: \"none\" ["
                             + "button \"one\" [chosen: \"first\"] "
                             + "button \"two\" [chosen: \"second\"]]");
 
@@ -99,7 +99,7 @@ class InteractiveRenderingTest {
         @Test
         @DisplayName("an event nobody registered is refused rather than guessed at")
         void unknownHandlesAreRefused() {
-            View view = viewOf("layout [button \"Press\" [x: 1]]");
+            View view = viewOf("[button \"Press\" [x: 1]]");
 
             assertThat(view.raise("not-a-real-handle").succeeded()).isFalse();
         }
@@ -107,7 +107,7 @@ class InteractiveRenderingTest {
         @Test
         @DisplayName("an action that fails does not take the view with it")
         void aFailingActionLeavesTheViewUsable() {
-            View view = viewOf("layout [button \"Press\" [divide 1 0]]");
+            View view = viewOf("[button \"Press\" [divide 1 0]]");
 
             assertThat(view.raise(view.actionHandles().get(0)).succeeded()).isFalse();
             assertThat(view.markup()).contains("Press");
@@ -122,7 +122,7 @@ class InteractiveRenderingTest {
         @DisplayName("markup reflects state changed by an action")
         void markupFollowsState() {
             View view = viewOf(
-                    "caption: \"before\" layout [button caption [caption: \"after\"]]");
+                    "caption: \"before\" [button caption [caption: \"after\"]]");
 
             assertThat(view.markup()).contains("before");
             view.raise(view.actionHandles().get(0));
@@ -135,7 +135,7 @@ class InteractiveRenderingTest {
         @Test
         @DisplayName("rendering the same state twice gives the same markup")
         void rerenderingIsStable() {
-            View view = viewOf("layout [text \"steady\"]");
+            View view = viewOf("[text \"steady\"]");
 
             assertThat(view.markup()).isEqualTo(view.markup());
         }

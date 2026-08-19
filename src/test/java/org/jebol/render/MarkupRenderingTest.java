@@ -35,35 +35,35 @@ class MarkupRenderingTest {
         @Test
         @DisplayName("text becomes a paragraph")
         void textBecomesAParagraph() {
-            assertThat(render("layout [text \"hello\"]"))
+            assertThat(render("[text \"hello\"]"))
                     .contains("<p").contains("hello").contains("</p>");
         }
 
         @Test
         @DisplayName("a button becomes a button")
         void buttonBecomesAButton() {
-            assertThat(render("layout [button \"Press me\"]"))
+            assertThat(render("[button \"Press me\"]"))
                     .contains("<button").contains("Press me").contains("</button>");
         }
 
         @Test
         @DisplayName("a field becomes an input")
         void fieldBecomesAnInput() {
-            assertThat(render("layout [field \"typed\"]"))
+            assertThat(render("[field \"typed\"]"))
                     .contains("<input").contains("value=\"typed\"");
         }
 
         @Test
         @DisplayName("a box becomes a div")
         void boxBecomesADiv() {
-            assertThat(render("layout [box \"contents\"]"))
+            assertThat(render("[box \"contents\"]"))
                     .contains("<div").contains("contents");
         }
 
         @Test
         @DisplayName("several shapes render in order")
         void shapesRenderInOrder() {
-            String html = render("layout [text \"first\" button \"second\"]");
+            String html = render("[text \"first\" button \"second\"]");
 
             assertThat(html.indexOf("first"))
                     .as("source order is page order")
@@ -73,7 +73,7 @@ class MarkupRenderingTest {
         @Test
         @DisplayName("an empty layout is still a page")
         void anEmptyLayoutIsStillAPage() {
-            assertThat(render("layout []")).contains("<div").contains("</div>");
+            assertThat(render("[]")).contains("<div").contains("</div>");
         }
     }
 
@@ -84,27 +84,27 @@ class MarkupRenderingTest {
         @Test
         @DisplayName("a pair becomes a width and a height")
         void pairsBecomeSizes() {
-            assertThat(render("layout [box 140x32]"))
+            assertThat(render("[box 140x32]"))
                     .contains("width:140px").contains("height:32px");
         }
 
         @Test
         @DisplayName("a tuple becomes a colour")
         void tuplesBecomeColours() {
-            assertThat(render("layout [box 100.150.150]"))
+            assertThat(render("[box 100.150.150]"))
                     .contains("rgb(100,150,150)");
         }
 
         @Test
         @DisplayName("a colour word becomes its colour")
         void colourWordsBecomeColours() {
-            assertThat(render("layout [box red]")).contains("rgb(255,0,0)");
+            assertThat(render("[box red]")).contains("rgb(255,0,0)");
         }
 
         @Test
         @DisplayName("decoration applies to the shape it follows")
         void decorationBelongsToItsShape() {
-            String html = render("layout [text \"plain\" button \"sized\" 200x40]");
+            String html = render("[text \"plain\" button \"sized\" 200x40]");
 
             assertThat(html).contains("width:200px");
             assertThat(html.indexOf("width:200px"))
@@ -120,7 +120,7 @@ class MarkupRenderingTest {
         @Test
         @DisplayName("text from a script is escaped, not injected")
         void scriptTextIsEscaped() {
-            String html = render("layout [text \"<script>alert(1)</script>\"]");
+            String html = render("[text \"<script>alert(1)</script>\"]");
 
             assertThat(html)
                     .as("a layout is data, and data must not become markup")
@@ -131,7 +131,7 @@ class MarkupRenderingTest {
         @Test
         @DisplayName("quotes in an attribute are escaped")
         void attributeQuotesAreEscaped() {
-            String html = render("layout [field {say \"hello\"}]");
+            String html = render("[field {say \"hello\"}]");
 
             assertThat(html).contains("&quot;");
         }
@@ -144,7 +144,7 @@ class MarkupRenderingTest {
         @Test
         @DisplayName("the same layout renders the same markup")
         void renderingIsDeterministic() {
-            String source = "layout [text \"a\" button \"b\" box 10x10 blue]";
+            String source = "[text \"a\" button \"b\" box 10x10 blue]";
 
             assertThat(render(source)).isEqualTo(render(source));
         }
@@ -166,7 +166,7 @@ class MarkupRenderingTest {
         @DisplayName("the smallest demo's layout renders")
         void clockLayoutRenders() {
             String html = render(
-                    "layout [origin 0 banner 140x32 rate 1]");
+                    "[origin 0 banner 140x32 rate 1]");
 
             assertThat(html).contains("width:140px");
         }
@@ -175,7 +175,7 @@ class MarkupRenderingTest {
         @DisplayName("a layout with a nested block of styling renders")
         void nestedBlocksRender() {
             String html = render(
-                    "layout [box 100x50 effect [gradient 0x1 0.0.150 0.0.50]]");
+                    "[box 100x50 effect [gradient 0x1 0.0.150 0.0.50]]");
 
             assertThat(html).contains("width:100px");
         }

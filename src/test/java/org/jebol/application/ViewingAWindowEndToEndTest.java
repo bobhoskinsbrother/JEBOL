@@ -121,6 +121,28 @@ class ViewingAWindowEndToEndTest {
         }
 
         @Test
+        @DisplayName("a layout block fails, because there is no VID to lay it out")
+        @Timeout(20)
+        void alayoutBlockFails() {
+            // Not a gap in JEBOL: `layout` is defined nowhere in src/mezz or
+            // src/boot, so a real 3.22.1 fails here too. There was a native
+            // that answered its own argument, which made a VID program report
+            // success and draw nothing -- a stub that says yes is worse than
+            // the failure it hides.
+            assertThat(sessionOn(RecordingScreen.measuring(1440, 900), """
+                    e: try [view/no-wait [button "Press"]]
+                    error? e""")).isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("and nothing here pretends to be VID")
+        @Timeout(20)
+        void nothingPretendsToBeVid() {
+            assertThat(sessionOn(RecordingScreen.measuring(1440, 900), """
+                    value? 'layout""")).isEqualTo("#(false)");
+        }
+
+        @Test
         @DisplayName("a script that was not granted the screen refuses")
         @Timeout(20)
         void withoutTheGrantItRefuses() {

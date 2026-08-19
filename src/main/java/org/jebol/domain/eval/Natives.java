@@ -4862,7 +4862,8 @@ public final class Natives {
             return new ErrorValue(ErrorCategory.USER, "message",
                     Molder.form(spec), Optional.of(spec),
                     Optional.empty(), Optional.empty(),
-                    Optional.empty(), Optional.empty());
+                    Optional.empty(), Optional.empty(),
+                    new java.util.LinkedHashMap<>());
         }
         List<Value> items = fields.remaining();
         ErrorCategory category = ErrorCategory.USER;
@@ -4900,7 +4901,7 @@ public final class Natives {
                     "invalid-error", "an error spec names a type and an id"));
         }
         return new ErrorValue(category, errorId, errorId, subject, second, third,
-                Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), new java.util.LinkedHashMap<>());
     }
 
     /**
@@ -14968,9 +14969,20 @@ public final class Natives {
         return BlockValue.block(pieces);
     }
 
+    /**
+     * LAYOUT is not defined, and that is the whole of this method.
+     *
+     * <p>There was a native here that answered its own argument, so a VID
+     * program ran, reported success and drew nothing. Worse than a fork,
+     * because there is nothing to fork: {@code layout} is defined nowhere in
+     * {@code src/mezz} or {@code src/boot}, so a real 3.22.1 has no such
+     * function either and {@code view-funcs.reb:117} calls it anyway.
+     *
+     * <p>So a block handed to VIEW fails here exactly as it fails there, on a
+     * word with no value, until VID is written -- in REBOL, because a dialect
+     * is REBOL. A stub that says yes is worse than the failure it hides.
+     */
     private void defineLayout() {
-        define("layout", List.of(Parameter.required("description", Set.of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> arguments.get(0));
     }
 
     /**
