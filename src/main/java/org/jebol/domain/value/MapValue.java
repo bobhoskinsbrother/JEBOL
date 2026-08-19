@@ -83,13 +83,71 @@ public final class MapValue implements Value {
                 : stored;
     }
 
+    /**
+     * The key this map holds that matches the one asked about, or none.
+     *
+     * <p>{@code Find_Entry} takes a {@code cased} flag and its callers do not
+     * agree about it: a path read, SELECT, FIND, PUT and POKE pass false, while
+     * MAKE and REMOVE/KEY pass true. So the two ends of a map behave
+     * differently on purpose -- building one keeps {@code "k"} and {@code "K"}
+     * apart, and looking one up does not -- and that is what lets a caller use
+     * whatever case is to hand while the map can still hold both.
+     *
+     * <p>The exact key is tried first, so a map that holds both answers the one
+     * that was actually asked for rather than whichever was stored first.
+     */
+    private Value theKeyMatching(Value asked, boolean mindingCase) {
+        Value wanted = keyOf(asked);
+        if (entries.containsKey(wanted)) {
+            return wanted;
+        }
+        if (mindingCase) {
+            return NoneValue.none();
+        }
+        return entries.keySet().stream()
+                .filter(held -> alikeApartFromCase(held, wanted))
+                .findFirst()
+                .orElseGet(NoneValue::none);
+    }
+
+    /**
+     * Whether two keys are the same but for case.
+     *
+     * <p>Only a string or a word can be, which is why this is not a general
+     * comparison: an integer key and a pair key have no case to differ by, and
+     * asking whether they match without minding it is asking whether they are
+     * equal.
+     */
+    private static boolean alikeApartFromCase(Value held, Value wanted) {
+        if (held instanceof StringValue one && wanted instanceof StringValue other) {
+            return one.datatype() == other.datatype()
+                    && one.text().equalsIgnoreCase(other.text());
+        }
+        if (held instanceof WordValue one && wanted instanceof WordValue other) {
+            return one.datatype() == other.datatype()
+                    && one.canonical().equals(other.canonical());
+        }
+        return false;
+    }
+
     /** What a key holds, or NONE when the map has not got it. */
     public Value select(Value key) {
-        return entries.getOrDefault(keyOf(key), NoneValue.none());
+        return select(key, false);
+    }
+
+    public Value select(Value key, boolean mindingCase) {
+        Value found = theKeyMatching(key, mindingCase);
+        return found instanceof NoneValue
+                ? NoneValue.none()
+                : entries.getOrDefault(found, NoneValue.none());
     }
 
     public boolean holds(Value key) {
-        return entries.containsKey(keyOf(key));
+        return holds(key, false);
+    }
+
+    public boolean holds(Value key, boolean mindingCase) {
+        return !(theKeyMatching(key, mindingCase) instanceof NoneValue);
     }
 
     /**
@@ -103,13 +161,31 @@ public final class MapValue implements Value {
      * cannot.
      */
     public Value storedKeyLike(Value asked) {
-        Value wanted = keyOf(asked);
-        return entries.containsKey(wanted) ? wanted : NoneValue.none();
+        return storedKeyLike(asked, false);
+    }
+
+    public Value storedKeyLike(Value asked, boolean mindingCase) {
+        return theKeyMatching(asked, mindingCase);
     }
 
     /** Adds or replaces a key, in place. */
     public void put(Value key, Value value) {
-        entries.put(keyOf(key), value);
+        put(key, value, false);
+    }
+
+    /**
+     * The same, told whether to mind the case of an existing key.
+     *
+     * <p>A write that matches without minding case replaces the value and
+     * <em>keeps the key that was already there</em>: writing {@code "K"} into a
+     * map holding {@code "k"} leaves the key spelled {@code "k"}. The C does it
+     * by finding the entry and setting only the slot after the key, and it
+     * matters because FIND answers the stored key -- a lookup that quietly
+     * respelled it would change what a later FIND says.
+     */
+    public void put(Value key, Value value, boolean mindingCase) {
+        Value existing = theKeyMatching(key, mindingCase);
+        entries.put(existing instanceof NoneValue ? keyOf(key) : existing, value);
     }
 
     /** Empties the map, as CLEAR on a series empties it. */

@@ -1066,6 +1066,25 @@ public final class Natives {
                     return IntegerValue.of((long) Comparison.asDouble(arguments.get(0)) / divisor);
                 });
 
+        define("clamp", List.of(
+                        Parameter.required("value", CLAMPABLE),
+                        Parameter.required("minimum", CLAMPABLE),
+                        Parameter.required("maximum", CLAMPABLE)),
+                (arguments, evaluator, context) -> heldInsideTheRange(
+                        arguments.get(0), arguments.get(1), arguments.get(2)));
+
+        define("distance", List.of(
+                        Parameter.required("value1", Set.of(Datatype.PAIR)),
+                        Parameter.required("value2", Set.of(Datatype.PAIR))),
+                Set.of("taxicab"),
+                (arguments, evaluator, context, refinements) -> betweenTwoPoints(
+                        (PairValue) arguments.get(0), (PairValue) arguments.get(1),
+                        refinements.contains("taxicab")));
+
+        define("factorial", takesWholeNumbers("value"),
+                (arguments, evaluator, context) -> theFactorialOf(
+                        wholeNumberOf(arguments.get(0), "factorial")));
+
         define("power", List.of(Parameter.required("base"), Parameter.required("exponent")),
                 (arguments, evaluator, context) -> {
                     if (arguments.get(0) instanceof TupleValue tuple) {
@@ -4487,7 +4506,8 @@ public final class Natives {
                 Set.of("case", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     switch (arguments.get(0)) {
-                        case MapValue map -> map.put(arguments.get(1), arguments.get(2));
+                        case MapValue map -> map.put(arguments.get(1), arguments.get(2),
+                                refinements.contains("case"));
                         case ObjectValue object when arguments.get(1) instanceof WordValue field -> {
                             refuseHiddenField(object, field);
                             if (object.context().isClosedToNewNames()) {
@@ -4541,7 +4561,8 @@ public final class Natives {
                         "reverse"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0) instanceof MapValue map) {
-                        return map.select(arguments.get(1));
+                        return map.select(arguments.get(1),
+                                refinements.contains("case"));
                     }
                     if (arguments.get(0) instanceof NoneValue) {
                         return NoneValue.none();
@@ -14770,6 +14791,145 @@ public final class Natives {
         define("split", List.of(Parameter.required("input"), Parameter.required("delimiters")),
                 (arguments, evaluator, context) -> splitOn(
                         arguments.get(0), arguments.get(1)));
+    }
+
+    /** What CLAMP will hold: {@code [number! tuple! pair! money!]}. */
+    private static final Set<Datatype> CLAMPABLE = Set.of(
+            Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
+            Datatype.TUPLE, Datatype.PAIR, Datatype.MONEY);
+
+    /**
+     * CLAMP: a value held inside a range.
+     *
+     * <p>The bounds must be the same datatype as the value and are not
+     * converted -- {@code Trap2(RE_TYPE_MISMATCH, val, vmin)} before anything
+     * else happens. So {@code clamp 5 1.0 3} is refused rather than quietly
+     * treating 1.0 as 1, which is the choice worth having: a caller who mixed
+     * them almost certainly meant one type throughout.
+     *
+     * <p>Bounds written the wrong way round answer the lower one, and that is
+     * not a check anybody wrote. It falls out of the order the two are applied
+     * in: the inner minimum pulls the value down to the maximum and the outer
+     * maximum pushes it back up to the minimum.
+     */
+    private static Value heldInsideTheRange(Value value, Value lowest, Value highest) {
+        if (value.datatype() != lowest.datatype()
+                || value.datatype() != highest.datatype()) {
+            throw Raised.of(EvaluationFailure.TYPE_MISMATCH,
+                    value.datatype().literalSpelling()
+                            + " cannot be clamped between "
+                            + lowest.datatype().literalSpelling() + " and "
+                            + highest.datatype().literalSpelling());
+        }
+        return switch (value) {
+            case IntegerValue whole -> IntegerValue.of(Math.max(
+                    ((IntegerValue) lowest).magnitude(),
+                    Math.min(((IntegerValue) highest).magnitude(), whole.magnitude())));
+            case DecimalValue fraction -> new DecimalValue(
+                    clipped(fraction.quantity(),
+                            ((DecimalValue) lowest).quantity(),
+                            ((DecimalValue) highest).quantity()),
+                    fraction.datatype());
+            case PairValue point -> PairValue.of(
+                    clipped(point.x(), ((PairValue) lowest).x(), ((PairValue) highest).x()),
+                    clipped(point.y(), ((PairValue) lowest).y(), ((PairValue) highest).y()));
+            case TupleValue parts -> clampedTuple(
+                    parts, (TupleValue) lowest, (TupleValue) highest);
+            case MoneyValue amount -> clampedMoney(
+                    amount, (MoneyValue) lowest, (MoneyValue) highest);
+            default -> value;
+        };
+    }
+
+    /**
+     * A tuple clamped octet by octet, with a missing bound reading as zero.
+     *
+     * <p>Surprising and it is what the C does: {@code REBYTE lo = i <
+     * VAL_TUPLE_LEN(vmin) ? b1[i] : 0}. So a maximum shorter than the value
+     * clamps the rest of it to zero rather than leaving it alone, which is a
+     * trap for anybody writing {@code clamp 200.100.50 0.0.0 128.128}.
+     */
+    private static Value clampedTuple(
+            TupleValue value, TupleValue lowest, TupleValue highest) {
+
+        int[] octets = value.segments();
+        int[] held = new int[octets.length];
+        for (int at = 0; at < octets.length; at++) {
+            int low = at < lowest.segments().length ? lowest.segments()[at] : 0;
+            int high = at < highest.segments().length ? highest.segments()[at] : 0;
+            held[at] = Math.max(low, Math.min(high, octets[at]));
+        }
+        return TupleValue.of(held);
+    }
+
+    /**
+     * Money compared rather than clipped, because a money is a decimal with a
+     * scale and clipping it through a double would lose the scale.
+     */
+    private static Value clampedMoney(
+            MoneyValue value, MoneyValue lowest, MoneyValue highest) {
+
+        if (value.amount().compareTo(lowest.amount()) <= 0) {
+            return lowest;
+        }
+        if (highest.amount().compareTo(value.amount()) <= 0) {
+            return highest;
+        }
+        return value;
+    }
+
+    private static double clipped(double value, double lowest, double highest) {
+        return Math.max(lowest, Math.min(highest, value));
+    }
+
+    /**
+     * DISTANCE: how far apart two points are.
+     *
+     * <p>As the crow flies by default and by the streets with /taxicab, which
+     * is the sum of the two absolute differences. Always a decimal, even when
+     * the answer is whole, because a distance is a measurement rather than a
+     * count.
+     */
+    private static Value betweenTwoPoints(
+            PairValue from, PairValue to, boolean alongTheStreets) {
+
+        double across = from.x() - to.x();
+        double down = from.y() - to.y();
+        return DecimalValue.of(alongTheStreets
+                ? Math.abs(across) + Math.abs(down)
+                : Math.hypot(across, down));
+    }
+
+    /** The largest factorial that fits a whole number, and the largest at all. */
+    private static final int LARGEST_EXACT_FACTORIAL = 20;
+    private static final int LARGEST_FACTORIAL_AT_ALL = 170;
+
+    /**
+     * FACTORIAL: exact while it fits, then approximate, then refused.
+     *
+     * <p>Three ranges and the C draws both lines deliberately. Up to twenty it
+     * fits a whole number. Up to a hundred and seventy it fits a double. The
+     * next one is over a double's largest and would silently be infinity, so
+     * it is refused until there is a bignum rather than answered wrongly.
+     */
+    private static Value theFactorialOf(long value) {
+        if (value < 0 || value > LARGEST_FACTORIAL_AT_ALL) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    "factorial takes 0 to " + LARGEST_FACTORIAL_AT_ALL
+                            + " and was given " + value);
+        }
+        if (value > LARGEST_EXACT_FACTORIAL) {
+            double approximate = 1;
+            for (long each = 2; each <= value; each++) {
+                approximate *= each;
+            }
+            return DecimalValue.of(approximate);
+        }
+        long exact = 1;
+        for (long each = 2; each <= value; each++) {
+            exact *= each;
+        }
+        return IntegerValue.of(exact);
     }
 
     /**

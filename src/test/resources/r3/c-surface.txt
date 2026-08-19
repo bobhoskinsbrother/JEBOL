@@ -166,6 +166,8 @@ ACTION xor~ | value1<logic! integer! char! tuple! binary! bitset! typeset! datat
 # NATIVE name | declared spec
 NATIVE ++ | 'word<word!>
 NATIVE -- | 'word<word!>
+NATIVE access-os | field<word!> /set value<integer! block!>
+NATIVE acos | value<decimal!>
 NATIVE ajoin | block<block!> /with delimiter<any-type!> /all
 NATIVE all | block<block!>
 NATIVE also | value1<any-type!> value2<any-type!>
@@ -174,13 +176,19 @@ NATIVE apply | func<any-function!> block<block!> /only
 NATIVE arccosine | value<number!> /radians
 NATIVE arcsine | value<number!> /radians
 NATIVE arctangent | value<number!> /radians
+NATIVE arctangent2 | point<pair!> /radians
 NATIVE as | type<any-block! any-string! datatype!> spec<any-block! any-string!>
 NATIVE as-color | r<integer! decimal! percent!> g<integer! decimal! percent!> b<integer! decimal! percent!>
 NATIVE as-pair | x<number!> y<number!>
 NATIVE ascii? | value<any-string! char! integer!>
+NATIVE asin | value<decimal!>
 NATIVE assert | conditions<block!> /type
+NATIVE atan | value<decimal!>
+NATIVE atan2 | y<decimal!> x<decimal!>
 NATIVE attempt | block<block! paren!> /safer
+NATIVE binary | ctx<object! binary! integer! none!> /init spec<binary! integer! none!> /write data<binary! block!> /read code<word! block! integer! binary!> /into out<block!> /with num<integer!>
 NATIVE bind | word<block! any-word!> context<any-word! any-object!> /copy /only /new /set
+NATIVE blur | image<image!> radius<number!>
 NATIVE break | /return value<any-type!>
 NATIVE browse | url<url! file! none!>
 NATIVE call | command<any-string! block! file!> /wait /console /shell /info /input in<string! binary! file! none!> /output out<string! binary! file! none!> /error err<string! binary! file! none!>
@@ -188,18 +196,29 @@ NATIVE case | block<block!> /all
 NATIVE catch | block<block!> /name word<word! block!> /all /quit /with callback<block! function!>
 NATIVE change-dir | path<file!>
 NATIVE check | val<series!>
+NATIVE checksum | data<binary! string! file!> method<word!> /with spec<any-string! binary! integer!> /part length
+NATIVE clamp | value<number! tuple! pair! money!> minimum<number! tuple! pair! money!> maximum<number! tuple! pair! money!>
+NATIVE collect-words | block<block!> /deep /set /ignore words<any-object! block! none!> /as type<datatype!>
+NATIVE color-distance | a<tuple!> b<tuple!>
 NATIVE comment | value
+NATIVE complement? | value<bitset!>
 NATIVE compose | value /deep /only /into out<any-block!>
+NATIVE compress | data<binary! string!> method<word!> /part length /level lvl<integer!>
 NATIVE construct | block<block! string! binary!> /with object<object!> /only
 NATIVE context? | word<any-word!>
 NATIVE continue | 
+NATIVE cos | value<decimal!>
 NATIVE cosine | value<number!> /radians
 NATIVE debase | value<binary! any-string!> base<integer!> /url /part limit<integer! binary! any-string!>
 NATIVE decloak | data<binary!> key<string! binary! integer!> /with
+NATIVE decompress | data<binary!> method<word!> /part length<number! series!> /size bytes<integer!>
 NATIVE dehex | value<any-string! binary!> /escape char<char!> /uri
+NATIVE delect | dialect<object!> input<block!> output<block!> /in where<block!> /all
 NATIVE deline | string<any-string!> /lines
 NATIVE detab | string<any-string! binary!> /size number<integer!>
 NATIVE difference | set1<block! string! bitset! date! typeset! map!> set2<block! string! bitset! date! typeset! map!> /case /skip size<integer!>
+NATIVE dir? | target<file! url! none!> /check
+NATIVE distance | value1<pair!> value2<pair!> /taxicab
 NATIVE do | value<any-type!> /args arg /next var<word!>
 NATIVE do-callback | event<event!>
 NATIVE do-codec | handle<handle!> action<word!> data<binary! image! string!>
@@ -220,7 +239,9 @@ NATIVE evoke | chant<word! block! integer!>
 NATIVE exclude | set1<block! string! bitset! typeset! map!> set2<block! string! bitset! typeset! map!> /case /skip size<integer!>
 NATIVE exit | 
 NATIVE exp | power<number!>
+NATIVE factorial | value<integer! decimal!>
 NATIVE fifth | value
+NATIVE filter | data<binary!> width<number!> type<integer! word!> /skip bpp<integer!>
 NATIVE find-script | script<binary!>
 NATIVE first | value
 NATIVE first+ | 'word<word!>
@@ -231,17 +252,27 @@ NATIVE forever | body<block!>
 NATIVE form | value<any-type!>
 NATIVE forskip | 'word<word!> size<integer! decimal!> body<block!> /local orig result
 NATIVE fourth | value
+NATIVE fraction | number<decimal!>
+NATIVE gcd | a<integer!> b<integer!>
 NATIVE get | word /any
 NATIVE get-env | var<any-string! any-word!>
+NATIVE grayscale | target<integer! image!>
 NATIVE greater-or-equal? | value1 value2
 NATIVE greater? | value1 value2
 NATIVE halt | 
+NATIVE hash | value<any-type!>
+NATIVE hsv-to-rgb | hsv<tuple!>
+NATIVE iconv | data<binary!> codepage<word! integer! tag! string!> /to target<word! integer! tag! string!>
 NATIVE if | condition<any-type!> true-branch /only
+NATIVE image-diff | a<image!> b<image!> /part offset<pair!> size<pair!>
 NATIVE in | object<any-object! block!> word<any-word! block! paren!>
+NATIVE integer-divide | value1<number!> value2<number!>
 NATIVE intersect | set1<block! string! bitset! typeset! map!> set2<block! string! bitset! typeset! map!> /case /skip size<integer!>
 NATIVE invalid-utf? | data<binary!> /utf num<integer!>
 NATIVE last | value<series! tuple! gob!>
 NATIVE latin1? | value<any-string! char! integer!>
+NATIVE lcm | a<integer!> b<integer!>
+NATIVE lerp | start<number! tuple! pair!> end<number! tuple! pair!> factor<number!>
 NATIVE lesser-or-equal? | value1 value2
 NATIVE lesser? | value1 value2
 NATIVE limit-usage | field<word!> limit<number!>
@@ -252,11 +283,14 @@ NATIVE log-2 | value<number!>
 NATIVE log-e | value<number!>
 NATIVE loop | count<number!> block<block!>
 NATIVE lowercase | string<any-string! char!> /part length<number! any-string!>
+NATIVE luminosity | target<tuple! image!> /luma
 NATIVE map-each | 'word<word! block!> data<block! vector!> body<block!>
 NATIVE map-event | event<event!>
 NATIVE map-gob-offset | gob<gob!> xy<pair!> /reverse
 NATIVE maximum | value1<scalar! date! series!> value2<scalar! date! series!>
 NATIVE minimum | value1<scalar! date! series!> value2<scalar! date! series!>
+NATIVE mod | a<number! money! char! time!> b<number! money! char! time!>
+NATIVE modulo | a<number! money! char! time!> b<number! money! char! time!> /floor
 NATIVE mold | value<any-type!> /only /all /flat /part limit<integer!>
 NATIVE negative? | number<number! money! time! pair!>
 NATIVE new-line | position<block! paren!> value /all /skip size<integer!>
@@ -266,24 +300,33 @@ NATIVE not | value<any-type!>
 NATIVE not-equal? | value1<any-type!> value2<any-type!>
 NATIVE not-equiv? | value1<any-type!> value2<any-type!>
 NATIVE now | /year /month /day /time /zone /date /weekday /yearday /precise /utc
+NATIVE number? | value<any-type! unset!>
 NATIVE object | spec<block!> /only
 NATIVE parse | input<series!> rules<block!> /case
+NATIVE pickz | aggregate<series! bitset! tuple!> index<integer!>
+NATIVE pokez | series<series! bitset! tuple!> index<integer!> value<any-type!>
 NATIVE positive? | number<number! money! time! pair!>
+NATIVE premultiply | image<image!>
+NATIVE prime? | number<integer!>
 NATIVE prin | value<any-type!>
 NATIVE print | value<any-type!>
 NATIVE protect | value<word! series! bitset! map! object! module!> /deep /words /values /hide /lock
 NATIVE protected? | value<word! series! bitset! map! object! module!>
 NATIVE quit | /return value /now
+NATIVE rc4 | /key crypt-key<binary!> /stream ctx<handle!> data<binary!>
 NATIVE recycle | /off /on /ballast size<integer!> /torture /pools
 NATIVE reduce | value /no-set /only words<block! none!> /into out<any-block!>
 NATIVE release | handle<handle!>
 NATIVE remove-each | 'word<word! block!> data<series! map!> body<block!> /count
 NATIVE repeat | 'word<word!> value<number! series! pair! none!> body<block!>
+NATIVE request-color | /default color<tuple!>
 NATIVE request-dir | /title text<string!> /dir name<file!> /keep
 NATIVE request-file | /save /multi /file name<file!> /title text<string!> /filter list<block!>
 NATIVE request-password | 
+NATIVE resize | image<image!> size<pair! percent! integer!> /filter name<word! integer!> /blur factor<number!>
 NATIVE resolve | target<any-object!> source<any-object!> /only from<block! integer!> /all /extend
 NATIVE return | value<any-type!>
+NATIVE rgb-to-hsv | rgb<tuple!>
 NATIVE same? | value1<any-type!> value2<any-type!>
 NATIVE second | value
 NATIVE selfless? | context<any-word! any-object!>
@@ -292,28 +335,38 @@ NATIVE set-env | var<any-string! any-word!> value<string! none!>
 NATIVE set-scheme | scheme<object!>
 NATIVE seventh | value
 NATIVE shift | value<integer!> bits<integer!> /logical
+NATIVE sin | value<decimal!>
 NATIVE sine | value<number!> /radians
 NATIVE sixth | value
 NATIVE split-lines | value<string!>
+NATIVE sqrt | value<decimal!>
 NATIVE square-root | value<number!>
 NATIVE stack | offset<integer!> /block /word /func /args /size /depth /limit
 NATIVE stats | /show /profile /timer /evals /dump-series pool-id<integer!>
 NATIVE strict-equal? | value1<any-type!> value2<any-type!>
 NATIVE strict-not-equal? | value1<any-type!> value2<any-type!>
+NATIVE swap-endian | value<binary!> /width bytes<integer!> /part range<number! series!>
 NATIVE switch | value cases<block!> /default def /all /case
+NATIVE tan | value<decimal!>
 NATIVE tangent | value<number!> /radians
 NATIVE tenth | value
 NATIVE third | value
 NATIVE throw | value<any-type!> /name word<word!>
+NATIVE tint | target<tuple! image!> rgb<tuple!> amount<number!>
+NATIVE to-degrees | radians<integer! decimal!>
 NATIVE to-hex | value<integer! char! tuple!> /size len<integer!>
 NATIVE to-local-file | path<file! string!> /full
+NATIVE to-radians | degrees<integer! decimal!>
+NATIVE to-real-file | path<file! string!>
 NATIVE to-rebol-file | path<file! string!>
 NATIVE to-value | value<any-type!>
 NATIVE trace | mode<integer! logic!> /back /function
 NATIVE transcode | source<binary! string!> /next /one /only /error /line count<integer!> /part length<integer!>
+NATIVE truncate | series<series!> /part range<number! series!>
 NATIVE try | block<block! paren!> /all /with handler<block! any-function!>
 NATIVE type? | value<any-type!> /word
 NATIVE unbind | word<block! any-word!> /deep
+NATIVE unfilter | data<binary!> width<number!> /as type<integer! word!> /skip bpp<integer!>
 NATIVE union | set1<block! string! bitset! typeset! map!> set2<block! string! bitset! typeset! map!> /case /skip size<integer!>
 NATIVE unique | set1<block! string! bitset! typeset! map!> /case /skip size<integer!>
 NATIVE unless | condition<any-type!> false-branch /only
@@ -323,10 +376,12 @@ NATIVE until | block<block!>
 NATIVE uppercase | string<any-string! char!> /part length<number! any-string!>
 NATIVE utf? | data<binary!>
 NATIVE value? | value<word!>
+NATIVE version | /data
 NATIVE wait | value<number! time! port! block! none!> /all /only
 NATIVE wake-up | port<port!> event<event!>
 NATIVE what-dir | 
 NATIVE while | cond-block<block!> body-block<block!>
+NATIVE wildcard? | path<file!>
 NATIVE zero? | value
 
 # LIBRARY name | the REBOL file that defines it
@@ -353,7 +408,6 @@ LIBRARY clos | mezz-func.reb
 LIBRARY closure | mezz-func.reb
 LIBRARY collect | mezz-series.reb
 LIBRARY combine | mezz-series.reb
-LIBRARY completion! | repl-completion.reb
 LIBRARY confirm | mezz-files.reb
 LIBRARY css-minify | codec-css.reb
 LIBRARY css-tokenize | codec-css.reb
@@ -386,7 +440,6 @@ LIBRARY format-datetime | mezz-series.reb
 LIBRARY format-time | mezz-debug.reb
 LIBRARY func | mezz-tail.reb
 LIBRARY function | base-funcs.reb
-LIBRARY get-cookies | prot-http.reb
 LIBRARY has | mezz-func.reb
 LIBRARY import | sys-load.reb
 LIBRARY in-dir | mezz-files.reb
@@ -395,7 +448,6 @@ LIBRARY input | mezz-files.reb
 LIBRARY intern | base-files.reb
 LIBRARY join | base-series.reb
 LIBRARY launch | mezz-control.reb
-LIBRARY line-editor! | repl-line-editor.reb
 LIBRARY list-dir | mezz-files.reb
 LIBRARY load | base-files.reb
 LIBRARY load-boot-exts | sys-load.reb
@@ -439,7 +491,6 @@ LIBRARY scalar? | base-defs.reb
 LIBRARY script? | base-files.reb
 LIBRARY secure | mezz-secure.reb
 LIBRARY series? | base-defs.reb
-LIBRARY set-cookies | prot-http.reb
 LIBRARY sign? | mezz-math.reb
 LIBRARY size? | base-files.reb
 LIBRARY speed? | mezz-debug.reb

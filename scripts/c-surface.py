@@ -122,6 +122,42 @@ def specs(file, kind):
     return found
 
 
+def natives_the_c_declares_itself():
+    """The natives whose spec lives in `src/core/*.c` rather than in a boot file.
+
+    `boot/natives.reb` declares 164 and the C ships more than that. The rest
+    carry their own spec in a comment above the function -- `//\tclamp: native
+    [...]` -- and nothing in `boot/` mentions them, so a collector that reads
+    only the boot files cannot see them and a report built on it cannot name
+    them.
+
+    That is not a small blind spot: 54 natives are declared this way, `binary`
+    among them, and `binary` was the word `prot-tls.reb` stopped on for months
+    while the parity report said MISSING: 0.
+
+    The C symbol is no guide to the REBOL name -- `REBNATIVE(asciiq)` is
+    `ascii?` -- so the name is read from the comment, which is the declaration
+    itself rather than a rendering of it.
+    """
+    found = {}
+    for file in sorted((REBOL / "core").glob("*.c")):
+        text = read(file)
+        for match in re.finditer(
+                r"^//\t([A-Za-z0-9?!*+\-=<>/&|~%]+):\s*native\s*\[", text, re.M):
+            name = match.group(1)
+            depth = 1
+            at = match.end()
+            while at < len(text) and depth:
+                if text[at] == "[":
+                    depth += 1
+                elif text[at] == "]":
+                    depth -= 1
+                at += 1
+            body = re.sub(r"^//\t?", "", text[match.end():at - 1], flags=re.M)
+            found[name] = parse_spec(body)
+    return found
+
+
 def parse_spec(body):
     """A spec block as (arguments, refinements).
 
@@ -315,7 +351,8 @@ def library():
             exported = re.search(r"^\s*exports:\s*\[([^]]*)]", text, re.M)
             if exported:
                 for name in exported.group(1).split():
-                    found.setdefault(name, file.name)
+                    if defines_a_function(text, name):
+                        found.setdefault(name, file.name)
             continue
         depth = 0
         for line in text.splitlines():
@@ -325,6 +362,23 @@ def library():
                     found.setdefault(named.group(1), file.name)
             depth += brackets_opened_by(line)
     return found
+
+
+def defines_a_function(text, name):
+    """Whether a module's exported name is a function rather than a thing.
+
+    A module exports whatever its header lists, and not all of it is callable:
+    `repl-completion.reb` exports `completion!` and `repl-line-editor.reb`
+    exports `line-editor!`, and both are `context [...]` -- objects. Counting
+    them made the porting backlog claim two functions were missing that were
+    never functions.
+
+    Asked of the definition rather than of the name, because `!` on the end is
+    a convention and conventions are not checked.
+    """
+    defined = re.search(
+        r"^" + re.escape(name) + r":\s*([A-Za-z0-9?!*+\-=<>/&|~%]+)", text, re.M)
+    return bool(defined) and MAKES_A_FUNCTION.match(f"{name}: {defined.group(1)} ")
 
 
 def brackets_opened_by(line):
@@ -346,6 +400,7 @@ def main():
     table = datatypes()
     actions = specs("actions.reb", "action")
     natives = specs("natives.reb", "native")
+    natives.update(natives_the_c_declares_itself())
     typeclasses = arms()
     rebol_side = library()
 

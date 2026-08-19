@@ -65,9 +65,17 @@ SPEC_NOISE = re.compile(r'^(return|throw|catch|local)$')
 def c_implemented():
     """Every function Rebol implements in C, by name, with where it is declared.
 
-    A native is declared `name: native [...]` and an action `name: action
-    [...]`. Nothing else in those two files declares a function, so this is
-    the whole C surface -- 164 natives and 60 actions in 3.22.1.
+    Two places, and reading only the first is what made this report's
+    MISSING: 0 untrustworthy for months.
+
+    `boot/natives.reb` and `boot/actions.reb` declare 164 natives and 60
+    actions. The C ships 54 natives more, each carrying its own spec in a
+    comment above the function -- `//\tclamp: native [...]` -- and mentioned in
+    no boot file. `binary` is one of them, and it was the word `prot-tls.reb`
+    stopped on while this report said nothing was missing.
+
+    The C symbol is no guide to the REBOL name: `REBNATIVE(asciiq)` is
+    `ascii?`. The comment is the declaration, so the comment is what is read.
     """
     found = {}
     for file, kind in (("natives.reb", "native"), ("actions.reb", "action")):
@@ -75,6 +83,11 @@ def c_implemented():
         for name in re.findall(
                 r'^([A-Za-z0-9?!*+\-=<>/&|~%]+):\s*' + kind + r'\b', text, re.M):
             found[name] = kind
+    for source in sorted((REBOL_SOURCE.parent / "core").glob("*.c")):
+        text = source.read_text(errors="replace")
+        for name in re.findall(
+                r'^//\t([A-Za-z0-9?!*+\-=<>/&|~%]+):\s*native\s*\[', text, re.M):
+            found.setdefault(name, "native")
     return found
 
 

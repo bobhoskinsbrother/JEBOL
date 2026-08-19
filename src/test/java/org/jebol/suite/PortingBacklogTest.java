@@ -39,23 +39,41 @@ class PortingBacklogTest {
      * to be reachable is not any more -- which has happened, and silently:
      * a borrowed Rebol file can define a name over one of ours.
      *
-     * <p>It was 134 of 580 while this read a dump of a running binary, and it is
-     * 30 of 353 now that it reads Rebol's source. The dump was not wrong about
-     * what that build held; it was wrong about what the library is. It listed
-     * every top-level word of every file the build had loaded, and most of those
-     * files are modules whose words no script can reach -- forty in
-     * `prot-tls.reb`, forty more in `codec-swf.reb`. Counting them made the
-     * backlog look four times its size and pointed the work at functions nobody
-     * can call.
+     * <p>It has been wrong three times and each was the same mistake: the
+     * number was believed and the question behind it was not.
      *
-     * <p>What remains is worth reading rather than counting: seven are Goal 1's,
-     * two are graphics, and most of the rest are the module and load machinery --
-     * LOAD-HEADER, LOAD-MODULE, MAKE-MODULE*, EXPORT, DO-NEEDS. A few of those
-     * JEBOL does have in its `sys` context rather than its library, and this
-     * asks the library, so they read as missing. That is this measure's own
-     * blind spot and it belongs in the open rather than in a fudge.
+     * <p>It said 134 of 580 while it read a dump of a running binary, which
+     * listed every top-level word of every loaded file including the modules
+     * whose words no script can reach -- forty in `prot-tls.reb`, forty more
+     * in `codec-swf.reb`. Reading Rebol's source instead took it to 30 of 353.
+     *
+     * <p>Then it said 24, and the real number was three. Twenty-one of the
+     * twenty-four were in `system/contexts/sys`, where Rebol puts them too,
+     * and this asked the library alone. One was `limit-usage`, which Rebol
+     * deletes on purpose. Two were `completion!` and `line-editor!`, which are
+     * objects rather than functions and were collected as though they were.
+     *
+     * <p>And the input was short: `c-surface.py` read only the boot files, so
+     * the 54 natives the C declares in its own comments were invisible --
+     * `binary` among them, the word `prot-tls.reb` stopped on for months while
+     * the parity report said nothing was missing.
+     *
+     * <p>All four are fixed, and the number now means what it says. What is
+     * left is three natives in `n-math.c`, none of them in the 3.22.1 binary:
+     * the vendored source is ahead of it.
      */
-    private static final int STILL_TO_PORT = 24;
+    private static final int STILL_TO_PORT = 3;
+
+    /**
+     * Names Rebol takes back out, so their absence is the port working.
+     *
+     * <p>{@code mezz-secure.reb:334} is {@code unset in lib 'limit-usage},
+     * which JEBOL runs faithfully. It is collected because the file that
+     * defines it defines it, and unset because the file that removes it
+     * removes it -- both correct, and counting the gap between them as work
+     * would mean porting a function in order to delete it again.
+     */
+    private static final Set<String> REMOVED_BY_REBOL = Set.of("limit-usage");
 
     /** The sets that wait on a decision rather than on the work. */
     private static final Set<String> HOST = Set.of(
@@ -87,6 +105,7 @@ class PortingBacklogTest {
         writeForTheAudit(ours);
         TreeSet<String> missing = new TreeSet<>(theirs);
         missing.removeAll(ours);
+        missing.removeAll(REMOVED_BY_REBOL);
 
         List<String> language = missing.stream()
                 .filter(name -> !HOST.contains(name))
@@ -167,11 +186,19 @@ class PortingBacklogTest {
     }
 
     /**
-     * Every function name a booted JEBOL has.
+     * Every function name a booted JEBOL has, in both contexts a script can
+     * reach one through.
      *
-     * <p>Asked of the interpreter rather than of the native registry,
-     * because the prelude and the borrowed Rebol files define a third of
-     * the library between them and none of it is in the registry.
+     * <p>Asked of the interpreter rather than of the native registry, because
+     * the prelude and the borrowed Rebol files define a third of the library
+     * between them and none of it is in the registry.
+     *
+     * <p>Both contexts, and asking only the first is what made this measure
+     * claim twenty-four functions were missing when the real number was three.
+     * Twenty-one of the twenty-four are in {@code system/contexts/sys} --
+     * {@code make-port*}, {@code load-module}, {@code do*} and the rest of the
+     * module and load machinery -- which is where Rebol puts them too. A
+     * correctly-placed function was being counted as a gap.
      */
     private static Set<String> functionsInJebol() {
         Interpreter interpreter = Interpreter.create();
@@ -181,7 +208,11 @@ class PortingBacklogTest {
                     set/any 'v try [get/any in system/contexts/lib w]
                     if all [not error? :v  any-function? :v] [append names w]
                 ]
-                mold sort names
+                foreach w words-of system/contexts/sys [
+                    set/any 'v try [get/any in system/contexts/sys w]
+                    if all [not error? :v  any-function? :v] [append names w]
+                ]
+                mold sort unique names
                 """;
         interpreter.defineFreshWordsIn(source);
         String listed = interpreter.display(interpreter.run(source));
