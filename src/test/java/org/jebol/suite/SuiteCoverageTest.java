@@ -49,18 +49,42 @@ class SuiteCoverageTest {
                         .filter(line -> line.strip().startsWith("--assert")
                                 && !line.strip().startsWith("--assertf"))
                         .count();
-                TranscodeResult loaded = Transcoder.transcode(source);
-                String note = loaded.succeeded() ? "read" : firstLineThatWillNotRead(source);
-                found.add(new Coverage(
-                        path.getFileName().toString(),
-                        (int) written,
-                        SuiteFile.read(path).assertions().size(),
-                        note));
+                found.add(coverageOf(path, (int) written, source));
             }
         } catch (IOException unreadable) {
             throw new UncheckedIOException(unreadable);
         }
         return found;
+    }
+
+    /**
+     * One file's reach, and never an exception out of this method.
+     *
+     * <p>The reader is meant to answer a REBOL error for source it cannot
+     * take in. When it throws a Java exception instead, that exception comes
+     * out here during test collection, and JUnit reports it as three
+     * initialisation errors with no file named -- so the one thing worth
+     * knowing, which file did it, is the one thing missing. An ISO date
+     * literal did exactly that: {@code 2000-01-01} reaches
+     * {@code DateValue.of} as a day of 2000 and throws
+     * {@code IllegalArgumentException}, and the whole run died before a
+     * single assertion ran.
+     *
+     * <p>Caught and turned into a reading that fails for this file alone. It
+     * still fails -- a file that cannot be read is never a pass -- but it
+     * fails saying where.
+     */
+    private static Coverage coverageOf(Path path, int written, String source) {
+        String name = path.getFileName().toString();
+        try {
+            TranscodeResult loaded = Transcoder.transcode(source);
+            String note = loaded.succeeded() ? "read" : firstLineThatWillNotRead(source);
+            return new Coverage(name, written, SuiteFile.read(path).assertions().size(), note);
+        } catch (RuntimeException thrown) {
+            return new Coverage(name, written, 0,
+                    "the reader threw " + thrown.getClass().getSimpleName()
+                            + " instead of answering an error: " + thrown.getMessage());
+        }
     }
 
     /**
@@ -89,19 +113,31 @@ class SuiteCoverageTest {
                 + offending.substring(0, Math.min(62, offending.length()));
     }
 
-    private static final Path BASELINE = SUITE.resolve("reader-reach.txt");
+    private static final Path STOPS = SUITE.resolve("reader-stops.txt");
 
-    /** How many assertions each file reached when the baseline was taken. */
-    private static Map<String, Integer> baseline() {
+    /**
+     * The files the reader is known to stop partway through, and where.
+     *
+     * <p>Enumerated rather than counted. A recorded count is satisfied by
+     * standing still: the file this replaces held a floor per file and
+     * passed for as long as nothing got worse, so copy-test.r3 reached 0 of
+     * its 223 assertions for weeks with a green build. Naming the file and
+     * the line it stops at means the entry has to be deleted to go green
+     * again, and deleting it is the fix being recorded.
+     */
+    private static Map<String, String> knownStops() {
         try {
-            Map<String, Integer> recorded = new LinkedHashMap<>();
-            for (String line : Files.readAllLines(BASELINE)) {
+            Map<String, String> recorded = new LinkedHashMap<>();
+            if (!Files.exists(STOPS)) {
+                return recorded;
+            }
+            for (String line : Files.readAllLines(STOPS)) {
                 String trimmed = line.strip();
                 if (trimmed.isEmpty() || trimmed.startsWith("#")) {
                     continue;
                 }
-                String[] parts = trimmed.split("\\s+");
-                recorded.put(parts[0], Integer.parseInt(parts[1]));
+                int gap = trimmed.indexOf(' ');
+                recorded.put(trimmed.substring(0, gap), trimmed.substring(gap + 1).strip());
             }
             return recorded;
         } catch (IOException unreadable) {
@@ -110,20 +146,38 @@ class SuiteCoverageTest {
     }
 
     @Test
-    @DisplayName("no file reaches fewer assertions than it did before")
-    void reachabilityHasNotGoneBackwards() {
-        Map<String, Integer> recorded = baseline();
-        List<String> regressed = coverage().stream()
-                .filter(entry -> entry.assertionsRead()
-                        < recorded.getOrDefault(entry.file(), 0))
-                .map(entry -> "  %-24s reaches %d, used to reach %d  (%s)".formatted(
+    @DisplayName("every suite file reads whole, or is listed as one that does not")
+    void everyFileReadsWhole() {
+        Map<String, String> known = knownStops();
+        List<String> unexpected = coverage().stream()
+                .filter(entry -> entry.missed() > 0)
+                .filter(entry -> !known.containsKey(entry.file()))
+                .map(entry -> "  %-24s reaches %d of %d  (%s)".formatted(
                         entry.file(), entry.assertionsRead(),
-                        recorded.get(entry.file()), entry.note()))
+                        entry.assertionsInSource(), entry.note()))
                 .toList();
 
-        assertThat(regressed)
-                .as("the reader has lost ground:%n%s",
-                        String.join("\n", regressed))
+        assertThat(unexpected)
+                .as("a suite file the reader cannot take in whole, and nothing said "
+                        + "so. Every assertion after the stop is invisible, and a run "
+                        + "that does not count them reports a green it has not "
+                        + "earned:%n%s", String.join("\n", unexpected))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("no listed file has quietly started reading whole")
+    void thestopListHasNoWholeFiles() {
+        List<String> nowWhole = coverage().stream()
+                .filter(entry -> entry.missed() == 0)
+                .map(Coverage::file)
+                .filter(knownStops()::containsKey)
+                .toList();
+
+        assertThat(nowWhole)
+                .as("these now read whole and are still listed as stopping. Take "
+                        + "them out of reader-stops.txt; that is how the fix is "
+                        + "recorded:%n  %s", String.join("\n  ", nowWhole))
                 .isEmpty();
     }
 

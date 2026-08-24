@@ -96,13 +96,23 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             throw new UncheckedIOException(unreadable);
         }
         String name = path.getFileName().toString();
-        String readable = Transcoder.transcode(source).succeeded()
-                ? source
-                : longestReadablePrefix(source);
-        return Transcoder.transcode(readable).values()
-                .map(block -> build(name, readable, block.remaining(),
-                        Transcoder.topLevelSpans(readable)))
-                .orElseGet(() -> new SuiteFile(name, List.of(), List.of()));
+        try {
+            String readable = Transcoder.transcode(source).succeeded()
+                    ? source
+                    : longestReadablePrefix(source);
+            return Transcoder.transcode(readable).values()
+                    .map(block -> build(name, readable, block.remaining(),
+                            Transcoder.topLevelSpans(readable)))
+                    .orElseGet(() -> new SuiteFile(name, List.of(), List.of()));
+        } catch (RuntimeException thrown) {
+            throw new IllegalStateException(
+                    "reading " + name + " threw " + thrown.getClass().getSimpleName()
+                            + ": " + thrown.getMessage()
+                            + ". The reader is meant to answer a REBOL error for source "
+                            + "it cannot take in, so a Java exception here escapes the "
+                            + "interpreter and takes the whole run with it rather than "
+                            + "failing one file", thrown);
+        }
     }
 
     private static SuiteFile build(String name, String source,

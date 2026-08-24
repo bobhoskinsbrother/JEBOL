@@ -1,0 +1,32 @@
+# Suite files the reader cannot take in whole, and where each one stops.
+#
+# Not a skip list and not a floor. SuiteCoverageTest fails when a file
+# outside this list loses assertions, and fails again when a file inside it
+# starts reading whole -- so the only way back to green is to delete the
+# line, and deleting the line is how the fix gets recorded.
+#
+# It replaced a per-file count of assertions reached, which was satisfied by
+# standing still: copy-test.r3 sat at 0 of its 223 for weeks and the build
+# stayed green, because 0 was never worse than 0. A count says how bad it is
+# and a name says what to do.
+#
+# Two different losses appear here and the note tells them apart. "line N"
+# is the reader refusing REBOL that a real REBOL accepts; everything after
+# that line in the file is invisible. "read" means the file read whole and
+# the slicer still produced fewer assertions than it has --assert lines,
+# which is a harness gap rather than a reader one.
+#
+# 316 assertions are behind these ten entries. Another 7,200 sit in the 54
+# of Rebol's 76 unit files that are not vendored here at all -- see Goal 8
+# in TODO.md, which is a larger and separate hole.
+
+conditional-test.r3 read whole, 42 of 45 sliced
+copy-test.r3 line 14: copyable-data: make object! [
+datatype-test.r3 line 56: --assert none? find [#(datatype! string!) #(datatype! binary!)
+decimal-test.r3 read whole, 214 of 216 sliced
+error-test.r3 line 150: --assert assert/type [x #(typeset! [char! string!])]
+evaluation-test.r3 read whole, 417 of 424 sliced
+func-test.r3 line 200: --assert all [
+mold-test.r3 line 327: --assert {#(image! 0x0 #{})} == mold/all #(image! 0x0 #{})
+object-test.r3 read whole, 190 of 191 sliced
+typeset-test.r3 line 66: --assert #(typeset! [end!]) = difference make typeset! system/
