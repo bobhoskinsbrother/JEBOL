@@ -12,21 +12,51 @@
 #
 # Two different losses appear here and the note tells them apart. "line N"
 # is the reader refusing REBOL that a real REBOL accepts; everything after
-# that line in the file is invisible. "read" means the file read whole and
-# the slicer still produced fewer assertions than it has --assert lines,
+# that line in the file is invisible. "read whole" means the file read whole
+# and the slicer still produced fewer assertions than it has --assert lines,
 # which is a harness gap rather than a reader one.
 #
-# 316 assertions are behind these ten entries. Another 7,200 sit in the 54
-# of Rebol's 76 unit files that are not vendored here at all -- see Goal 8
-# in TODO.md, which is a larger and separate hole.
+# 2866 assertions sit behind these 42 entries.
 
-conditional-test.r3 read whole, 42 of 45 sliced
-copy-test.r3 line 14: copyable-data: make object! [
-datatype-test.r3 line 56: --assert none? find [#(datatype! string!) #(datatype! binary!)
-decimal-test.r3 read whole, 214 of 216 sliced
-error-test.r3 line 150: --assert assert/type [x #(typeset! [char! string!])]
-evaluation-test.r3 read whole, 417 of 424 sliced
-func-test.r3 line 200: --assert all [
-mold-test.r3 line 327: --assert {#(image! 0x0 #{})} == mold/all #(image! 0x0 #{})
-object-test.r3 read whole, 190 of 191 sliced
-typeset-test.r3 line 66: --assert #(typeset! [end!]) = difference make typeset! system/
+aes-test.r3                read whole, 0 of 4 sliced
+bbcode-test.r3             read whole, 0 of 2 sliced
+chacha20-test.r3           read whole, 0 of 19 sliced
+checksum-test.r3           read whole, 119 of 264 sliced
+codecs-test-pdf.r3         read whole, 0 of 13 sliced
+codecs-test.r3             read whole, 31 of 232 sliced
+compress-test.r3           read whole, 64 of 184 sliced
+conditional-test.r3        read whole, 42 of 45 sliced
+copy-test.r3               line 14: copyable-data: make object! [
+crypt-port-camelia-test.r3 read whole, 0 of 4 sliced
+crypt-port-ccm-test.r3     read whole, 0 of 2 sliced
+crypt-port-gcm-test.r3     read whole, 0 of 2 sliced
+crypt-port-test.r3         read whole, 9 of 40 sliced
+csv-test.r3                read whole, 0 of 35 sliced
+datatype-test.r3           line 56: --assert none? find [#(datatype! string!) #(datatype! binary!)
+date-test.r3               line 70: --assert 1-Feb-0003 = #(date! 1 2 3)
+decimal-test.r3            read whole, 214 of 216 sliced
+delect-test.r3             read whole, 0 of 5 sliced
+dh-test.r3                 read whole, 16 of 40 sliced
+enbase-test.r3             read whole, 98 of 104 sliced
+error-test.r3              line 150: --assert assert/type [x #(typeset! [char! string!])]
+evaluation-test.r3         read whole, 417 of 424 sliced
+event-test.r3              read whole, 11 of 12 sliced
+file-test.r3               read whole, 47 of 54 sliced
+func-test.r3               line 200: --assert all [
+handle-test.r3             read whole, 0 of 47 sliced
+image-test.r3              line 50: --assert "make image! [1x1 #{FFFFFF}]" = mold #(image! 1x1)
+make-test.r3               line 369: --assert error? try [make pair! quote #(image! 1x1 #{FFFFFF}) 
+map-test.r3                line 26: m: #(map! [a: 1 b: 2])
+module-test.r3             read whole, 56 of 57 sliced
+mold-test.r3               line 327: --assert {#(image! 0x0 #{})} == mold/all #(image! 0x0 #{})
+object-test.r3             read whole, 190 of 191 sliced
+percent-test.r3            line 18: --assert 1e18% = make percent! [1 18]
+poly1305-test.r3           read whole, 0 of 10 sliced
+port-test.r3               read whole, 158 of 169 sliced
+rc4-test.r3                read whole, 1 of 2 sliced
+struct-test.r3             line 12: if system/version >= 3.19.1 [
+task-test.r3               read whole, 0 of 4 sliced
+thru-cache-test.r3         read whole, 0 of 10 sliced
+typeset-test.r3            line 66: --assert #(typeset! [end!]) = difference make typeset! system/
+unicode-test.r3            read whole, 487 of 488 sliced
+url-test.r3                line 86: == [scheme: 'http host: "localhost" port: 8008 path: %/ target

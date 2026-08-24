@@ -113,8 +113,6 @@ rooted at a directory it cannot climb out of, by `..` or by naming an
 absolute path. Network and the wider scheme model are not built.
 
 - `TODO.md` — the work as user stories, with acceptance criteria
-- `docs/milestones.md` — what gets built, in what order, and how each one
-  is proved done
 - `docs/decisions.md` — what has been decided, why, and what it rules out
 
 Milestone 1 is the language running end to end: read source into values,

@@ -6,19 +6,1079 @@
 # recorded, and RebolSuiteTest fails if a listed assertion starts passing
 # while still listed.
 #
-# Written by hand from a run, so it is a snapshot rather than a target:
-# the aim is for this file to be empty.
+# It went from 1 line to 1032 when the other 45 of Rebol's unit files were
+# vendored. Those files were always there; only 22 were being run, so the
+# suite reported green over a third of the language. The failures below are
+# not new -- they are the ones that were never being asked.
 #
-# One entry cannot come off, and it is marked. A real Rebol fails it too,
-# so JEBOL passing it would mean JEBOL disagreeing with Rebol. That was
-# not taken on trust: a binary built from the vendored source by
-# scripts/build-r3.sh was run over Rebol's own test runner, and the
-# assertion is one of its own failures.
+# Where they are, worst first:
+#
+#   bincode-test.r3              195
+#   make-test.r3                 138
+#   bitset-test.r3               111
+#   unicode-test.r3              106
+#   checksum-test.r3              87
+#   port-test.r3                  76
+#   compress-test.r3              59
+#   format-test.r3                53
+#   enbase-test.r3                27
+#   date-test.r3                  24
+#   time-test.r3                  24
+#   module-test.r3                22
+#   codecs-test.r3                17
+#   file-test.r3                  14
+#   power-test.r3                 10
+#   crypt-port-test.r3             9
+#   crypt-test.r3                  9
+#   issue-test.r3                  9
+#   os-test.r3                     9
+#   vector-test.r3                 9
+#   image-test.r3                  6
+#   rsa-test.r3                    6
+#   url-test.r3                    5
+#   gob-test.r3                    4
+#   dh-test.r3                     3
+#
+# One entry can never come off, and it is marked below: a real Rebol fails
+# it too, checked by running Rebol's own runner on a binary built from the
+# vendored source by scripts/build-r3.sh.
 
 # Rebol fails this one as well. It asks whether "🙂" equals the LENGTH? of
 # a string whose index a SWAP has just invalidated -- a string against a
-# number, which is false whatever the number is. Rebol answers 0 there and
-# JEBOL answers 1, and neither is equal to a string. Rebol's own comment
-# on the line reads "Known issue!!!", and running its suite prints
+# number, which is false whatever the number is. Rebol's own comment on the
+# line reads "Known issue!!!", and running its suite prints
 # "FAIL: swap invalidating index (known issue) (1)".
 series-test.r3 / SWAP / swap invalidating index (known issue) #969
+
+bincode-test.r3 / BinCode basic read/write functions / BinCode - ALIGN #177
+bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #100
+bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #101
+bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #102
+bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #95
+bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #96
+bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #97
+bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #98
+bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #99
+bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #103
+bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #104
+bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #105
+bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #106
+bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #107
+bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #108
+bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #109
+bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #110
+bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #169
+bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #170
+bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #171
+bincode-test.r3 / BinCode basic read/write functions / BinCode - BYTES #72
+bincode-test.r3 / BinCode basic read/write functions / BinCode - BYTES #73
+bincode-test.r3 / BinCode basic read/write functions / BinCode - BYTES #74
+bincode-test.r3 / BinCode basic read/write functions / BinCode - BYTES #75
+bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #163
+bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #164
+bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU64 #165
+bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU64 #166
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F16LE, F16BE #187
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F16LE, F16BE #188
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F16LE, F16BE #189
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F16LE, F16BE #190
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F32LE, F32BE #191
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F32LE, F32BE #192
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F32LE, F32BE #193
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F32LE, F32BE #194
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F64LE, F64BE #195
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F64LE, F64BE #196
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F64LE, F64BE #197
+bincode-test.r3 / BinCode basic read/write functions / BinCode - F64LE, F64BE #198
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FIXED8 and FIXED16 (read) #172
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FIXED8 and FIXED16 (read) #173
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #181
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #182
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #183
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #184
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #185
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #186
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (read) #178
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (read) #179
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (read) #180
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (write/read NAN) #199
+bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (write/read NAN) #201
+bincode-test.r3 / BinCode basic read/write functions / BinCode - INDEX & INDEXz #114
+bincode-test.r3 / BinCode basic read/write functions / BinCode - LENGTH? #124
+bincode-test.r3 / BinCode basic read/write functions / BinCode - LENGTH? #125
+bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #202
+bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #203
+bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #204
+bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #205
+bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #206
+bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #207
+bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #208
+bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #209
+bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #210
+bincode-test.r3 / BinCode basic read/write functions / BinCode - OCTAL-BYTES (read) #213
+bincode-test.r3 / BinCode basic read/write functions / BinCode - PAD #122
+bincode-test.r3 / BinCode basic read/write functions / BinCode - PAD #123
+bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #115
+bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #116
+bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #117
+bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #118
+bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #119
+bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #120
+bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #121
+bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIPBITS #176
+bincode-test.r3 / BinCode basic read/write functions / BinCode - STRING #139
+bincode-test.r3 / BinCode basic read/write functions / BinCode - STRING #140
+bincode-test.r3 / BinCode basic read/write functions / BinCode - STRING-BYTES (read) #212
+bincode-test.r3 / BinCode basic read/write functions / BinCode - TUPLE3 and TUPLE4 (read) #174
+bincode-test.r3 / BinCode basic read/write functions / BinCode - TUPLE3 and TUPLE4 (read) #175
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI16BYTES #79
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI16BYTES #80
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI16BYTES #81
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI16LEBYTES #82
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI16LEBYTES #83
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI16LEBYTES #84
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI24BYTES #85
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI24BYTES #86
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI24BYTES #87
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI24BYTES #88
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI32BYTES #89
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI32BYTES #90
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI32BYTES #91
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI32BYTES #92
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI8BYTES #76
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI8BYTES #77
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UI8BYTES #78
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #127
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #128
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #129
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #130
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #131
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #132
+bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #133
+bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #167
+bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #168
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #147
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #148
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #149
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #150
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #151
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #152
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #153
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #154
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #155
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #156
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #157
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #158
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #159
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #160
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #161
+bincode-test.r3 / BinCode basic read/write functions / BinCode - bits with zero skip #162
+bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #214
+bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #215
+bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #216
+bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #217
+bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #218
+bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #134
+bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #135
+bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #136
+bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #137
+bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #138
+bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #141
+bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #143
+bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #144
+bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #145
+bincode-test.r3 / BinCode basic read/write functions / BinCode - strings #70
+bincode-test.r3 / BinCode basic read/write functions / BinCode - strings #71
+bincode-test.r3 / BinCode basic read/write functions / BinCode - unsigned integers (little endian) #40
+bincode-test.r3 / BinCode basic read/write functions / BinCode - unsigned integers (little endian) #41
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write negative unsigned integers (big endian) #37
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write negative unsigned integers (big endian) #38
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #24
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #26
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #27
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #28
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #29
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #30
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #31
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #32
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #33
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #34
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #35
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write positive unsigned integers (big endian) #36
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write signed integers over range #50
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write signed integers over range #51
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write signed integers over range #52
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write signed integers over range #53
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write signed integers over range #54
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write signed integers over range #55
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write signed integers over range #56
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write signed integers over range #57
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write signed integers over range #58
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write unsigned integers over range #63
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write unsigned integers over range #64
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write unsigned integers over range #65
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write unsigned integers over range #66
+bincode-test.r3 / BinCode basic read/write functions / BinCode - write unsigned integers over range #67
+bincode-test.r3 / BinCode initialization / BinCode-2 #15
+bincode-test.r3 / BinCode initialization / BinCode-2 #16
+bincode-test.r3 / BinCode initialization / BinCode-2 #21
+bincode-test.r3 / BinCode initialization / BinCode-2 #22
+bincode-test.r3 / BinCode other issues / Code block not at its head #238
+bincode-test.r3 / BinCode other issues / Invalid read spec #243
+bincode-test.r3 / BinCode other issues / Invalid read spec #244
+bincode-test.r3 / BinCode other issues / Missing additional read value #229
+bincode-test.r3 / BinCode other issues / Missing additional read value #230
+bincode-test.r3 / BinCode other issues / Missing additional read value #231
+bincode-test.r3 / BinCode other issues / Missing additional read value #234
+bincode-test.r3 / BinCode other issues / Missing additional read value #236
+bincode-test.r3 / BinCode other issues / Write at tail #239
+bincode-test.r3 / BinCode other issues / Write at tail #240
+bincode-test.r3 / BinCode other issues / Write at tail #241
+bincode-test.r3 / BinCode other issues / Write at tail #242
+bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #219
+bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #220
+bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #221
+bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #222
+bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #223
+bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #224
+bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #225
+bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #226
+bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #227
+bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #228
+bitset-test.r3 / bitset issues / issue-1283 #205
+bitset-test.r3 / bitset issues / to-binary bitset #208
+bitset-test.r3 / bitset issues / to-binary bitset #209
+bitset-test.r3 / bitset issues / to-binary bitset #210
+bitset-test.r3 / complemented / comp-10 #189
+bitset-test.r3 / complemented / comp-12 #192
+bitset-test.r3 / complemented / comp-12 #193
+bitset-test.r3 / complemented / comp-6 #175
+bitset-test.r3 / complemented / comp-6 #179
+bitset-test.r3 / complemented / comp-8 #183
+bitset-test.r3 / complemented / comp-8 #184
+bitset-test.r3 / complemented / comp-8 #185
+bitset-test.r3 / complemented / comp-8 #186
+bitset-test.r3 / complemented / comp-9 #187
+bitset-test.r3 / complemented / issue-1357 #197
+bitset-test.r3 / complemented / issue-1357 #198
+bitset-test.r3 / complemented / issue-1357 #199
+bitset-test.r3 / complemented / issue-1357 #200
+bitset-test.r3 / complemented / issue-1541 #195
+bitset-test.r3 / complemented / issue-1541 #196
+bitset-test.r3 / find / find bitset! block-of-integers #156
+bitset-test.r3 / find / find bitset! block-of-integers #157
+bitset-test.r3 / find / find bitset! block-of-integers #158
+bitset-test.r3 / find / find bitset! block-of-integers #159
+bitset-test.r3 / find / find bitset! block-of-integers #163
+bitset-test.r3 / find / find bitset! block-of-integers #164
+bitset-test.r3 / find / find bitset! block-of-integers #165
+bitset-test.r3 / find / find bitset! block-of-strings! #166
+bitset-test.r3 / find / find bitset! block-of-strings! #167
+bitset-test.r3 / find / find bitset! char! #142
+bitset-test.r3 / find / find bitset! char! #146
+bitset-test.r3 / find / find bitset! string! #150
+bitset-test.r3 / find / find bitset! string! #151
+bitset-test.r3 / find / find bitset! string! #152
+bitset-test.r3 / find / find bitset! string! #153
+bitset-test.r3 / make bitset! / basic make #11
+bitset-test.r3 / make bitset! / basic make #14
+bitset-test.r3 / make bitset! / basic make #20
+bitset-test.r3 / make bitset! / charset #27
+bitset-test.r3 / make bitset! / make bitset! from bitset! #23
+bitset-test.r3 / make bitset! / make bitset! from bitset! #25
+bitset-test.r3 / make bitset! / make bitset! from block #34
+bitset-test.r3 / make bitset! / make bitset! from block #35
+bitset-test.r3 / make bitset! / make bitset! from block #36
+bitset-test.r3 / make bitset! / make bitset! from block #37
+bitset-test.r3 / make bitset! / make bitset! from block #38
+bitset-test.r3 / modify / alter #102
+bitset-test.r3 / modify / alter #103
+bitset-test.r3 / modify / alter #104
+bitset-test.r3 / modify / append-1 #119
+bitset-test.r3 / modify / append-1 #120
+bitset-test.r3 / modify / insert-1 #121
+bitset-test.r3 / modify / insert-1 #122
+bitset-test.r3 / modify / issue-1355 #139
+bitset-test.r3 / modify / issue-1355 #140
+bitset-test.r3 / modify / poke-1 #105
+bitset-test.r3 / modify / poke-1 #106
+bitset-test.r3 / modify / poke-1 #107
+bitset-test.r3 / modify / poke-1 #108
+bitset-test.r3 / modify / poke-1 #109
+bitset-test.r3 / modify / poke-2 #111
+bitset-test.r3 / modify / poke-2 #113
+bitset-test.r3 / modify / poke-2 #115
+bitset-test.r3 / modify / poke-2 #116
+bitset-test.r3 / modify / poke-2 #117
+bitset-test.r3 / modify / poke-2 #118
+bitset-test.r3 / pick bitset! / basic-6 #76
+bitset-test.r3 / pick bitset! / path expression #93
+bitset-test.r3 / pick bitset! / path expression #94
+bitset-test.r3 / pick bitset! / path expression #95
+bitset-test.r3 / pick bitset! / path expression #96
+bitset-test.r3 / pick bitset! / pick logic #90
+bitset-test.r3 / pick bitset! / pick logic #91
+bitset-test.r3 / pick bitset! / pick logic #92
+bitset-test.r3 / pick bitset! / pick-1 #41
+bitset-test.r3 / pick bitset! / pick-1 #42
+bitset-test.r3 / pick bitset! / pick-1 #43
+bitset-test.r3 / pick bitset! / pick-1 #44
+bitset-test.r3 / pick bitset! / pick-1 #49
+bitset-test.r3 / pick bitset! / pick-2 #51
+bitset-test.r3 / pick bitset! / pick-2 #52
+bitset-test.r3 / pick bitset! / pick-2 #53
+bitset-test.r3 / pick bitset! / pick-2 #54
+bitset-test.r3 / pick bitset! / pick-2 #55
+bitset-test.r3 / pick bitset! / pick-2 #56
+bitset-test.r3 / pick bitset! / pick-2 #57
+bitset-test.r3 / pick bitset! / pick-2 #58
+bitset-test.r3 / pick bitset! / pick-4 #69
+bitset-test.r3 / pick bitset! / pick-4 #71
+bitset-test.r3 / pick bitset! / pick-5 #73
+bitset-test.r3 / pick bitset! / pick-5 #74
+bitset-test.r3 / pick bitset! / pick-7 #78
+bitset-test.r3 / pick bitset! / pick-7 #79
+bitset-test.r3 / pick bitset! / pick-7 #80
+bitset-test.r3 / pick bitset! / pick-7 #81
+bitset-test.r3 / pick bitset! / pick-8 #82
+bitset-test.r3 / pick bitset! / pick-8 #83
+bitset-test.r3 / pick bitset! / pick-8 #84
+bitset-test.r3 / pick bitset! / pick-8 #86
+bitset-test.r3 / pick bitset! / pick-8 #87
+bitset-test.r3 / pick bitset! / pick-9 #88
+bitset-test.r3 / pickz bitset! / pickz #100
+bitset-test.r3 / pickz bitset! / pickz #97
+bitset-test.r3 / pickz bitset! / pickz #98
+bitset-test.r3 / pickz bitset! / pickz #99
+bitset-test.r3 / zero? bitset / zero? bitset #1
+bitset-test.r3 / zero? bitset / zero? bitset #2
+bitset-test.r3 / zero? bitset / zero? bitset #3
+bitset-test.r3 / zero? bitset / zero? bitset #4
+bitset-test.r3 / zero? bitset / zero? bitset #5
+bitset-test.r3 / zero? bitset / zero? bitset #6
+checksum-test.r3 / Checksum port / checksum port with invalid argument #103
+checksum-test.r3 / Checksum port / checksum-port-md5 #27
+checksum-test.r3 / Checksum port / checksum-port-md5 #28
+checksum-test.r3 / Checksum port / checksum-port-md5 #29
+checksum-test.r3 / Checksum port / checksum-port-md5 #30
+checksum-test.r3 / Checksum port / checksum-port-md5 #31
+checksum-test.r3 / Checksum port / checksum-port-md5 #32
+checksum-test.r3 / Checksum port / checksum-port-md5 #33
+checksum-test.r3 / Checksum port / checksum-port-md5 #34
+checksum-test.r3 / Checksum port / checksum-port-md5 #35
+checksum-test.r3 / Checksum port / checksum-port-md5 #36
+checksum-test.r3 / Checksum port / checksum-port-md5 #37
+checksum-test.r3 / Checksum port / checksum-port-md5 #38
+checksum-test.r3 / Checksum port / checksum-port-md5 #39
+checksum-test.r3 / Checksum port / checksum-port-md5 #40
+checksum-test.r3 / Checksum port / checksum-port-sha1 #41
+checksum-test.r3 / Checksum port / checksum-port-sha1 #42
+checksum-test.r3 / Checksum port / checksum-port-sha1 #43
+checksum-test.r3 / Checksum port / checksum-port-sha1 #44
+checksum-test.r3 / Checksum port / checksum-port-sha1 #45
+checksum-test.r3 / Checksum port / checksum-port-sha1 #46
+checksum-test.r3 / Checksum port / checksum-port-sha1 #47
+checksum-test.r3 / Checksum port / checksum-port-sha1 #48
+checksum-test.r3 / Checksum port / checksum-port-sha1 #49
+checksum-test.r3 / Checksum port / checksum-port-sha1 #50
+checksum-test.r3 / Checksum port / checksum-port-sha1 #51
+checksum-test.r3 / Checksum port / checksum-port-sha1 #52
+checksum-test.r3 / Checksum port / checksum-port-sha1 #53
+checksum-test.r3 / Checksum port / checksum-port-sha256 #54
+checksum-test.r3 / Checksum port / checksum-port-sha256 #55
+checksum-test.r3 / Checksum port / checksum-port-sha256 #56
+checksum-test.r3 / Checksum port / checksum-port-sha256 #57
+checksum-test.r3 / Checksum port / checksum-port-sha256 #58
+checksum-test.r3 / Checksum port / checksum-port-sha256 #59
+checksum-test.r3 / Checksum port / checksum-port-sha256 #60
+checksum-test.r3 / Checksum port / checksum-port-sha256 #61
+checksum-test.r3 / Checksum port / checksum-port-sha256 #62
+checksum-test.r3 / Checksum port / checksum-port-sha256 #63
+checksum-test.r3 / Checksum port / checksum-port-sha256 #64
+checksum-test.r3 / Checksum port / checksum-port-sha256 #65
+checksum-test.r3 / Checksum port / checksum-port-sha256 #66
+checksum-test.r3 / Checksum port / checksum-port-sha256 #67
+checksum-test.r3 / Checksum port / checksum-port-sha384 #68
+checksum-test.r3 / Checksum port / checksum-port-sha384 #69
+checksum-test.r3 / Checksum port / checksum-port-sha384 #70
+checksum-test.r3 / Checksum port / checksum-port-sha384 #71
+checksum-test.r3 / Checksum port / checksum-port-sha384 #72
+checksum-test.r3 / Checksum port / checksum-port-sha384 #73
+checksum-test.r3 / Checksum port / checksum-port-sha384 #74
+checksum-test.r3 / Checksum port / checksum-port-sha384 #75
+checksum-test.r3 / Checksum port / checksum-port-sha384 #76
+checksum-test.r3 / Checksum port / checksum-port-sha384 #77
+checksum-test.r3 / Checksum port / checksum-port-sha384 #78
+checksum-test.r3 / Checksum port / checksum-port-sha384 #79
+checksum-test.r3 / Checksum port / checksum-port-sha384 #80
+checksum-test.r3 / Checksum port / checksum-port-sha384 #81
+checksum-test.r3 / Checksum port / checksum-port-sha512 #82
+checksum-test.r3 / Checksum port / checksum-port-sha512 #83
+checksum-test.r3 / Checksum port / checksum-port-sha512 #84
+checksum-test.r3 / Checksum port / checksum-port-sha512 #85
+checksum-test.r3 / Checksum port / checksum-port-sha512 #86
+checksum-test.r3 / Checksum port / checksum-port-sha512 #87
+checksum-test.r3 / Checksum port / checksum-port-sha512 #88
+checksum-test.r3 / Checksum port / checksum-port-sha512 #89
+checksum-test.r3 / Checksum port / checksum-port-sha512 #90
+checksum-test.r3 / Checksum port / checksum-port-sha512 #91
+checksum-test.r3 / Checksum port / checksum-port-sha512 #92
+checksum-test.r3 / Checksum port / checksum-port-sha512 #93
+checksum-test.r3 / Checksum port / checksum-port-sha512 #94
+checksum-test.r3 / Checksum port / checksum-port-sha512 #95
+checksum-test.r3 / Checksum port / checksum-write-refinements #100
+checksum-test.r3 / Checksum port / checksum-write-refinements #101
+checksum-test.r3 / Checksum port / checksum-write-refinements #102
+checksum-test.r3 / Checksum port / checksum-write-refinements #96
+checksum-test.r3 / Checksum port / checksum-write-refinements #97
+checksum-test.r3 / Checksum port / checksum-write-refinements #98
+checksum-test.r3 / Checksum port / checksum-write-refinements #99
+checksum-test.r3 / Checksum/hash / test case 1 #110
+checksum-test.r3 / file-checksum / checksum file! #115
+checksum-test.r3 / file-checksum / checksum file! #116
+checksum-test.r3 / file-checksum / checksum file! #117
+checksum-test.r3 / file-checksum / checksum file! with refines #118
+checksum-test.r3 / file-checksum / checksum file! with refines #119
+checksum-test.r3 / file-checksum / file-checksum with bigger file #114
+checksum-test.r3 / file-checksum / file-checksum with small file #111
+checksum-test.r3 / file-checksum / file-checksum with small file #112
+checksum-test.r3 / file-checksum / file-checksum with small file #113
+codecs-test.r3 / SAVE function / SAVE/compress #16
+codecs-test.r3 / SAVE function / SAVE/compress #17
+codecs-test.r3 / TEXT codec / ENCODE text #4
+codecs-test.r3 / TEXT codec / ENCODE text #5
+codecs-test.r3 / TEXT codec / SAVE %test.txt #10
+codecs-test.r3 / TEXT codec / SAVE %test.txt #6
+codecs-test.r3 / TEXT codec / SAVE %test.txt #8
+codecs-test.r3 / TEXT codec / load UCS16-BE txt #20
+codecs-test.r3 / TEXT codec / load UCS16-LE txt #19
+codecs-test.r3 / TEXT codec / load UCS32-BE txt #22
+codecs-test.r3 / TEXT codec / load UCS32-LE txt #21
+codecs-test.r3 / TEXT codec / load/save binary! as .txt #27
+codecs-test.r3 / TEXT codec / load/save block! as .txt #25
+codecs-test.r3 / TEXT codec / load/save issue! as .txt #23
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #29
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #30
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #31
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress #20
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress #21
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #23
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #24
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #25
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #26
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #27
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #28
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #29
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #30
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #31
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #32
+compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #33
+compress-test.r3 / DEFLATE compression / decompression / basic decompression with specified uncompressed size #34
+compress-test.r3 / DEFLATE compression / decompression / compression when input is limited #35
+compress-test.r3 / DEFLATE compression / decompression / compression when input is limited #36
+compress-test.r3 / DEFLATE compression / decompression / compression when input is limited #37
+compress-test.r3 / DEFLATE compression / decompression / decompress when not at head #38
+compress-test.r3 / GZIP compression / decompression / GZIP codec #57
+compress-test.r3 / GZIP compression / decompression / GZIP codec #58
+compress-test.r3 / GZIP compression / decompression / GZIP codec #59
+compress-test.r3 / GZIP compression / decompression / GZIP codec #60
+compress-test.r3 / GZIP compression / decompression / GZIP codec #61
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress #39
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #41
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #42
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #43
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #44
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #45
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #46
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #47
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #48
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #49
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #50
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #51
+compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #52
+compress-test.r3 / GZIP compression / decompression / GZIP compression when input is limited #54
+compress-test.r3 / GZIP compression / decompression / GZIP compression when input is limited #55
+compress-test.r3 / GZIP compression / decompression / GZIP compression when input is limited #56
+compress-test.r3 / GZIP compression / decompression / GZIP decompress when not at head #40
+compress-test.r3 / GZIP compression / decompression / GZIP decompression with specified uncompressed size #53
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress #1
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress #2
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #10
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #11
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #12
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #13
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #14
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #4
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #5
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #6
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #7
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #8
+compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #9
+compress-test.r3 / ZLIB compression / decompression / basic decompression with specified uncompressed size #15
+compress-test.r3 / ZLIB compression / decompression / compression when input is limited #16
+compress-test.r3 / ZLIB compression / decompression / compression when input is limited #17
+compress-test.r3 / ZLIB compression / decompression / compression when input is limited #18
+compress-test.r3 / ZLIB compression / decompression / decompress when not at head #19
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #1
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #2
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #3
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #4
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #5
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #6
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input which needs padding #7
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input which needs padding #8
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input which needs padding #9
+crypt-test.r3 / Load-PKIX / Load PKIX data from file using PKIX codec #25
+crypt-test.r3 / Load-PKIX / Load PKIX data from file using PKIX codec #26
+crypt-test.r3 / Load-PKIX / Load PKIX data from file using PKIX codec #27
+crypt-test.r3 / Load-PKIX / SSH-public-key-1 #19
+crypt-test.r3 / PPK codec / Init RSA key from PPK file #34
+crypt-test.r3 / PPK codec / Init RSA key from encrypted PPK file #35
+crypt-test.r3 / PPK codec / Init public RSA key from SSH2 PPK file #36
+crypt-test.r3 / SSH-key codec / Init RSA key from file #32
+crypt-test.r3 / SSH-key codec / Init public DH params from file #33
+date-test.r3 / ISO8601 subset / ISO8601 basic load #1
+date-test.r3 / ISO8601 subset / ISO8601 basic load #2
+date-test.r3 / ISO8601 subset / ISO8601 basic load #3
+date-test.r3 / ISO8601 subset / ISO8601 basic load #4
+date-test.r3 / ISO8601 subset / ISO8601 basic load #5
+date-test.r3 / ISO8601 subset / Invalid ISO8601 dates #11
+date-test.r3 / ISO8601 subset / Using ISO88601 datetime in a path #12
+date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #6
+date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #7
+date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #8
+date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #9
+date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #13
+date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #14
+date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #15
+date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #16
+date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #17
+date-test.r3 / TO DATE! / make date! #18
+date-test.r3 / TO DATE! / make date! #19
+date-test.r3 / TO DATE! / make date! #20
+date-test.r3 / TO DATE! / make date! #21
+date-test.r3 / TO DATE! / make date! #22
+date-test.r3 / TO DATE! / make date! #23
+date-test.r3 / TO DATE! / make date! #24
+date-test.r3 / TO DATE! / zero year #25
+dh-test.r3 / Diffie-Hellman key exchange / DH keys release #11
+dh-test.r3 / Diffie-Hellman key exchange / DH keys release #15
+dh-test.r3 / Diffie-Hellman key exchange / DH keys release #16
+enbase-test.r3 / debase 16 / debase other strings #48
+enbase-test.r3 / debase 16 / debase other strings #51
+enbase-test.r3 / debase 64 - safe URL variant / debase 64 url 1 #35
+enbase-test.r3 / debase 64 - safe URL variant / debase 64 url 2 - missing padding in the input #37
+enbase-test.r3 / debase 64 - safe URL variant / debase 64 url 3 #39
+enbase-test.r3 / debase/part / debase/part with series as a length #97
+enbase-test.r3 / debase/part / debase/part with series as a length #98
+enbase-test.r3 / en/debase 2 / debase 2 1 #54
+enbase-test.r3 / en/debase 2 / debase 2 1 #55
+enbase-test.r3 / enbase 64 - safe URL variant / enbase/url #43
+enbase-test.r3 / enbase 64 - safe URL variant / enbase/url #44
+enbase-test.r3 / enbase integer / enbase-16 #21
+enbase-test.r3 / enbase integer / enbase-16 #22
+enbase-test.r3 / enbase integer / enbase-16 #23
+enbase-test.r3 / enbase integer / enbase-2 #18
+enbase-test.r3 / enbase integer / enbase-2 #19
+enbase-test.r3 / enbase integer / enbase-2 #20
+enbase-test.r3 / enbase integer / enbase-64 #24
+enbase-test.r3 / enbase integer / enbase-64 #25
+enbase-test.r3 / enbase/flat / enbase/flat 16 #28
+enbase-test.r3 / enbase/flat / enbase/flat 16 #29
+enbase-test.r3 / enbase/flat / enbase/flat 2 #26
+enbase-test.r3 / enbase/flat / enbase/flat 2 #27
+enbase-test.r3 / enbase/flat / enbase/flat 64 #30
+enbase-test.r3 / enbase/flat / enbase/flat 64 #31
+enbase-test.r3 / enbase/part / enbase/part with series as a length #77
+enbase-test.r3 / enbase/part / enbase/part with series as a length #78
+file-test.r3 / WILDCARD / read wildcard #39
+file-test.r3 / WILDCARD / read wildcard #40
+file-test.r3 / WILDCARD / read wildcard #41
+file-test.r3 / cd / cd / cd ~ #1
+file-test.r3 / file:// / issue-834 #34
+file-test.r3 / to-local-file / issue-1115 #16
+file-test.r3 / to-local-file / issue-1115 #17
+file-test.r3 / to-real-file / On directory #22
+file-test.r3 / to-real-file / On directory #23
+file-test.r3 / to-real-file / On directory #24
+file-test.r3 / to-real-file / On file #18
+file-test.r3 / to-real-file / On file #19
+file-test.r3 / to-real-file / On file with Unicode chars #20
+file-test.r3 / to-real-file / On file with Unicode chars #21
+format-test.r3 / FORMAT / FORMAT date #17
+format-test.r3 / FORMAT / FORMAT date #18
+format-test.r3 / FORMAT / FORMAT date #19
+format-test.r3 / FORMAT / FORMAT date #20
+format-test.r3 / FORMAT / FORMAT date #21
+format-test.r3 / FORMAT / FORMAT date #22
+format-test.r3 / FORMAT / FORMAT date #23
+format-test.r3 / FORMAT / FORMAT date #24
+format-test.r3 / FORMAT / FORMAT date #25
+format-test.r3 / FORMAT / FORMAT date #26
+format-test.r3 / FORMAT / FORMAT date #27
+format-test.r3 / FORMAT / FORMAT date #28
+format-test.r3 / FORMAT / FORMAT date #29
+format-test.r3 / FORMAT / FORMAT date #30
+format-test.r3 / FORMAT / FORMAT date #31
+format-test.r3 / FORMAT / FORMAT date #32
+format-test.r3 / FORMAT / FORMAT date-time #1
+format-test.r3 / FORMAT / FORMAT date-time #10
+format-test.r3 / FORMAT / FORMAT date-time #11
+format-test.r3 / FORMAT / FORMAT date-time #12
+format-test.r3 / FORMAT / FORMAT date-time #13
+format-test.r3 / FORMAT / FORMAT date-time #14
+format-test.r3 / FORMAT / FORMAT date-time #15
+format-test.r3 / FORMAT / FORMAT date-time #16
+format-test.r3 / FORMAT / FORMAT date-time #2
+format-test.r3 / FORMAT / FORMAT date-time #3
+format-test.r3 / FORMAT / FORMAT date-time #4
+format-test.r3 / FORMAT / FORMAT date-time #5
+format-test.r3 / FORMAT / FORMAT date-time #6
+format-test.r3 / FORMAT / FORMAT date-time #7
+format-test.r3 / FORMAT / FORMAT date-time #8
+format-test.r3 / FORMAT / FORMAT date-time #9
+format-test.r3 / FORMAT / FORMAT time #33
+format-test.r3 / FORMAT / FORMAT time #34
+format-test.r3 / FORMAT / FORMAT time #35
+format-test.r3 / FORMAT / FORMAT time #36
+format-test.r3 / FORMAT / FORMAT time #37
+format-test.r3 / FORMAT / FORMAT time #38
+format-test.r3 / FORMAT / FORMAT time #39
+format-test.r3 / FORMAT / FORMAT time #40
+format-test.r3 / FORMAT / FORMAT time #41
+format-test.r3 / FORMAT / FORMAT time #42
+format-test.r3 / FORMAT / FORMAT time #43
+format-test.r3 / FORMAT / FORMAT time #44
+format-test.r3 / FORMAT / format rounding #49
+format-test.r3 / FORMAT / format rounding #50
+format-test.r3 / FORMAT / format rounding #51
+format-test.r3 / FORMAT / format rounding #52
+format-test.r3 / FORMAT / format rounding #53
+format-test.r3 / FORMAT / format rounding #54
+format-test.r3 / FORMAT / format rounding #55
+format-test.r3 / FORMAT / format rounding #56
+format-test.r3 / FORMAT / format/pad #48
+gob-test.r3 / MOVE gob! / move gob! #12
+gob-test.r3 / MOVE gob! / move gob! #13
+gob-test.r3 / gob issues / issue-1617 #35
+gob-test.r3 / gob issues / issue-992 #36
+image-test.r3 / make image / to image from binary #10
+image-test.r3 / make image / to image from binary #11
+image-test.r3 / make image / to image from binary #12
+image-test.r3 / make image / to image from binary #13
+image-test.r3 / make image / to image from binary #8
+image-test.r3 / make image / to image from binary #9
+issue-test.r3 / to-hex / bad chars in issue #24
+issue-test.r3 / to-hex / bad chars in issue #25
+issue-test.r3 / to-hex / bad chars in issue #26
+issue-test.r3 / to-hex / to-hex char! #18
+issue-test.r3 / to-hex / to-hex/size integer! #10
+issue-test.r3 / to-hex / to-hex/size integer! #9
+issue-test.r3 / to-hex / to-hex/size tuple! #12
+issue-test.r3 / to-hex / to-hex/size tuple! #13
+issue-test.r3 / to-hex / to-hex/size tuple! #14
+make-test.r3 / make char! / make char! binary! #2
+make-test.r3 / make char! / make char! binary! #3
+make-test.r3 / make char! / make char! binary! #4
+make-test.r3 / make char! / to char! over range #13
+make-test.r3 / make char! / to char! surrogates #11
+make-test.r3 / make char! / to char! surrogates #12
+make-test.r3 / make money! / make money from string #175
+make-test.r3 / make money! / make/to money! logic! #173
+make-test.r3 / make money! / make/to money! logic! #174
+make-test.r3 / make percent! / make percent from string #183
+make-test.r3 / make percent! / make/to percent! logic! #177
+make-test.r3 / make percent! / make/to percent! logic! #178
+make-test.r3 / make percent! / make/to percent! logic! #179
+make-test.r3 / make percent! / make/to percent! logic! #180
+make-test.r3 / make percent! / to percent! issue! #176
+make-test.r3 / make/to date / make/to date! block! #68
+make-test.r3 / make/to date / make/to date! block! #69
+make-test.r3 / make/to date / make/to date! block! #70
+make-test.r3 / make/to date / make/to date! block! #71
+make-test.r3 / make/to date / make/to date! block! #72
+make-test.r3 / make/to date / make/to date! block! #76
+make-test.r3 / make/to date / make/to date! block! #77
+make-test.r3 / make/to date / make/to date! block! #78
+make-test.r3 / make/to date / make/to date! block! #79
+make-test.r3 / make/to date / make/to date! block! #80
+make-test.r3 / make/to date / make/to date! decimal! #25
+make-test.r3 / make/to date / make/to date! decimal! #26
+make-test.r3 / make/to date / make/to date! decimal! #27
+make-test.r3 / make/to date / make/to date! decimal! #28
+make-test.r3 / make/to date / make/to date! decimal! #29
+make-test.r3 / make/to date / make/to date! decimal! #30
+make-test.r3 / make/to date / make/to date! decimal! #31
+make-test.r3 / make/to date / make/to date! decimal! #32
+make-test.r3 / make/to date / make/to date! decimal! #33
+make-test.r3 / make/to date / make/to date! decimal! #34
+make-test.r3 / make/to date / make/to date! decimal! #35
+make-test.r3 / make/to date / make/to date! decimal! #36
+make-test.r3 / make/to date / make/to date! decimal! #37
+make-test.r3 / make/to date / make/to date! decimal! #38
+make-test.r3 / make/to date / make/to date! decimal! #39
+make-test.r3 / make/to date / make/to date! decimal! #40
+make-test.r3 / make/to date / make/to date! decimal! #41
+make-test.r3 / make/to date / make/to date! decimal! #42
+make-test.r3 / make/to date / make/to date! decimal! #43
+make-test.r3 / make/to date / make/to date! decimal! #44
+make-test.r3 / make/to date / make/to date! decimal! #45
+make-test.r3 / make/to date / make/to date! decimal! #46
+make-test.r3 / make/to date / make/to date! decimal! #47
+make-test.r3 / make/to date / make/to date! decimal! #48
+make-test.r3 / make/to date / make/to date! decimal! #49
+make-test.r3 / make/to date / make/to date! decimal! #50
+make-test.r3 / make/to date / make/to date! decimal! #51
+make-test.r3 / make/to date / make/to date! decimal! #52
+make-test.r3 / make/to date / make/to date! decimal! #53
+make-test.r3 / make/to date / make/to date! decimal! #54
+make-test.r3 / make/to date / make/to date! decimal! #55
+make-test.r3 / make/to date / make/to date! decimal! #56
+make-test.r3 / make/to date / make/to date! decimal! #57
+make-test.r3 / make/to date / make/to date! decimal! #58
+make-test.r3 / make/to date / make/to date! decimal! #59
+make-test.r3 / make/to date / make/to date! decimal! #60
+make-test.r3 / make/to date / make/to date! decimal! #61
+make-test.r3 / make/to date / make/to date! decimal! #62
+make-test.r3 / make/to date / make/to date! decimal! #63
+make-test.r3 / make/to date / make/to date! decimal! #64
+make-test.r3 / make/to date / make/to date! decimal! #65
+make-test.r3 / make/to date / make/to date! decimal! #66
+make-test.r3 / make/to date / make/to date! decimal! #67
+make-test.r3 / make/to date / make/to date! integer! #17
+make-test.r3 / make/to date / make/to date! integer! #18
+make-test.r3 / make/to date / make/to date! integer! #19
+make-test.r3 / make/to date / make/to date! integer! #20
+make-test.r3 / make/to date / make/to date! integer! #21
+make-test.r3 / make/to date / make/to date! integer! #22
+make-test.r3 / make/to date / make/to date! integer! #23
+make-test.r3 / make/to date / make/to date! integer! #24
+make-test.r3 / make/to decimal! / make decimal from string #127
+make-test.r3 / make/to decimal! / make/to decimal! date! #128
+make-test.r3 / make/to decimal! / make/to decimal! date! #129
+make-test.r3 / make/to decimal! / make/to decimal! date! #130
+make-test.r3 / make/to decimal! / make/to decimal! date! #131
+make-test.r3 / make/to decimal! / make/to decimal! date! #132
+make-test.r3 / make/to decimal! / make/to decimal! date! #133
+make-test.r3 / make/to decimal! / make/to decimal! date! #134
+make-test.r3 / make/to decimal! / make/to decimal! date! #135
+make-test.r3 / make/to decimal! / make/to decimal! date! #136
+make-test.r3 / make/to decimal! / make/to decimal! date! #137
+make-test.r3 / make/to decimal! / make/to decimal! date! #138
+make-test.r3 / make/to decimal! / make/to decimal! date! #139
+make-test.r3 / make/to decimal! / make/to decimal! date! #140
+make-test.r3 / make/to decimal! / make/to decimal! date! #141
+make-test.r3 / make/to decimal! / make/to decimal! date! #142
+make-test.r3 / make/to decimal! / make/to decimal! date! #143
+make-test.r3 / make/to decimal! / make/to decimal! date! #144
+make-test.r3 / make/to decimal! / make/to decimal! date! #145
+make-test.r3 / make/to decimal! / make/to decimal! date! #146
+make-test.r3 / make/to decimal! / make/to decimal! date! #147
+make-test.r3 / make/to decimal! / make/to decimal! date! #148
+make-test.r3 / make/to decimal! / make/to decimal! date! #149
+make-test.r3 / make/to decimal! / make/to decimal! date! #150
+make-test.r3 / make/to decimal! / make/to decimal! date! #151
+make-test.r3 / make/to decimal! / make/to decimal! date! #152
+make-test.r3 / make/to decimal! / make/to decimal! date! #153
+make-test.r3 / make/to decimal! / make/to decimal! date! #154
+make-test.r3 / make/to decimal! / make/to decimal! date! #155
+make-test.r3 / make/to decimal! / make/to decimal! date! #156
+make-test.r3 / make/to decimal! / make/to decimal! date! #157
+make-test.r3 / make/to decimal! / make/to decimal! date! #158
+make-test.r3 / make/to decimal! / make/to decimal! date! #159
+make-test.r3 / make/to decimal! / make/to decimal! date! #160
+make-test.r3 / make/to decimal! / make/to decimal! date! #161
+make-test.r3 / make/to decimal! / make/to decimal! date! #162
+make-test.r3 / make/to decimal! / make/to decimal! date! #163
+make-test.r3 / make/to decimal! / make/to decimal! date! #164
+make-test.r3 / make/to decimal! / make/to decimal! date! #165
+make-test.r3 / make/to decimal! / make/to decimal! date! #166
+make-test.r3 / make/to decimal! / make/to decimal! date! #167
+make-test.r3 / make/to decimal! / make/to decimal! logic! #121
+make-test.r3 / make/to decimal! / make/to decimal! logic! #122
+make-test.r3 / make/to decimal! / make/to decimal! logic! #123
+make-test.r3 / make/to decimal! / make/to decimal! logic! #124
+make-test.r3 / make/to decimal! / to decimal! issue! #120
+make-test.r3 / make/to integer / make integer! logic! #83
+make-test.r3 / make/to integer / make integer! logic! #84
+make-test.r3 / make/to integer / make integer! logic! #85
+make-test.r3 / make/to integer / make integer! logic! #86
+make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #114
+make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #115
+make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #116
+make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #117
+make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #118
+make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #119
+make-test.r3 / make/to integer / make/to integer! date! #91
+make-test.r3 / make/to integer / make/to integer! date! #92
+make-test.r3 / make/to integer / make/to integer! date! #93
+make-test.r3 / make/to integer / make/to integer! date! #94
+make-test.r3 / make/to pair! / make pair! .. #192
+make-test.r3 / make/to pair! / make pair! .. #210
+module-test.r3 / make module / inlined module #13
+module-test.r3 / make module / inlined module #14
+module-test.r3 / make module / inlined module #15
+module-test.r3 / make module / inlined module #16
+module-test.r3 / make module / make module type assertion #18
+module-test.r3 / make module / module body modified on export #17
+module-test.r3 / module import / do module from file #49
+module-test.r3 / module import / import #25
+module-test.r3 / module import / import #26
+module-test.r3 / module import / import #27
+module-test.r3 / module import / import block #30
+module-test.r3 / module import / import needs file! #45
+module-test.r3 / module import / import needs file! #46
+module-test.r3 / module import / import needs url! #47
+module-test.r3 / module import / import needs word! #44
+module-test.r3 / module import / import to user context #28
+module-test.r3 / module import / import/no-lib #29
+module-test.r3 / module import / import/no-lib block #31
+module-test.r3 / module import / lib-local #48
+module-test.r3 / module issues / issue-1005 #50
+module-test.r3 / module issues / issue-1005 #53
+module-test.r3 / module keywords / hidden #2
+os-test.r3 / set-env / get-env / env-1 #1
+os-test.r3 / set-env / get-env / env-1 #2
+os-test.r3 / set-env / get-env / env-1 #3
+os-test.r3 / set-env / get-env / env-1 #4
+os-test.r3 / set-env / get-env / env-1 #5
+os-test.r3 / set-env / get-env / env-2 #6
+os-test.r3 / set-env / get-env / env-2 #7
+os-test.r3 / set-env / get-env / env-3 #8
+os-test.r3 / set-env / get-env / env-3 #9
+port-test.r3 / SYSTEM / query system:// #158
+port-test.r3 / directory port / CHANGE-DIR #51
+port-test.r3 / directory port / CHANGE-DIR #52
+port-test.r3 / directory port / CHANGE-DIR #53
+port-test.r3 / directory port / CHANGE-DIR #54
+port-test.r3 / directory port / DELETE-DIR #49
+port-test.r3 / directory port / READ wildcard #44
+port-test.r3 / directory port / READ wildcard #45
+port-test.r3 / directory port / READ wildcard #46
+port-test.r3 / directory port / READ wildcard #47
+port-test.r3 / directory port / exists? %/ #56
+port-test.r3 / directory port / exists? %/ #57
+port-test.r3 / directory port / exists? %/ #58
+port-test.r3 / directory port / exists? %/ #59
+port-test.r3 / directory port / exists? %/ #60
+port-test.r3 / directory port / make-dir if file exists #21
+port-test.r3 / directory port / open %. #23
+port-test.r3 / directory port / open %. #24
+port-test.r3 / directory port / open %. #25
+port-test.r3 / directory port / open %. #26
+port-test.r3 / directory port / open %. #27
+port-test.r3 / directory port / open wildcard #28
+port-test.r3 / directory port / port-issue-2320 #2
+port-test.r3 / directory port / port-issue-2320 #3
+port-test.r3 / directory port / port-issue-2320 #4
+port-test.r3 / directory port / port-issue-2320 #6
+port-test.r3 / directory port / query directory info #11
+port-test.r3 / directory port / query directory info #8
+port-test.r3 / file port / APPEND file-port #153
+port-test.r3 / file port / APPEND file-port #154
+port-test.r3 / file port / APPEND file-port #155
+port-test.r3 / file port / CLEAR file port #146
+port-test.r3 / file port / CLEAR file port #147
+port-test.r3 / file port / CLEAR file port #148
+port-test.r3 / file port / DELETE file #150
+port-test.r3 / file port / Query empty file name #157
+port-test.r3 / file port / Reading an empty file #156
+port-test.r3 / file port / WRITE/APPEND file-port #152
+port-test.r3 / file port / open/close file #124
+port-test.r3 / file port / open/close file #125
+port-test.r3 / file port / open/close file #126
+port-test.r3 / file port / open/close file #127
+port-test.r3 / file port / open/close file #128
+port-test.r3 / file port / open/close file #129
+port-test.r3 / file port / open/close file #130
+port-test.r3 / file port / query file info #64
+port-test.r3 / file port / query file info #65
+port-test.r3 / file port / query file info #66
+port-test.r3 / file port / query file info #67
+port-test.r3 / file port / query file info #68
+port-test.r3 / file port / query file info #69
+port-test.r3 / file port / query file info (port) #71
+port-test.r3 / file port / query file info (port) #72
+port-test.r3 / file port / query file info (port) #73
+port-test.r3 / file port / query file info (port) #74
+port-test.r3 / file port / query file info (port) #75
+port-test.r3 / file port / query file info (port) #76
+port-test.r3 / file port / query file name #70
+port-test.r3 / file port / read write CRLF conversion #110
+port-test.r3 / file port / read write CRLF conversion #111
+port-test.r3 / file port / read write CRLF conversion #114
+port-test.r3 / file port / read write CRLF conversion #115
+port-test.r3 / file port / read/lines - issue/1794 #80
+port-test.r3 / file port / read/part #141
+port-test.r3 / file port / skip/at on file port #142
+port-test.r3 / file port / skip/at on file port #143
+port-test.r3 / file port / skip/at on file port #144
+port-test.r3 / file port / skip/at on file port #145
+port-test.r3 / file port / write/part #131
+port-test.r3 / file port / write/seek #134
+port-test.r3 / file port / write/seek #135
+port-test.r3 / file port / write/seek #136
+port-test.r3 / file port / write/seek #137
+port-test.r3 / file port / write/seek #138
+port-test.r3 / file port / write/seek #139
+port-test.r3 / file port / write/seek #140
+power-test.r3 / power error / power-error-1 #8
+power-test.r3 / power error / power-error-2 #10
+power-test.r3 / power integer / power-integer-1 #11
+power-test.r3 / power integer / power-integer-2 #12
+power-test.r3 / power integer / power-integer-3 #13
+power-test.r3 / power integer / power-integer-4 #14
+power-test.r3 / power integer / power-integer-5 #15
+power-test.r3 / power integer / power-integer-6 #16
+power-test.r3 / power integer / power-integer-7 #17
+power-test.r3 / power integer / power-integer-8 #18
+rsa-test.r3 / RSA initialization from file / RSA private key from OpenSSL format (RSA PRIVATE KEY) #36
+rsa-test.r3 / RSA initialization from file / RSA private key from OpenSSL x509 format (PRIVATE KEY) #37
+rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #32
+rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #33
+rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #34
+rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #35
+time-test.r3 / time / divide by tuple #66
+time-test.r3 / time / divide by tuple #67
+time-test.r3 / time / issue-1032 #55
+time-test.r3 / time / issue-1032 #56
+time-test.r3 / time / issue-1033 #57
+time-test.r3 / time / issue-1054 #70
+time-test.r3 / time / issue-1055 #65
+time-test.r3 / time / issue-1391 #58
+time-test.r3 / time / issue-1391 #59
+time-test.r3 / time / issue-1391 #60
+time-test.r3 / time / issue-1391 #61
+time-test.r3 / time / round time #1
+time-test.r3 / time / round time #2
+time-test.r3 / time / round time #3
+time-test.r3 / time / round time #4
+time-test.r3 / time / round time #5
+time-test.r3 / time / round time #6
+time-test.r3 / time / time limits #18
+time-test.r3 / time / time limits #19
+time-test.r3 / time / time limits #20
+time-test.r3 / time / time! money! math #71
+time-test.r3 / time / time! money! math #72
+time-test.r3 / time / time! money! math #73
+time-test.r3 / time / time! money! math #74
+unicode-test.r3 / /part refines with utf8 strings / lowercase/part #391
+unicode-test.r3 / /part refines with utf8 strings / uppercase/part #395
+unicode-test.r3 / actions / change char! #302
+unicode-test.r3 / actions / change string! #269
+unicode-test.r3 / actions / change string! #270
+unicode-test.r3 / actions / change string! #271
+unicode-test.r3 / actions / change string! #272
+unicode-test.r3 / actions / change/dup string! #283
+unicode-test.r3 / actions / change/dup string! #285
+unicode-test.r3 / actions / find in binary! #205
+unicode-test.r3 / actions / find in binary! #206
+unicode-test.r3 / actions / find in binary! #209
+unicode-test.r3 / actions / find in binary! #210
+unicode-test.r3 / actions / find tag! #192
+unicode-test.r3 / actions / find tag! #193
+unicode-test.r3 / actions / find tag! #195
+unicode-test.r3 / actions / find tag! #196
+unicode-test.r3 / actions / find tag! #197
+unicode-test.r3 / actions / find tag! #198
+unicode-test.r3 / actions / insert/part string #257
+unicode-test.r3 / actions / insert/part string #260
+unicode-test.r3 / actions / remove #318
+unicode-test.r3 / actions / remove #319
+unicode-test.r3 / actions / trim #320
+unicode-test.r3 / actions / trim/all #325
+unicode-test.r3 / actions / trim/auto #330
+unicode-test.r3 / actions / trim/auto #331
+unicode-test.r3 / actions / trim/head/tail #321
+unicode-test.r3 / actions / trim/head/tail #322
+unicode-test.r3 / actions / trim/head/tail #323
+unicode-test.r3 / actions / trim/head/tail #324
+unicode-test.r3 / actions / trim/lines #329
+unicode-test.r3 / actions / trim/with #326
+unicode-test.r3 / actions / trim/with #327
+unicode-test.r3 / actions / trim/with #328
+unicode-test.r3 / natives / difference #85
+unicode-test.r3 / natives / difference #86
+unicode-test.r3 / natives / difference #87
+unicode-test.r3 / natives / difference #88
+unicode-test.r3 / natives / difference #89
+unicode-test.r3 / natives / difference/skip #90
+unicode-test.r3 / natives / difference/skip #91
+unicode-test.r3 / natives / difference/skip #92
+unicode-test.r3 / natives / forskip #76
+unicode-test.r3 / natives / forskip #77
+unicode-test.r3 / natives / lowercase char! #29
+unicode-test.r3 / natives / lowercase char! #30
+unicode-test.r3 / natives / lowercase char! #31
+unicode-test.r3 / natives / lowercase string #35
+unicode-test.r3 / natives / mold/part long #137
+unicode-test.r3 / natives / mold/part long #138
+unicode-test.r3 / natives / mold/part long #139
+unicode-test.r3 / natives / mold/part long #140
+unicode-test.r3 / natives / remove-each #69
+unicode-test.r3 / natives / remove-each/count #70
+unicode-test.r3 / natives / repeat #78
+unicode-test.r3 / natives / uppercase char! #32
+unicode-test.r3 / natives / uppercase char! #33
+unicode-test.r3 / natives / uppercase char! #34
+unicode-test.r3 / natives / uppercase string #36
+unicode-test.r3 / parse / parse collect after string #424
+unicode-test.r3 / parse / parse collect after string #425
+unicode-test.r3 / parse / parse collect any #420
+unicode-test.r3 / parse / parse collect any #421
+unicode-test.r3 / parse / parse collect any #422
+unicode-test.r3 / parse / parse collect any #423
+unicode-test.r3 / parse / parse collect into block #413
+unicode-test.r3 / parse / parse collect into string #415
+unicode-test.r3 / parse / parse collect into string #416
+unicode-test.r3 / parse / parse collect into string #418
+unicode-test.r3 / parse / parse collect into string #419
+unicode-test.r3 / parse / parse collect set #408
+unicode-test.r3 / parse / parse collect set #409
+unicode-test.r3 / parse / parse collect set pick #411
+unicode-test.r3 / parse / parse copy #400
+unicode-test.r3 / parse / parse copy #401
+unicode-test.r3 / parse / parse keep #404
+unicode-test.r3 / parse / parse keep #405
+unicode-test.r3 / parse / parse keep pick #406
+unicode-test.r3 / parse / parse skip #396
+unicode-test.r3 / parse / parse skip #397
+unicode-test.r3 / parse / parse with bitset #430
+unicode-test.r3 / parse / parse with bitset #431
+unicode-test.r3 / parse / parse with bitset #432
+unicode-test.r3 / parse / parse with bitset #433
+unicode-test.r3 / parse / parse with chars #437
+unicode-test.r3 / parse / parse with string #441
+unicode-test.r3 / paths / get path with negative index #160
+unicode-test.r3 / paths / get path with negative index #161
+unicode-test.r3 / paths / get path with negative index #162
+unicode-test.r3 / paths / get path with negative index #163
+unicode-test.r3 / string column (terminal) width / wide chars #468
+unicode-test.r3 / string column (terminal) width / wide chars #469
+unicode-test.r3 / string column (terminal) width / zero width chars #464
+unicode-test.r3 / string column (terminal) width / zero width chars #465
+unicode-test.r3 / to / to char! #23
+unicode-test.r3 / to / to char! #24
+unicode-test.r3 / to / to char! #25
+unicode-test.r3 / to / to char! #26
+unicode-test.r3 / to / to char! #27
+unicode-test.r3 / to / to string! #19
+unicode-test.r3 / to / to string! #20
+unicode-test.r3 / to / to string! #21
+unicode-test.r3 / to / to string! char! #28
+unicode-test.r3 / to / to word! #7
+unicode-test.r3 / to / to word! #8
+url-test.r3 / url composition / slash deduplication #5
+url-test.r3 / url composition / slash deduplication #6
+url-test.r3 / url composition / slash deduplication #7
+url-test.r3 / url composition / slash deduplication #8
+url-test.r3 / url composition / slash deduplication #9
+vector-test.r3 / VECTOR / MOLD/flat on vector #82
+vector-test.r3 / VECTOR statictics / float64! vector statictics #445
+vector-test.r3 / VECTOR statictics / float64! vector statictics #446
+vector-test.r3 / VECTOR statictics / int8! vector statictics #441
+vector-test.r3 / VECTOR statictics / int8! vector statictics #442
+vector-test.r3 / VECTOR statictics / uint64! vector statictics #443
+vector-test.r3 / VECTOR statictics / uint64! vector statictics #444
+vector-test.r3 / Vector modification actions / APPEND vector binary (invalid) #595
+vector-test.r3 / Vector modification actions / APPEND vector binary (invalid) #596

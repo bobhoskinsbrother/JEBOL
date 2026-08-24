@@ -266,9 +266,6 @@ milestones, because seven of the fourteen demo programs carry no event
 handlers and seven do. The interactive half needs an event model that
 survives a browser round trip, which REBOL's own model never had to.
 
-Still undecided: whether VID is reimplemented faithfully or accepted as a
-dialect shape and rendered as idiomatic HTML. See `docs/milestones.md`.
-
 ## 10. The target is Rebol 3.22.1, the maintained fork
 
 The corpus began as claims read from the REBOL/Core User Guide. A guide

@@ -1,0 +1,36 @@
+# Files in Rebol's src/tests/units that are deliberately not vendored here,
+# and the line in each that decides it.
+#
+# Everything else Rebol's own run-tests.r3 runs is vendored and run on every
+# build. SuiteSelectionTest compares this list against that runner's list and
+# fails if the two stop agreeing, so a file cannot go missing by being
+# forgotten -- which is how 54 of them went missing before.
+#
+# The test for inclusion is whether the file stays inside the process. A test
+# that reaches the network, a shell, a clipboard or a terminal measures the
+# machine it runs on, and would either hang the gate or pass and fail by
+# whether somebody is online.
+#
+# Each reason below was read out of the file, not guessed from its name.
+# Guessing from the name got three of these right for the wrong reason and
+# would have got crash-test.r3 wrong outright.
+
+port-http-test.r3      read http://httpbin.org/ -- the network. Rebol's own
+                       runner has it commented out too, saying "temporary
+                       disabled, because httpbin.org server has serious
+                       connection issues"
+port-net-test.r3       read whois://google.com, read dns:// -- the network
+port-clipboard-test.r3 open clipboard:// -- the host's clipboard
+port-console-test.r3   query system/ports/input 'window-cols -- a real terminal
+call-test.r3           call/shell, call/wait -- spawns processes
+crash-test.r3          write clipboard://, open tcp://localhost:10000, and
+                       read/binary https://github.com/... -- all three
+extension-test.r3      imports a built extension, and Rebol's own runner does
+                       not run it either
+integer-test_.r3       a Red file, not a Rebol one: its header reads Red [...],
+                       it is Red/System's integer tests under BSD-3 from the
+                       Red Foundation, and Rebol's own runner does not run it
+_known-issues_.r3      titled "Rebol3 known (not yet fixed) issues" -- it
+                       asserts what Rebol does wrong today, so passing it
+                       would mean reproducing bugs upstream intends to
+                       remove. Rebol's own runner has it commented out
