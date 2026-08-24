@@ -257,6 +257,13 @@ public final class Transcoder {
             }
 
             Value read = readValue();
+            if (read == null) {
+                throw new IllegalStateException(
+                        "the reader answered null at " + line + ":" + column
+                                + " rather than a value or an error. Absence is not a "
+                                + "value here: it travels as far as whatever copies "
+                                + "the block and surfaces there instead");
+            }
             values.add(read);
             if (outermost) {
                 topLevelStarts.add(began);
@@ -355,7 +362,19 @@ public final class Transcoder {
      * <p>Past that the two part company. A name after a lone percent is a
      * file, and a name after two is neither: R3 refuses {@code %%a} as a
      * malformed file rather than reading a word.
+     *
+     * <p>Unless the two characters after are hex, because then the second
+     * percent opens an escape rather than a second sign: {@code %%40b} is the
+     * file {@code @b}. Refusing it cost url-test.r3 twenty-eight assertions.
+     * A slash does not get the same allowance -- {@code %%/x} is invalid on a
+     * real Rebol, and was being read here as the operator.
      */
+    private static boolean isHexDigit(int letter) {
+        return (letter >= '0' && letter <= '9')
+                || (letter >= 'a' && letter <= 'f')
+                || (letter >= 'A' && letter <= 'F');
+    }
+
     private Value readFileOrPercentWord() {
         int percents = 0;
         while (peekAt(percents) == '%') {
@@ -369,7 +388,10 @@ public final class Transcoder {
             return percentWord("%");
         }
         if (peekAt(1) == '%') {
-            if (peekAt(2) != '/' && !beginsNoFilename(peekAt(2))) {
+            if (isHexDigit(peekAt(2)) && isHexDigit(peekAt(3))) {
+                return readFile();
+            }
+            if (!beginsNoFilename(peekAt(2))) {
                 throw failure(SyntaxFailure.INVALID_LEXEME, null);
             }
             advance();
@@ -722,21 +744,41 @@ public final class Transcoder {
     }
 
     /**
+     * The datatypes that cannot be written as a construction at all.
+     *
+     * <p>Straight off the Make column of {@code types.reb}, whose own header
+     * says what it is for: "Make -- It can be made with #(datatype) method".
+     * Fifteen rows carry a dash, and handing those to MAKE instead would read
+     * things Rebol refuses -- {@code #(char! 97)}, {@code #(money! 1)} and
+     * {@code #(integer! 5)} all became values here while a real Rebol answered
+     * malconstruct.
+     */
+    private static final java.util.Set<Datatype> HAVE_NO_MAKER = java.util.Set.of(
+            Datatype.INTEGER, Datatype.MONEY, Datatype.CHAR, Datatype.WORD,
+            Datatype.SET_WORD, Datatype.GET_WORD, Datatype.LIT_WORD,
+            Datatype.REFINEMENT, Datatype.ISSUE, Datatype.FRAME, Datatype.PORT,
+            Datatype.HANDLE, Datatype.LIBRARY, Datatype.UTYPE);
+
+    /**
      * A construct that carries contents, such as {@code #(decimal! 1)}.
      *
-     * <p>Only the datatypes that can be built from a single read value are
-     * here. A real Rebol answers malconstruct for the rest rather than
-     * guessing, so {@code #(char! 65)} is refused even though the conversion
-     * would be obvious.
+     * <p>What the reader can build itself is below; everything else goes to
+     * MAKE, which is what {@code Construct_Value} does with
+     * {@code Make_Dispatch}. The list of what it must not try is the one
+     * thing kept here, and it is copied from the table rather than judged.
      */
     private Value builtFrom(Datatype datatype, List<Value> contents) {
+        if (HAVE_NO_MAKER.contains(datatype)) {
+            throw failure(SyntaxFailure.MALCONSTRUCT, null);
+        }
         if (datatype == Datatype.BITSET && contents.size() == 2
                 && contents.getFirst() instanceof WordValue complementing
                 && complementing.canonical().equals("not")
                 && contents.get(1) instanceof BinaryValue octets) {
             return BitsetValue.of(bytesOf(octets)).complemented();
         }
-        if (contents.size() == 2 && contents.get(1) instanceof IntegerValue at) {
+        if (contents.size() == 2 && contents.get(1) instanceof IntegerValue at
+                && datatype.isSeries()) {
             Value whole = builtFrom(datatype, List.of(contents.getFirst()));
             if (!(whole instanceof SeriesValue series)) {
                 throw failure(SyntaxFailure.MALCONSTRUCT, null);
@@ -745,15 +787,25 @@ public final class Transcoder {
                     series.storageLength() + 1L));
             return series.atIndex((int) wanted);
         }
-        if (contents.size() != 1) {
+        if (datatype == Datatype.BITSET && contents.size() != 1) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
+        }
+        if (datatype == Datatype.STRUCT && contents.size() == 2
+                && contents.getFirst() instanceof BlockValue layout
+                && contents.get(1) instanceof BlockValue) {
+            if (!StructValue.declaresAStruct(layout)) {
+                throw failure(SyntaxFailure.MALCONSTRUCT, null);
+            }
+            return StructValue.from(layout);
+        }
+        if (contents.size() != 1) {
+            return madeByTheEvaluator(datatype, contents);
         }
         Value only = contents.getFirst();
         return switch (datatype) {
             case DECIMAL -> only instanceof IntegerValue whole
                     ? DecimalValue.of(whole.magnitude())
                     : requireDatatype(only, Datatype.DECIMAL);
-            case INTEGER -> requireDatatype(only, Datatype.INTEGER);
             case OBJECT -> objectFrom(only);
             case BITSET -> only instanceof BinaryValue octets
                     ? BitsetValue.of(bytesOf(octets))
@@ -766,13 +818,11 @@ public final class Transcoder {
                             ? items.as(datatype)
                             : requireDatatype(only, datatype);
             case STRUCT -> {
-                StructValue struct = only instanceof BlockValue layout
-                        ? StructValue.from(layout)
-                        : null;
-                if (struct == null) {
+                if (!(only instanceof BlockValue layout)
+                        || !StructValue.declaresAStruct(layout)) {
                     throw failure(SyntaxFailure.MALCONSTRUCT, null);
                 }
-                yield struct;
+                yield StructValue.from(layout);
             }
             case FUNCTION, CLOSURE -> {
                 if (functionBuilder == null
@@ -790,8 +840,70 @@ public final class Transcoder {
                     throw failure(SyntaxFailure.MALCONSTRUCT, null);
                 }
             }
-            default -> throw failure(SyntaxFailure.MALCONSTRUCT, null);
+            default -> madeByTheEvaluator(datatype, contents);
         };
+    }
+
+    /**
+     * Everything the reader does not build itself, handed to MAKE.
+     *
+     * <p>Rebol keeps no list of which datatypes have construction syntax.
+     * {@code Construct_Value} skips the datatype word and calls
+     * {@code Make_Dispatch[type]} on what is left, so a type has the syntax
+     * exactly when it has a maker. The switch above was a list, and its
+     * {@code default} refused fourteen types a real Rebol reads -- which
+     * stopped ten of Rebol's own test files dead, make-test.r3 at 216 of its
+     * 1,029 assertions.
+     *
+     * <p>The maker arrives the same way the function builder does, because
+     * MAKE belongs to the evaluator and the reader must not reach upward for
+     * it. Until one is handed over, the answer is what it was.
+     */
+    private Value madeByTheEvaluator(Datatype datatype, List<Value> contents) {
+        if (maker == null) {
+            throw failure(SyntaxFailure.MALCONSTRUCT, null);
+        }
+        Value specification = contents.size() == 1 || readsOneLooseValue(datatype)
+                ? contents.getFirst()
+                : BlockValue.block(contents);
+        Value made;
+        try {
+            made = maker.apply(datatype, specification);
+        } catch (RuntimeException refused) {
+            throw failure(SyntaxFailure.MALCONSTRUCT, null);
+        }
+        if (made == null) {
+            throw failure(SyntaxFailure.MALCONSTRUCT, null);
+        }
+        return made;
+    }
+
+    /**
+     * A datatype whose maker reads the first value where the others read the
+     * whole block.
+     *
+     * <p>The C hands a maker a pointer into the block and lets it decide how
+     * far to read, so a difference like this one does not need saying there.
+     * {@code Make_Time} takes a bare integer as a count of seconds and only
+     * reads hours, minutes and seconds when it is handed a block, which makes
+     * {@code #(time! 1 2 3)} one second where {@code make time! [1 2 3]} is
+     * an hour, two minutes and three seconds. Both were checked against a
+     * real Rebol.
+     */
+    private static boolean readsOneLooseValue(Datatype datatype) {
+        return datatype == Datatype.TIME;
+    }
+
+    /**
+     * How a construct is made, for every datatype the reader does not build
+     * itself. {@code Make_Dispatch} in the C.
+     */
+    private static volatile
+            java.util.function.BiFunction<Datatype, Value, Value> maker;
+
+    public static void makeValuesWith(
+            java.util.function.BiFunction<Datatype, Value, Value> builder) {
+        maker = builder;
     }
 
     /**
@@ -1228,6 +1340,10 @@ public final class Transcoder {
                 takeParenthesisedGroup(lexeme);
                 continue;
             }
+            if (peek() == '#' && peekAt(1) == '"' && lexeme.indexOf("/") >= 0) {
+                takeCharacterLiteral(lexeme);
+                continue;
+            }
             if (endsLexeme(peek())) {
                 break;
             }
@@ -1238,6 +1354,38 @@ public final class Transcoder {
             throw failure(SyntaxFailure.INVALID_LEXEME, null);
         }
         return lexeme.toString();
+    }
+
+    /**
+     * Copies a {@code #"c"} into the lexeme.
+     *
+     * <p>A quote ends a lexeme everywhere else, so a character literal used
+     * as a path segment was cut in two: {@code b/#"a"} read as the path
+     * {@code b/#} and a string beside it, where Rebol reads one path. Same
+     * number of assertions either way, which is why counting them could
+     * never have found it.
+     */
+    private void takeCharacterLiteral(StringBuilder lexeme) {
+        lexeme.appendCodePoint(peek());
+        advance();
+        lexeme.appendCodePoint(peek());
+        advance();
+        while (peek() != END_OF_INPUT) {
+            boolean escaped = peek() == '^';
+            lexeme.appendCodePoint(peek());
+            advance();
+            if (escaped && peek() != END_OF_INPUT) {
+                lexeme.appendCodePoint(peek());
+                advance();
+                continue;
+            }
+            if (!escaped && peek() == '"') {
+                lexeme.appendCodePoint(peek());
+                advance();
+                return;
+            }
+        }
+        throw failure(SyntaxFailure.MISSING_CLOSE, OpenDelimiter.QUOTE);
     }
 
     /**
@@ -1324,8 +1472,19 @@ public final class Transcoder {
     private static final Pattern INTEGER = Pattern.compile("[-+]?\\d+(?:'\\d+)*");
     private static final Pattern DECIMAL =
             Pattern.compile("[-+]?(?:\\d+\\.\\d*|\\.\\d+|\\d+)(?:[eE][-+]?\\d+)?");
-    private static final Pattern PERCENT =
-            Pattern.compile("([-+]?(?:\\d+\\.\\d*|\\.\\d+|\\d+))%");
+    /**
+     * A percent, which is a decimal with a {@code %} after it -- exponent
+     * included.
+     *
+     * <p>Rebol scans the number and then looks at what follows, so anything
+     * that reads as a decimal reads as a percent with a {@code %} on the end.
+     * Spelling the number out here instead left the exponent off, and
+     * {@code 1e18%} was refused while {@code 1e18} and {@code 50%} were both
+     * fine. It is line 18 of Rebol's own percent-test.r3 and it hid the other
+     * thirty-four assertions in the file.
+     */
+    private static final Pattern PERCENT = Pattern.compile(
+            "([-+]?(?:\\d+\\.\\d*|\\.\\d+|\\d+)(?:[eE][-+]?\\d+)?)%");
     private static final Pattern DATATYPE = Pattern.compile("([a-zA-Z][a-zA-Z0-9-]*)!");
     private static final String[] MONTH_NAMES = {
         "jan", "feb", "mar", "apr", "may", "jun",
@@ -1346,8 +1505,14 @@ public final class Transcoder {
 
     /** Where the first angle bracket falls, or -1 if there is none. */
     private static int firstAngleBracket(String lexeme) {
+        int depth = 0;
         for (int at = 0; at < lexeme.length(); at++) {
-            if (lexeme.charAt(at) == '<' || lexeme.charAt(at) == '>') {
+            char letter = lexeme.charAt(at);
+            if (letter == '(') {
+                depth++;
+            } else if (letter == ')') {
+                depth--;
+            } else if (depth == 0 && (letter == '<' || letter == '>')) {
                 return at;
             }
         }
@@ -1471,10 +1636,26 @@ public final class Transcoder {
                 && !isDelimiterOrSpace(following);
     }
 
-    /** Where the first character a word may not hold sits, or -1. */
+    /**
+     * Where the first character a word may not hold sits, or -1.
+     *
+     * <p>Skips whatever is inside a parenthesised group, because a path may
+     * carry one and its contents are a value in their own right rather than
+     * part of the word. Judging them by the word's rules truncated the lexeme
+     * at the offending character and re-read from there, so {@code m/(<A>)}
+     * became the path {@code m/(}, then a tag, then a stray close bracket.
+     * A char literal in a path went the same way: {@code b/#"a"} was read as
+     * {@code b/#} and a separate string.
+     */
     private static int firstOffendingCharacter(String lexeme) {
+        int depth = 0;
         for (int at = 0; at < lexeme.length(); at++) {
-            if (NOT_IN_A_WORD.indexOf(lexeme.charAt(at)) >= 0) {
+            char letter = lexeme.charAt(at);
+            if (letter == '(') {
+                depth++;
+            } else if (letter == ')') {
+                depth--;
+            } else if (depth == 0 && NOT_IN_A_WORD.indexOf(letter) >= 0) {
                 return at;
             }
         }

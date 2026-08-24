@@ -12,9 +12,12 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
+import org.jebol.application.Interpreter;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +32,23 @@ import org.junit.jupiter.api.Test;
  * stay hidden.
  */
 class SuiteCoverageTest {
+
+    /**
+     * One interpreter, booted before anything reads.
+     *
+     * <p>The reader does not build a function or a construction on its own:
+     * the evaluator hands it a builder at boot, because MAKE and spec parsing
+     * belong to the evaluator and the reader must not reach upward for them.
+     * So a reader asked a question before any interpreter has existed answers
+     * for a reader that has not been finished being built, and it refuses
+     * constructs it can perfectly well read. That made every one of these
+     * counts too low, and made a fix to construction syntax look like no fix
+     * at all.
+     */
+    @BeforeAll
+    static void bootOneInterpreterFirst() {
+        Interpreter.create();
+    }
 
     private static final Path SUITE = Path.of("src", "test", "resources", "rebol-suite");
 
@@ -45,16 +65,36 @@ class SuiteCoverageTest {
             for (Path path : files.filter(p -> p.toString().endsWith(".r3"))
                     .sorted(Comparator.comparing(Path::toString)).toList()) {
                 String source = Files.readString(path, StandardCharsets.UTF_8);
-                long written = source.lines()
-                        .filter(line -> line.strip().startsWith("--assert")
-                                && !line.strip().startsWith("--assertf"))
-                        .count();
+                long written = assertionsWrittenIn(source);
                 found.add(coverageOf(path, (int) written, source));
             }
         } catch (IOException unreadable) {
             throw new UncheckedIOException(unreadable);
         }
         return found;
+    }
+
+    /**
+     * How many assertions a file actually writes.
+     *
+     * <p>Counting lines that begin with {@code --assert} is wrong in both
+     * directions and was wrong in seventeen of the sixty-seven files. It
+     * misses every assertion indented inside a block, which is how
+     * compare-test.r3 came to be read as having 158 when it has 269 and
+     * power-test.r3 as having 4 when it has 18. It also counts
+     * {@code --assert-er}, a typo on line 22 of Rebol's own image-test.r3,
+     * as though it were an assertion.
+     *
+     * <p>Undercounting is the dangerous half. The gate asks whether the
+     * reader got fewer than were written, so a denominator below the truth
+     * makes the difference negative and the file exempt: eleven files could
+     * not fail this gate at all, and two of them were losing assertions.
+     */
+    private static long assertionsWrittenIn(String source) {
+        return Pattern.compile("--assert(?![A-Za-z0-9?!*+<>=~-])")
+                .matcher(source)
+                .results()
+                .count();
     }
 
     /**
@@ -113,72 +153,58 @@ class SuiteCoverageTest {
                 + offending.substring(0, Math.min(62, offending.length()));
     }
 
-    private static final Path STOPS = SUITE.resolve("reader-stops.txt");
-
-    /**
-     * The files the reader is known to stop partway through, and where.
-     *
-     * <p>Enumerated rather than counted. A recorded count is satisfied by
-     * standing still: the file this replaces held a floor per file and
-     * passed for as long as nothing got worse, so copy-test.r3 reached 0 of
-     * its 223 assertions for weeks with a green build. Naming the file and
-     * the line it stops at means the entry has to be deleted to go green
-     * again, and deleting it is the fix being recorded.
-     */
-    private static Map<String, String> knownStops() {
-        try {
-            Map<String, String> recorded = new LinkedHashMap<>();
-            if (!Files.exists(STOPS)) {
-                return recorded;
-            }
-            for (String line : Files.readAllLines(STOPS)) {
-                String trimmed = line.strip();
-                if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                    continue;
-                }
-                int gap = trimmed.indexOf(' ');
-                recorded.put(trimmed.substring(0, gap), trimmed.substring(gap + 1).strip());
-            }
-            return recorded;
-        } catch (IOException unreadable) {
-            throw new UncheckedIOException(unreadable);
-        }
-    }
-
     @Test
-    @DisplayName("every suite file reads whole, or is listed as one that does not")
-    void everyFileReadsWhole() {
-        Map<String, String> known = knownStops();
-        List<String> unexpected = coverage().stream()
-                .filter(entry -> entry.missed() > 0)
-                .filter(entry -> !known.containsKey(entry.file()))
-                .map(entry -> "  %-24s reaches %d of %d  (%s)".formatted(
+    @DisplayName("every suite file is read to the end")
+    void everyFileIsReadToTheEnd() {
+        List<String> short_ = coverage().stream()
+                .filter(entry -> !entry.note().startsWith("read"))
+                .map(entry -> "  %-26s reaches %4d of %4d   %s".formatted(
                         entry.file(), entry.assertionsRead(),
                         entry.assertionsInSource(), entry.note()))
                 .toList();
 
-        assertThat(unexpected)
-                .as("a suite file the reader cannot take in whole, and nothing said "
-                        + "so. Every assertion after the stop is invisible, and a run "
-                        + "that does not count them reports a green it has not "
-                        + "earned:%n%s", String.join("\n", unexpected))
+        assertThat(short_)
+                .as("a suite file that is not read to the end. There is no list to "
+                        + "add it to and no count that makes it acceptable: every "
+                        + "assertion past the stop is invisible, a run that does not "
+                        + "count them reports a green it has not earned, and two "
+                        + "weeks went into chasing errors that were sitting behind "
+                        + "exactly this. Read the file or take it out of the suite "
+                        + "and say so in not-vendored.txt.%n%s",
+                        String.join("\n", short_))
                 .isEmpty();
     }
 
-    @Test
-    @DisplayName("no listed file has quietly started reading whole")
-    void thestopListHasNoWholeFiles() {
-        List<String> nowWhole = coverage().stream()
-                .filter(entry -> entry.missed() == 0)
-                .map(Coverage::file)
-                .filter(knownStops()::containsKey)
-                .toList();
+    /**
+     * What the slicer still cannot reach, as a number that must not grow.
+     *
+     * <p>Separate from reading, and a weaker gate on purpose. Reading is
+     * absolute: a file the reader cannot take to the end fails the build with
+     * no list and no excuse, and all sixty-seven now read. This is the next
+     * layer -- an assertion the reader took in and the harness still does not
+     * run, because it sits inside a FOREACH or an IF where it cannot be
+     * sliced out and run on its own.
+     *
+     * <p>A ceiling rather than a list, because a list of individual
+     * assertions here would be a list of things nobody can act on one at a
+     * time: they all want the same fix. The ceiling only moves down.
+     */
+    private static final int ASSERTIONS_THE_SLICER_STILL_CANNOT_REACH = 307;
 
-        assertThat(nowWhole)
-                .as("these now read whole and are still listed as stopping. Take "
-                        + "them out of reader-stops.txt; that is how the fix is "
-                        + "recorded:%n  %s", String.join("\n  ", nowWhole))
-                .isEmpty();
+    @Test
+    @DisplayName("the slicer reaches at least as many assertions as it did before")
+    void theSlicerHasNotLostGround() {
+        int lost = coverage().stream()
+                .filter(entry -> entry.note().startsWith("read"))
+                .mapToInt(Coverage::missed)
+                .sum();
+
+        assertThat(lost)
+                .as("an assertion the reader took in and the harness did not run. "
+                        + "It was 907 over 37 files before nested assertions were "
+                        + "run in place; every one that comes back is a file whose "
+                        + "count says more than it does")
+                .isLessThanOrEqualTo(ASSERTIONS_THE_SLICER_STILL_CANNOT_REACH);
     }
 
     @Test

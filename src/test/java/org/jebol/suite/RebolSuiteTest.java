@@ -19,6 +19,7 @@ import org.jebol.domain.host.HostService;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -42,6 +43,23 @@ import org.junit.jupiter.params.provider.MethodSource;
  * stays visible and countable rather than being skipped into silence.
  */
 class RebolSuiteTest {
+
+    /**
+     * One interpreter, booted before anything reads.
+     *
+     * <p>The reader does not build a function or a construction on its own:
+     * the evaluator hands it a builder at boot, because MAKE and spec parsing
+     * belong to the evaluator and the reader must not reach upward for them.
+     * So a reader asked a question before any interpreter has existed answers
+     * for a reader that has not been finished being built, and it refuses
+     * constructs it can perfectly well read. That made every one of these
+     * counts too low, and made a fix to construction syntax look like no fix
+     * at all.
+     */
+    @BeforeAll
+    static void bootOneInterpreterFirst() {
+        Interpreter.create();
+    }
 
     private static final Path SUITE =
             Path.of("src", "test", "resources", "rebol-suite");
@@ -192,6 +210,8 @@ class RebolSuiteTest {
 
     private static void runFile(SuiteFile file) {
         Interpreter interpreter = withAHost();
+        interpreter.defineFreshWordsIn(THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION);
+        interpreter.run(THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION);
         for (SuiteFile.Step step : file.steps()) {
             String source = step.isAssertion() ? step.assertion().source() : step.setup();
             if (source == null || source.isBlank()) {
@@ -211,6 +231,7 @@ class RebolSuiteTest {
                     }
                 } else {
                     verdict = new Verdict(interpreter.run(source).succeeded(), "");
+                    recordWhatRanInside(interpreter, step);
                 }
             } catch (RuntimeException refused) {
                 verdict = new Verdict(false,
@@ -219,6 +240,68 @@ class RebolSuiteTest {
             if (step.isAssertion()) {
                 OUTCOMES.put(step.assertion().toString(), verdict);
             }
+        }
+    }
+
+    /**
+     * What {@code --assert} is bound to while a setup step runs.
+     *
+     * <p>An assertion inside a FOREACH or an IF cannot be sliced out and run
+     * on its own -- the loop variable it reads only exists while the loop is
+     * running. So it is not sliced: the enclosing expression is run as it
+     * stands and this records what each assertion inside it answered, which
+     * is how Rebol's own harness works and the only way those assertions run
+     * at all.
+     *
+     * <p>One letter per assertion, in the order they ran, because reading a
+     * string back out of the interpreter needs no parsing and cannot be
+     * confused by whatever the test itself put in a block.
+     */
+    private static final String THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION = """
+            jebol-nested: copy ""
+            --assert: func [result [any-type!]] [
+                append jebol-nested either all [not error? :result :result] ["t"] ["f"]
+                :result
+            ]""";
+
+    /**
+     * Gives each assertion inside a setup step the verdict it answered with.
+     *
+     * <p>An assertion in a loop body runs once per turn of the loop, and
+     * there is one of it in the file. It holds when every run of it held, so
+     * the letters are folded onto the assertions in order and any extra runs
+     * fold onto the last one -- which is the same reading Rebol's own count
+     * of thirteen thousand executions against ten thousand written implies.
+     */
+    private static void recordWhatRanInside(Interpreter interpreter, SuiteFile.Step step) {
+        if (step.nested().isEmpty()) {
+            return;
+        }
+        String letters = lettersRecordedBy(interpreter);
+        for (int at = 0; at < step.nested().size(); at++) {
+            boolean everyRunHeld = at < letters.length()
+                    ? letters.charAt(at) == 't'
+                    : false;
+            if (at == step.nested().size() - 1 && letters.length() > step.nested().size()) {
+                everyRunHeld = letters.chars().skip(at).allMatch(letter -> letter == 't');
+            }
+            OUTCOMES.put(step.nested().get(at).toString(), everyRunHeld
+                    ? Verdict.passed()
+                    : new Verdict(false, at < letters.length()
+                            ? "answered false inside the block it is written in"
+                            : "never reached: the block it is written in stopped first"));
+        }
+    }
+
+    private static String lettersRecordedBy(Interpreter interpreter) {
+        try {
+            String shown = interpreter.display(
+                    interpreter.run("also copy jebol-nested clear jebol-nested"));
+            return shown.length() >= 2 && shown.charAt(0) == '"'
+                    ? shown.substring(1, shown.length() - 1)
+                    : "";
+        } catch (RuntimeException unavailable) {
+            return "";
         }
     }
 

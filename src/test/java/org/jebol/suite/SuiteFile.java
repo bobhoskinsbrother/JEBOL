@@ -40,7 +40,11 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
      * i and obj -- which is the shape of a harness bug rather than of a
      * language one.
      */
-    record Step(Assertion assertion, String setup) {
+    record Step(Assertion assertion, String setup, List<Assertion> nested) {
+
+        Step(Assertion assertion, String setup) {
+            this(assertion, setup, List.of());
+        }
 
         boolean isAssertion() {
             return assertion != null;
@@ -88,6 +92,28 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         };
     }
 
+    /**
+     * How many {@code --assert} words a run of values holds inside blocks.
+     *
+     * <p>The slicer takes top-level values, so an assertion written inside a
+     * FOREACH or an IF was never anybody's step: not sliced, not run, not
+     * counted. Thirty-seven of Rebol's files put assertions there, and
+     * crypt-port-camelia-test.r3 puts all four of its inside two nested
+     * loops, so it reported zero of four while a real Rebol ran them two
+     * thousand times.
+     */
+    private static int assertionsNestedIn(List<Value> values) {
+        int found = 0;
+        for (Value value : values) {
+            if (value instanceof BlockValue block) {
+                found += assertionsNestedIn(block.remaining());
+            } else if (value instanceof WordValue word && ASSERT.equals(word.spelling())) {
+                found++;
+            }
+        }
+        return found;
+    }
+
     static SuiteFile read(Path path) {
         String source;
         try {
@@ -124,37 +150,34 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                             + "to be the one the file wrote");
         }
         List<Step> steps = stepsIn(name, source, values, spans);
-        return new SuiteFile(
-                name,
-                steps.stream().filter(Step::isAssertion).map(Step::assertion).toList(),
-                steps);
+        List<Assertion> everyOne = new ArrayList<>();
+        for (Step step : steps) {
+            if (step.isAssertion()) {
+                everyOne.add(step.assertion());
+            }
+            everyOne.addAll(step.nested());
+        }
+        return new SuiteFile(name, List.copyOf(everyOne), steps);
     }
 
     /**
      * As much of a file as the reader can take in.
      *
-     * <p>A file used to be all-or-nothing: one construct the reader could
-     * not manage anywhere in it hid every assertion in the file, including
-     * the ones before the problem. series-test.r3 spent a while reporting
-     * zero of 1,532 while failing on line 2,000.
-     *
-     * <p>Bisects on lines rather than scanning, because these files run to
-     * a few thousand lines and a linear scan transcodes the whole prefix
-     * every time. What is dropped is reported by SuiteCoverageTest, so
-     * nothing goes missing quietly.
+     * <p>Walks forward rather than bisecting. Bisection needs the question
+     * "does this prefix read" to stay false once it turns false, and it does
+     * not: a prefix cut in the middle of a multi-line block fails for the
+     * missing bracket rather than for anything wrong, and a longer prefix
+     * that closes the block reads again. Bisecting that predicate stops at
+     * the first open bracket it lands on -- it cost error-test.r3 thirteen
+     * assertions the reader could already have had, and it named line 14 of
+     * copy-test.r3 as the stop when the refusal is on line 30.
      */
     private static String longestReadablePrefix(String source) {
         List<String> lines = source.lines().toList();
         int readable = 0;
-        int low = 0;
-        int high = lines.size();
-        while (low <= high) {
-            int middle = (low + high) / 2;
-            if (Transcoder.transcode(String.join("\n", lines.subList(0, middle))).succeeded()) {
-                readable = middle;
-                low = middle + 1;
-            } else {
-                high = middle - 1;
+        for (int upTo = 1; upTo <= lines.size(); upTo++) {
+            if (Transcoder.transcode(String.join("\n", lines.subList(0, upTo))).succeeded()) {
+                readable = upTo;
             }
         }
         return String.join("\n", lines.subList(0, readable));
@@ -172,7 +195,14 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             Value current = values.get(at);
             if (!(current instanceof WordValue word) || !isHarnessWord(current)) {
                 List<Value> run = valuesUntilNextHarnessWord(values, at);
-                found.add(new Step(null, sourceOf(source, spans, at, run.size())));
+                String setup = sourceOf(source, spans, at, run.size());
+                List<Assertion> nested = new ArrayList<>();
+                for (int more = assertionsNestedIn(run); more > 0; more--) {
+                    ordinal++;
+                    nested.add(new Assertion(file, group, test, ordinal, setup,
+                            beginningOf(spans, at), endOf(spans, at, run.size())));
+                }
+                found.add(new Step(null, setup, List.copyOf(nested)));
                 at += Math.max(1, run.size());
                 continue;
             }
@@ -181,15 +211,24 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             int next = at + 1 + until.size();
 
             switch (spelling) {
-                case START_GROUP -> {
-                    group = onlyString(until, group);
-                    found.add(new Step(null,
-                            sourceOf(source, spans, at + 2, Math.max(0, until.size() - 1))));
-                }
-                case TEST -> {
-                    test = onlyString(until, test);
-                    found.add(new Step(null,
-                            sourceOf(source, spans, at + 2, Math.max(0, until.size() - 1))));
+                case START_GROUP, TEST -> {
+                    if (spelling.equals(START_GROUP)) {
+                        group = onlyString(until, group);
+                    } else {
+                        test = onlyString(until, test);
+                    }
+                    int howMany = Math.max(0, until.size() - 1);
+                    String setup = sourceOf(source, spans, at + 2, howMany);
+                    List<Assertion> nested = new ArrayList<>();
+                    List<Value> body = until.isEmpty()
+                            ? List.of()
+                            : until.subList(1, until.size());
+                    for (int more = assertionsNestedIn(body); more > 0; more--) {
+                        ordinal++;
+                        nested.add(new Assertion(file, group, test, ordinal, setup,
+                                beginningOf(spans, at + 2), endOf(spans, at + 2, howMany)));
+                    }
+                    found.add(new Step(null, setup, List.copyOf(nested)));
                 }
                 case ASSERT -> {
                     ordinal++;
@@ -199,6 +238,15 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                             endOf(spans, at + 1, until.size())), null));
                 }
                 default -> {
+                    String setup = sourceOf(source, spans, at + 1, until.size());
+                    List<Assertion> nested = new ArrayList<>();
+                    for (int more = assertionsNestedIn(until); more > 0; more--) {
+                        ordinal++;
+                        nested.add(new Assertion(file, group, test, ordinal, setup,
+                                beginningOf(spans, at + 1),
+                                endOf(spans, at + 1, until.size())));
+                    }
+                    found.add(new Step(null, setup, List.copyOf(nested)));
                 }
             }
             at = next;

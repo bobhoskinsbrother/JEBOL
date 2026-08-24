@@ -30,7 +30,28 @@ public final class BlockStorage {
         this.items = new ArrayList<>();
     }
 
+    /**
+     * A block of values, and never a block with a hole in it.
+     *
+     * <p>Refused at the door rather than tolerated further in. A null here is
+     * absence smuggled in as a value, and it does not announce itself: it
+     * survives every walk that only looks at what a value is, and surfaces
+     * somewhere else entirely as a NullPointerException from a copy. One got
+     * into a block read out of struct-test.r3 and came back out of
+     * {@code remaining()} in the test harness, a whole file away from
+     * whatever put it there.
+     */
     public BlockStorage(Collection<? extends Value> initialItems) {
+        int at = 0;
+        for (Value item : initialItems) {
+            if (item == null) {
+                throw new IllegalArgumentException(
+                        "a block cannot hold null: position " + (at + 1) + " of "
+                                + initialItems.size() + " is absent rather than a value, "
+                                + "and unset! is how REBOL says that");
+            }
+            at++;
+        }
         this.items = new ArrayList<>(initialItems);
     }
 

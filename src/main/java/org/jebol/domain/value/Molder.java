@@ -100,7 +100,69 @@ public final class Molder {
                 .collect(Collectors.joining(" "));
     }
 
+    /**
+     * What is already being molded further out, so a cycle stops.
+     *
+     * <p>A series may hold itself. Rebol writes {@code [1 [...]]} for a block
+     * that does and {@code self: #[...]} for a map, and JEBOL recursed until
+     * the stack ran out -- which only became reachable when construction
+     * syntax started reading maps, and then took seven tests down with a
+     * StackOverflowError rather than a wrong answer.
+     *
+     * <p>Held per thread, because molding is re-entrant and two threads
+     * molding at once must not see each other's depth.
+     */
+    private static final ThreadLocal<java.util.Set<Object>> ALREADY_INSIDE =
+            ThreadLocal.withInitial(() -> java.util.Collections.newSetFromMap(
+                    new java.util.IdentityHashMap<>()));
+
     private static String render(Value value, boolean forReading) {
+        Object nesting = nestingIdentityOf(value);
+        if (nesting != null) {
+            if (!ALREADY_INSIDE.get().add(nesting)) {
+                return alreadyInsideItself(value);
+            }
+            try {
+                return renderOne(value, forReading);
+            } finally {
+                ALREADY_INSIDE.get().remove(nesting);
+            }
+        }
+        return renderOne(value, forReading);
+    }
+
+    /**
+     * How a series that holds itself is written: its own delimiters, with
+     * nothing but an ellipsis between them.
+     *
+     * <p>{@code [1 [...]]} rather than {@code [1 ...]}, so the shape of what
+     * was there is still visible.
+     */
+    private static String alreadyInsideItself(Value value) {
+        return switch (value) {
+            case MapValue ignored -> "#[...]";
+            case ObjectValue ignored -> "make object! [...]";
+            case BlockValue block -> switch (block.datatype()) {
+                case PAREN -> "(...)";
+                case PATH, SET_PATH, GET_PATH, LIT_PATH -> "...";
+                case HASH -> "make hash! [...]";
+                default -> "[...]";
+            };
+            default -> "...";
+        };
+    }
+
+    /** What a value nests through, or null when it cannot nest. */
+    private static Object nestingIdentityOf(Value value) {
+        return switch (value) {
+            case BlockValue block -> block.storage();
+            case MapValue map -> map;
+            case ObjectValue object -> object.context();
+            default -> null;
+        };
+    }
+
+    private static String renderOne(Value value, boolean forReading) {
         return switch (value) {
             case UnsetValue ignored -> forReading ? "#(unset)" : "";
             case NoneValue ignored -> forReading ? "_" : "none";

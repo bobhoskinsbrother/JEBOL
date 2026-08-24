@@ -132,8 +132,7 @@ class SuiteSelectionTest {
         phantom.removeAll(whatRebolRuns());
 
         List<String> upstreamHasNoRunnerEntry = List.of(
-                "extension-test.r3", "integer-test_.r3",
-                "port-http-test.r3", "_known-issues_.r3");
+                "extension-test.r3", "port-http-test.r3", "_known-issues_.r3");
         phantom.removeAll(upstreamHasNoRunnerEntry);
 
         assertThat(phantom)

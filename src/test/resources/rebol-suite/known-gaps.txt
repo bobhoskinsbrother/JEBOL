@@ -6,38 +6,69 @@
 # recorded, and RebolSuiteTest fails if a listed assertion starts passing
 # while still listed.
 #
-# It went from 1 line to 1032 when the other 45 of Rebol's unit files were
-# vendored. Those files were always there; only 22 were being run, so the
-# suite reported green over a third of the language. The failures below are
-# not new -- they are the ones that were never being asked.
+# 2247 entries over 50 files, out of 9,920 assertions that now run. It was
+# 1,032 over 25 files when 7,169 ran. The list grew because the suite did:
+# thirteen files the reader could not take to the end now read, and an
+# assertion written inside a FOREACH or an IF now runs where before it was
+# not sliced, not run and not counted. None of these failures is new. They
+# were not passing; they were not being asked.
+#
+# Recompute it only from a run with this file emptied. A normal run skips
+# what is listed here and so counts only the failures it was not already
+# hiding.
 #
 # Where they are, worst first:
 #
-#   bincode-test.r3              195
-#   make-test.r3                 138
-#   bitset-test.r3               111
-#   unicode-test.r3              106
-#   checksum-test.r3              87
+#   make-test.r3                 262
+#   codecs-test.r3               207
+#   bincode-test.r3              193
+#   struct-test.r3               188
+#   compress-test.r3             132
+#   bitset-test.r3               110
+#   unicode-test.r3              107
+#   image-test.r3                101
+#   checksum-test.r3              92
+#   date-test.r3                  83
 #   port-test.r3                  76
-#   compress-test.r3              59
+#   mold-test.r3                  69
+#   copy-test.r3                  65
 #   format-test.r3                53
-#   enbase-test.r3                27
-#   date-test.r3                  24
-#   time-test.r3                  24
+#   enbase-test.r3                50
+#   map-test.r3                   48
+#   handle-test.r3                47
+#   crypt-port-test.r3            40
+#   csv-test.r3                   35
+#   func-test.r3                  35
+#   dh-test.r3                    27
 #   module-test.r3                22
-#   codecs-test.r3                17
-#   file-test.r3                  14
+#   time-test.r3                  21
+#   chacha20-test.r3              19
+#   file-test.r3                  16
+#   error-test.r3                 14
+#   codecs-test-pdf.r3            13
+#   poly1305-test.r3              10
 #   power-test.r3                 10
-#   crypt-port-test.r3             9
+#   thru-cache-test.r3            10
 #   crypt-test.r3                  9
 #   issue-test.r3                  9
 #   os-test.r3                     9
 #   vector-test.r3                 9
-#   image-test.r3                  6
+#   lexer-test.r3                  7
 #   rsa-test.r3                    6
-#   url-test.r3                    5
+#   url-test.r3                    6
+#   delect-test.r3                 5
+#   aes-test.r3                    4
+#   crypt-port-camelia-test.r3     4
 #   gob-test.r3                    4
-#   dh-test.r3                     3
+#   percent-test.r3                4
+#   task-test.r3                   4
+#   bbcode-test.r3                 2
+#   conditional-test.r3            2
+#   crypt-port-ccm-test.r3         2
+#   crypt-port-gcm-test.r3         2
+#   series-test.r3                 2
+#   datatype-test.r3               1
+#   rc4-test.r3                    1
 #
 # One entry can never come off, and it is marked below: a real Rebol fails
 # it too, checked by running Rebol's own runner on a binary built from the
@@ -50,6 +81,12 @@
 # "FAIL: swap invalidating index (known issue) (1)".
 series-test.r3 / SWAP / swap invalidating index (known issue) #969
 
+aes-test.r3 / (no group) / (no test) #1
+aes-test.r3 / (no group) / (no test) #2
+aes-test.r3 / (no group) / (no test) #3
+aes-test.r3 / (no group) / (no test) #4
+bbcode-test.r3 / (no group) / (no test) #1
+bbcode-test.r3 / (no group) / (no test) #2
 bincode-test.r3 / BinCode basic read/write functions / BinCode - ALIGN #177
 bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #100
 bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #101
@@ -180,8 +217,6 @@ bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #
 bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #218
 bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #134
 bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #135
-bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #136
-bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #137
 bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #138
 bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #141
 bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #143
@@ -312,7 +347,6 @@ bitset-test.r3 / modify / poke-2 #116
 bitset-test.r3 / modify / poke-2 #117
 bitset-test.r3 / modify / poke-2 #118
 bitset-test.r3 / pick bitset! / basic-6 #76
-bitset-test.r3 / pick bitset! / path expression #93
 bitset-test.r3 / pick bitset! / path expression #94
 bitset-test.r3 / pick bitset! / path expression #95
 bitset-test.r3 / pick bitset! / path expression #96
@@ -356,6 +390,25 @@ bitset-test.r3 / zero? bitset / zero? bitset #3
 bitset-test.r3 / zero? bitset / zero? bitset #4
 bitset-test.r3 / zero? bitset / zero? bitset #5
 bitset-test.r3 / zero? bitset / zero? bitset #6
+chacha20-test.r3 / (no group) / (no test) #1
+chacha20-test.r3 / (no group) / (no test) #10
+chacha20-test.r3 / (no group) / (no test) #11
+chacha20-test.r3 / (no group) / (no test) #12
+chacha20-test.r3 / (no group) / (no test) #13
+chacha20-test.r3 / (no group) / (no test) #14
+chacha20-test.r3 / (no group) / (no test) #15
+chacha20-test.r3 / (no group) / (no test) #16
+chacha20-test.r3 / (no group) / (no test) #17
+chacha20-test.r3 / (no group) / (no test) #18
+chacha20-test.r3 / (no group) / (no test) #19
+chacha20-test.r3 / (no group) / (no test) #2
+chacha20-test.r3 / (no group) / (no test) #3
+chacha20-test.r3 / (no group) / (no test) #4
+chacha20-test.r3 / (no group) / (no test) #5
+chacha20-test.r3 / (no group) / (no test) #6
+chacha20-test.r3 / (no group) / (no test) #7
+chacha20-test.r3 / (no group) / (no test) #8
+chacha20-test.r3 / (no group) / (no test) #9
 checksum-test.r3 / Checksum port / checksum port with invalid argument #103
 checksum-test.r3 / Checksum port / checksum-port-md5 #27
 checksum-test.r3 / Checksum port / checksum-port-md5 #28
@@ -434,6 +487,11 @@ checksum-test.r3 / Checksum port / checksum-write-refinements #97
 checksum-test.r3 / Checksum port / checksum-write-refinements #98
 checksum-test.r3 / Checksum port / checksum-write-refinements #99
 checksum-test.r3 / Checksum/hash / test case 1 #110
+checksum-test.r3 / Checksum/with rfc2202 / checksum file! with refines #124
+checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #120
+checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #121
+checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #122
+checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #123
 checksum-test.r3 / file-checksum / checksum file! #115
 checksum-test.r3 / file-checksum / checksum file! #116
 checksum-test.r3 / file-checksum / checksum file! #117
@@ -443,91 +501,473 @@ checksum-test.r3 / file-checksum / file-checksum with bigger file #114
 checksum-test.r3 / file-checksum / file-checksum with small file #111
 checksum-test.r3 / file-checksum / file-checksum with small file #112
 checksum-test.r3 / file-checksum / file-checksum with small file #113
-codecs-test.r3 / SAVE function / SAVE/compress #16
-codecs-test.r3 / SAVE function / SAVE/compress #17
+codecs-test-pdf.r3 / (no group) / (no test) #1
+codecs-test-pdf.r3 / (no group) / (no test) #10
+codecs-test-pdf.r3 / (no group) / (no test) #11
+codecs-test-pdf.r3 / (no group) / (no test) #12
+codecs-test-pdf.r3 / (no group) / (no test) #13
+codecs-test-pdf.r3 / (no group) / (no test) #2
+codecs-test-pdf.r3 / (no group) / (no test) #3
+codecs-test-pdf.r3 / (no group) / (no test) #4
+codecs-test-pdf.r3 / (no group) / (no test) #5
+codecs-test-pdf.r3 / (no group) / (no test) #6
+codecs-test-pdf.r3 / (no group) / (no test) #7
+codecs-test-pdf.r3 / (no group) / (no test) #8
+codecs-test-pdf.r3 / (no group) / (no test) #9
+codecs-test.r3 / SAVE function / SAVE/compress #25
+codecs-test.r3 / SAVE function / SAVE/compress #26
+codecs-test.r3 / SAVE function / invalid image SAVE #22
+codecs-test.r3 / SAVE function / invalid image SAVE #23
+codecs-test.r3 / SAVE function / invalid image SAVE #24
 codecs-test.r3 / TEXT codec / ENCODE text #4
 codecs-test.r3 / TEXT codec / ENCODE text #5
 codecs-test.r3 / TEXT codec / SAVE %test.txt #10
 codecs-test.r3 / TEXT codec / SAVE %test.txt #6
 codecs-test.r3 / TEXT codec / SAVE %test.txt #8
-codecs-test.r3 / TEXT codec / load UCS16-BE txt #20
-codecs-test.r3 / TEXT codec / load UCS16-LE txt #19
-codecs-test.r3 / TEXT codec / load UCS32-BE txt #22
-codecs-test.r3 / TEXT codec / load UCS32-LE txt #21
-codecs-test.r3 / TEXT codec / load/save binary! as .txt #27
-codecs-test.r3 / TEXT codec / load/save block! as .txt #25
-codecs-test.r3 / TEXT codec / load/save issue! as .txt #23
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #29
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #30
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #31
+codecs-test.r3 / TEXT codec / load UCS16-BE txt #29
+codecs-test.r3 / TEXT codec / load UCS16-LE txt #28
+codecs-test.r3 / TEXT codec / load UCS32-BE txt #31
+codecs-test.r3 / TEXT codec / load UCS32-LE txt #30
+codecs-test.r3 / TEXT codec / load/save binary! as .txt #36
+codecs-test.r3 / TEXT codec / load/save block! as .txt #34
+codecs-test.r3 / TEXT codec / load/save issue! as .txt #32
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #100
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #101
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #102
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #103
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #104
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #105
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #106
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #107
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #108
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #109
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #110
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #111
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #112
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #113
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #114
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #115
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #116
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #117
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #118
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #119
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #120
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #121
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #122
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #123
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #124
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #125
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #126
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #127
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #128
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #129
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #130
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #131
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #132
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #133
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #134
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #135
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #136
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #137
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #138
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #139
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #140
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #141
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #142
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #143
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #144
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #145
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #146
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #147
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #148
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #149
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #150
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #151
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #152
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #153
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #154
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #155
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #156
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #157
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #158
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #159
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #160
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #161
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #162
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #163
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #164
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #165
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #166
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #167
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #168
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #169
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #170
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #171
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #172
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #173
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #174
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #175
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #176
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #177
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #178
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #179
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #180
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #181
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #182
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #183
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #184
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #185
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #186
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #187
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #188
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #189
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #190
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #191
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #192
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #193
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #194
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #195
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #196
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #197
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #198
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #199
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #200
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #201
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #202
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #203
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #204
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #205
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #206
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #207
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #208
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #209
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #210
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #211
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #212
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #213
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #214
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #215
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #216
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #217
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #218
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #219
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #220
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #221
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #222
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #223
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #224
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #225
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #226
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #227
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #38
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #39
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #40
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #41
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #42
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #43
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #44
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #45
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #46
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #47
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #48
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #49
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #50
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #51
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #52
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #53
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #54
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #55
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #56
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #57
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #58
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #59
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #60
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #61
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #62
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #63
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #64
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #65
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #66
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #67
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #68
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #69
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #70
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #71
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #72
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #73
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #74
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #75
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #76
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #77
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #78
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #79
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #80
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #81
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #82
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #83
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #84
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #85
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #86
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #87
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #88
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #89
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #90
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #91
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #92
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #93
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #94
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #95
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #96
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #97
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #98
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #99
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #62
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #63
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #64
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #65
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #66
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #67
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #68
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #69
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #70
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #71
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #72
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #73
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #74
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #75
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #76
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #77
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #78
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #79
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #80
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #81
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #82
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #121
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #122
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #123
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #124
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #125
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #126
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #127
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #128
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #129
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #130
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #131
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #132
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #133
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #134
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #135
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #136
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #137
 compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress #20
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress #21
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #23
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #24
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #25
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #26
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #27
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #28
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #29
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #30
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #31
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #32
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress while specifing level of compression #33
-compress-test.r3 / DEFLATE compression / decompression / basic decompression with specified uncompressed size #34
-compress-test.r3 / DEFLATE compression / decompression / compression when input is limited #35
-compress-test.r3 / DEFLATE compression / decompression / compression when input is limited #36
 compress-test.r3 / DEFLATE compression / decompression / compression when input is limited #37
-compress-test.r3 / DEFLATE compression / decompression / decompress when not at head #38
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #141
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #142
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #143
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #144
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #145
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #146
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #147
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #148
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #149
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #150
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #151
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #152
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #153
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #154
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #155
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #156
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #157
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #158
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #159
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #160
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #161
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #162
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #163
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #164
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #165
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #166
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #167
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #168
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #169
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #170
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #171
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #172
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #173
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #174
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #175
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #176
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #177
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #178
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #179
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #180
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #181
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #182
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #183
+compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #184
 compress-test.r3 / GZIP compression / decompression / GZIP codec #57
 compress-test.r3 / GZIP compression / decompression / GZIP codec #58
 compress-test.r3 / GZIP compression / decompression / GZIP codec #59
 compress-test.r3 / GZIP compression / decompression / GZIP codec #60
 compress-test.r3 / GZIP compression / decompression / GZIP codec #61
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress #39
 compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #41
 compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #42
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #43
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #44
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #45
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #46
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #47
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #48
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #49
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #50
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #51
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #52
-compress-test.r3 / GZIP compression / decompression / GZIP compression when input is limited #54
-compress-test.r3 / GZIP compression / decompression / GZIP compression when input is limited #55
 compress-test.r3 / GZIP compression / decompression / GZIP compression when input is limited #56
-compress-test.r3 / GZIP compression / decompression / GZIP decompress when not at head #40
-compress-test.r3 / GZIP compression / decompression / GZIP decompression with specified uncompressed size #53
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #100
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #101
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #83
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #84
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #85
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #86
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #87
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #88
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #89
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #90
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #91
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #92
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #93
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #94
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #95
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #96
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #97
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #98
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #99
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #102
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #103
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #104
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #105
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #106
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #107
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #108
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #109
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #110
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #111
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #112
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #113
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #114
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #115
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #116
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #117
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #118
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #119
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #120
 compress-test.r3 / ZLIB compression / decompression / basic compress/decompress #1
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress #2
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #10
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #11
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #12
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #13
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #14
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #4
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #5
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #6
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #7
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #8
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress while specifing level of compression #9
-compress-test.r3 / ZLIB compression / decompression / basic decompression with specified uncompressed size #15
-compress-test.r3 / ZLIB compression / decompression / compression when input is limited #16
-compress-test.r3 / ZLIB compression / decompression / compression when input is limited #17
 compress-test.r3 / ZLIB compression / decompression / compression when input is limited #18
-compress-test.r3 / ZLIB compression / decompression / decompress when not at head #19
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #1
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #2
+conditional-test.r3 / switch basics local / switch-basic-16 #37
+conditional-test.r3 / switch basics local / switch-basic-16 #38
+copy-test.r3 / Copy block! / copy/deep block! #145
+copy-test.r3 / Copy block! / copy/deep block! #147
+copy-test.r3 / Copy block! / copy/deep block! #148
+copy-test.r3 / Copy block! / copy/deep block! #149
+copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #210
+copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #216
+copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #217
+copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #218
+copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #219
+copy-test.r3 / Copy block! / copy/types block! (any strings) #170
+copy-test.r3 / Copy block! / copy/types block! (any strings) #171
+copy-test.r3 / Copy block! / copy/types block! (only object) #178
+copy-test.r3 / Copy block! / copy/types block! (only strings) #152
+copy-test.r3 / Copy map! / copy/deep map! #11
+copy-test.r3 / Copy map! / copy/deep map! #12
+copy-test.r3 / Copy map! / copy/deep map! #13
+copy-test.r3 / Copy map! / copy/deep map! #6
+copy-test.r3 / Copy map! / copy/deep map! #7
+copy-test.r3 / Copy map! / copy/deep map! #8
+copy-test.r3 / Copy map! / copy/deep map! #9
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #61
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #62
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #63
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #64
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #65
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #66
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #67
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #68
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #69
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #70
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #71
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #72
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #73
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #74
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #75
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #44
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #46
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #48
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #53
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #55
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #57
+copy-test.r3 / Copy map! / copy/deep/types map! (only object) #40
+copy-test.r3 / Copy map! / copy/deep/types map! (only object) #42
+copy-test.r3 / Copy map! / copy/types map! (any strings) #25
+copy-test.r3 / Copy map! / copy/types map! (any strings) #26
+copy-test.r3 / Copy map! / copy/types map! (only object) #33
+copy-test.r3 / Copy map! / copy/types map! (only strings) #16
+copy-test.r3 / Copy object! / copy/deep object! #79
+copy-test.r3 / Copy object! / copy/deep object! #81
+copy-test.r3 / Copy object! / copy/deep object! #82
+copy-test.r3 / Copy object! / copy/deep object! #83
+copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #130
+copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #136
+copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #137
+copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #138
+copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #139
+copy-test.r3 / Copy object! / copy/deep/types object! (only maps and strings) #112
+copy-test.r3 / Copy object! / copy/deep/types object! (only maps and strings) #114
+copy-test.r3 / Copy object! / copy/types object! (any strings) #91
+copy-test.r3 / Copy object! / copy/types object! (any strings) #92
+copy-test.r3 / Copy object! / copy/types object! (only object) #99
+copy-test.r3 / Copy object! / copy/types object! (only strings) #86
+copy-test.r3 / Shallow copy / copy map! #5
+copy-test.r3 / Simple copy / (no test) #1
+copy-test.r3 / Simple copy / (no test) #2
+crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #1
+crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #2
+crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #3
+crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #4
+crypt-port-ccm-test.r3 / (no group) / (no test) #1
+crypt-port-ccm-test.r3 / (no group) / (no test) #2
+crypt-port-gcm-test.r3 / (no group) / (no test) #1
+crypt-port-gcm-test.r3 / (no group) / (no test) #2
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #15
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #16
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #17
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #18
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #19
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #20
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #21
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #22
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #23
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #24
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #25
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #26
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #27
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #28
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #29
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #30
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #31
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #32
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #33
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #34
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #35
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #36
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #37
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #38
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #39
+crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #40
+crypt-port-test.r3 / FIPS-197 test vectors / (no test) #1
+crypt-port-test.r3 / FIPS-197 test vectors / (no test) #2
 crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #3
 crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #4
 crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #5
 crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #6
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input which needs padding #7
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input which needs padding #8
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #7
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #8
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input which needs padding #10
+crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input which needs padding #11
 crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input which needs padding #9
+crypt-port-test.r3 / NIST test vectors (CBC) / AES-128-CBC with chunked input which needs padding #14
+crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #12
+crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #13
 crypt-test.r3 / Load-PKIX / Load PKIX data from file using PKIX codec #25
 crypt-test.r3 / Load-PKIX / Load PKIX data from file using PKIX codec #26
 crypt-test.r3 / Load-PKIX / Load PKIX data from file using PKIX codec #27
@@ -537,6 +977,55 @@ crypt-test.r3 / PPK codec / Init RSA key from encrypted PPK file #35
 crypt-test.r3 / PPK codec / Init public RSA key from SSH2 PPK file #36
 crypt-test.r3 / SSH-key codec / Init RSA key from file #32
 crypt-test.r3 / SSH-key codec / Init public DH params from file #33
+csv-test.r3 / (no group) / (no test) #1
+csv-test.r3 / (no group) / (no test) #10
+csv-test.r3 / (no group) / (no test) #11
+csv-test.r3 / (no group) / (no test) #12
+csv-test.r3 / (no group) / (no test) #13
+csv-test.r3 / (no group) / (no test) #14
+csv-test.r3 / (no group) / (no test) #15
+csv-test.r3 / (no group) / (no test) #16
+csv-test.r3 / (no group) / (no test) #17
+csv-test.r3 / (no group) / (no test) #18
+csv-test.r3 / (no group) / (no test) #19
+csv-test.r3 / (no group) / (no test) #2
+csv-test.r3 / (no group) / (no test) #20
+csv-test.r3 / (no group) / (no test) #21
+csv-test.r3 / (no group) / (no test) #22
+csv-test.r3 / (no group) / (no test) #23
+csv-test.r3 / (no group) / (no test) #24
+csv-test.r3 / (no group) / (no test) #25
+csv-test.r3 / (no group) / (no test) #26
+csv-test.r3 / (no group) / (no test) #27
+csv-test.r3 / (no group) / (no test) #28
+csv-test.r3 / (no group) / (no test) #29
+csv-test.r3 / (no group) / (no test) #3
+csv-test.r3 / (no group) / (no test) #30
+csv-test.r3 / (no group) / (no test) #31
+csv-test.r3 / (no group) / (no test) #32
+csv-test.r3 / (no group) / (no test) #33
+csv-test.r3 / (no group) / (no test) #34
+csv-test.r3 / (no group) / (no test) #35
+csv-test.r3 / (no group) / (no test) #4
+csv-test.r3 / (no group) / (no test) #5
+csv-test.r3 / (no group) / (no test) #6
+csv-test.r3 / (no group) / (no test) #7
+csv-test.r3 / (no group) / (no test) #8
+csv-test.r3 / (no group) / (no test) #9
+datatype-test.r3 / datatype! / number? #37
+date-test.r3 / #(date! ...) / #(date! ...) invalid #37
+date-test.r3 / #(date! ...) / #(date! ...) invalid #38
+date-test.r3 / #(date! ...) / #(date! ...) invalid #39
+date-test.r3 / #(date! ...) / #(date! ...) valid #29
+date-test.r3 / #(date! ...) / #(date! ...) valid #30
+date-test.r3 / #(date! ...) / #(date! ...) valid #32
+date-test.r3 / #(date! ...) / #(date! ...) valid #33
+date-test.r3 / #(date! ...) / #(date! ...) valid #34
+date-test.r3 / DATE/TIMEZONE / set timezone #117
+date-test.r3 / DATE/TIMEZONE / set timezone #118
+date-test.r3 / DATE/TIMEZONE / set timezone #119
+date-test.r3 / DATE/TIMEZONE / set timezone #120
+date-test.r3 / DATE/TIMEZONE / set timezone #121
 date-test.r3 / ISO8601 subset / ISO8601 basic load #1
 date-test.r3 / ISO8601 subset / ISO8601 basic load #2
 date-test.r3 / ISO8601 subset / ISO8601 basic load #3
@@ -548,29 +1037,127 @@ date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #6
 date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #7
 date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #8
 date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #9
+date-test.r3 / Internet date / TO-DATE (from Internet date) #128
+date-test.r3 / Internet date / TO-DATE (from Internet date) #129
+date-test.r3 / Internet date / TO-DATE (from Internet date) #130
+date-test.r3 / Internet date / TO-DATE (from Internet date) #131
+date-test.r3 / Internet date / TO-DATE (from Internet date) #132
+date-test.r3 / Internet date / TO-DATE (from Internet date) #133
+date-test.r3 / Internet date / TO-DATE (from Internet date) #134
+date-test.r3 / Internet date / TO-DATE {1-1-2000 00:00:00} #135
+date-test.r3 / Internet date / TO-DATE {1-1-2000 00:00:00} #136
+date-test.r3 / Internet date / TO-IDATE (Date to Internet date) #126
+date-test.r3 / Julian date / Julian date setter #159
+date-test.r3 / Julian date / Julian date setter #160
 date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #13
 date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #14
 date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #15
 date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #16
 date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #17
-date-test.r3 / TO DATE! / make date! #18
 date-test.r3 / TO DATE! / make date! #19
 date-test.r3 / TO DATE! / make date! #20
-date-test.r3 / TO DATE! / make date! #21
 date-test.r3 / TO DATE! / make date! #22
 date-test.r3 / TO DATE! / make date! #23
 date-test.r3 / TO DATE! / make date! #24
-date-test.r3 / TO DATE! / zero year #25
+date-test.r3 / Various date issues / error date set messages #107
+date-test.r3 / Various date issues / error date set messages #109
+date-test.r3 / Various date issues / error date set messages #110
+date-test.r3 / Various date issues / error date set messages #111
+date-test.r3 / Various date issues / error date set messages #112
+date-test.r3 / Various date issues / error date set messages #113
+date-test.r3 / Various date issues / invalid time in date #82
+date-test.r3 / Various date issues / invalid time in date #83
+date-test.r3 / Various date issues / invalid time in date #84
+date-test.r3 / Various date issues / invalid time in date #85
+date-test.r3 / Various date issues / issue 1375 #70
+date-test.r3 / Various date issues / issue 1375 #71
+date-test.r3 / Various date issues / issue 1375 #72
+date-test.r3 / Various date issues / issue 2369 #52
+date-test.r3 / Various date issues / issue 2369 #53
+date-test.r3 / Various date issues / issue 2369 #54
+date-test.r3 / Various date issues / issue 2369 #55
+date-test.r3 / Various date issues / issue 2414 #63
+date-test.r3 / Various date issues / issue 2414 #65
+date-test.r3 / Various date issues / issue-1412 #74
+date-test.r3 / Various date issues / issue-1412 #75
+date-test.r3 / Various date issues / issue-1412 #76
+date-test.r3 / Various date issues / issue-276 #77
+date-test.r3 / Various date issues / negative year #78
+date-test.r3 / Various date issues / negative year #79
+date-test.r3 / Various date issues / negative year #80
+date-test.r3 / Various date issues / numerical accessors #116
+date-test.r3 / Various date issues / timezones #87
+date-test.r3 / Various date issues / timezones #88
+date-test.r3 / Various date issues / timezones #89
+date-test.r3 / Various date issues / timezones #90
+date-test.r3 / Various date issues / timezones #91
+date-test.r3 / Various date issues / timezones #92
+date-test.r3 / Various date issues / timezones #93
+date-test.r3 / Various date issues / timezones #94
+date-test.r3 / Various date issues / timezones #96
+date-test.r3 / Various date issues / timezones #97
+delect-test.r3 / Delect / (no test) #1
+delect-test.r3 / Delect / (no test) #2
+delect-test.r3 / Delect / (no test) #3
+delect-test.r3 / Delect / (no test) #4
+delect-test.r3 / Delect / (no test) #5
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #11
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #15
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #16
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #17
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #18
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #19
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #20
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #21
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #22
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #23
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #24
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #25
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #26
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #27
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #28
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #29
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #30
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #31
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #32
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #33
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #34
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #35
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #36
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #37
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #38
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #39
+dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #40
 enbase-test.r3 / debase 16 / debase other strings #48
 enbase-test.r3 / debase 16 / debase other strings #51
 enbase-test.r3 / debase 64 - safe URL variant / debase 64 url 1 #35
 enbase-test.r3 / debase 64 - safe URL variant / debase 64 url 2 - missing padding in the input #37
 enbase-test.r3 / debase 64 - safe URL variant / debase 64 url 3 #39
+enbase-test.r3 / debase/part / debase/part with series as a length #100
+enbase-test.r3 / debase/part / debase/part with series as a length #101
+enbase-test.r3 / debase/part / debase/part with series as a length #102
+enbase-test.r3 / debase/part / debase/part with series as a length #103
+enbase-test.r3 / debase/part / debase/part with series as a length #104
+enbase-test.r3 / debase/part / debase/part with series as a length #105
+enbase-test.r3 / debase/part / debase/part with series as a length #106
+enbase-test.r3 / debase/part / debase/part with series as a length #107
+enbase-test.r3 / debase/part / debase/part with series as a length #108
+enbase-test.r3 / debase/part / debase/part with series as a length #109
+enbase-test.r3 / debase/part / debase/part with series as a length #110
+enbase-test.r3 / debase/part / debase/part with series as a length #111
+enbase-test.r3 / debase/part / debase/part with series as a length #112
+enbase-test.r3 / debase/part / debase/part with series as a length #113
+enbase-test.r3 / debase/part / debase/part with series as a length #114
+enbase-test.r3 / debase/part / debase/part with series as a length #115
+enbase-test.r3 / debase/part / debase/part with series as a length #116
+enbase-test.r3 / debase/part / debase/part with series as a length #117
+enbase-test.r3 / debase/part / debase/part with series as a length #118
+enbase-test.r3 / debase/part / debase/part with series as a length #119
+enbase-test.r3 / debase/part / debase/part with series as a length #120
+enbase-test.r3 / debase/part / debase/part with series as a length #121
 enbase-test.r3 / debase/part / debase/part with series as a length #97
 enbase-test.r3 / debase/part / debase/part with series as a length #98
+enbase-test.r3 / debase/part / debase/part with series as a length #99
 enbase-test.r3 / en/debase 2 / debase 2 1 #54
 enbase-test.r3 / en/debase 2 / debase 2 1 #55
 enbase-test.r3 / enbase 64 - safe URL variant / enbase/url #43
@@ -591,20 +1178,36 @@ enbase-test.r3 / enbase/flat / enbase/flat 64 #30
 enbase-test.r3 / enbase/flat / enbase/flat 64 #31
 enbase-test.r3 / enbase/part / enbase/part with series as a length #77
 enbase-test.r3 / enbase/part / enbase/part with series as a length #78
-file-test.r3 / WILDCARD / read wildcard #39
-file-test.r3 / WILDCARD / read wildcard #40
-file-test.r3 / WILDCARD / read wildcard #41
+error-test.r3 / ASSERT / assert with longer expression #28
+error-test.r3 / ASSERT / invalid assert #36
+error-test.r3 / ASSERT / valid assert #27
+error-test.r3 / Error issues / issue-553 #38
+error-test.r3 / Error issues / object from error #39
+error-test.r3 / Error issues / object from error #40
+error-test.r3 / Error issues / object from error #41
+error-test.r3 / Error issues / protected catalog #42
+error-test.r3 / Error issues / protected catalog #43
+error-test.r3 / make error! / make invalid error! #21
+error-test.r3 / make error! / make invalid error! #22
+error-test.r3 / make error! / make invalid error! #23
+error-test.r3 / make error! / make invalid error! #24
+error-test.r3 / make error! / make invalid error! #25
+file-test.r3 / WILDCARD / read wildcard #43
+file-test.r3 / WILDCARD / read wildcard #44
+file-test.r3 / WILDCARD / read wildcard #45
 file-test.r3 / cd / cd / cd ~ #1
-file-test.r3 / file:// / issue-834 #34
-file-test.r3 / to-local-file / issue-1115 #16
-file-test.r3 / to-local-file / issue-1115 #17
-file-test.r3 / to-real-file / On directory #22
-file-test.r3 / to-real-file / On directory #23
-file-test.r3 / to-real-file / On directory #24
-file-test.r3 / to-real-file / On file #18
-file-test.r3 / to-real-file / On file #19
-file-test.r3 / to-real-file / On file with Unicode chars #20
-file-test.r3 / to-real-file / On file with Unicode chars #21
+file-test.r3 / file:// / issue-834 #38
+file-test.r3 / to-local-file / issue-1115 #18
+file-test.r3 / to-local-file / issue-1115 #19
+file-test.r3 / to-local-file / issue-1115 #20
+file-test.r3 / to-local-file / issue-1115 #21
+file-test.r3 / to-real-file / On directory #26
+file-test.r3 / to-real-file / On directory #27
+file-test.r3 / to-real-file / On directory #28
+file-test.r3 / to-real-file / On file #22
+file-test.r3 / to-real-file / On file #23
+file-test.r3 / to-real-file / On file with Unicode chars #24
+file-test.r3 / to-real-file / On file with Unicode chars #25
 format-test.r3 / FORMAT / FORMAT date #17
 format-test.r3 / FORMAT / FORMAT date #18
 format-test.r3 / FORMAT / FORMAT date #19
@@ -658,16 +1261,193 @@ format-test.r3 / FORMAT / format rounding #54
 format-test.r3 / FORMAT / format rounding #55
 format-test.r3 / FORMAT / format rounding #56
 format-test.r3 / FORMAT / format/pad #48
+func-test.r3 / FUNCTION (funct) / function/with object and module #92
+func-test.r3 / FUNCTION (funct) / function/with object and module #94
+func-test.r3 / OP! / body-of op! #63
+func-test.r3 / OP! / body-of op! #64
+func-test.r3 / OP! / make op! #56
+func-test.r3 / OP! / make op! #57
+func-test.r3 / OP! / make op! #58
+func-test.r3 / OP! / make op! from action! #67
+func-test.r3 / OP! / make op! from function with refinement #62
+func-test.r3 / OP! / make op! from function! #68
+func-test.r3 / OP! / make op! from function! #69
+func-test.r3 / OP! / make op! from function! #71
+func-test.r3 / OP! / make op! from function! #72
+func-test.r3 / OP! / make op! with /local #59
+func-test.r3 / OP! / spec-of op! #65
+func-test.r3 / OP! / spec-of op! #66
+func-test.r3 / Other issues / function rebinding (closure compatibility) #133
+func-test.r3 / Other issues / function rebinding (closure compatibility) #134
+func-test.r3 / Other issues / function rebinding (closure compatibility) #139
+func-test.r3 / Other issues / function rebinding (closure compatibility) #140
+func-test.r3 / Other issues / issue-1047 #145
+func-test.r3 / Other issues / issue-168 #117
+func-test.r3 / Other issues / issue-168 #118
+func-test.r3 / Other issues / issue-2025 #95
+func-test.r3 / Other issues / issue-217 #127
+func-test.r3 / Other issues / issue-717 #146
+func-test.r3 / Other issues / issue-87 #103
+func-test.r3 / Other issues / issue-87 #111
+func-test.r3 / Other issues / issue-87 #112
+func-test.r3 / Other issues / issue-87 #113
+func-test.r3 / Other issues / issue-87 #114
+func-test.r3 / Other issues / unset as a function argument #120
+func-test.r3 / ZERO? / zero? #73
+func-test.r3 / ZERO? / zero? #74
+func-test.r3 / ZERO? / zero? #75
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
 gob-test.r3 / gob issues / issue-1617 #35
 gob-test.r3 / gob issues / issue-992 #36
+handle-test.r3 / context handles / (no test) #1
+handle-test.r3 / context handles / (no test) #10
+handle-test.r3 / context handles / (no test) #11
+handle-test.r3 / context handles / (no test) #12
+handle-test.r3 / context handles / (no test) #13
+handle-test.r3 / context handles / (no test) #14
+handle-test.r3 / context handles / (no test) #15
+handle-test.r3 / context handles / (no test) #16
+handle-test.r3 / context handles / (no test) #17
+handle-test.r3 / context handles / (no test) #18
+handle-test.r3 / context handles / (no test) #19
+handle-test.r3 / context handles / (no test) #2
+handle-test.r3 / context handles / (no test) #20
+handle-test.r3 / context handles / (no test) #21
+handle-test.r3 / context handles / (no test) #22
+handle-test.r3 / context handles / (no test) #23
+handle-test.r3 / context handles / (no test) #24
+handle-test.r3 / context handles / (no test) #25
+handle-test.r3 / context handles / (no test) #26
+handle-test.r3 / context handles / (no test) #27
+handle-test.r3 / context handles / (no test) #28
+handle-test.r3 / context handles / (no test) #29
+handle-test.r3 / context handles / (no test) #3
+handle-test.r3 / context handles / (no test) #30
+handle-test.r3 / context handles / (no test) #31
+handle-test.r3 / context handles / (no test) #32
+handle-test.r3 / context handles / (no test) #33
+handle-test.r3 / context handles / (no test) #34
+handle-test.r3 / context handles / (no test) #35
+handle-test.r3 / context handles / (no test) #36
+handle-test.r3 / context handles / (no test) #37
+handle-test.r3 / context handles / (no test) #38
+handle-test.r3 / context handles / (no test) #39
+handle-test.r3 / context handles / (no test) #4
+handle-test.r3 / context handles / (no test) #40
+handle-test.r3 / context handles / (no test) #41
+handle-test.r3 / context handles / (no test) #42
+handle-test.r3 / context handles / (no test) #43
+handle-test.r3 / context handles / (no test) #44
+handle-test.r3 / context handles / (no test) #45
+handle-test.r3 / context handles / (no test) #46
+handle-test.r3 / context handles / (no test) #47
+handle-test.r3 / context handles / (no test) #5
+handle-test.r3 / context handles / (no test) #6
+handle-test.r3 / context handles / (no test) #7
+handle-test.r3 / context handles / (no test) #8
+handle-test.r3 / context handles / (no test) #9
+image-test.r3 / BLUR / premultiply image 3 (input not at its head) #203
+image-test.r3 / BLUR / premultiply image 3 (input not at its head) #204
+image-test.r3 / BLUR / premultiply image 3 (input not at its head) #205
+image-test.r3 / BLUR / premultiply image 3 (input not at its head) #206
+image-test.r3 / FOREACH / issue-1008 #71
+image-test.r3 / FOREACH / issue-1479 #72
+image-test.r3 / FOREACH / issue-1479 #73
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy at image! #45
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy at image! #46
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy at image! #47
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy at image! #48
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy at image! #49
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy image! #41
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy image! #42
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy image! #43
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy image! #44
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #64
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #65
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #66
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #67
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #68
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #69
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy image! #60
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy image! #61
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy image! #62
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy image! #63
+image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / mold/all image with modified index #70
+image-test.r3 / Image as a series / APPEND on image #228
+image-test.r3 / Image as a series / APPEND on image #229
+image-test.r3 / Image as a series / APPEND on image #230
+image-test.r3 / Image as a series / CHANGE on image #250
+image-test.r3 / Image as a series / CHANGE on image #251
+image-test.r3 / Image as a series / CHANGE on image #252
+image-test.r3 / Image as a series / CHANGE on image #253
+image-test.r3 / Image as a series / CHANGE on image #254
+image-test.r3 / Image as a series / CHANGE on image #255
+image-test.r3 / Image as a series / FIND integer on image (alpha) #225
+image-test.r3 / Image as a series / FIND integer on image (alpha) #226
+image-test.r3 / Image as a series / FIND tuple on image #214
+image-test.r3 / Image as a series / FIND tuple on image #215
+image-test.r3 / Image as a series / FIND tuple on image #216
+image-test.r3 / Image as a series / FIND tuple on image #217
+image-test.r3 / Image as a series / FIND tuple on image #218
+image-test.r3 / Image as a series / FIND tuple on image #219
+image-test.r3 / Image as a series / FIND tuple on image #220
+image-test.r3 / Image as a series / FIND tuple on image #221
+image-test.r3 / Image as a series / FIND tuple on image #222
+image-test.r3 / Image as a series / FIND tuple on image #223
+image-test.r3 / Image as a series / FIND tuple on image #224
+image-test.r3 / Image as a series / INSERT on image #232
+image-test.r3 / Image as a series / INSERT on image #233
+image-test.r3 / Image as a series / INSERT on image #234
+image-test.r3 / Image as a series / INSERT on image #235
+image-test.r3 / Image as a series / INSERT on image #236
+image-test.r3 / Image as a series / INSERT on image #237
+image-test.r3 / Image as a series / INSERT/tail on image #241
+image-test.r3 / Image as a series / INSERT/tail on image #244
+image-test.r3 / Image as a series / REPEAT on image #210
+image-test.r3 / Image as a series / REPEAT on image #211
+image-test.r3 / Image difference / image-diff (different sizes) #162
+image-test.r3 / Image difference / image-diff (different sizes) #163
+image-test.r3 / Image difference / image-diff (same sizes) #160
+image-test.r3 / Image difference / image-diff (same sizes) #161
+image-test.r3 / Image difference / image-diff/part #166
+image-test.r3 / Image difference / image-diff/part #167
+image-test.r3 / Image difference / image-diff/part #171
+image-test.r3 / Image difference / image-diff/part #172
+image-test.r3 / Image difference / image-diff/part #173
+image-test.r3 / Luminosity / Grayscale / Grayscale image #196
+image-test.r3 / Luminosity / Grayscale / Luminosity image (BT.709) #186
+image-test.r3 / Luminosity / Grayscale / Luminosity/luma image (BT.601) #191
+image-test.r3 / RGB - HSV conversions / HSV-TO-RGB #152
+image-test.r3 / RGB - HSV conversions / RGB-TO-HSV #148
+image-test.r3 / Save/load image / premultiply image 3 (input not at its head) #207
+image-test.r3 / Save/load image / premultiply image 3 (input not at its head) #208
+image-test.r3 / Save/load image / premultiply image 3 (input not at its head) #209
+image-test.r3 / change image / change image by image #134
+image-test.r3 / change image / change image by image #135
+image-test.r3 / change image / change image by image #136
+image-test.r3 / change image / change image by image #137
+image-test.r3 / change image / change image by image #138
+image-test.r3 / construct image / construct image invalid #23
+image-test.r3 / image range / image range (pair index) #101
+image-test.r3 / image range / image range (pair index) #95
+image-test.r3 / image range / image range (pair index) #97
+image-test.r3 / image range / image range (pair index) #99
+image-test.r3 / image/color / image/color getter #128
+image-test.r3 / image/color / image/color getter #129
+image-test.r3 / image/color / image/color getter #130
+image-test.r3 / image/color / image/color setter #131
+image-test.r3 / image/color / image/color setter #132
+image-test.r3 / image/color / image/color setter #133
 image-test.r3 / make image / to image from binary #10
 image-test.r3 / make image / to image from binary #11
 image-test.r3 / make image / to image from binary #12
 image-test.r3 / make image / to image from binary #13
 image-test.r3 / make image / to image from binary #8
 image-test.r3 / make image / to image from binary #9
+image-test.r3 / raw image data getters/setters / errors #125
+image-test.r3 / raw image data getters/setters / errors #126
+image-test.r3 / raw image data getters/setters / errors #127
 issue-test.r3 / to-hex / bad chars in issue #24
 issue-test.r3 / to-hex / bad chars in issue #25
 issue-test.r3 / to-hex / bad chars in issue #26
@@ -677,6 +1457,13 @@ issue-test.r3 / to-hex / to-hex/size integer! #9
 issue-test.r3 / to-hex / to-hex/size tuple! #12
 issue-test.r3 / to-hex / to-hex/size tuple! #13
 issue-test.r3 / to-hex / to-hex/size tuple! #14
+lexer-test.r3 / Construction syntax / any-string! #327
+lexer-test.r3 / Construction syntax / any-string! #328
+lexer-test.r3 / Construction syntax / any-string! #329
+lexer-test.r3 / Construction syntax / any-string! #330
+lexer-test.r3 / Construction syntax / any-string! #331
+lexer-test.r3 / Construction syntax / any-string! #332
+lexer-test.r3 / Construction syntax / any-string! #333
 make-test.r3 / make char! / make char! binary! #2
 make-test.r3 / make char! / make char! binary! #3
 make-test.r3 / make char! / make char! binary! #4
@@ -692,11 +1479,64 @@ make-test.r3 / make percent! / make/to percent! logic! #178
 make-test.r3 / make percent! / make/to percent! logic! #179
 make-test.r3 / make percent! / make/to percent! logic! #180
 make-test.r3 / make percent! / to percent! issue! #176
-make-test.r3 / make/to date / make/to date! block! #68
+make-test.r3 / make special / make types from none! #917
+make-test.r3 / make special / make types from none! #918
+make-test.r3 / make special / make types from none! #930
+make-test.r3 / make special / make types from none! #931
+make-test.r3 / make special / make types from none! #932
+make-test.r3 / make special / make types from none! #933
+make-test.r3 / make special / make types from none! #934
+make-test.r3 / make special / make types from none! #935
+make-test.r3 / make special / make types from none! #939
+make-test.r3 / make special / make types from none! #940
+make-test.r3 / make special / make types from none! #941
+make-test.r3 / make special / make types from none! #942
+make-test.r3 / make special / make types from none! #943
+make-test.r3 / make special / make types from none! #944
+make-test.r3 / make special / make types from none! #962
+make-test.r3 / make special / to types from none! #974
+make-test.r3 / make special / to types from none! #975
+make-test.r3 / make special / to types from none! #987
+make-test.r3 / make special / to types from none! #988
+make-test.r3 / make special / to types from none! #989
+make-test.r3 / make special / to types from none! #990
+make-test.r3 / make special / to types from none! #991
+make-test.r3 / make special / to types from none! #992
+make-test.r3 / make/to block! / make block! .. #334
+make-test.r3 / make/to block! / make block! .. #335
+make-test.r3 / make/to block! / make block! .. #336
+make-test.r3 / make/to block! / make block! .. #338
+make-test.r3 / make/to block! / make block! .. #339
+make-test.r3 / make/to block! / make block! .. #340
+make-test.r3 / make/to block! / make block! .. #341
+make-test.r3 / make/to block! / make block! .. #342
+make-test.r3 / make/to block! / make block! .. #343
+make-test.r3 / make/to block! / make block! .. #344
+make-test.r3 / make/to block! / make block! .. #345
+make-test.r3 / make/to block! / make block! .. #346
+make-test.r3 / make/to block! / make block! .. #347
+make-test.r3 / make/to block! / make block! .. #348
+make-test.r3 / make/to block! / make block! .. #352
+make-test.r3 / make/to block! / make block! .. #353
+make-test.r3 / make/to block! / make block! .. #354
+make-test.r3 / make/to block! / make block! .. #355
+make-test.r3 / make/to block! / make block! .. #356
+make-test.r3 / make/to block! / make block! .. #362
+make-test.r3 / make/to block! / make block! .. #363
+make-test.r3 / make/to block! / make block! .. #364
+make-test.r3 / make/to block! / make block! .. #365
+make-test.r3 / make/to block! / make block! .. #367
+make-test.r3 / make/to block! / make block! .. #368
+make-test.r3 / make/to block! / to block! .. #398
+make-test.r3 / make/to block! / to block! .. #402
+make-test.r3 / make/to block! / to block! .. #403
 make-test.r3 / make/to date / make/to date! block! #69
 make-test.r3 / make/to date / make/to date! block! #70
 make-test.r3 / make/to date / make/to date! block! #71
 make-test.r3 / make/to date / make/to date! block! #72
+make-test.r3 / make/to date / make/to date! block! #73
+make-test.r3 / make/to date / make/to date! block! #74
+make-test.r3 / make/to date / make/to date! block! #75
 make-test.r3 / make/to date / make/to date! block! #76
 make-test.r3 / make/to date / make/to date! block! #77
 make-test.r3 / make/to date / make/to date! block! #78
@@ -813,8 +1653,127 @@ make-test.r3 / make/to integer / make/to integer! date! #91
 make-test.r3 / make/to integer / make/to integer! date! #92
 make-test.r3 / make/to integer / make/to integer! date! #93
 make-test.r3 / make/to integer / make/to integer! date! #94
+make-test.r3 / make/to logic! / make logic! .. #262
+make-test.r3 / make/to map / make map! .. #481
+make-test.r3 / make/to map / make map! .. #498
+make-test.r3 / make/to map / to map! .. #533
 make-test.r3 / make/to pair! / make pair! .. #192
 make-test.r3 / make/to pair! / make pair! .. #210
+make-test.r3 / make/to pair! / to pair! .. #229
+make-test.r3 / make/to pair! / to pair! .. #246
+make-test.r3 / make/to path / make path! .. #404
+make-test.r3 / make/to path / make path! .. #405
+make-test.r3 / make/to path / make path! .. #406
+make-test.r3 / make/to path / make path! .. #411
+make-test.r3 / make/to path / make path! .. #412
+make-test.r3 / make/to path / make path! .. #413
+make-test.r3 / make/to path / make path! .. #415
+make-test.r3 / make/to path / make path! .. #416
+make-test.r3 / make/to path / make path! .. #417
+make-test.r3 / make/to path / make path! .. #422
+make-test.r3 / make/to path / make path! .. #423
+make-test.r3 / make/to path / make path! .. #424
+make-test.r3 / make/to path / make path! .. #425
+make-test.r3 / make/to path / make path! .. #426
+make-test.r3 / make/to path / make path! .. #432
+make-test.r3 / make/to path / make path! .. #433
+make-test.r3 / make/to path / make path! .. #434
+make-test.r3 / make/to path / make path! .. #435
+make-test.r3 / make/to path / make path! .. #438
+make-test.r3 / make/to string / make string! ... #545
+make-test.r3 / make/to string / make string! ... #550
+make-test.r3 / make/to string / make string! ... #566
+make-test.r3 / make/to string / make string! ... #573
+make-test.r3 / make/to string / make string! ... #574
+make-test.r3 / make/to string / make string! ... #575
+make-test.r3 / make/to string / make string! ... #576
+make-test.r3 / make/to string / make string! ... #580
+make-test.r3 / make/to string / make string! ... #583
+make-test.r3 / make/to string / to string! ... #585
+make-test.r3 / make/to string / to string! ... #606
+make-test.r3 / make/to string / to string! ... #613
+make-test.r3 / make/to string / to string! ... #614
+make-test.r3 / make/to string / to string! ... #615
+make-test.r3 / make/to string / to string! ... #616
+make-test.r3 / make/to string / to string! ... #620
+make-test.r3 / make/to string / to string! ... #623
+make-test.r3 / make/to tag / make tag! .. #627
+make-test.r3 / make/to tag / make tag! .. #632
+make-test.r3 / make/to tag / make tag! .. #648
+make-test.r3 / make/to tag / make tag! .. #651
+make-test.r3 / make/to tag / make tag! .. #652
+make-test.r3 / make/to tag / make tag! .. #653
+make-test.r3 / make/to tag / make tag! .. #654
+make-test.r3 / make/to tag / make tag! .. #660
+make-test.r3 / make/to tag / make tag! .. #661
+make-test.r3 / make/to tag / to tag! .. #663
+make-test.r3 / make/to tag / to tag! .. #684
+make-test.r3 / make/to tag / to tag! .. #687
+make-test.r3 / make/to tag / to tag! .. #688
+make-test.r3 / make/to tag / to tag! .. #689
+make-test.r3 / make/to tag / to tag! .. #690
+make-test.r3 / make/to tag / to tag! .. #696
+make-test.r3 / make/to tag / to tag! .. #697
+make-test.r3 / make/to typeset / make typeset! .. #721
+make-test.r3 / make/to typeset / make typeset! .. #723
+make-test.r3 / make/to typeset / make typeset! .. #724
+make-test.r3 / make/to typeset / make typeset! .. #725
+make-test.r3 / make/to typeset / make typeset! .. #726
+make-test.r3 / make/to typeset / make typeset! .. #733
+make-test.r3 / make/to typeset / to typeset! .. #757
+make-test.r3 / make/to typeset / to typeset! .. #759
+make-test.r3 / make/to typeset / to typeset! .. #760
+make-test.r3 / make/to typeset / to typeset! .. #761
+make-test.r3 / make/to typeset / to typeset! .. #762
+make-test.r3 / make/to typeset / to typeset! .. #769
+map-test.r3 / FORM map! / form empty map #130
+map-test.r3 / FORM map! / form map with multiple keys #132
+map-test.r3 / FORM map! / form single key map #131
+map-test.r3 / MAP construction / case sensitivity #13
+map-test.r3 / MAP construction / case sensitivity #14
+map-test.r3 / MAP construction / case sensitivity #15
+map-test.r3 / MAP construction / case sensitivity #16
+map-test.r3 / MAP construction / case sensitivity #17
+map-test.r3 / MAP construction / case sensitivity #18
+map-test.r3 / MAP construction / case sensitivity #28
+map-test.r3 / MAP construction / case sensitivity #29
+map-test.r3 / MAP construction / case sensitivity #30
+map-test.r3 / MAP construction / case sensitivity #31
+map-test.r3 / MAP construction / case sensitivity #32
+map-test.r3 / MAP construction / case sensitivity #33
+map-test.r3 / MAP construction / protected series keys #35
+map-test.r3 / PUT / PUT into protected map #137
+map-test.r3 / PUT / PUT into protected map #138
+map-test.r3 / PUT / PUT into protected map #139
+map-test.r3 / PUT / PUT into protected map #140
+map-test.r3 / compare / equal? #64
+map-test.r3 / compare / equal? #65
+map-test.r3 / compare / equal? #66
+map-test.r3 / compare / equal? (large maps) #76
+map-test.r3 / compare / equal? (large maps) #77
+map-test.r3 / compare / equal? (large maps) #78
+map-test.r3 / find / map-find-3 #60
+map-test.r3 / map issues / copy/deep map #113
+map-test.r3 / map issues / copy/deep map #116
+map-test.r3 / map issues / map-issue-1872 #104
+map-test.r3 / map issues / map-issue-2293 #108
+map-test.r3 / reflection / block of map #150
+map-test.r3 / reflection / block of map #151
+map-test.r3 / set operations with map! / difference with map #175
+map-test.r3 / set operations with map! / difference with map #176
+map-test.r3 / set operations with map! / exclude with map #183
+map-test.r3 / set operations with map! / intersect with map #186
+map-test.r3 / set operations with map! / intersect with map #187
+map-test.r3 / set operations with map! / intersect with map #190
+map-test.r3 / set operations with map! / intersect with map #191
+map-test.r3 / set operations with map! / union with map #194
+map-test.r3 / set operations with map! / union with map #195
+map-test.r3 / set operations with map! / union with map #196
+map-test.r3 / set operations with map! / union with map #198
+map-test.r3 / set operations with map! / union with map #199
+map-test.r3 / set operations with map! / union with map #200
+map-test.r3 / set operations with map! / unique with map #202
+map-test.r3 / set operations with map! / unique with map #203
 module-test.r3 / make module / inlined module #13
 module-test.r3 / make module / inlined module #14
 module-test.r3 / make module / inlined module #15
@@ -837,6 +1796,75 @@ module-test.r3 / module import / lib-local #48
 module-test.r3 / module issues / issue-1005 #50
 module-test.r3 / module issues / issue-1005 #53
 module-test.r3 / module keywords / hidden #2
+mold-test.r3 / form error! / form error! #214
+mold-test.r3 / mold binary! / mold/flat binary! #139
+mold-test.r3 / mold binary! / mold/flat binary! #141
+mold-test.r3 / mold binary! / mold/part binary! #142
+mold-test.r3 / mold binary! / mold/part binary! #144
+mold-test.r3 / mold block! / issue-1439 #128
+mold-test.r3 / mold block! / issue-1439 #129
+mold-test.r3 / mold block! / issue-1439 #130
+mold-test.r3 / mold block! / issue-2279 #131
+mold-test.r3 / mold block! / mold/flat/all block! #124
+mold-test.r3 / mold block! / mold/only #125
+mold-test.r3 / mold closure! / mold/flat closure! #184
+mold-test.r3 / mold email! / issue-2406 #153
+mold-test.r3 / mold email! / issue-2406 #154
+mold-test.r3 / mold error! / mold error! #215
+mold-test.r3 / mold error! / mold error! #216
+mold-test.r3 / mold error! / mold error! #217
+mold-test.r3 / mold event! / mold/all event! #116
+mold-test.r3 / mold file! / mold file escaping #68
+mold-test.r3 / mold gob! / mold/all gob! #186
+mold-test.r3 / mold image! / mold/flat/all image! #180
+mold-test.r3 / mold image! / mold/flat/all image! #181
+mold-test.r3 / mold image! / mold/part image! #183
+mold-test.r3 / mold map! / mold #[] #138
+mold-test.r3 / mold map! / mold map! #133
+mold-test.r3 / mold map! / mold/flat map! #135
+mold-test.r3 / mold path! / form path! #201
+mold-test.r3 / mold path! / form path! #202
+mold-test.r3 / mold path! / form path! #203
+mold-test.r3 / mold path! / form path! #204
+mold-test.r3 / mold path! / form path! #205
+mold-test.r3 / mold path! / form path! #206
+mold-test.r3 / mold path! / form path! #207
+mold-test.r3 / mold path! / form path! #208
+mold-test.r3 / mold path! / mold/all path! #197
+mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #221
+mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #222
+mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #223
+mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #224
+mold-test.r3 / mold ref! / mold ref #166
+mold-test.r3 / mold ref! / mold ref #167
+mold-test.r3 / mold string! / mold/form string with a special chars #37
+mold-test.r3 / mold string! / mold/form string with a special chars #38
+mold-test.r3 / mold string! / mold/form string with a special chars #39
+mold-test.r3 / mold string! / mold/form string with a special chars #40
+mold-test.r3 / mold url! / mold url escaping #56
+mold-test.r3 / mold-all / mold/all block with index over tail #109
+mold-test.r3 / mold-all / mold/all block with index over tail #110
+mold-test.r3 / mold-all / mold/all series #100
+mold-test.r3 / mold-all / mold/all series #101
+mold-test.r3 / mold-all / mold/all series #102
+mold-test.r3 / mold-all / mold/all series #103
+mold-test.r3 / mold-all / mold/all series #104
+mold-test.r3 / mold-all / mold/all series #105
+mold-test.r3 / mold-all / mold/all series #106
+mold-test.r3 / mold-all / mold/all series #107
+mold-test.r3 / mold-all / mold/all series #108
+mold-test.r3 / mold-all / mold/all series #92
+mold-test.r3 / mold-all / mold/all series #93
+mold-test.r3 / mold-all / mold/all series #94
+mold-test.r3 / mold-all / mold/all series #95
+mold-test.r3 / mold-all / mold/all series #96
+mold-test.r3 / mold-all / mold/all series #97
+mold-test.r3 / mold-all / mold/all series #98
+mold-test.r3 / mold-all / mold/all series #99
+mold-test.r3 / mold/all / mold/all decimal! #210
+mold-test.r3 / mold/all / mold/all decimal! #211
+mold-test.r3 / mold/all / mold/all typeset! #212
+mold-test.r3 / mold/all / mold/all typeset! #213
 os-test.r3 / set-env / get-env / env-1 #1
 os-test.r3 / set-env / get-env / env-1 #2
 os-test.r3 / set-env / get-env / env-1 #3
@@ -846,6 +1874,20 @@ os-test.r3 / set-env / get-env / env-2 #6
 os-test.r3 / set-env / get-env / env-2 #7
 os-test.r3 / set-env / get-env / env-3 #8
 os-test.r3 / set-env / get-env / env-3 #9
+percent-test.r3 / form/mold / mold/all #30
+percent-test.r3 / make percent! / make percent from block #3
+percent-test.r3 / percent issues / large percent #33
+percent-test.r3 / percent issues / large percent #34
+poly1305-test.r3 / (no group) / (no test) #1
+poly1305-test.r3 / (no group) / (no test) #10
+poly1305-test.r3 / (no group) / (no test) #2
+poly1305-test.r3 / (no group) / (no test) #3
+poly1305-test.r3 / (no group) / (no test) #4
+poly1305-test.r3 / (no group) / (no test) #5
+poly1305-test.r3 / (no group) / (no test) #6
+poly1305-test.r3 / (no group) / (no test) #7
+poly1305-test.r3 / (no group) / (no test) #8
+poly1305-test.r3 / (no group) / (no test) #9
 port-test.r3 / SYSTEM / query system:// #158
 port-test.r3 / directory port / CHANGE-DIR #51
 port-test.r3 / directory port / CHANGE-DIR #52
@@ -932,17 +1974,218 @@ power-test.r3 / power integer / power-integer-5 #15
 power-test.r3 / power integer / power-integer-6 #16
 power-test.r3 / power integer / power-integer-7 #17
 power-test.r3 / power integer / power-integer-8 #18
+rc4-test.r3 / Stream Cipher RC4 (RFC6229 Test Vectors) / Basic RC4 usage #2
 rsa-test.r3 / RSA initialization from file / RSA private key from OpenSSL format (RSA PRIVATE KEY) #36
 rsa-test.r3 / RSA initialization from file / RSA private key from OpenSSL x509 format (PRIVATE KEY) #37
 rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #32
 rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #33
 rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #34
 rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #35
+series-test.r3 / DELINE / ENLINE / ENLINE #1226
+struct-test.r3 / (no group) / (no test) #1
+struct-test.r3 / (no group) / (no test) #10
+struct-test.r3 / (no group) / (no test) #100
+struct-test.r3 / (no group) / (no test) #101
+struct-test.r3 / (no group) / (no test) #102
+struct-test.r3 / (no group) / (no test) #103
+struct-test.r3 / (no group) / (no test) #104
+struct-test.r3 / (no group) / (no test) #105
+struct-test.r3 / (no group) / (no test) #106
+struct-test.r3 / (no group) / (no test) #107
+struct-test.r3 / (no group) / (no test) #108
+struct-test.r3 / (no group) / (no test) #109
+struct-test.r3 / (no group) / (no test) #11
+struct-test.r3 / (no group) / (no test) #110
+struct-test.r3 / (no group) / (no test) #111
+struct-test.r3 / (no group) / (no test) #112
+struct-test.r3 / (no group) / (no test) #113
+struct-test.r3 / (no group) / (no test) #114
+struct-test.r3 / (no group) / (no test) #115
+struct-test.r3 / (no group) / (no test) #116
+struct-test.r3 / (no group) / (no test) #117
+struct-test.r3 / (no group) / (no test) #118
+struct-test.r3 / (no group) / (no test) #119
+struct-test.r3 / (no group) / (no test) #12
+struct-test.r3 / (no group) / (no test) #120
+struct-test.r3 / (no group) / (no test) #121
+struct-test.r3 / (no group) / (no test) #122
+struct-test.r3 / (no group) / (no test) #123
+struct-test.r3 / (no group) / (no test) #124
+struct-test.r3 / (no group) / (no test) #125
+struct-test.r3 / (no group) / (no test) #126
+struct-test.r3 / (no group) / (no test) #127
+struct-test.r3 / (no group) / (no test) #128
+struct-test.r3 / (no group) / (no test) #129
+struct-test.r3 / (no group) / (no test) #13
+struct-test.r3 / (no group) / (no test) #130
+struct-test.r3 / (no group) / (no test) #131
+struct-test.r3 / (no group) / (no test) #132
+struct-test.r3 / (no group) / (no test) #133
+struct-test.r3 / (no group) / (no test) #134
+struct-test.r3 / (no group) / (no test) #135
+struct-test.r3 / (no group) / (no test) #136
+struct-test.r3 / (no group) / (no test) #137
+struct-test.r3 / (no group) / (no test) #138
+struct-test.r3 / (no group) / (no test) #139
+struct-test.r3 / (no group) / (no test) #14
+struct-test.r3 / (no group) / (no test) #140
+struct-test.r3 / (no group) / (no test) #141
+struct-test.r3 / (no group) / (no test) #142
+struct-test.r3 / (no group) / (no test) #143
+struct-test.r3 / (no group) / (no test) #144
+struct-test.r3 / (no group) / (no test) #145
+struct-test.r3 / (no group) / (no test) #146
+struct-test.r3 / (no group) / (no test) #147
+struct-test.r3 / (no group) / (no test) #148
+struct-test.r3 / (no group) / (no test) #149
+struct-test.r3 / (no group) / (no test) #15
+struct-test.r3 / (no group) / (no test) #150
+struct-test.r3 / (no group) / (no test) #151
+struct-test.r3 / (no group) / (no test) #152
+struct-test.r3 / (no group) / (no test) #153
+struct-test.r3 / (no group) / (no test) #154
+struct-test.r3 / (no group) / (no test) #155
+struct-test.r3 / (no group) / (no test) #156
+struct-test.r3 / (no group) / (no test) #157
+struct-test.r3 / (no group) / (no test) #158
+struct-test.r3 / (no group) / (no test) #159
+struct-test.r3 / (no group) / (no test) #16
+struct-test.r3 / (no group) / (no test) #160
+struct-test.r3 / (no group) / (no test) #161
+struct-test.r3 / (no group) / (no test) #162
+struct-test.r3 / (no group) / (no test) #163
+struct-test.r3 / (no group) / (no test) #164
+struct-test.r3 / (no group) / (no test) #165
+struct-test.r3 / (no group) / (no test) #166
+struct-test.r3 / (no group) / (no test) #167
+struct-test.r3 / (no group) / (no test) #168
+struct-test.r3 / (no group) / (no test) #169
+struct-test.r3 / (no group) / (no test) #17
+struct-test.r3 / (no group) / (no test) #170
+struct-test.r3 / (no group) / (no test) #171
+struct-test.r3 / (no group) / (no test) #172
+struct-test.r3 / (no group) / (no test) #173
+struct-test.r3 / (no group) / (no test) #174
+struct-test.r3 / (no group) / (no test) #18
+struct-test.r3 / (no group) / (no test) #19
+struct-test.r3 / (no group) / (no test) #2
+struct-test.r3 / (no group) / (no test) #20
+struct-test.r3 / (no group) / (no test) #21
+struct-test.r3 / (no group) / (no test) #22
+struct-test.r3 / (no group) / (no test) #23
+struct-test.r3 / (no group) / (no test) #24
+struct-test.r3 / (no group) / (no test) #25
+struct-test.r3 / (no group) / (no test) #26
+struct-test.r3 / (no group) / (no test) #27
+struct-test.r3 / (no group) / (no test) #28
+struct-test.r3 / (no group) / (no test) #29
+struct-test.r3 / (no group) / (no test) #3
+struct-test.r3 / (no group) / (no test) #30
+struct-test.r3 / (no group) / (no test) #31
+struct-test.r3 / (no group) / (no test) #32
+struct-test.r3 / (no group) / (no test) #33
+struct-test.r3 / (no group) / (no test) #34
+struct-test.r3 / (no group) / (no test) #35
+struct-test.r3 / (no group) / (no test) #36
+struct-test.r3 / (no group) / (no test) #37
+struct-test.r3 / (no group) / (no test) #38
+struct-test.r3 / (no group) / (no test) #39
+struct-test.r3 / (no group) / (no test) #4
+struct-test.r3 / (no group) / (no test) #40
+struct-test.r3 / (no group) / (no test) #41
+struct-test.r3 / (no group) / (no test) #42
+struct-test.r3 / (no group) / (no test) #43
+struct-test.r3 / (no group) / (no test) #44
+struct-test.r3 / (no group) / (no test) #45
+struct-test.r3 / (no group) / (no test) #46
+struct-test.r3 / (no group) / (no test) #47
+struct-test.r3 / (no group) / (no test) #48
+struct-test.r3 / (no group) / (no test) #49
+struct-test.r3 / (no group) / (no test) #5
+struct-test.r3 / (no group) / (no test) #50
+struct-test.r3 / (no group) / (no test) #51
+struct-test.r3 / (no group) / (no test) #52
+struct-test.r3 / (no group) / (no test) #53
+struct-test.r3 / (no group) / (no test) #54
+struct-test.r3 / (no group) / (no test) #55
+struct-test.r3 / (no group) / (no test) #56
+struct-test.r3 / (no group) / (no test) #57
+struct-test.r3 / (no group) / (no test) #58
+struct-test.r3 / (no group) / (no test) #59
+struct-test.r3 / (no group) / (no test) #6
+struct-test.r3 / (no group) / (no test) #60
+struct-test.r3 / (no group) / (no test) #61
+struct-test.r3 / (no group) / (no test) #62
+struct-test.r3 / (no group) / (no test) #63
+struct-test.r3 / (no group) / (no test) #64
+struct-test.r3 / (no group) / (no test) #65
+struct-test.r3 / (no group) / (no test) #66
+struct-test.r3 / (no group) / (no test) #67
+struct-test.r3 / (no group) / (no test) #68
+struct-test.r3 / (no group) / (no test) #69
+struct-test.r3 / (no group) / (no test) #7
+struct-test.r3 / (no group) / (no test) #70
+struct-test.r3 / (no group) / (no test) #71
+struct-test.r3 / (no group) / (no test) #72
+struct-test.r3 / (no group) / (no test) #73
+struct-test.r3 / (no group) / (no test) #74
+struct-test.r3 / (no group) / (no test) #75
+struct-test.r3 / (no group) / (no test) #76
+struct-test.r3 / (no group) / (no test) #77
+struct-test.r3 / (no group) / (no test) #78
+struct-test.r3 / (no group) / (no test) #79
+struct-test.r3 / (no group) / (no test) #8
+struct-test.r3 / (no group) / (no test) #80
+struct-test.r3 / (no group) / (no test) #81
+struct-test.r3 / (no group) / (no test) #82
+struct-test.r3 / (no group) / (no test) #83
+struct-test.r3 / (no group) / (no test) #84
+struct-test.r3 / (no group) / (no test) #85
+struct-test.r3 / (no group) / (no test) #86
+struct-test.r3 / (no group) / (no test) #87
+struct-test.r3 / (no group) / (no test) #88
+struct-test.r3 / (no group) / (no test) #89
+struct-test.r3 / (no group) / (no test) #9
+struct-test.r3 / (no group) / (no test) #90
+struct-test.r3 / (no group) / (no test) #91
+struct-test.r3 / (no group) / (no test) #92
+struct-test.r3 / (no group) / (no test) #93
+struct-test.r3 / (no group) / (no test) #94
+struct-test.r3 / (no group) / (no test) #95
+struct-test.r3 / (no group) / (no test) #96
+struct-test.r3 / (no group) / (no test) #97
+struct-test.r3 / (no group) / (no test) #98
+struct-test.r3 / (no group) / (no test) #99
+struct-test.r3 / Invalid struct construction / (no test) #175
+struct-test.r3 / Invalid struct construction / (no test) #176
+struct-test.r3 / Invalid struct construction / (no test) #177
+struct-test.r3 / Invalid struct construction / (no test) #178
+struct-test.r3 / Invalid struct construction / (no test) #179
+struct-test.r3 / Invalid struct construction / (no test) #180
+struct-test.r3 / Invalid struct construction / (no test) #181
+struct-test.r3 / Invalid struct construction / (no test) #182
+struct-test.r3 / Invalid struct construction / (no test) #183
+struct-test.r3 / Invalid struct construction / (no test) #184
+struct-test.r3 / Invalid struct construction / (no test) #185
+struct-test.r3 / Invalid struct construction / (no test) #186
+struct-test.r3 / Invalid struct construction / (no test) #187
+struct-test.r3 / Invalid struct construction / (no test) #188
+task-test.r3 / task / (no test) #1
+task-test.r3 / task / (no test) #2
+task-test.r3 / task / (no test) #3
+task-test.r3 / task / (no test) #4
+thru-cache-test.r3 / (no group) / (no test) #1
+thru-cache-test.r3 / (no group) / (no test) #10
+thru-cache-test.r3 / (no group) / (no test) #2
+thru-cache-test.r3 / (no group) / (no test) #3
+thru-cache-test.r3 / (no group) / (no test) #4
+thru-cache-test.r3 / (no group) / (no test) #5
+thru-cache-test.r3 / (no group) / (no test) #6
+thru-cache-test.r3 / (no group) / (no test) #7
+thru-cache-test.r3 / (no group) / (no test) #8
+thru-cache-test.r3 / (no group) / (no test) #9
 time-test.r3 / time / divide by tuple #66
 time-test.r3 / time / divide by tuple #67
-time-test.r3 / time / issue-1032 #55
-time-test.r3 / time / issue-1032 #56
-time-test.r3 / time / issue-1033 #57
 time-test.r3 / time / issue-1054 #70
 time-test.r3 / time / issue-1055 #65
 time-test.r3 / time / issue-1391 #58
@@ -962,8 +2205,9 @@ time-test.r3 / time / time! money! math #71
 time-test.r3 / time / time! money! math #72
 time-test.r3 / time / time! money! math #73
 time-test.r3 / time / time! money! math #74
-unicode-test.r3 / /part refines with utf8 strings / lowercase/part #391
-unicode-test.r3 / /part refines with utf8 strings / uppercase/part #395
+unicode-test.r3 / /part refines with utf8 strings / lowercase/part #392
+unicode-test.r3 / /part refines with utf8 strings / take/last #381
+unicode-test.r3 / /part refines with utf8 strings / uppercase/part #396
 unicode-test.r3 / actions / change char! #302
 unicode-test.r3 / actions / change string! #269
 unicode-test.r3 / actions / change string! #270
@@ -1022,41 +2266,41 @@ unicode-test.r3 / natives / uppercase char! #32
 unicode-test.r3 / natives / uppercase char! #33
 unicode-test.r3 / natives / uppercase char! #34
 unicode-test.r3 / natives / uppercase string #36
-unicode-test.r3 / parse / parse collect after string #424
 unicode-test.r3 / parse / parse collect after string #425
-unicode-test.r3 / parse / parse collect any #420
+unicode-test.r3 / parse / parse collect after string #426
 unicode-test.r3 / parse / parse collect any #421
 unicode-test.r3 / parse / parse collect any #422
 unicode-test.r3 / parse / parse collect any #423
-unicode-test.r3 / parse / parse collect into block #413
-unicode-test.r3 / parse / parse collect into string #415
+unicode-test.r3 / parse / parse collect any #424
+unicode-test.r3 / parse / parse collect into block #414
 unicode-test.r3 / parse / parse collect into string #416
-unicode-test.r3 / parse / parse collect into string #418
+unicode-test.r3 / parse / parse collect into string #417
 unicode-test.r3 / parse / parse collect into string #419
-unicode-test.r3 / parse / parse collect set #408
+unicode-test.r3 / parse / parse collect into string #420
 unicode-test.r3 / parse / parse collect set #409
-unicode-test.r3 / parse / parse collect set pick #411
-unicode-test.r3 / parse / parse copy #400
+unicode-test.r3 / parse / parse collect set #410
+unicode-test.r3 / parse / parse collect set pick #412
 unicode-test.r3 / parse / parse copy #401
-unicode-test.r3 / parse / parse keep #404
+unicode-test.r3 / parse / parse copy #402
 unicode-test.r3 / parse / parse keep #405
-unicode-test.r3 / parse / parse keep pick #406
-unicode-test.r3 / parse / parse skip #396
+unicode-test.r3 / parse / parse keep #406
+unicode-test.r3 / parse / parse keep pick #407
 unicode-test.r3 / parse / parse skip #397
-unicode-test.r3 / parse / parse with bitset #430
+unicode-test.r3 / parse / parse skip #398
 unicode-test.r3 / parse / parse with bitset #431
 unicode-test.r3 / parse / parse with bitset #432
 unicode-test.r3 / parse / parse with bitset #433
-unicode-test.r3 / parse / parse with chars #437
-unicode-test.r3 / parse / parse with string #441
+unicode-test.r3 / parse / parse with bitset #434
+unicode-test.r3 / parse / parse with chars #438
+unicode-test.r3 / parse / parse with string #442
 unicode-test.r3 / paths / get path with negative index #160
 unicode-test.r3 / paths / get path with negative index #161
 unicode-test.r3 / paths / get path with negative index #162
 unicode-test.r3 / paths / get path with negative index #163
-unicode-test.r3 / string column (terminal) width / wide chars #468
 unicode-test.r3 / string column (terminal) width / wide chars #469
-unicode-test.r3 / string column (terminal) width / zero width chars #464
+unicode-test.r3 / string column (terminal) width / wide chars #470
 unicode-test.r3 / string column (terminal) width / zero width chars #465
+unicode-test.r3 / string column (terminal) width / zero width chars #466
 unicode-test.r3 / to / to char! #23
 unicode-test.r3 / to / to char! #24
 unicode-test.r3 / to / to char! #25
@@ -1068,6 +2312,7 @@ unicode-test.r3 / to / to string! #21
 unicode-test.r3 / to / to string! char! #28
 unicode-test.r3 / to / to word! #7
 unicode-test.r3 / to / to word! #8
+url-test.r3 / decode-url / decode-url with all ascii chars #42
 url-test.r3 / url composition / slash deduplication #5
 url-test.r3 / url composition / slash deduplication #6
 url-test.r3 / url composition / slash deduplication #7

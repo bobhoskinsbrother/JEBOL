@@ -8,8 +8,9 @@ Every number below was checked on 2026-08-24 by running it.
 
 ## What the measures say now
 
-Five of them, and four are clean. The fifth is not the measure it was being
-read as, which is Goal 0 and comes before everything else on this list.
+All five are clean. Every one of Rebol's 67 vendored files now reads to the
+end, which is Goal 1 and it is done; 307 assertions in 25 files are still not
+reached by the harness's slicer, which is the tail of it.
 
 | Measure | Reads |
 | --- | --- |
@@ -17,49 +18,122 @@ read as, which is Goal 0 and comes before everything else on this list.
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
-| `RebolSuiteTest` | 4335 assertions, none failing, one recorded as a gap Rebol shares. **It is 22 of Rebol's 76 files -- see Goal 0** |
+| `RebolSuiteTest` | 9,920 assertions run of the 10,225 written, over 67 of Rebol's 76 files. 2,247 failing and every one named in `known-gaps.txt` |
 
-`./gradlew check` is 10462 tests, none failing, none skipped.
+`./gradlew check` is 13,894 tests, 0 failed, 0 skipped. An unread suite file
+fails the build outright -- no list, no exception.
 
 ---
 
-# Goal 0. Most of Rebol's own suite is not being run
+# Goal 1. Every suite file must be read to the end -- DONE
 
-**JEBOL runs 4335 of Rebol's 11851 assertions: 37%.** Every green suite run
-so far has meant "the third we point at passes", and it was being reported --
-by me, repeatedly -- as though it meant the language matched.
+**All 67 files read to the end. Thirteen did not when this started.** The
+reader reaches 9,918 of the 10,225 assertions written, up from 7,181, and
+`SuiteCoverageTest.everyFileIsReadToTheEnd` fails on any file that stops
+short -- no list to add it to and no count that excuses it.
 
-Two separate losses, and they need different work.
+`./gradlew check` is 13,894 tests, 0 failed, 0 skipped. The suite runs 9,920
+assertions where it ran 7,169; 2,247 fail and every one is named in
+`known-gaps.txt`. That list grew from 1,032 because the suite did, not
+because anything broke: those assertions were not passing before, they were
+not being asked.
 
-**54 of Rebol's 76 unit files were never vendored: 7200 assertions.** Twenty
-were imported on 10 August and `docs/decisions.md` said so plainly at the
-time, including the real total of 11,899. Nobody re-read it. The largest
-absences:
+## What was wrong with the reader
+
+Ten of the thirteen stops were one line. `Transcoder.builtFrom` was a
+hardcoded switch whose `default` answered `malconstruct`, where Rebol's
+`Construct_Value` skips the datatype word and calls `Make_Dispatch[type]` --
+so a type has construction syntax exactly when it has a maker, and there is
+no list. Fourteen datatypes were refused that a real Rebol reads. What must
+*not* be tried is now taken from the Make column of `types.reb`, whose header
+says what it is for, rather than guessed: fifteen rows carry a dash, and
+handing those to MAKE read `#(char! 97)` and `#(integer! 5)` as values while
+Rebol answered malconstruct.
+
+The other three had nothing to do with construction or with each other:
+
+- a percent may carry an exponent, so `1e18%` is a percent
+- a file may open with a percent escape, so `%%40b` is the file `@b`, while
+  `%%/x` is not the modulo operator and Rebol refuses it
+- a path may hold a tag or a character. `firstOffendingCharacter` judged the
+  contents of a captured paren by the rules for a word, truncated the lexeme
+  there and re-read from the truncation, so `m/(<A>)` became the path `m/(`,
+  a tag, and a stray bracket. `b/#"a"` went the same way and was the
+  dangerous one: it read as two values instead of one **without changing how
+  many assertions the file appeared to have**, so no count could have found
+  it.
+
+Three more fell out along the way: `make date!` and `make time!` from a block
+were not implemented, `float!` and `double!` were missing from the struct
+field types, and a struct field could not carry a dimension.
+
+## What was wrong with the harness
+
+- **`SuiteFile` bisected for the longest readable prefix**, and that
+  predicate is not monotone: a prefix cut inside a multi-line block fails for
+  the missing bracket, and a longer prefix that closes it reads again. It cost
+  error-test.r3 thirteen assertions the reader already had, and it named the
+  wrong line in three of the twelve stops it reported. Replaced with a
+  forward walk.
+- **The denominator counted lines beginning with `--assert`**, missing every
+  one indented inside a block, so `compare-test.r3` was read as having 158
+  where it has 269. Where the reach exceeded that undercount the difference
+  went negative and the file became exempt: eleven files could not fail the
+  gate, and two were losing assertions.
+- **Nested assertions were never run.** An `--assert` inside a FOREACH cannot
+  be sliced out -- the loop variable only exists while the loop runs -- so
+  `--assert` is now bound to a recorder and the enclosing expression is run as
+  it stands, which is how Rebol's own harness does it.
+- **The reader was asked to read before any interpreter existed.** It takes
+  its function builder and its maker from the evaluator at boot, so a reader
+  asked first answers for a half-built reader and refuses constructs it can
+  read. That made the construction fix look like no fix at all.
+
+## Nulls
+
+Three, and the rule says none. `StructValue.from` returned null for a layout
+it could not use; that null reached a block read out of struct-test.r3 and
+surfaced a file away as a NullPointerException from a copy in the harness.
+Asking is now separate from building (`declaresAStruct`), `BlockStorage`
+refuses a null at the door, and the reader refuses to answer one at all.
+
+## What is left: the slicer, 307 assertions over 25 files
+
+The reader takes every file whole and the harness still does not run all of
+them. These are `--assert`s inside blocks that the nested-assertion recorder
+does not reach -- mostly inside a function body or a deeper construct.
+`ASSERTIONS_THE_SLICER_STILL_CANNOT_REACH` is a ceiling that only moves down.
 
 ```
-1711  integer-test_.r3     633  vector-test.r3      205  map-test.r3
-1029  make-test.r3         488  unicode-test.r3     205  bitset-test.r3
-                           264  checksum-test.r3    184  date-test.r3
-                           256  image-test.r3       188  struct-test.r3
+file                        slices  writes  short
+checksum-test.r3               124     264    140
+csv-test.r3                     35      63     28
+series-test.r3                1574    1596     22
+vector-test.r3                 635     657     22
+port-test.r3                   158     177     19
+parse-test.r3                  374     390     16
+time-test.r3                    76      85      9
+date-test.r3                   184     192      8
+codecs-test.r3                 227     233      6
+compare-test.r3                269     273      4
+compress-test.r3               184     187      3
+copy-test.r3                   223     226      3
+file-test.r3                    51      54      3
+func-test.r3                   149     152      3
+map-test.r3                    203     206      3
+native-test.r3                  26      29      3
+pair-test.r3                   125     128      3
+conditional-test.r3             44      46      2
+image-test.r3                  255     257      2
+module-test.r3                  56      58      2
+unicode-test.r3                488     490      2
+bincode-test.r3                244     245      1
+event-test.r3                   11      12      1
+make-test.r3                  1029    1030      1
+object-test.r3                 190     191      1
 ```
 
-`vector-test.r3` is the sharp one: `vector!` was implemented from the C this
-week and Rebol's own 633 assertions for it have never been run against it.
-
-**316 assertions inside the vendored files are behind a reader that stops.**
-Now enumerated in `reader-stops.txt` and failing the build if the list is
-wrong in either direction. `copy-test.r3` reaches 0 of its 223.
-
-**A dry run over all 76 says the reader reaches 7281 of 11851 (61%).** So
-vendoring the rest is worth about 2950 more runnable assertions before a
-single reader fix, and it will need a much longer `known-gaps.txt` first.
-
-**One reader bug found on the way, and it is ordinary syntax.** The ISO date
-literal `2000-01-01` reaches `DateValue.of` as a day of 2000 and throws
-`IllegalArgumentException` out of the interpreter. Rebol reads it as
-`1-Jan-2000`. It is why `make-test.r3` reaches 0 of 1029.
-
-# Goal 1. The type-major refactor
+# Goal 2. The type-major refactor
 
 **The original complaint, and much the largest piece left.** One `t-*.c` per
 increment, bitset as the pilot.
@@ -69,7 +143,7 @@ adding a kind broke every renderer's switch at compile time. `VectorValue`
 proved it again -- adding it to `SeriesValue permits` made the compiler
 enumerate every arm that needed work. That is what the action seam wants.
 
-# Goal 2. Graphics
+# Goal 3. Graphics
 
 **DRAW renders 22 of R3's 36 commands.** The fourteen it does not:
 
@@ -83,7 +157,7 @@ image-pattern  invert-matrix  line-pattern  spline  text  transform  triangle
 Also here: the stroked-curve comparison problem, the 522 lines of old markup
 path, VID, Android, and the events-name-the-wrong-window one.
 
-# Goal 3. The boot
+# Goal 4. The boot
 
 **343ms for the first interpreter, 72ms once the JVM has settled.** A
 7900-test run pays the 72ms per class, and that is the floor rather than the
@@ -92,7 +166,7 @@ machine.
 Pool first, then library caching. The series byte accounting behind STATS is
 already in that allocation path, and it costs about 2ms of the 72.
 
-# Goal 4. Loose ends
+# Goal 5. Loose ends
 
 **`task!` is a datatype word and not yet a datatype.** `task!` answers
 `#(datatype!)` on both, but `make task! [1 + 1]` gives `#(task!)` on a real
@@ -118,7 +192,7 @@ ask. `pid` works.
 **55 open questions across nine spec files**, the heaviest being
 `natives.allium` with 19.
 
-# Goal 5. The 32 prelude forks
+# Goal 6. The 32 prelude forks
 
 `prelude.reb` defines 36 words and Rebol defines 32 of them in `src/mezz` too:
 
@@ -132,7 +206,7 @@ undirize  values-of  words-of  wrap
 Audit by identity rather than by datatype: for each one, is JEBOL's version
 the same function, and if not, why was it forked?
 
-# Goal 6. The one suite assertion that cannot come off
+# Goal 7. The one suite assertion that cannot come off
 
 **The gate is green: 10462 tests, none failing, none skipped.** One assertion
 sits in `src/test/resources/rebol-suite/known-gaps.txt`, which is not a skip
@@ -148,7 +222,7 @@ assertion starts passing.
           checkout prints "FAIL: swap invalidating index (known issue) (1)".
 ```
 
-# Goal 7. LLM-friendly MCP tools
+# Goal 8. LLM-friendly MCP tools
 
 **The reader will only ever be an LLM, and that decides the design.** A model
 does not misunderstand, it infers confidently from training data that is mostly

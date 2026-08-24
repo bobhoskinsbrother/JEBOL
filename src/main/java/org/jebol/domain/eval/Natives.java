@@ -2901,6 +2901,8 @@ public final class Natives {
     private void defineFunctionMaking() {
         Transcoder.buildFunctionsWith(
                 (spec, body) -> makeFunction(spec, body, Context.root()));
+        Transcoder.makeValuesWith((datatype, specification) -> makeOfDatatype(
+                DatatypeValue.of(datatype), specification, null, Context.root()));
         define("func", List.of(
                         Parameter.required("spec", Set.of(Datatype.BLOCK)),
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
@@ -12196,6 +12198,112 @@ public final class Natives {
         throw Raised.of(EvaluationFailure.BAD_MAKE_ARG, Datatype.VECTOR.literalSpelling());
     }
 
+
+    /**
+     * A date from a block of parts, which is what MAKE and the construction
+     * syntax both come through.
+     *
+     * <p>{@code MT_Date}. Day, month, then year -- except that the first
+     * number is read as the year when it is over ninety-nine, so
+     * {@code make date! [2000 1 1]} and {@code make date! [1 1 2000]} are
+     * the same day and neither is ambiguous. A time may follow as three more
+     * numbers, and the month, the day and February in a common year are all
+     * checked, so a bad block is refused rather than rounded.
+     */
+    private static Value dateFromParts(List<Value> parts) {
+        if (parts.isEmpty()) {
+            return raiseBadMakeArg(BlockValue.block(parts), "date!");
+        }
+        if (parts.get(0) instanceof DateValue already) {
+            return clockAfterTheDate(parts, 1) instanceof TimeValue clock
+                    ? DateValue.of(already.year(), already.month(), already.day(), clock)
+                    : already;
+        }
+        if (parts.isEmpty() || !(parts.get(0) instanceof IntegerValue first)) {
+            return raiseBadMakeArg(BlockValue.block(parts), "date!");
+        }
+        if (parts.size() < 3 || !(parts.get(1) instanceof IntegerValue monthPart)
+                || !(parts.get(2) instanceof IntegerValue third)) {
+            return raiseBadMakeArg(BlockValue.block(parts), "date!");
+        }
+        int day = (int) first.magnitude();
+        int month = (int) monthPart.magnitude();
+        int year = (int) third.magnitude();
+        int consumed = 3;
+        if (day > 99) {
+            year = day;
+            day = (int) third.magnitude();
+        }
+        DateValue withoutTime;
+        try {
+            withoutTime = DateValue.of(year, month, day);
+        } catch (IllegalArgumentException outOfRange) {
+            return raiseBadMakeArg(BlockValue.block(parts), "date!");
+        }
+        return clockAfterTheDate(parts, consumed) instanceof TimeValue clock
+                ? DateValue.of(year, month, day, clock)
+                : withoutTime;
+    }
+
+    /**
+     * The time a date construct may carry, written either way.
+     *
+     * <p>{@code set_time} in {@code MT_Date} takes a time value whole when
+     * one is there, and reads an hour, a minute and a second when they are
+     * loose numbers instead. So {@code #(date! 1-1-2000 10:30)} and
+     * {@code make date! [1 1 2000 10 30 0]} are the same instant written two
+     * ways, and only the second was being read.
+     */
+    private static Value clockAfterTheDate(List<Value> parts, int from) {
+        if (parts.size() > from && parts.get(from) instanceof TimeValue written) {
+            return written;
+        }
+        return parts.size() >= from + 3
+                ? timeFromParts(parts.subList(from, parts.size()))
+                : NoneValue.none();
+    }
+
+    /**
+     * A time from a block of parts: hours, then minutes, then seconds.
+     *
+     * <p>{@code Make_Time}'s block branch. The hours carry the sign for the
+     * whole span and the seconds may be fractional, so {@code [-1 30 0]} is
+     * minus an hour and a half rather than an hour less thirty minutes.
+     */
+    private static Value timeFromParts(List<Value> parts) {
+        if (parts.isEmpty() || parts.size() > 3
+                || !(parts.get(0) instanceof IntegerValue hours)) {
+            return raiseBadMakeArg(BlockValue.block(parts), "time!");
+        }
+        boolean negative = hours.magnitude() < 0;
+        long seconds = Math.abs(hours.magnitude()) * 3600;
+        long nanoseconds = 0;
+        if (parts.size() > 1) {
+            if (!(parts.get(1) instanceof IntegerValue minutes)
+                    || minutes.magnitude() < 0) {
+                return raiseBadMakeArg(BlockValue.block(parts), "time!");
+            }
+            seconds += minutes.magnitude() * 60;
+        }
+        if (parts.size() > 2) {
+            switch (parts.get(2)) {
+                case IntegerValue whole when whole.magnitude() >= 0 ->
+                        seconds += whole.magnitude();
+                case DecimalValue fraction -> {
+                    seconds += (long) fraction.quantity();
+                    nanoseconds = Math.round(
+                            (fraction.quantity() - (long) fraction.quantity())
+                                    * 1_000_000_000L);
+                }
+                default -> {
+                    return raiseBadMakeArg(BlockValue.block(parts), "time!");
+                }
+            }
+        }
+        long total = seconds * 1_000_000_000L + nanoseconds;
+        return TimeValue.ofNanoseconds(negative ? -total : total);
+    }
+
     private static Value makeOfDatatype(
             DatatypeValue wanted, Value from, Evaluator evaluator, Context context) {
         if (wanted.represents() == Datatype.IMAGE) {
@@ -12210,6 +12318,15 @@ public final class Natives {
         }
         if (wanted.represents() == Datatype.VECTOR) {
             return madeVector(from, evaluator, context);
+        }
+        if (wanted.represents() == Datatype.DATE
+                && (from instanceof BlockValue || from instanceof DateValue)) {
+            return dateFromParts(from instanceof BlockValue parts
+                    ? parts.remaining()
+                    : List.of(from));
+        }
+        if (from instanceof BlockValue parts && wanted.represents() == Datatype.TIME) {
+            return timeFromParts(parts.remaining());
         }
         if (from instanceof IntegerValue roomFor && wanted.represents().isSeries()) {
             int asked = (int) Math.max(0, Math.min(Integer.MAX_VALUE, roomFor.magnitude()));
