@@ -2166,16 +2166,6 @@ struct-test.r3 / (no group) / (no test) #96
 struct-test.r3 / (no group) / (no test) #97
 struct-test.r3 / (no group) / (no test) #98
 struct-test.r3 / (no group) / (no test) #99
-struct-test.r3 / Invalid struct construction / (no test) #175
-struct-test.r3 / Invalid struct construction / (no test) #176
-struct-test.r3 / Invalid struct construction / (no test) #177
-struct-test.r3 / Invalid struct construction / (no test) #178
-struct-test.r3 / Invalid struct construction / (no test) #179
-struct-test.r3 / Invalid struct construction / (no test) #180
-struct-test.r3 / Invalid struct construction / (no test) #181
-struct-test.r3 / Invalid struct construction / (no test) #182
-struct-test.r3 / Invalid struct construction / (no test) #183
-struct-test.r3 / Invalid struct construction / (no test) #184
 struct-test.r3 / Invalid struct construction / (no test) #186
 struct-test.r3 / Invalid struct construction / (no test) #187
 struct-test.r3 / Invalid struct construction / (no test) #188

@@ -790,14 +790,6 @@ public final class Transcoder {
         if (datatype == Datatype.BITSET && contents.size() != 1) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
         }
-        if (datatype == Datatype.STRUCT && contents.size() == 2
-                && contents.getFirst() instanceof BlockValue layout
-                && contents.get(1) instanceof BlockValue) {
-            if (!StructValue.declaresAStruct(layout)) {
-                throw failure(SyntaxFailure.MALCONSTRUCT, null);
-            }
-            return StructValue.from(layout);
-        }
         if (contents.size() != 1) {
             return madeByTheEvaluator(datatype, contents);
         }
@@ -817,13 +809,6 @@ public final class Transcoder {
                     only instanceof BlockValue items
                             ? items.as(datatype)
                             : requireDatatype(only, datatype);
-            case STRUCT -> {
-                if (!(only instanceof BlockValue layout)
-                        || !StructValue.declaresAStruct(layout)) {
-                    throw failure(SyntaxFailure.MALCONSTRUCT, null);
-                }
-                yield StructValue.from(layout);
-            }
             case FUNCTION, CLOSURE -> {
                 if (functionBuilder == null
                         || !(only instanceof BlockValue definition)

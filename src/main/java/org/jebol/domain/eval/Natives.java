@@ -56,6 +56,18 @@ public final class Natives {
     private Context systemInternals = Context.root();
 
     /**
+     * The map REGISTER files struct layouts in, held here as well as in the
+     * SYSTEM object.
+     *
+     * <p>Both halves need it and only one of them has an evaluator. MAKE is
+     * called with one and can walk {@code system/catalog/structs}; the reader
+     * is handed a maker with no evaluator at all, and a field written
+     * {@code [struct! pair8!]} inside a construction has to resolve just the
+     * same. Keeping the map itself is what lets both ask the same question.
+     */
+    private final MapValue registeredStructLayouts = MapValue.empty();
+
+    /**
      * What each datatype says about itself, as {@code reflect} answers it.
      *
      * <p>Title and category, taken verbatim from a real R3 rather than
@@ -495,7 +507,7 @@ public final class Natives {
         // `make map! []` with the comment "filled using `register` native
         // function", so an empty map here is the finished state and not a
         // gap.
-        catalog.set("structs", MapValue.empty());
+        catalog.set("structs", registeredStructLayouts);
 
         // The two halves of the function set this interpreter carries in its
         // host language. The split is Rebol's declaration rather than a fact
@@ -3000,6 +3012,8 @@ public final class Natives {
                     case EventValue prototype -> EventPath.made(prototype,
                             arguments.get(1),
                             value -> simpleValueOf(value, evaluator, context));
+                    case StructValue prototype ->
+                            structLikeThePrototype(prototype, arguments.get(1), evaluator);
                     case DatatypeValue wanted ->
                             makeOfDatatype(wanted, arguments.get(1), evaluator, context);
                     default -> makeOfDatatype(
@@ -4218,7 +4232,7 @@ public final class Natives {
                         Parameter.hardQuoted("name"),
                         Parameter.required("value", Set.of(Datatype.STRUCT))),
                 (arguments, evaluator, context) ->
-                        structLayoutFiledUnder(arguments, evaluator));
+                        structLayoutFiledUnder(arguments));
 
         define("xtest", List.of(),
                 (arguments, evaluator, context) -> {
@@ -4784,6 +4798,9 @@ public final class Natives {
                                 : VectorQuery.field(vector, field).orElseThrow(
                                         () -> Raised.of(EvaluationFailure.INVALID_ARG,
                                                 arguments.get(1)));
+                    }
+                    if (arguments.getFirst() instanceof StructValue struct) {
+                        return whatAStructReflects(struct, field, arguments.get(1));
                     }
                     if (arguments.getFirst() instanceof DatatypeValue named) {
                         String[] described = DATATYPE_SPECS.get(
@@ -5619,6 +5636,7 @@ public final class Natives {
                     case PortValue port ->
                             IntegerValue.of(port.context().fieldCount());
                     case BitsetValue set -> IntegerValue.of(set.octets().length * 8);
+                    case StructValue struct -> IntegerValue.of(struct.size());
                     default -> raiseWrongArgument(arguments.get(0), "length?", "series");
                 });
 
@@ -5889,6 +5907,13 @@ public final class Natives {
                     Value original = arguments.getFirst();
                     boolean deeply = refinements.contains("deep");
                     Set<Datatype> kinds = whichDatatypesToCopy(arguments, refinements);
+                    if (original instanceof StructValue struct) {
+                        if (!refinements.isEmpty()) {
+                            throw Raised.of(EvaluationFailure.BAD_REFINES,
+                                    "copy on a struct takes no refinements at all");
+                        }
+                        return struct.separateCopy();
+                    }
                     if (!refinements.contains("part")) {
                         return copied(original, deeply, kinds);
                     }
@@ -6120,6 +6145,10 @@ public final class Natives {
                         Parameter.belongingTo("dup", "count", DUP_COUNT)),
                 Set.of("part", "only", "dup"),
                 (arguments, evaluator, context, refinements) -> {
+                    if (arguments.get(0) instanceof StructValue struct) {
+                        refuseUnfinishedRefinements(refinements, "change");
+                        return structChangedBy(struct, arguments.get(1));
+                    }
                     if (refinements.contains("part") && arguments.size() > 2
                             && arguments.get(0) instanceof SeriesValue stranded) {
                         Value replacement = copied(arguments.get(1),
@@ -6235,6 +6264,10 @@ public final class Natives {
                     case VectorValue vector -> {
                         vector.storage().clearFrom(vector.index());
                         yield vector;
+                    }
+                    case StructValue struct -> {
+                        struct.clear();
+                        yield struct;
                     }
                     default -> raiseCannotUse(arguments.get(0), "clear");
                 });
@@ -11065,23 +11098,30 @@ public final class Natives {
      * a name already taken is refused, because a name here is how other code
      * finds a layout and replacing one quietly would change what that code
      * reads without it knowing.
+     *
+     * <p>The name is quoted, and a set-word is set here rather than by the
+     * evaluator: {@code register pair8!: make struct! [...]} both files the
+     * layout and leaves {@code pair8!} holding the struct, which is what makes
+     * the name usable as a prototype afterwards.
      */
-    private static Value structLayoutFiledUnder(
-            List<Value> arguments, Evaluator evaluator) {
+    private Value structLayoutFiledUnder(List<Value> arguments) {
         if (!(arguments.getFirst() instanceof WordValue name)) {
             return raiseWrongArgument(arguments.getFirst(), "register", "name");
         }
         StructValue given = (StructValue) arguments.get(1);
-        MapValue catalogue = structCatalogueOf(evaluator);
+        if (name.datatype() == Datatype.SET_WORD) {
+            slotOf(name).setValue(given);
+        }
+        MapValue catalogue = registeredStructLayouts;
         WordValue filedAs = WordValue.of(name.spelling());
         Value alreadyThere = catalogue.select(filedAs);
         if (alreadyThere instanceof BlockValue held) {
-            if (!held.equals(given.layout())) {
+            if (!held.equals(given.spec().declaration())) {
                 throw Raised.of(EvaluationFailure.ALREADY_USED, name.spelling());
             }
             return given;
         }
-        catalogue.put(filedAs, given.layout());
+        catalogue.put(filedAs, given.spec().declaration());
         return given;
     }
 
@@ -12314,8 +12354,163 @@ public final class Natives {
         return TimeValue.ofNanoseconds(negative ? -total : total);
     }
 
-    private static Value makeOfDatatype(
+    /**
+     * CHANGE on a struct: fields from a block, or bytes from a binary.
+     *
+     * <p>The two are not the same operation. A block names or lists fields and
+     * goes through the same initialiser MAKE uses, so it can write a word or a
+     * decimal into a field of the right kind. A binary is copied over the
+     * bytes as far as the shorter of the two reaches, which is why changing a
+     * two-byte struct with three bytes writes two and drops the third.
+     *
+     * <p>A struct carrying a live REBOL value refuses the binary form
+     * outright: the C keeps such a value in the bytes themselves and will not
+     * let arbitrary data land on top of one.
+     */
+    private static Value structChangedBy(StructValue struct, Value given) {
+        if (given instanceof BlockValue written) {
+            startedWith(struct, written);
+            return struct;
+        }
+        if (!(given instanceof BinaryValue octets)) {
+            return raiseWrongArgument(given, "change", "value");
+        }
+        if (!struct.acceptsRawBytes()) {
+            throw Raised.of(EvaluationFailure.PROTECTED,
+                    "this struct holds a REBOL value, and raw bytes would land on it");
+        }
+        struct.changeFrom(bytesFromHere(octets));
+        return struct;
+    }
+
+    /**
+     * The four things a struct answers about itself.
+     *
+     * <p>{@code A_REFLECT} in {@code REBTYPE(Struct)} takes WORDS, VALUES,
+     * BODY and SPEC and refuses everything else, so KEYS-OF reaches this as
+     * WORDS and there is no fifth question to ask. The spec is the layout
+     * block and the other three are read out of the bytes.
+     */
+    private static Value whatAStructReflects(
+            StructValue struct, String asked, Value written) {
+        return switch (asked) {
+            case "spec" -> struct.spec().declaration();
+            case "words", "keys" -> BlockValue.block(struct.fieldNames());
+            case "values" -> BlockValue.block(struct.fieldValues());
+            case "body" -> BlockValue.block(struct.body());
+            default -> raiseCannotUse(written, "reflect struct!");
+        };
+    }
+
+    /**
+     * Where a field written {@code [struct! some-name]} finds its layout.
+     *
+     * <p>REGISTER files a layout block in {@code system/catalog/structs} under
+     * a name, and this is the other half of that. It is handed to the value
+     * layer as a lookup rather than as the catalogue itself, because a struct
+     * must not know that the SYSTEM object exists.
+     */
+    private StructSpec.LayoutRegistry structLayoutsKnown() {
+        return name -> registeredStructLayouts.select(WordValue.of(name))
+                instanceof BlockValue layout
+                ? Optional.of(layout)
+                : Optional.empty();
+    }
+
+    /**
+     * MAKE STRUCT!, which is {@code MT_Struct}.
+     *
+     * <p>One block is a layout on its own. Two blocks are a layout and the
+     * values to start it with, which is the shape construction syntax reads:
+     * {@code #(struct! [a [uint8!]] [a: 1])}. A layout can never itself be two
+     * blocks, because after its optional attributes it must be a word and then
+     * a block, so the two shapes cannot be confused.
+     */
+    private Value structMadeFrom(Value from) {
+        if (!(from instanceof BlockValue given)) {
+            return raiseBadMakeArg(from, "struct!");
+        }
+        List<Value> written = given.remaining();
+        boolean carriesInitialValues = written.size() == 2
+                && written.get(0) instanceof BlockValue
+                && written.get(1) instanceof BlockValue;
+        BlockValue layout = carriesInitialValues
+                ? (BlockValue) written.getFirst()
+                : given;
+        StructValue made = StructValue.of(
+                structLaidOutBy(layout, structLayoutsKnown()));
+        if (carriesInitialValues) {
+            startedWith(made, written.get(1));
+        }
+        return made;
+    }
+
+    private static StructSpec structLaidOutBy(
+            BlockValue layout, StructSpec.LayoutRegistry registry) {
+        try {
+            return StructSpec.of(layout, registry);
+        } catch (StructLayoutRefused refused) {
+            throw refused.malconstructed()
+                    ? Raised.of(EvaluationFailure.MALCONSTRUCT, Molder.mold(layout))
+                    : Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(layout));
+        }
+    }
+
+    /**
+     * MAKE on a struct rather than on the datatype: the prototype's bytes,
+     * copied, with whatever the block says written over them.
+     *
+     * <p>The block is reduced with its set-words left standing, which is what
+     * {@code Reduce_Block_No_Set} does, so {@code make proto! [3 * 10 4 * 10]}
+     * writes thirty and forty while {@code [b: 3 * 10]} still names a field.
+     */
+    private static Value structLikeThePrototype(StructValue prototype, Value given,
+            Evaluator evaluator) {
+        StructValue made = prototype.separateCopy();
+        if (given instanceof BinaryValue octets) {
+            byte[] bytes = bytesFromHere(octets);
+            if (bytes.length < made.size()) {
+                return raiseBadMakeArg(given, "struct!");
+            }
+            made.changeFrom(bytes);
+            return made;
+        }
+        if (!(given instanceof BlockValue written)) {
+            return raiseBadMakeArg(given, "struct!");
+        }
+        startedWith(made, BlockValue.block(
+                reducedLeavingSetWords(written, evaluator)));
+        return made;
+    }
+
+    /**
+     * The initial values a block gives, written into a struct as they stand.
+     *
+     * <p>Nothing is evaluated here, which is the whole of what
+     * {@code MT_Struct} does with its second block. Only MAKE on an existing
+     * struct reduces first, and it reduces before calling this. That is why
+     * {@code #(struct! [a [uint8!]] [random 10])} is a malconstruct rather
+     * than a struct holding a random number: RANDOM arrives as a word, and a
+     * word cannot go in a {@code uint8!} field.
+     */
+    private static void startedWith(StructValue made, Value given) {
+        if (given instanceof BinaryValue octets) {
+            made.changeFrom(bytesFromHere(octets));
+            return;
+        }
+        BlockValue written = (BlockValue) given;
+        try {
+            made.initialiseFrom(written);
+        } catch (StructLayoutRefused refused) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(written));
+        }
+    }
+
+    private Value makeOfDatatype(
             DatatypeValue wanted, Value from, Evaluator evaluator, Context context) {
+        if (wanted.represents() == Datatype.STRUCT) {
+            return structMadeFrom(from);
+        }
         if (wanted.represents() == Datatype.IMAGE) {
             return madeImage(from);
         }
@@ -12527,6 +12722,7 @@ public final class Natives {
                 case MoneyValue amount -> binaryOfBytes(amount.toBytes());
                 case BlockValue block -> bytesOfEach(block);
                 case VectorValue vector -> binaryOfBytes(vector.octetsFromHere());
+                case StructValue struct -> binaryOfBytes(struct.octets());
                 case CharacterValue letter -> binaryOfBytes(
                         Character.toString(letter.codepoint())
                                 .getBytes(StandardCharsets.UTF_8));

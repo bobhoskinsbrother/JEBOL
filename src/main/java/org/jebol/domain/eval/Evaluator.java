@@ -1188,6 +1188,34 @@ public final class Evaluator {
         return StepOutcome.waiting();
     }
 
+    /**
+     * {@code s/field/2: other} where the field is an array of structs.
+     *
+     * <p>Reading such a field gives a block, because no vector holds structs,
+     * and writing one of its slots would ordinarily replace the slot. It must
+     * copy bytes instead: the structs in that block point into the parent's
+     * own bytes, and replacing a slot would leave the parent unchanged while
+     * appearing to have worked.
+     *
+     * <p>{@code PD_Struct} does this in its {@code STRUCT_TYPE_STRUCT} arm,
+     * where it can see both that the block came from a struct field and that a
+     * struct is being written. The walk here loses the first of those, so the
+     * path is resolved one segment shorter to ask again.
+     */
+    private void writeIntoOneStructOfAnArray(
+            BlockValue elements, IntegerValue which, StructValue given) {
+        List<Value> each = elements.remaining();
+        int chosen = (int) which.magnitude();
+        if (chosen < 1 || chosen > each.size()
+                || !(each.get(chosen - 1) instanceof StructValue slot)) {
+            throw Raised.of(EvaluationFailure.BAD_PATH_SET, Molder.mold(which));
+        }
+        if (slot.size() != given.size()) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
+        }
+        slot.changeFrom(given.octets());
+    }
+
     private void writeThroughPath(Frame frame, BlockValue path, Value written) {
         List<Value> segments = path.remaining();
         BlockValue allButLast = BlockValue.path(
@@ -1243,6 +1271,15 @@ public final class Evaluator {
             slot.setValue(written);
             return;
         }
+        if (segments.size() >= 3 && target instanceof BlockValue elements
+                && written instanceof StructValue given
+                && lastSegment instanceof IntegerValue which
+                && select(BlockValue.path(
+                        segments.subList(0, segments.size() - 2), Datatype.PATH),
+                        frame.context).value() instanceof StructValue) {
+            writeIntoOneStructOfAnArray(elements, which, given);
+            return;
+        }
         if (target instanceof BlockValue block) {
             Value selector = selectorFor(lastSegment, frame.context);
             if (BlockPath.isNowhereAtAll(selector)) {
@@ -1263,7 +1300,13 @@ public final class Evaluator {
             VectorPath.write(vector, selectorFor(lastSegment, frame.context), written);
             return;
         }
-        if (target instanceof SeriesValue series && lastSegment instanceof IntegerValue where) {
+        if (target instanceof StructValue struct) {
+            StructPath.write(struct, selectorFor(lastSegment, frame.context), written);
+            return;
+        }
+        if (target instanceof SeriesValue series
+                && selectorFor(lastSegment, frame.context)
+                        instanceof IntegerValue where) {
             replaceInSeries(series,
                     series.index() + (int) where.magnitude() - 1, written);
             return;
@@ -1551,6 +1594,9 @@ public final class Evaluator {
         }
         if (target instanceof VectorValue vector) {
             return VectorPath.read(vector, selector);
+        }
+        if (target instanceof StructValue struct) {
+            return StructPath.read(struct, selector);
         }
         if (target instanceof SeriesValue series && selector instanceof IntegerValue position) {
             long index = position.magnitude();

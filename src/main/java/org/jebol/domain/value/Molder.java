@@ -206,10 +206,26 @@ public final class Molder {
             case ModuleValue module -> renderObject(
                     new ObjectValue(module.context()), forReading);
             case ErrorValue error -> "#[error! " + error.errorId() + "]";
-            case StructValue struct -> "make struct! "
-                    + render(struct.layout(), forReading);
+            case StructValue struct -> renderStruct(struct, forReading);
             case JavaObjectValue host -> "#[java-object! " + host.className() + "]";
         };
+    }
+
+    /**
+     * A struct, which shows its whole layout only when asked to be readable.
+     *
+     * <p>Plainly, Rebol writes the identifier it filed the layout under:
+     * {@code #(struct! 749277710 [a: 0.0])}. That number is a hash of the
+     * layout block, and every struct built from the same layout shares it, so
+     * a reader that has seen one can recognise the rest. Under MOLD/ALL the
+     * layout itself is written instead, which is the form that reads back.
+     */
+    private static String renderStruct(StructValue struct, boolean forReading) {
+        String layout = forReading
+                ? render(struct.spec().declaration(), true)
+                : Integer.toUnsignedString(struct.spec().declaration().hashCode());
+        return "#(struct! " + layout + " "
+                + render(BlockValue.block(struct.body()), forReading) + ")";
     }
 
     /** How many significant digits a decimal is printed to. */

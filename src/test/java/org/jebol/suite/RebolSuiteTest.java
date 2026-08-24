@@ -242,6 +242,7 @@ class RebolSuiteTest {
             } catch (RuntimeException refused) {
                 verdict = new Verdict(false,
                         "host exception: " + refused.getClass().getSimpleName());
+                recordWhatRanInside(interpreter, step, verdict.reason());
             }
             if (step.isAssertion()) {
                 OUTCOMES.put(step.assertion().toString(), verdict);
@@ -362,8 +363,10 @@ class RebolSuiteTest {
     @MethodSource("assertionsExpectedToPass")
     @DisplayName("Rebol's own suite")
     void theAssertionHolds(SuiteFile.Assertion assertion) {
-        assertThat(holds(assertion))
-                .as("%s%n  %s", assertion, assertion.source())
+        Verdict verdict = verdictFor(assertion);
+        assertThat(verdict.held())
+                .as("%s%n  why: %s%n  %s",
+                        assertion, verdict.reason(), assertion.source())
                 .isTrue();
     }
 

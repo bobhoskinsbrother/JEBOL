@@ -330,6 +330,9 @@ public final class Comparison {
         if (left instanceof VectorValue first && right instanceof VectorValue second) {
             return orderingOfVectors(first, second) == 0;
         }
+        if (left instanceof StructValue first && right instanceof StructValue second) {
+            return first.holdsTheSameAs(second);
+        }
 
         if (left instanceof CharacterValue && right instanceof CharacterValue) {
             return foldedCodepointsAgree(left, right);
