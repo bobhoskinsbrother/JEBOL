@@ -1901,15 +1901,50 @@ public final class Transcoder {
         return negative ? TimeValue.ofNanoseconds(-positive.nanoseconds()) : positive;
     }
 
+    /**
+     * A date, in either of the two orders {@code Scan_Date} accepts.
+     *
+     * <p>The order is decided by how many digits the first part has, not by
+     * what the numbers could plausibly mean: {@code if (size >= 4) year = num;
+     * else if (size) day = num;}. So {@code 2000-01-01} is the first of
+     * January and {@code 1-1-2000} is as well, and reading the first as a day
+     * of 2000 threw an {@code IllegalArgumentException} out of the reader --
+     * which took a whole test run with it, because make-test.r3 has one on
+     * line 30.
+     *
+     * <p>The last part is read by digit count too. Three or more digits is
+     * the year as written, which is what makes {@code 1-Feb-0003} the year
+     * three rather than 2003. Two digits or fewer is a shorthand the C
+     * resolves against the year it is running in, keeping inside fifty years
+     * either way, so the century a bare {@code 96} means is not a constant
+     * and cannot be written as one.
+     */
     private Value readDate(String lexeme, String separator) {
         String[] parts = lexeme.split(Pattern.quote(separator));
-        int day = Integer.parseInt(parts[0]);
+        boolean yearIsFirst = parts[0].length() >= 4;
         int month = monthNumber(parts[1]);
-        int year = Integer.parseInt(parts[2]);
-        if (year < 100) {
-            year += year < 50 ? 2000 : 1900;
+        int year = yearIsFirst
+                ? Integer.parseInt(parts[0])
+                : yearFrom(parts[2]);
+        int day = Integer.parseInt(yearIsFirst ? parts[2] : parts[0]);
+        try {
+            return DateValue.of(year, month, day);
+        } catch (IllegalArgumentException outOfRange) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "date", lexeme);
         }
-        return DateValue.of(year, month, day);
+    }
+
+    private static int yearFrom(String written) {
+        int num = Integer.parseInt(written);
+        if (written.length() >= 3) {
+            return num;
+        }
+        int thisYear = java.time.Year.now().getValue();
+        int year = thisYear / 100 * 100 + num;
+        if (year - thisYear > 50) {
+            return year - 100;
+        }
+        return year - thisYear < -50 ? year + 100 : year;
     }
 
     /**

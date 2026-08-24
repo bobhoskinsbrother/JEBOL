@@ -28,7 +28,7 @@ public record DateValue(
         if (month < 1 || month > 12) {
             throw new IllegalArgumentException("month out of range: " + month);
         }
-        if (day < 1 || day > 31) {
+        if (day < 1 || day > daysIn(month, year)) {
             throw new IllegalArgumentException("day out of range: " + day);
         }
         if (zoneMinutes.isPresent() && timeOfDay.isEmpty()) {
@@ -36,6 +36,24 @@ public record DateValue(
                     "a zone needs a time: a bare date names no instant to offset");
         }
     }
+
+    /**
+     * How long a month is, which February makes a question about the year.
+     *
+     * <p>{@code Month_Length} in {@code t-date.c}, leap rule included, and it
+     * is what makes {@code 29-Feb-2001} an {@code invalid} rather than a date.
+     * Checking the day against a flat 31 accepted it.
+     */
+    private static int daysIn(int month, int year) {
+        if (month != 2) {
+            return LENGTH_OF_MONTH[month - 1];
+        }
+        boolean leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+        return leap ? 29 : 28;
+    }
+
+    private static final int[] LENGTH_OF_MONTH =
+            {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
     public static DateValue of(int year, int month, int day) {
         return new DateValue(year, month, day, Optional.empty(), Optional.empty());
@@ -51,6 +69,18 @@ public record DateValue(
     }
 
     /**
+     * The year as REBOL writes it, which is four digits wide below 1000.
+     *
+     * <p>{@code 1-Feb-0003} rather than {@code 1-Feb-3}. The padding is not
+     * decoration: a molded date has to read back as the same date, and
+     * {@code 1-Feb-3} reads back as 2003 because a year of one or two digits
+     * is the shorthand form.
+     */
+    private String writtenYear() {
+        return year < 0 || year >= 1000 ? String.valueOf(year) : "%04d".formatted(year);
+    }
+
+    /**
      * The written form: the day, then the time, then the offset.
      *
      * <p>An offset of zero is written as nothing at all, which is what a real
@@ -60,7 +90,7 @@ public record DateValue(
      */
     @Override
     public String toString() {
-        String rendered = day + "-" + MONTH_NAMES[month - 1] + "-" + year;
+        String rendered = day + "-" + MONTH_NAMES[month - 1] + "-" + writtenYear();
         if (timeOfDay.isEmpty()) {
             return rendered;
         }
