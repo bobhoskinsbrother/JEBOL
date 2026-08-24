@@ -133,3 +133,18 @@ tasks.check {
 tasks.named<JavaExec>("run") {
     standardInput = System.`in`
 }
+
+// What a person who downloaded only the archive receives. Without this it is
+// two launchers and a jar: no licence, no notice, and no documentation at all.
+//
+// NOTICE is the one that is not a matter of taste. 82 of Rebol's own library
+// files ship unmodified inside the jar under org/jebol/mezz/, each carrying its
+// own Apache 2.0 header, and the Apache License requires the notice to travel
+// with them.
+distributions {
+    named("main") {
+        contents {
+            from("LICENSE", "NOTICE", "using-jebol.md")
+        }
+    }
+}

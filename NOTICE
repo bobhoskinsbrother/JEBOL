@@ -7,10 +7,20 @@ Licensed under the Apache License, Version 2.0. See LICENSE.
 
 This product includes software developed as part of the Rebol 3 project.
 
+Both sets of borrowed files come from Oldes/Rebol3
+(https://github.com/Oldes/Rebol3), which is itself a continuation of
+REBOL, Copyright 2012 REBOL Technologies. Copyright 2012-2026 Rebol Open
+Source Contributors. Both are licensed under the Apache License,
+Version 2.0, and each file carries its own copyright and licence header.
+
+The files under src/main/resources/org/jebol/mezz/ are unmodified copies
+of Rebol's own library, taken from src/mezz/ upstream. They are loaded
+and evaluated at startup, and they are the part of the borrowed code that
+ships: they are inside the jar under org/jebol/mezz/, and thus inside the
+distribution archive. They are the larger part of that jar.
+
 The files under src/test/resources/rebol-suite/ are unmodified test
-scripts taken from Oldes/Rebol3 (https://github.com/Oldes/Rebol3), which
-is itself a continuation of REBOL, Copyright 2012 REBOL Technologies.
-Both are licensed under the Apache License, Version 2.0.
+scripts, taken from src/tests/ upstream. They do not ship.
 
 They are vendored rather than fetched so the suite is reproducible
 without a network, and they are kept byte-for-byte as published so that
