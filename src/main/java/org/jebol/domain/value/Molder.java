@@ -51,6 +51,9 @@ public final class Molder {
      * that is not a series, molds as it always does.
      */
     public static String moldAll(Value value) {
+        if (value instanceof VectorValue vector) {
+            return writtenAsAVector(vector, 1, true, vector.index());
+        }
         if (value instanceof SeriesValue series && series.index() > 1) {
             return "#(" + value.datatype().literalSpelling() + " "
                     + constructBodyOf(series) + " " + series.index() + ")";
@@ -120,6 +123,8 @@ public final class Molder {
             case BinaryValue binary -> renderBinary(binary, forReading);
             case ImageValue image -> renderImage(image, forReading);
             case GobValue gob -> renderGob(gob, forReading);
+            case VectorValue vector -> writtenAsAVector(
+                    vector, vector.index(), forReading, 1);
             case BlockValue block -> renderBlock(block, forReading);
             case WordValue word -> forReading ? word.toString() : word.spelling();
             case DatatypeValue datatype -> forReading
@@ -520,6 +525,61 @@ public final class Molder {
 
     private static final String ONE_INDENT = "    ";
 
+    /**
+     * How many numbers a vector fits on one line before it breaks.
+     *
+     * <p>{@code Mold_Vector} counts to ten and starts a new indented line, and
+     * only bothers at all when there are more than ten to show. A vector of
+     * exactly ten stays on its line.
+     */
+    private static final int NUMBERS_TO_A_LINE = 10;
+
+    /**
+     * A vector as {@code #(int32! [1 2 3])}, or as its numbers alone.
+     *
+     * <p>{@code positionToName} is what MOLD/ALL adds after the closing
+     * bracket so that LOAD reads the value back at the position it was at, and
+     * is left off when that position is the head. Plain MOLD passes one, which
+     * is the head and so never shows, and shows only what is left from where
+     * the value points; MOLD/ALL shows the whole storage.
+     */
+    private static String writtenAsAVector(VectorValue vector, int from,
+            boolean forReading, int positionToName) {
+        List<String> numbers = new java.util.ArrayList<>();
+        for (int at = from; at <= vector.storageLength(); at++) {
+            numbers.add(render(vector.elementAt(at), forReading));
+        }
+        if (!forReading) {
+            return String.join(" ", numbers);
+        }
+        int outer = LINED_DEPTH.get();
+        boolean overALine = numbers.size() > NUMBERS_TO_A_LINE;
+        StringBuilder out = new StringBuilder("#(")
+                .append(vector.kind().spelling()).append(" [");
+        if (overALine) {
+            out.append('\n').append(ONE_INDENT.repeat(outer + 1));
+        }
+        for (int at = 0; at < numbers.size(); at++) {
+            out.append(numbers.get(at));
+            if (at + 1 == numbers.size()) {
+                continue;
+            }
+            if (overALine && (at + 1) % NUMBERS_TO_A_LINE == 0) {
+                out.append('\n').append(ONE_INDENT.repeat(outer + 1));
+            } else {
+                out.append(' ');
+            }
+        }
+        if (overALine) {
+            out.append('\n').append(ONE_INDENT.repeat(outer));
+        }
+        out.append(']');
+        if (positionToName > 1) {
+            out.append(' ').append(positionToName);
+        }
+        return out.append(')').toString();
+    }
+
     private static boolean carriesLineBreaks(BlockValue block) {
         for (int at = block.index(); at <= block.storageLength(); at++) {
             if (block.storage().breaksLineAt(at)) {
@@ -580,8 +640,24 @@ public final class Molder {
         };
     }
 
+    /**
+     * A path molded with slashes, or as a construct when it would not read
+     * back as one.
+     *
+     * <p>A path is a word followed by whatever selects through it, so the
+     * first item decides: {@code a/2/3} reads back as itself and
+     * {@code 1/b/c} does not, because the reader would see a number and stop.
+     * Rebol falls back to {@code #(path! [1 b c])} for exactly that case, and
+     * only that case -- the items after the first may be anything.
+     */
     private static String joinPath(BlockValue path, String prefix, String suffix) {
-        return prefix + path.remaining().stream()
+        List<Value> segments = path.remaining();
+        if (!segments.isEmpty() && !segments.getFirst().datatype().isAnyWord()) {
+            return "#(" + path.datatype().literalSpelling() + " ["
+                    + segments.stream().map(Molder::mold).collect(Collectors.joining(" "))
+                    + "])";
+        }
+        return prefix + segments.stream()
                 .map(Molder::mold)
                 .collect(Collectors.joining("/")) + suffix;
     }

@@ -89,17 +89,31 @@ class HostServiceGrantTest {
     }
 
     @Test
-    @DisplayName("the four natives that call C code are refused whatever is granted")
+    @DisplayName("the three natives that load C of their own are refused whatever is granted")
     void theExtensionPointsAreNeverAvailable() {
+        for (String native0 : new String[] {
+                "load-extension %a", "do-callback []", "do-commands []"}) {
+            assertThat(errorIdOf(everythingGranted(), native0))
+                    .as("%s must always be refused", native0)
+                    .isEqualTo("no-service");
+        }
+    }
+
+    @Test
+    @DisplayName("but ACCESS-OS is not one of them, and answers the process id")
+    void accessOsIsNotAnExtensionPoint() {
+        assertThat(answerTo(everythingGranted(), "integer? access-os 'pid"))
+                .as("this test used to demand a refusal here, which recorded the "
+                        + "stub rather than Rebol: ACCESS-OS loads no C of its own, "
+                        + "and n-io.c answers a number for the field the JVM knows")
+                .isEqualTo("#(true)");
+    }
+
+    private static Bounds everythingGranted() {
         Bounds everything = Bounds.standard();
         for (HostService service : HostService.values()) {
             everything = everything.granting(service);
         }
-        for (String native0 : new String[] {
-                "load-extension %a", "do-callback []", "do-commands []", "access-os 'pid"}) {
-            assertThat(errorIdOf(everything, native0))
-                    .as("%s must always be refused", native0)
-                    .isEqualTo("no-service");
-        }
+        return everything;
     }
 }

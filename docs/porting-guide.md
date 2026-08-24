@@ -44,17 +44,57 @@ two disagreed during the port, the C was right. The sources, in order:
 4. `src/tests/units/*.r3` -- Rebol's own tests, a third authority and the
    cheapest one: read them before writing a line.
 
-**There is an `./r3` binary, gitignored, and it is a fourth authority.** It
-settles what the C leaves ambiguous and it has killed a wrong reading every
+**There is an `./r3-head` binary, gitignored, and it is a fourth authority.**
+It settles what the C leaves ambiguous and it has killed a wrong reading every
 time it has been used. It is for *checking an expectation before writing it
 down*, not for deciding what the language is.
+
+**Build it, do not download it, and `scripts/build-r3.sh` does that.**
+
+```
+./scripts/build-r3.sh            # bulk, to ./r3-head, about a minute
+./scripts/build-r3.sh core
+```
+
+A downloaded release is always older than the checkout beside it, and the two
+disagree in ways that cost real time: the release here was ten weeks behind
+and four separate wrong readings were traced to it -- empty-vector statistics,
+cross-signedness vector comparison, `iconv/to` into UTF-8, and CRC-24. The
+last is the clearest. `Compute_CRC24` in `s-crc.c` now starts from `CRCINIT`,
+and the comment beside that line says "originally there was not standard seed:
+len + *str", which is exactly what the older binary still computes. So
+`checksum "abc" 'crc24` gives 1664899 there and 12196987 in the source, and a
+probe that trusted the binary would have made JEBOL wrong.
+
+The measure that settles it: run Rebol's own tests with both. The release
+fails 72 of them, and a binary built from the checkout fails 59 while running
+a thousand more assertions.
+
+```
+cd rebol3-source/src/tests && ../../../r3-head run-tests.r3
+```
+
+**The downloaded `./r3` is still needed, to build with.** Rebol's pre-make step
+is itself a Rebol script, so an old binary is what makes the new one; after
+that it has no other job. Rebol's own build tool, Siskin, is a separate
+download and is not needed -- `scripts/resolve-nest.r3` reads
+`make/rebol3.nest` far enough to answer the one question pre-make asks, and
+clang does the rest.
 
 ## The regression floors
 
 All of these stay where they are. A change that moves one is wrong.
 
-- **`RebolSuiteTest`** -- Rebol's own 3721 assertions, green, about thirteen
-  seconds alone. The inner loop between changes.
+- **`RebolSuiteTest`** -- Rebol's own assertions, about twenty seconds alone.
+  The inner loop between changes. **4337 of them, none failing.** One sits in
+  `known-gaps.txt`, which is not a skip list: every line in it is run on every
+  build, and the test fails if a listed assertion starts passing. The one line
+  there is an assertion a real Rebol fails as well.
+
+  Adding a line to that file is a decision, not a convenience. A gap belongs
+  there when it is a known difference somebody is going to close; an assertion
+  that Rebol itself fails belongs there permanently and is marked as such.
+  Neither is a reason to stop running it.
 
   ```
   ./gradlew test --tests 'org.jebol.suite.RebolSuiteTest'
@@ -62,17 +102,16 @@ All of these stay where they are. A change that moves one is wrong.
 
 - **`ActionParityTest`** -- the datatype table times the arms table, ratchet at
   zero, nothing parked behind it.
-- **`scripts/c-parity.py`** -- 279 C functions. MISSING is empty. What is left
-  is named in the TODO: `dir?` in the wrong layer, two refinement differences,
-  and 110 TYPES lines of which 60 are `vector!` refusals from the datatype
-  backlog and the rest are JEBOL enumerating concrete datatypes where R3 writes
-  `any-type!`.
-- **`PortingBacklogTest`** -- 3 of R3's 404 functions, and it asks both `lib`
-  and `sys`. It has been wrong three times, each because a number was believed
-  and the question behind it was not.
+- **`scripts/c-parity.py`** -- **279 C functions, 279 matching R3's surface.**
+  MISSING, WRONG LAYER, REFINEMENTS, ARGUMENTS and TYPES are all empty. The
+  only thing it still prints is that JEBOL has a `java-object!` datatype and
+  R3 has nothing like it, which is deliberate.
+- **`PortingBacklogTest`** -- 0 of R3's 404 functions missing, and it asks
+  both `lib` and `sys`. It has been wrong three times, each because a number
+  was believed and the question behind it was not.
 
-`./gradlew check` is the gate before a commit: 9363 tests, 0 failed,
-0 skipped, about three minutes.
+`./gradlew check` is the gate before a commit: 10462 tests, 0 failed,
+0 skipped, about three and a half minutes.
 
 `./gradlew browserCheck` is the second gate and is not optional, only
 separate: it drives a real Chrome and compares what it paints against Java2D,
@@ -89,7 +128,7 @@ Five steps, in order. Do not begin one before the last is finished.
    carries the rules no probe will show you: which flags are set together, what
    a count of zero means, where a search starts, which `case` labels share one
    body and which fall through into a refusal.
-2. **Check the surprising readings against `./r3`** before writing them down.
+2. **Check the surprising readings against `./r3-head`** before writing them down.
    The C is the authority and it is also easy to misread; every reading that
    looked obvious and turned out backwards was caught this way.
 3. **Copy the logic into Java.** Follow the C's structure. Where the C has a
@@ -122,7 +161,7 @@ Each of these cost time once.
 
 - **Multi-line REBOL collapsed onto one line feeds the first call the next
   one's arguments.** Write a probe to a file and run the file. The same is
-  true of `./r3 --do` with quotes in it.
+  true of `./r3-head --do` with quotes in it.
 - **`-Werror` with `dangling-doc-comments`** means inserting code between a
   javadoc and its declaration fails the build. It also refuses a
   try-with-resources whose resource the body never mentions.
@@ -135,6 +174,42 @@ Each of these cost time once.
 - **A pair's halves are decimals.** `first 0x22` is `0.0`, type `decimal!`.
 - **A gob colour's fourth octet is opacity, not transparency.** 255 is opaque,
   the same way round as Java's alpha. The guess goes the other way.
+- **A C spec comment has a `return:` line and a boot file does not.** Dropping
+  the word is not enough: the datatype block behind it then attaches to the
+  argument in front. That is what made `factorial value [integer!]` look as
+  though it took a decimal.
+- **`any-type!` is not in any row's typesets column.** `types.reb` builds it
+  from the table's length, so a collector reading the column alone never sees
+  it, and every argument declared that way reads as a difference.
+- **A suite file that will not read contributes nothing and says nothing.**
+  `series-test.r3` was absent from a green 3721 for as long as vector literals
+  would not lex. Before trusting the suite count, check that every file in it
+  actually loaded.
+- **A borrowed file that loads is not a borrowed file that works.** REWORD,
+  SPLIT, PAD and SUM are Rebol's own REBOL and all four were loaded and all
+  four gave wrong answers, because each stands on a primitive JEBOL had
+  slightly wrong. When one of them misbehaves, ask what it is standing on
+  rather than reading its body: PAD is four lines and the answer was in
+  `insert/dup`.
+- **A word a function body wrote is bound to the function, not to the call.**
+  Rebol binds a body once, at MAKE time, and stamps the function into every
+  word. Two consequences, both of which JEBOL had to be taught: one word is
+  the same word on every call, and `Get_Var` resolves it against the innermost
+  call of that function running at the time it is read. Only a word the
+  function *names* is bound this way -- a free word in a body keeps the
+  binding it had where it was written, which is why `same? :given 'given`
+  behaves differently depending on whether `given` is a parameter.
+- **A word in a PARSE rule is resolved before its kind is decided.**
+  {@code Get_Parse_Value} does it for counts, parens, none, and what TO and
+  THRU look for. Reading what was written instead means every rule assembled
+  at run time fails while the same rule typed by hand works.
+- **`if (IS_NONE(item)) return index;` is in `Parse_Next_String` alone.** A
+  none matches nothing in a string parse and is a value to match in a block
+  parse. Copying the line into both parsers broke a passing assertion.
+- **A path written onto a literal is not a path.** `#(u8! [1])/size` lexes as
+  a vector and the refinement `/size`, and so does `(next v)/length`. Name the
+  value first, in probes as much as in tests -- three expectations here were
+  wrong for this reason before the code was.
 - **Do not `rm -rf build/test-results`** to force a re-run; Gradle then fails
   with `NoSuchFileException` on its own binary results directory. Use
   `./gradlew cleanTest`.

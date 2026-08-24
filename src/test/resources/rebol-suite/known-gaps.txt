@@ -8,3 +8,17 @@
 #
 # Written by hand from a run, so it is a snapshot rather than a target:
 # the aim is for this file to be empty.
+#
+# One entry cannot come off, and it is marked. A real Rebol fails it too,
+# so JEBOL passing it would mean JEBOL disagreeing with Rebol. That was
+# not taken on trust: a binary built from the vendored source by
+# scripts/build-r3.sh was run over Rebol's own test runner, and the
+# assertion is one of its own failures.
+
+# Rebol fails this one as well. It asks whether "🙂" equals the LENGTH? of
+# a string whose index a SWAP has just invalidated -- a string against a
+# number, which is false whatever the number is. Rebol answers 0 there and
+# JEBOL answers 1, and neither is equal to a string. Rebol's own comment
+# on the line reads "Known issue!!!", and running its suite prints
+# "FAIL: swap invalidating index (known issue) (1)".
+series-test.r3 / SWAP / swap invalidating index (known issue) #969

@@ -235,6 +235,9 @@ public final class Parser {
             if (consumed != null) {
                 return consumed;
             }
+            if (countBehind(word) != null) {
+                return matchCountedRule(rules, at);
+            }
             return matchNamedRule(word) ? 1 : NO_MATCH;
         }
         if (rule instanceof UnsetValue || rule.datatype().isAnyFunction()) {
@@ -258,12 +261,13 @@ public final class Parser {
      * range, so {@code [2 3 integer!]} matches two or three of them.
      */
     private int matchCountedRule(List<Value> rules, int at) {
-        long least = ((IntegerValue) rules.get(at)).magnitude();
+        long least = countIn(rules, at);
         int countItems = 1;
         long most = least;
 
-        if (at + 1 < rules.size() && rules.get(at + 1) instanceof IntegerValue upper) {
-            most = upper.magnitude();
+        Integer upper = countIn(rules, at + 1);
+        if (upper != null) {
+            most = upper;
             countItems = 2;
         }
         if (at + countItems >= rules.size()) {
@@ -290,12 +294,12 @@ public final class Parser {
      * over. {@code [any integer!]} against empty input matches, and the walk
      * then has to know that ANY and its rule were two items rather than one.
      */
-    private static int ruleSpan(List<Value> rules, int at) {
+    private int ruleSpan(List<Value> rules, int at) {
         if (at >= rules.size()) {
             return 1;
         }
-        if (rules.get(at) instanceof IntegerValue) {
-            int counts = at + 1 < rules.size() && rules.get(at + 1) instanceof IntegerValue ? 2 : 1;
+        if (countIn(rules, at) != null) {
+            int counts = countIn(rules, at + 1) != null ? 2 : 1;
             return counts + ruleSpan(rules, at + counts);
         }
         if (rules.get(at) instanceof WordValue word && word.datatype() == Datatype.WORD) {
@@ -848,6 +852,24 @@ public final class Parser {
     }
 
     /**
+     * What a word stands for where a value is wanted rather than a rule.
+     *
+     * <p>{@code Get_Parse_Value} in the C, which every place that reads an
+     * argument goes through. TO and THRU did not, so {@code to char} looked
+     * for the word itself in the input, never found it, and quietly matched
+     * nothing.
+     */
+    private Value whatTheWordHolds(Value wanted) {
+        if (!(wanted instanceof WordValue named) || named.datatype() != Datatype.WORD) {
+            return wanted;
+        }
+        Context target = named.isBound() ? named.binding() : context;
+        return target.knows(named.canonical())
+                ? target.slotFor(named.canonical()).value()
+                : wanted;
+    }
+
+    /**
      * TO and THRU: move forward until the rule matches. TO leaves the
      * position before what it found and THRU leaves it after, which is the
      * whole difference between them.
@@ -859,6 +881,7 @@ public final class Parser {
             position = input.size();
             return 2;
         }
+        wanted = whatTheWordHolds(wanted);
         while (position <= input.size()) {
             int before = position;
             if (matchValue(wanted)) {
@@ -874,18 +897,40 @@ public final class Parser {
         return NO_MATCH;
     }
 
-    /** INTO: match a rule against the contents of the block at this position. */
+    /**
+     * INTO: match a rule against the contents of the series at this position.
+     *
+     * <p>Three things the C states and a first reading misses.
+     * {@code Get_Parse_Value} resolves the rule before deciding what kind of
+     * rule it is, so INTO followed by a word steps into the block that word
+     * holds -- which is how a rule recurses into itself, and how COMBINE
+     * reaches the values of a nested block. The value stepped into is
+     * {@code ANY_BINSTR(val) || ANY_BLOCK(val)}, a string and a binary as
+     * readily as a block. And a rule that is not a block after resolving is
+     * {@code goto bad_rule}, an error rather than a failure to match.
+     */
     private int into(List<Value> rules, int at) {
-        Value inner = following(rules, at, "into");
-        if (atEnd() || !(current() instanceof BlockValue nested)
-                || !(inner instanceof BlockValue innerRule)) {
-            return NO_MATCH;
+        Value inner = whatTheWordHolds(following(rules, at, "into"));
+        if (!(inner instanceof BlockValue innerRule)) {
+            throw Raised.of(EvaluationFailure.PARSE_RULE,
+                    "into needs a block of rules to apply");
         }
-        if (!matches(evaluator, context, nested.remaining(), innerRule)) {
+        if (atEnd() || !(current() instanceof SeriesValue nested)
+                || !steppedInto(nested, innerRule)) {
             return NO_MATCH;
         }
         position++;
         return 2;
+    }
+
+    private boolean steppedInto(SeriesValue nested, BlockValue innerRule) {
+        if (nested instanceof BlockValue block) {
+            return matches(evaluator, context, block.remaining(), innerRule);
+        }
+        if (nested instanceof StringValue || nested instanceof BinaryValue) {
+            return StringParser.matches(evaluator, context, nested, innerRule, mindingCase);
+        }
+        return false;
     }
 
     /**
@@ -910,8 +955,22 @@ public final class Parser {
             return NO_MATCH;
         }
         List<Value> taken = new ArrayList<>(input.subList(startedAt, position));
-        assign(word, everything ? BlockValue.block(taken) : firstOf(taken));
+        assign(word, everything ? sliceOfTheInput(taken) : firstOf(taken));
         return 2 + consumed;
+    }
+
+    /**
+     * What COPY hands back: a slice of the input, of the input's own kind.
+     *
+     * <p>{@code Copy_Block} keeps the datatype, so copying out of a paren
+     * gives a paren. SPLIT of a paren depends on it: each piece it keeps is
+     * one of these, and a block there would quietly change what was split.
+     */
+    private Value sliceOfTheInput(List<Value> taken) {
+        BlockValue slice = BlockValue.block(taken);
+        return source instanceof BlockValue whole
+                ? slice.as(whole.datatype())
+                : slice;
     }
 
     private Value firstOf(List<Value> taken) {
@@ -944,6 +1003,36 @@ public final class Parser {
         return rules.get(at + 1);
     }
 
+    /**
+     * A repeat count at a rule position, whether written as a number or held
+     * in a word.
+     *
+     * <p>{@code Get_Parse_Value} resolves a word before the C decides what
+     * kind of rule it has, so {@code 1 size skip} counts up to whatever
+     * {@code size} holds. Reading only literal numbers made that rule match
+     * nothing, and SPLIT is built on exactly it.
+     */
+    private Integer countIn(List<Value> rules, int at) {
+        if (at >= rules.size()) {
+            return null;
+        }
+        Value rule = rules.get(at);
+        if (rule instanceof IntegerValue count) {
+            return (int) count.magnitude();
+        }
+        return rule instanceof WordValue word && word.datatype() == Datatype.WORD
+                ? countBehind(word)
+                : null;
+    }
+
+    private Integer countBehind(WordValue word) {
+        Context target = word.isBound() ? word.binding() : context;
+        return target.knows(word.canonical())
+                && target.slotFor(word.canonical()).value() instanceof IntegerValue count
+                ? (int) count.magnitude()
+                : null;
+    }
+
     /** A word in a rule names another rule, which is how a grammar is built. */
     private boolean matchNamedRule(WordValue word) {
         Context target = word.isBound() ? word.binding() : context;
@@ -954,7 +1043,7 @@ public final class Parser {
         if (named instanceof UnsetValue || named.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, (Value) word);
         }
-        return named instanceof BlockValue rule
+        return named instanceof BlockValue rule && rule.datatype() == Datatype.BLOCK
                 ? matchSequence(rule.remaining())
                 : matchValue(named);
     }

@@ -7,6 +7,7 @@ TYPESET any-function! | action! closure! command! function! native! op! rebcode!
 TYPESET any-object! | error! module! object! port! task!
 TYPESET any-path! | get-path! lit-path! path! set-path!
 TYPESET any-string! | email! file! ref! string! tag! url!
+TYPESET any-type! | action! binary! bitset! block! char! closure! command! datatype! date! decimal! email! end! error! event! file! frame! function! get-path! get-word! gob! handle! hash! image! integer! issue! library! lit-path! lit-word! logic! map! module! money! native! none! object! op! pair! paren! path! percent! port! rebcode! ref! refinement! set-path! set-word! string! struct! tag! task! time! tuple! typeset! unset! url! utype! vector! word!
 TYPESET any-word! | get-word! issue! lit-word! refinement! set-word! word!
 TYPESET number! | decimal! integer! percent!
 TYPESET scalar! | char! date! decimal! integer! money! pair! percent! time! tuple!
@@ -239,7 +240,7 @@ NATIVE evoke | chant<word! block! integer!>
 NATIVE exclude | set1<block! string! bitset! typeset! map!> set2<block! string! bitset! typeset! map!> /case /skip size<integer!>
 NATIVE exit | 
 NATIVE exp | power<number!>
-NATIVE factorial | value<integer! decimal!>
+NATIVE factorial | value<integer!>
 NATIVE fifth | value
 NATIVE filter | data<binary!> width<number!> type<integer! word!> /skip bpp<integer!>
 NATIVE find-script | script<binary!>
@@ -256,7 +257,7 @@ NATIVE fraction | number<decimal!>
 NATIVE gcd | a<integer!> b<integer!>
 NATIVE get | word /any
 NATIVE get-env | var<any-string! any-word!>
-NATIVE grayscale | target<integer! image!>
+NATIVE grayscale | target<tuple! image!>
 NATIVE greater-or-equal? | value1 value2
 NATIVE greater? | value1 value2
 NATIVE halt | 

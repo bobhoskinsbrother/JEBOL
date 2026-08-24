@@ -321,19 +321,6 @@ suffix?: func [
     ]
 ]
 
-dir?: func [
-    "Whether the path names a directory, which means it ends with a slash."
-    target [file! url! none!]
-][
-    ;; TRUE? because ALL gives none when a condition does not hold, and
-    ;; the answer here must be a logic value.
-    true? all [
-        not none? target
-        not empty? target
-        #"/" = last target
-    ]
-]
-
 funct: func [
     "Builds a function in which every set-word in the body is a local."
     spec [block!] "Its interface"

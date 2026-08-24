@@ -66,6 +66,10 @@ public enum EvaluationFailure {
     NO_SERVICE(ErrorCategory.ACCESS, "no-service",
             "a host service the script was not granted, or that nothing can offer"),
     CALL_FAIL(ErrorCategory.ACCESS, "call-fail", "external process failed"),
+    NOT_HERE(ErrorCategory.ACCESS, "not-here",
+            "something this machine's operating system does not offer"),
+    PERMISSION_DENIED(ErrorCategory.ACCESS, "permission-denied",
+            "something the operating system would not let this process do"),
     HIDDEN(ErrorCategory.SCRIPT, "hidden",
             "a field the object keeps to itself, reached from outside"),
     PARSE_NO_COLLECT(ErrorCategory.SCRIPT, "parse-no-collect",
@@ -110,6 +114,10 @@ public enum EvaluationFailure {
      */
     SIZE_LIMIT(ErrorCategory.INTERNAL, "size-limit", "maximum limit reached"),
     ZERO_DIVIDE(ErrorCategory.MATH, "zero-divide", "division by zero"),
+    VECTOR_NOT_COMPATIBLE(ErrorCategory.SCRIPT, "vector-not-compatible",
+            "two vectors that do not hold their numbers the same way"),
+    NOT_SAME_TYPE(ErrorCategory.SCRIPT, "not-same-type",
+            "two values that are not the same kind of thing"),
     OVERFLOW(ErrorCategory.MATH, "overflow", "arithmetic outside the representable range"),
     THROWN(ErrorCategory.SCRIPT, "thrown", "an error value reached during evaluation");
 

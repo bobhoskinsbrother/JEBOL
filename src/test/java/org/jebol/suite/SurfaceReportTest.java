@@ -64,10 +64,28 @@ class SurfaceReportTest {
         java.nio.file.Path into = java.nio.file.Path.of("build", "jebol-surface.txt");
         try {
             java.nio.file.Files.createDirectories(into.getParent());
-            java.nio.file.Files.write(into, lines);
+            java.nio.file.Files.write(into, withTheDatatypeTable(lines));
         } catch (java.io.IOException unwritable) {
             throw new java.io.UncheckedIOException(unwritable);
         }
+    }
+
+    /**
+     * The same lines with JEBOL's own datatype table in front of them.
+     *
+     * <p>An argument Rebol declares {@code any-type!} can only be written as
+     * every datatype in a Java {@code Set}, so the audit needs both tables to
+     * see that the two say the same thing. Without them the 41 arguments
+     * declared that way each reported the difference between the two tables,
+     * which is two datatypes and belongs on one line rather than eighty-two.
+     */
+    private static List<String> withTheDatatypeTable(java.util.Collection<String> lines) {
+        List<String> everything = new java.util.ArrayList<>();
+        for (Datatype datatype : Datatype.values()) {
+            everything.add("DATATYPE " + datatype.literalSpelling());
+        }
+        everything.addAll(lines);
+        return everything;
     }
 
     /** One function's arguments and refinements, or nothing if it is not one. */

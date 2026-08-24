@@ -159,6 +159,29 @@ class ActionParityTest {
     /** What JEBOL answers when the arm is not there. */
     private static final Set<String> MEANS_NO_ARM = Set.of("cannot-use", "expect-arg");
 
+    /**
+     * Pairings where the C has the arm and the arm turns this datatype away.
+     *
+     * <p>This measure multiplies the datatype table by the arms table, and
+     * that product says which {@code case} labels exist rather than which of
+     * them do anything. Where the first line inside a case is a refusal, the
+     * product over-counts, and a faithful port has to look like a gap here or
+     * disagree with Rebol.
+     *
+     * <p>{@code REBTYPE(Block)}'s RANDOM is the whole of the list:
+     * {@code if (!IS_BLOCK(value)) Trap_Action(VAL_TYPE(value), action);} is
+     * its second line, so every block-like datatype that is not a plain block
+     * -- the four paths, a hash and a paren -- reaches the arm and is sent
+     * away with {@code cannot-use}. Rebol's own series-test.r3 pins it:
+     * {@code all [error? e: try [random 'a/b/c] e/id = 'cannot-use]}.
+     *
+     * <p>Nothing goes on this list without the line of C that refuses and the
+     * assertion that wants it. It is not a place to park work.
+     */
+    private static final Set<String> REFUSED_BY_THE_C_TOO = Set.of(
+            "path! random", "set-path! random", "get-path! random",
+            "lit-path! random", "hash! random", "paren! random");
+
     @Test
     @DisplayName("every action the C implements for a datatype does something here")
     void everyArmIsThere() {
@@ -188,6 +211,9 @@ class ActionParityTest {
                     answered = interpreter.display(interpreter.run(source)).trim();
                 } catch (RuntimeException escaped) {
                     answered = "threw " + escaped.getClass().getSimpleName();
+                }
+                if (REFUSED_BY_THE_C_TOO.contains(datatype + " " + action)) {
+                    continue;
                 }
                 if (MEANS_NO_ARM.contains(answered) || answered.startsWith("threw ")) {
                     gaps.computeIfAbsent(datatype, ignored -> new ArrayList<>())

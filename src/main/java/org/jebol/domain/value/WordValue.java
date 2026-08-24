@@ -89,9 +89,39 @@ public record WordValue(String spelling, String canonical, Context binding, Data
         return datatype.hashCode() * 31 + spelling.hashCode();
     }
 
-    /** REBOL's {@code same?}: equal, and bound to the same context. */
+    /**
+     * REBOL's {@code same?}: equal, and bound to the same context.
+     *
+     * <p>Or to two frames of one function, which is not the same condition
+     * and is the whole of {@code VAL_WORD_FRAME}. The C binds a function's
+     * body once, when the function is made, and the frame it writes into
+     * every word there is the function's own parameter list rather than any
+     * one call's frame. So a word the body wrote is the same word on every
+     * call, however many calls are alive at the time. Here a body is bound to
+     * the frame of the call running it, which is a different object each
+     * time, so the question has to be asked of what those frames belong to.
+     *
+     * <p>Rebol's ARRAY turns on this. It hands itself {@code 'tag} as a token
+     * saying the call came from inside, and the guard that reads the token is
+     * {@code unless same? :tag 'tag} -- one word from the caller's frame
+     * against the same word from the callee's. Compare the frames themselves
+     * and the token never matches, so ARRAY drops the indexes it was passing
+     * down and {@code array/initial [2 2] func [x y] [...]} builds every row
+     * from the same pair of numbers.
+     *
+     * <p>A closure is bound to a real object for each call and is marked as
+     * no function's frame, so two closures' words stay two words. That is
+     * what the C does as well, because a closure's body is bound for real
+     * rather than relatively.
+     */
     public boolean isSameAs(WordValue other) {
-        return equals(other) && other.binding == binding;
+        return equals(other)
+                && (other.binding == binding || shareAFunctionsFrames(other));
+    }
+
+    private boolean shareAFunctionsFrames(WordValue other) {
+        Value ours = binding.functionOwningThisFrame();
+        return ours != null && ours == other.binding.functionOwningThisFrame();
     }
 
     @Override

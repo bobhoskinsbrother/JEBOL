@@ -179,16 +179,26 @@ def parse_spec(body):
     body = re.sub(r";[^\n]*", " ", body)
     arguments = []
     refinements = []
+    # A `return:` names the answer rather than an argument, and the natives the
+    # C declares in its own comments use it where the boot files never do. It is
+    # not enough to drop the word: the datatype block behind it would then land
+    # on the argument in front, which is how `factorial value [integer!]` came
+    # to look as though it took a decimal and `grayscale target [tuple!
+    # image!]` came to look as though it refused one.
+    belongs_to_the_answer = False
     for token in re.findall(r"/[A-Za-z0-9?!\-]+|\[[^\]]*\]|[A-Za-z0-9?!\-\']+:?", body):
         if token.startswith("/"):
             refinements.append((token[1:], []))
+            belongs_to_the_answer = False
             continue
         into = refinements[-1][1] if refinements else arguments
         if token.startswith("["):
-            if into:
+            if into and not belongs_to_the_answer:
                 into[-1] = (into[-1][0], token[1:-1].split())
+            belongs_to_the_answer = False
             continue
-        if token in NOT_AN_ARGUMENT:
+        belongs_to_the_answer = token in NOT_AN_ARGUMENT
+        if belongs_to_the_answer:
             continue
         into.append((token, []))
     return arguments, refinements
@@ -410,6 +420,14 @@ def main():
         for typeset in row["typesets"]:
             spelling = TYPESET_SPELLING.get(typeset, typeset + "!")
             typesets.setdefault(spelling, set()).add(name + "!")
+
+    # `any-type!` names every datatype in the table and so is in no row's
+    # typesets column; types.reb builds it from the table's length instead.
+    # Without it here, the 41 arguments R3 declares that way read as 41
+    # differences, because the only way to say the same thing in a Java Set is
+    # to write every datatype out. They were the largest group in the report
+    # and not one of them was a difference in behaviour.
+    typesets["any-type!"] = {name + "!" for name in table}
 
     lines = ["# Rebol's C surface, read from its own source. Written by",
              "# scripts/c-surface.py. No running binary is involved.",

@@ -184,16 +184,27 @@ class CloakAndIconvFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("/TO answers a binary, not text")
+        @DisplayName("/TO answers a binary, unless the target is UTF-8")
         void theToFormAnswersABinary() {
-            assertThat(answerTo("binary? iconv/to #{4142} 'utf8 'utf8"))
+            assertThat(answerTo("binary? iconv/to #{4142} 'utf8 'utf16le"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo("string? iconv/to #{4142} 'utf8 'utf8"))
+                    .as("this test asserted a binary here and was wrong. "
+                            + "`if (tp == CP_UTF8) SET_STRING(D_RET, src_ser);` -- "
+                            + "UTF-8 is how a REBOL string is already held, so there "
+                            + "is nothing to convert and nothing to hand back as "
+                            + "octets. Rebol's own series-test.r3 says the same in "
+                            + "three assertions")
                     .isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and transcoding widens a Latin-1 byte into two UTF-8 bytes")
         void transcodingWidens() {
-            assertThat(answerTo("iconv/to #{E9} 'latin1 'utf8")).isEqualTo("#{C3A9}");
+            assertThat(answerTo("to binary! iconv/to #{E9} 'latin1 'utf8"))
+                    .as("the widening still happens; it is the answer's datatype "
+                            + "that this test had wrong")
+                    .isEqualTo("#{C3A9}");
         }
 
         @Test

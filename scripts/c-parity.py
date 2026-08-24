@@ -122,6 +122,38 @@ def typesets():
 TYPESETS = typesets()
 
 
+def datatype_table(path, marker):
+    """Every datatype one side of the audit has, by spelling."""
+    if not path.exists():
+        return set()
+    return {line.split()[1].rstrip("|").strip()
+            for line in path.read_text().splitlines()
+            if line.startswith(marker + " ")}
+
+
+R3_DATATYPES = datatype_table(C_SURFACE, "DATATYPE")
+JEBOL_DATATYPES = datatype_table(JEBOL_SURFACE, "DATATYPE")
+
+# In the table on both sides and passable by no script: `end!` is how the
+# evaluator marks a missing argument, so a declaration that omits it still
+# accepts every value there is.
+NEVER_PASSED_BY_A_SCRIPT = {"end!"}
+
+
+def says_anything(declared, table):
+    """Whether a declaration is that side's whole table, which is `any-type!`.
+
+    The two tables are not the same table -- JEBOL has `java-object!` and R3
+    has nothing like it -- so comparing the sets member by member reported the
+    difference between the tables on every one of the 41 arguments R3 declares
+    `any-type!`, and none of them was a difference in what a script can do. A
+    difference between the tables is a fact about the tables and belongs on one
+    line rather than on eighty-two.
+    """
+    passable = table - NEVER_PASSED_BY_A_SCRIPT
+    return bool(passable) and declared >= passable
+
+
 def datatypes(names):
     """A declared set of datatypes with every typeset name expanded."""
     expanded = set()
@@ -221,6 +253,9 @@ def verdicts(name, theirs, ours):
     for argument in their_args:
         if argument not in our_types or argument not in their_types:
             continue
+        if says_anything(their_types[argument], R3_DATATYPES) \
+                and says_anything(our_types[argument], JEBOL_DATATYPES):
+            continue
         narrower = their_types[argument] - our_types[argument]
         wider = our_types[argument] - their_types[argument]
         if narrower:
@@ -264,6 +299,16 @@ def main():
     print(f"  in Java with a surface difference: {len(differences)}")
     print(f"  in REBOL here, not Java:           {len(wrong_layer)}")
     print(f"  not there at all:                  {len(missing)}")
+
+    absent_here = R3_DATATYPES - JEBOL_DATATYPES
+    only_here = JEBOL_DATATYPES - R3_DATATYPES
+    if absent_here or only_here:
+        print(f"\nDATATYPES: R3 has {len(R3_DATATYPES)}, JEBOL has "
+              f"{len(JEBOL_DATATYPES)}")
+        if absent_here:
+            print("  not in JEBOL: " + " ".join(sorted(absent_here)))
+        if only_here:
+            print("  only in JEBOL: " + " ".join(sorted(only_here)))
 
     if missing:
         print("\nMISSING -- Rebol writes these in C and JEBOL has not got them:")

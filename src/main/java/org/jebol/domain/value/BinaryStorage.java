@@ -9,15 +9,22 @@ public final class BinaryStorage {
 
     private byte[] bytes;
     private int length;
+    private final SeriesMemory.Reservation reserved;
 
     public BinaryStorage() {
-        this.bytes = new byte[INITIAL_CAPACITY];
+        this(INITIAL_CAPACITY);
+    }
+
+    public BinaryStorage(int roomFor) {
+        this.bytes = new byte[Math.max(INITIAL_CAPACITY, roomFor)];
         this.length = 0;
+        this.reserved = SeriesMemory.reserve(this, bytes.length);
     }
 
     public BinaryStorage(byte[] initialBytes) {
         this.bytes = initialBytes.clone();
         this.length = initialBytes.length;
+        this.reserved = SeriesMemory.reserve(this, bytes.length);
     }
 
     public static BinaryStorage of(int... octets) {
@@ -76,6 +83,7 @@ public final class BinaryStorage {
         refuseIfProtected();
         if (length == bytes.length) {
             bytes = Arrays.copyOf(bytes, Math.max(INITIAL_CAPACITY, bytes.length * 2));
+            reserved.nowHolds(bytes.length);
         }
         bytes[length] = requireOctet(octet);
         length++;

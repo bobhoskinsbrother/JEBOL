@@ -169,4 +169,15 @@ class AuditedRefinementsTest {
     void contextOnlyIsAccepted() {
         assertThat(answerTo("(context/only [a: 1]) = context [a: 1]")).isEqualTo("#(true)");
     }
+
+    @Test
+    @DisplayName("REQUEST-COLOR has no /RGB16, and a script that writes one is told so")
+    void requestColourHasNoSixteenBitRefinement() {
+        assertThat(answerTo(
+                "either error? e: try [request-color/rgb16] [e/id] ['accepted]"))
+                .as("the audit reads in both directions: a refinement JEBOL invented "
+                        + "is as much a difference as one it is missing, and a script "
+                        + "written against it would not run on a real Rebol")
+                .isEqualTo("no-refine");
+    }
 }

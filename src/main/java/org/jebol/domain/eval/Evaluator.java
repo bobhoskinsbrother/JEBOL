@@ -651,7 +651,7 @@ public final class Evaluator {
             return walkFrames(frames);
         } finally {
             while (functionsBeingRun.size() > callsOpenBeforeTheWalk) {
-                functionsBeingRun.pop();
+                handBackTheFrameTakenOverBy(functionsBeingRun.pop());
             }
         }
     }
@@ -669,7 +669,7 @@ public final class Evaluator {
                 }
                 Value finished = frame.lastResult;
                 if (frame.functionBody && !functionsBeingRun.isEmpty()) {
-                    functionsBeingRun.pop();
+                    handBackTheFrameTakenOverBy(functionsBeingRun.pop());
                 }
                 if (frame.functionBody) {
                     frame.context.markCallEnded();
@@ -725,10 +725,32 @@ public final class Evaluator {
         framesOpen = frames.size();
         if (being != null) {
             functionsCalled++;
+            openFrameOf(being).ifPresent(outer -> outer.supersededBy(context));
             functionsBeingRun.push(new OpenCall(nameOfTheCallBeingMade, being, context));
             nameOfTheCallBeingMade = "";
             lastWordCalledThrough = "";
         }
+    }
+
+    /**
+     * The innermost frame of a function that is still running, if there is one.
+     *
+     * <p>{@code while (frame != VAL_WORD_FRAME(DSF_WORD(dsf))) dsf =
+     * PRIOR_DSF(dsf);} in {@code Get_Var}, which walks out from the innermost
+     * call. Here it is asked at the two moments the answer changes -- a call
+     * of the same function beginning, and one ending -- so the frames can
+     * point at each other and the walk itself never has to be repeated.
+     */
+    private java.util.Optional<Context> openFrameOf(FunctionValue function) {
+        return functionsBeingRun.stream()
+                .filter(call -> call.function() == function)
+                .map(OpenCall::locals)
+                .findFirst();
+    }
+
+    private void handBackTheFrameTakenOverBy(OpenCall ending) {
+        ending.locals().supersededBy(null);
+        openFrameOf(ending.function()).ifPresent(outer -> outer.supersededBy(null));
     }
 
     /**
@@ -1237,6 +1259,10 @@ public final class Evaluator {
                     "a path on a " + joining.datatype().literalSpelling()
                             + " names another one rather than a place to write");
         }
+        if (target instanceof VectorValue vector) {
+            VectorPath.write(vector, selectorFor(lastSegment, frame.context), written);
+            return;
+        }
         if (target instanceof SeriesValue series && lastSegment instanceof IntegerValue where) {
             replaceInSeries(series,
                     series.index() + (int) where.magnitude() - 1, written);
@@ -1288,6 +1314,13 @@ public final class Evaluator {
                 throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
             }
             raised.write(field.canonical(), written);
+            return;
+        }
+        if (target instanceof StringValue address
+                && address.datatype() == Datatype.EMAIL
+                && selectorFor(lastSegment, frame.context) instanceof WordValue half
+                && (half.canonical().equals("user") || half.canonical().equals("host"))) {
+            writeEmailPart(address, half.canonical(), written);
             return;
         }
         throw Raised.of(EvaluationFailure.INVALID_PATH,
@@ -1516,6 +1549,9 @@ public final class Evaluator {
             return EventPath.read(event, selector,
                     hostPort("event"), hostPort("callback"), hostPort("input"));
         }
+        if (target instanceof VectorValue vector) {
+            return VectorPath.read(vector, selector);
+        }
         if (target instanceof SeriesValue series && selector instanceof IntegerValue position) {
             long index = position.magnitude();
             if (index < 1 || index > series.lengthFromHere()) {
@@ -1530,6 +1566,7 @@ public final class Evaluator {
                         block.index() + (int) index - 1);
                 case ImageValue pixels -> ImagePath.read(pixels, selector);
                 case GobValue gob -> GobPath.read(gob, selector);
+                case VectorValue vector -> VectorPath.read(vector, selector);
             };
         }
         if (target instanceof CharacterValue character
@@ -1618,6 +1655,8 @@ public final class Evaluator {
             case BinaryValue bytes -> bytes.storage().set(at, octetFrom(value));
             case ImageValue image -> ImagePath.write(image, at, value);
             case GobValue gob -> GobPath.poke(gob, at, value);
+            case VectorValue vector -> vector.storage().set(at,
+                    VectorPath.storedFormOf(vector.kind(), value));
         }
     }
 
@@ -1817,15 +1856,41 @@ public final class Evaluator {
         if (text.datatype() != Datatype.EMAIL) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, half);
         }
-        String whole = text.text();
+        String whole = text.head().text();
         int at = whole.indexOf('@');
         if (half.equals("host")) {
             return at < 0
                     ? NoneValue.none()
-                    : StringValue.of(whole.substring(at + 1), Datatype.EMAIL);
+                    : StringValue.of(whole.substring(at + 1));
         }
-        return StringValue.of(
-                at < 0 ? whole : whole.substring(0, at), Datatype.EMAIL);
+        return StringValue.of(at < 0 ? whole : whole.substring(0, at));
+    }
+
+    /**
+     * Writing half an address back, which rewrites the storage in place.
+     *
+     * <p>{@code Modify_String(A_CHANGE, ...)} over the half being replaced, so
+     * every other name for the same address sees the new one. Setting the host
+     * of an address that has no {@code @} adds one: the C appends the
+     * character and then appends the value behind it, which is how
+     * {@code e/host: %rebol.tech} turns a bare word into an address.
+     */
+    private static void writeEmailPart(StringValue text, String half, Value written) {
+        if (text.datatype() != Datatype.EMAIL) {
+            throw Raised.of(EvaluationFailure.BAD_PATH_SET, half);
+        }
+        String whole = text.text();
+        int at = whole.indexOf('@');
+        String replacement = Molder.form(written);
+        String rebuilt = half.equals("host")
+                ? (at < 0 ? whole + "@" + replacement
+                        : whole.substring(0, at + 1) + replacement)
+                : replacement + (at < 0 ? "" : whole.substring(at));
+        StringStorage storage = text.storage();
+        while (storage.length() > 0) {
+            storage.removeAt(1);
+        }
+        rebuilt.codePoints().forEach(storage::append);
     }
 
     /**

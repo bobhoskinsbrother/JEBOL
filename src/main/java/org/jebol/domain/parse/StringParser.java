@@ -425,18 +425,13 @@ public final class StringParser {
                     throw Raised.of(EvaluationFailure.NOT_DONE,
                             "limit is a parse command reserved for future use");
                 }
-                default -> matchNamedRule(word) ? 1 : -1;
+                default -> countBehind(word) != null
+                        ? matchRepeat(rules, at)
+                        : (matchNamedRule(word) ? 1 : -1);
             };
         }
-        if (rule instanceof IntegerValue least) {
-            int atMost = at + 1 < rules.size() && rules.get(at + 1) instanceof IntegerValue most
-                    ? (int) most.magnitude()
-                    : (int) least.magnitude();
-            int ruleAt = at + (atMost == (int) least.magnitude()
-                    && !(at + 1 < rules.size() && rules.get(at + 1) instanceof IntegerValue)
-                    ? 1 : 2);
-            return countedRepeat(rules, ruleAt, (int) least.magnitude(), atMost,
-                    ruleAt - at);
+        if (rule instanceof IntegerValue) {
+            return matchRepeat(rules, at);
         }
         if (rule instanceof UnsetValue || rule.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
@@ -480,12 +475,12 @@ public final class StringParser {
      * <p>COLLECT and KEEP need this to know where the rule they apply to
      * ends, and a count needs it to know what it is counting.
      */
-    private static int ruleSpan(List<Value> rules, int at) {
+    private int ruleSpan(List<Value> rules, int at) {
         if (at >= rules.size()) {
             return 1;
         }
-        if (rules.get(at) instanceof IntegerValue) {
-            int counts = at + 1 < rules.size() && rules.get(at + 1) instanceof IntegerValue ? 2 : 1;
+        if (countIn(rules, at) != null) {
+            int counts = countIn(rules, at + 1) != null ? 2 : 1;
             return counts + ruleSpan(rules, at + counts);
         }
         if (rules.get(at) instanceof WordValue word && word.datatype() == Datatype.WORD) {
@@ -787,6 +782,44 @@ public final class StringParser {
         target.set(word.canonical(), value);
     }
 
+    /**
+     * A repeat count at a rule position, whether written as a number or held
+     * in a word.
+     *
+     * <p>{@code Get_Parse_Value} resolves a word before the C looks at what
+     * kind of rule it has, so {@code 1 size skip} counts up to whatever
+     * {@code size} holds. Reading only literal numbers made that rule match
+     * nothing, and SPLIT is built on exactly it.
+     */
+    private Integer countIn(List<Value> rules, int at) {
+        if (at >= rules.size()) {
+            return null;
+        }
+        Value rule = rules.get(at);
+        if (rule instanceof IntegerValue count) {
+            return (int) count.magnitude();
+        }
+        return rule instanceof WordValue word && word.datatype() == Datatype.WORD
+                ? countBehind(word)
+                : null;
+    }
+
+    private Integer countBehind(WordValue word) {
+        Context target = word.isBound() ? word.binding() : context;
+        return target.knows(word.canonical())
+                && target.slotFor(word.canonical()).value() instanceof IntegerValue count
+                ? (int) count.magnitude()
+                : null;
+    }
+
+    private int matchRepeat(List<Value> rules, int at) {
+        int least = countIn(rules, at);
+        Integer second = countIn(rules, at + 1);
+        int ruleAt = second == null ? at + 1 : at + 2;
+        return countedRepeat(rules, ruleAt, least,
+                second == null ? least : second, ruleAt - at);
+    }
+
     private boolean matchNamedRule(WordValue word) {
         Context target = word.isBound() ? word.binding() : context;
         if (!target.knows(word.canonical())) {
@@ -796,7 +829,7 @@ public final class StringParser {
         if (named instanceof UnsetValue || named.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, (Value) word);
         }
-        return named instanceof BlockValue rule
+        return named instanceof BlockValue rule && rule.datatype() == Datatype.BLOCK
                 ? matchSequence(rule.remaining())
                 : matchValue(named);
     }
@@ -876,6 +909,25 @@ public final class StringParser {
             "case", "no-case", "change", "remove", "insert", "if", "set",
             "copy", "collect", "keep", "into");
 
+    /**
+     * What a word stands for where a value is wanted rather than a rule.
+     *
+     * <p>{@code Get_Parse_Value} in the C, which every place that reads an
+     * argument goes through. TO and THRU did not, so {@code to char} looked
+     * for the word itself in the input, never found it, and quietly matched
+     * nothing -- which is how REWORD came to answer its template unchanged
+     * rather than raising anything.
+     */
+    private Value whatTheWordHolds(Value wanted) {
+        if (!(wanted instanceof WordValue named) || named.datatype() != Datatype.WORD) {
+            return wanted;
+        }
+        Context target = named.isBound() ? named.binding() : context;
+        return target.knows(named.canonical())
+                ? target.slotFor(named.canonical()).value()
+                : wanted;
+    }
+
     private int seek(List<Value> rules, int at, boolean past) {
         Value wanted = rules.get(at + 1);
         if (wanted instanceof WordValue word && word.canonical().equals("end")) {
@@ -901,6 +953,7 @@ public final class StringParser {
                     "to and thru take a place or something to look for, not "
                             + Molder.mold(wanted));
         }
+        wanted = whatTheWordHolds(wanted);
         if (wanted instanceof BlockValue || wanted instanceof BitsetValue) {
             for (int from = position; from <= text.length(); from++) {
                 position = from;
@@ -986,6 +1039,9 @@ public final class StringParser {
     }
 
     private boolean matchValue(Value rule) {
+        if (rule instanceof NoneValue) {
+            return true;
+        }
         if (rule instanceof BlockValue nested && nested.datatype() == Datatype.PAREN) {
             evaluator.evaluateOrRaise(nested.as(Datatype.BLOCK), context);
             text = textOfSeries(source);

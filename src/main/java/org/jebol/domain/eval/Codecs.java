@@ -97,7 +97,7 @@ final class Codecs {
         return switch (action) {
             case IDENTIFY -> Answer.check(0);
             case DECODE -> Answer.string(StringValue.of(
-                    new String(bytesOf(data), StandardCharsets.UTF_8)));
+                    Encodings.textBehindAnyMark(bytesOf(data))));
             case ENCODE -> Answer.binary(BinaryValue.of());
         };
     }

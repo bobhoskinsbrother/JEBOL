@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  */
 public final class Natives {
 
-    private final java.util.Random randomness = new java.util.Random();
+    private final RebolRandom randomness = new RebolRandom();
 
     private final Map<String, RefinedCallable> behaviours = new LinkedHashMap<>();
     private final Map<String, NativeValue> definitions = new LinkedHashMap<>();
@@ -303,6 +303,57 @@ public final class Natives {
      * JVM can be made to call a shared library and the result stops being
      * portable, which is the one thing JEBOL is for.
      */
+    private static final java.util.Set<String> FIELDS_THE_OPERATING_SYSTEM_ANSWERS =
+            java.util.Set.of("uid", "euid", "gid", "egid", "pid");
+
+    private static final int TERMINATE = 15;
+
+    private Value signalled(Value asked) {
+        long process;
+        int signal;
+        if (asked instanceof IntegerValue only) {
+            process = only.magnitude();
+            signal = TERMINATE;
+        } else {
+            List<Value> pair = ((BlockValue) asked).remaining();
+            if (pair.size() != 2
+                    || !(pair.get(0) instanceof IntegerValue named)
+                    || !(pair.get(1) instanceof IntegerValue chosen)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
+            }
+            process = named.magnitude();
+            signal = (int) chosen.magnitude();
+        }
+        requireService(HostService.PROCESSES);
+        return LogicValue.of(endProcess(process, signal));
+    }
+
+    private static boolean endProcess(long process, int signal) {
+        java.util.Optional<ProcessHandle> found = ProcessHandle.of(process);
+        if (found.isEmpty()) {
+            throw Raised.of(EvaluationFailure.PERMISSION_DENIED, String.valueOf(process));
+        }
+        ProcessHandle running = found.get();
+        boolean ended = signal == TERMINATE
+                ? running.destroy()
+                : running.destroyForcibly();
+        if (!ended) {
+            throw Raised.of(EvaluationFailure.PERMISSION_DENIED, String.valueOf(process));
+        }
+        return true;
+    }
+
+    private static boolean endsTheWayADirectoryIsWritten(String path) {
+        char last = path.charAt(path.length() - 1);
+        return last == '/' || last == '\\';
+    }
+
+    private boolean liesOnTheDiskAsADirectory(Evaluator evaluator, String path) {
+        requireService(HostService.FILES);
+        return throughPort(() -> LogicValue.of(evaluator.files().isDirectory(path)))
+                .isTruthy();
+    }
+
     private static Value refuseExtensionPoint(String named) {
         throw Raised.of(EvaluationFailure.NO_SERVICE,
                 named + " calls code written in C, which is "
@@ -410,7 +461,7 @@ public final class Natives {
         // readable field is its type.
         catalog.set("reflectors", BlockValue.block(List.of(
                 WordValue.of("spec"),
-                typeNames("any-function", "any-object", "datatype", "struct"),
+                typeNames("any-function", "any-object", "vector", "datatype", "struct"),
                 WordValue.of("body"),
                 typeNames("any-function", "any-object", "map", "struct"),
                 WordValue.of("words"),
@@ -747,7 +798,7 @@ public final class Natives {
     private static List<Parameter> takesCombinable(String... names) {
         Set<Datatype> combinable = Set.of(Datatype.LOGIC, Datatype.INTEGER, Datatype.CHAR,
                 Datatype.TUPLE, Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET,
-                Datatype.DATATYPE, Datatype.PAIR);
+                Datatype.DATATYPE, Datatype.PAIR, Datatype.VECTOR);
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
             parameters.add(Parameter.required(name, combinable));
@@ -799,11 +850,21 @@ public final class Natives {
         return parameters;
     }
 
+    /** {@code [integer! decimal!]}, which is {@code number!} without percent. */
+    private static List<Parameter> takesWholeNumbersAndDecimals(String... names) {
+        Set<Datatype> numbers = Set.of(Datatype.INTEGER, Datatype.DECIMAL);
+        List<Parameter> parameters = new ArrayList<>();
+        for (String name : names) {
+            parameters.add(Parameter.required(name, numbers));
+        }
+        return parameters;
+    }
+
     private static List<Parameter> takesNumbers(String... names) {
         Set<Datatype> numbers = Set.of(
                 Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
                 Datatype.MONEY, Datatype.PAIR, Datatype.TUPLE,
-                Datatype.TIME, Datatype.DATE, Datatype.CHAR);
+                Datatype.TIME, Datatype.DATE, Datatype.CHAR, Datatype.VECTOR);
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
             parameters.add(Parameter.required(name, numbers));
@@ -903,8 +964,24 @@ public final class Natives {
                 (arguments, evaluator, context) -> refuseExtensionPoint("do-callback"));
         define("do-commands", takes("commands"),
                 (arguments, evaluator, context) -> refuseExtensionPoint("do-commands"));
-        define("access-os", takes("field"),
-                (arguments, evaluator, context) -> refuseExtensionPoint("access-os"));
+        define("access-os", List.of(
+                        Parameter.required("field", Set.of(Datatype.WORD)),
+                        Parameter.belongingTo("set", "value",
+                                Set.of(Datatype.INTEGER, Datatype.BLOCK))),
+                Set.of("set"),
+                (arguments, evaluator, context, refinements) -> {
+                    WordValue field = (WordValue) arguments.getFirst();
+                    if (!FIELDS_THE_OPERATING_SYSTEM_ANSWERS.contains(field.canonical())) {
+                        throw Raised.of(EvaluationFailure.INVALID_ARG, field.spelling());
+                    }
+                    if (!"pid".equals(field.canonical())) {
+                        throw Raised.of(EvaluationFailure.NOT_HERE, field.spelling());
+                    }
+                    if (!refinements.contains("set")) {
+                        return IntegerValue.of(ProcessHandle.current().pid());
+                    }
+                    return signalled(arguments.get(1));
+                });
 
         define("arctangent2", List.of(Parameter.required("point", Set.of(Datatype.PAIR))),
                 Set.of("radians"),
@@ -924,8 +1001,8 @@ public final class Natives {
         define("exp", takesOnlyNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.exp(Comparison.asDouble(arguments.get(0)))));
-        define("fraction", List.of(Parameter.required("number", Set.of(
-                        Datatype.DECIMAL, Datatype.PERCENT))),
+        define("fraction", List.of(Parameter.required("number",
+                        Set.of(Datatype.DECIMAL))),
                 (arguments, evaluator, context) -> {
                     double whole = Comparison.asDouble(arguments.get(0));
                     return DecimalValue.of(whole - (long) whole);
@@ -969,25 +1046,29 @@ public final class Natives {
                 Set.of("seed", "only", "secure"),
                 (arguments, evaluator, context, refinements) -> {
                     if (refinements.contains("seed")) {
-                        randomness.setSeed((long) asMagnitude(arguments.get(0)));
-                        return UnsetValue.unset();
+                        return seededBy(arguments.get(0));
                     }
                     return switch (arguments.get(0)) {
-                        case IntegerValue whole -> IntegerValue.of(whole.magnitude() == 0
-                                ? 0
-                                : 1 + (long) (randomness.nextDouble()
-                                        * Math.abs(whole.magnitude()))
-                                        * Long.signum(whole.magnitude()));
+                        case IntegerValue whole -> IntegerValue.of(
+                                randomLongUpTo(whole.magnitude()));
                         case DecimalValue quantity -> DecimalValue.of(
-                                randomness.nextDouble() * quantity.quantity());
+                                randomFraction() * quantity.quantity());
+                        case BlockValue other when other.datatype() != Datatype.BLOCK ->
+                                raiseCannotUse(other, "random");
                         case BlockValue block when refinements.contains("only") ->
                                 block.remaining().isEmpty()
                                         ? NoneValue.none()
-                                        : block.remaining().get(randomness.nextInt(
+                                        : block.remaining().get(randomness.below(
                                                 block.remaining().size()));
                         case BlockValue block -> shuffled(block);
+                        case StringValue text when refinements.contains("only") ->
+                                oneCharacterPickedAtRandom(text);
                         case StringValue text -> shuffledText(text);
+                        case BinaryValue bytes when refinements.contains("only") ->
+                                oneOctetPickedAtRandom(bytes);
                         case BinaryValue bytes -> shuffledBytes(bytes);
+                        case VectorValue ignored when refinements.contains("only") ->
+                                raiseRefinementAVectorHasNoUseFor();
                         case TupleValue tuple -> randomisedOctets(tuple);
                         case PairValue point -> randomisedHalves(point);
                         case CharacterValue letter -> letter.codepoint() == 0
@@ -998,7 +1079,8 @@ public final class Natives {
                                 randomLongUpTo(span.nanoseconds()));
                         case DateValue when -> randomisedDate(when);
                         case LogicValue ignored ->
-                                LogicValue.of(randomness.nextBoolean());
+                                LogicValue.of((randomness.next() & 1) == 1);
+                        case VectorValue vector -> shuffledElements(vector);
                         default -> raiseCannotUse(arguments.get(0), "random");
                     };
                 });
@@ -1036,10 +1118,10 @@ public final class Natives {
                 (arguments, evaluator, context) -> DecimalValue.of(Math.atan2(
                         Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1)))));
 
-        define("to-degrees", takesNumbers("radians"),
+        define("to-degrees", takesWholeNumbersAndDecimals("radians"),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.toDegrees(Comparison.asDouble(arguments.get(0)))));
-        define("to-radians", takesNumbers("degrees"),
+        define("to-radians", takesWholeNumbersAndDecimals("degrees"),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.toRadians(Comparison.asDouble(arguments.get(0)))));
 
@@ -1479,6 +1561,16 @@ public final class Natives {
     }
 
     private static Value combined(Value left, Value right, Bitwise operation) {
+        if (VectorMath.isVectorArithmetic(left, right)) {
+            if (!(left instanceof VectorValue)) {
+                throw notRelated(left, right);
+            }
+            return VectorMath.done(left, right, switch (operation) {
+                case AND -> VectorMath.Operation.AND;
+                case OR -> VectorMath.Operation.OR;
+                case XOR -> VectorMath.Operation.XOR;
+            });
+        }
         if (left instanceof LogicValue leftTruth && right instanceof LogicValue rightTruth) {
             boolean ours = leftTruth.isTruthy();
             boolean theirs = rightTruth.isTruthy();
@@ -1498,8 +1590,36 @@ public final class Natives {
         if (left instanceof TupleValue) {
             return tupleCombined(left, right, operation);
         }
+        if (left instanceof BinaryValue first && right instanceof BinaryValue second) {
+            return combinedOctets(first, second, operation);
+        }
         return IntegerValue.of(combinedBits(
                 wholeNumberOf(left, "and"), wholeNumberOf(right, "and"), operation));
+    }
+
+    /**
+     * Two binaries combined octet by octet, as long as the longer of them.
+     *
+     * <p>{@code Xandor_Binary} walks the longer and wraps its index into the
+     * shorter -- {@code if (i == mt) i = 0} -- so one octet against four is
+     * that octet four times rather than one octet and three zeros. Which side
+     * was written first makes no difference: the C picks the longer as the one
+     * it walks before it looks at anything else, so all three operations come
+     * out the same either way round.
+     */
+    private static Value combinedOctets(
+            BinaryValue left, BinaryValue right, Bitwise operation) {
+
+        BinaryValue longer = left.lengthFromHere() >= right.lengthFromHere() ? left : right;
+        BinaryValue shorter = longer == left ? right : left;
+        int cycle = shorter.lengthFromHere();
+        int[] combined = new int[longer.lengthFromHere()];
+        for (int at = 0; at < combined.length; at++) {
+            int theirs = cycle == 0 ? 0 : shorter.storage().at(shorter.index() + at % cycle);
+            combined[at] = (int) combinedBits(
+                    longer.storage().at(longer.index() + at), theirs, operation) & 0xFF;
+        }
+        return BinaryValue.of(combined);
     }
 
     private static long combinedBits(long left, long right, Bitwise operation) {
@@ -1570,7 +1690,7 @@ public final class Natives {
      */
     private int aValidCodepointUpTo(int limit) {
         while (true) {
-            int picked = 1 + randomness.nextInt(limit);
+            int picked = 1 + randomness.below(limit);
             boolean surrogate = picked >= 0xD800 && picked <= 0xDFFF;
             if (!surrogate && picked <= MAXIMUM_CODEPOINT) {
                 return picked;
@@ -1578,14 +1698,190 @@ public final class Natives {
         }
     }
 
-    /** A whole number between zero and the limit, keeping its sign. */
+    /**
+     * Where a seed comes from, which is a different answer for every datatype.
+     *
+     * <p>Each {@code A_RANDOM} arm that accepts {@code /seed} decides for
+     * itself what sixty-four bits to hand {@code Set_Random}, and no two of
+     * them agree. A number seeds with itself. A decimal seeds with its IEEE
+     * bit pattern rather than its value, so {@code random/seed 1.5} and
+     * {@code random/seed 1} start different sequences. A string, a binary and
+     * a tuple seed with a twenty-four bit checksum of their bytes. A time
+     * seeds with its nanoseconds, and a date packs its year, its day of the
+     * year and its time into one number. A pair seeds with the raw bits of
+     * its two single-precision halves side by side, which is what the C's
+     * union makes {@code VAL_INT64} read.
+     *
+     * <p>Logic is the odd one: true seeds from the clock and false seeds with
+     * one, so {@code random/seed true} is the way a script asks for a sequence
+     * nobody can predict.
+     *
+     * <p>A block and a vector have no arm for it at all and answer
+     * {@code bad-refines}, which is the C declining rather than failing.
+     */
+    private Value seededBy(Value chosen) {
+        randomness.seed(switch (chosen) {
+            case IntegerValue whole -> whole.magnitude();
+            case DecimalValue quantity -> Double.doubleToRawLongBits(quantity.quantity());
+            case CharacterValue letter -> letter.codepoint();
+            case StringValue text ->
+                    Encodings.checksumSeedOf(text.text().getBytes(StandardCharsets.UTF_8));
+            case BinaryValue bytes -> Encodings.checksumSeedOf(bytes.octetsFromHere());
+            case TupleValue tuple -> Encodings.checksumSeedOf(shownOctetsOf(tuple));
+            case TimeValue span -> span.nanoseconds();
+            case DateValue day -> seedPackedFrom(day);
+            case PairValue point -> halvesSideBySide(point);
+            case LogicValue truth -> truth.truth() ? System.nanoTime() : 1L;
+            case BlockValue ignored -> raiseRefinementNoArmAccepts();
+            case VectorValue ignored -> raiseRefinementNoArmAccepts();
+            default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
+                    "random/seed has nothing to make a seed out of a "
+                            + chosen.datatype().literalSpelling());
+        });
+        return UnsetValue.unset();
+    }
+
+    private static byte[] shownOctetsOf(TupleValue tuple) {
+        byte[] octets = new byte[tuple.shownCount()];
+        for (int at = 0; at < octets.length; at++) {
+            octets[at] = (byte) tuple.octetAt(at + 1);
+        }
+        return octets;
+    }
+
+    private static long seedPackedFrom(DateValue day) {
+        long dayOfYear = day.day() + dayCountBeforeMonth(day.year(), day.month());
+        long nanoseconds = day.timeOfDay().map(TimeValue::nanoseconds).orElse(0L);
+        return ((long) day.year() << 48) + (dayOfYear << 32) + nanoseconds;
+    }
+
+    private static long dayCountBeforeMonth(int year, int month) {
+        long days = 0;
+        for (int earlier = 1; earlier < month; earlier++) {
+            days += java.time.YearMonth.of(year, earlier).lengthOfMonth();
+        }
+        return days;
+    }
+
+    private static long halvesSideBySide(PairValue point) {
+        long lower = Integer.toUnsignedLong(Float.floatToRawIntBits((float) point.x()));
+        long upper = Integer.toUnsignedLong(Float.floatToRawIntBits((float) point.y()));
+        return (upper << 32) | lower;
+    }
+
+    private static long raiseRefinementNoArmAccepts() {
+        throw Raised.of(EvaluationFailure.BAD_REFINES,
+                "random/seed makes no seed out of this");
+    }
+
+    private static Value raiseRefinementAVectorHasNoUseFor() {
+        throw Raised.of(EvaluationFailure.BAD_REFINES,
+                "random/only does not pick one element out of a vector");
+    }
+
+    /**
+     * One character out of a string, the way {@code /only} picks it.
+     *
+     * <p>{@code index += Random_Int(secure) % (tail - index)} followed by a
+     * step back to a character boundary, and both halves are byte offsets
+     * into the UTF-8 the string is stored as. That makes the pick uneven on
+     * purpose or by accident: every byte is equally likely to be landed on,
+     * so a character written in three bytes comes up three times as often as
+     * one written in a single byte. Measured on a real Rebol before this was
+     * written -- six thousand picks out of {@code "aéb"} gave the two
+     * one-byte letters about fifteen hundred each and the two-byte letter
+     * about three thousand.
+     */
+    private Value oneCharacterPickedAtRandom(StringValue text) {
+        byte[] octets = text.text().getBytes(StandardCharsets.UTF_8);
+        if (octets.length == 0) {
+            return NoneValue.none();
+        }
+        int at = steppedBackToACharacterBoundary(octets, randomness.below(octets.length));
+        return CharacterValue.of(
+                new String(octets, at, octets.length - at, StandardCharsets.UTF_8)
+                        .codePointAt(0));
+    }
+
+    /**
+     * One octet out of a binary, which shares the string's arm and its quirk.
+     *
+     * <p>The step back to a character boundary is in the same {@code case}
+     * label, with nothing to say a binary is not text, so an octet between
+     * {@code 80} and {@code BF} is never the answer whenever an octet below
+     * it could be stepped back to. {@code random/only #{4180}} on a real
+     * Rebol answers 65 six thousand times out of six thousand.
+     */
+    private Value oneOctetPickedAtRandom(BinaryValue bytes) {
+        byte[] octets = bytes.octetsFromHere();
+        if (octets.length == 0) {
+            return NoneValue.none();
+        }
+        int at = steppedBackToACharacterBoundary(octets, randomness.below(octets.length));
+        return IntegerValue.of(octets[at] & 0xFF);
+    }
+
+    private static int steppedBackToACharacterBoundary(byte[] octets, int landedOn) {
+        int at = landedOn;
+        while (at > 0 && (octets[at] & 0xC0) == 0x80) {
+            at--;
+        }
+        return at;
+    }
+
+    /**
+     * A whole number between one and the limit, keeping its sign.
+     *
+     * <p>{@code Random_Range} in {@code f-random.c}, and the two lines that
+     * are easy to leave out are the two that Rebol's own test measures.
+     *
+     * <p>The first is the rejection loop. Taking the remainder of a number
+     * drawn from nought up to two to the sixty-second gives a distribution
+     * that leans towards the low end whenever the limit does not divide that
+     * range evenly, and the lean is large: over a limit two thirds of the
+     * range, the bottom half of the answers come up twice as often as the top
+     * half. So the C throws away every draw above the last exact multiple of
+     * the limit and draws again. Rebol's test asks for ten thousand numbers
+     * under such a limit and asserts that half of them land in the top half,
+     * which is a statement that the rejection is there.
+     *
+     * <p>The second is the refusal. A limit past two to the sixty-second is
+     * larger than the generator's whole range, so no rejection limit exists
+     * for it, and the C answers {@code overflow} rather than a number it
+     * cannot draw evenly.
+     */
     private long randomLongUpTo(long limit) {
         if (limit == 0) {
             return 0;
         }
-        long picked = 1 + (long) (randomness.nextDouble() * Math.abs(limit));
+        long span = Math.abs(limit);
+        if (Long.compareUnsigned(span, GENERATOR_RANGE) > 0) {
+            throw Raised.of(EvaluationFailure.OVERFLOW,
+                    "random cannot draw evenly from a number larger than "
+                            + "two to the sixty-second");
+        }
+        long lastExactMultiple =
+                GENERATOR_RANGE - Long.remainderUnsigned(GENERATOR_RANGE, span) - 1;
+        long drawn;
+        do {
+            drawn = randomness.next();
+        } while (Long.compareUnsigned(drawn, lastExactMultiple) > 0);
+        long picked = 1 + Long.remainderUnsigned(drawn, span);
         return limit < 0 ? -picked : picked;
     }
+
+    /**
+     * A fraction between zero and one.
+     *
+     * <p>{@code Random_Dec} divides one of the same numbers by the modulus, so
+     * a seeded decimal follows the same sequence as everything else.
+     */
+    private double randomFraction() {
+        return (double) randomness.next() / (double) GENERATOR_RANGE;
+    }
+
+    /** {@code #define MM ((REBI64)1<<62)}, the modulus the generator counts to. */
+    private static final long GENERATOR_RANGE = 1L << 62;
 
     /**
      * A date with every part randomised inside its own range.
@@ -1619,6 +1915,44 @@ public final class Natives {
     }
 
     /**
+     * Arithmetic where one side is a vector, and the refusal where it is on
+     * the wrong side.
+     *
+     * <p>A number on the left only reaches the vector for ADD and MULTIPLY.
+     * The other operations never get there, because a number's own arm is what
+     * dispatches and it forwards only the two whose answer does not depend on
+     * which side is which. {@code 10 - v} is therefore not "v subtracted from
+     * ten" but no operation at all.
+     */
+    private static Value vectorArithmetic(Value left, Value right, Operation operation) {
+        VectorMath.Operation asked = switch (operation) {
+            case ADD -> VectorMath.Operation.ADD;
+            case SUBTRACT -> VectorMath.Operation.SUBTRACT;
+            case MULTIPLY -> VectorMath.Operation.MULTIPLY;
+            case DIVIDE -> VectorMath.Operation.DIVIDE;
+            case REMAINDER -> VectorMath.Operation.REMAINDER;
+            default -> null;
+        };
+        boolean orderMatters = asked != VectorMath.Operation.ADD
+                && asked != VectorMath.Operation.MULTIPLY;
+        if (asked == null || (!(left instanceof VectorValue) && orderMatters)) {
+            throw notRelated(left, right);
+        }
+        Value other = left instanceof VectorValue ? right : left;
+        if (!(other instanceof VectorValue)
+                && !(other instanceof IntegerValue) && !(other instanceof DecimalValue)) {
+            throw notRelated(left, right);
+        }
+        return VectorMath.done(left, right, asked);
+    }
+
+    private static Raised notRelated(Value left, Value right) {
+        return Raised.of(EvaluationFailure.NOT_RELATED,
+                WordValue.of(left.datatype().literalSpelling()),
+                WordValue.of(right.datatype().literalSpelling()));
+    }
+
+    /**
      * Integer arithmetic raises on overflow rather than wrapping. The JVM
      * wraps silently, which is the worst available behaviour: a wrong answer
      * that looks like a right one.
@@ -1627,6 +1961,9 @@ public final class Natives {
         Value left = arguments.get(0);
         Value right = arguments.get(1);
 
+        if (VectorMath.isVectorArithmetic(left, right)) {
+            return vectorArithmetic(left, right, operation);
+        }
         if (left instanceof CharacterValue letter) {
             return characterArithmetic(letter, right, operation);
         }
@@ -1971,7 +2308,7 @@ public final class Natives {
         int[] octets = tuple.segments();
         for (int at = 0; at < octets.length; at++) {
             if (octets[at] != 0) {
-                octets[at] = randomness.nextInt(octets[at] + 1);
+                octets[at] = randomness.belowWithoutNarrowing(octets[at] + 1);
             }
         }
         return TupleValue.of(octets);
@@ -1997,7 +2334,7 @@ public final class Natives {
         if (bound == 0) {
             return 0;
         }
-        return (1 + (long) (randomness.nextDouble() * Math.abs(bound))) * Long.signum(bound);
+        return randomLongUpTo(bound);
     }
 
     /**
@@ -2061,6 +2398,19 @@ public final class Natives {
                 : dayNumberOf(moment) + days;
         java.time.LocalDate shifted = java.time.LocalDate.ofEpochDay(moved);
         return DateValue.of(shifted.getYear(), shifted.getMonthValue(), shifted.getDayOfMonth());
+    }
+
+    /**
+     * DIFFERENCE between two dates, which is a span of time rather than a set.
+     *
+     * <p>The one pairing in the set operations that is not about membership at
+     * all. It reads the other way round from subtraction -- {@code difference
+     * 1-Jan 2-Jan} is minus a day where {@code 2-Jan - 1-Jan} is one -- and it
+     * answers a time! rather than a count of days.
+     */
+    private static Value timeBetween(DateValue from, DateValue to) {
+        long days = dayNumberOf(from) - dayNumberOf(to);
+        return TimeValue.ofNanoseconds(days * 24L * 60L * 60L * 1_000_000_000L);
     }
 
     private static long dayNumberOf(DateValue date) {
@@ -2184,26 +2534,22 @@ public final class Natives {
 
     private void defineControl() {
         define("if", List.of(Parameter.required("condition", ANYTHING),
-                        Parameter.required("branch", Set.of(Datatype.BLOCK))),
+                        Parameter.required("branch", ANYTHING)),
                 Set.of("only"),
                 (arguments, evaluator, context, refinements) -> {
                     if (!arguments.get(0).isTruthy()) {
                         return NoneValue.none();
                     }
-                    return branchTaken((BlockValue) arguments.get(1), evaluator, context,
-                            refinements);
+                    return branchTaken(arguments.get(1), evaluator, context, refinements);
                 });
 
         define("either", List.of(Parameter.required("condition", ANYTHING),
-                        Parameter.required("true-branch", Set.of(Datatype.BLOCK)),
-                        Parameter.required("false-branch", Set.of(Datatype.BLOCK))),
+                        Parameter.required("true-branch", ANYTHING),
+                        Parameter.required("false-branch", ANYTHING)),
                 Set.of("only"),
-                (arguments, evaluator, context, refinements) -> {
-                    BlockValue taken = (BlockValue) (arguments.get(0).isTruthy()
-                            ? arguments.get(1)
-                            : arguments.get(2));
-                    return branchTaken(taken, evaluator, context, refinements);
-                });
+                (arguments, evaluator, context, refinements) -> branchTaken(
+                        arguments.get(0).isTruthy() ? arguments.get(1) : arguments.get(2),
+                        evaluator, context, refinements));
 
         define("not", takesAnything("value"),
                 (arguments, evaluator, context) -> {
@@ -2314,14 +2660,13 @@ public final class Natives {
                 });
 
         define("unless", List.of(Parameter.required("condition", ANYTHING),
-                        Parameter.required("branch", Set.of(Datatype.BLOCK))),
+                        Parameter.required("branch", ANYTHING)),
                 Set.of("only"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0).isTruthy()) {
                         return NoneValue.none();
                     }
-                    return branchTaken((BlockValue) arguments.get(1), evaluator, context,
-                            refinements);
+                    return branchTaken(arguments.get(1), evaluator, context, refinements);
                 });
 
         define("switch", List.of(Parameter.required("value"),
@@ -2381,24 +2726,26 @@ public final class Natives {
                     while (!at.atTail()) {
                         Evaluator.Step condition = evaluator.evaluateNextOrRaise(at, context);
                         BlockValue afterCondition = at.atIndex(condition.nextIndex());
+                        if (!condition.value().isTruthy()) {
+                            at = afterCondition.atTail()
+                                    ? afterCondition
+                                    : afterCondition.atIndex(afterCondition.index() + 1);
+                            continue;
+                        }
                         if (afterCondition.atTail()) {
-                            return condition.value().isTruthy()
-                                    ? LogicValue.of(true)
-                                    : lastTaken;
+                            return LogicValue.of(true);
                         }
-                        Value branch = afterCondition.first();
-                        if (condition.value().isTruthy()) {
-                            Value taken = branch instanceof BlockValue block
-                                    ? evaluator.evaluateOrRaise(block, context)
-                                    : branch;
-                            if (!runsThemAll) {
-                                return taken;
-                            }
-                            lastTaken = taken;
+                        Evaluator.Step branch =
+                                evaluator.evaluateNextOrRaise(afterCondition, context);
+                        lastTaken = branch.value() instanceof BlockValue block
+                                ? evaluator.evaluateOrRaise(block, context)
+                                : branch.value();
+                        at = afterCondition.atIndex(branch.nextIndex());
+                        if (!runsThemAll || at.atTail()) {
+                            return lastTaken;
                         }
-                        at = afterCondition.atIndex(afterCondition.index() + 1);
                     }
-                    return lastTaken;
+                    return NoneValue.none();
                 });
 
         define("attempt", List.of(
@@ -2653,7 +3000,9 @@ public final class Natives {
                             value -> simpleValueOf(value, evaluator, context));
                     case DatatypeValue wanted ->
                             makeOfDatatype(wanted, arguments.get(1), evaluator, context);
-                    default -> raiseCannotUse(arguments.get(0), "make");
+                    default -> makeOfDatatype(
+                            DatatypeValue.of(arguments.getFirst().datatype()),
+                            arguments.get(1), evaluator, context);
                 });
 
         define("construct", List.of(
@@ -2846,7 +3195,11 @@ public final class Natives {
                     }
                     if (refinements.contains("skip") && arguments.size() > 2
                             && arguments.get(2) instanceof IntegerValue size) {
-                        stride = (int) Math.max(1, size.magnitude());
+                        if (size.magnitude() < 1) {
+                            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                                    Molder.mold(size));
+                        }
+                        stride = (int) size.magnitude();
                     }
                     for (int n = 0; block.index() + n <= block.storageLength(); n++) {
                         boolean marking = stride < 0
@@ -3162,7 +3515,7 @@ public final class Natives {
                         Parameter.softQuoted("word"),
                         Parameter.required("series",
                                 Set.of(Datatype.BLOCK, Datatype.BINARY,
-                                        Datatype.STRING, Datatype.MAP)),
+                                        Datatype.STRING, Datatype.MAP, Datatype.VECTOR)),
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
                 Set.of("count"),
                 (arguments, evaluator, context, refinements) -> {
@@ -3183,10 +3536,19 @@ public final class Natives {
                     List<Value> kept = new ArrayList<>();
                     int taken = 0;
                     int at = 0;
+                    Value stoppedWith = null;
                     while (at < items.size()) {
                         int reached = setLoopNames(locals, names, items, at, series);
                         int through = Math.min(reached, items.size());
-                        if (evaluator.evaluateOrRaise(bound, locals).isTruthy()) {
+                        boolean drop;
+                        try {
+                            drop = evaluator.evaluateOrRaise(bound, locals).isTruthy();
+                        } catch (LoopSignal stopped) {
+                            kept.addAll(items.subList(at, items.size()));
+                            stoppedWith = stopped.answer();
+                            break;
+                        }
+                        if (drop) {
                             taken += through - at;
                         } else {
                             kept.addAll(items.subList(at, through));
@@ -3199,6 +3561,9 @@ public final class Natives {
                     }
                     for (int back = kept.size(); back > 0; back--) {
                         series.storage().insertAt(series.index(), kept.get(back - 1));
+                    }
+                    if (stoppedWith != null && !(stoppedWith instanceof UnsetValue)) {
+                        return stoppedWith;
                     }
                     return refinements.contains("count")
                             ? IntegerValue.of(taken)
@@ -3221,7 +3586,10 @@ public final class Natives {
                     while (at < items.size()) {
                         at = setLoopNames(
                                 locals, names, items, at, arguments.get(1));
-                        gathered.add(evaluator.evaluateOrRaise(bound, locals));
+                        Value made = evaluator.evaluateOrRaise(bound, locals);
+                        if (!(made instanceof UnsetValue)) {
+                            gathered.add(made);
+                        }
                     }
                     return BlockValue.block(gathered);
                 });
@@ -3418,6 +3786,18 @@ public final class Natives {
         }
     }
 
+    /**
+     * FOREACH.
+     *
+     * <p>{@code while (index < (tail = SERIES_TAIL(series)))} in
+     * {@code Loop_Each}: the assignment is inside the condition, so the walk
+     * asks the series how long it is at the top of every round rather than
+     * once at the start. Anything the body appends is therefore walked too,
+     * and Rebol's own test asserts it -- a map gains a key in the middle of a
+     * walk over it and the sum the walk answers includes that key's value.
+     * The same is true of a block, which was checked before this was written:
+     * {@code foreach x b [append b 9]} keeps going until something breaks it.
+     */
     private static Value forEachLoop(
             Evaluator evaluator, Context within,
             Value target, Value series, BlockValue body) {
@@ -3425,7 +3805,8 @@ public final class Natives {
         List<WordValue> names = loopNamesIn(target, "foreach");
         List<WordValue> taking = namesThatTakeAValue(names);
         refuseMoreNamesThanAPairHas(series, taking);
-        List<Value> items = keysOnly(series, taking.size());
+        Supplier<List<Value>> itemsAsTheyStandNow =
+                () -> keysOnly(series, taking.size());
 
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.define(name.spelling()));
@@ -3434,9 +3815,11 @@ public final class Natives {
 
         try {
             int at = 0;
+            List<Value> items = itemsAsTheyStandNow.get();
             while (at < items.size()) {
                 at = setLoopNames(locals, names, items, at, series);
                 last = oneRound(evaluator, bound, locals);
+                items = itemsAsTheyStandNow.get();
             }
         } catch (LoopSignal stopped) {
             return stopped.answer();
@@ -3486,9 +3869,7 @@ public final class Natives {
                             + target.datatype().literalSpelling());
         }
         if (block.lengthFromHere() == 0) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    nativeName + " walks with at least one name, and this list "
-                            + "is empty");
+            throw Raised.of(EvaluationFailure.INVALID_ARG, block);
         }
         List<WordValue> names = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
@@ -3651,6 +4032,7 @@ public final class Natives {
                 yield List.copyOf(octets);
             }
             case MapValue map -> map.walkable();
+            case VectorValue vector -> vector.remaining();
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "cannot walk " + series.datatype().literalSpelling() + " value");
         };
@@ -4268,10 +4650,15 @@ public final class Natives {
                                         Datatype.STRING, Datatype.FILE, Datatype.URL,
                                         Datatype.TAG, Datatype.EMAIL, Datatype.REF,
                                         Datatype.BINARY, Datatype.MAP, Datatype.BITSET,
-                                        Datatype.PORT, Datatype.GOB, Datatype.IMAGE)),
+                                        Datatype.PORT, Datatype.GOB, Datatype.IMAGE,
+                                        Datatype.VECTOR)),
                         Parameter.required("index"),
                         Parameter.required("value", ANYTHING)),
                 (arguments, evaluator, context) -> {
+                    if (arguments.get(0) instanceof VectorValue vector) {
+                        VectorPath.write(vector, arguments.get(1), arguments.get(2));
+                        return arguments.get(2);
+                    }
                     if (arguments.get(0) instanceof GobValue gob) {
                         GobPath.poke(gob, (int) positionPokedAt(arguments.get(1)),
                                 arguments.get(2));
@@ -4295,6 +4682,10 @@ public final class Natives {
                                     Molder.mold(arguments.get(1)));
                         }
                         members.hold(bit, arguments.get(2).isTruthy());
+                        return arguments.get(2);
+                    }
+                    if (arguments.get(0) instanceof MapValue map) {
+                        map.put(arguments.get(1), arguments.get(2), false);
                         return arguments.get(2);
                     }
                     long at = positionPokedAt(arguments.get(1));
@@ -4353,15 +4744,20 @@ public final class Natives {
 
         define("difference", List.of(
                         Parameter.required("first",
-                                setOperandOr(Datatype.BLOCK)),
+                                setOperandOr(Datatype.BLOCK, Datatype.DATE)),
                         Parameter.required("second",
-                                setOperandOr(Datatype.BLOCK)),
+                                setOperandOr(Datatype.BLOCK, Datatype.DATE)),
                         Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
                 Set.of("case", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0) instanceof TypesetValue
-                            || arguments.get(0) instanceof BitsetValue) {
+                            || arguments.get(0) instanceof BitsetValue
+                            || arguments.get(0) instanceof MapValue) {
                         return combined(arguments, Combination.DIFFERENCE);
+                    }
+                    if (arguments.get(0) instanceof DateValue from
+                            && arguments.get(1) instanceof DateValue to) {
+                        return timeBetween(from, to);
                     }
                     boolean mindingCase = refinements.contains("case");
                     List<Value> ours = ((BlockValue) arguments.get(0)).remaining();
@@ -4380,6 +4776,13 @@ public final class Natives {
                         Parameter.required("field", Set.of(Datatype.WORD))),
                 (arguments, evaluator, context) -> {
                     String field = ((WordValue) arguments.get(1)).canonical();
+                    if (arguments.getFirst() instanceof VectorValue vector) {
+                        return "spec".equals(field)
+                                ? VectorQuery.specOf(vector)
+                                : VectorQuery.field(vector, field).orElseThrow(
+                                        () -> Raised.of(EvaluationFailure.INVALID_ARG,
+                                                arguments.get(1)));
+                    }
                     if (arguments.getFirst() instanceof DatatypeValue named) {
                         String[] described = DATATYPE_SPECS.get(
                                 named.represents().spelling());
@@ -4563,6 +4966,9 @@ public final class Natives {
                     if (arguments.get(0) instanceof MapValue map) {
                         return map.select(arguments.get(1),
                                 refinements.contains("case"));
+                    }
+                    if (arguments.get(0) instanceof VectorValue) {
+                        return raiseCannotUse(arguments.get(0), "select");
                     }
                     if (arguments.get(0) instanceof NoneValue) {
                         return NoneValue.none();
@@ -5403,6 +5809,14 @@ public final class Natives {
                                 arguments.get(1));
                         yield gob;
                     }
+                    case VectorValue vector -> {
+                        for (Value number : numbersAddedBy(
+                                vector.kind(), arguments, refinements, true)) {
+                            vector.storage().append(
+                                    VectorPath.storedFormOf(vector.kind(), number));
+                        }
+                        yield vector.head();
+                    }
                     default -> raiseCannotUse(arguments.get(0), "append");
                 });
 
@@ -5519,7 +5933,8 @@ public final class Natives {
                         int at = searched.storage().positionOf(wanted.storage());
                         return at == 0 ? NoneValue.none() : searched.atIndex(at);
                     }
-                    if (!(arguments.get(0) instanceof SeriesValue series)) {
+                    if (!(arguments.get(0) instanceof SeriesValue series)
+                            || series instanceof VectorValue) {
                         return raiseCannotUse(arguments.get(0), "find");
                     }
                     int limit = searchLimit(series, arguments, refinements);
@@ -5579,7 +5994,7 @@ public final class Natives {
                     }
                     case StringValue strandedText -> {
                         StringValue text = (StringValue) clampedToTail(strandedText);
-                        String added = Molder.form(arguments.get(1));
+                        String added = textContributedBy(arguments, refinements);
                         for (int at = 0; at < added.length(); at++) {
                             text.storage().insertAt(text.index() + at, added.charAt(at));
                         }
@@ -5601,6 +6016,17 @@ public final class Natives {
                         refuseUnfinishedRefinements(refinements, "insert");
                         insertChildren(gob, gob.index(), arguments.get(1));
                         yield gob;
+                    }
+                    case VectorValue strandedVector -> {
+                        VectorValue vector = (VectorValue) clampedToTail(strandedVector);
+                        List<Value> numbers = numbersAddedBy(
+                                vector.kind(), arguments, refinements, true);
+                        for (int at = numbers.size(); at > 0; at--) {
+                            vector.storage().insertAt(vector.index(),
+                                    VectorPath.storedFormOf(
+                                            vector.kind(), numbers.get(at - 1)));
+                        }
+                        yield vector.atIndex(vector.index() + numbers.size());
                     }
                     default -> raiseCannotUse(arguments.get(0), "insert");
                 });
@@ -5671,6 +6097,10 @@ public final class Natives {
                     if (arguments.get(0) instanceof BinaryValue bytes) {
                         return reversedBytes(bytes);
                     }
+                    if (arguments.get(0) instanceof VectorValue vector) {
+                        return reversedFront(vector, IntegerValue.of(
+                                vector.lengthFromHere()));
+                    }
                     if (!(arguments.get(0) instanceof BlockValue block)) {
                         return raiseWrongArgument(arguments.get(0), "reverse", "series");
                     }
@@ -5740,6 +6170,11 @@ public final class Natives {
                         }
                         return text.atIndex(text.index() + replacement.length());
                     }
+                    if (arguments.get(0) instanceof VectorValue strandedVector) {
+                        return changedElements(
+                                (VectorValue) clampedToTail(strandedVector),
+                                arguments, refinements);
+                    }
                     if (!(arguments.get(0) instanceof BlockValue strandedBlock)) {
                         return raiseCannotUse(arguments.get(0), "change");
                     }
@@ -5795,6 +6230,10 @@ public final class Natives {
                                 gob.storage().length() - gob.index() + 1);
                         yield gob;
                     }
+                    case VectorValue vector -> {
+                        vector.storage().clearFrom(vector.index());
+                        yield vector;
+                    }
                     default -> raiseCannotUse(arguments.get(0), "clear");
                 });
 
@@ -5812,6 +6251,18 @@ public final class Natives {
                     Value skipSize = argumentFor("skip", declared, arguments, refinements);
                     Value partCount = argumentFor("part", declared, arguments, refinements);
                     Value comparator = argumentFor("compare", declared, arguments, refinements);
+                    if (series instanceof VectorValue vector) {
+                        if (refinements.contains("skip") || refinements.contains("compare")) {
+                            throw Raised.of(EvaluationFailure.FEATURE_NA,
+                                    "sort/skip and sort/compare on a vector!");
+                        }
+                        return sortedElements(vector,
+                                partCount instanceof IntegerValue asked
+                                        ? (int) Math.min(asked.magnitude(),
+                                                vector.lengthFromHere())
+                                        : vector.lengthFromHere(),
+                                refinements.contains("reverse"));
+                    }
                     int howMany = partCount instanceof IntegerValue wanted
                             ? (int) Math.min(wanted.magnitude(), series.lengthFromHere())
                             : series.lengthFromHere();
@@ -7115,7 +7566,152 @@ public final class Natives {
             case BlockValue block -> BlockValue.block(taken).as(block.datatype());
             case ImageValue image -> takenPixels(image, taken);
             case GobValue ignored -> BlockValue.block(taken);
+            case VectorValue vector -> vectorHolding(vector.kind(), taken);
         };
+    }
+
+    /**
+     * The numbers a value adds to a vector, whatever shape it arrived in.
+     *
+     * <p>{@code Modify_Vector} takes four: another vector contributes its
+     * elements from where it points, a block its values, a binary the elements
+     * its bytes spell at the target's own width, and anything else is one
+     * number. A binary whose length is not a whole number of elements is
+     * {@code invalid-data} rather than a partial read.
+     */
+    private static List<Value> numbersContributedTo(VectorKind kind, Value value) {
+        if (value instanceof VectorValue source) {
+            return source.remaining();
+        }
+        if (value instanceof BlockValue block) {
+            return block.remaining();
+        }
+        if (value instanceof BinaryValue bytes) {
+            return numbersSpeltBy(kind, bytes);
+        }
+        return List.of(value);
+    }
+
+    private static List<Value> numbersSpeltBy(VectorKind kind, BinaryValue bytes) {
+        byte[] octets = bytes.octetsFromHere();
+        if (octets.length % kind.bytes() != 0) {
+            throw Raised.of(EvaluationFailure.INVALID_DATA, Molder.mold(bytes));
+        }
+        List<Value> numbers = new ArrayList<>();
+        for (int at = 0; at < octets.length; at += kind.bytes()) {
+            numbers.add(kind.read(kind.fromOctets(octets, at)));
+        }
+        return numbers;
+    }
+
+    /**
+     * The numbers one of the three modifying actions adds, /PART and /DUP
+     * applied.
+     *
+     * <p>/PART counts what the source offers, and for a binary it counts bytes
+     * rather than elements: {@code append/part v #{0304} 1} adds one byte,
+     * which is one number in an {@code int8!} vector and half of one in an
+     * {@code int16!}. Half of one is invalid data. CHANGE does not come
+     * through here with a limit at all, because its /PART counts what to
+     * remove from the target instead.
+     */
+    private static List<Value> numbersAddedBy(VectorKind kind, List<Value> arguments,
+            Set<String> refinements, boolean limitingTheSource) {
+
+        int limit = limitingTheSource ? partCountFor(arguments, refinements) : -1;
+        List<Value> once = numbersOfferedTo(kind, arguments.get(1), limit);
+        Value times = argumentFor("dup", List.of("part", "dup"), arguments, refinements, 2);
+        long rounds = refinements.contains("dup") && times instanceof IntegerValue counted
+                ? counted.magnitude()
+                : 1;
+        List<Value> added = new ArrayList<>();
+        for (long round = 0; round < rounds; round++) {
+            added.addAll(once);
+        }
+        return added;
+    }
+
+    /** The first few numbers put in order, in place, from the position. */
+    private static VectorValue sortedElements(VectorValue vector, int howMany,
+            boolean backwards) {
+
+        int sorting = Math.max(0, howMany);
+        long[] front = new long[sorting];
+        for (int at = 0; at < sorting; at++) {
+            front[at] = vector.storage().at(vector.index() + at);
+        }
+        VectorQuery.sortAscending(vector.kind(), front);
+        for (int at = 0; at < sorting; at++) {
+            vector.storage().set(vector.index() + at,
+                    backwards ? front[sorting - 1 - at] : front[at]);
+        }
+        return vector;
+    }
+
+    /** The numbers shuffled where they are, which is what RANDOM does to a series. */
+    private VectorValue shuffledElements(VectorValue vector) {
+        for (int remaining = vector.lengthFromHere(); remaining > 1; remaining--) {
+            int chosen = vector.index() + randomness.below(remaining);
+            int last = vector.index() + remaining - 1;
+            long held = vector.storage().at(chosen);
+            vector.storage().set(chosen, vector.storage().at(last));
+            vector.storage().set(last, held);
+        }
+        return vector;
+    }
+
+    /**
+     * CHANGE on a vector: as many taken out as are put in, unless /PART said
+     * otherwise.
+     *
+     * <p>/PART counts what to remove from the vector rather than what to take
+     * from the source, which is the one place the three modifying actions read
+     * the refinement differently. The C makes the same distinction in a single
+     * line: {@code Partial1((action == A_CHANGE) ? value : arg, ...)}.
+     */
+    private static Value changedElements(VectorValue vector, List<Value> arguments,
+            Set<String> refinements) {
+
+        List<Value> numbers = numbersAddedBy(vector.kind(), arguments, refinements, false);
+        int asked = refinements.contains("part")
+                ? partCountFor(arguments, refinements)
+                : numbers.size();
+        int removing = Math.max(0, Math.min(asked, vector.lengthFromHere()));
+        for (int gone = 0; gone < removing; gone++) {
+            vector.storage().removeAt(vector.index());
+        }
+        for (int at = numbers.size(); at > 0; at--) {
+            vector.storage().insertAt(vector.index(),
+                    VectorPath.storedFormOf(vector.kind(), numbers.get(at - 1)));
+        }
+        return vector.atIndex(vector.index() + numbers.size());
+    }
+
+    private static List<Value> numbersOfferedTo(VectorKind kind, Value value, int limit) {
+        if (value instanceof BinaryValue bytes) {
+            int offered = bytes.lengthFromHere();
+            int taking = limit < 0 ? offered : Math.min(limit, offered);
+            if (taking % kind.bytes() != 0) {
+                throw Raised.of(EvaluationFailure.INVALID_DATA, Molder.mold(bytes));
+            }
+            byte[] octets = bytes.octetsFromHere();
+            List<Value> numbers = new ArrayList<>();
+            for (int at = 0; at < taking; at += kind.bytes()) {
+                numbers.add(kind.read(kind.fromOctets(octets, at)));
+            }
+            return numbers;
+        }
+        List<Value> offered = numbersContributedTo(kind, value);
+        return limit < 0 || limit >= offered.size()
+                ? offered
+                : offered.subList(0, Math.max(0, limit));
+    }
+
+    /** A fresh vector of one kind holding numbers taken from another. */
+    private static VectorValue vectorHolding(VectorKind kind, List<Value> numbers) {
+        VectorStorage made = new VectorStorage(kind, 0);
+        numbers.forEach(number -> made.append(VectorPath.storedFormOf(kind, number)));
+        return new VectorValue(made, 1);
     }
 
     /**
@@ -7141,6 +7737,7 @@ public final class Natives {
                 case BinaryValue bytes -> bytes.storage().removeAt(oneBasedIndex);
                 case ImageValue image -> image.storage().removeFrom(oneBasedIndex, 1);
                 case GobValue gob -> gob.storage().removeChildren(oneBasedIndex, 1);
+                case VectorValue vector -> vector.storage().removeAt(oneBasedIndex);
             }
         }
     }
@@ -7245,9 +7842,28 @@ public final class Natives {
                 : (int) Comparison.asDouble(value);
     }
 
+    /**
+     * A shuffle done Rebol's way rather than the JVM's.
+     *
+     * <p>Both are Fisher-Yates and they are not the same shuffle. Rebol walks
+     * down from the end taking {@code Random_Int % n} each time, and Java's
+     * {@code Collections.shuffle} draws differently and consumes a different
+     * number of values. With the generator now matching, this is the other
+     * half of making {@code random/seed 1} reproduce Rebol's own answers.
+     */
+    private <T> void shuffleTheWayTheCDoes(List<T> items) {
+        for (int remaining = items.size(); remaining > 1;) {
+            int chosen = randomness.below(remaining);
+            remaining--;
+            T held = items.get(chosen);
+            items.set(chosen, items.get(remaining));
+            items.set(remaining, held);
+        }
+    }
+
     private Value shuffled(BlockValue block) {
         List<Value> items = new ArrayList<>(block.remaining());
-        java.util.Collections.shuffle(items, randomness);
+        shuffleTheWayTheCDoes(items);
         for (int at = 0; at < items.size(); at++) {
             block.storage().set(block.index() + at, items.get(at));
         }
@@ -7266,7 +7882,7 @@ public final class Natives {
         for (int at = text.index(); at <= text.storageLength(); at++) {
             letters.add(text.storage().at(at));
         }
-        java.util.Collections.shuffle(letters, randomness);
+        shuffleTheWayTheCDoes(letters);
         for (int at = 0; at < letters.size(); at++) {
             text.storage().set(text.index() + at, letters.get(at));
         }
@@ -7279,7 +7895,7 @@ public final class Natives {
         for (int at = bytes.index(); at <= bytes.storageLength(); at++) {
             octets.add(bytes.storage().at(at));
         }
-        java.util.Collections.shuffle(octets, randomness);
+        shuffleTheWayTheCDoes(octets);
         for (int at = 0; at < octets.size(); at++) {
             bytes.storage().set(bytes.index() + at, octets.get(at));
         }
@@ -7321,17 +7937,23 @@ public final class Natives {
     /** Spaces to tabs, or tabs to spaces, at a stop of the given width. */
     private void defineTabbing(String name, boolean toTabs) {
         define(name, List.of(
-                        Parameter.required("text", Set.of(Datatype.STRING)),
+                        Parameter.required("text", anyStringOr(Datatype.BINARY)),
                         Parameter.belongingTo("size", "width", Set.of(Datatype.INTEGER))),
                 Set.of("size"),
                 (arguments, evaluator, context, refinements) -> {
                     int width = refinements.contains("size") && arguments.size() > 1
                             ? (int) ((IntegerValue) arguments.get(1)).magnitude()
                             : 4;
-                    String text = ((StringValue) arguments.get(0)).text();
-                    return StringValue.of(toTabs
+                    Value given = arguments.getFirst();
+                    String text = given instanceof BinaryValue octets
+                            ? new String(octets.octetsFromHere(), StandardCharsets.ISO_8859_1)
+                            : ((StringValue) given).text();
+                    String tabbed = toTabs
                             ? text.replace(" ".repeat(width), "\t")
-                            : text.replace("\t", " ".repeat(width)));
+                            : text.replace("\t", " ".repeat(width));
+                    return given instanceof BinaryValue
+                            ? binaryOfBytes(tabbed.getBytes(StandardCharsets.ISO_8859_1))
+                            : StringValue.of(tabbed, textDatatypeOf(given));
                 });
     }
 
@@ -7553,6 +8175,13 @@ public final class Natives {
             }
             case ImageValue image -> insertPixels(image, value);
             case GobValue gob -> insertChildren(gob, gob.index(), value);
+            case VectorValue vector -> {
+                List<Value> numbers = numbersContributedTo(vector.kind(), value);
+                for (int at = numbers.size(); at > 0; at--) {
+                    vector.storage().insertAt(vector.index(),
+                            VectorPath.storedFormOf(vector.kind(), numbers.get(at - 1)));
+                }
+            }
             case BinaryValue bytes -> {
                 int[] octets = octetsContributedBy(value, -1);
                 for (int at = octets.length; at > 0; at--) {
@@ -7564,15 +8193,30 @@ public final class Natives {
     }
 
     /**
-     * The /part count a call asked for, or -1 for all of the source.
+     * How much of the source a /PART limit asks for, as a count, or -1 for all
+     * of it.
      *
-     * <p>INSERT and APPEND both declare it in the same place, so the two
-     * read it the same way rather than each working out where it sits.
+     * <p>INSERT and APPEND both declare it in the same place, so the two read
+     * it the same way rather than each working out where it sits.
+     *
+     * <p>A limit may be a number or a position, and a position means "up to
+     * here". Reading only the number turned {@code insert/part output a b}
+     * into an insert of everything from {@code a} onwards, which is how REWORD
+     * over a binary came to answer its whole template with the substitutions
+     * appended to it.
      */
     private static int partCountFor(List<Value> arguments, Set<String> refinements) {
         Value limit = argumentFor(
                 "part", List.of("part", "dup"), arguments, refinements, 2);
-        return limit instanceof IntegerValue wanted ? (int) wanted.magnitude() : -1;
+        if (limit instanceof IntegerValue wanted) {
+            return (int) wanted.magnitude();
+        }
+        if (limit instanceof SeriesValue upTo
+                && arguments.get(1) instanceof SeriesValue from
+                && from.sharesStorageWith(upTo)) {
+            return Math.abs(upTo.index() - from.index());
+        }
+        return -1;
     }
 
     /** Removing one item, whichever kind of series holds it. */
@@ -7583,6 +8227,7 @@ public final class Natives {
             case BinaryValue bytes -> bytes.storage().removeAt(index);
             case ImageValue image -> image.storage().removeFrom(index, 1);
             case GobValue gob -> gob.storage().removeChildren(index, 1);
+            case VectorValue vector -> vector.storage().removeAt(index);
         }
     }
 
@@ -7623,9 +8268,11 @@ public final class Natives {
         locals.define(word.spelling());
         BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
         for (int at = series.storageLength(); at >= series.index(); at--) {
-            Value item = series instanceof BinaryValue bytes
-                    ? IntegerValue.of(((BinaryValue) series).storage().at(at))
-                    : CharacterValue.of(((StringValue) series).storage().at(at));
+            Value item = switch (series) {
+                case BinaryValue bytes -> IntegerValue.of(bytes.storage().at(at));
+                case VectorValue numbers -> numbers.elementAt(at);
+                default -> CharacterValue.of(((StringValue) series).storage().at(at));
+            };
             locals.set(word.spelling(), item);
             if (evaluator.evaluateOrRaise(body, locals).isTruthy()) {
                 removeFrom(series, at, 1);
@@ -7677,10 +8324,33 @@ public final class Natives {
             case BinaryValue bytes -> bytes.storage().isProtected();
             case ImageValue image -> image.storage().isProtected();
             case GobValue ignored -> false;
+            case VectorValue vector -> vector.storage().isProtected();
         };
         if (guarded) {
             throw new org.jebol.domain.value.ProtectedFromChange();
         }
+    }
+
+    /**
+     * The text a modifying action is adding, /PART and /DUP applied.
+     *
+     * <p>APPEND worked this out and INSERT did not, so {@code insert/dup} put
+     * one copy in however many were asked for. PAD is four lines of REBOL with
+     * this call in the middle of it, which is how a missing refinement showed
+     * up as a string one character short.
+     */
+    private static String textContributedBy(
+            List<Value> arguments, Set<String> refinements) {
+
+        Value adding = duplicated(arguments.get(1), arguments, refinements);
+        String written = adding instanceof BlockValue added
+                && added.datatype() == Datatype.BLOCK
+                ? runTogether(added)
+                : Molder.form(adding);
+        return howManyWanted(arguments.get(1), arguments, refinements, 2)
+                .map(count -> written.substring(0,
+                        Math.max(0, Math.min(count.intValue(), written.length()))))
+                .orElse(written);
     }
 
     /**
@@ -7806,7 +8476,8 @@ public final class Natives {
             Datatype.BLOCK, Datatype.PAREN, Datatype.PATH, Datatype.SET_PATH,
             Datatype.GET_PATH, Datatype.LIT_PATH, Datatype.HASH,
             Datatype.PORT, Datatype.BITSET,
-            Datatype.TYPESET, Datatype.MAP, Datatype.GOB, Datatype.IMAGE);
+            Datatype.TYPESET, Datatype.MAP, Datatype.GOB, Datatype.IMAGE,
+            Datatype.VECTOR);
 
     /**
      * UNION, INTERSECT or EXCLUDE, which differ only in what they keep.
@@ -7817,17 +8488,33 @@ public final class Natives {
      */
     private void defineSetOperation(String name, Combination how) {
         define(name, List.of(
-                        Parameter.required("first"),
-                        Parameter.required("second"),
+                        Parameter.required("first", setOperandOr(Datatype.BLOCK)),
+                        Parameter.required("second", setOperandOr(Datatype.BLOCK)),
                         Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
                 Set.of("case", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     Value width = argumentFor("skip", List.of("skip"), arguments, refinements, 2);
-                    int stride = width instanceof IntegerValue wanted
-                            ? (int) Math.max(1, wanted.magnitude())
-                            : 1;
-                    return combined(arguments, how, refinements.contains("case"), stride);
+                    return combined(arguments, how, refinements.contains("case"),
+                            recordWidthOf(width));
                 });
+    }
+
+    /**
+     * A /SKIP record width, refusing one that is not a width at all.
+     *
+     * <p>Clamping to one turned {@code union/skip [2 1] [2 1] -2} into a
+     * perfectly ordinary call over single items, so a caller who worked the
+     * number out wrongly was told nothing. A record cannot be shorter than one
+     * item and the C says so with {@code out-of-range}.
+     */
+    private static int recordWidthOf(Value width) {
+        if (!(width instanceof IntegerValue wanted)) {
+            return 1;
+        }
+        if (wanted.magnitude() < 1) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(wanted));
+        }
+        return (int) wanted.magnitude();
     }
 
     /**
@@ -7898,6 +8585,7 @@ public final class Natives {
                     1, block.datatype());
             case StringValue text -> StringValue.of(text.text(), text.datatype());
             case BinaryValue binary -> copiedBytes(binary, binary.lengthFromHere());
+            case VectorValue vector -> copiedElements(vector, vector.lengthFromHere());
             case BitsetValue members -> members.duplicate();
             case ObjectValue object -> {
                 Context fields = Context.root();
@@ -7942,7 +8630,16 @@ public final class Natives {
             case BinaryValue bytes -> copiedBytes(bytes, taking);
             case ImageValue image -> copiedPixels(image, taking);
             case GobValue gob -> raiseCannotUse(gob, "copy");
+            case VectorValue vector -> copiedElements(vector, taking);
         };
+    }
+
+    private static VectorValue copiedElements(VectorValue vector, int howMany) {
+        VectorStorage made = new VectorStorage(vector.kind(), 0);
+        for (int at = 0; at < howMany; at++) {
+            made.append(vector.storage().at(vector.index() + at));
+        }
+        return new VectorValue(made, 1);
     }
 
     private static BinaryValue copiedBytes(BinaryValue bytes, int howMany) {
@@ -7953,13 +8650,25 @@ public final class Natives {
         return new BinaryValue(copiedStorage, 1);
     }
 
-    /** A branch run, or handed back untouched when /ONLY asked for that. */
+    /**
+     * A branch taken: run when it is a block, handed back when it is anything
+     * else.
+     *
+     * <p>{@code if (IS_BLOCK(D_ARG(2)) && !D_REF(3)) { DO_BLK(...); } else
+     * return R_ARG2;} -- so IF, UNLESS and EITHER take any value as a branch
+     * and only a block means "do this". That is what lets
+     * {@code if false "text"} stand where a value is wanted, and it is why
+     * {@code reduce [{abc} if false {def} {ghi}]} is three items rather than
+     * an error about a string where a block was expected.
+     */
     private static Value branchTaken(
-            BlockValue branch, Evaluator evaluator, Context context, Set<String> refinements) {
+            Value branch, Evaluator evaluator, Context context, Set<String> refinements) {
 
-        return refinements.contains("only")
-                ? branch
-                : evaluator.evaluateOrRaise(branch, context);
+        return branch instanceof BlockValue block
+                && block.datatype() == Datatype.BLOCK
+                && !refinements.contains("only")
+                ? evaluator.evaluateOrRaise(block, context)
+                : branch;
     }
 
     /**
@@ -7983,6 +8692,16 @@ public final class Natives {
                 yield block;
             }
             case GobValue gob -> raiseCannotUse(gob, "reverse/part");
+            case VectorValue vector -> {
+                for (int at = 0; at < howMany / 2; at++) {
+                    int near = vector.index() + at;
+                    int far = vector.index() + howMany - 1 - at;
+                    long held = vector.storage().at(near);
+                    vector.storage().set(near, vector.storage().at(far));
+                    vector.storage().set(far, held);
+                }
+                yield vector;
+            }
             case ImageValue image -> {
                 for (int at = 0; at < howMany / 2; at++) {
                     int[] near = image.pixelAt(at + 1);
@@ -8309,6 +9028,7 @@ public final class Natives {
                 }
             }
             case BitsetValue members -> members.protectFromChange(protectedNow);
+            case VectorValue vector -> vector.storage().protectFromChange(protectedNow);
             default -> raiseCannotUse(target, "protect");
         }
     }
@@ -8344,6 +9064,10 @@ public final class Natives {
      */
     private static long countUpTo(SeriesValue series, Value howMuch) {
         if (howMuch instanceof IntegerValue count) {
+            if (count.magnitude() < Integer.MIN_VALUE
+                    || count.magnitude() > Integer.MAX_VALUE) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(count));
+            }
             return count.magnitude();
         }
         if (howMuch instanceof DecimalValue count
@@ -8454,6 +9178,7 @@ public final class Natives {
             case BinaryValue binary -> IntegerValue.of(binary.storage().at(at));
             case ImageValue image -> ImagePath.read(image.head(), IntegerValue.of(at));
             case GobValue gob -> GobPath.childOf(gob.head(), at);
+            case VectorValue vector -> vector.elementAt(at);
         };
     }
 
@@ -9029,11 +9754,18 @@ public final class Natives {
                 Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET);
     }
 
-    /** What a set operation takes besides a block, plus whatever is named. */
+    /**
+     * What the set operations take: {@code [block! string! bitset! typeset!
+     * map!]}, and a date for DIFFERENCE alone.
+     *
+     * <p>A binary is not among them. Leaving it in let one through to a body
+     * that casts to a block, so {@code difference #{01} #{02}} came out of the
+     * interpreter as a Java class-cast rather than as an error a script can
+     * catch. The declaration is what decides that, not the body.
+     */
     private static Set<Datatype> setOperandOr(Datatype... alsoAccepted) {
         Set<Datatype> accepted = EnumSet.of(
-                Datatype.BITSET, Datatype.TYPESET, Datatype.STRING,
-                Datatype.BINARY, Datatype.DATE);
+                Datatype.BITSET, Datatype.TYPESET, Datatype.STRING, Datatype.MAP);
         accepted.addAll(List.of(alsoAccepted));
         return Set.copyOf(accepted);
     }
@@ -9303,8 +10035,7 @@ public final class Natives {
                 });
 
         define("checksum", List.of(
-                        Parameter.required("data",
-                                anyStringOr(Datatype.BINARY)),
+                        Parameter.required("data", CHECKSUMMABLE),
                         Parameter.required("method", Set.of(Datatype.WORD)),
                         Parameter.belongingTo("with", "spec",
                                 anyStringOr(Datatype.BINARY, Datatype.INTEGER)),
@@ -9330,7 +10061,7 @@ public final class Natives {
                 });
 
         define("compress", List.of(
-                        Parameter.required("data", anyStringOr(Datatype.BINARY)),
+                        Parameter.required("data", COMPRESSIBLE),
                         Parameter.required("method", Set.of(Datatype.WORD)),
                         Parameter.belongingTo("part", "length", PART_LIMIT),
                         Parameter.belongingTo("level", "lvl", Set.of(Datatype.INTEGER))),
@@ -9354,7 +10085,7 @@ public final class Natives {
         define("decompress", List.of(
                         Parameter.required("data", Set.of(Datatype.BINARY)),
                         Parameter.required("method", Set.of(Datatype.WORD)),
-                        Parameter.belongingTo("part", "length", PART_LIMIT),
+                        Parameter.belongingTo("part", "length", COUNT_OR_POSITION),
                         Parameter.belongingTo("size", "bytes", Set.of(Datatype.INTEGER))),
                 Set.of("part", "size"),
                 (arguments, evaluator, context, refinements) -> {
@@ -9382,13 +10113,16 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     byte[] octets = ((BinaryValue) arguments.getFirst()).octetsFromHere();
                     java.nio.charset.Charset from = characterSetFor(arguments.get(1));
-                    String text = new String(octets, from);
+                    String text = Encodings.textDecodedAs(octets, from);
                     if (!refinements.contains("to")) {
                         return StringValue.of(text);
                     }
                     Value target = argumentFor("to", List.of("to"),
                             arguments, refinements, 2);
-                    return binaryOfBytes(text.getBytes(characterSetFor(target)));
+                    java.nio.charset.Charset into = characterSetFor(target);
+                    return java.nio.charset.StandardCharsets.UTF_8.equals(into)
+                            ? StringValue.of(text)
+                            : binaryOfBytes(text.getBytes(into));
                 });
 
         define("filter", List.of(
@@ -9432,7 +10166,7 @@ public final class Natives {
         define("swap-endian", List.of(
                         Parameter.required("value", Set.of(Datatype.BINARY)),
                         Parameter.belongingTo("width", "bytes", Set.of(Datatype.INTEGER)),
-                        Parameter.belongingTo("part", "range", PART_LIMIT)),
+                        Parameter.belongingTo("part", "range", COUNT_OR_POSITION)),
                 Set.of("width", "part"),
                 (arguments, evaluator, context, refinements) -> {
                     BinaryValue bytes = (BinaryValue) arguments.getFirst();
@@ -9444,8 +10178,13 @@ public final class Natives {
                             ? (int) given.magnitude()
                             : 2;
                     byte[] octets = bytes.octetsFromHere();
+                    int reach = refinements.contains("part")
+                            ? (int) Math.max(0, Math.min(octets.length, countUpTo(bytes,
+                                    argumentFor("part", List.of("width", "part"),
+                                            arguments, refinements, 1))))
+                            : octets.length;
                     try {
-                        Encodings.swapEndian(octets, 0, width);
+                        Encodings.swapEndian(octets, reach - reach % width, width);
                     } catch (IllegalArgumentException badWidth) {
                         throw Raised.of(EvaluationFailure.INVALID_ARG,
                                 "swap-endian takes a width of 2, 4 or 8");
@@ -9787,11 +10526,7 @@ public final class Natives {
                     if (refinements.contains("off")) {
                         return UnsetValue.unset();
                     }
-                    Runtime running = Runtime.getRuntime();
-                    long before = running.totalMemory() - running.freeMemory();
-                    System.gc();
-                    long after = running.totalMemory() - running.freeMemory();
-                    return IntegerValue.of(Math.max(0, before - after));
+                    return IntegerValue.of(SeriesMemory.collectNow());
                 });
 
         define("stats", List.of(
@@ -9811,8 +10546,7 @@ public final class Natives {
                     if (refinements.contains("profile")) {
                         return filledInProfile(evaluator);
                     }
-                    Runtime running = Runtime.getRuntime();
-                    return IntegerValue.of(running.totalMemory() - running.freeMemory());
+                    return IntegerValue.of(SeriesMemory.bytesHeld());
                 });
 
         define("echo", List.of(Parameter.required("target",
@@ -11083,18 +11817,20 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     StringValue text = (StringValue) arguments.getFirst();
                     if (refinements.contains("lines")) {
-                        return BlockValue.block(
-                                java.util.Arrays.stream(
-                                                text.text().replace("\r\n", "\n").split("\n", -1))
-                                        .<Value>map(StringValue::of)
-                                        .toList());
+                        return BlockValue.block(linesOf(text.text()));
                     }
                     return rewritten(text, whole -> whole.replace("\r\n", "\n"));
                 });
-        define("enline", List.of(Parameter.required("text", Set.of(Datatype.STRING))),
-                (arguments, evaluator, context) -> rewritten(
-                        (StringValue) arguments.getFirst(),
-                        whole -> whole.replace("\r\n", "\n")));
+        define("enline", List.of(Parameter.required("text",
+                        Set.of(Datatype.STRING, Datatype.BLOCK))),
+                (arguments, evaluator, context) -> {
+                    if (arguments.getFirst() instanceof BlockValue) {
+                        throw Raised.of(EvaluationFailure.NOT_DONE,
+                                "joining a block of lines is not written yet");
+                    }
+                    return rewritten((StringValue) arguments.getFirst(),
+                            whole -> whole.replace("\r\n", "\n"));
+                });
 
         define("as", List.of(
                         Parameter.required("type", asTypeOrExample()),
@@ -11427,6 +12163,39 @@ public final class Natives {
         return given;
     }
 
+    /**
+     * MAKE VECTOR!, from a count, a spec block or a binary.
+     *
+     * <p>A count is a length of signed 32-bit zeros and a negative one is out
+     * of range rather than a bad argument, which is the C's {@code Int32s(arg,
+     * 0)} refusing before {@code Make_Vector} is reached. Everything else that
+     * will not read is a bad argument.
+     */
+    private static Value madeVector(Value from, Evaluator evaluator, Context context) {
+        if (from instanceof IntegerValue counted || from instanceof DecimalValue) {
+            long howMany = from instanceof IntegerValue whole
+                    ? whole.magnitude()
+                    : (long) ((DecimalValue) from).quantity();
+            if (howMany < 0) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(from));
+            }
+            return VectorSpec.ofSize((int) howMany);
+        }
+        if (from instanceof BinaryValue bytes) {
+            return VectorSpec.ofOctets(bytes);
+        }
+        if (from instanceof VectorValue already) {
+            return copiedElements(already, already.lengthFromHere());
+        }
+        if (from instanceof BlockValue spec) {
+            return VectorSpec.readMakeSpec(spec.remaining(),
+                            written -> simpleValueOf(written, evaluator, context))
+                    .orElseThrow(() -> Raised.of(EvaluationFailure.BAD_MAKE_ARG,
+                            Datatype.VECTOR.literalSpelling()));
+        }
+        throw Raised.of(EvaluationFailure.BAD_MAKE_ARG, Datatype.VECTOR.literalSpelling());
+    }
+
     private static Value makeOfDatatype(
             DatatypeValue wanted, Value from, Evaluator evaluator, Context context) {
         if (wanted.represents() == Datatype.IMAGE) {
@@ -11439,11 +12208,16 @@ public final class Natives {
             return EventPath.made(wanted, from,
                     value -> simpleValueOf(value, evaluator, context));
         }
-        if (from instanceof IntegerValue && wanted.represents().isSeries()) {
+        if (wanted.represents() == Datatype.VECTOR) {
+            return madeVector(from, evaluator, context);
+        }
+        if (from instanceof IntegerValue roomFor && wanted.represents().isSeries()) {
+            int asked = (int) Math.max(0, Math.min(Integer.MAX_VALUE, roomFor.magnitude()));
             return switch (wanted.represents()) {
                 case BLOCK, PAREN, PATH -> BlockValue.block(List.of()).as(wanted.represents());
-                case BINARY -> BinaryValue.of();
-                default -> StringValue.of("", wanted.represents());
+                case BINARY -> new BinaryValue(new BinaryStorage(asked), 1);
+                default -> new StringValue(
+                        StringStorage.withRoomFor(asked), 1, wanted.represents());
             };
         }
         if ((wanted.represents() == Datatype.BLOCK
@@ -11494,6 +12268,74 @@ public final class Natives {
         return BinaryValue.of(octets);
     }
 
+    /**
+     * Text as its lines, with a line ending reading as an ending rather than
+     * as the start of an empty line.
+     *
+     * <p>Java's own split does one of two wrong things: with no limit it drops
+     * every trailing empty line, so two blank lines come back as none, and
+     * with a limit of -1 it keeps the one after the last ending, so a file
+     * that ends properly gains a line it has not got. Dropping exactly one is
+     * the rule, and nothing at all is no lines rather than one empty one.
+     */
+    private static List<Value> linesOf(String text) {
+        if (text.isEmpty()) {
+            return List.of();
+        }
+        String[] split = text.replace("\r\n", "\n").split("\n", -1);
+        int howMany = split.length > 0 && split[split.length - 1].isEmpty()
+                ? split.length - 1
+                : split.length;
+        List<Value> lines = new ArrayList<>(howMany);
+        for (int at = 0; at < howMany; at++) {
+            lines.add(StringValue.of(split[at]));
+        }
+        return lines;
+    }
+
+    /**
+     * An address built from a block: a user, then a host in dotted parts.
+     *
+     * <p>{@code make email! [aaa bbb cc]} is {@code aaa@bbb.cc}. The first
+     * item is the whole of the user and everything after it is a label of the
+     * host, which is why two items give no dot and three give one. One item is
+     * a user with no host at all, and an empty block names nobody.
+     */
+    private static Value addressBuiltFrom(BlockValue parts) {
+        List<Value> written = parts.remaining();
+        if (written.isEmpty()) {
+            return raiseBadMakeArg(parts, Datatype.EMAIL.literalSpelling());
+        }
+        String user = Molder.form(written.getFirst());
+        if (written.size() == 1) {
+            return StringValue.of(user, Datatype.EMAIL);
+        }
+        String host = written.subList(1, written.size()).stream()
+                .map(Molder::form)
+                .collect(Collectors.joining("."));
+        return StringValue.of(user + "@" + host, Datatype.EMAIL);
+    }
+
+    /**
+     * A url built from a block: a scheme, then the path it names.
+     *
+     * <p>{@code make url! [http]} is {@code http://} and {@code make url!
+     * [http www.rebol.com %reboldoc.html]} is the whole address. The scheme
+     * takes the two slashes whether or not anything follows it, and every item
+     * after it is one segment of the path.
+     */
+    private static Value urlBuiltFrom(BlockValue parts) {
+        List<Value> written = parts.remaining();
+        if (written.isEmpty()) {
+            return raiseBadMakeArg(parts, Datatype.URL.literalSpelling());
+        }
+        String scheme = Molder.form(written.getFirst());
+        String rest = written.subList(1, written.size()).stream()
+                .map(Molder::form)
+                .collect(Collectors.joining("/"));
+        return StringValue.of(scheme + "://" + rest, Datatype.URL);
+    }
+
     /** A block of whole numbers as one byte each, refusing anything else. */
     private static Value bytesOfEach(BlockValue block) {
         List<Value> items = block.remaining();
@@ -11514,6 +12356,15 @@ public final class Natives {
                     "to needs a datatype, not " + type.datatype().literalSpelling());
         }
         return switch (wanted.represents()) {
+            case VECTOR -> switch (value) {
+                case VectorValue already -> already;
+                case BinaryValue octets -> VectorSpec.ofOctets(octets);
+                case BlockValue block -> VectorSpec.readMakeSpec(
+                                block.remaining(), java.util.function.UnaryOperator.identity())
+                        .<Value>map(made -> made)
+                        .orElseGet(() -> raiseCannotUse(value, "to vector!"));
+                default -> raiseCannotUse(value, "to vector!");
+            };
             case INTEGER -> wholeNumberFrom(value);
             case DECIMAL -> value instanceof BinaryValue bits
                     ? DecimalValue.of(Double.longBitsToDouble(bitsOf(bits)))
@@ -11522,7 +12373,17 @@ public final class Natives {
             case STRING -> value instanceof BinaryValue octets
                     ? StringValue.of(textDecodedFrom(octets))
                     : StringValue.of(runTogether(value));
-            case FILE, URL, EMAIL, TAG, REF -> value instanceof BinaryValue octets
+            case EMAIL -> value instanceof BlockValue parts
+                    ? addressBuiltFrom(parts)
+                    : value instanceof BinaryValue octets
+                            ? StringValue.of(textDecodedFrom(octets), Datatype.EMAIL)
+                            : StringValue.of(runTogether(value), Datatype.EMAIL);
+            case URL -> value instanceof BlockValue parts
+                    ? urlBuiltFrom(parts)
+                    : value instanceof BinaryValue octets
+                            ? StringValue.of(textDecodedFrom(octets), Datatype.URL)
+                            : StringValue.of(runTogether(value), Datatype.URL);
+            case FILE, TAG, REF -> value instanceof BinaryValue octets
                     ? StringValue.of(textDecodedFrom(octets), wanted.represents())
                     : StringValue.of(runTogether(value), wanted.represents());
             case BINARY -> switch (value) {
@@ -11538,6 +12399,10 @@ public final class Natives {
                                         fractional.quantity())).array());
                 case MoneyValue amount -> binaryOfBytes(amount.toBytes());
                 case BlockValue block -> bytesOfEach(block);
+                case VectorValue vector -> binaryOfBytes(vector.octetsFromHere());
+                case CharacterValue letter -> binaryOfBytes(
+                        Character.toString(letter.codepoint())
+                                .getBytes(StandardCharsets.UTF_8));
                 default -> raiseCannotUse(value, "to binary!");
             };
             case WORD, SET_WORD, GET_WORD, LIT_WORD, REFINEMENT, ISSUE ->
@@ -11549,6 +12414,8 @@ public final class Natives {
                                     .<Value>map(DatatypeValue::of).toList())
                             : value instanceof MapValue map
                                     ? BlockValue.block(map.flattened())
+                            : value instanceof VectorValue vector
+                                    ? BlockValue.block(vector.remaining())
                             : value instanceof BlockValue block
                                     ? block
                                     : BlockValue.block(value)).as(wanted.represents());
@@ -12861,6 +13728,22 @@ public final class Natives {
                                     ((StringValue) arguments.get(0)).text())));
                 });
 
+        define("dir?", List.of(Parameter.required("target",
+                        Set.of(Datatype.FILE, Datatype.URL, Datatype.NONE))),
+                Set.of("check"),
+                (arguments, evaluator, context, refinements) -> {
+                    Value target = arguments.getFirst();
+                    if (!(target instanceof StringValue named) || named.text().isEmpty()) {
+                        return LogicValue.of(false);
+                    }
+                    if (refinements.contains("check")
+                            && target.datatype() == Datatype.FILE
+                            && liesOnTheDiskAsADirectory(evaluator, named.text())) {
+                        return LogicValue.of(true);
+                    }
+                    return LogicValue.of(endsTheWayADirectoryIsWritten(named.text()));
+                });
+
         define("set-scheme", List.of(
                         Parameter.required("scheme", Set.of(Datatype.OBJECT))),
                 (arguments, evaluator, context) -> {
@@ -12997,7 +13880,7 @@ public final class Natives {
 
         define("request-color", List.of(
                         Parameter.belongingTo("default", "color", Set.of(Datatype.TUPLE))),
-                Set.of("default", "rgb16"),
+                Set.of("default"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.WINDOWS);
                     return throughWindow(() -> {
@@ -13023,7 +13906,7 @@ public final class Natives {
         define("query", List.of(
                         Parameter.required("target", Set.of(Datatype.FILE, Datatype.DATE,
                                 Datatype.HANDLE, Datatype.PORT, Datatype.URL,
-                                Datatype.BLOCK, Datatype.WORD)),
+                                Datatype.BLOCK, Datatype.WORD, Datatype.VECTOR)),
                         Parameter.required("field",
                                 Set.of(Datatype.WORD, Datatype.BLOCK,
                                         Datatype.NONE, Datatype.DATATYPE))),
@@ -13031,6 +13914,9 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     Value target = arguments.getFirst();
                     Value field = arguments.get(1);
+                    if (target instanceof VectorValue vector) {
+                        return queriedVector(vector, field, evaluator);
+                    }
                     if (target instanceof DateValue date) {
                         return questionedByField(field, evaluator,
                                 DateParts.partNames(),
@@ -13595,13 +14481,51 @@ public final class Natives {
      * would make a round trip through a binary lossy without saying so.
      */
     private static String textDecodedFrom(BinaryValue octets) {
+        byte[] bytes = octets.octetsFromHere();
+        int marked = byteOrderMarkOf(bytes);
+        if (marked != 0) {
+            return textBehindTheMark(bytes, marked);
+        }
         java.nio.charset.CharsetDecoder strictly =
                 StandardCharsets.UTF_8.newDecoder()
                         .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
                         .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT);
         try {
-            return strictly.decode(
-                    java.nio.ByteBuffer.wrap(octets.octetsFromHere())).toString();
+            return strictly.decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+        } catch (java.nio.charset.CharacterCodingException notText) {
+            throw Raised.of(EvaluationFailure.INVALID_UTF, "binary");
+        }
+    }
+
+    /**
+     * Bytes read as whatever their byte order mark says, with the mark
+     * dropped.
+     *
+     * <p>Text that arrives from a file or a wire is as likely to be UTF-16 as
+     * UTF-8, and the mark is what says which. Reading it as UTF-8 regardless
+     * turned every such file into a refusal, which is what
+     * {@code issue-2186} in Rebol's own tests is about.
+     *
+     * <p>The four-byte marks have to be tested before the two-byte ones they
+     * begin with: {@code FF FE 00 00} is UTF-32 little-endian and its first
+     * two bytes are the UTF-16 little-endian mark, so the wrong order reads a
+     * UTF-32 file as UTF-16 and finds a null after every character.
+     */
+    private static String textBehindTheMark(byte[] bytes, int marked) {
+        java.nio.charset.Charset named = switch (marked) {
+            case 8 -> StandardCharsets.UTF_8;
+            case 16 -> StandardCharsets.UTF_16BE;
+            case -16 -> StandardCharsets.UTF_16LE;
+            case 32 -> java.nio.charset.Charset.forName("UTF-32BE");
+            default -> java.nio.charset.Charset.forName("UTF-32LE");
+        };
+        int width = Math.abs(marked) == 8 ? 3 : Math.abs(marked) / 8;
+        try {
+            return named.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                    .decode(java.nio.ByteBuffer.wrap(bytes, width, bytes.length - width))
+                    .toString();
         } catch (java.nio.charset.CharacterCodingException notText) {
             throw Raised.of(EvaluationFailure.INVALID_UTF, "binary");
         }
@@ -13670,6 +14594,26 @@ public final class Natives {
                     Datatype.PERCENT, Datatype.PAIR),
             java.util.Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+    /**
+     * {@code [number! series!]}, which is {@link #PART_LIMIT} without a pair.
+     *
+     * <p>DECOMPRESS and SWAP-ENDIAN declare their limit this way and the
+     * functions that share a limit with REMOVE declare a pair alongside it.
+     * The difference is a whole datatype's worth of arguments a real Rebol
+     * turns away before the body runs.
+     */
+    private static final Set<Datatype> COUNT_OR_POSITION = PART_LIMIT.stream()
+            .filter(accepted -> accepted != Datatype.PAIR)
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+    /** CHECKSUM's declared data: {@code [binary! string! file!]}. */
+    private static final Set<Datatype> CHECKSUMMABLE =
+            Set.of(Datatype.BINARY, Datatype.STRING, Datatype.FILE);
+
+    /** COMPRESS's declared data, which has no file among it. */
+    private static final Set<Datatype> COMPRESSIBLE =
+            Set.of(Datatype.BINARY, Datatype.STRING);
 
     /** REMOVE's declared range: {@code [number! series! pair! char!]}. */
     private static final Set<Datatype> REMOVE_RANGE = java.util.stream.Stream.concat(
@@ -14113,15 +15057,46 @@ public final class Natives {
     }
 
     /**
-     * What COPY will duplicate: the eight datatypes its spec names.
+     * QUERY on a vector, in the four shapes the field argument can take.
      *
-     * <p>{@code value [series! port! map! object! bitset! any-function! error!
-     * struct!]}. Declared rather than left open, because the list is what decides
-     * the error: a gob is not on it, so `copy make gob! []` is the wrong argument
-     * rather than an operation a gob does not support. STRUCT is absent here for
-     * the reason it is absent everywhere -- the datatype belongs to a build with
-     * the FFI in it.
+     * <p>Written out rather than sent through {@link #questionedByField},
+     * because a vector answers to three names its object does not list --
+     * {@code min}, {@code max} and {@code average} -- and because an unknown
+     * word inside a block is an invalid argument here where the shared helper
+     * calls it something else. Both differences come straight from the C.
      */
+    private Value queriedVector(VectorValue vector, Value field, Evaluator evaluator) {
+        if (field instanceof NoneValue) {
+            return BlockValue.block(
+                    VectorQuery.FIELDS.stream().<Value>map(WordValue::of).toList());
+        }
+        if (field instanceof WordValue named) {
+            return VectorQuery.field(vector, named.canonical())
+                    .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, named));
+        }
+        if (field instanceof BlockValue asked) {
+            List<Value> answer = new ArrayList<>();
+            for (Value item : asked.remaining()) {
+                if (!(item instanceof WordValue named)) {
+                    throw Raised.of(EvaluationFailure.INVALID_ARG, item);
+                }
+                if (named.datatype() != Datatype.GET_WORD) {
+                    answer.add(named.as(Datatype.SET_WORD));
+                }
+                answer.add(VectorQuery.field(vector, named.canonical()).orElseThrow(
+                        () -> Raised.of(EvaluationFailure.INVALID_ARG, named)));
+            }
+            return BlockValue.block(answer);
+        }
+        Context fields = Context.childOf(evaluator.systemContext());
+        ObjectValue described = new ObjectValue(fields);
+        fields.set("self", described);
+        for (String name : VectorQuery.FIELDS) {
+            fields.set(name, VectorQuery.field(vector, name).orElseGet(NoneValue::none));
+        }
+        return described;
+    }
+
     private Value questionedByField(
             Value field, Evaluator evaluator, List<String> partNames,
             java.util.function.Function<String, Value> partOf) {
@@ -14223,6 +15198,16 @@ public final class Natives {
         return Set.copyOf(accepted);
     }
 
+    /**
+     * What COPY will duplicate: the eight datatypes its spec names.
+     *
+     * <p>{@code value [series! port! map! object! bitset! any-function! error!
+     * struct!]}. Declared rather than left open, because the list is what decides
+     * the error: a gob is not on it, so `copy make gob! []` is the wrong argument
+     * rather than an operation a gob does not support. STRUCT is absent here for
+     * the reason it is absent everywhere -- the datatype belongs to a build with
+     * the FFI in it.
+     */
     private static Set<Datatype> copyable() {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
         accepted.addAll(Typeset.ANY_FUNCTION.members());
@@ -14420,6 +15405,14 @@ public final class Natives {
                 throws java.nio.charset.CharacterCodingException {
             if (startsWith(bytes, 0xEF, 0xBB, 0xBF)) {
                 return strictlyDecoded(bytes, 3, StandardCharsets.UTF_8);
+            }
+            if (startsWith(bytes, 0xFF, 0xFE, 0x00, 0x00)) {
+                return strictlyDecoded(
+                        bytes, 4, java.nio.charset.Charset.forName("UTF-32LE"));
+            }
+            if (startsWith(bytes, 0x00, 0x00, 0xFE, 0xFF)) {
+                return strictlyDecoded(
+                        bytes, 4, java.nio.charset.Charset.forName("UTF-32BE"));
             }
             if (startsWith(bytes, 0xFE, 0xFF)) {
                 return strictlyDecoded(bytes, 2, StandardCharsets.UTF_16BE);

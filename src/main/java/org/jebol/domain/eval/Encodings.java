@@ -73,12 +73,12 @@ final class Encodings {
      */
     private static final String URI_UNESCAPED =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-                    + "-._~:/?#[]@!$&'()*+,;=";
+                    + "!#$&'()*+,-./:;=?@_~";
 
     /** The narrower set, for one component of a URI rather than the whole. */
     private static final String URI_COMPONENT_UNESCAPED =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-                    + "-._~";
+                    + "!'()*-._~";
 
     /** Whether a byte is in the default set for a file or a url. */
     static boolean uriKeeps(int octet) {
@@ -116,6 +116,10 @@ final class Encodings {
             int octet = each & 0xFF;
             if (spaceIsSpecial && octet == ' ') {
                 encoded.append(spaceStandsForUnder(escape));
+                continue;
+            }
+            if (spaceIsSpecial && octet == spaceStandsForUnder(escape)) {
+                encoded.append(escape).append("%02X".formatted(octet));
                 continue;
             }
             if (keep.test(octet)) {
@@ -460,6 +464,17 @@ final class Encodings {
         return running.getValue();
     }
 
+    /**
+     * The same twenty-four bit sum, for what seeds a random sequence.
+     *
+     * <p>{@code Set_Random(Compute_CRC24(...))} is how a string, a binary and
+     * a tuple each become a seed, so RANDOM needs the sum CHECKSUM already
+     * computes rather than one of its own.
+     */
+    static long checksumSeedOf(byte[] octets) {
+        return crc24Of(octets);
+    }
+
     private static long crc24Of(byte[] octets) {
         int running = 0xB704CE;
         for (byte each : octets) {
@@ -689,28 +704,151 @@ final class Encodings {
     }
 
     /**
+     * Octets read as a named character set, keeping a byte order mark that is
+     * part of the text.
+     *
+     * <p>An encoding named outright says which way round the bytes are, so a
+     * {@code FEFF} at the front of it is a zero-width space rather than a mark
+     * to be obeyed and dropped. Rebol keeps it and the JVM's UTF-32 decoders
+     * throw it away, which is a character's difference in the length of every
+     * such string. The two-and four-byte forms are simple enough to read here
+     * rather than argue with the decoder about.
+     */
+    static String textDecodedAs(byte[] octets, java.nio.charset.Charset named) {
+        boolean bigEndian = "UTF-32BE".equalsIgnoreCase(named.name());
+        if (!bigEndian && !"UTF-32LE".equalsIgnoreCase(named.name())) {
+            return new String(octets, named);
+        }
+        StringBuilder text = new StringBuilder();
+        for (int at = 0; at + 4 <= octets.length; at += 4) {
+            int point = 0;
+            for (int each = 0; each < 4; each++) {
+                int octet = octets[at + (bigEndian ? each : 3 - each)] & 0xFF;
+                point = (point << 8) | octet;
+            }
+            text.appendCodePoint(point);
+        }
+        return text.toString();
+    }
+
+    /**
+     * Octets read as whatever their byte order mark says, or UTF-8 when there
+     * is not one.
+     *
+     * <p>What the TEXT codec does: the bytes arrived from somewhere and the
+     * mark is the only thing that says how to read them.
+     */
+    static String textBehindAnyMark(byte[] octets) {
+        java.nio.charset.Charset named;
+        int width;
+        if (startsWith(octets, 0xEF, 0xBB, 0xBF)) {
+            named = java.nio.charset.StandardCharsets.UTF_8;
+            width = 3;
+        } else if (startsWith(octets, 0xFF, 0xFE, 0x00, 0x00)) {
+            named = java.nio.charset.Charset.forName("UTF-32LE");
+            width = 4;
+        } else if (startsWith(octets, 0x00, 0x00, 0xFE, 0xFF)) {
+            named = java.nio.charset.Charset.forName("UTF-32BE");
+            width = 4;
+        } else if (startsWith(octets, 0xFE, 0xFF)) {
+            named = java.nio.charset.StandardCharsets.UTF_16BE;
+            width = 2;
+        } else if (startsWith(octets, 0xFF, 0xFE)) {
+            named = java.nio.charset.StandardCharsets.UTF_16LE;
+            width = 2;
+        } else {
+            return new String(octets, java.nio.charset.StandardCharsets.UTF_8);
+        }
+        return new String(octets, width, octets.length - width, named);
+    }
+
+    private static boolean startsWith(byte[] octets, int... expected) {
+        if (octets.length < expected.length) {
+            return false;
+        }
+        for (int at = 0; at < expected.length; at++) {
+            if ((octets[at] & 0xFF) != expected[at]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * A character set by the name REBOL uses for it, or null.
      *
-     * <p>R3's names are not always Java's, and the three that differ are the
-     * three most used: `utf8` has no hyphen, and `latin1` and `cp1252` are
-     * spelled as one word.
+     * <p>R3's names are not always Java's, and R3 also takes a Windows
+     * codepage number where the JVM takes only a name.
      */
     static java.nio.charset.Charset charsetNamed(String named) {
-        String canonical = switch (named.toLowerCase(java.util.Locale.ROOT)) {
-            case "utf8" -> "UTF-8";
-            case "utf16", "utf16le" -> "UTF-16LE";
-            case "utf16be" -> "UTF-16BE";
-            case "utf32", "utf32le" -> "UTF-32LE";
-            case "utf32be" -> "UTF-32BE";
-            case "latin1", "iso8859-1" -> "ISO-8859-1";
-            case "ascii" -> "US-ASCII";
-            default -> named;
-        };
+        String canonical = CODEPAGES.getOrDefault(
+                named.toLowerCase(java.util.Locale.ROOT), named);
         try {
             return java.nio.charset.Charset.forName(canonical);
         } catch (IllegalArgumentException unknown) {
             return null;
         }
+    }
+
+    /**
+     * The spellings Rebol accepts for a character set that Java does not.
+     *
+     * <p>Read out of the 372-row table in {@code src/core/u-iconv.c}, which
+     * exists because ICONV takes a Windows codepage number as readily as a
+     * name: {@code iconv data 28592} is ISO 8859-2 and {@code iconv data
+     * 65001} is UTF-8. A number is a name the JVM can never resolve on its
+     * own, and it is the form most of Rebol's own tests use.
+     *
+     * <p>Only the rows the JVM cannot already answer are here. Rebol's table
+     * lists a hundred and thirty-five more whose character sets no JVM ships,
+     * mostly EBCDIC and the Mac scripts, and those stay unresolvable: a host
+     * that has not got an encoding should say so rather than guess a near one.
+     *
+     * <p>Written as one string rather than a hundred and forty-four map
+     * entries because it is a table rather than code, and because the layer
+     * rule keeps the domain from reading a resource file.
+     */
+    private static final String REBOL_CODEPAGES =
+            "UTF-8:65001,CP65001;"
+            + "UTF-16LE:1200,UTF16LE,UCS-2LE,UCS2LE,UCS-2-INTERNAL,CP1200;"
+            + "UTF-16BE:1201,UTF16BE,UCS-2BE,UCS2BE,unicodeFFFE,CP1201;"
+            + "UTF-32LE:12000,UTF32LE,UCS-4LE,UCS4LE,CP12000;"
+            + "UTF-32BE:12001,UTF32BE,UCS-4BE,UCS4BE,CP12001;UTF-16:2,UCS-2,UCS2;"
+            + "UTF-32:4,UCS-4,UCS4;ANSI_X3.4-1968:20127;ISO-8859-1:28591;"
+            + "CP1250:1250,MS-EE;"
+            + "CP1251:1251,MS-CYRL;CP1252:1252,MS-ANSI;CP1253:1253,MS-GREEK;"
+            + "CP1254:1254,MS-TURK;CP1255:1255,MS-HEBR;CP1256:1256,MS-ARAB;"
+            + "CP1257:1257,WINBALTRIM;CP1258:1258;850:850;862:862,DOS-862;866:866;"
+            + "CP874:874;CP932:932,SHIFFT_JIS,SHIFFT_JIS-MS,SJIS-MS,SJIS-OPEN,SJIS-WIN;"
+            + "CP50221:50221,ISO-2022-JP-MS,ISO2022-JP,ISO2022-JP-MS,WINDOWS-50221;"
+            + "CP936:936;CP950:950,BIG-5;CP949:949,UHC;437:437;CP737:737;"
+            + "CP775:775,CSPC775BALTIC;852:852;855:855,CSIBM855;857:857;CP858:858;"
+            + "860:860;861:861;863:863;CP864:864;865:865;869:869;IBM037:37;IBM500:500;"
+            + "ASMO-708:708;IBM870:870;CP875:875;IBM1026:1026;IBM01140:1140;"
+            + "IBM01141:1141;IBM01142:1142;IBM01143:1143;IBM01144:1144;IBM01145:1145;"
+            + "IBM01146:1146;IBM01147:1147;IBM01148:1148;IBM01149:1149;IBM273:20273;"
+            + "IBM277:20277;IBM278:20278;IBM280:20280;IBM284:20284;IBM285:20285;"
+            + "IBM290:20290;IBM297:20297;IBM420:20420;IBM424:20424;IBM-Thai:20838;"
+            + "KOI8-R:20866;IBM871:20871;EUC-JP:20932;CP1025:21025;KOI8-U:21866;"
+            + "ISO-8859-2:28592,ISO_8859_2;ISO-8859-3:28593,ISO_8859_3;"
+            + "ISO-8859-4:28594,ISO_8859_4;ISO-8859-5:28595,ISO_8859_5;"
+            + "ISO-8859-6:28596,ISO_8859_6;ISO-8859-7:28597,ISO_8859_7;"
+            + "ISO-8859-8:28598,ISO_8859_8;ISO-8859-9:28599,ISO_8859_9;"
+            + "ISO-8859-13:28603,ISO_8859_13;ISO-8859-15:28605,ISO_8859_15;"
+            + "ISO-2022-JP:50220,50222;ISO-2022-KR:50225,ISO2022-KR;EUC-CN:51936;"
+            + "EUC-KR:51949;GB18030:54936";
+
+    private static final java.util.Map<String, String> CODEPAGES = spellingsByName();
+
+    private static java.util.Map<String, String> spellingsByName() {
+        java.util.Map<String, String> found = new java.util.HashMap<>();
+        for (String group : REBOL_CODEPAGES.split(";")) {
+            String[] halves = group.split(":", 2);
+            for (String spelling : halves[1].split(",")) {
+                found.put(spelling.toLowerCase(java.util.Locale.ROOT), halves[0]);
+            }
+        }
+        return java.util.Map.copyOf(found);
     }
 
     /** The five filters, numbered as the PNG format numbers them. */
@@ -832,11 +970,11 @@ final class Encodings {
      * starts. A tail that does not fill a group is left as it is rather than
      * partly reversed, because half a swap is not a smaller swap.
      */
-    static void swapEndian(byte[] octets, int from, int width) {
+    static void swapEndian(byte[] octets, int howFar, int width) {
         if (width != 2 && width != 4 && width != 8) {
             throw new IllegalArgumentException("width " + width);
         }
-        for (int at = from; at + width <= octets.length; at += width) {
+        for (int at = 0; at + width <= Math.min(howFar, octets.length); at += width) {
             for (int each = 0; each < width / 2; each++) {
                 byte held = octets[at + each];
                 octets[at + each] = octets[at + width - 1 - each];

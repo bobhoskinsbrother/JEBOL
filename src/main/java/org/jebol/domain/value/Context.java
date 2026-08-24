@@ -79,6 +79,47 @@ public final class Context {
         return ownedByFunction;
     }
 
+    /**
+     * The frame that has taken this one over: a newer call of the same
+     * function, still running while this one waits for it.
+     *
+     * <p>Rebol binds a function's body once and stamps the function itself
+     * into every word there, never a call. So a word in a body has no frame
+     * of its own, and {@code Get_Var} finds one at the moment it is read:
+     * "a negative index indicates that the value is in a frame on the data
+     * stack, so now we must find it by walking back the stack looking for the
+     * function that the word is bound to". It walks from the innermost call
+     * outwards and stops at the first frame of that function, so a word a
+     * function wrote always means the innermost call's copy.
+     *
+     * <p>Here a body is bound to the frame of the call running it, which is a
+     * different object each time and almost always the innermost one anyway.
+     * The exception is a word that escapes: a function hands a value holding
+     * one of its own words to a call of itself, and that word is read while
+     * the inner call is the one running. Rebol reads the inner call's value
+     * and this would read the outer call's. So an outer frame points at the
+     * call that has taken it over, and points back at nothing again when that
+     * call ends.
+     *
+     * <p>Rebol's ARRAY is built on it. Each level of a multi-dimensional
+     * array puts the word {@code block} into a list of index expressions and
+     * passes the list down, and every level's copy of that word has to read
+     * the level that is running when the innermost one finally evaluates it.
+     */
+    private Context supersededBy;
+
+    public void supersededBy(Context newer) {
+        this.supersededBy = newer;
+    }
+
+    private Context frameThatResolvesForThisOne() {
+        Context frame = this;
+        while (frame.supersededBy != null) {
+            frame = frame.supersededBy;
+        }
+        return frame;
+    }
+
     public void markCallEnded() {
         this.callEnded = true;
     }
@@ -131,6 +172,9 @@ public final class Context {
         if (unbound) {
             return false;
         }
+        if (supersededBy != null) {
+            return frameThatResolvesForThisOne().knows(canonicalName);
+        }
         return slotsByCanonicalName.containsKey(canonicalName)
                 || (parent != null && parent.knows(canonicalName));
     }
@@ -159,6 +203,9 @@ public final class Context {
      * {@link #knows} first.
      */
     public Context holderOf(String canonicalName) {
+        if (supersededBy != null) {
+            return frameThatResolvesForThisOne().holderOf(canonicalName);
+        }
         if (holds(canonicalName)) {
             return this;
         }
@@ -178,6 +225,9 @@ public final class Context {
         if (unbound) {
             throw new IllegalStateException(
                     "the unbound context holds no slots; ask knows() first");
+        }
+        if (supersededBy != null) {
+            return frameThatResolvesForThisOne().slotFor(canonicalName);
         }
         ContextSlot slot = slotsByCanonicalName.get(canonicalName);
         if (slot != null) {

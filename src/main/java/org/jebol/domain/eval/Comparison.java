@@ -327,6 +327,9 @@ public final class Comparison {
         if (left instanceof HandleValue first && right instanceof HandleValue second) {
             return first.isEqualHandleTo(second);
         }
+        if (left instanceof VectorValue first && right instanceof VectorValue second) {
+            return orderingOfVectors(first, second) == 0;
+        }
 
         if (left instanceof CharacterValue && right instanceof CharacterValue) {
             return foldedCodepointsAgree(left, right);
@@ -555,6 +558,9 @@ public final class Comparison {
         if (left instanceof HandleValue first && right instanceof HandleValue second) {
             return first.compareWith(second);
         }
+        if (left instanceof VectorValue first && right instanceof VectorValue second) {
+            return orderingOfVectors(first, second);
+        }
         if (left instanceof PairValue leftPair && right instanceof PairValue rightPair) {
             int acrossTheX = signOfTheDifference(leftPair.x(), rightPair.x());
             return acrossTheX != 0
@@ -576,6 +582,22 @@ public final class Comparison {
             return Double.compare(first, second);
         }
         return compareForSorting(left, right, false);
+    }
+
+    /**
+     * Two vectors, compared element by element and then by what is left over.
+     *
+     * <p>{@code Compare_Vector} refuses a counting vector against a measuring
+     * one outright, and that refusal is the answer rather than a false: there
+     * is no reading of {@code #(i64! [1]) = #(f64! [1.0])} that is not a
+     * guess, so the C makes the caller choose.
+     */
+    private static int orderingOfVectors(VectorValue left, VectorValue right) {
+        if (left.kind().measures() != right.kind().measures()) {
+            throw Raised.of(EvaluationFailure.NOT_SAME_TYPE,
+                    left.kind().spelling() + " against " + right.kind().spelling());
+        }
+        return left.compareWith(right);
     }
 
     /**

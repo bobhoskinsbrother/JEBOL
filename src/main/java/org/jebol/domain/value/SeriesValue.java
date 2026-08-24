@@ -14,7 +14,7 @@ package org.jebol.domain.value;
  * what lets {@code until [tail? series: next series]} terminate.
  */
 public sealed interface SeriesValue extends Value
-        permits StringValue, BinaryValue, BlockValue, ImageValue, GobValue {
+        permits StringValue, BinaryValue, BlockValue, ImageValue, GobValue, VectorValue {
 
     /** 1-based position within the storage. {@code length() + 1} is the tail. */
     int index();

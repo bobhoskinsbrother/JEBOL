@@ -665,6 +665,10 @@ public final class Transcoder {
                 return simple;
             }
         }
+        if (namesAVector(named, contents.size())) {
+            return org.jebol.domain.value.VectorSpec.readConstruction(contents)
+                    .orElseThrow(() -> failure(SyntaxFailure.MALCONSTRUCT, null));
+        }
         Value resolved = datatypeNamed(named);
         if (contents.size() == 1) {
             return resolved;
@@ -689,6 +693,25 @@ public final class Transcoder {
             throw failure(SyntaxFailure.INVALID_ARG, null);
         }
         return MapValue.of(pairs);
+    }
+
+    /**
+     * Whether a construct's first word starts a vector.
+     *
+     * <p>{@code #(int32! ...)} names a kind of element rather than a datatype,
+     * so nothing that looks the word up in the datatype table can read one, and
+     * a kind name alone is an empty vector of that kind.
+     *
+     * <p>{@code vector!} is different in both halves. It is a real datatype
+     * name, so {@code #(vector!)} alone stays the datatype value the way
+     * {@code #(integer!)} does, and it only starts a vector when a kind name
+     * follows it.
+     */
+    private static boolean namesAVector(WordValue named, int howManyParts) {
+        if ("vector!".equals(named.canonical())) {
+            return howManyParts > 1;
+        }
+        return org.jebol.domain.value.VectorKind.named(named.spelling()).isPresent();
     }
 
     private Value datatypeNamed(WordValue word) {

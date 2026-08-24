@@ -19,6 +19,22 @@ public final class StringStorage {
         this.buffer = new CodepointBuffer(text);
     }
 
+    /**
+     * Empty, with room already taken for a given number of characters.
+     *
+     * <p>What {@code make string! 5000000} asks for. The size is a hint about
+     * what is coming rather than a length -- the string is still empty -- but
+     * it is not decoration: Rebol's own test makes a string that way and then
+     * asks STATS whether the memory arrived.
+     */
+    public static StringStorage withRoomFor(int characters) {
+        return new StringStorage(new CodepointBuffer(characters));
+    }
+
+    private StringStorage(CodepointBuffer reserved) {
+        this.buffer = reserved;
+    }
+
     public static StringStorage of(String text) {
         return new StringStorage(text);
     }

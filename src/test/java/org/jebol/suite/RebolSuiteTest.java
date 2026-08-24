@@ -149,14 +149,45 @@ class RebolSuiteTest {
         }
         Interpreter interpreter = Interpreter.withBounds(bounds);
         try {
-            interpreter.useFileSystem(FileSystemPort.rootedAt(
-                    java.nio.file.Files.createTempDirectory("jebol-suite")));
+            java.nio.file.Path root = java.nio.file.Files.createTempDirectory("jebol-suite");
+            layOutTheFilesTheSuiteReads(root);
+            interpreter.useFileSystem(FileSystemPort.rootedAt(root));
         } catch (java.io.IOException noDirectory) {
             throw new java.io.UncheckedIOException(noDirectory);
         }
         interpreter.useEnvironment(new ProcessEnvironment());
         interpreter.useProcesses(new org.jebol.adapter.host.JavaProcesses());
         return interpreter;
+    }
+
+    /** The six files Rebol's own tests read, and read by name from the suite's tree. */
+    private static final List<String> FILES_THE_SUITE_READS = List.of(
+            "error.r3", "quickbrown.bin",
+            "issue-2186-UTF16-BE.txt", "issue-2186-UTF16-LE.txt",
+            "issue-2186-UTF32-BE.txt", "issue-2186-UTF32-LE.txt");
+
+    /**
+     * Puts those six where the tests look for them.
+     *
+     * <p>The run is confined to a directory made for it, which is what stops a
+     * test that writes a file from reaching anything else. That also means a
+     * test that *reads* one finds nothing, so twelve assertions about text
+     * encodings were failing on the file being absent rather than on anything
+     * JEBOL does. They are copied in rather than the root being pointed at the
+     * source tree, so the confinement still holds.
+     */
+    private static void layOutTheFilesTheSuiteReads(java.nio.file.Path root)
+            throws java.io.IOException {
+
+        java.nio.file.Path into = root.resolve("units").resolve("files");
+        java.nio.file.Files.createDirectories(into);
+        for (String named : FILES_THE_SUITE_READS) {
+            java.nio.file.Path from = java.nio.file.Path.of(
+                    "src", "test", "resources", "rebol-suite", "units", "files", named);
+            if (java.nio.file.Files.exists(from)) {
+                java.nio.file.Files.copy(from, into.resolve(named));
+            }
+        }
     }
 
     private static void runFile(SuiteFile file) {

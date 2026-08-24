@@ -16,15 +16,26 @@ final class CodepointBuffer {
 
     private int[] codepoints;
     private int length;
+    private final SeriesMemory.Reservation reserved;
 
     CodepointBuffer() {
-        this.codepoints = new int[INITIAL_CAPACITY];
+        this(INITIAL_CAPACITY);
+    }
+
+    CodepointBuffer(int roomFor) {
+        this.codepoints = new int[Math.max(INITIAL_CAPACITY, roomFor)];
         this.length = 0;
+        this.reserved = SeriesMemory.reserve(this, bytesInTheBuffer());
     }
 
     CodepointBuffer(String text) {
         this.codepoints = text.codePoints().toArray();
         this.length = codepoints.length;
+        this.reserved = SeriesMemory.reserve(this, bytesInTheBuffer());
+    }
+
+    private long bytesInTheBuffer() {
+        return (long) codepoints.length * Integer.BYTES;
     }
 
     int length() {
@@ -86,5 +97,6 @@ final class CodepointBuffer {
         }
         int grown = Math.max(required, codepoints.length * 2);
         codepoints = Arrays.copyOf(codepoints, grown);
+        reserved.nowHolds(bytesInTheBuffer());
     }
 }
