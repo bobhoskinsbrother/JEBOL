@@ -627,7 +627,7 @@ public final class Natives {
         system.set("catalog", new ObjectValue(catalog));
         system.set("options", new ObjectValue(options));
         system.set("state", new ObjectValue(state));
-        system.set("version", TupleValue.of(new int[] {0, 1, 0}));
+        system.set("version", TupleValue.of(VERSION_PARTS));
         system.set("platform", WordValue.of("JVM"));
         system.set("product", WordValue.of("core"));
         system.set("license", NoneValue.none());
@@ -11681,9 +11681,19 @@ public final class Natives {
     /** When this interpreter started, for STATS/TIMER. */
     private final long startedAt = System.nanoTime();
 
-    /** JEBOL's version, as text and as the tuple /DATA answers. */
-    private static final String VERSION_TEXT = "0.1.0";
-    private static final int[] VERSION_PARTS = {0, 1, 0};
+    /**
+     * The REBOL version JEBOL implements, as text and as the tuple /DATA
+     * answers.
+     *
+     * <p>Not a version number of JEBOL's own. A script reads
+     * {@code system/version} to decide which of the language's features it may
+     * use, and {@code struct-test.r3} wraps all 188 of its assertions in
+     * {@code if system/version >= 3.19.1}. Answering a number below every
+     * guard in the suite made those blocks skip, which reads as a passing
+     * file that ran nothing.
+     */
+    private static final String VERSION_TEXT = "3.22.5";
+    private static final int[] VERSION_PARTS = {3, 22, 5};
 
     /** What POKE and POKEZ will write into. */
     private static Set<Datatype> pokeableDatatypes() {
@@ -12859,11 +12869,20 @@ public final class Natives {
      * a script one, which is not where you would look for it.
      */
     private static Value asCharacter(Value value) {
+        if (value instanceof CharacterValue already) {
+            return already;
+        }
         if (value instanceof StringValue text) {
             if (text.text().isEmpty()) {
                 return raiseBadMakeArg(value, "char!");
             }
             return CharacterValue.of(text.text().codePointAt(0));
+        }
+        if (value instanceof BinaryValue octets) {
+            return characterLeadingThe(octets);
+        }
+        if (value instanceof WordValue issue && issue.datatype() == Datatype.ISSUE) {
+            return characterSpeltInHexBy(issue);
         }
         if (!(value instanceof IntegerValue || value instanceof DecimalValue)) {
             return raiseBadMakeArg(value, "char!");
@@ -12875,6 +12894,84 @@ public final class Natives {
         }
         return CharacterValue.of((int) codepoint);
     }
+
+    /**
+     * The character a binary opens with, decoded as UTF-8 where it has to be.
+     *
+     * <p>{@code t-char.c} tests {@code *bp > 0x80} rather than
+     * {@code >= 0x80}, so a lone {@code #{80}} is code point 128 and a lone
+     * {@code #{81}} is refused for being a continuation byte with nothing in
+     * front of it. Bytes after the first sequence are ignored, which is why
+     * this decodes the leading sequence itself instead of handing the whole
+     * array to a decoder.
+     */
+    private static Value characterLeadingThe(BinaryValue octets) {
+        byte[] bytes = bytesFromHere(octets);
+        if (bytes.length == 0) {
+            return raiseBadMakeArg(octets, "char!");
+        }
+        int lead = bytes[0] & 0xFF;
+        if (lead <= 0x80) {
+            return CharacterValue.of(lead);
+        }
+        int continuations = continuationBytesFollowing(lead);
+        if (continuations == 0 || bytes.length <= continuations) {
+            return raiseBadMakeArg(octets, "char!");
+        }
+        int codepoint = lead & (0x7F >> continuations);
+        for (int at = 1; at <= continuations; at++) {
+            int following = bytes[at] & 0xFF;
+            if ((following & 0xC0) != 0x80) {
+                return raiseBadMakeArg(octets, "char!");
+            }
+            codepoint = (codepoint << 6) | (following & 0x3F);
+        }
+        if (codepoint > Character.MAX_CODE_POINT) {
+            return raiseBadMakeArg(octets, "char!");
+        }
+        return CharacterValue.of(codepoint);
+    }
+
+    private static int continuationBytesFollowing(int lead) {
+        if ((lead & 0xE0) == 0xC0) {
+            return 1;
+        }
+        if ((lead & 0xF0) == 0xE0) {
+            return 2;
+        }
+        if ((lead & 0xF8) == 0xF0) {
+            return 3;
+        }
+        return 0;
+    }
+
+    /**
+     * The character an issue spells in hexadecimal, as {@code #61} spells
+     * {@code #"a"}.
+     *
+     * <p>The C scans the whole spelling and refuses anything that is not
+     * hexadecimal throughout, so {@code #zz} is a bad make argument rather
+     * than a character built from the digits it happened to hold.
+     */
+    private static Value characterSpeltInHexBy(WordValue issue) {
+        String spelling = issue.spelling();
+        if (spelling.isEmpty() || spelling.length() > MOST_HEX_DIGITS_SCANNED) {
+            return raiseBadMakeArg(issue, "char!");
+        }
+        long codepoint;
+        try {
+            codepoint = Long.parseLong(spelling, 16);
+        } catch (NumberFormatException notHexadecimal) {
+            return raiseBadMakeArg(issue, "char!");
+        }
+        if (codepoint < 0 || codepoint > Character.MAX_CODE_POINT) {
+            return raiseBadMakeArg(issue, "char!");
+        }
+        return CharacterValue.of((int) codepoint);
+    }
+
+    /** {@code MAX_HEX_LEN} in {@code reb-c.h}. */
+    private static final int MOST_HEX_DIGITS_SCANNED = 16;
 
     /**
      * The datatypes a block names.

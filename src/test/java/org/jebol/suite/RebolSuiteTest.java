@@ -178,32 +178,34 @@ class RebolSuiteTest {
         return interpreter;
     }
 
-    /** The six files Rebol's own tests read, and read by name from the suite's tree. */
-    private static final List<String> FILES_THE_SUITE_READS = List.of(
-            "error.r3", "quickbrown.bin",
-            "issue-2186-UTF16-BE.txt", "issue-2186-UTF16-LE.txt",
-            "issue-2186-UTF32-BE.txt", "issue-2186-UTF32-LE.txt");
-
     /**
-     * Puts those six where the tests look for them.
+     * Puts every vendored data file where the tests look for it.
      *
-     * <p>The run is confined to a directory made for it, which is what stops a
-     * test that writes a file from reaching anything else. That also means a
-     * test that *reads* one finds nothing, so twelve assertions about text
-     * encodings were failing on the file being absent rather than on anything
-     * JEBOL does. They are copied in rather than the root being pointed at the
-     * source tree, so the confinement still holds.
+     * <p>The run is confined to a directory made for it, which is what stops
+     * a test that writes one from reaching anything the build did not make.
+     *
+     * <p>Named individually once, six of them, while seventy-two sat in the
+     * repository. Every test that read one of the other sixty-six answered
+     * {@code cannot-open} and took the rest of its block with it -- 191
+     * assertions that were never run and read as failures of the port.
+     * Copying the directory means a file that arrives is a file the tests
+     * can find, without anybody remembering to add a line.
      */
     private static void layOutTheFilesTheSuiteReads(java.nio.file.Path root)
             throws java.io.IOException {
 
         java.nio.file.Path into = root.resolve("units").resolve("files");
         java.nio.file.Files.createDirectories(into);
-        for (String named : FILES_THE_SUITE_READS) {
-            java.nio.file.Path from = java.nio.file.Path.of(
-                    "src", "test", "resources", "rebol-suite", "units", "files", named);
-            if (java.nio.file.Files.exists(from)) {
-                java.nio.file.Files.copy(from, into.resolve(named));
+        java.nio.file.Path from = java.nio.file.Path.of(
+                "src", "test", "resources", "rebol-suite", "units", "files");
+        if (!java.nio.file.Files.isDirectory(from)) {
+            return;
+        }
+        try (java.util.stream.Stream<java.nio.file.Path> each =
+                java.nio.file.Files.list(from)) {
+            for (java.nio.file.Path one : each.toList()) {
+                java.nio.file.Files.copy(one, into.resolve(one.getFileName().toString()),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
         }
     }
@@ -227,12 +229,15 @@ class RebolSuiteTest {
                             : new Verdict(false, reasonFrom(taken.outcome()));
                     if (!taken.rest().isBlank()) {
                         interpreter.defineFreshWordsIn(taken.rest());
-                        interpreter.run(taken.rest());
-                        recordWhatRanInside(interpreter, step);
+                        ScriptOutcome after = interpreter.run(taken.rest());
+                        recordWhatRanInside(interpreter, step,
+                                after.succeeded() ? "" : reasonFrom(after));
                     }
                 } else {
-                    verdict = new Verdict(interpreter.run(source).succeeded(), "");
-                    recordWhatRanInside(interpreter, step);
+                    ScriptOutcome ran = interpreter.run(source);
+                    verdict = new Verdict(ran.succeeded(), "");
+                    recordWhatRanInside(interpreter, step,
+                            ran.succeeded() ? "" : reasonFrom(ran));
                 }
             } catch (RuntimeException refused) {
                 verdict = new Verdict(false,
@@ -257,12 +262,27 @@ class RebolSuiteTest {
      * <p>One letter per assertion, in the order they ran, because reading a
      * string back out of the interpreter needs no parsing and cannot be
      * confused by whatever the test itself put in a block.
+     *
+     * <p>The other five dialect words are defined too, and doing nothing is
+     * the whole of their job here -- the slicer already read the group and
+     * test names out of the file. Leaving them undefined meant a wrapper
+     * block that held any of them died on the first one, and every assertion
+     * after it in that block was never reached: 371 of them, which read as
+     * failures of the port and were failures of this file.
      */
     private static final String THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION = """
             jebol-nested: copy ""
             --assert: func [result [any-type!]] [
                 append jebol-nested either all [not error? :result :result] ["t"] ["f"]
                 :result
+            ]
+            ~~~start-file~~~: func [name [any-type!]] []
+            ~~~end-file~~~: does []
+            ===start-group===: func [name [any-type!]] []
+            ===end-group===: does []
+            --test--: func [name [any-type!]] []
+            --assertf~=: func [a [any-type!] b [any-type!] c [any-type!]] [
+                append jebol-nested "f"
             ]""";
 
     /**
@@ -274,7 +294,8 @@ class RebolSuiteTest {
      * fold onto the last one -- which is the same reading Rebol's own count
      * of thirteen thousand executions against ten thousand written implies.
      */
-    private static void recordWhatRanInside(Interpreter interpreter, SuiteFile.Step step) {
+    private static void recordWhatRanInside(
+            Interpreter interpreter, SuiteFile.Step step, String whyItStopped) {
         if (step.nested().isEmpty()) {
             return;
         }
@@ -290,7 +311,9 @@ class RebolSuiteTest {
                     ? Verdict.passed()
                     : new Verdict(false, at < letters.length()
                             ? "answered false inside the block it is written in"
-                            : "never reached: the block it is written in stopped first"));
+                            : whyItStopped.isBlank()
+                                    ? "never reached: the block it is written in ended first"
+                                    : "never reached: the block stopped on " + whyItStopped));
         }
     }
 

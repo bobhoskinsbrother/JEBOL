@@ -1,88 +1,3 @@
-# Assertions from Rebol's own suite that JEBOL does not satisfy yet.
-#
-# Not a skip list. Everything here is run on every build; what this file
-# does is say which failures are already known, so a new one turns the
-# build red instead of joining a crowd. Taking a line off is how a fix is
-# recorded, and RebolSuiteTest fails if a listed assertion starts passing
-# while still listed.
-#
-# 2416 entries over 51 files, out of every one of the 10,100 assertions Rebol's
-# sixty-seven files write. All 10,100 now run. It was 1,032 over 25 files
-# when 7,169 ran, and the list grew because the suite did: thirteen files the
-# reader could not take to the end now read, and an assertion inside a
-# FOREACH or trailing another assertion now runs where before it was not
-# sliced, not run and not counted. None of these failures is new. They were
-# not passing; they were not being asked.
-#
-# Recompute it only from a run with this file emptied. A normal run skips
-# what is listed here and so counts only the failures it was not already
-# hiding.
-#
-# Where they are, worst first:
-#
-#   make-test.r3                 262
-#   checksum-test.r3             232
-#   codecs-test.r3               212
-#   bincode-test.r3              193
-#   struct-test.r3               188
-#   compress-test.r3             132
-#   bitset-test.r3               110
-#   unicode-test.r3              107
-#   image-test.r3                101
-#   port-test.r3                  87
-#   date-test.r3                  83
-#   mold-test.r3                  69
-#   copy-test.r3                  65
-#   format-test.r3                53
-#   enbase-test.r3                50
-#   map-test.r3                   48
-#   handle-test.r3                47
-#   crypt-port-test.r3            40
-#   csv-test.r3                   35
-#   func-test.r3                  35
-#   dh-test.r3                    27
-#   module-test.r3                23
-#   time-test.r3                  21
-#   chacha20-test.r3              19
-#   file-test.r3                  19
-#   error-test.r3                 14
-#   codecs-test-pdf.r3            13
-#   poly1305-test.r3              10
-#   power-test.r3                 10
-#   thru-cache-test.r3            10
-#   crypt-test.r3                  9
-#   issue-test.r3                  9
-#   os-test.r3                     9
-#   parse-test.r3                  9
-#   vector-test.r3                 9
-#   lexer-test.r3                  7
-#   rsa-test.r3                    6
-#   url-test.r3                    6
-#   delect-test.r3                 5
-#   aes-test.r3                    4
-#   crypt-port-camelia-test.r3     4
-#   gob-test.r3                    4
-#   percent-test.r3                4
-#   task-test.r3                   4
-#   bbcode-test.r3                 2
-#   conditional-test.r3            2
-#   crypt-port-ccm-test.r3         2
-#   crypt-port-gcm-test.r3         2
-#   series-test.r3                 2
-#   datatype-test.r3               1
-#   rc4-test.r3                    1
-#
-# One entry can never come off, and it is marked below: a real Rebol fails
-# it too, checked by running Rebol's own runner on a binary built from the
-# vendored source by scripts/build-r3.sh.
-
-# Rebol fails this one as well. It asks whether "🙂" equals the LENGTH? of
-# a string whose index a SWAP has just invalidated -- a string against a
-# number, which is false whatever the number is. Rebol's own comment on the
-# line reads "Known issue!!!", and running its suite prints
-# "FAIL: swap invalidating index (known issue) (1)".
-series-test.r3 / SWAP / swap invalidating index (known issue) #969
-
 aes-test.r3 / (no group) / (no test) #1
 aes-test.r3 / (no group) / (no test) #2
 aes-test.r3 / (no group) / (no test) #3
@@ -629,11 +544,6 @@ checksum-test.r3 / Checksum port / checksum-write-refinements #240
 checksum-test.r3 / Checksum port / checksum-write-refinements #241
 checksum-test.r3 / Checksum port / checksum-write-refinements #242
 checksum-test.r3 / Checksum/hash / test case 1 #250
-checksum-test.r3 / Checksum/with rfc2202 / checksum file! with refines #264
-checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #260
-checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #261
-checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #262
-checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #263
 checksum-test.r3 / file-checksum / checksum file! #255
 checksum-test.r3 / file-checksum / checksum file! #256
 checksum-test.r3 / file-checksum / checksum file! #257
@@ -643,7 +553,6 @@ checksum-test.r3 / file-checksum / file-checksum with bigger file #254
 checksum-test.r3 / file-checksum / file-checksum with small file #251
 checksum-test.r3 / file-checksum / file-checksum with small file #252
 checksum-test.r3 / file-checksum / file-checksum with small file #253
-codecs-test-pdf.r3 / (no group) / (no test) #1
 codecs-test-pdf.r3 / (no group) / (no test) #10
 codecs-test-pdf.r3 / (no group) / (no test) #11
 codecs-test-pdf.r3 / (no group) / (no test) #12
@@ -651,11 +560,9 @@ codecs-test-pdf.r3 / (no group) / (no test) #13
 codecs-test-pdf.r3 / (no group) / (no test) #2
 codecs-test-pdf.r3 / (no group) / (no test) #3
 codecs-test-pdf.r3 / (no group) / (no test) #4
-codecs-test-pdf.r3 / (no group) / (no test) #5
 codecs-test-pdf.r3 / (no group) / (no test) #6
 codecs-test-pdf.r3 / (no group) / (no test) #7
 codecs-test-pdf.r3 / (no group) / (no test) #8
-codecs-test-pdf.r3 / (no group) / (no test) #9
 codecs-test.r3 / Codec's identify / encoding? #4
 codecs-test.r3 / Codec's identify / encoding? #5
 codecs-test.r3 / Codec's identify / encoding? #6
@@ -812,7 +719,6 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #230
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #231
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #232
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #43
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #44
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #45
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #46
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #47
@@ -908,50 +814,6 @@ compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress
 compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #137
 compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress #20
 compress-test.r3 / DEFLATE compression / decompression / compression when input is limited #37
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #141
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #142
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #143
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #144
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #145
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #146
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #147
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #148
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #149
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #150
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #151
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #152
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #153
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #154
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #155
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #156
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #157
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #158
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #159
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #160
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #161
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #162
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #163
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #164
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #165
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #166
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #167
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #168
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #169
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #170
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #171
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #172
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #173
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #174
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #175
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #176
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #177
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #178
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #179
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #180
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #181
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #182
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #183
-compress-test.r3 / ENCLOAK/DECLOAK / issue-48 #184
 compress-test.r3 / GZIP compression / decompression / GZIP codec #57
 compress-test.r3 / GZIP compression / decompression / GZIP codec #58
 compress-test.r3 / GZIP compression / decompression / GZIP codec #59
@@ -1000,8 +862,6 @@ compress-test.r3 / LZW compression / decompression / LZW compress/decompress #11
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #120
 compress-test.r3 / ZLIB compression / decompression / basic compress/decompress #1
 compress-test.r3 / ZLIB compression / decompression / compression when input is limited #18
-conditional-test.r3 / switch basics local / switch-basic-16 #37
-conditional-test.r3 / switch basics local / switch-basic-16 #38
 copy-test.r3 / Copy block! / copy/deep block! #148
 copy-test.r3 / Copy block! / copy/deep block! #150
 copy-test.r3 / Copy block! / copy/deep block! #151
@@ -1065,7 +925,6 @@ copy-test.r3 / Copy object! / copy/types object! (any strings) #95
 copy-test.r3 / Copy object! / copy/types object! (only object) #102
 copy-test.r3 / Copy object! / copy/types object! (only strings) #89
 copy-test.r3 / Shallow copy / copy map! #7
-copy-test.r3 / Simple copy / (no test) #1
 copy-test.r3 / Simple copy / (no test) #2
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #2
@@ -1115,9 +974,6 @@ crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input whic
 crypt-port-test.r3 / NIST test vectors (CBC) / AES-128-CBC with chunked input which needs padding #14
 crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #12
 crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #13
-crypt-test.r3 / Load-PKIX / Load PKIX data from file using PKIX codec #25
-crypt-test.r3 / Load-PKIX / Load PKIX data from file using PKIX codec #26
-crypt-test.r3 / Load-PKIX / Load PKIX data from file using PKIX codec #27
 crypt-test.r3 / Load-PKIX / SSH-public-key-1 #19
 crypt-test.r3 / PPK codec / Init RSA key from PPK file #34
 crypt-test.r3 / PPK codec / Init RSA key from encrypted PPK file #35
@@ -1243,11 +1099,6 @@ date-test.r3 / Various date issues / timezones #93
 date-test.r3 / Various date issues / timezones #94
 date-test.r3 / Various date issues / timezones #96
 date-test.r3 / Various date issues / timezones #97
-delect-test.r3 / Delect / (no test) #1
-delect-test.r3 / Delect / (no test) #2
-delect-test.r3 / Delect / (no test) #3
-delect-test.r3 / Delect / (no test) #4
-delect-test.r3 / Delect / (no test) #5
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #11
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #15
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #16
@@ -1318,11 +1169,8 @@ enbase-test.r3 / enbase integer / enbase-2 #20
 enbase-test.r3 / enbase integer / enbase-64 #24
 enbase-test.r3 / enbase integer / enbase-64 #25
 enbase-test.r3 / enbase/flat / enbase/flat 16 #28
-enbase-test.r3 / enbase/flat / enbase/flat 16 #29
 enbase-test.r3 / enbase/flat / enbase/flat 2 #26
-enbase-test.r3 / enbase/flat / enbase/flat 2 #27
 enbase-test.r3 / enbase/flat / enbase/flat 64 #30
-enbase-test.r3 / enbase/flat / enbase/flat 64 #31
 enbase-test.r3 / enbase/part / enbase/part with series as a length #77
 enbase-test.r3 / enbase/part / enbase/part with series as a length #78
 error-test.r3 / ASSERT / assert with longer expression #28
@@ -1339,6 +1187,7 @@ error-test.r3 / make error! / make invalid error! #22
 error-test.r3 / make error! / make invalid error! #23
 error-test.r3 / make error! / make invalid error! #24
 error-test.r3 / make error! / make invalid error! #25
+evaluation-test.r3 / do script / do needs #41
 file-test.r3 / WILDCARD / read wildcard #46
 file-test.r3 / WILDCARD / read wildcard #47
 file-test.r3 / WILDCARD / read wildcard #48
@@ -1614,9 +1463,7 @@ lexer-test.r3 / Construction syntax / any-string! #330
 lexer-test.r3 / Construction syntax / any-string! #331
 lexer-test.r3 / Construction syntax / any-string! #332
 lexer-test.r3 / Construction syntax / any-string! #333
-make-test.r3 / make char! / make char! binary! #2
-make-test.r3 / make char! / make char! binary! #3
-make-test.r3 / make char! / make char! binary! #4
+make-test.r3 / make char! / to char! issue! #14
 make-test.r3 / make char! / to char! over range #13
 make-test.r3 / make char! / to char! surrogates #11
 make-test.r3 / make char! / to char! surrogates #12
@@ -2105,23 +1952,14 @@ port-test.r3 / file port / open/close file #132
 port-test.r3 / file port / open/close file #133
 port-test.r3 / file port / open/close file #134
 port-test.r3 / file port / query file info #68
-port-test.r3 / file port / query file info #69
-port-test.r3 / file port / query file info #70
-port-test.r3 / file port / query file info #71
-port-test.r3 / file port / query file info #72
-port-test.r3 / file port / query file info #73
 port-test.r3 / file port / query file info (port) #75
-port-test.r3 / file port / query file info (port) #76
-port-test.r3 / file port / query file info (port) #77
 port-test.r3 / file port / query file info (port) #78
 port-test.r3 / file port / query file info (port) #79
 port-test.r3 / file port / query file info (port) #80
-port-test.r3 / file port / query file name #74
 port-test.r3 / file port / read write CRLF conversion #114
 port-test.r3 / file port / read write CRLF conversion #115
 port-test.r3 / file port / read write CRLF conversion #118
 port-test.r3 / file port / read write CRLF conversion #119
-port-test.r3 / file port / read/lines - issue/1794 #84
 port-test.r3 / file port / read/part #145
 port-test.r3 / file port / skip/at on file port #146
 port-test.r3 / file port / skip/at on file port #147
@@ -2338,7 +2176,6 @@ struct-test.r3 / Invalid struct construction / (no test) #181
 struct-test.r3 / Invalid struct construction / (no test) #182
 struct-test.r3 / Invalid struct construction / (no test) #183
 struct-test.r3 / Invalid struct construction / (no test) #184
-struct-test.r3 / Invalid struct construction / (no test) #185
 struct-test.r3 / Invalid struct construction / (no test) #186
 struct-test.r3 / Invalid struct construction / (no test) #187
 struct-test.r3 / Invalid struct construction / (no test) #188
@@ -2473,9 +2310,6 @@ unicode-test.r3 / string column (terminal) width / wide chars #469
 unicode-test.r3 / string column (terminal) width / wide chars #470
 unicode-test.r3 / string column (terminal) width / zero width chars #465
 unicode-test.r3 / string column (terminal) width / zero width chars #466
-unicode-test.r3 / to / to char! #23
-unicode-test.r3 / to / to char! #24
-unicode-test.r3 / to / to char! #25
 unicode-test.r3 / to / to char! #26
 unicode-test.r3 / to / to char! #27
 unicode-test.r3 / to / to string! #19
