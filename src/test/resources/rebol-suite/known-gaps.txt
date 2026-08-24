@@ -6,12 +6,13 @@
 # recorded, and RebolSuiteTest fails if a listed assertion starts passing
 # while still listed.
 #
-# 2247 entries over 50 files, out of 9,920 assertions that now run. It was
-# 1,032 over 25 files when 7,169 ran. The list grew because the suite did:
-# thirteen files the reader could not take to the end now read, and an
-# assertion written inside a FOREACH or an IF now runs where before it was
-# not sliced, not run and not counted. None of these failures is new. They
-# were not passing; they were not being asked.
+# 2416 entries over 51 files, out of every one of the 10,100 assertions Rebol's
+# sixty-seven files write. All 10,100 now run. It was 1,032 over 25 files
+# when 7,169 ran, and the list grew because the suite did: thirteen files the
+# reader could not take to the end now read, and an assertion inside a
+# FOREACH or trailing another assertion now runs where before it was not
+# sliced, not run and not counted. None of these failures is new. They were
+# not passing; they were not being asked.
 #
 # Recompute it only from a run with this file emptied. A normal run skips
 # what is listed here and so counts only the failures it was not already
@@ -20,16 +21,16 @@
 # Where they are, worst first:
 #
 #   make-test.r3                 262
-#   codecs-test.r3               207
+#   checksum-test.r3             232
+#   codecs-test.r3               212
 #   bincode-test.r3              193
 #   struct-test.r3               188
 #   compress-test.r3             132
 #   bitset-test.r3               110
 #   unicode-test.r3              107
 #   image-test.r3                101
-#   checksum-test.r3              92
+#   port-test.r3                  87
 #   date-test.r3                  83
-#   port-test.r3                  76
 #   mold-test.r3                  69
 #   copy-test.r3                  65
 #   format-test.r3                53
@@ -40,10 +41,10 @@
 #   csv-test.r3                   35
 #   func-test.r3                  35
 #   dh-test.r3                    27
-#   module-test.r3                22
+#   module-test.r3                23
 #   time-test.r3                  21
 #   chacha20-test.r3              19
-#   file-test.r3                  16
+#   file-test.r3                  19
 #   error-test.r3                 14
 #   codecs-test-pdf.r3            13
 #   poly1305-test.r3              10
@@ -52,6 +53,7 @@
 #   crypt-test.r3                  9
 #   issue-test.r3                  9
 #   os-test.r3                     9
+#   parse-test.r3                  9
 #   vector-test.r3                 9
 #   lexer-test.r3                  7
 #   rsa-test.r3                    6
@@ -409,7 +411,7 @@ chacha20-test.r3 / (no group) / (no test) #6
 chacha20-test.r3 / (no group) / (no test) #7
 chacha20-test.r3 / (no group) / (no test) #8
 chacha20-test.r3 / (no group) / (no test) #9
-checksum-test.r3 / Checksum port / checksum port with invalid argument #103
+checksum-test.r3 / Checksum port / checksum port with invalid argument #243
 checksum-test.r3 / Checksum port / checksum-port-md5 #27
 checksum-test.r3 / Checksum port / checksum-port-md5 #28
 checksum-test.r3 / Checksum port / checksum-port-md5 #29
@@ -437,70 +439,210 @@ checksum-test.r3 / Checksum port / checksum-port-sha1 #50
 checksum-test.r3 / Checksum port / checksum-port-sha1 #51
 checksum-test.r3 / Checksum port / checksum-port-sha1 #52
 checksum-test.r3 / Checksum port / checksum-port-sha1 #53
-checksum-test.r3 / Checksum port / checksum-port-sha256 #54
-checksum-test.r3 / Checksum port / checksum-port-sha256 #55
-checksum-test.r3 / Checksum port / checksum-port-sha256 #56
-checksum-test.r3 / Checksum port / checksum-port-sha256 #57
-checksum-test.r3 / Checksum port / checksum-port-sha256 #58
-checksum-test.r3 / Checksum port / checksum-port-sha256 #59
-checksum-test.r3 / Checksum port / checksum-port-sha256 #60
-checksum-test.r3 / Checksum port / checksum-port-sha256 #61
-checksum-test.r3 / Checksum port / checksum-port-sha256 #62
-checksum-test.r3 / Checksum port / checksum-port-sha256 #63
-checksum-test.r3 / Checksum port / checksum-port-sha256 #64
-checksum-test.r3 / Checksum port / checksum-port-sha256 #65
-checksum-test.r3 / Checksum port / checksum-port-sha256 #66
-checksum-test.r3 / Checksum port / checksum-port-sha256 #67
-checksum-test.r3 / Checksum port / checksum-port-sha384 #68
-checksum-test.r3 / Checksum port / checksum-port-sha384 #69
-checksum-test.r3 / Checksum port / checksum-port-sha384 #70
-checksum-test.r3 / Checksum port / checksum-port-sha384 #71
-checksum-test.r3 / Checksum port / checksum-port-sha384 #72
-checksum-test.r3 / Checksum port / checksum-port-sha384 #73
-checksum-test.r3 / Checksum port / checksum-port-sha384 #74
-checksum-test.r3 / Checksum port / checksum-port-sha384 #75
-checksum-test.r3 / Checksum port / checksum-port-sha384 #76
-checksum-test.r3 / Checksum port / checksum-port-sha384 #77
-checksum-test.r3 / Checksum port / checksum-port-sha384 #78
-checksum-test.r3 / Checksum port / checksum-port-sha384 #79
-checksum-test.r3 / Checksum port / checksum-port-sha384 #80
-checksum-test.r3 / Checksum port / checksum-port-sha384 #81
-checksum-test.r3 / Checksum port / checksum-port-sha512 #82
-checksum-test.r3 / Checksum port / checksum-port-sha512 #83
-checksum-test.r3 / Checksum port / checksum-port-sha512 #84
-checksum-test.r3 / Checksum port / checksum-port-sha512 #85
-checksum-test.r3 / Checksum port / checksum-port-sha512 #86
-checksum-test.r3 / Checksum port / checksum-port-sha512 #87
-checksum-test.r3 / Checksum port / checksum-port-sha512 #88
-checksum-test.r3 / Checksum port / checksum-port-sha512 #89
-checksum-test.r3 / Checksum port / checksum-port-sha512 #90
-checksum-test.r3 / Checksum port / checksum-port-sha512 #91
-checksum-test.r3 / Checksum port / checksum-port-sha512 #92
-checksum-test.r3 / Checksum port / checksum-port-sha512 #93
-checksum-test.r3 / Checksum port / checksum-port-sha512 #94
-checksum-test.r3 / Checksum port / checksum-port-sha512 #95
-checksum-test.r3 / Checksum port / checksum-write-refinements #100
-checksum-test.r3 / Checksum port / checksum-write-refinements #101
-checksum-test.r3 / Checksum port / checksum-write-refinements #102
-checksum-test.r3 / Checksum port / checksum-write-refinements #96
-checksum-test.r3 / Checksum port / checksum-write-refinements #97
-checksum-test.r3 / Checksum port / checksum-write-refinements #98
-checksum-test.r3 / Checksum port / checksum-write-refinements #99
-checksum-test.r3 / Checksum/hash / test case 1 #110
-checksum-test.r3 / Checksum/with rfc2202 / checksum file! with refines #124
-checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #120
-checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #121
-checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #122
-checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #123
-checksum-test.r3 / file-checksum / checksum file! #115
-checksum-test.r3 / file-checksum / checksum file! #116
-checksum-test.r3 / file-checksum / checksum file! #117
-checksum-test.r3 / file-checksum / checksum file! with refines #118
-checksum-test.r3 / file-checksum / checksum file! with refines #119
-checksum-test.r3 / file-checksum / file-checksum with bigger file #114
-checksum-test.r3 / file-checksum / file-checksum with small file #111
-checksum-test.r3 / file-checksum / file-checksum with small file #112
-checksum-test.r3 / file-checksum / file-checksum with small file #113
+checksum-test.r3 / Checksum port / checksum-port-sha1 #54
+checksum-test.r3 / Checksum port / checksum-port-sha1 #55
+checksum-test.r3 / Checksum port / checksum-port-sha1 #56
+checksum-test.r3 / Checksum port / checksum-port-sha1 #57
+checksum-test.r3 / Checksum port / checksum-port-sha1 #58
+checksum-test.r3 / Checksum port / checksum-port-sha1 #59
+checksum-test.r3 / Checksum port / checksum-port-sha1 #60
+checksum-test.r3 / Checksum port / checksum-port-sha1 #61
+checksum-test.r3 / Checksum port / checksum-port-sha1 #62
+checksum-test.r3 / Checksum port / checksum-port-sha1 #63
+checksum-test.r3 / Checksum port / checksum-port-sha1 #64
+checksum-test.r3 / Checksum port / checksum-port-sha1 #65
+checksum-test.r3 / Checksum port / checksum-port-sha1 #66
+checksum-test.r3 / Checksum port / checksum-port-sha1 #67
+checksum-test.r3 / Checksum port / checksum-port-sha256 #68
+checksum-test.r3 / Checksum port / checksum-port-sha256 #69
+checksum-test.r3 / Checksum port / checksum-port-sha256 #70
+checksum-test.r3 / Checksum port / checksum-port-sha256 #71
+checksum-test.r3 / Checksum port / checksum-port-sha256 #72
+checksum-test.r3 / Checksum port / checksum-port-sha256 #73
+checksum-test.r3 / Checksum port / checksum-port-sha256 #74
+checksum-test.r3 / Checksum port / checksum-port-sha256 #75
+checksum-test.r3 / Checksum port / checksum-port-sha256 #76
+checksum-test.r3 / Checksum port / checksum-port-sha256 #77
+checksum-test.r3 / Checksum port / checksum-port-sha256 #78
+checksum-test.r3 / Checksum port / checksum-port-sha256 #79
+checksum-test.r3 / Checksum port / checksum-port-sha256 #80
+checksum-test.r3 / Checksum port / checksum-port-sha256 #81
+checksum-test.r3 / Checksum port / checksum-port-sha384 #82
+checksum-test.r3 / Checksum port / checksum-port-sha384 #83
+checksum-test.r3 / Checksum port / checksum-port-sha384 #84
+checksum-test.r3 / Checksum port / checksum-port-sha384 #85
+checksum-test.r3 / Checksum port / checksum-port-sha384 #86
+checksum-test.r3 / Checksum port / checksum-port-sha384 #87
+checksum-test.r3 / Checksum port / checksum-port-sha384 #88
+checksum-test.r3 / Checksum port / checksum-port-sha384 #89
+checksum-test.r3 / Checksum port / checksum-port-sha384 #90
+checksum-test.r3 / Checksum port / checksum-port-sha384 #91
+checksum-test.r3 / Checksum port / checksum-port-sha384 #92
+checksum-test.r3 / Checksum port / checksum-port-sha384 #93
+checksum-test.r3 / Checksum port / checksum-port-sha384 #94
+checksum-test.r3 / Checksum port / checksum-port-sha384 #95
+checksum-test.r3 / Checksum port / checksum-port-sha512 #100
+checksum-test.r3 / Checksum port / checksum-port-sha512 #101
+checksum-test.r3 / Checksum port / checksum-port-sha512 #102
+checksum-test.r3 / Checksum port / checksum-port-sha512 #103
+checksum-test.r3 / Checksum port / checksum-port-sha512 #104
+checksum-test.r3 / Checksum port / checksum-port-sha512 #105
+checksum-test.r3 / Checksum port / checksum-port-sha512 #106
+checksum-test.r3 / Checksum port / checksum-port-sha512 #107
+checksum-test.r3 / Checksum port / checksum-port-sha512 #108
+checksum-test.r3 / Checksum port / checksum-port-sha512 #109
+checksum-test.r3 / Checksum port / checksum-port-sha512 #110
+checksum-test.r3 / Checksum port / checksum-port-sha512 #111
+checksum-test.r3 / Checksum port / checksum-port-sha512 #112
+checksum-test.r3 / Checksum port / checksum-port-sha512 #113
+checksum-test.r3 / Checksum port / checksum-port-sha512 #114
+checksum-test.r3 / Checksum port / checksum-port-sha512 #115
+checksum-test.r3 / Checksum port / checksum-port-sha512 #116
+checksum-test.r3 / Checksum port / checksum-port-sha512 #117
+checksum-test.r3 / Checksum port / checksum-port-sha512 #118
+checksum-test.r3 / Checksum port / checksum-port-sha512 #119
+checksum-test.r3 / Checksum port / checksum-port-sha512 #120
+checksum-test.r3 / Checksum port / checksum-port-sha512 #121
+checksum-test.r3 / Checksum port / checksum-port-sha512 #122
+checksum-test.r3 / Checksum port / checksum-port-sha512 #123
+checksum-test.r3 / Checksum port / checksum-port-sha512 #124
+checksum-test.r3 / Checksum port / checksum-port-sha512 #125
+checksum-test.r3 / Checksum port / checksum-port-sha512 #126
+checksum-test.r3 / Checksum port / checksum-port-sha512 #127
+checksum-test.r3 / Checksum port / checksum-port-sha512 #128
+checksum-test.r3 / Checksum port / checksum-port-sha512 #129
+checksum-test.r3 / Checksum port / checksum-port-sha512 #130
+checksum-test.r3 / Checksum port / checksum-port-sha512 #131
+checksum-test.r3 / Checksum port / checksum-port-sha512 #132
+checksum-test.r3 / Checksum port / checksum-port-sha512 #133
+checksum-test.r3 / Checksum port / checksum-port-sha512 #134
+checksum-test.r3 / Checksum port / checksum-port-sha512 #135
+checksum-test.r3 / Checksum port / checksum-port-sha512 #136
+checksum-test.r3 / Checksum port / checksum-port-sha512 #137
+checksum-test.r3 / Checksum port / checksum-port-sha512 #138
+checksum-test.r3 / Checksum port / checksum-port-sha512 #139
+checksum-test.r3 / Checksum port / checksum-port-sha512 #140
+checksum-test.r3 / Checksum port / checksum-port-sha512 #141
+checksum-test.r3 / Checksum port / checksum-port-sha512 #142
+checksum-test.r3 / Checksum port / checksum-port-sha512 #143
+checksum-test.r3 / Checksum port / checksum-port-sha512 #144
+checksum-test.r3 / Checksum port / checksum-port-sha512 #145
+checksum-test.r3 / Checksum port / checksum-port-sha512 #146
+checksum-test.r3 / Checksum port / checksum-port-sha512 #147
+checksum-test.r3 / Checksum port / checksum-port-sha512 #148
+checksum-test.r3 / Checksum port / checksum-port-sha512 #149
+checksum-test.r3 / Checksum port / checksum-port-sha512 #150
+checksum-test.r3 / Checksum port / checksum-port-sha512 #151
+checksum-test.r3 / Checksum port / checksum-port-sha512 #152
+checksum-test.r3 / Checksum port / checksum-port-sha512 #153
+checksum-test.r3 / Checksum port / checksum-port-sha512 #154
+checksum-test.r3 / Checksum port / checksum-port-sha512 #155
+checksum-test.r3 / Checksum port / checksum-port-sha512 #156
+checksum-test.r3 / Checksum port / checksum-port-sha512 #157
+checksum-test.r3 / Checksum port / checksum-port-sha512 #158
+checksum-test.r3 / Checksum port / checksum-port-sha512 #159
+checksum-test.r3 / Checksum port / checksum-port-sha512 #160
+checksum-test.r3 / Checksum port / checksum-port-sha512 #161
+checksum-test.r3 / Checksum port / checksum-port-sha512 #162
+checksum-test.r3 / Checksum port / checksum-port-sha512 #163
+checksum-test.r3 / Checksum port / checksum-port-sha512 #164
+checksum-test.r3 / Checksum port / checksum-port-sha512 #165
+checksum-test.r3 / Checksum port / checksum-port-sha512 #166
+checksum-test.r3 / Checksum port / checksum-port-sha512 #167
+checksum-test.r3 / Checksum port / checksum-port-sha512 #168
+checksum-test.r3 / Checksum port / checksum-port-sha512 #169
+checksum-test.r3 / Checksum port / checksum-port-sha512 #170
+checksum-test.r3 / Checksum port / checksum-port-sha512 #171
+checksum-test.r3 / Checksum port / checksum-port-sha512 #172
+checksum-test.r3 / Checksum port / checksum-port-sha512 #173
+checksum-test.r3 / Checksum port / checksum-port-sha512 #174
+checksum-test.r3 / Checksum port / checksum-port-sha512 #175
+checksum-test.r3 / Checksum port / checksum-port-sha512 #176
+checksum-test.r3 / Checksum port / checksum-port-sha512 #177
+checksum-test.r3 / Checksum port / checksum-port-sha512 #178
+checksum-test.r3 / Checksum port / checksum-port-sha512 #179
+checksum-test.r3 / Checksum port / checksum-port-sha512 #180
+checksum-test.r3 / Checksum port / checksum-port-sha512 #181
+checksum-test.r3 / Checksum port / checksum-port-sha512 #182
+checksum-test.r3 / Checksum port / checksum-port-sha512 #183
+checksum-test.r3 / Checksum port / checksum-port-sha512 #184
+checksum-test.r3 / Checksum port / checksum-port-sha512 #185
+checksum-test.r3 / Checksum port / checksum-port-sha512 #186
+checksum-test.r3 / Checksum port / checksum-port-sha512 #187
+checksum-test.r3 / Checksum port / checksum-port-sha512 #188
+checksum-test.r3 / Checksum port / checksum-port-sha512 #189
+checksum-test.r3 / Checksum port / checksum-port-sha512 #190
+checksum-test.r3 / Checksum port / checksum-port-sha512 #191
+checksum-test.r3 / Checksum port / checksum-port-sha512 #192
+checksum-test.r3 / Checksum port / checksum-port-sha512 #193
+checksum-test.r3 / Checksum port / checksum-port-sha512 #194
+checksum-test.r3 / Checksum port / checksum-port-sha512 #195
+checksum-test.r3 / Checksum port / checksum-port-sha512 #196
+checksum-test.r3 / Checksum port / checksum-port-sha512 #197
+checksum-test.r3 / Checksum port / checksum-port-sha512 #198
+checksum-test.r3 / Checksum port / checksum-port-sha512 #199
+checksum-test.r3 / Checksum port / checksum-port-sha512 #200
+checksum-test.r3 / Checksum port / checksum-port-sha512 #201
+checksum-test.r3 / Checksum port / checksum-port-sha512 #202
+checksum-test.r3 / Checksum port / checksum-port-sha512 #203
+checksum-test.r3 / Checksum port / checksum-port-sha512 #204
+checksum-test.r3 / Checksum port / checksum-port-sha512 #205
+checksum-test.r3 / Checksum port / checksum-port-sha512 #206
+checksum-test.r3 / Checksum port / checksum-port-sha512 #207
+checksum-test.r3 / Checksum port / checksum-port-sha512 #208
+checksum-test.r3 / Checksum port / checksum-port-sha512 #209
+checksum-test.r3 / Checksum port / checksum-port-sha512 #210
+checksum-test.r3 / Checksum port / checksum-port-sha512 #211
+checksum-test.r3 / Checksum port / checksum-port-sha512 #212
+checksum-test.r3 / Checksum port / checksum-port-sha512 #213
+checksum-test.r3 / Checksum port / checksum-port-sha512 #214
+checksum-test.r3 / Checksum port / checksum-port-sha512 #215
+checksum-test.r3 / Checksum port / checksum-port-sha512 #216
+checksum-test.r3 / Checksum port / checksum-port-sha512 #217
+checksum-test.r3 / Checksum port / checksum-port-sha512 #218
+checksum-test.r3 / Checksum port / checksum-port-sha512 #219
+checksum-test.r3 / Checksum port / checksum-port-sha512 #220
+checksum-test.r3 / Checksum port / checksum-port-sha512 #221
+checksum-test.r3 / Checksum port / checksum-port-sha512 #222
+checksum-test.r3 / Checksum port / checksum-port-sha512 #223
+checksum-test.r3 / Checksum port / checksum-port-sha512 #224
+checksum-test.r3 / Checksum port / checksum-port-sha512 #225
+checksum-test.r3 / Checksum port / checksum-port-sha512 #226
+checksum-test.r3 / Checksum port / checksum-port-sha512 #227
+checksum-test.r3 / Checksum port / checksum-port-sha512 #228
+checksum-test.r3 / Checksum port / checksum-port-sha512 #229
+checksum-test.r3 / Checksum port / checksum-port-sha512 #230
+checksum-test.r3 / Checksum port / checksum-port-sha512 #231
+checksum-test.r3 / Checksum port / checksum-port-sha512 #232
+checksum-test.r3 / Checksum port / checksum-port-sha512 #233
+checksum-test.r3 / Checksum port / checksum-port-sha512 #234
+checksum-test.r3 / Checksum port / checksum-port-sha512 #235
+checksum-test.r3 / Checksum port / checksum-port-sha512 #96
+checksum-test.r3 / Checksum port / checksum-port-sha512 #97
+checksum-test.r3 / Checksum port / checksum-port-sha512 #98
+checksum-test.r3 / Checksum port / checksum-port-sha512 #99
+checksum-test.r3 / Checksum port / checksum-write-refinements #236
+checksum-test.r3 / Checksum port / checksum-write-refinements #237
+checksum-test.r3 / Checksum port / checksum-write-refinements #238
+checksum-test.r3 / Checksum port / checksum-write-refinements #239
+checksum-test.r3 / Checksum port / checksum-write-refinements #240
+checksum-test.r3 / Checksum port / checksum-write-refinements #241
+checksum-test.r3 / Checksum port / checksum-write-refinements #242
+checksum-test.r3 / Checksum/hash / test case 1 #250
+checksum-test.r3 / Checksum/with rfc2202 / checksum file! with refines #264
+checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #260
+checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #261
+checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #262
+checksum-test.r3 / Checksum/with rfc4231 / checksum file! with refines #263
+checksum-test.r3 / file-checksum / checksum file! #255
+checksum-test.r3 / file-checksum / checksum file! #256
+checksum-test.r3 / file-checksum / checksum file! #257
+checksum-test.r3 / file-checksum / checksum file! with refines #258
+checksum-test.r3 / file-checksum / checksum file! with refines #259
+checksum-test.r3 / file-checksum / file-checksum with bigger file #254
+checksum-test.r3 / file-checksum / file-checksum with small file #251
+checksum-test.r3 / file-checksum / file-checksum with small file #252
+checksum-test.r3 / file-checksum / file-checksum with small file #253
 codecs-test-pdf.r3 / (no group) / (no test) #1
 codecs-test-pdf.r3 / (no group) / (no test) #10
 codecs-test-pdf.r3 / (no group) / (no test) #11
@@ -514,23 +656,28 @@ codecs-test-pdf.r3 / (no group) / (no test) #6
 codecs-test-pdf.r3 / (no group) / (no test) #7
 codecs-test-pdf.r3 / (no group) / (no test) #8
 codecs-test-pdf.r3 / (no group) / (no test) #9
-codecs-test.r3 / SAVE function / SAVE/compress #25
-codecs-test.r3 / SAVE function / SAVE/compress #26
-codecs-test.r3 / SAVE function / invalid image SAVE #22
-codecs-test.r3 / SAVE function / invalid image SAVE #23
-codecs-test.r3 / SAVE function / invalid image SAVE #24
-codecs-test.r3 / TEXT codec / ENCODE text #4
-codecs-test.r3 / TEXT codec / ENCODE text #5
-codecs-test.r3 / TEXT codec / SAVE %test.txt #10
-codecs-test.r3 / TEXT codec / SAVE %test.txt #6
-codecs-test.r3 / TEXT codec / SAVE %test.txt #8
-codecs-test.r3 / TEXT codec / load UCS16-BE txt #29
-codecs-test.r3 / TEXT codec / load UCS16-LE txt #28
-codecs-test.r3 / TEXT codec / load UCS32-BE txt #31
-codecs-test.r3 / TEXT codec / load UCS32-LE txt #30
-codecs-test.r3 / TEXT codec / load/save binary! as .txt #36
-codecs-test.r3 / TEXT codec / load/save block! as .txt #34
-codecs-test.r3 / TEXT codec / load/save issue! as .txt #32
+codecs-test.r3 / Codec's identify / encoding? #4
+codecs-test.r3 / Codec's identify / encoding? #5
+codecs-test.r3 / Codec's identify / encoding? #6
+codecs-test.r3 / Codec's identify / encoding? #7
+codecs-test.r3 / Codec's identify / encoding? #8
+codecs-test.r3 / SAVE function / SAVE/compress #30
+codecs-test.r3 / SAVE function / SAVE/compress #31
+codecs-test.r3 / SAVE function / invalid image SAVE #27
+codecs-test.r3 / SAVE function / invalid image SAVE #28
+codecs-test.r3 / SAVE function / invalid image SAVE #29
+codecs-test.r3 / TEXT codec / ENCODE text #10
+codecs-test.r3 / TEXT codec / ENCODE text #9
+codecs-test.r3 / TEXT codec / SAVE %test.txt #11
+codecs-test.r3 / TEXT codec / SAVE %test.txt #13
+codecs-test.r3 / TEXT codec / SAVE %test.txt #15
+codecs-test.r3 / TEXT codec / load UCS16-BE txt #34
+codecs-test.r3 / TEXT codec / load UCS16-LE txt #33
+codecs-test.r3 / TEXT codec / load UCS32-BE txt #36
+codecs-test.r3 / TEXT codec / load UCS32-LE txt #35
+codecs-test.r3 / TEXT codec / load/save binary! as .txt #41
+codecs-test.r3 / TEXT codec / load/save block! as .txt #39
+codecs-test.r3 / TEXT codec / load/save issue! as .txt #37
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #100
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #101
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #102
@@ -659,11 +806,11 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #224
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #225
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #226
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #227
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #38
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #39
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #40
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #41
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #42
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #228
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #229
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #230
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #231
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #232
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #43
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #44
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #45
@@ -855,29 +1002,26 @@ compress-test.r3 / ZLIB compression / decompression / basic compress/decompress 
 compress-test.r3 / ZLIB compression / decompression / compression when input is limited #18
 conditional-test.r3 / switch basics local / switch-basic-16 #37
 conditional-test.r3 / switch basics local / switch-basic-16 #38
-copy-test.r3 / Copy block! / copy/deep block! #145
-copy-test.r3 / Copy block! / copy/deep block! #147
 copy-test.r3 / Copy block! / copy/deep block! #148
-copy-test.r3 / Copy block! / copy/deep block! #149
-copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #210
-copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #216
-copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #217
-copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #218
+copy-test.r3 / Copy block! / copy/deep block! #150
+copy-test.r3 / Copy block! / copy/deep block! #151
+copy-test.r3 / Copy block! / copy/deep block! #152
+copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #213
 copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #219
-copy-test.r3 / Copy block! / copy/types block! (any strings) #170
-copy-test.r3 / Copy block! / copy/types block! (any strings) #171
-copy-test.r3 / Copy block! / copy/types block! (only object) #178
-copy-test.r3 / Copy block! / copy/types block! (only strings) #152
+copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #220
+copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #221
+copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #222
+copy-test.r3 / Copy block! / copy/types block! (any strings) #173
+copy-test.r3 / Copy block! / copy/types block! (any strings) #174
+copy-test.r3 / Copy block! / copy/types block! (only object) #181
+copy-test.r3 / Copy block! / copy/types block! (only strings) #155
+copy-test.r3 / Copy map! / copy/deep map! #10
 copy-test.r3 / Copy map! / copy/deep map! #11
 copy-test.r3 / Copy map! / copy/deep map! #12
-copy-test.r3 / Copy map! / copy/deep map! #13
-copy-test.r3 / Copy map! / copy/deep map! #6
-copy-test.r3 / Copy map! / copy/deep map! #7
-copy-test.r3 / Copy map! / copy/deep map! #8
+copy-test.r3 / Copy map! / copy/deep map! #14
+copy-test.r3 / Copy map! / copy/deep map! #15
+copy-test.r3 / Copy map! / copy/deep map! #16
 copy-test.r3 / Copy map! / copy/deep map! #9
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #61
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #62
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #63
 copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #64
 copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #65
 copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #66
@@ -890,34 +1034,37 @@ copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #72
 copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #73
 copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #74
 copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #75
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #44
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #46
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #48
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #53
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #55
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #57
-copy-test.r3 / Copy map! / copy/deep/types map! (only object) #40
-copy-test.r3 / Copy map! / copy/deep/types map! (only object) #42
-copy-test.r3 / Copy map! / copy/types map! (any strings) #25
-copy-test.r3 / Copy map! / copy/types map! (any strings) #26
-copy-test.r3 / Copy map! / copy/types map! (only object) #33
-copy-test.r3 / Copy map! / copy/types map! (only strings) #16
-copy-test.r3 / Copy object! / copy/deep object! #79
-copy-test.r3 / Copy object! / copy/deep object! #81
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #76
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #77
+copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #78
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #47
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #49
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #51
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #56
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #58
+copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #60
+copy-test.r3 / Copy map! / copy/deep/types map! (only object) #43
+copy-test.r3 / Copy map! / copy/deep/types map! (only object) #45
+copy-test.r3 / Copy map! / copy/types map! (any strings) #28
+copy-test.r3 / Copy map! / copy/types map! (any strings) #29
+copy-test.r3 / Copy map! / copy/types map! (only object) #36
+copy-test.r3 / Copy map! / copy/types map! (only strings) #19
 copy-test.r3 / Copy object! / copy/deep object! #82
-copy-test.r3 / Copy object! / copy/deep object! #83
-copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #130
-copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #136
-copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #137
-copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #138
+copy-test.r3 / Copy object! / copy/deep object! #84
+copy-test.r3 / Copy object! / copy/deep object! #85
+copy-test.r3 / Copy object! / copy/deep object! #86
+copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #133
 copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #139
-copy-test.r3 / Copy object! / copy/deep/types object! (only maps and strings) #112
-copy-test.r3 / Copy object! / copy/deep/types object! (only maps and strings) #114
-copy-test.r3 / Copy object! / copy/types object! (any strings) #91
-copy-test.r3 / Copy object! / copy/types object! (any strings) #92
-copy-test.r3 / Copy object! / copy/types object! (only object) #99
-copy-test.r3 / Copy object! / copy/types object! (only strings) #86
-copy-test.r3 / Shallow copy / copy map! #5
+copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #140
+copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #141
+copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #142
+copy-test.r3 / Copy object! / copy/deep/types object! (only maps and strings) #115
+copy-test.r3 / Copy object! / copy/deep/types object! (only maps and strings) #117
+copy-test.r3 / Copy object! / copy/types object! (any strings) #94
+copy-test.r3 / Copy object! / copy/types object! (any strings) #95
+copy-test.r3 / Copy object! / copy/types object! (only object) #102
+copy-test.r3 / Copy object! / copy/types object! (only strings) #89
+copy-test.r3 / Shallow copy / copy map! #7
 copy-test.r3 / Simple copy / (no test) #1
 copy-test.r3 / Simple copy / (no test) #2
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #1
@@ -1192,22 +1339,25 @@ error-test.r3 / make error! / make invalid error! #22
 error-test.r3 / make error! / make invalid error! #23
 error-test.r3 / make error! / make invalid error! #24
 error-test.r3 / make error! / make invalid error! #25
-file-test.r3 / WILDCARD / read wildcard #43
-file-test.r3 / WILDCARD / read wildcard #44
-file-test.r3 / WILDCARD / read wildcard #45
+file-test.r3 / WILDCARD / read wildcard #46
+file-test.r3 / WILDCARD / read wildcard #47
+file-test.r3 / WILDCARD / read wildcard #48
 file-test.r3 / cd / cd / cd ~ #1
-file-test.r3 / file:// / issue-834 #38
+file-test.r3 / file:// / issue-834 #41
 file-test.r3 / to-local-file / issue-1115 #18
 file-test.r3 / to-local-file / issue-1115 #19
 file-test.r3 / to-local-file / issue-1115 #20
 file-test.r3 / to-local-file / issue-1115 #21
-file-test.r3 / to-real-file / On directory #26
-file-test.r3 / to-real-file / On directory #27
-file-test.r3 / to-real-file / On directory #28
-file-test.r3 / to-real-file / On file #22
-file-test.r3 / to-real-file / On file #23
-file-test.r3 / to-real-file / On file with Unicode chars #24
-file-test.r3 / to-real-file / On file with Unicode chars #25
+file-test.r3 / to-local-file / issue-1115 #22
+file-test.r3 / to-local-file / issue-1115 #23
+file-test.r3 / to-local-file / issue-1115 #24
+file-test.r3 / to-real-file / On directory #29
+file-test.r3 / to-real-file / On directory #30
+file-test.r3 / to-real-file / On directory #31
+file-test.r3 / to-real-file / On file #25
+file-test.r3 / to-real-file / On file #26
+file-test.r3 / to-real-file / On file with Unicode chars #27
+file-test.r3 / to-real-file / On file with Unicode chars #28
 format-test.r3 / FORMAT / FORMAT date #17
 format-test.r3 / FORMAT / FORMAT date #18
 format-test.r3 / FORMAT / FORMAT date #19
@@ -1261,41 +1411,41 @@ format-test.r3 / FORMAT / format rounding #54
 format-test.r3 / FORMAT / format rounding #55
 format-test.r3 / FORMAT / format rounding #56
 format-test.r3 / FORMAT / format/pad #48
-func-test.r3 / FUNCTION (funct) / function/with object and module #92
 func-test.r3 / FUNCTION (funct) / function/with object and module #94
-func-test.r3 / OP! / body-of op! #63
-func-test.r3 / OP! / body-of op! #64
-func-test.r3 / OP! / make op! #56
-func-test.r3 / OP! / make op! #57
+func-test.r3 / FUNCTION (funct) / function/with object and module #96
+func-test.r3 / OP! / body-of op! #65
+func-test.r3 / OP! / body-of op! #66
 func-test.r3 / OP! / make op! #58
-func-test.r3 / OP! / make op! from action! #67
-func-test.r3 / OP! / make op! from function with refinement #62
-func-test.r3 / OP! / make op! from function! #68
-func-test.r3 / OP! / make op! from function! #69
+func-test.r3 / OP! / make op! #59
+func-test.r3 / OP! / make op! #60
+func-test.r3 / OP! / make op! from action! #69
+func-test.r3 / OP! / make op! from function with refinement #64
+func-test.r3 / OP! / make op! from function! #70
 func-test.r3 / OP! / make op! from function! #71
-func-test.r3 / OP! / make op! from function! #72
-func-test.r3 / OP! / make op! with /local #59
-func-test.r3 / OP! / spec-of op! #65
-func-test.r3 / OP! / spec-of op! #66
-func-test.r3 / Other issues / function rebinding (closure compatibility) #133
-func-test.r3 / Other issues / function rebinding (closure compatibility) #134
-func-test.r3 / Other issues / function rebinding (closure compatibility) #139
-func-test.r3 / Other issues / function rebinding (closure compatibility) #140
-func-test.r3 / Other issues / issue-1047 #145
-func-test.r3 / Other issues / issue-168 #117
-func-test.r3 / Other issues / issue-168 #118
-func-test.r3 / Other issues / issue-2025 #95
-func-test.r3 / Other issues / issue-217 #127
-func-test.r3 / Other issues / issue-717 #146
-func-test.r3 / Other issues / issue-87 #103
-func-test.r3 / Other issues / issue-87 #111
-func-test.r3 / Other issues / issue-87 #112
+func-test.r3 / OP! / make op! from function! #73
+func-test.r3 / OP! / make op! from function! #74
+func-test.r3 / OP! / make op! with /local #61
+func-test.r3 / OP! / spec-of op! #67
+func-test.r3 / OP! / spec-of op! #68
+func-test.r3 / Other issues / function rebinding (closure compatibility) #135
+func-test.r3 / Other issues / function rebinding (closure compatibility) #136
+func-test.r3 / Other issues / function rebinding (closure compatibility) #141
+func-test.r3 / Other issues / function rebinding (closure compatibility) #142
+func-test.r3 / Other issues / issue-1047 #147
+func-test.r3 / Other issues / issue-168 #119
+func-test.r3 / Other issues / issue-168 #120
+func-test.r3 / Other issues / issue-2025 #97
+func-test.r3 / Other issues / issue-217 #129
+func-test.r3 / Other issues / issue-717 #148
+func-test.r3 / Other issues / issue-87 #105
 func-test.r3 / Other issues / issue-87 #113
 func-test.r3 / Other issues / issue-87 #114
-func-test.r3 / Other issues / unset as a function argument #120
-func-test.r3 / ZERO? / zero? #73
-func-test.r3 / ZERO? / zero? #74
+func-test.r3 / Other issues / issue-87 #115
+func-test.r3 / Other issues / issue-87 #116
+func-test.r3 / Other issues / unset as a function argument #122
 func-test.r3 / ZERO? / zero? #75
+func-test.r3 / ZERO? / zero? #76
+func-test.r3 / ZERO? / zero? #77
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
 gob-test.r3 / gob issues / issue-1617 #35
@@ -1726,9 +1876,9 @@ make-test.r3 / make/to typeset / to typeset! .. #760
 make-test.r3 / make/to typeset / to typeset! .. #761
 make-test.r3 / make/to typeset / to typeset! .. #762
 make-test.r3 / make/to typeset / to typeset! .. #769
-map-test.r3 / FORM map! / form empty map #130
-map-test.r3 / FORM map! / form map with multiple keys #132
-map-test.r3 / FORM map! / form single key map #131
+map-test.r3 / FORM map! / form empty map #132
+map-test.r3 / FORM map! / form map with multiple keys #134
+map-test.r3 / FORM map! / form single key map #133
 map-test.r3 / MAP construction / case sensitivity #13
 map-test.r3 / MAP construction / case sensitivity #14
 map-test.r3 / MAP construction / case sensitivity #15
@@ -1742,10 +1892,10 @@ map-test.r3 / MAP construction / case sensitivity #31
 map-test.r3 / MAP construction / case sensitivity #32
 map-test.r3 / MAP construction / case sensitivity #33
 map-test.r3 / MAP construction / protected series keys #35
-map-test.r3 / PUT / PUT into protected map #137
-map-test.r3 / PUT / PUT into protected map #138
 map-test.r3 / PUT / PUT into protected map #139
 map-test.r3 / PUT / PUT into protected map #140
+map-test.r3 / PUT / PUT into protected map #141
+map-test.r3 / PUT / PUT into protected map #142
 map-test.r3 / compare / equal? #64
 map-test.r3 / compare / equal? #65
 map-test.r3 / compare / equal? #66
@@ -1753,34 +1903,34 @@ map-test.r3 / compare / equal? (large maps) #76
 map-test.r3 / compare / equal? (large maps) #77
 map-test.r3 / compare / equal? (large maps) #78
 map-test.r3 / find / map-find-3 #60
-map-test.r3 / map issues / copy/deep map #113
-map-test.r3 / map issues / copy/deep map #116
+map-test.r3 / map issues / copy/deep map #115
+map-test.r3 / map issues / copy/deep map #118
 map-test.r3 / map issues / map-issue-1872 #104
 map-test.r3 / map issues / map-issue-2293 #108
-map-test.r3 / reflection / block of map #150
-map-test.r3 / reflection / block of map #151
-map-test.r3 / set operations with map! / difference with map #175
-map-test.r3 / set operations with map! / difference with map #176
-map-test.r3 / set operations with map! / exclude with map #183
-map-test.r3 / set operations with map! / intersect with map #186
-map-test.r3 / set operations with map! / intersect with map #187
-map-test.r3 / set operations with map! / intersect with map #190
-map-test.r3 / set operations with map! / intersect with map #191
-map-test.r3 / set operations with map! / union with map #194
-map-test.r3 / set operations with map! / union with map #195
+map-test.r3 / reflection / block of map #152
+map-test.r3 / reflection / block of map #153
+map-test.r3 / set operations with map! / difference with map #177
+map-test.r3 / set operations with map! / difference with map #178
+map-test.r3 / set operations with map! / exclude with map #185
+map-test.r3 / set operations with map! / intersect with map #188
+map-test.r3 / set operations with map! / intersect with map #189
+map-test.r3 / set operations with map! / intersect with map #192
+map-test.r3 / set operations with map! / intersect with map #193
 map-test.r3 / set operations with map! / union with map #196
+map-test.r3 / set operations with map! / union with map #197
 map-test.r3 / set operations with map! / union with map #198
-map-test.r3 / set operations with map! / union with map #199
 map-test.r3 / set operations with map! / union with map #200
-map-test.r3 / set operations with map! / unique with map #202
-map-test.r3 / set operations with map! / unique with map #203
+map-test.r3 / set operations with map! / union with map #201
+map-test.r3 / set operations with map! / union with map #202
+map-test.r3 / set operations with map! / unique with map #204
+map-test.r3 / set operations with map! / unique with map #205
 module-test.r3 / make module / inlined module #13
 module-test.r3 / make module / inlined module #14
 module-test.r3 / make module / inlined module #15
 module-test.r3 / make module / inlined module #16
 module-test.r3 / make module / make module type assertion #18
 module-test.r3 / make module / module body modified on export #17
-module-test.r3 / module import / do module from file #49
+module-test.r3 / module import / do module from file #50
 module-test.r3 / module import / import #25
 module-test.r3 / module import / import #26
 module-test.r3 / module import / import #27
@@ -1788,13 +1938,14 @@ module-test.r3 / module import / import block #30
 module-test.r3 / module import / import needs file! #45
 module-test.r3 / module import / import needs file! #46
 module-test.r3 / module import / import needs url! #47
+module-test.r3 / module import / import needs url! #48
 module-test.r3 / module import / import needs word! #44
 module-test.r3 / module import / import to user context #28
 module-test.r3 / module import / import/no-lib #29
 module-test.r3 / module import / import/no-lib block #31
-module-test.r3 / module import / lib-local #48
-module-test.r3 / module issues / issue-1005 #50
-module-test.r3 / module issues / issue-1005 #53
+module-test.r3 / module import / lib-local #49
+module-test.r3 / module issues / issue-1005 #51
+module-test.r3 / module issues / issue-1005 #54
 module-test.r3 / module keywords / hidden #2
 mold-test.r3 / form error! / form error! #214
 mold-test.r3 / mold binary! / mold/flat binary! #139
@@ -1874,6 +2025,15 @@ os-test.r3 / set-env / get-env / env-2 #6
 os-test.r3 / set-env / get-env / env-2 #7
 os-test.r3 / set-env / get-env / env-3 #8
 os-test.r3 / set-env / get-env / env-3 #9
+parse-test.r3 / Other parse issues / integer! repeat #371
+parse-test.r3 / Other parse issues / integer! repeat #372
+parse-test.r3 / Other parse issues / integer! repeat #373
+parse-test.r3 / Other parse issues / integer! repeat #374
+parse-test.r3 / Other parse issues / integer! repeat #375
+parse-test.r3 / Other parse issues / integer! repeat #376
+parse-test.r3 / Other parse issues / integer! repeat #377
+parse-test.r3 / Other parse issues / integer! repeat #378
+parse-test.r3 / Other parse issues / integer! repeat #379
 percent-test.r3 / form/mold / mold/all #30
 percent-test.r3 / make percent! / make percent from block #3
 percent-test.r3 / percent issues / large percent #33
@@ -1888,21 +2048,25 @@ poly1305-test.r3 / (no group) / (no test) #6
 poly1305-test.r3 / (no group) / (no test) #7
 poly1305-test.r3 / (no group) / (no test) #8
 poly1305-test.r3 / (no group) / (no test) #9
-port-test.r3 / SYSTEM / query system:// #158
-port-test.r3 / directory port / CHANGE-DIR #51
+port-test.r3 / SYSTEM / query system:// #169
 port-test.r3 / directory port / CHANGE-DIR #52
 port-test.r3 / directory port / CHANGE-DIR #53
 port-test.r3 / directory port / CHANGE-DIR #54
+port-test.r3 / directory port / CHANGE-DIR #55
 port-test.r3 / directory port / DELETE-DIR #49
+port-test.r3 / directory port / DELETE-DIR #51
 port-test.r3 / directory port / READ wildcard #44
 port-test.r3 / directory port / READ wildcard #45
 port-test.r3 / directory port / READ wildcard #46
 port-test.r3 / directory port / READ wildcard #47
-port-test.r3 / directory port / exists? %/ #56
-port-test.r3 / directory port / exists? %/ #57
+port-test.r3 / directory port / RENAME dir #57
 port-test.r3 / directory port / exists? %/ #58
 port-test.r3 / directory port / exists? %/ #59
 port-test.r3 / directory port / exists? %/ #60
+port-test.r3 / directory port / exists? %/ #61
+port-test.r3 / directory port / exists? %/ #62
+port-test.r3 / directory port / exists? %/ #63
+port-test.r3 / directory port / exists? %/ #64
 port-test.r3 / directory port / make-dir if file exists #21
 port-test.r3 / directory port / open %. #23
 port-test.r3 / directory port / open %. #24
@@ -1916,54 +2080,61 @@ port-test.r3 / directory port / port-issue-2320 #4
 port-test.r3 / directory port / port-issue-2320 #6
 port-test.r3 / directory port / query directory info #11
 port-test.r3 / directory port / query directory info #8
-port-test.r3 / file port / APPEND file-port #153
-port-test.r3 / file port / APPEND file-port #154
-port-test.r3 / file port / APPEND file-port #155
-port-test.r3 / file port / CLEAR file port #146
-port-test.r3 / file port / CLEAR file port #147
-port-test.r3 / file port / CLEAR file port #148
-port-test.r3 / file port / DELETE file #150
-port-test.r3 / file port / Query empty file name #157
-port-test.r3 / file port / Reading an empty file #156
-port-test.r3 / file port / WRITE/APPEND file-port #152
-port-test.r3 / file port / open/close file #124
-port-test.r3 / file port / open/close file #125
-port-test.r3 / file port / open/close file #126
-port-test.r3 / file port / open/close file #127
+port-test.r3 / file port / APPEND file-port #160
+port-test.r3 / file port / APPEND file-port #161
+port-test.r3 / file port / APPEND file-port #162
+port-test.r3 / file port / APPEND file-port #163
+port-test.r3 / file port / APPEND file-port #164
+port-test.r3 / file port / APPEND file-port #165
+port-test.r3 / file port / APPEND file-port #166
+port-test.r3 / file port / CLEAR file port #150
+port-test.r3 / file port / CLEAR file port #151
+port-test.r3 / file port / CLEAR file port #152
+port-test.r3 / file port / DELETE file #154
+port-test.r3 / file port / DELETE file #155
+port-test.r3 / file port / DELETE file #156
+port-test.r3 / file port / DELETE file #157
+port-test.r3 / file port / Query empty file name #168
+port-test.r3 / file port / Reading an empty file #167
+port-test.r3 / file port / WRITE/APPEND file-port #159
 port-test.r3 / file port / open/close file #128
 port-test.r3 / file port / open/close file #129
 port-test.r3 / file port / open/close file #130
-port-test.r3 / file port / query file info #64
-port-test.r3 / file port / query file info #65
-port-test.r3 / file port / query file info #66
-port-test.r3 / file port / query file info #67
+port-test.r3 / file port / open/close file #131
+port-test.r3 / file port / open/close file #132
+port-test.r3 / file port / open/close file #133
+port-test.r3 / file port / open/close file #134
 port-test.r3 / file port / query file info #68
 port-test.r3 / file port / query file info #69
-port-test.r3 / file port / query file info (port) #71
-port-test.r3 / file port / query file info (port) #72
-port-test.r3 / file port / query file info (port) #73
-port-test.r3 / file port / query file info (port) #74
+port-test.r3 / file port / query file info #70
+port-test.r3 / file port / query file info #71
+port-test.r3 / file port / query file info #72
+port-test.r3 / file port / query file info #73
 port-test.r3 / file port / query file info (port) #75
 port-test.r3 / file port / query file info (port) #76
-port-test.r3 / file port / query file name #70
-port-test.r3 / file port / read write CRLF conversion #110
-port-test.r3 / file port / read write CRLF conversion #111
+port-test.r3 / file port / query file info (port) #77
+port-test.r3 / file port / query file info (port) #78
+port-test.r3 / file port / query file info (port) #79
+port-test.r3 / file port / query file info (port) #80
+port-test.r3 / file port / query file name #74
 port-test.r3 / file port / read write CRLF conversion #114
 port-test.r3 / file port / read write CRLF conversion #115
-port-test.r3 / file port / read/lines - issue/1794 #80
-port-test.r3 / file port / read/part #141
-port-test.r3 / file port / skip/at on file port #142
-port-test.r3 / file port / skip/at on file port #143
-port-test.r3 / file port / skip/at on file port #144
-port-test.r3 / file port / skip/at on file port #145
-port-test.r3 / file port / write/part #131
-port-test.r3 / file port / write/seek #134
-port-test.r3 / file port / write/seek #135
-port-test.r3 / file port / write/seek #136
-port-test.r3 / file port / write/seek #137
+port-test.r3 / file port / read write CRLF conversion #118
+port-test.r3 / file port / read write CRLF conversion #119
+port-test.r3 / file port / read/lines - issue/1794 #84
+port-test.r3 / file port / read/part #145
+port-test.r3 / file port / skip/at on file port #146
+port-test.r3 / file port / skip/at on file port #147
+port-test.r3 / file port / skip/at on file port #148
+port-test.r3 / file port / skip/at on file port #149
+port-test.r3 / file port / write/part #135
 port-test.r3 / file port / write/seek #138
 port-test.r3 / file port / write/seek #139
 port-test.r3 / file port / write/seek #140
+port-test.r3 / file port / write/seek #141
+port-test.r3 / file port / write/seek #142
+port-test.r3 / file port / write/seek #143
+port-test.r3 / file port / write/seek #144
 power-test.r3 / power error / power-error-1 #8
 power-test.r3 / power error / power-error-2 #10
 power-test.r3 / power integer / power-integer-1 #11
@@ -1981,7 +2152,8 @@ rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external f
 rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #33
 rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #34
 rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #35
-series-test.r3 / DELINE / ENLINE / ENLINE #1226
+series-test.r3 / DELINE / ENLINE / ENLINE #1230
+series-test.r3 / SWAP / swap invalidating index (known issue) #973
 struct-test.r3 / (no group) / (no test) #1
 struct-test.r3 / (no group) / (no test) #10
 struct-test.r3 / (no group) / (no test) #100

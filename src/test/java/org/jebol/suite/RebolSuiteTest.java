@@ -228,6 +228,7 @@ class RebolSuiteTest {
                     if (!taken.rest().isBlank()) {
                         interpreter.defineFreshWordsIn(taken.rest());
                         interpreter.run(taken.rest());
+                        recordWhatRanInside(interpreter, step);
                     }
                 } else {
                     verdict = new Verdict(interpreter.run(source).succeeded(), "");

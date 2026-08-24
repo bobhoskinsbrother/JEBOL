@@ -232,10 +232,18 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                 }
                 case ASSERT -> {
                     ordinal++;
-                    found.add(new Step(new Assertion(file, group, test, ordinal,
-                            sourceOf(source, spans, at + 1, until.size()),
-                            beginningOf(spans, at + 1),
-                            endOf(spans, at + 1, until.size())), null));
+                    String written = sourceOf(source, spans, at + 1, until.size());
+                    Assertion asserted = new Assertion(file, group, test, ordinal,
+                            written, beginningOf(spans, at + 1),
+                            endOf(spans, at + 1, until.size()));
+                    List<Assertion> alsoInside = new ArrayList<>();
+                    for (int more = assertionsNestedIn(until); more > 0; more--) {
+                        ordinal++;
+                        alsoInside.add(new Assertion(file, group, test, ordinal,
+                                written, beginningOf(spans, at + 1),
+                                endOf(spans, at + 1, until.size())));
+                    }
+                    found.add(new Step(asserted, null, List.copyOf(alsoInside)));
                 }
                 default -> {
                     String setup = sourceOf(source, spans, at + 1, until.size());

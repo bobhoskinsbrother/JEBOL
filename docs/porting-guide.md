@@ -85,18 +85,18 @@ clang does the rest.
 
 All of these stay where they are. A change that moves one is wrong.
 
-- **`RebolSuiteTest`** -- Rebol's own assertions, about twenty seconds alone.
-  The inner loop between changes. **4335 of them, none failing -- and that is
-  22 of Rebol's 76 unit files, 37% of its 11,851 assertions.** Green here has
-  never meant the language matches; see Goal 0 in `TODO.md`. One sits in
-  `known-gaps.txt`, which is not a skip list: every line in it is run on every
-  build, and the test fails if a listed assertion starts passing. The one line
-  there is an assertion a real Rebol fails as well.
+- **`RebolSuiteTest`** -- Rebol's own assertions, about a minute alone. The
+  inner loop between changes. **All 10,100 assertions its sixty-seven files
+  write are run**, and 2,416 fail. Every failure is named in
+  `known-gaps.txt`: not a skip list, because every line in it runs on every
+  build and the test fails if a listed assertion starts passing.
 
-  Adding a line to that file is a decision, not a convenience. A gap belongs
-  there when it is a known difference somebody is going to close; an assertion
-  that Rebol itself fails belongs there permanently and is marked as such.
-  Neither is a reason to stop running it.
+  Two gates hold the count honest, and neither takes a list. A file the
+  reader cannot take to the end fails the build; an assertion the harness
+  does not run fails the build. Both were added because the count had been
+  true of what it was given and silent about what it was not -- thirteen
+  files stopped partway, 125 commented-out assertions were counted as real,
+  and an assertion inside a FOREACH was never run at all.
 
   ```
   ./gradlew test --tests 'org.jebol.suite.RebolSuiteTest'
@@ -112,8 +112,8 @@ All of these stay where they are. A change that moves one is wrong.
   both `lib` and `sys`. It has been wrong three times, each because a number
   was believed and the question behind it was not.
 
-`./gradlew check` is the gate before a commit: 10462 tests, 0 failed,
-0 skipped, about three and a half minutes.
+`./gradlew check` is the gate before a commit: 13,907 tests, 0 failed,
+0 skipped, about five minutes.
 
 `./gradlew browserCheck` is the second gate and is not optional, only
 separate: it drives a real Chrome and compares what it paints against Java2D,

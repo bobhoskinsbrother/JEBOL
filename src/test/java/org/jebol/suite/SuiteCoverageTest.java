@@ -77,24 +77,73 @@ class SuiteCoverageTest {
     /**
      * How many assertions a file actually writes.
      *
-     * <p>Counting lines that begin with {@code --assert} is wrong in both
-     * directions and was wrong in seventeen of the sixty-seven files. It
-     * misses every assertion indented inside a block, which is how
-     * compare-test.r3 came to be read as having 158 when it has 269 and
-     * power-test.r3 as having 4 when it has 18. It also counts
-     * {@code --assert-er}, a typo on line 22 of Rebol's own image-test.r3,
-     * as though it were an assertion.
+     * <p>Counting lines that begin with {@code --assert} was wrong in both
+     * directions and wrong in seventeen of the sixty-seven files: it missed
+     * every assertion indented inside a block, so compare-test.r3 was read as
+     * having 158 when it has 269, and where the reach exceeded that undercount
+     * the difference went negative and the file could not fail this gate at
+     * all.
      *
-     * <p>Undercounting is the dangerous half. The gate asks whether the
-     * reader got fewer than were written, so a denominator below the truth
-     * makes the difference negative and the file exempt: eleven files could
-     * not fail this gate at all, and two of them were losing assertions.
+     * <p>Counting every occurrence instead was wrong the other way, because
+     * a commented-out assertion is not an assertion, and neither is one
+     * written inside a string. Rebol's own files carry 125 of the first --
+     * 28 in csv-test.r3, 24 in vector-test.r3 -- and conditional-test.r3
+     * carries the second, a whole test parked inside {@code comment { ... }}
+     * against the day SWITCH/ALL exists. Counting either made a file look
+     * permanently short of a target that was never there. So comments and
+     * the insides of strings are dropped, and what is left is counted.
      */
     private static long assertionsWrittenIn(String source) {
         return Pattern.compile("--assert(?![A-Za-z0-9?!*+<>=~-])")
-                .matcher(source)
+                .matcher(withoutCommentsOrStrings(source))
                 .results()
                 .count();
+    }
+
+    /**
+     * The source with its comments and the insides of its strings removed.
+     *
+     * <p>A semicolon only opens a comment outside a string, so this walks the
+     * text rather than cutting at the first one: {@code "a;b"} is four
+     * characters of string and not the start of a comment. Braces nest and
+     * quotes do not, which is the whole difference between REBOL's two string
+     * forms and is why they are tracked differently here.
+     */
+    private static String withoutCommentsOrStrings(String source) {
+        StringBuilder kept = new StringBuilder(source.length());
+        boolean inQuotes = false;
+        int braces = 0;
+        boolean commented = false;
+        for (int at = 0; at < source.length(); at++) {
+            char letter = source.charAt(at);
+            if (letter == '\n') {
+                commented = false;
+                kept.append(letter);
+                continue;
+            }
+            if (commented) {
+                continue;
+            }
+            if (!inQuotes && braces == 0 && letter == ';') {
+                commented = true;
+                continue;
+            }
+            if (letter == '^' && at + 1 < source.length()) {
+                at++;
+                continue;
+            }
+            boolean wasInside = inQuotes || braces > 0;
+            if (braces == 0 && letter == '"') {
+                inQuotes = !inQuotes;
+            } else if (!inQuotes && letter == '{') {
+                braces++;
+            } else if (!inQuotes && letter == '}' && braces > 0) {
+                braces--;
+            } else if (!wasInside) {
+                kept.append(letter);
+            }
+        }
+        return kept.toString();
     }
 
     /**
@@ -175,36 +224,22 @@ class SuiteCoverageTest {
                 .isEmpty();
     }
 
-    /**
-     * What the slicer still cannot reach, as a number that must not grow.
-     *
-     * <p>Separate from reading, and a weaker gate on purpose. Reading is
-     * absolute: a file the reader cannot take to the end fails the build with
-     * no list and no excuse, and all sixty-seven now read. This is the next
-     * layer -- an assertion the reader took in and the harness still does not
-     * run, because it sits inside a FOREACH or an IF where it cannot be
-     * sliced out and run on its own.
-     *
-     * <p>A ceiling rather than a list, because a list of individual
-     * assertions here would be a list of things nobody can act on one at a
-     * time: they all want the same fix. The ceiling only moves down.
-     */
-    private static final int ASSERTIONS_THE_SLICER_STILL_CANNOT_REACH = 307;
-
     @Test
-    @DisplayName("the slicer reaches at least as many assertions as it did before")
-    void theSlicerHasNotLostGround() {
-        int lost = coverage().stream()
-                .filter(entry -> entry.note().startsWith("read"))
-                .mapToInt(Coverage::missed)
-                .sum();
+    @DisplayName("every assertion a file writes is one the harness runs")
+    void everyAssertionWrittenIsRun() {
+        List<String> lost = coverage().stream()
+                .filter(entry -> entry.missed() > 0)
+                .map(entry -> "  %-26s reaches %4d of %4d".formatted(
+                        entry.file(), entry.assertionsRead(), entry.assertionsInSource()))
+                .toList();
 
         assertThat(lost)
-                .as("an assertion the reader took in and the harness did not run. "
-                        + "It was 907 over 37 files before nested assertions were "
-                        + "run in place; every one that comes back is a file whose "
-                        + "count says more than it does")
-                .isLessThanOrEqualTo(ASSERTIONS_THE_SLICER_STILL_CANNOT_REACH);
+                .as("an assertion written in a suite file that the harness does not "
+                        + "run. There is no list to add it to. It was 907 over 37 "
+                        + "files when only top-level assertions were sliced, and an "
+                        + "assertion nobody runs is one nobody can be told about:%n%s",
+                        String.join("\n", lost))
+                .isEmpty();
     }
 
     @Test

@@ -8,9 +8,8 @@ Every number below was checked on 2026-08-24 by running it.
 
 ## What the measures say now
 
-All five are clean. Every one of Rebol's 67 vendored files now reads to the
-end, which is Goal 1 and it is done; 307 assertions in 25 files are still not
-reached by the harness's slicer, which is the tail of it.
+All five are clean. Every assertion Rebol's 67 vendored files write is now
+run -- Goal 1, and it is done.
 
 | Measure | Reads |
 | --- | --- |
@@ -18,120 +17,86 @@ reached by the harness's slicer, which is the tail of it.
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
-| `RebolSuiteTest` | 9,920 assertions run of the 10,225 written, over 67 of Rebol's 76 files. 2,247 failing and every one named in `known-gaps.txt` |
+| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 2,416 failing and every one named in `known-gaps.txt` |
 
-`./gradlew check` is 13,894 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 13,907 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception.
 
 ---
 
 # Goal 1. Every suite file must be read to the end -- DONE
 
-**All 67 files read to the end. Thirteen did not when this started.** The
-reader reaches 9,918 of the 10,225 assertions written, up from 7,181, and
-`SuiteCoverageTest.everyFileIsReadToTheEnd` fails on any file that stops
-short -- no list to add it to and no count that excuses it.
+**Every one of the 10,100 assertions Rebol's sixty-seven files write is now
+run. Thirteen files did not read to the end when this started and 3,044
+assertions were never reached.**
 
-`./gradlew check` is 13,894 tests, 0 failed, 0 skipped. The suite runs 9,920
-assertions where it ran 7,169; 2,247 fail and every one is named in
-`known-gaps.txt`. That list grew from 1,032 because the suite did, not
-because anything broke: those assertions were not passing before, they were
-not being asked.
+```
+reader reaches      7,181  ->  10,100  of 10,100 written
+suite runs          7,169  ->  10,102  assertions
+files stopping         13  ->       0
+files short            37  ->       0
+```
 
-## What was wrong with the reader
+Both gates are absolute now. `everyFileIsReadToTheEnd` fails on a file the
+reader cannot take whole; `everyAssertionWrittenIsRun` fails on an assertion
+the harness does not run. Neither has a list to add anything to.
 
-Ten of the thirteen stops were one line. `Transcoder.builtFrom` was a
-hardcoded switch whose `default` answered `malconstruct`, where Rebol's
-`Construct_Value` skips the datatype word and calls `Make_Dispatch[type]` --
-so a type has construction syntax exactly when it has a maker, and there is
-no list. Fourteen datatypes were refused that a real Rebol reads. What must
-*not* be tried is now taken from the Make column of `types.reb`, whose header
-says what it is for, rather than guessed: fifteen rows carry a dash, and
-handing those to MAKE read `#(char! 97)` and `#(integer! 5)` as values while
-Rebol answered malconstruct.
+## The reader: thirteen stops
 
-The other three had nothing to do with construction or with each other:
+Ten were one line. `Transcoder.builtFrom` was a hardcoded switch whose
+`default` answered `malconstruct`, where Rebol's `Construct_Value` skips the
+datatype word and calls `Make_Dispatch[type]` -- a type has construction
+syntax exactly when it has a maker, and there is no list to keep. What must
+*not* be tried comes off the Make column of `types.reb`, whose header says
+what that column is for.
 
-- a percent may carry an exponent, so `1e18%` is a percent
-- a file may open with a percent escape, so `%%40b` is the file `@b`, while
-  `%%/x` is not the modulo operator and Rebol refuses it
-- a path may hold a tag or a character. `firstOffendingCharacter` judged the
-  contents of a captured paren by the rules for a word, truncated the lexeme
-  there and re-read from the truncation, so `m/(<A>)` became the path `m/(`,
-  a tag, and a stray bracket. `b/#"a"` went the same way and was the
-  dangerous one: it read as two values instead of one **without changing how
-  many assertions the file appeared to have**, so no count could have found
-  it.
+The other three: a percent may carry an exponent; a file may open with a
+percent escape (`%%40b` is the file `@b`, while `%%/x` is not the modulo
+operator); and a path may hold a tag or a character.
+`firstOffendingCharacter` judged the inside of a captured paren by the rules
+for a word, truncated the lexeme there and re-read, so `m/(<A>)` became the
+path `m/(`, a tag and a stray bracket. `b/#"a"` went the same way and is the
+one worth remembering: it read as **two values instead of one without
+changing how many assertions the file appeared to have**.
 
-Three more fell out along the way: `make date!` and `make time!` from a block
-were not implemented, `float!` and `double!` were missing from the struct
-field types, and a struct field could not carry a dimension.
+Three more fell out: `make date!` and `make time!` from a block, `float!` and
+`double!` as struct field types, and a struct field carrying a dimension.
 
-## What was wrong with the harness
+## The harness: six defects, every one a measure that lied
 
-- **`SuiteFile` bisected for the longest readable prefix**, and that
-  predicate is not monotone: a prefix cut inside a multi-line block fails for
-  the missing bracket, and a longer prefix that closes it reads again. It cost
-  error-test.r3 thirteen assertions the reader already had, and it named the
-  wrong line in three of the twelve stops it reported. Replaced with a
-  forward walk.
-- **The denominator counted lines beginning with `--assert`**, missing every
-  one indented inside a block, so `compare-test.r3` was read as having 158
-  where it has 269. Where the reach exceeded that undercount the difference
-  went negative and the file became exempt: eleven files could not fail the
-  gate, and two were losing assertions.
-- **Nested assertions were never run.** An `--assert` inside a FOREACH cannot
-  be sliced out -- the loop variable only exists while the loop runs -- so
-  `--assert` is now bound to a recorder and the enclosing expression is run as
-  it stands, which is how Rebol's own harness does it.
-- **The reader was asked to read before any interpreter existed.** It takes
-  its function builder and its maker from the evaluator at boot, so a reader
-  asked first answers for a half-built reader and refuses constructs it can
-  read. That made the construction fix look like no fix at all.
+- **Bisecting for the longest readable prefix**, on a predicate that is not
+  monotone. It cost error-test.r3 thirteen assertions the reader already had
+  and named the wrong line in three of twelve stops.
+- **Counting lines that begin with `--assert`**, missing every one indented
+  inside a block, so eleven files could not fail the gate at all.
+- **Counting every `--assert` in the text**, including 125 in comments and one
+  parked inside `comment { ... }`. Twenty files then looked permanently short
+  of a target that was never there.
+- **Never running an assertion inside a FOREACH.** It cannot be sliced out --
+  the loop variable only exists while the loop runs -- so `--assert` is bound
+  to a recorder and the enclosing expression runs as it stands.
+- **Never counting what trailed an assertion.** A top-level `--assert` takes
+  everything up to the next dialect word, so the `if find ... [...]` blocks
+  after one were run and their assertions neither counted nor recorded. That
+  alone was 140 of checksum-test.r3's 264.
+- **Reading before any interpreter existed.** The reader takes its maker from
+  the evaluator at boot, so it refused constructs it can read and made the
+  construction fix look like no fix at all.
 
 ## Nulls
 
-Three, and the rule says none. `StructValue.from` returned null for a layout
+Three, where the rule is none. `StructValue.from` returned null for a layout
 it could not use; that null reached a block read out of struct-test.r3 and
 surfaced a file away as a NullPointerException from a copy in the harness.
-Asking is now separate from building (`declaresAStruct`), `BlockStorage`
-refuses a null at the door, and the reader refuses to answer one at all.
+Asking is now separate from building, `BlockStorage` refuses a null at the
+door, and the reader refuses to answer one.
 
-## What is left: the slicer, 307 assertions over 25 files
+## What this leaves
 
-The reader takes every file whole and the harness still does not run all of
-them. These are `--assert`s inside blocks that the nested-assertion recorder
-does not reach -- mostly inside a function body or a deeper construct.
-`ASSERTIONS_THE_SLICER_STILL_CANNOT_REACH` is a ceiling that only moves down.
-
-```
-file                        slices  writes  short
-checksum-test.r3               124     264    140
-csv-test.r3                     35      63     28
-series-test.r3                1574    1596     22
-vector-test.r3                 635     657     22
-port-test.r3                   158     177     19
-parse-test.r3                  374     390     16
-time-test.r3                    76      85      9
-date-test.r3                   184     192      8
-codecs-test.r3                 227     233      6
-compare-test.r3                269     273      4
-compress-test.r3               184     187      3
-copy-test.r3                   223     226      3
-file-test.r3                    51      54      3
-func-test.r3                   149     152      3
-map-test.r3                    203     206      3
-native-test.r3                  26      29      3
-pair-test.r3                   125     128      3
-conditional-test.r3             44      46      2
-image-test.r3                  255     257      2
-module-test.r3                  56      58      2
-unicode-test.r3                488     490      2
-bincode-test.r3                244     245      1
-event-test.r3                   11      12      1
-make-test.r3                  1029    1030      1
-object-test.r3                 190     191      1
-```
+`known-gaps.txt` holds 2,416 entries over 51 files, from 1,032 over 25. The
+list grew because the suite did. **None of those failures is new: they were
+not passing, they were not being asked.** They are the real porting backlog
+and the honest measure of the port.
 
 # Goal 2. The type-major refactor
 
