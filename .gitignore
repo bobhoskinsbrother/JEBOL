@@ -8,6 +8,14 @@
 /r3
 /r3.exe
 
+# The same interpreter, built from the source in rebol3-source/ rather than
+# downloaded, by `scripts/build-r3.sh`. It is the one to ask, because a release
+# is always older than the checkout beside it and the two do disagree. The
+# downloaded /r3 is still needed: Rebol's pre-make step is a Rebol script, so
+# the old binary is what builds the new one. Its generated spec lands in
+# build/r3/, which the Gradle line further down already covers.
+/r3-head
+
 # Rebol's own source, symlinked in so the IDE indexes it and the MCP can search
 # it. It is the authority every port is read from -- `src/core/*.c`, `boot/*.reb`,
 # `src/tests/units/*.r3` -- and keeping it outside the project meant every search
