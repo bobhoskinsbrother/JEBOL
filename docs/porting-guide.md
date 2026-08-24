@@ -86,7 +86,9 @@ clang does the rest.
 All of these stay where they are. A change that moves one is wrong.
 
 - **`RebolSuiteTest`** -- Rebol's own assertions, about twenty seconds alone.
-  The inner loop between changes. **4337 of them, none failing.** One sits in
+  The inner loop between changes. **4335 of them, none failing -- and that is
+  22 of Rebol's 76 unit files, 37% of its 11,851 assertions.** Green here has
+  never meant the language matches; see Goal 0 in `TODO.md`. One sits in
   `known-gaps.txt`, which is not a skip list: every line in it is run on every
   build, and the test fails if a listed assertion starts passing. The one line
   there is an assertion a real Rebol fails as well.
@@ -181,10 +183,12 @@ Each of these cost time once.
 - **`any-type!` is not in any row's typesets column.** `types.reb` builds it
   from the table's length, so a collector reading the column alone never sees
   it, and every argument declared that way reads as a difference.
-- **A suite file that will not read contributes nothing and says nothing.**
-  `series-test.r3` was absent from a green 3721 for as long as vector literals
-  would not lex. Before trusting the suite count, check that every file in it
-  actually loaded.
+- **A suite file that will not read contributes nothing, and a file that is
+  not there contributes nothing either.** `series-test.r3` sat inside a green
+  3721 for as long as vector literals would not lex, and 54 of Rebol's 76 unit
+  files were never vendored at all. `SuiteCoverageTest` now fails on the first
+  and `TODO.md` Goal 0 counts the second, but the habit is the point: before
+  trusting a count, ask what it is counting and what it silently is not.
 - **A borrowed file that loads is not a borrowed file that works.** REWORD,
   SPLIT, PAD and SUM are Rebol's own REBOL and all four were loaded and all
   four gave wrong answers, because each stands on a primitive JEBOL had

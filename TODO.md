@@ -8,9 +8,8 @@ Every number below was checked on 2026-08-24 by running it.
 
 ## What the measures say now
 
-Five of them, and all five are clean or nearly so. That is worth stating
-plainly because the list below is short for a reason, not because nobody
-looked.
+Five of them, and four are clean. The fifth is not the measure it was being
+read as, which is Goal 0 and comes before everything else on this list.
 
 | Measure | Reads |
 | --- | --- |
@@ -18,11 +17,47 @@ looked.
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
-| `RebolSuiteTest` | 4337 assertions, none failing, one recorded as a gap Rebol shares |
+| `RebolSuiteTest` | 4335 assertions, none failing, one recorded as a gap Rebol shares. **It is 22 of Rebol's 76 files -- see Goal 0** |
 
 `./gradlew check` is 10462 tests, none failing, none skipped.
 
 ---
+
+# Goal 0. Most of Rebol's own suite is not being run
+
+**JEBOL runs 4335 of Rebol's 11851 assertions: 37%.** Every green suite run
+so far has meant "the third we point at passes", and it was being reported --
+by me, repeatedly -- as though it meant the language matched.
+
+Two separate losses, and they need different work.
+
+**54 of Rebol's 76 unit files were never vendored: 7200 assertions.** Twenty
+were imported on 10 August and `docs/decisions.md` said so plainly at the
+time, including the real total of 11,899. Nobody re-read it. The largest
+absences:
+
+```
+1711  integer-test_.r3     633  vector-test.r3      205  map-test.r3
+1029  make-test.r3         488  unicode-test.r3     205  bitset-test.r3
+                           264  checksum-test.r3    184  date-test.r3
+                           256  image-test.r3       188  struct-test.r3
+```
+
+`vector-test.r3` is the sharp one: `vector!` was implemented from the C this
+week and Rebol's own 633 assertions for it have never been run against it.
+
+**316 assertions inside the vendored files are behind a reader that stops.**
+Now enumerated in `reader-stops.txt` and failing the build if the list is
+wrong in either direction. `copy-test.r3` reaches 0 of its 223.
+
+**A dry run over all 76 says the reader reaches 7281 of 11851 (61%).** So
+vendoring the rest is worth about 2950 more runnable assertions before a
+single reader fix, and it will need a much longer `known-gaps.txt` first.
+
+**One reader bug found on the way, and it is ordinary syntax.** The ISO date
+literal `2000-01-01` reaches `DateValue.of` as a day of 2000 and throws
+`IllegalArgumentException` out of the interpreter. Rebol reads it as
+`1-Jan-2000`. It is why `make-test.r3` reaches 0 of 1029.
 
 # Goal 1. The type-major refactor
 
@@ -222,11 +257,11 @@ later and whatever was built on the old wording breaks.
 
 ## Where I'd go next
 
-**Goal 1.** It is the original complaint, it is the largest thing left, and
-everything in Goals 2 to 5 is a bounded list that will still be there
-afterwards. The measures are all clean now, which is exactly the moment to
-move a load-bearing wall: a refactor is safe in proportion to what the tests
-can tell you, and they can currently tell you a great deal.
+**Goal 0, and it is not close.** A refactor is safe in proportion to what the
+tests can tell you, and they are currently telling you about a third of the
+language. Moving a load-bearing wall on that footing is how a regression gets
+committed and stays hidden. Vendor the 54 files, take the failures, and then
+Goal 1 is a different and much safer proposition.
 
 ## What came off the list
 
