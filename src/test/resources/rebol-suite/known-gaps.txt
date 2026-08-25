@@ -2,7 +2,6 @@ aes-test.r3 / (no group) / (no test) #1
 aes-test.r3 / (no group) / (no test) #2
 aes-test.r3 / (no group) / (no test) #3
 aes-test.r3 / (no group) / (no test) #4
-bbcode-test.r3 / (no group) / (no test) #1
 bbcode-test.r3 / (no group) / (no test) #2
 bincode-test.r3 / BinCode basic read/write functions / BinCode - ALIGN #177
 bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #100
@@ -1835,10 +1834,6 @@ mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #223
 mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #224
 mold-test.r3 / mold ref! / mold ref #166
 mold-test.r3 / mold ref! / mold ref #167
-mold-test.r3 / mold string! / mold/form string with a special chars #37
-mold-test.r3 / mold string! / mold/form string with a special chars #38
-mold-test.r3 / mold string! / mold/form string with a special chars #39
-mold-test.r3 / mold string! / mold/form string with a special chars #40
 mold-test.r3 / mold url! / mold url escaping #56
 mold-test.r3 / mold-all / mold/all block with index over tail #109
 mold-test.r3 / mold-all / mold/all block with index over tail #110
@@ -1983,7 +1978,6 @@ power-test.r3 / power integer / power-integer-5 #15
 power-test.r3 / power integer / power-integer-6 #16
 power-test.r3 / power integer / power-integer-7 #17
 power-test.r3 / power integer / power-integer-8 #18
-rc4-test.r3 / Stream Cipher RC4 (RFC6229 Test Vectors) / Basic RC4 usage #2
 rsa-test.r3 / RSA initialization from file / RSA private key from OpenSSL format (RSA PRIVATE KEY) #36
 rsa-test.r3 / RSA initialization from file / RSA private key from OpenSSL x509 format (PRIVATE KEY) #37
 rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #32
@@ -1992,180 +1986,6 @@ rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external f
 rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #35
 series-test.r3 / DELINE / ENLINE / ENLINE #1230
 series-test.r3 / SWAP / swap invalidating index (known issue) #973
-struct-test.r3 / (no group) / (no test) #1
-struct-test.r3 / (no group) / (no test) #10
-struct-test.r3 / (no group) / (no test) #100
-struct-test.r3 / (no group) / (no test) #101
-struct-test.r3 / (no group) / (no test) #102
-struct-test.r3 / (no group) / (no test) #103
-struct-test.r3 / (no group) / (no test) #104
-struct-test.r3 / (no group) / (no test) #105
-struct-test.r3 / (no group) / (no test) #106
-struct-test.r3 / (no group) / (no test) #107
-struct-test.r3 / (no group) / (no test) #108
-struct-test.r3 / (no group) / (no test) #109
-struct-test.r3 / (no group) / (no test) #11
-struct-test.r3 / (no group) / (no test) #110
-struct-test.r3 / (no group) / (no test) #111
-struct-test.r3 / (no group) / (no test) #112
-struct-test.r3 / (no group) / (no test) #113
-struct-test.r3 / (no group) / (no test) #114
-struct-test.r3 / (no group) / (no test) #115
-struct-test.r3 / (no group) / (no test) #116
-struct-test.r3 / (no group) / (no test) #117
-struct-test.r3 / (no group) / (no test) #118
-struct-test.r3 / (no group) / (no test) #119
-struct-test.r3 / (no group) / (no test) #12
-struct-test.r3 / (no group) / (no test) #120
-struct-test.r3 / (no group) / (no test) #121
-struct-test.r3 / (no group) / (no test) #122
-struct-test.r3 / (no group) / (no test) #123
-struct-test.r3 / (no group) / (no test) #124
-struct-test.r3 / (no group) / (no test) #125
-struct-test.r3 / (no group) / (no test) #126
-struct-test.r3 / (no group) / (no test) #127
-struct-test.r3 / (no group) / (no test) #128
-struct-test.r3 / (no group) / (no test) #129
-struct-test.r3 / (no group) / (no test) #13
-struct-test.r3 / (no group) / (no test) #130
-struct-test.r3 / (no group) / (no test) #131
-struct-test.r3 / (no group) / (no test) #132
-struct-test.r3 / (no group) / (no test) #133
-struct-test.r3 / (no group) / (no test) #134
-struct-test.r3 / (no group) / (no test) #135
-struct-test.r3 / (no group) / (no test) #136
-struct-test.r3 / (no group) / (no test) #137
-struct-test.r3 / (no group) / (no test) #138
-struct-test.r3 / (no group) / (no test) #139
-struct-test.r3 / (no group) / (no test) #14
-struct-test.r3 / (no group) / (no test) #140
-struct-test.r3 / (no group) / (no test) #141
-struct-test.r3 / (no group) / (no test) #142
-struct-test.r3 / (no group) / (no test) #143
-struct-test.r3 / (no group) / (no test) #144
-struct-test.r3 / (no group) / (no test) #145
-struct-test.r3 / (no group) / (no test) #146
-struct-test.r3 / (no group) / (no test) #147
-struct-test.r3 / (no group) / (no test) #148
-struct-test.r3 / (no group) / (no test) #149
-struct-test.r3 / (no group) / (no test) #15
-struct-test.r3 / (no group) / (no test) #150
-struct-test.r3 / (no group) / (no test) #151
-struct-test.r3 / (no group) / (no test) #152
-struct-test.r3 / (no group) / (no test) #153
-struct-test.r3 / (no group) / (no test) #154
-struct-test.r3 / (no group) / (no test) #155
-struct-test.r3 / (no group) / (no test) #156
-struct-test.r3 / (no group) / (no test) #157
-struct-test.r3 / (no group) / (no test) #158
-struct-test.r3 / (no group) / (no test) #159
-struct-test.r3 / (no group) / (no test) #16
-struct-test.r3 / (no group) / (no test) #160
-struct-test.r3 / (no group) / (no test) #161
-struct-test.r3 / (no group) / (no test) #162
-struct-test.r3 / (no group) / (no test) #163
-struct-test.r3 / (no group) / (no test) #164
-struct-test.r3 / (no group) / (no test) #165
-struct-test.r3 / (no group) / (no test) #166
-struct-test.r3 / (no group) / (no test) #167
-struct-test.r3 / (no group) / (no test) #168
-struct-test.r3 / (no group) / (no test) #169
-struct-test.r3 / (no group) / (no test) #17
-struct-test.r3 / (no group) / (no test) #170
-struct-test.r3 / (no group) / (no test) #171
-struct-test.r3 / (no group) / (no test) #172
-struct-test.r3 / (no group) / (no test) #173
-struct-test.r3 / (no group) / (no test) #174
-struct-test.r3 / (no group) / (no test) #18
-struct-test.r3 / (no group) / (no test) #19
-struct-test.r3 / (no group) / (no test) #2
-struct-test.r3 / (no group) / (no test) #20
-struct-test.r3 / (no group) / (no test) #21
-struct-test.r3 / (no group) / (no test) #22
-struct-test.r3 / (no group) / (no test) #23
-struct-test.r3 / (no group) / (no test) #24
-struct-test.r3 / (no group) / (no test) #25
-struct-test.r3 / (no group) / (no test) #26
-struct-test.r3 / (no group) / (no test) #27
-struct-test.r3 / (no group) / (no test) #28
-struct-test.r3 / (no group) / (no test) #29
-struct-test.r3 / (no group) / (no test) #3
-struct-test.r3 / (no group) / (no test) #30
-struct-test.r3 / (no group) / (no test) #31
-struct-test.r3 / (no group) / (no test) #32
-struct-test.r3 / (no group) / (no test) #33
-struct-test.r3 / (no group) / (no test) #34
-struct-test.r3 / (no group) / (no test) #35
-struct-test.r3 / (no group) / (no test) #36
-struct-test.r3 / (no group) / (no test) #37
-struct-test.r3 / (no group) / (no test) #38
-struct-test.r3 / (no group) / (no test) #39
-struct-test.r3 / (no group) / (no test) #4
-struct-test.r3 / (no group) / (no test) #40
-struct-test.r3 / (no group) / (no test) #41
-struct-test.r3 / (no group) / (no test) #42
-struct-test.r3 / (no group) / (no test) #43
-struct-test.r3 / (no group) / (no test) #44
-struct-test.r3 / (no group) / (no test) #45
-struct-test.r3 / (no group) / (no test) #46
-struct-test.r3 / (no group) / (no test) #47
-struct-test.r3 / (no group) / (no test) #48
-struct-test.r3 / (no group) / (no test) #49
-struct-test.r3 / (no group) / (no test) #5
-struct-test.r3 / (no group) / (no test) #50
-struct-test.r3 / (no group) / (no test) #51
-struct-test.r3 / (no group) / (no test) #52
-struct-test.r3 / (no group) / (no test) #53
-struct-test.r3 / (no group) / (no test) #54
-struct-test.r3 / (no group) / (no test) #55
-struct-test.r3 / (no group) / (no test) #56
-struct-test.r3 / (no group) / (no test) #57
-struct-test.r3 / (no group) / (no test) #58
-struct-test.r3 / (no group) / (no test) #59
-struct-test.r3 / (no group) / (no test) #6
-struct-test.r3 / (no group) / (no test) #60
-struct-test.r3 / (no group) / (no test) #61
-struct-test.r3 / (no group) / (no test) #62
-struct-test.r3 / (no group) / (no test) #63
-struct-test.r3 / (no group) / (no test) #64
-struct-test.r3 / (no group) / (no test) #65
-struct-test.r3 / (no group) / (no test) #66
-struct-test.r3 / (no group) / (no test) #67
-struct-test.r3 / (no group) / (no test) #68
-struct-test.r3 / (no group) / (no test) #69
-struct-test.r3 / (no group) / (no test) #7
-struct-test.r3 / (no group) / (no test) #70
-struct-test.r3 / (no group) / (no test) #71
-struct-test.r3 / (no group) / (no test) #72
-struct-test.r3 / (no group) / (no test) #73
-struct-test.r3 / (no group) / (no test) #74
-struct-test.r3 / (no group) / (no test) #75
-struct-test.r3 / (no group) / (no test) #76
-struct-test.r3 / (no group) / (no test) #77
-struct-test.r3 / (no group) / (no test) #78
-struct-test.r3 / (no group) / (no test) #79
-struct-test.r3 / (no group) / (no test) #8
-struct-test.r3 / (no group) / (no test) #80
-struct-test.r3 / (no group) / (no test) #81
-struct-test.r3 / (no group) / (no test) #82
-struct-test.r3 / (no group) / (no test) #83
-struct-test.r3 / (no group) / (no test) #84
-struct-test.r3 / (no group) / (no test) #85
-struct-test.r3 / (no group) / (no test) #86
-struct-test.r3 / (no group) / (no test) #87
-struct-test.r3 / (no group) / (no test) #88
-struct-test.r3 / (no group) / (no test) #89
-struct-test.r3 / (no group) / (no test) #9
-struct-test.r3 / (no group) / (no test) #90
-struct-test.r3 / (no group) / (no test) #91
-struct-test.r3 / (no group) / (no test) #92
-struct-test.r3 / (no group) / (no test) #93
-struct-test.r3 / (no group) / (no test) #94
-struct-test.r3 / (no group) / (no test) #95
-struct-test.r3 / (no group) / (no test) #96
-struct-test.r3 / (no group) / (no test) #97
-struct-test.r3 / (no group) / (no test) #98
-struct-test.r3 / (no group) / (no test) #99
 struct-test.r3 / Invalid struct construction / (no test) #186
 struct-test.r3 / Invalid struct construction / (no test) #187
 struct-test.r3 / Invalid struct construction / (no test) #188
@@ -2308,7 +2128,6 @@ unicode-test.r3 / to / to string! #21
 unicode-test.r3 / to / to string! char! #28
 unicode-test.r3 / to / to word! #7
 unicode-test.r3 / to / to word! #8
-url-test.r3 / decode-url / decode-url with all ascii chars #42
 url-test.r3 / url composition / slash deduplication #5
 url-test.r3 / url composition / slash deduplication #6
 url-test.r3 / url composition / slash deduplication #7

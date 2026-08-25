@@ -301,6 +301,17 @@ class RebolSuiteTest {
             return;
         }
         String letters = lettersRecordedBy(interpreter);
+        if (step.nested().getFirst().file().equals("struct-test.r3")) {
+            try {
+                java.nio.file.Files.writeString(java.nio.file.Path.of("probe.out"),
+                        "nested=" + step.nested().size() + " letters=" + letters.length()
+                                + " why=" + whyItStopped + "\n",
+                        java.nio.file.StandardOpenOption.CREATE,
+                        java.nio.file.StandardOpenOption.APPEND);
+            } catch (java.io.IOException ignored) {
+                throw new IllegalStateException(ignored);
+            }
+        }
         for (int at = 0; at < step.nested().size(); at++) {
             boolean everyRunHeld = at < letters.length()
                     ? letters.charAt(at) == 't'
@@ -318,16 +329,36 @@ class RebolSuiteTest {
         }
     }
 
+    /**
+     * The letters the nested assertions wrote, read back out of the
+     * interpreter.
+     *
+     * <p>The string arrives molded, so it comes wrapped in delimiters that
+     * have to come off. Which delimiters depends on how long it is: REBOL
+     * molds a string of more than fifty characters in braces rather than in
+     * quotes, and this used to accept only quotes and answer an empty string
+     * for anything else.
+     *
+     * <p>That made a block of more than fifty assertions report every one of
+     * them as never reached, however many had just passed. struct-test.r3 lost
+     * all 174 of its that way while 172 of them held, and it was invisible
+     * because an empty answer reads exactly like a block that ran nothing.
+     *
+     * <p>So an answer that is not a molded string is a fault here rather than
+     * a verdict about the port, and it says so instead of returning nothing.
+     */
     private static String lettersRecordedBy(Interpreter interpreter) {
-        try {
-            String shown = interpreter.display(
-                    interpreter.run("also copy jebol-nested clear jebol-nested"));
-            return shown.length() >= 2 && shown.charAt(0) == '"'
-                    ? shown.substring(1, shown.length() - 1)
-                    : "";
-        } catch (RuntimeException unavailable) {
-            return "";
+        String shown = interpreter.display(
+                interpreter.run("also copy jebol-nested clear jebol-nested"));
+        if (shown.length() >= 2
+                && ((shown.charAt(0) == '"' && shown.endsWith("\""))
+                        || (shown.charAt(0) == '{' && shown.endsWith("}")))) {
+            return shown.substring(1, shown.length() - 1);
         }
+        throw new IllegalStateException(
+                "the harness records what ran inside a block as one letter per "
+                        + "assertion in a string, and asking for that string back "
+                        + "gave " + shown + ", which is not one");
     }
 
     /** Whether JEBOL says this assertion holds. */
