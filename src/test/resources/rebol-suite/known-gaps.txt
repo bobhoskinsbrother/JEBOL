@@ -525,10 +525,6 @@ date-test.r3 / Various date issues / error date set messages #110
 date-test.r3 / Various date issues / error date set messages #111
 date-test.r3 / Various date issues / error date set messages #112
 date-test.r3 / Various date issues / error date set messages #113
-date-test.r3 / Various date issues / invalid time in date #82
-date-test.r3 / Various date issues / invalid time in date #83
-date-test.r3 / Various date issues / invalid time in date #84
-date-test.r3 / Various date issues / invalid time in date #85
 date-test.r3 / Various date issues / issue 1375 #70
 date-test.r3 / Various date issues / issue 1375 #71
 date-test.r3 / Various date issues / issue 1375 #72
@@ -539,17 +535,7 @@ date-test.r3 / Various date issues / issue 2369 #55
 date-test.r3 / Various date issues / issue 2414 #63
 date-test.r3 / Various date issues / issue 2414 #65
 date-test.r3 / Various date issues / issue-276 #77
-date-test.r3 / Various date issues / negative year #78
-date-test.r3 / Various date issues / negative year #79
-date-test.r3 / Various date issues / negative year #80
 date-test.r3 / Various date issues / numerical accessors #116
-date-test.r3 / Various date issues / timezones #87
-date-test.r3 / Various date issues / timezones #88
-date-test.r3 / Various date issues / timezones #89
-date-test.r3 / Various date issues / timezones #90
-date-test.r3 / Various date issues / timezones #91
-date-test.r3 / Various date issues / timezones #94
-date-test.r3 / Various date issues / timezones #96
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #11
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #15
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #16

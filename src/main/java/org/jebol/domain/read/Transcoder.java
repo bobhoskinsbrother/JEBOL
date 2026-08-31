@@ -1437,8 +1437,19 @@ public final class Transcoder {
      */
     private static final Pattern DATE_WITH_TIME = Pattern.compile(
             "(\\d{1,4}[-/](?:[A-Za-z]{3,}|\\d{1,2})[-/]\\d{1,4})"
-                    + "(?:[/Tt](\\d{1,2}:\\d{1,2}(?::\\d{1,2}(?:\\.\\d+)?)?))?"
-                    + "([-+]\\d{1,2}:\\d{1,2}|[-+]\\d{4}|[-+]\\d{1,2}|[Zz])?");
+                    + "(?:[/Tt](-?\\d{1,2}:\\d{1,2}(?::\\d{1,2}(?:\\.\\d+)?)?))?"
+                    + "([-+]\\d{1,2}:\\d{1,2}|[-+]\\d{1,4}|[Zz])?");
+
+    /**
+     * A date whose year is written with a minus in front of it.
+     *
+     * <p>Matched only to be refused. No date has a negative year, and without
+     * this the lexeme falls through to the path reader and comes back as
+     * {@code 1/11/0} -- a path of three numbers that looks like the date the
+     * writer meant and is not one.
+     */
+    private static final Pattern DATE_WITH_A_NEGATIVE_YEAR = Pattern.compile(
+            "\\d{1,4}[-/](?:[A-Za-z]{3,}|\\d{1,2})[-/]-\\d{1,4}.*");
     private static final Pattern PAIR = Pattern.compile(
             "([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)"
                     + "[xX]([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)");
@@ -1684,6 +1695,9 @@ public final class Transcoder {
         }
         if (SLASHED_DATE.matcher(lexeme).matches()) {
             return readDate(lexeme, "/");
+        }
+        if (DATE_WITH_A_NEGATIVE_YEAR.matcher(lexeme).matches()) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "date", lexeme);
         }
         var dated = DATE_WITH_TIME.matcher(lexeme);
         if (dated.matches() && (dated.group(2) != null || dated.group(3) != null)) {
@@ -2156,11 +2170,29 @@ public final class Transcoder {
         DateValue date = (DateValue) readDate(day, day.indexOf('-') >= 0 ? "-" : "/");
         TimeValue timeOfDay = time == null
                 ? TimeValue.ofNanoseconds(0)
-                : timeFromText(time);
+                : aClockOfTheDay(timeFromText(time));
         return new DateValue(date.year(), date.month(), date.day(),
                 Optional.of(timeOfDay),
                 Optional.of(time == null ? 0 : offsetMinutesFrom(offset)));
     }
+
+    /**
+     * A time that can be a time of day, which is not every time.
+     *
+     * <p>A time on its own may be any length -- {@code 30:00} is thirty hours
+     * and a perfectly good duration. A time inside a date is a reading of a
+     * clock, so it cannot be thirty o'clock and cannot be before midnight:
+     * {@code 3-Jan-2010/30:00} and {@code 3-Jan-2010/-10:00} are invalid
+     * lexemes rather than dates with strange clocks on them.
+     */
+    private TimeValue aClockOfTheDay(TimeValue written) {
+        if (written.nanoseconds() < 0 || written.nanoseconds() >= NANOSECONDS_IN_A_DAY) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "date");
+        }
+        return written;
+    }
+
+    private static final long NANOSECONDS_IN_A_DAY = 24L * 60L * 60L * 1_000_000_000L;
 
     /** {@code 12:30:15.25} as a time, the same three fields the lexer reads. */
     private TimeValue timeFromText(String written) {
@@ -2183,29 +2215,65 @@ public final class Transcoder {
      * {@code +1:00} is, and it is only the two-digit {@code +01} that means
      * nothing.
      */
-    private static int offsetMinutesFrom(String written) {
-        if (written == null) {
+    private int offsetMinutesFrom(String written) {
+        if (written == null || written.length() == 1) {
             return 0;
         }
         int colon = written.indexOf(':');
-        if (colon < 0) {
-            return written.length() == 5 ? isoOffsetMinutesFrom(written) : 0;
+        int size = colon < 0
+                ? quarterHoursIn(Integer.parseInt(written.substring(1)))
+                : exactQuarterIn(Integer.parseInt(written.substring(1, colon)),
+                        Integer.parseInt(written.substring(colon + 1)));
+        return written.charAt(0) == '-' ? -size : size;
+    }
+
+    /**
+     * An offset written with no colon, which is an hour and a minute run
+     * together and is rounded down to a quarter of an hour.
+     *
+     * <p>A zone is stored in quarters, so a minute that is not one is not
+     * refused but lost: {@code +20} is twenty minutes past the hour and comes
+     * back as {@code 0:15}, and {@code +5} comes back as nothing at all. That
+     * is the same reading whether the digits arrived as {@code +5},
+     * {@code +200} or ISO's {@code +0100}.
+     *
+     * <p>The ceiling is on the digits rather than on the offset they mean:
+     * anything above 1500 is refused, so {@code +1545} is an invalid lexeme
+     * although {@code +15:45} written with its colon is a real zone. Two
+     * spellings, two limits, and this is the one a real 3.22.1 has.
+     */
+    private int quarterHoursIn(int written) {
+        if (written > MOST_A_COLONLESS_ZONE_MAY_SAY) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "date");
         }
-        return signedMinutes(written.charAt(0),
-                Integer.parseInt(written.substring(1, colon)),
-                Integer.parseInt(written.substring(colon + 1)));
+        return roundedDownToAQuarter(written / 100 * 60 + written % 100);
     }
 
-    private static int isoOffsetMinutesFrom(String written) {
-        return signedMinutes(written.charAt(0),
-                Integer.parseInt(written.substring(1, 3)),
-                Integer.parseInt(written.substring(3)));
+    private static final int MOST_A_COLONLESS_ZONE_MAY_SAY = 1500;
+
+    private static int roundedDownToAQuarter(int minutes) {
+        return minutes / MINUTES_IN_A_QUARTER * MINUTES_IN_A_QUARTER;
     }
 
-    private static int signedMinutes(char sign, int hours, int minutes) {
+    private static final int MINUTES_IN_A_QUARTER = 15;
+
+    /**
+     * An offset written with its colon, which has to name a quarter exactly.
+     *
+     * <p>Where the colonless form rounds, this refuses: {@code +5:50} is an
+     * invalid lexeme rather than five and three quarters, because a caller who
+     * wrote the minutes out meant them. The furthest either way is 15:45,
+     * which is what seven signed bits of quarter-hours reach.
+     */
+    private int exactQuarterIn(int hours, int minutes) {
         int size = hours * 60 + minutes;
-        return sign == '-' ? -size : size;
+        if (minutes % MINUTES_IN_A_QUARTER != 0 || size > MOST_A_ZONE_MAY_BE) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "date");
+        }
+        return size;
     }
+
+    private static final int MOST_A_ZONE_MAY_BE = 15 * 60 + 45;
 
     /**
      * Refuses a lone underscore where a name belongs.

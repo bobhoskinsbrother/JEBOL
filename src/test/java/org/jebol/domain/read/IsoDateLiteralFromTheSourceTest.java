@@ -30,14 +30,14 @@ class IsoDateLiteralFromTheSourceTest {
     @DisplayName("a T stands where the slash does")
     void aTStandsForTheSlash() {
         assertThat(answerTo("""
-                8-Nov-2013/17:01 = load "2013-11-08T17:01\"""")).isEqualTo("#(true)");
+                8-Nov-2013/17:01 = load {2013-11-08T17:01}""")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a trailing Z is UTC, which is an offset of nothing")
     void zuluIsNoOffset() {
         assertThat(answerTo("""
-                8-Nov-2013/17:01 = load "2013-11-08T17:01Z\"""")).isEqualTo("#(true)");
+                8-Nov-2013/17:01 = load {2013-11-08T17:01Z}""")).isEqualTo("#(true)");
     }
 
     @Test
@@ -54,7 +54,7 @@ class IsoDateLiteralFromTheSourceTest {
     @DisplayName("and an offset with one reads the same")
     void anOffsetWithAColonReadsTheSame() {
         assertThat(answerTo("""
-                8-Nov-2013/17:01+1:00 = load "2013-11-08T17:01+01:00\""""))
+                8-Nov-2013/17:01+1:00 = load {2013-11-08T17:01+01:00}"""))
                 .isEqualTo("#(true)");
     }
 
@@ -84,7 +84,7 @@ class IsoDateLiteralFromTheSourceTest {
     @DisplayName("one written with slashes is a date and not a path of three numbers")
     void theSlashedFormIsNotAPath() {
         assertThat(answerTo("""
-                date? load "2013/11/08T17:01\"""")).isEqualTo("#(true)");
+                date? load {2013/11/08T17:01}""")).isEqualTo("#(true)");
     }
 
     @Test
@@ -130,6 +130,98 @@ class IsoDateLiteralFromTheSourceTest {
     @DisplayName("but a segment that reads as several values is still a path and a word")
     void aSegmentThatReadsAsSeveralIsKept() {
         assertThat(answerTo("""
-                mold load "a/3<\"""")).isEqualTo("\"[a/3 <]\"");
+                mold load {a/3<}""")).isEqualTo("\"[a/3 <]\"");
+    }
+
+    @Test
+    @DisplayName("a zone with no colon is an hour and a minute run together")
+    void aColonlessZoneIsHoursAndMinutes() {
+        assertThat(answerTo("""
+                collect [
+                    foreach written [
+                        "+5" "+20" "+29" "+30" "+200" "+220" "+1000" "+1500"
+                    ][
+                        dated: load rejoin ["27-Jan-2009/13:50" written]
+                        keep dated/zone
+                    ]
+                ]""")).isEqualTo(
+                "[0:00 0:15 0:15 0:30 2:00 2:15 10:00 15:00]");
+    }
+
+    @Test
+    @DisplayName("and it is rounded down to a quarter rather than refused")
+    void aColonlessZoneRoundsDown() {
+        assertThat(answerTo("""
+                d: load "27-Jan-2009/13:50+220"
+                d/zone""")).isEqualTo("2:15");
+    }
+
+    @Test
+    @DisplayName("but a zone written with its colon has to name a quarter exactly")
+    void aColonZoneMustBeExact() {
+        assertThat(answerTo("""
+                exact: load "1-Jan-2000/1:00+5:45"
+                reduce [error? try [load "1-Jan-2000/1:00+5:50"] exact/zone]""")).isEqualTo("[#(true) 5:45]");
+    }
+
+    @Test
+    @DisplayName("the two spellings have different ceilings, which is what REBOL does")
+    void theTwoSpellingsHaveDifferentCeilings() {
+        assertThat(answerTo("""
+                furthest: load "1-Jan-2000/1:00+15:45"
+                reduce [
+                    error? try [load "27-Jan-2009/13:50+1501"]
+                    error? try [load "27-Jan-2009/13:50+1545"]
+                    furthest/zone
+                ]""")).isEqualTo("[#(true) #(true) 15:45]");
+    }
+
+    @Test
+    @DisplayName("a negative zone reads as far the other way")
+    void aNegativeZoneReadsToo() {
+        assertThat(answerTo("""
+                behind: load "27-Jan-2009/13:50-1500"
+                behind/zone""")).isEqualTo("-15:00");
+    }
+
+    @Test
+    @DisplayName("a time inside a date is a clock, so it cannot be thirty o'clock")
+    void aTimeInADateIsAClock() {
+        assertThat(answerTo("""
+                collect [
+                    foreach written [
+                        "3-Jan-2010/30:00"
+                        "3-Jan-2010/-30:00"
+                        "3-Jan-2010/-10:00"
+                        "3-Jan-2010/-30:00+1:0"
+                    ][
+                        keep error? try [load written]
+                    ]
+                ]""")).isEqualTo("[#(true) #(true) #(true) #(true)]");
+    }
+
+    @Test
+    @DisplayName("though a time on its own may be any length at all")
+    void aTimeOnItsOwnMayBeAnyLength() {
+        assertThat(answerTo("""
+                time? load {30:00}""")).isEqualTo("#(true)");
+    }
+
+    @Test
+    @DisplayName("no date has a negative year, however it is written")
+    void noDateHasANegativeYear() {
+        assertThat(answerTo("""
+                collect [
+                    foreach written ["1/11/-0" "1/11/-1" "1/11/-00"][
+                        keep error? try [load written]
+                    ]
+                ]""")).isEqualTo("[#(true) #(true) #(true)]");
+    }
+
+    @Test
+    @DisplayName("but a year of nought is the year two thousand")
+    void aYearOfNoughtIsTwoThousand() {
+        assertThat(answerTo("""
+                1-Nov-2000 = load {1/11/0}""")).isEqualTo("#(true)");
     }
 }
