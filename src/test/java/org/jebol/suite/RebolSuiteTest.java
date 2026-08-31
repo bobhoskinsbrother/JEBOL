@@ -301,17 +301,6 @@ class RebolSuiteTest {
             return;
         }
         String letters = lettersRecordedBy(interpreter);
-        if (step.nested().getFirst().file().equals("struct-test.r3")) {
-            try {
-                java.nio.file.Files.writeString(java.nio.file.Path.of("probe.out"),
-                        "nested=" + step.nested().size() + " letters=" + letters.length()
-                                + " why=" + whyItStopped + "\n",
-                        java.nio.file.StandardOpenOption.CREATE,
-                        java.nio.file.StandardOpenOption.APPEND);
-            } catch (java.io.IOException ignored) {
-                throw new IllegalStateException(ignored);
-            }
-        }
         for (int at = 0; at < step.nested().size(); at++) {
             boolean everyRunHeld = at < letters.length()
                     ? letters.charAt(at) == 't'
