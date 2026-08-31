@@ -533,6 +533,22 @@ final class Encodings {
     /** The methods this host offers, as {@code system/catalog/compressions}. */
     static final List<String> COMPRESSIONS = List.of("zlib", "gzip", "deflate");
 
+    /**
+     * Methods REBOL has and this build has not.
+     *
+     * <p>Kept apart from the ones that work, because the two refusals are not
+     * the same thing. A name nobody has heard of is a bad argument; a real
+     * method this build was not compiled with is a feature that is not
+     * available, and REBOL has an error id that says exactly that.
+     *
+     * <p>Rebol's own suite is written for both: each of these four groups
+     * opens with {@code either error? e: try [compress "test" 'lzw]} and
+     * accepts {@code feature-na} as the whole answer, because a build without
+     * the algorithm is an ordinary build rather than a broken one.
+     */
+    static final List<String> COMPRESSIONS_ELSEWHERE =
+            List.of("lzw", "lzma", "brotli", "crush");
+
     static byte[] compressed(byte[] octets, String method, int level) {
         return switch (method) {
             case "gzip" -> gzipped(octets);

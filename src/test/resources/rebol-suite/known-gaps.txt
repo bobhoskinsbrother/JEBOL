@@ -319,7 +319,6 @@ compress-test.r3 / Brotli compression / decompression / Brotli compress/decompre
 compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #80
 compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #81
 compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #82
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #121
 compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #122
 compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #123
 compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #124
@@ -343,7 +342,6 @@ compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress w
 compress-test.r3 / GZIP compression / decompression / GZIP compression when input is limited #56
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #100
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #101
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #83
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #84
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #85
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #86
@@ -360,7 +358,6 @@ compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #97
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #98
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #99
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #102
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #103
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #104
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #105

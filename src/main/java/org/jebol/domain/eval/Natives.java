@@ -10787,8 +10787,20 @@ public final class Natives {
         }
     }
 
+    /**
+     * The compression method named, or the refusal that fits.
+     *
+     * <p>Two refusals, because they are two different answers. A name nobody
+     * has heard of is an invalid argument. A method REBOL really has and this
+     * build was not compiled with is {@code feature-na}, which is what the
+     * error is for and what tells a caller to look for another build rather
+     * than for a typo.
+     */
     private static String requireAKnownCompression(Value method) {
         String named = ((WordValue) method).canonical();
+        if (Encodings.COMPRESSIONS_ELSEWHERE.contains(named)) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA, named);
+        }
         if (!Encodings.COMPRESSIONS.contains(named)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, named);
         }
