@@ -412,6 +412,7 @@ final class Encodings {
         named.put("sha3-256", "SHA3-256");
         named.put("sha3-384", "SHA3-384");
         named.put("sha3-512", "SHA3-512");
+        named.put("ripemd160", RIPEMD_160);
         return Map.copyOf(named);
     }
 
@@ -425,7 +426,19 @@ final class Encodings {
         return List.copyOf(every);
     }
 
+    /**
+     * The name for the one digest written out here rather than asked for.
+     *
+     * <p>It sits in the same table as the rest so that every question about
+     * which methods exist has one answer, and the dispatcher reads it as the
+     * signal to use JEBOL's own rather than the JVM's.
+     */
+    static final String RIPEMD_160 = "RIPEMD160";
+
     static byte[] digestOf(byte[] octets, String method) {
+        if (RIPEMD_160.equals(DIGESTS.get(method))) {
+            return RipeMd160.of(octets);
+        }
         try {
             return java.security.MessageDigest.getInstance(DIGESTS.get(method))
                     .digest(octets);

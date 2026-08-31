@@ -39,20 +39,6 @@ chacha20-test.r3 / (no group) / (no test) #6
 chacha20-test.r3 / (no group) / (no test) #7
 chacha20-test.r3 / (no group) / (no test) #8
 chacha20-test.r3 / (no group) / (no test) #9
-checksum-test.r3 / Checksum port / checksum-port-sha512 #166
-checksum-test.r3 / Checksum port / checksum-port-sha512 #167
-checksum-test.r3 / Checksum port / checksum-port-sha512 #168
-checksum-test.r3 / Checksum port / checksum-port-sha512 #169
-checksum-test.r3 / Checksum port / checksum-port-sha512 #170
-checksum-test.r3 / Checksum port / checksum-port-sha512 #171
-checksum-test.r3 / Checksum port / checksum-port-sha512 #172
-checksum-test.r3 / Checksum port / checksum-port-sha512 #173
-checksum-test.r3 / Checksum port / checksum-port-sha512 #174
-checksum-test.r3 / Checksum port / checksum-port-sha512 #175
-checksum-test.r3 / Checksum port / checksum-port-sha512 #176
-checksum-test.r3 / Checksum port / checksum-port-sha512 #177
-checksum-test.r3 / Checksum port / checksum-port-sha512 #178
-checksum-test.r3 / Checksum port / checksum-port-sha512 #179
 checksum-test.r3 / Checksum port / checksum-port-sha512 #180
 checksum-test.r3 / Checksum port / checksum-port-sha512 #181
 checksum-test.r3 / Checksum port / checksum-port-sha512 #182

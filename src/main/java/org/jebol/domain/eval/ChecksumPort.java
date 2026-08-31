@@ -2,6 +2,7 @@ package org.jebol.domain.eval;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.HandleValue;
 import org.jebol.domain.value.JavaObjectValue;
@@ -48,20 +49,79 @@ final class ChecksumPort {
     static void start(PortValue port, String method) {
         port.setField("extra", HandleValue.context(HANDLE_TYPE,
                 System.identityHashCode(port.context()),
-                JavaObjectValue.of(digestNamed(method))));
+                JavaObjectValue.of(sumNamed(method))));
         port.setField("data", NoneValue.none());
     }
 
-    private static MessageDigest digestNamed(String method) {
+    /**
+     * A sum being built up, which can be read without being ended.
+     *
+     * <p>Two of them, because the JVM does not have every method REBOL lists.
+     * Where it does, the digest itself carries the state and cloning it is how
+     * a read leaves the sum going. Where it does not, the bytes are kept and
+     * hashed whole each time a read asks -- slower and larger, and the only
+     * way to answer at all without a second implementation of the algorithm in
+     * an incremental form.
+     */
+    private interface RunningSum {
+
+        void add(byte[] octets, int from, int length);
+
+        byte[] soFar();
+    }
+
+    private static RunningSum sumNamed(String method) {
         String named = Encodings.DIGESTS.get(method);
         if (named == null) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, method);
         }
+        if (Encodings.RIPEMD_160.equals(named)) {
+            return keepingTheBytes();
+        }
         try {
-            return MessageDigest.getInstance(named);
+            return aroundTheDigest(MessageDigest.getInstance(named));
         } catch (NoSuchAlgorithmException unavailable) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, method);
         }
+    }
+
+    private static RunningSum aroundTheDigest(MessageDigest digest) {
+        return new RunningSum() {
+
+            @Override
+            public void add(byte[] octets, int from, int length) {
+                digest.update(octets, from, length);
+            }
+
+            @Override
+            public byte[] soFar() {
+                try {
+                    return ((MessageDigest) digest.clone()).digest();
+                } catch (CloneNotSupportedException cannotBeSplit) {
+                    throw Raised.of(EvaluationFailure.INVALID_SPEC,
+                            digest.getAlgorithm());
+                }
+            }
+        };
+    }
+
+    private static RunningSum keepingTheBytes() {
+        return new RunningSum() {
+
+            private byte[] kept = new byte[0];
+
+            @Override
+            public void add(byte[] octets, int from, int length) {
+                byte[] grown = Arrays.copyOf(kept, kept.length + length);
+                System.arraycopy(octets, from, grown, kept.length, length);
+                kept = grown;
+            }
+
+            @Override
+            public byte[] soFar() {
+                return RipeMd160.of(kept);
+            }
+        };
     }
 
     /**
@@ -70,15 +130,15 @@ final class ChecksumPort {
      * <p>READ and UPDATE both answer none on a closed port rather than
      * raising: {@code if (!IS_OPEN(req)) return R_NONE}.
      */
-    private static MessageDigest inProgress(PortValue port) {
+    private static RunningSum inProgress(PortValue port) {
         if (!port.isOpen()
                 || !(port.fieldNamed("extra") instanceof HandleValue held)
                 || !HANDLE_TYPE.equals(held.typeName())
                 || !(held.payload() instanceof JavaObjectValue wrapped)
-                || !(wrapped.held().orElse(null) instanceof MessageDigest digest)) {
+                || !(wrapped.held().orElse(null) instanceof RunningSum sum)) {
             return null;
         }
-        return digest;
+        return sum;
     }
 
     /** Forgets the sum and the answer, which is what CLOSE does. */
@@ -99,8 +159,8 @@ final class ChecksumPort {
      */
     static void add(PortValue port, byte[] whole, int startsAt,
             Long seekTo, Long partWanted) {
-        MessageDigest digest = inProgress(port);
-        if (digest == null) {
+        RunningSum sum = inProgress(port);
+        if (sum == null) {
             return;
         }
         long from = startsAt;
@@ -117,7 +177,7 @@ final class ChecksumPort {
         if (length <= 0) {
             return;
         }
-        digest.update(whole, (int) from, (int) Math.min(length, whole.length - from));
+        sum.add(whole, (int) from, (int) Math.min(length, whole.length - from));
     }
 
     /**
@@ -141,20 +201,13 @@ final class ChecksumPort {
      * then found at {@code port/data}.
      */
     static Value digestSoFar(PortValue port) {
-        MessageDigest digest = inProgress(port);
-        if (digest == null) {
+        RunningSum sum = inProgress(port);
+        if (sum == null) {
             return NoneValue.none();
         }
-        MessageDigest finishing;
-        try {
-            finishing = (MessageDigest) digest.clone();
-        } catch (CloneNotSupportedException cannotBeSplit) {
-            throw Raised.of(EvaluationFailure.INVALID_SPEC, digest.getAlgorithm());
-        }
-        BinaryValue sum = BinaryValue.of(
-                bytesAsInts(finishing.digest()));
-        port.setField("data", sum);
-        return sum;
+        BinaryValue answered = BinaryValue.of(bytesAsInts(sum.soFar()));
+        port.setField("data", answered);
+        return answered;
     }
 
     private static int[] bytesAsInts(byte[] octets) {
