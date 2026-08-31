@@ -188,4 +188,64 @@ class BincodeWiderCodesFromTheSourceTest {
                 both: binary/read d [UI32 UI32LE]
                 (first both) = (second both)""")).isEqualTo("#(true)");
     }
+
+    @Test
+    @DisplayName("a bare number reads that many bytes")
+    void aBareNumberReadsThatManyBytes() {
+        assertThat(answerTo("""
+                b: binary #{01020304}
+                reduce [binary/read b 2 binary/read b 2]"""))
+                .isEqualTo("[#{0102} #{0304}]");
+    }
+
+    @Test
+    @DisplayName("and reading more than there is left is out of range")
+    void readingMoreThanThereIsRaises() {
+        assertThat(answerTo("""
+                b: binary #{01020304}
+                binary/read b 2
+                binary/read b 2
+                error? try [binary/read b 2]""")).isEqualTo("#(true)");
+    }
+
+    @Test
+    @DisplayName("a binary in a read dialect is a test, and only a match advances")
+    void aBinaryInAReadDialectIsATest() {
+        assertThat(answerTo("""
+                m: binary #{0badCafe}
+                binary/read m [ATz 0 #{0bad} #{F00D} #{Cafe}]"""))
+                .isEqualTo("[#(true) #(false) #(true)]");
+    }
+
+    @Test
+    @DisplayName("TUPLE3 and TUPLE4 read a colour straight out")
+    void tupleCodesReadAColour() {
+        assertThat(answerTo("""
+                binary/read #{01020304050607} [TUPLE3 TUPLE4]"""))
+                .isEqualTo("[1.2.3 4.5.6.7]");
+    }
+
+    @Test
+    @DisplayName("FIXED8 and FIXED16 put the point where the format does")
+    void fixedCodesPlaceThePoint() {
+        assertThat(answerTo("""
+                binary/read #{800700800700} [FIXED8 FIXED16]""")).isEqualTo("[7.5 7.5]");
+    }
+
+    @Test
+    @DisplayName("STRING takes the text up to its nought, and the nought with it")
+    void stringStopsAtItsNought() {
+        assertThat(answerTo("""
+                s: binary #{74657374002A}
+                binary/read s [STRING UI8]""")).isEqualTo("[\"test\" 42]");
+    }
+
+    @Test
+    @DisplayName("the BITSET codes read a run of flags as a set")
+    void bitsetCodesReadFlags() {
+        assertThat(answerTo("""
+                binary/read #{81800180000001} [BITSET8 BITSET16 BITSET32]"""))
+                .isEqualTo("[#(bitset! #{81}) #(bitset! #{8001})"
+                        + " #(bitset! #{80000001})]");
+    }
 }

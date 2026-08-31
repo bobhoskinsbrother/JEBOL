@@ -3,35 +3,18 @@ aes-test.r3 / (no group) / (no test) #2
 aes-test.r3 / (no group) / (no test) #3
 aes-test.r3 / (no group) / (no test) #4
 bbcode-test.r3 / (no group) / (no test) #2
-bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #169
-bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #170
-bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #171
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #163
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #164
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU64 #165
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU64 #166
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FIXED8 and FIXED16 (read) #172
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FIXED8 and FIXED16 (read) #173
 bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #210
 bincode-test.r3 / BinCode basic read/write functions / BinCode - OCTAL-BYTES (read) #213
 bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIPBITS #176
-bincode-test.r3 / BinCode basic read/write functions / BinCode - STRING #139
-bincode-test.r3 / BinCode basic read/write functions / BinCode - STRING #140
 bincode-test.r3 / BinCode basic read/write functions / BinCode - STRING-BYTES (read) #212
-bincode-test.r3 / BinCode basic read/write functions / BinCode - TUPLE3 and TUPLE4 (read) #174
-bincode-test.r3 / BinCode basic read/write functions / BinCode - TUPLE3 and TUPLE4 (read) #175
 bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #167
 bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #168
-bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #214
-bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #215
-bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #216
-bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #217
 bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #218
 bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #138
-bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #141
-bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #143
-bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #144
-bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #145
 bincode-test.r3 / BinCode other issues / Invalid read spec #243
 bincode-test.r3 / BinCode other issues / Invalid read spec #244
 bincode-test.r3 / BinCode other issues / Missing additional read value #236
@@ -397,11 +380,6 @@ compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress
 compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #137
 compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress #20
 compress-test.r3 / DEFLATE compression / decompression / compression when input is limited #37
-compress-test.r3 / GZIP compression / decompression / GZIP codec #57
-compress-test.r3 / GZIP compression / decompression / GZIP codec #58
-compress-test.r3 / GZIP compression / decompression / GZIP codec #59
-compress-test.r3 / GZIP compression / decompression / GZIP codec #60
-compress-test.r3 / GZIP compression / decompression / GZIP codec #61
 compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #41
 compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #42
 compress-test.r3 / GZIP compression / decompression / GZIP compression when input is limited #56

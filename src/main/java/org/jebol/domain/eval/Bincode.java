@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.LongSupplier;
 import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DecimalValue;
@@ -15,6 +16,7 @@ import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.TimeValue;
+import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -110,6 +112,7 @@ final class Bincode {
                 || DATA.contains(baseOf(code))
                 || BITS.contains(code)
                 || MOMENTS.contains(code)
+                || SHAPES.contains(code)
                 || !lengthCodeOf(code).isEmpty();
     }
 
@@ -128,6 +131,18 @@ final class Bincode {
      */
     private static final List<String> BITS =
             List.of("ub", "sb", "fb", "bit", "not-bit");
+
+    /**
+     * The read codes that answer a value of some other datatype.
+     *
+     * <p>A colour is three or four bytes, a fixed-point number is two or four
+     * with an implied point, a set of flags is a bitset, and a name is text up
+     * to its nought. Reading them as numbers and converting afterwards is what
+     * the dialect exists to save a caller from.
+     */
+    private static final List<String> SHAPES =
+            List.of("tuple3", "tuple4", "fixed8", "fixed16", "string",
+                    "bitset8", "bitset16", "bitset32");
 
     /**
      * The codes that carry a moment rather than a number.
@@ -307,6 +322,14 @@ final class Bincode {
                 read.willName(naming);
                 continue;
             }
+            if (dialect.get(step) instanceof IntegerValue howMany) {
+                read.add(bytesCounted(cursor, (int) howMany.magnitude()));
+                continue;
+            }
+            if (dialect.get(step) instanceof BinaryValue wanted) {
+                read.add(LogicValue.of(matched(cursor, wanted)));
+                continue;
+            }
             String code = codeAt(dialect, step);
             if (widthOf(code) > 0) {
                 read.add(IntegerValue.of(readWholeNumber(cursor, code)));
@@ -398,6 +421,16 @@ final class Bincode {
             case "msdos-date" -> read.add(msdosDateRead(cursor));
             case "msdos-datetime" -> read.add(msdosDateTimeRead(cursor));
             case "crop" -> cropWhatHasBeenRead(cursor);
+            case "tuple3" -> read.add(tupleRead(cursor, 3));
+            case "tuple4" -> read.add(tupleRead(cursor, 4));
+            case "fixed8" -> read.add(DecimalValue.of(
+                    readWholeNumber(cursor, "ui16le") / (double) A_FIXED8_UNIT));
+            case "fixed16" -> read.add(DecimalValue.of(
+                    readWholeNumber(cursor, "ui32le") / A_WHOLE_FIXED_POINT_UNIT));
+            case "string" -> read.add(StringValue.of(textUpToItsNought(cursor)));
+            case "bitset8" -> read.add(bitsetRead(cursor, 1));
+            case "bitset16" -> read.add(bitsetRead(cursor, 2));
+            case "bitset32" -> read.add(bitsetRead(cursor, 4));
             case "bytes" -> read.add(bytesToTheEnd(cursor));
             default -> throw refuse(code);
         }
@@ -747,6 +780,87 @@ final class Bincode {
 
     private static long refuseTheValue(Value given) {
         throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
+    }
+
+    /**
+     * A stated number of bytes, which a bare number in the dialect asks for.
+     *
+     * <p>{@code binary/read b 2} is the two bytes at the cursor. A count is
+     * how a caller reads a field whose width came from an earlier field
+     * rather than from the dialect.
+     */
+    private static Value bytesCounted(Cursor cursor, int wanted) {
+        refuseAReadPastTheEnd(cursor, wanted);
+        Value taken = binaryOf(cursor, cursor.at, wanted);
+        cursor.at += wanted;
+        return taken;
+    }
+
+    /**
+     * Whether the bytes at the cursor are the ones expected, moving past them
+     * only if they are.
+     *
+     * <p>A binary laid in a read dialect is a test rather than a field, which
+     * is what makes a header readable in one call: {@code [#\{0bad} #\{F00D}]}
+     * answers true then false and has moved by two, not four. The failed match
+     * leaves the cursor where it was for the next rule to try.
+     */
+    private static boolean matched(Cursor cursor, BinaryValue wanted) {
+        byte[] expected = wanted.octetsFromHere();
+        if (cursor.at + expected.length > cursor.octets.size()) {
+            return false;
+        }
+        for (int at = 0; at < expected.length; at++) {
+            if (octetAt(cursor, cursor.at + at) != (expected[at] & 0xFF)) {
+                return false;
+            }
+        }
+        cursor.at += expected.length;
+        return true;
+    }
+
+    private static Value tupleRead(Cursor cursor, int parts) {
+        refuseAReadPastTheEnd(cursor, parts);
+        int[] segments = new int[parts];
+        for (int at = 0; at < parts; at++) {
+            segments[at] = octetAt(cursor, cursor.at + at);
+        }
+        cursor.at += parts;
+        return TupleValue.of(segments);
+    }
+
+    /** The divisor FIXED8 uses, where FIXED16 uses the whole unit. */
+    private static final int A_FIXED8_UNIT = 256;
+
+    /**
+     * Text up to the nought that ends it, and past the nought.
+     *
+     * <p>The C-string convention, which a good many binary formats keep. The
+     * terminator is consumed as well as the text, so the next code starts
+     * after it rather than on it.
+     */
+    private static String textUpToItsNought(Cursor cursor) {
+        StringBuilder text = new StringBuilder();
+        while (cursor.at < cursor.octets.size()
+                && octetAt(cursor, cursor.at) != 0) {
+            text.appendCodePoint(octetAt(cursor, cursor.at));
+            cursor.at++;
+        }
+        if (cursor.at < cursor.octets.size()) {
+            cursor.at++;
+        }
+        return text.toString();
+    }
+
+    /** A run of bytes read as a set of bit numbers, one, two or four wide. */
+    private static Value bitsetRead(Cursor cursor, int width) {
+        refuseAReadPastTheEnd(cursor, width);
+        byte[] octets = new byte[width];
+        for (int at = 0; at < width; at++) {
+            octets[at] = (byte) octetAt(cursor, cursor.at + at);
+        }
+        cursor.at += width;
+        return BitsetValue.of(octets);
     }
 
     private static long readWholeNumber(Cursor cursor, String code) {
