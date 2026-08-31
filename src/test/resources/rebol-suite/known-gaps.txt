@@ -585,14 +585,6 @@ enbase-test.r3 / en/debase 2 / debase 2 1 #54
 enbase-test.r3 / en/debase 2 / debase 2 1 #55
 enbase-test.r3 / enbase 64 - safe URL variant / enbase/url #43
 enbase-test.r3 / enbase 64 - safe URL variant / enbase/url #44
-enbase-test.r3 / enbase integer / enbase-16 #21
-enbase-test.r3 / enbase integer / enbase-16 #22
-enbase-test.r3 / enbase integer / enbase-16 #23
-enbase-test.r3 / enbase integer / enbase-2 #18
-enbase-test.r3 / enbase integer / enbase-2 #19
-enbase-test.r3 / enbase integer / enbase-2 #20
-enbase-test.r3 / enbase integer / enbase-64 #24
-enbase-test.r3 / enbase integer / enbase-64 #25
 enbase-test.r3 / enbase/flat / enbase/flat 16 #28
 enbase-test.r3 / enbase/flat / enbase/flat 2 #26
 enbase-test.r3 / enbase/flat / enbase/flat 64 #30

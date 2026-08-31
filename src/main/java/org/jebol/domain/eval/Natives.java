@@ -10403,7 +10403,10 @@ public final class Natives {
                     int base = (int) ((IntegerValue) arguments.get(1)).magnitude();
                     requireAKnownBase(base);
                     byte[] octets = boundedByAnyPart(
-                            octetsOf(arguments.getFirst()), arguments, refinements);
+                            arguments.getFirst() instanceof IntegerValue number
+                                    ? asFewBytesAsHoldIt(number.magnitude())
+                                    : octetsOf(arguments.getFirst()),
+                            arguments, refinements);
                     String encoded = Encodings.enbase(
                             octets, base, refinements.contains("url"));
                     return StringValue.of(refinements.contains("flat")
@@ -11596,6 +11599,34 @@ public final class Natives {
      */
     private static long secondsSinceTheEpoch() {
         return Instant.now().getEpochSecond();
+    }
+
+    /**
+     * A number as the fewest bytes that hold it, big-endian.
+     *
+     * <p>What ENBASE makes of an integer: {@code enbase 0 16} is {@code "00"}
+     * and {@code enbase 256 16} is {@code "0100"}, so the leading nought bytes
+     * come off and one byte is always left. A caller encoding a small number
+     * wants the small answer, and encoding all eight bytes of a long would
+     * bury it in noughts.
+     *
+     * <p>A negative keeps all eight, because two's complement has no leading
+     * noughts to drop -- every byte of {@code -1} is meaningful, and cutting
+     * any of them would change the number.
+     */
+    private static byte[] asFewBytesAsHoldIt(long number) {
+        byte[] whole = new byte[Long.BYTES];
+        for (int at = 0; at < Long.BYTES; at++) {
+            whole[at] = (byte) (number >> (Long.BYTES - 1 - at) * 8);
+        }
+        if (number < 0) {
+            return whole;
+        }
+        int from = 0;
+        while (from < Long.BYTES - 1 && whole[from] == 0) {
+            from++;
+        }
+        return Arrays.copyOfRange(whole, from, Long.BYTES);
     }
 
     /** The buffer's bytes as the dialect works on them: unsigned, and growable. */
