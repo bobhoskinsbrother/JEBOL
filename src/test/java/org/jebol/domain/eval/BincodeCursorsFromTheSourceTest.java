@@ -212,4 +212,96 @@ class BincodeCursorsFromTheSourceTest {
         assertThat(errorIdFrom("""
                 out: protect #{0000} binary/write out #{babe}""")).isEqualTo("protected");
     }
+
+    @Test
+    @DisplayName("a set-word takes the next value the read produces")
+    void aSetWordTakesTheNextValue() {
+        assertThat(answerTo("""
+                b: binary #{01020304}
+                i: 0
+                reduce [binary/read b [AT 1 i: UI8] i]""")).isEqualTo("[[1] 1]");
+    }
+
+    @Test
+    @DisplayName("and skips a code that produces nothing to take")
+    void aSetWordSkipsAPositionCode() {
+        assertThat(answerTo("""
+                b: binary #{01020304}
+                x: 0
+                reduce [binary/read b [x: AT 1 UI8] x]""")).isEqualTo("[[1] 1]");
+    }
+
+    @Test
+    @DisplayName("a set-word with nothing produced after it leaves its word alone")
+    void aTrailingSetWordChangesNothing() {
+        assertThat(answerTo("""
+                b: binary #{01020304}
+                z: 'untouched
+                reduce [binary/read b [AT 1 UI8 z:] z]"""))
+                .isEqualTo("[[1] untouched]");
+    }
+
+    @Test
+    @DisplayName("it works for a run of bytes as well as a number")
+    void aSetWordTakesBytesToo() {
+        assertThat(answerTo("""
+                b: binary #{01020304}
+                w: 0
+                reduce [binary/read b [AT 1 w: BYTES] w]"""))
+                .isEqualTo("[[#{01020304}] #{01020304}]");
+    }
+
+    @Test
+    @DisplayName("reading past the end is out of range, not a short number")
+    void readingPastTheEndRaises() {
+        assertThat(errorIdFrom("""
+                binary/read #{01020304} [AT 5 UI8]""")).isEqualTo("out-of-range");
+        assertThat(errorIdFrom("""
+                binary/read #{01} [UI16]""")).isEqualTo("out-of-range");
+    }
+
+    @Test
+    @DisplayName("LENGTH? answers the bytes still to come")
+    void lengthAnswersWhatIsLeft() {
+        assertThat(answerTo("""
+                reduce [
+                    binary/read #{01020304} [LENGTH?]
+                    binary/read #{01020304} [UI16 LENGTH?]
+                ]""")).isEqualTo("[[4] [258 2]]");
+    }
+
+    @Test
+    @DisplayName("PAD aligns up to a multiple, and stays put when already there")
+    void padAlignsUpToAMultiple() {
+        assertThat(answerTo("""
+                collect [
+                    foreach spec [
+                        [UI8 1 PAD 4]
+                        [UI8 1 UI8 2 UI8 3 UI8 4 PAD 4]
+                        [UI8 1 UI8 2 UI8 3 UI8 4 UI8 5 PAD 4]
+                        [PAD 4]
+                    ][
+                        b: binary 32
+                        binary/write b spec
+                        keep head b/buffer
+                    ]
+                ]""")).isEqualTo(
+                "[#{01000000} #{01020304} #{0102030405000000} #{}]");
+    }
+
+    @Test
+    @DisplayName("PAD reads as well as writes, moving without laying anything down")
+    void padReadsToo() {
+        assertThat(answerTo("""
+                binary/read #{FF000000FF} [UI8 PAD 4 UI8]""")).isEqualTo("[255 255]");
+    }
+
+    @Test
+    @DisplayName("a binary handed straight to WRITE is written into")
+    void aBareBinaryIsWrittenInto() {
+        assertThat(answerTo("""
+                c: #{}
+                binary/write c [UI8 255 PAD 4 UI8 255]
+                c""")).isEqualTo("#{FF000000FF}");
+    }
 }

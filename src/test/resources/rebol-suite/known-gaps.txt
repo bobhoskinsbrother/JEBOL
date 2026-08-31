@@ -4,16 +4,6 @@ aes-test.r3 / (no group) / (no test) #3
 aes-test.r3 / (no group) / (no test) #4
 bbcode-test.r3 / (no group) / (no test) #2
 bincode-test.r3 / BinCode basic read/write functions / BinCode - ALIGN #177
-bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #100
-bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #101
-bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #97
-bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #98
-bincode-test.r3 / BinCode basic read/write functions / BinCode - AT #99
-bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #105
-bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #106
-bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #107
-bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #108
-bincode-test.r3 / BinCode basic read/write functions / BinCode - ATz #109
 bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #169
 bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #170
 bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #171
@@ -46,9 +36,6 @@ bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT,
 bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (read) #180
 bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (write/read NAN) #199
 bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (write/read NAN) #201
-bincode-test.r3 / BinCode basic read/write functions / BinCode - INDEX & INDEXz #114
-bincode-test.r3 / BinCode basic read/write functions / BinCode - LENGTH? #124
-bincode-test.r3 / BinCode basic read/write functions / BinCode - LENGTH? #125
 bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #202
 bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #203
 bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #204
@@ -59,14 +46,6 @@ bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME 
 bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #209
 bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #210
 bincode-test.r3 / BinCode basic read/write functions / BinCode - OCTAL-BYTES (read) #213
-bincode-test.r3 / BinCode basic read/write functions / BinCode - PAD #122
-bincode-test.r3 / BinCode basic read/write functions / BinCode - PAD #123
-bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #115
-bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #116
-bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #117
-bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #118
-bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #119
-bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIP #120
 bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIPBITS #176
 bincode-test.r3 / BinCode basic read/write functions / BinCode - STRING #139
 bincode-test.r3 / BinCode basic read/write functions / BinCode - STRING #140
@@ -103,24 +82,17 @@ bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #
 bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #216
 bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #217
 bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #218
-bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #135
 bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #138
 bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #141
 bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #143
 bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #144
 bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #145
-bincode-test.r3 / BinCode other issues / Code block not at its head #238
 bincode-test.r3 / BinCode other issues / Invalid read spec #243
 bincode-test.r3 / BinCode other issues / Invalid read spec #244
 bincode-test.r3 / BinCode other issues / Missing additional read value #229
 bincode-test.r3 / BinCode other issues / Missing additional read value #230
 bincode-test.r3 / BinCode other issues / Missing additional read value #231
-bincode-test.r3 / BinCode other issues / Missing additional read value #234
 bincode-test.r3 / BinCode other issues / Missing additional read value #236
-bincode-test.r3 / BinCode other issues / Write at tail #239
-bincode-test.r3 / BinCode other issues / Write at tail #240
-bincode-test.r3 / BinCode other issues / Write at tail #241
-bincode-test.r3 / BinCode other issues / Write at tail #242
 bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #219
 bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #220
 bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #222
@@ -588,11 +560,7 @@ crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input whic
 crypt-port-test.r3 / NIST test vectors (CBC) / AES-128-CBC with chunked input which needs padding #14
 crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #12
 crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #13
-crypt-test.r3 / Load-PKIX / SSH-public-key-1 #19
-crypt-test.r3 / PPK codec / Init RSA key from PPK file #34
 crypt-test.r3 / PPK codec / Init RSA key from encrypted PPK file #35
-crypt-test.r3 / PPK codec / Init public RSA key from SSH2 PPK file #36
-crypt-test.r3 / SSH-key codec / Init RSA key from file #32
 crypt-test.r3 / SSH-key codec / Init public DH params from file #33
 csv-test.r3 / (no group) / (no test) #1
 csv-test.r3 / (no group) / (no test) #10
@@ -1258,10 +1226,6 @@ power-test.r3 / power integer / power-integer-7 #17
 power-test.r3 / power integer / power-integer-8 #18
 rsa-test.r3 / RSA initialization from file / RSA private key from OpenSSL format (RSA PRIVATE KEY) #36
 rsa-test.r3 / RSA initialization from file / RSA private key from OpenSSL x509 format (PRIVATE KEY) #37
-rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #32
-rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #33
-rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #34
-rsa-test.r3 / RSA initialization using codecs / RSA sign/verify using external file #35
 series-test.r3 / DELINE / ENLINE / ENLINE #1230
 series-test.r3 / SWAP / swap invalidating index (known issue) #973
 struct-test.r3 / Invalid struct construction / (no test) #186

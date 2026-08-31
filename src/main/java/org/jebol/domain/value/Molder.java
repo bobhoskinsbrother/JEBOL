@@ -1,7 +1,15 @@
 package org.jebol.domain.value;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Renders values back to source text.
@@ -48,7 +56,7 @@ public final class Molder {
     private static final ThreadLocal<Boolean> WRITING_ON_ONE_LINE =
             ThreadLocal.withInitial(() -> false);
 
-    private static String writingOnOneLine(java.util.function.Supplier<String> written) {
+    private static String writingOnOneLine(Supplier<String> written) {
         boolean was = WRITING_ON_ONE_LINE.get();
         WRITING_ON_ONE_LINE.set(true);
         try {
@@ -78,7 +86,7 @@ public final class Molder {
 
     /** Molds no more than a stated number of characters, which is MOLD/PART. */
     public static String moldWithin(Value value, int characters,
-            java.util.function.Function<Value, String> how) {
+            Function<Value, String> how) {
         int was = AS_MUCH_AS_WAS_ASKED_FOR.get();
         AS_MUCH_AS_WAS_ASKED_FOR.set(characters);
         try {
@@ -170,7 +178,7 @@ public final class Molder {
     private static final ThreadLocal<Boolean> WRITING_EVERYTHING_OUT =
             ThreadLocal.withInitial(() -> false);
 
-    private static String writingEverythingOut(java.util.function.Supplier<String> written) {
+    private static String writingEverythingOut(Supplier<String> written) {
         boolean was = WRITING_EVERYTHING_OUT.get();
         WRITING_EVERYTHING_OUT.set(true);
         try {
@@ -227,9 +235,9 @@ public final class Molder {
      * <p>Held per thread, because molding is re-entrant and two threads
      * molding at once must not see each other's depth.
      */
-    private static final ThreadLocal<java.util.Set<Object>> ALREADY_INSIDE =
-            ThreadLocal.withInitial(() -> java.util.Collections.newSetFromMap(
-                    new java.util.IdentityHashMap<>()));
+    private static final ThreadLocal<Set<Object>> ALREADY_INSIDE =
+            ThreadLocal.withInitial(() -> Collections.newSetFromMap(
+                    new IdentityHashMap<>()));
 
     private static String render(Value value, boolean forReading) {
         Object nesting = nestingIdentityOf(value);
@@ -818,7 +826,7 @@ public final class Molder {
      */
     private static String writtenAsAVector(VectorValue vector, int from,
             boolean forReading, int positionToName) {
-        List<String> numbers = new java.util.ArrayList<>();
+        List<String> numbers = new ArrayList<>();
         for (int at = from; at <= vector.storageLength(); at++) {
             numbers.add(render(vector.elementAt(at), forReading));
         }
@@ -1051,8 +1059,8 @@ public final class Molder {
      * StackOverflowError rather than in an error a script could catch,
      * which is the one failure the evaluator promises never to produce.
      */
-    private static final ThreadLocal<java.util.Set<Context>> BEING_RENDERED =
-            ThreadLocal.withInitial(java.util.LinkedHashSet::new);
+    private static final ThreadLocal<Set<Context>> BEING_RENDERED =
+            ThreadLocal.withInitial(LinkedHashSet::new);
 
     /**
      * A field's value as it must be written inside an object body.
@@ -1077,7 +1085,7 @@ public final class Molder {
      * field worth writing down.
      */
     private static String renderObject(ObjectValue object, boolean forReading) {
-        java.util.Set<Context> enclosing = BEING_RENDERED.get();
+        Set<Context> enclosing = BEING_RENDERED.get();
         if (!enclosing.add(object.context())) {
             return "make object! [...]";
         }
@@ -1129,7 +1137,7 @@ public final class Molder {
                 .collect(Collectors.joining("\n"));
     }
 
-    private static java.util.stream.Stream<ContextSlot> fieldsOutsideSelf(
+    private static Stream<ContextSlot> fieldsOutsideSelf(
             ObjectValue object) {
         return object.context().slots().stream()
                 .filter(slot -> !slot.canonical().equals(SELF));

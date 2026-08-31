@@ -1,7 +1,10 @@
 package org.jebol.domain.eval;
 
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.IntegerValue;
@@ -78,7 +81,7 @@ final class Bincode {
     }
 
     private static final List<String> POSITIONS =
-            List.of("at", "atz", "index", "indexz", "skip", "length");
+            List.of("at", "atz", "index", "indexz", "skip", "length", "length?");
 
     private static final List<String> DATA =
             List.of("bytes", "pad", "align", "random-bytes");
@@ -164,7 +167,8 @@ final class Bincode {
             case "at" -> moveTo(cursor, wholeNumberOf(itemAt(dialect, ++step, code)) - 1);
             case "atz" -> moveTo(cursor, wholeNumberOf(itemAt(dialect, ++step, code)));
             case "bytes" -> writeBytes(cursor, itemAt(dialect, ++step, code));
-            case "pad" -> padTo(cursor, wholeNumberOf(itemAt(dialect, ++step, code)));
+            case "pad" -> padTo(cursor,
+                    alignedUp(cursor.at, wholeNumberOf(itemAt(dialect, ++step, code))));
             case "random-bytes" -> writeRandom(cursor,
                     wholeNumberOf(itemAt(dialect, ++step, code)));
             default -> throw refuse(code);
@@ -178,9 +182,15 @@ final class Bincode {
      * <p>The position codes produce nothing, which is why the answer is
      * gathered rather than being one value per code.
      */
-    static List<Value> read(Cursor cursor, List<Value> dialect) {
-        List<Value> read = new ArrayList<>();
+    static List<Value> read(Cursor cursor, List<Value> dialect,
+            BiConsumer<WordValue, Value> named) {
+        Produced read = new Produced(named);
         for (int step = 0; step < dialect.size(); step++) {
+            if (dialect.get(step) instanceof WordValue naming
+                    && naming.datatype() == Datatype.SET_WORD) {
+                read.willName(naming);
+                continue;
+            }
             String code = codeAt(dialect, step);
             if (widthOf(code) > 0) {
                 read.add(IntegerValue.of(readWholeNumber(cursor, code)));
@@ -188,11 +198,54 @@ final class Bincode {
             }
             step = readOtherThanANumber(cursor, dialect, step, code, read);
         }
-        return read;
+        return read.values();
+    }
+
+    /**
+     * What a read has produced, and the word waiting for the next one.
+     *
+     * <p>A set-word in the read dialect takes the next value the read
+     * produces, which is not the same as the next code: {@code [x: AT 1 UI8]}
+     * puts the byte in {@code x}, because AT moves the cursor and produces
+     * nothing to take. A set-word with nothing produced after it leaves its
+     * word exactly as it was.
+     *
+     * <p>The value goes into the answer as well as into the word. The
+     * set-word is a tap on the way past rather than a diversion, which is what
+     * lets a caller read a length into a word and keep reading in the same
+     * call -- the shape every length-prefixed protocol wants.
+     */
+    private static final class Produced {
+
+        private final List<Value> values = new ArrayList<>();
+
+        private final BiConsumer<WordValue, Value> named;
+
+        private WordValue waiting;
+
+        private Produced(BiConsumer<WordValue, Value> named) {
+            this.named = named;
+        }
+
+        private void willName(WordValue word) {
+            waiting = word;
+        }
+
+        private void add(Value value) {
+            values.add(value);
+            if (waiting != null) {
+                named.accept(waiting, value);
+                waiting = null;
+            }
+        }
+
+        private List<Value> values() {
+            return values;
+        }
     }
 
     private static int readOtherThanANumber(Cursor cursor, List<Value> dialect,
-            int step, String code, List<Value> read) {
+            int step, String code, Produced read) {
         if (!lengthCodeOf(code).isEmpty()) {
             read.add(bytesAfterTheirLength(cursor, lengthCodeOf(code)));
             return step;
@@ -207,8 +260,10 @@ final class Bincode {
                     cursor.at + wholeNumberOf(valueReadAfter(dialect, ++step, named)));
             case "index" -> read.add(IntegerValue.of(cursor.at + 1));
             case "indexz" -> read.add(IntegerValue.of(cursor.at));
-            case "length" -> read.add(
+            case "length", "length?" -> read.add(
                     IntegerValue.of(cursor.octets.size() - (long) cursor.at));
+            case "pad" -> moveTo(cursor, alignedUp(cursor.at,
+                    wholeNumberOf(valueReadAfter(dialect, ++step, named))));
             case "bytes" -> read.add(bytesToTheEnd(cursor));
             default -> throw refuse(code);
         }
@@ -243,6 +298,7 @@ final class Bincode {
      */
     private static Value bytesAfterTheirLength(Cursor cursor, String lengthCode) {
         int wanted = (int) readWholeNumber(cursor, lengthCode);
+        refuseAReadPastTheEnd(cursor, wanted);
         Value taken = binaryOf(cursor, cursor.at, wanted);
         cursor.at += wanted;
         return taken;
@@ -345,6 +401,7 @@ final class Bincode {
 
     private static long readWholeNumber(Cursor cursor, String code) {
         int width = widthOf(code);
+        refuseAReadPastTheEnd(cursor, width);
         long value = 0;
         for (int byteAt = 0; byteAt < width; byteAt++) {
             int octet = octetAt(cursor, cursor.at + byteAt);
@@ -398,13 +455,13 @@ final class Bincode {
             return bytes.octetsFromHere();
         }
         if (given instanceof StringValue text && carriesItsOwnBytes(given)) {
-            return text.text().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            return text.text().getBytes(StandardCharsets.UTF_8);
         }
         throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
     }
 
     private static void writeRandom(Cursor cursor, long howMany) {
-        java.security.SecureRandom source = new java.security.SecureRandom();
+        SecureRandom source = new SecureRandom();
         byte[] drawn = new byte[(int) howMany];
         source.nextBytes(drawn);
         for (byte octet : drawn) {
@@ -451,6 +508,33 @@ final class Bincode {
 
     private static int octetAt(Cursor cursor, int at) {
         return at < cursor.octets.size() ? cursor.octets.get(at) : 0;
+    }
+
+    /**
+     * Refuses a read that would run off the end of the bytes.
+     *
+     * <p>{@code ASSERT_READ_SIZE} raises {@code out-of-range} rather than
+     * padding with noughts, because a field that is not all there is not the
+     * number it would look like: a truncated message must be a failure at the
+     * point of reading, not a small number the caller then acts on.
+     *
+     * <p>Reading up to the tail exactly is fine, and leaves the cursor there.
+     * Past it was a raw Java exception escaping the interpreter, which is the
+     * one thing a script can neither catch nor see coming.
+     *
+     * <p>Checked on the length-prefixed runs as well as the numbers, which is
+     * a place a real 3.22.1 does not check and where it therefore reads
+     * whatever the allocator left after the tail:
+     * {@code binary/read #\{02CA} 'UI8BYTES} answers {@code #\{CA00}} there
+     * and raises here. The C's own {@code ep} is the tail rather than the
+     * capacity, so the check is the intent and the missing one is the slip --
+     * and a byte that was never in the message is worse than an error.
+     */
+    private static void refuseAReadPastTheEnd(Cursor cursor, int wanted) {
+        if (cursor.at + wanted > cursor.octets.size()) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    IntegerValue.of(cursor.at + wanted));
+        }
     }
 
     /**

@@ -1,5 +1,14 @@
 package org.jebol.domain.eval;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.Arrays;
+import java.util.function.DoublePredicate;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.parse.Parser;
@@ -8,14 +17,6 @@ import org.jebol.domain.read.SyntaxFailure;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
-
-import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.function.DoublePredicate;
-import java.util.function.Supplier;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * The built-in function set, and the context that holds it.
@@ -385,7 +386,7 @@ public final class Natives {
      * which is how a script asks what exists rather than being told.
      */
     private static BlockValue typeNames(String... spellings) {
-        return BlockValue.block(java.util.Arrays.stream(spellings)
+        return BlockValue.block(Arrays.stream(spellings)
                 .map(spelling -> (Value) WordValue.of(spelling + "!"))
                 .toList());
     }
@@ -411,7 +412,7 @@ public final class Natives {
 
     /** A block of plain words, where typeNames would add a datatype suffix. */
     private static BlockValue typeNamesWithoutSuffix(String... spellings) {
-        return BlockValue.block(java.util.Arrays.stream(spellings)
+        return BlockValue.block(Arrays.stream(spellings)
                 .<Value>map(WordValue::of).toList());
     }
 
@@ -462,7 +463,7 @@ public final class Natives {
     private ObjectValue systemObject(Context systemContext) {
         Context catalog = Context.root();
         catalog.set("datatypes", BlockValue.block(
-                java.util.Arrays.stream(Datatype.values())
+                Arrays.stream(Datatype.values())
                         .map(datatype -> (Value) DatatypeValue.of(datatype))
                         .toList()));
 
@@ -7863,7 +7864,7 @@ public final class Natives {
             return pair.x() == 0 && pair.y() == 0;
         }
         if (value instanceof TupleValue segments) {
-            return java.util.Arrays.stream(segments.segments()).allMatch(part -> part == 0);
+            return Arrays.stream(segments.segments()).allMatch(part -> part == 0);
         }
         if (value instanceof CharacterValue letter) {
             return letter.codepoint() == 0;
@@ -8037,7 +8038,7 @@ public final class Natives {
         int reaching = point / 8 + 1;
         byte[] grown = octets.length >= reaching
                 ? octets
-                : java.util.Arrays.copyOf(octets, reaching);
+                : Arrays.copyOf(octets, reaching);
         grown[point / 8] |= (byte) (0x80 >> (point % 8));
         return grown;
     }
@@ -8046,7 +8047,7 @@ public final class Natives {
     private static byte[] withOctetsSet(byte[] octets, byte[] more) {
         byte[] grown = octets.length >= more.length
                 ? octets
-                : java.util.Arrays.copyOf(octets, more.length);
+                : Arrays.copyOf(octets, more.length);
         for (int at = 0; at < more.length; at++) {
             grown[at] |= more[at];
         }
@@ -10856,7 +10857,7 @@ public final class Natives {
             Set<String> refinements, int where) {
 
         return howManyWanted(source, arguments, refinements, where)
-                .map(count -> java.util.Arrays.copyOf(octets,
+                .map(count -> Arrays.copyOf(octets,
                         (int) Math.max(0, Math.min(count, octets.length))))
                 .orElse(octets);
     }
@@ -11311,6 +11312,9 @@ public final class Natives {
                     dialectBlockIn(arguments, refinements, "write").stream()
                             .map(item -> valueLookedUp(item, evaluator, context))
                             .toList());
+            if (arguments.getFirst() instanceof BinaryValue given) {
+                laidBackInto(given, cursorNamed(held, "buffer").head());
+            }
         }
         if (refinements.contains("read")) {
             Value asked = dialectCodeIn(arguments, refinements);
@@ -11355,6 +11359,30 @@ public final class Natives {
             widened[at] = octets[at] & 0xFF;
         }
         return widened;
+    }
+
+    /**
+     * Writes the dialect's bytes back into the binary it was handed.
+     *
+     * <p>A binary given straight to BINARY/WRITE is written into, not read
+     * from: {@code binary/write b: #\{} [UI8 255 PAD 4 UI8 255]} leaves
+     * {@code b} holding all five bytes. So the caller's own series has to end
+     * up with them, which means changing its storage rather than answering a
+     * new one -- the context around it is scaffolding the caller never sees.
+     */
+    private static void laidBackInto(BinaryValue given, BinaryValue written) {
+        BinaryStorage storage = given.storage();
+        byte[] octets = written.octetsFromHere();
+        while (storage.length() > octets.length) {
+            storage.removeAt(storage.length());
+        }
+        for (int at = 1; at <= octets.length; at++) {
+            if (at <= storage.length()) {
+                storage.set(at, octets[at - 1] & 0xFF);
+            } else {
+                storage.append(octets[at - 1] & 0xFF);
+            }
+        }
     }
 
     private static BinaryValue cursorNamed(ObjectValue held, String field) {
@@ -11480,9 +11508,32 @@ public final class Natives {
         BinaryValue reading = cursorNamed(held, "buffer");
         Bincode.Cursor cursor = new Bincode.Cursor(
                 octetsOfTheBuffer(reading.head()), reading.index() - 1);
-        List<Value> read = Bincode.read(cursor, codesWrittenIn(asked));
+        List<Value> read = Bincode.read(cursor, codesWrittenIn(asked),
+                Natives::nameTheValueRead);
         held.context().set("buffer", reading.atIndex(cursor.at() + 1));
         return shapedLikeTheAsking(asked, read);
+    }
+
+    /**
+     * Puts a value a read produced into the word that asked for it.
+     *
+     * <p>{@code Set_Var(DS_TOP, temp)}, which is the whole of what a set-word
+     * in the dialect does. It goes through the word's own binding, so a
+     * protocol reading into a word declared in its function reaches that word
+     * rather than a global of the same name.
+     *
+     * <p>A word the caller never defined is not defined by this, the same as
+     * anywhere else a set-word appears.
+     */
+    private static void nameTheValueRead(WordValue named, Value read) {
+        if (!named.isBound() || !named.binding().knows(named.canonical())) {
+            throw Raised.of(EvaluationFailure.NOT_DEFINED, named.spelling());
+        }
+        ContextSlot slot = named.binding().slotFor(named.canonical());
+        if (slot.isProtected()) {
+            throw Raised.of(EvaluationFailure.LOCKED_WORD, named.spelling());
+        }
+        slot.setValue(read);
     }
 
     /** The buffer's bytes as the dialect works on them: unsigned, and growable. */
@@ -12195,7 +12246,7 @@ public final class Natives {
                     if (whole.isEmpty()) {
                         return BlockValue.block(List.of());
                     }
-                    return BlockValue.block(java.util.Arrays.stream(whole.split("\r?\n", -1))
+                    return BlockValue.block(Arrays.stream(whole.split("\r?\n", -1))
                             .<Value>map(StringValue::of)
                             .toList());
                 });
@@ -12608,7 +12659,7 @@ public final class Natives {
      */
     private static Value overEveryColour(
             Value target,
-            java.util.function.Function<int[], Value> ofAColour,
+            Function<int[], Value> ofAColour,
             java.util.function.UnaryOperator<int[]> ofAPixel) {
         if (target instanceof TupleValue colour) {
             return ofAColour.apply(threeParts(colour));
@@ -15077,7 +15128,7 @@ public final class Natives {
     private static byte[] boundedByAnyPart(
             byte[] octets, List<Value> arguments, Set<String> refinements) {
         return howManyWanted(arguments.getFirst(), arguments, refinements, 2)
-                .map(count -> java.util.Arrays.copyOf(octets,
+                .map(count -> Arrays.copyOf(octets,
                         (int) Math.max(0, Math.min(count, octets.length))))
                 .orElse(octets);
     }
@@ -16352,7 +16403,7 @@ public final class Natives {
     private static final Set<Datatype> PART_LIMIT = java.util.stream.Stream.concat(
             java.util.stream.Stream.of(Datatype.INTEGER, Datatype.DECIMAL,
                     Datatype.PERCENT, Datatype.PAIR),
-            java.util.Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
+            Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     /**
@@ -16859,7 +16910,7 @@ public final class Natives {
 
     private Value questionedByField(
             Value field, Evaluator evaluator, List<String> partNames,
-            java.util.function.Function<String, Value> partOf) {
+            Function<String, Value> partOf) {
         return switch (field) {
             case WordValue named when named.canonical().equals("words") ->
                     namesAsWords(partNames);
@@ -16897,7 +16948,7 @@ public final class Natives {
     }
 
     private static Value oneKnownPart(WordValue named, List<String> partNames,
-            java.util.function.Function<String, Value> partOf) {
+            Function<String, Value> partOf) {
         if (!partNames.contains(named.canonical())) {
             throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "query has no " + named.canonical() + " to answer here");
@@ -17221,12 +17272,12 @@ public final class Natives {
         private byte[] theBytesAskedFor(byte[] whole) {
             int from = (int) Math.min(position.orElse(0L), whole.length);
             if (bound.isEmpty()) {
-                return java.util.Arrays.copyOfRange(whole, from, whole.length);
+                return Arrays.copyOfRange(whole, from, whole.length);
             }
             long asked = bound.orElseThrow();
             if (asked >= 0) {
                 int to = (int) Math.min(from + asked, whole.length);
-                return java.util.Arrays.copyOfRange(whole, from, to);
+                return Arrays.copyOfRange(whole, from, to);
             }
             long backwards = -asked;
             if (backwards > from) {
@@ -17234,7 +17285,7 @@ public final class Natives {
                         "a backwards read of " + backwards
                                 + " reaches before the file's start");
             }
-            return java.util.Arrays.copyOfRange(whole, (int) (from - backwards), from);
+            return Arrays.copyOfRange(whole, (int) (from - backwards), from);
         }
 
         private static Optional<String> decodedUtfText(byte[] bytes) {
@@ -17398,7 +17449,7 @@ public final class Natives {
             if (!oneValuePerLine) {
                 return octets;
             }
-            byte[] fed = java.util.Arrays.copyOf(octets, octets.length + 1);
+            byte[] fed = Arrays.copyOf(octets, octets.length + 1);
             fed[octets.length] = '\n';
             return fed;
         }
@@ -17416,7 +17467,7 @@ public final class Natives {
             if (bound.isEmpty() || bound.orElseThrow() >= octets.length) {
                 return octets;
             }
-            return java.util.Arrays.copyOf(octets, (int) (long) bound.orElseThrow());
+            return Arrays.copyOf(octets, (int) (long) bound.orElseThrow());
         }
 
         private static byte[] utf8(String text) {
@@ -17994,7 +18045,7 @@ public final class Natives {
                         Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER))),
                 Set.of("all", "only", "flat", "part"),
                 (arguments, evaluator, context, refinements) -> {
-                    java.util.function.Function<Value, String> how =
+                    Function<Value, String> how =
                             refinements.contains("only")
                                     && arguments.getFirst() instanceof BlockValue named
                                     && named.datatype() == Datatype.BLOCK
