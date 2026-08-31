@@ -854,47 +854,22 @@ make-test.r3 / make/to typeset / to typeset! .. #769
 map-test.r3 / FORM map! / form empty map #132
 map-test.r3 / FORM map! / form map with multiple keys #134
 map-test.r3 / FORM map! / form single key map #133
-map-test.r3 / MAP construction / case sensitivity #13
-map-test.r3 / MAP construction / case sensitivity #14
-map-test.r3 / MAP construction / case sensitivity #15
-map-test.r3 / MAP construction / case sensitivity #16
-map-test.r3 / MAP construction / case sensitivity #17
-map-test.r3 / MAP construction / case sensitivity #18
-map-test.r3 / MAP construction / case sensitivity #28
-map-test.r3 / MAP construction / case sensitivity #29
-map-test.r3 / MAP construction / case sensitivity #30
-map-test.r3 / MAP construction / case sensitivity #31
-map-test.r3 / MAP construction / case sensitivity #32
-map-test.r3 / MAP construction / case sensitivity #33
-map-test.r3 / MAP construction / protected series keys #35
 map-test.r3 / PUT / PUT into protected map #139
 map-test.r3 / PUT / PUT into protected map #140
 map-test.r3 / PUT / PUT into protected map #141
 map-test.r3 / PUT / PUT into protected map #142
-map-test.r3 / compare / equal? #64
-map-test.r3 / compare / equal? #65
-map-test.r3 / compare / equal? #66
-map-test.r3 / compare / equal? (large maps) #76
-map-test.r3 / compare / equal? (large maps) #77
-map-test.r3 / compare / equal? (large maps) #78
-map-test.r3 / find / map-find-3 #60
 map-test.r3 / map issues / map-issue-1872 #104
 map-test.r3 / reflection / block of map #152
 map-test.r3 / reflection / block of map #153
 map-test.r3 / set operations with map! / difference with map #177
 map-test.r3 / set operations with map! / difference with map #178
 map-test.r3 / set operations with map! / exclude with map #185
-map-test.r3 / set operations with map! / intersect with map #188
-map-test.r3 / set operations with map! / intersect with map #189
 map-test.r3 / set operations with map! / intersect with map #192
-map-test.r3 / set operations with map! / intersect with map #193
-map-test.r3 / set operations with map! / union with map #196
 map-test.r3 / set operations with map! / union with map #197
 map-test.r3 / set operations with map! / union with map #198
 map-test.r3 / set operations with map! / union with map #200
 map-test.r3 / set operations with map! / union with map #201
 map-test.r3 / set operations with map! / union with map #202
-map-test.r3 / set operations with map! / unique with map #204
 map-test.r3 / set operations with map! / unique with map #205
 module-test.r3 / make module / inlined module #13
 module-test.r3 / make module / inlined module #14

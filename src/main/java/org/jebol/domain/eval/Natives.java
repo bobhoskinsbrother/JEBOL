@@ -5990,7 +5990,8 @@ public final class Natives {
                                 : NoneValue.none();
                     }
                     if (arguments.getFirst() instanceof MapValue map) {
-                        return map.storedKeyLike(arguments.get(1));
+                        return map.storedKeyLike(arguments.get(1),
+                                refinements.contains("case"));
                     }
                     if (arguments.get(0) instanceof BitsetValue bitset) {
                         return LogicValue.of(bitsetHolds(bitset, arguments.get(1),

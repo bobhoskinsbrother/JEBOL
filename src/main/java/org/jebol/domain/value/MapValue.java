@@ -50,7 +50,7 @@ public final class MapValue implements Value {
         }
         Map<Value, Value> built = new LinkedHashMap<>();
         for (int at = 0; at < pairs.size(); at += 2) {
-            built.put(keyOf(pairs.get(at)), pairs.get(at + 1));
+            built.put(lockedIfItIsText(keyOf(pairs.get(at))), pairs.get(at + 1));
         }
         return new MapValue(built);
     }
@@ -76,6 +76,32 @@ public final class MapValue implements Value {
                 : written;
     }
 
+    /**
+     * A text key taken as the map's own, copied and locked.
+     *
+     * <p>A key is what the map is hashed on, so a caller who keeps hold of it
+     * and appends to it would move the entry out from under its own hash. The
+     * map therefore stores a copy and protects that, which is why
+     * {@code append first keys-of #["key" 1] "x"} is a {@code protected} error
+     * and why appending to the block the keys came from is not: the two are no
+     * longer the same series.
+     *
+     * <p>Only text. A block key is stored as it stands and is not locked, and
+     * Rebol's own suite says so in a comment -- "note that keys are not
+     * implicitly protected!" -- and then shows what follows: poking with a
+     * block a caller still holds, and then emptying it, gives a map with two
+     * keys that are both {@code [b]}. Copying every key would have been the
+     * tidier rule and is not the one REBOL has.
+     */
+    private static Value lockedIfItIsText(Value key) {
+        if (!(key instanceof StringValue text)) {
+            return key;
+        }
+        StringValue own = StringValue.of(text.text(), text.datatype());
+        own.storage().protectFromChange(true);
+        return own;
+    }
+
     /** A stored key as KEYS-OF and the walk hand it out: a word, not a set-word. */
     private static Value keyAsAskedAbout(Value stored) {
         return stored instanceof WordValue word && word.datatype() == Datatype.SET_WORD
@@ -93,19 +119,21 @@ public final class MapValue implements Value {
      * apart, and looking one up does not -- and that is what lets a caller use
      * whatever case is to hand while the map can still hold both.
      *
-     * <p>The exact key is tried first, so a map that holds both answers the one
-     * that was actually asked for rather than whichever was stored first.
+     * <p>Whichever was stored first, and not the exact one. A map holding both
+     * {@code &lt;a&gt;} and {@code &lt;A&gt;} answers the first of them to
+     * either spelling, so {@code select m &lt;A&gt;} is the value under
+     * {@code &lt;a&gt;}. Preferring the exact key reads as the friendlier
+     * answer and is not the one a real 3.22.1 gives -- and it made an uncased
+     * SELECT indistinguishable from SELECT/CASE on exactly the maps where the
+     * difference matters.
      */
     private Value theKeyMatching(Value asked, boolean mindingCase) {
         Value wanted = keyOf(asked);
-        if (entries.containsKey(wanted)) {
-            return wanted;
-        }
         if (mindingCase) {
-            return NoneValue.none();
+            return entries.containsKey(wanted) ? wanted : NoneValue.none();
         }
         return entries.keySet().stream()
-                .filter(held -> alikeApartFromCase(held, wanted))
+                .filter(held -> held.equals(wanted) || alikeApartFromCase(held, wanted))
                 .findFirst()
                 .orElseGet(NoneValue::none);
     }
@@ -113,10 +141,15 @@ public final class MapValue implements Value {
     /**
      * Whether two keys are the same but for case.
      *
-     * <p>Only a string or a word can be, which is why this is not a general
-     * comparison: an integer key and a pair key have no case to differ by, and
-     * asking whether they match without minding it is asking whether they are
-     * equal.
+     * <p>Only something with letters in it can be, which is why this is not a
+     * general comparison: an integer key and a pair key have no case to differ
+     * by, and asking whether they match without minding it is asking whether
+     * they are equal.
+     *
+     * <p>A binary is not among them although it holds the same bytes a string
+     * would. {@code #\{61}} and {@code #\{41}} are two keys however they are
+     * asked for, because a binary is bytes rather than letters and nothing
+     * says which of them stand for text.
      */
     private static boolean alikeApartFromCase(Value held, Value wanted) {
         if (held instanceof StringValue one && wanted instanceof StringValue other) {
@@ -126,6 +159,10 @@ public final class MapValue implements Value {
         if (held instanceof WordValue one && wanted instanceof WordValue other) {
             return one.datatype() == other.datatype()
                     && one.canonical().equals(other.canonical());
+        }
+        if (held instanceof CharacterValue one && wanted instanceof CharacterValue other) {
+            return Character.toLowerCase(one.codepoint())
+                    == Character.toLowerCase(other.codepoint());
         }
         return false;
     }
@@ -185,7 +222,9 @@ public final class MapValue implements Value {
      */
     public void put(Value key, Value value, boolean mindingCase) {
         Value existing = theKeyMatching(key, mindingCase);
-        entries.put(existing instanceof NoneValue ? keyOf(key) : existing, value);
+        entries.put(existing instanceof NoneValue
+                ? lockedIfItIsText(keyOf(key))
+                : existing, value);
     }
 
     /** Empties the map, as CLEAR on a series empties it. */

@@ -380,8 +380,41 @@ public final class Comparison {
             }
             return true;
         }
+        if (left instanceof MapValue ours && right instanceof MapValue theirs) {
+            return sameEntries(ours, theirs, stepsAllowed);
+        }
         return left.datatype() == right.datatype() && left.equals(right);
     }
+
+    /**
+     * Whether two maps hold the same keys against equal values.
+     *
+     * <p>Order does not count, because a map is not a series and the pairs
+     * came out of a hash. The keys are already the same whichever sigil they
+     * were written with -- a map stores {@code c:}, {@code c} and {@code 'c}
+     * as one key -- so what is left is to ask the ordinary comparison about
+     * each value rather than trusting the entry map's own equality.
+     *
+     * <p>That last part is the whole of the fix. EQUAL? does not mind case, so
+     * a map holding {@code "a"} equals one holding {@code "A"}; Java's own
+     * {@code Map.equals} minds it, and made two maps unequal that a real
+     * 3.22.1 calls equal.
+     */
+    private static boolean sameEntries(MapValue ours, MapValue theirs, long stepsAllowed) {
+        if (ours.pairCount() != theirs.pairCount()) {
+            return false;
+        }
+        for (Value key : ours.keys()) {
+            if (!theirs.holds(key, MINDING_CASE)
+                    || !equalValues(ours.select(key, MINDING_CASE),
+                            theirs.select(key, MINDING_CASE), stepsAllowed, UNAPPROVED)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static final boolean MINDING_CASE = true;
 
     private static boolean foldedCodepointsAgree(Value left, Value right) {
         return Character.toLowerCase(codepointOf(left)) == Character.toLowerCase(codepointOf(right));
