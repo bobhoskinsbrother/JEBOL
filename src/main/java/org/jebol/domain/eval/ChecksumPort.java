@@ -75,8 +75,10 @@ final class ChecksumPort {
         if (named == null) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, method);
         }
-        if (Encodings.RIPEMD_160.equals(named)) {
-            return keepingTheBytes();
+        if (Encodings.RIPEMD_160.equals(named)
+                || Encodings.XXH_32.equals(named)
+                || Encodings.XXH_64.equals(named)) {
+            return keepingTheBytes(method);
         }
         try {
             return aroundTheDigest(MessageDigest.getInstance(named));
@@ -105,7 +107,7 @@ final class ChecksumPort {
         };
     }
 
-    private static RunningSum keepingTheBytes() {
+    private static RunningSum keepingTheBytes(String method) {
         return new RunningSum() {
 
             private byte[] kept = new byte[0];
@@ -119,7 +121,7 @@ final class ChecksumPort {
 
             @Override
             public byte[] soFar() {
-                return RipeMd160.of(kept);
+                return Encodings.digestOf(kept, method);
             }
         };
     }

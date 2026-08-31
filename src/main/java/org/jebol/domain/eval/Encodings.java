@@ -413,6 +413,8 @@ final class Encodings {
         named.put("sha3-384", "SHA3-384");
         named.put("sha3-512", "SHA3-512");
         named.put("ripemd160", RIPEMD_160);
+        named.put("xxh32", XXH_32);
+        named.put("xxh64", XXH_64);
         return Map.copyOf(named);
     }
 
@@ -435,9 +437,21 @@ final class Encodings {
      */
     static final String RIPEMD_160 = "RIPEMD160";
 
+    /** The two xxHash forms JEBOL writes out, named the same way. */
+    static final String XXH_32 = "XXH32";
+
+    static final String XXH_64 = "XXH64";
+
     static byte[] digestOf(byte[] octets, String method) {
-        if (RIPEMD_160.equals(DIGESTS.get(method))) {
+        String named = DIGESTS.get(method);
+        if (RIPEMD_160.equals(named)) {
             return RipeMd160.of(octets);
+        }
+        if (XXH_32.equals(named)) {
+            return XxHash.of32(octets);
+        }
+        if (XXH_64.equals(named)) {
+            return XxHash.of64(octets);
         }
         try {
             return java.security.MessageDigest.getInstance(DIGESTS.get(method))

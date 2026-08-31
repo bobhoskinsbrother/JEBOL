@@ -39,34 +39,6 @@ chacha20-test.r3 / (no group) / (no test) #6
 chacha20-test.r3 / (no group) / (no test) #7
 chacha20-test.r3 / (no group) / (no test) #8
 chacha20-test.r3 / (no group) / (no test) #9
-checksum-test.r3 / Checksum port / checksum-port-sha512 #180
-checksum-test.r3 / Checksum port / checksum-port-sha512 #181
-checksum-test.r3 / Checksum port / checksum-port-sha512 #182
-checksum-test.r3 / Checksum port / checksum-port-sha512 #183
-checksum-test.r3 / Checksum port / checksum-port-sha512 #184
-checksum-test.r3 / Checksum port / checksum-port-sha512 #185
-checksum-test.r3 / Checksum port / checksum-port-sha512 #186
-checksum-test.r3 / Checksum port / checksum-port-sha512 #187
-checksum-test.r3 / Checksum port / checksum-port-sha512 #188
-checksum-test.r3 / Checksum port / checksum-port-sha512 #189
-checksum-test.r3 / Checksum port / checksum-port-sha512 #190
-checksum-test.r3 / Checksum port / checksum-port-sha512 #191
-checksum-test.r3 / Checksum port / checksum-port-sha512 #192
-checksum-test.r3 / Checksum port / checksum-port-sha512 #193
-checksum-test.r3 / Checksum port / checksum-port-sha512 #194
-checksum-test.r3 / Checksum port / checksum-port-sha512 #195
-checksum-test.r3 / Checksum port / checksum-port-sha512 #196
-checksum-test.r3 / Checksum port / checksum-port-sha512 #197
-checksum-test.r3 / Checksum port / checksum-port-sha512 #198
-checksum-test.r3 / Checksum port / checksum-port-sha512 #199
-checksum-test.r3 / Checksum port / checksum-port-sha512 #200
-checksum-test.r3 / Checksum port / checksum-port-sha512 #201
-checksum-test.r3 / Checksum port / checksum-port-sha512 #202
-checksum-test.r3 / Checksum port / checksum-port-sha512 #203
-checksum-test.r3 / Checksum port / checksum-port-sha512 #204
-checksum-test.r3 / Checksum port / checksum-port-sha512 #205
-checksum-test.r3 / Checksum port / checksum-port-sha512 #206
-checksum-test.r3 / Checksum port / checksum-port-sha512 #207
 checksum-test.r3 / Checksum port / checksum-port-sha512 #208
 checksum-test.r3 / Checksum port / checksum-port-sha512 #209
 checksum-test.r3 / Checksum port / checksum-port-sha512 #210
