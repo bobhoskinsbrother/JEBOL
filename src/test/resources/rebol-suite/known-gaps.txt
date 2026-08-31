@@ -1110,7 +1110,6 @@ mold-test.r3 / mold file! / mold file escaping #68
 mold-test.r3 / mold gob! / mold/all gob! #186
 mold-test.r3 / mold image! / mold/flat/all image! #180
 mold-test.r3 / mold image! / mold/flat/all image! #181
-mold-test.r3 / mold image! / mold/part image! #183
 mold-test.r3 / mold map! / mold #[] #138
 mold-test.r3 / mold map! / mold map! #133
 mold-test.r3 / mold map! / mold/flat map! #135
@@ -1132,7 +1131,6 @@ mold-test.r3 / mold-all / mold/all series #101
 mold-test.r3 / mold-all / mold/all series #102
 mold-test.r3 / mold-all / mold/all series #103
 mold-test.r3 / mold-all / mold/all series #104
-mold-test.r3 / mold-all / mold/all series #92
 mold-test.r3 / mold-all / mold/all series #93
 mold-test.r3 / mold-all / mold/all series #94
 mold-test.r3 / mold-all / mold/all series #95

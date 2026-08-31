@@ -31,8 +31,94 @@ public final class Molder {
      * missing refinement.
      */
     public static String moldFlat(Value value) {
-        return mold(value).replaceAll("\\n\\s*", " ")
-                .replace("[ ", "[").replace(" ]", "]");
+        return writingOnOneLine(() -> mold(value).replaceAll("\\n\\s*", " ")
+                .replace("[ ", "[").replace(" ]", "]"));
+    }
+
+    /**
+     * Whether the mold in progress is forbidden to break a line.
+     *
+     * <p>{@code MOPT_INDENT}, which MOLD/FLAT sets and which a binary and an
+     * image each read before deciding how to lay their digits out. A flag
+     * rather than a pass over the finished text, because the breaks a binary
+     * writes carry no indent to strip: flattening by replacing every newline
+     * with a space turned {@code #\{AAAA\nBBBB\}} into a binary with spaces
+     * through the middle of it, which is not a binary at all.
+     */
+    private static final ThreadLocal<Boolean> WRITING_ON_ONE_LINE =
+            ThreadLocal.withInitial(() -> false);
+
+    private static String writingOnOneLine(java.util.function.Supplier<String> written) {
+        boolean was = WRITING_ON_ONE_LINE.get();
+        WRITING_ON_ONE_LINE.set(true);
+        try {
+            return written.get();
+        } finally {
+            WRITING_ON_ONE_LINE.set(was);
+        }
+    }
+
+    /**
+     * How much of the mold the caller asked for, or nothing for all of it.
+     *
+     * <p>{@code CHECK_MOLD_LIMIT} cuts the count of bytes or pixels down to
+     * what the limit could possibly need, and does it *before* the code that
+     * decides whether to break lines. So {@code mold/part} of a huge binary
+     * with a limit of eight is {@code #\{FFFFFF} and not
+     * {@code #\{} followed by a newline: the limit made it a short binary,
+     * and a short binary stays on one line.
+     *
+     * <p>Cutting the finished text instead left the newline in, which is the
+     * one character a caller asking for eight is least likely to want.
+     */
+    private static final int NO_LIMIT = -1;
+
+    private static final ThreadLocal<Integer> AS_MUCH_AS_WAS_ASKED_FOR =
+            ThreadLocal.withInitial(() -> NO_LIMIT);
+
+    /** Molds no more than a stated number of characters, which is MOLD/PART. */
+    public static String moldWithin(Value value, int characters,
+            java.util.function.Function<Value, String> how) {
+        int was = AS_MUCH_AS_WAS_ASKED_FOR.get();
+        AS_MUCH_AS_WAS_ASKED_FOR.set(characters);
+        try {
+            String written = how.apply(value);
+            return written.length() <= characters
+                    ? written
+                    : written.substring(0, characters);
+        } finally {
+            AS_MUCH_AS_WAS_ASKED_FOR.set(was);
+        }
+    }
+
+    /**
+     * As many pixels as a limit could still reach, after what is already
+     * written.
+     *
+     * <p>{@code if (MOLD_REST(mold) < len) len = MOLD_REST(mold)}, where the
+     * rest is the characters left rather than the pixels left -- a generous
+     * cut, since a pixel costs six, but the one the C makes.
+     *
+     * <p>What is already written has to come off, and that is what decides
+     * the answer here. {@code mold/part/all img 30} has spent twenty-one
+     * characters on {@code #(image! 3840x2160 #\{} before a pixel is reached,
+     * so nine are left, so nine pixels at most, so fewer than ten and no line
+     * break at all. Counting from the whole limit instead left a newline
+     * where the C has none.
+     */
+    private static int asManyPixelsAsTheLimitCouldUse(int pixels, int alreadyWritten) {
+        int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
+        return limit == NO_LIMIT
+                ? pixels
+                : Math.min(pixels, Math.max(0, limit - alreadyWritten));
+    }
+
+    /** Digits cut to what the limit could use, so the wrap rule sees the truth. */
+    private static String withinTheLimit(String hex) {
+        int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
+        return limit == NO_LIMIT || hex.length() <= limit
+                ? hex
+                : hex.substring(0, limit);
     }
 
     /** Source text that reads back as an equal value. */
@@ -234,7 +320,7 @@ public final class Molder {
             case MapValue map -> renderMap(map, forReading);
             case BitsetValue bitset -> "#(bitset! "
                     + (bitset.isComplemented() ? "not " : "")
-                    + "#{" + hexOf(bitset.octets()) + "})";
+                    + moldedHex(hexOf(bitset.octets())) + ")";
             case ObjectValue object -> renderObject(object, forReading);
             case PortValue port -> renderObject(
                     new ObjectValue(port.context()), forReading);
@@ -605,6 +691,17 @@ public final class Molder {
     }
 
     /**
+     * How many pixels a molded image writes to a line, and the count below
+     * which it writes them all to one.
+     *
+     * <p>{@code if (size < 10) indented = FALSE}, with a comment saying why:
+     * "use `flat` result for images with less than 10 pixels (looks better in
+     * console)". So the same number sets both the width of a line and the
+     * point at which lines start.
+     */
+    private static final int PIXELS_TO_A_LINE = 10;
+
+    /**
      * An image as its size and its pixels, from `Mold_Image_Data`.
      *
      * <p>`Pre_Mold` writes `make image! [` for an ordinary mold and `#(image! `
@@ -616,20 +713,38 @@ public final class Molder {
      * <p>The alpha binary appears only when some pixel needs it, and that is
      * decided by walking the pixels rather than by reading a flag. One byte a
      * pixel, in the same order.
+     *
+     * <p>Ten pixels to a line once there are ten of them, with the break
+     * written before each tenth pixel rather than after, so the digits start
+     * on the line below the opening brace and the closing one stands alone.
      */
     private static String renderImage(ImageValue image, boolean forReading) {
-        ImageValue shown = image;
+        String size = image.storage().wide() + "x" + image.storage().high();
+        boolean asAConstruct = WRITING_EVERYTHING_OUT.get();
+        String opens = asAConstruct ? "#(image! " : "make image! [";
+        String shuts = asAConstruct ? ")" : "]";
+        int pixels = asManyPixelsAsTheLimitCouldUse(
+                image.lengthFromHere(), opens.length() + size.length() + " #{".length());
+        if (pixels == 0) {
+            return opens + size + " #{}" + shuts;
+        }
+        boolean brokenIntoLines =
+                pixels >= PIXELS_TO_A_LINE && !WRITING_ON_ONE_LINE.get();
         StringBuilder colours = new StringBuilder();
         StringBuilder alphas = new StringBuilder();
-        for (int pixel = 1; pixel <= shown.lengthFromHere(); pixel++) {
-            int[] channels = shown.pixelAt(pixel);
+        for (int pixel = 1; pixel <= pixels; pixel++) {
+            if (brokenIntoLines && (pixel - 1) % PIXELS_TO_A_LINE == 0) {
+                colours.append("\n");
+                alphas.append("\n");
+            }
+            int[] channels = image.pixelAt(pixel);
             colours.append("%02X%02X%02X".formatted(channels[0], channels[1], channels[2]));
             alphas.append("%02X".formatted(channels[3]));
         }
-        String pixels = shown.storage().wide() + "x" + shown.storage().high()
-                + " #{" + colours + "}"
-                + (shown.storage().hasAlpha() ? " #{" + alphas + "}" : "");
-        return "make image! [" + pixels + "]";
+        String closing = brokenIntoLines ? "\n}" : "}";
+        return opens + size + " #{" + colours
+                + (image.storage().hasAlpha() ? closing + " #{" + alphas : "")
+                + closing + shuts;
     }
 
     private static String renderBinary(BinaryValue binary, boolean forReading) {
@@ -637,7 +752,44 @@ public final class Molder {
         for (int at = binary.index(); at <= binary.storageLength(); at++) {
             hex.append("%02X".formatted(binary.storage().at(at)));
         }
-        return forReading ? "#{" + hex + "}" : hex.toString();
+        return forReading ? moldedHex(hex.toString()) : hex.toString();
+    }
+
+    /** How many bytes of a binary MOLD writes before breaking the line. */
+    private static final int BYTES_TO_A_LINE = 32;
+
+    /**
+     * Hex in braces, broken into lines once there is enough of it.
+     *
+     * <p>{@code Mold_Binary} writes a newline after {@code #\{} and then every
+     * thirty-two bytes, so a binary long enough to matter arrives as a block
+     * of even lines instead of one that runs off the screen. Up to
+     * thirty-two bytes it stays on one line and there is no break at all.
+     *
+     * <p>The closing brace follows the last line's bytes, so a length that is
+     * an exact multiple of thirty-two leaves it alone on the line after --
+     * the newline belongs to the full line rather than being written before
+     * the brace.
+     *
+     * <p>MOLD only. FORM writes the digits bare and unbroken, because FIND
+     * forms its needle before looking for it and a newline in the middle
+     * would stop it matching.
+     */
+    private static String moldedHex(String whole) {
+        String hex = withinTheLimit(whole);
+        int digitsToALine = BYTES_TO_A_LINE * 2;
+        if (hex.length() <= digitsToALine || WRITING_ON_ONE_LINE.get()) {
+            return "#{" + hex + "}";
+        }
+        StringBuilder written = new StringBuilder("#{\n");
+        for (int at = 0; at < hex.length(); at += digitsToALine) {
+            int stops = Math.min(at + digitsToALine, hex.length());
+            written.append(hex, at, stops);
+            if (stops - at == digitsToALine) {
+                written.append("\n");
+            }
+        }
+        return written.append("}").toString();
     }
 
     /** How deep the mold is inside line-broken blocks, for the indent. */

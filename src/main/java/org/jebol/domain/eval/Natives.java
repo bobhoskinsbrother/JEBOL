@@ -17994,24 +17994,22 @@ public final class Natives {
                         Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER))),
                 Set.of("all", "only", "flat", "part"),
                 (arguments, evaluator, context, refinements) -> {
-                    String written = refinements.contains("flat")
-                            ? Molder.moldFlat(arguments.get(0))
-                            : refinements.contains("all")
-                                    ? Molder.moldAll(arguments.get(0))
-                                    : Molder.mold(arguments.get(0));
-                    if (refinements.contains("only")
-                            && arguments.getFirst() instanceof BlockValue block
-                            && block.datatype() == Datatype.BLOCK) {
-                        written = Molder.moldOnly(block);
-                    }
+                    java.util.function.Function<Value, String> how =
+                            refinements.contains("only")
+                                    && arguments.getFirst() instanceof BlockValue named
+                                    && named.datatype() == Datatype.BLOCK
+                            ? value -> Molder.moldOnly((BlockValue) value)
+                            : refinements.contains("flat")
+                                    ? Molder::moldFlat
+                                    : refinements.contains("all")
+                                            ? Molder::moldAll
+                                            : Molder::mold;
                     if (refinements.contains("part") && arguments.size() > 1
                             && arguments.get(1) instanceof IntegerValue limit) {
-                        int wanted = (int) Math.max(0, limit.magnitude());
-                        written = written.length() <= wanted
-                                ? written
-                                : written.substring(0, wanted);
+                        return StringValue.of(Molder.moldWithin(arguments.getFirst(),
+                                (int) Math.max(0, limit.magnitude()), how));
                     }
-                    return StringValue.of(written);
+                    return StringValue.of(how.apply(arguments.getFirst()));
                 });
         define("form", takesAnything("value"),
                 (arguments, evaluator, context) -> StringValue.of(Molder.form(arguments.get(0))));

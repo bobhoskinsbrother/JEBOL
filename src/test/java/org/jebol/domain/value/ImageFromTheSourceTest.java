@@ -167,10 +167,10 @@ class ImageFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and MOLD/ALL would write the construction form, which nothing here does yet")
+        @DisplayName("and MOLD/ALL writes the construction form instead of MAKE")
         void theConstructionForm() {
             assertThat(answerTo("mold/all make image! [1x1 #{FF0000}]"))
-                    .isEqualTo("\"make image! [1x1 #{FF0000}]\"");
+                    .isEqualTo("\"#(image! 1x1 #{FF0000})\"");
         }
 
         @Test
