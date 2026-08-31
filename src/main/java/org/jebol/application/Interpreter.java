@@ -105,7 +105,41 @@ public final class Interpreter {
         run("sys/make-scheme [title: \"TCP Networking\" name: 'tcp]");
         run("sys/make-scheme [title: \"DNS Lookup\" name: 'dns]");
         run("sys/make-scheme [title: \"GUI Events\" name: 'event]");
+        run(THE_CHECKSUM_SCHEME);
     }
+
+    /**
+     * The checksum scheme, copied from {@code init-schemes} as it stands.
+     *
+     * <p>Its INIT is the part that has to be exact rather than the title: it
+     * is what makes {@code checksum:sha1}, {@code checksum://sha1} and a spec
+     * block all name the same method, by looking in the three places a URL can
+     * leave one and falling back to MD5. Writing that in Java would be a
+     * second implementation of a rule REBOL already states once.
+     */
+    private static final String THE_CHECKSUM_SCHEME = """
+            sys/make-scheme [
+                title: {Checksum port}
+                info: {Possible methods are in `system/catalog/checksums`}
+                spec: system/standard/port-spec-checksum
+                name: 'checksum
+                init: function [port [port!]][
+                    spec: port/spec
+                    method: any [
+                        select spec 'method
+                        select spec 'target
+                        select spec 'host
+                        'md5
+                    ]
+                    if any [
+                        error? try [spec/method: to word! method]
+                        not find system/catalog/checksums spec/method
+                    ][
+                        cause-error 'access 'invalid-spec method
+                    ]
+                    set port/spec: copy system/standard/port-spec-checksum spec
+                ]
+            ]""";
 
     /**
      * Opens {@code system/ports/event}, which the view system needs to exist.

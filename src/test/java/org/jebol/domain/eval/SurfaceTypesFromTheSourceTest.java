@@ -194,12 +194,12 @@ class SurfaceTypesFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a word names a scheme")
+        @DisplayName("a word names a scheme, and an unknown one has no scheme")
         void aWordNamesAScheme() {
             assertThat(errorIdOf("""
-                    read 'nowhere""")).isEqualTo("no-service");
+                    read 'nowhere""")).isEqualTo("no-scheme");
             assertThat(errorIdOf("""
-                    write 'nowhere {x}""")).isEqualTo("no-service");
+                    write 'nowhere {x}""")).isEqualTo("no-scheme");
         }
     }
 

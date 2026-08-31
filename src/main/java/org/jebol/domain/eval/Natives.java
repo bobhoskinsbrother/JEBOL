@@ -11252,7 +11252,7 @@ public final class Natives {
      * grows only when an actor does.
      */
     private static final Set<String> SCHEMES_THIS_BUILD_SERVES =
-            Set.of("console", "tcp", "dns", "event");
+            Set.of("console", "tcp", "dns", "event", "checksum");
 
     /** The types a cipher context publishes. */
     private static final String RC4_HANDLE_TYPE = "rc4";
@@ -15157,7 +15157,9 @@ public final class Natives {
                         return readFromPort(port, evaluator);
                     }
                     if (routesToAScheme(arguments.getFirst())) {
-                        throw schemeRefusal("reads", arguments.getFirst());
+                        return readFromPort(
+                                portOpenedFor(arguments.getFirst(), evaluator, context),
+                                evaluator);
                     }
                     requireService(HostService.FILES);
                     return throughPort(() -> FileReading
@@ -15178,10 +15180,13 @@ public final class Natives {
                 Set.of("part", "seek", "append", "allow", "lines", "binary", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof PortValue port) {
-                        return writeToPort(port, arguments.get(1), evaluator);
+                        return writeToPort(port, arguments.get(1), evaluator,
+                                arguments, refinements);
                     }
                     if (routesToAScheme(arguments.getFirst())) {
-                        throw schemeRefusal("writes", arguments.getFirst());
+                        return writeToPort(
+                                portOpenedFor(arguments.getFirst(), evaluator, context),
+                                arguments.get(1), evaluator, arguments, refinements);
                     }
                     requireService(HostService.FILES);
                     return throughPort(() -> {
@@ -15427,9 +15432,11 @@ public final class Natives {
                         Parameter.belongingTo("allow", "access", Set.of(Datatype.BLOCK))),
                 Set.of("new", "read", "write", "seek", "allow"),
                 (arguments, evaluator, context, refinements) -> {
-                    Value built = evaluator.applyFunction(
-                            systemInternalFunction(context, "make-port*"),
-                            List.of(arguments.getFirst()));
+                    Value built = arguments.getFirst() instanceof PortValue already
+                            ? already
+                            : evaluator.applyFunction(
+                                    systemInternalFunction(context, "make-port*"),
+                                    List.of(arguments.getFirst()));
                     if (!(built instanceof PortValue port)) {
                         throw Raised.of(EvaluationFailure.INVALID_ARG,
                                 "nothing knows how to open that");
@@ -15439,11 +15446,21 @@ public final class Natives {
                         connectTheTcpPort(port, evaluator);
                     }
                     port.markOpen(true);
+                    if (port.schemeName().equals("checksum")) {
+                        ChecksumPort.start(port, ChecksumPort.methodOf(port));
+                    }
                     return port;
                 });
 
         define("update", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
-                (arguments, evaluator, context) -> NoneValue.none());
+                (arguments, evaluator, context) -> {
+                    PortValue port = (PortValue) arguments.getFirst();
+                    if (port.schemeName().equals("checksum")) {
+                        ChecksumPort.digestSoFar(port);
+                        return port;
+                    }
+                    return NoneValue.none();
+                });
 
         define("flush", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
                 (arguments, evaluator, context) -> {
@@ -15459,6 +15476,9 @@ public final class Natives {
                 (arguments, evaluator, context) -> {
                     PortValue port = (PortValue) arguments.getFirst();
                     port.markOpen(false);
+                    if (port.schemeName().equals("checksum")) {
+                        ChecksumPort.stop(port);
+                    }
                     return port;
                 });
 
@@ -15891,6 +15911,7 @@ public final class Natives {
             case "console" -> lineReadFromTheConsole(evaluator);
             case "tcp" -> bytesReadFromTheConnection(port);
             case "dns" -> addressesOfTheNameThePortNames(port, evaluator);
+            case "checksum" -> ChecksumPort.digestSoFar(port);
             default -> throw Raised.of(EvaluationFailure.NO_SERVICE,
                     "nothing here reads the " + port.schemeName() + " scheme");
         };
@@ -16811,6 +16832,33 @@ public final class Natives {
                 || source instanceof WordValue;
     }
 
+    /**
+     * A port opened from whatever named a scheme, so a verb can reach it.
+     *
+     * <p>{@code write checksum:md5 data} is a port opened, written and left,
+     * and the C gets there because WRITE is an action: a URL reaches
+     * {@code Make_Port} on its way to the actor rather than being refused
+     * before it starts. Refusing it here meant a URL could never be written
+     * at all, and the error said no service where the real answer was about
+     * the data.
+     *
+     * <p>The scheme still has to be one this build serves, which
+     * {@code make-port*} and the service check between them decide.
+     */
+    private PortValue portOpenedFor(Value named, Evaluator evaluator, Context context) {
+        Value built = evaluator.applyFunction(
+                systemInternalFunction(context, "make-port*"), List.of(named));
+        if (!(built instanceof PortValue port)) {
+            throw schemeRefusal("writes", named);
+        }
+        requireServiceForScheme(port.schemeName());
+        port.markOpen(true);
+        if (port.schemeName().equals("checksum")) {
+            ChecksumPort.start(port, ChecksumPort.methodOf(port));
+        }
+        return port;
+    }
+
     private static Raised schemeRefusal(String verbs, Value routed) {
         return Raised.of(EvaluationFailure.NO_SERVICE,
                 "nothing here " + verbs + " " + schemeNameOf(routed));
@@ -16826,12 +16874,59 @@ public final class Natives {
         };
     }
 
-    private Value writeToPort(PortValue port, Value data, Evaluator evaluator) {
+    private Value writeToPort(PortValue port, Value data, Evaluator evaluator,
+            List<Value> arguments, Set<String> refinements) {
         return switch (port.schemeName()) {
             case "console" -> writtenToTheConsole(port, data, evaluator);
             case "tcp" -> sentDownTheConnection(port, data);
+            case "checksum" -> summedIntoThePort(port, data, arguments, refinements);
             default -> throw schemeRefusal("writes", port);
         };
+    }
+
+    /**
+     * Adds what is written to the port's running sum, and answers the port.
+     *
+     * <p>Only a binary or a string carries bytes to sum, and anything else is
+     * an invalid argument -- {@code if (!ANY_BINSTR(arg)) Trap_Arg(arg)},
+     * which is what makes {@code write checksum:md5 1} an error rather than
+     * a sum of the digit.
+     *
+     * <p>The port is opened first where it was not open already, so a write
+     * to a freshly made port starts a sum instead of quietly doing nothing.
+     */
+    private Value summedIntoThePort(PortValue port, Value data,
+            List<Value> arguments, Set<String> refinements) {
+        if (!(data instanceof BinaryValue || data instanceof StringValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(data));
+        }
+        if (!port.isOpen()) {
+            port.markOpen(true);
+            ChecksumPort.start(port, ChecksumPort.methodOf(port));
+        }
+        SeriesValue written = (SeriesValue) data;
+        ChecksumPort.add(port,
+                octetsOf(written.head()),
+                written.index() - 1,
+                wholeNumberAsked("seek", arguments, refinements),
+                wholeNumberAsked("part", arguments, refinements));
+        return port;
+    }
+
+    private static final List<String> WRITE_OPTIONAL_ARGUMENTS =
+            List.of("part", "seek", "allow");
+
+    /** One of WRITE's counted refinements, or null where it was not given. */
+    private static Long wholeNumberAsked(
+            String refinement, List<Value> arguments, Set<String> refinements) {
+        if (!refinements.contains(refinement)) {
+            return null;
+        }
+        Value asked = argumentFor(refinement, WRITE_OPTIONAL_ARGUMENTS,
+                arguments, refinements, 2);
+        return Comparison.isNumeric(asked)
+                ? (long) Comparison.asDouble(asked)
+                : null;
     }
 
     private Value writtenToTheConsole(
@@ -16967,6 +17062,7 @@ public final class Natives {
             case "file", "dir" -> requireService(HostService.FILES);
             case "tcp", "dns" -> requireService(HostService.NETWORK);
             case "event" -> requireService(HostService.WINDOWS);
+            case "checksum" -> theSchemeReachesNothingOutside();
             default -> {
                 throw Raised.of(EvaluationFailure.NO_SERVICE,
                         scheme.isEmpty()
@@ -16974,6 +17070,16 @@ public final class Natives {
                                 : "nothing here serves the " + scheme + " scheme");
             }
         }
+    }
+
+    /**
+     * Grants a scheme that is a calculation rather than a way out.
+     *
+     * <p>A checksum port opens no file, no socket and no console: it sums
+     * bytes the script is already holding. There is no service to ask a host
+     * for, and refusing it for want of one would refuse arithmetic.
+     */
+    private static void theSchemeReachesNothingOutside() {
     }
 
     private record FileReading(
