@@ -5856,7 +5856,7 @@ public final class Natives {
                             addPairsToMap(map, arguments, refinements, "append");
                     case BitsetValue members -> {
                         requireChangeable(members);
-                        members.holdAll((BitsetValue) bitsetOf(arguments.get(1)), true);
+                        members.holdAll((BitsetValue) bitsMeantBy(arguments.get(1)), true);
                         yield members;
                     }
                     case StringValue string -> {
@@ -6050,7 +6050,7 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
                     case BitsetValue members -> {
                         requireChangeable(members);
-                        members.holdAll((BitsetValue) bitsetOf(arguments.get(1)), true);
+                        members.holdAll((BitsetValue) bitsMeantBy(arguments.get(1)), true);
                         yield members;
                     }
                     case ObjectValue object ->
@@ -7882,14 +7882,39 @@ public final class Natives {
         return Comparison.isNumeric(value) && Comparison.asDouble(value) == 0.0;
     }
 
+    /**
+     * The bits a value names when it is handed to a set that already exists,
+     * which is what APPEND, INSERT, REMOVE and CLEAR each ask for.
+     *
+     * <p>One arm differs from the set MAKE builds, and only one. A number
+     * given to {@code make bitset!} asks for room -- {@code make bitset! 8} is
+     * eight bits of nothing -- while the same number given to {@code append}
+     * names the bit to turn on. {@code Make_Bitset} sizes and stops; the C
+     * says so in as many words, "nothing more to do". {@code Set_Bits} reaches
+     * {@code Set_Bit(bset, n, set)}.
+     *
+     * <p>Reading both through one helper made {@code alter bs 1} report that
+     * it had added a bit and leave the set exactly as it was, because the
+     * number had been read as a request for one bit of room.
+     *
+     * <p>Every other shape means the same thing to both, so they share the
+     * rest.
+     */
+    private static Value bitsMeantBy(Value source) {
+        if (source instanceof IntegerValue point) {
+            return BitsetValue.of(withBitSet(new byte[0], bitAsked(point.magnitude())));
+        }
+        return bitsetOf(source);
+    }
+
     /** A bitset holding every character code in what it is given. */
     private static Value bitsetOf(Value source) {
         return switch (source) {
             case StringValue text -> BitsetValue.ofCharacters(text.text().codePoints().toArray());
             case CharacterValue character ->
                     BitsetValue.ofCharacters(character.codepoint());
-            case IntegerValue position ->
-                    BitsetValue.ofCharacters((int) position.magnitude());
+            case IntegerValue room -> BitsetValue.of(
+                    new byte[(bitAsked(room.magnitude()) + 7) / 8]);
             case BinaryValue octets -> BitsetValue.of(octets.octetsFromHere());
             case BlockValue members -> bitsetFromBlock(members);
             default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
@@ -7927,12 +7952,105 @@ public final class Natives {
                 && word.canonical().equals("not");
         BlockValue rest = complemented ? members.atIndex(members.index() + 1) : members;
         List<Value> named = rest.remaining();
-        if (named.size() == 1 && named.getFirst() instanceof BinaryValue octets) {
-            BitsetValue set = BitsetValue.of(octets.octetsFromHere());
-            return complemented ? set.complemented() : set;
-        }
-        BitsetValue set = BitsetValue.ofCharacters(codePointsIn(rest));
+        BitsetValue set = BitsetValue.of(octetsNamedBy(named, members));
         return complemented ? set.complemented() : set;
+    }
+
+    /**
+     * The octets a block of bitset specs names, laid one over another.
+     *
+     * <p>{@code Set_Bits} walks the block and turns bits on as it goes, so
+     * every spec adds to what came before rather than replacing it:
+     * {@code [1 - 3 #{80}]} is the range and the byte together. Reading only a
+     * lone binary meant two of them cancelled to nothing.
+     *
+     * <p>Five shapes are understood. A char or a number names one bit, and a
+     * dash between two of them names the run. A string names one bit per
+     * character. A binary supplies the octets whole, which is how a large set
+     * is written without listing it. And the word {@code bits} in front of a
+     * binary is the same thing said out loud.
+     *
+     * <p>A spec that is none of those is an invalid argument, which is what
+     * makes a trailing {@code not} an error: the word only means the
+     * complement at the head of the block, and anywhere else it names nothing.
+     */
+    private static byte[] octetsNamedBy(List<Value> specs, BlockValue whole) {
+        byte[] octets = new byte[0];
+        for (int at = 0; at < specs.size(); at++) {
+            Value spec = specs.get(at);
+            if (spec instanceof WordValue named && named.canonical().equals("bits")) {
+                if (at + 1 >= specs.size()
+                        || !(specs.get(at + 1) instanceof BinaryValue held)) {
+                    throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(whole));
+                }
+                octets = withOctetsSet(octets, held.octetsFromHere());
+                at++;
+            } else if (spec instanceof BinaryValue held) {
+                octets = withOctetsSet(octets, held.octetsFromHere());
+            } else if (spec instanceof StringValue text) {
+                for (int point : text.text().codePoints().toArray()) {
+                    octets = withBitSet(octets, point);
+                }
+            } else if (spec instanceof CharacterValue || spec instanceof IntegerValue) {
+                int from = bitAsked((long) codePointOf(spec));
+                int to = from;
+                if (at + 1 < specs.size()
+                        && specs.get(at + 1) instanceof WordValue dash
+                        && dash.spelling().equals("-")) {
+                    to = bitAsked((long) codePointOf(farEndOfTheRun(spec, specs, at + 2)));
+                    at += 2;
+                }
+                if (to < from) {
+                    throw Raised.of(EvaluationFailure.PAST_END, String.valueOf(to));
+                }
+                for (int point = from; point <= to; point++) {
+                    octets = withBitSet(octets, point);
+                }
+            } else {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(whole));
+            }
+        }
+        return octets;
+    }
+
+    /**
+     * The value closing a run, which has to be the same kind as the one that
+     * opened it.
+     *
+     * <p>The C asks the question twice and each time about one type: a char
+     * opening a run reaches {@code if (IS_CHAR(val))} and an integer reaches
+     * {@code if (IS_INTEGER(val))}, and either failing is {@code Trap_Arg}. So
+     * {@code [#"a" - 5]} is an invalid argument rather than the run from
+     * {@code a} to five, and a dash with nothing after it is the same error
+     * against the end of the block.
+     */
+    private static Value farEndOfTheRun(Value opening, List<Value> specs, int at) {
+        Value closing = at < specs.size() ? specs.get(at) : UnsetValue.unset();
+        if (opening.datatype() != closing.datatype()) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(closing));
+        }
+        return closing;
+    }
+
+    /** The octets with one more bit turned on, grown if they do not reach it. */
+    private static byte[] withBitSet(byte[] octets, int point) {
+        int reaching = point / 8 + 1;
+        byte[] grown = octets.length >= reaching
+                ? octets
+                : java.util.Arrays.copyOf(octets, reaching);
+        grown[point / 8] |= (byte) (0x80 >> (point % 8));
+        return grown;
+    }
+
+    /** The octets with another set's laid over them, grown to fit. */
+    private static byte[] withOctetsSet(byte[] octets, byte[] more) {
+        byte[] grown = octets.length >= more.length
+                ? octets
+                : java.util.Arrays.copyOf(octets, more.length);
+        for (int at = 0; at < more.length; at++) {
+            grown[at] |= more[at];
+        }
+        return grown;
     }
 
     /**
@@ -14910,7 +15028,7 @@ public final class Natives {
                     "/key and /part each say what to remove, and only one can");
         }
         if (refinements.contains("key")) {
-            members.clearAllDirectly((BitsetValue) bitsetOf(argumentFor(
+            members.clearAllDirectly((BitsetValue) bitsMeantBy(argumentFor(
                     "key", List.of("part", "key"), arguments, refinements, 1)));
             return members;
         }
@@ -14923,7 +15041,7 @@ public final class Natives {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
                         Molder.mold(range) + " names no range of members");
             }
-            members.clearAllDirectly((BitsetValue) bitsetOf(range));
+            members.clearAllDirectly((BitsetValue) bitsMeantBy(range));
             return members;
         }
         throw Raised.of(EvaluationFailure.MISSING_ARG,
