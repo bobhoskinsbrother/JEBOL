@@ -14745,10 +14745,19 @@ public final class Natives {
     /** The largest codepoint a character can hold, as MAX_CHAR does. */
     private static final long MAXIMUM_CODEPOINT = 0x10FFFF;
 
+    /**
+     * Refuses a value nothing can be made from, naming both the type and the
+     * value.
+     *
+     * <p>{@code bad-make-arg} takes two: {@code arg1} is the type that was
+     * asked for and {@code arg2} is what was offered. Rebol's own suite reads
+     * the second -- {@code e/arg2 = #\{C5}} after {@code to char! #\{C5}} --
+     * so a caller can see the bytes rather than only being told they were
+     * wrong. One message with both facts run together left arg2 empty.
+     */
     private static Value raiseBadMakeArg(Value value, String wanted) {
         throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
-                "cannot make a " + wanted + " out of "
-                        + value.datatype().literalSpelling());
+                WordValue.of(wanted), value);
     }
 
     private static Value raiseWrongArgument(Value value, String nativeName, String wanted) {
@@ -16412,6 +16421,70 @@ public final class Natives {
     }
 
     /**
+     * The same bytes with any separately-encoded surrogate pair joined into
+     * the one character it stands for.
+     *
+     * <p>{@code #\{EDA0B4EDB4A2}} is U+D834 and U+DD22 written as two
+     * three-byte sequences, which is how a good many systems encode a
+     * character above the basic plane and is what Rebol reads back as
+     * {@code 𝄢}. Strict UTF-8 refuses it -- a surrogate is not a character --
+     * so the pair is joined here and the strictness is kept for everything
+     * else, a lone surrogate included.
+     *
+     * <p>Joining rather than decoding loosely, because the two are not the
+     * same: {@code #\{EDA0B4}} on its own is still an error, and it would stop
+     * being one if the decoder simply allowed surrogates through.
+     */
+    private static byte[] withSurrogatePairsJoined(byte[] bytes) {
+        byte[] joined = new byte[bytes.length];
+        int written = 0;
+        int at = 0;
+        while (at < bytes.length) {
+            int high = surrogateAt(bytes, at, 0xA0);
+            int low = high < 0 ? -1 : surrogateAt(bytes, at + 3, 0xB0);
+            if (low < 0) {
+                joined[written] = bytes[at];
+                written++;
+                at++;
+                continue;
+            }
+            written = fourBytesOf(joined, written,
+                    0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00));
+            at += 6;
+        }
+        return Arrays.copyOf(joined, written);
+    }
+
+    /**
+     * The surrogate encoded at a position, or -1 where there is not one.
+     *
+     * <p>{@code ED} then a byte in the half of the range the caller names --
+     * {@code A0} upwards for a high surrogate, {@code B0} for a low one --
+     * then any continuation byte.
+     */
+    private static int surrogateAt(byte[] bytes, int at, int leadingHalf) {
+        if (at + 2 >= bytes.length || (bytes[at] & 0xFF) != 0xED) {
+            return -1;
+        }
+        int second = bytes[at + 1] & 0xFF;
+        int third = bytes[at + 2] & 0xFF;
+        if (second < leadingHalf || second >= leadingHalf + 0x10
+                || third < 0x80 || third > 0xBF) {
+            return -1;
+        }
+        return 0xD000 | (second & 0x3F) << 6 | third & 0x3F;
+    }
+
+    /** The four bytes a character above the basic plane takes, and where next. */
+    private static int fourBytesOf(byte[] joined, int written, int codepoint) {
+        joined[written] = (byte) (0xF0 | codepoint >> 18);
+        joined[written + 1] = (byte) (0x80 | codepoint >> 12 & 0x3F);
+        joined[written + 2] = (byte) (0x80 | codepoint >> 6 & 0x3F);
+        joined[written + 3] = (byte) (0x80 | codepoint & 0x3F);
+        return written + 4;
+    }
+
+    /**
      * A binary read as UTF-8 text, refusing bytes that are not valid.
      *
      * <p>`Decode_UTF_String` in the C, and the refusal matters as much as the
@@ -16437,6 +16510,7 @@ public final class Natives {
                 StandardCharsets.UTF_8.newDecoder()
                         .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
                         .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT);
+        bytes = withSurrogatePairsJoined(bytes);
         java.nio.ByteBuffer reading = java.nio.ByteBuffer.wrap(bytes);
         java.nio.CharBuffer written = java.nio.CharBuffer.allocate(bytes.length + 1);
         java.nio.charset.CoderResult stopped = strictly.decode(reading, written, true);

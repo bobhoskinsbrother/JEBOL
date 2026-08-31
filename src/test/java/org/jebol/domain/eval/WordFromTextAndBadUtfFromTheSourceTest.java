@@ -89,4 +89,35 @@ class WordFromTextAndBadUtfFromTheSourceTest {
                 reduce [to string! #{C5A1} to string! #{F09F9982} to string! #{}]"""))
                 .isEqualTo("[\"š\" \"🙂\" \"\"]");
     }
+
+    @Test
+    @DisplayName("a surrogate pair encoded separately is the one character it stands for")
+    void aSurrogatePairIsJoined() {
+        assertThat(answerTo("""
+                "𝄢" == to string! #{EDA0B4EDB4A2}""")).isEqualTo("#(true)");
+    }
+
+    @Test
+    @DisplayName("but a lone surrogate is still not a character")
+    void aLoneSurrogateIsRefused() {
+        assertThat(answerTo("""
+                collect [
+                    foreach bytes [#{EDA0B4} #{EDB4A2}][
+                        raised: try [to string! bytes]
+                        keep raised/id
+                    ]
+                ]""")).isEqualTo("[invalid-utf invalid-utf]");
+    }
+
+    @Test
+    @DisplayName("TO CHAR! names the bytes it could not read, not just the type")
+    void toCharNamesTheBytes() {
+        assertThat(answerTo("""
+                collect [
+                    foreach bytes [#{C5} #{F09F99}][
+                        raised: try [to char! bytes]
+                        keep raised/arg2
+                    ]
+                ]""")).isEqualTo("[#{C5} #{F09F99}]");
+    }
 }
