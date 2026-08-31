@@ -17,7 +17,7 @@ now run -- Goal 1, and it is done. The sixth is new and is not clean.
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
-| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 1,716 failing and every one named in `known-gaps.txt` |
+| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 1,669 failing and every one named in `known-gaps.txt` |
 | `scripts/error-parity.py` | **69 of Rebol's 142 error ids can be raised. 73 cannot** |
 
 `./gradlew check` is 14,961 tests, 0 failed, 0 skipped. An unread suite file
@@ -94,11 +94,11 @@ door, and the reader refuses to answer one.
 
 ## What this leaves
 
-`known-gaps.txt` holds 1,716 entries, from 1,032 over 25 files. The list grew
+`known-gaps.txt` holds 1,669 entries, from 1,032 over 25 files. The list grew
 because the suite did. **None of those failures was new when it appeared: they
 were not passing, they were not being asked.** They are the real porting
 backlog and the honest measure of the port, and the list only ever shrinks --
-428 came off with the MAKE and TO work, with COPY, and with bitsets.
+475 came off with the MAKE and TO work, with COPY, and with bitsets.
 
 ## What the suite does not ask
 
@@ -310,7 +310,7 @@ the same function, and if not, why was it forked?
 
 # Goal 7. The suite assertions that cannot come off
 
-**Of the 1,716 lines in `known-gaps.txt`, 1,714 are work and two are not.**
+**Of the 1,669 lines in `known-gaps.txt`, 1,667 are work and two are not.**
 The file is not a skip list: every line in it runs on every build, and
 `RebolSuiteTest` fails if a listed assertion starts passing. So the list only
 ever shrinks, and these two will still be there when the rest have gone.

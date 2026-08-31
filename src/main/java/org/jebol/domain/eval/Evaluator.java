@@ -1615,6 +1615,9 @@ public final class Evaluator {
                 case VectorValue vector -> VectorPath.read(vector, selector);
             };
         }
+        if (target instanceof BitsetValue members) {
+            return Natives.bitsetHoldsForAPath(members, selector);
+        }
         if (target instanceof CharacterValue character
                 && selector instanceof WordValue asked) {
             switch (asked.canonical()) {

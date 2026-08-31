@@ -87,7 +87,7 @@ All of these stay where they are. A change that moves one is wrong.
 
 - **`RebolSuiteTest`** -- Rebol's own assertions, about a minute alone. The
   inner loop between changes. **All 10,100 assertions its sixty-seven files
-  write are run**, and 1,716 fail. Every failure is named in
+  write are run**, and 1,669 fail. Every failure is named in
   `known-gaps.txt`: not a skip list, because every line in it runs on every
   build and the test fails if a listed assertion starts passing.
 

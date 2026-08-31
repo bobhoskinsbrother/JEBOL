@@ -196,37 +196,16 @@ bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #225
 bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #226
 bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #227
 bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #228
-bitset-test.r3 / bitset issues / issue-1283 #205
-bitset-test.r3 / complemented / comp-10 #189
 bitset-test.r3 / complemented / comp-12 #192
 bitset-test.r3 / complemented / comp-12 #193
 bitset-test.r3 / complemented / comp-6 #175
 bitset-test.r3 / complemented / comp-6 #179
-bitset-test.r3 / complemented / comp-8 #183
-bitset-test.r3 / complemented / comp-8 #184
-bitset-test.r3 / complemented / comp-8 #185
-bitset-test.r3 / complemented / comp-8 #186
-bitset-test.r3 / complemented / comp-9 #187
 bitset-test.r3 / complemented / issue-1357 #197
 bitset-test.r3 / complemented / issue-1357 #198
 bitset-test.r3 / complemented / issue-1357 #199
 bitset-test.r3 / complemented / issue-1541 #195
 bitset-test.r3 / complemented / issue-1541 #196
-bitset-test.r3 / find / find bitset! block-of-integers #156
-bitset-test.r3 / find / find bitset! block-of-integers #157
-bitset-test.r3 / find / find bitset! block-of-integers #158
-bitset-test.r3 / find / find bitset! block-of-integers #159
-bitset-test.r3 / find / find bitset! block-of-integers #163
-bitset-test.r3 / find / find bitset! block-of-integers #164
-bitset-test.r3 / find / find bitset! block-of-integers #165
-bitset-test.r3 / find / find bitset! block-of-strings! #166
-bitset-test.r3 / find / find bitset! block-of-strings! #167
 bitset-test.r3 / find / find bitset! char! #142
-bitset-test.r3 / find / find bitset! char! #146
-bitset-test.r3 / find / find bitset! string! #150
-bitset-test.r3 / find / find bitset! string! #151
-bitset-test.r3 / find / find bitset! string! #152
-bitset-test.r3 / find / find bitset! string! #153
 bitset-test.r3 / make bitset! / basic make #11
 bitset-test.r3 / make bitset! / basic make #14
 bitset-test.r3 / make bitset! / basic make #20
@@ -238,44 +217,18 @@ bitset-test.r3 / make bitset! / make bitset! from block #35
 bitset-test.r3 / make bitset! / make bitset! from block #36
 bitset-test.r3 / make bitset! / make bitset! from block #37
 bitset-test.r3 / make bitset! / make bitset! from block #38
-bitset-test.r3 / modify / alter #103
-bitset-test.r3 / modify / alter #104
 bitset-test.r3 / modify / append-1 #119
 bitset-test.r3 / modify / append-1 #120
 bitset-test.r3 / modify / insert-1 #121
 bitset-test.r3 / modify / insert-1 #122
 bitset-test.r3 / modify / issue-1355 #139
 bitset-test.r3 / modify / issue-1355 #140
-bitset-test.r3 / modify / poke-2 #115
-bitset-test.r3 / modify / poke-2 #116
-bitset-test.r3 / modify / poke-2 #117
-bitset-test.r3 / modify / poke-2 #118
-bitset-test.r3 / pick bitset! / path expression #94
-bitset-test.r3 / pick bitset! / path expression #95
-bitset-test.r3 / pick bitset! / path expression #96
 bitset-test.r3 / pick bitset! / pick logic #91
 bitset-test.r3 / pick bitset! / pick logic #92
-bitset-test.r3 / pick bitset! / pick-1 #49
-bitset-test.r3 / pick bitset! / pick-2 #51
-bitset-test.r3 / pick bitset! / pick-2 #52
-bitset-test.r3 / pick bitset! / pick-2 #53
-bitset-test.r3 / pick bitset! / pick-2 #54
-bitset-test.r3 / pick bitset! / pick-2 #55
-bitset-test.r3 / pick bitset! / pick-2 #56
-bitset-test.r3 / pick bitset! / pick-2 #57
-bitset-test.r3 / pick bitset! / pick-2 #58
-bitset-test.r3 / pick bitset! / pick-7 #78
-bitset-test.r3 / pick bitset! / pick-7 #79
-bitset-test.r3 / pick bitset! / pick-7 #80
 bitset-test.r3 / pick bitset! / pick-7 #81
 bitset-test.r3 / pick bitset! / pick-8 #82
-bitset-test.r3 / pick bitset! / pick-8 #83
 bitset-test.r3 / pick bitset! / pick-8 #84
-bitset-test.r3 / pick bitset! / pick-8 #86
-bitset-test.r3 / pick bitset! / pick-8 #87
-bitset-test.r3 / pickz bitset! / pickz #100
 bitset-test.r3 / pickz bitset! / pickz #97
-bitset-test.r3 / pickz bitset! / pickz #99
 chacha20-test.r3 / (no group) / (no test) #1
 chacha20-test.r3 / (no group) / (no test) #10
 chacha20-test.r3 / (no group) / (no test) #11

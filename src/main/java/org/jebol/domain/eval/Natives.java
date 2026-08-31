@@ -5997,8 +5997,8 @@ public final class Natives {
                         return map.storedKeyLike(arguments.get(1));
                     }
                     if (arguments.get(0) instanceof BitsetValue bitset) {
-                        return LogicValue.of(arguments.get(1) instanceof CharacterValue character
-                                && bitset.holds(character.codepoint()));
+                        return LogicValue.of(bitsetHolds(bitset, arguments.get(1),
+                                refinements.contains("any")));
                     }
                     if (arguments.get(0) instanceof TypesetValue typeset) {
                         return LogicValue.of(arguments.get(1) instanceof DatatypeValue wanted
@@ -7997,9 +7997,40 @@ public final class Natives {
             return members.holds(letter.codepoint());
         }
         if (asked instanceof IntegerValue codepoint) {
-            return members.holds((int) codepoint.magnitude());
+            return members.holds(bitAsked(codepoint.magnitude()));
         }
         return holdsEachOf(members, codePointsAskedAboutBy(asked), anyWillDo);
+    }
+
+    /**
+     * A bit a caller named, or {@code out-of-range} where no bit has that
+     * number.
+     *
+     * <p>{@code Int32s(val, 0)} is the C asking for a whole number no smaller
+     * than nought and raising rather than returning one. Below zero indexes
+     * before the first byte, so leaving it to the array made a negative escape
+     * as a Java exception where a script should have caught an error --
+     * Rebol's own suite asks exactly that of the most negative number there
+     * is, and notes that Red answers differently.
+     */
+    private static int bitAsked(long codepoint) {
+        if (codepoint < 0 || codepoint > Integer.MAX_VALUE) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    codepoint + " names no bit a set could hold");
+        }
+        return (int) codepoint;
+    }
+
+    /**
+     * What a path through a bitset answers, which is the question PICK asks.
+     *
+     * <p>{@code bs/3} and {@code pick bs 3} are one thing, because the C sends
+     * a path selection to {@code Pick_Path} and a bitset's PICK arm is what
+     * answers it. Raising {@code invalid-path} instead made a path the one way
+     * of asking a bitset something that did not work.
+     */
+    static Value bitsetHoldsForAPath(BitsetValue members, Value selector) {
+        return LogicValue.of(bitsetHolds(members, selector, false));
     }
 
     private static int[] codePointsAskedAboutBy(Value asked) {
@@ -8015,7 +8046,11 @@ public final class Natives {
             return points;
         }
         if (asked instanceof BlockValue specs) {
-            return codePointsIn(specs);
+            int[] points = codePointsIn(specs);
+            for (int point : points) {
+                bitAsked(point);
+            }
+            return points;
         }
         throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
     }
