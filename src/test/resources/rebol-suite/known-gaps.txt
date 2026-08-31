@@ -3,7 +3,6 @@ aes-test.r3 / (no group) / (no test) #2
 aes-test.r3 / (no group) / (no test) #3
 aes-test.r3 / (no group) / (no test) #4
 bbcode-test.r3 / (no group) / (no test) #2
-bincode-test.r3 / BinCode basic read/write functions / BinCode - ALIGN #177
 bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #169
 bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #170
 bincode-test.r3 / BinCode basic read/write functions / BinCode - BITSET8, BITSET16, BITSET32 (read) #171
@@ -11,39 +10,8 @@ bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #163
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #164
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU64 #165
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU64 #166
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F16LE, F16BE #187
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F16LE, F16BE #188
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F16LE, F16BE #189
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F16LE, F16BE #190
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F32LE, F32BE #191
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F32LE, F32BE #192
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F32LE, F32BE #193
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F32LE, F32BE #194
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F64LE, F64BE #195
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F64LE, F64BE #196
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F64LE, F64BE #197
-bincode-test.r3 / BinCode basic read/write functions / BinCode - F64LE, F64BE #198
 bincode-test.r3 / BinCode basic read/write functions / BinCode - FIXED8 and FIXED16 (read) #172
 bincode-test.r3 / BinCode basic read/write functions / BinCode - FIXED8 and FIXED16 (read) #173
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #181
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #182
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #183
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #184
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #185
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE #186
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (read) #178
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (read) #179
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (read) #180
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (write/read NAN) #199
-bincode-test.r3 / BinCode basic read/write functions / BinCode - FLOAT16, FLOAT, DOUBLE (write/read NAN) #201
-bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #202
-bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #203
-bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #204
-bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #205
-bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #206
-bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #207
-bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #208
-bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #209
 bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #210
 bincode-test.r3 / BinCode basic read/write functions / BinCode - OCTAL-BYTES (read) #213
 bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIPBITS #176
@@ -52,31 +20,8 @@ bincode-test.r3 / BinCode basic read/write functions / BinCode - STRING #140
 bincode-test.r3 / BinCode basic read/write functions / BinCode - STRING-BYTES (read) #212
 bincode-test.r3 / BinCode basic read/write functions / BinCode - TUPLE3 and TUPLE4 (read) #174
 bincode-test.r3 / BinCode basic read/write functions / BinCode - TUPLE3 and TUPLE4 (read) #175
-bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #127
-bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #128
-bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #129
-bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #130
-bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #131
-bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #132
-bincode-test.r3 / BinCode basic read/write functions / BinCode - UNIXTIME-NOW #133
 bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #167
 bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #168
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #147
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #148
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #149
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #150
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #151
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (SB, UB, FB, ALIGN) #152
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #153
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #154
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #155
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #156
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #157
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #158
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #159
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #160
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits (variant using sigle value access) #161
-bincode-test.r3 / BinCode basic read/write functions / BinCode - bits with zero skip #162
 bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #214
 bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #215
 bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #216
@@ -89,18 +34,7 @@ bincode-test.r3 / BinCode basic read/write functions / BinCode - read using inte
 bincode-test.r3 / BinCode basic read/write functions / BinCode - read using integer argument #145
 bincode-test.r3 / BinCode other issues / Invalid read spec #243
 bincode-test.r3 / BinCode other issues / Invalid read spec #244
-bincode-test.r3 / BinCode other issues / Missing additional read value #229
-bincode-test.r3 / BinCode other issues / Missing additional read value #230
-bincode-test.r3 / BinCode other issues / Missing additional read value #231
 bincode-test.r3 / BinCode other issues / Missing additional read value #236
-bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #219
-bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #220
-bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #222
-bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #223
-bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #224
-bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #226
-bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #227
-bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #228
 bitset-test.r3 / modify / issue-1355 #139
 bitset-test.r3 / modify / issue-1355 #140
 chacha20-test.r3 / (no group) / (no test) #1

@@ -5,11 +5,16 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.LongSupplier;
 import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -51,6 +56,31 @@ final class Bincode {
         };
     }
 
+    /**
+     * How wide each float code is, in bytes, and nought for anything else.
+     *
+     * <p>Named one at a time rather than by suffix, because {@code double}
+     * ends in the letters that mean little-endian everywhere else and would
+     * be taken apart as {@code doub} by the rule the integers use.
+     *
+     * <p>These default to little-endian where every integer code defaults to
+     * big. {@code float 0.5} is {@code #\{0000003F}} and {@code f32be 0.5} is
+     * {@code #\{3F000000}}, so a caller writing a wire protocol has to say
+     * {@code f32be} for the order the rest of the dialect assumes.
+     */
+    private static int floatWidthOf(String code) {
+        return switch (code) {
+            case "float16", "f16", "f16be", "f16le" -> 2;
+            case "float", "f32", "f32be", "f32le" -> 4;
+            case "double", "f64", "f64be", "f64le" -> 8;
+            default -> 0;
+        };
+    }
+
+    private static boolean floatIsMostSignificantFirst(String code) {
+        return code.endsWith("be");
+    }
+
     /** A code without its endian suffix. */
     private static String baseOf(String code) {
         if (code.endsWith("be") || code.endsWith("le")) {
@@ -75,8 +105,11 @@ final class Bincode {
 
     /** What the dialect can do, so an unknown code can be refused by name. */
     static boolean knows(String code) {
-        return widthOf(code) > 0 || POSITIONS.contains(baseOf(code))
+        return widthOf(code) > 0 || floatWidthOf(code) > 0
+                || POSITIONS.contains(baseOf(code))
                 || DATA.contains(baseOf(code))
+                || BITS.contains(code)
+                || MOMENTS.contains(code)
                 || !lengthCodeOf(code).isEmpty();
     }
 
@@ -84,7 +117,46 @@ final class Bincode {
             List.of("at", "atz", "index", "indexz", "skip", "length", "length?");
 
     private static final List<String> DATA =
-            List.of("bytes", "pad", "align", "random-bytes");
+            List.of("bytes", "pad", "align", "random-bytes", "crop");
+
+    /**
+     * The codes that count in bits rather than bytes.
+     *
+     * <p>Kept apart from the rest because they are the only ones that can
+     * leave the cursor in the middle of a byte, which every other code then
+     * has to be told about through the context.
+     */
+    private static final List<String> BITS =
+            List.of("ub", "sb", "fb", "bit", "not-bit");
+
+    /**
+     * The codes that carry a moment rather than a number.
+     *
+     * <p>MS-DOS packed a date and a clock into sixteen bits each, and ZIP
+     * still stores them that way, so a reader of archives needs them however
+     * long ago the format stopped being anybody's idea of a good one.
+     */
+    private static final List<String> MOMENTS =
+            List.of("msdos-time", "msdos-date", "msdos-datetime",
+                    "unixtime-now", "unixtime-now-le");
+
+    /**
+     * Throws away the bytes already read, and is the only read code that
+     * changes the buffer rather than walking it.
+     *
+     * <p>What it is for: a protocol reading a stream keeps the buffer from
+     * growing without bound by dropping what it has finished with. Everything
+     * shuffles down, so the read cursor lands back at the head and the write
+     * cursor moves back by however much went.
+     */
+    private static void cropWhatHasBeenRead(Cursor cursor) {
+        if (cursor.at <= 0) {
+            return;
+        }
+        cursor.octets.subList(0, cursor.at).clear();
+        cursor.cropped += cursor.at;
+        cursor.at = 0;
+    }
 
     /**
      * Where a write or a read has got to, and the bytes it is working on.
@@ -97,9 +169,34 @@ final class Bincode {
         private final List<Integer> octets;
         private int at;
 
+        /**
+         * How many bits of the current byte have been taken, nought to seven.
+         *
+         * <p>The bit codes read across byte boundaries, so a position in bytes
+         * alone cannot say where the next one starts. The C keeps the same
+         * thing as a mask it shifts right, and stores it in the context
+         * between calls so that {@code binary/read bin 'BIT} twice running
+         * gives two different bits.
+         */
+        private int bitsTaken;
+
+        /**
+         * How many bytes CROP has taken off the front.
+         *
+         * <p>The caller has to know, because the write cursor is an index into
+         * the same series and every byte removed in front of it moves it back
+         * by one.
+         */
+        private int cropped;
+
         Cursor(List<Integer> octets, int at) {
+            this(octets, at, 0);
+        }
+
+        Cursor(List<Integer> octets, int at, int bitsTaken) {
             this.octets = octets;
             this.at = at;
+            this.bitsTaken = bitsTaken;
         }
 
         List<Integer> octets() {
@@ -109,6 +206,14 @@ final class Bincode {
         int at() {
             return at;
         }
+
+        int bitsTaken() {
+            return bitsTaken;
+        }
+
+        int cropped() {
+            return cropped;
+        }
     }
 
     /**
@@ -117,7 +222,8 @@ final class Bincode {
      * <p>A code taking a value reads the next item of the block as that
      * value; the position codes take a number and move instead.
      */
-    static void write(Cursor cursor, List<Value> dialect) {
+    static void write(Cursor cursor, List<Value> dialect,
+            LongSupplier secondsSinceTheEpoch) {
         for (int step = 0; step < dialect.size(); step++) {
             if (carriesItsOwnBytes(dialect.get(step))) {
                 writeBytes(cursor, dialect.get(step));
@@ -130,7 +236,14 @@ final class Bincode {
                         wholeNumberOf(itemAt(dialect, step, code)));
                 continue;
             }
-            step = writeOtherThanANumber(cursor, dialect, step, code);
+            if (floatWidthOf(code) > 0) {
+                step++;
+                writeFloat(cursor, code,
+                        anyNumberOf(itemAt(dialect, step, code)));
+                continue;
+            }
+            step = writeOtherThanANumber(cursor, dialect, step, code,
+                    secondsSinceTheEpoch);
         }
     }
 
@@ -156,12 +269,15 @@ final class Bincode {
                 || item.datatype() == Datatype.EMAIL;
     }
 
-    private static int writeOtherThanANumber(
-            Cursor cursor, List<Value> dialect, int step, String code) {
+    private static int writeOtherThanANumber(Cursor cursor, List<Value> dialect,
+            int step, String code, LongSupplier secondsSinceTheEpoch) {
         if (!lengthCodeOf(code).isEmpty()) {
             writeBytesAfterTheirLength(cursor, lengthCodeOf(code),
                     itemAt(dialect, ++step, code));
             return step;
+        }
+        if (MOMENTS.contains(code)) {
+            return momentWritten(cursor, dialect, step, code, secondsSinceTheEpoch);
         }
         switch (baseOf(code)) {
             case "at" -> moveTo(cursor, wholeNumberOf(itemAt(dialect, ++step, code)) - 1);
@@ -194,6 +310,10 @@ final class Bincode {
             String code = codeAt(dialect, step);
             if (widthOf(code) > 0) {
                 read.add(IntegerValue.of(readWholeNumber(cursor, code)));
+                continue;
+            }
+            if (floatWidthOf(code) > 0) {
+                read.add(readFloat(cursor, code));
                 continue;
             }
             step = readOtherThanANumber(cursor, dialect, step, code, read);
@@ -264,6 +384,20 @@ final class Bincode {
                     IntegerValue.of(cursor.octets.size() - (long) cursor.at));
             case "pad" -> moveTo(cursor, alignedUp(cursor.at,
                     wholeNumberOf(valueReadAfter(dialect, ++step, named))));
+            case "ub" -> read.add(IntegerValue.of(bitsRead(cursor,
+                    (int) wholeNumberOf(valueReadAfter(dialect, ++step, named)))));
+            case "sb" -> read.add(IntegerValue.of(signedBitsRead(cursor,
+                    (int) wholeNumberOf(valueReadAfter(dialect, ++step, named)))));
+            case "fb" -> read.add(DecimalValue.of(signedBitsRead(cursor,
+                    (int) wholeNumberOf(valueReadAfter(dialect, ++step, named)))
+                    / A_WHOLE_FIXED_POINT_UNIT));
+            case "bit" -> read.add(LogicValue.of(nextBit(cursor) == 1));
+            case "not-bit" -> read.add(LogicValue.of(nextBit(cursor) == 0));
+            case "align" -> alignToAByte(cursor);
+            case "msdos-time" -> read.add(msdosTimeRead(cursor));
+            case "msdos-date" -> read.add(msdosDateRead(cursor));
+            case "msdos-datetime" -> read.add(msdosDateTimeRead(cursor));
+            case "crop" -> cropWhatHasBeenRead(cursor);
             case "bytes" -> read.add(bytesToTheEnd(cursor));
             default -> throw refuse(code);
         }
@@ -397,6 +531,222 @@ final class Bincode {
             put(cursor, cursor.at + byteAt, (int) ((value >> shift) & 0xFF));
         }
         cursor.at += width;
+    }
+
+    /**
+     * Lays a number into the bytes an IEEE float uses.
+     *
+     * <p>Sixteen, thirty-two and sixty-four bits, all three of them the
+     * standard's own layout, so the JVM's own conversions are the whole of it.
+     * A half was the only one that used to need writing by hand.
+     *
+     * <p>What is written is a float, not the number that was given: a caller
+     * writing {@code float 0.1} gets the nearest single, and reading it back
+     * gives that rather than a tenth. That is what the field is.
+     */
+    private static void writeFloat(Cursor cursor, String code, double value) {
+        int width = floatWidthOf(code);
+        long bits = switch (width) {
+            case 2 -> Float.floatToFloat16((float) value) & 0xFFFFL;
+            case 4 -> Float.floatToIntBits((float) value) & 0xFFFFFFFFL;
+            default -> Double.doubleToLongBits(value);
+        };
+        for (int byteAt = 0; byteAt < width; byteAt++) {
+            int shift = floatIsMostSignificantFirst(code)
+                    ? (width - 1 - byteAt) * 8
+                    : byteAt * 8;
+            put(cursor, cursor.at + byteAt, (int) ((bits >> shift) & 0xFF));
+        }
+        cursor.at += width;
+    }
+
+    private static Value readFloat(Cursor cursor, String code) {
+        int width = floatWidthOf(code);
+        refuseAReadPastTheEnd(cursor, width);
+        long bits = 0;
+        for (int byteAt = 0; byteAt < width; byteAt++) {
+            int shift = floatIsMostSignificantFirst(code)
+                    ? (width - 1 - byteAt) * 8
+                    : byteAt * 8;
+            bits |= ((long) octetAt(cursor, cursor.at + byteAt)) << shift;
+        }
+        cursor.at += width;
+        return DecimalValue.of(switch (width) {
+            case 2 -> Float.float16ToFloat((short) bits);
+            case 4 -> Float.intBitsToFloat((int) bits);
+            default -> Double.longBitsToDouble(bits);
+        });
+    }
+
+    /** A number the dialect was given, whole or fractional. */
+    private static double anyNumberOf(Value given) {
+        if (given instanceof IntegerValue whole) {
+            return whole.magnitude();
+        }
+        if (given instanceof DecimalValue fraction) {
+            return fraction.quantity();
+        }
+        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
+    }
+
+    /**
+     * The divisor that makes FB a fraction: {@code (double)u / 65536.0}.
+     *
+     * <p>A fixed-point number with sixteen bits after the point, which is what
+     * SWF and a good many other formats store an angle or a scale as.
+     */
+    private static final double A_WHOLE_FIXED_POINT_UNIT = 65536.0;
+
+    /**
+     * The next bit, most significant first, moving on to the next byte after
+     * the eighth.
+     *
+     * <p>{@code NEXT_IN_BIT} shifts a mask right and starts a new byte when it
+     * falls off the end. Counting the bits taken instead says the same thing
+     * and cannot be confused with the C's other use of the mask, where nought
+     * means aligned rather than exhausted.
+     */
+    private static int nextBit(Cursor cursor) {
+        refuseAReadPastTheEnd(cursor, 1);
+        int bit = (octetAt(cursor, cursor.at) >> (7 - cursor.bitsTaken)) & 1;
+        cursor.bitsTaken++;
+        if (cursor.bitsTaken == 8) {
+            cursor.bitsTaken = 0;
+            cursor.at++;
+        }
+        return bit;
+    }
+
+    /** A run of bits as an unsigned number, which is UB. */
+    private static long bitsRead(Cursor cursor, int count) {
+        long value = 0;
+        for (int at = 0; at < count; at++) {
+            value = (value << 1) | nextBit(cursor);
+        }
+        return value;
+    }
+
+    /**
+     * A run of bits as a signed number, sign bit at the top of the run.
+     *
+     * <p>{@code u = (u ^ m) - m} with {@code m = 1 << (nbits - 1)}, the
+     * branchless sign extension the C links to a note about. The width is the
+     * run's own, not the machine's, so three bits of {@code 110} are -2 rather
+     * than 6.
+     */
+    private static long signedBitsRead(Cursor cursor, int count) {
+        long value = bitsRead(cursor, count);
+        if (count <= 0) {
+            return value;
+        }
+        long signBit = 1L << (count - 1);
+        return (value ^ signBit) - signBit;
+    }
+
+    /**
+     * Throws away the rest of the byte, which is what ALIGN does.
+     *
+     * <p>Only when some of it has been taken. On a byte boundary it does
+     * nothing rather than skipping a whole byte, so ALIGN twice running is
+     * ALIGN once.
+     */
+    private static void alignToAByte(Cursor cursor) {
+        if (cursor.bitsTaken > 0) {
+            cursor.bitsTaken = 0;
+            cursor.at++;
+        }
+    }
+
+    /**
+     * The clock MS-DOS stored in sixteen bits, still used inside ZIP.
+     *
+     * <p>Five bits of hour, six of minute, five of seconds -- which is why the
+     * seconds are halved: thirty-two values have to cover sixty. So the format
+     * has a two-second resolution and 21:23:55 comes back as 21:23:54.
+     */
+    private static Value msdosTimeRead(Cursor cursor) {
+        long packed = readWholeNumber(cursor, "ui16le");
+        return TimeValue.ofNanoseconds(A_SECOND * (
+                (packed >> 11 & 0x1F) * 3600
+                        + (packed >> 5 & 0x3F) * 60
+                        + (packed & 0x1F) * 2));
+    }
+
+    private static final long A_SECOND = 1_000_000_000L;
+
+    /**
+     * The date MS-DOS stored in the other sixteen bits.
+     *
+     * <p>Seven bits of year counted from 1980, four of month, five of day,
+     * which is the whole of why a ZIP written before 1980 cannot say so.
+     */
+    private static Value msdosDateRead(Cursor cursor) {
+        long packed = readWholeNumber(cursor, "ui16le");
+        return DateValue.of((int) (packed >> 9 & 0x7F) + MSDOS_EPOCH_YEAR,
+                (int) (packed >> 5 & 0x0F), (int) (packed & 0x1F));
+    }
+
+    private static final int MSDOS_EPOCH_YEAR = 1980;
+
+    /** The two halves together, clock first, as ZIP writes them. */
+    private static Value msdosDateTimeRead(Cursor cursor) {
+        TimeValue clock = (TimeValue) msdosTimeRead(cursor);
+        DateValue day = (DateValue) msdosDateRead(cursor);
+        return DateValue.of(day.year(), day.month(), day.day(), clock);
+    }
+
+    /**
+     * A moment laid into the bytes, matched on the code as written.
+     *
+     * <p>Kept out of the switch the other codes go through, because that one
+     * strips an endian suffix first and would read {@code unixtime-now-le} as
+     * {@code unixtime-now-} -- a code nothing answers to.
+     */
+    private static int momentWritten(Cursor cursor, List<Value> dialect,
+            int step, String code, LongSupplier secondsSinceTheEpoch) {
+        switch (code) {
+            case "unixtime-now" ->
+                    writeWholeNumber(cursor, "ui32", secondsSinceTheEpoch.getAsLong());
+            case "unixtime-now-le" ->
+                    writeWholeNumber(cursor, "ui32le", secondsSinceTheEpoch.getAsLong());
+            case "msdos-time" -> msdosTimeWritten(cursor, itemAt(dialect, ++step, code));
+            case "msdos-date" -> msdosDateWritten(cursor, itemAt(dialect, ++step, code));
+            default -> msdosDateTimeWritten(cursor, itemAt(dialect, ++step, code));
+        }
+        return step;
+    }
+
+    private static void msdosTimeWritten(Cursor cursor, Value given) {
+        long nanoseconds = given instanceof TimeValue clock
+                ? clock.nanoseconds()
+                : given instanceof DateValue day
+                        ? day.timeOfDay().map(TimeValue::nanoseconds).orElse(0L)
+                        : refuseTheValue(given);
+        long seconds = nanoseconds / A_SECOND;
+        writeWholeNumber(cursor, "ui16le",
+                seconds / 3600 << 11
+                        | seconds / 60 % 60 << 5
+                        | seconds % 60 / 2);
+    }
+
+    private static void msdosDateWritten(Cursor cursor, Value given) {
+        if (!(given instanceof DateValue day)) {
+            refuseTheValue(given);
+            return;
+        }
+        writeWholeNumber(cursor, "ui16le",
+                (long) (day.year() - MSDOS_EPOCH_YEAR) << 9
+                        | (long) day.month() << 5
+                        | day.day());
+    }
+
+    private static void msdosDateTimeWritten(Cursor cursor, Value given) {
+        msdosTimeWritten(cursor, given);
+        msdosDateWritten(cursor, given);
+    }
+
+    private static long refuseTheValue(Value given) {
+        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
     }
 
     private static long readWholeNumber(Cursor cursor, String code) {

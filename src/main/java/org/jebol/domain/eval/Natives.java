@@ -2,6 +2,7 @@ package org.jebol.domain.eval;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.*;
 import java.util.Arrays;
 import java.util.function.DoublePredicate;
@@ -11318,8 +11319,9 @@ public final class Natives {
         }
         if (refinements.contains("read")) {
             Value asked = dialectCodeIn(arguments, refinements);
-            return readThroughTheDialect(held, eachValueLookedUp(asked,
-                    evaluator, context));
+            return readThroughTheDialect(held,
+                    eachValueLookedUp(asked, evaluator, context),
+                    theCountGivenWith(arguments, refinements));
         }
         return held;
     }
@@ -11482,7 +11484,7 @@ public final class Natives {
         BinaryValue writing = cursorNamed(held, "buffer-write");
         List<Integer> octets = octetsOfTheBuffer(writing.head());
         Bincode.Cursor cursor = new Bincode.Cursor(octets, writing.index() - 1);
-        Bincode.write(cursor, dialect);
+        Bincode.write(cursor, dialect, Natives::secondsSinceTheEpoch);
         BinaryValue written = BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray());
         held.context().set("buffer",
@@ -11504,14 +11506,61 @@ public final class Natives {
      * refinement that does, and leaves the read cursor past what it took so
      * the next call carries on from there.
      */
-    private static Value readThroughTheDialect(ObjectValue held, Value asked) {
+    private static Value readThroughTheDialect(
+            ObjectValue held, Value asked, Value count) {
         BinaryValue reading = cursorNamed(held, "buffer");
         Bincode.Cursor cursor = new Bincode.Cursor(
-                octetsOfTheBuffer(reading.head()), reading.index() - 1);
-        List<Value> read = Bincode.read(cursor, codesWrittenIn(asked),
+                octetsOfTheBuffer(reading.head()), reading.index() - 1,
+                bitsAlreadyTakenIn(held));
+        List<Value> codes = new ArrayList<>(codesWrittenIn(asked));
+        if (!(count instanceof NoneValue)) {
+            codes.add(count);
+        }
+        List<Value> read = Bincode.read(cursor, codes,
                 Natives::nameTheValueRead);
+        held.context().set("r-mask", IntegerValue.of(cursor.bitsTaken()));
+        if (cursor.cropped() > 0) {
+            shortenedFromTheFront(held, cursor);
+            return shapedLikeTheAsking(asked, read);
+        }
         held.context().set("buffer", reading.atIndex(cursor.at() + 1));
         return shapedLikeTheAsking(asked, read);
+    }
+
+    /**
+     * Puts both cursors back after CROP has taken bytes off the front.
+     *
+     * <p>The bytes that went were in front of both, so the read cursor lands
+     * at the head and the write cursor moves back by however many left --
+     * never past the head, which is what {@code MAX(0, ...)} says in the C.
+     * Leaving the write cursor where it was would have it pointing at bytes
+     * that had shuffled along under it.
+     */
+    private static void shortenedFromTheFront(
+            ObjectValue held, Bincode.Cursor cursor) {
+        int writingWas = cursorNamed(held, "buffer-write").index();
+        BinaryValue shortened = BinaryValue.of(
+                cursor.octets().stream().mapToInt(Integer::intValue).toArray());
+        held.context().set("buffer", shortened.atIndex(cursor.at() + 1));
+        held.context().set("buffer-write",
+                shortened.atIndex(Math.max(1, writingWas - cursor.cropped())));
+    }
+
+    /**
+     * Where in the current byte the last read stopped.
+     *
+     * <p>Kept on the context between calls, because the bit codes are meant to
+     * be used one at a time: {@code binary/read bin 'BIT} twice running has to
+     * give two different bits, and a SB in one call has to leave the next call
+     * where it finished. The C keeps a mask in the same field for the same
+     * reason, which is what {@code r-mask} in
+     * {@code system/standard/bincode} is for.
+     */
+    private static int bitsAlreadyTakenIn(ObjectValue held) {
+        return held.context().knows("r-mask")
+                && held.context().slotFor("r-mask").value() instanceof IntegerValue taken
+                ? (int) taken.magnitude()
+                : 0;
     }
 
     /**
@@ -11534,6 +11583,18 @@ public final class Natives {
             throw Raised.of(EvaluationFailure.LOCKED_WORD, named.spelling());
         }
         slot.setValue(read);
+    }
+
+    /**
+     * The clock, for the one dialect code that asks the host what time it is.
+     *
+     * <p>Handed in rather than read where it is used, so the dialect itself
+     * stays arithmetic on bytes and only a block actually naming
+     * UNIXTIME-NOW reaches outside. Every other code answers the same thing
+     * every time it is run.
+     */
+    private static long secondsSinceTheEpoch() {
+        return Instant.now().getEpochSecond();
     }
 
     /** The buffer's bytes as the dialect works on them: unsigned, and growable. */
@@ -11565,7 +11626,28 @@ public final class Natives {
         return values.isEmpty() ? NoneValue.none() : values.getFirst();
     }
 
-    /** The code a read was given, as written rather than wrapped. */
+    /**
+     * The number /WITH gave a lone code, or nothing where it gave none.
+     *
+     * <p>{@code binary/read/with bin 'UB 4} and {@code binary/read bin [UB 4]}
+     * read the same four bits. The refinement exists because the bit codes are
+     * used one at a time -- a caller pulling a twelve-bit field, then two
+     * bits, then a four-bit one writes three calls, and naming a block of two
+     * each time reads worse than saying the count.
+     *
+     * <p>Kept apart from the code rather than folded in with it, because the
+     * shape of the answer follows the shape of the asking: a lone word answers
+     * one value, and wrapping it into a block to carry the count would have
+     * made {@code binary/read/with bin 'SB 12} answer {@code [1080]}.
+     */
+    private static Value theCountGivenWith(
+            List<Value> arguments, Set<String> refinements) {
+        return refinements.contains("with")
+                ? argumentFor("with", DIALECT_OPTIONAL_ARGUMENTS,
+                        arguments, refinements, 1)
+                : NoneValue.none();
+    }
+
     private static Value dialectCodeIn(
             List<Value> arguments, Set<String> refinements) {
         int at = refinements.contains("init") ? 2 : 1;
