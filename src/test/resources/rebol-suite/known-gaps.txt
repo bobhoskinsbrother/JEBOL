@@ -196,19 +196,8 @@ bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #225
 bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #226
 bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #227
 bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #228
-bitset-test.r3 / complemented / comp-12 #192
-bitset-test.r3 / complemented / comp-12 #193
-bitset-test.r3 / complemented / issue-1357 #197
-bitset-test.r3 / complemented / issue-1357 #198
-bitset-test.r3 / complemented / issue-1357 #199
-bitset-test.r3 / find / find bitset! char! #142
-bitset-test.r3 / make bitset! / make bitset! from bitset! #23
-bitset-test.r3 / make bitset! / make bitset! from bitset! #25
 bitset-test.r3 / modify / issue-1355 #139
 bitset-test.r3 / modify / issue-1355 #140
-bitset-test.r3 / pick bitset! / pick logic #91
-bitset-test.r3 / pick bitset! / pick logic #92
-bitset-test.r3 / pickz bitset! / pickz #97
 chacha20-test.r3 / (no group) / (no test) #1
 chacha20-test.r3 / (no group) / (no test) #10
 chacha20-test.r3 / (no group) / (no test) #11

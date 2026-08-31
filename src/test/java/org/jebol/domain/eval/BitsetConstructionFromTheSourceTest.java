@@ -255,6 +255,140 @@ class BitsetConstructionFromTheSourceTest {
     }
 
     @Test
+    @DisplayName("MAKE from another bitset copies it, so writing to one leaves the other")
+    void makeFromABitsetCopies() {
+        assertThat(answerTo("""
+                b1: charset ""
+                b2: make bitset! b1
+                b2/1: true
+                reduce [b1 b2]""")).isEqualTo("[#(bitset! #{}) #(bitset! #{40})]");
+    }
+
+    @Test
+    @DisplayName("a set and its complement are never equal, however the question is put")
+    void aSetNeverEqualsItsComplement() {
+        assertThat(answerTo("""
+                b: make bitset! #{00}
+                reduce [
+                    equiv? b complement b
+                    equal? b complement b
+                    strict-equal? b complement b
+                    same? b complement b
+                ]""")).isEqualTo("[#(false) #(false) #(false) #(false)]");
+    }
+
+    @Test
+    @DisplayName("two complements of the same set are equal to each other")
+    void twoComplementsAreEqual() {
+        assertThat(answerTo("""
+                (complement make bitset! #{00}) = (complement make bitset! #{00})"""))
+                .isEqualTo("#(true)");
+    }
+
+    @Test
+    @DisplayName("two sets holding nothing differ when they were given different room")
+    void differentRoomMeansDifferentSets() {
+        assertThat(answerTo("""
+                (make bitset! 1) = (make bitset! 9)""")).isEqualTo("#(false)");
+    }
+
+    @Test
+    @DisplayName("FIND takes either case of a character, and /case takes only the one")
+    void findTakesEitherCase() {
+        assertThat(answerTo("""
+                letters: charset [#"A" #"B" #"C"]
+                reduce [
+                    find letters #"a"
+                    find letters #"A"
+                    find/case letters #"A"
+                    find/case letters #"a"
+                ]""")).isEqualTo("[#(true) #(true) #(true) #(false)]");
+    }
+
+    @Test
+    @DisplayName("a number naming the same code point is always asked exactly")
+    void aNumberIsAlwaysCased() {
+        assertThat(answerTo("""
+                letters: charset [#"A" #"B" #"C"]
+                reduce [find letters to-integer #"A" find letters to-integer #"a"]"""))
+                .isEqualTo("[#(true) #(false)]");
+    }
+
+    @Test
+    @DisplayName("PICK never folds case, whatever FIND does")
+    void pickNeverFoldsCase() {
+        assertThat(answerTo("""
+                letters: charset [#"A" #"B" #"C"]
+                reduce [pick letters #"A" pick letters #"a"]"""))
+                .isEqualTo("[#(true) #(false)]");
+    }
+
+    @Test
+    @DisplayName("a logic is no index into a bitset, for PICK or for POKE")
+    void aLogicIsNoIndex() {
+        assertThat(errorIdFrom("""
+                pick make bitset! #{C0} true""")).isEqualTo("invalid-type");
+        assertThat(errorIdFrom("""
+                poke make bitset! #{C0} true none""")).isEqualTo("invalid-type");
+    }
+
+    @Test
+    @DisplayName("PICKZ answers what PICK does, because a bitset counts from nought")
+    void pickzMatchesPick() {
+        assertThat(answerTo("""
+                b: make bitset! [4]
+                reduce [pickz b 4 pick b 4 b/4 find b 4]"""))
+                .isEqualTo("[#(true) #(true) #(true) #(true)]");
+    }
+
+    @Test
+    @DisplayName("POKE takes the same block grammar MAKE does")
+    void pokeTakesABlockOfSpecs() {
+        assertThat(answerTo("""
+                bs: complement charset ""
+                poke bs [32 - 40] none
+                bs""")).isEqualTo("#(bitset! not #{00000000FF80})");
+    }
+
+    @Test
+    @DisplayName("POKE through a block puts back what it took out")
+    void pokeThroughABlockPutsBack() {
+        assertThat(answerTo("""
+                bs: complement charset ""
+                poke bs [32 - 40] none
+                poke bs [32 - 40] true
+                bs""")).isEqualTo("#(bitset! not #{000000000000})");
+    }
+
+    @Test
+    @DisplayName("COPY carries the octets and loses the complement, as REBOL does")
+    void copyLosesTheComplement() {
+        assertThat(answerTo("""
+                b: complement charset "a"
+                reduce [b copy b complement? copy b]""")).isEqualTo(
+                "[#(bitset! not #{00000000000000000000000040})"
+                        + " #(bitset! #{00000000000000000000000040}) #(false)]");
+    }
+
+    @Test
+    @DisplayName("MAKE from a complemented set loses it the same way")
+    void makeFromAComplementedSetLosesIt() {
+        assertThat(answerTo("""
+                b: complement charset "a"
+                reduce [make bitset! b to bitset! b]""")).isEqualTo(
+                "[#(bitset! #{00000000000000000000000040})"
+                        + " #(bitset! #{00000000000000000000000040})]");
+    }
+
+    @Test
+    @DisplayName("so the copy answers the opposite of what the original answers")
+    void theCopyAnswersTheOpposite() {
+        assertThat(answerTo("""
+                b: complement charset "a"
+                reduce [find b #"a" find copy b #"a"]""")).isEqualTo("[#(false) #(true)]");
+    }
+
+    @Test
     @DisplayName("CLEAR leaves no room at all")
     void clearLeavesNoRoom() {
         assertThat(answerTo("""

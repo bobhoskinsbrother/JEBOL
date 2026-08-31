@@ -62,11 +62,22 @@ public final class BitsetValue implements Value {
      * from the catalogue and adds a percent sign to the copy, and with a
      * shallow copy the catalogue's own set gained the percent sign as well.
      * Every later use of it was then wrong, and nothing pointed at COPY.
+     *
+     * <p>The octets travel and the complement does not, which reads like a
+     * mistake and is what REBOL does: {@code copy complement charset "a"} is
+     * the plain set, holding only the letter it was told to leave out. The
+     * copy arm is one line, {@code VAL_SERIES(value) =
+     * Copy_Series_Value(value)}, and a fresh series carries no flag -- where
+     * COMPLEMENT, two arms above it, sets {@code BITS_NOT(ser)} by hand
+     * because it has to. MAKE from another bitset is the same line and loses
+     * it the same way.
+     *
+     * <p>Carrying the flag over is the reading that looks right and is not
+     * the one a real 3.22.1 gives, so a script that copies a complemented set
+     * gets the opposite answer to every question it then asks.
      */
     public BitsetValue duplicate() {
-        BitsetValue same = new BitsetValue(octets.clone());
-        same.complemented = complemented;
-        return same;
+        return new BitsetValue(octets.clone());
     }
 
     /** A set of everything this one leaves out. */
@@ -157,6 +168,33 @@ public final class BitsetValue implements Value {
     }
 
     /**
+     * Whether the set holds a character when either case will do.
+     *
+     * <p>{@code Check_Bit} takes an {@code uncased} flag and tries the
+     * lowercase first, then the uppercase, and only then turns the answer
+     * round for a complemented set. Both tries happen before the flip, so a
+     * complemented set holds a letter when neither case of it is named.
+     *
+     * <p>FIND asks for this and PICK does not, which is the whole of
+     * {@code IS_CHAR(arg) && action == A_FIND && !D_REF(ARG_FIND_CASE)}:
+     * only a char, only FIND, and only without /case. An integer naming the
+     * same code point is always asked exactly.
+     *
+     * <p>Above the folding table the C leaves the character alone, so this
+     * does too. Folding further would answer questions about scripts REBOL
+     * itself does not fold.
+     */
+    public boolean holdsEitherCaseOf(int code) {
+        boolean named = code >= UNICODE_FOLDING_TABLE_SIZE
+                ? namesDirectly(code)
+                : namesDirectly(Character.toLowerCase(code))
+                        || namesDirectly(Character.toUpperCase(code));
+        return complemented != named;
+    }
+
+    private static final int UNICODE_FOLDING_TABLE_SIZE = 0x2E00;
+
+    /**
      * Puts a character in the set, or takes it out.
      *
      * <p>{@code PD_Bitset} writes a bit through a path, and it minds the
@@ -209,14 +247,30 @@ public final class BitsetValue implements Value {
         return octets.clone();
     }
 
+    /**
+     * Two sets are equal when they name the same bits the same way round.
+     *
+     * <p>The flag counts as much as the octets do. A set and its complement
+     * share every byte and mean opposite things, so comparing the octets alone
+     * made {@code b} equal {@code complement b} -- which Rebol's own suite
+     * asks about four ways over, by EQUIV?, EQUAL?, STRICT-EQUAL? and SAME?,
+     * and expects false from all four.
+     *
+     * <p>Length counts too, and is already carried by the byte comparison:
+     * {@code make bitset! 1} and {@code make bitset! 9} hold no bits between
+     * them and are still not equal, because one has room for eight and the
+     * other for sixteen.
+     */
     @Override
     public boolean equals(Object other) {
-        return other instanceof BitsetValue bitset && Arrays.equals(octets, bitset.octets);
+        return other instanceof BitsetValue bitset
+                && complemented == bitset.complemented
+                && Arrays.equals(octets, bitset.octets);
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(octets);
+        return Arrays.hashCode(octets) * 31 + Boolean.hashCode(complemented);
     }
 
     @Override

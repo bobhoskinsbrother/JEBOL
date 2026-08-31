@@ -99,10 +99,10 @@ class ActionArmsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("something that names no bits is refused")
+        @DisplayName("something that names no bits is refused for its type")
         void somethingThatNamesNoBitsIsRefused() {
             assertThat(errorIdOf("""
-                    insert charset {a} 1.5""")).isEqualTo("invalid-arg");
+                    insert charset {a} 1.5""")).isEqualTo("invalid-type");
         }
     }
 

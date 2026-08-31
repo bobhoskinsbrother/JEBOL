@@ -4758,16 +4758,9 @@ public final class Natives {
                     }
                     if (arguments.get(0) instanceof BitsetValue members) {
                         requireChangeable(members);
-                        Integer bit = switch (arguments.get(1)) {
-                            case CharacterValue letter -> letter.codepoint();
-                            case IntegerValue number -> (int) number.magnitude();
-                            default -> null;
-                        };
-                        if (bit == null) {
-                            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                                    Molder.mold(arguments.get(1)));
-                        }
-                        members.hold(bit, arguments.get(2).isTruthy());
+                        members.holdAll(
+                                (BitsetValue) bitsMeantBy(arguments.get(1)),
+                                arguments.get(2).isTruthy());
                         return arguments.get(2);
                     }
                     if (arguments.get(0) instanceof MapValue map) {
@@ -5701,6 +5694,7 @@ public final class Natives {
                         Parameter.required("index")),
                 (arguments, evaluator, context) -> arguments.get(1)
                         instanceof LogicValue chosen
+                        && !(arguments.getFirst() instanceof BitsetValue)
                         ? pick(arguments.get(0), chosen.truth() ? 1 : 2)
                         : pickFrom(arguments.get(0), arguments.get(1)));
 
@@ -5719,11 +5713,11 @@ public final class Natives {
         define("pickz", List.of(Parameter.required("series"),
                         Parameter.required("index", Set.of(Datatype.INTEGER))),
                 (arguments, evaluator, context) -> {
+                    if (arguments.getFirst() instanceof BitsetValue) {
+                        return pickFrom(arguments.getFirst(), arguments.get(1));
+                    }
                     int wanted = (int) ((IntegerValue) arguments.get(1)).magnitude();
-                    return pick(arguments.get(0),
-                            wanted >= 0 && !(arguments.getFirst() instanceof BitsetValue)
-                                    ? wanted + 1
-                                    : wanted);
+                    return pick(arguments.get(0), wanted >= 0 ? wanted + 1 : wanted);
                 });
 
         define("past?", List.of(Parameter.required("series")),
@@ -5998,7 +5992,8 @@ public final class Natives {
                     }
                     if (arguments.get(0) instanceof BitsetValue bitset) {
                         return LogicValue.of(bitsetHolds(bitset, arguments.get(1),
-                                refinements.contains("any")));
+                                refinements.contains("any"),
+                                !refinements.contains("case")));
                     }
                     if (arguments.get(0) instanceof TypesetValue typeset) {
                         return LogicValue.of(arguments.get(1) instanceof DatatypeValue wanted
@@ -7904,6 +7899,10 @@ public final class Natives {
         if (source instanceof IntegerValue point) {
             return BitsetValue.of(withBitSet(new byte[0], bitAsked(point.magnitude())));
         }
+        if (!(source instanceof CharacterValue || source instanceof StringValue
+                || source instanceof BinaryValue || source instanceof BlockValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(source));
+        }
         return bitsetOf(source);
     }
 
@@ -7916,6 +7915,7 @@ public final class Natives {
             case IntegerValue room -> BitsetValue.of(
                     new byte[(bitAsked(room.magnitude()) + 7) / 8]);
             case BinaryValue octets -> BitsetValue.of(octets.octetsFromHere());
+            case BitsetValue existing -> existing.duplicate();
             case BlockValue members -> bitsetFromBlock(members);
             default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                     Molder.mold(source) + " names no characters a set could hold");
@@ -8109,15 +8109,29 @@ public final class Natives {
      * and then one will do. Answering only a char left every other form
      * quietly false, which reads as "the set does not hold it" rather than as
      * a question that was never asked.
+     *
+     * <p>A char FIND asks about matches either case unless {@code /case} was
+     * given, and a number naming the same code point never does. The C spells
+     * out all three conditions at once --
+     * {@code IS_CHAR(arg) && action == A_FIND && !D_REF(ARG_FIND_CASE)} -- so
+     * {@code find charset [#"A"] #"a"} is true and
+     * {@code find charset [#"A"] 97} is false.
      */
-    private static boolean bitsetHolds(BitsetValue members, Value asked, boolean anyWillDo) {
+    private static boolean bitsetHolds(
+            BitsetValue members, Value asked, boolean anyWillDo, boolean eitherCaseWillDo) {
         if (asked instanceof CharacterValue letter) {
-            return members.holds(letter.codepoint());
+            return eitherCaseWillDo
+                    ? members.holdsEitherCaseOf(letter.codepoint())
+                    : members.holds(letter.codepoint());
         }
         if (asked instanceof IntegerValue codepoint) {
             return members.holds(bitAsked(codepoint.magnitude()));
         }
         return holdsEachOf(members, codePointsAskedAboutBy(asked), anyWillDo);
+    }
+
+    private static boolean bitsetHolds(BitsetValue members, Value asked, boolean anyWillDo) {
+        return bitsetHolds(members, asked, anyWillDo, false);
     }
 
     /**
@@ -8170,7 +8184,7 @@ public final class Natives {
             }
             return points;
         }
-        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
+        throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(asked));
     }
 
     private static boolean holdsEachOf(BitsetValue members, int[] wanted, boolean anyWillDo) {

@@ -99,7 +99,9 @@ class SignBeforeHashFromTheSourceTest {
             assertThat(answerTo("""
                     find charset [#"a"-#"z"] #"m\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
-                    find charset [#"a"-#"z"] #"A\"""")).isEqualTo("#(false)");
+                    find/case charset [#"a"-#"z"] #"A\"""")).isEqualTo("#(false)");
+            assertThat(answerTo("""
+                    find/case charset [#"a"-#"z"] #"0\"""")).isEqualTo("#(false)");
         }
     }
 

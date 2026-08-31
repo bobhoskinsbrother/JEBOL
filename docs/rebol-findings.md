@@ -492,6 +492,39 @@ Subtraction between two dates is a fourth thing again and is covered in entry
 
 ---
 
+## 23. COPY on a bitset carries the bits and drops the "not"
+
+A complemented set means everything its bits do *not* name. Copy one and the
+complement is gone, so the copy means the exact opposite of the original:
+
+```rebol
+b: complement charset "a"
+probe b                  ; #(bitset! not #{...40})
+probe copy b             ; #(bitset! #{...40})  -- the "not" is gone
+probe find b #"a"        ; false
+probe find copy b #"a"   ; true
+```
+
+The copy arm in `t-bitset.c` is one line, `VAL_SERIES(value) =
+Copy_Series_Value(value)`, and a fresh series carries no flag. Two arms above
+it, COMPLEMENT sets `BITS_NOT(ser)` by hand because it has to; the copy arm
+never does. `make bitset! <another bitset>` is the same line and loses it the
+same way.
+
+This reads as an oversight rather than a decision, and it is what a real
+3.22.1 does either way. It matters more than most oversights because the
+wrong reading is the one that looks right: carrying the flag over is what
+anybody would write, and a script that copies a complemented set then gets
+the opposite answer to every question it asks.
+
+REBOL's own library builds about twenty sets this way, all of them bound to a
+word once when the file loads and then used as parse rules. Dropping the flag
+on copy leaves the whole gate green, so nothing in the library copies one and
+depends on the copy still meaning "everything except". That is presumably why
+nobody has hit it.
+
+---
+
 ## How this list is used
 
 Wherever JEBOL matches, the finding is also a corpus entry under `corpus/` or a
@@ -511,7 +544,10 @@ and 19 are pinned by `ProtectByNameTest` and `ProtectedObjectTest`, and
 entry 20 by `ConversionFamilyTest`, which carries the list of forty-five names
 taken from Rebol rather than reasoned about. Entries 21 and 22 are pinned by
 `MakeAndToFromTheSourceTest`, whose date expectations were each run against a
-Rebol built from `scripts/build-r3.sh` before they were written down.
+Rebol built from `scripts/build-r3.sh` before they were written down. Entry 23
+is pinned by `BitsetConstructionFromTheSourceTest`, which asserts the copy's
+answer as well as its mold, because the mold alone would not show that the
+copy answers the opposite question.
 
 Both of those came out of running the same seventy-five date expressions
 through JEBOL and through that Rebol and diffing the two lists. Entry 22 was

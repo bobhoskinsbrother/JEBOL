@@ -95,11 +95,11 @@ class ProtectionRefinementsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a word index stays invalid-arg")
+        @DisplayName("a word index is refused for its type")
         void pokeRefusesAWordIndex() {
             assertThat(answerTo("""
                     letters: charset "abc"
-                    e: try [poke letters 'd true] e/id = 'invalid-arg"""))
+                    e: try [poke letters 'd true] e/id = 'invalid-type"""))
                     .isEqualTo("#(true)");
         }
 
