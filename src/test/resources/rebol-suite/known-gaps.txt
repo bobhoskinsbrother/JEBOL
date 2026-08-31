@@ -1074,18 +1074,6 @@ unicode-test.r3 / actions / insert/part string #257
 unicode-test.r3 / actions / insert/part string #260
 unicode-test.r3 / actions / remove #318
 unicode-test.r3 / actions / remove #319
-unicode-test.r3 / actions / trim #320
-unicode-test.r3 / actions / trim/all #325
-unicode-test.r3 / actions / trim/auto #330
-unicode-test.r3 / actions / trim/auto #331
-unicode-test.r3 / actions / trim/head/tail #321
-unicode-test.r3 / actions / trim/head/tail #322
-unicode-test.r3 / actions / trim/head/tail #323
-unicode-test.r3 / actions / trim/head/tail #324
-unicode-test.r3 / actions / trim/lines #329
-unicode-test.r3 / actions / trim/with #326
-unicode-test.r3 / actions / trim/with #327
-unicode-test.r3 / actions / trim/with #328
 unicode-test.r3 / natives / difference #85
 unicode-test.r3 / natives / difference #86
 unicode-test.r3 / natives / difference #87
@@ -1096,10 +1084,6 @@ unicode-test.r3 / natives / difference/skip #91
 unicode-test.r3 / natives / difference/skip #92
 unicode-test.r3 / natives / forskip #76
 unicode-test.r3 / natives / forskip #77
-unicode-test.r3 / natives / lowercase char! #29
-unicode-test.r3 / natives / lowercase char! #30
-unicode-test.r3 / natives / lowercase char! #31
-unicode-test.r3 / natives / lowercase string #35
 unicode-test.r3 / natives / mold/part long #137
 unicode-test.r3 / natives / mold/part long #138
 unicode-test.r3 / natives / mold/part long #139
@@ -1107,10 +1091,6 @@ unicode-test.r3 / natives / mold/part long #140
 unicode-test.r3 / natives / remove-each #69
 unicode-test.r3 / natives / remove-each/count #70
 unicode-test.r3 / natives / repeat #78
-unicode-test.r3 / natives / uppercase char! #32
-unicode-test.r3 / natives / uppercase char! #33
-unicode-test.r3 / natives / uppercase char! #34
-unicode-test.r3 / natives / uppercase string #36
 unicode-test.r3 / parse / parse collect after string #425
 unicode-test.r3 / parse / parse collect after string #426
 unicode-test.r3 / parse / parse collect any #421

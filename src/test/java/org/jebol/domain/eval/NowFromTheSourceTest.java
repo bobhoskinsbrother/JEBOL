@@ -143,12 +143,20 @@ class NowFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and the offset it drops is the one NOW/ZONE reports")
+        @DisplayName("and the offset it drops is the one the date reports")
         void theOffsetItDropsIsTheOneReported() {
-            assertThat(answerTo(
-                    "here: now there: now/utc "
-                    + "(here/hour - there/hour) = to integer! here/zone/hour"))
-                    .isEqualTo(TRUE);
+            assertThat(answerTo("""
+                    d: 1-Jan-2000/10:00+2:00
+                    reduce [d/hour d/utc/hour to integer! d/zone/hour]"""))
+                    .isEqualTo("[10 8 2]");
+        }
+
+        @Test
+        @DisplayName("even where dropping it carries the clock back over midnight")
+        void theOffsetCarriesOverMidnight() {
+            assertThat(answerTo("""
+                    d: 1-Jan-2000/1:00+2:00
+                    d/utc""")).isEqualTo("31-Dec-1999/23:00");
         }
     }
 

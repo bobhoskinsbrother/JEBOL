@@ -5619,10 +5619,14 @@ public final class Natives {
             String name, java.util.function.UnaryOperator<String> change) {
 
         define(name, List.of(
-                        Parameter.required("text", Set.of(Datatype.STRING)),
+                        Parameter.required("text",
+                                Set.of(Datatype.STRING, Datatype.CHAR)),
                         Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER))),
                 Set.of("part"),
                 (arguments, evaluator, context, refinements) -> {
+                    if (arguments.getFirst() instanceof CharacterValue letter) {
+                        return theOneCharacterChanged(letter, change);
+                    }
                     StringValue text = (StringValue) arguments.getFirst();
                     if (!refinements.contains("part")) {
                         return rewritten(text, change);
@@ -5632,9 +5636,33 @@ public final class Natives {
                             ? (int) Math.max(0, Math.min(wanted.magnitude(), text.lengthFromHere()))
                             : text.lengthFromHere();
                     int changing = howMany;
-                    return rewritten(text, whole -> change.apply(whole.substring(0, changing))
-                            + whole.substring(changing));
+                    return rewritten(text, whole -> {
+                        String front = theFirstCodePointsOf(whole, changing);
+                        return change.apply(front) + whole.substring(front.length());
+                    });
                 });
+    }
+
+    /**
+     * One character with its case changed, which is what UPPERCASE and
+     * LOWERCASE do to a char.
+     *
+     * <p>They take one as readily as a string -- {@code uppercase #"š"} is
+     * {@code #"Š"} -- and JEBOL took only a string, so the char form was an
+     * expect-arg where REBOL has an answer.
+     *
+     * <p>Through the same conversion the string form uses, so a character
+     * whose case changes width or which has no other case behaves the same
+     * either way. A character that is not a letter comes back as itself.
+     */
+    private Value theOneCharacterChanged(
+            CharacterValue letter, java.util.function.UnaryOperator<String> change) {
+
+        String changed = change.apply(
+                new String(Character.toChars(letter.codepoint())));
+        return changed.codePointCount(0, changed.length()) == 1
+                ? CharacterValue.of(changed.codePointAt(0))
+                : letter;
     }
 
     /**
@@ -5648,13 +5676,13 @@ public final class Natives {
     private static Value rewritten(
             StringValue text, java.util.function.UnaryOperator<String> change) {
 
-        String replacement = change.apply(text.text());
+        int[] replacement = change.apply(text.text()).codePoints().toArray();
         int from = text.index();
         for (int at = text.storageLength(); at >= from; at--) {
             text.storage().removeAt(at);
         }
-        for (int at = replacement.length(); at > 0; at--) {
-            text.storage().insertAt(from, replacement.codePointAt(at - 1));
+        for (int at = replacement.length; at > 0; at--) {
+            text.storage().insertAt(from, replacement[at - 1]);
         }
         return text;
     }
