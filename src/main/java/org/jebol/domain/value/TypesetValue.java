@@ -55,11 +55,18 @@ public record TypesetValue(Optional<Typeset> named, Set<Datatype> members) imple
         return Datatype.TYPESET;
     }
 
+    /**
+     * The members, never the name.
+     *
+     * <p>{@code Mold_Typeset} walks the bits and writes what it finds, and it
+     * has no way to know a set was asked for by name -- a typeset is its
+     * members and nothing else. So {@code mold number!} is
+     * {@code make typeset! [integer! decimal! percent!]} and not the word that
+     * fetched it, which is what answering the name gave.
+     */
     @Override
     public String toString() {
-        return named
-                .map(Typeset::literalSpelling)
-                .orElseGet(() -> "make typeset! [" + spelledOut() + "]");
+        return "make typeset! [" + spelledOut() + "]";
     }
 
     private String spelledOut() {

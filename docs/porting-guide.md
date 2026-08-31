@@ -87,9 +87,18 @@ All of these stay where they are. A change that moves one is wrong.
 
 - **`RebolSuiteTest`** -- Rebol's own assertions, about a minute alone. The
   inner loop between changes. **All 10,100 assertions its sixty-seven files
-  write are run**, and 2,416 fail. Every failure is named in
+  write are run**, and 1,716 fail. Every failure is named in
   `known-gaps.txt`: not a skip list, because every line in it runs on every
   build and the test fails if a listed assertion starts passing.
+
+  **It fails two different ways and they mean opposite things.** A
+  `theAssertionHolds` failure is a regression and has to be fixed. A
+  `theGapListHasNoPassingEntries` failure is progress: those assertions now
+  pass and their lines come out of the file. Take the list out of the failure
+  message in `build/test-results/test/*.xml`, check the message ends in `]`
+  in case AssertJ truncated it, and filter those lines out. Never empty
+  `known-gaps.txt` to see the whole picture -- restoring it from HEAD and
+  reading the two failure kinds apart is what tells a regression from a win.
 
   Two gates hold the count honest, and neither takes a list. A file the
   reader cannot take to the end fails the build; an assertion the harness
@@ -111,9 +120,15 @@ All of these stay where they are. A change that moves one is wrong.
 - **`PortingBacklogTest`** -- 0 of R3's 404 functions missing, and it asks
   both `lib` and `sys`. It has been wrong three times, each because a number
   was believed and the question behind it was not.
+- **`scripts/error-parity.py`** -- 69 of Rebol's 142 error ids can be raised
+  and 73 cannot. This one is not a floor yet: it is a count that did not
+  exist until `too-long` was found to be missing by needing it. Read the
+  Script and Syntax columns first, because those name behaviour JEBOL already
+  has and reports under the wrong id or not at all.
 
-`./gradlew check` is the gate before a commit: 13,907 tests, 0 failed,
-0 skipped, about five minutes.
+`./gradlew check` is the gate before a commit: about 14,961 tests, 0 failed,
+0 skipped, and five to twenty-five minutes depending on what it has to
+recompile.
 
 `./gradlew browserCheck` is the second gate and is not optional, only
 separate: it drives a real Chrome and compares what it paints against Java2D,

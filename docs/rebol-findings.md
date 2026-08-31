@@ -404,6 +404,92 @@ as one word; an empty string does not, so it fails the same way `"a b"`
 does rather than having a shortness of its own. The earlier note recorded
 JEBOL's own answer as though it were R3's.
 
+## 21. A date is stored in UTC, and the zone is only kept for writing it back
+
+`20-Sep-2021/12:00+2:00` prints as it was written and its time and zone read
+back as they were written. `/utc` is the one that gives the game away:
+
+```rebol
+d: 20-Sep-2021/12:00+2:00
+probe reduce [d/time d/zone d/utc]
+; [12:00 2:00 20-Sep-2021/10:00]
+```
+
+The stored time is the 10:00, not the 12:00. `Emit_Date` calls
+`Adjust_Date_Zone(value, FALSE)` before it writes anything out, and the path
+accessor calls it the other way round after it reads, so the zone is added on
+at both edges and the middle of the interpreter never sees it.
+
+That is what makes two dates with different zones compare as one moment.
+`Cmp_Date` compares the stored times as they are, with no mention of a zone
+anywhere in it, and gets the right answer because the zone has already been
+taken off:
+
+```rebol
+probe 20-Sep-2021/12:00+2:00 = 20-Sep-2021/10:00     ; true
+probe 20-Sep-2021/12:00+2:00 == 20-Sep-2021/10:00    ; false
+```
+
+`==` says false on the same pair, because strict equality reads
+`VAL_DATE(a).bits`, and the zone is packed into those bits alongside the year,
+month and day. So `=` asks which moment and `==` asks which writing of it, and
+a date that never carried a zone is a date whose zone is zero: there is no
+third state, which is why `20-Sep-2021/12:00 == 20-Sep-2021/12:00+0:00` is
+true.
+
+Subtraction is a third answer again, and does not agree with either. `-`
+between two dates is `Diff_Date`, which counts whole days and never looks at
+the time at all:
+
+```rebol
+probe 1-Jan-2000/23:00 - 1-Jan-2000/1:00   ; 0
+probe 1-Jan-2000/23:00 < 2-Jan-2000/1:00   ; true
+probe 2-Jan-2000/1:00  - 1-Jan-2000/23:00  ; 1
+```
+
+Two hours apart is a difference of zero and a comparison of less-than, and
+those are both right: one is counting days and the other is ordering instants.
+
+JEBOL keeps the written time and the zone beside it instead, which is the same
+information stored the other way round. Everything above still has to hold, so
+`DateValue.moment` takes the zone off at the point of comparison rather than at
+the point of reading, and `Comparison.compareForSorting` orders on that.
+
+## 22. Three units wear the same plus sign beside a date
+
+Adding a number to a date is days. Adding a *decimal* to the same date is a
+fraction of a day, so the two spellings of what looks like one number mean
+different things:
+
+```rebol
+probe 20-Sep-2021/12:00 + 1     ; 21-Sep-2021/12:00 -- one day on, same clock
+probe 20-Sep-2021/12:00 + 1.0   ; 21-Sep-2021/12:00 -- the same, by coincidence
+probe 20-Sep-2021/12:00 + 1.9   ; 22-Sep-2021/9:36  -- one day and 21.6 hours
+```
+
+`1.9` does not round to two days and it does not truncate to one. It is a
+duration, and `T_Date` reaches it through its own arm: `secs += (REBI64)(dec *
+TIME_IN_DAY)`, where the integer arm two lines above says `day += num`. The
+third unit is a time, which is also a duration and carries into the day when it
+runs past midnight:
+
+```rebol
+probe 20-Sep-2021/23:00 + 2:00  ; 21-Sep-2021/1:00
+probe 20-Sep-2021 + 1:00        ; 20-Sep-2021/1:00 -- a bare day gains a clock
+```
+
+That last one is `if (secs == NO_TIME) secs = 0` running before the addition,
+so a date with no time is treated as its midnight and comes back carrying a
+time it did not have.
+
+Every one of these arms ends at `Normalize_Date(day, month, year, tz)`, and the
+`tz` is the one read off the original value at the top of the function. So the
+zone survives all three, and so does the clock wherever the arm did not
+deliberately move it.
+
+Subtraction between two dates is a fourth thing again and is covered in entry
+21: it counts whole days and never looks at the clock.
+
 ---
 
 ## How this list is used
@@ -423,6 +509,19 @@ asserts is about where a definition lands rather than about a value.
 Entry 17 is pinned by `WordCharactersTest` and by the corpus. Entries 18
 and 19 are pinned by `ProtectByNameTest` and `ProtectedObjectTest`, and
 entry 20 by `ConversionFamilyTest`, which carries the list of forty-five names
-taken from Rebol rather than reasoned about.
+taken from Rebol rather than reasoned about. Entries 21 and 22 are pinned by
+`MakeAndToFromTheSourceTest`, whose date expectations were each run against a
+Rebol built from `scripts/build-r3.sh` before they were written down.
+
+Both of those came out of running the same seventy-five date expressions
+through JEBOL and through that Rebol and diffing the two lists. Entry 22 was
+not a suspicion anybody had; it was four lines that did not match. A sweep of
+one datatype's whole surface is cheap and finds what reading the C for a
+particular question does not.
+
+Both binaries in the repo root were asked, the 3.22.1 download and the 3.22.5
+built from the checkout, and they agree on every line of it. Worth saying
+because they do not always: the porting guide records four wrong readings
+traced to asking the older one.
 
 An entry with neither should be read as a recollection, not a finding.

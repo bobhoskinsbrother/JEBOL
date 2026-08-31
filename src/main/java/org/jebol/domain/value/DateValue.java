@@ -69,6 +69,50 @@ public record DateValue(
     }
 
     /**
+     * Where a date sits on the line of instants: which day, and how far into
+     * it. Two longs rather than one, because a nanosecond count that reached
+     * Rebol's last year would need more room than a long has.
+     */
+    public record Moment(long dayNumber, long nanosecondsIntoTheDay)
+            implements Comparable<Moment> {
+
+        @Override
+        public int compareTo(Moment other) {
+            int acrossTheDays = Long.compare(dayNumber, other.dayNumber);
+            return acrossTheDays != 0
+                    ? acrossTheDays
+                    : Long.compare(nanosecondsIntoTheDay, other.nanosecondsIntoTheDay);
+        }
+    }
+
+    /**
+     * The instant this date names, zone taken off.
+     *
+     * <p>A zone says how far ahead of UTC the written time is, so reaching the
+     * instant means taking it off again: {@code 12:58:32+2:00} is
+     * {@code 10:58:32} where the count starts, and taking two hours off
+     * {@code 1:00} moves the day as well as the clock. A date carrying no time
+     * is its midnight, so it lands on a whole day.
+     *
+     * <p>This is what orders one date against another, and it is the same
+     * comparison Rebol makes from the other end. Rebol stores a date already
+     * in UTC and remembers the zone only to write it back out, so its own
+     * {@code Cmp_Date} compares the stored times as they are. JEBOL keeps the
+     * time as it was written, so the zone comes off here instead.
+     */
+    public Moment moment() {
+        long sinceMidnight = timeOfDay.map(TimeValue::nanoseconds).orElse(0L)
+                - zoneMinutes.orElse(0) * NANOSECONDS_A_MINUTE;
+        return new Moment(
+                java.time.LocalDate.of(year, month, day).toEpochDay()
+                        + Math.floorDiv(sinceMidnight, NANOSECONDS_A_DAY),
+                Math.floorMod(sinceMidnight, NANOSECONDS_A_DAY));
+    }
+
+    private static final long NANOSECONDS_A_MINUTE = 60L * 1_000_000_000L;
+    private static final long NANOSECONDS_A_DAY = 24L * 60L * NANOSECONDS_A_MINUTE;
+
+    /**
      * The year as REBOL writes it, which is four digits wide below 1000.
      *
      * <p>{@code 1-Feb-0003} rather than {@code 1-Feb-3}. The padding is not
@@ -105,4 +149,57 @@ public record DateValue(
         int size = Math.abs(minutes);
         return "%s%d:%02d".formatted(minutes < 0 ? "-" : "+", size / 60, size % 60);
     }
+
+    /**
+     * The written form MOLD/ALL asks for, which is ISO 8601.
+     *
+     * <p>{@code Emit_Date} writes this whenever {@code MOPT_MOLD_ALL} is set,
+     * and it is a different shape rather than a decoration: the year comes
+     * first, the parts are all padded, and a T stands where the slash does.
+     * A zone that {@code 1-Feb-2000/10:30+2:00} writes as {@code +2:00} is
+     * {@code +02:00} here.
+     *
+     * <p>The seconds are always written even when they are nothing, and a
+     * fraction has its trailing zeros trimmed -- {@code Trim_Tail(series,
+     * '0')} after the nine digits it pads to.
+     */
+    public String isoForm() {
+        String calendar = "%04d-%02d-%02d".formatted(year, month, day);
+        if (timeOfDay.isEmpty()) {
+            return calendar;
+        }
+        return calendar + "T" + isoClock() + isoOffset();
+    }
+
+    private String isoClock() {
+        long nanoseconds = timeOfDay.orElseThrow().nanoseconds();
+        long seconds = nanoseconds / A_SECOND;
+        String written = "%02d:%02d:%02d".formatted(
+                seconds / 3600, seconds / 60 % 60, seconds % 60);
+        long fraction = nanoseconds % A_SECOND;
+        if (fraction == 0) {
+            return written;
+        }
+        String digits = "%09d".formatted(fraction).replaceAll("0+$", "");
+        return written + "." + digits;
+    }
+
+    /**
+     * The offset, or nothing at all where it is nothing.
+     *
+     * <p>The same rule the ordinary written form follows, and for the same
+     * reason: an offset of zero and no offset at all are one thing, so
+     * writing {@code +00:00} would claim a distinction the value does not
+     * carry.
+     */
+    private String isoOffset() {
+        int minutes = zoneMinutes.orElse(0);
+        if (minutes == 0) {
+            return "";
+        }
+        int size = Math.abs(minutes);
+        return "%s%02d:%02d".formatted(minutes < 0 ? "-" : "+", size / 60, size % 60);
+    }
+
+    private static final long A_SECOND = 1_000_000_000L;
 }

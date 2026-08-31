@@ -197,9 +197,6 @@ bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #226
 bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #227
 bincode-test.r3 / BinCode special read/write functions / BinCode - CROP #228
 bitset-test.r3 / bitset issues / issue-1283 #205
-bitset-test.r3 / bitset issues / to-binary bitset #208
-bitset-test.r3 / bitset issues / to-binary bitset #209
-bitset-test.r3 / bitset issues / to-binary bitset #210
 bitset-test.r3 / complemented / comp-10 #189
 bitset-test.r3 / complemented / comp-12 #192
 bitset-test.r3 / complemented / comp-12 #193
@@ -213,7 +210,6 @@ bitset-test.r3 / complemented / comp-9 #187
 bitset-test.r3 / complemented / issue-1357 #197
 bitset-test.r3 / complemented / issue-1357 #198
 bitset-test.r3 / complemented / issue-1357 #199
-bitset-test.r3 / complemented / issue-1357 #200
 bitset-test.r3 / complemented / issue-1541 #195
 bitset-test.r3 / complemented / issue-1541 #196
 bitset-test.r3 / find / find bitset! block-of-integers #156
@@ -242,7 +238,6 @@ bitset-test.r3 / make bitset! / make bitset! from block #35
 bitset-test.r3 / make bitset! / make bitset! from block #36
 bitset-test.r3 / make bitset! / make bitset! from block #37
 bitset-test.r3 / make bitset! / make bitset! from block #38
-bitset-test.r3 / modify / alter #102
 bitset-test.r3 / modify / alter #103
 bitset-test.r3 / modify / alter #104
 bitset-test.r3 / modify / append-1 #119
@@ -251,28 +246,15 @@ bitset-test.r3 / modify / insert-1 #121
 bitset-test.r3 / modify / insert-1 #122
 bitset-test.r3 / modify / issue-1355 #139
 bitset-test.r3 / modify / issue-1355 #140
-bitset-test.r3 / modify / poke-1 #105
-bitset-test.r3 / modify / poke-1 #106
-bitset-test.r3 / modify / poke-1 #107
-bitset-test.r3 / modify / poke-1 #108
-bitset-test.r3 / modify / poke-1 #109
-bitset-test.r3 / modify / poke-2 #111
-bitset-test.r3 / modify / poke-2 #113
 bitset-test.r3 / modify / poke-2 #115
 bitset-test.r3 / modify / poke-2 #116
 bitset-test.r3 / modify / poke-2 #117
 bitset-test.r3 / modify / poke-2 #118
-bitset-test.r3 / pick bitset! / basic-6 #76
 bitset-test.r3 / pick bitset! / path expression #94
 bitset-test.r3 / pick bitset! / path expression #95
 bitset-test.r3 / pick bitset! / path expression #96
-bitset-test.r3 / pick bitset! / pick logic #90
 bitset-test.r3 / pick bitset! / pick logic #91
 bitset-test.r3 / pick bitset! / pick logic #92
-bitset-test.r3 / pick bitset! / pick-1 #41
-bitset-test.r3 / pick bitset! / pick-1 #42
-bitset-test.r3 / pick bitset! / pick-1 #43
-bitset-test.r3 / pick bitset! / pick-1 #44
 bitset-test.r3 / pick bitset! / pick-1 #49
 bitset-test.r3 / pick bitset! / pick-2 #51
 bitset-test.r3 / pick bitset! / pick-2 #52
@@ -282,10 +264,6 @@ bitset-test.r3 / pick bitset! / pick-2 #55
 bitset-test.r3 / pick bitset! / pick-2 #56
 bitset-test.r3 / pick bitset! / pick-2 #57
 bitset-test.r3 / pick bitset! / pick-2 #58
-bitset-test.r3 / pick bitset! / pick-4 #69
-bitset-test.r3 / pick bitset! / pick-4 #71
-bitset-test.r3 / pick bitset! / pick-5 #73
-bitset-test.r3 / pick bitset! / pick-5 #74
 bitset-test.r3 / pick bitset! / pick-7 #78
 bitset-test.r3 / pick bitset! / pick-7 #79
 bitset-test.r3 / pick bitset! / pick-7 #80
@@ -295,17 +273,9 @@ bitset-test.r3 / pick bitset! / pick-8 #83
 bitset-test.r3 / pick bitset! / pick-8 #84
 bitset-test.r3 / pick bitset! / pick-8 #86
 bitset-test.r3 / pick bitset! / pick-8 #87
-bitset-test.r3 / pick bitset! / pick-9 #88
 bitset-test.r3 / pickz bitset! / pickz #100
 bitset-test.r3 / pickz bitset! / pickz #97
-bitset-test.r3 / pickz bitset! / pickz #98
 bitset-test.r3 / pickz bitset! / pickz #99
-bitset-test.r3 / zero? bitset / zero? bitset #1
-bitset-test.r3 / zero? bitset / zero? bitset #2
-bitset-test.r3 / zero? bitset / zero? bitset #3
-bitset-test.r3 / zero? bitset / zero? bitset #4
-bitset-test.r3 / zero? bitset / zero? bitset #5
-bitset-test.r3 / zero? bitset / zero? bitset #6
 chacha20-test.r3 / (no group) / (no test) #1
 chacha20-test.r3 / (no group) / (no test) #10
 chacha20-test.r3 / (no group) / (no test) #11
@@ -861,69 +831,6 @@ compress-test.r3 / LZW compression / decompression / LZW compress/decompress #11
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #120
 compress-test.r3 / ZLIB compression / decompression / basic compress/decompress #1
 compress-test.r3 / ZLIB compression / decompression / compression when input is limited #18
-copy-test.r3 / Copy block! / copy/deep block! #148
-copy-test.r3 / Copy block! / copy/deep block! #150
-copy-test.r3 / Copy block! / copy/deep block! #151
-copy-test.r3 / Copy block! / copy/deep block! #152
-copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #213
-copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #219
-copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #220
-copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #221
-copy-test.r3 / Copy block! / copy/deep/types block! (any-type!) #222
-copy-test.r3 / Copy block! / copy/types block! (any strings) #173
-copy-test.r3 / Copy block! / copy/types block! (any strings) #174
-copy-test.r3 / Copy block! / copy/types block! (only object) #181
-copy-test.r3 / Copy block! / copy/types block! (only strings) #155
-copy-test.r3 / Copy map! / copy/deep map! #10
-copy-test.r3 / Copy map! / copy/deep map! #11
-copy-test.r3 / Copy map! / copy/deep map! #12
-copy-test.r3 / Copy map! / copy/deep map! #14
-copy-test.r3 / Copy map! / copy/deep map! #15
-copy-test.r3 / Copy map! / copy/deep map! #16
-copy-test.r3 / Copy map! / copy/deep map! #9
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #64
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #65
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #66
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #67
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #68
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #69
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #70
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #71
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #72
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #73
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #74
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #75
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #76
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #77
-copy-test.r3 / Copy map! / copy/deep/types map (any-type!) #78
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #47
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #49
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #51
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #56
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #58
-copy-test.r3 / Copy map! / copy/deep/types map! (only maps and strings) #60
-copy-test.r3 / Copy map! / copy/deep/types map! (only object) #43
-copy-test.r3 / Copy map! / copy/deep/types map! (only object) #45
-copy-test.r3 / Copy map! / copy/types map! (any strings) #28
-copy-test.r3 / Copy map! / copy/types map! (any strings) #29
-copy-test.r3 / Copy map! / copy/types map! (only object) #36
-copy-test.r3 / Copy map! / copy/types map! (only strings) #19
-copy-test.r3 / Copy object! / copy/deep object! #82
-copy-test.r3 / Copy object! / copy/deep object! #84
-copy-test.r3 / Copy object! / copy/deep object! #85
-copy-test.r3 / Copy object! / copy/deep object! #86
-copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #133
-copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #139
-copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #140
-copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #141
-copy-test.r3 / Copy object! / copy/deep/types object! (any-type!) #142
-copy-test.r3 / Copy object! / copy/deep/types object! (only maps and strings) #115
-copy-test.r3 / Copy object! / copy/deep/types object! (only maps and strings) #117
-copy-test.r3 / Copy object! / copy/types object! (any strings) #94
-copy-test.r3 / Copy object! / copy/types object! (any strings) #95
-copy-test.r3 / Copy object! / copy/types object! (only object) #102
-copy-test.r3 / Copy object! / copy/types object! (only strings) #89
-copy-test.r3 / Shallow copy / copy map! #7
 copy-test.r3 / Simple copy / (no test) #2
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #2
@@ -1015,14 +922,6 @@ csv-test.r3 / (no group) / (no test) #7
 csv-test.r3 / (no group) / (no test) #8
 csv-test.r3 / (no group) / (no test) #9
 datatype-test.r3 / datatype! / number? #37
-date-test.r3 / #(date! ...) / #(date! ...) invalid #37
-date-test.r3 / #(date! ...) / #(date! ...) invalid #38
-date-test.r3 / #(date! ...) / #(date! ...) invalid #39
-date-test.r3 / #(date! ...) / #(date! ...) valid #29
-date-test.r3 / #(date! ...) / #(date! ...) valid #30
-date-test.r3 / #(date! ...) / #(date! ...) valid #32
-date-test.r3 / #(date! ...) / #(date! ...) valid #33
-date-test.r3 / #(date! ...) / #(date! ...) valid #34
 date-test.r3 / DATE/TIMEZONE / set timezone #117
 date-test.r3 / DATE/TIMEZONE / set timezone #118
 date-test.r3 / DATE/TIMEZONE / set timezone #119
@@ -1043,24 +942,12 @@ date-test.r3 / Internet date / TO-DATE (from Internet date) #128
 date-test.r3 / Internet date / TO-DATE (from Internet date) #129
 date-test.r3 / Internet date / TO-DATE (from Internet date) #130
 date-test.r3 / Internet date / TO-DATE (from Internet date) #131
-date-test.r3 / Internet date / TO-DATE (from Internet date) #132
-date-test.r3 / Internet date / TO-DATE (from Internet date) #133
 date-test.r3 / Internet date / TO-DATE (from Internet date) #134
-date-test.r3 / Internet date / TO-DATE {1-1-2000 00:00:00} #135
-date-test.r3 / Internet date / TO-DATE {1-1-2000 00:00:00} #136
 date-test.r3 / Internet date / TO-IDATE (Date to Internet date) #126
 date-test.r3 / Julian date / Julian date setter #159
 date-test.r3 / Julian date / Julian date setter #160
-date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #13
-date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #14
-date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #15
 date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #16
 date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #17
-date-test.r3 / TO DATE! / make date! #19
-date-test.r3 / TO DATE! / make date! #20
-date-test.r3 / TO DATE! / make date! #22
-date-test.r3 / TO DATE! / make date! #23
-date-test.r3 / TO DATE! / make date! #24
 date-test.r3 / Various date issues / error date set messages #107
 date-test.r3 / Various date issues / error date set messages #109
 date-test.r3 / Various date issues / error date set messages #110
@@ -1206,58 +1093,14 @@ file-test.r3 / to-real-file / On file #25
 file-test.r3 / to-real-file / On file #26
 file-test.r3 / to-real-file / On file with Unicode chars #27
 file-test.r3 / to-real-file / On file with Unicode chars #28
-format-test.r3 / FORMAT / FORMAT date #17
-format-test.r3 / FORMAT / FORMAT date #18
-format-test.r3 / FORMAT / FORMAT date #19
-format-test.r3 / FORMAT / FORMAT date #20
-format-test.r3 / FORMAT / FORMAT date #21
-format-test.r3 / FORMAT / FORMAT date #22
-format-test.r3 / FORMAT / FORMAT date #23
-format-test.r3 / FORMAT / FORMAT date #24
-format-test.r3 / FORMAT / FORMAT date #25
-format-test.r3 / FORMAT / FORMAT date #26
-format-test.r3 / FORMAT / FORMAT date #27
-format-test.r3 / FORMAT / FORMAT date #28
-format-test.r3 / FORMAT / FORMAT date #29
-format-test.r3 / FORMAT / FORMAT date #30
-format-test.r3 / FORMAT / FORMAT date #31
-format-test.r3 / FORMAT / FORMAT date #32
-format-test.r3 / FORMAT / FORMAT date-time #1
-format-test.r3 / FORMAT / FORMAT date-time #10
-format-test.r3 / FORMAT / FORMAT date-time #11
 format-test.r3 / FORMAT / FORMAT date-time #12
 format-test.r3 / FORMAT / FORMAT date-time #13
 format-test.r3 / FORMAT / FORMAT date-time #14
 format-test.r3 / FORMAT / FORMAT date-time #15
-format-test.r3 / FORMAT / FORMAT date-time #16
-format-test.r3 / FORMAT / FORMAT date-time #2
-format-test.r3 / FORMAT / FORMAT date-time #3
-format-test.r3 / FORMAT / FORMAT date-time #4
-format-test.r3 / FORMAT / FORMAT date-time #5
-format-test.r3 / FORMAT / FORMAT date-time #6
-format-test.r3 / FORMAT / FORMAT date-time #7
-format-test.r3 / FORMAT / FORMAT date-time #8
-format-test.r3 / FORMAT / FORMAT date-time #9
-format-test.r3 / FORMAT / FORMAT time #33
-format-test.r3 / FORMAT / FORMAT time #34
 format-test.r3 / FORMAT / FORMAT time #35
 format-test.r3 / FORMAT / FORMAT time #36
 format-test.r3 / FORMAT / FORMAT time #37
 format-test.r3 / FORMAT / FORMAT time #38
-format-test.r3 / FORMAT / FORMAT time #39
-format-test.r3 / FORMAT / FORMAT time #40
-format-test.r3 / FORMAT / FORMAT time #41
-format-test.r3 / FORMAT / FORMAT time #42
-format-test.r3 / FORMAT / FORMAT time #43
-format-test.r3 / FORMAT / FORMAT time #44
-format-test.r3 / FORMAT / format rounding #49
-format-test.r3 / FORMAT / format rounding #50
-format-test.r3 / FORMAT / format rounding #51
-format-test.r3 / FORMAT / format rounding #52
-format-test.r3 / FORMAT / format rounding #53
-format-test.r3 / FORMAT / format rounding #54
-format-test.r3 / FORMAT / format rounding #55
-format-test.r3 / FORMAT / format rounding #56
 format-test.r3 / FORMAT / format/pad #48
 func-test.r3 / FUNCTION (funct) / function/with object and module #94
 func-test.r3 / FUNCTION (funct) / function/with object and module #96
@@ -1290,13 +1133,8 @@ func-test.r3 / Other issues / issue-87 #113
 func-test.r3 / Other issues / issue-87 #114
 func-test.r3 / Other issues / issue-87 #115
 func-test.r3 / Other issues / issue-87 #116
-func-test.r3 / Other issues / unset as a function argument #122
-func-test.r3 / ZERO? / zero? #75
-func-test.r3 / ZERO? / zero? #76
-func-test.r3 / ZERO? / zero? #77
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
-gob-test.r3 / gob issues / issue-1617 #35
 gob-test.r3 / gob issues / issue-992 #36
 handle-test.r3 / context handles / (no test) #1
 handle-test.r3 / context handles / (no test) #10
@@ -1449,7 +1287,6 @@ image-test.r3 / raw image data getters/setters / errors #127
 issue-test.r3 / to-hex / bad chars in issue #24
 issue-test.r3 / to-hex / bad chars in issue #25
 issue-test.r3 / to-hex / bad chars in issue #26
-issue-test.r3 / to-hex / to-hex char! #18
 issue-test.r3 / to-hex / to-hex/size integer! #10
 issue-test.r3 / to-hex / to-hex/size integer! #9
 issue-test.r3 / to-hex / to-hex/size tuple! #12
@@ -1463,193 +1300,9 @@ lexer-test.r3 / Construction syntax / any-string! #331
 lexer-test.r3 / Construction syntax / any-string! #332
 lexer-test.r3 / Construction syntax / any-string! #333
 make-test.r3 / make char! / to char! issue! #14
-make-test.r3 / make char! / to char! over range #13
-make-test.r3 / make char! / to char! surrogates #11
 make-test.r3 / make char! / to char! surrogates #12
-make-test.r3 / make money! / make money from string #175
-make-test.r3 / make money! / make/to money! logic! #173
-make-test.r3 / make money! / make/to money! logic! #174
-make-test.r3 / make percent! / make percent from string #183
-make-test.r3 / make percent! / make/to percent! logic! #177
-make-test.r3 / make percent! / make/to percent! logic! #178
-make-test.r3 / make percent! / make/to percent! logic! #179
-make-test.r3 / make percent! / make/to percent! logic! #180
-make-test.r3 / make percent! / to percent! issue! #176
-make-test.r3 / make special / make types from none! #917
-make-test.r3 / make special / make types from none! #918
-make-test.r3 / make special / make types from none! #930
-make-test.r3 / make special / make types from none! #931
-make-test.r3 / make special / make types from none! #932
-make-test.r3 / make special / make types from none! #933
-make-test.r3 / make special / make types from none! #934
-make-test.r3 / make special / make types from none! #935
-make-test.r3 / make special / make types from none! #939
-make-test.r3 / make special / make types from none! #940
-make-test.r3 / make special / make types from none! #941
-make-test.r3 / make special / make types from none! #942
-make-test.r3 / make special / make types from none! #943
-make-test.r3 / make special / make types from none! #944
-make-test.r3 / make special / make types from none! #962
-make-test.r3 / make special / to types from none! #974
-make-test.r3 / make special / to types from none! #975
-make-test.r3 / make special / to types from none! #987
-make-test.r3 / make special / to types from none! #988
-make-test.r3 / make special / to types from none! #989
-make-test.r3 / make special / to types from none! #990
-make-test.r3 / make special / to types from none! #991
-make-test.r3 / make special / to types from none! #992
-make-test.r3 / make/to block! / make block! .. #334
-make-test.r3 / make/to block! / make block! .. #335
-make-test.r3 / make/to block! / make block! .. #336
-make-test.r3 / make/to block! / make block! .. #338
-make-test.r3 / make/to block! / make block! .. #339
-make-test.r3 / make/to block! / make block! .. #340
-make-test.r3 / make/to block! / make block! .. #341
-make-test.r3 / make/to block! / make block! .. #342
-make-test.r3 / make/to block! / make block! .. #343
-make-test.r3 / make/to block! / make block! .. #344
-make-test.r3 / make/to block! / make block! .. #345
-make-test.r3 / make/to block! / make block! .. #346
-make-test.r3 / make/to block! / make block! .. #347
-make-test.r3 / make/to block! / make block! .. #348
-make-test.r3 / make/to block! / make block! .. #352
-make-test.r3 / make/to block! / make block! .. #353
-make-test.r3 / make/to block! / make block! .. #354
-make-test.r3 / make/to block! / make block! .. #355
-make-test.r3 / make/to block! / make block! .. #356
-make-test.r3 / make/to block! / make block! .. #362
-make-test.r3 / make/to block! / make block! .. #363
-make-test.r3 / make/to block! / make block! .. #364
-make-test.r3 / make/to block! / make block! .. #365
-make-test.r3 / make/to block! / make block! .. #367
-make-test.r3 / make/to block! / make block! .. #368
-make-test.r3 / make/to block! / to block! .. #398
 make-test.r3 / make/to block! / to block! .. #402
 make-test.r3 / make/to block! / to block! .. #403
-make-test.r3 / make/to date / make/to date! block! #69
-make-test.r3 / make/to date / make/to date! block! #70
-make-test.r3 / make/to date / make/to date! block! #71
-make-test.r3 / make/to date / make/to date! block! #72
-make-test.r3 / make/to date / make/to date! block! #73
-make-test.r3 / make/to date / make/to date! block! #74
-make-test.r3 / make/to date / make/to date! block! #75
-make-test.r3 / make/to date / make/to date! block! #76
-make-test.r3 / make/to date / make/to date! block! #77
-make-test.r3 / make/to date / make/to date! block! #78
-make-test.r3 / make/to date / make/to date! block! #79
-make-test.r3 / make/to date / make/to date! block! #80
-make-test.r3 / make/to date / make/to date! decimal! #25
-make-test.r3 / make/to date / make/to date! decimal! #26
-make-test.r3 / make/to date / make/to date! decimal! #27
-make-test.r3 / make/to date / make/to date! decimal! #28
-make-test.r3 / make/to date / make/to date! decimal! #29
-make-test.r3 / make/to date / make/to date! decimal! #30
-make-test.r3 / make/to date / make/to date! decimal! #31
-make-test.r3 / make/to date / make/to date! decimal! #32
-make-test.r3 / make/to date / make/to date! decimal! #33
-make-test.r3 / make/to date / make/to date! decimal! #34
-make-test.r3 / make/to date / make/to date! decimal! #35
-make-test.r3 / make/to date / make/to date! decimal! #36
-make-test.r3 / make/to date / make/to date! decimal! #37
-make-test.r3 / make/to date / make/to date! decimal! #38
-make-test.r3 / make/to date / make/to date! decimal! #39
-make-test.r3 / make/to date / make/to date! decimal! #40
-make-test.r3 / make/to date / make/to date! decimal! #41
-make-test.r3 / make/to date / make/to date! decimal! #42
-make-test.r3 / make/to date / make/to date! decimal! #43
-make-test.r3 / make/to date / make/to date! decimal! #44
-make-test.r3 / make/to date / make/to date! decimal! #45
-make-test.r3 / make/to date / make/to date! decimal! #46
-make-test.r3 / make/to date / make/to date! decimal! #47
-make-test.r3 / make/to date / make/to date! decimal! #48
-make-test.r3 / make/to date / make/to date! decimal! #49
-make-test.r3 / make/to date / make/to date! decimal! #50
-make-test.r3 / make/to date / make/to date! decimal! #51
-make-test.r3 / make/to date / make/to date! decimal! #52
-make-test.r3 / make/to date / make/to date! decimal! #53
-make-test.r3 / make/to date / make/to date! decimal! #54
-make-test.r3 / make/to date / make/to date! decimal! #55
-make-test.r3 / make/to date / make/to date! decimal! #56
-make-test.r3 / make/to date / make/to date! decimal! #57
-make-test.r3 / make/to date / make/to date! decimal! #58
-make-test.r3 / make/to date / make/to date! decimal! #59
-make-test.r3 / make/to date / make/to date! decimal! #60
-make-test.r3 / make/to date / make/to date! decimal! #61
-make-test.r3 / make/to date / make/to date! decimal! #62
-make-test.r3 / make/to date / make/to date! decimal! #63
-make-test.r3 / make/to date / make/to date! decimal! #64
-make-test.r3 / make/to date / make/to date! decimal! #65
-make-test.r3 / make/to date / make/to date! decimal! #66
-make-test.r3 / make/to date / make/to date! decimal! #67
-make-test.r3 / make/to date / make/to date! integer! #17
-make-test.r3 / make/to date / make/to date! integer! #18
-make-test.r3 / make/to date / make/to date! integer! #19
-make-test.r3 / make/to date / make/to date! integer! #20
-make-test.r3 / make/to date / make/to date! integer! #21
-make-test.r3 / make/to date / make/to date! integer! #22
-make-test.r3 / make/to date / make/to date! integer! #23
-make-test.r3 / make/to date / make/to date! integer! #24
-make-test.r3 / make/to decimal! / make decimal from string #127
-make-test.r3 / make/to decimal! / make/to decimal! date! #128
-make-test.r3 / make/to decimal! / make/to decimal! date! #129
-make-test.r3 / make/to decimal! / make/to decimal! date! #130
-make-test.r3 / make/to decimal! / make/to decimal! date! #131
-make-test.r3 / make/to decimal! / make/to decimal! date! #132
-make-test.r3 / make/to decimal! / make/to decimal! date! #133
-make-test.r3 / make/to decimal! / make/to decimal! date! #134
-make-test.r3 / make/to decimal! / make/to decimal! date! #135
-make-test.r3 / make/to decimal! / make/to decimal! date! #136
-make-test.r3 / make/to decimal! / make/to decimal! date! #137
-make-test.r3 / make/to decimal! / make/to decimal! date! #138
-make-test.r3 / make/to decimal! / make/to decimal! date! #139
-make-test.r3 / make/to decimal! / make/to decimal! date! #140
-make-test.r3 / make/to decimal! / make/to decimal! date! #141
-make-test.r3 / make/to decimal! / make/to decimal! date! #142
-make-test.r3 / make/to decimal! / make/to decimal! date! #143
-make-test.r3 / make/to decimal! / make/to decimal! date! #144
-make-test.r3 / make/to decimal! / make/to decimal! date! #145
-make-test.r3 / make/to decimal! / make/to decimal! date! #146
-make-test.r3 / make/to decimal! / make/to decimal! date! #147
-make-test.r3 / make/to decimal! / make/to decimal! date! #148
-make-test.r3 / make/to decimal! / make/to decimal! date! #149
-make-test.r3 / make/to decimal! / make/to decimal! date! #150
-make-test.r3 / make/to decimal! / make/to decimal! date! #151
-make-test.r3 / make/to decimal! / make/to decimal! date! #152
-make-test.r3 / make/to decimal! / make/to decimal! date! #153
-make-test.r3 / make/to decimal! / make/to decimal! date! #154
-make-test.r3 / make/to decimal! / make/to decimal! date! #155
-make-test.r3 / make/to decimal! / make/to decimal! date! #156
-make-test.r3 / make/to decimal! / make/to decimal! date! #157
-make-test.r3 / make/to decimal! / make/to decimal! date! #158
-make-test.r3 / make/to decimal! / make/to decimal! date! #159
-make-test.r3 / make/to decimal! / make/to decimal! date! #160
-make-test.r3 / make/to decimal! / make/to decimal! date! #161
-make-test.r3 / make/to decimal! / make/to decimal! date! #162
-make-test.r3 / make/to decimal! / make/to decimal! date! #163
-make-test.r3 / make/to decimal! / make/to decimal! date! #164
-make-test.r3 / make/to decimal! / make/to decimal! date! #165
-make-test.r3 / make/to decimal! / make/to decimal! date! #166
-make-test.r3 / make/to decimal! / make/to decimal! date! #167
-make-test.r3 / make/to decimal! / make/to decimal! logic! #121
-make-test.r3 / make/to decimal! / make/to decimal! logic! #122
-make-test.r3 / make/to decimal! / make/to decimal! logic! #123
-make-test.r3 / make/to decimal! / make/to decimal! logic! #124
-make-test.r3 / make/to decimal! / to decimal! issue! #120
-make-test.r3 / make/to integer / make integer! logic! #83
-make-test.r3 / make/to integer / make integer! logic! #84
-make-test.r3 / make/to integer / make integer! logic! #85
-make-test.r3 / make/to integer / make integer! logic! #86
-make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #114
-make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #115
-make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #116
-make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #117
-make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #118
-make-test.r3 / make/to integer / make/to integer! 1.#NaN and 1.#INF #119
-make-test.r3 / make/to integer / make/to integer! date! #91
-make-test.r3 / make/to integer / make/to integer! date! #92
-make-test.r3 / make/to integer / make/to integer! date! #93
-make-test.r3 / make/to integer / make/to integer! date! #94
-make-test.r3 / make/to logic! / make logic! .. #262
 make-test.r3 / make/to map / make map! .. #481
 make-test.r3 / make/to map / make map! .. #498
 make-test.r3 / make/to map / to map! .. #533
@@ -1657,70 +1310,7 @@ make-test.r3 / make/to pair! / make pair! .. #192
 make-test.r3 / make/to pair! / make pair! .. #210
 make-test.r3 / make/to pair! / to pair! .. #229
 make-test.r3 / make/to pair! / to pair! .. #246
-make-test.r3 / make/to path / make path! .. #404
-make-test.r3 / make/to path / make path! .. #405
-make-test.r3 / make/to path / make path! .. #406
-make-test.r3 / make/to path / make path! .. #411
-make-test.r3 / make/to path / make path! .. #412
-make-test.r3 / make/to path / make path! .. #413
-make-test.r3 / make/to path / make path! .. #415
-make-test.r3 / make/to path / make path! .. #416
-make-test.r3 / make/to path / make path! .. #417
-make-test.r3 / make/to path / make path! .. #422
-make-test.r3 / make/to path / make path! .. #423
-make-test.r3 / make/to path / make path! .. #424
-make-test.r3 / make/to path / make path! .. #425
-make-test.r3 / make/to path / make path! .. #426
-make-test.r3 / make/to path / make path! .. #432
-make-test.r3 / make/to path / make path! .. #433
-make-test.r3 / make/to path / make path! .. #434
-make-test.r3 / make/to path / make path! .. #435
-make-test.r3 / make/to path / make path! .. #438
-make-test.r3 / make/to string / make string! ... #545
-make-test.r3 / make/to string / make string! ... #550
-make-test.r3 / make/to string / make string! ... #566
-make-test.r3 / make/to string / make string! ... #573
-make-test.r3 / make/to string / make string! ... #574
-make-test.r3 / make/to string / make string! ... #575
-make-test.r3 / make/to string / make string! ... #576
-make-test.r3 / make/to string / make string! ... #580
-make-test.r3 / make/to string / make string! ... #583
-make-test.r3 / make/to string / to string! ... #585
-make-test.r3 / make/to string / to string! ... #606
-make-test.r3 / make/to string / to string! ... #613
-make-test.r3 / make/to string / to string! ... #614
-make-test.r3 / make/to string / to string! ... #615
-make-test.r3 / make/to string / to string! ... #616
-make-test.r3 / make/to string / to string! ... #620
-make-test.r3 / make/to string / to string! ... #623
-make-test.r3 / make/to tag / make tag! .. #627
-make-test.r3 / make/to tag / make tag! .. #632
-make-test.r3 / make/to tag / make tag! .. #648
-make-test.r3 / make/to tag / make tag! .. #651
-make-test.r3 / make/to tag / make tag! .. #652
-make-test.r3 / make/to tag / make tag! .. #653
-make-test.r3 / make/to tag / make tag! .. #654
-make-test.r3 / make/to tag / make tag! .. #660
-make-test.r3 / make/to tag / make tag! .. #661
-make-test.r3 / make/to tag / to tag! .. #663
-make-test.r3 / make/to tag / to tag! .. #684
-make-test.r3 / make/to tag / to tag! .. #687
-make-test.r3 / make/to tag / to tag! .. #688
-make-test.r3 / make/to tag / to tag! .. #689
-make-test.r3 / make/to tag / to tag! .. #690
-make-test.r3 / make/to tag / to tag! .. #696
-make-test.r3 / make/to tag / to tag! .. #697
-make-test.r3 / make/to typeset / make typeset! .. #721
-make-test.r3 / make/to typeset / make typeset! .. #723
-make-test.r3 / make/to typeset / make typeset! .. #724
-make-test.r3 / make/to typeset / make typeset! .. #725
-make-test.r3 / make/to typeset / make typeset! .. #726
 make-test.r3 / make/to typeset / make typeset! .. #733
-make-test.r3 / make/to typeset / to typeset! .. #757
-make-test.r3 / make/to typeset / to typeset! .. #759
-make-test.r3 / make/to typeset / to typeset! .. #760
-make-test.r3 / make/to typeset / to typeset! .. #761
-make-test.r3 / make/to typeset / to typeset! .. #762
 make-test.r3 / make/to typeset / to typeset! .. #769
 map-test.r3 / FORM map! / form empty map #132
 map-test.r3 / FORM map! / form map with multiple keys #134
@@ -1749,10 +1339,7 @@ map-test.r3 / compare / equal? (large maps) #76
 map-test.r3 / compare / equal? (large maps) #77
 map-test.r3 / compare / equal? (large maps) #78
 map-test.r3 / find / map-find-3 #60
-map-test.r3 / map issues / copy/deep map #115
-map-test.r3 / map issues / copy/deep map #118
 map-test.r3 / map issues / map-issue-1872 #104
-map-test.r3 / map issues / map-issue-2293 #108
 map-test.r3 / reflection / block of map #152
 map-test.r3 / reflection / block of map #153
 map-test.r3 / set operations with map! / difference with map #177
@@ -1820,13 +1407,9 @@ mold-test.r3 / mold map! / mold #[] #138
 mold-test.r3 / mold map! / mold map! #133
 mold-test.r3 / mold map! / mold/flat map! #135
 mold-test.r3 / mold path! / form path! #201
-mold-test.r3 / mold path! / form path! #202
 mold-test.r3 / mold path! / form path! #203
-mold-test.r3 / mold path! / form path! #204
 mold-test.r3 / mold path! / form path! #205
-mold-test.r3 / mold path! / form path! #206
 mold-test.r3 / mold path! / form path! #207
-mold-test.r3 / mold path! / form path! #208
 mold-test.r3 / mold path! / mold/all path! #197
 mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #221
 mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #222
@@ -1837,27 +1420,17 @@ mold-test.r3 / mold ref! / mold ref #167
 mold-test.r3 / mold url! / mold url escaping #56
 mold-test.r3 / mold-all / mold/all block with index over tail #109
 mold-test.r3 / mold-all / mold/all block with index over tail #110
-mold-test.r3 / mold-all / mold/all series #100
 mold-test.r3 / mold-all / mold/all series #101
 mold-test.r3 / mold-all / mold/all series #102
 mold-test.r3 / mold-all / mold/all series #103
 mold-test.r3 / mold-all / mold/all series #104
-mold-test.r3 / mold-all / mold/all series #105
-mold-test.r3 / mold-all / mold/all series #106
-mold-test.r3 / mold-all / mold/all series #107
-mold-test.r3 / mold-all / mold/all series #108
 mold-test.r3 / mold-all / mold/all series #92
 mold-test.r3 / mold-all / mold/all series #93
 mold-test.r3 / mold-all / mold/all series #94
 mold-test.r3 / mold-all / mold/all series #95
 mold-test.r3 / mold-all / mold/all series #96
-mold-test.r3 / mold-all / mold/all series #97
-mold-test.r3 / mold-all / mold/all series #98
-mold-test.r3 / mold-all / mold/all series #99
 mold-test.r3 / mold/all / mold/all decimal! #210
 mold-test.r3 / mold/all / mold/all decimal! #211
-mold-test.r3 / mold/all / mold/all typeset! #212
-mold-test.r3 / mold/all / mold/all typeset! #213
 os-test.r3 / set-env / get-env / env-1 #1
 os-test.r3 / set-env / get-env / env-1 #2
 os-test.r3 / set-env / get-env / env-1 #3
@@ -1877,7 +1450,6 @@ parse-test.r3 / Other parse issues / integer! repeat #377
 parse-test.r3 / Other parse issues / integer! repeat #378
 parse-test.r3 / Other parse issues / integer! repeat #379
 percent-test.r3 / form/mold / mold/all #30
-percent-test.r3 / make percent! / make percent from block #3
 percent-test.r3 / percent issues / large percent #33
 percent-test.r3 / percent issues / large percent #34
 poly1305-test.r3 / (no group) / (no test) #1

@@ -361,6 +361,9 @@ public final class Comparison {
         if (left instanceof PairValue && right instanceof PairValue) {
             return ordering(left, right) == 0;
         }
+        if (left instanceof DateValue && right instanceof DateValue) {
+            return ordering(left, right) == 0;
+        }
         if (left instanceof ObjectValue leftObject && right instanceof ObjectValue rightObject) {
             return sameFields(leftObject, rightObject, stepsAllowed);
         }
@@ -477,6 +480,9 @@ public final class Comparison {
         if (left instanceof TupleValue first && right instanceof TupleValue second) {
             return first.equals(second) && first.segmentCount() == second.segmentCount();
         }
+        if (left instanceof DateValue first && right instanceof DateValue second) {
+            return sameDateBitsAndTime(first, second);
+        }
         if (left instanceof ObjectValue first && right instanceof ObjectValue second) {
             return sameFields(first, second, 0) && strictFields(first, second);
         }
@@ -496,12 +502,42 @@ public final class Comparison {
         return left.equals(right);
     }
 
+    /**
+     * Whether two dates are strictly the same, which is what
+     * {@code CT_Date} answers above mode one.
+     *
+     * <p>It compares the packed date word and the time, and the packed word
+     * carries the zone. So the zone counts here where it does not for
+     * ordinary equality -- and a date written without one is at zero rather
+     * than at no zone at all, which is the distinction JEBOL keeps in an
+     * empty Optional and the C does not keep at all.
+     *
+     * <p>Comparing the record whole made {@code 1-Jan-1970/0:00} unequal to
+     * the same date built from a timestamp, because one had written its zone
+     * down and the other had not.
+     */
+    private static boolean sameDateBitsAndTime(DateValue first, DateValue second) {
+        return first.year() == second.year()
+                && first.month() == second.month()
+                && first.day() == second.day()
+                && first.timeOfDay().equals(second.timeOfDay())
+                && first.zoneMinutes().orElse(0).equals(second.zoneMinutes().orElse(0));
+    }
+
     /** Whether two values are the same value, minding the datatype exactly. */
     public static boolean identicallyEqual(Value left, Value right) {
         return left.datatype() == right.datatype() && strictlyEqual(left, right);
     }
 
-    /** Whether two values are one thing rather than two equal things. */
+    /**
+     * Whether two values are one thing rather than two equal things.
+     *
+     * <p>Everything that holds its contents somewhere answers by where, not by
+     * what: {@code VAL_SERIES(a) == VAL_SERIES(b)} is the whole of mode three
+     * for a series, and a map and a bitset are series underneath. Falling
+     * through to an equality that reads the contents made a map the same value
+     * as its own copy, which is precisely the question COPY's own tests ask.
+     */
     public static boolean isSameValue(Value left, Value right) {
         if (left.datatype() != right.datatype()) {
             return false;
@@ -521,6 +557,9 @@ public final class Comparison {
         }
         if (left instanceof ObjectValue first && right instanceof ObjectValue second) {
             return first.context() == second.context();
+        }
+        if (left instanceof MapValue || left instanceof BitsetValue) {
+            return left == right;
         }
         if (left instanceof TupleValue first && right instanceof TupleValue second) {
             return first.equals(second) && first.segmentCount() == second.segmentCount();
@@ -623,13 +662,22 @@ public final class Comparison {
     }
 
     /**
-     * The default order for SORT: numbers by size, everything else by its
-     * text.
+     * The default order for SORT: numbers by size, dates by the instant they
+     * name, everything else by its text.
      *
      * <p>Case is folded unless {@code /case} was asked for, so "a" and "A"
      * land together rather than every capital coming first.
+     *
+     * <p>Dates need their own line because their written form does not sort
+     * into their order at all. As text, {@code 9-Jan-2000} comes after
+     * {@code 10-Jan-2000} and {@code 1-Jan-2000} comes before
+     * {@code 2-Feb-1999}, and both of those were the answer here until the
+     * instant was compared instead.
      */
     public static int compareForSorting(Value left, Value right, boolean mindingCase) {
+        if (left instanceof DateValue first && right instanceof DateValue second) {
+            return first.moment().compareTo(second.moment());
+        }
         if (isNumeric(left) && isNumeric(right)) {
             boolean leftIsNaN = Double.isNaN(asDouble(left));
             boolean rightIsNaN = Double.isNaN(asDouble(right));

@@ -51,18 +51,47 @@ public final class Molder {
      * that is not a series, molds as it always does.
      */
     public static String moldAll(Value value) {
-        if (value instanceof VectorValue vector) {
-            return writtenAsAVector(vector, 1, true, vector.index());
+        return writingEverythingOut(() -> {
+            if (value instanceof VectorValue vector) {
+                return writtenAsAVector(vector, 1, true, vector.index());
+            }
+            if (value instanceof SeriesValue series && series.index() > 1) {
+                return "#(" + value.datatype().literalSpelling() + " "
+                        + constructBodyOf(series) + " " + series.index() + ")";
+            }
+            if (value instanceof StringValue tag && tag.datatype() == Datatype.TAG
+                    && tag.storageLength() == 0) {
+                return "#(tag! " + moldedText("") + ")";
+            }
+            return render(value, true);
+        });
+    }
+
+    /**
+     * Whether everything being written is being written the all way.
+     *
+     * <p>{@code MOPT_MOLD_ALL} is a flag on the mold state, so it is not a
+     * choice made once at the top: every value below reads it and writes
+     * itself differently for it. A date writes ISO, a typeset writes its
+     * construct form, and a path that has to fall back to a construct sets the
+     * flag for its own contents whether or not the caller asked for it --
+     * {@code if (all) { SET_FLAG(mold->opts, MOPT_MOLD_ALL); ... }}.
+     *
+     * <p>A field on the molder is what the C has and JEBOL has no molder to
+     * put one on, so it sits beside the two the file already keeps for depth
+     * and for what is being written twice.
+     */
+    private static final ThreadLocal<Boolean> WRITING_EVERYTHING_OUT =
+            ThreadLocal.withInitial(() -> false);
+
+    private static String writingEverythingOut(java.util.function.Supplier<String> written) {
+        boolean was = WRITING_EVERYTHING_OUT.get();
+        WRITING_EVERYTHING_OUT.set(true);
+        try {
+            return written.get();
+        } finally {
+            WRITING_EVERYTHING_OUT.set(was);
         }
-        if (value instanceof SeriesValue series && series.index() > 1) {
-            return "#(" + value.datatype().literalSpelling() + " "
-                    + constructBodyOf(series) + " " + series.index() + ")";
-        }
-        if (value instanceof StringValue tag && tag.datatype() == Datatype.TAG
-                && tag.storageLength() == 0) {
-            return "#(tag! " + moldedText("") + ")";
-        }
-        return render(value, true);
     }
 
     /**
@@ -180,7 +209,9 @@ public final class Molder {
             case HandleValue handle -> "#(handle! " + handle.typeName() + ")";
             case TupleValue tuple -> tuple.toString();
             case TimeValue time -> time.toString();
-            case DateValue date -> date.toString();
+            case DateValue date -> WRITING_EVERYTHING_OUT.get()
+                    ? date.isoForm()
+                    : date.toString();
             case StringValue string -> renderString(string, forReading);
             case BinaryValue binary -> renderBinary(binary, forReading);
             case ImageValue image -> renderImage(image, forReading);
@@ -192,7 +223,11 @@ public final class Molder {
             case DatatypeValue datatype -> forReading
                     ? "#(" + datatype.represents().literalSpelling() + ")"
                     : datatype.represents().literalSpelling();
-            case TypesetValue typeset -> typeset.toString();
+            case TypesetValue typeset -> !forReading
+                    ? namesInTheTypeset(typeset)
+                    : WRITING_EVERYTHING_OUT.get()
+                            ? "#(typeset! [" + namesInTheTypeset(typeset) + "])"
+                            : "make typeset! [" + namesInTheTypeset(typeset) + "]";
             case NativeValue native0 -> "#[native! " + native0.nativeName() + "]";
             case FunctionValue function -> "#[function! " + function.arity() + "]";
             case OperatorValue operator -> "#[op! " + operator.operatorName() + "]";
@@ -678,7 +713,7 @@ public final class Molder {
     private static String renderLined(BlockValue block, boolean forReading) {
         int outer = LINED_DEPTH.get();
         LINED_DEPTH.set(outer + 1);
-        StringBuilder out = new StringBuilder("[");
+        StringBuilder out = new StringBuilder(opensWith(block.datatype()));
         try {
             List<Value> items = block.remaining();
             for (int at = 0; at < items.size(); at++) {
@@ -692,12 +727,37 @@ public final class Molder {
         } finally {
             LINED_DEPTH.set(outer);
         }
-        out.append('\n').append(ONE_INDENT.repeat(outer)).append(']');
+        out.append('\n').append(ONE_INDENT.repeat(outer))
+                .append(closesWith(block.datatype()));
         return out.toString();
     }
 
+    /**
+     * The three shapes that write their items between brackets, and so have
+     * somewhere to put a line break.
+     *
+     * <p>A path writes its items between slashes and a line break has nowhere
+     * to go, which is why a path carrying one still molds on a single line.
+     */
+    private static boolean moldsInBrackets(Datatype shape) {
+        return shape == Datatype.BLOCK || shape == Datatype.PAREN
+                || shape == Datatype.HASH;
+    }
+
+    private static String opensWith(Datatype shape) {
+        return switch (shape) {
+            case PAREN -> "(";
+            case HASH -> "make hash! [";
+            default -> "[";
+        };
+    }
+
+    private static String closesWith(Datatype shape) {
+        return shape == Datatype.PAREN ? ")" : "]";
+    }
+
     private static String renderBlock(BlockValue block, boolean forReading) {
-        if (block.datatype() == Datatype.BLOCK && forReading
+        if (forReading && moldsInBrackets(block.datatype())
                 && carriesLineBreaks(block)) {
             return renderLined(block, forReading);
         }
@@ -722,22 +782,61 @@ public final class Molder {
      * A path molded with slashes, or as a construct when it would not read
      * back as one.
      *
-     * <p>A path is a word followed by whatever selects through it, so the
-     * first item decides: {@code a/2/3} reads back as itself and
-     * {@code 1/b/c} does not, because the reader would see a number and stop.
-     * Rebol falls back to {@code #(path! [1 b c])} for exactly that case, and
-     * only that case -- the items after the first may be anything.
+     * <p>Two conditions send it to the construct, and the C states both in one
+     * line: {@code if (VAL_TAIL <= 1 || !IS_WORD(VAL_BLK_DATA(value)))}.
+     *
+     * <p>A path of one item cannot be written with slashes at all, because a
+     * slash needs something either side of it, so {@code a} on its own is
+     * {@code #(path! [a])} even though it is the very word a path may start
+     * with.
+     *
+     * <p>The first item must be a *plain* word, and the strictness is the
+     * whole point. A set-word, a get-word, a lit-word, a refinement and an
+     * issue are all any-word! and none of them may open a path: {@code a:/b}
+     * would read back as a set-path, {@code /a/b} as a refinement, and
+     * {@code #a/b} as an issue. {@code IS_WORD} is one datatype, not the
+     * typeset, and reading it as the typeset put five kinds of path into a
+     * form that does not read back.
+     *
+     * <p>What comes after the first item may be anything: {@code a/1} and
+     * {@code a/b/c} both write themselves plainly.
+     *
+     * <p>An empty path writes nothing at all -- not even the colon a set-path
+     * would carry -- which is the line above the two in the C:
+     * {@code if (!MOLD_ALL && VAL_TAIL == VAL_INDEX) return;}. So
+     * {@code make set-path! 4} is a path with room for four things and molds
+     * as the empty string, where writing the colon alone would read back as
+     * something else entirely.
      */
     private static String joinPath(BlockValue path, String prefix, String suffix) {
         List<Value> segments = path.remaining();
-        if (!segments.isEmpty() && !segments.getFirst().datatype().isAnyWord()) {
-            return "#(" + path.datatype().literalSpelling() + " ["
+        if (segments.isEmpty()) {
+            return "";
+        }
+        if (wouldNotReadBackAsAPath(path, segments)) {
+            return writingEverythingOut(() -> "#("
+                    + path.datatype().literalSpelling() + " ["
                     + segments.stream().map(Molder::mold).collect(Collectors.joining(" "))
-                    + "])";
+                    + "])");
         }
         return prefix + segments.stream()
                 .map(Molder::mold)
                 .collect(Collectors.joining("/")) + suffix;
+    }
+
+    /**
+     * The two conditions, and each one asks about a different thing.
+     *
+     * <p>The length is the whole series {@code VAL_TAIL} and not what is left
+     * from here, while the first item is {@code VAL_BLK_DATA}, which is the
+     * one at the index. Asking the remaining count for both made
+     * {@code mold next 'a/b} a construct where it is the plain {@code "b"}: a
+     * path standing at its second of two is not a path of one.
+     */
+    private static boolean wouldNotReadBackAsAPath(BlockValue path, List<Value> segments) {
+        return !segments.isEmpty()
+                && (path.storageLength() <= 1
+                        || segments.getFirst().datatype() != Datatype.WORD);
     }
 
     /**
@@ -823,14 +922,56 @@ public final class Molder {
             return "make object! [...]";
         }
         try {
-            String fields = object.context().slots().stream()
-                    .filter(slot -> !slot.canonical().equals(SELF))
-                    .map(slot -> "    " + slot.spelling() + ": "
-                            + renderField(slot.value(), forReading) + "\n")
-                    .collect(Collectors.joining());
-            return "make object! [\n" + fields + "]";
+            return forReading
+                    ? "make object! [\n" + moldedFields(object) + "]"
+                    : formedFields(object);
         } finally {
             enclosing.remove(object.context());
         }
+    }
+
+    /**
+     * A typeset formed: the names of what it holds, and nothing around them.
+     *
+     * <p>{@code Mold_Typeset} writes the brackets and the {@code #(typeset!}
+     * only when it is molding. Formed, it emits each name followed by a space
+     * and trims the last one off, so an empty typeset forms as nothing at all.
+     */
+    private static String namesInTheTypeset(TypesetValue typeset) {
+        return typeset.members().stream()
+                .sorted()
+                .map(Datatype::literalSpelling)
+                .collect(Collectors.joining(" "));
+    }
+
+    private static String moldedFields(ObjectValue object) {
+        return fieldsOutsideSelf(object)
+                .map(slot -> "    " + slot.spelling() + ": "
+                        + renderField(slot.value(), true) + "\n")
+                .collect(Collectors.joining());
+    }
+
+    /**
+     * An object formed: one field to a line, and nothing around them.
+     *
+     * <p>{@code Form_Object} emits {@code "N: V\n"} for each field and then
+     * takes the last newline off again, so there is no {@code make object!}
+     * and no brackets -- {@code form make object! [a: 1 b: 2]} is the two
+     * lines and nothing else.
+     *
+     * <p>The value is *molded* even though the object is being formed, which
+     * is the part that cannot be guessed: {@code form make object! [a: "x"]}
+     * keeps the quotes around the x.
+     */
+    private static String formedFields(ObjectValue object) {
+        return fieldsOutsideSelf(object)
+                .map(slot -> slot.spelling() + ": " + renderField(slot.value(), true))
+                .collect(Collectors.joining("\n"));
+    }
+
+    private static java.util.stream.Stream<ContextSlot> fieldsOutsideSelf(
+            ObjectValue object) {
+        return object.context().slots().stream()
+                .filter(slot -> !slot.canonical().equals(SELF));
     }
 }

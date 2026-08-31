@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.DoublePredicate;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -1896,25 +1897,43 @@ public final class Natives {
     private static final long GENERATOR_RANGE = 1L << 62;
 
     /**
-     * A date with every part randomised inside its own range.
+     * A date with every part randomised, and only the year drawn against the
+     * date it was asked about.
      *
-     * <p>The C randomises the year, then the month, then the day, then the
-     * seconds, each with {@code Random_Range} of that part alone. So the answer
-     * is a date no later than this one in every part rather than a random
-     * instant before it, and a date in January can only come back in January.
+     * <p>{@code year = Random_Range(year, num); month = Random_Range(12, num);
+     * day = Random_Range(31, num);} -- so the month and the day are drawn over
+     * their whole ranges and the date being randomised has no say in either.
+     * Drawing them against its own month and day instead meant an August date
+     * could never come back in September, and a real Rebol answers February
+     * for one readily.
+     *
+     * <p>The C then falls into {@code Normalize_Date}, which carries a day
+     * past the end of its month into the next one, and the month and day it
+     * carries are counted from zero where the drawn numbers start at one. So
+     * the first of January plus that many months and that many days is the
+     * same walk, and it can only land on a date that exists.
+     *
+     * <p>Without the carry, a February drawn together with a thirtieth threw
+     * an {@code IllegalArgumentException} out of the value class and stopped
+     * the interpreter. Rebol's own suite asks for a hundred random dates in a
+     * row and this went unnoticed until the day of the month made it likely.
      */
     private Value randomisedDate(DateValue when) {
-        int year = (int) randomLongUpTo(when.year());
-        int month = (int) Math.max(1, randomLongUpTo(when.month()));
-        int day = (int) Math.max(1, randomLongUpTo(when.day()));
+        java.time.LocalDate drawn = java.time.LocalDate
+                .of((int) randomLongUpTo(when.year()), 1, 1)
+                .plusMonths(randomLongUpTo(MONTHS_A_YEAR))
+                .plusDays(randomLongUpTo(LONGEST_MONTH));
         return when.timeOfDay().isEmpty()
-                ? DateValue.of(year, month, day)
-                : new DateValue(year, month, day,
+                ? DateValue.of(drawn.getYear(), drawn.getMonthValue(), drawn.getDayOfMonth())
+                : new DateValue(drawn.getYear(), drawn.getMonthValue(),
+                        drawn.getDayOfMonth(),
                         java.util.Optional.of(TimeValue.ofNanoseconds(
-                                randomLongUpTo(when.timeOfDay().orElseThrow()
-                                        .nanoseconds()))),
+                                randomLongUpTo(NANOSECONDS_A_DAY))),
                         when.zoneMinutes());
     }
+
+    private static final int MONTHS_A_YEAR = 12;
+    private static final int LONGEST_MONTH = 31;
 
     /** A number as a codepoint, refusing one no character can hold. */
     private static int requireACodepoint(long wanted) {
@@ -2389,12 +2408,26 @@ public final class Natives {
     }
 
     /**
-     * Arithmetic on a date, in days.
+     * Arithmetic on a date, where three kinds of right-hand side mean three
+     * different units.
      *
-     * <p>A bare number is days here where it was seconds for a time, so
-     * the same spelling means a different unit either side. Subtracting
-     * two dates gives a whole number rather than a date, because the
-     * difference of two moments is a span.
+     * <p>A whole number is days and moves the calendar alone, so the clock and
+     * the zone come through untouched. A time is a duration and moves the
+     * clock, carrying into the day when it runs past midnight. A decimal is a
+     * fraction of a day and moves the clock as well, which is why
+     * {@code 20-Sep-2021/12:00 + 1.9} lands two days later at 9:36 rather than
+     * one day later at noon.
+     *
+     * <p>The C reaches each of those through a separate {@code type ==} arm and
+     * ends every one of them at {@code Normalize_Date(day, month, year, tz)},
+     * with the {@code tz} it read off the original. Losing the time and the
+     * zone here turned {@code + 1} into a bare day, and reading a time as a
+     * count of days put {@code 20-Sep-2021 + 1:00} five years out.
+     *
+     * <p>Subtracting two dates is the odd one out and answers a whole number,
+     * because the difference of two moments is a span. {@code Diff_Date} counts
+     * days and never looks at the clock, so two dates two hours apart differ by
+     * nothing at all.
      */
     private static Value dateArithmetic(Value left, Value right, Operation operation) {
         if (left instanceof DateValue from && right instanceof DateValue to) {
@@ -2404,12 +2437,51 @@ public final class Natives {
             return IntegerValue.of(dayNumberOf(from) - dayNumberOf(to));
         }
         DateValue moment = left instanceof DateValue date ? date : (DateValue) right;
-        long days = (long) Comparison.asDouble(left instanceof DateValue ? right : left);
-        long moved = operation == Operation.SUBTRACT
-                ? dayNumberOf(moment) - days
-                : dayNumberOf(moment) + days;
-        java.time.LocalDate shifted = java.time.LocalDate.ofEpochDay(moved);
-        return DateValue.of(shifted.getYear(), shifted.getMonthValue(), shifted.getDayOfMonth());
+        Value span = left instanceof DateValue ? right : left;
+        int sign = operation == Operation.SUBTRACT ? -1 : 1;
+        return span.datatype() == Datatype.INTEGER
+                ? dateMovedByDays(moment, sign * (long) Comparison.asDouble(span))
+                : dateMovedByClock(moment, sign * clockShiftOf(span));
+    }
+
+    /**
+     * How far a span moves a date's clock, in nanoseconds.
+     *
+     * <p>A time is itself. Anything else is a fraction of a day, which is the
+     * one place a bare number beside a date is not a count of days:
+     * {@code + 0.5} is twelve hours on.
+     */
+    private static long clockShiftOf(Value span) {
+        return span instanceof TimeValue duration
+                ? duration.nanoseconds()
+                : (long) (Comparison.asDouble(span) * NANOSECONDS_A_DAY);
+    }
+
+    /** The same moment on a different day, clock and zone carried across. */
+    private static DateValue dateMovedByDays(DateValue moment, long days) {
+        java.time.LocalDate shifted =
+                java.time.LocalDate.ofEpochDay(dayNumberOf(moment) + days);
+        return new DateValue(shifted.getYear(), shifted.getMonthValue(),
+                shifted.getDayOfMonth(), moment.timeOfDay(), moment.zoneMinutes());
+    }
+
+    /**
+     * A date moved along its own clock, carrying into the day either way.
+     *
+     * <p>A date with no time counts as its midnight and comes back carrying
+     * one, which is {@code if (secs == NO_TIME) secs = 0} in the C: adding an
+     * hour to a bare day gives {@code 20-Sep-2021/1:00} rather than the day
+     * back unchanged.
+     */
+    private static DateValue dateMovedByClock(DateValue moment, long nanoseconds) {
+        long shifted = moment.timeOfDay().map(TimeValue::nanoseconds).orElse(0L)
+                + nanoseconds;
+        java.time.LocalDate day = java.time.LocalDate.ofEpochDay(
+                dayNumberOf(moment) + Math.floorDiv(shifted, NANOSECONDS_A_DAY));
+        return new DateValue(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
+                Optional.of(TimeValue.ofNanoseconds(
+                        Math.floorMod(shifted, NANOSECONDS_A_DAY))),
+                moment.zoneMinutes());
     }
 
     /**
@@ -2913,8 +2985,7 @@ public final class Natives {
     private void defineFunctionMaking() {
         Transcoder.buildFunctionsWith(
                 (spec, body) -> makeFunction(spec, body, Context.root()));
-        Transcoder.makeValuesWith((datatype, specification) -> makeOfDatatype(
-                DatatypeValue.of(datatype), specification, null, Context.root()));
+        Transcoder.makeValuesWith(this::constructionOf);
         define("func", List.of(
                         Parameter.required("spec", Set.of(Datatype.BLOCK)),
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
@@ -2966,6 +3037,9 @@ public final class Natives {
         define("make", takesAnything("prototype", "body"),
                 (arguments, evaluator, context) -> switch (arguments.get(0)) {
                     case DatatypeValue wanted when wanted.represents() == Datatype.OBJECT
+                            && arguments.get(1) instanceof NoneValue ->
+                            raiseBadMakeArg(arguments.get(1), "object!");
+                    case DatatypeValue wanted when wanted.represents() == Datatype.OBJECT
                             && !(arguments.get(1) instanceof BlockValue) ->
                             makeObject(evaluator, context, Optional.empty(),
                                     BlockValue.block(List.of()));
@@ -3001,14 +3075,9 @@ public final class Natives {
                             derivedFunction(original, given);
                     case FunctionValue original when arguments.get(1) instanceof BlockValue given ->
                             derivedFunction(original, given);
-                    case SeriesValue prototype -> {
-                        if (arguments.get(1) instanceof NoneValue) {
-                            yield raiseBadMakeArg(arguments.get(1),
-                                    prototype.datatype().literalSpelling());
-                        }
-                        yield makeOfDatatype(DatatypeValue.of(prototype.datatype()),
-                                arguments.get(1), evaluator, context);
-                    }
+                    case SeriesValue prototype ->
+                            makeOfDatatype(DatatypeValue.of(prototype.datatype()),
+                                    arguments.get(1), evaluator, context);
                     case EventValue prototype -> EventPath.made(prototype,
                             arguments.get(1),
                             value -> simpleValueOf(value, evaluator, context));
@@ -4404,8 +4473,9 @@ public final class Natives {
                         arguments.get(0) instanceof PairValue pair
                                 ? bothHalves(pair, half -> half > 0)
                                 : Comparison.asDouble(arguments.get(0)) > 0));
-        define("zero?", takesNumbers("value"),
-                (arguments, evaluator, context) -> LogicValue.of(Comparison.asDouble(arguments.get(0)) == 0.0));
+        define("zero?", takesAnything("value"),
+                (arguments, evaluator, context) ->
+                        LogicValue.of(isTheZeroOfItsDatatype(arguments.getFirst())));
 
         define("value?", List.of(Parameter.required("word", Set.of(Datatype.WORD))),
                 (arguments, evaluator, context) -> {
@@ -4894,21 +4964,7 @@ public final class Natives {
                         return NoneValue.none();
                     }
                     return switch (field) {
-                        case "body" -> {
-                            BlockValue body = BlockValue.block(
-                                    object.context().slots().stream()
-                                            .filter(slot -> !slot.canonical()
-                                                    .equals("self"))
-                                            .flatMap(slot -> java.util.stream.Stream.of(
-                                                    (Value) WordValue.of(slot.spelling(),
-                                                            Datatype.SET_WORD),
-                                                    slot.value()))
-                                            .toList());
-                            for (int at = 1; at <= body.storageLength(); at += 2) {
-                                body.storage().setLineBreakAt(at, true);
-                            }
-                            yield body;
-                        }
+                        case "body" -> blockOfFieldsAndValues(object.context());
                         case "words" -> BlockValue.block(object.context().slots().stream()
                                 .filter(slot -> !slot.canonical().equals("self"))
                                 .<Value>map(slot -> WordValue.of(slot.spelling()))
@@ -5275,12 +5331,7 @@ public final class Natives {
         if (spec instanceof BlockValue body && body.datatype() == Datatype.BLOCK) {
             Value built = makeObject(evaluator, context, Optional.empty(), body);
             if (built instanceof ObjectValue holder) {
-                spec = BlockValue.block(holder.context().slots().stream()
-                        .filter(slot -> !slot.canonical().equals("self"))
-                        .flatMap(slot -> java.util.stream.Stream.of(
-                                WordValue.of(slot.spelling(), Datatype.SET_WORD),
-                                slot.value()))
-                        .toList());
+                spec = BlockValue.block(setWordsAndValuesOf(holder.context()));
             }
         }
         if (!(spec instanceof BlockValue fields)) {
@@ -7784,6 +7835,53 @@ public final class Natives {
                 .doubleValue();
     }
 
+    /**
+     * Whether a value is the zero of its own datatype.
+     *
+     * <p>{@code if (type >= REB_INTEGER && type <= REB_TIME)} is a range over
+     * the datatype table, so it takes in the char, the pair and the tuple as
+     * well as the four numbers: a zero pair and a zero tuple are zero, and so
+     * is the null character.
+     *
+     * <p>A bitset is the one that is not a comparison at all.
+     * {@code Is_Zero_Bitset} asks whether every byte is what an empty set
+     * would hold -- nought, or {@code 0xFF} where the set is written as a
+     * complement -- so {@code complement make bitset! #{FF}} is zero because
+     * it holds nothing, while a complemented charset is not.
+     *
+     * <p>Everything else answers no rather than being refused, which is why
+     * the declared argument is a bare {@code value} and a string simply says
+     * false. Taking numbers only made ZERO? raise on the datatype the question
+     * was written for.
+     */
+    private static boolean isTheZeroOfItsDatatype(Value value) {
+        if (value instanceof BitsetValue members) {
+            byte held = (byte) (members.isComplemented() ? 0xFF : 0);
+            for (byte octet : members.octets()) {
+                if (octet != held) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (value instanceof PairValue pair) {
+            return pair.x() == 0 && pair.y() == 0;
+        }
+        if (value instanceof TupleValue segments) {
+            return java.util.Arrays.stream(segments.segments()).allMatch(part -> part == 0);
+        }
+        if (value instanceof CharacterValue letter) {
+            return letter.codepoint() == 0;
+        }
+        if (value instanceof TimeValue clock) {
+            return clock.nanoseconds() == 0;
+        }
+        if (value instanceof MoneyValue amount) {
+            return amount.amount().signum() == 0;
+        }
+        return Comparison.isNumeric(value) && Comparison.asDouble(value) == 0.0;
+    }
+
     /** A bitset holding every character code in what it is given. */
     private static Value bitsetOf(Value source) {
         return switch (source) {
@@ -7875,6 +7973,60 @@ public final class Natives {
         return value instanceof CharacterValue character
                 ? character.codepoint()
                 : (int) Comparison.asDouble(value);
+    }
+
+    /**
+     * Whether a bitset holds what it is being asked about, which is
+     * {@code Check_Bits} and is the one arm PICK and FIND share:
+     * {@code case A_PICK: case A_FIND:}.
+     *
+     * <p>Five things may be asked and only one of them was answered. A char
+     * and an integer each name one code point -- the integer being a code
+     * point is why {@code pick charset "a" 97} is true. A string or a binary
+     * asks about every character in it. A block asks about every one it names,
+     * ranges included, which is the same grammar that builds a set in the
+     * first place and so is read by the same walk.
+     *
+     * <p>Every one of them has to be held, unless {@code /any} was asked for
+     * and then one will do. Answering only a char left every other form
+     * quietly false, which reads as "the set does not hold it" rather than as
+     * a question that was never asked.
+     */
+    private static boolean bitsetHolds(BitsetValue members, Value asked, boolean anyWillDo) {
+        if (asked instanceof CharacterValue letter) {
+            return members.holds(letter.codepoint());
+        }
+        if (asked instanceof IntegerValue codepoint) {
+            return members.holds((int) codepoint.magnitude());
+        }
+        return holdsEachOf(members, codePointsAskedAboutBy(asked), anyWillDo);
+    }
+
+    private static int[] codePointsAskedAboutBy(Value asked) {
+        if (asked instanceof StringValue text) {
+            return text.text().codePoints().toArray();
+        }
+        if (asked instanceof BinaryValue octets) {
+            byte[] bytes = octets.octetsFromHere();
+            int[] points = new int[bytes.length];
+            for (int at = 0; at < bytes.length; at++) {
+                points[at] = bytes[at] & 0xFF;
+            }
+            return points;
+        }
+        if (asked instanceof BlockValue specs) {
+            return codePointsIn(specs);
+        }
+        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
+    }
+
+    private static boolean holdsEachOf(BitsetValue members, int[] wanted, boolean anyWillDo) {
+        for (int point : wanted) {
+            if (members.holds(point) == anyWillDo) {
+                return anyWillDo;
+            }
+        }
+        return !anyWillDo;
     }
 
     /**
@@ -8591,7 +8743,7 @@ public final class Natives {
             List<Value> arguments, Set<String> refinements) {
 
         if (!refinements.contains("types")) {
-            return DEEP_COPIED;
+            return refinements.contains("deep") ? DEEP_COPIED : EnumSet.noneOf(Datatype.class);
         }
         Value kinds = arguments.getLast();
         return switch (kinds) {
@@ -8610,18 +8762,25 @@ public final class Natives {
         }
         return switch (original) {
             case BlockValue block -> new BlockValue(new BlockStorage(
-                    deeply
-                            ? block.remaining().stream()
-                                    .map(item -> kinds.contains(item.datatype())
-                                            ? copied(item, true, kinds)
-                                            : item)
-                                    .toList()
-                            : block.remaining()),
+                    block.remaining().stream()
+                            .map(item -> memberCopiedFrom(item, deeply, kinds))
+                            .toList()),
                     1, block.datatype());
             case StringValue text -> StringValue.of(text.text(), text.datatype());
             case BinaryValue binary -> copiedBytes(binary, binary.lengthFromHere());
             case VectorValue vector -> copiedElements(vector, vector.lengthFromHere());
             case BitsetValue members -> members.duplicate();
+            case MapValue pairs -> {
+                List<Value> flattened = pairs.flattened();
+                List<Value> copiedPairs = new ArrayList<>(flattened.size());
+                for (int at = 0; at < flattened.size(); at++) {
+                    boolean isaValueRatherThanAKey = at % 2 == 1;
+                    copiedPairs.add(isaValueRatherThanAKey
+                            ? memberCopiedFrom(flattened.get(at), deeply, kinds)
+                            : flattened.get(at));
+                }
+                yield MapValue.of(copiedPairs);
+            }
             case ObjectValue object -> {
                 Context fields = Context.root();
                 ObjectValue duplicate = new ObjectValue(fields);
@@ -8629,14 +8788,50 @@ public final class Natives {
                 object.context().slots().stream()
                         .filter(slot -> !slot.canonical().equals("self"))
                         .forEach(slot -> fields.set(slot.spelling(),
-                                deeply && kinds.contains(slot.value().datatype())
-                                        ? copied(slot.value(), true, kinds)
-                                        : slot.value()));
+                                memberCopiedFrom(slot.value(), deeply, kinds)));
                 yield duplicate;
             }
             default -> original;
         };
     }
+
+    /**
+     * What a container puts back in place of one of the things it held.
+     *
+     * <p>Two refinements and two questions, and they are not the same one.
+     * {@code /types} says which datatypes are duplicated rather than shared,
+     * and {@code /deep} says whether to go on doing it inside whatever was
+     * duplicated. The C keeps them apart in one line --
+     * {@code if (deep) types |= CP_DEEP | (types_given ? types :
+     * TS_DEEP_COPIED);} -- so asking for types alone reaches one level down
+     * and no further.
+     *
+     * <p>That is why {@code copy/types m string!} gives a map whose strings
+     * are its own and whose nested map is still shared, and why every string
+     * inside that nested map is untouched: the map was not copied, so there
+     * was nothing to go into.
+     *
+     * <p>A plain COPY names no datatypes at all, which is how it stays
+     * shallow without a separate branch saying so.
+     */
+    private static Value memberCopiedFrom(Value member, boolean deeply, Set<Datatype> kinds) {
+        if (!kinds.contains(member.datatype())) {
+            return member;
+        }
+        return copied(member, deeply, deeply ? kinds : NOTHING_INSIDE);
+    }
+
+    /**
+     * What a shallow copy duplicates inside whatever it just duplicated, which
+     * is nothing.
+     *
+     * <p>{@code if ((types & CP_DEEP) != 0)} guards the recursion, so without
+     * {@code /deep} a copied member is copied and its own contents are shared.
+     * That is the difference between {@code copy/types m object!}, where the
+     * object comes back new and the object inside it is the original, and
+     * {@code copy/deep/types m object!}, where both are new.
+     */
+    private static final Set<Datatype> NOTHING_INSIDE = EnumSet.noneOf(Datatype.class);
 
     /** The first few of a series, copied, and deeply when asked. */
     private static Value copiedFront(
@@ -9144,9 +9339,7 @@ public final class Natives {
      */
     private static Value pickFrom(Value target, Value selector) {
         return switch (target) {
-            case BitsetValue members -> LogicValue.of(
-                    selector instanceof CharacterValue letter
-                            && members.holds(letter.codepoint()));
+            case BitsetValue members -> LogicValue.of(bitsetHolds(members, selector, false));
             case MapValue map -> map.select(selector);
             case DateValue date -> DateParts.of(date, selector);
             case TimeValue time -> pickTimePart(time, selector);
@@ -11834,7 +12027,7 @@ public final class Natives {
                         return EventPath.made(wanted, arguments.get(1),
                                 value -> simpleValueOf(value, evaluator, context));
                     }
-                    return convertedTo(arguments.get(0), arguments.get(1));
+                    return converted(Conversion.TO, arguments.get(0), arguments.get(1));
                 });
 
         define("as-pair", takesOnlyNumbers("x", "y"),
@@ -12250,6 +12443,176 @@ public final class Natives {
 
 
     /**
+     * A date read out of a string, which is the lexer's job rather than a
+     * conversion of its own.
+     *
+     * <p>{@code Scan_Date} is what the C reaches for here, and it is the same
+     * scanner a date literal in source goes through.
+     */
+    private static Value dateReadFrom(StringValue written) {
+        return Transcoder.transcode(written.text()).values()
+                .map(BlockValue::remaining)
+                .filter(read -> read.size() == 1 && read.getFirst() instanceof DateValue)
+                .map(List::getFirst)
+                .orElseGet(() -> raiseBadMakeArg(written, "date!"));
+    }
+
+    /**
+     * The block shapes built either way, which is the whole of
+     * {@code Make_Block_Type} including the {@code make} flag it is handed.
+     *
+     * <p>MAKE and TO differ here and JEBOL had them the same. TO wraps
+     * whatever it is given, so {@code to block! #"a"} is {@code [#"a"]} and
+     * {@code to block! "1 2"} is the one-item block holding that string.
+     * MAKE takes a list of shapes and refuses the rest, so
+     * {@code make block! #"a"} is an error, {@code make block! 4.0} is an
+     * empty block because a number is room rather than a value, and
+     * {@code make block! "1 2"} reads the text as source and answers
+     * {@code [1 2]}.
+     *
+     * <p>Four shapes answer the same to both, because a block is what they
+     * already are underneath: another block, a map, an object and a vector.
+     *
+     * <p>Only TO reaches the typeset arm, and only for a block or a paren.
+     * Only MAKE reaches the room, source-text and pair arms, because TO has
+     * answered by then -- except for a hash, which is a block shape in the
+     * typeset sense and not in the range {@code ANY_BLOCK_TYPE} tests, so
+     * {@code to hash! 4} falls through the lot of them and is refused.
+     */
+    private static Value blockTypeBuilt(Conversion asking, Datatype wanted, Value from) {
+        if (from instanceof BlockValue given) {
+            return BlockValue.block(given.remaining()).as(wanted);
+        }
+        if (from instanceof MapValue pairs) {
+            return BlockValue.block(pairs.flattened()).as(wanted);
+        }
+        if (isAnyObject(from)) {
+            return blockOfFieldsAndValues(fieldsOf(from)).as(wanted);
+        }
+        if (from instanceof VectorValue numbers) {
+            return BlockValue.block(numbers.remaining()).as(wanted);
+        }
+        if (asking.builds()) {
+            if (from.datatype() == Datatype.INTEGER
+                    || from.datatype() == Datatype.DECIMAL) {
+                return BlockValue.block(List.of()).as(wanted);
+            }
+        } else if (wrapsIntoWhatTheCallerAskedFor(wanted)) {
+            return from instanceof TypesetValue kinds
+                    && (wanted == Datatype.BLOCK || wanted == Datatype.PAREN)
+                    ? BlockValue.block(kinds.members().stream()
+                            .sorted().<Value>map(DatatypeValue::of).toList()).as(wanted)
+                    : BlockValue.block(from).as(wanted);
+        }
+        if (from.datatype() == Datatype.STRING && from instanceof StringValue text) {
+            return sourceReadFrom(text.text(), wanted);
+        }
+        if (from instanceof BinaryValue octets) {
+            return sourceReadFrom(textDecodedFrom(octets), wanted);
+        }
+        if (from.datatype() == Datatype.PAIR) {
+            return BlockValue.block(List.of()).as(wanted);
+        }
+        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(from));
+    }
+
+    /**
+     * Whether TO puts a lone value inside this shape rather than refusing it.
+     *
+     * <p>{@code ANY_BLOCK_TYPE} is a range test over the datatype table --
+     * block to lit-path -- and hash sits one past the end of it. So hash is
+     * an any-block! for the typeset and is not one here, and that single row
+     * of the table is the whole of the difference.
+     */
+    private static boolean wrapsIntoWhatTheCallerAskedFor(Datatype wanted) {
+        return wanted == Datatype.BLOCK || wanted == Datatype.PAREN || wanted.isAnyPath();
+    }
+
+    /**
+     * An object's fields as {@code name: value} pairs, which is
+     * {@code Make_Object_Block} in the mode that asks for both.
+     *
+     * <p>SELF is slot zero and the C starts counting at one, so it is left
+     * out of every place this is asked for: BODY-OF, the block a conversion
+     * answers, and the spec an error is built from.
+     */
+    private static List<Value> setWordsAndValuesOf(Context fields) {
+        return fields.slots().stream()
+                .filter(slot -> !slot.canonical().equals("self"))
+                .flatMap(slot -> java.util.stream.Stream.of(
+                        (Value) WordValue.of(slot.spelling(), Datatype.SET_WORD),
+                        slot.value()))
+                .toList();
+    }
+
+    /**
+     * The same pairs as a block, each one on a line of its own.
+     *
+     * <p>{@code Make_Object_Block} sets the line flag on every set-word it
+     * writes -- {@code VAL_SET_LINE(value)} on the line after it makes one --
+     * so the block molds a field to a line rather than all of them in a row.
+     * That is a property of the block and not of how it is later printed,
+     * which is why building it without the flags made
+     * {@code to block! make object! [a: 1]} mold on one line where a real
+     * Rebol takes three.
+     */
+    private static BlockValue blockOfFieldsAndValues(Context fields) {
+        BlockValue block = BlockValue.block(setWordsAndValuesOf(fields));
+        for (int at = 1; at <= block.storageLength(); at += 2) {
+            block.storage().setLineBreakAt(at, true);
+        }
+        return block;
+    }
+
+    /**
+     * Source text read into values, stopping where the source stops.
+     *
+     * <p>{@code Scan_Source} is handed bytes and a nought byte ends them,
+     * which is the C's own convention for where a string finishes rather than
+     * anything about the reader. So {@code make block! #{31 00 32}} is
+     * {@code [1]} and not {@code [1 2]}, and it holds for text as much as for
+     * bytes because both reach the scanner the same way.
+     *
+     * <p>Reading past it made the nought a character in its own right, so an
+     * empty source came back as a block holding one of them.
+     */
+    private static Value sourceReadFrom(String source, Datatype wanted) {
+        int endsAt = source.indexOf('\0');
+        TranscodeResult read = Transcoder.transcode(
+                endsAt < 0 ? source : source.substring(0, endsAt));
+        if (!read.succeeded()) {
+            throw new Raised(read.error().orElseThrow());
+        }
+        return read.values().orElseThrow().as(wanted);
+    }
+
+    private static final long MICROSECONDS_A_SECOND = 1_000_000L;
+    private static final long MICROSECONDS_A_DAY = 86_400L * MICROSECONDS_A_SECOND;
+
+    /**
+     * The date a Unix timestamp names, counted in microseconds.
+     *
+     * <p>{@code Timestamp_To_Date} and {@code Timestamp_Decimal_To_Date} are
+     * the same walk at two precisions, so this is the second one and the
+     * whole-second form multiplies up to reach it.
+     *
+     * <p>Microseconds rather than nanoseconds is the C's own choice, and its
+     * comment says why: a decimal count of seconds multiplied out to
+     * nanoseconds does not land where it should. The remainder is then scaled
+     * back up, so the time is exact to a microsecond and zero below that.
+     *
+     * <p>The zone is zero. A timestamp names an instant and not a place, so
+     * there is nothing to offset it by.
+     */
+    private static Value dateAtTheTimestamp(long microseconds) {
+        long dayNumber = Math.floorDiv(microseconds, MICROSECONDS_A_DAY);
+        long withinTheDay = Math.floorMod(microseconds, MICROSECONDS_A_DAY);
+        java.time.LocalDate day = java.time.LocalDate.ofEpochDay(dayNumber);
+        return DateValue.of(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
+                TimeValue.ofNanoseconds(withinTheDay * 1_000L));
+    }
+
+    /**
      * A date from a block of parts, which is what MAKE and the construction
      * syntax both come through.
      *
@@ -12264,54 +12627,131 @@ public final class Natives {
         if (parts.isEmpty()) {
             return raiseBadMakeArg(BlockValue.block(parts), "date!");
         }
-        if (parts.get(0) instanceof DateValue already) {
-            return clockAfterTheDate(parts, 1) instanceof TimeValue clock
-                    ? DateValue.of(already.year(), already.month(), already.day(), clock)
-                    : already;
-        }
-        if (parts.isEmpty() || !(parts.get(0) instanceof IntegerValue first)) {
+        int afterTheCalendar = parts.getFirst() instanceof DateValue ? 1 : 3;
+        if (parts.size() < afterTheCalendar) {
             return raiseBadMakeArg(BlockValue.block(parts), "date!");
         }
-        if (parts.size() < 3 || !(parts.get(1) instanceof IntegerValue monthPart)
-                || !(parts.get(2) instanceof IntegerValue third)) {
+        DateValue calendar = parts.getFirst() instanceof DateValue already
+                ? already
+                : calendarDayIn(parts);
+        List<Value> after = parts.subList(afterTheCalendar, parts.size());
+        int clockTakes = howManyPartsTheClockTakes(after);
+        if (after.size() < clockTakes) {
             return raiseBadMakeArg(BlockValue.block(parts), "date!");
         }
-        int day = (int) first.magnitude();
-        int month = (int) monthPart.magnitude();
-        int year = (int) third.magnitude();
-        int consumed = 3;
-        if (day > 99) {
-            year = day;
-            day = (int) third.magnitude();
-        }
-        DateValue withoutTime;
-        try {
-            withoutTime = DateValue.of(year, month, day);
-        } catch (IllegalArgumentException outOfRange) {
-            return raiseBadMakeArg(BlockValue.block(parts), "date!");
-        }
-        return clockAfterTheDate(parts, consumed) instanceof TimeValue clock
-                ? DateValue.of(year, month, day, clock)
-                : withoutTime;
+        Optional<TimeValue> clock = clockTakes == 0
+                ? Optional.empty()
+                : Optional.of(clockIn(after.subList(0, clockTakes), parts));
+        return new DateValue(calendar.year(), calendar.month(), calendar.day(), clock,
+                zoneAfterTheClock(after.subList(clockTakes, after.size()), parts));
     }
 
     /**
-     * The time a date construct may carry, written either way.
+     * The calendar day three numbers name.
      *
-     * <p>{@code set_time} in {@code MT_Date} takes a time value whole when
-     * one is there, and reads an hour, a minute and a second when they are
-     * loose numbers instead. So {@code #(date! 1-1-2000 10:30)} and
-     * {@code make date! [1 1 2000 10 30 0]} are the same instant written two
-     * ways, and only the second was being read.
+     * <p>Day, month, year -- except that a first number over ninety-nine is
+     * the year instead, so {@code [2000 1 1]} and {@code [1 1 2000]} are the
+     * same day and neither is ambiguous.
      */
-    private static Value clockAfterTheDate(List<Value> parts, int from) {
-        if (parts.size() > from && parts.get(from) instanceof TimeValue written) {
-            return written;
+    private static DateValue calendarDayIn(List<Value> parts) {
+        if (parts.get(0) instanceof IntegerValue first
+                && parts.get(1) instanceof IntegerValue monthPart
+                && parts.get(2) instanceof IntegerValue third) {
+            int day = (int) first.magnitude();
+            int year = (int) third.magnitude();
+            if (day > 99) {
+                year = day;
+                day = (int) third.magnitude();
+            }
+            try {
+                return DateValue.of(year, (int) monthPart.magnitude(), day);
+            } catch (IllegalArgumentException namesNoDay) {
+                raiseBadMakeArg(BlockValue.block(parts), "date!");
+            }
         }
-        return parts.size() >= from + 3
-                ? timeFromParts(parts.subList(from, parts.size()))
-                : NoneValue.none();
+        return (DateValue) raiseBadMakeArg(BlockValue.block(parts), "date!");
     }
+
+    /**
+     * How many of the parts after the calendar day the clock accounts for.
+     *
+     * <p>One where it is written as a time and three where it is written as
+     * hours, minutes and seconds. Anything else leaves the clock unread, and
+     * whatever is there has to answer to the zone or be refused.
+     */
+    private static int howManyPartsTheClockTakes(List<Value> after) {
+        if (after.isEmpty()) {
+            return 0;
+        }
+        if (after.getFirst() instanceof TimeValue) {
+            return 1;
+        }
+        return after.getFirst() instanceof IntegerValue ? 3 : 0;
+    }
+
+    /**
+     * The clock, with each part held to its own bound.
+     *
+     * <p>{@code if (hour > 23 || minute >= 60 || second >= 60.0) return
+     * FALSE;} -- so a date will not take the twenty-fourth hour even though a
+     * time! will. That is the whole difference between
+     * {@code make time! [24 0 0]}, which is a day's worth of hours, and
+     * {@code make date! [2000 2 1 24 0 0]}, which is no date at all.
+     *
+     * <p>The seconds may be written with a fraction and the other two may not.
+     */
+    private static TimeValue clockIn(List<Value> written, List<Value> whole) {
+        if (written.size() == 1 && written.getFirst() instanceof TimeValue already) {
+            return already;
+        }
+        if (!(written.get(0) instanceof IntegerValue hour)
+                || !(written.get(1) instanceof IntegerValue minute)
+                || !(written.get(2) instanceof IntegerValue
+                        || written.get(2) instanceof DecimalValue)) {
+            return (TimeValue) raiseBadMakeArg(BlockValue.block(whole), "date!");
+        }
+        double second = Comparison.asDouble(written.get(2));
+        if (hour.magnitude() < 0 || hour.magnitude() > 23
+                || minute.magnitude() < 0 || minute.magnitude() >= 60
+                || second < 0 || second >= 60.0) {
+            return (TimeValue) raiseBadMakeArg(BlockValue.block(whole), "date!");
+        }
+        return TimeValue.ofNanoseconds(
+                hour.magnitude() * SECONDS_AN_HOUR * NANOSECONDS_A_SECOND
+                        + minute.magnitude() * SECONDS_A_MINUTE * NANOSECONDS_A_SECOND
+                        + Math.round(second * NANOSECONDS_A_SECOND));
+    }
+
+    private static final long SECONDS_A_MINUTE = 60L;
+    private static final long SECONDS_AN_HOUR = 3600L;
+
+    /**
+     * The zone, which is one more time after the clock.
+     *
+     * <p>That a block may hold two times and the second is not another clock
+     * is the part worth saying. Anything left after it is a refusal:
+     * {@code if (!IS_END(arg)) return FALSE;} -- a part the grammar cannot
+     * account for is not something to step over.
+     */
+    private static Optional<Integer> zoneAfterTheClock(
+            List<Value> left, List<Value> whole) {
+        if (left.isEmpty()) {
+            return Optional.empty();
+        }
+        if (left.size() > 1 || !(left.getFirst() instanceof TimeValue offset)) {
+            raiseBadMakeArg(BlockValue.block(whole), "date!");
+        }
+        long minutes = ((TimeValue) left.getFirst()).nanoseconds()
+                / (SECONDS_A_MINUTE * NANOSECONDS_A_SECOND);
+        if (Math.abs(minutes) > FURTHEST_ZONE_MINUTES) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    "a zone reaches fifteen hours either side of UTC");
+        }
+        return Optional.of((int) minutes);
+    }
+
+    /** {@code MAX_ZONE} is sixty quarter-hours, which is fifteen of them. */
+    private static final long FURTHEST_ZONE_MINUTES = 15 * 60L;
 
     /**
      * A time from a block of parts: hours, then minutes, then seconds.
@@ -12506,6 +12946,28 @@ public final class Natives {
         }
     }
 
+    /**
+     * A construct built the way the reader builds one, which is
+     * {@code Make_Dispatch} rather than MAKE.
+     *
+     * <p>The two are the same arm for nearly every datatype, and the table is
+     * what says so, which is why the reader hands everything here instead of
+     * keeping a list of its own. A date is where they part. {@code MT_Date}
+     * reads a date or a block of parts and nothing else, while the count of
+     * seconds since 1970 is in the MAKE arm one level above it. So
+     * {@code make date! 1} is the first second of 1970 and {@code #(date! 1)}
+     * does not read at all.
+     */
+    private Value constructionOf(Datatype datatype, Value specification) {
+        if (datatype == Datatype.DATE
+                && !(specification instanceof BlockValue
+                        || specification instanceof DateValue)) {
+            return raiseBadMakeArg(specification, "date!");
+        }
+        return makeOfDatatype(DatatypeValue.of(datatype), specification,
+                null, Context.root());
+    }
+
     private Value makeOfDatatype(
             DatatypeValue wanted, Value from, Evaluator evaluator, Context context) {
         if (wanted.represents() == Datatype.STRUCT) {
@@ -12533,25 +12995,21 @@ public final class Natives {
         if (from instanceof BlockValue parts && wanted.represents() == Datatype.TIME) {
             return timeFromParts(parts.remaining());
         }
-        if (from instanceof IntegerValue roomFor && wanted.represents().isSeries()) {
-            int asked = (int) Math.max(0, Math.min(Integer.MAX_VALUE, roomFor.magnitude()));
-            return switch (wanted.represents()) {
-                case BLOCK, PAREN, PATH -> BlockValue.block(List.of()).as(wanted.represents());
-                case BINARY -> new BinaryValue(new BinaryStorage(asked), 1);
-                default -> new StringValue(
-                        StringStorage.withRoomFor(asked), 1, wanted.represents());
-            };
+        refuseToBuildSomethingOutOfNothing(wanted.represents(), from);
+        if (wanted.represents().isAnyBlock()) {
+            return blockTypeBuilt(Conversion.MAKE, wanted.represents(), from);
         }
-        if ((wanted.represents() == Datatype.BLOCK
-                || wanted.represents() == Datatype.PAREN)
-                && (from instanceof StringValue || from instanceof BinaryValue)) {
-            TranscodeResult read = Transcoder.transcode(textOfSource(from));
-            if (!read.succeeded()) {
-                throw new Raised(read.error().orElseThrow());
-            }
-            return read.values().orElseThrow().as(wanted.represents());
+        if (wanted.represents().isSeries()
+                && (from.datatype() == Datatype.INTEGER
+                        || from.datatype() == Datatype.DECIMAL)) {
+            int asked = (int) Math.max(0,
+                    Math.min(Integer.MAX_VALUE, (long) Comparison.asDouble(from)));
+            return wanted.represents() == Datatype.BINARY
+                    ? new BinaryValue(new BinaryStorage(asked), 1)
+                    : new StringValue(
+                            StringStorage.withRoomFor(asked), 1, wanted.represents());
         }
-        return convertedTo(wanted, from);
+        return converted(Conversion.MAKE, wanted, from);
     }
 
     /**
@@ -12671,13 +13129,62 @@ public final class Natives {
         return BinaryValue.of(octets);
     }
 
+    /**
+     * Which of MAKE and TO is asking, because the two are not one operation
+     * and a handful of datatypes tell them apart.
+     *
+     * <p>MAKE builds, so it reads a number as room for values and a logic as
+     * one or zero. TO converts, so it wraps whatever it is given and refuses
+     * a logic outright. {@code T_Integer} says why in as many words: no
+     * integer is uniquely representative of true.
+     *
+     * <p>The C carries the same distinction as the {@code make} flag it hands
+     * {@code Make_Block_Type} and as the {@code action != A_MAKE} it tests in
+     * the scalar arms.
+     */
+    private enum Conversion {
+        MAKE, TO;
+
+        boolean builds() {
+            return this == MAKE;
+        }
+    }
+
+    /**
+     * Nothing is not an empty something.
+     *
+     * <p>{@code make string! none} is an error where {@code make string! 0}
+     * is an empty string, and Rebol's own suite asserts that for all
+     * fifty-seven datatypes in one go. Three of them answer rather than
+     * refuse: UNSET and NONE answer their own single value, and LOGIC reads
+     * none as false.
+     *
+     * <p>The block shapes are left out because they answer for themselves.
+     * MAKE refuses none there as an invalid argument rather than a bad make
+     * argument, and TO does not refuse it at all -- {@code to block! none} is
+     * {@code [#(none)]}.
+     */
+    private static void refuseToBuildSomethingOutOfNothing(Datatype wanted, Value from) {
+        if (from.datatype() != Datatype.NONE
+                || wanted == Datatype.UNSET
+                || wanted == Datatype.NONE
+                || wanted == Datatype.LOGIC
+                || wanted.isAnyBlock()) {
+            return;
+        }
+        raiseBadMakeArg(from, wanted.literalSpelling());
+    }
+
     /** A value converted to whatever datatype was named. */
-    private static Value convertedTo(Value type, Value value) {
+    private static Value converted(Conversion asking, Value type, Value value) {
         if (!(type instanceof DatatypeValue wanted)) {
             throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "to needs a datatype, not " + type.datatype().literalSpelling());
         }
+        refuseToBuildSomethingOutOfNothing(wanted.represents(), value);
         return switch (wanted.represents()) {
+            case UNSET -> UnsetValue.unset();
+            case NONE -> NoneValue.none();
             case VECTOR -> switch (value) {
                 case VectorValue already -> already;
                 case BinaryValue octets -> VectorSpec.ofOctets(octets);
@@ -12687,61 +13194,29 @@ public final class Natives {
                         .orElseGet(() -> raiseCannotUse(value, "to vector!"));
                 default -> raiseCannotUse(value, "to vector!");
             };
-            case INTEGER -> wholeNumberFrom(value);
-            case DECIMAL -> value instanceof BinaryValue bits
-                    ? DecimalValue.of(Double.longBitsToDouble(bitsOf(bits)))
-                    : DecimalValue.of(Comparison.asDouble(value));
-            case PERCENT -> DecimalValue.percent(Comparison.asDouble(value));
+            case INTEGER -> wholeNumberFrom(asking, value);
+            case DECIMAL, PERCENT -> decimalBuiltFrom(asking, wanted.represents(), value);
             case STRING -> value instanceof BinaryValue octets
                     ? StringValue.of(textDecodedFrom(octets))
-                    : StringValue.of(runTogether(value));
+                    : StringValue.of(textForAString(value));
             case EMAIL -> value instanceof BlockValue parts
                     ? addressBuiltFrom(parts)
                     : value instanceof BinaryValue octets
                             ? StringValue.of(textDecodedFrom(octets), Datatype.EMAIL)
-                            : StringValue.of(runTogether(value), Datatype.EMAIL);
+                            : StringValue.of(textForAString(value), Datatype.EMAIL);
             case URL -> value instanceof BlockValue parts
                     ? urlBuiltFrom(parts)
                     : value instanceof BinaryValue octets
                             ? StringValue.of(textDecodedFrom(octets), Datatype.URL)
-                            : StringValue.of(runTogether(value), Datatype.URL);
+                            : StringValue.of(textForAString(value), Datatype.URL);
             case FILE, TAG, REF -> value instanceof BinaryValue octets
                     ? StringValue.of(textDecodedFrom(octets), wanted.represents())
-                    : StringValue.of(runTogether(value), wanted.represents());
-            case BINARY -> switch (value) {
-                case BinaryValue already -> already;
-                case StringValue text -> binaryOfBytes(
-                        text.text().getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                case IntegerValue whole -> binaryOfBytes(
-                        java.nio.ByteBuffer.allocate(Long.BYTES)
-                                .putLong(whole.magnitude()).array());
-                case DecimalValue fractional -> binaryOfBytes(
-                        java.nio.ByteBuffer.allocate(Long.BYTES)
-                                .putLong(Double.doubleToRawLongBits(
-                                        fractional.quantity())).array());
-                case MoneyValue amount -> binaryOfBytes(amount.toBytes());
-                case BlockValue block -> bytesOfEach(block);
-                case VectorValue vector -> binaryOfBytes(vector.octetsFromHere());
-                case StructValue struct -> binaryOfBytes(struct.octets());
-                case CharacterValue letter -> binaryOfBytes(
-                        Character.toString(letter.codepoint())
-                                .getBytes(StandardCharsets.UTF_8));
-                default -> raiseCannotUse(value, "to binary!");
-            };
+                    : StringValue.of(textForAString(value), wanted.represents());
+            case BINARY -> binaryBuiltFrom(value);
             case WORD, SET_WORD, GET_WORD, LIT_WORD, REFINEMENT, ISSUE ->
                     wordFrom(value, wanted.represents());
             case BLOCK, PAREN, HASH, PATH, SET_PATH, GET_PATH, LIT_PATH ->
-                    (value instanceof TypesetValue kinds
-                            ? BlockValue.block(kinds.members().stream()
-                                    .sorted()
-                                    .<Value>map(DatatypeValue::of).toList())
-                            : value instanceof MapValue map
-                                    ? BlockValue.block(map.flattened())
-                            : value instanceof VectorValue vector
-                                    ? BlockValue.block(vector.remaining())
-                            : value instanceof BlockValue block
-                                    ? block
-                                    : BlockValue.block(value)).as(wanted.represents());
+                    blockTypeBuilt(asking, wanted.represents(), value);
             case MAP -> {
                 if (value instanceof IntegerValue || value instanceof DecimalValue) {
                     throw Raised.of(EvaluationFailure.INVALID_ARG,
@@ -12750,26 +13225,261 @@ public final class Natives {
                 }
                 yield mapMadeFrom(value);
             }
+            case DATE -> switch (value) {
+                case DateValue already -> already;
+                case IntegerValue seconds ->
+                        dateAtTheTimestamp(seconds.magnitude() * MICROSECONDS_A_SECOND);
+                case DecimalValue seconds -> dateAtTheTimestamp(
+                        (long) (seconds.quantity() * MICROSECONDS_A_SECOND));
+                case BlockValue parts -> dateFromParts(parts.remaining());
+                case StringValue written -> dateReadFrom(written);
+                default -> raiseBadMakeArg(value, "date!");
+            };
             case CHAR -> asCharacter(value);
             case PAIR -> asPair(value);
-            case MONEY -> asMoney(value);
+            case MONEY -> asMoney(asking, value);
             case PORT -> value instanceof ObjectValue built
                     ? new PortValue(built.context())
                     : raiseBadMakeArg(value, "port!");
             case MODULE -> moduleFromHeaderAndWords(value);
             case BITSET -> bitsetOf(value);
             case TYPESET -> value instanceof BlockValue named
+                    && named.datatype() == Datatype.BLOCK
                     ? TypesetValue.of(datatypesNamedIn(named))
                     : raiseBadMakeArg(value, "typeset!");
             case TIME -> TimeValue.ofNanoseconds(
                     (long) (Comparison.asDouble(value) * NANOSECONDS_A_SECOND));
             case TUPLE -> tupleFrom(value);
-            case LOGIC -> LogicValue.of(value.isTruthy());
+            case LOGIC -> LogicValue.of(countsAsTrue(asking, value));
             case DATATYPE -> value instanceof WordValue named
                     ? datatypeNamed(named, value)
                     : raiseBadMakeArg(value, "datatype!");
             default -> raiseCannotUse(value, "to " + wanted.represents().literalSpelling());
         };
+    }
+
+    /**
+     * Whether a value counts as true, which MAKE and TO answer differently
+     * for a number that is nothing.
+     *
+     * <p>The C leaves a note where it decides, and it is the clearest
+     * statement anywhere of what separates the two. TO falls in line with the
+     * rest of the interpreter, where everything that is not none and not
+     * false is true, so {@code to logic! 0} is true. MAKE takes more liberties
+     * with the meaning of its argument and lets a zero be false, so
+     * {@code make logic! 0} is false.
+     */
+    private static boolean countsAsTrue(Conversion asking, Value value) {
+        return value.isTruthy() && !(asking.builds() && isNothingAtAll(value));
+    }
+
+    /** Zero, in each of the four datatypes that MAKE LOGIC! reads as false. */
+    private static boolean isNothingAtAll(Value value) {
+        return switch (value) {
+            case IntegerValue whole -> whole.magnitude() == 0;
+            case DecimalValue number -> number.quantity() == 0.0;
+            case MoneyValue amount -> amount.amount().signum() == 0;
+            default -> false;
+        };
+    }
+
+    /**
+     * A binary from whatever was offered, which is {@code make_binary} and is
+     * a list of datatypes rather than a rule.
+     *
+     * <p>Reading it as a rule is what went wrong here. Anything with bytes
+     * underneath looks convertible, and four datatypes that have bytes are not
+     * on the list: a percent, a paren, a path and an issue are all refused
+     * where the decimal, block, string and word they resemble are taken. The C
+     * says so by naming its cases and giving everything else {@code ser = 0},
+     * which becomes {@code Trap_Arg} and an invalid argument.
+     *
+     * <p>MAKE and TO part company on one line. A number is room for bytes to
+     * MAKE and the eight bytes of a big-endian whole number to TO, and that
+     * split is handled before this is reached.
+     *
+     * <p>A tuple keeps its own length rather than the three it shows, so
+     * {@code to binary! 1.1.1} is three bytes and {@code 1.2.3.4.5} is five.
+     * A bitset that was written as a complement answers the complement of its
+     * bytes. An image answers four bytes a pixel, red green blue and alpha.
+     */
+    private static Value binaryBuiltFrom(Value value) {
+        return switch (value) {
+            case BinaryValue already -> already;
+            case StringValue text when text.datatype() != Datatype.ISSUE ->
+                    binaryOfBytes(text.text().getBytes(StandardCharsets.UTF_8));
+            case IntegerValue whole -> binaryOfBytes(
+                    java.nio.ByteBuffer.allocate(Long.BYTES)
+                            .putLong(whole.magnitude()).array());
+            case DecimalValue fractional when fractional.datatype() == Datatype.DECIMAL ->
+                    binaryOfBytes(java.nio.ByteBuffer.allocate(Long.BYTES)
+                            .putLong(Double.doubleToRawLongBits(
+                                    fractional.quantity())).array());
+            case MoneyValue amount -> binaryOfBytes(amount.toBytes());
+            case BlockValue block when block.datatype() == Datatype.BLOCK ->
+                    bytesOfEach(block);
+            case VectorValue vector -> binaryOfBytes(vector.octetsFromHere());
+            case StructValue struct -> binaryOfBytes(struct.octets());
+            case TupleValue segments -> binaryOfBytes(octetsOf(segments));
+            case BitsetValue members -> binaryOfBytes(members.isComplemented()
+                    ? eachByteTurnedOver(members.octets())
+                    : members.octets());
+            case ImageValue picture -> binaryOfBytes(pixelsOf(picture));
+            case CharacterValue letter -> binaryOfBytes(
+                    Character.toString(letter.codepoint())
+                            .getBytes(StandardCharsets.UTF_8));
+            default -> raiseInvalidArgument(value);
+        };
+    }
+
+    /**
+     * Every byte inverted, which is {@code Complement_Binary}.
+     *
+     * <p>A complemented bitset keeps the bytes of what it leaves out and a
+     * flag saying to read them the other way round, so asking it for its
+     * octets gives the same answer either way. The turning has to happen
+     * here, and not doing it made {@code to binary! complement charset "a"}
+     * answer the set it is the complement of.
+     */
+    private static byte[] eachByteTurnedOver(byte[] octets) {
+        byte[] turned = new byte[octets.length];
+        for (int at = 0; at < octets.length; at++) {
+            turned[at] = (byte) ~octets[at];
+        }
+        return turned;
+    }
+
+    /** A tuple's own octets, however many of them it is keeping. */
+    private static byte[] octetsOf(TupleValue segments) {
+        byte[] octets = new byte[segments.segmentCount()];
+        for (int at = 0; at < octets.length; at++) {
+            octets[at] = (byte) segments.octetAt(at + 1);
+        }
+        return octets;
+    }
+
+    /** An image as four bytes a pixel, which is {@code Image_To_RGBA}. */
+    private static byte[] pixelsOf(ImageValue picture) {
+        byte[] octets = new byte[picture.storageLength() * PIXEL_PARTS];
+        for (int pixel = 0; pixel < picture.storageLength(); pixel++) {
+            int[] parts = picture.pixelAt(pixel + 1);
+            for (int part = 0; part < PIXEL_PARTS; part++) {
+                octets[pixel * PIXEL_PARTS + part] = (byte) parts[part];
+            }
+        }
+        return octets;
+    }
+
+    private static final int PIXEL_PARTS = 4;
+
+    private static Value raiseInvalidArgument(Value value) {
+        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(value));
+    }
+
+    /**
+     * A decimal or a percent from whatever was offered, which is one switch in
+     * {@code T_Decimal} serving both.
+     *
+     * <p>The two part company only at the end, and only for some of the
+     * sources. A number-like one reaches {@code setDec} and is taken as the
+     * value itself, so {@code to percent! 4} is 400%. The rest fall through
+     * {@code if (type == REB_PERCENT) d1 /= 100.0} and are taken as a count of
+     * hundredths, so ten hours is 36,000 seconds and 36000% rather than a
+     * hundred times that. Which group a source belongs to is not guessable and
+     * is read off the {@code goto} it ends on.
+     *
+     * <p>A logic is MAKE's alone. Only a plain string is read as text -- a
+     * file, a tag or a url is refused, which is the difference between
+     * {@code case REB_STRING} and {@code ANY_STR}, and JEBOL holds all of them
+     * in the same class so the datatype has to be asked.
+     */
+    private static Value decimalBuiltFrom(
+            Conversion asking, Datatype wanted, Value value) {
+        return switch (value) {
+            case DecimalValue number -> asItStands(wanted, number.quantity());
+            case IntegerValue whole -> asItStands(wanted, whole.magnitude());
+            case MoneyValue amount -> asItStands(wanted, amount.amount().doubleValue());
+            case CharacterValue letter -> asItStands(wanted, letter.codepoint());
+            case LogicValue truth -> asking.builds()
+                    ? asItStands(wanted, truth.truth() ? 1.0 : 0.0)
+                    : raiseBadMakeArg(value, wanted.literalSpelling());
+            case TimeValue clock -> asHundredths(wanted,
+                    (double) clock.nanoseconds() / NANOSECONDS_A_SECOND);
+            case DateValue moment -> asHundredths(wanted, secondsSinceTheEpoch(moment));
+            case BinaryValue bits -> asHundredths(wanted,
+                    Double.longBitsToDouble(bitsOf(bits)));
+            case StringValue text when text.datatype() == Datatype.STRING ->
+                    asHundredths(wanted, decimalReadFrom(text, wanted));
+            case BlockValue parts -> asHundredths(wanted, mantissaTimesTenTo(parts, wanted));
+            default -> raiseBadMakeArg(value, wanted.literalSpelling());
+        };
+    }
+
+    /** A number taken as the value itself, which is {@code goto setDec}. */
+    private static Value asItStands(Datatype wanted, double quantity) {
+        return wanted == Datatype.PERCENT
+                ? DecimalValue.percent(quantity)
+                : DecimalValue.of(quantity);
+    }
+
+    /**
+     * A number taken as a count of hundredths when a percent was asked for,
+     * which is the {@code break} that falls into the division by a hundred.
+     * For a decimal the two are the same thing.
+     */
+    private static Value asHundredths(Datatype wanted, double quantity) {
+        return wanted == Datatype.PERCENT
+                ? DecimalValue.percent(quantity / 100.0)
+                : DecimalValue.of(quantity);
+    }
+
+    private static double decimalReadFrom(StringValue text, Datatype wanted) {
+        String qualified = qualifiedNumberIn(
+                text.text(), "a number", MOST_FRACTION_CHARACTERS);
+        return decimalScannedFrom(qualified, wanted == Datatype.PERCENT)
+                .orElseThrow(() -> Raised.of(EvaluationFailure.BAD_MAKE_ARG,
+                        "cannot make a " + wanted.literalSpelling()
+                                + " out of \"" + text.text() + "\""));
+    }
+
+    /**
+     * A block of exactly two read as a mantissa and an exponent, so
+     * {@code make decimal! [1 2]} is a hundred and {@code [1 -2]} is a
+     * hundredth.
+     *
+     * <p>The C multiplies and divides by ten in a loop rather than raising a
+     * power, and its own comment calls that funky. It is kept because the two
+     * do not agree in the last bits, and because the loop stops while the
+     * exponent is still between minus one and one -- which quietly truncates a
+     * fractional exponent toward zero.
+     */
+    private static double mantissaTimesTenTo(BlockValue parts, Datatype wanted) {
+        List<Value> both = parts.remaining();
+        if (both.size() != 2) {
+            raiseBadMakeArg(parts, wanted.literalSpelling());
+        }
+        double scaled = numberInTheBlock(both.get(0), wanted);
+        double exponent = numberInTheBlock(both.get(1), wanted);
+        while (exponent >= 1) {
+            exponent--;
+            scaled *= 10.0;
+        }
+        while (exponent <= -1) {
+            exponent++;
+            scaled /= 10.0;
+        }
+        return scaled;
+    }
+
+    private static double numberInTheBlock(Value part, Datatype wanted) {
+        if (part instanceof IntegerValue whole) {
+            return whole.magnitude();
+        }
+        if (part instanceof DecimalValue number) {
+            return number.quantity();
+        }
+        raiseBadMakeArg(part, wanted.literalSpelling());
+        return 0;
     }
 
     /**
@@ -12786,15 +13496,25 @@ public final class Natives {
      * caller passed the wrong kind of thing to a function, and a script
      * catching it would be catching a different mistake from the one
      * made here.
+     *
+     * <p>A logic is the one source only MAKE will read, and the C leaves a
+     * note where it refuses TO: no integer is uniquely representative of
+     * true, so converting one is a question with no answer, where building
+     * one from true is a choice that can be made and is -- one and zero.
      */
-    private static Value wholeNumberFrom(Value value) {
+    private static Value wholeNumberFrom(Conversion asking, Value value) {
         return switch (value) {
             case IntegerValue whole -> whole;
+            case LogicValue truth -> asking.builds()
+                    ? IntegerValue.of(truth.truth() ? 1 : 0)
+                    : raiseBadMakeArg(value, "integer!");
+            case WordValue named when named.datatype() == Datatype.ISSUE ->
+                    hexNumberIn(named);
             case StringValue text -> parseInteger(text.text());
             case CharacterValue character -> IntegerValue.of(character.codepoint());
             case BinaryValue bytes -> IntegerValue.of(bitsOf(bytes));
             case DateValue moment -> IntegerValue.of(instantOf(moment));
-            case DecimalValue number -> IntegerValue.of((long) number.quantity());
+            case DecimalValue number -> wholeNumberWithinRange(number.quantity());
             case MoneyValue amount -> IntegerValue.of(amount.amount().longValue());
             case TimeValue clock -> IntegerValue.of(clock.nanoseconds() / NANOSECONDS_A_SECOND);
             default -> raiseBadMakeArg(value, "integer!");
@@ -12802,16 +13522,84 @@ public final class Natives {
     }
 
     /**
-     * A date counted in seconds from the start of 1970.
+     * A decimal as a whole number, or an overflow where it names none.
+     *
+     * <p>{@code if (VAL_DECIMAL(val) < MIN_D64 || VAL_DECIMAL(val) >= MAX_D64
+     * || isnan(VAL_DECIMAL(val))) Trap0(RE_OVERFLOW);} -- so a not-a-number
+     * overflows as surely as an endless one does, and all three are refused
+     * before the cast rather than after it. Casting first saturates in
+     * silence, which turned an infinity into the largest whole number there
+     * is and a not-a-number into nothing at all.
+     *
+     * <p>The two bounds are not a mirror image and the C's own comparisons say
+     * why: below the floor is out and *at* the ceiling is out, so the most
+     * negative whole number converts and the most positive does not.
+     */
+    private static Value wholeNumberWithinRange(double quantity) {
+        if (Double.isNaN(quantity)
+                || quantity < -TOO_LARGE_FOR_A_WHOLE_NUMBER
+                || quantity >= TOO_LARGE_FOR_A_WHOLE_NUMBER) {
+            throw Raised.of(EvaluationFailure.OVERFLOW,
+                    "no whole number is what " + quantity + " names");
+        }
+        return IntegerValue.of((long) quantity);
+    }
+
+    /**
+     * The longest run of hex digits a whole number holds, which is
+     * {@code MAX_HEX_LEN}.
+     */
+    private static final int MOST_HEX_DIGITS = 16;
+
+    /**
+     * An issue read as a hexadecimal number, which is what makes
+     * {@code to integer! #FF} 255 rather than a refusal.
+     *
+     * <p>{@code Scan_Hex} says the rule in its own header: it scans while the
+     * characters are valid and fails if there are more of them than will fit.
+     * So seventeen digits is an error rather than the first sixteen of them,
+     * and a character that is not a digit is an error wherever it appears --
+     * {@code #-1} fails on the minus before it reaches the one.
+     *
+     * <p>Sixteen digits fill the number and run past the top of it:
+     * {@code #FFFFFFFFFFFFFFFF} is minus one, not an overflow.
+     */
+    private static Value hexNumberIn(WordValue issue) {
+        String digits = issue.spelling();
+        if (digits.isEmpty() || digits.length() > MOST_HEX_DIGITS) {
+            return raiseBadMakeArg(issue, "integer!");
+        }
+        try {
+            return IntegerValue.of(Long.parseUnsignedLong(digits, 16));
+        } catch (NumberFormatException notHexAtAll) {
+            return raiseBadMakeArg(issue, "integer!");
+        }
+    }
+
+    /**
+     * A date counted in whole seconds from the start of 1970.
      *
      * <p>A date without a time of day counts as its midnight, which is
      * what makes {@code to integer! 1-Jan-2000} a round number of days.
+     *
+     * <p>A fraction of a second rounds rather than truncating, so
+     * {@code 12:46:41.7} is the second after {@code 12:46:41} and not the
+     * same one.
      */
     private static long instantOf(DateValue moment) {
-        long midnight = dayNumberOf(moment) * (NANOSECONDS_A_DAY / NANOSECONDS_A_SECOND);
-        return midnight + moment.timeOfDay()
-                .map(clock -> clock.nanoseconds() / NANOSECONDS_A_SECOND)
-                .orElse(0L);
+        return Math.round(secondsSinceTheEpoch(moment));
+    }
+
+    /**
+     * The instant a date names, counted in seconds from the start of 1970.
+     *
+     * <p>The date works out where it sits on the line and this only reads it
+     * off in the unit a timestamp is written in.
+     */
+    private static double secondsSinceTheEpoch(DateValue when) {
+        DateValue.Moment moment = when.moment();
+        return (double) moment.dayNumber() * (NANOSECONDS_A_DAY / NANOSECONDS_A_SECOND)
+                + (double) moment.nanosecondsIntoTheDay() / NANOSECONDS_A_SECOND;
     }
 
     /**
@@ -13083,12 +13871,42 @@ public final class Natives {
         if (!(value instanceof IntegerValue || value instanceof DecimalValue)) {
             return raiseBadMakeArg(value, "char!");
         }
-        double codepoint = Comparison.asDouble(value);
-        if (codepoint < 0 || codepoint > Character.MAX_CODE_POINT) {
-            throw Raised.of(EvaluationFailure.INVALID_CHAR,
-                    ((long) codepoint) + " is not a code point");
+        return characterAt(Comparison.asDouble(value));
+    }
+
+    /**
+     * The character a number names, or {@code invalid-char} where it names
+     * none.
+     *
+     * <p>Two ranges name nothing. Below zero and above the last code point is
+     * the obvious one. The surrogates are not: {@code D800} to {@code DFFF}
+     * are reserved for writing a large code point as a pair and are not
+     * characters on their own, so a real Rebol refuses all 2,048 of them.
+     *
+     * <p>The value class already knew that and said so by throwing, which
+     * escaped the interpreter as a Java exception and stopped it dead where a
+     * script should have caught an error. Asking before building is what makes
+     * it a REBOL error instead.
+     */
+    private static Value characterAt(double codepoint) {
+        long asked = (long) codepoint;
+        if (asked < 0 || asked > CharacterValue.MAXIMUM_CODEPOINT
+                || isaLoneSurrogate(asked)) {
+            throw Raised.of(EvaluationFailure.INVALID_CHAR, IntegerValue.of(asked));
         }
-        return CharacterValue.of((int) codepoint);
+        return CharacterValue.of((int) asked);
+    }
+
+    /**
+     * Whether a number is one of the 2,048 reserved for writing a large code
+     * point as a pair.
+     *
+     * <p>The range test comes first because narrowing to a char truncates:
+     * {@code 0x1D800} would keep only its low half and look like a surrogate
+     * when it is an ordinary character well past them.
+     */
+    private static boolean isaLoneSurrogate(long asked) {
+        return asked <= Character.MAX_VALUE && Character.isSurrogate((char) asked);
     }
 
     /**
@@ -13180,21 +13998,46 @@ public final class Natives {
     private static Set<Datatype> datatypesNamedIn(BlockValue named) {
         Set<Datatype> found = EnumSet.noneOf(Datatype.class);
         for (Value item : named.remaining()) {
-            switch (item) {
-                case DatatypeValue datatype -> found.add(datatype.represents());
-                case TypesetValue typeset -> found.addAll(typeset.members());
-                case WordValue word -> {
-                    Datatype.named(word.spelling()).ifPresent(found::add);
-                    Typeset.named(word.spelling().endsWith("!")
-                                    ? word.spelling().substring(
-                                            0, word.spelling().length() - 1)
-                                    : word.spelling())
-                            .ifPresent(family -> found.addAll(family.members()));
-                }
-                default -> { }
+            if (!namedTypesAddedFrom(item, found)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(item));
             }
         }
         return found;
+    }
+
+    /**
+     * Whether an item named any datatype at all, adding whatever it named.
+     *
+     * <p>An item that names none is an invalid argument, not something to step
+     * over. Stepping over it is what made {@code make typeset! [1 2]} into a
+     * typeset of nothing that still answered {@code typeset?} -- the emptiness
+     * was the only sign anything had gone wrong, and an empty typeset is a
+     * thing a caller can legitimately ask for.
+     *
+     * <p>A word that names nothing counts the same way, which is why the two
+     * lookups are asked whether they found something rather than told to add
+     * it if they did.
+     */
+    private static boolean namedTypesAddedFrom(Value item, Set<Datatype> found) {
+        if (item instanceof DatatypeValue datatype) {
+            found.add(datatype.represents());
+            return true;
+        }
+        if (item instanceof TypesetValue typeset) {
+            found.addAll(typeset.members());
+            return true;
+        }
+        if (!(item instanceof WordValue word)) {
+            return false;
+        }
+        String spelling = word.spelling();
+        Optional<Datatype> one = Datatype.named(spelling);
+        one.ifPresent(found::add);
+        Optional<Typeset> family = Typeset.named(spelling.endsWith("!")
+                ? spelling.substring(0, spelling.length() - 1)
+                : spelling);
+        family.ifPresent(members -> found.addAll(members.members()));
+        return one.isPresent() || family.isPresent();
     }
 
     /**
@@ -13230,8 +14073,14 @@ public final class Natives {
      * gap: {@code t-money.c} carries the case label commented out with the
      * issue number that removed it. Writing a money in hexadecimal reads like
      * the obvious use for an issue, and Rebol decided against it.
+     *
+     * <p>A logic is MAKE's alone, which makes money the fourth datatype to
+     * draw the line there after integer, decimal and percent. The reason is
+     * the same one {@code T_Integer} writes down: no amount is uniquely
+     * representative of true, so converting one is a question with no answer,
+     * where building a pound from true is a choice that can be made.
      */
-    private static Value asMoney(Value value) {
+    private static Value asMoney(Conversion asking, Value value) {
         return withinTheDeciRange(switch (value) {
             case MoneyValue already -> already;
             case IntegerValue whole -> MoneyValue.of(BigDecimal.valueOf(whole.magnitude()));
@@ -13239,8 +14088,9 @@ public final class Natives {
                     MoneyValue.of(BigDecimal.valueOf(quantity.quantity()));
             case StringValue text -> readMoney(text.text());
             case BinaryValue bytes -> MoneyValue.fromBytes(bytesFromHere(bytes));
-            case LogicValue truth ->
-                    MoneyValue.of(truth.truth() ? BigDecimal.ONE : BigDecimal.ZERO);
+            case LogicValue truth -> asking.builds()
+                    ? MoneyValue.of(truth.truth() ? BigDecimal.ONE : BigDecimal.ZERO)
+                    : (MoneyValue) raiseBadMakeArg(value, "money!");
             default -> (MoneyValue) raiseBadMakeArg(value, "money!");
         });
     }
@@ -13260,14 +14110,49 @@ public final class Natives {
         return amount;
     }
 
+    /**
+     * A money read out of text, which is {@code Scan_Money}: one currency mark
+     * is allowed and stripped, and what is left has to be a number.
+     *
+     * <p>The mark may follow a sign and may not precede one, so {@code "-$1"}
+     * reads and {@code "$-1"} does not. Putting a mark on unconditionally made
+     * {@code to money! "$1"} into {@code "$$1"}, which lexes as nothing at all.
+     *
+     * <p>The text is qualified first, the same way a decimal's is, which is
+     * what makes the two accept exactly the same characters. Rebol's own suite
+     * measures that set for both and gets the same answer twice.
+     */
     private static MoneyValue readMoney(String text) {
-        List<Value> read = Transcoder.transcode("$" + text.strip()).values()
-                .map(BlockValue::remaining)
-                .orElseGet(List::of);
-        if (read.size() != 1 || !(read.getFirst() instanceof MoneyValue amount)) {
-            return (MoneyValue) raiseBadMakeArg(StringValue.of(text), "money!");
+        String written = qualifiedNumberIn(text, "a money", MOST_FRACTION_CHARACTERS);
+        return amountWithoutTheCurrencyMark(written)
+                .flatMap(Natives::numberRewrittenForTheJvm)
+                .map(plain -> MoneyValue.of(new BigDecimal(plain)))
+                .orElseGet(() -> (MoneyValue)
+                        raiseBadMakeArg(StringValue.of(text), "money!"));
+    }
+
+    /**
+     * The amount with its one allowed currency mark taken off, or nothing
+     * where the mark is not somewhere a mark may be.
+     *
+     * <p>A sign comes before the mark and never after it, so {@code "-$1"} is
+     * minus a pound and {@code "$-1"} is not a money at all. That is the only
+     * asymmetry, and it is why this moves the sign across rather than looking
+     * for a mark wherever it happens to sit.
+     */
+    private static Optional<String> amountWithoutTheCurrencyMark(String written) {
+        if (written.startsWith("$")) {
+            String amount = written.substring(1);
+            return amount.startsWith("-") || amount.startsWith("+")
+                    ? Optional.empty()
+                    : Optional.of(amount);
         }
-        return amount;
+        boolean signedThenMarked = written.length() > 1
+                && (written.charAt(0) == '-' || written.charAt(0) == '+')
+                && written.charAt(1) == '$';
+        return Optional.of(signedThenMarked
+                ? written.charAt(0) + written.substring(2)
+                : written);
     }
 
     private static Value pairOf(List<Value> halves) {
@@ -13471,26 +14356,198 @@ public final class Natives {
     }
 
     /**
+     * Text made ready for a number scanner, which is {@code Qualify_String}.
+     *
+     * <p>One run of characters is taken and everything after it must be
+     * space or tab, which is how {@code "1 2"} is two values rather than a
+     * number that failed to read. What may come before the run is a wider set
+     * than what may come after it, and the two tests have different names in
+     * the C for that reason.
+     *
+     * <p>Nothing at all is {@code too-short} rather than a scan that failed,
+     * more than twenty-four characters is {@code too-long} before anything
+     * tries to read them, and a letter that needs more than one byte is
+     * {@code invalid-chars}. Four outcomes a script can tell apart, decided by
+     * the text rather than by the caller, and in this order.
+     */
+    private static String qualifiedNumberIn(String text, String reading, int mostCharacters) {
+        int start = 0;
+        while (start < text.length() && isLexicalSpace(text.charAt(start))) {
+            start++;
+        }
+        int past = start;
+        while (past < text.length() && !isLexicalSpace(text.charAt(past))) {
+            if (text.charAt(past) > MOST_LETTERS_ARE_ONE_BYTE) {
+                throw Raised.of(EvaluationFailure.INVALID_CHARS,
+                        "\"" + text + "\" holds a character a number may not");
+            }
+            past++;
+            if (past - start > mostCharacters) {
+                throw Raised.of(EvaluationFailure.TOO_LONG,
+                        "\"" + text + "\" is longer than a written number may be");
+            }
+        }
+        if (past == start) {
+            throw Raised.of(EvaluationFailure.TOO_SHORT,
+                    "there is nothing in \"" + text + "\" to read as " + reading);
+        }
+        for (int after = past; after < text.length(); after++) {
+            if (!isSpaceOrTab(text.charAt(after))) {
+                throw Raised.of(EvaluationFailure.INVALID_CHARS,
+                        "\"" + text + "\" has more than one value in it");
+            }
+        }
+        return text.substring(start, past);
+    }
+
+    /** Above this, a letter takes more than one byte and no number may hold it. */
+    private static final char MOST_LETTERS_ARE_ONE_BYTE = 127;
+
+    /**
+     * Whitespace as the lexer counts it, which is what a number may be
+     * preceded by.
+     *
+     * <p>{@code IS_LEX_SPACE} asks whether the character has no entry in the
+     * lexer's map at all, and the control characters have none. A line feed
+     * and a carriage return do have one, so they are the two below space that
+     * a number may not sit behind.
+     */
+    private static boolean isLexicalSpace(char letter) {
+        return (letter <= ' ' || letter == MOST_LETTERS_ARE_ONE_BYTE)
+                && letter != '\n' && letter != '\r';
+    }
+
+    /**
+     * Whitespace as {@code IS_SPACE} counts it, which is what may follow a
+     * number and is only these two.
+     *
+     * <p>{@code White_Chars} gives every character below thirty-three the low
+     * bit and gives the second bit to space and tab alone, and this is the
+     * test that asks for the second. So a number may have a line feed in front
+     * of it and not behind it, and Rebol's own suite measures exactly that
+     * difference by building every one-character suffix that will go on the
+     * end of a "1".
+     */
+    private static boolean isSpaceOrTab(char letter) {
+        return letter == ' ' || letter == '\t';
+    }
+
+    /**
+     * How long a written number may be, which is one character longer for a
+     * whole number than for a fraction.
+     *
+     * <p>{@code MAX_INT_LEN} is 25 and the decimal arm passes a literal 24, so
+     * the two are not the same limit and cannot share a constant. The odd one
+     * out matters: {@code "9'223'372'036'854'775'807"} is twenty-five
+     * characters with its separators, and reading it as a decimal's limit made
+     * the largest whole number there is too long to write down.
+     */
+    private static final int MOST_WHOLE_NUMBER_CHARACTERS = 25;
+
+    private static final int MOST_FRACTION_CHARACTERS = 24;
+
+    /**
+     * {@code Scan_Decimal}'s grammar, once the digit separators are gone.
+     *
+     * <p>Not the one {@code Double.parseDouble} accepts, which is why the text
+     * is matched against this before it is handed over. An exponent may carry
+     * no digits at all -- {@code "1e"} is one, because the C copies the E into
+     * its buffer and lets {@code strtod} stop there.
+     */
+    private static final Pattern WRITTEN_DECIMAL = Pattern.compile(
+            "[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)(?:[eE][+-]?[0-9]*)?");
+
+    /** An exponent with nothing after it, which reads as no exponent at all. */
+    private static final Pattern EMPTY_EXPONENT = Pattern.compile("[eE][+-]?$");
+
+    /**
+     * A decimal read out of text, which is {@code Scan_Decimal} and not the
+     * JVM's own parser.
+     *
+     * <p>Three differences earn the port. A comma is a decimal point, so
+     * {@code "1,5"} is 1.5. An apostrophe is a digit separator and is dropped,
+     * so {@code "1'000"} is a thousand. And a trailing percent sign is allowed
+     * only when a percent is being read: that is the {@code dec_only} flag,
+     * and it is the whole of why {@code to decimal! "50%"} is refused while
+     * {@code to percent! "50%"} is fifty percent.
+     *
+     * <p>Rebol's own suite pins the accepted characters exactly. It builds
+     * every one-character suffix {@code to-decimal} will take and asserts the
+     * set is tab, space, apostrophe, comma, full stop, the ten digits and the
+     * two spellings of E.
+     */
+    private static OptionalDouble decimalScannedFrom(String written, boolean percentAllowed) {
+        String body = written;
+        if (body.endsWith("%")) {
+            if (!percentAllowed) {
+                return OptionalDouble.empty();
+            }
+            body = body.substring(0, body.length() - 1);
+        }
+        OptionalDouble endless = endlessNumberIn(body.replace("'", ""));
+        if (endless.isPresent()) {
+            return endless;
+        }
+        return numberRewrittenForTheJvm(body)
+                .map(plain -> OptionalDouble.of(Double.parseDouble(plain)))
+                .orElseGet(OptionalDouble::empty);
+    }
+
+    /**
+     * The same number written the way the JVM's parsers expect it, or nothing
+     * where {@code Scan_Decimal}'s grammar does not accept it at all.
+     *
+     * <p>Two of Rebol's spellings have to be translated rather than merely
+     * allowed. An apostrophe separates digits and is dropped. A comma stands
+     * in for the decimal point and becomes one, and only the first does --
+     * a second comma is then a second point, which the grammar refuses.
+     *
+     * <p>Shared with money so that the two accept the same characters, which
+     * is a thing Rebol's own suite measures separately for each and gets the
+     * same answer for twice.
+     */
+    private static Optional<String> numberRewrittenForTheJvm(String written) {
+        String body = written.replace("'", "").replaceFirst(",", ".");
+        return WRITTEN_DECIMAL.matcher(body).matches()
+                ? Optional.of(EMPTY_EXPONENT.matcher(body).replaceFirst(""))
+                : Optional.empty();
+    }
+
+    /**
+     * The written forms of an endless number and of one that is not a number,
+     * which the scanner looks for in the middle of reading digits.
+     *
+     * <p>Whatever came before the hash is thrown away, which is why
+     * {@code "1#INF"} is infinity rather than a failure: the C has already
+     * copied those digits into its buffer and abandons them where it meets the
+     * hash. Only the sign of the very first character survives.
+     */
+    private static OptionalDouble endlessNumberIn(String body) {
+        int hash = body.indexOf('#');
+        if (hash < 0) {
+            return OptionalDouble.empty();
+        }
+        boolean negative = body.charAt(0) == '-';
+        String named = body.substring(hash + 1);
+        if (named.equalsIgnoreCase("INF")) {
+            return OptionalDouble.of(negative
+                    ? Double.NEGATIVE_INFINITY
+                    : Double.POSITIVE_INFINITY);
+        }
+        return named.equalsIgnoreCase("NAN")
+                ? OptionalDouble.of(Double.NaN)
+                : OptionalDouble.empty();
+    }
+
+    /**
      * Reading an integer out of text, failing in the three ways R3 does.
      *
-     * <p>Which failure you get depends on the text rather than on the call,
-     * and the order below is the order R3 decides in. Whitespace around the
-     * number is trimmed first and is never a problem; whitespace left inside
-     * what remains always is. A quote is a digit separator, so
-     * {@code "1'000"} is 1000, and a decimal point truncates toward zero
-     * rather than being refused.
+     * <p>A quote is a digit separator, so {@code "1'000"} is 1000, and a
+     * decimal point truncates toward zero rather than being refused.
      */
     private static Value parseInteger(String text) {
-        String trimmed = text.strip();
-        if (trimmed.isEmpty()) {
-            throw Raised.of(EvaluationFailure.TOO_SHORT,
-                    "there is nothing in \"" + text + "\" to read as an integer");
-        }
-        if (containsWhitespace(trimmed)) {
-            throw Raised.of(EvaluationFailure.INVALID_CHARS,
-                    "\"" + text + "\" has whitespace inside the number");
-        }
-        String withoutSeparators = trimmed.replace("'", "");
+        String withoutSeparators = qualifiedNumberIn(
+                text, "an integer", MOST_WHOLE_NUMBER_CHARACTERS).replace("'", "");
         try {
             return IntegerValue.of(Long.parseLong(withoutSeparators));
         } catch (NumberFormatException notAWholeNumber) {
@@ -13870,10 +14927,6 @@ public final class Natives {
                 .orElse(items);
     }
 
-    private static boolean containsWhitespace(String text) {
-        return text.chars().anyMatch(Character::isWhitespace);
-    }
-
     /**
      * A value as text with nothing between its parts, which is what
      * TO-STRING means and FORM does not.
@@ -13882,14 +14935,44 @@ public final class Natives {
      * they came to be conflated here: {@code to-string [1 2 3]} is "123"
      * and {@code form [1 2 3]} is "1 2 3". Nesting makes no difference to
      * the running together, so {@code to-string [1 [2 3]]} is also "123".
+     *
+     * <p>A path keeps its slashes, because it is a block underneath and the
+     * block arm would otherwise run its segments together: {@code a/b} is
+     * {@code "a/b"} and not {@code "ab"}.
+     *
+     * <p>A tag keeps its brackets here. This is FORM, and AJOIN and COMBINE
+     * both come through it -- Rebol's own suite asserts
+     * {@code ajoin [<a> "b" 3]} is {@code "<a>b3"}. Only TO STRING! takes the
+     * brackets off, and it does that in its own arm rather than here.
      */
     private static String runTogether(Value value) {
+        if (value.datatype().isAnyPath() && value instanceof BlockValue path) {
+            return path.remaining().stream()
+                    .map(Natives::runTogether)
+                    .collect(Collectors.joining("/"));
+        }
         if (value instanceof BlockValue block) {
             return block.remaining().stream()
                     .map(Natives::runTogether)
                     .collect(Collectors.joining());
         }
         return Molder.form(value);
+    }
+
+    /**
+     * The text {@code make_string} takes from a value, which is not quite what
+     * FORM gives.
+     *
+     * <p>{@code ANY_STR(arg)} is copied as it stands, and that one arm is the
+     * whole of the difference: {@code to string! <tag>} is {@code "tag"} where
+     * {@code form <tag>} keeps the brackets. Everything else falls through to
+     * {@code Form_Value} with the TIGHT option, which is what runs a block's
+     * items together.
+     */
+    private static String textForAString(Value value) {
+        return value instanceof StringValue already
+                ? already.text()
+                : runTogether(value);
     }
 
     private void definePorts() {

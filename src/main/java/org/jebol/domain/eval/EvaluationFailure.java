@@ -46,6 +46,7 @@ public enum EvaluationFailure {
             "a /part limit that names no length in the series being read"),
     INVALID_CHARS(ErrorCategory.SCRIPT, "invalid-chars", "characters that do not belong in the target"),
     TOO_SHORT(ErrorCategory.SCRIPT, "too-short", "nothing there to convert"),
+    TOO_LONG(ErrorCategory.SCRIPT, "too-long", "more content than the target will hold"),
     LOCKED_WORD(ErrorCategory.SCRIPT, "locked-word", "an assignment to a protected slot"),
     INVALID_ARG(ErrorCategory.SCRIPT, "invalid-arg", "an argument that makes no sense here"),
     INVALID_COMPARE(ErrorCategory.SCRIPT, "invalid-compare",

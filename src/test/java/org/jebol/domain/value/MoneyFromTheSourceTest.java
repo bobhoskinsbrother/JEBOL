@@ -76,7 +76,12 @@ class MoneyFromTheSourceTest {
         void aStringIsScanned() {
             assertThat(answerTo("(to money! \"1.5\") = $1.5")).isEqualTo(TRUE);
             assertThat(errorIdOf("to money! \"abc\"")).isEqualTo("bad-make-arg");
-            assertThat(errorIdOf("to money! \"\"")).isEqualTo("bad-make-arg");
+            assertThat(errorIdOf("to money! \"\""))
+                    .as("nothing at all is too-short and not a scan that failed. "
+                            + "This asked for bad-make-arg because that is what "
+                            + "JEBOL used to answer; a real Rebol tells the two "
+                            + "apart, and now so does the money reader")
+                    .isEqualTo("too-short");
         }
 
         @Test

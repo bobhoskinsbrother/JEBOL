@@ -8,6 +8,17 @@ import java.util.Set;
  * <p>The spelling is the REBOL name without its trailing exclamation mark, so
  * {@code SET_WORD} reports itself as {@code set-word}. The typeset predicates
  * mirror the standard R3-Alpha typesets rather than being invented here.
+ *
+ * <p><b>The order is {@code types.reb}'s and is not free to change.</b> A
+ * typeset molds its members by walking the table, so the order is visible in
+ * every one that writes itself down: {@code mold any-string!} is
+ * {@code [string! file! email! ref! url! tag!]} because that is the order the
+ * table lists them in, and nothing else would read back the same. Forty-three
+ * of the fifty-eight used to sit somewhere else, which was invisible until a
+ * typeset was molded and compared.
+ *
+ * <p>{@code java-object!} is last because it is JEBOL's own and Rebol's table
+ * has no row for it.
  */
 public enum Datatype {
     END("end"),
@@ -23,51 +34,51 @@ public enum Datatype {
     TUPLE("tuple"),
     TIME("time"),
     DATE("date"),
+    BINARY("binary"),
     STRING("string"),
     FILE("file"),
-    URL("url"),
     EMAIL("email"),
-    TAG("tag"),
     REF("ref"),
-    BINARY("binary"),
-    WORD("word"),
-    SET_WORD("set-word"),
-    GET_WORD("get-word"),
-    LIT_WORD("lit-word"),
-    REFINEMENT("refinement"),
-    ISSUE("issue"),
+    URL("url"),
+    TAG("tag"),
+    BITSET("bitset"),
+    IMAGE("image"),
+    VECTOR("vector"),
     BLOCK("block"),
     PAREN("paren"),
     PATH("path"),
     SET_PATH("set-path"),
     GET_PATH("get-path"),
     LIT_PATH("lit-path"),
+    HASH("hash"),
+    MAP("map"),
     DATATYPE("datatype"),
     TYPESET("typeset"),
+    WORD("word"),
+    SET_WORD("set-word"),
+    GET_WORD("get-word"),
+    LIT_WORD("lit-word"),
+    REFINEMENT("refinement"),
+    ISSUE("issue"),
     NATIVE("native"),
-    FUNCTION("function"),
-    OP("op"),
-    OBJECT("object"),
-    MAP("map"),
-    ERROR("error"),
     ACTION("action"),
-    BITSET("bitset"),
-    CLOSURE("closure"),
-    COMMAND("command"),
-    EVENT("event"),
-    FRAME("frame"),
-    GOB("gob"),
-    HANDLE("handle"),
-    HASH("hash"),
-    IMAGE("image"),
-    LIBRARY("library"),
-    MODULE("module"),
-    PORT("port"),
     REBCODE("rebcode"),
-    STRUCT("struct"),
+    COMMAND("command"),
+    OP("op"),
+    CLOSURE("closure"),
+    FUNCTION("function"),
+    FRAME("frame"),
+    OBJECT("object"),
+    MODULE("module"),
+    ERROR("error"),
     TASK("task"),
+    PORT("port"),
+    GOB("gob"),
+    EVENT("event"),
+    HANDLE("handle"),
+    STRUCT("struct"),
+    LIBRARY("library"),
     UTYPE("utype"),
-    VECTOR("vector"),
     JAVA_OBJECT("java-object");
 
     private static final Set<Datatype> ANY_STRING =
