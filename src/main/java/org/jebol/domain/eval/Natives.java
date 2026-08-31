@@ -14069,18 +14069,32 @@ public final class Natives {
      * one thing, or something other than a word, and neither can be a
      * word's name.
      *
+     * <p>Both ends are trimmed, and only of spaces and tabs. A newline is not
+     * whitespace for this purpose -- {@code to word! "^^/a^^/"} is
+     * invalid-chars where {@code to word! "^^-a"} is the word {@code a} --
+     * because the C skips {@code IS_SPACE}, which is those two characters and
+     * nothing else. Trimming the tail alone made a leading space refuse a
+     * perfectly good name.
+     *
+     * <p>Text that is nothing but whitespace is too-short rather than
+     * invalid-chars: there was no name in it, as opposed to a bad one.
+     *
      * <p>An issue takes a laxer rule -- {@code Scan_Issue} rather than
      * {@code Scan_Word} -- which is what lets one hold a version number
      * or a reference with dots and pluses in it.
      */
     private static String spellingReadAs(String text, Datatype kind) {
         int end = text.length();
-        while (end > 0 && (text.charAt(end - 1) == ' ' || text.charAt(end - 1) == '\t')) {
+        while (end > 0 && isSpaceOrTab(text.charAt(end - 1))) {
             end--;
         }
-        String trimmed = text.substring(0, end);
+        int from = 0;
+        while (from < end && isSpaceOrTab(text.charAt(from))) {
+            from++;
+        }
+        String trimmed = text.substring(from, end);
         if (trimmed.isEmpty()) {
-            throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
+            throw Raised.of(EvaluationFailure.TOO_SHORT, text);
         }
         if (trimmed.codePoints().anyMatch(letter -> letter < 0x20 || letter == 0x7F)) {
             throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
@@ -16404,6 +16418,14 @@ public final class Natives {
      * decoding: `if (!ser) Trap1(RE_INVALID_UTF, arg)`. Bytes that are not
      * text have no text form, and answering the replacement character instead
      * would make a round trip through a binary lossy without saying so.
+     *
+     * <p>The refusal names what is left from where the decoding stopped, and
+     * not the bad bytes alone. {@code VAL_INDEX(arg) = err} moves the original
+     * binary to the offset and hands that to the error, so
+     * {@code to string! #\{C5A1C500}} says {@code #\{C500}} -- the lead byte
+     * and everything after it, rather than the one byte that could not be
+     * read. That needs the decoder driven a buffer at a time, because the
+     * one-shot form throws away where it stopped.
      */
     private static String textDecodedFrom(BinaryValue octets) {
         byte[] bytes = octets.octetsFromHere();
@@ -16415,11 +16437,15 @@ public final class Natives {
                 StandardCharsets.UTF_8.newDecoder()
                         .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
                         .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT);
-        try {
-            return strictly.decode(java.nio.ByteBuffer.wrap(bytes)).toString();
-        } catch (java.nio.charset.CharacterCodingException notText) {
-            throw Raised.of(EvaluationFailure.INVALID_UTF, "binary");
+        java.nio.ByteBuffer reading = java.nio.ByteBuffer.wrap(bytes);
+        java.nio.CharBuffer written = java.nio.CharBuffer.allocate(bytes.length + 1);
+        java.nio.charset.CoderResult stopped = strictly.decode(reading, written, true);
+        if (stopped.isError()) {
+            throw Raised.of(EvaluationFailure.INVALID_UTF, binaryOfBytes(
+                    Arrays.copyOfRange(bytes, reading.position(), bytes.length)));
         }
+        strictly.flush(written);
+        return written.flip().toString();
     }
 
     /**

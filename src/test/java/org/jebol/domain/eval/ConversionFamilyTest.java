@@ -149,7 +149,7 @@ class ConversionFamilyTest {
     @Test
     @DisplayName("a word cannot be made from nothing, unlike the others")
     void anEmptyWordHasNoCharactersToBeMadeOf() {
-        assertThat(errorFrom("to-word \"\"")).isEqualTo("invalid-chars");
+        assertThat(errorFrom("to-word \"\"")).isEqualTo("too-short");
     }
 
     @Test

@@ -122,9 +122,9 @@ class WordActionsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("an empty string is refused")
+        @DisplayName("an empty string is refused for having no name in it")
         void theDegenerateString() {
-            assertThat(errorIdOf("to word! \"\"")).isEqualTo("invalid-chars");
+            assertThat(errorIdOf("to word! \"\"")).isEqualTo("too-short");
         }
 
         @Test

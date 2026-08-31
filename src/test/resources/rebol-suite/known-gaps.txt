@@ -815,7 +815,6 @@ image-test.r3 / make image / to image from binary #9
 image-test.r3 / raw image data getters/setters / errors #125
 image-test.r3 / raw image data getters/setters / errors #126
 image-test.r3 / raw image data getters/setters / errors #127
-issue-test.r3 / to-hex / bad chars in issue #24
 issue-test.r3 / to-hex / bad chars in issue #25
 issue-test.r3 / to-hex / bad chars in issue #26
 issue-test.r3 / to-hex / to-hex/size integer! #10
@@ -1194,12 +1193,8 @@ unicode-test.r3 / string column (terminal) width / zero width chars #465
 unicode-test.r3 / string column (terminal) width / zero width chars #466
 unicode-test.r3 / to / to char! #26
 unicode-test.r3 / to / to char! #27
-unicode-test.r3 / to / to string! #19
-unicode-test.r3 / to / to string! #20
 unicode-test.r3 / to / to string! #21
 unicode-test.r3 / to / to string! char! #28
-unicode-test.r3 / to / to word! #7
-unicode-test.r3 / to / to word! #8
 vector-test.r3 / VECTOR / MOLD/flat on vector #82
 vector-test.r3 / VECTOR statictics / float64! vector statictics #445
 vector-test.r3 / VECTOR statictics / float64! vector statictics #446
