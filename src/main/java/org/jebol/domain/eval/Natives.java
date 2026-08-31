@@ -9003,6 +9003,24 @@ public final class Natives {
      */
     private static final Set<Datatype> NOTHING_INSIDE = EnumSet.noneOf(Datatype.class);
 
+    /**
+     * The first so many characters of some text, counted as REBOL counts them.
+     *
+     * <p>A character above the basic plane is one character to REBOL and two
+     * to Java, so {@code substring} cuts {@code 🙂} in half and leaves a lone
+     * surrogate where a character should be. {@code length?} of that string is
+     * one, so the two disagreed: the count said one character and the copy
+     * took half of it.
+     *
+     * <p>{@code offsetByCodePoints} asks Java where the character actually
+     * ends, which is the only way to slice text that does not assume every
+     * character fits in sixteen bits.
+     */
+    private static String theFirstCodePointsOf(String text, int wanted) {
+        int taking = Math.min(wanted, text.codePointCount(0, text.length()));
+        return text.substring(0, text.offsetByCodePoints(0, taking));
+    }
+
     /** The first few of a series, copied, and deeply when asked. */
     private static Value copiedFront(
             SeriesValue series, Value limit, boolean deeply, Set<Datatype> kinds) {
@@ -9026,7 +9044,7 @@ public final class Natives {
                             .toList()),
                     1, block.datatype());
             case StringValue text -> StringValue.of(
-                    text.text().substring(0, taking), text.datatype());
+                    theFirstCodePointsOf(text.text(), taking), text.datatype());
             case BinaryValue bytes -> copiedBytes(bytes, taking);
             case ImageValue image -> copiedPixels(image, taking);
             case GobValue gob -> raiseCannotUse(gob, "copy");

@@ -120,4 +120,21 @@ class WordFromTextAndBadUtfFromTheSourceTest {
                     ]
                 ]""")).isEqualTo("[#{C5} #{F09F99}]");
     }
+
+    @Test
+    @DisplayName("COPY/PART counts characters the way LENGTH? does, not the way Java does")
+    void copyPartCountsCodePoints() {
+        assertThat(answerTo("""
+                wide: to string! #"^(1F642)"
+                reduce [length? wide  to binary! copy/part wide 1]"""))
+                .isEqualTo("[1 #{F09F9982}]");
+    }
+
+    @Test
+    @DisplayName("and a copy of one wide character is that whole character")
+    void aCopyOfAWideCharacterIsWhole() {
+        assertThat(answerTo("""
+                wide: to string! #"^(1F642)"
+                (copy/part wide 1) == wide""")).isEqualTo("#(true)");
+    }
 }

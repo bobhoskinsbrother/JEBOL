@@ -1146,7 +1146,6 @@ unicode-test.r3 / string column (terminal) width / wide chars #469
 unicode-test.r3 / string column (terminal) width / wide chars #470
 unicode-test.r3 / string column (terminal) width / zero width chars #465
 unicode-test.r3 / string column (terminal) width / zero width chars #466
-unicode-test.r3 / to / to string! char! #28
 vector-test.r3 / VECTOR / MOLD/flat on vector #82
 vector-test.r3 / VECTOR statictics / float64! vector statictics #445
 vector-test.r3 / VECTOR statictics / float64! vector statictics #446
