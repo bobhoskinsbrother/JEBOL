@@ -415,6 +415,7 @@ final class Encodings {
         named.put("ripemd160", RIPEMD_160);
         named.put("xxh32", XXH_32);
         named.put("xxh64", XXH_64);
+        named.put("md4", MD_4);
         return Map.copyOf(named);
     }
 
@@ -442,6 +443,9 @@ final class Encodings {
 
     static final String XXH_64 = "XXH64";
 
+    /** MD4, which java.security dropped and old formats still carry. */
+    static final String MD_4 = "MD4";
+
     static byte[] digestOf(byte[] octets, String method) {
         String named = DIGESTS.get(method);
         if (RIPEMD_160.equals(named)) {
@@ -452,6 +456,9 @@ final class Encodings {
         }
         if (XXH_64.equals(named)) {
             return XxHash.of64(octets);
+        }
+        if (MD_4.equals(named)) {
+            return Md4.of(octets);
         }
         try {
             return java.security.MessageDigest.getInstance(DIGESTS.get(method))
