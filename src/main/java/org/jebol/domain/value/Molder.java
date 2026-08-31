@@ -512,8 +512,16 @@ public final class Molder {
      * A file molded, escaping the characters that would not read back as
      * part of one. Without this a space truncated the path and a control
      * character vanished, so {@code load mold} did not round-trip.
+     *
+     * <p>A file with no name at all is written {@code %""}, because a bare
+     * percent sign is not a file: the lexer reads it as the modulo operator,
+     * so molding the empty file as {@code %} produced something that read
+     * back as a word.
      */
     private static String moldedFile(String text) {
+        if (text.isEmpty()) {
+            return "%\"\"";
+        }
         StringBuilder written = new StringBuilder("%");
         text.codePoints().forEach(codepoint -> {
             if (codepoint <= 0x20 || codepoint == 0x7F

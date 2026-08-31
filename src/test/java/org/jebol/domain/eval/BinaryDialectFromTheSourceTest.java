@@ -102,9 +102,19 @@ class BinaryDialectFromTheSourceTest {
         @DisplayName("which is what lets a caller build a message field by field")
         void writesChain() {
             assertThat(answerTo("""
+                    b: binary 8
+                    binary/write b [UI8 1]
+                    binary/write b [UI8 2]
+                    mold b/buffer""")).isEqualTo("\"#{0102}\"");
+        }
+
+        @Test
+        @DisplayName("but a fresh context over the same bytes writes from their head")
+        void aFreshContextWritesFromTheHead() {
+            assertThat(answerTo("""
                     b: binary/write #{} [UI8 1]
                     c: binary/write b/buffer [UI8 2]
-                    mold c/buffer""")).isEqualTo("\"#{0102}\"");
+                    mold c/buffer""")).isEqualTo("\"#{02}\"");
         }
     }
 
@@ -243,33 +253,39 @@ class BinaryDialectFromTheSourceTest {
         @Test
         @DisplayName("a code this build has not got is refused by name, never skipped")
         void anUnknownCodeIsRefused() {
-            // The decision worth defending. Skipping would look friendlier
-            // and write a message of the wrong length, leaving the reader at
-            // the far end to find out.
             assertThat(answerTo("""
-                    e: try [binary/write #{} [NOSUCH 1]] e/id""")).isEqualTo("feature-na");
+                    e: try [binary/write #{} [NOSUCH 1]] e/id""")).isEqualTo("dialect");
         }
 
         @Test
-        @DisplayName("and the refusal names the code that was wrong")
+        @DisplayName("and the refusal names the dialect and the code that was wrong")
         void theRefusalNamesTheCode() {
-            assertThat(answerTo(
-                    "e: try [binary/write #{} [NOSUCH 1]] true? find form e/arg1 {nosuch}"))
-                    .isEqualTo(TRUE);
+            assertThat(answerTo("""
+                    e: try [binary/write #{} [NOSUCH 1]]
+                    reduce [e/arg1 true? find form e/arg2 {osuch}]"""))
+                    .isEqualTo("[bincode #(true)]");
         }
 
         @Test
-        @DisplayName("a code needing a value and not given one is missing-arg")
+        @DisplayName("a code needing a value and not given one is the same refusal")
         void aCodeWithoutItsValueIsRefused() {
             assertThat(answerTo("""
-                    e: try [binary/write #{} [UI8]] e/id""")).isEqualTo("missing-arg");
+                    e: try [binary/write #{} [UI8]] e/id""")).isEqualTo("dialect");
         }
 
         @Test
-        @DisplayName("and something that is not a code at all is invalid-arg")
+        @DisplayName("and something that is not a code at all is refused the same way")
         void aNonCodeIsRefused() {
             assertThat(answerTo("""
-                    e: try [binary/write #{} [5 5]] e/id""")).isEqualTo("invalid-arg");
+                    e: try [binary/write #{} [5 5]] e/id""")).isEqualTo("dialect");
+        }
+
+        @Test
+        @DisplayName("writing into a protected binary is refused before anything moves")
+        void aProtectedBinaryIsRefused() {
+            assertThat(answerTo("""
+                    out: protect #{0000}
+                    e: try [binary/write out #{babe}] e/id""")).isEqualTo("protected");
         }
     }
 }

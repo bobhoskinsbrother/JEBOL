@@ -12,6 +12,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * One gob tree, walked once, as the thing every renderer is handed.
@@ -221,7 +222,7 @@ public record PaintList(List<PaintInstruction> instructions) {
             case STRING -> written(gob.contentIfKind(GobStorage.Content.STRING), where);
             case TEXT -> written(gob.contentIfKind(GobStorage.Content.TEXT), where);
             case IMAGE -> pictured(gob.contentIfKind(GobStorage.Content.IMAGE), where);
-            case NONE, DRAW, EFFECT, WIDGET -> java.util.Optional.empty();
+            case NONE, DRAW, EFFECT, WIDGET -> Optional.empty();
         };
     }
 
@@ -229,12 +230,12 @@ public record PaintList(List<PaintInstruction> instructions) {
             Value colour, Placement where) {
 
         if (!(colour instanceof TupleValue parts)) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         Placement showing = new Placement(
                 where.across(), where.down(), where.wide(), where.high(), where.clip(),
                 multipliedOpacity(where.opacity(), Colour.opacityOfTuple(parts)));
-        return java.util.Optional.of(
+        return Optional.of(
                 new PaintInstruction.Fill(showing, Colour.ofTuple(parts)));
     }
 
@@ -245,9 +246,9 @@ public record PaintList(List<PaintInstruction> instructions) {
                 ? said.text()
                 : Molder.form(held);
         if (text.isEmpty()) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
-        return java.util.Optional.of(
+        return Optional.of(
                 new PaintInstruction.Writing(where, text, Colour.BLACK));
     }
 
@@ -255,8 +256,8 @@ public record PaintList(List<PaintInstruction> instructions) {
             Value held, Placement where) {
 
         return held instanceof ImageValue pixels
-                ? java.util.Optional.of(new PaintInstruction.Picture(where, pixels))
-                : java.util.Optional.empty();
+                ? Optional.of(new PaintInstruction.Picture(where, pixels))
+                : Optional.empty();
     }
 
     /** A gob's sizes and offsets are float pixels; a surface wants whole ones. */

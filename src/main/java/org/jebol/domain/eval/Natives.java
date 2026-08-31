@@ -11277,22 +11277,91 @@ public final class Natives {
      * <p>The context can be an object made earlier, a binary to work on
      * directly, or a number of bytes to make room for. All three end up as
      * bytes and a position.
+     *
+     * <p>The context is a thing rather than a value, and every refinement
+     * changes the one it was handed rather than answering a new one. That is
+     * what makes the dialect usable at all: a protocol writes a header, works
+     * out a length, writes that, and reads the reply, all through the same
+     * {@code b}. Answering a fresh context each time meant every step after
+     * the first was written into something nobody was holding, so
+     * {@code b/buffer} stayed empty however much was written to it.
+     *
+     * <p>Two cursors over one series, because reading and writing move
+     * independently. {@code buffer} is where the next read starts and
+     * {@code buffer-write} is where the next write lands, so a context can be
+     * filled and then read from the beginning without either cursor disturbing
+     * the other.
+     *
+     * <p>A write pokes rather than appends. {@code binary #{01020304}} leaves
+     * the write cursor at the head, so writing a byte to it replaces the first
+     * one; the series only grows where the cursor has reached the end. That is
+     * what makes a header writable twice, once with a placeholder length and
+     * once with the real one.
      */
     private static Value theBinaryDialect(List<Value> arguments,
             Set<String> refinements, Evaluator evaluator, Context context) {
-        BinaryValue buffer = bufferOfTheDialectContext(arguments.getFirst());
+        ObjectValue held = theDialectContextOf(arguments.getFirst());
+        if (refinements.contains("init")) {
+            restartedWith(held, argumentFor("init",
+                    DIALECT_OPTIONAL_ARGUMENTS, arguments, refinements, 1));
+        }
         if (refinements.contains("write")) {
-            return writtenThroughTheDialect(buffer,
+            requireChangeable(arguments.getFirst());
+            writeThroughTheDialect(held,
                     dialectBlockIn(arguments, refinements, "write").stream()
                             .map(item -> valueLookedUp(item, evaluator, context))
                             .toList());
         }
         if (refinements.contains("read")) {
             Value asked = dialectCodeIn(arguments, refinements);
-            return readThroughTheDialect(buffer, eachValueLookedUp(asked,
+            return readThroughTheDialect(held, eachValueLookedUp(asked,
                     evaluator, context));
         }
-        return theDialectContextFor(buffer);
+        return held;
+    }
+
+    private static final List<String> DIALECT_OPTIONAL_ARGUMENTS =
+            List.of("init", "write", "read", "into", "with");
+
+    /**
+     * The context to work through: the one given, or a new one around it.
+     *
+     * <p>BINARY takes either. A context comes back as itself so the caller
+     * keeps writing to what they are holding; a binary or a number is what a
+     * context is made from, and a made one is new by definition.
+     */
+    private static ObjectValue theDialectContextOf(Value given) {
+        if (given instanceof ObjectValue existing
+                && existing.context().knows("buffer")
+                && existing.context().slotFor("buffer").value() instanceof BinaryValue) {
+            return existing;
+        }
+        return (ObjectValue) theDialectContextFor(
+                bufferOfTheDialectContext(given));
+    }
+
+    /** Empties the context and puts both cursors back to the head. */
+    private static void restartedWith(ObjectValue held, Value replacement) {
+        BinaryValue fresh = replacement instanceof BinaryValue given
+                ? BinaryValue.of(bytesAsOctetValues(given.octetsFromHere()))
+                : BinaryValue.of();
+        held.context().set("buffer", fresh);
+        held.context().set("buffer-write", fresh);
+    }
+
+    private static int[] bytesAsOctetValues(byte[] octets) {
+        int[] widened = new int[octets.length];
+        for (int at = 0; at < octets.length; at++) {
+            widened[at] = octets[at] & 0xFF;
+        }
+        return widened;
+    }
+
+    private static BinaryValue cursorNamed(ObjectValue held, String field) {
+        return held.context().knows(field)
+                && held.context().slotFor(field).value() instanceof BinaryValue at
+                ? at
+                : BinaryValue.of();
     }
 
     /**
@@ -11373,19 +11442,24 @@ public final class Natives {
     }
 
     /**
-     * Writes through the dialect and answers the context, not the bytes.
+     * Lays the dialect into the context at its write cursor.
      *
-     * <p>The context, because a caller writing a protocol writes field after
-     * field and each call has to be able to take the last one's answer. The
-     * bytes are in its BUFFER, which is where the next call reads them from.
+     * <p>A caller writing a protocol writes field after field through the same
+     * context, so the bytes go back into the series both cursors share: a read
+     * that has not caught up sees what was just written, and the write cursor
+     * is left where the writing stopped.
      */
-    private static Value writtenThroughTheDialect(
-            BinaryValue buffer, List<Value> dialect) {
-        List<Integer> octets = octetsOfTheBuffer(buffer);
-        Bincode.Cursor cursor = new Bincode.Cursor(octets, octets.size());
+    private static void writeThroughTheDialect(
+            ObjectValue held, List<Value> dialect) {
+        BinaryValue writing = cursorNamed(held, "buffer-write");
+        List<Integer> octets = octetsOfTheBuffer(writing.head());
+        Bincode.Cursor cursor = new Bincode.Cursor(octets, writing.index() - 1);
         Bincode.write(cursor, dialect);
-        return theDialectContextFor(BinaryValue.of(
-                cursor.octets().stream().mapToInt(Integer::intValue).toArray()));
+        BinaryValue written = BinaryValue.of(
+                cursor.octets().stream().mapToInt(Integer::intValue).toArray());
+        held.context().set("buffer",
+                written.atIndex(cursorNamed(held, "buffer").index()));
+        held.context().set("buffer-write", written.atIndex(cursor.at() + 1));
     }
 
     /**
@@ -11397,13 +11471,18 @@ public final class Natives {
      * caller saying "one number, please", and prot-tls.reb reads a field that
      * way inside a loop and appends the answer straight into a list, where a
      * block of one would quietly nest.
+     *
+     * <p>Answers the values rather than the context, which is the one
+     * refinement that does, and leaves the read cursor past what it took so
+     * the next call carries on from there.
      */
-    private static Value readThroughTheDialect(BinaryValue buffer, Value asked) {
-        List<Long> read = Bincode.read(
-                new Bincode.Cursor(octetsOfTheBuffer(buffer), 0),
-                codesWrittenIn(asked));
-        return shapedLikeTheAsking(asked,
-                read.stream().<Value>map(IntegerValue::of).toList());
+    private static Value readThroughTheDialect(ObjectValue held, Value asked) {
+        BinaryValue reading = cursorNamed(held, "buffer");
+        Bincode.Cursor cursor = new Bincode.Cursor(
+                octetsOfTheBuffer(reading.head()), reading.index() - 1);
+        List<Value> read = Bincode.read(cursor, codesWrittenIn(asked));
+        held.context().set("buffer", reading.atIndex(cursor.at() + 1));
+        return shapedLikeTheAsking(asked, read);
     }
 
     /** The buffer's bytes as the dialect works on them: unsigned, and growable. */

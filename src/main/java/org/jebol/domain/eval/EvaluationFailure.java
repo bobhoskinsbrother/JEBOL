@@ -61,6 +61,8 @@ public enum EvaluationFailure {
     NO_REFINE(ErrorCategory.SCRIPT, "no-refine", "a refinement this function does not have"),
     BAD_REFINES(ErrorCategory.SCRIPT, "bad-refines",
             "two refinements that contradict each other"),
+    DIALECT(ErrorCategory.SCRIPT, "dialect",
+            "a value a dialect has no meaning for at that point"),
     PARSE_END(ErrorCategory.SCRIPT, "parse-end", "a repeat count with no rule after it to repeat"),
     PARSE_RULE(ErrorCategory.SCRIPT, "parse-rule",
             "a value that cannot be used as a parse rule"),
