@@ -515,27 +515,10 @@ date-test.r3 / DATE/TIMEZONE / set timezone #118
 date-test.r3 / DATE/TIMEZONE / set timezone #119
 date-test.r3 / DATE/TIMEZONE / set timezone #120
 date-test.r3 / DATE/TIMEZONE / set timezone #121
-date-test.r3 / ISO8601 subset / ISO8601 basic load #1
-date-test.r3 / ISO8601 subset / ISO8601 basic load #2
-date-test.r3 / ISO8601 subset / ISO8601 basic load #3
-date-test.r3 / ISO8601 subset / ISO8601 basic load #4
-date-test.r3 / ISO8601 subset / ISO8601 basic load #5
-date-test.r3 / ISO8601 subset / Invalid ISO8601 dates #11
-date-test.r3 / ISO8601 subset / Using ISO88601 datetime in a path #12
-date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #6
-date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #7
-date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #8
-date-test.r3 / ISO8601 subset / basic load of not fully standard ISO8601 #9
-date-test.r3 / Internet date / TO-DATE (from Internet date) #128
 date-test.r3 / Internet date / TO-DATE (from Internet date) #129
-date-test.r3 / Internet date / TO-DATE (from Internet date) #130
-date-test.r3 / Internet date / TO-DATE (from Internet date) #131
-date-test.r3 / Internet date / TO-DATE (from Internet date) #134
 date-test.r3 / Internet date / TO-IDATE (Date to Internet date) #126
 date-test.r3 / Julian date / Julian date setter #159
 date-test.r3 / Julian date / Julian date setter #160
-date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #16
-date-test.r3 / MOLD/ALL on date / MOLD/ALL on date #17
 date-test.r3 / Various date issues / error date set messages #107
 date-test.r3 / Various date issues / error date set messages #109
 date-test.r3 / Various date issues / error date set messages #110
@@ -555,9 +538,6 @@ date-test.r3 / Various date issues / issue 2369 #54
 date-test.r3 / Various date issues / issue 2369 #55
 date-test.r3 / Various date issues / issue 2414 #63
 date-test.r3 / Various date issues / issue 2414 #65
-date-test.r3 / Various date issues / issue-1412 #74
-date-test.r3 / Various date issues / issue-1412 #75
-date-test.r3 / Various date issues / issue-1412 #76
 date-test.r3 / Various date issues / issue-276 #77
 date-test.r3 / Various date issues / negative year #78
 date-test.r3 / Various date issues / negative year #79
@@ -568,11 +548,8 @@ date-test.r3 / Various date issues / timezones #88
 date-test.r3 / Various date issues / timezones #89
 date-test.r3 / Various date issues / timezones #90
 date-test.r3 / Various date issues / timezones #91
-date-test.r3 / Various date issues / timezones #92
-date-test.r3 / Various date issues / timezones #93
 date-test.r3 / Various date issues / timezones #94
 date-test.r3 / Various date issues / timezones #96
-date-test.r3 / Various date issues / timezones #97
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #11
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #15
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #16

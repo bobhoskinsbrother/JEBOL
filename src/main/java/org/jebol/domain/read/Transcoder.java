@@ -1427,11 +1427,18 @@ public final class Transcoder {
      * <p>The offset needs its colon. A real R3 reads {@code +2} and {@code Z} as
      * no offset at all rather than as two hours or as Zulu, so both fall into
      * the group and are read as zero.
+     *
+     * <p>ISO 8601 is the same thing spelled differently, and it is a date
+     * literal here rather than a string a codec parses: a T stands where the
+     * slash does, so {@code 2000-01-01T10:00+02:00} is the value
+     * {@code 1-Jan-2000/10:00+2:00} is. Its offset has no colon and does
+     * count, because four digits are an hour and a minute run together --
+     * only the two-digit {@code +01} means nothing.
      */
     private static final Pattern DATE_WITH_TIME = Pattern.compile(
             "(\\d{1,4}[-/](?:[A-Za-z]{3,}|\\d{1,2})[-/]\\d{1,4})"
-                    + "(?:/(\\d{1,2}:\\d{1,2}(?::\\d{1,2}(?:\\.\\d+)?)?))?"
-                    + "([-+]\\d{1,2}:\\d{2}|[-+]\\d{1,2}|[Zz])?");
+                    + "(?:[/Tt](\\d{1,2}:\\d{1,2}(?::\\d{1,2}(?:\\.\\d+)?)?))?"
+                    + "([-+]\\d{1,2}:\\d{1,2}|[-+]\\d{4}|[-+]\\d{1,2}|[Zz])?");
     private static final Pattern PAIR = Pattern.compile(
             "([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)"
                     + "[xX]([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)");
@@ -2000,8 +2007,31 @@ public final class Transcoder {
             if (values.size() == 1 && !(values.getFirst() instanceof WordValue)) {
                 return values.getFirst();
             }
+            return WordValue.of(segment);
         }
+        refuseASegmentThatCannotBeAWord(segment);
         return WordValue.of(segment);
+    }
+
+    /**
+     * Refuses a path segment that reads as nothing and cannot be a word
+     * either.
+     *
+     * <p>Falling back to a word is right for a name and wrong for anything
+     * starting with a digit, because no word may: {@code 2013/11/08T17:01Z0100}
+     * was becoming the path {@code [2013 11 08T17:01Z0100]} with a word on the
+     * end, where a real 3.22.1 refuses the whole lexeme. The same text with
+     * hyphens was already refused, and only the slash sent it down this road.
+     *
+     * <p>Only where the segment reads as nothing at all. A segment that reads
+     * as several values is a different thing entirely -- {@code a/3<} is the
+     * path {@code a/3} and then a word, and the lexer sorts that out further
+     * up rather than here.
+     */
+    private void refuseASegmentThatCannotBeAWord(String segment) {
+        if (!segment.isEmpty() && Character.isDigit(segment.charAt(0))) {
+            throw failureReading(SyntaxFailure.INVALID_LEXEME, "path", segment);
+        }
     }
 
     private Value readTuple(String lexeme) {
@@ -2145,17 +2175,36 @@ public final class Transcoder {
      * An offset in minutes, or zero where none was written.
      *
      * <p>Zero for {@code Z} and for a bare {@code +2} as well, because that is
-     * what a real R3 makes of both: the offset needs its colon to count.
+     * what a real R3 makes of both: an offset written the REBOL way needs its
+     * colon to count.
+     *
+     * <p>The ISO spelling has no colon and does count. Four digits are an hour
+     * and a minute run together, so {@code +0100} is the hour that
+     * {@code +1:00} is, and it is only the two-digit {@code +01} that means
+     * nothing.
      */
     private static int offsetMinutesFrom(String written) {
-        if (written == null || written.indexOf(':') < 0) {
+        if (written == null) {
             return 0;
         }
         int colon = written.indexOf(':');
-        int hours = Integer.parseInt(written.substring(1, colon));
-        int minutes = Integer.parseInt(written.substring(colon + 1));
+        if (colon < 0) {
+            return written.length() == 5 ? isoOffsetMinutesFrom(written) : 0;
+        }
+        return signedMinutes(written.charAt(0),
+                Integer.parseInt(written.substring(1, colon)),
+                Integer.parseInt(written.substring(colon + 1)));
+    }
+
+    private static int isoOffsetMinutesFrom(String written) {
+        return signedMinutes(written.charAt(0),
+                Integer.parseInt(written.substring(1, 3)),
+                Integer.parseInt(written.substring(3)));
+    }
+
+    private static int signedMinutes(char sign, int hours, int minutes) {
         int size = hours * 60 + minutes;
-        return written.charAt(0) == '-' ? -size : size;
+        return sign == '-' ? -size : size;
     }
 
     /**
