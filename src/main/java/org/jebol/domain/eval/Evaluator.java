@@ -1341,6 +1341,13 @@ public final class Evaluator {
             slot.setValue(withHalfWritten(pair, lastSegment, written));
             return;
         }
+        if (target instanceof DateValue date && segments.size() == 2
+                && segments.getFirst() instanceof WordValue holder) {
+            ContextSlot slot = resolve(
+                    holder.isBound() ? holder : holder.boundTo(frame.context));
+            slot.setValue(DateParts.written(date, lastSegment, written));
+            return;
+        }
         if (target instanceof MapValue map) {
             if (map.isProtected()) {
                 throw Raised.of(EvaluationFailure.PROTECTED, "map is protected");

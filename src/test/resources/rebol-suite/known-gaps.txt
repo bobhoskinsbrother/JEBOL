@@ -510,17 +510,9 @@ csv-test.r3 / (no group) / (no test) #7
 csv-test.r3 / (no group) / (no test) #8
 csv-test.r3 / (no group) / (no test) #9
 datatype-test.r3 / datatype! / number? #37
-date-test.r3 / DATE/TIMEZONE / set timezone #117
-date-test.r3 / DATE/TIMEZONE / set timezone #118
-date-test.r3 / DATE/TIMEZONE / set timezone #119
-date-test.r3 / DATE/TIMEZONE / set timezone #120
-date-test.r3 / DATE/TIMEZONE / set timezone #121
-date-test.r3 / Internet date / TO-DATE (from Internet date) #129
 date-test.r3 / Internet date / TO-IDATE (Date to Internet date) #126
 date-test.r3 / Julian date / Julian date setter #159
 date-test.r3 / Julian date / Julian date setter #160
-date-test.r3 / Various date issues / error date set messages #107
-date-test.r3 / Various date issues / error date set messages #109
 date-test.r3 / Various date issues / error date set messages #110
 date-test.r3 / Various date issues / error date set messages #111
 date-test.r3 / Various date issues / error date set messages #112
@@ -528,10 +520,6 @@ date-test.r3 / Various date issues / error date set messages #113
 date-test.r3 / Various date issues / issue 1375 #70
 date-test.r3 / Various date issues / issue 1375 #71
 date-test.r3 / Various date issues / issue 1375 #72
-date-test.r3 / Various date issues / issue 2369 #52
-date-test.r3 / Various date issues / issue 2369 #53
-date-test.r3 / Various date issues / issue 2369 #54
-date-test.r3 / Various date issues / issue 2369 #55
 date-test.r3 / Various date issues / issue 2414 #63
 date-test.r3 / Various date issues / issue 2414 #65
 date-test.r3 / Various date issues / issue-276 #77

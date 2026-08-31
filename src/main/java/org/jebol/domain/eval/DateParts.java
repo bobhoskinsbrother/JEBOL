@@ -32,6 +32,8 @@ final class DateParts {
             "year", "month", "day", "time", "date", "zone", "hour", "minute",
             "second", "weekday", "yearday", "timezone", "utc", "julian");
 
+    private static final long NANOSECONDS_A_DAY = 24L * 60L * 60L * 1_000_000_000L;
+
     /** Nothing to construct: the parts of a date are a question, not a thing. */
     private DateParts() {
     }
@@ -39,6 +41,107 @@ final class DateParts {
     static List<String> partNames() {
         return IN_ORDER;
     }
+
+    /**
+     * A date with one of its parts written, which is a new date rather than a
+     * change to this one.
+     *
+     * <p>A date is a value and not a series, so {@code d/zone: 2} replaces
+     * what the word holds. That is why this answers a date instead of taking
+     * one apart in place.
+     *
+     * <p>ZONE and TIMEZONE both name the offset and mean opposite things.
+     * ZONE keeps the clock and changes what it is an offset from, so
+     * {@code 1-Jan-2000} becomes {@code 1-Jan-2000/0:00+2:00} -- midnight, in
+     * a place two hours ahead. TIMEZONE keeps the instant and moves the clock
+     * to suit, so the same date read in a place four hours ahead is
+     * {@code 1-Jan-2000/2:00+4:00}. TIMEZONE moves the clock by the difference
+     * between the offsets, so the two agree only where that difference is
+     * nothing -- setting the offset a date already has. On a date with no
+     * offset they still differ, because going from none to two hours is a
+     * change of two.
+     *
+     * <p>A part that exists but cannot be written is {@code bad-field-set},
+     * and a word that is no part at all is {@code invalid-path}. Two errors
+     * because they are two different mistakes -- one is asking for something
+     * impossible, the other is a typo.
+     */
+    static DateValue written(DateValue date, Value selector, Value given) {
+        if (!(selector instanceof WordValue named)
+                || !IN_ORDER.contains(named.canonical())) {
+            throw Raised.of(EvaluationFailure.INVALID_PATH,
+                    selector instanceof WordValue word ? word.spelling() : "date");
+        }
+        return switch (named.canonical()) {
+            case "zone" -> withTheSameClockIn(date, offsetAskedFor(given));
+            case "timezone" -> atTheSameInstantIn(date, offsetAskedFor(given));
+            default -> throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
+                    named.spelling());
+        };
+    }
+
+    /**
+     * An offset in minutes, from the hours or the time a caller named.
+     *
+     * <p>{@code d/zone: 2} is two hours and {@code d/zone: 2:30} is two and a
+     * half, because a number naming an offset has always meant hours.
+     */
+    private static int offsetAskedFor(Value given) {
+        if (given instanceof IntegerValue hours) {
+            return withinReach(Math.toIntExact(hours.magnitude()) * 60);
+        }
+        if (given instanceof DecimalValue hours) {
+            return withinReach((int) hours.quantity() * 60);
+        }
+        if (given instanceof TimeValue clock) {
+            return withinReach(
+                    (int) (clock.nanoseconds() / (60L * NANOSECONDS_A_SECOND)));
+        }
+        throw Raised.of(EvaluationFailure.BAD_FIELD_SET, Molder.mold(given));
+    }
+
+    /**
+     * An offset a date can hold, or {@code out-of-range}.
+     *
+     * <p>Fifteen hours and three quarters either way, which is what seven
+     * signed bits of quarter-hours reach and is the same ceiling the lexer
+     * applies to a written one. So {@code d/timezone: 16} is refused rather
+     * than wrapping round to somewhere on the other side of the world.
+     */
+    private static int withinReach(int offsetMinutes) {
+        if (Math.abs(offsetMinutes) > MOST_A_ZONE_MAY_BE) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    IntegerValue.of(offsetMinutes));
+        }
+        return offsetMinutes;
+    }
+
+    private static final int MOST_A_ZONE_MAY_BE = 15 * 60 + 45;
+
+    /** The clock as written, said to belong to another place. */
+    private static DateValue withTheSameClockIn(DateValue date, int offsetMinutes) {
+        return new DateValue(date.year(), date.month(), date.day(),
+                Optional.of(date.timeOfDay().orElseGet(() -> TimeValue.ofNanoseconds(0))),
+                Optional.of(offsetMinutes));
+    }
+
+    /** The same instant, with the clock moved to read correctly there. */
+    private static DateValue atTheSameInstantIn(DateValue date, int offsetMinutes) {
+        DateValue standing = withTheSameClockIn(date, date.zoneMinutes().orElse(0));
+        long sinceMidnight = standing.timeOfDay().orElseThrow().nanoseconds()
+                + (offsetMinutes - standing.zoneMinutes().orElse(0))
+                        * 60L * NANOSECONDS_A_SECOND;
+        long daysOver = Math.floorDiv(sinceMidnight, NANOSECONDS_A_DAY);
+        java.time.LocalDate day = java.time.LocalDate
+                .of(standing.year(), standing.month(), standing.day())
+                .plusDays(daysOver);
+        return new DateValue(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
+                Optional.of(TimeValue.ofNanoseconds(
+                        Math.floorMod(sinceMidnight, NANOSECONDS_A_DAY))),
+                Optional.of(offsetMinutes));
+    }
+
+
 
     /**
      * What a date answers for one part, or none for a part it has not got.
