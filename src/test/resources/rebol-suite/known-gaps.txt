@@ -992,31 +992,15 @@ unicode-test.r3 / natives / remove-each/count #70
 unicode-test.r3 / natives / repeat #78
 unicode-test.r3 / parse / parse collect after string #425
 unicode-test.r3 / parse / parse collect after string #426
-unicode-test.r3 / parse / parse collect any #421
-unicode-test.r3 / parse / parse collect any #422
 unicode-test.r3 / parse / parse collect any #423
 unicode-test.r3 / parse / parse collect any #424
-unicode-test.r3 / parse / parse collect into block #414
 unicode-test.r3 / parse / parse collect into string #416
 unicode-test.r3 / parse / parse collect into string #417
 unicode-test.r3 / parse / parse collect into string #419
 unicode-test.r3 / parse / parse collect into string #420
-unicode-test.r3 / parse / parse collect set #409
-unicode-test.r3 / parse / parse collect set #410
-unicode-test.r3 / parse / parse collect set pick #412
-unicode-test.r3 / parse / parse copy #401
-unicode-test.r3 / parse / parse copy #402
-unicode-test.r3 / parse / parse keep #405
-unicode-test.r3 / parse / parse keep #406
-unicode-test.r3 / parse / parse keep pick #407
 unicode-test.r3 / parse / parse skip #397
 unicode-test.r3 / parse / parse skip #398
-unicode-test.r3 / parse / parse with bitset #431
 unicode-test.r3 / parse / parse with bitset #432
-unicode-test.r3 / parse / parse with bitset #433
-unicode-test.r3 / parse / parse with bitset #434
-unicode-test.r3 / parse / parse with chars #438
-unicode-test.r3 / parse / parse with string #442
 unicode-test.r3 / string column (terminal) width / wide chars #469
 unicode-test.r3 / string column (terminal) width / wide chars #470
 unicode-test.r3 / string column (terminal) width / zero width chars #465

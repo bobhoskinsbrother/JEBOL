@@ -30,7 +30,22 @@ public final class StringParser {
 
     private final Evaluator evaluator;
     private final Context context;
-    private String text;
+    /**
+     * The input as code points, which is what the position counts.
+     *
+     * <p>A Java string counts in sixteen-bit units and REBOL counts in
+     * characters, so a subject holding anything above the basic plane makes
+     * the two disagree from that character onwards. This walked the string
+     * and the disagreement showed up as a lone surrogate: PARSE over
+     * {@code "a\uD83D\uDE42b"} answered a half-character where a character
+     * belongs, and building one of those threw out of the interpreter
+     * altogether.
+     *
+     * <p>The parts that already counted by character -- CHANGE putting back
+     * what it wrote, INSERT moving past what it put in -- were the ones that
+     * were right, and everything else was measuring in the other unit.
+     */
+    private int[] letters;
 
     /**
      * The series being matched, when there is one to change.
@@ -80,13 +95,13 @@ public final class StringParser {
         this.context = context;
         this.source = source;
         this.walkingBytes = source instanceof BinaryValue;
-        this.text = textOfSeries(source);
+        this.letters = lettersOfSeries(source);
     }
 
     private void adoptInput(SeriesValue newInput) {
         this.source = newInput;
         this.walkingBytes = newInput instanceof BinaryValue;
-        this.text = textOfSeries(newInput);
+        this.letters = lettersOfSeries(newInput);
         this.position = 0;
     }
 
@@ -122,16 +137,16 @@ public final class StringParser {
      * knowing it is one. Nothing outside this class sees the standing-in:
      * every value handed back is built from the bytes again.
      */
-    private static String textOfSeries(SeriesValue series) {
+    private static int[] lettersOfSeries(SeriesValue series) {
         if (series instanceof StringValue text) {
-            return text.text();
+            return text.text().codePoints().toArray();
         }
         BinaryValue bytes = (BinaryValue) series;
-        StringBuilder standingIn = new StringBuilder();
-        for (int at = 0; at < bytes.lengthFromHere(); at++) {
-            standingIn.append((char) bytes.storage().at(bytes.index() + at));
+        int[] standingIn = new int[bytes.lengthFromHere()];
+        for (int at = 0; at < standingIn.length; at++) {
+            standingIn[at] = bytes.storage().at(bytes.index() + at);
         }
-        return standingIn.toString();
+        return standingIn;
     }
 
     /**
@@ -177,7 +192,7 @@ public final class StringParser {
     }
 
     private boolean atEnd() {
-        return position >= text.length();
+        return position >= letters.length;
     }
 
     /** CASE and NO-CASE last until the other one appears. */
@@ -211,7 +226,7 @@ public final class StringParser {
             for (int added = 0; added < written.length; added++) {
                 insertIntoSource(source.index() + begin + added, written[added]);
             }
-            text = textOfSeries(source);
+            letters = lettersOfSeries(source);
             position = begin + written.length;
             return 3;
         }
@@ -233,7 +248,7 @@ public final class StringParser {
         for (int added = 0; added < codepoints.length; added++) {
             insertIntoSource(source.index() + before + added, codepoints[added]);
         }
-        text = textOfSeries(source);
+        letters = lettersOfSeries(source);
         position = before + codepoints.length;
         return 1 + span + 1;
     }
@@ -299,7 +314,7 @@ public final class StringParser {
             for (int taken = begin + count; taken > begin; taken--) {
                 removeFromSource(source.index() + taken - 1);
             }
-            text = textOfSeries(source);
+            letters = lettersOfSeries(source);
             position = begin;
             return 2;
         }
@@ -312,7 +327,7 @@ public final class StringParser {
         for (int taken = position; taken > before; taken--) {
             removeFromSource(source.index() + taken - 1);
         }
-        text = textOfSeries(source);
+        letters = lettersOfSeries(source);
         position = before;
         return 1 + span;
     }
@@ -541,8 +556,8 @@ public final class StringParser {
             return NoneValue.none();
         }
         return walkingBytes
-                ? IntegerValue.of(text.charAt(before))
-                : CharacterValue.of(text.charAt(before));
+                ? IntegerValue.of(letters[before])
+                : CharacterValue.of(letters[before]);
     }
 
     /**
@@ -672,8 +687,8 @@ public final class StringParser {
         if (!collecting.isEmpty()) {
             for (int character = before; character < position; character++) {
                 collecting.peek().add(walkingBytes
-                        ? IntegerValue.of(text.charAt(character))
-                        : CharacterValue.of(text.charAt(character)));
+                        ? IntegerValue.of(letters[character])
+                        : CharacterValue.of(letters[character]));
             }
         }
         return (at - (at - 2)) + ruleSpan(rules, at);
@@ -685,12 +700,12 @@ public final class StringParser {
             return sliceFrom(before);
         }
         return walkingBytes
-                ? IntegerValue.of(text.charAt(before))
-                : CharacterValue.of(text.charAt(before));
+                ? IntegerValue.of(letters[before])
+                : CharacterValue.of(letters[before]);
     }
 
     private Value sliceFrom(int before) {
-        String taken = text.substring(before, position);
+        String taken = textBetween(before, position);
         if (!walkingBytes) {
             return StringValue.of(taken, source.datatype());
         }
@@ -868,7 +883,7 @@ public final class StringParser {
         int matched = 0;
         while (true) {
             int before = position;
-            int wasLong = text.length();
+            int wasLong = letters.length;
             int consumed;
             try {
                 consumed = matchOne(rules, at + 1);
@@ -881,7 +896,7 @@ public final class StringParser {
                 break;
             }
             matched++;
-            if (position == before && text.length() == wasLong) {
+            if (position == before && letters.length == wasLong) {
                 break;
             }
         }
@@ -931,12 +946,12 @@ public final class StringParser {
     private int seek(List<Value> rules, int at, boolean past) {
         Value wanted = rules.get(at + 1);
         if (wanted instanceof WordValue word && word.canonical().equals("end")) {
-            position = text.length();
+            position = letters.length;
             return 2;
         }
         if (wanted instanceof IntegerValue where) {
             long asked = where.magnitude() - (past ? 0 : 1);
-            if (asked < 0 || asked > text.length()) {
+            if (asked < 0 || asked > letters.length) {
                 return -1;
             }
             position = (int) asked;
@@ -955,7 +970,7 @@ public final class StringParser {
         }
         wanted = whatTheWordHolds(wanted);
         if (wanted instanceof BlockValue || wanted instanceof BitsetValue) {
-            for (int from = position; from <= text.length(); from++) {
+            for (int from = position; from <= letters.length; from++) {
                 position = from;
                 if (matchValue(wanted)) {
                     if (!past) {
@@ -966,12 +981,12 @@ public final class StringParser {
             }
             return -1;
         }
-        String needle = textOf(wanted);
-        int found = text.indexOf(needle, position);
+        int[] needle = textOf(wanted).codePoints().toArray();
+        int found = firstMatchFrom(needle, position);
         if (found < 0) {
             return -1;
         }
-        position = past ? found + needle.length() : found;
+        position = past ? found + needle.length : found;
         return 2;
     }
 
@@ -1014,7 +1029,7 @@ public final class StringParser {
         for (int step = 0; step < codepoints.length; step++) {
             insertIntoSource(source.index() + position + step, codepoints[step]);
         }
-        this.text = textOfSeries(source);
+        this.letters = lettersOfSeries(source);
         position += codepoints.length;
         return 2;
     }
@@ -1044,27 +1059,67 @@ public final class StringParser {
         }
         if (rule instanceof BlockValue nested && nested.datatype() == Datatype.PAREN) {
             evaluator.evaluateOrRaise(nested.as(Datatype.BLOCK), context);
-            text = textOfSeries(source);
-            position = Math.min(position, text.length());
+            letters = lettersOfSeries(source);
+            position = Math.min(position, letters.length);
             return true;
         }
         if (rule instanceof BlockValue nested) {
             return matchSequence(nested.remaining());
         }
         if (rule instanceof BitsetValue members) {
-            if (position >= text.length() || !bitsetHolds(members, text.charAt(position))) {
+            if (position >= letters.length || !bitsetHolds(members, letters[position])) {
                 return false;
             }
             position++;
             return true;
         }
-        String wanted = textOf(rule);
-        if (wanted.isEmpty()
-                || !text.regionMatches(!mindingCase, position, wanted, 0, wanted.length())) {
+        int[] wanted = textOf(rule).codePoints().toArray();
+        if (wanted.length == 0 || !matchesAt(wanted, position)) {
             return false;
         }
-        position += wanted.length();
+        position += wanted.length;
         return true;
+    }
+
+    /** The text between two positions, both counted in characters. */
+    private String textBetween(int from, int to) {
+        return new String(letters, from, to - from);
+    }
+
+    /**
+     * Whether the letters at a position are the ones wanted, folding case
+     * unless /CASE was asked for.
+     *
+     * <p>Character by character rather than through
+     * {@link String#regionMatches}, because that counts in Java's units and
+     * the position counts in characters. The two agree until the subject
+     * holds something above the basic plane, and then every offset past it
+     * is out by one for each such character.
+     */
+    private boolean matchesAt(int[] wanted, int from) {
+        if (from + wanted.length > letters.length) {
+            return false;
+        }
+        for (int at = 0; at < wanted.length; at++) {
+            if (!theSameLetter(letters[from + at], wanted[at])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean theSameLetter(int one, int other) {
+        return one == other || !mindingCase
+                && Character.toLowerCase(one) == Character.toLowerCase(other);
+    }
+
+    private int firstMatchFrom(int[] needle, int from) {
+        for (int at = from; at + needle.length <= letters.length; at++) {
+            if (matchesAt(needle, at)) {
+                return at;
+            }
+        }
+        return -1;
     }
 
     private static String textOf(Value value) {
@@ -1075,7 +1130,7 @@ public final class StringParser {
             return text.text();
         }
         if (value instanceof BinaryValue bytes) {
-            return textOfSeries(bytes);
+            return new String(lettersOfSeries(bytes), 0, bytes.lengthFromHere());
         }
         return Molder.form(value);
     }
