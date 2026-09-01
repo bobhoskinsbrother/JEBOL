@@ -1591,6 +1591,18 @@ public final class Transcoder {
         return !lexeme.isEmpty() && lexeme.chars().noneMatch(Character::isLetterOrDigit);
     }
 
+    /**
+     * The two shapes that open a based number, held rather than written out.
+     *
+     * <p>{@code String.matches} compiles its pattern afresh on every call, and
+     * these two are asked about every lexeme in every source. Compiling them
+     * was a quarter of the time it took to read Rebol's own library.
+     */
+    private static final Pattern SIGNED_DIGITS_MAYBE_HASHED =
+            Pattern.compile("[+-][0-9]+#?");
+
+    private static final Pattern DIGITS_THEN_HASH = Pattern.compile("[0-9]+#");
+
     private Value classify(String lexeme) {
         if (lexeme.startsWith("/_")
                 && (lexeme.length() == 2 || lexeme.charAt(2) == '/')) {
@@ -1603,10 +1615,11 @@ public final class Transcoder {
             column -= lexeme.length() - 1;
             return NoneValue.none();
         }
-        if (lexeme.matches("[+-][0-9]+#?") && (peek() == '#' || peek() == '{')) {
+        if (SIGNED_DIGITS_MAYBE_HASHED.matcher(lexeme).matches()
+                && (peek() == '#' || peek() == '{')) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "integer", lexeme);
         }
-        if (lexeme.matches("[0-9]+#")) {
+        if (DIGITS_THEN_HASH.matcher(lexeme).matches()) {
             if (peek() == '{') {
                 return readBasedBinary(lexeme.substring(0, lexeme.length() - 1));
             }
@@ -1754,18 +1767,20 @@ public final class Transcoder {
         if (lexeme.startsWith("/") && lexeme.indexOf('/', 1) < 0) {
             return WordValue.of(lexeme.substring(1), Datatype.REFINEMENT);
         }
-        if (URL.matcher(lexeme).matches()) {
+        if (couldOpenAScheme(lexeme) && URL.matcher(lexeme).matches()) {
             return StringValue.of(lexeme, Datatype.URL);
         }
-        if (SLASHED_DATE.matcher(lexeme).matches()) {
-            return readDate(lexeme, "/");
-        }
-        if (DATE_WITH_A_NEGATIVE_YEAR.matcher(lexeme).matches()) {
-            throw failureReading(SyntaxFailure.INVALID_LEXEME, "date", lexeme);
-        }
-        var dated = DATE_WITH_TIME.matcher(lexeme);
-        if (dated.matches() && (dated.group(2) != null || dated.group(3) != null)) {
-            return readDateWithTime(dated.group(1), dated.group(2), dated.group(3));
+        if (opensWithAPlainDigit(lexeme)) {
+            if (SLASHED_DATE.matcher(lexeme).matches()) {
+                return readDate(lexeme, "/");
+            }
+            if (DATE_WITH_A_NEGATIVE_YEAR.matcher(lexeme).matches()) {
+                throw failureReading(SyntaxFailure.INVALID_LEXEME, "date", lexeme);
+            }
+            var dated = DATE_WITH_TIME.matcher(lexeme);
+            if (dated.matches() && (dated.group(2) != null || dated.group(3) != null)) {
+                return readDateWithTime(dated.group(1), dated.group(2), dated.group(3));
+            }
         }
         if (lexeme.indexOf('/') >= 0) {
             return readPath(lexeme);
@@ -1912,7 +1927,74 @@ public final class Transcoder {
     private static final Pattern BASED_INTEGER =
             Pattern.compile("(\\d{1,2})#([0-9A-Za-z]+)");
 
+    /**
+     * Whether a lexeme could be a number, a date, a time, a pair or a tuple.
+     *
+     * <p>Every one of those shapes needs a digit somewhere, {@code 1.#INF}
+     * and {@code 1.#NaN} included, so a lexeme with no digit in it is a word
+     * and there is nothing to try.
+     *
+     * <p>Worth the line because almost every lexeme in a REBOL source is a
+     * word, and each one was being run through ten regular expressions before
+     * arriving at that. Reading Rebol's own library took sixty-three
+     * milliseconds and this is most of it. {@link Character#isDigit} rather
+     * than the ASCII range on purpose: it accepts more than {@code \d} does,
+     * so anything the patterns below could still match takes the long way
+     * round and answers exactly as it did.
+     */
+    private static boolean couldSpellANumber(String lexeme) {
+        for (int at = 0; at < lexeme.length(); at++) {
+            if (Character.isDigit(lexeme.charAt(at))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether a colon stands somewhere a scheme name could end.
+     *
+     * <p>The url pattern is {@code [a-zA-Z][a-zA-Z0-9+.-]*:.+}, so it needs a
+     * colon with at least one character either side of it. Every word in
+     * every source was being run through that pattern to find out it had no
+     * colon at all.
+     */
+    private static boolean couldOpenAScheme(String lexeme) {
+        int colon = lexeme.indexOf(':');
+        return colon > 0 && colon < lexeme.length() - 1;
+    }
+
+    /**
+     * Whether the lexeme opens with one of the ten digits.
+     *
+     * <p>All three date patterns open with {@code \d{1,4\}}, so a lexeme that
+     * does not open with a digit is none of them and there is nothing to try.
+     */
+    private static boolean opensWithAPlainDigit(String lexeme) {
+        return !lexeme.isEmpty() && lexeme.charAt(0) >= '0' && lexeme.charAt(0) <= '9';
+    }
+
+    /**
+     * Whether one of the ten digits appears, which is what {@code \d} asks.
+     *
+     * <p>The decimal pattern accepts a lone point and a lone sign, so
+     * {@code .} and {@code -.} match it and are words. This is the test that
+     * turns them away, and it has to be the narrow one: an Arabic-Indic digit
+     * is a digit to Java and not to the pattern.
+     */
+    private static boolean holdsAPlainDigit(String lexeme) {
+        for (int at = 0; at < lexeme.length(); at++) {
+            if (lexeme.charAt(at) >= '0' && lexeme.charAt(at) <= '9') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private Value classifyScalarOrWord(String lexeme) {
+        if (!couldSpellANumber(lexeme)) {
+            return WordValue.of(lexeme);
+        }
         var based = BASED_INTEGER.matcher(lexeme);
         if (based.matches()) {
             return basedInteger(Integer.parseInt(based.group(1)), based.group(2));
@@ -1947,7 +2029,7 @@ public final class Transcoder {
         if (special != null) {
             return special;
         }
-        if (DECIMAL.matcher(lexeme).matches() && lexeme.matches(".*[\\d].*")) {
+        if (DECIMAL.matcher(lexeme).matches() && holdsAPlainDigit(lexeme)) {
             return DecimalValue.of(Double.parseDouble(lexeme));
         }
         if (Character.isDigit(lexeme.charAt(0))) {
@@ -2084,7 +2166,7 @@ public final class Transcoder {
         if (INTEGER.matcher(segment).matches()) {
             return IntegerValue.of(Long.parseLong(segment));
         }
-        if (DECIMAL.matcher(segment).matches() && segment.matches(".*[\\d].*")) {
+        if (DECIMAL.matcher(segment).matches() && holdsAPlainDigit(segment)) {
             return DecimalValue.of(Double.parseDouble(segment));
         }
         TranscodeResult read = transcode(segment);

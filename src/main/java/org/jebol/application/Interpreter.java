@@ -202,7 +202,7 @@ public final class Interpreter {
         } catch (IOException unreadable) {
             throw new IllegalStateException("the prelude could not be read", unreadable);
         }
-        TranscodeResult read = Transcoder.transcode(source);
+        TranscodeResult read = LibrarySource.reading(PRELUDE, source);
         BlockValue values = read.values().orElseThrow(() -> new IllegalStateException(
                 "the prelude does not read: " + read.error().orElseThrow()));
         BlockValue body = values.remaining().size() >= 2
@@ -259,7 +259,7 @@ public final class Interpreter {
             if (source == null) {
                 continue;
             }
-            TranscodeResult read = Transcoder.transcode(source);
+            TranscodeResult read = LibrarySource.reading(MEZZANINE + name, source);
             if (read.values().isEmpty()) {
                 borrowedLoadFailures.put(name, read.error().orElseThrow().toString());
                 continue;
