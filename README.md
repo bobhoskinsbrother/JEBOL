@@ -42,7 +42,7 @@ GUI layouts and its pattern matcher are all dialects rather than syntax:
 What another language wants a parser generator and a syntax tree for, REBOL
 does with a block and a function.
 
-## What JEBOL is
+## What is JEBOL?
 
 A port of [Oldes' Rebol3](https://github.com/Oldes/Rebol3), version 3.22.5, to
 Java: an ordinary jar with no dependencies, running on any JDK.
@@ -132,22 +132,46 @@ Beside it, and outliving it:
 
 ## Where it has got to, and what is left
 
-**9,084 of the 10,100 assertions in Rebol's own test suite pass.** The
-remaining 1,016 are named line by line in `known-gaps.txt`, and they group into
-six kinds and a tail:
+**9,084 of the 10,100 assertions in Rebol's own test suite pass.** The other
+1,016 are named line by line in `known-gaps.txt`, and the useful split is not
+by feature but by whether they ran at all.
+
+**510 of them never ran.** A suite file is a script, so an assertion that
+raises takes the rest of its block with it, and half the backlog is assertions
+standing behind an earlier failure rather than failures in their own right.
+171 sit behind a single unbound word. Fixing one thing routinely moves dozens,
+and the count moves in steps rather than one at a time.
+
+**506 ran and gave the wrong answer.** These are the real work, and they are
+spread thin rather than piled up:
 
 ```
- 301  format decoders and encoders: PNG, JPEG, GIF, BMP, WAV, PDF, SWF
- 286  the rest, thin-spread: csv, func, module, time, map, date, make, error
- 116  ports and schemes
- 109  cryptography: the crypt port, Diffie-Hellman, ChaCha20, Poly1305
-  80  compression formats this build has not got: Brotli, LZMA, LZW, CRUSH
-  77  checksums and encodings
-  47  handles
+  49  image!, and almost none of it about file formats: 32 are the image as a
+      series, 20 are INDEX?/INDEXZ?/AT/ATZ, and 3 are save and load
+  35  ENBASE and DEBASE
+  32  the port model
+  31  unicode edges
+  23  FUNCTION and its refinements
+  21  TIME arithmetic and rounding
+  18  MAP and the set operations over it
+  and a long tail across file, make, module, error, date, format
 ```
 
 Bigger things that are known rather than counted:
 
+- **The image codecs are mostly the JDK's already.** PNG, JPEG, GIF, BMP and
+  TIFF all round-trip through `javax.imageio`, which is in `java.desktop` and
+  so costs nothing to reach, and the suite asserts a round trip and the pixels
+  rather than the encoded bytes. Two catches: `ImageIO.write` refuses an
+  image with an alpha channel for JPEG and BMP, so those two have to drop it
+  as Rebol's own codecs do; and a codec would live in an adapter behind a
+  port, because the domain may not touch the JDK's I/O.
+- **PDF belongs in an optional extension**, not in the jar. **SWF is not worth
+  writing at all**, and both of those decisions are worth more than the
+  assertions they cost.
+- **Brotli, LZMA, LZW and CRUSH have no JDK equivalent.** `java.util.zip`
+  gives Deflate, GZIP and ZIP and stops there, so those 80 assertions mean
+  four compressors written out or four assertions marked as not-in-this-build.
 - **DRAW renders 22 of R3's 36 commands.** `image` and `text` are the two whose
   absence makes a page look wrong rather than plain.
 - **TLS loads but does not connect.**
@@ -176,7 +200,7 @@ ScriptOutcome outcome = interpreter.run("while [true] [1]");
 // outcome.conclusion() == Conclusion.TIMED_OUT, and the interpreter still works
 ```
 
-Bounds are enforced rather than advertised, and cancellation is cooperative so
+Bounds are enforced, and cancellation is cooperative so
 a stopped script never leaves a series half-changed. What a script may reach is
 a `HostAccess` policy that defaults to nothing:
 

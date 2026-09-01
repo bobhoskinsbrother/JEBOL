@@ -9,9 +9,11 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jebol.application.Bounds;
 import org.jebol.application.FileSystemPort;
@@ -409,6 +411,33 @@ class RebolSuiteTest {
         assertThat(nowPassing)
                 .as("these pass now and should come off known-gaps.txt, or the "
                         + "list stops meaning anything")
+                .isEmpty();
+    }
+
+    /**
+     * Every line of the gap list names an assertion that exists.
+     *
+     * <p>Without this the list rots in the one direction nobody looks. A line
+     * comes off when the assertion it names starts passing, and an assertion
+     * that no longer exists never starts passing, so a line whose wording or
+     * position has shifted stays on the list for good and is counted as
+     * outstanding work for ever.
+     *
+     * <p>It had happened to 182 of 1,016 lines by the time anybody checked --
+     * 95 of them in image-test.r3 alone, which had 101 lines against 14
+     * assertions. The gap list read as eighteen per cent worse than the port
+     * was, and the number was quoted in the readme.
+     */
+    @Test
+    @DisplayName("no known gap names an assertion that is not there")
+    void theGapListNamesRealAssertions() {
+        Set<String> live = everyAssertion()
+                .map(SuiteFile.Assertion::toString)
+                .collect(Collectors.toSet());
+
+        assertThat(knownGaps().stream().filter(gap -> !live.contains(gap)).toList())
+                .as("these name no assertion, so nothing can ever take them off "
+                        + "the list; delete them")
                 .isEmpty();
     }
 }

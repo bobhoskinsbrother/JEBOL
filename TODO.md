@@ -20,7 +20,7 @@ now run -- Goal 1, and it is done. The sixth is new and is not clean.
 | `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 1,016 failing and every one named in `known-gaps.txt` |
 | `scripts/error-parity.py` | **69 of Rebol's 142 error ids can be raised. 73 cannot** |
 
-`./gradlew check` is 16,040 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 16,041 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception.
 
 ---
