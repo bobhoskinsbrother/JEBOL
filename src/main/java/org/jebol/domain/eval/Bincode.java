@@ -413,7 +413,8 @@ final class Bincode {
                     cursor.at + wholeNumberReadAfter(dialect, ++step, named));
             case "index" -> read.add(IntegerValue.of(cursor.at + 1));
             case "indexz" -> read.add(IntegerValue.of(cursor.at));
-            case "length", "length?" -> read.add(
+            case "length" -> read.add(IntegerValue.of(lengthPrefixRead(cursor)));
+            case "length?" -> read.add(
                     IntegerValue.of(cursor.octets.size() - (long) cursor.at));
             case "pad" -> moveTo(cursor, alignedUp(cursor.at,
                     wholeNumberReadAfter(dialect, ++step, named)));
@@ -1043,6 +1044,39 @@ final class Bincode {
 
     private static int octetAt(Cursor cursor, int at) {
         return at < cursor.octets.size() ? cursor.octets.get(at) : 0;
+    }
+
+    /**
+     * A length written the way certificates write it: one byte, or a count of
+     * bytes and then that many.
+     *
+     * <p>{@code SYM_LENGTH}. A first byte up to and including 128 is the
+     * length itself; anything above has its low seven bits saying how many
+     * bytes carry the number, most significant first. So {@code 05} is five
+     * and {@code 82 09 18} is two thousand three hundred and twenty-eight,
+     * and the second consumes three bytes where the first consumes one.
+     *
+     * <p>This is not {@code LENGTH?}, which consumes nothing and answers how
+     * many bytes are left. JEBOL had the two as one code, so every DER
+     * structure -- every certificate, every key, every PKCS container --
+     * came back with its fields at the wrong offsets and a tag read out of
+     * the middle of a length.
+     */
+    private static long lengthPrefixRead(Cursor cursor) {
+        refuseAReadPastTheEnd(cursor, 1);
+        int first = octetAt(cursor, cursor.at);
+        if (first <= 128) {
+            cursor.at++;
+            return first;
+        }
+        int carrying = first & 0x7F;
+        refuseAReadPastTheEnd(cursor, carrying + 1);
+        long counted = 0;
+        for (int at = 1; at <= carrying; at++) {
+            counted = counted << 8 | octetAt(cursor, cursor.at + at);
+        }
+        cursor.at += carrying + 1;
+        return counted;
     }
 
     /**

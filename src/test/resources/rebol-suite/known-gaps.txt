@@ -400,7 +400,6 @@ crypt-port-test.r3 / NIST test vectors (CBC) / AES-128-CBC with chunked input wh
 crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #12
 crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #13
 crypt-test.r3 / PPK codec / Init RSA key from encrypted PPK file #35
-crypt-test.r3 / SSH-key codec / Init public DH params from file #33
 csv-test.r3 / (no group) / (no test) #1
 csv-test.r3 / (no group) / (no test) #10
 csv-test.r3 / (no group) / (no test) #11
@@ -930,8 +929,6 @@ power-test.r3 / power integer / power-integer-5 #15
 power-test.r3 / power integer / power-integer-6 #16
 power-test.r3 / power integer / power-integer-7 #17
 power-test.r3 / power integer / power-integer-8 #18
-rsa-test.r3 / RSA initialization from file / RSA private key from OpenSSL format (RSA PRIVATE KEY) #36
-rsa-test.r3 / RSA initialization from file / RSA private key from OpenSSL x509 format (PRIVATE KEY) #37
 series-test.r3 / DELINE / ENLINE / ENLINE #1230
 series-test.r3 / SWAP / swap invalidating index (known issue) #973
 struct-test.r3 / Invalid struct construction / (no test) #186
