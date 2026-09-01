@@ -1428,6 +1428,22 @@ public final class Evaluator {
         };
     }
 
+    /**
+     * A path index as PICK counts one, which reaches behind the position.
+     *
+     * <p>A series carries a position, and a negative index counts back from
+     * it: {@code s: tail "ab"} makes {@code s/-1} the last character and
+     * {@code s/-2} the one before. There is no nought, so counting runs
+     * ...-2, -1, 1, 2... and the negative side is one shorter than it looks.
+     *
+     * <p>PICK already did this and a path did not, so {@code pick s -2} and
+     * {@code s/-2} disagreed about the same series -- and a path is the form
+     * a caller reaches for first.
+     */
+    private static long countedFromTheSeriesPosition(long index) {
+        return index < 0 ? index + 1 : index;
+    }
+
     /** Walks the segments, gathering refinements once a function is reached. */
     private Selection select(BlockValue path, Context context) {
         List<Value> segments = path.remaining();
@@ -1606,8 +1622,8 @@ public final class Evaluator {
             return StructPath.read(struct, selector);
         }
         if (target instanceof SeriesValue series && selector instanceof IntegerValue position) {
-            long index = position.magnitude();
-            if (index < 1 || index > series.lengthFromHere()) {
+            long index = countedFromTheSeriesPosition(position.magnitude());
+            if (index < 1 - (series.index() - 1) || index > series.lengthFromHere()) {
                 return NoneValue.none();
             }
             return switch (series) {

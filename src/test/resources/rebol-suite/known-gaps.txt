@@ -81,12 +81,6 @@ codecs-test-pdf.r3 / (no group) / (no test) #10
 codecs-test-pdf.r3 / (no group) / (no test) #11
 codecs-test-pdf.r3 / (no group) / (no test) #12
 codecs-test-pdf.r3 / (no group) / (no test) #13
-codecs-test-pdf.r3 / (no group) / (no test) #2
-codecs-test-pdf.r3 / (no group) / (no test) #3
-codecs-test-pdf.r3 / (no group) / (no test) #4
-codecs-test-pdf.r3 / (no group) / (no test) #6
-codecs-test-pdf.r3 / (no group) / (no test) #7
-codecs-test-pdf.r3 / (no group) / (no test) #8
 codecs-test.r3 / Codec's identify / encoding? #4
 codecs-test.r3 / Codec's identify / encoding? #5
 codecs-test.r3 / Codec's identify / encoding? #6
@@ -1074,11 +1068,6 @@ unicode-test.r3 / actions / insert/part string #257
 unicode-test.r3 / actions / insert/part string #260
 unicode-test.r3 / actions / remove #318
 unicode-test.r3 / actions / remove #319
-unicode-test.r3 / natives / difference #85
-unicode-test.r3 / natives / difference #86
-unicode-test.r3 / natives / difference #87
-unicode-test.r3 / natives / difference #88
-unicode-test.r3 / natives / difference #89
 unicode-test.r3 / natives / difference/skip #90
 unicode-test.r3 / natives / difference/skip #91
 unicode-test.r3 / natives / difference/skip #92
@@ -1118,10 +1107,6 @@ unicode-test.r3 / parse / parse with bitset #433
 unicode-test.r3 / parse / parse with bitset #434
 unicode-test.r3 / parse / parse with chars #438
 unicode-test.r3 / parse / parse with string #442
-unicode-test.r3 / paths / get path with negative index #160
-unicode-test.r3 / paths / get path with negative index #161
-unicode-test.r3 / paths / get path with negative index #162
-unicode-test.r3 / paths / get path with negative index #163
 unicode-test.r3 / string column (terminal) width / wide chars #469
 unicode-test.r3 / string column (terminal) width / wide chars #470
 unicode-test.r3 / string column (terminal) width / zero width chars #465

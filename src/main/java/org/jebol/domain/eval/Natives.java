@@ -4841,8 +4841,8 @@ public final class Natives {
                         return timeBetween(from, to);
                     }
                     boolean mindingCase = refinements.contains("case");
-                    List<Value> ours = ((BlockValue) arguments.get(0)).remaining();
-                    List<Value> theirs = ((BlockValue) arguments.get(1)).remaining();
+                    List<Value> ours = theMembersOf(arguments.get(0));
+                    List<Value> theirs = theMembersOf(arguments.get(1));
                     List<Value> only = new ArrayList<>();
                     ours.stream().filter(item -> theirs.stream()
                             .noneMatch(other -> matches(item, other, mindingCase)))
@@ -4850,7 +4850,7 @@ public final class Natives {
                     theirs.stream().filter(item -> ours.stream()
                             .noneMatch(other -> matches(item, other, mindingCase)))
                             .forEach(only::add);
-                    return BlockValue.block(only);
+                    return shapedLike(arguments.get(0), only);
                 });
 
         define("reflect", List.of(Parameter.required("value"),
@@ -8882,6 +8882,36 @@ public final class Natives {
                     return combined(arguments, how, refinements.contains("case"),
                             recordWidthOf(width));
                 });
+    }
+
+    /**
+     * What a series holds, as values, whether it is a block or text.
+     *
+     * <p>DIFFERENCE is the one set operation that has to walk both operands
+     * itself, because it is the symmetric one: everything in the first that is
+     * not in the second, and then everything in the second that is not in the
+     * first. The others can be expressed as a single pass and share a helper
+     * that already knew about text; this one did not, and cast a string to a
+     * block and threw a Java exception out of the interpreter.
+     */
+    private static List<Value> theMembersOf(Value series) {
+        if (series instanceof StringValue text) {
+            return text.text().codePoints()
+                    .mapToObj(letter -> (Value) CharacterValue.of(letter))
+                    .toList();
+        }
+        return ((BlockValue) series).remaining();
+    }
+
+    /** The members put back into the shape the first operand had. */
+    private static Value shapedLike(Value original, List<Value> members) {
+        if (!(original instanceof StringValue text)) {
+            return BlockValue.block(members);
+        }
+        StringBuilder written = new StringBuilder();
+        members.forEach(member -> written.appendCodePoint(
+                ((CharacterValue) member).codepoint()));
+        return StringValue.of(written.toString(), text.datatype());
     }
 
     /**
