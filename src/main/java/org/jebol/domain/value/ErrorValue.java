@@ -1,6 +1,7 @@
 package org.jebol.domain.value;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -164,16 +165,18 @@ public record ErrorValue(
     private long codeNumber() {
         int fromCatalogue = ErrorCatalogue.codeFor(
                 category.name().charAt(0) + category.name().substring(1).toLowerCase(
-                        java.util.Locale.ROOT),
+                        Locale.ROOT),
                 errorId);
         if (fromCatalogue > 0) {
             return fromCatalogue;
         }
         return switch (category) {
+            case NOTE -> 100;
             case SYNTAX -> 200;
             case SCRIPT -> 300;
             case MATH -> 400;
             case ACCESS -> 500;
+            case COMMAND -> 600;
             case USER -> 800;
             case INTERNAL -> 900;
             case THROW -> 0;

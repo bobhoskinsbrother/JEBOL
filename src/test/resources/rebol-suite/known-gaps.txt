@@ -87,7 +87,6 @@ codecs-test.r3 / Codec's identify / encoding? #6
 codecs-test.r3 / Codec's identify / encoding? #7
 codecs-test.r3 / Codec's identify / encoding? #8
 codecs-test.r3 / SAVE function / SAVE/compress #30
-codecs-test.r3 / SAVE function / SAVE/compress #31
 codecs-test.r3 / SAVE function / invalid image SAVE #27
 codecs-test.r3 / SAVE function / invalid image SAVE #28
 codecs-test.r3 / SAVE function / invalid image SAVE #29
@@ -615,7 +614,6 @@ func-test.r3 / Other issues / issue-87 #115
 func-test.r3 / Other issues / issue-87 #116
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
-gob-test.r3 / gob issues / issue-992 #36
 handle-test.r3 / context handles / (no test) #1
 handle-test.r3 / context handles / (no test) #10
 handle-test.r3 / context handles / (no test) #11
@@ -835,54 +833,14 @@ module-test.r3 / module issues / issue-1005 #51
 module-test.r3 / module issues / issue-1005 #54
 module-test.r3 / module keywords / hidden #2
 mold-test.r3 / form error! / form error! #214
-mold-test.r3 / mold binary! / mold/flat binary! #139
-mold-test.r3 / mold binary! / mold/flat binary! #141
-mold-test.r3 / mold binary! / mold/part binary! #142
-mold-test.r3 / mold binary! / mold/part binary! #144
 mold-test.r3 / mold block! / issue-1439 #128
 mold-test.r3 / mold block! / issue-1439 #129
 mold-test.r3 / mold block! / issue-1439 #130
 mold-test.r3 / mold block! / issue-2279 #131
-mold-test.r3 / mold block! / mold/flat/all block! #124
 mold-test.r3 / mold block! / mold/only #125
-mold-test.r3 / mold closure! / mold/flat closure! #184
-mold-test.r3 / mold email! / issue-2406 #153
-mold-test.r3 / mold email! / issue-2406 #154
-mold-test.r3 / mold error! / mold error! #215
-mold-test.r3 / mold error! / mold error! #216
-mold-test.r3 / mold error! / mold error! #217
-mold-test.r3 / mold event! / mold/all event! #116
 mold-test.r3 / mold file! / mold file escaping #68
-mold-test.r3 / mold gob! / mold/all gob! #186
-mold-test.r3 / mold image! / mold/flat/all image! #180
-mold-test.r3 / mold image! / mold/flat/all image! #181
-mold-test.r3 / mold map! / mold #[] #138
 mold-test.r3 / mold map! / mold map! #133
-mold-test.r3 / mold map! / mold/flat map! #135
-mold-test.r3 / mold path! / form path! #201
-mold-test.r3 / mold path! / form path! #203
-mold-test.r3 / mold path! / form path! #205
-mold-test.r3 / mold path! / form path! #207
-mold-test.r3 / mold path! / mold/all path! #197
-mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #221
-mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #222
-mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #223
-mold-test.r3 / mold percent! / 1.#INF and 1.#NaN percents #224
-mold-test.r3 / mold ref! / mold ref #166
-mold-test.r3 / mold ref! / mold ref #167
 mold-test.r3 / mold url! / mold url escaping #56
-mold-test.r3 / mold-all / mold/all block with index over tail #109
-mold-test.r3 / mold-all / mold/all block with index over tail #110
-mold-test.r3 / mold-all / mold/all series #101
-mold-test.r3 / mold-all / mold/all series #102
-mold-test.r3 / mold-all / mold/all series #103
-mold-test.r3 / mold-all / mold/all series #104
-mold-test.r3 / mold-all / mold/all series #93
-mold-test.r3 / mold-all / mold/all series #94
-mold-test.r3 / mold-all / mold/all series #95
-mold-test.r3 / mold-all / mold/all series #96
-mold-test.r3 / mold/all / mold/all decimal! #210
-mold-test.r3 / mold/all / mold/all decimal! #211
 os-test.r3 / set-env / get-env / env-1 #1
 os-test.r3 / set-env / get-env / env-1 #2
 os-test.r3 / set-env / get-env / env-1 #3
@@ -901,7 +859,6 @@ parse-test.r3 / Other parse issues / integer! repeat #376
 parse-test.r3 / Other parse issues / integer! repeat #377
 parse-test.r3 / Other parse issues / integer! repeat #378
 parse-test.r3 / Other parse issues / integer! repeat #379
-percent-test.r3 / form/mold / mold/all #30
 percent-test.r3 / percent issues / large percent #33
 percent-test.r3 / percent issues / large percent #34
 poly1305-test.r3 / (no group) / (no test) #1
@@ -992,8 +949,6 @@ port-test.r3 / file port / write/seek #141
 port-test.r3 / file port / write/seek #142
 port-test.r3 / file port / write/seek #143
 port-test.r3 / file port / write/seek #144
-power-test.r3 / power error / power-error-1 #8
-power-test.r3 / power error / power-error-2 #10
 power-test.r3 / power integer / power-integer-1 #11
 power-test.r3 / power integer / power-integer-2 #12
 power-test.r3 / power integer / power-integer-3 #13

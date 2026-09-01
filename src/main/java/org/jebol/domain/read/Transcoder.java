@@ -2,6 +2,8 @@ package org.jebol.domain.read;
 
 import org.jebol.domain.value.*;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -1743,37 +1745,45 @@ public final class Transcoder {
      * <p>Nothing else is refused. An email is not a file and shares none of the
      * eight characters a file turns away, which is why this is a second function
      * rather than another call to the first.
+     *
+     * <p>The escapes are *bytes*. {@code Scan_Email} writes each one into a
+     * byte buffer beside the unescaped text and reads the whole buffer back
+     * as UTF-8 at the end, so {@code a@%C5%A1} is two bytes that spell one
+     * letter. Reading each escape as a character of its own gave
+     * {@code a@Å¡}, which is that letter's two halves each shown as though it
+     * were a letter.
      */
     private String emailBodyOf(String lexeme) {
-        StringBuilder text = new StringBuilder();
+        byte[] source = lexeme.getBytes(UTF_8);
+        byte[] octets = new byte[source.length];
+        int written = 0;
         boolean seenAnAtSign = false;
-        for (int at = 0; at < lexeme.length(); at++) {
-            char character = lexeme.charAt(at);
-            if (character == '@') {
+        for (int at = 0; at < source.length; at++) {
+            if (source[at] == '@') {
                 if (seenAnAtSign) {
                     throw failure(SyntaxFailure.INVALID_LEXEME, null);
                 }
                 seenAnAtSign = true;
             }
-            if (character == '%') {
-                if (at + 2 >= lexeme.length()) {
+            if (source[at] == '%') {
+                if (at + 2 >= source.length) {
                     throw failure(SyntaxFailure.INVALID_LEXEME, null);
                 }
-                int high = hexDigitValue(lexeme.charAt(at + 1));
-                int low = hexDigitValue(lexeme.charAt(at + 2));
+                int high = hexDigitValue((char) source[at + 1]);
+                int low = hexDigitValue((char) source[at + 2]);
                 if (high < 0 || low < 0) {
                     throw failure(SyntaxFailure.INVALID_LEXEME, null);
                 }
-                text.append((char) (high * 16 + low));
+                octets[written++] = (byte) (high * 16 + low);
                 at += 2;
                 continue;
             }
-            text.append(character);
+            octets[written++] = source[at];
         }
         if (!seenAnAtSign) {
             throw failure(SyntaxFailure.INVALID_LEXEME, null);
         }
-        return text.toString();
+        return new String(octets, 0, written, UTF_8);
     }
 
     /**

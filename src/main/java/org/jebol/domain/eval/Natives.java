@@ -18391,21 +18391,44 @@ public final class Natives {
                 .collect(Collectors.joining(" "));
     }
 
+    /**
+     * The base {@code system/options/binary-base} currently names, or sixteen.
+     *
+     * <p>{@code Get_System_Int(SYS_OPTIONS, OPTIONS_BINARY_BASE, 16)} takes a
+     * default for the same reason this does: a script is free to set the field
+     * to anything at all, and a binary still has to mold.
+     */
+    private static int binaryBaseNamedBy(Evaluator evaluator) {
+        return evaluator.systemContext().slotFor("system").value()
+                        instanceof ObjectValue system
+                && system.context().slotFor("options").value()
+                        instanceof ObjectValue options
+                && options.context().slotFor("binary-base").value()
+                        instanceof IntegerValue base
+                ? (int) base.magnitude()
+                : 16;
+    }
+
     private void defineOutput() {
         define("mold", List.of(Parameter.required("value", ANYTHING),
                         Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER))),
                 Set.of("all", "only", "flat", "part"),
                 (arguments, evaluator, context, refinements) -> {
-                    Function<Value, String> how =
+                    Function<Value, String> written =
                             refinements.contains("only")
                                     && arguments.getFirst() instanceof BlockValue named
                                     && named.datatype() == Datatype.BLOCK
                             ? value -> Molder.moldOnly((BlockValue) value)
-                            : refinements.contains("flat")
-                                    ? Molder::moldFlat
-                                    : refinements.contains("all")
-                                            ? Molder::moldAll
-                                            : Molder::mold;
+                            : refinements.contains("all")
+                                    ? Molder::moldAll
+                                    : Molder::mold;
+                    Function<Value, String> inTheSystemBase = value ->
+                            Molder.writingBinariesInBase(binaryBaseNamedBy(evaluator),
+                                    () -> written.apply(value));
+                    Function<Value, String> how = refinements.contains("flat")
+                            ? value -> Molder.flattened(
+                                    () -> inTheSystemBase.apply(value))
+                            : inTheSystemBase;
                     if (refinements.contains("part") && arguments.size() > 1
                             && arguments.get(1) instanceof IntegerValue limit) {
                         return StringValue.of(Molder.moldWithin(arguments.getFirst(),

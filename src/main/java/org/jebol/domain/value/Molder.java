@@ -1,6 +1,9 @@
 package org.jebol.domain.value;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
@@ -39,7 +42,20 @@ public final class Molder {
      * missing refinement.
      */
     public static String moldFlat(Value value) {
-        return writingOnOneLine(() -> mold(value).replaceAll("\\n\\s*", " ")
+        return flattened(() -> mold(value));
+    }
+
+    /**
+     * Any mold at all, written on one line.
+     *
+     * <p>MOLD/FLAT is a flag rather than a way of molding, so it combines
+     * with the others: {@code mold/flat/all} is the construct form on one
+     * line, and choosing between the two -- which is what a chain of
+     * conditionals picking one function did -- silently threw away whichever
+     * refinement lost.
+     */
+    public static String flattened(Supplier<String> written) {
+        return writingOnOneLine(() -> written.get().replaceAll("\\n\\s*", " ")
                 .replace("[ ", "[").replace(" ]", "]"));
     }
 
@@ -121,17 +137,29 @@ public final class Molder {
                 : Math.min(pixels, Math.max(0, limit - alreadyWritten));
     }
 
-    /** Digits cut to what the limit could use, so the wrap rule sees the truth. */
-    private static String withinTheLimit(String hex) {
-        int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
-        return limit == NO_LIMIT || hex.length() <= limit
-                ? hex
-                : hex.substring(0, limit);
-    }
-
     /** Source text that reads back as an equal value. */
     public static String mold(Value value) {
         return render(value, true);
+    }
+
+    /**
+     * Where a series stands, never past the end of what it stands in.
+     *
+     * <p>{@code // Reset index if it is over series tail: (a: [1 2] b: tail a
+     * clear a mold b)} -- the C's own comment, and its own example. Emptying
+     * a series leaves every other name for it holding a position that is no
+     * longer there, and molding that position would write a construct LOAD
+     * could not read: {@code #(path! [] 4)} says the fourth of nothing.
+     *
+     * <p>Blocks and paths only, because the reset is a line in
+     * {@code Mold_Block} and text goes nowhere near it. So the same emptying
+     * done to a string really does mold as {@code #(string! "" 9)}, and the
+     * two datatypes disagree in a real 3.22 exactly as they do here.
+     */
+    private static int standsWithin(SeriesValue series) {
+        return series instanceof BlockValue
+                ? Math.min(series.index(), series.storageLength() + 1)
+                : series.index();
     }
 
     /**
@@ -149,9 +177,12 @@ public final class Molder {
             if (value instanceof VectorValue vector) {
                 return writtenAsAVector(vector, 1, true, vector.index());
             }
-            if (value instanceof SeriesValue series && series.index() > 1) {
+            if (value instanceof ImageValue picture) {
+                return render(picture, true);
+            }
+            if (value instanceof SeriesValue series && standsWithin(series) > 1) {
                 return "#(" + value.datatype().literalSpelling() + " "
-                        + constructBodyOf(series) + " " + series.index() + ")";
+                        + constructBodyOf(series) + " " + standsWithin(series) + ")";
             }
             if (value instanceof StringValue tag && tag.datatype() == Datatype.TAG
                     && tag.storageLength() == 0) {
@@ -323,18 +354,18 @@ public final class Molder {
                             ? "#(typeset! [" + namesInTheTypeset(typeset) + "])"
                             : "make typeset! [" + namesInTheTypeset(typeset) + "]";
             case NativeValue native0 -> "#[native! " + native0.nativeName() + "]";
-            case FunctionValue function -> "#[function! " + function.arity() + "]";
+            case FunctionValue function -> renderFunction(function, forReading);
             case OperatorValue operator -> "#[op! " + operator.operatorName() + "]";
             case MapValue map -> renderMap(map, forReading);
             case BitsetValue bitset -> "#(bitset! "
                     + (bitset.isComplemented() ? "not " : "")
-                    + moldedHex(hexOf(bitset.octets())) + ")";
+                    + moldedBytes(bitset.octets()) + ")";
             case ObjectValue object -> renderObject(object, forReading);
             case PortValue port -> renderObject(
                     new ObjectValue(port.context()), forReading);
             case ModuleValue module -> renderObject(
                     new ObjectValue(module.context()), forReading);
-            case ErrorValue error -> "#[error! " + error.errorId() + "]";
+            case ErrorValue error -> renderError(error, forReading);
             case StructValue struct -> renderStruct(struct, forReading);
             case JavaObjectValue host -> "#[java-object! " + host.className() + "]";
         };
@@ -383,10 +414,23 @@ public final class Molder {
      */
     private static String renderDecimal(DecimalValue decimal) {
         double quantity = decimal.quantity();
-        if (decimal.datatype() == Datatype.PERCENT) {
-            return trimTrailingZero(renderDouble(quantity * 100.0)) + "%";
-        }
-        return renderDouble(quantity);
+        return decimal.datatype() == Datatype.PERCENT && hasDigits(quantity)
+                ? trimTrailingZero(renderDouble(quantity * 100.0)) + "%"
+                : renderDouble(quantity);
+    }
+
+    /**
+     * Whether a number is made of digits at all, which infinity and
+     * not-a-number are not.
+     *
+     * <p>{@code Emit_Decimal} writes the four characters of {@code #INF} or
+     * {@code #NaN} and then jumps past the end of the function, so the
+     * per-cent sign at the bottom of it is never reached. An infinite percent
+     * molds as {@code 1.#INF} with no sign after it -- a hundredth of
+     * infinity is still infinity, and there is nothing for the sign to mean.
+     */
+    private static boolean hasDigits(double quantity) {
+        return !Double.isNaN(quantity) && !Double.isInfinite(quantity);
     }
 
     /**
@@ -431,8 +475,21 @@ public final class Molder {
 
     private static final boolean KEEPS_ITS_POINT = false;
 
+    /**
+     * The digits MOLD/ALL prints a decimal to, which is every one it has.
+     *
+     * <p>{@code if (GET_MOPT(mold, MOPT_MOLD_ALL)) len = MAX_DIGITS} at the
+     * top of {@code Reset_Mold}. Seventeen is the count at which a double
+     * reads back as itself, so {@code mold/all 0.1} is
+     * {@code 0.10000000000000001} where {@code mold 0.1} is {@code 0.1}: the
+     * first is the number and the second is what a person meant by it.
+     */
+    private static final int EVERY_DIGIT_A_DOUBLE_HAS = 17;
+
     private static String renderDouble(double quantity) {
-        return renderDouble(quantity, SIGNIFICANT_DIGITS, KEEPS_ITS_POINT);
+        return renderDouble(quantity, WRITING_EVERYTHING_OUT.get()
+                ? EVERY_DIGIT_A_DOUBLE_HAS
+                : SIGNIFICANT_DIGITS, KEEPS_ITS_POINT);
     }
 
     private static String renderDouble(double quantity, int digits, boolean minimal) {
@@ -447,8 +504,8 @@ public final class Molder {
             return minimal ? zero : zero + ".0";
         }
 
-        java.math.BigDecimal rounded = new java.math.BigDecimal(quantity)
-                .round(new java.math.MathContext(digits))
+        BigDecimal rounded = new BigDecimal(quantity)
+                .round(new MathContext(digits))
                 .stripTrailingZeros();
         int exponent = rounded.precision() - rounded.scale() - 1;
 
@@ -459,9 +516,9 @@ public final class Molder {
 
     /** {@code 1.0e15}: a mantissa that always has a point, and a bare e. */
     private static String withExponent(
-            java.math.BigDecimal rounded, int exponent, boolean minimal) {
+            BigDecimal rounded, int exponent, boolean minimal) {
 
-        java.math.BigDecimal mantissa = rounded.movePointLeft(exponent).stripTrailingZeros();
+        BigDecimal mantissa = rounded.movePointLeft(exponent).stripTrailingZeros();
         return pointAsWanted(mantissa.toPlainString(), minimal) + "e" + exponent;
     }
 
@@ -486,12 +543,22 @@ public final class Molder {
                 + money.amount().abs().toPlainString();
     }
 
-    /** {@code #[]} when empty, and one pair per line otherwise. */
+    /**
+     * {@code #[]} when empty, and one pair per line otherwise.
+     *
+     * <p>A map is the one thing whose construct form is not the plain form
+     * with a datatype name added: {@code #[a: 1]} plainly and
+     * {@code #(map! [a: 1])} under MOLD/ALL, so the brackets change shape as
+     * well as gaining a name.
+     */
     private static String renderMap(MapValue map, boolean forReading) {
+        boolean asAConstruct = forReading && WRITING_EVERYTHING_OUT.get();
+        String opens = asAConstruct ? "#(map! [" : "#[";
+        String shuts = asAConstruct ? "])" : "]";
         if (map.pairCount() == 0) {
-            return "#[]";
+            return opens + shuts;
         }
-        StringBuilder rendered = new StringBuilder("#[\n");
+        StringBuilder rendered = new StringBuilder(opens).append('\n');
         List<Value> flat = map.flattened();
         for (int at = 0; at < flat.size(); at += 2) {
             rendered.append("    ")
@@ -500,7 +567,7 @@ public final class Molder {
                     .append(render(flat.get(at + 1), forReading))
                     .append('\n');
         }
-        return rendered.append(']').toString();
+        return rendered.append(shuts).toString();
     }
 
     /**
@@ -544,7 +611,9 @@ public final class Molder {
                     ? constructedString(string)
                     : text;
             case TAG -> "<" + text + ">";
-            case REF -> "@" + text;
+            case REF -> spellsARefTheLexerWouldReadBack(text)
+                    ? "@" + text
+                    : constructedString(string);
             default -> moldedText(text);
         };
     }
@@ -584,6 +653,48 @@ public final class Molder {
             }
         }
         return found < 0 || found == remaining.length() - 1;
+    }
+
+    /**
+     * The delimiters a ref may not carry, which are the lexer's own.
+     *
+     * <p>{@code IS_LEX_DELIMIT} in {@code Mold_Ref}. Each one ends a word
+     * where it stands, so a ref holding it would read back as a shorter ref
+     * followed by something else.
+     */
+    private static final String LEXER_DELIMITERS = "()[]{}\"/;";
+
+    /**
+     * The one character above the control range that a ref cannot hold.
+     *
+     * <p>{@code if (c == '@') goto mold_ref_all}, the very first test in
+     * {@code Mold_Ref}. A second at-sign would make the whole thing an email
+     * rather than a ref, so {@code @a@b} does not read back and
+     * {@code #(ref! "a@b")} is what gets written.
+     */
+    private static final char OPENS_AN_EMAIL_INSTEAD = '@';
+
+    /**
+     * Whether a ref can be written with its at-sign and nothing else.
+     *
+     * <p>{@code Mold_Ref} walks the text and keeps only letters and digits.
+     * Anything below decimal twenty-one, any space and any delimiter sends
+     * the whole thing to the construct form, and so does a second at-sign.
+     *
+     * <p>Twenty-one is the C's own number and not a rounding of the control
+     * range: {@code if (c < 21 || ...)}, which lets the four characters from
+     * twenty-one to twenty-four through where the word class would not.
+     * Nothing spells a ref with one, and JEBOL writes the same boundary
+     * rather than a tidier one that would disagree.
+     */
+    private static boolean spellsARefTheLexerWouldReadBack(String text) {
+        return text.codePoints().noneMatch(codepoint ->
+                codepoint == OPENS_AN_EMAIL_INSTEAD
+                        || !Character.isLetterOrDigit(codepoint)
+                                && (codepoint < 21
+                                        || Character.isWhitespace(codepoint)
+                                        || codepoint < 0x80 && LEXER_DELIMITERS
+                                                .indexOf(codepoint) >= 0));
     }
 
     private static String constructedString(StringValue string) {
@@ -729,10 +840,11 @@ public final class Molder {
     private static String renderImage(ImageValue image, boolean forReading) {
         String size = image.storage().wide() + "x" + image.storage().high();
         boolean asAConstruct = WRITING_EVERYTHING_OUT.get();
+        ImageValue shown = asAConstruct ? image.head() : image;
         String opens = asAConstruct ? "#(image! " : "make image! [";
-        String shuts = asAConstruct ? ")" : "]";
+        String shuts = asAConstruct ? positionOf(image) + ")" : "]";
         int pixels = asManyPixelsAsTheLimitCouldUse(
-                image.lengthFromHere(), opens.length() + size.length() + " #{".length());
+                shown.lengthFromHere(), opens.length() + size.length() + " #{".length());
         if (pixels == 0) {
             return opens + size + " #{}" + shuts;
         }
@@ -745,59 +857,219 @@ public final class Molder {
                 colours.append("\n");
                 alphas.append("\n");
             }
-            int[] channels = image.pixelAt(pixel);
+            int[] channels = shown.pixelAt(pixel);
             colours.append("%02X%02X%02X".formatted(channels[0], channels[1], channels[2]));
             alphas.append("%02X".formatted(channels[3]));
         }
         String closing = brokenIntoLines ? "\n}" : "}";
         return opens + size + " #{" + colours
-                + (image.storage().hasAlpha() ? closing + " #{" + alphas : "")
+                + (shown.storage().hasAlpha() ? closing + " #{" + alphas : "")
                 + closing + shuts;
     }
 
-    private static String renderBinary(BinaryValue binary, boolean forReading) {
-        StringBuilder hex = new StringBuilder();
-        for (int at = binary.index(); at <= binary.storageLength(); at++) {
-            hex.append("%02X".formatted(binary.storage().at(at)));
-        }
-        return forReading ? moldedHex(hex.toString()) : hex.toString();
+    /**
+     * Where a series stands, written after its contents by MOLD/ALL.
+     *
+     * <p>{@code Post_Mold} appends the index only when the series is not at
+     * its head, so {@code #(image! 8x1 #\{...\})} and
+     * {@code #(image! 8x1 #\{...\} 2)} are the same picture read from
+     * different places. The pixels are written from the head either way --
+     * {@code VAL_INDEX(&val) = 0; // mold all of it} -- because a construct
+     * that dropped the pixels behind the position could not put the position
+     * back.
+     */
+    private static String positionOf(SeriesValue series) {
+        return series.index() > 1 ? " " + series.index() : "";
     }
 
-    /** How many bytes of a binary MOLD writes before breaking the line. */
-    private static final int BYTES_TO_A_LINE = 32;
+    private static String renderBinary(BinaryValue binary, boolean forReading) {
+        byte[] octets = new byte[binary.lengthFromHere()];
+        for (int offset = 0; offset < octets.length; offset++) {
+            octets[offset] = (byte) binary.storage().at(binary.index() + offset);
+        }
+        return forReading ? moldedBytes(octets) : hexOf(octets);
+    }
 
     /**
-     * Hex in braces, broken into lines once there is enough of it.
+     * How many bytes a limit could still reach.
      *
-     * <p>{@code Mold_Binary} writes a newline after {@code #\{} and then every
-     * thirty-two bytes, so a binary long enough to matter arrives as a block
-     * of even lines instead of one that runs off the screen. Up to
-     * thirty-two bytes it stays on one line and there is no break at all.
+     * <p>{@code CHECK_MOLD_LIMIT} cuts the byte count against the characters
+     * left, which is generous -- a byte costs two characters in hex and eight
+     * in binary -- but it is the cut the C makes, and it is what stops
+     * {@code mold/part} of a thirty-three-megabyte image encoding all of it
+     * to throw away everything past the eighth character.
+     */
+    private static int asManyBytesAsTheLimitCouldUse(int bytes) {
+        int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
+        return limit == NO_LIMIT ? bytes : Math.min(bytes, Math.max(0, limit));
+    }
+
+    /**
+     * Which notation a binary molds in: sixteen, sixty-four or two.
      *
-     * <p>The closing brace follows the last line's bytes, so a length that is
-     * an exact multiple of thirty-two leaves it alone on the line after --
-     * the newline belongs to the full line rather than being written before
-     * the brace.
+     * <p>{@code Mold_Binary} reads {@code system/options/binary-base} at the
+     * moment it writes, so the answer is a property of the interpreter's state
+     * and not of the call. FORM does not read it -- {@code form #\{FFAA\}} is
+     * {@code FFAA} whatever the option says -- because forming a binary is
+     * asking for its digits rather than for source that reads back.
+     */
+    private static final ThreadLocal<Integer> BINARY_BASE =
+            ThreadLocal.withInitial(() -> 16);
+
+    /** Molds binaries in the base the system object currently names. */
+    public static String writingBinariesInBase(int base, Supplier<String> written) {
+        int was = BINARY_BASE.get();
+        BINARY_BASE.set(base);
+        try {
+            return written.get();
+        } finally {
+            BINARY_BASE.set(was);
+        }
+    }
+
+    /**
+     * A binary in braces, in the base the system object names, broken into
+     * lines once there is enough of it.
+     *
+     * <p>Each base has its own run length and its own rule for when the run
+     * is long enough to be worth breaking at all, and the three do not agree:
+     * base sixteen breaks at thirty-two bytes, base two at eight, base
+     * sixty-four at forty-eight. Each writes a newline after {@code #\{} as
+     * well, so a binary long enough to matter arrives as a block of even
+     * lines instead of one that runs off the screen.
      *
      * <p>MOLD only. FORM writes the digits bare and unbroken, because FIND
      * forms its needle before looking for it and a newline in the middle
      * would stop it matching.
      */
-    private static String moldedHex(String whole) {
-        String hex = withinTheLimit(whole);
-        int digitsToALine = BYTES_TO_A_LINE * 2;
-        if (hex.length() <= digitsToALine || WRITING_ON_ONE_LINE.get()) {
-            return "#{" + hex + "}";
-        }
-        StringBuilder written = new StringBuilder("#{\n");
-        for (int at = 0; at < hex.length(); at += digitsToALine) {
-            int stops = Math.min(at + digitsToALine, hex.length());
-            written.append(hex, at, stops);
-            if (stops - at == digitsToALine) {
+    private static String moldedBytes(byte[] whole) {
+        byte[] octets = Arrays.copyOf(whole,
+                asManyBytesAsTheLimitCouldUse(whole.length));
+        boolean mayBreakLines = !WRITING_ON_ONE_LINE.get();
+        return switch (BINARY_BASE.get()) {
+            case 2 -> "2#{" + base2Digits(octets, mayBreakLines) + "}";
+            case 64 -> "64#{" + base64Digits(octets, mayBreakLines) + "}";
+            default -> "#{" + base16Digits(octets, mayBreakLines) + "}";
+        };
+    }
+
+    /** How many bytes of a binary each base writes before breaking the line. */
+    private static final int BYTES_TO_A_HEX_LINE = 32;
+
+    private static final int BYTES_TO_A_BINARY_LINE = 8;
+
+    private static final int BYTES_TO_A_BASE_SIXTY_FOUR_LINE = 48;
+
+    /**
+     * Base sixty-four writes on one line up to sixty-four bytes, though its
+     * runs are forty-eight bytes long.
+     *
+     * <p>The two numbers come from different places in {@code Mold_Binary} --
+     * one decides whether to break at all, the other how often -- and a
+     * binary of between forty-nine and sixty-four bytes is where they
+     * disagree.
+     */
+    private static final int BYTES_TO_A_BASE_SIXTY_FOUR_LINE_BREAK = 64;
+
+    /**
+     * The digits with a newline before the first and after each full run.
+     *
+     * <p>The closing brace follows the last run's digits, so a length that is
+     * an exact multiple of the run leaves it alone on the line after -- the
+     * newline belongs to the full run rather than being written before the
+     * brace.
+     */
+    private static String brokenIntoRuns(String digits, int digitsToARun) {
+        StringBuilder written = new StringBuilder("\n");
+        for (int at = 0; at < digits.length(); at += digitsToARun) {
+            int stops = Math.min(at + digitsToARun, digits.length());
+            written.append(digits, at, stops);
+            if (stops - at == digitsToARun) {
                 written.append("\n");
             }
         }
-        return written.append("}").toString();
+        return written.toString();
+    }
+
+    private static String base16Digits(byte[] octets, boolean mayBreakLines) {
+        String digits = hexOf(octets);
+        return mayBreakLines && octets.length > BYTES_TO_A_HEX_LINE
+                ? brokenIntoRuns(digits, BYTES_TO_A_HEX_LINE * 2)
+                : digits;
+    }
+
+    /**
+     * Eight ones and noughts a byte, and the last of them dropped when there
+     * are exactly eight bytes.
+     *
+     * <p>{@code if (len == 8) --p} in {@code Encode_Base2} was written to
+     * remove the newline that a run of eight would have left at the end. At
+     * exactly eight bytes there is no newline to remove, because the break is
+     * only written when the length is more than eight, so what it removes is
+     * the last digit. A real 3.22 does it, {@code mold #\{FFAAFFAAFFAAFFAA\}}
+     * comes back a bit short, and JEBOL does it too rather than disagree.
+     */
+    private static String base2Digits(byte[] octets, boolean mayBreakLines) {
+        StringBuilder digits = new StringBuilder();
+        for (byte octet : octets) {
+            for (int bit = 7; bit >= 0; bit--) {
+                digits.append(octet >> bit & 1);
+            }
+        }
+        if (octets.length == BYTES_TO_A_BINARY_LINE) {
+            digits.setLength(digits.length() - 1);
+        }
+        return mayBreakLines && octets.length > BYTES_TO_A_BINARY_LINE
+                ? brokenIntoRuns(digits.toString(), BYTES_TO_A_BINARY_LINE * 8)
+                : digits.toString();
+    }
+
+    private static final String BASE_SIXTY_FOUR_ALPHABET =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    /**
+     * The one base whose breaks are written as it goes rather than counted
+     * over the finished digits.
+     *
+     * <p>{@code Encode_Base64} breaks on a byte boundary inside the loop over
+     * whole groups, and the two or three bytes left over are written after
+     * the loop has finished breaking. A run that ends exactly where the
+     * leftovers begin therefore carries no newline, which counting
+     * sixty-four characters at a time over the finished digits would have
+     * put in.
+     */
+    private static String base64Digits(byte[] octets, boolean mayBreakLines) {
+        boolean brokenIntoLines =
+                mayBreakLines && octets.length > BYTES_TO_A_BASE_SIXTY_FOUR_LINE_BREAK;
+        int wholeGroups = octets.length / 3;
+        StringBuilder digits = new StringBuilder(
+                brokenIntoLines && 4 * (wholeGroups - 1) > 64 ? "\n" : "");
+        for (int at = 0; at < wholeGroups * 3; at += 3) {
+            appendSextets(digits, octets, at, 3);
+            if (brokenIntoLines
+                    && (at + 3) % BYTES_TO_A_BASE_SIXTY_FOUR_LINE == 0) {
+                digits.append("\n");
+            }
+        }
+        int leftOver = octets.length % 3;
+        if (leftOver != 0) {
+            appendSextets(digits, octets, wholeGroups * 3, leftOver);
+        }
+        return digits.toString();
+    }
+
+    private static void appendSextets(StringBuilder digits, byte[] octets,
+            int at, int bytes) {
+        int held = 0;
+        for (int offset = 0; offset < 3; offset++) {
+            held <<= 8;
+            held |= offset < bytes ? octets[at + offset] & 0xFF : 0;
+        }
+        for (int sextet = 0; sextet < 4; sextet++) {
+            digits.append(sextet <= bytes
+                    ? BASE_SIXTY_FOUR_ALPHABET.charAt(held >> 18 - sextet * 6 & 0x3F)
+                    : '=');
+        }
     }
 
     /** How deep the mold is inside line-broken blocks, for the indent. */
@@ -975,10 +1247,14 @@ public final class Molder {
      * {@code make set-path! 4} is a path with room for four things and molds
      * as the empty string, where writing the colon alone would read back as
      * something else entirely.
+     *
+     * <p>Under MOLD/ALL that line does not fire, and an empty path falls to
+     * the construct instead: {@code #(path! [])}, which is the only writing
+     * of it LOAD reads back. Nothing is not a path.
      */
     private static String joinPath(BlockValue path, String prefix, String suffix) {
         List<Value> segments = path.remaining();
-        if (segments.isEmpty()) {
+        if (segments.isEmpty() && !WRITING_EVERYTHING_OUT.get()) {
             return "";
         }
         if (wouldNotReadBackAsAPath(path, segments)) {
@@ -1002,9 +1278,9 @@ public final class Molder {
      * path standing at its second of two is not a path of one.
      */
     private static boolean wouldNotReadBackAsAPath(BlockValue path, List<Value> segments) {
-        return !segments.isEmpty()
-                && (path.storageLength() <= 1
-                        || segments.getFirst().datatype() != Datatype.WORD);
+        return segments.isEmpty()
+                || path.storageLength() <= 1
+                || segments.getFirst().datatype() != Datatype.WORD;
     }
 
     /**
@@ -1016,10 +1292,16 @@ public final class Molder {
      * molded, which is not true of every datatype here.
      */
     private static String renderEvent(EventValue event, boolean forReading) {
-        StringBuilder built = new StringBuilder("make event! [");
+        boolean onSeparateLines = !WRITING_ON_ONE_LINE.get();
+        StringBuilder built =
+                new StringBuilder(openedFor(Datatype.EVENT)).append('[');
         List<Value> spec = event.moldingSpec();
         for (int at = 0; at < spec.size(); at++) {
-            if (at > 0) {
+            boolean opensAField = spec.get(at) instanceof WordValue name
+                    && name.datatype() == Datatype.SET_WORD;
+            if (onSeparateLines && opensAField) {
+                built.append('\n').append(ONE_INDENT);
+            } else if (at > 0) {
                 built.append(' ');
             }
             Value shown = spec.get(at);
@@ -1027,19 +1309,49 @@ public final class Molder {
                     && word.datatype() == Datatype.WORD;
             built.append(quoted ? "'" : "").append(render(shown, forReading));
         }
-        return built.append(']').toString();
+        if (onSeparateLines) {
+            built.append('\n');
+        }
+        return built.append(']').append(closedAfterATypeName()).toString();
+    }
+
+    /**
+     * A function as the spec and body that would build it again.
+     *
+     * <p>{@code Mold_Function} writes both blocks inside one pair of
+     * brackets, so {@code func [a][print a]} molds as
+     * {@code make function! [[a][print a]]} and reads back as the same
+     * function. FORM gives the same thing: there is no shorter way to say
+     * what a function is, so there is nothing for the two to differ about.
+     *
+     * <p>A closure names itself, because the two are separate datatypes to
+     * the reader even though JEBOL holds them in one record.
+     *
+     * <p>Both blocks are *molded* whichever way the function is being
+     * written, because {@code Mold_Block_Series} always writes its brackets.
+     * Forming them instead dropped the brackets and left
+     * {@code make function! [a print a]}, which is a spec of three words and
+     * no body at all.
+     */
+    private static String renderFunction(FunctionValue function, boolean forReading) {
+        Datatype names = function.closure() ? Datatype.CLOSURE : Datatype.FUNCTION;
+        return openedFor(names) + "["
+                + mold(function.spec().head())
+                + mold(function.body().head())
+                + "]" + closedAfterATypeName();
     }
 
     /**
      * A gob as the spec block that would remake it.
      *
-     * <p>`Pre_Mold`, `Gob_To_Block`, `End_Mold` -- so a gob molds as
-     * `make gob! [offset: 0x0 size: 100x100]` and reads back as a gob. Which
-     * fields appear is not "the ones that were set": offset and size always, the
-     * alpha only when the gob is see-through, and the one content field it has.
+     * <p>{@code Pre_Mold}, {@code Gob_To_Block}, {@code End_Mold} -- so a gob
+     * molds as {@code make gob! [offset: 0x0 size: 100x100]} and reads back
+     * as a gob. Which fields appear is not "the ones that were set": offset
+     * and size always, the alpha only when the gob is see-through, and the
+     * one content field it has.
      */
     private static String renderGob(GobValue gob, boolean forReading) {
-        StringBuilder built = new StringBuilder("make gob! [");
+        StringBuilder built = new StringBuilder(openedFor(Datatype.GOB)).append('[');
         List<Value> spec = gob.storage().moldingSpec();
         for (int at = 0; at < spec.size(); at++) {
             if (at > 0) {
@@ -1047,7 +1359,7 @@ public final class Molder {
             }
             built.append(render(spec.get(at), forReading));
         }
-        return built.append(']').toString();
+        return built.append(']').append(closedAfterATypeName()).toString();
     }
 
     /**
@@ -1072,6 +1384,7 @@ public final class Molder {
      */
     private static String renderField(Value value, boolean forReading) {
         return value instanceof WordValue word && word.datatype() == Datatype.WORD
+                && !WRITING_EVERYTHING_OUT.get()
                 ? "'" + render(value, forReading)
                 : render(value, forReading);
     }
@@ -1087,15 +1400,56 @@ public final class Molder {
     private static String renderObject(ObjectValue object, boolean forReading) {
         Set<Context> enclosing = BEING_RENDERED.get();
         if (!enclosing.add(object.context())) {
-            return "make object! [...]";
+            return openedFor(Datatype.OBJECT) + "[...]";
         }
         try {
             return forReading
-                    ? "make object! [\n" + moldedFields(object) + "]"
+                    ? openedFor(Datatype.OBJECT) + "[\n" + moldedFields(object)
+                            + "]" + closedAfterATypeName()
                     : formedFields(object);
         } finally {
             enclosing.remove(object.context());
         }
+    }
+
+    /**
+     * The datatype name a construct or a MAKE puts in front of its body.
+     *
+     * <p>{@code Pre_Mold} writes {@code #(type! } under MOLD/ALL and
+     * {@code make type! } without it, and {@code End_Mold} closes the bracket
+     * only in the first case. The pair is what makes {@code mold/all} of an
+     * object something LOAD reads back as an object, where the MAKE form
+     * needs evaluating.
+     */
+    private static String openedFor(Datatype datatype) {
+        return (WRITING_EVERYTHING_OUT.get() ? "#(" : "make ")
+                + datatype.literalSpelling() + " ";
+    }
+
+    private static String closedAfterATypeName() {
+        return WRITING_EVERYTHING_OUT.get() ? ")" : "";
+    }
+
+    /**
+     * An error molded, which is an error written out as the object it is.
+     *
+     * <p>{@code Mold_Error} hands straight over to {@code Mold_Object} when
+     * it is molding rather than forming, so {@code mold} of an error is its
+     * eight fields and not the one-line summary a person reads. The summary
+     * is what FORM gives, and the two are different jobs: one is for reading
+     * back and one is for reading.
+     */
+    private static String renderError(ErrorValue error, boolean forReading) {
+        if (!forReading) {
+            return error.toString();
+        }
+        String fields = ErrorValue.FIELDS.stream()
+                .map(name -> "    " + name + ": "
+                        + renderField(error.field(name).orElseGet(NoneValue::none), true)
+                        + "\n")
+                .collect(Collectors.joining());
+        return openedFor(Datatype.ERROR) + "[\n" + fields + "]"
+                + closedAfterATypeName();
     }
 
     /**
