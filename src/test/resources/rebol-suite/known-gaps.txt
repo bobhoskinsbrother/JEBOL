@@ -230,11 +230,8 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #231
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #232
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #43
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #45
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #46
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #51
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #53
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #54
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #56
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #62
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #63
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #64

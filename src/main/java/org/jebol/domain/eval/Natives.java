@@ -3416,8 +3416,31 @@ public final class Natives {
 
         declaredFieldsIn(body).forEach(fields::define);
 
-        evaluator.evaluateOrRaise(Binder.bind(body, fields), fields);
+        evaluator.evaluateOrRaise(
+                Binder.bindOnly(body, fields, itsOwnFieldNames(fields)), fields);
         return built;
+    }
+
+    /**
+     * The words an object's body is bound to, which are its own and no others.
+     *
+     * <p>{@code Do_Bind_Block(obj, arg)} is {@code Bind_Block(frame, block,
+     * BIND_DEEP)}, and without {@code BIND_ALL} that means "only bind words
+     * found in the frame". The frame is the object's own word list. Every
+     * other word in the spec keeps whatever binding it arrived with.
+     *
+     * <p>Binding the lot instead reached up the enclosing chain, and that
+     * chain runs through call frames. A codec whose body said
+     * {@code object compose/only [...]} had its OBJECT rebound to the
+     * {@code /with object} parameter of the FUNCTION that built it -- a slot
+     * holding none. So OBJECT was not called at all, the composed block fell
+     * through as the answer, and every WAV, PNG and JPEG the suite loads came
+     * back a block instead of an object.
+     */
+    private static Set<String> itsOwnFieldNames(Context fields) {
+        return fields.slots().stream()
+                .map(ContextSlot::canonical)
+                .collect(Collectors.toSet());
     }
 
     /**
