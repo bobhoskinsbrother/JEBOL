@@ -8,16 +8,9 @@ bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #164
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU64 #165
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU64 #166
 bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #210
-bincode-test.r3 / BinCode basic read/write functions / BinCode - OCTAL-BYTES (read) #213
 bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIPBITS #176
-bincode-test.r3 / BinCode basic read/write functions / BinCode - STRING-BYTES (read) #212
 bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #167
 bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #168
-bincode-test.r3 / BinCode basic read/write functions / BinCode - match binary! #218
-bincode-test.r3 / BinCode basic read/write functions / BinCode - overwrite protected values #138
-bincode-test.r3 / BinCode other issues / Invalid read spec #243
-bincode-test.r3 / BinCode other issues / Invalid read spec #244
-bincode-test.r3 / BinCode other issues / Missing additional read value #236
 bitset-test.r3 / modify / issue-1355 #139
 bitset-test.r3 / modify / issue-1355 #140
 chacha20-test.r3 / (no group) / (no test) #1
@@ -238,21 +231,10 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #232
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #43
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #45
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #46
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #47
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #48
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #49
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #50
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #51
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #52
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #53
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #54
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #55
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #56
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #57
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #58
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #59
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #60
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #61
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #62
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #63
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #64

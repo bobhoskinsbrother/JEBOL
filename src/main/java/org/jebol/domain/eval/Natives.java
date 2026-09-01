@@ -11462,9 +11462,36 @@ public final class Natives {
             Value asked = dialectCodeIn(arguments, refinements);
             return readThroughTheDialect(held,
                     eachValueLookedUp(asked, evaluator, context),
-                    theCountGivenWith(arguments, refinements));
+                    theCountGivenWith(arguments, refinements),
+                    argumentFor("into", DIALECT_OPTIONAL_ARGUMENTS,
+                            arguments, refinements));
         }
         return held;
+    }
+
+    /**
+     * Where /INTO puts what a read produced, and what the call answers.
+     *
+     * <p>{@code Insert_Series(blk, VAL_INDEX(val_into), temp, 1);
+     * VAL_INDEX(val_into)++;} once per value, and then
+     * {@code if (ref_into) *ret = *val_into;}. So the values land at the
+     * position given, in order, and the answer is the caller's block standing
+     * after them rather than the values themselves.
+     *
+     * <p>That is what makes {@code binary/read/into bin [BYTES :size] tail
+     * data} the way a decoder appends: no intermediate block, and the next
+     * call carries on where this one left off.
+     */
+    private static Value laidInto(Value target, List<Value> read) {
+        if (!(target instanceof BlockValue into)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(target));
+        }
+        int at = into.index();
+        for (Value value : read) {
+            into.storage().insertAt(at, value);
+            at++;
+        }
+        return into.atIndex(at);
     }
 
     private static final List<String> DIALECT_OPTIONAL_ARGUMENTS =
@@ -11634,6 +11661,31 @@ public final class Natives {
     }
 
     /**
+     * A number where a code was expected, which is a count of bytes.
+     *
+     * <p>{@code if (IS_INTEGER(val_read)) { ... return R_RET; }} is the first
+     * thing {@code Do_Bincode}'s read does, before the dialect loop it never
+     * enters. So {@code binary/read b 2} is two bytes and {@code binary/read
+     * b [2]} is a bad spec, which reads as a contradiction until you see that
+     * the number never reaches the dialect at all.
+     *
+     * <p>/INTO is refused rather than ignored: {@code Trap0(RE_FEATURE_NA)},
+     * because there is no list of values for it to insert.
+     */
+    private static Value theseManyBytesRead(ObjectValue held, BinaryValue reading,
+            Bincode.Cursor cursor, IntegerValue howMany, Value into) {
+
+        if (into != null && !(into instanceof NoneValue)) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA,
+                    "reading a count of bytes into a block");
+        }
+        List<Value> read = Bincode.read(cursor,
+                List.of(WordValue.of("bytes"), howMany), Natives::nameTheValueRead);
+        held.context().set("buffer", reading.atIndex(cursor.at() + 1));
+        return read.getFirst();
+    }
+
+    /**
      * Reads through the dialect, answering the shape the asking had.
      *
      * <p>A block of codes answers a block; a single word answers that one
@@ -11648,11 +11700,14 @@ public final class Natives {
      * the next call carries on from there.
      */
     private static Value readThroughTheDialect(
-            ObjectValue held, Value asked, Value count) {
+            ObjectValue held, Value asked, Value count, Value into) {
         BinaryValue reading = cursorNamed(held, "buffer");
         Bincode.Cursor cursor = new Bincode.Cursor(
                 octetsOfTheBuffer(reading.head()), reading.index() - 1,
                 bitsAlreadyTakenIn(held));
+        if (asked instanceof IntegerValue howMany) {
+            return theseManyBytesRead(held, reading, cursor, howMany, into);
+        }
         List<Value> codes = new ArrayList<>(codesWrittenIn(asked));
         if (!(count instanceof NoneValue)) {
             codes.add(count);
@@ -11662,10 +11717,12 @@ public final class Natives {
         held.context().set("r-mask", IntegerValue.of(cursor.bitsTaken()));
         if (cursor.cropped() > 0) {
             shortenedFromTheFront(held, cursor);
-            return shapedLikeTheAsking(asked, read);
+        } else {
+            held.context().set("buffer", reading.atIndex(cursor.at() + 1));
         }
-        held.context().set("buffer", reading.atIndex(cursor.at() + 1));
-        return shapedLikeTheAsking(asked, read);
+        return into == null || into instanceof NoneValue
+                ? shapedLikeTheAsking(asked, read)
+                : laidInto(into, read);
     }
 
     /**

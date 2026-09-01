@@ -14,6 +14,7 @@ import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Molder;
+import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.TupleValue;
@@ -119,8 +120,9 @@ final class Bincode {
     private static final List<String> POSITIONS =
             List.of("at", "atz", "index", "indexz", "skip", "length", "length?");
 
-    private static final List<String> DATA =
-            List.of("bytes", "pad", "align", "random-bytes", "crop");
+    private static final List<String> DATA = List.of(
+            "bytes", "octal-bytes", "string-bytes",
+            "pad", "align", "random-bytes", "crop");
 
     /**
      * The codes that count in bits rather than bytes.
@@ -204,6 +206,17 @@ final class Bincode {
          */
         private int cropped;
 
+        /**
+         * The code being read, so a read past the end can name it.
+         *
+         * <p>{@code ASSERT_READ_SIZE(value, cp, ep, n)} takes the code as its
+         * first argument and hands it to the error, so a read that runs out
+         * says {@code out-of-range UI8} rather than naming the byte it
+         * stopped at. Rebol's own tests compare {@code e/arg1} against the
+         * word.
+         */
+        private Value reading = NoneValue.none();
+
         Cursor(List<Integer> octets, int at) {
             this(octets, at, 0);
         }
@@ -248,13 +261,13 @@ final class Bincode {
             if (widthOf(code) > 0) {
                 step++;
                 writeWholeNumber(cursor, code,
-                        wholeNumberOf(itemAt(dialect, step, code)));
+                        wholeNumberWritten(itemAt(dialect, step, code)));
                 continue;
             }
             if (floatWidthOf(code) > 0) {
                 step++;
                 writeFloat(cursor, code,
-                        anyNumberOf(itemAt(dialect, step, code)));
+                        anyNumberWritten(itemAt(dialect, step, code)));
                 continue;
             }
             step = writeOtherThanANumber(cursor, dialect, step, code,
@@ -295,14 +308,14 @@ final class Bincode {
             return momentWritten(cursor, dialect, step, code, secondsSinceTheEpoch);
         }
         switch (baseOf(code)) {
-            case "at" -> moveTo(cursor, wholeNumberOf(itemAt(dialect, ++step, code)) - 1);
-            case "atz" -> moveTo(cursor, wholeNumberOf(itemAt(dialect, ++step, code)));
+            case "at" -> moveTo(cursor, wholeNumberWritten(itemAt(dialect, ++step, code)) - 1);
+            case "atz" -> moveTo(cursor, wholeNumberWritten(itemAt(dialect, ++step, code)));
             case "bytes" -> writeBytes(cursor, itemAt(dialect, ++step, code));
             case "pad" -> padTo(cursor,
-                    alignedUp(cursor.at, wholeNumberOf(itemAt(dialect, ++step, code))));
+                    alignedUp(cursor.at, wholeNumberWritten(itemAt(dialect, ++step, code))));
             case "random-bytes" -> writeRandom(cursor,
-                    wholeNumberOf(itemAt(dialect, ++step, code)));
-            default -> throw refuse(code);
+                    wholeNumberWritten(itemAt(dialect, ++step, code)));
+            default -> throw refuse(dialect.get(step));
         }
         return step;
     }
@@ -322,15 +335,12 @@ final class Bincode {
                 read.willName(naming);
                 continue;
             }
-            if (dialect.get(step) instanceof IntegerValue howMany) {
-                read.add(bytesCounted(cursor, (int) howMany.magnitude()));
-                continue;
-            }
             if (dialect.get(step) instanceof BinaryValue wanted) {
                 read.add(LogicValue.of(matched(cursor, wanted)));
                 continue;
             }
-            String code = codeAt(dialect, step);
+            String code = codeReadAt(dialect, step);
+            cursor.reading = dialect.get(step);
             if (widthOf(code) > 0) {
                 read.add(IntegerValue.of(readWholeNumber(cursor, code)));
                 continue;
@@ -396,23 +406,23 @@ final class Bincode {
         Value named = dialect.get(step);
         switch (baseOf(code)) {
             case "at" -> moveTo(cursor,
-                    wholeNumberOf(valueReadAfter(dialect, ++step, named)) - 1);
+                    wholeNumberReadAfter(dialect, ++step, named) - 1);
             case "atz" -> moveTo(cursor,
-                    wholeNumberOf(valueReadAfter(dialect, ++step, named)));
+                    wholeNumberReadAfter(dialect, ++step, named));
             case "skip" -> moveTo(cursor,
-                    cursor.at + wholeNumberOf(valueReadAfter(dialect, ++step, named)));
+                    cursor.at + wholeNumberReadAfter(dialect, ++step, named));
             case "index" -> read.add(IntegerValue.of(cursor.at + 1));
             case "indexz" -> read.add(IntegerValue.of(cursor.at));
             case "length", "length?" -> read.add(
                     IntegerValue.of(cursor.octets.size() - (long) cursor.at));
             case "pad" -> moveTo(cursor, alignedUp(cursor.at,
-                    wholeNumberOf(valueReadAfter(dialect, ++step, named))));
+                    wholeNumberReadAfter(dialect, ++step, named)));
             case "ub" -> read.add(IntegerValue.of(bitsRead(cursor,
-                    (int) wholeNumberOf(valueReadAfter(dialect, ++step, named)))));
+                    (int) wholeNumberReadAfter(dialect, ++step, named))));
             case "sb" -> read.add(IntegerValue.of(signedBitsRead(cursor,
-                    (int) wholeNumberOf(valueReadAfter(dialect, ++step, named)))));
+                    (int) wholeNumberReadAfter(dialect, ++step, named))));
             case "fb" -> read.add(DecimalValue.of(signedBitsRead(cursor,
-                    (int) wholeNumberOf(valueReadAfter(dialect, ++step, named)))
+                    (int) wholeNumberReadAfter(dialect, ++step, named))
                     / A_WHOLE_FIXED_POINT_UNIT));
             case "bit" -> read.add(LogicValue.of(nextBit(cursor) == 1));
             case "not-bit" -> read.add(LogicValue.of(nextBit(cursor) == 0));
@@ -431,10 +441,71 @@ final class Bincode {
             case "bitset8" -> read.add(bitsetRead(cursor, 1));
             case "bitset16" -> read.add(bitsetRead(cursor, 2));
             case "bitset32" -> read.add(bitsetRead(cursor, 4));
-            case "bytes" -> read.add(bytesToTheEnd(cursor));
+            case "bytes", "octal-bytes", "string-bytes" -> {
+                boolean aCountFollows = step + 1 < dialect.size();
+                read.add(runOfBytesRead(cursor, baseOf(code), aCountFollows
+                        ? countOfBytesAt(dialect, step + 1)
+                        : cursor.octets.size() - cursor.at));
+                if (aCountFollows) {
+                    step++;
+                }
+            }
             default -> throw refuse(code);
         }
         return step;
+    }
+
+    /**
+     * How many bytes a BYTES code was asked for.
+     *
+     * <p>{@code next = ++value; if (IS_END(next)) { n = tail - index;
+     * value--; } else { if (!IS_INTEGER(next)) Trap1(RE_INVALID_SPEC); n =
+     * VAL_INT32(next); \}}. The count is optional and sits after the code,
+     * and anything there that is not a number is a bad spec rather than the
+     * next code.
+     *
+     * <p>Reading BYTES as never taking a count is what made {@code BYTES 2}
+     * take the whole buffer and then try to read the two as a code of its
+     * own. The out-of-range that followed stopped the block it stood in, and
+     * that block was the rest of codecs-test.r3 -- 187 assertions behind one
+     * misread argument.
+     */
+    private static int countOfBytesAt(List<Value> dialect, int step) {
+        if (!(dialect.get(step) instanceof IntegerValue howMany)) {
+            throw Raised.of(EvaluationFailure.INVALID_SPEC,
+                    Molder.mold(dialect.get(step)) + " is not a count of bytes");
+        }
+        return (int) howMany.magnitude();
+    }
+
+    /**
+     * The three things a run of bytes can be read as.
+     *
+     * <p>All three take the same bytes and differ in what they make of them.
+     * A binary is the bytes; a string is the bytes up to the first nought,
+     * which is how a fixed-width field in a C struct carries a shorter name;
+     * an octal number is those digits read in base eight, which is how a tar
+     * header carries a file size.
+     */
+    private static Value runOfBytesRead(Cursor cursor, String code, int wanted) {
+        refuseAReadPastTheEnd(cursor, wanted);
+        int from = cursor.at;
+        cursor.at += wanted;
+        if (code.equals("bytes")) {
+            return binaryOf(cursor, from, wanted);
+        }
+        StringBuilder digits = new StringBuilder();
+        for (int at = from; at < from + wanted && octetAt(cursor, at) != 0; at++) {
+            digits.appendCodePoint(octetAt(cursor, at));
+        }
+        if (code.equals("string-bytes")) {
+            return StringValue.of(digits.toString());
+        }
+        long counted = 0;
+        for (int at = 0; at < digits.length(); at++) {
+            counted = counted << 3 | digits.charAt(at) - '0';
+        }
+        return IntegerValue.of(counted);
     }
 
     /**
@@ -997,8 +1068,28 @@ final class Bincode {
     private static void refuseAReadPastTheEnd(Cursor cursor, int wanted) {
         if (cursor.at + wanted > cursor.octets.size()) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    IntegerValue.of(cursor.at + wanted));
+                    cursor.reading instanceof NoneValue
+                            ? IntegerValue.of(cursor.at + wanted)
+                            : cursor.reading);
         }
+    }
+
+    /**
+     * The code at a step of a *read* dialect, refused as a bad spec.
+     *
+     * <p>The two sides of BINARY report a nonsense code differently, and
+     * Rebol's own tests pin both. A write reaches {@code error:
+     * Trap_Word(RE_DIALECT, SYM_BINCODE, value)} and names the dialect; a read
+     * reaches {@code default: Trap1(RE_INVALID_SPEC, value)} and names only
+     * the value. So {@code binary/write b [FOO 1]} is {@code dialect} and
+     * {@code binary/read b [FOO]} is {@code invalid-spec}, for the same word.
+     */
+    private static String codeReadAt(List<Value> dialect, int step) {
+        Value item = dialect.get(step);
+        if (!(item instanceof WordValue word) || !knows(word.canonical())) {
+            throw Raised.of(EvaluationFailure.INVALID_SPEC, item);
+        }
+        return word.canonical();
     }
 
     /**
@@ -1060,11 +1151,36 @@ final class Bincode {
         return dialect.get(step);
     }
 
-    private static long wholeNumberOf(Value given) {
+    /**
+     * The number a read code takes, refused as a bad spec when it is not one.
+     *
+     * <p>{@code if (!IS_INTEGER(next)) goto error_next_value;} on the read
+     * side, which lands on {@code Trap1(RE_INVALID_SPEC, value)}. The same
+     * mistake on the write side is {@code dialect}, and the pair of errors is
+     * the difference between reading a spec and running one.
+     */
+    private static long wholeNumberReadAfter(
+            List<Value> dialect, int step, Value code) {
+
+        Value given = valueReadAfter(dialect, step, code);
         if (given instanceof IntegerValue number) {
             return number.magnitude();
         }
-        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
+        throw Raised.of(EvaluationFailure.INVALID_SPEC, given);
+    }
+
+    private static long wholeNumberWritten(Value given) {
+        if (given instanceof IntegerValue number) {
+            return number.magnitude();
+        }
+        throw refuse(given);
+    }
+
+    private static double anyNumberWritten(Value given) {
+        if (given instanceof IntegerValue || given instanceof DecimalValue) {
+            return anyNumberOf(given);
+        }
+        throw refuse(given);
     }
 
     /**
@@ -1082,7 +1198,11 @@ final class Bincode {
      * got round to the code, where the truth is that no REBOL has it.
      */
     private static Raised refuse(String code) {
-        return Raised.of(EvaluationFailure.DIALECT,
-                WordValue.of("bincode"), WordValue.of(code));
+        return refuse(WordValue.of(code));
+    }
+
+    /** The same, naming the value as it was written rather than folded. */
+    private static Raised refuse(Value given) {
+        return Raised.of(EvaluationFailure.DIALECT, WordValue.of("bincode"), given);
     }
 }
