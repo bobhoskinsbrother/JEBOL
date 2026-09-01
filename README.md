@@ -1,13 +1,7 @@
 # JEBOL
 
-REBOL 3 (R3-Alpha) on the JVM.
-
-## Where this is up to
-
-REBOL runs on the JVM. Functions, loops, series, errors, and a REPL.
-
-The build targets Java 25, so the launcher needs a Java 25 runtime. Gradle
-downloads one; point `JAVA_HOME` at it if your system Java is older.
+REBOL 3 on the JVM. A port of [Oldes' Rebol3](https://github.com/Oldes/Rebol3),
+version 3.22.5, to Java - an ordinary jar with no dependencies.
 
 ```
 $ ./gradlew installDist
@@ -16,47 +10,193 @@ $ JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1) \
 JEBOL -- REBOL 3 on the JVM. Type quit to leave.
 >> 2 + 3 * 4
 == 20
->> if 0 ["zero is a value, so zero is true"]
-== "zero is a value, so zero is true"
 >> any [none none 100]
 == 100
->> name: "world"  append name "!"
-== "world!"
+>> split "707-467-8000" "-"
+== ["707" "467" "8000"]
+>> checksum "hello" 'sha256
+== #{2CF24DBA5FB0A30E26E83B2AC5B9E29E1B161E5C1FA7425E73043362938B9824}
 >> divide 1 0
 ** math error: division by zero
 ```
 
-906 tests pass. All 207 corpus entries give their published result, all
-fourteen real REBOL programs load, and all fourteen survive a round trip
-through MOLD.
+## What REBOL is
 
-**Milestone 1 is finished.** Functions, loops, series, branching, non-local
-exit and the failure branches, all driven by published REBOL. 87 natives and
-12 operators. Every one of the 359 test obligations derived from the specs is
-attributed to a test.
+REBOL is a small interpreted language from 1997, designed by Carl Sassenrath
+around one idea: **source text is data, and the language is what reads it.**
+
+That sounds abstract and is not. Two things follow from it, and between them
+they are most of the language.
+
+**The datatypes go all the way down into the notation.** A date, a time, an
+amount of money, an email address, a file path, a URL, an IP-style tuple, a
+tag, a pair of coordinates and a run of bytes are each a literal you write
+directly, and each behaves as itself:
 
 ```
->> fizzbuzz: func [n] [
-       case [
-           zero? remainder n 15 ["FizzBuzz"]
-           zero? remainder n 3  ["Fizz"]
-           zero? remainder n 5  ["Buzz"]
-           true                 [n]
-       ]
+>> reduce [type? 12-Jan-2026  type? 10:30  type? $19.99  type? 1.2.3  type? %file.txt]
+== [#(date!) #(time!) #(money!) #(tuple!) #(file!)]
+>> 12-Jan-2026 + 30
+== 11-Feb-2026
+>> 10:30 + 0:45
+== 11:15
+>> $19.99 * 3
+== $59.97
+```
+
+There is no date library and no parsing step, because the reader already knew
+what it was reading. Fifty-eight datatypes in all, and most of them are written
+directly like this.
+
+**A block is data until something evaluates it.** Square brackets hold values
+and do nothing with them:
+
+```
+>> b: [print "not run yet"]
+>> type? b
+== #(block!)
+>> do b
+not run yet
+```
+
+Every control structure is an ordinary function taking blocks - `if`, `either`,
+`while`, `repeat` are not syntax - and so is anything you write. A block of
+values you interpret your own way is a *dialect*, which is REBOL's answer to
+what other languages use a parser generator for. PARSE is one such dialect
+built in, and it is a grammar that can run code as it matches:
+
+```
+>> plan: [deposit 100 withdraw 30 deposit 5]
+>> total: 0
+>> parse plan [some ['deposit set n integer! (total: total + n)
+                   | 'withdraw set n integer! (total: total - n)]]
+== true
+>> total
+== 75
+```
+
+Three more things a reader coming from elsewhere will trip over.
+
+**Everything sequential is a *series*, and a series value carries a position
+in it.** `find` does not answer an index; it answers the same series standing
+somewhere else:
+
+```
+>> s: "hello world"
+>> find s "world"
+== "world"
+>> index? find s "world"
+== 7
+>> head find s "world"
+== "hello world"
+```
+
+**Functions take their arguments by position, with no parentheses**, and
+refinements extend one rather than multiplying it:
+
+```
+>> greet: func [name [string!] /loudly][
+       either loudly [uppercase rejoin ["hello " name]] [rejoin ["hello " name]]
    ]
->> repeat i 15 [prin fizzbuzz i prin " "]
-1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz
+>> greet "ben"
+== "hello ben"
+>> greet/loudly "ben"
+== "HELLO BEN"
 ```
 
-**Milestone 2 is finished** apart from modules: `make object!`, `context`,
-`in`, `bind`, methods that see their own fields, and copies that are
-genuinely independent.
+**MOLD and LOAD are inverses**, which is what keeps code-as-data honest: any
+value can be written as source and read back as itself.
 
-**Milestone 3 is finished**: insert, change, clear, copy/part, sort, the
-set operations, string handling and conversion.
+```
+>> mold [1 "two" 3:00]
+== {[1 "two" 3:00]}
+>> load mold [1 "two" 3:00]
+== [1 "two" 3:00]
+```
 
-**Milestone 4 is finished apart from profiling.** A host creates an
-interpreter with bounds, hands it a script and gets a `ScriptOutcome`:
+## Why
+
+To run REBOL in an ordinary web production environment, and to get the
+operational benefits of the JVM while doing it: a jar on any JDK, deployed
+down the pipeline that already exists, watched with the tools the operations
+team already has, in the containers everything else already runs in.
+
+That is the point, and it decides arguments that otherwise go in circles.
+
+**Interoperability is not the point.** Building a whole REBOL implementation
+so that REBOL could call Java would be a poor trade; plenty of things call
+Java already. Two-way interop is in scope because it is useful once you are
+here, not because it is the reason for coming.
+
+**It settles the workload question.** A web production environment means many
+short, request-scoped scripts rather than a few long ones. Warmup dominates
+and per-instance cost is the number that matters, so an interpreter wins and
+a compiler would never amortise.
+
+**It is the real case against Truffle.** Not runtime distribution - Truffle
+languages have been ordinary Maven artifacts on a standard JDK since 23.1.
+The objection that survives is operational: a polyglot context is a
+heavyweight thing to hold per request, and what a profiler shows you is the
+framework's frames rather than yours.
+
+**It separates embedding from interop.** Embedding is a Java application
+creating an interpreter, running a script and getting a value back, under a
+time and memory bound it sets. Interop is REBOL code calling Java. The first
+is what the purpose requires; the second is optional on top of it.
+
+Oldes' branch rather than REBOL 2, R3-Alpha as it stands elsewhere, or Red:
+Unicode strings natively, which suits the JVM; it is the version with the most
+surviving reference material; and it is alive, so there is a running binary to
+check answers against.
+
+## What is ported, and what is borrowed
+
+The two are kept apart on purpose, and the split is the whole design.
+
+**The C is ported.** Everything in `src/core/*.c` - the evaluator, the reader,
+the series operations, the natives, PARSE, the binary dialect, the checksums -
+is rewritten in Java against the C as the authority.
+
+**The REBOL is borrowed.** Everything in `src/mezz/*.reb` is loaded and run as
+it stands, byte for byte, from a vendored copy under
+`src/main/resources/org/jebol/mezz/`. Eighty-two files, about 860 KB of
+Rebol's own library: `join`, `collect`, `split`, the codecs, the port schemes,
+`sys-load`. None of it is rewritten in Java and none of it is copied into a
+prelude.
+
+That means a function is ported by making the C it depends on work, not by
+reimplementing the function. When `join` misbehaves the fault is underneath it,
+and the borrowed file is a fixed point that says so. It also means the surface
+is Rebol's rather than an approximation of it: 279 of 279 C functions match,
+none of R3's 404 functions is missing, and `system/catalog/datatypes` has all
+fifty-eight of Rebol's (plus `java-object!`).
+
+## How it is measured
+
+**Rebol's own test suite is the measure.** All sixty-seven files from
+`src/tests/units/` are vendored and run - 10,100 assertions, every one of them
+reached. What still fails is named line by line in
+`src/test/resources/rebol-suite/known-gaps.txt`, and that list only ever
+shrinks: the build fails if a listed assertion starts passing, so nothing comes
+off it quietly and nothing goes on it without being seen.
+
+Beside it, and outliving it:
+
+- **A corpus of 1,140 entries** - published REBOL examples with their published
+  results, plus fourteen complete real programs that must load and survive a
+  round trip through MOLD.
+- **Standalone tests** for every behaviour fixed because of a suite assertion,
+  which build an interpreter and read no `.r3` file. The suite is scaffolding
+  and will be deleted when it goes green; these are what lasts.
+- **A real `r3` binary**, used as an oracle. Where the suite and the C
+  disagree, the C wins; where reasoning and the binary disagree, the binary
+  wins.
+
+## Embedding
+
+A host creates an interpreter with bounds, hands it a script, and gets a
+`ScriptOutcome`. Nothing a script does escapes as a host exception, including
+running out of time.
 
 ```java
 Interpreter interpreter = Interpreter.withBounds(
@@ -66,13 +206,9 @@ ScriptOutcome outcome = interpreter.run("while [true] [1]");
 // outcome.conclusion() == Conclusion.TIMED_OUT, and the interpreter still works
 ```
 
-Nothing a script does escapes as a host exception, including running out of
-time. Bounds are enforced rather than advertised, and cancellation is
-cooperative so a stopped script never leaves a series half-changed.
-
-**Milestone 5 is finished.** Values cross both ways with the obvious
-mappings and nothing more, host throwables become catchable `error!`s, and
-what a script may reach is a `HostAccess` policy defaulting to nothing:
+Bounds are enforced rather than advertised, and cancellation is cooperative so
+a stopped script never leaves a series half-changed. What a script may reach is
+a `HostAccess` policy that defaults to nothing:
 
 ```java
 Interpreter interpreter = Interpreter.withBounds(
@@ -84,113 +220,61 @@ Object total = interpreter.run("multiply lookupPrice \"widget\" add 1 vatRate")
         .asHostValue();
 ```
 
-**Milestone 6 is finished for VID.** A layout renders to HTML, VID-shaped
-rather than pixel-faithful, as a pure function from values to markup with
-everything a script supplied escaped.
-
-**Milestone 7 is finished.** A view lives on the server, an event names
-which face was touched, the block runs, and the page is rendered again
-rather than patched. Nothing but markup crosses to the browser.
-
-**Milestone 8 is finished.** PARSE, over blocks and over strings: `to`,
-`thru`, `any`, `some`, `opt`, `into`, `set`, `copy`, alternatives, matching
-by datatype, and rules held in words so a grammar can be built from named
-parts.
-
-```
->> digit: [integer!]
->> parse [when 10:30] ['when set found time!]
-== true
->> found
-== 10:30
->> parse "707-467-8000" "-"
-== ["707" "467" "8000"]
-```
-
-**Milestone 9 is finished for files.** A script reads and writes through a
-port the host supplied, and one given no port reaches nothing. A port is
-rooted at a directory it cannot climb out of, by `..` or by naming an
-absolute path. Network and the wider scheme model are not built.
-
-- `TODO.md` — the work as user stories, with acceptance criteria
-- `docs/decisions.md` — what has been decided, why, and what it rules out
-
-Milestone 1 is the language running end to end: read source into values,
-evaluate a block, paths, infix operators, the natives and a REPL. All five
-specs are written and check clean.
+An interpreter is owned by one thread and holds every value reachable from it.
+Series share mutable storage by design, so aliasing is observable, and
+confining that to one thread is what makes it need no synchronisation at all. A
+host wanting concurrency runs several instances.
 
 ## Layout
 
 ```
-spec/            Allium specifications - the primary artefact
-  values.allium  what a REBOL value is: datatypes, series storage, binding
-  load.allium    TRANSCODE and LOAD: source text to a block of values
-  eval.allium    DO: walking a block, paths, infix, raising errors
-  natives.allium the built-in function set
-  repl.allium    the console, and the two conveniences that live only there
+spec/            Allium specifications, checked by the same gate as the code
 src/main/java/org/jebol/
   domain/value   the value model: datatypes, series storage, contexts, MOLD
   domain/read    the reader
-  domain/eval    the evaluator, the natives, the output port
+  domain/eval    the evaluator, the natives, the dialects, the ports
+  domain/parse   PARSE, over blocks and over strings
   application    Interpreter: one instance, one thread, owns its values
-  adapter/cli    the REPL and the stream it writes to
-corpus/          real REBOL examples with their published results
+  adapter/cli    the REPL
+src/main/resources/org/jebol/mezz/
+                 Rebol's own library, vendored and run unchanged
+corpus/          published REBOL examples with their published results
   sources/       fourteen complete programs, fetched byte for byte
-docs/            decisions, milestones, obligations, checker notes
-scripts/         the spec gate
+src/test/resources/rebol-suite/
+                 Rebol's own test files, and the gap list
+docs/            decisions, the porting guide, findings about Rebol itself
 ```
 
 The dependency rule points inward and is enforced by `DependencyRuleTest`
-rather than by convention: the domain knows nothing of the application or
-the adapters, and nothing in the domain touches `java.io` or `java.net`.
+rather than by convention: the domain knows nothing of the application or the
+adapters, and nothing in the domain touches `java.io`, `java.nio.file` or
+`java.net`.
 
-## Building and checking
+## Building
 
-Java 25, Gradle, no runtime dependencies.
+Java 25, Gradle, no runtime dependencies. The shipped jar is about 1,024 KB, of
+which 860 KB is the borrowed library.
 
 ```
-./gradlew check
+./gradlew check          # ~16,000 tests, about five minutes
+./gradlew browserCheck   # the second gate: a real browser, pixel for pixel
 ```
 
-`check` depends on `checkSpec`, so the specifications are validated by the
-same gate as the code rather than by a step somebody has to remember.
-Run the spec gate alone with `./scripts/check-spec.sh`.
+`check` also runs the spec gate, so the specifications are validated by the
+same command as the code. It fails on any error, any analysis finding, and any
+warning not on the allowlist.
 
-The gate fails on any error, any analysis finding, and any warning not
-listed in `spec/.allium-warning-allowlist`. Seven warnings are allowlisted;
-all seven are one checker gap, written up with its repro in
-`docs/allium-checker-notes.md`. Nothing else is waved through.
+`browserCheck` is separate rather than skipped. It drives a real Chrome through
+WebDriver, renders the same paint list in Java2D and in the browser, and
+compares the two pixel for pixel - which is how "a page and a window show the
+same picture" is a thing the build knows rather than a thing somebody says. It
+is out of `check` because it needs a browser installed and a network the first
+time it fetches a driver, and the ordinary gate should need neither.
 
-## What was decided, and what wasn't
+## Reading further
 
-Targeting R3-Alpha rather than REBOL 2 or Red: Unicode strings natively,
-which suits the JVM, and it's the version with the most reference material.
-
-The specs deliberately stop short of the character-level grammar. What
-reading guarantees, and the handful of resolutions a caller can actually
-be surprised by (`1.2` is a decimal but `1.2.3` is a tuple, `-1` is one
-value but `- 1` is two), are stated in `load.allium`. The exhaustive
-form-by-form mapping belongs in a golden corpus that the tests read,
-where it is more precise than prose could be.
-
-Each spec ends with its open questions. Twenty remain across the five
-files, and they are real unknowns rather than placeholders: whether
-`$1.50` equals `$1.5`, what may cross between interpreter instances, what
-a soft-literal parameter does with a paren. They want answering before the
-code that depends on them is written, not after.
-
-## The corpus, and what it says about scope
-
-`corpus/` holds published REBOL examples with their expected results, in a
-tagged plain-text format described in `corpus/README.md`. 88 entries, plus
-fourteen complete programs in `corpus/sources/`.
-
-All 60 entries asserting a result or an error now pass, including the one
-that documents a deliberate divergence: the Core guide prints `10 / 3` to
-fifteen significant digits because that is REBOL 2, and JEBOL prints the
-shortest form that reads back, because that is R3-Alpha.
-
-The 26 loader entries are lines lifted from the fourteen programs and
-cited by file and line, which is how `window/pane/:n/color: clr` came to
-be tested at all. Real code uses the awkward combinations; a hand-written
-example tends not to.
+- `TODO.md` - what is left, with the numbers, each one checked by running it
+- `docs/decisions.md` - what has been decided, why, and what it rules out
+- `docs/porting-guide.md` - how to port a function, and what the authorities are
+- `docs/rebol-findings.md` - what reading Rebol's source turned up about Rebol
+- `using-jebol.md` - the manual
