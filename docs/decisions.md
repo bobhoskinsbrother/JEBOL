@@ -4,16 +4,23 @@ What was decided, when, and what it rules out. Newest last.
 
 ## 0. Why this exists
 
-To run REBOL in an ordinary web production environment, and to get the
-operational benefits of the JVM while doing it: an ordinary jar on any
-JDK, deployed down the pipeline that already exists, watched with the
-tools the operations team already has, in the containers everything else
+To write REBOL against the JVM's libraries, and to run it in an ordinary
+web production environment while doing so: an ordinary jar on any JDK,
+deployed down the pipeline that already exists, watched with the tools
+the operations team already has, in the containers everything else
 already runs in.
 
-That is the point. **Interoperability is not.** Building a whole REBOL
-implementation so that REBOL could call Java would be a poor trade;
-plenty of things call Java already. Two-way interop is in scope because
-it is useful once you are here, not because it is the reason for coming.
+**Interoperability is the point.** REBOL against a Java postgres driver,
+and the rest of the ecosystem behind it, instead of reimplementing each
+of them again in a language whose own library is small and whose
+maintained ports are few. A language on the JVM that cannot reach the
+JVM's libraries is a language that has to build everything twice.
+
+And REBOL is an unusually easy language to write dialects in, because a
+dialect is a block interpreted by a function rather than a grammar and a
+generator. That makes a light translation from an allium spec to a
+dialect worth aiming at, which is a thing this project wants and no
+other REBOL runtime is placed to give it.
 
 This matters because it decides arguments that otherwise go in circles:
 
@@ -27,11 +34,25 @@ This matters because it decides arguments that otherwise go in circles:
   standard JDK since 23.1. The objection that survives is operational.
   A polyglot context is a heavyweight thing to hold per request, and what
   a profiler shows you is the framework's frames rather than yours.
-- **It separates embedding from interop**, which had been treated as one
-  thing. Embedding is a Java application creating an interpreter, running
-  a script and getting a value back, under a time and memory bound it
-  sets. Interop is REBOL code calling Java. The first is what the purpose
-  above requires; the second is optional on top of it.
+- **Embedding and interop are still two things**, and both are wanted.
+  Embedding is a Java application creating an interpreter, running a
+  script and getting a value back, under a time and memory bound it sets.
+  Interop is REBOL code calling Java. Keeping them apart is how the bounds
+  stay meaningful; it is no longer a claim that one of them is optional.
+
+**Corrected.** This entry used to say the opposite: that interoperability
+was *not* the point, that building a whole REBOL implementation so REBOL
+could call Java would be a poor trade, and that two-way interop was in
+scope only because it is useful once you are here. It is the reason for
+coming.
+
+The rest of the entry survived the reversal unchanged, which is worth
+noticing: the workload argument and the Truffle argument never depended
+on the interop question, and decision 6 had already reached the opposite
+conclusion by a different route -- "a language on the JVM that cannot
+reach the JVM's libraries is a language that has to reimplement them".
+Two entries in one file disagreeing for months, and neither one wrong on
+its own terms.
 
 ## 1. Target R3-Alpha, not REBOL 2 or Red
 

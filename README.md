@@ -20,6 +20,46 @@ JEBOL -- REBOL 3 on the JVM. Type quit to leave.
 ** math error: division by zero
 ```
 
+## What REBOL is
+
+A small language from 1997 by Carl Sassenrath, built on one idea: **a program
+is data, and the language is what reads it.** A source file is a block of
+values. Evaluating it is only one of the things you can do with it.
+
+Two things follow, and between them they are most of the language.
+
+**The datatypes are in the notation.** A date, a time, money, an email
+address, a file, a URL, a tag, a pair of coordinates and a run of bytes are
+each written directly, and each behaves as itself:
+
+```
+>> 12-Jan-2026 + 30
+== 11-Feb-2026
+>> $19.99 * 3
+== $59.97
+```
+
+No parsing step and no date library, because the reader already knew what it
+was reading. Fifty-eight datatypes, most of them written like this.
+
+**A block is inert until something gives it a meaning.** `[deposit 100
+withdraw 30]` is four values and nothing else until a function decides what
+they say. Such a function is a *dialect*, and REBOL's control structures, its
+GUI layouts and its pattern matcher are all dialects rather than syntax:
+
+```
+>> plan: [deposit 100 withdraw 30 deposit 5]
+>> total: 0
+>> parse plan [some ['deposit set n integer! (total: total + n)
+                   | 'withdraw set n integer! (total: total - n)]]
+== true
+>> total
+== 75
+```
+
+What another language wants a parser generator and a syntax tree for, REBOL
+does with a block and a function. That is the part worth coming for.
+
 ## Why
 
 To run REBOL in an ordinary web production environment, and to get the
@@ -38,11 +78,6 @@ languages have been ordinary Maven artifacts on a standard JDK since 23.1.
 The objection that survives is operational: a polyglot context is a
 heavyweight thing to hold per request, and what a profiler shows you is the
 framework's frames rather than yours.
-
-**It separates embedding from interop.** Embedding is a Java application
-creating an interpreter, running a script and getting a value back, under a
-time and memory bound it sets. Interop is REBOL code calling Java. The first
-is what the purpose requires; the second is optional on top of it.
 
 Oldes' branch rather than REBOL 2, R3-Alpha as it is the version with the most
 surviving reference material (and it is alive) so there is a running binary to
