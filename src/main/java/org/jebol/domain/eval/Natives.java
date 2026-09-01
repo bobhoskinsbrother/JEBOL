@@ -6098,11 +6098,12 @@ public final class Natives {
                     }
                     case StringValue strandedText -> {
                         StringValue text = (StringValue) clampedToTail(strandedText);
-                        String added = textContributedBy(arguments, refinements);
-                        for (int at = 0; at < added.length(); at++) {
-                            text.storage().insertAt(text.index() + at, added.charAt(at));
+                        int[] added = textContributedBy(arguments, refinements)
+                                .codePoints().toArray();
+                        for (int at = 0; at < added.length; at++) {
+                            text.storage().insertAt(text.index() + at, added[at]);
                         }
-                        yield text.atIndex(text.index() + added.length());
+                        yield text.atIndex(text.index() + added.length);
                     }
                     case BinaryValue strandedBytes -> {
                         BinaryValue bytes = (BinaryValue) clampedToTail(strandedBytes);
@@ -7123,7 +7124,7 @@ public final class Natives {
         if (series instanceof BinaryValue && wanted instanceof IntegerValue byteValue) {
             return List.of(byteValue);
         }
-        return Molder.form(wanted).chars()
+        return Molder.form(wanted).codePoints()
                 .<Value>mapToObj(series instanceof BinaryValue
                         ? IntegerValue::of
                         : CharacterValue::of)
@@ -7221,16 +7222,16 @@ public final class Natives {
             return runMatchesAt(items, at, run.remaining(), refinements.contains("same"));
         }
         if (wanted instanceof StringValue needle && !refinements.contains("only")) {
-            String sought = needle.datatype() == Datatype.STRING
+            int[] sought = (needle.datatype() == Datatype.STRING
                     ? needle.text()
-                    : Molder.form(needle);
-            if (at + sought.length() > items.size()) {
+                    : Molder.form(needle)).codePoints().toArray();
+            if (at + sought.length > items.size()) {
                 return false;
             }
-            for (int step = 0; step < sought.length(); step++) {
+            for (int step = 0; step < sought.length; step++) {
                 if (!(items.get(at + step) instanceof CharacterValue character)
                         || Character.toLowerCase(character.codepoint())
-                                != Character.toLowerCase(sought.charAt(step))) {
+                                != Character.toLowerCase(sought[step])) {
                     return false;
                 }
             }
@@ -8594,9 +8595,9 @@ public final class Natives {
                 }
             }
             case StringValue text -> {
-                String added = Molder.form(value);
-                for (int at = 0; at < added.length(); at++) {
-                    text.storage().insertAt(text.index() + at, added.charAt(at));
+                int[] added = Molder.form(value).codePoints().toArray();
+                for (int at = 0; at < added.length; at++) {
+                    text.storage().insertAt(text.index() + at, added[at]);
                 }
             }
             case ImageValue image -> insertPixels(image, value);
@@ -8657,11 +8658,18 @@ public final class Natives {
         }
     }
 
+    /**
+     * The text turned round, a character at a time.
+     *
+     * <p>Characters, not Java's sixteen-bit units: reversing by those splits
+     * anything above the basic plane into its two halves and puts them back
+     * the wrong way round, which is not a character at all. JEBOL's storage
+     * holds code points, so walking it any other way is walking something else.
+     */
     private static Value reversedText(StringValue text) {
-        String forwards = text.text();
-        for (int at = 0; at < forwards.length(); at++) {
-            text.storage().set(text.index() + at,
-                    forwards.charAt(forwards.length() - 1 - at));
+        int[] forwards = text.text().codePoints().toArray();
+        for (int at = 0; at < forwards.length; at++) {
+            text.storage().set(text.index() + at, forwards[forwards.length - 1 - at]);
         }
         return text;
     }

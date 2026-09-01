@@ -1047,12 +1047,8 @@ time-test.r3 / time / time! money! math #74
 unicode-test.r3 / /part refines with utf8 strings / lowercase/part #392
 unicode-test.r3 / /part refines with utf8 strings / take/last #381
 unicode-test.r3 / /part refines with utf8 strings / uppercase/part #396
-unicode-test.r3 / actions / find tag! #192
-unicode-test.r3 / actions / find tag! #193
 unicode-test.r3 / actions / find tag! #195
 unicode-test.r3 / actions / find tag! #196
-unicode-test.r3 / actions / find tag! #197
-unicode-test.r3 / actions / find tag! #198
 unicode-test.r3 / actions / insert/part string #257
 unicode-test.r3 / actions / insert/part string #260
 unicode-test.r3 / actions / remove #318
