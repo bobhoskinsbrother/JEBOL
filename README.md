@@ -1,26 +1,5 @@
-# JEBOL
 
-REBOL 3 on the JVM. A port of [Oldes' Rebol3](https://github.com/Oldes/Rebol3),
-version 3.22.5, to Java — an ordinary jar with no dependencies.
-
-```
-$ ./gradlew installDist
-$ JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1) \
-    ./build/install/jebol/bin/jebol
-JEBOL -- REBOL 3 on the JVM. Type quit to leave.
->> 2 + 3 * 4
-== 20
->> any [none none 100]
-== 100
->> split "707-467-8000" "-"
-== ["707" "467" "8000"]
->> checksum "hello" 'sha256
-== #{2CF24DBA5FB0A30E26E83B2AC5B9E29E1B161E5C1FA7425E73043362938B9824}
->> divide 1 0
-** math error: division by zero
-```
-
-## What REBOL is
+## What is REBOL?
 
 A small language from 1997 by Carl Sassenrath, built on one idea: **a program
 is data, and the language is what reads it.** A source file is a block of
@@ -42,7 +21,7 @@ each written directly, and each behaves as itself:
 No parsing step and no date library, because the reader already knew what it
 was reading. Fifty-eight datatypes, most of them written like this.
 
-**A block is inert until something gives it a meaning.** `[deposit 100
+**A block doesn't mean anything until meaning is given.** `[deposit 100
 withdraw 30]` is four values and nothing else until a function decides what
 they say. Such a function is a *dialect*, and REBOL's control structures, its
 GUI layouts and its pattern matcher are all dialects rather than syntax:
@@ -58,9 +37,31 @@ GUI layouts and its pattern matcher are all dialects rather than syntax:
 ```
 
 What another language wants a parser generator and a syntax tree for, REBOL
-does with a block and a function. That is the part worth coming for.
+does with a block and a function. 
 
-## Why
+## JEBOL
+
+REBOL 3 on the JVM. A port of [Oldes' Rebol3](https://github.com/Oldes/Rebol3),
+version 3.22.5, to Java — an ordinary jar with no dependencies.
+
+```
+$ ./gradlew installDist
+$ JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1) \
+    ./build/install/jebol/bin/jebol
+JEBOL -- REBOL 3 on the JVM. Type quit to leave.
+>> 2 + 3 * 4
+== 20
+>> any [none none 100]
+== 100
+>> split "707-467-8000" "-"
+== ["707" "467" "8000"]
+>> checksum "hello" 'sha256
+== #{2CF24DBA5FB0A30E26E83B2AC5B9E29E1B161E5C1FA7425E73043362938B9824}
+>> divide 1 0
+** math error: division by zero
+```
+
+## Why Port to JVM?
 
 To run REBOL in an ordinary web production environment, and to get the
 operational benefits of the JVM while doing it: a jar on any JDK, deployed
@@ -83,7 +84,7 @@ Oldes' branch rather than REBOL 2, R3-Alpha as it is the version with the most
 surviving reference material (and it is alive) so there is a running binary to
 check answers against.
 
-## What is ported, and what is borrowed
+## What is Ported, and What is Copied?
 
 The two are kept apart on purpose, and the split is the whole design.
 
@@ -91,7 +92,7 @@ The two are kept apart on purpose, and the split is the whole design.
 the series operations, the natives, PARSE, the binary dialect, the checksums —
 is rewritten in Java against the C as the authority.
 
-**The REBOL is borrowed.** Everything in `src/mezz/*.reb` is loaded and run as
+**The REBOL is copied.** Everything in `src/mezz/*.reb` is loaded and run as
 it stands, byte for byte, from a vendored copy under
 `src/main/resources/org/jebol/mezz/`. Eighty-two files, about 860 KB of
 Rebol's own library: `join`, `collect`, `split`, the codecs, the port schemes,
