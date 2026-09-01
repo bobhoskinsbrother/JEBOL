@@ -80,7 +80,7 @@ Everything else -- `src/`, `spec/`, `corpus/`, `docs/`, `rebol3-source/` and the
 build files -- is the project, and the MCP is how it gets searched.
 
 **After editing Java, ask `ide_diagnostics` before running the gate.** It answers
-in a second where `./gradlew` takes two minutes, and it catches the whole class of
+in a second where `./gradlew` takes five minutes, and it catches the whole class of
 mistakes -- a missing import, an unreachable branch, a dangling doc comment under
 `-Werror` -- that have cost several round trips here.
 
@@ -118,9 +118,13 @@ that the suite would have let through.
 
 ## Running the suite
 
-`./gradlew check` is the gate. It takes about two minutes, and the floor is one
-class rather than the machine: see Goal 6 in `TODO.md` for why
-`Interpreter.create()` costs 68ms and what that does to a 7900-test run.
+`./gradlew check` is the gate. It takes about five minutes for 15,900 tests,
+and the floor is `Interpreter.create()` at 44ms: the corpus builds one per
+entry, so a thousand entries is a minute whatever else changes. It used to be
+86ms and twenty-two minutes, and where that went is worth knowing before
+trying to speed anything else up -- reading Rebol's library was most of it, and
+`LibrarySource` now reads each file once for the whole process and hands out a
+copy.
 
 Do not `rm -rf build/test-results` to force a re-run -- it makes Gradle fail with
 `NoSuchFileException` on its own binary results directory. Use `./gradlew
