@@ -146,12 +146,22 @@ class MoldConstructAndLinesFromTheSourceTest {
     @DisplayName("a block carrying line breaks molds one item to a line")
     class TheLinedBlock {
 
+        /**
+         * The indent goes up for a break before the *first* item and for no
+         * other, and comes down again for the bracket.
+         *
+         * <p>{@code if(!had_lines && !line_flag) { had_lines = TRUE;
+         * mold->indent++; }} in {@code Mold_Block_Series}. A break in the
+         * middle of a block is a bare newline, and the closing bracket
+         * follows the last item on the same line, which is what this
+         * asserted the opposite of until a real 3.22 was asked.
+         */
         @Test
-        @DisplayName("a break at one position breaks only there")
+        @DisplayName("a break after the first item is bare, with no indent")
         void oneFlaggedPosition() {
             assertThat(answerTo("""
                     b: [1 2 3] new-line next b true
-                    (mold b) = {[1^/    2 3^/]}""")).isEqualTo("#(true)");
+                    (mold b) = {[1^/2 3]}""")).isEqualTo("#(true)");
         }
 
         @Test

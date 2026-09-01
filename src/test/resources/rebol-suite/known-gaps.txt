@@ -833,13 +833,7 @@ module-test.r3 / module issues / issue-1005 #51
 module-test.r3 / module issues / issue-1005 #54
 module-test.r3 / module keywords / hidden #2
 mold-test.r3 / form error! / form error! #214
-mold-test.r3 / mold block! / issue-1439 #128
-mold-test.r3 / mold block! / issue-1439 #129
-mold-test.r3 / mold block! / issue-1439 #130
-mold-test.r3 / mold block! / issue-2279 #131
-mold-test.r3 / mold block! / mold/only #125
 mold-test.r3 / mold file! / mold file escaping #68
-mold-test.r3 / mold map! / mold map! #133
 mold-test.r3 / mold url! / mold url escaping #56
 os-test.r3 / set-env / get-env / env-1 #1
 os-test.r3 / set-env / get-env / env-1 #2

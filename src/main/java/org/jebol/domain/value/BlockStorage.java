@@ -2,7 +2,9 @@ package org.jebol.domain.value;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The mutable buffer behind every {@code block!}, {@code paren!} and path.
@@ -24,7 +26,7 @@ public final class BlockStorage {
      * rather than something you could write by inserting a value. It
      * survives MOLD and is what makes a molded block keep its shape.
      */
-    private final java.util.Set<Integer> lineBreaks = new java.util.HashSet<>();
+    private final Set<Integer> lineBreaks = new HashSet<>();
 
     public BlockStorage() {
         this.items = new ArrayList<>();
@@ -122,6 +124,23 @@ public final class BlockStorage {
     /** Whether the position carries a line break. */
     public boolean breaksLineAt(int oneBasedIndex) {
         return lineBreaks.contains(oneBasedIndex);
+    }
+
+    /**
+     * The line-start flags of another storage, counted from a position in it.
+     *
+     * <p>A flag belongs to a position rather than to a value, so anything
+     * that builds a new storage out of an old one has to carry them across or
+     * they are gone. Binding is where that first mattered: it copies the
+     * block, and a bound block molded on one line however its author had laid
+     * it out, which is every block a script runs.
+     */
+    public void takeLineBreaksFrom(BlockStorage older, int startingAt) {
+        for (int at = startingAt; at <= older.length() + 1; at++) {
+            if (older.breaksLineAt(at)) {
+                setLineBreakAt(at - startingAt + 1, true);
+            }
+        }
     }
 
     public void setLineBreakAt(int oneBasedIndex, boolean breaks) {

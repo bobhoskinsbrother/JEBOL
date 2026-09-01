@@ -4,6 +4,7 @@ import org.jebol.domain.value.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Binds the words in a block to a context.
@@ -32,8 +33,19 @@ public final class Binder {
         for (Value item : block.remaining()) {
             bound.add(bindValue(item, context));
         }
-        return new BlockValue(
-                new BlockStorage(bound), 1, block.datatype());
+        return laidOutLike(block, new BlockStorage(bound));
+    }
+
+    /**
+     * A new storage wearing the old one's line starts, as a block value.
+     *
+     * <p>Binding copies, and a copy that dropped the flags molded every
+     * script's blocks on one line. The flags shift with the copy, because a
+     * bound block starts at its head where the one it came from may not.
+     */
+    private static BlockValue laidOutLike(BlockValue older, BlockStorage bound) {
+        bound.takeLineBreaksFrom(older.storage(), older.index());
+        return new BlockValue(bound, 1, older.datatype());
     }
 
     /**
@@ -72,17 +84,17 @@ public final class Binder {
      * KEEP writes to COLLECT's own OUTPUT -- and OUTPUT came out none.
      */
     public static BlockValue bindOnly(
-            BlockValue block, Context context, java.util.Set<String> names) {
+            BlockValue block, Context context, Set<String> names) {
 
         List<Value> bound = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
             bound.add(bindValueOnly(item, context, names));
         }
-        return new BlockValue(new BlockStorage(bound), 1, block.datatype());
+        return laidOutLike(block, new BlockStorage(bound));
     }
 
     private static Value bindValueOnly(
-            Value value, Context context, java.util.Set<String> names) {
+            Value value, Context context, Set<String> names) {
 
         return switch (value) {
             case WordValue word when names.contains(word.canonical()) ->

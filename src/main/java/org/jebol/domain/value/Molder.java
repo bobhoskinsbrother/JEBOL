@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -249,10 +251,20 @@ public final class Molder {
      * layer of brackets the source never had.
      */
     public static String moldOnly(BlockValue block) {
-        return block.remaining().stream()
-                .map(Molder::mold)
-                .collect(Collectors.joining(" "));
+        return renderLined(block, true, WITH_NO_BRACKETS);
     }
+
+    /**
+     * Whether the block being written puts brackets round itself.
+     *
+     * <p>{@code sep[1]}, which MOLD/ONLY sets to nothing. It decides more
+     * than the brackets: a flagged first value breaks the line only when
+     * there is a bracket for the break to follow, so the same block writes
+     * a leading newline with brackets and none without.
+     */
+    private static final boolean BETWEEN_BRACKETS = true;
+
+    private static final boolean WITH_NO_BRACKETS = false;
 
     /**
      * What is already being molded further out, so a cycle stops.
@@ -558,16 +570,24 @@ public final class Molder {
         if (map.pairCount() == 0) {
             return opens + shuts;
         }
-        StringBuilder rendered = new StringBuilder(opens).append('\n');
+        boolean onSeparateLines = !WRITING_ON_ONE_LINE.get();
         List<Value> flat = map.flattened();
-        for (int at = 0; at < flat.size(); at += 2) {
-            rendered.append("    ")
-                    .append(render(flat.get(at), forReading))
-                    .append(' ')
-                    .append(render(flat.get(at + 1), forReading))
-                    .append('\n');
-        }
-        return rendered.append(shuts).toString();
+        String pairs = oneLevelIn(() -> {
+            StringBuilder written = new StringBuilder();
+            for (int at = 0; at < flat.size(); at += 2) {
+                if (onSeparateLines) {
+                    written.append(aLineIndentedAsDeepAsWeAre());
+                } else if (at > 0) {
+                    written.append(' ');
+                }
+                written.append(render(flat.get(at), forReading))
+                        .append(' ')
+                        .append(render(flat.get(at + 1), forReading));
+            }
+            return written.toString();
+        });
+        return opens + pairs
+                + (onSeparateLines ? aLineIndentedAsDeepAsWeAre() : "") + shuts;
     }
 
     /**
@@ -1078,6 +1098,28 @@ public final class Molder {
 
     private static final String ONE_INDENT = "    ";
 
+    /** {@code New_Indented_Line}: a break and four spaces a level. */
+    private static String aLineIndentedAsDeepAsWeAre() {
+        return "\n" + ONE_INDENT.repeat(LINED_DEPTH.get());
+    }
+
+    /**
+     * Writes something one level further in.
+     *
+     * <p>{@code mold->indent++} around the fields of an object, the pairs of
+     * a map and the fields of an event. The counter is shared, so a block
+     * inside a map's value is written two levels in and not one, which is
+     * what makes a map holding a laid-out block come back laid out.
+     */
+    private static String oneLevelIn(Supplier<String> written) {
+        LINED_DEPTH.set(LINED_DEPTH.get() + 1);
+        try {
+            return written.get();
+        } finally {
+            LINED_DEPTH.set(LINED_DEPTH.get() - 1);
+        }
+    }
+
     /**
      * How many numbers a vector fits on one line before it breaks.
      *
@@ -1133,43 +1175,63 @@ public final class Molder {
         return out.append(')').toString();
     }
 
-    private static boolean carriesLineBreaks(BlockValue block) {
-        for (int at = block.index(); at <= block.storageLength(); at++) {
-            if (block.storage().breaksLineAt(at)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /**
-     * A block whose positions carry line breaks molds one line per flagged
-     * item, indented four spaces a level, with the closing bracket on its
-     * own line -- {@code Mold_Block_Series} through
-     * {@code New_Indented_Line}. NEW-LINE sets the flags and BODY-OF an
-     * object carries them, which is how SAVE writes a header a person can
-     * read.
+     * A block written out the shape its author laid it out in.
+     *
+     * <p>{@code Mold_Block_Series}, and the three things it keeps track of
+     * matter more than they look. A break is written *before* a flagged
+     * value, so the flag says "this value begins a line" rather than "a line
+     * ends here". The indent goes up once, at the first break, and comes down
+     * once, before the closing bracket -- so a block laid out over ten lines
+     * is indented by one level and not by ten.
+     *
+     * <p>The first value is the exception. {@code line_flag} is false until
+     * one value has been written, and a break for a flagged first value needs
+     * either that flag or a bracket to write it against. So a block breaks
+     * before its first value and MOLD/ONLY, which writes no brackets, does
+     * not: {@code mold/only load "[1^/2]"} is {@code 1^/2} with nothing in
+     * front of the one.
+     *
+     * <p>The closing bracket goes on its own line exactly when the indent
+     * went up, which is to say when the first value began a line. A newline
+     * before the bracket in the source does not put one there:
+     * {@code mold load "[1 2^/]"} is {@code [1 2]}, because the scanner drops
+     * a line feed that has no value after it.
      */
-    private static String renderLined(BlockValue block, boolean forReading) {
+    private static String renderLined(BlockValue block, boolean forReading,
+            boolean betweenBrackets) {
+        boolean mayBreakLines = !WRITING_ON_ONE_LINE.get();
+        StringBuilder out = new StringBuilder(
+                betweenBrackets ? opensWith(block.datatype()) : "");
         int outer = LINED_DEPTH.get();
-        LINED_DEPTH.set(outer + 1);
-        StringBuilder out = new StringBuilder(opensWith(block.datatype()));
+        boolean steppedIn = false;
+        boolean somethingWritten = false;
         try {
             List<Value> items = block.remaining();
             for (int at = 0; at < items.size(); at++) {
-                if (block.storage().breaksLineAt(block.index() + at)) {
-                    out.append('\n').append(ONE_INDENT.repeat(outer + 1));
+                if (block.storage().breaksLineAt(block.index() + at)
+                        && mayBreakLines && (betweenBrackets || somethingWritten)) {
+                    if (!steppedIn && !somethingWritten) {
+                        steppedIn = true;
+                        LINED_DEPTH.set(LINED_DEPTH.get() + 1);
+                    }
+                    out.append('\n').append(ONE_INDENT.repeat(LINED_DEPTH.get()));
                 } else if (at > 0) {
                     out.append(' ');
                 }
+                somethingWritten = true;
                 out.append(render(items.get(at), forReading));
             }
         } finally {
             LINED_DEPTH.set(outer);
         }
-        out.append('\n').append(ONE_INDENT.repeat(outer))
-                .append(closesWith(block.datatype()));
-        return out.toString();
+        if (!betweenBrackets) {
+            return out.toString();
+        }
+        if (mayBreakLines && steppedIn) {
+            out.append('\n').append(ONE_INDENT.repeat(outer));
+        }
+        return out.append(closesWith(block.datatype())).toString();
     }
 
     /**
@@ -1197,9 +1259,8 @@ public final class Molder {
     }
 
     private static String renderBlock(BlockValue block, boolean forReading) {
-        if (forReading && moldsInBrackets(block.datatype())
-                && carriesLineBreaks(block)) {
-            return renderLined(block, forReading);
+        if (forReading && moldsInBrackets(block.datatype())) {
+            return renderLined(block, forReading, BETWEEN_BRACKETS);
         }
         String items = block.remaining().stream()
                 .map(item -> render(item, forReading))
@@ -1293,26 +1354,27 @@ public final class Molder {
      */
     private static String renderEvent(EventValue event, boolean forReading) {
         boolean onSeparateLines = !WRITING_ON_ONE_LINE.get();
-        StringBuilder built =
-                new StringBuilder(openedFor(Datatype.EVENT)).append('[');
         List<Value> spec = event.moldingSpec();
-        for (int at = 0; at < spec.size(); at++) {
-            boolean opensAField = spec.get(at) instanceof WordValue name
-                    && name.datatype() == Datatype.SET_WORD;
-            if (onSeparateLines && opensAField) {
-                built.append('\n').append(ONE_INDENT);
-            } else if (at > 0) {
-                built.append(' ');
+        String fields = oneLevelIn(() -> {
+            StringBuilder written = new StringBuilder();
+            for (int at = 0; at < spec.size(); at++) {
+                boolean opensAField = spec.get(at) instanceof WordValue name
+                        && name.datatype() == Datatype.SET_WORD;
+                if (onSeparateLines && opensAField) {
+                    written.append(aLineIndentedAsDeepAsWeAre());
+                } else if (at > 0) {
+                    written.append(' ');
+                }
+                Value shown = spec.get(at);
+                boolean quoted = shown instanceof WordValue word
+                        && word.datatype() == Datatype.WORD;
+                written.append(quoted ? "'" : "").append(render(shown, forReading));
             }
-            Value shown = spec.get(at);
-            boolean quoted = shown instanceof WordValue word
-                    && word.datatype() == Datatype.WORD;
-            built.append(quoted ? "'" : "").append(render(shown, forReading));
-        }
-        if (onSeparateLines) {
-            built.append('\n');
-        }
-        return built.append(']').append(closedAfterATypeName()).toString();
+            return written.toString();
+        });
+        return openedFor(Datatype.EVENT) + "[" + fields
+                + (onSeparateLines ? aLineIndentedAsDeepAsWeAre() : "")
+                + "]" + closedAfterATypeName();
     }
 
     /**
@@ -1404,7 +1466,12 @@ public final class Molder {
         }
         try {
             return forReading
-                    ? openedFor(Datatype.OBJECT) + "[\n" + moldedFields(object)
+                    ? openedFor(Datatype.OBJECT) + "["
+                            + moldedFields(fieldsOutsideSelf(object).collect(
+                                    Collectors.toMap(ContextSlot::spelling,
+                                            ContextSlot::value,
+                                            (older, newer) -> newer,
+                                            LinkedHashMap::new)))
                             + "]" + closedAfterATypeName()
                     : formedFields(object);
         } finally {
@@ -1443,12 +1510,11 @@ public final class Molder {
         if (!forReading) {
             return error.toString();
         }
-        String fields = ErrorValue.FIELDS.stream()
-                .map(name -> "    " + name + ": "
-                        + renderField(error.field(name).orElseGet(NoneValue::none), true)
-                        + "\n")
-                .collect(Collectors.joining());
-        return openedFor(Datatype.ERROR) + "[\n" + fields + "]"
+        Map<String, Value> fields = new LinkedHashMap<>();
+        for (String name : ErrorValue.FIELDS) {
+            fields.put(name, error.field(name).orElseGet(NoneValue::none));
+        }
+        return openedFor(Datatype.ERROR) + "[" + moldedFields(fields) + "]"
                 + closedAfterATypeName();
     }
 
@@ -1466,11 +1532,30 @@ public final class Molder {
                 .collect(Collectors.joining(" "));
     }
 
-    private static String moldedFields(ObjectValue object) {
-        return fieldsOutsideSelf(object)
-                .map(slot -> "    " + slot.spelling() + ": "
-                        + renderField(slot.value(), true) + "\n")
-                .collect(Collectors.joining());
+    /**
+     * The fields between the brackets, one to a line and a line before the
+     * bracket that closes them.
+     *
+     * <p>{@code Mold_Object} writes {@code New_Indented_Line} before every
+     * field and once more at the end, so an object with no fields at all is
+     * still two lines. MOLD/FLAT writes them with spaces and nothing else.
+     */
+    private static String moldedFields(Map<String, Value> fields) {
+        boolean onSeparateLines = !WRITING_ON_ONE_LINE.get();
+        String written = oneLevelIn(() -> {
+            StringBuilder out = new StringBuilder();
+            for (Map.Entry<String, Value> field : fields.entrySet()) {
+                if (onSeparateLines) {
+                    out.append(aLineIndentedAsDeepAsWeAre());
+                } else if (!out.isEmpty()) {
+                    out.append(' ');
+                }
+                out.append(field.getKey()).append(": ")
+                        .append(renderField(field.getValue(), true));
+            }
+            return out.toString();
+        });
+        return written + (onSeparateLines ? aLineIndentedAsDeepAsWeAre() : "");
     }
 
     /**

@@ -135,11 +135,13 @@ public final class Transcoder {
         reader.stopAfterOneValue = extent != Extent.THE_WHOLE_SOURCE;
         reader.stopAtEveryDepth = extent == Extent.THE_FIRST_VALUE_AT_EVERY_DEPTH;
         try {
+            List<Value> values = reader.readSequence(NO_TERMINATOR);
             return new Reading(
-                    reader.readSequence(NO_TERMINATOR),
+                    values,
                     Optional.empty(),
                     reader.position,
-                    reader.line);
+                    reader.line,
+                    reader.lineStarts);
         } catch (MalformedSource malformed) {
             return new Reading(
                     List.copyOf(reader.valuesTakenAtTheTopLevel),
@@ -148,7 +150,8 @@ public final class Transcoder {
                             malformed.tokenKind, malformed.fragment,
                             malformed.offendingText)),
                     reader.position,
-                    reader.line);
+                    reader.line,
+                    reader.lineStarts);
         }
     }
 
@@ -162,7 +165,15 @@ public final class Transcoder {
             List<Value> valuesReadBeforeStopping,
             Optional<TranscodeResult.Failure> whyItStopped,
             int endedAtCodePoint,
-            int lineEndedOn) {}
+            int lineEndedOn,
+            Set<Integer> positionsThatBeginALine) {
+
+        /** The block those values make, laid out the way the source was. */
+        public BlockValue asABlock() {
+            return withItsLineStarts(
+                    BlockValue.block(valuesReadBeforeStopping), positionsThatBeginALine);
+        }
+    }
 
     /** Reads every value in the source, or reports the first failure. */
     public static TranscodeResult transcode(String source) {
@@ -174,8 +185,7 @@ public final class Transcoder {
         Reading reading = read(source, firstLine, Extent.THE_WHOLE_SOURCE);
         return reading.whyItStopped()
                 .<TranscodeResult>map(failure -> failure)
-                .orElseGet(() -> new TranscodeResult.Success(
-                        BlockValue.block(reading.valuesReadBeforeStopping())));
+                .orElseGet(() -> new TranscodeResult.Success(reading.asABlock()));
     }
 
     /**
@@ -218,8 +228,10 @@ public final class Transcoder {
                 if (outermost) {
                     topLevelStarts.add(began);
                 }
-                enclosing.push(new OpenLevel(values, closing, collecting));
+                recordWhetherTheValueBeginsALine(values.size() + 1);
+                enclosing.push(new OpenLevel(values, closing, collecting, lineStarts));
                 values = new ArrayList<>();
+                lineStarts = new LinkedHashSet<>();
                 closing = next == '[' ? ']' : ')';
                 collecting = next == '[' ? Datatype.BLOCK : Datatype.PAREN;
                 continue;
@@ -236,16 +248,18 @@ public final class Transcoder {
                                     : closing)));
                 }
                 advance();
+                crossedALine = false;
                 if (enclosing.isEmpty()) {
                     return values;
                 }
-                Value finished = collecting == Datatype.PAREN
+                Value finished = withItsLineStarts(collecting == Datatype.PAREN
                         ? BlockValue.paren(values)
-                        : BlockValue.block(values);
+                        : BlockValue.block(values), lineStarts);
                 OpenLevel parent = enclosing.pop();
                 values = parent.values();
                 closing = parent.closing();
                 collecting = parent.collecting();
+                lineStarts = parent.lineStarts();
                 values.add(finished);
                 if (terminator == NO_TERMINATOR && closing == NO_TERMINATOR
                         && enclosing.isEmpty()) {
@@ -267,6 +281,7 @@ public final class Transcoder {
                                 + "the block and surfaces there instead");
             }
             values.add(read);
+            recordWhetherTheValueBeginsALine(values.size());
             if (outermost) {
                 topLevelStarts.add(began);
                 topLevelEnds.add(position);
@@ -287,12 +302,13 @@ public final class Transcoder {
         List<Value> values = innermost;
         Datatype collecting = innermostKind;
         while (!enclosing.isEmpty()) {
-            Value finished = collecting == Datatype.PAREN
+            Value finished = withItsLineStarts(collecting == Datatype.PAREN
                     ? BlockValue.paren(values)
-                    : BlockValue.block(values);
+                    : BlockValue.block(values), lineStarts);
             OpenLevel parent = enclosing.pop();
             values = parent.values();
             collecting = parent.collecting();
+            lineStarts = parent.lineStarts();
             values.add(finished);
         }
         return values;
@@ -314,7 +330,50 @@ public final class Transcoder {
     private final List<Value> valuesTakenAtTheTopLevel = new ArrayList<>();
 
     /** A block left open while its contents are read. */
-    private record OpenLevel(List<Value> values, int closing, Datatype collecting) {
+    private record OpenLevel(List<Value> values, int closing, Datatype collecting,
+            Set<Integer> lineStarts) {
+    }
+
+    /**
+     * Whether a line feed has been passed since the last value was read.
+     *
+     * <p>{@code case TOKEN_LINE: line = TRUE;} in {@code Scan_Block}, and the
+     * next value read carries the flag. It is what makes MOLD write a block
+     * back the shape its author wrote it, and without it every loaded block
+     * molded on one line however it had been laid out.
+     *
+     * <p>A line feed with no value after it is forgotten. The C sets the flag
+     * on the last value it emitted and then copies the block without it --
+     * {@code //!!!! if (value) VAL_OPTS(BLK_TAIL(block)) = VAL_OPTS(value);
+     * // save NEWLINE marker}, commented out and left there. So
+     * {@code mold load "[1 2^/]"} is {@code [1 2]}, and the newline before
+     * the bracket that a block does write comes from its first value having
+     * started a line rather than from its last one ending one.
+     */
+    private boolean crossedALine;
+
+    /**
+     * The positions in the level being read that begin a line, one-based.
+     *
+     * <p>The flag belongs to the value and the value's position is where it
+     * can be kept, because a block holds values that are copies. Each open
+     * level keeps its own set, since a line feed inside a nested block says
+     * nothing about the block it is nested in.
+     */
+    private Set<Integer> lineStarts = new LinkedHashSet<>();
+
+    private void recordWhetherTheValueBeginsALine(int oneBasedPosition) {
+        if (crossedALine) {
+            lineStarts.add(oneBasedPosition);
+            crossedALine = false;
+        }
+    }
+
+    private static BlockValue withItsLineStarts(BlockValue block, Set<Integer> starts) {
+        for (int position : starts) {
+            block.storage().setLineBreakAt(position, true);
+        }
+        return block;
     }
 
     private Value readValue() {
@@ -491,6 +550,9 @@ public final class Transcoder {
                 continue;
             }
             if (Character.isWhitespace(next) || next == ',') {
+                if (next == '\n') {
+                    crossedALine = true;
+                }
                 advance();
                 continue;
             }
