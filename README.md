@@ -1,3 +1,6 @@
+# JEBOL
+
+REBOL 3 on the JVM.
 
 ## What is REBOL?
 
@@ -37,12 +40,12 @@ GUI layouts and its pattern matcher are all dialects rather than syntax:
 ```
 
 What another language wants a parser generator and a syntax tree for, REBOL
-does with a block and a function. 
+does with a block and a function.
 
-## JEBOL
+## What JEBOL is
 
-REBOL 3 on the JVM. A port of [Oldes' Rebol3](https://github.com/Oldes/Rebol3),
-version 3.22.5, to Java — an ordinary jar with no dependencies.
+A port of [Oldes' Rebol3](https://github.com/Oldes/Rebol3), version 3.22.5, to
+Java: an ordinary jar with no dependencies, running on any JDK.
 
 ```
 $ ./gradlew installDist
@@ -106,7 +109,7 @@ is Rebol's rather than an approximation of it: 279 of 279 C functions match,
 none of R3's 404 functions is missing, and `system/catalog/datatypes` has all
 fifty-eight of Rebol's (plus `java-object!`).
 
-## How it is measured
+## How it is checked
 
 **Rebol's own test suite is the measure.** All sixty-seven files from
 `src/tests/units/` are vendored and run — 10,100 assertions, every one of them
@@ -126,6 +129,38 @@ Beside it, and outliving it:
 - **A real `r3` binary**, used as an oracle. Where the suite and the C
   disagree, the C wins; where reasoning and the binary disagree, the binary
   wins.
+
+## Where it has got to, and what is left
+
+**9,084 of the 10,100 assertions in Rebol's own test suite pass.** The
+remaining 1,016 are named line by line in `known-gaps.txt`, and they group into
+six kinds and a tail:
+
+```
+ 301  format decoders and encoders: PNG, JPEG, GIF, BMP, WAV, PDF, SWF
+ 286  the rest, thin-spread: csv, func, module, time, map, date, make, error
+ 116  ports and schemes
+ 109  cryptography: the crypt port, Diffie-Hellman, ChaCha20, Poly1305
+  80  compression formats this build has not got: Brotli, LZMA, LZW, CRUSH
+  77  checksums and encodings
+  47  handles
+```
+
+Bigger things that are known rather than counted:
+
+- **DRAW renders 22 of R3's 36 commands.** `image` and `text` are the two whose
+  absence makes a page look wrong rather than plain.
+- **TLS loads but does not connect.**
+- **69 of Rebol's 142 error ids can be raised**, so a script that catches by id
+  can still meet one JEBOL has no way to produce.
+- **Ten of R3's scheme names are not registered**, `file` and `dir` among them.
+  JEBOL reaches files through a host grant instead, which may be the design or
+  may be a gap in the CLI; that is worth settling before the schemes are
+  written.
+- **`task!` is a datatype word and not yet a datatype.**
+
+`TODO.md` carries all of it with the numbers, and every number in it was
+checked by running it rather than by remembering it.
 
 ## Embedding
 
