@@ -6996,7 +6996,10 @@ public final class Natives {
                     ? run.remaining().size()
                     : 1;
         }
-        if (wanted instanceof BitsetValue || wanted instanceof CharacterValue) {
+        if (wanted instanceof BitsetValue) {
+            return 1;
+        }
+        if (wanted instanceof CharacterValue && !(series instanceof BinaryValue)) {
             return 1;
         }
         return itemsOfNeedle(series, wanted).size();
@@ -7073,15 +7076,48 @@ public final class Natives {
         return true;
     }
 
+    /**
+     * The bytes that spell a char or some text, for searching inside a binary.
+     *
+     * <p>A binary holds bytes and no characters, so looking for text in one
+     * means looking for the bytes that spell it. Taking the code point
+     * straight -- or the UTF-16 units of a string -- works for ASCII and for
+     * nothing else, which is why {@code find (to binary! "ačb") #"b"} worked
+     * and {@code find (to binary! "ačb") #"č"} found nothing at all.
+     *
+     * <p>A char up to 255 is that one byte, not its encoding. So
+     * {@code find #\{00FF} #"^^(ff)"} finds the byte FF and does not go looking
+     * for the two bytes UTF-8 would spell it with -- a binary of arbitrary
+     * bytes is the commoner thing to search, and a caller writing a char that
+     * fits in a byte means the byte. Only above 255, where no single byte will
+     * do, does the encoding come into it.
+     */
+    private static List<Value> theBytesThatSpell(Value wanted) {
+        if (wanted instanceof CharacterValue letter
+                && letter.codepoint() <= 0xFF) {
+            return List.of(IntegerValue.of(letter.codepoint()));
+        }
+        String text = wanted instanceof CharacterValue letter
+                ? new String(Character.toChars(letter.codepoint()))
+                : ((StringValue) wanted).text();
+        List<Value> octets = new ArrayList<>();
+        for (byte octet : text.getBytes(StandardCharsets.UTF_8)) {
+            octets.add(IntegerValue.of(octet & 0xFF));
+        }
+        return octets;
+    }
+
     /** A needle as the items the series it is searched in holds. */
     private static List<Value> itemsOfNeedle(SeriesValue series, Value wanted) {
         if (series instanceof BinaryValue && wanted instanceof BinaryValue bytes) {
             return itemsOf(bytes);
         }
+        if (series instanceof BinaryValue
+                && (wanted instanceof CharacterValue || wanted instanceof StringValue)) {
+            return theBytesThatSpell(wanted);
+        }
         if (wanted instanceof CharacterValue letter) {
-            return List.of(series instanceof BinaryValue
-                    ? IntegerValue.of(letter.codepoint())
-                    : letter);
+            return List.of(letter);
         }
         if (series instanceof BinaryValue && wanted instanceof IntegerValue byteValue) {
             return List.of(byteValue);
@@ -7346,6 +7382,10 @@ public final class Natives {
         }
         if (series instanceof BinaryValue && wanted instanceof BinaryValue run) {
             return run.lengthFromHere();
+        }
+        if (series instanceof BinaryValue
+                && (wanted instanceof CharacterValue || wanted instanceof StringValue)) {
+            return theBytesThatSpell(wanted).size();
         }
         if (series instanceof BlockValue
                 && wanted instanceof BlockValue run

@@ -83,4 +83,32 @@ class DifferenceAndNegativePathFromTheSourceTest {
                 reduce [(pick s -2) = s/-2 (pick s -1) = s/-1]"""))
                 .isEqualTo("[#(true) #(true)]");
     }
+
+    @Test
+    @DisplayName("FIND in a binary looks for the bytes that spell the text")
+    void findInABinaryLooksForBytes() {
+        assertThat(answerTo("""
+                bin: to binary! "ačb"
+                reduce [find bin #"č" find bin "čb" find/tail bin #"č"]"""))
+                .isEqualTo("[#{C48D62} #{C48D62} #{62}]");
+    }
+
+    @Test
+    @DisplayName("but a char up to 255 is that one byte, not its encoding")
+    void aCharThatFitsInAByteIsThatByte() {
+        assertThat(answerTo("""
+                reduce [
+                    find #{00FF} #"^(ff)"
+                    tail? find/tail #{00FF} #"^(ff)"
+                    find #{00C3BF} #"^(ff)"
+                ]""")).isEqualTo("[#{FF} #(true) _]");
+    }
+
+    @Test
+    @DisplayName("and a needle that is not there is still none")
+    void aNeedleThatIsNotThereIsNone() {
+        assertThat(answerTo("""
+                needle: #"x"
+                none? find (to binary! {ačb}) needle""")).isEqualTo("#(true)");
+    }
 }
