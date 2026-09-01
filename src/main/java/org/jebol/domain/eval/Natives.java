@@ -6269,14 +6269,15 @@ public final class Natives {
                         String replacement = replacing instanceof BlockValue several
                                 ? runTogether(several)
                                 : Molder.form(replacing);
-                        int overwritten = Math.min(replacement.length(), text.lengthFromHere());
+                        int[] letters = replacement.codePoints().toArray();
+                        int overwritten = Math.min(letters.length, text.lengthFromHere());
                         for (int gone = 0; gone < overwritten; gone++) {
                             text.storage().removeAt(text.index());
                         }
-                        for (int at = 0; at < replacement.length(); at++) {
-                            text.storage().insertAt(text.index() + at, replacement.charAt(at));
+                        for (int at = 0; at < letters.length; at++) {
+                            text.storage().insertAt(text.index() + at, letters[at]);
                         }
-                        return text.atIndex(text.index() + replacement.length());
+                        return text.atIndex(text.index() + letters.length);
                     }
                     if (arguments.get(0) instanceof VectorValue strandedVector) {
                         return changedElements(

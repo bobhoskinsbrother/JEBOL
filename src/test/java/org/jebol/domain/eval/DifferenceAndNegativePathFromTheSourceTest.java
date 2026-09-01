@@ -111,4 +111,16 @@ class DifferenceAndNegativePathFromTheSourceTest {
                 needle: #"x"
                 none? find (to binary! {ačb}) needle""")).isEqualTo("#(true)");
     }
+
+    @Test
+    @DisplayName("CHANGE counts the replacement in characters, not in Java's units")
+    void changeCountsCharacters() {
+        assertThat(answerTo("""
+                collect [
+                    keep all [(change o: "ábč" "č") == "bč"  o == "čbč"]
+                    keep all [(change o: "abc" "🙂") == "bc"  o == "🙂bc"]
+                    keep all [(change o: "ábč" "x🙂") == "č"  o == "x🙂č"]
+                    keep all [(change o: "🙂bc" "a") == "bc"  o == "abc"]
+                ]""")).isEqualTo("[#(true) #(true) #(true) #(true)]");
+    }
 }
