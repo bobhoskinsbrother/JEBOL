@@ -1,7 +1,7 @@
 # JEBOL
 
 REBOL 3 on the JVM. A port of [Oldes' Rebol3](https://github.com/Oldes/Rebol3),
-version 3.22.5, to Java - an ordinary jar with no dependencies.
+version 3.22.5, to Java — an ordinary jar with no dependencies.
 
 ```
 $ ./gradlew installDist
@@ -20,100 +20,6 @@ JEBOL -- REBOL 3 on the JVM. Type quit to leave.
 ** math error: division by zero
 ```
 
-## What REBOL is
-
-REBOL is a small interpreted language from 1997, designed by Carl Sassenrath
-around one idea: **source text is data, and the language is what reads it.**
-
-That sounds abstract and is not. Two things follow from it, and between them
-they are most of the language.
-
-**The datatypes go all the way down into the notation.** A date, a time, an
-amount of money, an email address, a file path, a URL, an IP-style tuple, a
-tag, a pair of coordinates and a run of bytes are each a literal you write
-directly, and each behaves as itself:
-
-```
->> reduce [type? 12-Jan-2026  type? 10:30  type? $19.99  type? 1.2.3  type? %file.txt]
-== [#(date!) #(time!) #(money!) #(tuple!) #(file!)]
->> 12-Jan-2026 + 30
-== 11-Feb-2026
->> 10:30 + 0:45
-== 11:15
->> $19.99 * 3
-== $59.97
-```
-
-There is no date library and no parsing step, because the reader already knew
-what it was reading. Fifty-eight datatypes in all, and most of them are written
-directly like this.
-
-**A block is data until something evaluates it.** Square brackets hold values
-and do nothing with them:
-
-```
->> b: [print "not run yet"]
->> type? b
-== #(block!)
->> do b
-not run yet
-```
-
-Every control structure is an ordinary function taking blocks - `if`, `either`,
-`while`, `repeat` are not syntax - and so is anything you write. A block of
-values you interpret your own way is a *dialect*, which is REBOL's answer to
-what other languages use a parser generator for. PARSE is one such dialect
-built in, and it is a grammar that can run code as it matches:
-
-```
->> plan: [deposit 100 withdraw 30 deposit 5]
->> total: 0
->> parse plan [some ['deposit set n integer! (total: total + n)
-                   | 'withdraw set n integer! (total: total - n)]]
-== true
->> total
-== 75
-```
-
-Three more things a reader coming from elsewhere will trip over.
-
-**Everything sequential is a *series*, and a series value carries a position
-in it.** `find` does not answer an index; it answers the same series standing
-somewhere else:
-
-```
->> s: "hello world"
->> find s "world"
-== "world"
->> index? find s "world"
-== 7
->> head find s "world"
-== "hello world"
-```
-
-**Functions take their arguments by position, with no parentheses**, and
-refinements extend one rather than multiplying it:
-
-```
->> greet: func [name [string!] /loudly][
-       either loudly [uppercase rejoin ["hello " name]] [rejoin ["hello " name]]
-   ]
->> greet "ben"
-== "hello ben"
->> greet/loudly "ben"
-== "HELLO BEN"
-```
-
-**MOLD and LOAD are inverses**, which is what keeps code-as-data honest: any
-value can be written as source and read back as itself.
-
-```
->> mold [1 "two" 3:00]
-== {[1 "two" 3:00]}
->> load mold [1 "two" 3:00]
-== [1 "two" 3:00]
-```
-
 ## Why
 
 To run REBOL in an ordinary web production environment, and to get the
@@ -121,19 +27,13 @@ operational benefits of the JVM while doing it: a jar on any JDK, deployed
 down the pipeline that already exists, watched with the tools the operations
 team already has, in the containers everything else already runs in.
 
-That is the point, and it decides arguments that otherwise go in circles.
+It is an incredibly easy language to design dialects with.  The idea is to have a lightweight 
+translation from allium spec to a dialect.
 
-**Interoperability is not the point.** Building a whole REBOL implementation
-so that REBOL could call Java would be a poor trade; plenty of things call
-Java already. Two-way interop is in scope because it is useful once you are
-here, not because it is the reason for coming.
+**Interoperability is the point.** REBOL with Java postgres jar files and not having to 
+re-implement everything every time: make good use of the massive JVM ecosystem.
 
-**It settles the workload question.** A web production environment means many
-short, request-scoped scripts rather than a few long ones. Warmup dominates
-and per-instance cost is the number that matters, so an interpreter wins and
-a compiler would never amortise.
-
-**It is the real case against Truffle.** Not runtime distribution - Truffle
+**It is the real case against Truffle.** Not runtime distribution — Truffle
 languages have been ordinary Maven artifacts on a standard JDK since 23.1.
 The objection that survives is operational: a polyglot context is a
 heavyweight thing to hold per request, and what a profiler shows you is the
@@ -144,17 +44,16 @@ creating an interpreter, running a script and getting a value back, under a
 time and memory bound it sets. Interop is REBOL code calling Java. The first
 is what the purpose requires; the second is optional on top of it.
 
-Oldes' branch rather than REBOL 2, R3-Alpha as it stands elsewhere, or Red:
-Unicode strings natively, which suits the JVM; it is the version with the most
-surviving reference material; and it is alive, so there is a running binary to
+Oldes' branch rather than REBOL 2, R3-Alpha as it is the version with the most
+surviving reference material (and it is alive) so there is a running binary to
 check answers against.
 
 ## What is ported, and what is borrowed
 
 The two are kept apart on purpose, and the split is the whole design.
 
-**The C is ported.** Everything in `src/core/*.c` - the evaluator, the reader,
-the series operations, the natives, PARSE, the binary dialect, the checksums -
+**The C is ported.** Everything in `src/core/*.c` — the evaluator, the reader,
+the series operations, the natives, PARSE, the binary dialect, the checksums —
 is rewritten in Java against the C as the authority.
 
 **The REBOL is borrowed.** Everything in `src/mezz/*.reb` is loaded and run as
@@ -174,7 +73,7 @@ fifty-eight of Rebol's (plus `java-object!`).
 ## How it is measured
 
 **Rebol's own test suite is the measure.** All sixty-seven files from
-`src/tests/units/` are vendored and run - 10,100 assertions, every one of them
+`src/tests/units/` are vendored and run — 10,100 assertions, every one of them
 reached. What still fails is named line by line in
 `src/test/resources/rebol-suite/known-gaps.txt`, and that list only ever
 shrinks: the build fails if a listed assertion starts passing, so nothing comes
@@ -182,7 +81,7 @@ off it quietly and nothing goes on it without being seen.
 
 Beside it, and outliving it:
 
-- **A corpus of 1,140 entries** - published REBOL examples with their published
+- **A corpus of 1,140 entries** — published REBOL examples with their published
   results, plus fourteen complete real programs that must load and survive a
   round trip through MOLD.
 - **Standalone tests** for every behaviour fixed because of a suite assertion,
@@ -266,15 +165,15 @@ warning not on the allowlist.
 
 `browserCheck` is separate rather than skipped. It drives a real Chrome through
 WebDriver, renders the same paint list in Java2D and in the browser, and
-compares the two pixel for pixel - which is how "a page and a window show the
+compares the two pixel for pixel — which is how "a page and a window show the
 same picture" is a thing the build knows rather than a thing somebody says. It
 is out of `check` because it needs a browser installed and a network the first
 time it fetches a driver, and the ordinary gate should need neither.
 
 ## Reading further
 
-- `TODO.md` - what is left, with the numbers, each one checked by running it
-- `docs/decisions.md` - what has been decided, why, and what it rules out
-- `docs/porting-guide.md` - how to port a function, and what the authorities are
-- `docs/rebol-findings.md` - what reading Rebol's source turned up about Rebol
-- `using-jebol.md` - the manual
+- `TODO.md` — what is left, with the numbers, each one checked by running it
+- `docs/decisions.md` — what has been decided, why, and what it rules out
+- `docs/porting-guide.md` — how to port a function, and what the authorities are
+- `docs/rebol-findings.md` — what reading Rebol's source turned up about Rebol
+- `using-jebol.md` — the manual
