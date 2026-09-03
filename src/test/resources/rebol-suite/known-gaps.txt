@@ -754,7 +754,6 @@ lexer-test.r3 / Construction syntax / any-string! #330
 lexer-test.r3 / Construction syntax / any-string! #331
 lexer-test.r3 / Construction syntax / any-string! #332
 lexer-test.r3 / Construction syntax / any-string! #333
-make-test.r3 / make char! / to char! issue! #14
 make-test.r3 / make char! / to char! surrogates #12
 make-test.r3 / make/to block! / to block! .. #402
 make-test.r3 / make/to block! / to block! .. #403
@@ -930,7 +929,6 @@ power-test.r3 / power integer / power-integer-6 #16
 power-test.r3 / power integer / power-integer-7 #17
 power-test.r3 / power integer / power-integer-8 #18
 series-test.r3 / DELINE / ENLINE / ENLINE #1230
-series-test.r3 / SWAP / swap invalidating index (known issue) #973
 struct-test.r3 / Invalid struct construction / (no test) #186
 struct-test.r3 / Invalid struct construction / (no test) #187
 struct-test.r3 / Invalid struct construction / (no test) #188

@@ -133,7 +133,8 @@ Beside it, and outliving it:
 ## Where it has got to, and what is left
 
 **9,084 of the 10,100 assertions in Rebol's own test suite pass.** The other
-1,016 are named line by line in `known-gaps.txt`, and the useful split is not
+1,016 are accounted for: 1,014 named line by line in `known-gaps.txt`, and two
+in `fails-on-rebol-too.txt`, which are assertions a real Rebol fails as well, and the useful split is not
 by feature but by whether they ran at all.
 
 **510 of them never ran.** A suite file is a script, so an assertion that

@@ -1,0 +1,34 @@
+# Assertions that a real Rebol fails as well.
+#
+# These are not run. They are not gaps either: JEBOL answers what the Rebol
+# they came from answers, and the assertion is wrong about that Rebol. Putting
+# them in known-gaps.txt would say there is work here and there is not, and
+# deleting them would lose the finding.
+#
+# Nothing goes in here on reasoning. Each line was run through ./r3-head, the
+# same 3.22.5 the port is measured against, and the answer written down below
+# it. If a line here ever starts passing in JEBOL, JEBOL has diverged from
+# Rebol and the line should come back out.
+#
+# ---------------------------------------------------------------------------
+#
+# make-test.r3 asks for bad-make-arg from `to char! #FF`. The same checkout's
+# t-char.c has a `case REB_ISSUE` that scans the digits as hex, and ./r3-head
+# answers #"ÿ". The comment beside the assertion points at issue 1130, which
+# is what added that arm: the test was written before it and never updated
+# after. JEBOL matches the C and the binary, so it stays failing.
+#
+#   >> all [error? e: try [to char! #FF]  e/id = 'bad-make-arg]
+#   == none            ; r3-head 3.22.5, and JEBOL
+#
+make-test.r3 / make char! / to char! issue! #14
+
+# series-test.r3 asks whether "🙂" equals the LENGTH? of a string whose index
+# a SWAP has just invalidated -- a string against a number, false whatever the
+# number turns out to be. Rebol's own comment on the line reads "Known
+# issue!!!".
+#
+#   >> all ["b🙂" == swap s1: "🙂b" s2: next s1  "🙂" == length? s2]
+#   == none            ; r3-head 3.22.5, and JEBOL
+#
+series-test.r3 / SWAP / swap invalidating index (known issue) #973

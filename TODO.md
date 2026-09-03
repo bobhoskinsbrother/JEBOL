@@ -17,10 +17,10 @@ now run -- Goal 1, and it is done. The sixth is new and is not clean.
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
-| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 1,016 failing and every one named in `known-gaps.txt` |
+| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 1,014 failing and every one named in `known-gaps.txt` |
 | `scripts/error-parity.py` | **69 of Rebol's 142 error ids can be raised. 73 cannot** |
 
-`./gradlew check` is 16,041 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 16,042 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception.
 
 ---
@@ -94,7 +94,7 @@ door, and the reader refuses to answer one.
 
 ## What this leaves
 
-`known-gaps.txt` holds 1,016 entries, from 1,032 over 25 files. The list grew
+`known-gaps.txt` holds 1,014 entries, from 1,032 over 25 files. The list grew
 because the suite did. **None of those failures was new when it appeared: they
 were not passing, they were not being asked.** They are the real porting
 backlog and the honest measure of the port, and the list only ever shrinks --
@@ -309,33 +309,51 @@ undirize  values-of  words-of  wrap
 Audit by identity rather than by datatype: for each one, is JEBOL's version
 the same function, and if not, why was it forked?
 
-# Goal 7. The suite assertions that cannot come off
+# Goal 7. The suite assertions that cannot come off -- DONE
 
-**Of the 1,016 lines in `known-gaps.txt`, 1,014 are work and two are not.**
-The file is not a skip list: every line in it runs on every build, and
-`RebolSuiteTest` fails if a listed assertion starts passing. So the list only
-ever shrinks, and these two will still be there when the rest have gone.
+**They have a file of their own now.**
+`src/test/resources/rebol-suite/fails-on-rebol-too.txt` holds the assertions a
+real Rebol fails as well. They are not run and they are not gaps: JEBOL
+answers what the Rebol they came from answers, and the assertion is wrong
+about that Rebol. Leaving them in `known-gaps.txt` said there was work here
+and there is not; deleting them would have lost the finding.
 
-```
- 1  SWAP        a real Rebol fails it too, which is why it can never come off.
-                It asks whether "🙂" equals the LENGTH? of a string whose index
-                a SWAP has just invalidated -- a string against a number, false
-                whatever the number is. Rebol's own comment on the line reads
-                "Known issue!!!", and running its suite with a binary built
-                from this checkout prints "FAIL: swap invalidating index (known
-                issue) (1)".
+Nothing goes in on reasoning. Each line carries the `./r3-head` session that
+settled it, and two gates hold the file honest: every line must name an
+assertion that exists, and no line may be in both files at once.
 
- 1  TO CHAR!    make-test.r3 asks for `bad-make-arg` from `to char! #FF`, and
-    of an       the same checkout's `t-char.c` has a `case REB_ISSUE` that
-    issue       scans the digits as hex. `./r3-head` answers `#"ÿ"`, so the
-                assertion cannot hold on the Rebol it ships with. The comment
-                beside it points at issue 1130, which is what added the arm --
-                the test was written before and never updated after.
+Two are in it today -- `to char! #FF`, where the C grew a `case REB_ISSUE`
+after the test was written, and the SWAP one whose own comment says "Known
+issue!!!".
 
-                **JEBOL matches the C and the binary, so this stays failing.**
-                The rule is that the suite is the authority until the C says
-                otherwise, and here the C says otherwise in as many lines.
-```
+**The DER codec looks like a third and is not yet proven.** On `./r3-head`,
+`codecs/der/verbose: 2` followed by `load %test.pfx` raises `not-defined
+SEQUENCE`, so that group's assertions cannot hold on the Rebol they came
+from. They are still counted as gaps because they are *blocked* rather than
+run -- see Goal 9 -- and an assertion that never ran is not evidence of
+anything.
+
+# Goal 9. The 510 assertions that never run
+
+**Half the backlog is blocked rather than broken.** 510 of the 1,014 failing
+assertions never ran at all: an earlier expression in the same step raised and
+took the rest with it. 171 sit behind one of them.
+
+The cause is in the harness rather than in the port. `stepsIn` takes every
+value up to the next *top-level* dialect word as one step, and codecs-test.r3
+is a run of `if find codecs 'wav [...]`, `if find codecs 'der [...]`,
+`if find codecs 'crt [...]` whose dialect words are all nested inside the
+blocks. So the whole tail of the file becomes one step, and the DER codec
+raising takes the WAV, CRT, SWF and every other group down with it.
+
+Each top-level expression should be its own step. `Interpreter.runNext` is
+already the tool -- it is what the assertion branch uses -- so the setup
+branch wants the same loop rather than one `run` of the lot.
+
+**Worth doing before any more counting.** Until it is done the count is a
+measure of the harness as much as of the port, the blocked ones are unmeasured
+rather than failing, and none of them can be shown to belong in
+`fails-on-rebol-too.txt`.
 
 # Goal 8. LLM-friendly MCP tools
 

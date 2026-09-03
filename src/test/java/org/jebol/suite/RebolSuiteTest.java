@@ -67,6 +67,19 @@ class RebolSuiteTest {
             Path.of("src", "test", "resources", "rebol-suite");
     private static final Path GAPS = SUITE.resolve("known-gaps.txt");
 
+    /**
+     * Assertions a real Rebol fails as well, which are not run.
+     *
+     * <p>They are not gaps: JEBOL answers what the Rebol they came from
+     * answers, and the assertion is wrong about that Rebol. Leaving them in
+     * the gap list would say there is work here and there is not, and
+     * deleting them would lose the finding, so they sit in a file of their
+     * own with the {@code r3-head} output that settled each one written
+     * beside it.
+     */
+    private static final Path FAILS_ON_REBOL_TOO =
+            SUITE.resolve("fails-on-rebol-too.txt");
+
     static Stream<SuiteFile.Assertion> everyAssertion() {
         return filesInSuite().stream()
                 .flatMap(file -> file.assertions().stream())
@@ -75,9 +88,13 @@ class RebolSuiteTest {
     }
 
     static List<String> knownGaps() {
+        return linesOf(GAPS);
+    }
+
+    private static List<String> linesOf(Path list) {
         try {
-            return Files.exists(GAPS)
-                    ? Files.readAllLines(GAPS).stream()
+            return Files.exists(list)
+                    ? Files.readAllLines(list).stream()
                             .map(String::strip)
                             .filter(line -> !line.isEmpty() && !line.startsWith("#"))
                             .toList()
@@ -87,9 +104,16 @@ class RebolSuiteTest {
         }
     }
 
+    static List<String> failingOnRebolToo() {
+        return linesOf(FAILS_ON_REBOL_TOO);
+    }
+
     static Stream<SuiteFile.Assertion> assertionsExpectedToPass() {
         List<String> gaps = knownGaps();
-        return everyAssertion().filter(assertion -> !gaps.contains(assertion.toString()));
+        List<String> alsoFailingOnRebol = failingOnRebolToo();
+        return everyAssertion()
+                .filter(assertion -> !gaps.contains(assertion.toString()))
+                .filter(assertion -> !alsoFailingOnRebol.contains(assertion.toString()));
     }
 
     /**
@@ -438,6 +462,20 @@ class RebolSuiteTest {
         assertThat(knownGaps().stream().filter(gap -> !live.contains(gap)).toList())
                 .as("these name no assertion, so nothing can ever take them off "
                         + "the list; delete them")
+                .isEmpty();
+        assertThat(failingOnRebolToo().stream().filter(one -> !live.contains(one)).toList())
+                .as("these name no assertion either, and a list of findings "
+                        + "about assertions that are not there is not a finding")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("nothing is in both lists")
+    void theTwoListsDoNotOverlap() {
+        List<String> gaps = knownGaps();
+        assertThat(failingOnRebolToo().stream().filter(gaps::contains).toList())
+                .as("an assertion is either work to do or a finding about "
+                        + "Rebol; being both means one of the two is wrong")
                 .isEmpty();
     }
 }
