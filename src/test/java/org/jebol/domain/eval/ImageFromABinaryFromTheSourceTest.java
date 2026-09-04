@@ -145,7 +145,9 @@ class ImageFromABinaryFromTheSourceTest {
                     copied: to image! original
                     copied/1: 9.9.9
                     reduce [mold original/1 mold copied/1]"""))
-                    .isEqualTo("[\"17.34.51.68\" \"9.9.9.68\"]");
+                    .as("the copy is written and the original is not; a three-part "
+                            + "tuple makes the pixel it lands on opaque")
+                    .isEqualTo("[\"17.34.51.68\" \"9.9.9.255\"]");
         }
     }
 }

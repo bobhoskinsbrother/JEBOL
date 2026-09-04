@@ -42,7 +42,7 @@ public final class ImageStorage {
 
     private byte[] pixels;
     private int length;
-    private final int wide;
+    private int wide;
     private int high;
     private boolean isProtected;
 
@@ -75,6 +75,21 @@ public final class ImageStorage {
 
     public int wide() {
         return wide;
+    }
+
+    /**
+     * Lays the same pixels out at another width, which is what `img/size:`
+     * does.
+     *
+     * <p>Not a byte is moved. {@code VAL_IMAGE_WIDE(data) = VAL_PAIR_X_INT(val);
+     * VAL_IMAGE_HIGH(data) = MIN(VAL_PAIR_Y_INT(val), VAL_TAIL(data) / x)} --
+     * the height asked for, or however many whole rows the pixels there make,
+     * whichever is smaller.
+     */
+    public void reshape(int across, int down) {
+        refuseIfProtected();
+        this.wide = across;
+        this.high = Math.max(0, down);
     }
 
     /**

@@ -4152,6 +4152,15 @@ public final class Natives {
             }
             case MapValue map -> map.walkable();
             case VectorValue vector -> vector.remaining();
+            case ImageValue picture -> {
+                List<Value> pixels = new ArrayList<>(picture.lengthFromHere());
+                for (int at = picture.index(); at <= picture.storageLength(); at++) {
+                    int[] channels = picture.storage().pixelAt(at);
+                    pixels.add(TupleValue.of(
+                            channels[0], channels[1], channels[2], channels[3]));
+                }
+                yield List.copyOf(pixels);
+            }
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "cannot walk " + series.datatype().literalSpelling() + " value");
         };
@@ -5761,17 +5770,23 @@ public final class Natives {
                         : pickFrom(arguments.get(0), arguments.get(1)));
 
         define("atz", List.of(Parameter.required("series"),
-                        Parameter.required("position", Set.of(Datatype.INTEGER))),
-                (arguments, evaluator, context) -> arguments.get(0) instanceof SeriesValue series
-                        ? (Value) series.atIndex(clampedPosition(series,
-                                ((IntegerValue) arguments.get(1)).magnitude() + 1))
-                        : raiseWrongArgument(arguments.get(0), "atz", "series"));
+                        Parameter.required("position",
+                                Set.of(Datatype.INTEGER, Datatype.PAIR))),
+                (arguments, evaluator, context) -> {
+                    if (!(arguments.getFirst() instanceof SeriesValue series)) {
+                        return raiseWrongArgument(arguments.getFirst(), "atz", "series");
+                    }
+                    return series.atIndex(clampedPosition(series,
+                            positionAskedFor(series, arguments.get(1), false) + 1));
+                });
         define("indexz?", List.of(Parameter.required("series", positionable())),
                 Set.of("xy"),
-                (arguments, evaluator, context, refinements) ->
-                        arguments.get(0) instanceof SeriesValue series
-                                ? IntegerValue.of(series.index() - 1)
-                                : raiseCannotUse(arguments.get(0), "indexz?"));
+                (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
+                    case ImageValue picture when refinements.contains("xy") ->
+                            whereItStandsInThePicture(picture, 0);
+                    case SeriesValue series -> IntegerValue.of(series.index() - 1);
+                    default -> raiseCannotUse(arguments.get(0), "indexz?");
+                });
         define("pickz", List.of(Parameter.required("series"),
                         Parameter.required("index", Set.of(Datatype.INTEGER))),
                 (arguments, evaluator, context) -> {
@@ -5875,6 +5890,8 @@ public final class Natives {
                 Set.of("xy"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
                     case NoneValue nothing -> nothing;
+                    case ImageValue picture when refinements.contains("xy") ->
+                            whereItStandsInThePicture(picture, 1);
                     case SeriesValue series -> IntegerValue.of(series.index());
                     default -> raiseCannotUse(arguments.get(0), "index?");
                 });
@@ -11101,6 +11118,28 @@ public final class Natives {
                 ? Encodings.murmurOf(bytes.octetsFromHere())
                 : Encodings.caseFoldedHashOf(octetsOf(value))
                         ^ value.datatype().ordinal();
+    }
+
+    /**
+     * Where a position in a picture sits, as a column and a row.
+     *
+     * <p>{@code index % VAL_IMAGE_WIDE(value)} across and
+     * {@code index / VAL_IMAGE_WIDE(value)} down, both counted from the
+     * zero-based index, and then INDEX? adds one to each where INDEXZ? does
+     * not. So the tail of a picture two across and three down is
+     * {@code 1x4} -- the first column of a row that is not there -- which is
+     * the same arithmetic as any other tail rather than a special case.
+     *
+     * <p>{@code /xy} means nothing to any other series, and R3 ignores it
+     * there rather than refusing.
+     */
+    private static Value whereItStandsInThePicture(ImageValue picture, int countingFrom) {
+        int across = picture.storage().wide();
+        if (across <= 0) {
+            return IntegerValue.of(picture.index() - 1 + countingFrom);
+        }
+        int stepsIn = picture.index() - 1;
+        return PairValue.of(stepsIn % across + countingFrom, stepsIn / across + countingFrom);
     }
 
     /** The any-string datatypes, plus whatever else a spec names beside them. */

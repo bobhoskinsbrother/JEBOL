@@ -1310,6 +1310,11 @@ public final class Evaluator {
             VectorPath.write(vector, selectorFor(lastSegment, frame.context), written);
             return;
         }
+        if (target instanceof ImageValue picture) {
+            ImagePath.writeThroughPath(
+                    picture, selectorFor(lastSegment, frame.context), written);
+            return;
+        }
         if (target instanceof StructValue struct) {
             StructPath.write(struct, selectorFor(lastSegment, frame.context), written);
             return;

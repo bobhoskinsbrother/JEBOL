@@ -434,29 +434,6 @@ image-test.r3 / BLUR / premultiply image 3 (input not at its head) #203
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #204
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #205
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #206
-image-test.r3 / FOREACH / issue-1008 #71
-image-test.r3 / FOREACH / issue-1479 #72
-image-test.r3 / FOREACH / issue-1479 #73
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy at image! #45
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy at image! #46
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy at image! #47
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy at image! #48
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy at image! #49
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy image! #41
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy image! #42
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy image! #43
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / index?/xy image! #44
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #64
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #65
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #66
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #67
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #68
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy atz image! #69
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy image! #60
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy image! #61
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy image! #62
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / indexz?/xy image! #63
-image-test.r3 / INDEX? / INDEXZ? / AT / ATZ / mold/all image with modified index #70
 image-test.r3 / Image as a series / APPEND on image #228
 image-test.r3 / Image as a series / APPEND on image #229
 image-test.r3 / Image as a series / APPEND on image #230
@@ -476,7 +453,6 @@ image-test.r3 / Image as a series / FIND tuple on image #218
 image-test.r3 / Image as a series / FIND tuple on image #219
 image-test.r3 / Image as a series / FIND tuple on image #220
 image-test.r3 / Image as a series / FIND tuple on image #221
-image-test.r3 / Image as a series / FIND tuple on image #222
 image-test.r3 / Image as a series / FIND tuple on image #223
 image-test.r3 / Image as a series / FIND tuple on image #224
 image-test.r3 / Image as a series / INSERT on image #232
@@ -498,9 +474,6 @@ image-test.r3 / Image difference / image-diff/part #167
 image-test.r3 / Image difference / image-diff/part #171
 image-test.r3 / Image difference / image-diff/part #172
 image-test.r3 / Image difference / image-diff/part #173
-image-test.r3 / Luminosity / Grayscale / Grayscale image #196
-image-test.r3 / Luminosity / Grayscale / Luminosity image (BT.709) #186
-image-test.r3 / Luminosity / Grayscale / Luminosity/luma image (BT.601) #191
 image-test.r3 / RGB - HSV conversions / HSV-TO-RGB #152
 image-test.r3 / RGB - HSV conversions / RGB-TO-HSV #148
 image-test.r3 / Save/load image / premultiply image 3 (input not at its head) #207
@@ -512,19 +485,6 @@ image-test.r3 / change image / change image by image #136
 image-test.r3 / change image / change image by image #137
 image-test.r3 / change image / change image by image #138
 image-test.r3 / construct image / construct image invalid #23
-image-test.r3 / image range / image range (pair index) #101
-image-test.r3 / image range / image range (pair index) #95
-image-test.r3 / image range / image range (pair index) #97
-image-test.r3 / image range / image range (pair index) #99
-image-test.r3 / image/color / image/color getter #128
-image-test.r3 / image/color / image/color getter #129
-image-test.r3 / image/color / image/color getter #130
-image-test.r3 / image/color / image/color setter #131
-image-test.r3 / image/color / image/color setter #132
-image-test.r3 / image/color / image/color setter #133
-image-test.r3 / raw image data getters/setters / errors #125
-image-test.r3 / raw image data getters/setters / errors #126
-image-test.r3 / raw image data getters/setters / errors #127
 issue-test.r3 / to-hex / bad chars in issue #25
 issue-test.r3 / to-hex / bad chars in issue #26
 issue-test.r3 / to-hex / to-hex/size integer! #10
