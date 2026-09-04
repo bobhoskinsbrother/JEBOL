@@ -140,8 +140,15 @@ codec-bbcode.reb
 codec-der.reb
 codec-crt.reb
 codec-ico.reb
-codec-image-ext.reb
+# codec-image.reb before codec-image-ext.reb, for the same reason DER comes
+# before CRT. The extension opens each of its blocks with `if find codecs
+# 'png`, and codec-image.reb is what registers png, jpeg, gif, bmp, dds and
+# tiff -- so loaded the other way about every one of those guards was false
+# and every `put` was skipped without a word said. That is what left the image
+# codecs with no `size?`, and four whole groups of the codecs file with
+# nothing to run.
 codec-image.reb
+codec-image-ext.reb
 codec-mime-field.reb
 codec-mime-types.reb
 codec-pdb.reb
