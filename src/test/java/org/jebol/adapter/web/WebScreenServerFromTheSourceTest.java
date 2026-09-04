@@ -108,12 +108,28 @@ class WebScreenServerFromTheSourceTest {
                 HttpResponse.BodyHandlers.ofString());
     }
 
+    /**
+     * The status a post came back with, and the whole answer where it fails.
+     *
+     * <p>The body is read rather than discarded so that a status nobody
+     * expected arrives with the server's own explanation attached. This test
+     * failed once with 404 under a full parallel run and passed on its own
+     * every time after, and a bare number said nothing about which server had
+     * answered or why.
+     */
     private int post(String path, String body) throws Exception {
-        return client.send(
-                HttpRequest.newBuilder(URI.create(serving.address() + path))
+        URI where = URI.create(serving.address() + path);
+        HttpResponse<String> answer = client.send(
+                HttpRequest.newBuilder(where)
                         .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
-                HttpResponse.BodyHandlers.discarding()).statusCode();
+                HttpResponse.BodyHandlers.ofString());
+        lastPostSaid = "POST %s -> %d [%s]".formatted(
+                where, answer.statusCode(), answer.body().strip());
+        return answer.statusCode();
     }
+
+    /** What the last post came back with, for an assertion that fails. */
+    private String lastPostSaid = "nothing posted yet";
 
     /** Opens the picture stream and keeps it open, as a browser does. */
     private java.io.InputStream openThePictureStream() throws Exception {
@@ -269,7 +285,9 @@ class WebScreenServerFromTheSourceTest {
             aBrowserOpensThePage();
 
             assertThat(post("event", """
-                    {"kind":"jump"}""")).isEqualTo(204);
+                    {"kind":"jump"}"""))
+                    .as("%s", lastPostSaid)
+                    .isEqualTo(204);
             assertThat(screen.takeQueuedEvents()).isEmpty();
         }
 

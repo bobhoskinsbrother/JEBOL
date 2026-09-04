@@ -8,6 +8,7 @@ import org.jebol.domain.value.GobValue;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -50,9 +51,17 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         this.server = server;
     }
 
-    /** Starts serving on a port, or on any free one when given zero. */
+    /**
+     * Starts serving on a port, or on any free one when given zero.
+     *
+     * <p>On the loopback address only. The page is for whoever is sitting at
+     * this machine -- it is a window, drawn somewhere else -- and a window
+     * does not need to be reachable from the network. Binding every address
+     * offered one anyway.
+     */
     public static WebScreenServer on(int port) throws IOException {
-        HttpServer listening = HttpServer.create(new InetSocketAddress(port), 0);
+        HttpServer listening = HttpServer.create(
+                new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
         WebScreenServer serving = new WebScreenServer(listening);
         listening.createContext("/", serving::servePage);
         listening.createContext("/paint", serving::openThePaintStream);
@@ -66,8 +75,16 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         return server.getAddress().getPort();
     }
 
+    /**
+     * Where to reach it, written as the address it actually bound.
+     *
+     * <p>Not as the name {@code localhost}, which resolves to two addresses on
+     * a dual-stack machine and leaves the caller to pick. Naming the one that
+     * was bound means the answer cannot depend on which one gets picked.
+     */
     public String address() {
-        return "http://localhost:" + port() + "/";
+        return "http://" + server.getAddress().getAddress().getHostAddress()
+                + ":" + port() + "/";
     }
 
     /** Tells the server which screen to report events to. */
