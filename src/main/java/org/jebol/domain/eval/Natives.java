@@ -3343,6 +3343,7 @@ public final class Natives {
                     case BlockValue block -> block.storage().isProtected();
                     case StringValue text -> text.storage().isProtected();
                     case BinaryValue bytes -> bytes.storage().isProtected();
+                    case MapValue map -> map.isProtected();
                     case ObjectValue object -> object.context().slots().stream()
                             .anyMatch(ContextSlot::isProtected);
                     case WordValue word -> word.isBound()
@@ -9409,7 +9410,9 @@ public final class Natives {
 
     /** Whether protection means anything for this kind of value. */
     private static boolean carriesProtection(Value value) {
-        return value instanceof SeriesValue || value instanceof ObjectValue;
+        return value instanceof SeriesValue
+                || value instanceof ObjectValue
+                || value instanceof MapValue;
     }
 
     /** Whether a block is one of the path shapes rather than a plain block. */

@@ -221,6 +221,7 @@ public final class MapValue implements Value {
      * respelled it would change what a later FIND says.
      */
     public void put(Value key, Value value, boolean mindingCase) {
+        refuseIfProtected();
         Value existing = theKeyMatching(key, mindingCase);
         entries.put(existing instanceof NoneValue
                 ? lockedIfItIsText(keyOf(key))
@@ -229,11 +230,27 @@ public final class MapValue implements Value {
 
     /** Empties the map, as CLEAR on a series empties it. */
     public void clear() {
+        refuseIfProtected();
         entries.clear();
     }
 
     public void remove(Value key) {
+        refuseIfProtected();
         entries.remove(keyOf(key));
+    }
+
+    /**
+     * Refuses a change to a map somebody protected.
+     *
+     * <p>{@code TRAP_PROTECT(VAL_SERIES(value))} is the first line of every
+     * branch of MT_Map that writes, and the error it raises is `protected`.
+     * JEBOL kept the flag and let every write through, so PROTECT on a map
+     * was a word that did nothing.
+     */
+    private void refuseIfProtected() {
+        if (protectedFromChange) {
+            throw new ProtectedFromChange();
+        }
     }
 
     /** Pairs, not items: {@code #[a: 1 b: 2]} is two long. */

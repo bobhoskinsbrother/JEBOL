@@ -511,14 +511,6 @@ make-test.r3 / make/to pair! / to pair! .. #229
 make-test.r3 / make/to pair! / to pair! .. #246
 make-test.r3 / make/to typeset / make typeset! .. #733
 make-test.r3 / make/to typeset / to typeset! .. #769
-map-test.r3 / FORM map! / form empty map #132
-map-test.r3 / FORM map! / form map with multiple keys #134
-map-test.r3 / FORM map! / form single key map #133
-map-test.r3 / PUT / PUT into protected map #139
-map-test.r3 / PUT / PUT into protected map #140
-map-test.r3 / PUT / PUT into protected map #141
-map-test.r3 / PUT / PUT into protected map #142
-map-test.r3 / map issues / map-issue-1872 #104
 map-test.r3 / reflection / block of map #152
 map-test.r3 / reflection / block of map #153
 map-test.r3 / set operations with map! / difference with map #177

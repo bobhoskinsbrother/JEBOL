@@ -556,7 +556,10 @@ public final class Molder {
      * well as gaining a name.
      */
     private static String renderMap(MapValue map, boolean forReading) {
-        boolean asAConstruct = forReading && WRITING_EVERYTHING_OUT.get();
+        if (!forReading) {
+            return formedPairsOf(map);
+        }
+        boolean asAConstruct = WRITING_EVERYTHING_OUT.get();
         String opens = asAConstruct ? "#(map! [" : "#[";
         String shuts = asAConstruct ? "])" : "]";
         if (map.pairCount() == 0) {
@@ -580,6 +583,33 @@ public final class Molder {
         });
         return opens + pairs
                 + (onSeparateLines ? aLineIndentedAsDeepAsWeAre() : "") + shuts;
+    }
+
+    /**
+     * FORM of a map: the same pairs with none of the punctuation.
+     *
+     * <p>{@code Mold_Map} skips the brackets and the indent when it is not
+     * molding, and puts a bare newline between pairs rather than an indented
+     * one -- {@code else if (count > 1) Append_Byte(mold->series, '\n')}. There
+     * is none after the last pair, so an empty map forms as nothing at all.
+     *
+     * <p>Each key and each value is still molded, whichever way round the map
+     * is written: {@code Emit(mold, "V V", val, val+1)} is the same line in
+     * both branches, so a text key keeps its quotes where FORM of a string
+     * would have dropped them.
+     */
+    private static String formedPairsOf(MapValue map) {
+        List<Value> flat = map.flattened();
+        StringBuilder written = new StringBuilder();
+        for (int at = 0; at < flat.size(); at += 2) {
+            if (at > 0) {
+                written.append('\n');
+            }
+            written.append(render(flat.get(at), true))
+                    .append(' ')
+                    .append(render(flat.get(at + 1), true));
+        }
+        return written.toString();
     }
 
     /**
