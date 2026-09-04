@@ -357,18 +357,9 @@ enbase-test.r3 / enbase/flat / enbase/flat 2 #26
 enbase-test.r3 / enbase/flat / enbase/flat 64 #30
 enbase-test.r3 / enbase/part / enbase/part with series as a length #77
 enbase-test.r3 / enbase/part / enbase/part with series as a length #78
-error-test.r3 / ASSERT / assert with longer expression #28
-error-test.r3 / ASSERT / invalid assert #36
-error-test.r3 / ASSERT / valid assert #27
 error-test.r3 / Error issues / issue-553 #38
-error-test.r3 / Error issues / object from error #41
 error-test.r3 / Error issues / protected catalog #42
 error-test.r3 / Error issues / protected catalog #43
-error-test.r3 / make error! / make invalid error! #21
-error-test.r3 / make error! / make invalid error! #22
-error-test.r3 / make error! / make invalid error! #23
-error-test.r3 / make error! / make invalid error! #24
-error-test.r3 / make error! / make invalid error! #25
 evaluation-test.r3 / do script / do needs #41
 file-test.r3 / WILDCARD / read wildcard #46
 file-test.r3 / WILDCARD / read wildcard #47
@@ -655,12 +646,6 @@ time-test.r3 / time / issue-1391 #58
 time-test.r3 / time / issue-1391 #59
 time-test.r3 / time / issue-1391 #60
 time-test.r3 / time / issue-1391 #61
-time-test.r3 / time / round time #1
-time-test.r3 / time / round time #2
-time-test.r3 / time / round time #3
-time-test.r3 / time / round time #4
-time-test.r3 / time / round time #5
-time-test.r3 / time / round time #6
 time-test.r3 / time / time limits #18
 time-test.r3 / time / time limits #19
 time-test.r3 / time / time limits #20

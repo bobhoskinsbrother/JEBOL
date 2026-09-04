@@ -3234,13 +3234,8 @@ public final class Natives {
                         return assertedTypes(
                                 (BlockValue) arguments.get(0), evaluator, context);
                     }
-                    Value held = evaluator.evaluateOrRaise(
-                            (BlockValue) arguments.get(0), context);
-                    if (!held.isTruthy()) {
-                        throw Raised.of(EvaluationFailure.ASSERT_FAILED,
-                                Molder.mold(arguments.get(0)) + " did not hold");
-                    }
-                    return LogicValue.of(true);
+                    return everyConditionHeld(
+                            (BlockValue) arguments.getFirst(), evaluator, context);
                 });
 
         define("hash", List.of(Parameter.required("value")),
@@ -5365,15 +5360,22 @@ public final class Natives {
      * needing a catalogue entry at all.
      */
     private static Value errorFromSpec(Value spec, Evaluator evaluator, Context context) {
-        if (spec instanceof BlockValue body && body.datatype() == Datatype.BLOCK) {
+        Value theSpecAsWritten = spec;
+        boolean fromAnObject = spec instanceof ObjectValue;
+        if (spec instanceof ObjectValue already) {
+            spec = BlockValue.block(setWordsAndValuesOf(already.context()));
+        } else if (spec instanceof BlockValue body && body.datatype() == Datatype.BLOCK) {
             Value built = makeObject(evaluator, context, Optional.empty(), body);
             if (built instanceof ObjectValue holder) {
                 spec = BlockValue.block(setWordsAndValuesOf(holder.context()));
             }
         }
         if (!(spec instanceof BlockValue fields)) {
+            if (!(spec instanceof StringValue written)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
+            }
             return new ErrorValue(ErrorCategory.USER, "message",
-                    Molder.form(spec), Optional.of(spec),
+                    written.text(), Optional.of(spec),
                     Optional.empty(), Optional.empty(),
                     Optional.empty(), Optional.empty(),
                     new java.util.LinkedHashMap<>());
@@ -5383,6 +5385,7 @@ public final class Natives {
         String errorId = "user-error";
         boolean namedAType = false;
         boolean namedAnId = false;
+        Value unknownId = NoneValue.none();
         Optional<Value> subject = Optional.empty();
         Optional<Value> second = Optional.empty();
         Optional<Value> third = Optional.empty();
@@ -5394,14 +5397,17 @@ public final class Natives {
             String said = items.get(at + 1) instanceof WordValue spelled
                     ? spelled.canonical()
                     : Molder.form(items.get(at + 1));
+            Value asWritten = items.get(at + 1);
             switch (name.canonical()) {
                 case "type" -> {
                     namedAType = true;
-                    category = ErrorCategory.named(said).orElse(category);
+                    category = ErrorCategory.named(said).orElseThrow(() ->
+                            Raised.of(EvaluationFailure.INVALID_ARG, asWritten));
                 }
                 case "id" -> {
                     namedAnId = true;
                     errorId = said;
+                    unknownId = asWritten;
                 }
                 case "arg1" -> subject = Optional.of(items.get(at + 1));
                 case "arg2" -> second = Optional.of(items.get(at + 1));
@@ -5413,8 +5419,43 @@ public final class Natives {
             throw new Raised(ErrorValue.of(ErrorCategory.INTERNAL,
                     "invalid-error", "an error spec names a type and an id"));
         }
+        refuseAnErrorTheCatalogueHasNot(
+                category, errorId, unknownId, theSpecAsWritten, fromAnObject);
         return new ErrorValue(category, errorId, errorId, subject, second, third,
                 Optional.empty(), Optional.empty(), new java.util.LinkedHashMap<>());
+    }
+
+    /**
+     * The catalogue is what makes an error spec valid, and it says no twice.
+     *
+     * <p>{@code Find_Error_Info} looks the type up and then the id inside it,
+     * and each miss is its own {@code Trap1(RE_INVALID_ARG, ...)} naming the
+     * word that was not found. So {@code make error! [type: 'math id: 'foo]}
+     * complains about FOO and {@code [type: 'foo id: 'overflow]} about FOO
+     * again, but as the type.
+     *
+     * <p>Then a third refusal, and this one names the whole spec:
+     * {@code if (VAL_INT64(&error->code) < 100) Trap_Arg(arg)}. The Throw
+     * category numbers from nothing, so its seven ids are all below a hundred
+     * and none of them can be built by hand -- a script may not manufacture a
+     * BREAK or a HALT and throw it as though the interpreter had.
+     *
+     * <p>That third one is inside the block branch and not the object branch,
+     * which returns three lines earlier. So an error rebuilt from an object
+     * keeps whatever code it had, however low, and TO-ERROR of an object made
+     * from an error gets the error back.
+     */
+    private static void refuseAnErrorTheCatalogueHasNot(
+            ErrorCategory category, String errorId, Value asWritten, Value spec,
+            boolean fromAnObject) {
+
+        if (!ErrorCatalogue.idsIn(category.spelling()).contains(errorId)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, asWritten);
+        }
+        if (!fromAnObject && ErrorCatalogue.codeFor(category.spelling(), errorId)
+                < LOWEST_CODE_AN_ERROR_CATALOGUE_ENTRY_HAS) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
+        }
     }
 
     /**
@@ -6577,8 +6618,10 @@ public final class Natives {
                 Set.of("to", "down", "even", "half-down", "floor", "ceiling",
                         "half-ceiling"),
                 (arguments, evaluator, context, refinements) -> {
-                    if (arguments.get(0) instanceof TimeValue time) {
-                        return TimeValue.ofNanoseconds(time.nanoseconds());
+                    if (arguments.getFirst() instanceof TimeValue time) {
+                        return roundedTime(time, refinements.contains("to")
+                                ? arguments.get(arguments.size() - 1)
+                                : null, refinements);
                     }
                     if (arguments.get(0) instanceof PairValue pair) {
                         return PairValue.of(
@@ -6598,6 +6641,46 @@ public final class Natives {
                     return roundedToTheScalesDatatype(step, rounded);
                 });
 
+    }
+
+    /**
+     * ROUND on a time, where the scale decides what comes back.
+     *
+     * <p>A time is nanoseconds and the scale is read in the same units, so
+     * {@code round/to 12:34:56 0:1:1} lands on a multiple of sixty-one
+     * seconds. What that multiple is written as depends on what the scale was
+     * written as -- {@code VAL_SET(arg, REB_INTEGER)} and its decimal twin sit
+     * in the C's own branch and answer a count of seconds, where a time scale
+     * answers a time.
+     *
+     * <p>With no scale at all a time rounds to whole seconds, and does so to
+     * the nearest whichever way the refinements point:
+     * {@code Get_Round_Flags(ds) | 1} sets the to-nearest bit over whatever
+     * was asked. An integer scale is the same story written down twice, the C
+     * passing a bare 1 where every other branch passes the flags.
+     */
+    private static Value roundedTime(
+            TimeValue time, Value scale, Set<String> refinements) {
+
+        if (scale == null) {
+            return TimeValue.ofNanoseconds(Math.round(
+                    (double) time.nanoseconds() / NANOSECONDS_A_SECOND)
+                    * NANOSECONDS_A_SECOND);
+        }
+        if (scale instanceof TimeValue step) {
+            return TimeValue.ofNanoseconds(step.nanoseconds() == 0
+                    ? time.nanoseconds()
+                    : Math.round((double) time.nanoseconds() / step.nanoseconds())
+                            * step.nanoseconds());
+        }
+        double stepSeconds = Comparison.asDouble(scale);
+        double seconds = (double) time.nanoseconds() / NANOSECONDS_A_SECOND;
+        double rounded = stepSeconds == 0
+                ? seconds
+                : Math.round(seconds / stepSeconds) * stepSeconds;
+        return scale instanceof IntegerValue
+                ? IntegerValue.of(Math.round(rounded))
+                : DecimalValue.of(rounded);
     }
 
     /**
@@ -16800,13 +16883,44 @@ public final class Natives {
                 case BlockValue path when path.datatype() == Datatype.PATH ->
                         evaluator.evaluateOrRaise(
                                 BlockValue.block(List.of(named)), context);
-                default -> raiseWrongArgument(named, "assert/type", "word or path");
+                default -> {
+                    throw Raised.of(EvaluationFailure.INVALID_ARG, named);
+                }
             };
             if (at + 1 >= items.size()) {
-                throw Raised.of(EvaluationFailure.NO_ARG, "assert/type wants a type");
+                throw Raised.of(EvaluationFailure.MISSING_ARG);
             }
             if (!isOfType(held, items.get(at + 1), context)) {
-                throw Raised.of(EvaluationFailure.WRONG_TYPE, Molder.mold(named));
+                throw Raised.of(EvaluationFailure.WRONG_TYPE, named);
+            }
+        }
+        return LogicValue.of(true);
+    }
+
+    /**
+     * ASSERT with no refinement, which checks every expression and not just
+     * the last one.
+     *
+     * <p>{@code while (index < SERIES_TAIL(block)) { index = Do_Next(...); if
+     * (IS_FALSE(ds)) ... }} -- so {@code assert [true 1 + 3 = 2 true]} fails
+     * on the middle expression where evaluating the whole block and reading
+     * its value passes on the last.
+     *
+     * <p>What it complains with is the block itself and not a sentence about
+     * it: {@code Set_Block(ds, Copy_Block(...)); Trap1(RE_ASSERT_FAILED, ds)}.
+     * A copy from the position it started at, so a script can read back what
+     * it was that did not hold.
+     */
+    private static Value everyConditionHeld(
+            BlockValue conditions, Evaluator evaluator, Context context) {
+
+        BlockValue at = conditions;
+        while (!at.atTail()) {
+            Evaluator.Step step = evaluator.evaluateNextOrRaise(at, context);
+            at = at.atIndex(step.nextIndex());
+            if (!step.value().isTruthy()) {
+                throw Raised.of(EvaluationFailure.ASSERT_FAILED,
+                        BlockValue.block(conditions.remaining()));
             }
         }
         return LogicValue.of(true);

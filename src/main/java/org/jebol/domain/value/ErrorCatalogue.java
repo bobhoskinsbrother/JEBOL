@@ -94,12 +94,32 @@ public final class ErrorCatalogue {
 
     /** The code a category's first id takes. */
     public static int baseCodeOf(String category) {
-        return CODES.getOrDefault(category, 0);
+        return CODES.getOrDefault(asListedHere(category), 0);
     }
 
     /** The ids in a category, in the order that decides their codes. */
     public static List<String> idsIn(String category) {
-        return IDS.getOrDefault(category, List.of());
+        return IDS.getOrDefault(asListedHere(category), List.of());
+    }
+
+    /**
+     * A category name spelled the way this catalogue spells it.
+     *
+     * <p>The names are written here the way {@code errors.reb} writes them,
+     * capitalised, and a caller has whatever a script wrote or whatever a
+     * datatype calls itself. A REBOL word does not mind its case and neither
+     * does the C, which finds the category by symbol in an object -- so
+     * matching the exact letters made {@code make error! [type: 'Throw id:
+     * 'halt]} look like a category nobody has, and it is the one category
+     * whose codes are all below a hundred.
+     */
+    private static String asListedHere(String category) {
+        for (String listed : CODES.keySet()) {
+            if (listed.equalsIgnoreCase(category)) {
+                return listed;
+            }
+        }
+        return category;
     }
 
     /**
