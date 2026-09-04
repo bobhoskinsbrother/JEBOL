@@ -67,6 +67,12 @@ tasks.test {
         excludeTags("browser")
     }
 
+    // jqwik remembers which property-test seeds failed so it can try them
+    // first next time. Useful, and build output: without this it writes
+    // .jqwik-database into the project root, where it was committed in the
+    // first commit and stayed.
+    systemProperty("jqwik.database", layout.buildDirectory.file("jqwik-database").get().asFile.path)
+
     // The tests run with no display, which is what a server has and what CI
     // has. Two reasons, and the second is the one that cost a killed build.
     //

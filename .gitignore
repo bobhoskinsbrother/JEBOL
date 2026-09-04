@@ -37,6 +37,12 @@
 # writable and it falls back to the project root.
 /.allium-cli-notice-shown
 
+# jqwik's record of which property-test seeds failed, so it can try them
+# first next time. Build output, and it was committed in the first commit and
+# sat there. `build.gradle.kts` now points jqwik at build/ so it is not
+# written here at all; this catches a run that predates that or bypasses it.
+/.jqwik-database
+
 # Editors and operating systems
 .DS_Store
 *.swp
