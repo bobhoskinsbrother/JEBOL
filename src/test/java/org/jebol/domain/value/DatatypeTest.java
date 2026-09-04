@@ -50,8 +50,14 @@ class DatatypeTest {
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT, Datatype.MONEY,
             Datatype.CHAR, Datatype.PAIR, Datatype.TUPLE, Datatype.TIME, Datatype.DATE);
 
+    /**
+     * All seven rows {@code types.reb} gives the {@code function} typeclass,
+     * which is what a real 3.22.5 answers for {@code to block! any-function!}.
+     * This named three of them and was wrong about the other four.
+     */
     private static final Set<Datatype> EXPECTED_ANY_FUNCTION = EnumSet.of(
-            Datatype.NATIVE, Datatype.FUNCTION, Datatype.OP);
+            Datatype.NATIVE, Datatype.ACTION, Datatype.REBCODE, Datatype.COMMAND,
+            Datatype.OP, Datatype.CLOSURE, Datatype.FUNCTION);
 
     @Nested
     @DisplayName("typeset membership, checked for every datatype")

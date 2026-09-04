@@ -94,7 +94,7 @@ public enum Datatype {
     private static final Set<Datatype> SCALAR =
             Set.of(INTEGER, DECIMAL, PERCENT, MONEY, CHAR, PAIR, TUPLE, TIME, DATE);
     private static final Set<Datatype> ANY_FUNCTION =
-            Set.of(NATIVE, FUNCTION, OP);
+            Set.of(NATIVE, ACTION, REBCODE, COMMAND, OP, CLOSURE, FUNCTION);
 
     private final String spelling;
 

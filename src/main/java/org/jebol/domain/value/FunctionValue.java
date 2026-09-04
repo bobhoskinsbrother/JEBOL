@@ -39,9 +39,19 @@ public record FunctionValue(
         return (int) parameters.stream().filter(Parameter::consumesAnArgument).count();
     }
 
+    /**
+     * A closure is its own datatype, not a function with a flag set.
+     *
+     * <p>{@code types.reb} gives closure! a row of its own, so
+     * {@code type? :c} is {@code closure!} and {@code function? :c} is false
+     * where {@code any-function? :c} is true. JEBOL answered function! for
+     * both kinds, which made {@code closure?} false for every closure ever
+     * written -- while MOLD said {@code make closure!}, because the molder
+     * read the flag and nothing else did.
+     */
     @Override
     public Datatype datatype() {
-        return Datatype.FUNCTION;
+        return closure ? Datatype.CLOSURE : Datatype.FUNCTION;
     }
 
     @Override

@@ -364,11 +364,11 @@ public final class Molder {
             case BitsetValue bitset -> "#(bitset! "
                     + (bitset.isComplemented() ? "not " : "")
                     + moldedBytes(bitset.octets()) + ")";
-            case ObjectValue object -> renderObject(object, forReading);
+            case ObjectValue object -> renderObject(object, Datatype.OBJECT, forReading);
             case PortValue port -> renderObject(
-                    new ObjectValue(port.context()), forReading);
+                    new ObjectValue(port.context()), Datatype.PORT, forReading);
             case ModuleValue module -> renderObject(
-                    new ObjectValue(module.context()), forReading);
+                    new ObjectValue(module.context()), Datatype.MODULE, forReading);
             case ErrorValue error -> renderError(error, forReading);
             case StructValue struct -> renderStruct(struct, forReading);
             case JavaObjectValue host -> "#[java-object! " + host.className() + "]";
@@ -1450,15 +1450,23 @@ public final class Molder {
      * printing it would recurse for ever, and REBOL leaves it out for the
      * same reason. It is still a word inside the object; it is just not a
      * field worth writing down.
+     *
+     * <p>A port and a module are written the same way and name themselves
+     * rather than saying object, because {@code Mold_Object} writes
+     * {@code VAL_TYPE(value)} and not a fixed word. JEBOL wrote
+     * {@code make object!} for all three, so a molded port did not read back
+     * as a port.
      */
-    private static String renderObject(ObjectValue object, boolean forReading) {
+    private static String renderObject(
+            ObjectValue object, Datatype naming, boolean forReading) {
+
         Set<Context> enclosing = BEING_RENDERED.get();
         if (!enclosing.add(object.context())) {
-            return openedFor(Datatype.OBJECT) + "[...]";
+            return openedFor(naming) + "[...]";
         }
         try {
             return forReading
-                    ? openedFor(Datatype.OBJECT) + "["
+                    ? openedFor(naming) + "["
                             + moldedFields(fieldsOutsideSelf(object).collect(
                                     Collectors.toMap(ContextSlot::spelling,
                                             ContextSlot::value,

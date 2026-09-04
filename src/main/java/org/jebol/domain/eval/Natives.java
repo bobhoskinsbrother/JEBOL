@@ -3035,62 +3035,71 @@ public final class Natives {
                 context);
     }
 
+    /**
+     * MAKE, and the half of TO that is the same code.
+     *
+     * <p>{@code case A_MAKE: case A_TO:} with nothing between the two labels
+     * is how {@code t-object.c} and {@code t-function.c} are written, so an
+     * object, an error, a module, a function and a closure are built the same
+     * way whichever word asked. Keeping one body means the two cannot answer
+     * differently, which they did: {@code to error! [type: 'Math id:
+     * 'overflow]} refused where MAKE of the same block built the error.
+     */
+    private Value madeFrom(
+            Value prototype, Value body, Evaluator evaluator, Context context) {
+
+        return switch (prototype) {
+            case DatatypeValue wanted when wanted.represents() == Datatype.OBJECT
+                    && body instanceof NoneValue ->
+                    raiseBadMakeArg(body, "object!");
+            case DatatypeValue wanted when wanted.represents() == Datatype.OBJECT
+                    && !(body instanceof BlockValue) ->
+                    makeObject(evaluator, context, Optional.empty(),
+                            BlockValue.block(List.of()));
+            case DatatypeValue wanted when wanted.represents() == Datatype.OBJECT ->
+                    makeObject(evaluator, context, Optional.empty(), (BlockValue) body);
+            case ObjectValue original when body instanceof ObjectValue other ->
+                    mergedObject(original, other, context);
+            case ObjectValue original ->
+                    makeObject(evaluator, context, Optional.of(original), (BlockValue) body);
+            case DatatypeValue wanted when wanted.represents() == Datatype.MAP ->
+                    mapMadeFrom(body);
+            case DatatypeValue wanted when wanted.represents() == Datatype.BITSET ->
+                    bitsetOf(body);
+            case DatatypeValue wanted when wanted.represents() == Datatype.PAIR ->
+                    asPair(body);
+            case DatatypeValue wanted when wanted.represents() == Datatype.FUNCTION ->
+                    functionFrom(body, context);
+            case DatatypeValue wanted when wanted.represents() == Datatype.CLOSURE ->
+                    functionFrom(body, context) instanceof FunctionValue made
+                            ? made.asClosure()
+                            : NoneValue.none();
+            case DatatypeValue wanted when wanted.represents() == Datatype.ERROR ->
+                    errorFromSpec(body, evaluator, context);
+            case ErrorValue original when body instanceof StringValue ->
+                    errorFromSpec(body, evaluator, context);
+            case DatatypeValue wanted when wanted.represents() == Datatype.MODULE ->
+                    moduleFromSpec(body, evaluator, context);
+            case NativeValue original when body instanceof BlockValue given ->
+                    derivedFunction(original, given);
+            case FunctionValue original when body instanceof BlockValue given ->
+                    derivedFunction(original, given);
+            case SeriesValue original -> makeOfDatatype(
+                    DatatypeValue.of(original.datatype()), body, evaluator, context);
+            case EventValue original -> EventPath.made(original, body,
+                    value -> simpleValueOf(value, evaluator, context));
+            case StructValue original ->
+                    structLikeThePrototype(original, body, evaluator);
+            case DatatypeValue wanted -> makeOfDatatype(wanted, body, evaluator, context);
+            default -> makeOfDatatype(
+                    DatatypeValue.of(prototype.datatype()), body, evaluator, context);
+        };
+    }
+
     private void defineObjects() {
         define("make", takesAnything("prototype", "body"),
-                (arguments, evaluator, context) -> switch (arguments.get(0)) {
-                    case DatatypeValue wanted when wanted.represents() == Datatype.OBJECT
-                            && arguments.get(1) instanceof NoneValue ->
-                            raiseBadMakeArg(arguments.get(1), "object!");
-                    case DatatypeValue wanted when wanted.represents() == Datatype.OBJECT
-                            && !(arguments.get(1) instanceof BlockValue) ->
-                            makeObject(evaluator, context, Optional.empty(),
-                                    BlockValue.block(List.of()));
-                    case DatatypeValue wanted when wanted.represents() == Datatype.OBJECT ->
-                            makeObject(evaluator, context, Optional.empty(),
-                                    (BlockValue) arguments.get(1));
-                    case ObjectValue prototype when arguments.get(1) instanceof ObjectValue other ->
-                            mergedObject(prototype, other, context);
-                    case ObjectValue prototype ->
-                            makeObject(evaluator, context, Optional.of(prototype),
-                                    (BlockValue) arguments.get(1));
-                    case DatatypeValue wanted when wanted.represents() == Datatype.MAP ->
-                            mapMadeFrom(arguments.get(1));
-                    case DatatypeValue wanted when wanted.represents() == Datatype.BITSET ->
-                            bitsetOf(arguments.get(1));
-                    case DatatypeValue wanted when wanted.represents() == Datatype.PAIR ->
-                            asPair(arguments.get(1));
-                    case DatatypeValue wanted when wanted.represents() == Datatype.FUNCTION ->
-                            functionFrom(arguments.get(1), context);
-                    case DatatypeValue wanted when wanted.represents() == Datatype.CLOSURE ->
-                            functionFrom(arguments.get(1), context)
-                                    instanceof FunctionValue made
-                                    ? made.asClosure()
-                                    : NoneValue.none();
-                    case DatatypeValue wanted when wanted.represents() == Datatype.ERROR ->
-                            errorFromSpec(arguments.get(1), evaluator, context);
-                    case ErrorValue prototype
-                            when arguments.get(1) instanceof StringValue ->
-                            errorFromSpec(arguments.get(1), evaluator, context);
-                    case DatatypeValue wanted when wanted.represents() == Datatype.MODULE ->
-                            moduleFromSpec(arguments.get(1), evaluator, context);
-                    case NativeValue original when arguments.get(1) instanceof BlockValue given ->
-                            derivedFunction(original, given);
-                    case FunctionValue original when arguments.get(1) instanceof BlockValue given ->
-                            derivedFunction(original, given);
-                    case SeriesValue prototype ->
-                            makeOfDatatype(DatatypeValue.of(prototype.datatype()),
-                                    arguments.get(1), evaluator, context);
-                    case EventValue prototype -> EventPath.made(prototype,
-                            arguments.get(1),
-                            value -> simpleValueOf(value, evaluator, context));
-                    case StructValue prototype ->
-                            structLikeThePrototype(prototype, arguments.get(1), evaluator);
-                    case DatatypeValue wanted ->
-                            makeOfDatatype(wanted, arguments.get(1), evaluator, context);
-                    default -> makeOfDatatype(
-                            DatatypeValue.of(arguments.getFirst().datatype()),
-                            arguments.get(1), evaluator, context);
-                });
+                (arguments, evaluator, context) ->
+                        madeFrom(arguments.get(0), arguments.get(1), evaluator, context));
 
         define("construct", List.of(
                         Parameter.required("body", Set.of(Datatype.BLOCK,
@@ -12701,15 +12710,94 @@ public final class Natives {
                 });
     }
 
+    /**
+     * The datatypes whose TO is the same code as their MAKE.
+     *
+     * <p>{@code case A_MAKE: case A_TO:} with nothing between the two labels,
+     * in {@code t-object.c} and {@code t-function.c}. So {@code to error!
+     * [type: 'Math id: 'overflow]} builds the error rather than refusing, and
+     * {@code to object!} of something an object cannot be built from says
+     * bad-make-arg for the same reason MAKE does.
+     */
+    private static final Set<Datatype> SHARES_ITS_BRANCH_WITH_MAKE = Set.of(
+            Datatype.ERROR, Datatype.FUNCTION, Datatype.CLOSURE, Datatype.STRUCT);
+
+    /**
+     * TO OBJECT!, which is not MAKE OBJECT! and takes only an error.
+     *
+     * <p>An error is an object with eight fields, and this is how a script
+     * reaches them without the error being an error any more. Everything else
+     * is bad-make-arg -- {@code Trap_Make(type, arg)} is the line the branch
+     * falls to, and there is nothing above it but the error case.
+     *
+     * <p>An error whose code is below a hundred is refused by argument rather
+     * than by make, because those are the codes with no catalogue entry
+     * behind them.
+     */
+    private static Value objectConvertedFrom(Value value) {
+        if (!(value instanceof ErrorValue raised)) {
+            return raiseBadMakeArg(value, "object!");
+        }
+        if (raised.field("code").orElseGet(NoneValue::none) instanceof IntegerValue code
+                && code.magnitude() < LOWEST_CODE_AN_ERROR_CATALOGUE_ENTRY_HAS) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, value);
+        }
+        Context fields = Context.childOf(Context.root());
+        for (String name : ErrorValue.FIELDS) {
+            fields.set(name, raised.field(name).orElseGet(NoneValue::none));
+        }
+        return new ObjectValue(fields);
+    }
+
+    private static final int LOWEST_CODE_AN_ERROR_CATALOGUE_ENTRY_HAS = 100;
+
+    /**
+     * TO MODULE!, which reads a block of exactly a spec object and a body
+     * object and joins the two.
+     *
+     * <p>Neither of them is evaluated, unlike MAKE MODULE!, which is why the
+     * block is written with REDUCE at the call site. A block that is empty or
+     * is not a block at all is bad-make-arg; a block whose first two values
+     * are not both objects is invalid-arg, because {@code Trap_Arg(val)} is
+     * what the C says for each of them in turn.
+     */
+    private static Value moduleConvertedFrom(Value value) {
+        if (!(value instanceof BlockValue parts)
+                || parts.datatype() != Datatype.BLOCK
+                || parts.remaining().isEmpty()) {
+            return raiseBadMakeArg(value, "module!");
+        }
+        List<Value> given = parts.remaining();
+        if (!(given.getFirst() instanceof ObjectValue specification)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, given.getFirst());
+        }
+        if (given.size() < 2 || !(given.get(1) instanceof ObjectValue body)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    given.size() < 2 ? given.getFirst() : given.get(1));
+        }
+        return new ModuleValue(body.context(), specification);
+    }
+
     private void defineConversion() {
         define("to", takesAnything("type", "value"),
                 (arguments, evaluator, context) -> {
-                    if (arguments.get(0) instanceof DatatypeValue wanted
-                            && wanted.represents() == Datatype.EVENT) {
+                    DatatypeValue wanted = arguments.getFirst() instanceof DatatypeValue named
+                            ? named
+                            : DatatypeValue.of(arguments.getFirst().datatype());
+                    if (wanted.represents() == Datatype.EVENT) {
                         return EventPath.made(wanted, arguments.get(1),
                                 value -> simpleValueOf(value, evaluator, context));
                     }
-                    return converted(Conversion.TO, arguments.get(0), arguments.get(1));
+                    if (SHARES_ITS_BRANCH_WITH_MAKE.contains(wanted.represents())) {
+                        return madeFrom(wanted, arguments.get(1), evaluator, context);
+                    }
+                    if (wanted.represents() == Datatype.OBJECT) {
+                        return objectConvertedFrom(arguments.get(1));
+                    }
+                    if (wanted.represents() == Datatype.MODULE) {
+                        return moduleConvertedFrom(arguments.get(1));
+                    }
+                    return converted(Conversion.TO, arguments.getFirst(), arguments.get(1));
                 });
 
         define("as-pair", takesOnlyNumbers("x", "y"),
@@ -13915,12 +14003,22 @@ public final class Natives {
         raiseBadMakeArg(from, wanted.literalSpelling());
     }
 
-    /** A value converted to whatever datatype was named. */
+    /**
+     * A value converted to whatever datatype was named, or to the datatype of
+     * whatever was shown.
+     *
+     * <p>{@code type [any-type!] "The datatype or example value"} is the whole
+     * of the first argument's spec, and MAKE says the same. So {@code to ""
+     * #{6162}} is {@code to string!} and {@code to 1x1 [2 3]} is
+     * {@code to pair!} -- the example is read for its type and then thrown
+     * away. Rebol's own quoted-printable codec ends on {@code to data output},
+     * where DATA is whatever the caller passed in, and that is the whole point
+     * of the form: it hands back the kind of thing it was given.
+     */
     private static Value converted(Conversion asking, Value type, Value value) {
-        if (!(type instanceof DatatypeValue wanted)) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "to needs a datatype, not " + type.datatype().literalSpelling());
-        }
+        DatatypeValue wanted = type instanceof DatatypeValue named
+                ? named
+                : DatatypeValue.of(type.datatype());
         refuseToBuildSomethingOutOfNothing(wanted.represents(), value);
         return switch (wanted.represents()) {
             case UNSET -> UnsetValue.unset();

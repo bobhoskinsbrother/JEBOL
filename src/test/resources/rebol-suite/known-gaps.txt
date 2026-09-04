@@ -107,23 +107,10 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #194
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #195
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #196
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #197
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #198
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #199
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #200
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #201
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #202
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #203
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #204
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #205
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #206
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #207
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #208
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #209
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #210
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #211
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #212
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #213
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #214
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #218
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #219
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #220
@@ -423,8 +410,6 @@ error-test.r3 / ASSERT / assert with longer expression #28
 error-test.r3 / ASSERT / invalid assert #36
 error-test.r3 / ASSERT / valid assert #27
 error-test.r3 / Error issues / issue-553 #38
-error-test.r3 / Error issues / object from error #39
-error-test.r3 / Error issues / object from error #40
 error-test.r3 / Error issues / object from error #41
 error-test.r3 / Error issues / protected catalog #42
 error-test.r3 / Error issues / protected catalog #43
@@ -462,8 +447,6 @@ format-test.r3 / FORMAT / FORMAT time #36
 format-test.r3 / FORMAT / FORMAT time #37
 format-test.r3 / FORMAT / FORMAT time #38
 format-test.r3 / FORMAT / format/pad #48
-func-test.r3 / FUNCTION (funct) / function/with object and module #94
-func-test.r3 / FUNCTION (funct) / function/with object and module #96
 func-test.r3 / OP! / body-of op! #65
 func-test.r3 / OP! / body-of op! #66
 func-test.r3 / OP! / make op! #58
