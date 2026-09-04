@@ -330,12 +330,23 @@ class RebolSuiteTest {
      * string back out of the interpreter needs no parsing and cannot be
      * confused by whatever the test itself put in a block.
      *
-     * <p>The other five dialect words are defined too, and doing nothing is
-     * the whole of their job here -- the slicer already read the group and
-     * test names out of the file. Leaving them undefined meant a wrapper
-     * block that held any of them died on the first one, and every assertion
-     * after it in that block was never reached: 371 of them, which read as
-     * failures of the port and were failures of this file.
+     * <p>The other dialect words are defined too, and doing nothing is the
+     * whole of their job here -- the slicer already read the group and test
+     * names out of the file. Leaving them undefined meant a wrapper block that
+     * held any of them died on the first one, and every assertion after it in
+     * that block was never reached: 371 of them, which read as failures of the
+     * port and were failures of this file.
+     *
+     * <p>{@code --red--} and {@code --assert-er} are the two that were still
+     * missing, and they cost more than their ten uses suggest: each one killed
+     * its whole file part way through. In Rebol's own runner {@code --red--}
+     * marks the next assertion as a Red comparison, so a failing one is
+     * counted apart from the failures rather than as one; here it does nothing
+     * and the assertion is judged like any other, which can only ever name a
+     * gap that is really there. {@code --assert-er} is ASSERT with an error
+     * whose id is {@code feature-na} let through, and it is not counted here
+     * at all, being one assertion in ten thousand and spelled differently
+     * enough that the slicer never sees it.
      */
     private static final String THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION = """
             jebol-nested: copy ""
@@ -356,6 +367,8 @@ class RebolSuiteTest {
             ===start-group===: func [name [any-type!]] []
             ===end-group===: does []
             --test--: func [name [any-type!]] []
+            --red--: does []
+            --assert-er: func [result [any-type!]] [:result]
             --assertf~=: func [a [any-type!] b [any-type!] c [any-type!]] [
                 append jebol-nested "f"
             ]""";
