@@ -102,7 +102,6 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #156
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #157
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #158
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #161
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #191
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #194
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #195
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #196
@@ -337,10 +336,6 @@ dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #37
 dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #38
 dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #39
 dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #40
-enbase-test.r3 / debase 16 / debase other strings #48
-enbase-test.r3 / debase 16 / debase other strings #51
-enbase-test.r3 / debase 64 - safe URL variant / debase 64 url 1 #35
-enbase-test.r3 / debase 64 - safe URL variant / debase 64 url 2 - missing padding in the input #37
 enbase-test.r3 / debase 64 - safe URL variant / debase 64 url 3 #39
 enbase-test.r3 / debase/part / debase/part with series as a length #100
 enbase-test.r3 / debase/part / debase/part with series as a length #101
@@ -363,8 +358,6 @@ enbase-test.r3 / debase/part / debase/part with series as a length #121
 enbase-test.r3 / debase/part / debase/part with series as a length #97
 enbase-test.r3 / debase/part / debase/part with series as a length #98
 enbase-test.r3 / debase/part / debase/part with series as a length #99
-enbase-test.r3 / en/debase 2 / debase 2 1 #54
-enbase-test.r3 / en/debase 2 / debase 2 1 #55
 enbase-test.r3 / enbase 64 - safe URL variant / enbase/url #43
 enbase-test.r3 / enbase 64 - safe URL variant / enbase/url #44
 enbase-test.r3 / enbase/flat / enbase/flat 16 #28

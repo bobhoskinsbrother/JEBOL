@@ -11008,21 +11008,34 @@ public final class Natives {
                 : Encodings::uriComponentKeeps;
     }
 
-    /** The bytes of a value: a binary as they stand, text as UTF-8. */
+    /**
+     * The bytes of a value: a binary as they stand, text as UTF-8.
+     *
+     * <p>A string of any kind gives the characters it holds and not the way it
+     * would be written down. {@code VAL_BIN_DATA} reaches the series, and a
+     * tag's angle brackets and a file's percent sign are punctuation the
+     * molder adds rather than content the series has -- so
+     * {@code enbase <ab> 16} is {@code "6162"} and not the four bytes of
+     * {@code <ab>}.
+     */
     private static byte[] octetsOf(Value value) {
         return switch (value) {
             case BinaryValue bytes -> bytes.octetsFromHere();
             case IntegerValue whole -> java.nio.ByteBuffer.allocate(8)
                     .putLong(whole.magnitude()).array();
+            case StringValue written -> written.text().getBytes(StandardCharsets.UTF_8);
             default -> Molder.form(value).getBytes(StandardCharsets.UTF_8);
         };
     }
 
     /** The text of a value: a string as it stands, a binary read as UTF-8. */
     private static String textOf(Value value) {
-        return value instanceof BinaryValue bytes
-                ? new String(bytes.octetsFromHere(), StandardCharsets.UTF_8)
-                : Molder.form(value);
+        return switch (value) {
+            case BinaryValue bytes ->
+                    new String(bytes.octetsFromHere(), StandardCharsets.UTF_8);
+            case StringValue written -> written.text();
+            default -> Molder.form(value);
+        };
     }
 
     /** The datatype the answer keeps, so a url stays a url. */

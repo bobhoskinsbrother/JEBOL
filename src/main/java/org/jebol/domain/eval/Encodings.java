@@ -212,21 +212,51 @@ final class Encodings {
         return text.toString();
     }
 
+    /**
+     * The characters {@code Decode_Base16} and {@code Decode_Base2} step over
+     * without counting them: space, line feed, carriage return, and the
+     * end-of-file byte.
+     *
+     * <p>{@code lex > LEX_DELIMIT_RETURN} is the test, and those four are the
+     * only classes below it. Anything else that is not a digit stops the
+     * decode.
+     */
+    private static boolean skippedBetweenDigits(char letter) {
+        return letter == ' ' || letter == '\n' || letter == '\r';
+    }
+
+    /**
+     * Base sixteen, where an odd length means a leading zero nibble.
+     *
+     * <p>{@code if (len & 1) count = 1;} primes the accumulator, so
+     * {@code debase "123" 16} is {@code #{0123}} rather than an error. The
+     * length that is tested is the whole input, spaces included, and the
+     * spaces are then stepped over without counting -- which is why
+     * {@code debase "12 34" 16} fails: five characters is an odd length and
+     * only four of them are digits, so the last nibble has no partner.
+     */
     private static byte[] octetsOfHex(String text) {
-        String digits = withoutWhitespace(text);
-        if (digits.length() % 2 != 0) {
-            throw new IllegalArgumentException("odd number of hex digits");
-        }
-        byte[] octets = new byte[digits.length() / 2];
-        for (int at = 0; at < octets.length; at++) {
-            int high = Character.digit(digits.charAt(at * 2), 16);
-            int low = Character.digit(digits.charAt(at * 2 + 1), 16);
-            if (high < 0 || low < 0) {
+        Octets decoded = new Octets();
+        int nibblesSoFar = text.length() % 2;
+        int accumulated = 0;
+        for (int at = 0; at < text.length(); at++) {
+            char letter = text.charAt(at);
+            int digit = Character.digit(letter, 16);
+            if (digit < 0) {
+                if (skippedBetweenDigits(letter)) {
+                    continue;
+                }
                 throw new IllegalArgumentException("not a hex digit");
             }
-            octets[at] = (byte) (high * 16 + low);
+            accumulated = (accumulated << 4) + digit;
+            if ((nibblesSoFar++ & 1) == 1) {
+                decoded.write(accumulated & 0xFF);
+            }
         }
-        return octets;
+        if ((nibblesSoFar & 1) == 1) {
+            throw new IllegalArgumentException("odd number of hex digits");
+        }
+        return decoded.toArray();
     }
 
     private static String bitsOf(byte[] octets) {
@@ -239,22 +269,42 @@ final class Encodings {
         return text.toString();
     }
 
+    /**
+     * Base two, where a length that is not a whole number of bytes is padded
+     * with leading zero bits.
+     *
+     * <p>{@code count = len & 7; if (count) count = 8 - count;} is the
+     * priming, so {@code debase "01" 2} is {@code #{01}} and
+     * {@code debase "000000010" 2} -- nine bits -- is {@code #{0002}}. As with
+     * base sixteen the length counted is the whole input including the spaces
+     * that are then stepped over.
+     */
     private static byte[] octetsOfBits(String text) {
-        String bits = withoutWhitespace(text);
-        if (bits.length() % 8 != 0) {
-            throw new IllegalArgumentException("bits do not fill whole octets");
+        Octets decoded = new Octets();
+        int bitsSoFar = text.length() % 8;
+        if (bitsSoFar != 0) {
+            bitsSoFar = 8 - bitsSoFar;
         }
-        byte[] octets = new byte[bits.length() / 8];
-        for (int at = 0; at < bits.length(); at++) {
-            char bit = bits.charAt(at);
-            if (bit != '0' && bit != '1') {
+        int accumulated = 0;
+        for (int at = 0; at < text.length(); at++) {
+            char letter = text.charAt(at);
+            if (letter != '0' && letter != '1') {
+                if (skippedBetweenDigits(letter)) {
+                    continue;
+                }
                 throw new IllegalArgumentException("not a bit");
             }
-            if (bit == '1') {
-                octets[at / 8] |= (byte) (1 << (7 - at % 8));
+            accumulated = (accumulated << 1) + (letter - '0');
+            if (bitsSoFar++ >= 7) {
+                decoded.write(accumulated & 0xFF);
+                bitsSoFar = 0;
+                accumulated = 0;
             }
         }
-        return octets;
+        if (bitsSoFar != 0) {
+            throw new IllegalArgumentException("bits do not fill whole octets");
+        }
+        return decoded.toArray();
     }
 
     private static String base64Of(byte[] octets, String alphabet) {
@@ -279,24 +329,76 @@ final class Encodings {
         return text.toString();
     }
 
+    /**
+     * Base sixty-four, which unlike the other two will not decode a group it
+     * has only part of.
+     *
+     * <p>Four digits are three bytes and there is no padding rule that lets
+     * three digits stand for two, so {@code debase "YWJ" 64} is an error where
+     * {@code debase "123" 16} is a number. The equals signs are how a short
+     * last group is written down: one of them after three digits ends the
+     * decode with two bytes, and two of them after two digits end it with one.
+     * A single equals after two digits is refused, because the C looks ahead
+     * for the second and fails when it is not there.
+     *
+     * <p>URL-safe decoding is the exception the C makes for itself. It is
+     * allowed to end a group short, and meeting a {@code -} or a {@code _}
+     * while reading the plain alphabet switches to the safe one and starts the
+     * whole decode again.
+     */
     private static byte[] octetsOfBase64(String text, String alphabet) {
-        String digits = withoutWhitespace(text).replace("=", "");
-        Octets octets = new Octets();
+        Octets decoded = new Octets();
+        boolean urlSafe = BASE64_URL.equals(alphabet);
         int group = 0;
-        int held = 0;
-        for (int at = 0; at < digits.length(); at++) {
-            int value = alphabet.indexOf(digits.charAt(at));
+        int inTheGroup = 0;
+        for (int at = 0; at < text.length(); at++) {
+            char letter = text.charAt(at);
+            if (letter == '=') {
+                if (inTheGroup == 3) {
+                    decoded.write((group >> 10) & 0xFF);
+                    decoded.write((group >> 2) & 0xFF);
+                } else if (inTheGroup == 2 && text.indexOf('=', at + 1) >= 0) {
+                    decoded.write((group >> 4) & 0xFF);
+                } else {
+                    throw new IllegalArgumentException(
+                            "a base 64 padding that pads nothing");
+                }
+                return decoded.toArray();
+            }
+            int value = alphabet.indexOf(letter);
             if (value < 0) {
+                if (!urlSafe && (letter == '-' || letter == '_')) {
+                    return octetsOfBase64(text, BASE64_URL);
+                }
+                if (skippedBetweenDigits(letter) || letter == '\t') {
+                    continue;
+                }
                 throw new IllegalArgumentException("not a base 64 digit");
             }
-            group = (group << 6) | value;
-            held += 6;
-            if (held >= 8) {
-                held -= 8;
-                octets.write((group >> held) & 0xFF);
+            group = (group << 6) + value;
+            if (++inTheGroup == 4) {
+                decoded.write((group >> 16) & 0xFF);
+                decoded.write((group >> 8) & 0xFF);
+                decoded.write(group & 0xFF);
+                group = 0;
+                inTheGroup = 0;
             }
         }
-        return octets.toArray();
+        if (inTheGroup == 0) {
+            return decoded.toArray();
+        }
+        if (!urlSafe) {
+            throw new IllegalArgumentException("a base 64 group that ends early");
+        }
+        if (inTheGroup == 3) {
+            decoded.write((group >> 10) & 0xFF);
+            decoded.write((group >> 2) & 0xFF);
+        } else if (inTheGroup == 2) {
+            decoded.write((group >> 4) & 0xFF);
+        } else {
+            throw new IllegalArgumentException("a base 64 group that ends early");
+        }
+        return decoded.toArray();
     }
 
     /**
