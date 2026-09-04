@@ -707,9 +707,20 @@ final class Encodings {
         return (~running) & 0xFFFF;
     }
 
+    /**
+     * The three whose empty input is empty output rather than an error.
+     *
+     * <p>CRUSH and LZW both open with a header -- a length, a symbol width --
+     * so nothing at all is data that ends before it starts, and both say
+     * bad-press. The deflate family has no header to be missing, and
+     * {@code decompress #{} 'zlib} is {@code #{}}.
+     */
+    private static final List<String> COMPRESSIONS_WITH_NO_HEADER =
+            List.of("zlib", "gzip", "deflate");
+
     /** The methods this host offers, as {@code system/catalog/compressions}. */
     static final List<String> COMPRESSIONS =
-            List.of("zlib", "gzip", "deflate", "crush");
+            List.of("zlib", "gzip", "deflate", "crush", "lzw");
 
     /**
      * Methods REBOL has and this build has not.
@@ -732,7 +743,7 @@ final class Encodings {
      * {@code lz4} and {@code lzav} were missing outright.
      */
     static final List<String> COMPRESSIONS_ELSEWHERE =
-            List.of("br", "lz4", "lzav", "lzma", "lzw");
+            List.of("br", "lz4", "lzav", "lzma");
 
     static byte[] compressed(byte[] octets, String method, int level) {
         return switch (method) {
@@ -740,6 +751,7 @@ final class Encodings {
             case "zlib" -> deflated(octets, level, false);
             case "deflate" -> deflated(octets, level, true);
             case "crush" -> Crush.compressed(octets, level);
+            case "lzw" -> Lzw.compressed(octets, level);
             default -> throw new IllegalArgumentException(method);
         };
     }
@@ -753,7 +765,7 @@ final class Encodings {
      * deflate family has no such header, so the answer is cut afterwards.
      */
     static byte[] decompressed(byte[] octets, String method, int wanted) {
-        if (octets.length == 0 && !"crush".equals(method)) {
+        if (octets.length == 0 && COMPRESSIONS_WITH_NO_HEADER.contains(method)) {
             return octets;
         }
         byte[] whole = switch (method) {
@@ -761,6 +773,7 @@ final class Encodings {
             case "zlib" -> inflated(octets, false);
             case "deflate" -> inflated(octets, true);
             case "crush" -> Crush.decompressed(octets, wanted);
+            case "lzw" -> Lzw.decompressed(octets, wanted);
             default -> throw new IllegalArgumentException(method);
         };
         return wanted > 0 && whole.length > wanted

@@ -139,16 +139,15 @@ class CrushFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and the five this build has not got still say so")
+        @DisplayName("and the four this build has not got still say so")
         void theOthersStillSayFeatureNa() {
             assertThat(answerTo("""
                     collect [
-                        foreach method [br lz4 lzav lzma lzw][
+                        foreach method [br lz4 lzav lzma][
                             raised: try [compress "x" method]
                             keep raised/id
                         ]
-                    ]""")).isEqualTo("[feature-na feature-na feature-na"
-                            + " feature-na feature-na]");
+                    ]""")).isEqualTo("[feature-na feature-na feature-na feature-na]");
         }
     }
 }

@@ -43,12 +43,11 @@ class CompressionThisBuildLacksFromTheSourceTest {
     void aMissingMethodIsFeatureNa() {
         assertThat(answerTo("""
                 collect [
-                    foreach method [br lz4 lzav lzma lzw][
+                    foreach method [br lz4 lzav lzma][
                         raised: try [compress "test" method]
                         keep raised/id
                     ]
-                ]""")).isEqualTo("[feature-na feature-na feature-na"
-                        + " feature-na feature-na]");
+                ]""")).isEqualTo("[feature-na feature-na feature-na feature-na]");
     }
 
     @Test
@@ -61,9 +60,9 @@ class CompressionThisBuildLacksFromTheSourceTest {
                             e/id
                         ][ 'works ]
                     ]
-                ]""")).as("crush is written out here; the other five are not")
+                ]""")).as("crush and lzw are written out here; the other four are not")
                         .isEqualTo("[works works works feature-na works"
-                        + " feature-na feature-na feature-na feature-na]");
+                        + " feature-na feature-na feature-na works]");
     }
 
     @Test
@@ -78,7 +77,7 @@ class CompressionThisBuildLacksFromTheSourceTest {
     @DisplayName("DECOMPRESS refuses them the same two ways")
     void decompressRefusesTheSameWays() {
         assertThat(answerTo("""
-                first-raised: try [decompress #{} 'lzw]
+                first-raised: try [decompress #{} 'lzma]
                 second-raised: try [decompress #{} 'nosuch]
                 reduce [first-raised/id second-raised/id]"""))
                 .isEqualTo("[feature-na invalid-arg]");

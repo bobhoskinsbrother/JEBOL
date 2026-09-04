@@ -209,24 +209,7 @@ compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #97
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #98
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #99
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #103
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #104
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #105
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #106
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #107
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #108
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #109
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #110
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #111
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #112
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #113
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #114
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #115
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #116
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #117
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #118
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #119
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #120
 compress-test.r3 / ZLIB compression / decompression / compression when input is limited #18
 copy-test.r3 / Simple copy / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #1

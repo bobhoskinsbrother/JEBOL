@@ -142,3 +142,8 @@ poly1305-test.r3 / (no group) / (no test) #9
 # #{04000000E894994307} -- so that branch is never taken there either, and
 # the assertion is never executed by anything this is measured against.
 compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #121
+
+# compress-test.r3: the LZW group opens the same way as the CRUSH one above,
+# and a real 3.22.5 has LZW too -- `compress "test" 'lzw` answers
+# #{0774657374FF01} there -- so its first branch is never taken either.
+compress-test.r3 / LZW compression / decompression / LZW compress/decompress #102
