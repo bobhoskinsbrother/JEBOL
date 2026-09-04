@@ -298,15 +298,7 @@ datatype-test.r3 / datatype! / number? #37
 date-test.r3 / Internet date / TO-IDATE (Date to Internet date) #126
 date-test.r3 / Julian date / Julian date setter #159
 date-test.r3 / Julian date / Julian date setter #160
-date-test.r3 / Various date issues / error date set messages #110
-date-test.r3 / Various date issues / error date set messages #111
-date-test.r3 / Various date issues / error date set messages #112
 date-test.r3 / Various date issues / error date set messages #113
-date-test.r3 / Various date issues / issue 1375 #70
-date-test.r3 / Various date issues / issue 1375 #71
-date-test.r3 / Various date issues / issue 1375 #72
-date-test.r3 / Various date issues / issue 2414 #63
-date-test.r3 / Various date issues / issue 2414 #65
 date-test.r3 / Various date issues / issue-276 #77
 date-test.r3 / Various date issues / numerical accessors #116
 dh-test.r3 / Diffie-Hellman key exchange / DH keys release #11
@@ -390,14 +382,6 @@ file-test.r3 / to-local-file / issue-1115 #21
 file-test.r3 / to-local-file / issue-1115 #22
 file-test.r3 / to-local-file / issue-1115 #23
 file-test.r3 / to-local-file / issue-1115 #24
-format-test.r3 / FORMAT / FORMAT date-time #12
-format-test.r3 / FORMAT / FORMAT date-time #13
-format-test.r3 / FORMAT / FORMAT date-time #14
-format-test.r3 / FORMAT / FORMAT date-time #15
-format-test.r3 / FORMAT / FORMAT time #35
-format-test.r3 / FORMAT / FORMAT time #36
-format-test.r3 / FORMAT / FORMAT time #37
-format-test.r3 / FORMAT / FORMAT time #38
 format-test.r3 / FORMAT / format/pad #48
 func-test.r3 / OP! / body-of op! #65
 func-test.r3 / OP! / body-of op! #66

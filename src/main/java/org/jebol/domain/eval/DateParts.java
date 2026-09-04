@@ -73,11 +73,161 @@ final class DateParts {
                     selector instanceof WordValue word ? word.spelling() : "date");
         }
         return switch (named.canonical()) {
-            case "zone" -> withTheSameClockIn(date, offsetAskedFor(given));
-            case "timezone" -> atTheSameInstantIn(date, offsetAskedFor(given));
+            case "zone" -> withTheSameClockIn(withAClockIfItHadNone(date),
+                    offsetAskedFor(given));
+            case "timezone" -> atTheSameInstantIn(withAClockIfItHadNone(date),
+                    offsetAskedFor(given));
+            case "year" -> onTheDay(date, wholeNumberIn(given), date.month(), date.day());
+            case "month" -> onTheDay(date, date.year(), wholeNumberIn(given), date.day());
+            case "day" -> onTheDay(date, date.year(), date.month(), wholeNumberIn(given));
+            case "hour" -> atTheTime(date, withTheHour(clockOf(date), wholeNumberIn(given)));
+            case "minute" ->
+                    atTheTime(date, withTheMinute(clockOf(date), wholeNumberIn(given)));
+            case "second" -> atTheTime(date, withTheSecond(clockOf(date), given));
+            case "time" -> atTheTimeGiven(date, given);
+            case "date" -> theDayOf(given, date);
+            case "utc" -> asTheSameInstant(given);
+            case "yearday" -> theYearAndDayOf(date, wholeNumberIn(given));
             default -> throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
                     named.spelling());
         };
+    }
+
+    /**
+     * Midnight, for a date that had no time and is about to be given one.
+     *
+     * <p>{@code if (secs == NO_TIME && ((sym >= SYM_HOUR && sym <= SYM_SECOND)
+     * || sym == SYM_TIME || sym == SYM_ZONE)) { time.h = 0; ... }} -- the C
+     * starts the clock rather than refusing, so {@code d/hour: 2} on a bare
+     * date makes it two in the morning.
+     */
+    private static DateValue withAClockIfItHadNone(DateValue date) {
+        return date.timeOfDay().isPresent()
+                ? date
+                : new DateValue(date.year(), date.month(), date.day(),
+                        java.util.Optional.of(TimeValue.ofNanoseconds(0)),
+                        java.util.Optional.empty());
+    }
+
+    private static TimeValue clockOf(DateValue date) {
+        return date.timeOfDay().orElseGet(() -> TimeValue.ofNanoseconds(0));
+    }
+
+    private static int wholeNumberIn(Value given) {
+        return switch (given) {
+            case IntegerValue number -> Math.toIntExact(number.magnitude());
+            case DecimalValue number -> (int) number.quantity();
+            case NoneValue nothing -> 0;
+            default -> throw Raised.of(EvaluationFailure.BAD_FIELD_SET, given);
+        };
+    }
+
+    /**
+     * The same date with one of its three numbers replaced.
+     *
+     * <p>A month or a day outside its range rolls into the next one rather
+     * than failing, which is {@code Normalize_Time} and {@code Date_Of_Days}
+     * running over the numbers the C has just written. So {@code d/month: 13}
+     * is January of the year after.
+     */
+    private static DateValue onTheDay(DateValue was, int year, int month, int day) {
+        return sameClockOn(was, java.time.LocalDate.of(year, 1, 1)
+                .plusMonths(month - 1L)
+                .plusDays(day - 1L));
+    }
+
+    private static DateValue sameClockOn(DateValue was, java.time.LocalDate day) {
+        return new DateValue(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
+                was.timeOfDay(), was.zoneMinutes());
+    }
+
+    private static DateValue atTheTime(DateValue was, TimeValue clock) {
+        return new DateValue(was.year(), was.month(), was.day(),
+                java.util.Optional.of(clock), was.zoneMinutes());
+    }
+
+    private static TimeValue withTheHour(TimeValue clock, int hours) {
+        return TimeValue.ofNanoseconds(clock.nanoseconds()
+                - hoursPartOf(clock) * NANOSECONDS_AN_HOUR
+                + (long) hours * NANOSECONDS_AN_HOUR);
+    }
+
+    private static TimeValue withTheMinute(TimeValue clock, int minutes) {
+        return TimeValue.ofNanoseconds(clock.nanoseconds()
+                - minutesPartOf(clock) * NANOSECONDS_A_MINUTE
+                + (long) minutes * NANOSECONDS_A_MINUTE);
+    }
+
+    private static TimeValue withTheSecond(TimeValue clock, Value given) {
+        long asked = given instanceof DecimalValue fraction
+                ? (long) (fraction.quantity() * NANOSECONDS_IN_A_SECOND)
+                : (long) wholeNumberIn(given) * NANOSECONDS_IN_A_SECOND;
+        long secondsPart = clock.nanoseconds()
+                - hoursPartOf(clock) * NANOSECONDS_AN_HOUR
+                - minutesPartOf(clock) * NANOSECONDS_A_MINUTE;
+        return TimeValue.ofNanoseconds(clock.nanoseconds() - secondsPart + asked);
+    }
+
+    private static long hoursPartOf(TimeValue clock) {
+        return clock.nanoseconds() / NANOSECONDS_AN_HOUR;
+    }
+
+    private static long minutesPartOf(TimeValue clock) {
+        return clock.nanoseconds() % NANOSECONDS_AN_HOUR / NANOSECONDS_A_MINUTE;
+    }
+
+    private static final long NANOSECONDS_IN_A_SECOND = 1_000_000_000L;
+
+    private static final long NANOSECONDS_A_MINUTE = 60L * NANOSECONDS_IN_A_SECOND;
+
+    private static final long NANOSECONDS_AN_HOUR = 60L * NANOSECONDS_A_MINUTE;
+
+    /**
+     * TIME written, which none clears rather than sets.
+     *
+     * <p>{@code if (IS_NONE(val)) { secs = NO_TIME; tz = 0; }} -- so
+     * {@code d/time: none} takes the zone away with it, a date without a
+     * clock naming no instant to offset.
+     */
+    private static DateValue atTheTimeGiven(DateValue was, Value given) {
+        return switch (given) {
+            case NoneValue nothing -> DateValue.of(was.year(), was.month(), was.day());
+            case TimeValue clock -> atTheTime(was, clock);
+            case DateValue other -> atTheTime(was,
+                    other.timeOfDay().orElseGet(() -> TimeValue.ofNanoseconds(0)));
+            case IntegerValue seconds -> atTheTime(was,
+                    TimeValue.ofNanoseconds(seconds.magnitude() * NANOSECONDS_IN_A_SECOND));
+            case DecimalValue seconds -> atTheTime(was, TimeValue.ofNanoseconds(
+                    (long) (seconds.quantity() * NANOSECONDS_IN_A_SECOND)));
+            default -> throw Raised.of(EvaluationFailure.BAD_FIELD_SET, given);
+        };
+    }
+
+    /** DATE written, which is the day from another date and the clock kept. */
+    private static DateValue theDayOf(Value given, DateValue was) {
+        if (!(given instanceof DateValue other)) {
+            throw Raised.of(EvaluationFailure.BAD_FIELD_SET, given);
+        }
+        return new DateValue(other.year(), other.month(), other.day(),
+                was.timeOfDay(), was.zoneMinutes());
+    }
+
+    /** UTC written, which takes the whole date and calls its zone nothing. */
+    private static DateValue asTheSameInstant(Value given) {
+        if (!(given instanceof DateValue other)) {
+            throw Raised.of(EvaluationFailure.BAD_FIELD_SET, given);
+        }
+        return new DateValue(other.year(), other.month(), other.day(),
+                other.timeOfDay(),
+                other.timeOfDay().isPresent()
+                        ? java.util.Optional.of(0)
+                        : java.util.Optional.empty());
+    }
+
+    /** YEARDAY written: that many days into the year the date is already in. */
+    private static DateValue theYearAndDayOf(DateValue was, int dayOfYear) {
+        return sameClockOn(was, java.time.LocalDate.of(was.year(), 1, 1)
+                .plusDays(dayOfYear - 1L));
     }
 
     /**

@@ -1543,17 +1543,7 @@ public final class Evaluator {
                     : IntegerValue.of(tuple.octetAt((int) at));
         }
         if (target instanceof TimeValue time) {
-            long seconds = time.nanoseconds() / 1_000_000_000L;
-            String part = selector instanceof WordValue named
-                    ? named.canonical()
-                    : positionAsTimePart(selector);
-            return switch (part) {
-                case "hour" -> IntegerValue.of(seconds / 3600);
-                case "minute" -> IntegerValue.of(seconds / 60 % 60);
-                case "second" -> IntegerValue.of(seconds % 60);
-                default -> throw Raised.of(EvaluationFailure.INVALID_PATH,
-                        Molder.mold(selector));
-            };
+            return partOfATime(time, selector);
         }
         if (target instanceof DateValue date) {
             return DateParts.of(date, selector);
@@ -1719,18 +1709,45 @@ public final class Evaluator {
         return ports.context().ownSlotFor(named).value();
     }
 
-    /** A time answers to positions as well as names, as a pair does. */
-    private static String positionAsTimePart(Value selector) {
-        if (!(selector instanceof IntegerValue position)) {
-            return "";
-        }
-        return switch ((int) position.magnitude()) {
-            case 1 -> "hour";
-            case 2 -> "minute";
-            case 3 -> "second";
-            default -> "";
+    /**
+     * A part of a time, named or numbered.
+     *
+     * <p>{@code PD_Time} takes the two kinds of selector down different roads
+     * and they end differently. A word that is not one of the three parts is
+     * {@code PE_BAD_SELECT}, which reads as invalid-path; a number outside the
+     * three is {@code PE_NONE}, which reads as none. So {@code t/100} is
+     * nothing and {@code t/hours} is a mistake.
+     *
+     * <p>The seconds are a whole number only while they are whole. Once there
+     * is a fraction the answer is a decimal --
+     * {@code if (tf.n == 0) SET_INTEGER(...) else SET_DECIMAL(...)}.
+     */
+    private static Value partOfATime(TimeValue time, Value selector) {
+        long seconds = Math.abs(time.nanoseconds()) / NANOSECONDS_IN_A_SECOND;
+        long fraction = Math.abs(time.nanoseconds()) % NANOSECONDS_IN_A_SECOND;
+        int which = switch (selector) {
+            case IntegerValue position -> (int) position.magnitude();
+            case WordValue named -> switch (named.canonical()) {
+                case "hour" -> 1;
+                case "minute" -> 2;
+                case "second" -> 3;
+                default -> throw Raised.of(EvaluationFailure.INVALID_PATH,
+                        named.spelling());
+            };
+            default -> throw Raised.of(EvaluationFailure.INVALID_PATH,
+                    Molder.mold(selector));
+        };
+        return switch (which) {
+            case 1 -> IntegerValue.of(seconds / 3600);
+            case 2 -> IntegerValue.of(seconds / 60 % 60);
+            case 3 -> fraction == 0
+                    ? IntegerValue.of(seconds % 60)
+                    : DecimalValue.of(seconds % 60 + (double) fraction / NANOSECONDS_IN_A_SECOND);
+            default -> NoneValue.none();
         };
     }
+
+    private static final long NANOSECONDS_IN_A_SECOND = 1_000_000_000L;
 
     private static void replaceInSeries(SeriesValue series, int at, Value value) {
         switch (series) {

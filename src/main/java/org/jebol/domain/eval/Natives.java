@@ -9697,16 +9697,26 @@ public final class Natives {
         };
     }
 
-    /** A time's part, by name or by position, as a path reads one. */
+    /**
+     * A time's part, by name or by position, as a path reads one.
+     *
+     * <p>{@code case A_PICK: Pick_Path(val, arg, 0)} -- PICK on a time is the
+     * path handler and not a reading of its own, so the seconds turn decimal
+     * once there is a fraction here as well.
+     */
     private static Value pickTimePart(TimeValue time, Value selector) {
-        long seconds = time.nanoseconds() / 1_000_000_000L;
+        long seconds = Math.abs(time.nanoseconds()) / NANOSECONDS_A_SECOND;
+        long fraction = Math.abs(time.nanoseconds()) % NANOSECONDS_A_SECOND;
         String part = selector instanceof WordValue named
                 ? named.canonical()
                 : positionAsTimePartName(selector);
         return switch (part) {
             case "hour" -> IntegerValue.of(seconds / 3600);
             case "minute" -> IntegerValue.of(seconds / 60 % 60);
-            case "second" -> IntegerValue.of(seconds % 60);
+            case "second" -> fraction == 0
+                    ? IntegerValue.of(seconds % 60)
+                    : DecimalValue.of(
+                            seconds % 60 + (double) fraction / NANOSECONDS_A_SECOND);
             default -> NoneValue.none();
         };
     }
