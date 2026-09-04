@@ -21,6 +21,8 @@ public enum EvaluationFailure {
             "a change at a position the series does not reach"),
     INVALID_HANDLE(ErrorCategory.SCRIPT, "invalid-handle",
             "a handle of the wrong kind for what was asked of it"),
+    CANNOT_OPEN(ErrorCategory.ACCESS, "cannot-open",
+            "a port that could not be opened on what it names"),
     NOT_OPEN(ErrorCategory.ACCESS, "not-open",
             "a port asked to carry something before it was opened"),
     NO_CONNECT(ErrorCategory.ACCESS, "no-connect",

@@ -105,6 +105,8 @@ public final class Interpreter {
         run("sys/make-scheme [title: \"TCP Networking\" name: 'tcp]");
         run("sys/make-scheme [title: \"DNS Lookup\" name: 'dns]");
         run("sys/make-scheme [title: \"GUI Events\" name: 'event]");
+        run("sys/make-scheme [title: \"File Access\" name: 'file]");
+        run("sys/make-scheme [title: \"File Directory Access\" name: 'dir]");
         run(THE_CHECKSUM_SCHEME);
     }
 

@@ -5809,6 +5809,8 @@ public final class Natives {
                             IntegerValue.of(object.context().fieldCount());
                     case ModuleValue module ->
                             IntegerValue.of(module.context().fieldCount());
+                    case PortValue port when isAFilePort(port) ->
+                            lengthLeftInTheFile(port, evaluator);
                     case PortValue port ->
                             IntegerValue.of(port.context().fieldCount());
                     case BitsetValue set -> IntegerValue.of(set.octets().length * 8);
@@ -5931,28 +5933,46 @@ public final class Natives {
                     case ModuleValue module -> LogicValue.of(
                             module.context().slots().stream()
                                     .allMatch(slot -> slot.canonical().equals("self")));
+                    case PortValue port when isAFilePort(port) ->
+                            LogicValue.of(theFileIsAtItsEnd(port, evaluator));
                     case SeriesValue series -> LogicValue.of(series.atTail());
                     default -> raiseCannotUse(arguments.get(0), "tail?");
                 });
         define("next", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> arguments.get(0) instanceof SeriesValue series
-                        ? (Value) series.atIndex(Math.min(
-                                series.index() + 1, series.storageLength() + 1))
-                        : raiseCannotUse(arguments.get(0), "next"));
+                (arguments, evaluator, context) -> switch (arguments.getFirst()) {
+                    case PortValue port when isAFilePort(port) ->
+                            movedWithinTheFile(port, evaluator,
+                                    SeekableFilePort.positionOf(port) + 1);
+                    case SeriesValue series -> (Value) series.atIndex(Math.min(
+                            series.index() + 1, series.storageLength() + 1));
+                    default -> raiseCannotUse(arguments.get(0), "next");
+                });
         define("head", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> arguments.get(0) instanceof SeriesValue series
-                        ? (Value) series.head()
-                        : raiseCannotUse(arguments.get(0), "head"));
+                (arguments, evaluator, context) -> switch (arguments.getFirst()) {
+                    case PortValue port when isAFilePort(port) ->
+                            movedWithinTheFile(port, evaluator, 0);
+                    case SeriesValue series -> (Value) series.head();
+                    default -> raiseCannotUse(arguments.get(0), "head");
+                });
         define("tail", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> arguments.get(0) instanceof SeriesValue series
-                        ? (Value) series.tail()
-                        : raiseCannotUse(arguments.get(0), "tail"));
+                (arguments, evaluator, context) -> switch (arguments.getFirst()) {
+                    case PortValue port when isAFilePort(port) ->
+                            movedWithinTheFile(port, evaluator,
+                                    ((IntegerValue) wholeSizeOfTheFile(port, evaluator))
+                                            .magnitude());
+                    case SeriesValue series -> (Value) series.tail();
+                    default -> raiseCannotUse(arguments.get(0), "tail");
+                });
         define("index?", List.of(Parameter.required("series", positionable())),
                 Set.of("xy"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
                     case NoneValue nothing -> nothing;
                     case ImageValue picture when refinements.contains("xy") ->
                             whereItStandsInThePicture(picture, 1);
+                    case PortValue port when isAFilePort(port) -> {
+                        refuseAClosedPosition(port);
+                        yield IntegerValue.of(SeekableFilePort.positionOf(port) + 1);
+                    }
                     case SeriesValue series -> IntegerValue.of(series.index());
                     default -> raiseCannotUse(arguments.get(0), "index?");
                 });
@@ -6031,9 +6051,14 @@ public final class Natives {
                         : raiseCannotUse(arguments.get(0), "last"));
 
         define("back", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> arguments.get(0) instanceof SeriesValue series
-                        ? (Value) series.atIndex(Math.max(1, series.index() - 1))
-                        : raiseCannotUse(arguments.get(0), "back"));
+                (arguments, evaluator, context) -> switch (arguments.getFirst()) {
+                    case PortValue port when isAFilePort(port) ->
+                            movedWithinTheFile(port, evaluator,
+                                    SeekableFilePort.positionOf(port) - 1);
+                    case SeriesValue series ->
+                            (Value) series.atIndex(Math.max(1, series.index() - 1));
+                    default -> raiseCannotUse(arguments.get(0), "back");
+                });
 
         defineStepper("++", 1);
         defineStepper("--", -1);
@@ -6062,6 +6087,12 @@ public final class Natives {
                                         Datatype.PERCENT, Datatype.LOGIC,
                                         Datatype.PAIR))),
                 (arguments, evaluator, context) -> {
+                    if (arguments.getFirst() instanceof PortValue port
+                            && isAFilePort(port)) {
+                        return movedWithinTheFile(port, evaluator,
+                                SeekableFilePort.positionOf(port)
+                                        + (long) asMagnitude(arguments.get(1)));
+                    }
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.get(0), "skip");
                     }
@@ -9548,6 +9579,147 @@ public final class Natives {
                 : 0;
     }
 
+    /** Whether a port is one of the two the filesystem serves. */
+    private static boolean isAFilePort(PortValue port) {
+        return port.schemeName().equals("file") || port.schemeName().equals("dir");
+    }
+
+    /**
+     * The five questions a file port answers as a series would.
+     *
+     * <p>A file port has a position, so LENGTH? counts what is left rather
+     * than what there is, SIZE? counts the whole file whatever the position,
+     * INDEX? is one more than the position, and EMPTY? and TAIL? both ask
+     * whether there is nothing left. It is why {@code write p "a"} leaves
+     * {@code length? p} at nothing and {@code size? p} at one.
+     */
+    private Value lengthLeftInTheFile(PortValue port, Evaluator evaluator) {
+        refuseAClosedPosition(port);
+        requireService(HostService.FILES);
+        return throughPort(() ->
+                SeekableFilePort.lengthLeft(evaluator.files(), port));
+    }
+
+    /**
+     * Refuses the questions that are about the position, on a closed port.
+     *
+     * <p>A closed file port has no position, so INDEX?, LENGTH?, TAIL? and
+     * every move raise not-open. SIZE? does not, being about the file rather
+     * than the port, and neither do READ and WRITE, which open it again for
+     * the one call. The C draws the line in the same place and it reads oddly
+     * until you see which side each one is on.
+     */
+    private static void refuseAClosedPosition(PortValue port) {
+        if (!port.isOpen()) {
+            throw Raised.of(EvaluationFailure.NOT_OPEN,
+                    SeekableFilePort.pathOf(port));
+        }
+    }
+
+    private Value wholeSizeOfTheFile(PortValue port, Evaluator evaluator) {
+        requireService(HostService.FILES);
+        return throughPort(() -> SeekableFilePort.wholeSize(evaluator.files(), port));
+    }
+
+    private boolean theFileIsAtItsEnd(PortValue port, Evaluator evaluator) {
+        refuseAClosedPosition(port);
+        requireService(HostService.FILES);
+        return ((LogicValue) throughPort(() -> LogicValue.of(
+                SeekableFilePort.atTail(evaluator.files(), port)))).truth();
+    }
+
+    /**
+     * Moves a file port's position and answers the port, not a copy of it.
+     *
+     * <p>A series answers a new value at the new position and leaves the old
+     * one where it was; a port has one position and moving it moves the port.
+     * So {@code skip p 2} and {@code p} are the same port afterwards, which is
+     * what {@code index? head p} being one and {@code index? skip p 2} being
+     * three in the same breath depends on.
+     */
+    private Value movedWithinTheFile(PortValue port, Evaluator evaluator, long to) {
+        refuseAClosedPosition(port);
+        requireService(HostService.FILES);
+        long size = ((IntegerValue) wholeSizeOfTheFile(port, evaluator)).magnitude();
+        SeekableFilePort.moveTo(port, Math.max(0, Math.min(to, size)));
+        return port;
+    }
+
+    /**
+     * READ through a file port, which moves the port's own position.
+     *
+     * <p>A directory port answers its names and stays where it is; a file port
+     * answers bytes and ends past them. /SEEK moves first and /PART says how
+     * many -- a negative count reads backwards from where the position stands,
+     * which is what makes {@code read/part tail p -2} the last two bytes.
+     *
+     * <p>Reading a port that was closed opens it, reads it and closes it
+     * again. That is the C's {@code if (!IS_OPEN(port)) ...} in
+     * {@code File_Actor}, and it is why the suite can read the same closed
+     * port three times and get the whole file each time.
+     */
+    private Value readFromTheFileBehind(
+            PortValue port, Evaluator evaluator,
+            List<Value> arguments, Set<String> refinements) {
+
+        requireService(HostService.FILES);
+        String path = SeekableFilePort.pathOf(port);
+        if (port.schemeName().equals("dir")) {
+            return throughPort(() -> SeekableFilePort.namesIn(evaluator.files(), path));
+        }
+        boolean wasClosed = !port.isOpen();
+        if (wasClosed) {
+            port.markOpen(true);
+            SeekableFilePort.moveTo(port, 0);
+        }
+        Value seek = refinements.contains("seek")
+                ? argumentFor("seek", List.of("part", "seek"), arguments, refinements, 1)
+                : null;
+        if (seek instanceof IntegerValue where) {
+            SeekableFilePort.moveTo(port, where.magnitude());
+        }
+        Value part = refinements.contains("part")
+                ? argumentFor("part", List.of("part", "seek"), arguments, refinements, 1)
+                : null;
+        if (part instanceof IntegerValue wanted
+                && wanted.magnitude() < 0
+                && -wanted.magnitude() > SeekableFilePort.positionOf(port)) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, part);
+        }
+        Value read = throughPort(() -> SeekableFilePort.readFrom(
+                evaluator.files(), port,
+                part instanceof IntegerValue wanted ? wanted.magnitude() : null));
+        if (wasClosed) {
+            port.markOpen(false);
+        }
+        return read;
+    }
+
+    /**
+     * Starts a file port at the head, making the file when /NEW says to.
+     *
+     * <p>{@code open/new} is the one that creates: it truncates whatever was
+     * there and leaves an empty file, which is why the suite can open a name
+     * it has just deleted. Without it the file has to be there already, and a
+     * name that is not is {@code cannot-open}.
+     */
+    private void openTheFileBehind(
+            PortValue port, Evaluator evaluator, Set<String> refinements) {
+
+        String path = SeekableFilePort.pathOf(port);
+        if (refinements.contains("new")) {
+            throughPort(() -> {
+                evaluator.files().write(path, new byte[0]);
+                return NoneValue.none();
+            });
+        } else if (!port.schemeName().equals("dir")
+                && !((LogicValue) throughPort(() ->
+                        LogicValue.of(evaluator.files().exists(path)))).truth()) {
+            throw Raised.of(EvaluationFailure.CANNOT_OPEN, path);
+        }
+        SeekableFilePort.moveTo(port, 0);
+    }
+
     /** Whether protection means anything for this kind of value. */
     private static boolean carriesProtection(Value value) {
         return value instanceof SeriesValue
@@ -11693,7 +11865,7 @@ public final class Natives {
      * grows only when an actor does.
      */
     private static final Set<String> SCHEMES_THIS_BUILD_SERVES =
-            Set.of("console", "tcp", "dns", "event", "checksum");
+            Set.of("console", "tcp", "dns", "event", "checksum", "file", "dir");
 
     /** The types a cipher context publishes. */
     private static final String RC4_HANDLE_TYPE = "rc4";
@@ -16061,7 +16233,10 @@ public final class Natives {
                 Set.of("part", "seek", "string", "binary", "lines", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof PortValue port) {
-                        return readFromPort(port, evaluator);
+                        return isAFilePort(port)
+                                ? readFromTheFileBehind(
+                                        port, evaluator, arguments, refinements)
+                                : readFromPort(port, evaluator);
                     }
                     if (routesToAScheme(arguments.getFirst())) {
                         return readFromPort(
@@ -16356,6 +16531,9 @@ public final class Natives {
                     if (port.schemeName().equals("checksum")) {
                         ChecksumPort.start(port, ChecksumPort.methodOf(port));
                     }
+                    if (isAFilePort(port)) {
+                        openTheFileBehind(port, evaluator, refinements);
+                    }
                     return port;
                 });
 
@@ -16524,6 +16702,13 @@ public final class Natives {
                         return questionedByField(field, evaluator,
                                 CONSOLE_MEASUREMENTS,
                                 part -> IntegerValue.of(measureOfTheConsole(part)));
+                    }
+                    if (target instanceof PortValue openFile && isAFilePort(openFile)) {
+                        requireService(HostService.FILES);
+                        return throughPort(() -> queryAnswerFor(
+                                evaluator.files().informationAbout(
+                                        SeekableFilePort.pathOf(openFile)),
+                                field));
                     }
                     if (target instanceof PortValue || routesToAScheme(target)) {
                         throw schemeRefusal("queries", target);
@@ -17903,8 +18088,47 @@ public final class Natives {
             case "console" -> writtenToTheConsole(port, data, evaluator);
             case "tcp" -> sentDownTheConnection(port, data);
             case "checksum" -> summedIntoThePort(port, data, arguments, refinements);
+            case "file" -> writtenToTheFileBehind(
+                    port, data, evaluator, arguments, refinements);
             default -> throw schemeRefusal("writes", port);
         };
+    }
+
+    /**
+     * WRITE through a file port, which moves the port's own position.
+     *
+     * <p>/SEEK moves first and /PART cuts what is written. The answer is the
+     * file rather than the port, which reads oddly until you see the C: WRITE
+     * on a file port ends with the port's own {@code spec/ref}, so
+     * {@code write %f "a"} and {@code write port "a"} answer the same kind of
+     * thing.
+     */
+    private Value writtenToTheFileBehind(
+            PortValue port, Value data, Evaluator evaluator,
+            List<Value> arguments, Set<String> refinements) {
+
+        requireService(HostService.FILES);
+        Value seek = refinements.contains("seek")
+                ? argumentFor("seek", FileWriting.ARGUMENT_ORDER,
+                        arguments, refinements, 2)
+                : null;
+        if (seek instanceof IntegerValue where) {
+            SeekableFilePort.moveTo(port, where.magnitude());
+        }
+        byte[] octets = octetsOf(data);
+        Value part = refinements.contains("part")
+                ? argumentFor("part", FileWriting.ARGUMENT_ORDER,
+                        arguments, refinements, 2)
+                : null;
+        if (part instanceof IntegerValue wanted) {
+            octets = Arrays.copyOf(octets,
+                    (int) Math.max(0, Math.min(wanted.magnitude(), octets.length)));
+        }
+        byte[] written = octets;
+        return throughPort(() -> {
+            SeekableFilePort.writeAt(evaluator.files(), port, written);
+            return StringValue.of(SeekableFilePort.pathOf(port), Datatype.FILE);
+        });
     }
 
     /**

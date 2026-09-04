@@ -43,9 +43,6 @@ checksum-test.r3 / file-checksum / checksum file! #257
 checksum-test.r3 / file-checksum / checksum file! with refines #258
 checksum-test.r3 / file-checksum / checksum file! with refines #259
 checksum-test.r3 / file-checksum / file-checksum with bigger file #254
-checksum-test.r3 / file-checksum / file-checksum with small file #251
-checksum-test.r3 / file-checksum / file-checksum with small file #252
-checksum-test.r3 / file-checksum / file-checksum with small file #253
 codecs-test-pdf.r3 / (no group) / (no test) #10
 codecs-test-pdf.r3 / (no group) / (no test) #11
 codecs-test-pdf.r3 / (no group) / (no test) #12
@@ -521,16 +518,6 @@ port-test.r3 / directory port / READ wildcard #47
 port-test.r3 / directory port / RENAME dir #57
 port-test.r3 / directory port / exists? %/ #63
 port-test.r3 / directory port / make-dir if file exists #21
-port-test.r3 / directory port / open %. #23
-port-test.r3 / directory port / open %. #24
-port-test.r3 / directory port / open %. #25
-port-test.r3 / directory port / open %. #26
-port-test.r3 / directory port / open %. #27
-port-test.r3 / directory port / open wildcard #28
-port-test.r3 / directory port / port-issue-2320 #2
-port-test.r3 / directory port / port-issue-2320 #3
-port-test.r3 / directory port / port-issue-2320 #4
-port-test.r3 / directory port / port-issue-2320 #6
 port-test.r3 / directory port / query directory info #8
 port-test.r3 / file port / APPEND file-port #160
 port-test.r3 / file port / APPEND file-port #161
@@ -549,35 +536,16 @@ port-test.r3 / file port / DELETE file #157
 port-test.r3 / file port / Query empty file name #168
 port-test.r3 / file port / Reading an empty file #167
 port-test.r3 / file port / WRITE/APPEND file-port #159
-port-test.r3 / file port / open/close file #128
-port-test.r3 / file port / open/close file #129
-port-test.r3 / file port / open/close file #130
-port-test.r3 / file port / open/close file #131
-port-test.r3 / file port / open/close file #132
-port-test.r3 / file port / open/close file #133
-port-test.r3 / file port / open/close file #134
 port-test.r3 / file port / query file info #68
 port-test.r3 / file port / query file info (port) #75
-port-test.r3 / file port / query file info (port) #78
-port-test.r3 / file port / query file info (port) #79
-port-test.r3 / file port / query file info (port) #80
 port-test.r3 / file port / read write CRLF conversion #114
 port-test.r3 / file port / read write CRLF conversion #115
 port-test.r3 / file port / read write CRLF conversion #118
 port-test.r3 / file port / read write CRLF conversion #119
-port-test.r3 / file port / read/part #145
-port-test.r3 / file port / skip/at on file port #146
 port-test.r3 / file port / skip/at on file port #147
 port-test.r3 / file port / skip/at on file port #148
 port-test.r3 / file port / skip/at on file port #149
 port-test.r3 / file port / write/part #135
-port-test.r3 / file port / write/seek #138
-port-test.r3 / file port / write/seek #139
-port-test.r3 / file port / write/seek #140
-port-test.r3 / file port / write/seek #141
-port-test.r3 / file port / write/seek #142
-port-test.r3 / file port / write/seek #143
-port-test.r3 / file port / write/seek #144
 power-test.r3 / power integer / power-integer-1 #11
 power-test.r3 / power integer / power-integer-2 #12
 power-test.r3 / power integer / power-integer-3 #13
