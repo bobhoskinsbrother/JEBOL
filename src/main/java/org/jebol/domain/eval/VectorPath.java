@@ -1,15 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ProtectedFromChange;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.VectorKind;
-import org.jebol.domain.value.VectorValue;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 /**
  * Reading and writing a vector through a path.

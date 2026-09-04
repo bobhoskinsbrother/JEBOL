@@ -1,17 +1,10 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.VectorKind;
-import org.jebol.domain.value.VectorValue;
-import org.jebol.domain.value.WordValue;
 
 /**
  * What a vector answers about itself: its shape and the statistics of what it

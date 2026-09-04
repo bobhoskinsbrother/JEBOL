@@ -1,14 +1,15 @@
 package org.jebol.domain.eval;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.List;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.WordValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A bound word names the context that holds its slot, never a descendant

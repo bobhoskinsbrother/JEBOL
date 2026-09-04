@@ -1,10 +1,5 @@
 package org.jebol.adapter.web;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.ScreenEventKind;
@@ -16,6 +11,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A browser as a third screen, not a second dialect.

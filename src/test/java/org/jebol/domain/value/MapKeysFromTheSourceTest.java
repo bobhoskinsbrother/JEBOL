@@ -1,10 +1,10 @@
 package org.jebol.domain.value;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * How a map answers about its keys, which is not how a Java map would.

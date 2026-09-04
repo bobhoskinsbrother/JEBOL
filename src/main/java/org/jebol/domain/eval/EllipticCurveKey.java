@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import javax.crypto.KeyAgreement;
 import java.math.BigInteger;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -11,7 +12,6 @@ import java.security.spec.ECPoint;
 import java.security.spec.ECPublicKeySpec;
 import java.util.Map;
 import java.util.Optional;
-import javax.crypto.KeyAgreement;
 
 /**
  * A key pair on a named elliptic curve, for the exchange and for signing.

@@ -1,10 +1,10 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.value.StructSpec.StructField;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-import org.jebol.domain.value.StructSpec.StructField;
 
 /**
  * A C-shaped record: named fields laid over a run of bytes.

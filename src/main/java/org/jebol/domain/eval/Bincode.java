@@ -1,25 +1,13 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.LongSupplier;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * The binary dialect: a little language for laying numbers into bytes and

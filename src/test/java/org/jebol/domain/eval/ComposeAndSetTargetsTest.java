@@ -1,10 +1,10 @@
 package org.jebol.domain.eval;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * COMPOSE/INTO with a source that is not a block, and what SET will assign to.

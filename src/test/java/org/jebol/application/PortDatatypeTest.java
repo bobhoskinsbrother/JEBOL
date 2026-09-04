@@ -1,12 +1,12 @@
 package org.jebol.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.domain.eval.ConsolePort;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The port datatype, far enough for Rebol's own INPUT and ASK to run.

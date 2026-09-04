@@ -1,10 +1,10 @@
 package org.jebol.domain.eval;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * PROTECT/VALUES and PROTECT/WORDS, which take a block of words.

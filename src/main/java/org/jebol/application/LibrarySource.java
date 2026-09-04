@@ -1,30 +1,13 @@
 package org.jebol.application;
 
+import org.jebol.domain.read.TranscodeResult;
+import org.jebol.domain.read.Transcoder;
+import org.jebol.domain.value.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.jebol.domain.read.TranscodeResult;
-import org.jebol.domain.read.Transcoder;
-import org.jebol.domain.value.BinaryStorage;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockStorage;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * The library files, read once instead of once an interpreter.

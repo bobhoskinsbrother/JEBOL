@@ -1,6 +1,8 @@
 package org.jebol.suite;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -14,9 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * That the vendored suite is the whole suite, minus a list that says why.

@@ -1,11 +1,11 @@
 package org.jebol.domain.eval;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The rest of the SYSTEM object: the catalogues, the locale, the console and

@@ -7,12 +7,7 @@ import org.jebol.domain.eval.ScreenPort;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * A screen a test can measure, and a record of what was drawn on it.

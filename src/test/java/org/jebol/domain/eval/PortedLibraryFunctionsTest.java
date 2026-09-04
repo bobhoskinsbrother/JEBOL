@@ -1,10 +1,10 @@
 package org.jebol.domain.eval;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Functions ported from a real R3 because they were missing, not because

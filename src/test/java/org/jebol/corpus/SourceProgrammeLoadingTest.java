@@ -1,21 +1,18 @@
 package org.jebol.corpus;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.nio.file.Path;
-import java.util.List;
-import java.util.stream.Stream;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.SeriesValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+
+import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.Stream;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The end-to-end test for reading: fourteen complete REBOL programs, written

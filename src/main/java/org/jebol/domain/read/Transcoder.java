@@ -2,11 +2,11 @@ package org.jebol.domain.read;
 
 import org.jebol.domain.value.*;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.regex.Pattern;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Turns REBOL source text into values.

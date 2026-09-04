@@ -1,12 +1,12 @@
 package org.jebol.domain.value;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Conclusion;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A series value left standing past the end of its own storage.

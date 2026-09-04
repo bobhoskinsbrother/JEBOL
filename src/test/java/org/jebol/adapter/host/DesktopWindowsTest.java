@@ -1,19 +1,20 @@
 package org.jebol.adapter.host;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-
-import java.awt.GraphicsEnvironment;
-import java.util.List;
-import java.util.Optional;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.WindowPort;
 import org.jebol.domain.host.HostService;
-import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+
+import java.awt.*;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * The window adapter, tested on the one path a server actually takes.

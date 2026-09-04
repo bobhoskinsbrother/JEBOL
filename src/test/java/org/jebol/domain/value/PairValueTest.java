@@ -1,13 +1,13 @@
 package org.jebol.domain.value;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import net.jqwik.api.ForAll;
 import net.jqwik.api.Property;
 import net.jqwik.api.constraints.DoubleRange;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A pair holds two decimals, which is not what {@code 1x2} looks like.

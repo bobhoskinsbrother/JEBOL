@@ -1,6 +1,8 @@
 package org.jebol.suite;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.jebol.application.Interpreter;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -9,9 +11,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import org.jebol.application.Interpreter;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * What is left to port: the functions a real R3 has and JEBOL has not.

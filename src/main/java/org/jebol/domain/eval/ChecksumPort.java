@@ -1,15 +1,10 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.HandleValue;
-import org.jebol.domain.value.JavaObjectValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * A port that hashes what is written to it, {@code checksum://}.

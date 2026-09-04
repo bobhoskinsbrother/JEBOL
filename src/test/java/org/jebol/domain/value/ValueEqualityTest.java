@@ -1,11 +1,12 @@
 package org.jebol.domain.value;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.math.BigDecimal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * What {@code equals} means on a value.

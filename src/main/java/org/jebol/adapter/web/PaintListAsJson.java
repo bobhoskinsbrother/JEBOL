@@ -1,12 +1,6 @@
 package org.jebol.adapter.web;
 
-import org.jebol.domain.render.ClipRectangle;
-import org.jebol.domain.render.PaintInstruction;
-import org.jebol.domain.render.PaintList;
-import org.jebol.domain.render.PaintState;
-import org.jebol.domain.render.PathStep;
-import org.jebol.domain.render.Placement;
-import org.jebol.domain.render.Transform;
+import org.jebol.domain.render.*;
 import org.jebol.domain.value.ImageValue;
 
 import java.util.Arrays;

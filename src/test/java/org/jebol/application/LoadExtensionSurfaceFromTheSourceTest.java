@@ -1,9 +1,9 @@
 package org.jebol.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * LOAD-EXTENSION declares the C's surface from {@code natives.reb} even

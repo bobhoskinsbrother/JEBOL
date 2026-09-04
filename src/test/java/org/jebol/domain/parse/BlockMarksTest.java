@@ -1,10 +1,10 @@
 package org.jebol.domain.parse;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A set-word marks where a block parse has reached; a get-word goes back.

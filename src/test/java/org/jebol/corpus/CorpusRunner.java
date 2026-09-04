@@ -1,11 +1,12 @@
 package org.jebol.corpus;
 
-import java.util.List;
-import java.util.Optional;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.eval.OutputPort;
 import org.jebol.domain.value.ErrorValue;
+
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Runs one corpus entry and says what it did.

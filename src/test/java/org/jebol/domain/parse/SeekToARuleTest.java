@@ -1,10 +1,10 @@
 package org.jebol.domain.parse;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * PARSE's TO and THRU take a whole rule, not only a value.

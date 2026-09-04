@@ -1,10 +1,10 @@
 package org.jebol.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A host grants each kind of service on its own, and nothing by default.

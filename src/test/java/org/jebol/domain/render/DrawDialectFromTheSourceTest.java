@@ -1,8 +1,5 @@
 package org.jebol.domain.render;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.List;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
@@ -10,6 +7,10 @@ import org.jebol.domain.value.GobValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The DRAW dialect: what a gob's draw block paints.

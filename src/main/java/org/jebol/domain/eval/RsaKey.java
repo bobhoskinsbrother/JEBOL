@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import javax.crypto.Cipher;
 import java.math.BigInteger;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
@@ -8,7 +9,6 @@ import java.security.Signature;
 import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Optional;
-import javax.crypto.Cipher;
 
 /**
  * An RSA key, checked once when it is built and then used for as many

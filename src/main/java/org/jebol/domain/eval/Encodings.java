@@ -548,13 +548,20 @@ final class Encodings {
      * method this build was not compiled with is a feature that is not
      * available, and REBOL has an error id that says exactly that.
      *
-     * <p>Rebol's own suite is written for both: each of these four groups
-     * opens with {@code either error? e: try [compress "test" 'lzw]} and
-     * accepts {@code feature-na} as the whole answer, because a build without
-     * the algorithm is an ordinary build rather than a broken one.
+     * <p>Rebol's own suite is written for both: each of these groups opens
+     * with {@code either error? e: try [compress "test" 'lzw]} and accepts
+     * {@code feature-na} as the whole answer, because a build without the
+     * algorithm is an ordinary build rather than a broken one.
+     *
+     * <p>These are the names {@code system/catalog/compressions} uses, which
+     * is where they had to come from and did not: Brotli is {@code br} there
+     * and this said {@code brotli}, so the one method the suite asks about by
+     * name answered {@code invalid-arg} -- a name nobody has heard of --
+     * where the suite was waiting to be told the build has not got it.
+     * {@code lz4} and {@code lzav} were missing outright.
      */
     static final List<String> COMPRESSIONS_ELSEWHERE =
-            List.of("lzw", "lzma", "brotli", "crush");
+            List.of("br", "crush", "lz4", "lzav", "lzma", "lzw");
 
     static byte[] compressed(byte[] octets, String method, int level) {
         return switch (method) {

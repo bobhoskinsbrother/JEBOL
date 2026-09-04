@@ -1,12 +1,13 @@
 package org.jebol.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.Map;
 import org.jebol.domain.eval.EnvironmentPort;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * GET-ENV and LIST-ENV, and why SET-ENV cannot exist.

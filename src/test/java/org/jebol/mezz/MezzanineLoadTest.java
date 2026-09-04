@@ -1,6 +1,9 @@
 package org.jebol.mezz;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.jebol.application.Interpreter;
+import org.jebol.application.ScriptOutcome;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -8,10 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import org.jebol.application.Interpreter;
-import org.jebol.application.ScriptOutcome;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * How much of Rebol's own library JEBOL can simply run.

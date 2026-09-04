@@ -1,23 +1,11 @@
 package org.jebol.adapter.host;
 
-import org.jebol.domain.render.ClipRectangle;
-import org.jebol.domain.render.FillRule;
-import org.jebol.domain.render.PaintInstruction;
-import org.jebol.domain.render.PaintList;
-import org.jebol.domain.render.PaintState;
-import org.jebol.domain.render.PathStep;
-import org.jebol.domain.render.Placement;
-import org.jebol.domain.render.Transform;
+import org.jebol.domain.render.*;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ImageValue;
 import org.jebol.domain.value.PairValue;
 
-import java.awt.AlphaComposite;
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Ellipse2D;

@@ -1,8 +1,9 @@
-# Assertions that a real Rebol fails as well.
+# Assertions the Rebol this is measured against does not pass either.
 #
-# These are not run. They are not gaps either: JEBOL answers what the Rebol
-# they came from answers, and the assertion is wrong about that Rebol. Putting
-# them in known-gaps.txt would say there is work here and there is not, and
+# Two kinds, and neither is a gap. Some are wrong about the Rebol they came
+# from, and JEBOL answers what that Rebol answers. Others are guarded on a
+# feature 3.22.5 has not got, so they never run there at all. Putting either
+# in known-gaps.txt would say there is work here and there is not, and
 # deleting them would lose the finding.
 #
 # Nothing goes in here on reasoning. Each line was run through ./r3-head, the
@@ -32,3 +33,104 @@ make-test.r3 / make char! / to char! issue! #14
 #   == none            ; r3-head 3.22.5, and JEBOL
 #
 series-test.r3 / SWAP / swap invalidating index (known issue) #973
+
+# ---------------------------------------------------------------------------
+#
+# Four whole files are guarded on natives 3.22.5 has not got, so a real Rebol
+# runs none of their assertions. Running each through ./r3-head prints the
+# count, and the count is nought:
+#
+#   $ r3-head units/handle-test.r3     -> Number of Assertions Performed: 0
+#   $ r3-head units/chacha20-test.r3   -> Number of Assertions Performed: 0
+#   $ r3-head units/poly1305-test.r3   -> Number of Assertions Performed: 0
+#   $ r3-head units/aes-test.r3        -> Number of Assertions Performed: 0
+#
+# The guards are `if native? :chacha20`, `if native? :poly1305`,
+# `if native? :aes`, and for the handles `if not error? try [h3: aes/key ...]`.
+# JEBOL answers no-value for all four of those names, exactly as r3-head does,
+# so the groups are skipped in both and the assertions inside them are not
+# work anybody can do short of reviving a native Rebol deprecated.
+#
+# chacha20-test.r3 says so itself, above its guard:
+#   ";- this tests are only for the now deprecated `chacha20` native function!"
+#
+aes-test.r3 / (no group) / (no test) #1
+aes-test.r3 / (no group) / (no test) #2
+aes-test.r3 / (no group) / (no test) #3
+aes-test.r3 / (no group) / (no test) #4
+chacha20-test.r3 / (no group) / (no test) #1
+chacha20-test.r3 / (no group) / (no test) #10
+chacha20-test.r3 / (no group) / (no test) #11
+chacha20-test.r3 / (no group) / (no test) #12
+chacha20-test.r3 / (no group) / (no test) #13
+chacha20-test.r3 / (no group) / (no test) #14
+chacha20-test.r3 / (no group) / (no test) #15
+chacha20-test.r3 / (no group) / (no test) #16
+chacha20-test.r3 / (no group) / (no test) #17
+chacha20-test.r3 / (no group) / (no test) #18
+chacha20-test.r3 / (no group) / (no test) #19
+chacha20-test.r3 / (no group) / (no test) #2
+chacha20-test.r3 / (no group) / (no test) #3
+chacha20-test.r3 / (no group) / (no test) #4
+chacha20-test.r3 / (no group) / (no test) #5
+chacha20-test.r3 / (no group) / (no test) #6
+chacha20-test.r3 / (no group) / (no test) #7
+chacha20-test.r3 / (no group) / (no test) #8
+chacha20-test.r3 / (no group) / (no test) #9
+handle-test.r3 / context handles / (no test) #1
+handle-test.r3 / context handles / (no test) #10
+handle-test.r3 / context handles / (no test) #11
+handle-test.r3 / context handles / (no test) #12
+handle-test.r3 / context handles / (no test) #13
+handle-test.r3 / context handles / (no test) #14
+handle-test.r3 / context handles / (no test) #15
+handle-test.r3 / context handles / (no test) #16
+handle-test.r3 / context handles / (no test) #17
+handle-test.r3 / context handles / (no test) #18
+handle-test.r3 / context handles / (no test) #19
+handle-test.r3 / context handles / (no test) #2
+handle-test.r3 / context handles / (no test) #20
+handle-test.r3 / context handles / (no test) #21
+handle-test.r3 / context handles / (no test) #22
+handle-test.r3 / context handles / (no test) #23
+handle-test.r3 / context handles / (no test) #24
+handle-test.r3 / context handles / (no test) #25
+handle-test.r3 / context handles / (no test) #26
+handle-test.r3 / context handles / (no test) #27
+handle-test.r3 / context handles / (no test) #28
+handle-test.r3 / context handles / (no test) #29
+handle-test.r3 / context handles / (no test) #3
+handle-test.r3 / context handles / (no test) #30
+handle-test.r3 / context handles / (no test) #31
+handle-test.r3 / context handles / (no test) #32
+handle-test.r3 / context handles / (no test) #33
+handle-test.r3 / context handles / (no test) #34
+handle-test.r3 / context handles / (no test) #35
+handle-test.r3 / context handles / (no test) #36
+handle-test.r3 / context handles / (no test) #37
+handle-test.r3 / context handles / (no test) #38
+handle-test.r3 / context handles / (no test) #39
+handle-test.r3 / context handles / (no test) #4
+handle-test.r3 / context handles / (no test) #40
+handle-test.r3 / context handles / (no test) #41
+handle-test.r3 / context handles / (no test) #42
+handle-test.r3 / context handles / (no test) #43
+handle-test.r3 / context handles / (no test) #44
+handle-test.r3 / context handles / (no test) #45
+handle-test.r3 / context handles / (no test) #46
+handle-test.r3 / context handles / (no test) #47
+handle-test.r3 / context handles / (no test) #5
+handle-test.r3 / context handles / (no test) #6
+handle-test.r3 / context handles / (no test) #7
+handle-test.r3 / context handles / (no test) #8
+handle-test.r3 / context handles / (no test) #9
+poly1305-test.r3 / (no group) / (no test) #1
+poly1305-test.r3 / (no group) / (no test) #10
+poly1305-test.r3 / (no group) / (no test) #2
+poly1305-test.r3 / (no group) / (no test) #3
+poly1305-test.r3 / (no group) / (no test) #4
+poly1305-test.r3 / (no group) / (no test) #5
+poly1305-test.r3 / (no group) / (no test) #6
+poly1305-test.r3 / (no group) / (no test) #7
+poly1305-test.r3 / (no group) / (no test) #8
+poly1305-test.r3 / (no group) / (no test) #9

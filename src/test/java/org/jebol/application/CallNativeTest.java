@@ -1,16 +1,16 @@
 package org.jebol.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Optional;
 import org.jebol.domain.eval.ProcessPort;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Specified in {@code spec/natives.allium} under "Starting another program"

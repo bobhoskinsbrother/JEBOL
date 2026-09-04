@@ -1,11 +1,11 @@
 package org.jebol.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * INIT-TOP-WINDOW: the gob every window hangs under, and the command that is

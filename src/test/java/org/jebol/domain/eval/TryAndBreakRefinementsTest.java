@@ -1,7 +1,5 @@
 package org.jebol.domain.eval;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Conclusion;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
@@ -9,6 +7,8 @@ import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.Molder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * TRY/ALL, TRY/WITH, BREAK/RETURN and ATTEMPT/SAFER.

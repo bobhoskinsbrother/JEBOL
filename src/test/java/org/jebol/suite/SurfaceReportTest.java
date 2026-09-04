@@ -1,21 +1,16 @@
 package org.jebol.suite;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.jebol.domain.eval.Natives;
+import org.jebol.domain.value.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
-import org.jebol.domain.eval.Natives;
-import org.jebol.domain.value.ContextSlot;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.FunctionValue;
-import org.jebol.domain.value.NativeValue;
-import org.jebol.domain.value.OperatorValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Value;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Every function JEBOL offers, with its arguments and refinements.

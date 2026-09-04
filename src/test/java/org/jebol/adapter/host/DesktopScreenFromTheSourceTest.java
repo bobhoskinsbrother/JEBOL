@@ -1,12 +1,5 @@
 package org.jebol.adapter.host;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.GraphicsEnvironment;
-import java.awt.image.BufferedImage;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.ScreenMetric;
@@ -16,6 +9,12 @@ import org.jebol.domain.value.GobValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import java.awt.*;
+import java.awt.image.BufferedImage;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The native renderer: Swing for the windows, Java2D for the painting.

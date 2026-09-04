@@ -1,5 +1,8 @@
 package org.jebol.suite;
 
+import org.jebol.domain.read.Transcoder;
+import org.jebol.domain.value.*;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -7,13 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.jebol.domain.read.Transcoder;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 /**
  * One of Rebol's own test scripts, read into the assertions it makes.

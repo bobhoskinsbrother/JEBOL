@@ -1,16 +1,13 @@
 package org.jebol.adapter.host;
 
+import org.jebol.domain.eval.NetworkPort;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.util.Arrays;
 import java.util.List;
-import org.jebol.domain.eval.NetworkPort;
 
 /**
  * The network as the JDK already provides it.

@@ -1,7 +1,5 @@
 package org.jebol.adapter.web;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
@@ -10,6 +8,8 @@ import org.jebol.domain.value.GobValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A paint list on the wire.

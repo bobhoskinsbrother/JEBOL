@@ -1,11 +1,11 @@
 package org.jebol.domain.parse;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * What PARSE's INSERT and CHANGE put in, read out of {@code Get_Parse_Value}

@@ -1,14 +1,15 @@
 package org.jebol.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.time.Duration;
 import org.jebol.domain.eval.ScreenEventKind;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+
+import java.time.Duration;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * What the screen tells a script, and which thread it tells it on.

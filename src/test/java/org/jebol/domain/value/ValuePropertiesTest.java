@@ -1,19 +1,15 @@
 package org.jebol.domain.value;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.List;
-import java.util.Locale;
-import net.jqwik.api.Arbitraries;
-import net.jqwik.api.Arbitrary;
-import net.jqwik.api.Combinators;
-import net.jqwik.api.ForAll;
-import net.jqwik.api.Property;
-import net.jqwik.api.Provide;
+import net.jqwik.api.*;
 import net.jqwik.api.constraints.IntRange;
 import net.jqwik.api.constraints.Size;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
+
+import java.util.List;
+import java.util.Locale;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The laws from {@code spec/values.allium} and {@code spec/load.allium} as

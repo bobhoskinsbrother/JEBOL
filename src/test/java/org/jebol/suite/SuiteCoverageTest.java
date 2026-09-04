@@ -1,6 +1,11 @@
 package org.jebol.suite;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.jebol.application.Interpreter;
+import org.jebol.domain.read.TranscodeResult;
+import org.jebol.domain.read.Transcoder;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -9,17 +14,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import org.jebol.domain.read.TranscodeResult;
-import org.jebol.domain.read.Transcoder;
-import org.jebol.application.Interpreter;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * How much of Rebol's own suite JEBOL can even read.

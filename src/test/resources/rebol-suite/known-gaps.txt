@@ -1,7 +1,3 @@
-aes-test.r3 / (no group) / (no test) #1
-aes-test.r3 / (no group) / (no test) #2
-aes-test.r3 / (no group) / (no test) #3
-aes-test.r3 / (no group) / (no test) #4
 bbcode-test.r3 / (no group) / (no test) #1
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #163
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #164
@@ -13,25 +9,6 @@ bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #167
 bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #168
 bitset-test.r3 / modify / issue-1355 #139
 bitset-test.r3 / modify / issue-1355 #140
-chacha20-test.r3 / (no group) / (no test) #1
-chacha20-test.r3 / (no group) / (no test) #10
-chacha20-test.r3 / (no group) / (no test) #11
-chacha20-test.r3 / (no group) / (no test) #12
-chacha20-test.r3 / (no group) / (no test) #13
-chacha20-test.r3 / (no group) / (no test) #14
-chacha20-test.r3 / (no group) / (no test) #15
-chacha20-test.r3 / (no group) / (no test) #16
-chacha20-test.r3 / (no group) / (no test) #17
-chacha20-test.r3 / (no group) / (no test) #18
-chacha20-test.r3 / (no group) / (no test) #19
-chacha20-test.r3 / (no group) / (no test) #2
-chacha20-test.r3 / (no group) / (no test) #3
-chacha20-test.r3 / (no group) / (no test) #4
-chacha20-test.r3 / (no group) / (no test) #5
-chacha20-test.r3 / (no group) / (no test) #6
-chacha20-test.r3 / (no group) / (no test) #7
-chacha20-test.r3 / (no group) / (no test) #8
-chacha20-test.r3 / (no group) / (no test) #9
 checksum-test.r3 / Checksum port / checksum-port-sha512 #180
 checksum-test.r3 / Checksum port / checksum-port-sha512 #181
 checksum-test.r3 / Checksum port / checksum-port-sha512 #182
@@ -223,7 +200,6 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #96
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #97
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #98
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #99
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #62
 compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #63
 compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #64
 compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #65
@@ -541,53 +517,6 @@ func-test.r3 / Other issues / issue-87 #115
 func-test.r3 / Other issues / issue-87 #116
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
-handle-test.r3 / context handles / (no test) #1
-handle-test.r3 / context handles / (no test) #10
-handle-test.r3 / context handles / (no test) #11
-handle-test.r3 / context handles / (no test) #12
-handle-test.r3 / context handles / (no test) #13
-handle-test.r3 / context handles / (no test) #14
-handle-test.r3 / context handles / (no test) #15
-handle-test.r3 / context handles / (no test) #16
-handle-test.r3 / context handles / (no test) #17
-handle-test.r3 / context handles / (no test) #18
-handle-test.r3 / context handles / (no test) #19
-handle-test.r3 / context handles / (no test) #2
-handle-test.r3 / context handles / (no test) #20
-handle-test.r3 / context handles / (no test) #21
-handle-test.r3 / context handles / (no test) #22
-handle-test.r3 / context handles / (no test) #23
-handle-test.r3 / context handles / (no test) #24
-handle-test.r3 / context handles / (no test) #25
-handle-test.r3 / context handles / (no test) #26
-handle-test.r3 / context handles / (no test) #27
-handle-test.r3 / context handles / (no test) #28
-handle-test.r3 / context handles / (no test) #29
-handle-test.r3 / context handles / (no test) #3
-handle-test.r3 / context handles / (no test) #30
-handle-test.r3 / context handles / (no test) #31
-handle-test.r3 / context handles / (no test) #32
-handle-test.r3 / context handles / (no test) #33
-handle-test.r3 / context handles / (no test) #34
-handle-test.r3 / context handles / (no test) #35
-handle-test.r3 / context handles / (no test) #36
-handle-test.r3 / context handles / (no test) #37
-handle-test.r3 / context handles / (no test) #38
-handle-test.r3 / context handles / (no test) #39
-handle-test.r3 / context handles / (no test) #4
-handle-test.r3 / context handles / (no test) #40
-handle-test.r3 / context handles / (no test) #41
-handle-test.r3 / context handles / (no test) #42
-handle-test.r3 / context handles / (no test) #43
-handle-test.r3 / context handles / (no test) #44
-handle-test.r3 / context handles / (no test) #45
-handle-test.r3 / context handles / (no test) #46
-handle-test.r3 / context handles / (no test) #47
-handle-test.r3 / context handles / (no test) #5
-handle-test.r3 / context handles / (no test) #6
-handle-test.r3 / context handles / (no test) #7
-handle-test.r3 / context handles / (no test) #8
-handle-test.r3 / context handles / (no test) #9
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #203
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #204
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #205
@@ -781,16 +710,6 @@ parse-test.r3 / Other parse issues / integer! repeat #378
 parse-test.r3 / Other parse issues / integer! repeat #379
 percent-test.r3 / percent issues / large percent #33
 percent-test.r3 / percent issues / large percent #34
-poly1305-test.r3 / (no group) / (no test) #1
-poly1305-test.r3 / (no group) / (no test) #10
-poly1305-test.r3 / (no group) / (no test) #2
-poly1305-test.r3 / (no group) / (no test) #3
-poly1305-test.r3 / (no group) / (no test) #4
-poly1305-test.r3 / (no group) / (no test) #5
-poly1305-test.r3 / (no group) / (no test) #6
-poly1305-test.r3 / (no group) / (no test) #7
-poly1305-test.r3 / (no group) / (no test) #8
-poly1305-test.r3 / (no group) / (no test) #9
 port-test.r3 / SYSTEM / query system:// #169
 port-test.r3 / directory port / CHANGE-DIR #52
 port-test.r3 / directory port / CHANGE-DIR #53

@@ -1,31 +1,27 @@
 package org.jebol.adapter.web;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.time.Duration;
-import javax.imageio.ImageIO;
 import org.jebol.adapter.host.DesktopPainting;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.GobValue;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.time.Duration;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The page and the window, painting the same list, compared pixel by pixel.

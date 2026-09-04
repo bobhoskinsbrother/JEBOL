@@ -1,13 +1,14 @@
 package org.jebol.domain.read;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.List;
 import net.jqwik.api.ForAll;
 import net.jqwik.api.Property;
 import net.jqwik.api.constraints.CharRange;
 import net.jqwik.api.constraints.Size;
 import net.jqwik.api.constraints.StringLength;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The reader answers with a result or a failure and never with a host exception,

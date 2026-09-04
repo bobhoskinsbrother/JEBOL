@@ -1,10 +1,6 @@
 package org.jebol.domain.value;
 
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * An error, which in REBOL is a value like any other.

@@ -1,16 +1,12 @@
 package org.jebol.domain.read;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The reader answers with a result or a failure, and never with a host

@@ -1,12 +1,12 @@
 package org.jebol.domain.eval;
 
+import javax.crypto.KeyAgreement;
+import javax.crypto.spec.DHParameterSpec;
+import javax.crypto.spec.DHPublicKeySpec;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Optional;
-import javax.crypto.KeyAgreement;
-import javax.crypto.spec.DHParameterSpec;
-import javax.crypto.spec.DHPublicKeySpec;
 
 /**
  * One side of a Diffie-Hellman exchange: a generated key pair whose private

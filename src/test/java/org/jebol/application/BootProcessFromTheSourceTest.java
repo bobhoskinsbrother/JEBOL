@@ -1,15 +1,16 @@
 package org.jebol.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import org.jebol.adapter.host.JavaProcesses;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The whole journey a person takes: {@code system/options/boot} names the

@@ -1,9 +1,5 @@
 package org.jebol.domain.eval;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.jebol.application.Bounds;
 import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
@@ -12,6 +8,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * DIR?, which Rebol writes in C and JEBOL had written in REBOL.

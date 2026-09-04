@@ -1,12 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.*;
+
 import java.util.function.LongBinaryOperator;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.VectorKind;
-import org.jebol.domain.value.VectorStorage;
-import org.jebol.domain.value.VectorValue;
 
 /**
  * Arithmetic across a whole vector at once.

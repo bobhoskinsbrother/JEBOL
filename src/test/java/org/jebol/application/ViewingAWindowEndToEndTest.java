@@ -1,13 +1,14 @@
 package org.jebol.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.time.Duration;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+
+import java.time.Duration;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The whole journey, through the only interface a person has: a REBOL script.

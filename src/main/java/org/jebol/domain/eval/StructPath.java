@@ -1,11 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.StructLayoutRefused;
-import org.jebol.domain.value.StructSpec;
-import org.jebol.domain.value.StructValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 /**
  * Reading and writing a struct through a path.

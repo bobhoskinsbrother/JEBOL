@@ -1,12 +1,12 @@
 package org.jebol.domain.read;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Conclusion;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * TRANSCODE/ERROR, which hands back what went wrong instead of raising it.

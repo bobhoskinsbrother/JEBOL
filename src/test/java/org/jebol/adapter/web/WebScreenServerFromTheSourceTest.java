@@ -1,6 +1,9 @@
 package org.jebol.adapter.web;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.jebol.application.Bounds;
+import org.jebol.application.Interpreter;
+import org.jebol.domain.host.HostService;
+import org.junit.jupiter.api.*;
 
 import java.io.IOException;
 import java.net.URI;
@@ -8,15 +11,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import org.jebol.application.Bounds;
-import org.jebol.application.Interpreter;
-import org.jebol.domain.host.HostService;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Timeout;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The page, served over the JDK's own HTTP server.

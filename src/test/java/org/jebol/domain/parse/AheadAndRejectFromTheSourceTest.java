@@ -1,10 +1,10 @@
 package org.jebol.domain.parse;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * AHEAD and REJECT from {@code parse-test.r3}. AHEAD looks at a compound rule

@@ -1,14 +1,15 @@
 package org.jebol.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.List;
 import org.jebol.domain.eval.ConsolePort;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * INPUT and ASK, and the grant a script needs to stop and wait.
