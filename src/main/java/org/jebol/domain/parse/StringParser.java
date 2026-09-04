@@ -162,7 +162,12 @@ public final class StringParser {
 
         StringParser parser = new StringParser(evaluator, context, source);
         parser.mindingCase = mindingCase || parser.walkingBytes;
-        boolean matched = parser.matchSequence(rule.remaining());
+        boolean matched;
+        try {
+            matched = parser.matchSequence(rule.remaining());
+        } catch (Returned decided) {
+            return decided.answer;
+        }
         if (parser.gathered != null) {
             return BlockValue.block(parser.gathered);
         }
@@ -431,6 +436,7 @@ public final class StringParser {
                 case "if" -> guard(rules, at);
                 case "set" -> capture(rules, at, false);
                 case "copy" -> capture(rules, at, true);
+                case "return" -> answerWith(rules, at);
                 case "collect" -> collect(rules, at);
                 case "keep" -> keep(rules, at);
                 case "not" -> negate(rules, at);
@@ -509,7 +515,8 @@ public final class StringParser {
             }
             return switch (word.canonical()) {
                 case "any", "some", "opt", "to", "thru", "collect", "keep",
-                     "and", "ahead", "not", "remove", "while", "insert", "if" ->
+                     "and", "ahead", "not", "remove", "while", "insert", "if",
+                     "return" ->
                         1 + ruleSpan(rules, at + 1);
                 case "set", "copy" -> 2 + ruleSpan(rules, at + 2);
                 default -> 1;
@@ -877,6 +884,54 @@ public final class StringParser {
         Rejected() {
             super(null, null, false, false);
         }
+    }
+
+    /**
+     * Signals that RETURN has decided what the whole PARSE answers.
+     *
+     * <p>{@code Throw_Return_Series} and {@code Throw_Return_Value} in
+     * {@code u-parse.c}, which is a throw and not a result: nothing after the
+     * rule that carried it runs, and the value goes past every enclosing
+     * block to the PARSE that started it.
+     */
+    private static final class Returned extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        private final transient Value answer;
+
+        Returned(Value answer) {
+            super(null, null, false, false);
+            this.answer = answer;
+        }
+    }
+
+    /**
+     * RETURN, which says what PARSE answers instead of true or false.
+     *
+     * <p>Given a paren it answers whatever the paren evaluates to. Given
+     * anything else it is a prefix on the next rule, like COPY without a word
+     * to put the slice in: the rule has to match, and the span it matched
+     * becomes the answer.
+     *
+     * <p>A rule that does not match is an ordinary failure -- the flag is set
+     * before the rule runs and only read at {@code post}, which a failed rule
+     * never reaches.
+     */
+    private int answerWith(List<Value> rules, int at) {
+        if (at + 1 >= rules.size()) {
+            throw Raised.of(EvaluationFailure.PARSE_END,
+                    "return has no rule after it to answer with");
+        }
+        if (rules.get(at + 1) instanceof BlockValue paren
+                && paren.datatype() == Datatype.PAREN) {
+            throw new Returned(evaluator.evaluateOrRaise(paren, context));
+        }
+        int before = position;
+        if (matchOne(rules, at + 1) == NO_MATCH) {
+            position = before;
+            return NO_MATCH;
+        }
+        throw new Returned(sliceFrom(before));
     }
 
     private int repeat(List<Value> rules, int at, int leastNeeded) {

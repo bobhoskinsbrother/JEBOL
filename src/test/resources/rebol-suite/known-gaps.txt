@@ -294,41 +294,7 @@ crypt-port-test.r3 / NIST test vectors (CBC) / AES-128-CBC with chunked input wh
 crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #12
 crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #13
 crypt-test.r3 / PPK codec / Init RSA key from encrypted PPK file #35
-csv-test.r3 / (no group) / (no test) #1
-csv-test.r3 / (no group) / (no test) #10
-csv-test.r3 / (no group) / (no test) #11
-csv-test.r3 / (no group) / (no test) #12
-csv-test.r3 / (no group) / (no test) #13
-csv-test.r3 / (no group) / (no test) #14
-csv-test.r3 / (no group) / (no test) #15
-csv-test.r3 / (no group) / (no test) #16
 csv-test.r3 / (no group) / (no test) #17
-csv-test.r3 / (no group) / (no test) #18
-csv-test.r3 / (no group) / (no test) #19
-csv-test.r3 / (no group) / (no test) #2
-csv-test.r3 / (no group) / (no test) #20
-csv-test.r3 / (no group) / (no test) #21
-csv-test.r3 / (no group) / (no test) #22
-csv-test.r3 / (no group) / (no test) #23
-csv-test.r3 / (no group) / (no test) #24
-csv-test.r3 / (no group) / (no test) #25
-csv-test.r3 / (no group) / (no test) #26
-csv-test.r3 / (no group) / (no test) #27
-csv-test.r3 / (no group) / (no test) #28
-csv-test.r3 / (no group) / (no test) #29
-csv-test.r3 / (no group) / (no test) #3
-csv-test.r3 / (no group) / (no test) #30
-csv-test.r3 / (no group) / (no test) #31
-csv-test.r3 / (no group) / (no test) #32
-csv-test.r3 / (no group) / (no test) #33
-csv-test.r3 / (no group) / (no test) #34
-csv-test.r3 / (no group) / (no test) #35
-csv-test.r3 / (no group) / (no test) #4
-csv-test.r3 / (no group) / (no test) #5
-csv-test.r3 / (no group) / (no test) #6
-csv-test.r3 / (no group) / (no test) #7
-csv-test.r3 / (no group) / (no test) #8
-csv-test.r3 / (no group) / (no test) #9
 datatype-test.r3 / datatype! / number? #37
 date-test.r3 / Internet date / TO-IDATE (Date to Internet date) #126
 date-test.r3 / Julian date / Julian date setter #159
@@ -819,9 +785,6 @@ unicode-test.r3 / parse / parse collect into string #416
 unicode-test.r3 / parse / parse collect into string #417
 unicode-test.r3 / parse / parse collect into string #419
 unicode-test.r3 / parse / parse collect into string #420
-unicode-test.r3 / parse / parse skip #397
-unicode-test.r3 / parse / parse skip #398
-unicode-test.r3 / parse / parse with bitset #432
 unicode-test.r3 / string column (terminal) width / wide chars #469
 unicode-test.r3 / string column (terminal) width / wide chars #470
 unicode-test.r3 / string column (terminal) width / zero width chars #465
