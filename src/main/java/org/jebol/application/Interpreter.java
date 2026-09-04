@@ -160,6 +160,21 @@ public final class Interpreter {
         }
         run("unless port? system/ports/event "
                 + "[system/ports/event: lib/open [scheme: 'event]]");
+        openTheOutputPort();
+    }
+
+    /**
+     * The console port everything printed goes through, which R3 opens at
+     * boot and JEBOL left as none.
+     *
+     * <p>Nothing writes through it here -- the output port does that -- but
+     * REBOL code asks it how wide the terminal is, and HELP asks on its first
+     * line. So a script calling HELP got `query does not allow none!` instead
+     * of help, which is what stopped the module test file on its third step.
+     */
+    private void openTheOutputPort() {
+        run("unless port? system/ports/output "
+                + "[system/ports/output: lib/open [scheme: 'console]]");
     }
 
     /**

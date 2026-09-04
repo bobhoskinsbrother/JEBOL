@@ -4121,6 +4121,24 @@ public final class Natives {
         return last;
     }
 
+    /**
+     * A context walked as FOREACH walks one: each name, then its value.
+     *
+     * <p>SELF is left out, being the thing itself rather than a field of it. A
+     * port and a module are frames like an object and are walked the same way,
+     * which is what lets HELP print one -- {@code dump-obj} is a FOREACH, and
+     * refusing to walk a port meant HELP of a port said so instead of helping.
+     */
+    private static List<Value> fieldsAndValuesOf(Context fields) {
+        return fields.slots().stream()
+                .filter(slot -> !slot.canonical().equals("self"))
+                .<Value>mapMulti((slot, accept) -> {
+                    accept.accept(WordValue.of(slot.spelling()).boundTo(fields));
+                    accept.accept(slot.value());
+                })
+                .toList();
+    }
+
     /** A series as a list of its values, whatever kind of series it is. */
     private static List<Value> itemsOf(Value series) {
         return switch (series) {
@@ -4131,14 +4149,9 @@ public final class Natives {
             case StringValue text -> text.text().codePoints()
                     .mapToObj(codepoint -> (Value) CharacterValue.of(codepoint))
                     .toList();
-            case ObjectValue object -> object.context().slots().stream()
-                    .filter(slot -> !slot.canonical().equals("self"))
-                    .<Value>mapMulti((slot, accept) -> {
-                        accept.accept(WordValue.of(slot.spelling())
-                                .boundTo(object.context()));
-                        accept.accept(slot.value());
-                    })
-                    .toList();
+            case ObjectValue object -> fieldsAndValuesOf(object.context());
+            case PortValue port -> fieldsAndValuesOf(port.context());
+            case ModuleValue module -> fieldsAndValuesOf(module.context());
             case BinaryValue binary -> {
                 List<Value> octets = new ArrayList<>(binary.lengthFromHere());
                 for (int at = 0; at < binary.lengthFromHere(); at++) {
@@ -4550,6 +4563,12 @@ public final class Natives {
                     if (refinements.contains("hide")
                             && arguments.getFirst() instanceof WordValue named) {
                         slotOf(named).hide(true);
+                        return arguments.getFirst();
+                    }
+                    if (refinements.contains("hide") && refinements.contains("words")
+                            && arguments.getFirst() instanceof BlockValue names
+                            && names.datatype() == Datatype.BLOCK) {
+                        hideEachWordIn(names);
                         return arguments.getFirst();
                     }
                     if (!protectFieldNamedBy(arguments.getFirst(), true, refinements)) {
@@ -9489,6 +9508,44 @@ public final class Natives {
             at = at.atIndex(step.nextIndex());
         }
         return results;
+    }
+
+    /**
+     * PROTECT/HIDE/WORDS over a block: hides each word the block holds.
+     *
+     * <p>The words carry their own bindings, so the block says which context
+     * as well as which names. That is how a module hides the fields its body
+     * marked HIDDEN -- {@code if block? hidden [protect/hide/words hidden]} in
+     * {@code sys-base.reb}, the block being the words gathered while the body
+     * was read. Refusing anything but a bare word made every module with a
+     * HIDDEN in it fail to build.
+     */
+    private static void hideEachWordIn(BlockValue names) {
+        names.remaining().stream()
+                .filter(WordValue.class::isInstance)
+                .map(WordValue.class::cast)
+                .forEach(word -> slotOf(word).hide(true));
+    }
+
+    /**
+     * The four numbers a console port answers to QUERY.
+     *
+     * <p>Only the first has ever been anything but nothing: a terminal that
+     * cannot say how wide it is reports eighty, and the other three report
+     * none of themselves at all. HELP asks for the width on its first line
+     * and lays its output out to suit, so a console that refuses the question
+     * takes HELP down with it -- which is what stopped the module file on the
+     * {@code ? modules-dir} at the top.
+     */
+    private static final List<String> CONSOLE_MEASUREMENTS =
+            List.of("window-cols", "window-rows", "buffer-cols", "buffer-rows");
+
+    private static final int COLUMNS_A_TERMINAL_IS_ASSUMED_TO_HAVE = 80;
+
+    private static int measureOfTheConsole(String named) {
+        return named.equals("window-cols")
+                ? COLUMNS_A_TERMINAL_IS_ASSUMED_TO_HAVE
+                : 0;
     }
 
     /** Whether protection means anything for this kind of value. */
@@ -16450,6 +16507,17 @@ public final class Natives {
                                 List.of("type"),
                                 part -> WordValue.of(handle.typeName()));
                     }
+                    if (target instanceof PortValue console
+                            && console.schemeName().equals("console")) {
+                        if (field instanceof WordValue named
+                                && !named.canonical().equals("words")
+                                && !CONSOLE_MEASUREMENTS.contains(named.canonical())) {
+                            throw Raised.of(EvaluationFailure.INVALID_ARG, named);
+                        }
+                        return questionedByField(field, evaluator,
+                                CONSOLE_MEASUREMENTS,
+                                part -> IntegerValue.of(measureOfTheConsole(part)));
+                    }
                     if (target instanceof PortValue || routesToAScheme(target)) {
                         throw schemeRefusal("queries", target);
                     }
@@ -18006,7 +18074,7 @@ public final class Natives {
      */
     private void requireServiceForScheme(String scheme) {
         switch (scheme) {
-            case "console" -> requireService(HostService.CONSOLE);
+            case "console" -> theSchemeReachesNothingOutside();
             case "file", "dir" -> requireService(HostService.FILES);
             case "tcp", "dns" -> requireService(HostService.NETWORK);
             case "event" -> requireService(HostService.WINDOWS);
@@ -18026,6 +18094,14 @@ public final class Natives {
      * <p>A checksum port opens no file, no socket and no console: it sums
      * bytes the script is already holding. There is no service to ask a host
      * for, and refusing it for want of one would refuse arithmetic.
+     *
+     * <p>A console port is the other one, and for a narrower reason. Opening
+     * it reaches nothing and carries nothing: all it will answer is how wide a
+     * terminal is, and it answers eighty whether or not there is a terminal
+     * there. Reading and writing through it still ask for the grant, in the
+     * READ and WRITE natives where the data actually moves. Refusing to open
+     * it refused HELP, which asks the width on its first line, to every
+     * interpreter that had not been handed a console.
      */
     private static void theSchemeReachesNothingOutside() {
     }

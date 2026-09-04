@@ -134,12 +134,36 @@ class PortDatatypeTest {
                     .isNotEqualTo("no-error");
         }
 
+        /**
+         * Opening one carries nothing and so asks for nothing.
+         *
+         * <p>All an unopened console will answer is how wide a terminal is,
+         * and it answers eighty whether or not there is a terminal there. The
+         * grant guards the two things that move data, and those are the two
+         * checked below. Refusing to open it refused HELP, which asks the
+         * width on its first line, to every interpreter that had not been
+         * handed a console -- and R3 has this port open from boot.
+         */
         @Test
-        @DisplayName("opening a console port without the grant is refused")
-        void withoutTheGrantOpeningIsRefused() {
+        @DisplayName("a console port opens without the grant, carrying nothing")
+        void withoutTheGrantOpeningIsAllowed() {
             Interpreter walled = Interpreter.create();
             assertThat(errorIdFrom(walled, "open [scheme: 'console]"))
+                    .isEqualTo("no-error");
+            assertThat(answerFrom(walled, "query system/ports/output 'window-cols"))
+                    .isEqualTo("80");
+        }
+
+        @Test
+        @DisplayName("but reading and writing through it are still refused")
+        void withoutTheGrantReadingAndWritingAreRefused() {
+            Interpreter walled = Interpreter.create();
+            assertThat(errorIdFrom(walled, "read system/ports/output"))
                     .isEqualTo("no-service");
+            assertThat(errorIdFrom(walled, """
+                    write system/ports/output {x}"""))
+                    .isEqualTo("no-service");
+            assertThat(errorIdFrom(walled, "input")).isEqualTo("no-service");
         }
     }
 

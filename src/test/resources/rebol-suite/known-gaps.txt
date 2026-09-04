@@ -516,7 +516,6 @@ module-test.r3 / module import / import/no-lib block #31
 module-test.r3 / module import / lib-local #49
 module-test.r3 / module issues / issue-1005 #51
 module-test.r3 / module issues / issue-1005 #54
-module-test.r3 / module keywords / hidden #2
 mold-test.r3 / form error! / form error! #214
 mold-test.r3 / mold file! / mold file escaping #68
 mold-test.r3 / mold url! / mold url escaping #56
