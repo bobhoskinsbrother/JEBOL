@@ -17,10 +17,10 @@ now run -- Goal 1, and it is done. The sixth is new and is not clean.
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
-| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 1,019 failing and every one named in `known-gaps.txt` |
+| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 963 failing and every one named in `known-gaps.txt` |
 | `scripts/error-parity.py` | **69 of Rebol's 142 error ids can be raised. 73 cannot** |
 
-`./gradlew check` is 16,037 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 16,093 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception.
 
 ---
@@ -94,7 +94,7 @@ door, and the reader refuses to answer one.
 
 ## What this leaves
 
-`known-gaps.txt` holds 1,019 entries, from 1,032 over 25 files. The list grew
+`known-gaps.txt` holds 963 entries, from 1,032 over 25 files. The list grew
 because the suite did. **None of those failures was new when it appeared: they
 were not passing, they were not being asked.** They are the real porting
 backlog and the honest measure of the port, and the list only ever shrinks --
@@ -333,58 +333,41 @@ from. They are still counted as gaps because they are *blocked* rather than
 run -- see Goal 9 -- and an assertion that never ran is not evidence of
 anything.
 
-# Goal 9. The 510 assertions that never run
+# Goal 9. The assertions that never run -- MOSTLY DONE
 
-**Half the backlog is blocked rather than broken.** 510 of the 1,014 failing
-assertions never ran at all: an earlier expression in the same step raised and
-took the rest with it. 171 sit behind one of them.
+**Was 510 of 1,016 never asked. Now 463 of 965.** The harness cut a run of
+setup at the next *top-level* dialect word, and codecs-test.r3 is a sequence
+of `if find codecs 'wav [...]`, `if find codecs 'der [...]` whose dialect
+words are all nested inside those blocks. The whole tail of the file was one
+step, 23,183 characters and 187 assertions, and the DER codec raising took
+every other group with it.
 
-The cause is in the harness. `stepsIn` takes every value up to the next
-*top-level* dialect word as one step, and codecs-test.r3 is a run of
-`if find codecs 'wav [...]`, `if find codecs 'der [...]`,
-`if find codecs 'crt [...]` whose dialect words are all nested inside the
-blocks. So the whole tail of the file -- 23,183 characters, 187 assertions --
-is one step, and the DER codec raising takes every other group down with it.
+Each expression is its own step now. Four things had to be right:
 
-## What was tried, and what it hit
+1. Apply the cut in all three branches of `stepsIn`. `===end-group===` falls
+   to the default arm and that is the one holding the tail of the file.
+2. Count in code points. The spans are, and indexing the source in Java's
+   sixteen-bit units put every position after the file's first emoji in the
+   middle of another line, so the cut never fired and left no trace.
+3. Only a word may open an expression. Cutting at any line-starting value
+   splits `f: func [spec][body]` when the body bracket starts a line, and
+   both halves read: one a function of one argument, the other a block.
+4. Resolve nested assertions at file scope, not per step -- see the numbering
+   work. An assertion written inside a function runs when the function is
+   called, which is a later step.
 
-Cutting the run into one step per expression, at values that begin a line.
-The cut itself works: the 23,183-character step becomes twelve, the block
-behind the DER failure clears, and the count goes 1,016 -> 991 with 50 fewer
-blocked. Three things had to be got right and the fourth was not:
+## What is left of it
 
-1. **Apply it in every branch.** Three places in `stepsIn` build a setup step
-   and only one was changed at first. The one that mattered was the `default`
-   arm, which is where `===end-group===` lands, and what follows it in
-   codecs-test.r3 is the whole tail of the file.
-2. **The spans are code-point offsets.** Indexing the source with `charAt`
-   put every position after the file's first emoji in the middle of another
-   line, so the cut never fired and left no trace of not having fired.
-3. **Only a word may open an expression.** Cutting at any value that begins a
-   line splits `switch-fun: func [/local i][` from its body block when the
-   bracket starts a line, and both halves read perfectly well on their own:
-   one is a function of one argument, the other is a block. 32 passing
-   assertions said so.
-4. **The letters have to be attributed at file scope, and are not.**
-   `--assert` inside a block appends a letter to a log, and the log is read
-   and cleared per step. Once a definition and its call are separate steps,
-   the assertions written in the definition run during the call, and the step
-   that holds them sees no letters. 7 assertions, all of the shape
-   `f: func [...][ --assert ... ]` then `f`.
+**450 assertions are still behind "the block it is written in ended first".**
+These are not the harness cutting too coarsely: they are blocks whose own
+earlier line raised, which is what a script does. The largest are
+handle-test.r3 (47), checksum-test.r3 (28), crypt-port-test.r3 (26) and the
+four compression groups (72), and every one of those is a feature this build
+has not got rather than a slicing fault.
 
-## What the fourth one needs
-
-A queue of pending nested assertions at file scope, consumed in order as
-letters arrive, rather than a per-step reading. That is easy and it is not
-enough: a FOREACH running three assertions a hundred times appends three
-hundred letters, which the present code folds into the last assertion and a
-queue would spend on the next hundred. The model has to carry both -- an
-assertion that runs later than it was written, and an assertion that runs many
-times -- before the cut can go in.
-
-**Until then the count measures the harness as much as the port**, the blocked
-ones are unmeasured rather than failing, and none of them can be shown to
-belong in `fails-on-rebol-too.txt`.
+Worth checking a sample against `./r3-head` before doing more here: if the
+same line raises there, the assertions behind it belong in
+`fails-on-rebol-too.txt` rather than in the gap list.
 
 # Goal 8. LLM-friendly MCP tools
 

@@ -370,16 +370,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             Value current = values.get(at);
             if (!(current instanceof WordValue word) || !isHarnessWord(current)) {
                 List<Value> run = valuesUntilNextHarnessWord(values, at);
-                String setup = sourceOf(source, spans, at, run.size());
-                int began = ordinal;
-                List<Assertion> nested = new ArrayList<>();
-                for (int more = assertionsNestedIn(run); more > 0; more--) {
-                    ordinal++;
-                    nested.add(new Assertion(file, group, test, ordinal, setup,
-                            beginningOf(spans, at), endOf(spans, at, run.size())));
-                }
-                found.add(new Step(null, setup, List.copyOf(nested),
-                        nested.isEmpty() ? null : numberedSource(setup, began)));
+                ordinal = addSetupSteps(found, file, group, test, ordinal,
+                        source, values, spans, at, run.size());
                 at += Math.max(1, run.size());
                 continue;
             }
@@ -395,19 +387,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                         test = onlyString(until, test);
                     }
                     int howMany = Math.max(0, until.size() - 1);
-                    String setup = sourceOf(source, spans, at + 2, howMany);
-                    List<Value> body = until.isEmpty()
-                            ? List.of()
-                            : until.subList(1, until.size());
-                    int began = ordinal;
-                    List<Assertion> nested = new ArrayList<>();
-                    for (int more = assertionsNestedIn(body); more > 0; more--) {
-                        ordinal++;
-                        nested.add(new Assertion(file, group, test, ordinal, setup,
-                                beginningOf(spans, at + 2), endOf(spans, at + 2, howMany)));
-                    }
-                    found.add(new Step(null, setup, List.copyOf(nested),
-                            nested.isEmpty() ? null : numberedSource(setup, began)));
+                    ordinal = addSetupSteps(found, file, group, test, ordinal,
+                            source, values, spans, at + 2, howMany);
                 }
                 case ASSERT -> {
                     ordinal++;
@@ -427,19 +408,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                             alsoInside.isEmpty() ? null
                                     : numberedSource(written, began)));
                 }
-                default -> {
-                    String setup = sourceOf(source, spans, at + 1, until.size());
-                    int began = ordinal;
-                    List<Assertion> nested = new ArrayList<>();
-                    for (int more = assertionsNestedIn(until); more > 0; more--) {
-                        ordinal++;
-                        nested.add(new Assertion(file, group, test, ordinal, setup,
-                                beginningOf(spans, at + 1),
-                                endOf(spans, at + 1, until.size())));
-                    }
-                    found.add(new Step(null, setup, List.copyOf(nested),
-                            nested.isEmpty() ? null : numberedSource(setup, began)));
-                }
+                default -> ordinal = addSetupSteps(found, file, group, test, ordinal,
+                        source, values, spans, at + 1, until.size());
             }
             at = next;
         }
@@ -458,6 +428,117 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             return 2;
         }
         return 0;
+    }
+
+
+    /**
+     * Turns a run of setup into steps, one per expression it was written as.
+     *
+     * <p>Left whole, one raise takes the rest of the run with it, and a run is
+     * everything up to the next *top-level* dialect word. codecs-test.r3 is a
+     * sequence of {@code if find codecs 'wav [...]},
+     * {@code if find codecs 'der [...]}, {@code if find codecs 'crt [...]}
+     * whose dialect words are all nested inside those blocks, so the whole
+     * tail of the file was one step: the DER codec raising took the WAV, CRT
+     * and SWF groups with it, and 187 assertions were recorded as failures of
+     * the port when they had never been asked.
+     *
+     * <p>Every place that built a setup step used to write these six lines out
+     * again, and the first attempt at cutting changed only one of the three.
+     * The one it missed was the one that mattered -- {@code ===end-group===}
+     * falls to the default arm, and what follows it is the tail of the file.
+     */
+    private static int addSetupSteps(List<Step> found, String file, String group,
+            String test, int ordinal, String source, List<Value> values,
+            List<Transcoder.SourceSpan> spans, int from, int count) {
+
+        for (int[] piece : expressionsIn(source, values, spans, from, count)) {
+            List<Value> body = values.subList(piece[0], piece[0] + piece[1]);
+            String setup = sourceOf(source, spans, piece[0], piece[1]);
+            int began = ordinal;
+            List<Assertion> nested = new ArrayList<>();
+            for (int more = assertionsNestedIn(body); more > 0; more--) {
+                ordinal++;
+                nested.add(new Assertion(file, group, test, ordinal, setup,
+                        beginningOf(spans, piece[0]), endOf(spans, piece[0], piece[1])));
+            }
+            found.add(new Step(null, setup, List.copyOf(nested),
+                    nested.isEmpty() ? null : numberedSource(setup, began)));
+        }
+        return ordinal;
+    }
+
+    /**
+     * A run of setup, cut into the separate expressions it was written as.
+     *
+     * <p>The cut is where a word begins a line, because that is how these
+     * files are written and because nothing here knows REBOL's arity well
+     * enough to find an expression boundary properly.
+     *
+     * <p>Only a *word* may open one. Cutting at any value that begins a line
+     * splits {@code switch-fun: func [/local i][} from its body block
+     * whenever the bracket starts a line, and both halves read perfectly well
+     * on their own: one is a function of one argument, the other is a block.
+     * Reading is not the same as meaning the same thing, and 32 assertions
+     * that had been passing said so.
+     *
+     * <p>The position arrives counted in code points, as every offset the
+     * reader hands out does. Indexing the source in Java's sixteen-bit units
+     * instead put every position after the file's first emoji in the middle
+     * of some other line, so the cut never fired and left no trace of not
+     * having fired.
+     *
+     * <p>It is still a guess, so every piece has to read on its own and a run
+     * with a piece that does not is left exactly as it was.
+     *
+     * @return {@code {from, count\}} pairs into the value list
+     */
+    private static List<int[]> expressionsIn(String source, List<Value> values,
+            List<Transcoder.SourceSpan> spans, int from, int count) {
+
+        List<int[]> whole = List.of(new int[] {from, count});
+        if (count <= 1) {
+            return whole;
+        }
+        List<Integer> starts = new ArrayList<>();
+        for (int at = from; at < from + count; at++) {
+            if (at == from || values.get(at) instanceof WordValue
+                    && beginsALine(source, beginningOf(spans, at))) {
+                starts.add(at);
+            }
+        }
+        if (starts.size() <= 1) {
+            return whole;
+        }
+        List<int[]> pieces = new ArrayList<>();
+        for (int which = 0; which < starts.size(); which++) {
+            int begins = starts.get(which);
+            int ends = which + 1 < starts.size() ? starts.get(which + 1) : from + count;
+            pieces.add(new int[] {begins, ends - begins});
+        }
+        return pieces.stream().allMatch(piece ->
+                readsOnItsOwn(sourceOf(source, spans, piece[0], piece[1])))
+                ? pieces
+                : whole;
+    }
+
+    /** Whether only whitespace stands between the start of the line and here. */
+    private static boolean beginsALine(String source, int codePointsIn) {
+        int at = source.offsetByCodePoints(0, codePointsIn);
+        for (int back = at - 1; back >= 0; back--) {
+            char letter = source.charAt(back);
+            if (letter == '\n') {
+                return true;
+            }
+            if (letter != ' ' && letter != '\t' && letter != '\r') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean readsOnItsOwn(String piece) {
+        return piece.isBlank() || Transcoder.transcode(piece).succeeded();
     }
 
     private static List<Value> valuesUntilNextHarnessWord(List<Value> values, int from) {

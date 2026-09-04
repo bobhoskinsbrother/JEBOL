@@ -107,29 +107,9 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #103
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #104
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #105
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #106
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #107
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #108
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #109
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #110
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #111
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #112
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #113
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #114
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #115
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #116
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #117
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #118
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #119
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #120
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #121
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #122
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #123
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #124
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #125
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #126
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #127
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #128
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #129
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #130
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #131
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #132
@@ -165,35 +145,7 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #161
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #162
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #163
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #164
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #165
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #166
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #167
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #168
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #169
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #170
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #171
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #172
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #173
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #174
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #175
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #176
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #177
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #178
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #179
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #180
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #181
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #182
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #183
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #184
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #185
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #186
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #187
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #188
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #189
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #190
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #191
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #192
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #193
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #194
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #195
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #196
@@ -215,9 +167,6 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #211
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #212
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #213
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #214
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #215
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #216
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #217
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #218
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #219
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #220
@@ -254,7 +203,6 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #75
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #76
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #77
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #78
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #79
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #80
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #81
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #82
@@ -496,9 +444,6 @@ enbase-test.r3 / debase/part / debase/part with series as a length #105
 enbase-test.r3 / debase/part / debase/part with series as a length #106
 enbase-test.r3 / debase/part / debase/part with series as a length #107
 enbase-test.r3 / debase/part / debase/part with series as a length #108
-enbase-test.r3 / debase/part / debase/part with series as a length #109
-enbase-test.r3 / debase/part / debase/part with series as a length #110
-enbase-test.r3 / debase/part / debase/part with series as a length #111
 enbase-test.r3 / debase/part / debase/part with series as a length #112
 enbase-test.r3 / debase/part / debase/part with series as a length #113
 enbase-test.r3 / debase/part / debase/part with series as a length #114
@@ -507,7 +452,6 @@ enbase-test.r3 / debase/part / debase/part with series as a length #116
 enbase-test.r3 / debase/part / debase/part with series as a length #117
 enbase-test.r3 / debase/part / debase/part with series as a length #118
 enbase-test.r3 / debase/part / debase/part with series as a length #119
-enbase-test.r3 / debase/part / debase/part with series as a length #120
 enbase-test.r3 / debase/part / debase/part with series as a length #121
 enbase-test.r3 / debase/part / debase/part with series as a length #97
 enbase-test.r3 / debase/part / debase/part with series as a length #98

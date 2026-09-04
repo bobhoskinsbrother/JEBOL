@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -241,6 +242,9 @@ class RebolSuiteTest {
         Interpreter interpreter = withAHost();
         interpreter.defineFreshWordsIn(THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION);
         interpreter.run(THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION);
+        Map<Integer, Boolean> reports = new LinkedHashMap<>();
+        Map<String, String> whyItsStepStopped = new LinkedHashMap<>();
+        List<SuiteFile.Assertion> numbered = new ArrayList<>();
         for (SuiteFile.Step step : file.steps()) {
             String source = step.isAssertion() ? step.assertion().source() : step.setup();
             if (source == null || source.isBlank()) {
@@ -277,7 +281,43 @@ class RebolSuiteTest {
             if (step.isAssertion()) {
                 OUTCOMES.put(step.assertion().toString(), verdict);
             }
+            if (step.numberedSetup() != null) {
+                numbered.addAll(step.nested());
+                gatherReports(interpreter, reports);
+                for (SuiteFile.Assertion nested : step.nested()) {
+                    whyItsStepStopped.put(nested.toString(), verdict.reason());
+                }
+            }
         }
+        gatherReports(interpreter, reports);
+        for (SuiteFile.Assertion nested : numbered) {
+            Boolean held = reports.get(nested.ordinal());
+            String stopped = whyItsStepStopped.getOrDefault(nested.toString(), "");
+            OUTCOMES.put(nested.toString(), held == null
+                    ? new Verdict(false, stopped.isBlank()
+                            ? "never reached: the block it is written in ended first"
+                            : "never reached: the block stopped on " + stopped)
+                    : held
+                            ? Verdict.passed()
+                            : new Verdict(false,
+                                    "answered false inside the block it is written in"));
+        }
+    }
+
+    /**
+     * Takes whatever the nested assertions have reported since last time.
+     *
+     * <p>Read after every step and folded into one answer per assertion at
+     * the end of the file, rather than resolved step by step. An assertion
+     * written inside a function runs when the function is called, which is
+     * a later step and often a much later one; reading per step threw those
+     * reports away as belonging to nobody.
+     */
+    private static void gatherReports(
+            Interpreter interpreter, Map<Integer, Boolean> reports) {
+
+        reportsNumberedBy(interpreter).forEach((which, held) ->
+                reports.merge(which, held, (older, newer) -> older && newer));
     }
 
     /**
@@ -339,7 +379,6 @@ class RebolSuiteTest {
             return;
         }
         if (step.numberedSetup() != null) {
-            recordByNumber(interpreter, step, whyItStopped);
             return;
         }
         String letters = lettersRecordedBy(interpreter);
@@ -360,39 +399,6 @@ class RebolSuiteTest {
         }
     }
 
-
-    /**
-     * What each nested assertion answered, matched by its own number.
-     *
-     * <p>Every {@code --assert} inside a block is told which assertion it is,
-     * so a report names its assertion rather than being matched to one by
-     * counting. That settles the two things counting could not: an assertion
-     * written in one step and run in another reports its own number wherever
-     * it runs, and an assertion a loop runs a hundred times reports the same
-     * number a hundred times.
-     *
-     * <p>Those hundred reports fold with AND, so an assertion that held
-     * ninety-nine times and failed once has failed. Rebol's own harness counts
-     * each turn separately and would call that ninety-nine passes and one
-     * failure; one case per assertion cannot say both, and the strict reading
-     * is the one that does not hide a failure.
-     */
-    private static void recordByNumber(
-            Interpreter interpreter, SuiteFile.Step step, String whyItStopped) {
-
-        Map<Integer, Boolean> answered = reportsNumberedBy(interpreter);
-        for (SuiteFile.Assertion nested : step.nested()) {
-            Boolean held = answered.get(nested.ordinal());
-            OUTCOMES.put(nested.toString(), held == null
-                    ? new Verdict(false, whyItStopped.isBlank()
-                            ? "never reached: the block it is written in ended first"
-                            : "never reached: the block stopped on " + whyItStopped)
-                    : held
-                            ? Verdict.passed()
-                            : new Verdict(false,
-                                    "answered false inside the block it is written in"));
-        }
-    }
 
     private static Map<Integer, Boolean> reportsNumberedBy(Interpreter interpreter) {
         String shown = interpreter.display(interpreter.run(
