@@ -17,10 +17,10 @@ now run -- Goal 1, and it is done. The sixth is new and is not clean.
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
-| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 1,014 failing and every one named in `known-gaps.txt` |
+| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 1,019 failing and every one named in `known-gaps.txt` |
 | `scripts/error-parity.py` | **69 of Rebol's 142 error ids can be raised. 73 cannot** |
 
-`./gradlew check` is 16,042 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 16,037 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception.
 
 ---
@@ -94,7 +94,7 @@ door, and the reader refuses to answer one.
 
 ## What this leaves
 
-`known-gaps.txt` holds 1,014 entries, from 1,032 over 25 files. The list grew
+`known-gaps.txt` holds 1,019 entries, from 1,032 over 25 files. The list grew
 because the suite did. **None of those failures was new when it appeared: they
 were not passing, they were not being asked.** They are the real porting
 backlog and the honest measure of the port, and the list only ever shrinks --

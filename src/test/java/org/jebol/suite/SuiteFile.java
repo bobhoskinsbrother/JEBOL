@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
@@ -40,14 +41,33 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
      * i and obj -- which is the shape of a harness bug rather than of a
      * language one.
      */
-    record Step(Assertion assertion, String setup, List<Assertion> nested) {
+    record Step(Assertion assertion, String setup, List<Assertion> nested,
+            String numberedSetup) {
 
         Step(Assertion assertion, String setup) {
-            this(assertion, setup, List.of());
+            this(assertion, setup, List.of(), null);
+        }
+
+        Step(Assertion assertion, String setup, List<Assertion> nested) {
+            this(assertion, setup, nested, null);
         }
 
         boolean isAssertion() {
             return assertion != null;
+        }
+
+        /**
+         * The source to run: the source as written, with each nested
+         * {@code --assert} told which assertion it is.
+         *
+         * <p>Falls back to the source exactly as written wherever the
+         * numbering could not be shown to mean the same thing, which costs
+         * the exactness and keeps the step.
+         */
+        String sourceToRun() {
+            return numberedSetup == null
+                    ? (assertion != null ? assertion.source() : setup)
+                    : numberedSetup;
         }
     }
 
@@ -90,6 +110,161 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             case START_FILE, END_FILE, START_GROUP, END_GROUP, TEST, ASSERT -> true;
             default -> word.spelling().startsWith("--assertf");
         };
+    }
+
+
+    /** What a nested {@code --assert} becomes, so its report carries its number. */
+    static final String NUMBERED_ASSERT = "--assert-numbered";
+
+    /**
+     * The source as written, with each nested {@code --assert} told which
+     * assertion it is.
+     *
+     * <p>An assertion inside a block cannot be sliced out and run on its own,
+     * so the enclosing expression runs and each {@code --assert} inside
+     * reports as it goes. Reporting only whether it held means the reports
+     * have to be matched to the assertions by counting, and counting is wrong
+     * twice over: a function defined in one step and called in another
+     * reports where it ran rather than where it was written, and a loop
+     * reports three assertions a hundred times. Carrying the number makes
+     * both exact.
+     *
+     * <p>The number goes into the text rather than into a molded copy of the
+     * values. Molding would put the port's own MOLD between the suite and
+     * what the suite actually runs -- the measure would depend on a part of
+     * the thing being measured, and a mold that broke would quietly change
+     * the tests rather than fail. The reader is already unavoidable here,
+     * since nothing can slice the file without reading it; MOLD is not, so it
+     * stays out.
+     *
+     * <p>Scanning text for a word is a guess, so the result is checked
+     * against the source it came from: read both, walk them together, and
+     * every value must be the same except the numbered ones. A step that
+     * fails that check keeps the source it was written with.
+     */
+    private static String numberedSource(String written, int firstOrdinal) {
+        StringBuilder out = new StringBuilder();
+        int ordinal = firstOrdinal;
+        int at = 0;
+        while (at < written.length()) {
+            char letter = written.charAt(at);
+            if (letter == ';') {
+                at = copyToEndOfLine(written, at, out);
+            } else if (letter == '"') {
+                at = copyQuoted(written, at, out);
+            } else if (letter == '{') {
+                at = copyBraced(written, at, out);
+            } else if (opensAnAssertion(written, at)) {
+                out.append(NUMBERED_ASSERT).append(' ').append(++ordinal);
+                at += ASSERT.length();
+            } else {
+                out.append(letter);
+                at++;
+            }
+        }
+        String numbered = out.toString();
+        return saysTheSameThing(written, numbered, firstOrdinal) ? numbered : null;
+    }
+
+    private static boolean opensAnAssertion(String written, int at) {
+        if (!written.startsWith(ASSERT, at)) {
+            return false;
+        }
+        if (at > 0 && !isSeparator(written.charAt(at - 1))) {
+            return false;
+        }
+        int after = at + ASSERT.length();
+        return after >= written.length() || isSeparator(written.charAt(after));
+    }
+
+    private static boolean isSeparator(char letter) {
+        return Character.isWhitespace(letter) || "[]()".indexOf(letter) >= 0;
+    }
+
+    private static int copyToEndOfLine(String written, int at, StringBuilder out) {
+        while (at < written.length() && written.charAt(at) != '\n') {
+            out.append(written.charAt(at++));
+        }
+        return at;
+    }
+
+    private static int copyQuoted(String written, int at, StringBuilder out) {
+        out.append(written.charAt(at++));
+        while (at < written.length() && written.charAt(at) != '"') {
+            if (written.charAt(at) == '^' && at + 1 < written.length()) {
+                out.append(written.charAt(at++));
+            }
+            out.append(written.charAt(at++));
+        }
+        return at < written.length() ? at + copyOne(written, at, out) : at;
+    }
+
+    private static int copyBraced(String written, int at, StringBuilder out) {
+        int depth = 0;
+        do {
+            char letter = written.charAt(at);
+            if (letter == '^' && at + 1 < written.length()) {
+                out.append(written.charAt(at++));
+            } else if (letter == '{') {
+                depth++;
+            } else if (letter == '}') {
+                depth--;
+            }
+            out.append(written.charAt(at++));
+        } while (at < written.length() && depth > 0);
+        return at;
+    }
+
+    private static int copyOne(String written, int at, StringBuilder out) {
+        out.append(written.charAt(at));
+        return 1;
+    }
+
+    /**
+     * Whether the numbered source reads as the source it came from, allowing
+     * for the numbers.
+     */
+    private static boolean saysTheSameThing(
+            String written, String numbered, int firstOrdinal) {
+
+        BlockValue before = Transcoder.transcode(written).values().orElse(null);
+        BlockValue after = Transcoder.transcode(numbered).values().orElse(null);
+        return before != null && after != null
+                && sameValues(before.remaining(), after.remaining(), new int[] {firstOrdinal});
+    }
+
+    private static boolean sameValues(
+            List<Value> before, List<Value> after, int[] next) {
+
+        int here = 0;
+        for (Value one : before) {
+            if (here >= after.size()) {
+                return false;
+            }
+            Value other = after.get(here++);
+            if (one instanceof WordValue word && ASSERT.equals(word.spelling())) {
+                if (!(other instanceof WordValue numbered)
+                        || !NUMBERED_ASSERT.equals(numbered.spelling())
+                        || here >= after.size()
+                        || !(after.get(here++) instanceof IntegerValue which)
+                        || which.magnitude() != ++next[0]) {
+                    return false;
+                }
+                continue;
+            }
+            if (one instanceof BlockValue nested) {
+                if (!(other instanceof BlockValue alsoNested)
+                        || nested.datatype() != alsoNested.datatype()
+                        || !sameValues(nested.remaining(), alsoNested.remaining(), next)) {
+                    return false;
+                }
+                continue;
+            }
+            if (one.datatype() != other.datatype() || !one.toString().equals(other.toString())) {
+                return false;
+            }
+        }
+        return here == after.size();
     }
 
     /**
@@ -196,13 +371,15 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             if (!(current instanceof WordValue word) || !isHarnessWord(current)) {
                 List<Value> run = valuesUntilNextHarnessWord(values, at);
                 String setup = sourceOf(source, spans, at, run.size());
+                int began = ordinal;
                 List<Assertion> nested = new ArrayList<>();
                 for (int more = assertionsNestedIn(run); more > 0; more--) {
                     ordinal++;
                     nested.add(new Assertion(file, group, test, ordinal, setup,
                             beginningOf(spans, at), endOf(spans, at, run.size())));
                 }
-                found.add(new Step(null, setup, List.copyOf(nested)));
+                found.add(new Step(null, setup, List.copyOf(nested),
+                        nested.isEmpty() ? null : numberedSource(setup, began)));
                 at += Math.max(1, run.size());
                 continue;
             }
@@ -219,16 +396,18 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                     }
                     int howMany = Math.max(0, until.size() - 1);
                     String setup = sourceOf(source, spans, at + 2, howMany);
-                    List<Assertion> nested = new ArrayList<>();
                     List<Value> body = until.isEmpty()
                             ? List.of()
                             : until.subList(1, until.size());
+                    int began = ordinal;
+                    List<Assertion> nested = new ArrayList<>();
                     for (int more = assertionsNestedIn(body); more > 0; more--) {
                         ordinal++;
                         nested.add(new Assertion(file, group, test, ordinal, setup,
                                 beginningOf(spans, at + 2), endOf(spans, at + 2, howMany)));
                     }
-                    found.add(new Step(null, setup, List.copyOf(nested)));
+                    found.add(new Step(null, setup, List.copyOf(nested),
+                            nested.isEmpty() ? null : numberedSource(setup, began)));
                 }
                 case ASSERT -> {
                     ordinal++;
@@ -236,6 +415,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                     Assertion asserted = new Assertion(file, group, test, ordinal,
                             written, beginningOf(spans, at + 1),
                             endOf(spans, at + 1, until.size()));
+                    int began = ordinal;
                     List<Assertion> alsoInside = new ArrayList<>();
                     for (int more = assertionsNestedIn(until); more > 0; more--) {
                         ordinal++;
@@ -243,10 +423,13 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                                 written, beginningOf(spans, at + 1),
                                 endOf(spans, at + 1, until.size())));
                     }
-                    found.add(new Step(asserted, null, List.copyOf(alsoInside)));
+                    found.add(new Step(asserted, null, List.copyOf(alsoInside),
+                            alsoInside.isEmpty() ? null
+                                    : numberedSource(written, began)));
                 }
                 default -> {
                     String setup = sourceOf(source, spans, at + 1, until.size());
+                    int began = ordinal;
                     List<Assertion> nested = new ArrayList<>();
                     for (int more = assertionsNestedIn(until); more > 0; more--) {
                         ordinal++;
@@ -254,7 +437,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                                 beginningOf(spans, at + 1),
                                 endOf(spans, at + 1, until.size())));
                     }
-                    found.add(new Step(null, setup, List.copyOf(nested)));
+                    found.add(new Step(null, setup, List.copyOf(nested),
+                            nested.isEmpty() ? null : numberedSource(setup, began)));
                 }
             }
             at = next;

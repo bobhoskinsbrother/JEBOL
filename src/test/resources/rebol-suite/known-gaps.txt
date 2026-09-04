@@ -2,7 +2,7 @@ aes-test.r3 / (no group) / (no test) #1
 aes-test.r3 / (no group) / (no test) #2
 aes-test.r3 / (no group) / (no test) #3
 aes-test.r3 / (no group) / (no test) #4
-bbcode-test.r3 / (no group) / (no test) #2
+bbcode-test.r3 / (no group) / (no test) #1
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #163
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #164
 bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU64 #165
@@ -32,20 +32,20 @@ chacha20-test.r3 / (no group) / (no test) #6
 chacha20-test.r3 / (no group) / (no test) #7
 chacha20-test.r3 / (no group) / (no test) #8
 chacha20-test.r3 / (no group) / (no test) #9
-checksum-test.r3 / Checksum port / checksum-port-sha512 #208
-checksum-test.r3 / Checksum port / checksum-port-sha512 #209
-checksum-test.r3 / Checksum port / checksum-port-sha512 #210
-checksum-test.r3 / Checksum port / checksum-port-sha512 #211
-checksum-test.r3 / Checksum port / checksum-port-sha512 #212
-checksum-test.r3 / Checksum port / checksum-port-sha512 #213
-checksum-test.r3 / Checksum port / checksum-port-sha512 #214
-checksum-test.r3 / Checksum port / checksum-port-sha512 #215
-checksum-test.r3 / Checksum port / checksum-port-sha512 #216
-checksum-test.r3 / Checksum port / checksum-port-sha512 #217
-checksum-test.r3 / Checksum port / checksum-port-sha512 #218
-checksum-test.r3 / Checksum port / checksum-port-sha512 #219
-checksum-test.r3 / Checksum port / checksum-port-sha512 #220
-checksum-test.r3 / Checksum port / checksum-port-sha512 #221
+checksum-test.r3 / Checksum port / checksum-port-sha512 #180
+checksum-test.r3 / Checksum port / checksum-port-sha512 #181
+checksum-test.r3 / Checksum port / checksum-port-sha512 #182
+checksum-test.r3 / Checksum port / checksum-port-sha512 #183
+checksum-test.r3 / Checksum port / checksum-port-sha512 #184
+checksum-test.r3 / Checksum port / checksum-port-sha512 #185
+checksum-test.r3 / Checksum port / checksum-port-sha512 #186
+checksum-test.r3 / Checksum port / checksum-port-sha512 #187
+checksum-test.r3 / Checksum port / checksum-port-sha512 #188
+checksum-test.r3 / Checksum port / checksum-port-sha512 #189
+checksum-test.r3 / Checksum port / checksum-port-sha512 #190
+checksum-test.r3 / Checksum port / checksum-port-sha512 #191
+checksum-test.r3 / Checksum port / checksum-port-sha512 #192
+checksum-test.r3 / Checksum port / checksum-port-sha512 #193
 checksum-test.r3 / Checksum port / checksum-port-sha512 #222
 checksum-test.r3 / Checksum port / checksum-port-sha512 #223
 checksum-test.r3 / Checksum port / checksum-port-sha512 #224
@@ -74,6 +74,11 @@ codecs-test-pdf.r3 / (no group) / (no test) #10
 codecs-test-pdf.r3 / (no group) / (no test) #11
 codecs-test-pdf.r3 / (no group) / (no test) #12
 codecs-test-pdf.r3 / (no group) / (no test) #13
+codecs-test-pdf.r3 / (no group) / (no test) #5
+codecs-test-pdf.r3 / (no group) / (no test) #6
+codecs-test-pdf.r3 / (no group) / (no test) #7
+codecs-test-pdf.r3 / (no group) / (no test) #8
+codecs-test-pdf.r3 / (no group) / (no test) #9
 codecs-test.r3 / Codec's identify / encoding? #4
 codecs-test.r3 / Codec's identify / encoding? #5
 codecs-test.r3 / Codec's identify / encoding? #6
@@ -350,7 +355,7 @@ compress-test.r3 / LZW compression / decompression / LZW compress/decompress #11
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #120
 compress-test.r3 / ZLIB compression / decompression / basic compress/decompress #1
 compress-test.r3 / ZLIB compression / decompression / compression when input is limited #18
-copy-test.r3 / Simple copy / (no test) #2
+copy-test.r3 / Simple copy / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #2
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #3
@@ -536,8 +541,8 @@ file-test.r3 / WILDCARD / read wildcard #47
 file-test.r3 / WILDCARD / read wildcard #48
 file-test.r3 / cd / cd / cd ~ #1
 file-test.r3 / file:// / issue-834 #41
-file-test.r3 / to-local-file / issue-1115 #18
-file-test.r3 / to-local-file / issue-1115 #19
+file-test.r3 / to-local-file / issue-1115 #16
+file-test.r3 / to-local-file / issue-1115 #17
 file-test.r3 / to-local-file / issue-1115 #20
 file-test.r3 / to-local-file / issue-1115 #21
 file-test.r3 / to-local-file / issue-1115 #22
@@ -928,10 +933,10 @@ power-test.r3 / power integer / power-integer-5 #15
 power-test.r3 / power integer / power-integer-6 #16
 power-test.r3 / power integer / power-integer-7 #17
 power-test.r3 / power integer / power-integer-8 #18
-series-test.r3 / DELINE / ENLINE / ENLINE #1230
-struct-test.r3 / Invalid struct construction / (no test) #186
-struct-test.r3 / Invalid struct construction / (no test) #187
-struct-test.r3 / Invalid struct construction / (no test) #188
+series-test.r3 / DELINE / ENLINE / ENLINE #1229
+struct-test.r3 / Invalid struct construction / (no test) #175
+struct-test.r3 / Invalid struct construction / (no test) #176
+struct-test.r3 / Invalid struct construction / (no test) #177
 task-test.r3 / task / (no test) #1
 task-test.r3 / task / (no test) #2
 task-test.r3 / task / (no test) #3

@@ -7,6 +7,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -247,9 +248,10 @@ class RebolSuiteTest {
             }
             Verdict verdict = new Verdict(false, "never ran");
             try {
-                interpreter.defineFreshWordsIn(source);
+                interpreter.defineFreshWordsIn(step.sourceToRun());
                 if (step.isAssertion()) {
-                    Interpreter.Step taken = interpreter.runNext(source);
+                    Interpreter.Step taken =
+                            interpreter.runNext(step.sourceToRun());
                     verdict = taken.outcome().succeeded() && taken.outcome().value().isTruthy()
                             ? Verdict.passed()
                             : new Verdict(false, reasonFrom(taken.outcome()));
@@ -260,7 +262,9 @@ class RebolSuiteTest {
                                 after.succeeded() ? "" : reasonFrom(after));
                     }
                 } else {
-                    ScriptOutcome ran = interpreter.run(source);
+                    String toRun = step.sourceToRun();
+                    interpreter.defineFreshWordsIn(toRun);
+                    ScriptOutcome ran = interpreter.run(toRun);
                     verdict = new Verdict(ran.succeeded(), "");
                     recordWhatRanInside(interpreter, step,
                             ran.succeeded() ? "" : reasonFrom(ran));
@@ -299,8 +303,16 @@ class RebolSuiteTest {
      */
     private static final String THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION = """
             jebol-nested: copy ""
+            jebol-numbered: copy []
             --assert: func [result [any-type!]] [
                 append jebol-nested either all [not error? :result :result] ["t"] ["f"]
+                :result
+            ]
+            --assert-numbered: func [which [integer!] result [any-type!]] [
+                repend jebol-numbered [
+                    which
+                    either all [not error? :result :result] [true] [false]
+                ]
                 :result
             ]
             ~~~start-file~~~: func [name [any-type!]] []
@@ -326,6 +338,10 @@ class RebolSuiteTest {
         if (step.nested().isEmpty()) {
             return;
         }
+        if (step.numberedSetup() != null) {
+            recordByNumber(interpreter, step, whyItStopped);
+            return;
+        }
         String letters = lettersRecordedBy(interpreter);
         for (int at = 0; at < step.nested().size(); at++) {
             boolean everyRunHeld = at < letters.length()
@@ -343,6 +359,55 @@ class RebolSuiteTest {
                                     : "never reached: the block stopped on " + whyItStopped));
         }
     }
+
+
+    /**
+     * What each nested assertion answered, matched by its own number.
+     *
+     * <p>Every {@code --assert} inside a block is told which assertion it is,
+     * so a report names its assertion rather than being matched to one by
+     * counting. That settles the two things counting could not: an assertion
+     * written in one step and run in another reports its own number wherever
+     * it runs, and an assertion a loop runs a hundred times reports the same
+     * number a hundred times.
+     *
+     * <p>Those hundred reports fold with AND, so an assertion that held
+     * ninety-nine times and failed once has failed. Rebol's own harness counts
+     * each turn separately and would call that ninety-nine passes and one
+     * failure; one case per assertion cannot say both, and the strict reading
+     * is the one that does not hide a failure.
+     */
+    private static void recordByNumber(
+            Interpreter interpreter, SuiteFile.Step step, String whyItStopped) {
+
+        Map<Integer, Boolean> answered = reportsNumberedBy(interpreter);
+        for (SuiteFile.Assertion nested : step.nested()) {
+            Boolean held = answered.get(nested.ordinal());
+            OUTCOMES.put(nested.toString(), held == null
+                    ? new Verdict(false, whyItStopped.isBlank()
+                            ? "never reached: the block it is written in ended first"
+                            : "never reached: the block stopped on " + whyItStopped)
+                    : held
+                            ? Verdict.passed()
+                            : new Verdict(false,
+                                    "answered false inside the block it is written in"));
+        }
+    }
+
+    private static Map<Integer, Boolean> reportsNumberedBy(Interpreter interpreter) {
+        String shown = interpreter.display(interpreter.run(
+                "also copy jebol-numbered clear jebol-numbered"));
+        Map<Integer, Boolean> answered = new LinkedHashMap<>();
+        Matcher pair = NUMBERED_REPORT.matcher(shown);
+        while (pair.find()) {
+            answered.merge(Integer.parseInt(pair.group(1)),
+                    pair.group(2).equals("true"), (older, newer) -> older && newer);
+        }
+        return answered;
+    }
+
+    private static final Pattern NUMBERED_REPORT =
+            Pattern.compile("(\\d+) #\\((true|false)\\)");
 
     /**
      * The letters the nested assertions wrote, read back out of the
