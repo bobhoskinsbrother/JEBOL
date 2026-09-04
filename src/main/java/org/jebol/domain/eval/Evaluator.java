@@ -1916,36 +1916,7 @@ public final class Evaluator {
      * when the text is not Latin.
      */
     private static int terminalWidthOf(String text) {
-        int columns = 0;
-        for (int at = 0; at < text.length(); ) {
-            int code = text.codePointAt(at);
-            at += Character.charCount(code);
-            columns += columnsFor(code);
-        }
-        return columns;
-    }
-
-    private static int columnsFor(int code) {
-        if (Character.getType(code) == Character.NON_SPACING_MARK
-                || Character.getType(code) == Character.ENCLOSING_MARK
-                || Character.getType(code) == Character.COMBINING_SPACING_MARK) {
-            return 0;
-        }
-        return switch (Character.UnicodeScript.of(code)) {
-            case HAN, HIRAGANA, KATAKANA, HANGUL -> 2;
-            default -> isWideBlock(code) ? 2 : 1;
-        };
-    }
-
-    /** The ranges the C treats as double width outside the CJK scripts. */
-    private static boolean isWideBlock(int code) {
-        return (code >= 0x1100 && code <= 0x115F)
-                || (code >= 0x2E80 && code <= 0x303E)
-                || (code >= 0xFE30 && code <= 0xFE6F)
-                || (code >= 0xFF00 && code <= 0xFF60)
-                || (code >= 0xFFE0 && code <= 0xFFE6)
-                || (code >= 0x1F300 && code <= 0x1F64F)
-                || (code >= 0x1F900 && code <= 0x1F9FF);
+        return TerminalWidth.of(text.codePoints().toArray());
     }
 
     /**

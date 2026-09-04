@@ -774,9 +774,10 @@ public final class StringParser {
             case StringValue existing -> {
                 StringBuilder text = new StringBuilder();
                 gathered.forEach(item -> text.append(Molder.form(item)));
+                int[] letters = text.toString().codePoints().toArray();
                 int where = past ? existing.storageLength() + 1 : existing.index();
-                for (int at = text.length(); at > 0; at--) {
-                    existing.storage().insertAt(where, text.codePointAt(at - 1));
+                for (int at = letters.length; at > 0; at--) {
+                    existing.storage().insertAt(where, letters[at - 1]);
                 }
             }
             case BinaryValue existing -> {
