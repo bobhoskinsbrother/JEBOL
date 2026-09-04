@@ -754,10 +754,11 @@ final class Encodings {
             byte[] page = new byte[8192];
             while (!inflater.finished()) {
                 int written = inflater.inflate(page);
-                if (written == 0 && (inflater.needsInput() || inflater.needsDictionary())) {
+                into.write(page, 0, written);
+                if (written == 0 && !inflater.finished()
+                        && (inflater.needsInput() || inflater.needsDictionary())) {
                     throw new IllegalArgumentException("compressed data ends early");
                 }
-                into.write(page, 0, written);
             }
             return into.toArray();
         } catch (java.util.zip.DataFormatException notDeflate) {

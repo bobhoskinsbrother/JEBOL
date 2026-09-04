@@ -12903,6 +12903,64 @@ public final class Natives {
         return at == parts.size() ? made : raiseMalconstruct(parts.get(at));
     }
 
+    /**
+     * The widths TO IMAGE! lays a binary out at: as many pixels as there are
+     * up to a hundred, a hundred to a row up to ten thousand, five hundred
+     * beyond that.
+     */
+    private static final int WIDEST_ROW_OF_ITS_OWN_LENGTH = 100;
+
+    private static final int WIDEST_HUNDRED_WIDE_PICTURE = 10000;
+
+    private static final int A_ROW_OF_A_BIG_PICTURE = 500;
+
+    private static final int BYTES_A_PIXEL = 4;
+
+    /**
+     * TO IMAGE! of a binary, which is four bytes a pixel and a width the C
+     * picks rather than the caller.
+     *
+     * <p>{@code Trap_Make} when there is not one whole pixel there, so
+     * {@code to image! #{000000}} is bad-make-arg rather than an empty
+     * picture. The last row can be short, and the pixels nobody supplied stay
+     * the opaque white {@code CLEAR_IMAGE} left.
+     *
+     * <p>Anything that is not a binary, an image or a gob is refused by type
+     * rather than by argument -- {@code Trap_Type(arg)} is the last line of
+     * the branch.
+     */
+    private static Value imageConvertedFrom(Value value) {
+        if (value instanceof ImageValue already) {
+            return new ImageValue(already.storage().copy(), 1);
+        }
+        if (!(value instanceof BinaryValue bytes)) {
+            throw Raised.of(EvaluationFailure.INVALID_TYPE, value.datatype().literalSpelling());
+        }
+        int pixels = bytes.lengthFromHere() / BYTES_A_PIXEL;
+        if (pixels == 0) {
+            return raiseBadMakeArg(value, "image!");
+        }
+        int across = pixels < WIDEST_ROW_OF_ITS_OWN_LENGTH
+                ? pixels
+                : pixels < WIDEST_HUNDRED_WIDE_PICTURE
+                        ? WIDEST_ROW_OF_ITS_OWN_LENGTH
+                        : A_ROW_OF_A_BIG_PICTURE;
+        int down = pixels / across;
+        if (across * down < pixels) {
+            down++;
+        }
+        ImageValue made = ImageValue.of(across, down);
+        for (int pixel = 1; pixel <= pixels; pixel++) {
+            int at = bytes.index() + (pixel - 1) * BYTES_A_PIXEL;
+            made.storage().setColourAt(pixel,
+                    bytes.storage().at(at),
+                    bytes.storage().at(at + 1),
+                    bytes.storage().at(at + 2));
+            made.storage().setAlphaAt(pixel, bytes.storage().at(at + 3));
+        }
+        return made;
+    }
+
     /** `Bin_To_RGB`: three bytes a pixel, and the alpha already there is kept. */
     private static void fillColoursFrom(ImageValue made, BinaryValue colours) {
         int pixels = Math.min(made.storageLength(), colours.lengthFromHere() / 3);
@@ -13936,6 +13994,7 @@ public final class Natives {
             case DATATYPE -> value instanceof WordValue named
                     ? datatypeNamed(named, value)
                     : raiseBadMakeArg(value, "datatype!");
+            case IMAGE -> imageConvertedFrom(value);
             default -> raiseCannotUse(value, "to " + wanted.represents().literalSpelling());
         };
     }

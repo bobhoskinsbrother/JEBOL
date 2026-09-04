@@ -227,7 +227,6 @@ compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress
 compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #135
 compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #136
 compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #137
-compress-test.r3 / DEFLATE compression / decompression / basic compress/decompress #20
 compress-test.r3 / DEFLATE compression / decompression / compression when input is limited #37
 compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #41
 compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #42
@@ -268,7 +267,6 @@ compress-test.r3 / LZW compression / decompression / LZW compress/decompress #11
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #118
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #119
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #120
-compress-test.r3 / ZLIB compression / decompression / basic compress/decompress #1
 compress-test.r3 / ZLIB compression / decompression / compression when input is limited #18
 copy-test.r3 / Simple copy / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #1
@@ -600,12 +598,6 @@ image-test.r3 / image/color / image/color getter #130
 image-test.r3 / image/color / image/color setter #131
 image-test.r3 / image/color / image/color setter #132
 image-test.r3 / image/color / image/color setter #133
-image-test.r3 / make image / to image from binary #10
-image-test.r3 / make image / to image from binary #11
-image-test.r3 / make image / to image from binary #12
-image-test.r3 / make image / to image from binary #13
-image-test.r3 / make image / to image from binary #8
-image-test.r3 / make image / to image from binary #9
 image-test.r3 / raw image data getters/setters / errors #125
 image-test.r3 / raw image data getters/setters / errors #126
 image-test.r3 / raw image data getters/setters / errors #127
