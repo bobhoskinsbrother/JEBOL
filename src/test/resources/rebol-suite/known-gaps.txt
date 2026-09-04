@@ -186,22 +186,7 @@ compress-test.r3 / Brotli compression / decompression / Brotli compress/decompre
 compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #80
 compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #81
 compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #82
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #122
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #123
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #124
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #125
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #126
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #127
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #128
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #129
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #130
 compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #131
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #132
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #133
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #134
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #135
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #136
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #137
 compress-test.r3 / DEFLATE compression / decompression / compression when input is limited #37
 compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #41
 compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #42

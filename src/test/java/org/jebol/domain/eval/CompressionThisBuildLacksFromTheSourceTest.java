@@ -43,12 +43,12 @@ class CompressionThisBuildLacksFromTheSourceTest {
     void aMissingMethodIsFeatureNa() {
         assertThat(answerTo("""
                 collect [
-                    foreach method [br crush lz4 lzav lzma lzw][
+                    foreach method [br lz4 lzav lzma lzw][
                         raised: try [compress "test" method]
                         keep raised/id
                     ]
                 ]""")).isEqualTo("[feature-na feature-na feature-na"
-                        + " feature-na feature-na feature-na]");
+                        + " feature-na feature-na]");
     }
 
     @Test
@@ -61,7 +61,8 @@ class CompressionThisBuildLacksFromTheSourceTest {
                             e/id
                         ][ 'works ]
                     ]
-                ]""")).isEqualTo("[works works works feature-na feature-na"
+                ]""")).as("crush is written out here; the other five are not")
+                        .isEqualTo("[works works works feature-na works"
                         + " feature-na feature-na feature-na feature-na]");
     }
 

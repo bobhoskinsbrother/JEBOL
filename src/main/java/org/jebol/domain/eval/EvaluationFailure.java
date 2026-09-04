@@ -36,6 +36,8 @@ public enum EvaluationFailure {
             "bytes that are not valid UTF-8 where text was wanted"),
     INVALID_DATA(ErrorCategory.SCRIPT, "invalid-data",
             "data that is not in the form the operation reads"),
+    BAD_PRESS(ErrorCategory.SCRIPT, "bad-press",
+            "compressed data that cannot be read back"),
     BAD_FUNC_ARG(ErrorCategory.SCRIPT, "bad-func-arg",
             "an argument a function will not accept in that position"),
     BAD_FUNC_DEF(ErrorCategory.SCRIPT, "bad-func-def", "invalid function definition"),

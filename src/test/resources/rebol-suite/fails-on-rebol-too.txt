@@ -134,3 +134,11 @@ poly1305-test.r3 / (no group) / (no test) #6
 poly1305-test.r3 / (no group) / (no test) #7
 poly1305-test.r3 / (no group) / (no test) #8
 poly1305-test.r3 / (no group) / (no test) #9
+
+# compress-test.r3: the CRUSH group opens
+#     either error? e: try [compress "test" 'crush][--assert 'feature-na = e/id][...]
+# so the assertion in the first branch only runs on a build without CRUSH.
+# A real 3.22.5 has it -- `compress "test" 'crush` answers
+# #{04000000E894994307} -- so that branch is never taken there either, and
+# the assertion is never executed by anything this is measured against.
+compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #121

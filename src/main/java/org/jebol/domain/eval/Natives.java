@@ -10829,13 +10829,20 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     String method = requireAKnownCompression(arguments.get(1));
                     try {
+                        Value wanted = refinements.contains("size")
+                                ? argumentFor("size", List.of("part", "size"),
+                                        arguments, refinements, 2)
+                                : null;
                         return binaryOfBytes(Encodings.decompressed(
                                 partOfOctets(arguments.getFirst(),
                                         octetsOf(arguments.getFirst()),
                                         arguments, refinements, 2),
-                                method));
+                                method,
+                                wanted instanceof IntegerValue asked
+                                        ? (int) asked.magnitude()
+                                        : 0));
                     } catch (IllegalArgumentException notCompressed) {
-                        throw Raised.of(EvaluationFailure.INVALID_DATA,
+                        throw Raised.of(EvaluationFailure.BAD_PRESS,
                                 notCompressed.getMessage());
                     }
                 });

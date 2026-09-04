@@ -708,7 +708,8 @@ final class Encodings {
     }
 
     /** The methods this host offers, as {@code system/catalog/compressions}. */
-    static final List<String> COMPRESSIONS = List.of("zlib", "gzip", "deflate");
+    static final List<String> COMPRESSIONS =
+            List.of("zlib", "gzip", "deflate", "crush");
 
     /**
      * Methods REBOL has and this build has not.
@@ -731,24 +732,40 @@ final class Encodings {
      * {@code lz4} and {@code lzav} were missing outright.
      */
     static final List<String> COMPRESSIONS_ELSEWHERE =
-            List.of("br", "crush", "lz4", "lzav", "lzma", "lzw");
+            List.of("br", "lz4", "lzav", "lzma", "lzw");
 
     static byte[] compressed(byte[] octets, String method, int level) {
         return switch (method) {
             case "gzip" -> gzipped(octets);
             case "zlib" -> deflated(octets, level, false);
             case "deflate" -> deflated(octets, level, true);
+            case "crush" -> Crush.compressed(octets, level);
             default -> throw new IllegalArgumentException(method);
         };
     }
 
-    static byte[] decompressed(byte[] octets, String method) {
-        return switch (method) {
+    /**
+     * Reads compressed bytes back, stopping at a size when one was asked for.
+     *
+     * <p>DECOMPRESS/SIZE is how a script reads the front of something without
+     * the whole of it. CRUSH takes the limit as it decodes -- its header says
+     * how long the answer will be, so it can simply make less -- and the
+     * deflate family has no such header, so the answer is cut afterwards.
+     */
+    static byte[] decompressed(byte[] octets, String method, int wanted) {
+        if (octets.length == 0 && !"crush".equals(method)) {
+            return octets;
+        }
+        byte[] whole = switch (method) {
             case "gzip" -> ungzipped(octets);
             case "zlib" -> inflated(octets, false);
             case "deflate" -> inflated(octets, true);
+            case "crush" -> Crush.decompressed(octets, wanted);
             default -> throw new IllegalArgumentException(method);
         };
+        return wanted > 0 && whole.length > wanted
+                ? java.util.Arrays.copyOf(whole, wanted)
+                : whole;
     }
 
     /** The ten bytes a gzip member opens with, and the two that name it. */
