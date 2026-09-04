@@ -339,21 +339,52 @@ anything.
 assertions never ran at all: an earlier expression in the same step raised and
 took the rest with it. 171 sit behind one of them.
 
-The cause is in the harness rather than in the port. `stepsIn` takes every
-value up to the next *top-level* dialect word as one step, and codecs-test.r3
-is a run of `if find codecs 'wav [...]`, `if find codecs 'der [...]`,
+The cause is in the harness. `stepsIn` takes every value up to the next
+*top-level* dialect word as one step, and codecs-test.r3 is a run of
+`if find codecs 'wav [...]`, `if find codecs 'der [...]`,
 `if find codecs 'crt [...]` whose dialect words are all nested inside the
-blocks. So the whole tail of the file becomes one step, and the DER codec
-raising takes the WAV, CRT, SWF and every other group down with it.
+blocks. So the whole tail of the file -- 23,183 characters, 187 assertions --
+is one step, and the DER codec raising takes every other group down with it.
 
-Each top-level expression should be its own step. `Interpreter.runNext` is
-already the tool -- it is what the assertion branch uses -- so the setup
-branch wants the same loop rather than one `run` of the lot.
+## What was tried, and what it hit
 
-**Worth doing before any more counting.** Until it is done the count is a
-measure of the harness as much as of the port, the blocked ones are unmeasured
-rather than failing, and none of them can be shown to belong in
-`fails-on-rebol-too.txt`.
+Cutting the run into one step per expression, at values that begin a line.
+The cut itself works: the 23,183-character step becomes twelve, the block
+behind the DER failure clears, and the count goes 1,016 -> 991 with 50 fewer
+blocked. Three things had to be got right and the fourth was not:
+
+1. **Apply it in every branch.** Three places in `stepsIn` build a setup step
+   and only one was changed at first. The one that mattered was the `default`
+   arm, which is where `===end-group===` lands, and what follows it in
+   codecs-test.r3 is the whole tail of the file.
+2. **The spans are code-point offsets.** Indexing the source with `charAt`
+   put every position after the file's first emoji in the middle of another
+   line, so the cut never fired and left no trace of not having fired.
+3. **Only a word may open an expression.** Cutting at any value that begins a
+   line splits `switch-fun: func [/local i][` from its body block when the
+   bracket starts a line, and both halves read perfectly well on their own:
+   one is a function of one argument, the other is a block. 32 passing
+   assertions said so.
+4. **The letters have to be attributed at file scope, and are not.**
+   `--assert` inside a block appends a letter to a log, and the log is read
+   and cleared per step. Once a definition and its call are separate steps,
+   the assertions written in the definition run during the call, and the step
+   that holds them sees no letters. 7 assertions, all of the shape
+   `f: func [...][ --assert ... ]` then `f`.
+
+## What the fourth one needs
+
+A queue of pending nested assertions at file scope, consumed in order as
+letters arrive, rather than a per-step reading. That is easy and it is not
+enough: a FOREACH running three assertions a hundred times appends three
+hundred letters, which the present code folds into the last assertion and a
+queue would spend on the next hundred. The model has to carry both -- an
+assertion that runs later than it was written, and an assertion that runs many
+times -- before the cut can go in.
+
+**Until then the count measures the harness as much as the port**, the blocked
+ones are unmeasured rather than failing, and none of them can be shown to
+belong in `fails-on-rebol-too.txt`.
 
 # Goal 8. LLM-friendly MCP tools
 
