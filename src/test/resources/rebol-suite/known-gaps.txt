@@ -37,7 +37,6 @@ checksum-test.r3 / Checksum port / checksum-port-sha512 #232
 checksum-test.r3 / Checksum port / checksum-port-sha512 #233
 checksum-test.r3 / Checksum port / checksum-port-sha512 #234
 checksum-test.r3 / Checksum port / checksum-port-sha512 #235
-checksum-test.r3 / Checksum/hash / test case 1 #250
 checksum-test.r3 / file-checksum / checksum file! #255
 checksum-test.r3 / file-checksum / checksum file! #256
 checksum-test.r3 / file-checksum / checksum file! #257

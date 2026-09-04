@@ -429,6 +429,74 @@ final class Encodings {
         return List.copyOf(every);
     }
 
+    private static final int MURMUR_MIXING_MULTIPLIER = 0xcc9e2d51;
+
+    private static final int MURMUR_COMBINING_MULTIPLIER = 0x1b873593;
+
+    private static int blockMixedInto(int running, int block) {
+        int mixed = Integer.rotateLeft(block * MURMUR_MIXING_MULTIPLIER, 15)
+                * MURMUR_COMBINING_MULTIPLIER;
+        return Integer.rotateLeft(running ^ mixed, 13) * 5 + 0xe6546b64;
+    }
+
+    private static int avalanched(int hash) {
+        int mixed = (hash ^ (hash >>> 16)) * 0x85ebca6b;
+        mixed = (mixed ^ (mixed >>> 13)) * 0xc2b2ae35;
+        return mixed ^ (mixed >>> 16);
+    }
+
+    private static int littleEndianWordAt(byte[] octets, int from) {
+        return (octets[from] & 0xFF)
+                | ((octets[from + 1] & 0xFF) << 8)
+                | ((octets[from + 2] & 0xFF) << 16)
+                | ((octets[from + 3] & 0xFF) << 24);
+    }
+
+    /**
+     * MurmurHash3 over bytes, which is what {@code Hash_Binary} answers.
+     *
+     * <p>Case sensitive, unlike the string form, because a binary has no
+     * cases to fold.
+     */
+    static int murmurOf(byte[] octets) {
+        int hash = 0;
+        int wholeWords = octets.length / 4;
+        for (int word = 0; word < wholeWords; word++) {
+            hash = blockMixedInto(hash, littleEndianWordAt(octets, word * 4));
+        }
+        int over = octets.length & 3;
+        if (over > 0) {
+            int trailing = 0;
+            for (int step = 0; step < over; step++) {
+                trailing ^= (octets[wholeWords * 4 + step] & 0xFF) << (step * 8);
+            }
+            hash ^= Integer.rotateLeft(trailing * MURMUR_MIXING_MULTIPLIER, 16)
+                    * MURMUR_COMBINING_MULTIPLIER;
+        }
+        return avalanched(hash ^ octets.length);
+    }
+
+    /**
+     * The same mixing one byte at a time, lowering each byte on its own, which
+     * is what {@code Hash_String_Value} does to a string.
+     *
+     * <p>The bytes are the UTF-8 ones, and each is lowered as though it were a
+     * whole character, so only the letters that encode to a single byte fold
+     * their case at all. That is why a real Rebol answers differently for
+     * {@code "é"} and {@code "É"} while answering the same for {@code "a"} and
+     * {@code "A"} -- and why {@code "é" = "É"} is false there.
+     *
+     * <p>One byte to a block also means a string and the binary holding those
+     * same bytes mix differently, since the binary goes four bytes at a time.
+     */
+    static int caseFoldedHashOf(byte[] utf8) {
+        int hash = 0;
+        for (byte each : utf8) {
+            hash = blockMixedInto(hash, Character.toLowerCase(each & 0xFF));
+        }
+        return avalanched(hash ^ utf8.length);
+    }
+
     /**
      * The name for the one digest written out here rather than asked for.
      *

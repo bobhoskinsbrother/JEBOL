@@ -10594,19 +10594,29 @@ public final class Natives {
                     String method = ((WordValue) arguments.get(1)).canonical();
                     byte[] octets = partOfOctets(arguments.getFirst(),
                             octetsOf(arguments.getFirst()), arguments, refinements, 2);
-                    if (Encodings.CYCLIC.contains(method)) {
-                        return IntegerValue.of(Encodings.cyclicOf(octets, method));
-                    }
-                    if (!Encodings.DIGESTS.containsKey(method)) {
-                        throw Raised.of(EvaluationFailure.INVALID_ARG, method);
-                    }
-                    Value key = refinements.contains("with")
+                    Value spec = refinements.contains("with")
                             ? argumentFor("with", List.of("with", "part"),
                                     arguments, refinements, 2)
                             : null;
-                    return binaryOfBytes(key == null || key instanceof IntegerValue
-                            ? Encodings.digestOf(octets, method)
-                            : Encodings.keyedDigestOf(octets, method, octetsOf(key)));
+                    if (Encodings.DIGESTS.containsKey(method)) {
+                        if (spec instanceof IntegerValue) {
+                            throw Raised.of(EvaluationFailure.BAD_REFINE, spec);
+                        }
+                        return binaryOfBytes(spec == null
+                                ? Encodings.digestOf(octets, method)
+                                : Encodings.keyedDigestOf(octets, method, octetsOf(spec)));
+                    }
+                    if (Encodings.CYCLIC.contains(method)) {
+                        if (spec != null) {
+                            throw Raised.of(EvaluationFailure.BAD_REFINES);
+                        }
+                        return IntegerValue.of(Encodings.cyclicOf(octets, method));
+                    }
+                    if (HASH_INTO_A_TABLE.equals(method)) {
+                        return IntegerValue.of(hashedIntoATable(
+                                arguments.getFirst(), spec));
+                    }
+                    throw Raised.of(EvaluationFailure.INVALID_ARG, method);
                 });
 
         define("compress", List.of(
@@ -11025,6 +11035,50 @@ public final class Natives {
                 .map(count -> Arrays.copyOf(octets,
                         (int) Math.max(0, Math.min(count, octets.length))))
                 .orElse(octets);
+    }
+
+    /** The one CHECKSUM method that is not a checksum but a table index. */
+    private static final String HASH_INTO_A_TABLE = "hash";
+
+    /**
+     * {@code checksum/with value 'hash size}, which answers
+     * {@code Hash_Value(value) % size} rather than a digest of the bytes.
+     *
+     * <p>It is the only method /WITH is required for, and the only one whose
+     * spec must be a number, because that number is the size of the table the
+     * answer indexes into. A size below one is read as one, so the answer is
+     * always a slot that exists.
+     *
+     * <p>The size is counted in thirty-two bits, so a bigger number wraps
+     * before it divides and a table of four thousand million and ninety-six
+     * slots is a table of none -- which leaves the hash whole rather than
+     * dividing by nothing.
+     */
+    private static long hashedIntoATable(Value value, Value size) {
+        if (size == null) {
+            throw Raised.of(EvaluationFailure.MISSING_ARG);
+        }
+        if (!(size instanceof IntegerValue asked)) {
+            throw Raised.of(EvaluationFailure.BAD_REFINE, size);
+        }
+        long slots = Math.max(1, asked.magnitude()) & 0xFFFFFFFFL;
+        long hash = Integer.toUnsignedLong(hashOfValue(value));
+        return slots == 0 ? hash : hash % slots;
+    }
+
+    /**
+     * The mixing {@code Hash_Value} does, which differs by datatype.
+     *
+     * <p>A binary is mixed four bytes at a time and case sensitively; a string
+     * is mixed one byte at a time with each byte's case folded, and then
+     * carries its own datatype into the answer so that the same letters as a
+     * file and as a url land in different slots.
+     */
+    private static int hashOfValue(Value value) {
+        return value instanceof BinaryValue bytes
+                ? Encodings.murmurOf(bytes.octetsFromHere())
+                : Encodings.caseFoldedHashOf(octetsOf(value))
+                        ^ value.datatype().ordinal();
     }
 
     /** The any-string datatypes, plus whatever else a spec names beside them. */
