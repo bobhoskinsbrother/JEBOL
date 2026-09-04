@@ -563,7 +563,17 @@ public final class Evaluator {
     public record Step(Value value, int nextIndex) {
     }
 
-    /** Evaluates the single expression starting at the block's position. */
+    /**
+     * Evaluates the single expression starting at the block's position.
+     *
+     * <p>A RETURN, BREAK or THROW raised by that expression flies on rather
+     * than being turned into an error here. The caller is a native part way
+     * through a block that is itself part way through a function -- ALL, ANY
+     * and CASE -- so the frame that should catch the signal is still above
+     * this one on the stack. Disarming it here made {@code all [return 1]}
+     * answer "a return outside a function" from inside a function, which is
+     * what stopped the borrowed ENCODE at its first line.
+     */
     public Step evaluateNextOrRaise(BlockValue code, Context context) {
         if (code.atTail()) {
             return new Step(UnsetValue.unset(), code.index());
@@ -572,7 +582,7 @@ public final class Evaluator {
         Deque<Frame> frames = new ArrayDeque<>();
         frames.push(frame);
         frame.sink = produced -> false;
-        Value produced = unsignalled(() -> walkFrames(frames));
+        Value produced = walkFrames(frames);
         return new Step(produced, frame.position);
     }
 

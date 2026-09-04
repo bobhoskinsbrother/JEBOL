@@ -2713,8 +2713,8 @@ public final class Natives {
                     BlockValue block = (BlockValue) arguments.get(0);
                     BlockValue at = block;
                     while (!at.atTail()) {
-                        Evaluator.Step step = evaluator.evaluateNextOrRaise(
-                                at, evaluator.systemContext());
+                        Evaluator.Step step =
+                                evaluator.evaluateNextOrRaise(at, context);
                         at = at.atIndex(step.nextIndex());
                         if (step.value() instanceof UnsetValue) {
                             continue;
@@ -2731,8 +2731,8 @@ public final class Natives {
                     BlockValue at = (BlockValue) arguments.get(0);
                     Value last = UnsetValue.unset();
                     while (!at.atTail()) {
-                        Evaluator.Step step = evaluator.evaluateNextOrRaise(
-                                at, evaluator.systemContext());
+                        Evaluator.Step step =
+                                evaluator.evaluateNextOrRaise(at, context);
                         at = at.atIndex(step.nextIndex());
                         if (step.value() instanceof UnsetValue) {
                             continue;

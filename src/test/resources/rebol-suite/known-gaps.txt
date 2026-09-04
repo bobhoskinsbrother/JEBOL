@@ -64,18 +64,10 @@ codecs-test.r3 / SAVE function / SAVE/compress #30
 codecs-test.r3 / SAVE function / invalid image SAVE #27
 codecs-test.r3 / SAVE function / invalid image SAVE #28
 codecs-test.r3 / SAVE function / invalid image SAVE #29
-codecs-test.r3 / TEXT codec / ENCODE text #10
-codecs-test.r3 / TEXT codec / ENCODE text #9
-codecs-test.r3 / TEXT codec / SAVE %test.txt #11
-codecs-test.r3 / TEXT codec / SAVE %test.txt #13
-codecs-test.r3 / TEXT codec / SAVE %test.txt #15
 codecs-test.r3 / TEXT codec / load UCS16-BE txt #34
 codecs-test.r3 / TEXT codec / load UCS16-LE txt #33
 codecs-test.r3 / TEXT codec / load UCS32-BE txt #36
 codecs-test.r3 / TEXT codec / load UCS32-LE txt #35
-codecs-test.r3 / TEXT codec / load/save binary! as .txt #41
-codecs-test.r3 / TEXT codec / load/save block! as .txt #39
-codecs-test.r3 / TEXT codec / load/save issue! as .txt #37
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #100
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #101
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #102
