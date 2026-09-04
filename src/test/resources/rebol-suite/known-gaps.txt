@@ -390,13 +390,6 @@ file-test.r3 / to-local-file / issue-1115 #21
 file-test.r3 / to-local-file / issue-1115 #22
 file-test.r3 / to-local-file / issue-1115 #23
 file-test.r3 / to-local-file / issue-1115 #24
-file-test.r3 / to-real-file / On directory #29
-file-test.r3 / to-real-file / On directory #30
-file-test.r3 / to-real-file / On directory #31
-file-test.r3 / to-real-file / On file #25
-file-test.r3 / to-real-file / On file #26
-file-test.r3 / to-real-file / On file with Unicode chars #27
-file-test.r3 / to-real-file / On file with Unicode chars #28
 format-test.r3 / FORMAT / FORMAT date-time #12
 format-test.r3 / FORMAT / FORMAT date-time #13
 format-test.r3 / FORMAT / FORMAT date-time #14
@@ -589,11 +582,8 @@ module-test.r3 / module import / import #25
 module-test.r3 / module import / import #26
 module-test.r3 / module import / import #27
 module-test.r3 / module import / import block #30
-module-test.r3 / module import / import needs file! #45
-module-test.r3 / module import / import needs file! #46
 module-test.r3 / module import / import needs url! #47
 module-test.r3 / module import / import needs url! #48
-module-test.r3 / module import / import needs word! #44
 module-test.r3 / module import / import to user context #28
 module-test.r3 / module import / import/no-lib #29
 module-test.r3 / module import / import/no-lib block #31
@@ -636,13 +626,7 @@ port-test.r3 / directory port / READ wildcard #45
 port-test.r3 / directory port / READ wildcard #46
 port-test.r3 / directory port / READ wildcard #47
 port-test.r3 / directory port / RENAME dir #57
-port-test.r3 / directory port / exists? %/ #58
-port-test.r3 / directory port / exists? %/ #59
-port-test.r3 / directory port / exists? %/ #60
-port-test.r3 / directory port / exists? %/ #61
-port-test.r3 / directory port / exists? %/ #62
 port-test.r3 / directory port / exists? %/ #63
-port-test.r3 / directory port / exists? %/ #64
 port-test.r3 / directory port / make-dir if file exists #21
 port-test.r3 / directory port / open %. #23
 port-test.r3 / directory port / open %. #24
@@ -654,7 +638,6 @@ port-test.r3 / directory port / port-issue-2320 #2
 port-test.r3 / directory port / port-issue-2320 #3
 port-test.r3 / directory port / port-issue-2320 #4
 port-test.r3 / directory port / port-issue-2320 #6
-port-test.r3 / directory port / query directory info #11
 port-test.r3 / directory port / query directory info #8
 port-test.r3 / file port / APPEND file-port #160
 port-test.r3 / file port / APPEND file-port #161

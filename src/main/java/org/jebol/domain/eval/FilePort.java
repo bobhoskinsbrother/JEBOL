@@ -31,8 +31,24 @@ public interface FilePort {
     /** Whether there is anything at that path. */
     boolean exists(String path);
 
-    /** The directory a relative path counts from, with a slash at its end. */
+    /**
+     * The directory a relative path counts from, with a slash at its end.
+     *
+     * <p>Spoken in the port's own terms rather than the machine's: it begins
+     * at the root the port was given, so a script granted a filesystem rooted
+     * at one directory never learns where that directory sits.
+     */
     String workingDirectory();
+
+    /**
+     * The same path written the way the machine outside would understand it.
+     *
+     * <p>For the one case where a path leaves the interpreter altogether: a
+     * redirect handed to a program CALL is about to run. The program is not
+     * inside the sandbox and cannot be told a path that only means something
+     * in here. Every other reader wants {@link #workingDirectory} instead.
+     */
+    String hostPathOf(String path);
 
     /**
      * Moves to another directory.
@@ -124,6 +140,11 @@ public interface FilePort {
 
             @Override
             public String workingDirectory() {
+                throw refuse();
+            }
+
+            @Override
+            public String hostPathOf(String path) {
                 throw refuse();
             }
 

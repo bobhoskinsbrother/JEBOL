@@ -54,10 +54,30 @@ public final class FileSystemPort implements FilePort {
      * JVM cannot change the working directory of its own process, thus
      * keeping it here is the only way a script can have one at all. It
      * also means one interpreter cannot move another.
+     *
+     * <p>Reported from this port's own root, as {@link #canonicalPathOf} is,
+     * so that a script granted a filesystem rooted at one directory does not
+     * learn where that directory sits -- and so that the path it is handed
+     * reaches the same place when it hands it back.
      */
     @Override
     public String workingDirectory() {
-        return here.toString().endsWith("/") ? here.toString() : here + "/";
+        String inside = root.relativize(here).toString()
+                .replace(java.io.File.separatorChar, '/');
+        return inside.isEmpty() ? "/" : "/" + inside + "/";
+    }
+
+    /**
+     * Where a path this port serves actually sits on the machine.
+     *
+     * <p>The one place the root is spoken aloud, for the one caller that needs
+     * it: a redirect being handed to a program CALL is about to run. That
+     * program is outside the sandbox and would make nothing of a path that
+     * counts from a root only this port knows.
+     */
+    @Override
+    public String hostPathOf(String path) {
+        return within(path).toString();
     }
 
     @Override
@@ -134,6 +154,13 @@ public final class FileSystemPort implements FilePort {
      * <p>The result is still reported inside this port's own root rather than
      * as a machine-wide path. A script granted a filesystem rooted at one
      * directory has no business learning where that directory sits.
+     *
+     * <p>A path outside that root is not resolvable either, and gets the same
+     * answer rather than a refusal. Asking where something is is not reaching
+     * for it, and none is both the honest reply and the one that tells the
+     * asker nothing. Raising instead stopped Rebol's own SECURE at its first
+     * line -- it resolves each path exception before storing it -- and took
+     * two whole test files with it.
      */
     @Override
     public String canonicalPathOf(String path) {
@@ -142,7 +169,7 @@ public final class FileSystemPort implements FilePort {
             java.nio.file.Path relative = root.toRealPath().relativize(real);
             return "/" + relative.toString().replace(
                     java.io.File.separatorChar, '/');
-        } catch (java.io.IOException notThere) {
+        } catch (java.io.IOException | Denied cannotBeResolved) {
             return null;
         }
     }
@@ -268,10 +295,20 @@ public final class FileSystemPort implements FilePort {
      *
      * <p>Checked after normalising, because {@code a/../../b} only looks like
      * it stays inside until the dots are worked out.
+     *
+     * <p>A path beginning with a slash counts from this port's root and not
+     * from the machine's. That is the vocabulary the port already speaks:
+     * {@link #canonicalPathOf} hands a script back a path written with a
+     * leading slash, and reading it again has to reach the file it named.
+     * Resolving it against the machine instead made the round trip fail, and
+     * made {@code cd %/} mean somewhere the script may not go rather than the
+     * top of what it can see.
      */
     private Path within(String path) {
         try {
-            Path resolved = here.resolve(path).toAbsolutePath().normalize();
+            Path resolved = path.startsWith("/")
+                    ? root.resolve(path.substring(1)).normalize()
+                    : here.resolve(path).toAbsolutePath().normalize();
             if (!resolved.startsWith(root)) {
                 throw new Denied("outside-root", path + " is outside what this port allows");
             }

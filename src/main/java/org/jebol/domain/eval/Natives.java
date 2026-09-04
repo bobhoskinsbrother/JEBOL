@@ -16564,11 +16564,8 @@ public final class Natives {
         }
 
         private static String whereReadWouldResolveIt(String path, Evaluator evaluator) {
-            if (path.startsWith("/")) {
-                return path;
-            }
             try {
-                return evaluator.files().workingDirectory() + path;
+                return evaluator.files().hostPathOf(path);
             } catch (FilePort.Denied noDirectoryToAsk) {
                 return path;
             }

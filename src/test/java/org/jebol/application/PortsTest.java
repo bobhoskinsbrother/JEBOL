@@ -142,12 +142,41 @@ class PortsTest {
         }
 
         @Test
-        @DisplayName("nor reach an absolute path")
-        void absolutePathsAreRefused(@TempDir Path directory) {
+        @DisplayName("an absolute path names the port's own root, not the machine's")
+        void absolutePathsCountFromTheGivenRoot(@TempDir Path directory)
+                throws IOException {
+
+            Files.writeString(directory.resolve("inside.txt"), "fine");
+            Interpreter interpreter = grantedFiles();
+            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+
+            assertThat(interpreter.display(interpreter.run("""
+                    to string! read %/inside.txt""")))
+                    .as("the slash counts from the root this port was given")
+                    .isEqualTo("\"fine\"");
+        }
+
+        @Test
+        @DisplayName("so a machine path reaches nothing rather than reaching out")
+        void aMachinePathReachesNothing(@TempDir Path directory) {
             Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
             ScriptOutcome outcome = interpreter.run("read %/etc/passwd");
+
+            assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
+            assertThat(outcome.errorId())
+                    .as("there is no etc/passwd under the root, and none is reached")
+                    .contains("cannot-open");
+        }
+
+        @Test
+        @DisplayName("and dots in an absolute path cannot climb past the root either")
+        void dotsInAnAbsolutePathCannotClimbOut(@TempDir Path directory) {
+            Interpreter interpreter = grantedFiles();
+            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+
+            ScriptOutcome outcome = interpreter.run("read %/../../../etc/passwd");
 
             assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
             assertThat(outcome.errorId()).contains("outside-root");
