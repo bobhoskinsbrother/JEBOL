@@ -19,7 +19,9 @@ independent adversarial passes over this target. Until they are done, work
 against `known-gaps.txt` can make JEBOL worse and be rewarded for it. Each
 carries the command that reproduces the fault.
 
-**16 to 20 are done. 21 is not, and it is the largest thing in this file.**
+**16 to 20 are done, and 21 mostly is.** What is left of 21 is four things,
+each with the reason it was left rather than done, and two of them are
+deliberate rather than outstanding.
 
 The fifteen porting goals are **mostly, not entirely, independent**, and the
 couplings are named in the goals themselves. Two that this file used to claim
@@ -392,45 +394,70 @@ sides. What it says today is goal 21, with numbers rather than examples:
 `c-parity.py` now says in its own header what it cannot see, and points here.
 Quote the two together or neither.
 
-### 21. What reaching zero would not prove — the real backlog
+### 21. What reaching zero would not prove — mostly DONE
 
 None of this is on `known-gaps.txt` and none of it can be, because the suite
 tests what functions **return** and these are all about what functions **say
-about themselves**. Each was checked side by side against `./r3-head`:
+about themselves**. `action?` appears zero times in all 67 vendored files and
+`no-refine` appears zero times, so no assertion in the suite could ever have
+caught any of it.
 
-    apply :copy [[1 2 3 4 5] true 3]   r3: [1 2 3]                      JEBOL: [1 2 3 4 5]
-    words-of :copy                     r3: [value /part range /deep ...] JEBOL: _
-    type? :append                      r3: action!                       JEBOL: native!
-    pad/left "ab" 5                    r3: raises no-refine              JEBOL: "ab   "
-    e/near after 1 / 0                 r3: [/ 0]                         JEBOL: _
-    parse 1 [end]                      r3: raises expect-arg             JEBOL: #(false)
-
-`APPLY` is the worst of them: refinements land in the wrong slots, so a
-refinement is silently dropped and you get a wrong answer with no error. Roughly
-13 of 20 probes were wrong this way, and up to 68 functions are affected. The
-suite uses `APPLY` thirteen times and never once on a native with a refinement.
-
-The scale of it is no longer an estimate. `python3 scripts/runtime-parity.py`
-asks both interpreters about every function Rebol's `lib` holds, and says:
+`python3 scripts/runtime-parity.py` asks both interpreters about every function
+Rebol's `lib` holds. When it was first written it said:
 
     582 asked, 1 absent
-    123 report a different datatype   120 action! -> native!, 3 function! -> native!
-    581 answer words-of differently   JEBOL gives none for all but one
+    123 report a different datatype
+    581 answer words-of differently
     430 answer a different spec-of length
 
-`action?` appears zero times in all 67 vendored files and `no-refine` appears
-zero times, so no assertion in the suite could ever catch any of it. Run the
-script before and after a change here; it is the only thing that will tell you
+It now says 0 absent, 3, 4 and 4, and the same handful accounts for all eleven.
+Run it before and after a change here; it is the only thing that will tell you
 whether the change worked.
 
-Unknown refinements are accepted silently on every REBOL-defined function, which
-is the whole borrowed mezzanine. Natives and actions refuse them correctly. That
-is the sharpest available answer to "does a borrowed `.reb` passing its own tests
-mean the port is right".
+**What was wrong, and what it took.** Each of these has a
+`*FromTheSourceTest` beside it and every expectation was read off `./r3-head`:
 
-The work is a sweep rather than a fix: generate every function in `lib` against
-both interpreters, diff, and fix by group. It found every one of the above in an
-afternoon.
+- **An action said it was a native.** Two things and only the first is a list:
+  `actions.reb` declares sixty, and the other fifty-seven are the type-tests
+  that `types.reb` generates, one per datatype.
+- **`words-of` answered none for 581 of 582 functions**, and `spec-of` rebuilt
+  a block from the registry that had no refinements, no order and no prose.
+  Both now read Rebol's own declarations, which is what a declaration is for.
+  `actions.reb`, `natives.reb` and `generated/gen-natives.reb` are vendored
+  beside `errors.reb`; missing that third file left 45 functions still wrong
+  and looked finished without it.
+- **`APPLY` dropped every refinement**, so `apply :copy [[1 2 3 4 5] true 3]`
+  answered the whole series. It reads the block against the function's words
+  now, which is why it had to wait for `words-of` to work.
+- **An unknown refinement was accepted on any REBOL-defined function** —
+  `f/nope 1` answering 1, `pad/left "ab" 5` padding on the right. That was
+  every function in the borrowed library and every function a script writes.
+- **`parse 1 [end]` answered false** where R3 refuses a non-series.
+- **`make block! -1`, `round/to 1 0` and `o/self: 2`** all answered where R3
+  raises.
+
+**What is left, and why each is left.**
+
+1. **`near` and `where` are blank on every raised error.** `near` is the source
+   fragment and could be built from the frame; `where` is R3's own chain of
+   internal frames — `[/ try all print do either either if -apply-]` — and
+   cannot be reproduced without reproducing that chain, which is a fact about
+   the C's control flow rather than about the language. Populating either also
+   changes the molded form of every error, so it is a wide change for a field
+   scripts rarely branch on. Worth doing deliberately, not in passing.
+2. **`compress` does not produce Rebol's bytes.** Not a level setting: 3.22.5
+   compresses with **libdeflate**, not zlib, and chooses a stored block where
+   `java.util.zip` emits a fixed-Huffman one. Matching it byte for byte means
+   porting libdeflate, which is goal 3's kind of work.
+3. **`request-color`, `request-dir` and `request-file` answer `native!` where
+   R3 answers `function!`.** Deliberate and documented in
+   `mezz/ORDER.txt`: R3 defines them in `mezz-osx-dialogs.reb`, which shells
+   out to `osascript` on macOS only, and JEBOL serves all three through the
+   WINDOWS service and its port, which works anywhere and asks for a grant
+   first. Not a defect; do not "fix" it without reading that note.
+4. **`set-cookies` reports more `/local` words than R3 does.** Both are
+   `function!`; JEBOL's FUNCTION collects set-words into `/local` that Rebol's
+   does not. One function, and the only lead left in the reflection group.
 
 ---
 

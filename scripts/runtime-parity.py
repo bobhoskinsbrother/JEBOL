@@ -22,6 +22,11 @@ The function list comes from `./r3-head`, so it is Rebol's list rather than
 JEBOL's, and a function JEBOL does not have at all shows up as ABSENT rather
 than silently dropping out of both sides.
 
+The fields are separated by a tab because `|` is a function name. Using it as
+the separator made this report `|` absent from JEBOL, which it is not -- a
+measuring tool telling a lie about the one function whose name it could not
+parse, which is the fault it exists to find in other things.
+
 Usage:
     ./gradlew compileTestJava
     python3 scripts/runtime-parity.py            # a summary and the groups
@@ -41,13 +46,13 @@ JAVA = os.path.expanduser(
 ASKING = r"""
 ask: func [w [word!] /local v t s p] [
     either not value? w [
-        print [mold w "|ABSENT|ABSENT|ABSENT"]
+        print [mold w tab "ABSENT" tab "ABSENT" tab "ABSENT"]
     ][
         v: get w
         t: either error? t: try [mold type? :v] ["?"] [t]
         s: either error? s: try [mold words-of :v] ["?"] [s]
         p: either error? p: try [length? spec-of :v] ["?"] [mold p]
-        print [mold w "|" t "|" s "|" p]
+        print [mold w tab t tab s tab p]
     ]
 ]
 """
@@ -75,7 +80,7 @@ def rebol_function_names():
 def answers_from(text):
     found = collections.OrderedDict()
     for line in text.splitlines():
-        parts = [piece.strip() for piece in line.split("|")]
+        parts = [piece.strip() for piece in line.split("\t")]
         if len(parts) == 4 and parts[0]:
             found[parts[0]] = tuple(parts[1:])
     return found
