@@ -63,7 +63,14 @@ public final class ActionNames {
         return LOOKUP.contains(nativeName) || testsADatatype(nativeName);
     }
 
-    private static boolean testsADatatype(String nativeName) {
+    /**
+     * Whether this name is a datatype's own test, such as {@code block?}.
+     *
+     * <p>Rebol generates one per datatype rather than declaring them, so they
+     * appear in none of its declaration files and their spec has to be
+     * generated here too. Every one of them reads the same.
+     */
+    public static boolean testsADatatype(String nativeName) {
         return nativeName.endsWith("?")
                 && Datatype.named(nativeName.substring(0, nativeName.length() - 1))
                         .isPresent();

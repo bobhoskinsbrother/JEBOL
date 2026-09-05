@@ -116,17 +116,31 @@ class ConversionFamilyTest {
                 """)).isEqualTo("\"[]\"");
     }
 
+    /**
+     * These two said the conversions carry no title "because this build has no
+     * autodocs", and asserted a spec of {@code [value]} with one element. A
+     * real 3.22.5 answers {@code ["Converts to tuple! value." value]}, and
+     * always did: {@code mezz-types.reb} builds each one with
+     * {@code reform ["Converts to" form type "value."]}. The tests were
+     * describing a limitation here as though it were the language.
+     */
     @Test
-    @DisplayName("each one carries no title, because this build has no autodocs")
-    void theyCarryNoTitle() {
-        assertThat(answerTo("first spec-of :to-tuple")).isEqualTo("value");
-        assertThat(answerTo("mold spec-of :to-tuple")).isEqualTo("\"[value]\"");
+    @DisplayName("each one carries the title mezz-types.reb builds for it")
+    void theyCarryAtitle() {
+        assertThat(answerTo("""
+                {Converts to tuple! value.} = first spec-of :to-tuple"""))
+                .isEqualTo("#(true)");
     }
 
     @Test
-    @DisplayName("each one takes exactly one argument")
+    @DisplayName("each one takes exactly one argument, after that title")
     void theyTakeOneArgument() {
-        assertThat(answerTo("length? spec-of :to-tuple")).isEqualTo("1");
+        assertThat(answerTo("length? spec-of :to-tuple"))
+                .as("the title and the one parameter")
+                .isEqualTo("2");
+        assertThat(answerTo("mold words-of :to-tuple"))
+                .as("WORDS-OF is the question about parameters alone")
+                .isEqualTo("\"[value]\"");
         assertThat(errorFrom("to-tuple")).isEqualTo("no-arg");
     }
 

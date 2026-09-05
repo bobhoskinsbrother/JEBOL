@@ -274,8 +274,9 @@ adapters, and nothing in the domain touches `java.io`, `java.nio.file` or
 
 ## Building
 
-Java 25, Gradle, no runtime dependencies. The shipped jar is about 1,024 KB, of
-which 860 KB is the borrowed library.
+Java 25, Gradle, no runtime dependencies. The shipped jar is about 1,163 KB,
+of which 860 KB is Rebol's borrowed library and 65 KB its function and error
+declarations, which SPEC-OF and the error catalogue are read out of.
 
 ```
 ./gradlew check          # the whole suite, about four minutes

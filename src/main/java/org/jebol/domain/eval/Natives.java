@@ -265,6 +265,32 @@ public final class Natives {
         this.errorCatalogueSource = source;
     }
 
+    /**
+     * The text of Rebol's own function declarations, handed in the same way.
+     *
+     * <p>A declaration <em>is</em> a spec: the docstring, the parameters with
+     * their types and their own docstrings, and the refinements in the order
+     * they were written with their arguments after them. SPEC-OF and WORDS-OF
+     * answer out of these rather than rebuilding something from the registry,
+     * because the registry knows the types and not the order, not the
+     * documentation, and not which refinements take no argument at all.
+     *
+     * <p>Three files, because Rebol keeps them in three places.
+     * {@code actions.reb} declares the sixty actions and {@code natives.reb}
+     * the hand-written natives; the rest are written as comments beside the C
+     * that implements them, and Rebol's build collects those into
+     * {@code generated/gen-natives.reb}. Missing that third file left 45
+     * functions -- {@code gcd}, {@code access-os}, {@code compress} and the
+     * like -- still answering a rebuilt spec with no refinements in it.
+     */
+    private String functionDeclarationSource = "";
+
+    /** Tells the natives what Rebol's own declaration files say. */
+    public void useFunctionDeclarations(String... sources) {
+        this.functionDeclarationSource = String.join("\n", sources);
+        this.declaredSpecs = null;
+    }
+
     /** The natives with a set of host services granted. */
     public static Natives standard(Set<HostService> granted) {
         Natives natives = standard();
@@ -4982,14 +5008,16 @@ public final class Natives {
                         return switch (field) {
                             case "spec" -> written.spec();
                             case "body" -> copied(written.body(), true);
+                            case "words" -> wordsNamedIn(written.spec());
                             case "types" -> typesetsOf(written.parameters(), Set.of());
                             default -> NoneValue.none();
                         };
                     }
                     if (arguments.get(0) instanceof NativeValue built) {
                         return switch (field) {
-                            case "spec" -> specBlockOf(built.parameters());
+                            case "spec" -> specOf(built);
                             case "body" -> NoneValue.none();
+                            case "words" -> wordsNamedIn(specOf(built));
                             case "types" -> typesetsOf(
                                     built.parameters(), built.declaredRefinements());
                             default -> NoneValue.none();
@@ -4998,7 +5026,8 @@ public final class Natives {
                     if (arguments.get(0) instanceof OperatorValue operator
                             && operator.underlying() instanceof NativeValue behind) {
                         return switch (field) {
-                            case "spec" -> specBlockOf(behind.parameters());
+                            case "spec" -> specOf(behind);
+                            case "words" -> wordsNamedIn(specOf(behind));
                             case "types" -> typesetsOf(
                                     behind.parameters(), behind.declaredRefinements());
                             default -> NoneValue.none();
@@ -8701,6 +8730,106 @@ public final class Natives {
             return List.of();
         }
     }
+
+    /**
+     * Every C function's spec, read out of the two declaration files.
+     *
+     * <p>Each entry is written {@code name: native [...]} or
+     * {@code name: action [...]}, so the walk is a set-word, the word saying
+     * which kind, and the block -- and the block is the spec exactly as Rebol
+     * wrote it. Anything that does not match that shape is skipped rather than
+     * guessed at: a file that changes shape should lose entries loudly, by the
+     * specs going missing, not quietly by being half read.
+     *
+     * <p>Built once per Natives and thrown away when the source changes.
+     */
+    private Map<String, BlockValue> declaredSpecs;
+
+    private Map<String, BlockValue> declaredSpecs() {
+        if (declaredSpecs != null) {
+            return declaredSpecs;
+        }
+        Map<String, BlockValue> found = new LinkedHashMap<>();
+        try {
+            TranscodeResult read = Transcoder.transcode(functionDeclarationSource);
+            List<Value> values = read.values().map(BlockValue::remaining).orElse(List.of());
+            for (int at = 0; at + 2 < values.size(); at++) {
+                if (values.get(at) instanceof WordValue named
+                        && named.datatype() == Datatype.SET_WORD
+                        && values.get(at + 1) instanceof WordValue kind
+                        && (kind.canonical().equals("native")
+                                || kind.canonical().equals("action"))
+                        && values.get(at + 2) instanceof BlockValue spec
+                        && spec.datatype() == Datatype.BLOCK) {
+                    found.putIfAbsent(named.canonical(), spec);
+                }
+            }
+        } catch (RuntimeException unreadable) {
+            found.clear();
+        }
+        declaredSpecs = Map.copyOf(found);
+        return declaredSpecs;
+    }
+
+    /**
+     * A built-in's spec: Rebol's own declaration where there is one.
+     *
+     * <p>Falls back to the block rebuilt from the registry for anything the
+     * declaration files do not name -- JEBOL's own additions, and the handful
+     * of names R3 declares somewhere other than these two files. The rebuild
+     * carries the parameters and their types and nothing else, which is what
+     * every built-in answered before.
+     */
+    private Value specOf(NativeValue built) {
+        BlockValue declared = declaredSpecs().get(built.nativeName());
+        if (declared != null) {
+            return declared;
+        }
+        if (ActionNames.testsADatatype(built.nativeName())) {
+            return THE_SPEC_EVERY_DATATYPE_TEST_HAS;
+        }
+        return specBlockOf(built.parameters());
+    }
+
+    /**
+     * What R3 gives for {@code block?}, {@code integer?} and all their kin.
+     *
+     * <p>Generated rather than declared, one per datatype, so they appear in
+     * none of the declaration files and read identically in all of them:
+     * {@code ["Returns TRUE if it is this type." value [any-type!]]}.
+     */
+    private static final BlockValue THE_SPEC_EVERY_DATATYPE_TEST_HAS =
+            BlockValue.block(List.of(
+                    StringValue.of("Returns TRUE if it is this type."),
+                    WordValue.of("value"),
+                    BlockValue.block(List.of(WordValue.of("any-type!")))));
+
+    /**
+     * The words a spec block names: its parameters and its refinements.
+     *
+     * <p>A spec is words, refinements, docstrings and blocks of accepted
+     * types, and WORDS-OF keeps the words in the order they appear. That order
+     * is the whole reason the spec is read rather than rebuilt --
+     * {@code /part range /only /dup count} cannot be recovered from a set of
+     * refinement names and a list of parameters.
+     *
+     * <p>A parameter keeps the sigil it was declared with, because the sigil
+     * is how it takes its argument and WORDS-OF is where a caller finds that
+     * out: {@code words-of :++} is {@code ['word]}, and a plain {@code word}
+     * there would say the argument is evaluated when it is not.
+     */
+    private static Value wordsNamedIn(Value spec) {
+        if (!(spec instanceof BlockValue written)) {
+            return NoneValue.none();
+        }
+        return BlockValue.block(written.remaining().stream()
+                .filter(item -> item instanceof WordValue word && NAMES_A_PARAMETER
+                        .contains(word.datatype()))
+                .toList());
+    }
+
+    private static final Set<Datatype> NAMES_A_PARAMETER = Set.of(
+            Datatype.WORD, Datatype.REFINEMENT, Datatype.LIT_WORD, Datatype.GET_WORD);
 
     /**
      * DO of a binary, run as the script it is: the header is read by

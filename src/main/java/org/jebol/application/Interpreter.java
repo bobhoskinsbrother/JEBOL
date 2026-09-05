@@ -59,6 +59,10 @@ public final class Interpreter {
         }
         String catalogue = resourceText("/org/jebol/errors.reb");
         natives.useErrorCatalogue(catalogue == null ? "" : catalogue);
+        natives.useFunctionDeclarations(
+                declarationsIn("/org/jebol/actions.reb"),
+                declarationsIn("/org/jebol/natives.reb"),
+                declarationsIn("/org/jebol/gen-natives.reb"));
         this.bounds = bounds;
         this.systemContext = natives.asContext();
         this.systemInternals = natives.systemInternals();
@@ -568,6 +572,18 @@ public final class Interpreter {
         } catch (IOException unwritable) {
             return "";
         }
+    }
+
+    /**
+     * One of Rebol's declaration files, or nothing if it is not in the jar.
+     *
+     * <p>Nothing rather than a failure, because a missing declaration costs
+     * SPEC-OF its documentation and nothing else: the function still runs. The
+     * measure that would notice is `scripts/runtime-parity.py`.
+     */
+    private static String declarationsIn(String path) {
+        String source = resourceText(path);
+        return source == null ? "" : source;
     }
 
     private static String resourceText(String path) {
