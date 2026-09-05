@@ -42,25 +42,17 @@ public final class SuiteStops {
     private static final int ENOUGH_STOPS_TO_SEE_THE_SHAPE = 10;
 
     /**
-     * An interpreter with everything granted and the suite's own files under
-     * its root, which is what the harness gives each file.
+     * The interpreter the gate runs each file in, built by {@link SuiteHost}.
+     *
+     * <p>It used to build its own, granting every service and installing only a
+     * filesystem. Granting a service is not providing one, so this reported
+     * stops on {@code get-env}, {@code list-env} and {@code call/shell} that
+     * the gate never sees, and four pieces of work in {@code goals.md} were
+     * written from them.
      */
     private static Interpreter fullyBounded() throws Exception {
-        Bounds bounds = Bounds.standard();
-        for (HostService service : HostService.values()) {
-            bounds = bounds.granting(service);
-        }
-        Interpreter interpreter = Interpreter.withBounds(bounds);
-        Path root = Files.createTempDirectory("jebol-stops");
-        Path into = root.resolve("units").resolve("files");
-        Files.createDirectories(into);
-        Path from = Path.of("src", "test", "resources", "rebol-suite", "units", "files");
-        try (var each = Files.list(from)) {
-            for (Path one : each.toList()) {
-                Files.copy(one, into.resolve(one.getFileName().toString()));
-            }
-        }
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        Interpreter interpreter = SuiteHost.installOn(
+                Interpreter.withBounds(SuiteHost.grantingEverything()));
         String dialect = String.join("\n",
                 "--assert: func [x [any-type!]][:x]",
                 "--assert-numbered: func [n [integer!] x [any-type!]][:x]",

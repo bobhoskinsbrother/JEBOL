@@ -19,13 +19,16 @@ independent adversarial passes over this target. Until they are done, work
 against `known-gaps.txt` can make JEBOL worse and be rewarded for it. Each
 carries the command that reproduces the fault.
 
-The fifteen porting goals are **mostly, not entirely, independent**. Known
-couplings are named in the goals themselves; the ones this file used to claim
-did not exist are goal 1 to goal 3, goal 5 to goal 8, goal 9 to goal 8, and goal
-15 double-counting eight of goal 4's assertions. Goals 1, 3, 4, 6 and 14 are
-also one question asked five times: what the capability catalogues claim is
-present. `system/codecs` is longer here than in a real 3.22.5, so JEBOL enters
-blocks the oracle skips and then raises inside them.
+The fifteen porting goals are **mostly, not entirely, independent**, and the
+couplings are named in the goals themselves. Two that this file used to claim
+turned out not to exist: goal 5 and goal 9 were both said to wait on goal 8, and
+neither does — that came from a measuring tool inventing environment stops, and
+goal 20 has the story. The real ones are goal 1 to goal 3, and goal 15
+double-counting eight of goal 4's assertions.
+
+Goals 1, 3, 4, 6 and 14 are also one question asked five times: what the
+capability catalogues claim is present. `system/codecs` is longer here than in a
+real 3.22.5, so JEBOL enters blocks the oracle skips and then raises inside them.
 
 ---
 
@@ -74,10 +77,17 @@ fix.
     ./gradlew compileTestJava
     ~/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.4+7/Contents/Home/bin/java \
       -cp build/classes/java/main:build/classes/java/test:build/resources/main:build/resources/test \
-      org.jebol.suite.SuiteStops 7
+      org.jebol.suite.SuiteStops 1
 
 (The system `java` is too old for the class files; use the JDK Gradle uses,
-above.)
+above. The argument is the smallest gap count worth reporting, and it is worth
+passing 1: a run at 7 silently hides every file owing fewer than seven, which
+is how eighteen files went unlooked-at while this file claimed to account for
+all of them.)
+
+Both tools build their interpreter through `SuiteHost`, which is the one the
+gate uses. They did not always, and both reported blockers the gate never sees;
+goal 20 has what that cost.
 
 For a one-off comparison, `org.jebol.suite.SweepRunner <script.r3>` runs a
 script through JEBOL with everything granted, which is what the harness gives
@@ -312,26 +322,40 @@ gap. It is in the same file-and-process corner but a different defect: it loads
 a 40,000-character string through a subprocess and checks the buffer survives
 being extended.
 
-### 20. Fix the measuring tools before trusting them — half a day
+### 20. Fix the measuring tools before trusting them — DONE for the tools
 
-**`SuiteStops` under-provisions the interpreter and invents stops.** It grants
-every `HostService` but installs only the file system, where `RebolSuiteTest`
-also installs `useEnvironment(new ProcessEnvironment())` and
-`useProcesses(new JavaProcesses())`. Granting a service is not providing one.
+`SuiteStops` and `SweepRunner` each granted every `HostService` and installed
+only a filesystem, where the gate also installs `useEnvironment` and
+`useProcesses`. Granting a service is not providing one, so both reported stops
+the gate never sees, every one reading "given no environment to read" or "given
+no way to start a program". `SweepRunner`'s own comment claimed it "grants what
+the harness grants".
 
-    grep -n "use[A-Z][a-zA-Z]*(" src/test/java/org/jebol/suite/RebolSuiteTest.java
-    grep -n "use[A-Z][a-zA-Z]*(" src/test/java/org/jebol/suite/SuiteStops.java
+There is now one definition of the interpreter a suite file runs in,
+`SuiteHost`, and the gate and both tools call it. Copying it a fourth time is
+the mistake that made this, so the arrangement matters more than the two lines:
+a capability added there reaches all three at once. `SuiteHostTest` asks the
+three things granting alone does not give, and it is not decoration — removing
+those two lines again turns three of its five red.
 
-So every stop it reports reading "given no environment to read" or "given no way
-to start a program" is an artefact. Under the real gate `get-env`, `list-env` and
-`call/shell/wait` all work, and `port-test.r3` has no stops at all. Goals 5, 8, 9
-and 15 were partly derived from that output and are corrected in place below.
-`SweepRunner` needs the same check.
+**What the fixed tool then said**, which is not what the old one said and not
+what this file said either:
 
-**`scripts/c-parity.py` cannot fail on the defects that matter.** It compares two
-files rather than two interpreters, and argument counts rather than argument
-names, so its clean report is true and says nothing about goal 21. A
+    port-test.r3         2 stops, not three and not none
+    module-test.r3       9 stops, none of them the environment or CALL
+    os-test.r3           7 stops, all real
+    evaluation-test.r3   none at all
+
+Goals 5, 8, 9 and 15 are corrected in place from that, and the corrections are
+measurements rather than readings. Goal 5 had said three stops, then none; it is
+two, and the first is the sandbox refusing to walk up to a working directory
+outside its root rather than anything about the environment.
+
+**Still open: `scripts/c-parity.py` cannot fail on the defects that matter.** It
+compares two files rather than two interpreters, and argument counts rather than
+argument names, so its clean report is true and says nothing about goal 21. A
 runtime arm that asks the running interpreter would have caught `action?` alone.
+That is the rest of this goal and it is not done.
 
 ### 21. What reaching zero would not prove — the real backlog
 
@@ -368,7 +392,7 @@ afternoon.
 
 ---
 
-### 1. The remaining codecs — 111
+### 1. The remaining codecs — 109
 
 `codecs-test.r3`. The largest single file, and it is not one problem but about
 eleven, each an `if find codecs 'name [...]` block that raises and takes its
@@ -465,16 +489,21 @@ branches in `Natives.java`. `crypt-port-camelia-test.r3`,
 `port-test.r3`. The file and directory schemes work now
 (`SeekableFilePort.java`); these are the remainder.
 
-**This goal used to list three stops. Under the real gate there are none.** The
-two `get-env "PWD"` stops were artefacts of `SuiteStops` not installing the
-environment adapter — see goal 20 — and the environment works when
-`RebolSuiteTest` runs the file. Re-derive the third (`open %issue-2447`) with a
-fixed tool before believing it.
+**Two stops, re-derived with the fixed `SuiteStops` (goal 20).** This goal has
+now said three different things about them, so here is the measured answer:
 
-So all 38 are wrong answers rather than blockers, and the whole file is
-sweepable: `scripts/sweep.py port-test.r3`. 23 are in "file port" and 14 in
-"directory port". There is no dependency on goal 8; that was invented by the
-same artefact.
+    pwd = to-rebol-file get-env "PWD"   -> ../ is outside what this port allows
+    open %issue-2447                    -> a port that could not be opened
+
+The first is not an environment problem, which is what it looked like while the
+tool had no environment installed. `get-env "PWD"` answers; the working
+directory it names sits outside the temporary root the harness confines the run
+to, and the sandbox refuses to walk up to it. Decide what a rooted interpreter
+should say its working directory is — that is the question, and it is not goal
+8's.
+
+The rest are wrong answers, so sweep the file: `scripts/sweep.py port-test.r3`.
+23 are in "file port" and 14 in "directory port".
 
 ### 6. The checksum port — 34
 
@@ -524,7 +553,7 @@ not happen under the real gate, where `get-env`, `list-env` and `call/shell/wait
 all work. See goal 20. This is nine assertions in one file and nothing waits on
 it.
 
-Two real things:
+Seven stops, all of them here, and both causes are real:
 
 - `set-env` and `get-env` refuse a `word!` and want a `string!`. A real Rebol
   takes either.
@@ -533,18 +562,22 @@ Two real things:
   reports. Decide what a JVM-hosted Rebol should do here and say so in the
   commit.
 
-### 9. Modules and IMPORT — 19
+### 9. Modules and IMPORT — 17
 
-`module-test.r3` stops on `write modules-dir/mymodule.reb`, because
-`system/options/modules` is none.
+`module-test.r3` stops nine times, and every one of them comes back to
+`system/options/modules` being none:
 
-**The stated cause was wrong.** This goal said the environment is unreadable
-under the sandbox so `sys-start.reb` cannot work the directory out, and that this
-therefore depends on goal 8. Under the real gate `get-env "HOME"` works — the
-"no environment" reading came from `SuiteStops`, which does not install the
-adapter (goal 20). Re-derive the actual cause with a fixed tool before starting.
-The same applies to the three `call`-dependent stops: `call/shell/wait` works
-under `RebolSuiteTest`.
+    write modules-dir/mymodule.reb {...}  -> cannot select word! from none!
+    import mymodule                        -> cannot select file! from none!
+    same? lib-local system/contexts/user   -> lib-local has no value
+
+**The stated cause was wrong twice over.** This goal used to say the environment
+is unreadable under the sandbox so `sys-start.reb` cannot work the directory
+out, and that this therefore depends on goal 8. Re-derived with the fixed
+`SuiteStops` (goal 20): `get-env "HOME"` answers, `call/shell/wait` runs, and
+none of the nine stops is about either. Something else leaves
+`system/options/modules` unset — start by reading what `sys-start.reb` does with
+it and finding which step does not happen here.
 
 After that: `import`, which is the substance of the goal.
 
@@ -559,7 +592,7 @@ not the problem — JEBOL lists all thirteen curves a real Rebol does, secp192r1
 through curve448 — so `ecdh/init` is not answering a key for at least one of
 them. `EllipticCurveKey.java` is the JEBOL side; the C is `n-crypt.c`.
 
-### 11. Sweepable files that run clean — 144 between them
+### 11. Sweepable files that run clean — 135 between them
 
 None of these stops, so every entry is a wrong answer and `scripts/sweep.py`
 will show it. Small enough to take in one sitting each:
@@ -570,17 +603,17 @@ will show it. Small enough to take in one sitting each:
 | `unicode-test.r3` | 21 | one stop: `repeat` refuses a `string!` count |
 | `time-test.r3` | 15 | all in "time" |
 | `map-test.r3` | 12 | 10 are "set operations with map!" |
-| `make-test.r3` | 12 | 2 of them are goal 16's, not work |
+| `make-test.r3` | 10 | |
 | `file-test.r3` | 12 | one stop: `read file://temp.txt` — the `file://` URL scheme |
 | `thru-cache-test.r3` | 10 | |
 | `parse-test.r3` | 9 | "Other parse issues" |
 | `vector-test.r3` | 9 | |
-| ~~`power-test.r3`~~ | ~~8~~ | **do not work these — goal 16.** All eight are `--red--` assertions a real Rebol fails too |
-| `lexer-test.r3` | 7 | |
+| `lexer-test.r3` | 8 | one is `NULLs inside loaded string`, which loads through a subprocess |
 
-So this goal is 136 of real work, not 144. The `power-test.r3` row is the trap
-goal 16 exists to remove: making those eight pass means making JEBOL disagree
-with the oracle, and the ratchet will go green when you do it.
+`power-test.r3` used to be a row here with eight entries, and working it would
+have made JEBOL disagree with the oracle. Goal 16 took them off: they are
+`--red--` assertions that a real Rebol fails too. Two `make-test.r3` entries
+went the same way.
 
 ### 12. Two Java exceptions escaping to the top — 7
 
@@ -610,8 +643,8 @@ finding out which before deciding what to do about it.
 
 What is left when the fourteen above are taken out. The sum closes exactly
 against the gap list as it stood when this was written, which is the point of
-the goal: 111 + 55 + 45 + 40 + 38 + 34 + 29 + 9 + 19 + 27 + 144 + 7 + 8 + 9
-= 575, leaving 40. If that no longer matches what
+the goal: 109 + 55 + 45 + 40 + 38 + 34 + 29 + 9 + 17 + 27 + 135 + 7 + 8 + 9
+= 562, leaving 40. If that no longer matches what
 `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt` says, the
 difference is work someone has done and a size above is stale — re-derive per
 file rather than trusting the table.
@@ -639,23 +672,18 @@ and `scripts/sweep.py` will put the two answers side by side. That makes this
 the cheapest goal per assertion on the list and a reasonable place to start
 cold, because each one is small enough to hold in your head whole.
 
-Two appeared to stop, and one of those was my tool lying:
+**One stop, not two.** Re-derived with the fixed `SuiteStops` (goal 20):
 
-    evaluation-test.r3   call/shell/wait ... -> no way to start a program
-    task-test.r3         to task! [...]      -> cannot use to task! on block!
+    task-test.r3   to task! [...]   -> cannot use to task! on block!
 
-**The first is not a stop.** `call/shell/wait` works under `RebolSuiteTest`,
-which installs the process adapter; `SuiteStops` does not, and reported a stop
-that the gate never sees. See goal 20. The line this file used to carry — "CALL
-is the same missing capability as three of goal 9's stops, do it once and both
-move" — described a coupling that does not exist.
+`task!` is a datatype word here without a datatype behind it, which is recorded
+in `TODO.md` and is a larger decision than four assertions warrant on its own.
 
-The second is real: `task!` is a datatype word here without a datatype behind
-it, which is recorded in `TODO.md` and is a larger decision than four assertions
-warrant on its own.
-
-`evaluation-test.r3` also has three assertions that are not in this count at all,
-because they were cut out of the vendored file. They are goals 18 and 19.
+The `evaluation-test.r3` stop this goal used to name — `call/shell/wait` giving
+"no way to start a program" — was the tool's own answer and never the gate's,
+and the line about CALL being "the same missing capability as three of goal 9's
+stops" described a coupling that does not exist. `evaluation-test.r3` now stops
+nowhere and owes one entry.
 
 The eight crypt-port entries are listed here for the arithmetic only. Do them
 with goal 4; on their own they are four algorithms with nowhere to run.

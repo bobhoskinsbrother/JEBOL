@@ -198,53 +198,8 @@ class RebolSuiteTest {
      * cannot reach anything the build did not make.
      */
     private static Interpreter withAHost() {
-        Bounds bounds = Bounds.standard();
-        for (HostService service : HostService.values()) {
-            bounds = bounds.granting(service);
-        }
-        Interpreter interpreter = Interpreter.withBounds(bounds);
-        try {
-            java.nio.file.Path root = java.nio.file.Files.createTempDirectory("jebol-suite");
-            layOutTheFilesTheSuiteReads(root);
-            interpreter.useFileSystem(FileSystemPort.rootedAt(root));
-        } catch (java.io.IOException noDirectory) {
-            throw new java.io.UncheckedIOException(noDirectory);
-        }
-        interpreter.useEnvironment(new ProcessEnvironment());
-        interpreter.useProcesses(new org.jebol.adapter.host.JavaProcesses());
-        return interpreter;
-    }
-
-    /**
-     * Puts every vendored data file where the tests look for it.
-     *
-     * <p>The run is confined to a directory made for it, which is what stops
-     * a test that writes one from reaching anything the build did not make.
-     *
-     * <p>Named individually once, six of them, while seventy-two sat in the
-     * repository. Every test that read one of the other sixty-six answered
-     * {@code cannot-open} and took the rest of its block with it -- 191
-     * assertions that were never run and read as failures of the port.
-     * Copying the directory means a file that arrives is a file the tests
-     * can find, without anybody remembering to add a line.
-     */
-    private static void layOutTheFilesTheSuiteReads(java.nio.file.Path root)
-            throws java.io.IOException {
-
-        java.nio.file.Path into = root.resolve("units").resolve("files");
-        java.nio.file.Files.createDirectories(into);
-        java.nio.file.Path from = java.nio.file.Path.of(
-                "src", "test", "resources", "rebol-suite", "units", "files");
-        if (!java.nio.file.Files.isDirectory(from)) {
-            return;
-        }
-        try (java.util.stream.Stream<java.nio.file.Path> each =
-                java.nio.file.Files.list(from)) {
-            for (java.nio.file.Path one : each.toList()) {
-                java.nio.file.Files.copy(one, into.resolve(one.getFileName().toString()),
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            }
-        }
+        return SuiteHost.installOn(
+                Interpreter.withBounds(SuiteHost.grantingEverything()));
     }
 
     private static void runFile(SuiteFile file) {
