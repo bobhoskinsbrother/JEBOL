@@ -1162,17 +1162,36 @@ public final class Evaluator {
      *
      * <p>{@code copy/part} takes two arguments where {@code copy} takes one,
      * so the refined form is registered under its own name and looked up
-     * here. A user function needs none of this: its refinements are
-     * parameters and its arity already accounts for them.
+     * here. A function written in REBOL needs none of that: its refinements
+     * are parameters and its arity already accounts for them.
      *
      * <p>A refinement no native has raises rather than being dropped. This
      * fell back to the plain native until pinning that {@code parse/all}
      * must raise, which meant every misspelled refinement in every script
      * ran quietly as though it had been left off, and code written against
      * an older REBOL went on looking like it worked.
+     *
+     * <p>It said the same of a REBOL-defined function and drew the wrong
+     * conclusion: needing no <em>lookup</em> is not needing no <em>check</em>.
+     * A refinement that is not one of its parameters is not a parameter it can
+     * fill, and every one of those ran quietly -- {@code f/nope 1} answering 1,
+     * {@code pad/left "ab" 5} padding on the right. That is every function in
+     * the borrowed library and every function a script writes.
      */
     private Value refined(Value callee, List<String> refinements) {
-        if (!(callee instanceof NativeValue built) || refinements.isEmpty()) {
+        if (refinements.isEmpty()) {
+            return callee;
+        }
+        if (callee instanceof FunctionValue written) {
+            for (String refinement : refinements) {
+                if (!declaresRefinement(written, refinement)) {
+                    throw Raised.of(EvaluationFailure.NO_REFINE,
+                            "this function has no /" + refinement + " refinement");
+                }
+            }
+            return callee;
+        }
+        if (!(callee instanceof NativeValue built)) {
             return callee;
         }
         for (String refinement : refinements) {
@@ -1186,6 +1205,13 @@ public final class Evaluator {
             }
         }
         return built.askedFor(Set.copyOf(refinements));
+    }
+
+    /** Whether a REBOL-defined function takes this refinement. */
+    private static boolean declaresRefinement(FunctionValue written, String refinement) {
+        return written.parameters().stream()
+                .anyMatch(parameter -> parameter.kind() == ParameterKind.REFINEMENT
+                        && parameter.name().equalsIgnoreCase(refinement));
     }
 
     private StepOutcome evaluateSetPath(Frame frame, BlockValue path) {
