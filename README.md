@@ -132,31 +132,42 @@ Beside it, and outliving it:
 
 ## Where it has got to, and what is left
 
-**9,084 of the 10,100 assertions in Rebol's own test suite pass.** The other
-1,016 are accounted for: 1,014 named line by line in `known-gaps.txt`, and two
-in `fails-on-rebol-too.txt`, which are assertions a real Rebol fails as well, and the useful split is not
-by feature but by whether they ran at all.
+**9,401 of the 10,100 assertions in Rebol's own test suite pass**, and every
+one of the rest is accounted for by name. 615 fail and are listed line by line
+in `known-gaps.txt`. 84 are in `fails-on-rebol-too.txt` and are not run at all:
+each is an assertion the Rebol this is measured against does not run either,
+usually one arm of an `either error? try [...]` whose other arm is the one
+taken, and each line carries the session that settled it.
 
-**510 of them never ran.** A suite file is a script, so an assertion that
-raises takes the rest of its block with it, and half the backlog is assertions
-standing behind an earlier failure rather than failures in their own right.
-171 sit behind a single unbound word. Fixing one thing routinely moves dozens,
-and the count moves in steps rather than one at a time.
+The useful split is not by feature but by whether they ran at all. A suite file
+is a script, so an assertion that raises takes the rest of its block with it,
+and a good share of the backlog is assertions standing behind an earlier
+failure rather than failures in their own right. Fixing one thing routinely
+moves dozens, and the count moves in steps rather than one at a time — the file
+and directory schemes took thirty-six with them in a single commit.
 
-**506 ran and gave the wrong answer.** These are the real work, and they are
-spread thin rather than piled up:
+Where they sit now:
 
 ```
-  49  image!, and almost none of it about file formats: 32 are the image as a
-      series, 20 are INDEX?/INDEXZ?/AT/ATZ, and 3 are save and load
-  35  ENBASE and DEBASE
-  32  the port model
-  31  unicode edges
-  23  FUNCTION and its refinements
-  21  TIME arithmetic and rounding
-  18  MAP and the set operations over it
-  and a long tail across file, make, module, error, date, format
+ 111  the remaining codecs — eleven separate ones, each an `if find codecs
+      'name [...]` block that raises and takes its group with it
+  55  image!, all of them wrong answers rather than blocks: the image as a
+      series is 31 of them
+  45  Brotli and LZMA, which have no JDK equivalent
+  40  the crypt port, all behind one unregistered scheme
+  38  what is left of the file ports
+  34  the checksum port
+  29  ENBASE, DEBASE and their parts
+  29  FUNCTION and its refinements
+  27  the elliptic curves
+  and a long tail across unicode, time, map, make, module and parse
 ```
+
+**`goals.md` breaks all of it into fifteen independent pieces**, each with its
+size, what blocks it, which C file to read and how to check the answer against
+a real Rebol. It also carries the working method, which is the part that took
+longest to get right: two authorities, two measuring tools, a ratchet that only
+shrinks, and a rule for the assertions a real Rebol does not run either.
 
 Bigger things that are known rather than counted:
 
@@ -170,21 +181,21 @@ Bigger things that are known rather than counted:
 - **PDF belongs in an optional extension**, not in the jar. **SWF is not worth
   writing at all**, and both of those decisions are worth more than the
   assertions they cost.
-- **Brotli, LZMA, LZW and CRUSH have no JDK equivalent.** `java.util.zip`
-  gives Deflate, GZIP and ZIP and stops there, so those 80 assertions mean
-  four compressors written out or four assertions marked as not-in-this-build.
+- **CRUSH and LZW are written out here**, by hand from `u-crush.c` and
+  `u-lzw.c`, because they are Rebol's own and `java.util.zip` gives Deflate,
+  GZIP and ZIP and stops. Brotli and LZMA are still the choice between writing
+  them and marking them not-in-this-build, which is a branch Rebol's own suite
+  is written to accept.
 - **DRAW renders 22 of R3's 36 commands.** `image` and `text` are the two whose
   absence makes a page look wrong rather than plain.
 - **TLS loads but does not connect.**
-- **69 of Rebol's 142 error ids can be raised**, so a script that catches by id
+- **73 of Rebol's 142 error ids can be raised**, so a script that catches by id
   can still meet one JEBOL has no way to produce.
-- **Ten of R3's scheme names are not registered**, `file` and `dir` among them.
-  JEBOL reaches files through a host grant instead, which may be the design or
-  may be a gap in the CLI; that is worth settling before the schemes are
-  written.
+- **Seven of R3's scheme names are not registered.** `file`, `dir` and
+  `checksum` are served now; `crypt` is the next that matters.
 - **`task!` is a datatype word and not yet a datatype.**
 
-`TODO.md` carries all of it with the numbers, and every number in it was
+`TODO.md` carries the rest with the numbers, and every number in it was
 checked by running it rather than by remembering it.
 
 ## Embedding
@@ -237,7 +248,11 @@ corpus/          published REBOL examples with their published results
   sources/       fourteen complete programs, fetched byte for byte
 src/test/resources/rebol-suite/
                  Rebol's own test files, and the gap list
+scripts/         the measures, which are run rather than remembered:
+                 c-parity, error-parity, and sweep.py for diffing one suite
+                 file against a real Rebol assertion by assertion
 docs/            decisions, the porting guide, findings about Rebol itself
+goals.md         the remaining suite failures, broken into pieces of work
 ```
 
 The dependency rule points inward and is enforced by `DependencyRuleTest`
@@ -251,7 +266,7 @@ Java 25, Gradle, no runtime dependencies. The shipped jar is about 1,024 KB, of
 which 860 KB is the borrowed library.
 
 ```
-./gradlew check          # ~16,000 tests, about five minutes
+./gradlew check          # 16,602 tests, about four minutes
 ./gradlew browserCheck   # the second gate: a real browser, pixel for pixel
 ```
 
@@ -268,7 +283,10 @@ time it fetches a driver, and the ordinary gate should need neither.
 
 ## Reading further
 
-- `TODO.md` — what is left, with the numbers, each one checked by running it
+- `goals.md` — the remaining suite failures as fifteen pieces of work, and
+  the method for doing any of them: start here to pick something up
+- `TODO.md` — what is left beyond the suite, with the numbers, each one
+  checked by running it
 - `docs/decisions.md` — what has been decided, why, and what it rules out
 - `docs/porting-guide.md` — how to port a function, and what the authorities are
 - `docs/rebol-findings.md` — what reading Rebol's source turned up about Rebol

@@ -4,12 +4,12 @@ Only work that is left. History lives in git and in `docs/`. How to port a
 function, what the authorities are and what the regression floors say live in
 `docs/porting-guide.md`, because they are guidance rather than work.
 
-Every number below was checked on 2026-08-31 by running it.
+Every number below was checked on 2026-09-05 by running it.
 
 ## What the measures say now
 
 The first five are clean. Every assertion Rebol's 67 vendored files write is
-now run -- Goal 1, and it is done. The sixth is new and is not clean.
+now run -- Goal 1, and it is done. The sixth is not clean.
 
 | Measure | Reads |
 | --- | --- |
@@ -17,11 +17,18 @@ now run -- Goal 1, and it is done. The sixth is new and is not clean.
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
-| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 882 failing and every one named in `known-gaps.txt` |
-| `scripts/error-parity.py` | **69 of Rebol's 142 error ids can be raised. 73 cannot** |
+| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 9,401 pass, **615 fail** and are named in `known-gaps.txt`, and 84 are in `fails-on-rebol-too.txt` and not run |
+| `scripts/error-parity.py` | **73 of Rebol's 142 error ids can be raised. 69 cannot** |
 
-`./gradlew check` is 16,095 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 16,602 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception.
+
+**The 615 remaining suite failures are broken into fifteen independent
+pieces in `goals.md`**, each with its size, what blocks it, where the C is and
+how to verify. That file also carries the working method: the two authorities,
+the two measuring tools (`scripts/sweep.py` and `org.jebol.suite.SuiteStops`),
+the ratchet, and when an assertion belongs in `fails-on-rebol-too.txt` instead.
+Start there rather than here for anything about the suite.
 
 ---
 
@@ -94,12 +101,12 @@ door, and the reader refuses to answer one.
 
 ## What this leaves
 
-`known-gaps.txt` holds 882 entries, from 1,032 over 25 files. The list grew
+`known-gaps.txt` holds 615 entries, from 1,032 over 25 files. The list grew
 because the suite did. **None of those failures was new when it appeared: they
 were not passing, they were not being asked.** They are the real porting
-backlog and the honest measure of the port, and the list only ever shrinks --
-1,033 came off with the MAKE and TO work, with COPY, with bitsets, with the
-checksum port and with the binary dialect.
+backlog and the honest measure of the port, and the list only ever shrinks.
+
+They are broken into workable pieces in `goals.md`.
 
 ## What the suite does not ask
 
@@ -213,7 +220,7 @@ found two things that four separate readings of the C had not. See
 `too-long` is one of Rebol's error ids and JEBOL simply did not have it. That
 was found by needing it, which is no way to find things, so the whole
 catalogue was compared: **`src/boot/errors.reb` names 142 ids and JEBOL can
-raise 69 of them.**
+raise 73 of them.**
 
 ```
 Access    32   ports, files, network, security -- areas JEBOL reaches through
@@ -275,16 +282,18 @@ already in that allocation path, and it costs about 2ms of the 72.
 `#(datatype!)` on both, but `make task! [1 + 1]` gives `#(task!)` on a real
 Rebol and `cannot-use` here. It is the last one that is not really there.
 
-**Ten scheme names R3 registers and JEBOL does not.**
+**Seven scheme names R3 registers and JEBOL does not.**
 
 ```
-callback  checksum  clipboard  crypt  dir  file  midi  serial  system  udp
+callback  clipboard  crypt  midi  serial  system  udp
 ```
 
-`file` and `dir` are the two that matter. JEBOL reaches files through the
-host-grant system instead, and the command-line REPL grants only WINDOWS, so
-`read %TODO.md` answers `no-service` there. Whether that is the design or a
-gap in the CLI is worth settling before the schemes are written.
+`file`, `dir` and `checksum` are served now. `crypt` is the one that matters
+next and is goal 4 of `goals.md`, worth forty suite assertions.
+
+Still unsettled, and older than the schemes: the command-line REPL grants only
+WINDOWS, so `read %TODO.md` answers `no-service` there. Whether that is the
+design or a gap in the CLI has never been decided.
 
 **TLS loads but does not connect.**
 
@@ -335,7 +344,8 @@ anything.
 
 # Goal 9. The assertions that never run -- MOSTLY DONE
 
-**Was 510 of 1,016 never asked. Now 463 of 965.** The harness cut a run of
+**Was 510 of 1,016 never asked. Now 463 of 965, and the total has since come
+down to 615 -- see `goals.md`.** The harness cut a run of
 setup at the next *top-level* dialect word, and codecs-test.r3 is a sequence
 of `if find codecs 'wav [...]`, `if find codecs 'der [...]` whose dialect
 words are all nested inside those blocks. The whole tail of the file was one
@@ -358,16 +368,20 @@ Each expression is its own step now. Four things had to be right:
 
 ## What is left of it
 
-**450 assertions are still behind "the block it is written in ended first".**
-These are not the harness cutting too coarsely: they are blocks whose own
-earlier line raised, which is what a script does. The largest are
-handle-test.r3 (47), checksum-test.r3 (28), crypt-port-test.r3 (26) and the
-four compression groups (72), and every one of those is a feature this build
-has not got rather than a slicing fault.
+**A large share of what is left is still behind "the block it is written in
+ended first".** These are not the harness cutting too coarsely: they are blocks
+whose own earlier line raised, which is what a script does. Two of the four
+compression groups have since gone -- CRUSH and LZW are ported -- and the file
+and directory schemes took most of the port and checksum blocks with them.
+What remains is enumerated per file in `goals.md`, and
+`org.jebol.suite.SuiteStops` prints it fresh.
 
 Worth checking a sample against `./r3-head` before doing more here: if the
 same line raises there, the assertions behind it belong in
-`fails-on-rebol-too.txt` rather than in the gap list.
+`fails-on-rebol-too.txt` rather than in the gap list. Two already have, both
+of them a group opening with `either error? try [compress "test" 'crush]` --
+the first branch only runs on a build that has not got the algorithm, and this
+build now has it.
 
 # Goal 8. LLM-friendly MCP tools
 
