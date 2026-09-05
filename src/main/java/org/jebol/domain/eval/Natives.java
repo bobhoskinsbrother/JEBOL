@@ -2679,6 +2679,9 @@ public final class Natives {
                         case BlockValue block when block.datatype() == Datatype.BLOCK
                                 || block.datatype() == Datatype.PAREN ->
                                 evaluator.evaluateOrRaise(block, context);
+                        case StringValue named when named.datatype() == Datatype.FILE
+                                || named.datatype() == Datatype.URL ->
+                                runAsAScript(named, evaluator);
                         case StringValue text -> {
                             try {
                                 yield evaluator.evaluateSource(text.text());
@@ -8744,6 +8747,32 @@ public final class Natives {
         }
     }
 
+    /**
+     * DO of a file or a URL, which Rebol does not write in C either.
+     *
+     * <p>{@code n-control.c} sends {@code REB_FILE}, {@code REB_URL},
+     * {@code REB_STRING} and {@code REB_BINARY} to
+     * {@code Do_Sys_Func(SYS_CTX_DO_P, ...)}, and that is {@code sys/do*} in
+     * the borrowed {@code sys-base.reb}. It loads the file with its header,
+     * runs its NEEDS, interns it, and evaluates it with the working directory
+     * moved to the file's own and put back afterwards. None of that is worth
+     * writing again in Java when the file that does it is already loaded.
+     *
+     * <p>Only the two name-like types come here. A string and a binary keep the
+     * routes they had: a string is source rather than a script, and reaching
+     * {@code do*} with one would give it a header and a NEEDS pass it has never
+     * had here.
+     *
+     * <p>Without this a file matched the {@code StringValue} case, since a file
+     * is one, and the file's own name was evaluated as source --
+     * {@code do %units/files/unset.r3} raised {@code no-value} on the word
+     * {@code units}.
+     */
+    private static Value runAsAScript(StringValue named, Evaluator evaluator) {
+        Value doStar = systemInternalFunction(evaluator.systemContext(), "do*");
+        return evaluator.applyFunction(doStar, List.of(named));
+    }
+
     /** Whether this interpreter's version reaches what needs: asks for. */
     private static boolean interpreterMeets(TupleValue wanted, Evaluator evaluator) {
         Value version = pathInto(evaluator.systemContext(), "system", "version");
@@ -9873,11 +9902,10 @@ public final class Natives {
             return false;
         }
         for (Value item : items) {
-            if (!(item instanceof WordValue word) || !word.isBound()
-                    || !word.binding().knows(word.canonical())) {
+            ContextSlot slot = slotNamedInAList(item);
+            if (slot == null) {
                 continue;
             }
-            ContextSlot slot = word.binding().slotFor(word.canonical());
             if (values && carriesProtection(slot.value())) {
                 setProtection(slot.value(), protectedNow,
                         refinements.contains("deep"));
@@ -9900,12 +9928,48 @@ public final class Natives {
     }
 
     /**
+     * The slot one entry of a /WORDS or /VALUES block names.
+     *
+     * <p>{@code natives.reb} says {@code /words "Process list as words (and
+     * path words)"}, and the parenthetical is the part that matters: an entry
+     * may be {@code o/a} as well as {@code a}. A path is resolved to the field
+     * it names rather than to the word holding the object, so
+     * {@code protect/words [o/a]} refuses {@code o/a: 11} and still allows
+     * {@code o: 12}.
+     *
+     * <p>Null for anything that names no slot -- not a word or a path, unbound,
+     * or a path through a field that is not there. Rebol raises nothing for any
+     * of those and neither does this.
+     *
+     * <p>Skipping paths here was silent, because the call answers the block it
+     * was given whatever it did with it. Rebol's own {@code protect-system}
+     * protects every word of SYSTEM and then hands back the few a script must
+     * write with {@code unprotect/words [system/script]}; with that ignored,
+     * {@code sys/do*} could not record the script it was running and DO of a
+     * file raised {@code locked-word}.
+     *
+     * <p>A path is treated exactly as a word once resolved, /DEEP included,
+     * which is what R3 does.
+     */
+    private static ContextSlot slotNamedInAList(Value item) {
+        if (item instanceof BlockValue path && isAPath(path)) {
+            return fieldNamedBy(path.remaining());
+        }
+        if (item instanceof WordValue word && word.isBound()
+                && word.binding().knows(word.canonical())) {
+            return word.binding().slotFor(word.canonical());
+        }
+        return null;
+    }
+
+    /**
      * Protects or unprotects a value, and its contents when asked.
      *
      * <p>Three separate things carry protection: a word's slot, an
      * object's fields and a series' storage. Protecting the word that
      * holds a block does not protect the block, which is what makes
      * `protect b` and `protect 'b` different requests.
+     *
      */
     private static void setProtection(Value target, boolean protectedNow, boolean deeply) {
         setProtection(target, protectedNow, deeply, false);

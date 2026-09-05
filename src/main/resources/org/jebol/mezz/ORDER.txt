@@ -101,6 +101,16 @@ codec-unixtime.reb
 codec-utc-time.reb
 codec-wav.reb
 
+# prot-mysql.reb sits here, before the system object is sealed, rather than
+# with the other protocols below it. It ends with
+#     put system/catalog/errors 'MySQL make object! [...]
+# and PROTECT-SYSTEM protects system/catalog deeply, so loading it afterwards
+# leaves the file stopping on that line and JEBOL without the MySQL error
+# category. Rebol never meets this: prot-mysql.reb is one of the files it
+# imports on demand long after boot, and JEBOL boots it only because it has
+# no IMPORT yet.
+prot-mysql.reb
+
 # -- last of what Rebol boots, because that is what it is for ----------
 #
 # mezz-tail.reb is the last file in Rebol's own mezz-lib-files list, and it
@@ -165,7 +175,6 @@ dial-text.reb
 prot-daytime.reb
 prot-http.reb
 prot-mail.reb
-prot-mysql.reb
 prot-pop3.reb
 prot-rdap.reb
 prot-smtp.reb

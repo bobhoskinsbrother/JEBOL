@@ -122,8 +122,6 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #229
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #230
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #231
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #232
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #43
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #45
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #51
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #54
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #62
@@ -326,9 +324,6 @@ error-test.r3 / Error issues / issue-553 #38
 error-test.r3 / Error issues / protected catalog #42
 error-test.r3 / Error issues / protected catalog #43
 evaluation-test.r3 / do script / do needs #44
-evaluation-test.r3 / do script / script returning UNSET value #40
-evaluation-test.r3 / do script / script with quit #42
-evaluation-test.r3 / do script / script with quit #43
 file-test.r3 / WILDCARD / read wildcard #46
 file-test.r3 / WILDCARD / read wildcard #47
 file-test.r3 / WILDCARD / read wildcard #48
@@ -469,7 +464,6 @@ module-test.r3 / make module / inlined module #14
 module-test.r3 / make module / inlined module #15
 module-test.r3 / make module / inlined module #16
 module-test.r3 / make module / module body modified on export #17
-module-test.r3 / module import / do module from file #50
 module-test.r3 / module import / import #25
 module-test.r3 / module import / import #26
 module-test.r3 / module import / import #27

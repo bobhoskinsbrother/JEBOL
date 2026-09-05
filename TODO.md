@@ -25,10 +25,10 @@ now run -- Goal 1, and it is done. The sixth is not clean.
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
-| `RebolSuiteTest` | all 10,133 assertions Rebol's 67 vendored files write are run, and the vendored files are now byte-identical to upstream. 9,422 pass, **608 fail** and are named in `known-gaps.txt`, 92 are in `fails-on-rebol-too.txt`, and 11 are marked `--red--` by Rebol as describing Red rather than Rebol |
+| `RebolSuiteTest` | all 10,133 assertions Rebol's 67 vendored files write are run, and the vendored files are now byte-identical to upstream. 9,428 pass, **602 fail** and are named in `known-gaps.txt`, 92 are in `fails-on-rebol-too.txt`, and 11 are marked `--red--` by Rebol as describing Red rather than Rebol |
 | `scripts/error-parity.py` | **73 of Rebol's 142 error ids can be raised. 69 cannot** |
 
-`./gradlew check` is 16,631 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 16,657 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception.
 
 **The remaining suite failures are broken into pieces of work in `goals.md`** —

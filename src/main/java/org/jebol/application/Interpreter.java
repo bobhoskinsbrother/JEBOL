@@ -266,6 +266,7 @@ public final class Interpreter {
      * functions into a scope that was thrown away straight afterwards.
      */
     private void loadRebolsOwnLibrary() {
+        declareEverySystemWordBeforeBindingAny();
         for (String entry : borrowedFileNames()) {
             String name = fileNameIn(entry);
             if (name.equals(THE_FILE_THAT_STARTS_THE_VIEW_SYSTEM)) {
@@ -320,6 +321,51 @@ public final class Interpreter {
      * the two lines became the same word and the none, being last, won.
      */
     private Outcome loadAsASystemFile(BlockValue body) {
+        declareTheSetWordsOf(body);
+        return evaluator.evaluate(
+                Binder.bind(body, systemInternals), systemInternals);
+    }
+
+    /**
+     * Every sys file's own words, declared before any of them is bound.
+     *
+     * <p>Binding is what makes this necessary rather than tidy. A file is bound
+     * as it is loaded, and a word with nothing to bind to stays unbound for
+     * good, so a sys file calling a helper defined in a later sys file gets a
+     * word that never resolves. That is not a load failure and says so nowhere:
+     * the file loads, the function is defined, and it raises the first time
+     * anybody calls it.
+     *
+     * <p>Which is what DO of a file did. {@code sys/do*} in sys-base.reb calls
+     * {@code do-needs}, defined in sys-load.reb three files later, so every
+     * script run through it stopped on {@code do-needs has no value}.
+     *
+     * <p>R3 has no such ordering because the sys context is built from a boot
+     * list before a line of it runs. This is the same thing done in two passes,
+     * and it is cheap: five files, and {@code LibrarySource} reads each once
+     * for the whole process.
+     */
+    private void declareEverySystemWordBeforeBindingAny() {
+        for (String entry : borrowedFileNames()) {
+            if (!entry.endsWith(INTO_SYS)) {
+                continue;
+            }
+            String name = fileNameIn(entry);
+            String source = resourceText(MEZZANINE + name);
+            if (source == null) {
+                continue;
+            }
+            TranscodeResult read = LibrarySource.reading(MEZZANINE + name, source);
+            if (read.values().isEmpty()) {
+                continue;
+            }
+            BlockValue values = read.values().orElseThrow();
+            declareTheSetWordsOf(
+                    startsWithARebolHeader(values) ? values.atIndex(3) : values);
+        }
+    }
+
+    private void declareTheSetWordsOf(BlockValue body) {
         for (Value item : body.remaining()) {
             if (item instanceof WordValue word
                     && word.datatype() == Datatype.SET_WORD
@@ -327,8 +373,6 @@ public final class Interpreter {
                 systemInternals.define(word.spelling());
             }
         }
-        return evaluator.evaluate(
-                Binder.bind(body, systemInternals), systemInternals);
     }
 
     private static boolean startsWithARebolHeader(BlockValue values) {

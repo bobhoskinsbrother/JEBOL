@@ -271,34 +271,46 @@ Two guards now hold it, in `SuiteSelectionTest`:
   a cut assertion leaves behind. Six tests are empty upstream too, with Rebol's
   own note saying why, and they are named in the test rather than pattern-matched.
 
-### 19. `do %anyfile` is broken — 3 assertions, and one green test is green because of it
+### 19. `do %anyfile` is broken — DONE
 
-`DO` given a `file!` evaluates the name instead of reading the file:
+`DO` of a file, a URL, a string or a binary is not written in C: `n-control.c`
+sends all four to `Do_Sys_Func(SYS_CTX_DO_P, ...)`, which is `sys/do*` in the
+borrowed `sys-base.reb`. JEBOL matched a file against the Java `StringValue`
+case, because a file is one, and evaluated the file's own name as source. File
+and URL now go to `do*`; string and binary keep their routes, because a string
+is source rather than a script.
 
-    Rebol []
-    print mold try [do %units/files/unset.r3]
+Routing them there took three defects with it, each found by the next one
+failing:
 
-Real Rebol runs the script. JEBOL raises `no-value` on the word `units`. `READ`
-works, `do to string! read %f` works, and the lexer types `%units/files/unset.r3`
-as `file!` correctly, so the fault is in `DO` rather than in the reader.
+1. **`unprotect/words` ignored paths.** `natives.reb` says
+   `/words "Process list as words (and path words)"`, and the parenthetical was
+   the whole of it: an entry that was not a bare word was skipped, silently,
+   because the call answers the block it was given either way. Rebol's
+   `protect-system` protects every word of SYSTEM and then hands back the few a
+   script must write, with `unprotect/words [system/script]`. With that ignored,
+   `do*` could not record the script it was about to run.
+2. **A sys file could not call a helper defined in a later sys file.** Each was
+   bound as it loaded, so `do-needs` in sys-load.reb did not exist when
+   sys-base.reb was bound and the word never resolved. R3 has no such ordering
+   because its sys context is built from a boot list first. JEBOL now declares
+   every sys file's set-words before binding any of them.
+3. **`prot-mysql.reb` loaded after the system object was sealed.** Once
+   `protect/words` worked, `protect/words/deep [system/catalog]` really did
+   protect it, and the file's closing `put system/catalog/errors 'MySQL ...`
+   stopped. Rebol never meets this: it imports that file on demand long after
+   boot. It now loads before `mezz-tail.reb` rather than after.
 
-Goal 18 put the three assertions back and they are now on `known-gaps.txt`:
+Six gap entries came off, including all three `evaluation-test` ones. The
+fourth assertion in that group — `error? try [do %units/files/error.r3]` — was
+green because the feature was broken, wanting an error and getting the wrong
+one; it now passes for the right reason, raising `zero-divide` from inside the
+script.
 
-    evaluation-test.r3 / do script / script returning UNSET value #40
-    evaluation-test.r3 / do script / script with quit #42
-    evaluation-test.r3 / do script / script with quit #43
-
-The part that makes this urgent rather than ordinary: the fourth assertion in
-that group is `error? try [do %units/files/error.r3]`, it currently passes, and
-**it passes because the feature is broken.** Real Rebol raises `zero-divide`
-from inside the script; JEBOL raises `no-value` on the word and never runs it.
-Both are errors, so the assertion is satisfied. Fixing `DO` will turn that entry
-red, which is correct and is not a regression.
-
-`lexer-test.r3 / Special tests / NULLs inside loaded string #452` also came back
-as a gap in goal 18. It is a different defect — it loads a 40,000-character
-string through a subprocess and checks the buffer survives being extended — but
-it is in the same file-and-process corner and worth reading alongside this.
+`lexer-test.r3 / Special tests / NULLs inside loaded string #452` is still a
+gap. It is in the same file-and-process corner but a different defect: it loads
+a 40,000-character string through a subprocess and checks the buffer survives
+being extended.
 
 ### 20. Fix the measuring tools before trusting them — half a day
 
