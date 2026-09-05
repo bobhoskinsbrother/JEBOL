@@ -9344,6 +9344,29 @@ public final class Natives {
             Datatype.VECTOR);
 
     /**
+     * Rebol's {@code series!} typeset, which is what PARSE takes.
+     *
+     * <p>Narrower than {@link #SERIES_LIKE} and written out rather than reused
+     * from it: a map, a bitset and a typeset all carry contents and hold a
+     * position, and none of them is parseable. Read off a real 3.22.5, which
+     * answers {@code make typeset! [binary! string! file! email! ref! url!
+     * tag! image! vector! block! paren! path! set-path! get-path! lit-path!
+     * hash!]}.
+     *
+     * <p>PARSE declared its input with no typeset at all, so
+     * {@code parse 1 [end]} ran and answered false. A rule that never matched
+     * and a value that could not be matched are different facts, and a caller
+     * reading the first when it should have seen the second has a defect the
+     * interpreter agreed to.
+     */
+    private static final Set<Datatype> PARSEABLE = EnumSet.of(
+            Datatype.BINARY, Datatype.STRING, Datatype.FILE, Datatype.EMAIL,
+            Datatype.REF, Datatype.URL, Datatype.TAG, Datatype.IMAGE,
+            Datatype.VECTOR, Datatype.BLOCK, Datatype.PAREN, Datatype.PATH,
+            Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
+            Datatype.HASH);
+
+    /**
      * UNION, INTERSECT or EXCLUDE, which differ only in what they keep.
      *
      * <p>/CASE stops the case folding and /SKIP reads both series as
@@ -19089,7 +19112,8 @@ public final class Natives {
     }
 
     private void defineParse() {
-        define("parse", List.of(Parameter.required("input"), Parameter.required("rule")),
+        define("parse", List.of(Parameter.required("input", PARSEABLE),
+                        Parameter.required("rule")),
                 Set.of("case"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(1)) {
                     case BlockValue rule -> arguments.get(0) instanceof StringValue
