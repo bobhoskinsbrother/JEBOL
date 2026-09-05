@@ -40,6 +40,19 @@ What it prints, per C function, is one of five verdicts:
                  of datatypes -- narrower is a call Rebol takes and JEBOL
                  refuses, wider is one JEBOL takes and should not.
 
+What this cannot see, and it is a great deal. Every verdict above compares
+two *files*. Neither file says what the running interpreter will answer when
+asked about a function, so a clean report here is true and narrow, and it was
+read as broad: it said 279 of 279 matching while a booted JEBOL reported
+`native!` for the 120 words Rebol reports as `action!`, returned none from
+`words-of` for 581 of 582 functions, and produced a shorter `spec-of` for 430
+of them. Not one of those is a difference between the declarations, so not one
+of them could show up here.
+
+`scripts/runtime-parity.py` asks two running interpreters instead, and is the
+measure to reach for when the question is about behaviour rather than about
+what was declared. Quote the two together or neither.
+
 Usage:
     ./gradlew test --tests 'org.jebol.suite.SurfaceReportTest' \
                    --tests 'org.jebol.suite.PortingBacklogTest'

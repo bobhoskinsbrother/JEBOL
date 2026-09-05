@@ -322,7 +322,7 @@ gap. It is in the same file-and-process corner but a different defect: it loads
 a 40,000-character string through a subprocess and checks the buffer survives
 being extended.
 
-### 20. Fix the measuring tools before trusting them — DONE for the tools
+### 20. Fix the measuring tools before trusting them — DONE
 
 `SuiteStops` and `SweepRunner` each granted every `HostService` and installed
 only a filesystem, where the gate also installs `useEnvironment` and
@@ -351,11 +351,28 @@ measurements rather than readings. Goal 5 had said three stops, then none; it is
 two, and the first is the sandbox refusing to walk up to a working directory
 outside its root rather than anything about the environment.
 
-**Still open: `scripts/c-parity.py` cannot fail on the defects that matter.** It
-compares two files rather than two interpreters, and argument counts rather than
-argument names, so its clean report is true and says nothing about goal 21. A
-runtime arm that asks the running interpreter would have caught `action?` alone.
-That is the rest of this goal and it is not done.
+**`scripts/c-parity.py` could not fail on the defects that matter, and now
+there is a measure that can.** It compares two *files*, so a clean report from
+it is true and narrow — and it was read as broad. `scripts/runtime-parity.py`
+asks two running interpreters the questions a declaration cannot answer:
+
+    ./gradlew compileTestJava
+    python3 scripts/runtime-parity.py          # summary
+    python3 scripts/runtime-parity.py --all    # every differing function
+
+The function list comes from `./r3-head`, so it is Rebol's list rather than
+JEBOL's and a missing function shows as ABSENT instead of dropping out of both
+sides. What it says today is goal 21, with numbers rather than examples:
+
+    582 functions asked
+      1 absent from JEBOL                         `|`
+    123 report a different datatype               120 action! -> native!,
+                                                  3 function! -> native!
+    581 answer words-of differently               JEBOL gives none for all but one
+    430 answer a different spec-of length
+
+`c-parity.py` now says in its own header what it cannot see, and points here.
+Quote the two together or neither.
 
 ### 21. What reaching zero would not prove — the real backlog
 
@@ -375,11 +392,18 @@ refinement is silently dropped and you get a wrong answer with no error. Roughly
 13 of 20 probes were wrong this way, and up to 68 functions are affected. The
 suite uses `APPLY` thirteen times and never once on a native with a refinement.
 
-The scale of the reflection problem, measured across all 279 C functions at
-runtime: 158 differ, 113 are missing refinements, 84 have a renamed argument.
-All 60 of Rebol's actions report as `native!`. `action?` appears zero times in
-all 67 vendored files and `no-refine` appears zero times, so no assertion in the
-suite could ever catch any of it.
+The scale of it is no longer an estimate. `python3 scripts/runtime-parity.py`
+asks both interpreters about every function Rebol's `lib` holds, and says:
+
+    582 asked, 1 absent
+    123 report a different datatype   120 action! -> native!, 3 function! -> native!
+    581 answer words-of differently   JEBOL gives none for all but one
+    430 answer a different spec-of length
+
+`action?` appears zero times in all 67 vendored files and `no-refine` appears
+zero times, so no assertion in the suite could ever catch any of it. Run the
+script before and after a change here; it is the only thing that will tell you
+whether the change worked.
 
 Unknown refinements are accepted silently on every REBOL-defined function, which
 is the whole borrowed mezzanine. Natives and actions refuse them correctly. That

@@ -107,8 +107,16 @@ reimplementing the function. When `join` misbehaves the fault is underneath it,
 and the borrowed file is a fixed point that says so. It also means the surface
 is Rebol's rather than an approximation of it: every C function R3 exposes has
 a match, none of its 404 functions is missing, and `system/catalog/datatypes`
-has all fifty-eight of Rebol's (plus `java-object!`). `scripts/c-parity.py`
-measures that on demand and `TODO.md` records what it last said.
+has all fifty-eight of Rebol's (plus `java-object!`).
+
+**That is a claim about declarations, and it is narrower than it sounds.**
+`scripts/c-parity.py` compares two files, so it cannot fail on anything a
+declaration does not say — and a great deal of what a Rebol function is only
+shows up when you ask the running one. `scripts/runtime-parity.py` does ask,
+and most of Rebol's functions answer differently here: what datatype they
+report themselves as, what `words-of` gives back, how much of their own
+specification they can produce. `TODO.md` records what both last said, and
+they should be read together or not at all.
 
 ## How it is checked
 
@@ -252,8 +260,9 @@ corpus/          published REBOL examples with their published results
 src/test/resources/rebol-suite/
                  Rebol's own test files, and the gap list
 scripts/         the measures, which are run rather than remembered:
-                 c-parity, error-parity, and sweep.py for diffing one suite
-                 file against a real Rebol assertion by assertion
+                 c-parity (declarations) and runtime-parity (two running
+                 interpreters), error-parity, and sweep.py for diffing one
+                 suite file against a real Rebol assertion by assertion
 docs/            decisions, the porting guide, findings about Rebol itself
 goals.md         the remaining suite failures, broken into pieces of work
 ```
