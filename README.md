@@ -111,12 +111,19 @@ has all fifty-eight of Rebol's (plus `java-object!`).
 
 **That is a claim about declarations, and it is narrower than it sounds.**
 `scripts/c-parity.py` compares two files, so it cannot fail on anything a
-declaration does not say — and a great deal of what a Rebol function is only
-shows up when you ask the running one. `scripts/runtime-parity.py` does ask,
-and most of Rebol's functions answer differently here: what datatype they
-report themselves as, what `words-of` gives back, how much of their own
-specification they can produce. `TODO.md` records what both last said, and
-they should be read together or not at all.
+declaration does not say. `scripts/runtime-parity.py` asks two *running*
+interpreters instead — what datatype each function reports itself as, what
+`words-of` gives back, how much of its own specification it can produce — and
+when it was first written most of Rebol's library answered differently here.
+`TODO.md` records what both last said, and they should be read together or not
+at all.
+
+**The declarations are copied too, for the same reason the library is.**
+`actions.reb`, `natives.reb` and the specs Rebol's build collects out of
+comments in the C say what every built-in takes, in what order, with what
+documentation. SPEC-OF and WORDS-OF read them rather than rebuilding an answer
+from JEBOL's own registry, which knows the types and not the order and none of
+the prose. `errors.reb` is there on the same footing.
 
 ## How it is checked
 

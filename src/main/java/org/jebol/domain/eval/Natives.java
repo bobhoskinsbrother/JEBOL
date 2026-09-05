@@ -3237,6 +3237,10 @@ public final class Natives {
                             && supplied.getFirst().datatype().isAnyFunction()) {
                         callee = supplied.removeFirst();
                     }
+                    if (callee instanceof NativeValue named
+                            && !named.declaredRefinements().isEmpty()) {
+                        return applyWithRefinements(named, supplied, evaluator);
+                    }
                     int wanted = (int) arityOf(callee);
                     List<Value> exactly = new ArrayList<>(
                             supplied.subList(0, Math.min(wanted, supplied.size())));
@@ -8769,6 +8773,85 @@ public final class Natives {
         }
         declaredSpecs = Map.copyOf(found);
         return declaredSpecs;
+    }
+
+    /**
+     * APPLY of a built-in that has refinements.
+     *
+     * <p>The block is read against the function's own words in order, which is
+     * what makes the refinements reachable: a word takes the next value as its
+     * argument, and a refinement takes the next value as a logic saying whether
+     * it is used. A refinement's arguments are read whether or not it was asked
+     * for, so nothing after them shifts -- {@code apply :copy [[1 2 3] false 3]}
+     * reads the 3 into /part's slot and ignores it.
+     *
+     * <p>Values run out rather than being an error: what is left is none, and a
+     * refinement nobody mentioned is not asked for.
+     *
+     * <p>The values are matched to parameters by position rather than by name.
+     * Rebol's declared parameter names and JEBOL's registered ones are not
+     * always the same word -- UPPERCASE takes {@code string} there and
+     * {@code text} here -- and matching on the name silently handed every one
+     * of those a none.
+     *
+     * <p>Taking the first N positionally instead, as this did, dropped every
+     * refinement and ran the call without it, so
+     * {@code apply :copy [[1 2 3 4 5] true 3]} answered the whole series with
+     * no error at all.
+     */
+    private Value applyWithRefinements(
+            NativeValue named, List<Value> supplied, Evaluator evaluator) {
+
+        Set<String> asked = new LinkedHashSet<>();
+        List<Value> beforeAnyRefinement = new ArrayList<>();
+        Map<String, List<Value>> belongingTo = new LinkedHashMap<>();
+        String reading = null;
+        int at = 0;
+        for (Value word : wordsOfBuiltIn(named)) {
+            Value next = at < supplied.size() ? supplied.get(at) : NoneValue.none();
+            at++;
+            if (word instanceof WordValue marker
+                    && marker.datatype() == Datatype.REFINEMENT) {
+                reading = marker.canonical();
+                belongingTo.putIfAbsent(reading, new ArrayList<>());
+                if (next.isTruthy()) {
+                    asked.add(reading);
+                }
+            } else if (reading == null) {
+                beforeAnyRefinement.add(next);
+            } else {
+                belongingTo.get(reading).add(next);
+            }
+        }
+
+        NativeValue refined = named.askedFor(asked);
+        Deque<Value> plain = new ArrayDeque<>(beforeAnyRefinement);
+        Map<String, Deque<Value>> refinementArguments = new LinkedHashMap<>();
+        belongingTo.forEach((name, values) ->
+                refinementArguments.put(name, new ArrayDeque<>(values)));
+
+        List<Value> arguments = new ArrayList<>();
+        for (Parameter parameter : refined.parameters()) {
+            if (!parameter.consumesAnArgument()) {
+                continue;
+            }
+            Optional<String> owner = parameter.owningRefinement();
+            if (owner.isEmpty()) {
+                arguments.add(plain.isEmpty() ? NoneValue.none() : plain.removeFirst());
+            } else if (asked.contains(owner.get())) {
+                Deque<Value> waiting = refinementArguments
+                        .getOrDefault(owner.get(), new ArrayDeque<>());
+                arguments.add(waiting.isEmpty() ? NoneValue.none() : waiting.removeFirst());
+            }
+        }
+        return evaluator.applyFunction(refined, arguments);
+    }
+
+    /** A built-in's words, in the order APPLY reads its block against. */
+    private List<Value> wordsOfBuiltIn(NativeValue named) {
+        return wordsNamedIn(specOf(named)) instanceof BlockValue words
+                ? words.remaining()
+                : List.of();
     }
 
     /**
