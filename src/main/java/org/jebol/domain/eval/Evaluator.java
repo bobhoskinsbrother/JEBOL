@@ -1263,6 +1263,16 @@ public final class Evaluator {
         Value target = select(allButLast, frame.context).value();
         Value lastSegment = segments.get(segments.size() - 1);
 
+        // SELF is the context looking at itself and is not a field to write
+        // over. R3 answers invalid-path, which says the path is the thing
+        // that was wrong rather than the slot being guarded, and JEBOL let
+        // `o/self: 2` through and replaced it.
+        if (lastSegment instanceof WordValue named
+                && named.canonical().equals("self")) {
+            throw Raised.of(EvaluationFailure.INVALID_PATH,
+                    "self is what a context calls itself and cannot be assigned");
+        }
+
         if (segments.size() == 3 && lastSegment instanceof IntegerValue channel
                 && select(BlockValue.path(segments.subList(0, 1), Datatype.PATH),
                         frame.context).value() instanceof ImageValue image) {

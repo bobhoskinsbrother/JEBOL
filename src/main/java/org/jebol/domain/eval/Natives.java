@@ -6727,6 +6727,14 @@ public final class Natives {
                     Value step = arguments.get(arguments.size() - 1);
                     double multiple = Comparison.asDouble(step);
                     if (multiple == 0) {
+                        // A whole-number scale of nothing is a division by it,
+                        // where a decimal one is a scale too small to move
+                        // anything: R3 raises for `round/to 1 0` and answers 1
+                        // for `round/to 1.5 0`. Both were answering here.
+                        if (step.datatype() == Datatype.INTEGER
+                                && arguments.get(0).datatype() == Datatype.INTEGER) {
+                            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
+                        }
                         return roundedToTheScalesDatatype(step, value);
                     }
                     double rounded = roundedHalfAway(value / multiple) * multiple;
@@ -14534,6 +14542,7 @@ public final class Natives {
             return timeFromParts(parts.remaining());
         }
         refuseToBuildSomethingOutOfNothing(wanted.represents(), from);
+        refuseRoomForLessThanNothing(wanted.represents(), from);
         if (wanted.represents().isAnyBlock()) {
             return blockTypeBuilt(Conversion.MAKE, wanted.represents(), from);
         }
@@ -14711,6 +14720,25 @@ public final class Natives {
             return;
         }
         raiseBadMakeArg(from, wanted.literalSpelling());
+    }
+
+    /**
+     * A series cannot be made with room for less than nothing.
+     *
+     * <p>The size was clamped with {@code Math.max(0, ...)}, so
+     * {@code make block! -1} answered an empty block and the caller never
+     * learned it had asked for something impossible. R3 raises
+     * {@code out-of-range}.
+     */
+    private static void refuseRoomForLessThanNothing(Datatype wanted, Value from) {
+        if (!wanted.isSeries()
+                || from.datatype() != Datatype.INTEGER
+                        && from.datatype() != Datatype.DECIMAL) {
+            return;
+        }
+        if (Comparison.asDouble(from) < 0) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, from.toString());
+        }
     }
 
     /**
