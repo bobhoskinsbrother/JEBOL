@@ -133,19 +133,19 @@ Measured across all 84 entries, that describes 2 of them. 80 are whole files
 guarded on a native this build has not got, where a real 3.22.5 reports
 `Number of Assertions Performed: 0`. Two more it runs and fails.
 
-**There is a second, older ledger and it works differently.**
-`src/test/resources/rebol-suite-excluded/` holds 33 assertions cut out of nine
-vendored suite files, one file per source file, each carrying its suite identity
-and a stated reason. They are not in the vendored text at all, so no count sees
-them and no ratchet can. Two things about it matter:
+**There used to be a second ledger that worked differently, and there is a rule
+left over from it.** `src/test/resources/rebol-suite-excluded/` held 33
+assertions cut out of nine vendored files, each with its identity and a reason.
+Because they were not in the vendored text at all, no count saw them and no
+ratchet could reach them, and the reasons went stale without anything to
+notice: they had been settled against a 3.22.1 binary, and 24 of the 33 pass
+here now.
 
-- Its verdicts were taken against a **3.22.1** binary that no longer exists, and
-  roughly 26 of them are false against 3.22.5. `distance`, `as-color` and
-  `factorial` are all present and correct in `./r3-head` today.
-- `scripts/binary-verdicts.r3`, which every header cites as the evidence, is not
-  in the repository.
-
-Do not add to that directory. Goal 18 empties it.
+Goal 18 emptied it and the directory is gone. **A vendored file is a copy of
+Rebol's and nothing else** — `everyVendoredFileIsUnchanged` fails on any
+difference, and `noTestHasLostItsAssertions` catches the shape a cut assertion
+leaves even without Rebol's checkout present. An assertion that should not be
+graded goes in one of the two lists above, where the ratchet can see it.
 
 ### Every fix needs a JEBOL test
 
@@ -237,27 +237,39 @@ green.
 Mirror the existing test onto the second list. Both files are then held the same
 way, and the only route left for the number to fall without work is closed.
 
-### 18. Re-run the exclusion ledger and empty it — 33 assertions, 3 of them live bugs
+### 18. Re-run the exclusion ledger and empty it — DONE
 
-`src/test/resources/rebol-suite-excluded/` holds 33 assertions cut from nine
-vendored files, with reasons taken against the deleted 3.22.1 binary. Against
-3.22.5 most of those reasons are false.
+All 33 assertions are back in the files Rebol wrote them in, and **every one of
+the 67 vendored files is now byte-identical to `rebol3-source`**. The ledger
+directory is gone.
 
-    for f in src/test/resources/rebol-suite-excluded/*.r3; do echo "== $f"; cat $f; done
+How they landed, each checked against `./r3-head` one at a time:
 
-Take each one, run it through `./r3-head`, and sort it into three piles: put it
-back in the vendored file if Rebol passes it, move it to
-`fails-on-rebol-too.txt` with a fresh session if Rebol genuinely fails it, and
-leave nothing in the directory. About 23 pass in JEBOL today and cost nothing.
-Six fail on a real 3.22.5 as well and belong on the second list. **Three are
-live JEBOL failures and are goal 19.**
+    24  pass here and cost nothing         distance 9, as-color 5, factorial 6,
+                                           compare 2, object 1, load 1
+     5  fail on a real 3.22.5 too          -> fails-on-rebol-too.txt with the session
+     4  are real gaps                      -> known-gaps.txt
 
-Then close the hole that let stale reasons sit for a month: nothing in the build
-compares the vendored text against `rebol3-source`, and `SuiteCoverageTest`
-counts the vendored text against itself and reports 100%. A test that fails on a
-`--test--` with no assertion under it would have caught all 33 —
-`pair-test.r3`'s "distance" group currently has nine test headers and no
-assertions.
+Every reason in the ledger had gone stale, which is the part worth remembering.
+`distance`, `as-color` and `factorial` were excluded as "not in this build of R3
+at all" and all three are present in 3.22.5. Three more needed files under
+`units/` that had "never been vendored" and have been since. The verdicts were
+right when written against 3.22.1 and nothing re-asked them.
+
+Restoring shifted the ordinals of everything below each insertion, which broke
+ten gap-list entries: `evaluation-test` "do needs" moved by 3, and nine
+`parse-test` entries by 3. The ratchet caught both halves of that on its own —
+three entries suddenly "passing" and three failures with no entry — which is
+what it is for.
+
+Two guards now hold it, in `SuiteSelectionTest`:
+
+- `everyVendoredFileIsUnchanged` compares each file with upstream byte for byte.
+  It needs the `rebol3-source` symlink, so it cannot be the only one.
+- `noTestHasLostItsAssertions` reads the vendored text alone and fails on a
+  `--test--` with the next dialect word straight after it, which is exactly what
+  a cut assertion leaves behind. Six tests are empty upstream too, with Rebol's
+  own note saying why, and they are named in the test rather than pattern-matched.
 
 ### 19. `do %anyfile` is broken — 3 assertions, and one green test is green because of it
 
@@ -270,12 +282,23 @@ Real Rebol runs the script. JEBOL raises `no-value` on the word `units`. `READ`
 works, `do to string! read %f` works, and the lexer types `%units/files/unset.r3`
 as `file!` correctly, so the fault is in `DO` rather than in the reader.
 
-The part that makes this urgent rather than ordinary: the one assertion from that
-group still in the vendored suite is `error? try [do %units/files/error.r3]`, it
-it currently passes, and **it passes because the feature is broken.** Real
-Rebol raises `zero-divide` from inside the script; JEBOL raises `no-value` on the
-word and never runs it. Both are errors, so the assertion is satisfied. Fixing
-`DO` will turn that entry red, which is correct and is not a regression.
+Goal 18 put the three assertions back and they are now on `known-gaps.txt`:
+
+    evaluation-test.r3 / do script / script returning UNSET value #40
+    evaluation-test.r3 / do script / script with quit #42
+    evaluation-test.r3 / do script / script with quit #43
+
+The part that makes this urgent rather than ordinary: the fourth assertion in
+that group is `error? try [do %units/files/error.r3]`, it currently passes, and
+**it passes because the feature is broken.** Real Rebol raises `zero-divide`
+from inside the script; JEBOL raises `no-value` on the word and never runs it.
+Both are errors, so the assertion is satisfied. Fixing `DO` will turn that entry
+red, which is correct and is not a regression.
+
+`lexer-test.r3 / Special tests / NULLs inside loaded string #452` also came back
+as a gap in goal 18. It is a different defect — it loads a 40,000-character
+string through a subprocess and checks the buffer survives being extended — but
+it is in the same file-and-process corner and worth reading alongside this.
 
 ### 20. Fix the measuring tools before trusting them — half a day
 

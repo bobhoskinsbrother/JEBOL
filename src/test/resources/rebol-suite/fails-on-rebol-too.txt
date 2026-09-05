@@ -176,3 +176,36 @@ make-test.r3 / make/to map / to map! .. #533
 #     >> mold error? try [module [type: :print][]]
 #     == #(false)
 module-test.r3 / make module / make module type assertion #18
+
+# ---------------------------------------------------------------------------
+#
+# The five below were cut out of the vendored suite files on 9 August 2026 and
+# held in src/test/resources/rebol-suite-excluded/, with reasons taken against
+# an R3 3.22.1 binary that no longer exists. That directory is gone: the
+# assertions are back in the files where Rebol wrote them, and the ones a real
+# 3.22.5 still fails are recorded here where the ratchet can see them.
+#
+# Most of the ledger's reasons had gone stale. `distance`, `as-color` and
+# `factorial` were excluded as "not in this build of R3 at all" and all three
+# are present and correct in 3.22.5; the files under units/ that three more
+# were said to need have since been vendored. Twenty-four of the thirty-three
+# pass here now. These five do not, and neither does Rebol.
+#
+#   >> mold all [error? e: try [bind 'id err] e/id = 'expect-arg]
+#   == _
+object-test.r3 / EXTEND object / bind to error #50
+
+#   >> mold error? transcode/one/error "#{0}"
+#   == #(false)
+lexer-test.r3 / BINARY / binary! with comments inside #418
+
+# Rebol's own test name says "known issues", and they are its own:
+#   >> mold [[1] [2]]     == parse [1 2][collect some [collect keep integer!]]
+#   == #(false)
+#   >> mold [[1] a [2] a] == parse [1 2][collect some [collect keep integer! keep ('a)]]
+#   == #(false)
+#   >> mold [[1 a] [2 a]] == parse [1 2][collect some [collect [keep integer! keep ('a)]]]
+#   == #(false)
+parse-test.r3 / COLLECT/KEEP / block collect nested (known issues) #98
+parse-test.r3 / COLLECT/KEEP / block collect nested (known issues) #99
+parse-test.r3 / COLLECT/KEEP / block collect nested (known issues) #100

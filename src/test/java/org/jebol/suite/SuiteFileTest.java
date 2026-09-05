@@ -286,10 +286,9 @@ class SuiteFileTest {
 
             assertThat(marked)
                     .as("every --red-- assertion the vendored suite writes")
-                    .hasSize(10);
-            assertThat(marked).allMatch(assertion ->
-                    assertion.file().equals("power-test.r3")
-                            || assertion.file().equals("time-test.r3"));
+                    .hasSize(11);
+            assertThat(marked).extracting(SuiteFile.Assertion::file)
+                    .containsOnly("power-test.r3", "time-test.r3", "compare-test.r3");
         }
     }
 }

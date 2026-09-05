@@ -335,16 +335,25 @@ Rebol [
 ===start-group=== "distance"
 	; Euclidean
 	--test-- "distance basic"
+	    --assert 5.0 = distance 0x0 3x4        ; 3-4-5 triangle
 	--test-- "distance same point"
+	    --assert 0.0 = distance 5x5 5x5
 	--test-- "distance negative coords"
+	    --assert 5.0 = distance -3x0 0x4       ; same triangle, negative x
 	--test-- "distance symmetry"
+	    --assert (distance 1x2 4x6) = (distance 4x6 1x2)
 
 	; Taxicab
 	--test-- "distance/taxicab basic"
+	    --assert 7.0 = distance/taxicab 0x0 3x4
 	--test-- "distance/taxicab same point"
+	    --assert 0.0 = distance/taxicab 5x5 5x5
 	--test-- "distance/taxicab negative coords"
+	    --assert 7.0 = distance/taxicab -3x0 0x4
 	--test-- "distance/taxicab symmetry"
+	    --assert (distance/taxicab 1x2 4x6) = (distance/taxicab 4x6 1x2)
 	--test-- "distance/taxicab axis aligned"
+	    --assert 5.0 = distance/taxicab 0x0 5x0  ; horizontal — same as Euclidean
 ===end-group===
 
 ~~~end-file~~~

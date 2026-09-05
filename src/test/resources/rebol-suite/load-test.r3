@@ -101,6 +101,10 @@ Rebol [
 		]
 	--test-- "issue-2302"
 	;@@ https://github.com/Oldes/Rebol-issues/issues/2302
+		--assert all [
+			error? e: try [load %units/files/invalid-decimal.r]
+			e/near = "(line 4) 4line"
+		]
 
 	--test-- "loading an unset value"
 		--assert unset? try [load "#(unset)"] ;- no error

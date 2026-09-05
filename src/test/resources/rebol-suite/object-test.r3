@@ -63,6 +63,7 @@ Rebol [
 		foreach [k v] ['a 1 :b 2 c: 3 #d 4] [
 			--assert not error? try [obj/:k: v * 10]
 		]
+		--assert [a: 10 b: 20 c: 30 d: 40] == body-of obj
 
 	--test-- "compare extended objects"
 		;@@ https://github.com/Oldes/Rebol-issues/issues/2507
@@ -130,6 +131,7 @@ Rebol [
 	--test-- "bind to error"
 	;@@ https://github.com/Oldes/Rebol-issues/issues/894
 		err: make error! "foo"
+		--assert all [error? e: try [bind 'id err] e/id = 'expect-arg]
 ===end-group===
 
 

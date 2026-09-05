@@ -805,6 +805,7 @@ Rebol [
 		--assert #{0002} = transcode/one/error "#{00;XXX^/02}"
 		--assert #{0002} = transcode/one/error "#{00;XXX^M02}" ;CR is also comment stopper
 
+		--assert error? transcode/one/error "#{0}"
 
 	--test-- {binary! with other valid escapes}
 		--assert #{0003} = transcode/one/error "#{^(30)^(30)03}"
@@ -863,6 +864,26 @@ Rebol [
 	--test-- "NULLs inside loaded string"
 	;@@ https://github.com/Oldes/Rebol3/commit/6f59240d7d4379a50fec29c4e74290ad61ba73ba
 		out: ""
+		--assert try/with [
+		;- using CALL as it could be reproduced only when the internal buffer is being extended durring load
+			data: make string! 40000
+			insert/dup data "ABCD" 10000
+
+			dir: clean-path %units/files/
+			save dir/tmp.data reduce [1 data]
+			exe: system/options/boot
+			;@@ CALL seems not to work same on all OSes :-(
+			either system/platform = 'Windows [
+				call/wait/output rejoin [to-local-file exe { -s } to-local-file dir/bug-load-null.r3] out
+			][	call/wait/output reduce [exe "-s" dir/bug-load-null.r3] out ]
+
+			;probe out
+			parse out [thru "Test OK" to end]
+		][
+			probe system/state/last-error
+			false
+		]
+		error? try [ delete dir/tmp.data ]
 ;]
 ===end-group===
 ~~~end-file~~~

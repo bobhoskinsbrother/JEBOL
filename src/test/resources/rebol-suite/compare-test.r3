@@ -275,6 +275,7 @@ Rebol [
 	--test-- "prefix-equal-same-datatype-23"	--assert equal? "2345" next "12345"
 	--test-- "prefix-equal-same-datatype-24"	--assert equal? #"z" #"z"
 	--test-- "prefix-equal-same-datatype-25"    --assert equal? #"z" #"Z" ;@@ in Red this is not equal!
+	--test-- "prefix-equal-same-datatype-25" --red-- --assert not equal? #"z" #"Z"
 	--test-- "prefix-equal-same-datatype-26"	--assert not equal? #"e" #"è"
 ;	--test-- "prefix-equal-same-datatype-27"	--assert equal? #"^(010000)" #"^(010000)"
 	--test-- "prefix-equal-same-datatype-28"	--assert equal? true true
@@ -362,6 +363,7 @@ Rebol [
 	--test-- "prefix-greater-same-datatype-6"	--assert not greater? -2 0#FFFFFFFFFFFFFFFF
 	--test-- "prefix-greater-same-datatype-7"	--assert not greater? "a" "a"
 	--test-- "prefix-greater-same-datatype-8"	--assert     greater? "b" "a"
+	--test-- "prefix-greater-same-datatype-9"	--assert     greater? "è" "f"
 	--test-- "prefix-greater-same-datatype-10"	--assert not greater? "A" "a"
 	--test-- "prefix-greater-same-datatype-11"	--assert not greater? "a" "A"
 	--test-- "prefix-greater-same-datatype-12"	--assert not greater? "abcdeè" "abcdeè"

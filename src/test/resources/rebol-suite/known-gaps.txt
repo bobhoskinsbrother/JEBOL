@@ -325,7 +325,10 @@ enbase-test.r3 / enbase/part / enbase/part with series as a length #78
 error-test.r3 / Error issues / issue-553 #38
 error-test.r3 / Error issues / protected catalog #42
 error-test.r3 / Error issues / protected catalog #43
-evaluation-test.r3 / do script / do needs #41
+evaluation-test.r3 / do script / do needs #44
+evaluation-test.r3 / do script / script returning UNSET value #40
+evaluation-test.r3 / do script / script with quit #42
+evaluation-test.r3 / do script / script with quit #43
 file-test.r3 / WILDCARD / read wildcard #46
 file-test.r3 / WILDCARD / read wildcard #47
 file-test.r3 / WILDCARD / read wildcard #48
@@ -438,6 +441,7 @@ lexer-test.r3 / Construction syntax / any-string! #330
 lexer-test.r3 / Construction syntax / any-string! #331
 lexer-test.r3 / Construction syntax / any-string! #332
 lexer-test.r3 / Construction syntax / any-string! #333
+lexer-test.r3 / Special tests / NULLs inside loaded string #452
 make-test.r3 / make char! / to char! surrogates #12
 make-test.r3 / make/to block! / to block! .. #402
 make-test.r3 / make/to block! / to block! .. #403
@@ -490,15 +494,15 @@ os-test.r3 / set-env / get-env / env-2 #6
 os-test.r3 / set-env / get-env / env-2 #7
 os-test.r3 / set-env / get-env / env-3 #8
 os-test.r3 / set-env / get-env / env-3 #9
-parse-test.r3 / Other parse issues / integer! repeat #371
-parse-test.r3 / Other parse issues / integer! repeat #372
-parse-test.r3 / Other parse issues / integer! repeat #373
 parse-test.r3 / Other parse issues / integer! repeat #374
 parse-test.r3 / Other parse issues / integer! repeat #375
 parse-test.r3 / Other parse issues / integer! repeat #376
 parse-test.r3 / Other parse issues / integer! repeat #377
 parse-test.r3 / Other parse issues / integer! repeat #378
 parse-test.r3 / Other parse issues / integer! repeat #379
+parse-test.r3 / Other parse issues / integer! repeat #380
+parse-test.r3 / Other parse issues / integer! repeat #381
+parse-test.r3 / Other parse issues / integer! repeat #382
 percent-test.r3 / percent issues / large percent #33
 percent-test.r3 / percent issues / large percent #34
 port-test.r3 / SYSTEM / query system:// #169
