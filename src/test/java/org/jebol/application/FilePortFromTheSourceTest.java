@@ -215,6 +215,66 @@ class FilePortFromTheSourceTest {
                     close p
                     size? p""")).isEqualTo("5");
         }
+
+        @Test
+        @DisplayName("AT counts from one and ATZ from nothing, both moving in place")
+        void atAndAtzMoveInPlace(@TempDir Path root) {
+            assertThat(answerTo(root, """
+                    write %f "12345"
+                    p: open/read/seek %f
+                    reduce [index? at p 3 index? atz p 1 indexz? p]"""))
+                    .isEqualTo("[3 2 1]");
+        }
+    }
+
+    @Nested
+    @DisplayName("clearing one, which cuts it off rather than emptying it")
+    class Clearing {
+
+        @Test
+        @DisplayName("what is from the position onwards goes, and what is before stays")
+        void fromThePositionOnwardsGoes(@TempDir Path root) {
+            assertThat(answerTo(root, """
+                    write %f "12345"
+                    p: open %f
+                    skip p 2
+                    clear p
+                    close p
+                    read %f""")).isEqualTo("#{3132}");
+        }
+
+        @Test
+        @DisplayName("so clearing at the head empties it")
+        void clearingAtTheHeadEmptiesIt(@TempDir Path root) {
+            assertThat(answerTo(root, """
+                    write %f "12345"
+                    p: open %f
+                    clear p
+                    close p
+                    read %f""")).isEqualTo("#{}");
+        }
+
+        @Test
+        @DisplayName("and clearing at the tail does nothing at all")
+        void clearingAtTheTailDoesNothing(@TempDir Path root) {
+            assertThat(answerTo(root, """
+                    write %f "12345"
+                    p: open %f
+                    tail p
+                    clear p
+                    close p
+                    read %f""")).isEqualTo("#{3132333435}");
+        }
+
+        @Test
+        @DisplayName("and a closed port cannot be cleared, having no position")
+        void aClosedPortCannotBeCleared(@TempDir Path root) {
+            assertThat(errorIdFrom(root, """
+                    write %f "12345"
+                    p: open %f
+                    close p
+                    clear p""")).isEqualTo("not-open");
+        }
     }
 
     @Nested

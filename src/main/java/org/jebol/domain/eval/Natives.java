@@ -5836,6 +5836,11 @@ public final class Natives {
                         Parameter.required("position",
                                 Set.of(Datatype.INTEGER, Datatype.PAIR))),
                 (arguments, evaluator, context) -> {
+                    if (arguments.getFirst() instanceof PortValue port
+                            && isAFilePort(port)) {
+                        return movedWithinTheFile(port, evaluator,
+                                (long) asMagnitude(arguments.get(1)));
+                    }
                     if (!(arguments.getFirst() instanceof SeriesValue series)) {
                         return raiseWrongArgument(arguments.getFirst(), "atz", "series");
                     }
@@ -5847,6 +5852,10 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
                     case ImageValue picture when refinements.contains("xy") ->
                             whereItStandsInThePicture(picture, 0);
+                    case PortValue port when isAFilePort(port) -> {
+                        refuseAClosedPosition(port);
+                        yield IntegerValue.of(SeekableFilePort.positionOf(port));
+                    }
                     case SeriesValue series -> IntegerValue.of(series.index() - 1);
                     default -> raiseCannotUse(arguments.get(0), "indexz?");
                 });
@@ -6107,6 +6116,11 @@ public final class Natives {
                                         Datatype.PERCENT, Datatype.LOGIC,
                                         Datatype.PAIR))),
                 (arguments, evaluator, context) -> {
+                    if (arguments.getFirst() instanceof PortValue port
+                            && isAFilePort(port)) {
+                        return movedWithinTheFile(port, evaluator,
+                                (long) asMagnitude(arguments.get(1)) - 1);
+                    }
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.get(0), "at");
                     }
@@ -6448,6 +6462,8 @@ public final class Natives {
         define("clear", List.of(Parameter.required("series")),
                 (arguments, evaluator, context) -> switch (arguments.get(0)) {
                     case NoneValue nothing -> nothing;
+                    case PortValue port when isAFilePort(port) ->
+                            truncatedAtThePosition(port, evaluator);
                     case BitsetValue members -> {
                         requireChangeable(members);
                         members.clear();
@@ -9637,12 +9653,33 @@ public final class Natives {
      * what {@code index? head p} being one and {@code index? skip p 2} being
      * three in the same breath depends on.
      */
+
     private Value movedWithinTheFile(PortValue port, Evaluator evaluator, long to) {
         refuseAClosedPosition(port);
         requireService(HostService.FILES);
         long size = ((IntegerValue) wholeSizeOfTheFile(port, evaluator)).magnitude();
         SeekableFilePort.moveTo(port, Math.max(0, Math.min(to, size)));
         return port;
+    }
+
+    /**
+     * CLEAR on a file port, which cuts the file off at the position.
+     *
+     * <p>Not "empty the file": {@code clear} on any series throws away what is
+     * from the position onwards and keeps what is before it, and a file port
+     * is a series. So clearing at the head empties it and clearing at the tail
+     * does nothing at all.
+     */
+    private Value truncatedAtThePosition(PortValue port, Evaluator evaluator) {
+        refuseAClosedPosition(port);
+        requireService(HostService.FILES);
+        return throughPort(() -> {
+            String path = SeekableFilePort.pathOf(port);
+            byte[] whole = evaluator.files().readBytes(path);
+            long keeping = Math.min(SeekableFilePort.positionOf(port), whole.length);
+            evaluator.files().write(path, Arrays.copyOf(whole, (int) keeping));
+            return port;
+        });
     }
 
     /**

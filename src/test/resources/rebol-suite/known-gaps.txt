@@ -527,7 +527,6 @@ port-test.r3 / file port / APPEND file-port #164
 port-test.r3 / file port / APPEND file-port #165
 port-test.r3 / file port / APPEND file-port #166
 port-test.r3 / file port / CLEAR file port #150
-port-test.r3 / file port / CLEAR file port #151
 port-test.r3 / file port / CLEAR file port #152
 port-test.r3 / file port / DELETE file #154
 port-test.r3 / file port / DELETE file #155
@@ -542,9 +541,6 @@ port-test.r3 / file port / read write CRLF conversion #114
 port-test.r3 / file port / read write CRLF conversion #115
 port-test.r3 / file port / read write CRLF conversion #118
 port-test.r3 / file port / read write CRLF conversion #119
-port-test.r3 / file port / skip/at on file port #147
-port-test.r3 / file port / skip/at on file port #148
-port-test.r3 / file port / skip/at on file port #149
 port-test.r3 / file port / write/part #135
 power-test.r3 / power integer / power-integer-1 #11
 power-test.r3 / power integer / power-integer-2 #12
