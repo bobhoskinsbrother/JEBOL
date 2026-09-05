@@ -8640,8 +8640,13 @@ public final class Natives {
             if (settersOnly && word.datatype() != Datatype.SET_WORD) {
                 continue;
             }
+            // A REBOL word is case-insensitive, so Domain and domain are one
+            // word and one slot. Comparing the spelling collected both, which
+            // gave the borrowed SET-COOKIES three locals R3 does not list.
+            // The first spelling seen is the one kept.
             WordValue plain = WordValue.of(word.spelling());
-            if (found.stream().noneMatch(seen -> seen.equals(plain))) {
+            if (found.stream().noneMatch(seen -> seen instanceof WordValue already
+                    && already.canonical().equals(plain.canonical()))) {
                 found.add(plain);
             }
         }

@@ -27,7 +27,7 @@ the largest measured gap in the port. Read the two together.
 | Measure | Reads |
 | --- | --- |
 | `scripts/c-parity.py` | 279 of 279 C functions match R3's surface -- a comparison of two *declaration files*, and read as broader than it is |
-| `scripts/runtime-parity.py` | the same question asked of two *running* interpreters, which is where it fails: of 582 functions, **3 report a different datatype, 4 answer `words-of` differently, 4 give a different `spec-of`**, 0 absent. It began at 123, 581 and 430; what is left is the three dialog functions JEBOL deliberately serves through its own port and one function whose `/local` list is longer. See goal 21 |
+| `scripts/runtime-parity.py` | the same question asked of two *running* interpreters, which is where it fails: of 582 functions, **3 differ and they are the same 3 in every column**: `request-color`, `request-dir` and `request-file`, which JEBOL deliberately serves through its own port rather than shelling out to `osascript`. It began at 123, 581 and 430. See goal 21 |
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |

@@ -19,9 +19,11 @@ independent adversarial passes over this target. Until they are done, work
 against `known-gaps.txt` can make JEBOL worse and be rewarded for it. Each
 carries the command that reproduces the fault.
 
-**16 to 20 are done, and 21 mostly is.** What is left of 21 is four things,
-each with the reason it was left rather than done, and two of them are
-deliberate rather than outstanding.
+**16 to 20 are done, and 21 is down to three known differences that are all
+the same deliberate decision.** `runtime-parity.py` reports 3 of 582 functions
+differing, and they are `request-color`, `request-dir` and `request-file` in
+every column. Two larger things are left inside 21 and named there with the
+reason each was left: `near`/`where` on errors, and `compress` bytes.
 
 The fifteen porting goals are **mostly, not entirely, independent**, and the
 couplings are named in the goals themselves. Two that this file used to claim
@@ -455,9 +457,10 @@ whether the change worked.
    out to `osascript` on macOS only, and JEBOL serves all three through the
    WINDOWS service and its port, which works anywhere and asks for a grant
    first. Not a defect; do not "fix" it without reading that note.
-4. **`set-cookies` reports more `/local` words than R3 does.** Both are
-   `function!`; JEBOL's FUNCTION collects set-words into `/local` that Rebol's
-   does not. One function, and the only lead left in the reflection group.
+4. ~~`set-cookies` reports more `/local` words than R3 does.~~ **Done.**
+   COLLECT-WORDS deduplicated on the spelling where a REBOL word is
+   case-insensitive, so `Domain` and `domain` were two words and FUNCTION gave
+   that one three locals R3 does not list. The first spelling seen is kept.
 
 ---
 
