@@ -31,12 +31,23 @@ class BorrowingReplacesNativesTest {
                 .isEqualTo("#(function!)");
     }
 
+    /**
+     * The point is that a host-language function survives, not what kind it
+     * is. This asked for {@code native!} from {@code :add}, which is one of
+     * the sixty Rebol declares as actions -- an answer a real R3 has never
+     * given, and one this test would have gone on defending. Both kinds are
+     * checked now, so it says what it means.
+     */
     @Test
-    @DisplayName("a native no borrowed file defines is left alone")
-    void theUnclaimedNativeSurvives() {
+    @DisplayName("a built-in no borrowed file defines is left alone")
+    void theUnclaimedBuiltInSurvives() {
         Interpreter borrowing = Interpreter.create();
 
         assertThat(borrowing.display(borrowing.run("type? :add")))
+                .as("ADD is declared in actions.reb")
+                .isEqualTo("#(action!)");
+        assertThat(borrowing.display(borrowing.run("type? :reduce")))
+                .as("REDUCE is declared in natives.reb")
                 .isEqualTo("#(native!)");
     }
 }

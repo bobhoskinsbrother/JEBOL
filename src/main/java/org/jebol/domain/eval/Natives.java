@@ -395,21 +395,11 @@ public final class Natives {
     /**
      * The sixty names actions.reb declares, in the order it declares them.
      *
-     * <p>An action is the polymorphic kind of function, with an arm per
-     * datatype, and the list is a fact about Rebol's declarations rather than
-     * about this code. JEBOL answers native! for all of them, so nothing here
-     * could tell them apart without being told.
+     * <p>Held in {@link ActionNames} beside the value model, because a value
+     * has to answer {@code type?} without asking the evaluator anything. This
+     * is the same list, for the catalogue.
      */
-    private static final List<String> ACTION_NAMES = List.of(
-            "add", "subtract", "multiply", "divide", "remainder", "power",
-            "and~", "or~", "xor~", "negate", "complement", "absolute", "round",
-            "random", "odd?", "even?", "head", "tail", "head?", "tail?",
-            "past?", "next", "back", "skip", "at", "atz", "index?", "indexz?",
-            "length?", "pick", "find", "select", "reflect", "make", "to",
-            "copy", "take", "put", "insert", "append", "remove", "change",
-            "poke", "clear", "trim", "swap", "reverse", "sort", "create",
-            "delete", "open", "close", "read", "write", "open?", "query",
-            "modify", "update", "rename", "flush");
+    private static final List<String> ACTION_NAMES = ActionNames.inDeclarationOrder();
 
     /** A block of plain words, where typeNames would add a datatype suffix. */
     private static BlockValue typeNamesWithoutSuffix(String... spellings) {

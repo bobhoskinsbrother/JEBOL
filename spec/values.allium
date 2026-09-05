@@ -29,7 +29,7 @@ enum Datatype {
     | string | file | url | email | tag | binary | ref
     | word | set_word | get_word | lit_word | refinement | issue
     | block | paren | path | set_path | get_path | lit_path
-    | datatype | native | function | op | object | error | map
+    | datatype | native | action | function | op | object | error | map
     | module | port -- a context that carries something extra: a header, or
                     -- a way out of the interpreter
     | java_object   -- a value belonging to the host, reachable both ways
@@ -43,10 +43,24 @@ enum Datatype {
     -- name is a word and the reader has no business deciding which
     -- datatypes exist. The names are needed for the construction form,
     -- which is a different question and does need them.
-    | action | bitset | closure | command | end | event | frame | gob
+    | bitset | closure | command | end | event | frame | gob
     | handle | hash | image | library | rebcode
     | struct | task | utype | vector
 }
+
+-- ACTION was in that list, and moved out of it when values of it started
+-- existing. An action is the polymorphic kind of built-in: one name with an
+-- arm per datatype, where a native has one body for every caller. Both are
+-- written in the host language, so nothing about the implementation tells
+-- them apart and JEBOL answered NATIVE for all of them -- which made
+-- `type? :append` disagree with a real R3 for 120 of the words its library
+-- holds, and `action?` answer false for every one.
+--
+-- Which is which is Rebol's declaration rather than a fact about this code:
+-- `src/boot/actions.reb` declares the sixty, `src/boot/natives.reb` the rest,
+-- and there is no rule to derive it from. A word bound to the same function
+-- under another spelling is an action too, which is why the count of words
+-- that answer ACTION is larger than sixty.
 
 -- The concrete datatypes reachable through each family variant. A family
 -- exists where several datatypes share one representation and differ only
@@ -314,7 +328,7 @@ entity Value {
     is_series: is_any_string or is_any_block or datatype = binary
     is_number: datatype in {integer, decimal, percent}
     is_scalar: datatype in {integer, decimal, percent, money, char, pair, tuple, time, date}
-    is_any_function: datatype in {native, function, op}
+    is_any_function: datatype in {native, action, function, op}
 
     -- Conditional truth. Only NONE and logic FALSE are false; everything
     -- else is true, including zero, the empty string and the empty block.

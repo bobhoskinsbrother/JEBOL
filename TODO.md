@@ -27,7 +27,7 @@ the largest measured gap in the port. Read the two together.
 | Measure | Reads |
 | --- | --- |
 | `scripts/c-parity.py` | 279 of 279 C functions match R3's surface -- a comparison of two *declaration files*, and read as broader than it is |
-| `scripts/runtime-parity.py` | the same question asked of two *running* interpreters, which is where it fails: of 582 functions, **123 report a different datatype, 581 answer `words-of` differently, 430 give a shorter `spec-of`**, 1 is absent |
+| `scripts/runtime-parity.py` | the same question asked of two *running* interpreters, which is where it fails: of 582 functions, **3 report a different datatype, 581 answer `words-of` differently, 430 give a shorter `spec-of`**, 1 is absent |
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |

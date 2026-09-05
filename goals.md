@@ -19,6 +19,8 @@ independent adversarial passes over this target. Until they are done, work
 against `known-gaps.txt` can make JEBOL worse and be rewarded for it. Each
 carries the command that reproduces the fault.
 
+**16 to 20 are done. 21 is not, and it is the largest thing in this file.**
+
 The fifteen porting goals are **mostly, not entirely, independent**, and the
 couplings are named in the goals themselves. Two that this file used to claim
 turned out not to exist: goal 5 and goal 9 were both said to wait on goal 8, and
@@ -134,9 +136,10 @@ its own binary results directory. `./gradlew cleanTest` instead.
 Some assertions a real Rebol does not run either. Those go in
 `src/test/resources/rebol-suite/fails-on-rebol-too.txt`, with a comment
 recording the `./r3-head` session that settles it. They are not gaps and are not
-run. Never move an assertion there because it is hard — and note that nothing in
-the build would stop you, so this rule is held by discipline alone until goal 17
-is done.
+run. Never move an assertion there because it is hard. The build now holds the
+other half of that rule: `theFindingsListHasNoPassingEntries` fails if anything
+on the list starts passing here, so a gap parked there to shrink the backlog
+comes back the moment it works.
 
 The stated typical case used to be one arm of an `either error? try [...]`.
 Measured across all 84 entries, that describes 2 of them. 80 are whole files
@@ -192,7 +195,15 @@ the count can only fall. Nobody has settled it. Until someone does, treat a size
 as an estimate and expect surprises in both directions — and if you fix a stop
 and the count goes up, that is the answer, so write it down here.
 
-### 16. Stop the ratchet rewarding wrong answers — 11 entries, and it comes first
+### 16. Stop the ratchet rewarding wrong answers — DONE
+
+`--red--` is a harness word now, the mark reaches the assertion beside it, and
+`assertionsExpectedToPass` honours it. `noRedOnlyAssertionIsAGap` fails if a
+red-marked assertion ever appears on the gap list again. The eight
+`power-test.r3` entries came off; the three that were plain misfilings moved to
+`fails-on-rebol-too.txt` with the `r3-head` session that settles each.
+
+What follows is why, kept because the reasoning is the part worth having.
 
 **Eleven lines of `known-gaps.txt` name assertions where JEBOL already answers
 exactly what `./r3-head` answers.** Working them means moving JEBOL away from
@@ -233,7 +244,14 @@ so there is no way to say which listed entry corresponds to which oracle failure
 Five separate counts of "how many are misfiled" came back as 8, 10, 13, 14 and
 17 for exactly this reason. **Eleven is the confirmed floor, not the answer.**
 
-### 17. Give the second list a ratchet — an hour
+### 17. Give the second list a ratchet — DONE
+
+`theFindingsListHasNoPassingEntries` mirrors the gap-list ratchet onto
+`fails-on-rebol-too.txt`. It cost nothing to run: those assertions were already
+being executed, just filtered out of the expected-to-pass set, so the verdicts
+were there unused. Both lists are now held the same way.
+
+What follows is why.
 
 `fails-on-rebol-too.txt` has none. `theGapListHasNoPassingEntries` reads
 `knownGaps()` only, `theTwoListsDoNotOverlap` catches a copy but not a move, and
