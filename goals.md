@@ -440,13 +440,26 @@ whether the change worked.
 
 **What is left, and why each is left.**
 
-1. **`near` and `where` are blank on every raised error.** `near` is the source
-   fragment and could be built from the frame; `where` is R3's own chain of
-   internal frames — `[/ try all print do either either if -apply-]` — and
-   cannot be reproduced without reproducing that chain, which is a fact about
-   the C's control flow rather than about the language. Populating either also
-   changes the molded form of every error, so it is a wide change for a field
-   scripts rarely branch on. Worth doing deliberately, not in passing.
+1. ~~`near` and `where` are blank on every raised error.~~ **Done, with a
+   stated limit.** Both are attached as the error passes back out through the
+   evaluator, which is the one place holding the frames — a native raising
+   `zero-divide` has no idea what block it is in. `near` matches R3 exactly in
+   the shapes checked: `[/ 0]` for `1 / 0`, and the innermost block rather than
+   the caller's when the failure is inside a function.
+
+   **`where` matches only as far as the script goes.** R3 builds it from its own
+   data stack, so its chain runs on into the console's frames —
+   `[/ f try all print do either either if -apply-]` where this answers
+   `[/ f]`. The head is about the script and matches; the tail is the
+   interpreter talking about itself, and this is a different interpreter.
+   Asserting the whole list would be asserting the shape of the C's evaluator,
+   so the test asserts the head and says why.
+
+   One shape is known to differ: where R3's argument checking fails before the
+   callee gets a frame, its `near` points at the caller's block —
+   `try [append 1 2]` reports the whole outer block. JEBOL reports the call. R3's
+   answer there is a consequence of when it pushes a frame, not of the
+   language.
 2. **`compress` does not produce Rebol's bytes.** Not a level setting: 3.22.5
    compresses with **libdeflate**, not zlib, and chooses a stored block where
    `java.util.zip` emits a fixed-Huffman one. Matching it byte for byte means

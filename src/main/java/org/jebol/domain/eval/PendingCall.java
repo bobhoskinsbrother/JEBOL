@@ -52,6 +52,32 @@ final class PendingCall {
         this.arguments.addAll(supplied);
     }
 
+    /**
+     * Where in the enclosing block this call began, and what it was called
+     * through.
+     *
+     * <p>Both are for an error's NEAR and WHERE, which the C fills from its
+     * own stack: NEAR is the block fragment from where the call started, and
+     * WHERE is the chain of names it was reached by. Neither can be worked out
+     * after the fact -- by the time anything raises, the block has moved past
+     * the call and the name that reached it is gone.
+     */
+    private int startedAt = -1;
+    private String calledThrough;
+
+    void startedAt(int position, String name) {
+        this.startedAt = position;
+        this.calledThrough = name;
+    }
+
+    int startedAt() {
+        return startedAt;
+    }
+
+    String calledThrough() {
+        return calledThrough;
+    }
+
     private static List<Parameter> declaredParametersOf(Value callee) {
         List<Parameter> declared = switch (callee) {
             case NativeValue built -> built.parameters();

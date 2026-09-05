@@ -707,8 +707,69 @@ public final class Evaluator {
                 }
             } catch (ReturnSignal returning) {
                 unwindToFunction(frames, returning);
+            } catch (Raised raised) {
+                throw sayingWhereItCameFrom(raised, frames);
             }
         }
+    }
+
+    /**
+     * Fills in an error's NEAR and WHERE on the way out, once.
+     *
+     * <p>The fields exist because a script reads them, and they were none on
+     * every error the evaluator raised: only the reader ever set NEAR, for a
+     * syntax error. They cannot be filled in where the failure happens -- a
+     * native raising {@code zero-divide} has no idea what block it is in --
+     * so they are attached here, at the one place that has the frames.
+     *
+     * <p>NEAR is the fragment from where the innermost call began, which is why
+     * {@code PendingCall} records that: by now the block has moved past it.
+     * WHERE is the chain of names those calls were reached through, innermost
+     * first.
+     *
+     * <p>Once, and only if nothing has said already, because this catch sits in
+     * a loop that every enclosing frame also runs: the innermost answer is the
+     * true one and the outer passes must leave it alone.
+     *
+     * <p>It is not R3's answer exactly and cannot be. R3 fills both from its
+     * own data stack, so WHERE runs on down into the console's frames --
+     * {@code [/ try do either either if -apply-]} -- and NEAR points at the
+     * caller's block whenever a failure happens before the callee gets a frame,
+     * which is where its argument checking runs. What matches is the part that
+     * is about the script rather than about the interpreter.
+     */
+    private Raised sayingWhereItCameFrom(Raised raised, Deque<Frame> frames) {
+        List<Value> chain = new ArrayList<>();
+        Value nearest = null;
+        for (Frame open : frames) {
+            List<PendingCall> deepestFirst = new ArrayList<>();
+            if (open.invoking != null) {
+                deepestFirst.add(open.invoking);
+            }
+            deepestFirst.addAll(open.pendingCalls);
+            for (PendingCall waiting : deepestFirst) {
+                if (waiting.calledThrough() != null) {
+                    chain.add(WordValue.of(waiting.calledThrough()));
+                }
+                if (nearest == null && waiting.startedAt() >= 0) {
+                    nearest = open.code.atIndex(waiting.startedAt());
+                }
+            }
+        }
+        ErrorValue said = raised.error();
+        if (nearest != null && said.near().isEmpty()) {
+            said = said.near(nearest);
+        }
+        if (!chain.isEmpty()) {
+            List<Value> already = said.whereChain()
+                    .filter(BlockValue.class::isInstance)
+                    .map(held -> ((BlockValue) held).remaining())
+                    .orElseGet(List::of);
+            List<Value> together = new ArrayList<>(already);
+            together.addAll(chain);
+            said = said.raisedThrough(BlockValue.block(together));
+        }
+        return said == raised.error() ? raised : new Raised(said);
     }
 
     /** Pushes a nested block, refusing if that would nest too deep. */
@@ -772,6 +833,8 @@ public final class Evaluator {
         if (trace.isOn()) {
             trace.line(frame.position, input, frame.context);
         }
+        frame.startedThisValueAt = frame.position;
+        frame.invoking = null;
         frame.advance();
 
         return switch (input.datatype()) {
@@ -809,8 +872,13 @@ public final class Evaluator {
             if (!feedingAnOperator) {
                 Optional<OperatorValue> operator = operatorAt(frame);
                 if (operator.isPresent()) {
+                    int wroteTheOperatorAt = frame.position;
                     frame.advance();
-                    frame.pendingCalls.push(PendingCall.infix(operator.orElseThrow(), carrying));
+                    PendingCall infix =
+                            PendingCall.infix(operator.orElseThrow(), carrying);
+                    infix.startedAt(wroteTheOperatorAt,
+                            nameWrittenAt(frame, wroteTheOperatorAt));
+                    frame.pendingCalls.push(infix);
                     return;
                 }
             }
@@ -826,9 +894,18 @@ public final class Evaluator {
                 return;
             }
             frame.pendingCalls.pop();
-            if (!(invoke(frame, waiting, frames) instanceof StepOutcome.Produced invoked)) {
+            // Kept while it runs, because the pop above means a call that
+            // raises is no longer on the stack that NEAR and WHERE are read
+            // from -- and the call that raises is the one they are about.
+            frame.invoking = waiting;
+            StepOutcome outcome = invoke(frame, waiting, frames);
+            if (!(outcome instanceof StepOutcome.Produced invoked)) {
+                // Still running: it pushed a body, and the frame it pushed is
+                // where anything will raise from. Clearing here would take the
+                // call out of WHERE before its body had a chance to fail.
                 return;
             }
+            frame.invoking = null;
             carrying = invoked.value();
         }
     }
@@ -970,11 +1047,45 @@ public final class Evaluator {
             Frame frame, Deque<Frame> frames, Value callee,
             List<String> refinements, List<String> named) {
         PendingCall call = PendingCall.prefix(callee, refinements, named);
+        call.startedAt(frame.startedThisValueAt,
+                nameWrittenAt(frame, frame.startedThisValueAt));
         if (call.isSatisfied()) {
-            return invoke(frame, call, frames);
+            // A call needing nothing never reaches the pending stack, so it
+            // has to be recorded here or it is missing from WHERE -- which is
+            // every zero-argument function, and they are the ones whose bodies
+            // most often raise.
+            frame.invoking = call;
+            StepOutcome outcome = invoke(frame, call, frames);
+            if (outcome instanceof StepOutcome.Produced) {
+                frame.invoking = null;
+            }
+            return outcome;
         }
         frame.pendingCalls.push(call);
         return StepOutcome.waiting();
+    }
+
+    /**
+     * The word a call was written as, for an error's WHERE.
+     *
+     * <p>Read back out of the block rather than threaded through the call,
+     * because the name is a fact about the call site and not about the
+     * function: the same function reached through two words is two names, and
+     * an anonymous one has none.
+     */
+    private static String nameWrittenAt(Frame frame, int position) {
+        if (position < frame.code.index() || position > frame.code.storageLength()) {
+            return null;
+        }
+        Value written = frame.code.storage().at(position);
+        if (written instanceof WordValue word) {
+            return word.spelling();
+        }
+        if (written instanceof BlockValue path && path.datatype() == Datatype.PATH
+                && path.remaining().getFirst() instanceof WordValue first) {
+            return first.spelling();
+        }
+        return null;
     }
 
     private StepOutcome invoke(Frame frame, PendingCall call, Deque<Frame> frames) {
@@ -1902,6 +2013,19 @@ public final class Evaluator {
         void advance() {
             position++;
         }
+
+        /**
+         * Where the value now being evaluated started.
+         *
+         * <p>Kept because {@code position} has already moved past it by the
+         * time anything raises, and NEAR is the fragment from where the call
+         * began: {@code 1 / 0} answers {@code [/ 0]}, which is index 1 of a
+         * block whose position is 3 when the division refuses.
+         */
+        private int startedThisValueAt;
+
+        /** The call running right now, which the pending stack no longer holds. */
+        private PendingCall invoking;
     }
 
     /**

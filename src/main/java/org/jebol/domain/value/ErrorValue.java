@@ -21,7 +21,7 @@ public record ErrorValue(
         Optional<Value> secondArgument,
         Optional<Value> thirdArgument,
         Optional<Value> near,
-        Optional<String> whereWord,
+        Optional<Value> whereChain,
         Map<String, Value> writtenFields) implements Value {
 
     public ErrorValue {
@@ -35,7 +35,7 @@ public record ErrorValue(
             throw new IllegalArgumentException("an error needs a message, even an empty one");
         }
         if (subject == null || secondArgument == null || thirdArgument == null
-                || near == null || whereWord == null) {
+                || near == null || whereChain == null) {
             throw new IllegalArgumentException("optional fields are empty, never null");
         }
     }
@@ -148,8 +148,7 @@ public record ErrorValue(
             case "arg2" -> Optional.of(secondArgument.orElseGet(NoneValue::none));
             case "arg3" -> Optional.of(thirdArgument.orElseGet(NoneValue::none));
             case "near" -> Optional.of(near.orElseGet(NoneValue::none));
-            case "where" -> Optional.of(whereWord
-                    .<Value>map(WordValue::of).orElseGet(NoneValue::none));
+            case "where" -> Optional.of(whereChain.orElseGet(NoneValue::none));
             default -> Optional.empty();
         };
     }
@@ -215,15 +214,27 @@ public record ErrorValue(
      */
     public ErrorValue near(Value fragment) {
         return new ErrorValue(category, errorId, message, subject,
-                secondArgument, thirdArgument, Optional.of(fragment), whereWord,
+                secondArgument, thirdArgument, Optional.of(fragment), whereChain,
                 writtenFields);
     }
 
-    /** The same error, naming the function it was raised in. */
-    public ErrorValue raisedIn(String functionName) {
+    /**
+     * The same error, carrying the chain of names it was raised through.
+     *
+     * <p>A block, innermost first, as R3 answers: {@code 1 / 0} inside a
+     * function F gives {@code [/ f try ...]}. The tail differs from R3's,
+     * whose frames run down into the console's own evaluation; what matches
+     * is the part that is about the script.
+     */
+    public ErrorValue raisedThrough(Value chain) {
         return new ErrorValue(category, errorId, message, subject,
-                secondArgument, thirdArgument, near, Optional.of(functionName),
+                secondArgument, thirdArgument, near, Optional.of(chain),
                 writtenFields);
+    }
+
+    /** Whether anything has already said where this came from. */
+    public boolean saysWhereItCameFrom() {
+        return near.isPresent() || whereChain.isPresent();
     }
 
     @Override
