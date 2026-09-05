@@ -4,33 +4,35 @@
 #
 #   scripts/build-r3.sh [core|bulk] [output]      default: bulk, ./r3-head
 #
-# Why this exists. The `./r3` that was downloaded is a release build, and a
-# release is always older than the checkout beside it. Four places have been
-# found where the two disagree, and each cost time before the cause was known,
-# because a binary that answers differently from its own source is a fourth
-# authority that contradicts the third. Building from the checkout makes the
-# two the same thing.
+# Why this exists. A downloaded release build is always older than the checkout
+# beside it. Four places have been found where the two disagree, and each cost
+# time before the cause was known, because a binary that answers differently
+# from its own source is a fourth authority that contradicts the third.
+# Building from the checkout makes the two the same thing, and `./r3-head` is
+# the only Rebol this project consults.
 #
 # Rebol's own build tool is Siskin, a separate download. Nothing here needs it:
 # Siskin's job is to read make/rebol3.nest, run the pre-make step and call the
 # compiler, and the first of those is what resolve-nest.r3 does instead.
 #
-# The pre-make step needs a working Rebol to run, which is what ./r3 is for.
-# So the old binary builds the new one and is then only needed again to build
-# the next.
+# The pre-make step is itself a Rebol script, so building a Rebol needs a Rebol
+# already working. `./r3-head` bootstraps its own replacement, which is why the
+# compiler writes to a temporary file and only moves it into place on success:
+# a half-written binary here would leave nothing able to build the next one.
 
 set -e
 here=${0:a:h}
 jebol=${here:h}
 rebol=$jebol/rebol3-source
-bootstrap=$jebol/r3
+bootstrap=$jebol/r3-head
 
 product=${1:-bulk}
 out=${2:-$jebol/r3-head}
 spec=$jebol/build/r3/spec-$product.reb
+part_built=$out.part
 
 if [[ ! -x $bootstrap ]]; then
-  echo "no ./r3 to build with: the pre-make step is a Rebol script" >&2
+  echo "no ./r3-head to build with: the pre-make step is a Rebol script" >&2
   exit 1
 fi
 
@@ -61,7 +63,8 @@ clang -O2 -w \
   -framework CoreGraphics -framework CoreImage -framework ImageIO \
   -framework CoreServices -framework CoreMIDI -framework AudioToolbox \
   -lm -liconv \
-  -o $out
+  -o $part_built
 
+mv $part_built $out
 echo "built $out"
 $out --version | head -1

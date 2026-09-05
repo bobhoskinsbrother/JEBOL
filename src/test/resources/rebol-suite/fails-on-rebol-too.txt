@@ -147,3 +147,32 @@ compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress
 # and a real 3.22.5 has LZW too -- `compress "test" 'lzw` answers
 # #{0774657374FF01} there -- so its first branch is never taken either.
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #102
+
+# make-test.r3 asks for an error from MAKE and TO of a map from a paren, and a
+# real 3.22.5 builds the map instead. Found by audit on 5 September 2026, on
+# the list as gaps until then.
+#
+#     >> mold try [make map! quote (1 2)]
+#     == #[
+#         1 2
+#     ]
+#     >> mold error? try [make map! quote (1 2)]
+#     == #(false)
+#     >> mold error? try [to map! quote (1 2)]
+#     == #(false)
+#
+# So `error? try [...]` is false there, the assertion fails, and making it
+# pass here would mean refusing a paren that Rebol accepts.
+make-test.r3 / make/to map / make map! .. #498
+make-test.r3 / make/to map / to map! .. #533
+
+# module-test.r3 expects `module [type: :print][]` to raise wrong-type. It
+# raises nothing at all on 3.22.5, so the first condition of the ALL is false
+# and the whole assertion answers none. Written against issue 1444, which the
+# checkout appears to have settled the other way.
+#
+#     >> mold all [error? err: try [module [type: :print][]] err/id = 'wrong-type]
+#     == _
+#     >> mold error? try [module [type: :print][]]
+#     == #(false)
+module-test.r3 / make module / make module type assertion #18

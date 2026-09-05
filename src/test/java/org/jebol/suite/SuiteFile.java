@@ -77,7 +77,12 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
      * @param to    one past where it ends
      */
     record Assertion(String file, String group, String test, int ordinal, String source,
-            int from, int to) {
+            int from, int to, boolean redOnly) {
+
+        Assertion(String file, String group, String test, int ordinal, String source,
+                int from, int to) {
+            this(file, group, test, ordinal, source, from, to, false);
+        }
 
         /**
          * Unique within its file, because the ordinal counts assertions
@@ -101,9 +106,21 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
     private static final String TEST = "--test--";
     private static final String ASSERT = "--assert";
 
+    /**
+     * Rebol's mark for an assertion that describes Red rather than Rebol.
+     *
+     * <p>{@code quick-test-module.r3} binds it to {@code as-red-only}, and a
+     * failing assertion under the flag is reported as "not like Red" instead of
+     * being counted a failure. It is a harness word here so the mark reaches
+     * the assertion; left as an ordinary word it was swept into the setup and
+     * lost, and eight assertions that a real Rebol fails were graded as gaps.
+     */
+    private static final String RED_ONLY = "--red--";
+
     private static boolean isHarnessWord(Value value) {
         return value instanceof WordValue word && switch (word.spelling()) {
-            case START_FILE, END_FILE, START_GROUP, END_GROUP, TEST, ASSERT -> true;
+            case START_FILE, END_FILE, START_GROUP, END_GROUP, TEST, ASSERT,
+                    RED_ONLY -> true;
             default -> word.spelling().startsWith("--assertf");
         };
     }
@@ -360,6 +377,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         String group = "(no group)";
         String test = "(no test)";
         int ordinal = 0;
+        boolean nextAssertionDescribesRed = false;
         int at = skipScriptHeader(values);
 
         while (at < values.size()) {
@@ -386,12 +404,15 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                     ordinal = addSetupSteps(found, file, group, test, ordinal,
                             source, values, spans, at + 2, howMany);
                 }
+                case RED_ONLY -> nextAssertionDescribesRed = true;
                 case ASSERT -> {
                     ordinal++;
                     String written = sourceOf(source, spans, at + 1, until.size());
                     Assertion asserted = new Assertion(file, group, test, ordinal,
                             written, beginningOf(spans, at + 1),
-                            endOf(spans, at + 1, until.size()));
+                            endOf(spans, at + 1, until.size()),
+                            nextAssertionDescribesRed);
+                    nextAssertionDescribesRed = false;
                     int began = ordinal;
                     List<Assertion> alsoInside = new ArrayList<>();
                     for (int more = assertionsNestedIn(until); more > 0; more--) {

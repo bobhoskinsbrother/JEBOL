@@ -1,12 +1,31 @@
 # Goals
 
-Rebol's own test suite is the measure of this port. 615 of its assertions
-still fail, listed one per line in
-`src/test/resources/rebol-suite/known-gaps.txt`. This file breaks the
-remaining work into goals that can be taken one at a time.
+Rebol's own test suite is the measure of this port. What still fails is listed
+one per line in `src/test/resources/rebol-suite/known-gaps.txt`, and this file
+breaks that remaining work into goals that can be taken one at a time.
 
-Each goal below is independent. Take one, finish it, commit it, stop. There is
-no order to them beyond the sizes shown.
+The sizes below are the only per-goal figures anywhere; the totals live in
+`TODO.md` and are not repeated here. Both are snapshots, so check them rather
+than believe them:
+
+    wc -l < src/test/resources/rebol-suite/known-gaps.txt          # roughly
+    grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt  # exactly
+
+Take one, finish it, commit it, stop.
+
+**Goals 16 to 21 come first.** They are not porting work; they correct faults in
+the measure itself, found by an audit on 5 September 2026 that ran three
+independent adversarial passes over this target. Until they are done, work
+against `known-gaps.txt` can make JEBOL worse and be rewarded for it. Each
+carries the command that reproduces the fault.
+
+The fifteen porting goals are **mostly, not entirely, independent**. Known
+couplings are named in the goals themselves; the ones this file used to claim
+did not exist are goal 1 to goal 3, goal 5 to goal 8, goal 9 to goal 8, and goal
+15 double-counting eight of goal 4's assertions. Goals 1, 3, 4, 6 and 14 are
+also one question asked five times: what the capability catalogues claim is
+present. `system/codecs` is longer here than in a real 3.22.5, so JEBOL enters
+blocks the oracle skips and then raises inside them.
 
 ---
 
@@ -82,16 +101,51 @@ without it green.
 So the loop is: change something, run the gate, read the list of newly-passing
 entries out of the failure message, delete those lines, run the gate again.
 
+**Three things the ratchet does not do, all found by audit and all confirmed
+by running it.** Know them before trusting a green gate to mean progress.
+
+1. **It cannot fire for an assertion that never runs.** 350 assertions carry the
+   harness's own verdict "never reached", and 268 of those are on
+   `known-gaps.txt`. An assertion behind an earlier raise cannot start passing,
+   so for something over two fifths of the list the ratchet is inert. Those
+   entries come off only when the raise above them is fixed and the whole block
+   runs.
+2. **It does not cover `fails-on-rebol-too.txt` at all.**
+   `theGapListHasNoPassingEntries` reads `knownGaps()` and nothing else. Moving a
+   genuine gap into that file drops the published backlog by one and leaves the
+   build green. That was proved by mutation, not by reading.
+3. **It rewards two changes that are wrong.** See goal 16.
+
 Do not `rm -rf build/test-results` to force a re-run; it makes Gradle fail on
 its own binary results directory. `./gradlew cleanTest` instead.
 
 ### When an assertion cannot pass
 
-Some assertions a real Rebol does not run either — one arm of an
-`either error? try [...]`, for instance, where the other arm is the one taken.
-Those go in `src/test/resources/rebol-suite/fails-on-rebol-too.txt`, with a
-comment recording the `./r3-head` session that settles it. They are not gaps
-and are not run. Never move an assertion there because it is hard.
+Some assertions a real Rebol does not run either. Those go in
+`src/test/resources/rebol-suite/fails-on-rebol-too.txt`, with a comment
+recording the `./r3-head` session that settles it. They are not gaps and are not
+run. Never move an assertion there because it is hard — and note that nothing in
+the build would stop you, so this rule is held by discipline alone until goal 17
+is done.
+
+The stated typical case used to be one arm of an `either error? try [...]`.
+Measured across all 84 entries, that describes 2 of them. 80 are whole files
+guarded on a native this build has not got, where a real 3.22.5 reports
+`Number of Assertions Performed: 0`. Two more it runs and fails.
+
+**There is a second, older ledger and it works differently.**
+`src/test/resources/rebol-suite-excluded/` holds 33 assertions cut out of nine
+vendored suite files, one file per source file, each carrying its suite identity
+and a stated reason. They are not in the vendored text at all, so no count sees
+them and no ratchet can. Two things about it matter:
+
+- Its verdicts were taken against a **3.22.1** binary that no longer exists, and
+  roughly 26 of them are false against 3.22.5. `distance`, `as-color` and
+  `factorial` are all present and correct in `./r3-head` today.
+- `scripts/binary-verdicts.r3`, which every header cites as the evidence, is not
+  in the repository.
+
+Do not add to that directory. Goal 18 empties it.
 
 ### Every fix needs a JEBOL test
 
@@ -116,11 +170,168 @@ gate green.
 ## The goals
 
 Sizes are the number of `known-gaps.txt` entries the goal is worth, and the
-fifteen of them account for all 615 with nothing left over — goal 15 exists to
-close that sum and shows the arithmetic. Treat a size as a floor rather than an
-estimate: fixing a stop frees everything standing behind it, which is often
-more than the count suggests, because those assertions were never reached to
-be counted as failures in the first place.
+fifteen of them account for every entry with nothing left over — goal 15 exists
+to close that sum and shows the arithmetic.
+
+**Whether a size is a floor or a ceiling is unsettled, and it matters.** This
+file used to say floor, reasoning that fixing a stop frees the assertions
+standing behind it. Two independent audit passes disagreed with each other: one
+confirmed the reasoning, the other found that the harness already scores an
+unreached assertion as a failure, which would make the size a ceiling and mean
+the count can only fall. Nobody has settled it. Until someone does, treat a size
+as an estimate and expect surprises in both directions — and if you fix a stop
+and the count goes up, that is the answer, so write it down here.
+
+### 16. Stop the ratchet rewarding wrong answers — 11 entries, and it comes first
+
+**Eleven lines of `known-gaps.txt` name assertions where JEBOL already answers
+exactly what `./r3-head` answers.** Working them means moving JEBOL away from
+Rebol, and the ratchet will turn green when you do. This is the one goal that
+gets worse the longer it is left, because anybody picking up goal 11 walks into
+it.
+
+Eight are `power-test.r3 #11`-`#18`, and they come off with one line:
+
+    --test-- "power-integer-1"  --red-- --assert integer? power 2 16
+
+`power 2 16` is `65536.0` in Rebol, so that assertion is false there too.
+`--red--` is Rebol's own marker: in `rebol3-source/src/tests/quick-test-module.r3`
+it binds to `as-red-only`, which sets `qt-red-only`, and a failing assertion under
+that flag is counted as "not like Red" rather than as a failure. JEBOL's prelude
+binds it to `does []` and grades the assertion anyway.
+
+`RebolSuiteTest.java` around line 344 documents the choice and gets it backwards:
+it argues that judging strictly "can only ever name a gap that is really there".
+It cannot, because the strict reading demands behaviour Rebol has not got. Bind
+`--red--` the way Rebol does, and the eight lines go.
+
+The other three are ordinary misfilings, checked one at a time against the
+oracle:
+
+    make-test.r3 #498, #533   error? try [make map! quote (1 2)]  -> #(false) both sides
+    module-test.r3 #18        both sides answer _
+
+Reproduce any of them:
+
+    printf 'Rebol []\nprint mold power 2 16\nprint mold error? try [make map! quote (1 2)]\n' > /tmp/p.r3
+    ./r3-head /tmp/p.r3
+
+More are suspected in `port-test.r3` and `codecs-test.r3` and could not be
+confirmed, for a structural reason worth knowing: in a file where the oracle
+performs fewer assertions than the file writes, the ordinals cannot be lined up,
+so there is no way to say which listed entry corresponds to which oracle failure.
+Five separate counts of "how many are misfiled" came back as 8, 10, 13, 14 and
+17 for exactly this reason. **Eleven is the confirmed floor, not the answer.**
+
+### 17. Give the second list a ratchet — an hour
+
+`fails-on-rebol-too.txt` has none. `theGapListHasNoPassingEntries` reads
+`knownGaps()` only, `theTwoListsDoNotOverlap` catches a copy but not a move, and
+`theGapListNamesRealAssertions` never asks whether an entry has started passing.
+
+Demonstrated rather than reasoned: moving `bitset-test.r3 #139` — which a real
+Rebol passes and JEBOL fails — out of `known-gaps.txt` and into
+`fails-on-rebol-too.txt` drops the published backlog by one and leaves the build
+green.
+
+Mirror the existing test onto the second list. Both files are then held the same
+way, and the only route left for the number to fall without work is closed.
+
+### 18. Re-run the exclusion ledger and empty it — 33 assertions, 3 of them live bugs
+
+`src/test/resources/rebol-suite-excluded/` holds 33 assertions cut from nine
+vendored files, with reasons taken against the deleted 3.22.1 binary. Against
+3.22.5 most of those reasons are false.
+
+    for f in src/test/resources/rebol-suite-excluded/*.r3; do echo "== $f"; cat $f; done
+
+Take each one, run it through `./r3-head`, and sort it into three piles: put it
+back in the vendored file if Rebol passes it, move it to
+`fails-on-rebol-too.txt` with a fresh session if Rebol genuinely fails it, and
+leave nothing in the directory. About 23 pass in JEBOL today and cost nothing.
+Six fail on a real 3.22.5 as well and belong on the second list. **Three are
+live JEBOL failures and are goal 19.**
+
+Then close the hole that let stale reasons sit for a month: nothing in the build
+compares the vendored text against `rebol3-source`, and `SuiteCoverageTest`
+counts the vendored text against itself and reports 100%. A test that fails on a
+`--test--` with no assertion under it would have caught all 33 —
+`pair-test.r3`'s "distance" group currently has nine test headers and no
+assertions.
+
+### 19. `do %anyfile` is broken — 3 assertions, and one green test is green because of it
+
+`DO` given a `file!` evaluates the name instead of reading the file:
+
+    Rebol []
+    print mold try [do %units/files/unset.r3]
+
+Real Rebol runs the script. JEBOL raises `no-value` on the word `units`. `READ`
+works, `do to string! read %f` works, and the lexer types `%units/files/unset.r3`
+as `file!` correctly, so the fault is in `DO` rather than in the reader.
+
+The part that makes this urgent rather than ordinary: the one assertion from that
+group still in the vendored suite is `error? try [do %units/files/error.r3]`, it
+it currently passes, and **it passes because the feature is broken.** Real
+Rebol raises `zero-divide` from inside the script; JEBOL raises `no-value` on the
+word and never runs it. Both are errors, so the assertion is satisfied. Fixing
+`DO` will turn that entry red, which is correct and is not a regression.
+
+### 20. Fix the measuring tools before trusting them — half a day
+
+**`SuiteStops` under-provisions the interpreter and invents stops.** It grants
+every `HostService` but installs only the file system, where `RebolSuiteTest`
+also installs `useEnvironment(new ProcessEnvironment())` and
+`useProcesses(new JavaProcesses())`. Granting a service is not providing one.
+
+    grep -n "use[A-Z][a-zA-Z]*(" src/test/java/org/jebol/suite/RebolSuiteTest.java
+    grep -n "use[A-Z][a-zA-Z]*(" src/test/java/org/jebol/suite/SuiteStops.java
+
+So every stop it reports reading "given no environment to read" or "given no way
+to start a program" is an artefact. Under the real gate `get-env`, `list-env` and
+`call/shell/wait` all work, and `port-test.r3` has no stops at all. Goals 5, 8, 9
+and 15 were partly derived from that output and are corrected in place below.
+`SweepRunner` needs the same check.
+
+**`scripts/c-parity.py` cannot fail on the defects that matter.** It compares two
+files rather than two interpreters, and argument counts rather than argument
+names, so its clean report is true and says nothing about goal 21. A
+runtime arm that asks the running interpreter would have caught `action?` alone.
+
+### 21. What reaching zero would not prove — the real backlog
+
+None of this is on `known-gaps.txt` and none of it can be, because the suite
+tests what functions **return** and these are all about what functions **say
+about themselves**. Each was checked side by side against `./r3-head`:
+
+    apply :copy [[1 2 3 4 5] true 3]   r3: [1 2 3]                      JEBOL: [1 2 3 4 5]
+    words-of :copy                     r3: [value /part range /deep ...] JEBOL: _
+    type? :append                      r3: action!                       JEBOL: native!
+    pad/left "ab" 5                    r3: raises no-refine              JEBOL: "ab   "
+    e/near after 1 / 0                 r3: [/ 0]                         JEBOL: _
+    parse 1 [end]                      r3: raises expect-arg             JEBOL: #(false)
+
+`APPLY` is the worst of them: refinements land in the wrong slots, so a
+refinement is silently dropped and you get a wrong answer with no error. Roughly
+13 of 20 probes were wrong this way, and up to 68 functions are affected. The
+suite uses `APPLY` thirteen times and never once on a native with a refinement.
+
+The scale of the reflection problem, measured across all 279 C functions at
+runtime: 158 differ, 113 are missing refinements, 84 have a renamed argument.
+All 60 of Rebol's actions report as `native!`. `action?` appears zero times in
+all 67 vendored files and `no-refine` appears zero times, so no assertion in the
+suite could ever catch any of it.
+
+Unknown refinements are accepted silently on every REBOL-defined function, which
+is the whole borrowed mezzanine. Natives and actions refuse them correctly. That
+is the sharpest available answer to "does a borrowed `.reb` passing its own tests
+mean the port is right".
+
+The work is a sweep rather than a fix: generate every function in `lib` against
+both interpreters, diff, and fix by group. It found every one of the above in an
+afternoon.
+
+---
 
 ### 1. The remaining codecs — 111
 
@@ -129,7 +340,8 @@ eleven, each an `if find codecs 'name [...]` block that raises and takes its
 whole group with it. `SuiteStops` lists them. As of writing:
 
 - `load` of a file whose bytes are not valid UTF-8
-- `do %units/files/issue-1677.txt` — DO of a file path
+- `do %units/files/issue-1677.txt` — DO of a file path, which is goal 19 and
+  not a codec problem at all
 - DER, CRT and PLIST codecs: `a word with no binding was evaluated: SEQUENCE`
   (the decoded block holds words the codec then evaluates)
 - SWF: needs LZMA, which is goal 3
@@ -163,14 +375,28 @@ not exist here. Both are large third-party algorithms and neither is Rebol's
 own — unlike CRUSH and LZW, which were ported by hand and are in
 `src/main/java/org/jebol/domain/eval/Crush.java` and `Lzw.java`.
 
-Two honest routes. Port them, which is a lot of code. Or decide the build does
-not have them, which is a real answer that Rebol's own suite is written to
-accept: each group opens with `either error? try [compress "test" 'lzma]` and
-takes the "not available in this build" branch. That is already how `br`,
-`lz4` and `lzav` are handled — see `COMPRESSIONS_ELSEWHERE` in
-`Encodings.java`. If you take that route the assertions in the taken branch
-pass and the rest stop being gaps, but say so plainly in the commit; do not
-present it as having implemented them.
+**This goal used to offer two routes and one of them does not exist.** It said
+you could decide the build has not got them and take the suite's "not available
+in this build" branch, and that "the rest stop being gaps". That is wrong, and it
+was checked: JEBOL **already** answers `feature-na` for both, already takes that
+branch, and the 38 Brotli and LZMA entries are on the list *because* of it. The
+harness scores an unreached assertion as a failure, so declaring a feature absent
+retires nothing. The route was taken before this file was written and yielded
+nothing further.
+
+So the only route is to port them, which is a lot of code, and the honest size of
+this goal is 38 assertions that cannot be cleared any other way. Both are large
+third-party algorithms and neither is Rebol's own — unlike CRUSH and LZW, which
+were ported by hand and are in
+`src/main/java/org/jebol/domain/eval/Crush.java` and `Lzw.java`. `br`, `lz4` and
+`lzav` are handled by `COMPRESSIONS_ELSEWHERE` in `Encodings.java`, with the same
+consequence.
+
+**And there is a trap in the other direction.** Assertion `#62` of
+`compress-test.r3` is the `feature-na` check itself, and it currently passes —
+it is one of the passes. Implement Brotli correctly and that assertion starts
+failing and the gate goes red until somebody edits a list. Expect it, and do not
+read it as a regression.
 
 The exact-byte assertions matter here. A compressor that reads its own output
 back is not thereby the same compressor: Rebol builds CRUSH with the constants
@@ -202,14 +428,18 @@ branches in `Natives.java`. `crypt-port-camelia-test.r3`,
 ### 5. What is left of the file ports — 38
 
 `port-test.r3`. The file and directory schemes work now
-(`SeekableFilePort.java`); these are the remainder. Three stops:
+(`SeekableFilePort.java`); these are the remainder.
 
-- `get-env "PWD"` twice — the environment is not granted to the harness, or
-  `list-env`/`get-env` do not answer what a real Rebol answers. See goal 8.
-- `open %issue-2447` — a port that could not be opened
+**This goal used to list three stops. Under the real gate there are none.** The
+two `get-env "PWD"` stops were artefacts of `SuiteStops` not installing the
+environment adapter — see goal 20 — and the environment works when
+`RebolSuiteTest` runs the file. Re-derive the third (`open %issue-2447`) with a
+fixed tool before believing it.
 
-The rest are wrong answers; sweep the file. 23 are in "file port" and 14 in
-"directory port".
+So all 38 are wrong answers rather than blockers, and the whole file is
+sweepable: `scripts/sweep.py port-test.r3`. 23 are in "file port" and 14 in
+"directory port". There is no dependency on goal 8; that was invented by the
+same artefact.
 
 ### 6. The checksum port — 34
 
@@ -220,9 +450,20 @@ about its own boot file; the honest answer may be that this assertion belongs
 in `fails-on-rebol-too.txt` reasoning, or that `system/options/boot` should
 name something inside the root.
 
-The other 28 are the "Checksum port" group failing on their merits. Sweep the
-file: the port itself works (open, write, read, close, update all match a real
-Rebol in isolation), so this is something narrower.
+**The other 28 are not "the Checksum port failing on its merits", which is what
+this goal used to say.** They are the `xxh3` and `xxh128` blocks, which JEBOL
+never enters because it has not got those algorithms — the same shape as goal 3,
+and subject to the same correction: declaring them absent retires nothing,
+because an unreached assertion is scored as a failure.
+
+**Do not settle a checksum-port question on a single `./r3-head` run.** The
+oracle is not deterministic on this file. Running `checksum-test.r3` through
+Rebol's own runner fails 13 assertions in roughly one run in eight, reproduced
+from cold in two unrelated directories with byte-identical inputs; the failing
+one is `--assert not open? close port`, so a real Rebol sometimes reports a
+closed checksum port as still open. Nothing on `known-gaps.txt` depends on it
+today, but two audit passes disagreed with each other because one hit a bad run.
+Run it three times.
 
 ### 7. ENBASE, DEBASE and their parts — 29
 
@@ -240,9 +481,15 @@ lets a URL-safe group end short); the encoder does not.
 
 "debase/part" is 21 of the 29 and is worth a look as one piece.
 
-### 8. The environment — 9, and it unblocks others
+### 8. The environment — 9, and it unblocks nothing
 
-`os-test.r3`, and two of `port-test.r3`'s stops. Three separate things:
+`os-test.r3`. **The "unblocks others" in the old title was wrong** — it came
+from `SuiteStops` reporting stops in `port-test.r3` and `module-test.r3` that do
+not happen under the real gate, where `get-env`, `list-env` and `call/shell/wait`
+all work. See goal 20. This is nine assertions in one file and nothing waits on
+it.
+
+Two real things:
 
 - `set-env` and `get-env` refuse a `word!` and want a `string!`. A real Rebol
   takes either.
@@ -250,19 +497,21 @@ lets a URL-safe group end short); the encoder does not.
   the process environment but need not be true of what the interpreter
   reports. Decide what a JVM-hosted Rebol should do here and say so in the
   commit.
-- `get-env` and `list-env` are not granted in the harness, so `PWD` is
-  unreadable.
 
 ### 9. Modules and IMPORT — 19
 
 `module-test.r3` stops on `write modules-dir/mymodule.reb`, because
-`system/options/modules` is none. It is none because `sys-start.reb` works it
-out from `get-env "HOME"` and then `make-dir`s it, and both fail under the
-sandbox. So this depends on goal 8, or on deciding where a sandboxed
-interpreter's module directory should be.
+`system/options/modules` is none.
 
-After that: `import`, which is the substance of the goal, and three
-`call`-dependent stops that need the process service.
+**The stated cause was wrong.** This goal said the environment is unreadable
+under the sandbox so `sys-start.reb` cannot work the directory out, and that this
+therefore depends on goal 8. Under the real gate `get-env "HOME"` works — the
+"no environment" reading came from `SuiteStops`, which does not install the
+adapter (goal 20). Re-derive the actual cause with a fixed tool before starting.
+The same applies to the three `call`-dependent stops: `call/shell/wait` works
+under `RebolSuiteTest`.
+
+After that: `import`, which is the substance of the goal.
 
 ### 10. The elliptic curves — 27
 
@@ -286,13 +535,17 @@ will show it. Small enough to take in one sitting each:
 | `unicode-test.r3` | 21 | one stop: `repeat` refuses a `string!` count |
 | `time-test.r3` | 15 | all in "time" |
 | `map-test.r3` | 12 | 10 are "set operations with map!" |
-| `make-test.r3` | 12 | |
+| `make-test.r3` | 12 | 2 of them are goal 16's, not work |
 | `file-test.r3` | 12 | one stop: `read file://temp.txt` — the `file://` URL scheme |
 | `thru-cache-test.r3` | 10 | |
 | `parse-test.r3` | 9 | "Other parse issues" |
 | `vector-test.r3` | 9 | |
-| `power-test.r3` | 8 | "power integer" |
+| ~~`power-test.r3`~~ | ~~8~~ | **do not work these — goal 16.** All eight are `--red--` assertions a real Rebol fails too |
 | `lexer-test.r3` | 7 | |
+
+So this goal is 136 of real work, not 144. The `power-test.r3` row is the trap
+goal 16 exists to remove: making those eight pass means making JEBOL disagree
+with the oracle, and the ratchet will go green when you do it.
 
 ### 12. Two Java exceptions escaping to the top — 7
 
@@ -320,9 +573,18 @@ finding out which before deciding what to do about it.
 
 ### 15. The scattered singles and pairs — 40 across eighteen files
 
-What is left when the fourteen above are taken out, and the numbers close
-exactly: 111 + 55 + 45 + 40 + 38 + 34 + 29 + 9 + 19 + 27 + 144 + 7 + 8 + 9
-= 575, and 615 - 575 = 40.
+What is left when the fourteen above are taken out. The sum closes exactly
+against the gap list as it stood when this was written, which is the point of
+the goal: 111 + 55 + 45 + 40 + 38 + 34 + 29 + 9 + 19 + 27 + 144 + 7 + 8 + 9
+= 575, leaving 40. If that no longer matches what
+`grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt` says, the
+difference is work someone has done and a size above is stale — re-derive per
+file rather than trusting the table.
+
+The sum still balances because those are entry counts, but **at least eleven of
+the entries inside it are goal 16's and are not work at all**: eight in
+`power-test.r3`, two in `make-test.r3`, one in `module-test.r3`. Real remaining
+work is 604 or fewer, and nobody has established the ceiling.
 
     6  date-test.r3
     4  crypt-port-camelia-test.r3      these three are goal 4's work,
@@ -342,29 +604,56 @@ and `scripts/sweep.py` will put the two answers side by side. That makes this
 the cheapest goal per assertion on the list and a reasonable place to start
 cold, because each one is small enough to hold in your head whole.
 
-Two do stop, and both stops are about reaching outside the process rather than
-about the thing the file is named for:
+Two appeared to stop, and one of those was my tool lying:
 
     evaluation-test.r3   call/shell/wait ... -> no way to start a program
     task-test.r3         to task! [...]      -> cannot use to task! on block!
 
-The first is CALL, which is the same missing capability as three of goal 9's
-stops — do it once and both move. The second is that `task!` is a datatype
-word here without a datatype behind it, which is recorded in `TODO.md` and is
-a larger decision than four assertions warrant on its own.
+**The first is not a stop.** `call/shell/wait` works under `RebolSuiteTest`,
+which installs the process adapter; `SuiteStops` does not, and reported a stop
+that the gate never sees. See goal 20. The line this file used to carry — "CALL
+is the same missing capability as three of goal 9's stops, do it once and both
+move" — described a coupling that does not exist.
+
+The second is real: `task!` is a datatype word here without a datatype behind
+it, which is recorded in `TODO.md` and is a larger decision than four assertions
+warrant on its own.
+
+`evaluation-test.r3` also has three assertions that are not in this count at all,
+because they were cut out of the vendored file. They are goals 18 and 19.
 
 The eight crypt-port entries are listed here for the arithmetic only. Do them
 with goal 4; on their own they are four algorithms with nowhere to run.
 
 ---
 
-## One loose end
+## Two loose ends, both flakes
+
+**A flake is a fail** (see `CLAUDE.md`). Neither of these is closed.
+
+### The oracle is not deterministic on one file
+
+`./r3-head` fails 13 assertions in `checksum-test.r3` in roughly one run in
+eight, reproduced from cold in two unrelated directories with byte-identical
+inputs and ruled out as a working-directory or concurrency effect. The failing
+assertion is `--assert not open? close port`, so a real Rebol sometimes reports a
+closed checksum port as still open.
+
+    cd rebol3-source/src/tests && for i in 1 2 3 4 5 6 7 8; do \
+      ../../../r3-head run-tests.r3 2>&1 | grep -c FAIL; done
+
+This is a flake in the instrument every other answer here is settled with.
+Nothing on `known-gaps.txt` depends on it today, and two audit passes still
+disagreed with each other because one of them hit a bad run and did not re-run.
+Nobody has read the C to find out why. Until someone does, ask the oracle three
+times whenever the answer surprises you.
+
+### A server test that failed once
 
 `WebScreenServerFromTheSourceTest` failed once, under a full parallel gate
 run, with 404 where it wanted 204, and has passed every time since — twelve
 isolated runs, 400 serial rounds, 960 concurrent rounds, and every gate run
-after. **A flake is a fail** (see `CLAUDE.md`), so this is an open failure and
-not a curiosity.
+after. It is an open failure and not a curiosity.
 
 What has been done: the server now binds the loopback and names the address it
 actually bound, rather than calling itself `localhost`, which resolves to two

@@ -1,19 +1,13 @@
-# The REBOL 3 interpreter used to check JEBOL's answers against a real one.
-#
-# A tool rather than source, and a 2.1M platform-specific binary at that.
-# Fetch your own from the Oldes/Rebol3 releases, picking the build for your
-# machine; see docs/allium-checker-notes.md for which asset and how to run
-# it. The binaries linked from rebol.com are i386 and will not run on any
-# current macOS.
-/r3
-/r3.exe
-
-# The same interpreter, built from the source in rebol3-source/ rather than
-# downloaded, by `scripts/build-r3.sh`. It is the one to ask, because a release
-# is always older than the checkout beside it and the two do disagree. The
-# downloaded /r3 is still needed: Rebol's pre-make step is a Rebol script, so
-# the old binary is what builds the new one. Its generated spec lands in
+# The REBOL 3 interpreter JEBOL's answers are checked against, built from the
+# source in rebol3-source/ by `scripts/build-r3.sh`. A tool rather than source,
+# and a 2.1M platform-specific binary at that. Its generated spec lands in
 # build/r3/, which the Gradle line further down already covers.
+#
+# There is deliberately no entry for a downloaded `/r3` beside it. One sat here
+# for a while, a 3.22.1 release, and a release is always older than the checkout
+# next to it: four wrong readings were traced to asking it instead of this one.
+# It was deleted, and leaving it un-ignored means that if anyone fetches one
+# again `git status` will say so rather than hiding it.
 /r3-head
 
 # Rebol's own source, symlinked in so the IDE indexes it and the MCP can search

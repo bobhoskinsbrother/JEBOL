@@ -105,18 +105,22 @@ prelude.
 That means a function is ported by making the C it depends on work, not by
 reimplementing the function. When `join` misbehaves the fault is underneath it,
 and the borrowed file is a fixed point that says so. It also means the surface
-is Rebol's rather than an approximation of it: 279 of 279 C functions match,
-none of R3's 404 functions is missing, and `system/catalog/datatypes` has all
-fifty-eight of Rebol's (plus `java-object!`).
+is Rebol's rather than an approximation of it: every C function R3 exposes has
+a match, none of its 404 functions is missing, and `system/catalog/datatypes`
+has all fifty-eight of Rebol's (plus `java-object!`). `scripts/c-parity.py`
+measures that on demand and `TODO.md` records what it last said.
 
 ## How it is checked
 
 **Rebol's own test suite is the measure.** All sixty-seven files from
-`src/tests/units/` are vendored and run — 10,100 assertions, every one of them
-reached. What still fails is named line by line in
+`src/tests/units/` are vendored and every assertion they write is reached and
+run. What still fails is named line by line in
 `src/test/resources/rebol-suite/known-gaps.txt`, and that list only ever
 shrinks: the build fails if a listed assertion starts passing, so nothing comes
 off it quietly and nothing goes on it without being seen.
+
+**The counts live in `TODO.md` and nowhere else**, so there is one place to
+correct when they move rather than four that drift apart.
 
 Beside it, and outliving it:
 
@@ -126,18 +130,21 @@ Beside it, and outliving it:
 - **Standalone tests** for every behaviour fixed because of a suite assertion,
   which build an interpreter and read no `.r3` file. The suite is scaffolding
   and will be deleted when it goes green; these are what lasts.
-- **A real `r3` binary**, used as an oracle. Where the suite and the C
-  disagree, the C wins; where reasoning and the binary disagree, the binary
-  wins.
+- **`./r3-head`, a real Rebol 3.22.5 built from the checkout beside it**, used
+  as an oracle. Where the suite and the C disagree, the C wins; where reasoning
+  and the binary disagree, the binary wins. It is the only Rebol consulted: an
+  older 3.22.1 download sat beside it for a while and cost four wrong readings
+  before it was deleted, so a binary that is not built from the source it is
+  being read against is worse than no binary at all.
 
 ## Where it has got to, and what is left
 
-**9,401 of the 10,100 assertions in Rebol's own test suite pass**, and every
-one of the rest is accounted for by name. 615 fail and are listed line by line
-in `known-gaps.txt`. 84 are in `fails-on-rebol-too.txt` and are not run at all:
-each is an assertion the Rebol this is measured against does not run either,
-usually one arm of an `either error? try [...]` whose other arm is the one
-taken, and each line carries the session that settled it.
+**Most of Rebol's own suite passes, and every assertion that does not is
+accounted for by name** — either in `known-gaps.txt`, which is what still fails,
+or in `fails-on-rebol-too.txt`, which is assertions the Rebol this is measured
+against does not run either. Those are usually one arm of an `either error? try
+[...]` whose other arm is the one taken, and each line carries the `r3-head`
+session that settled it. For the figures, see `TODO.md`.
 
 The useful split is not by feature but by whether they ran at all. A suite file
 is a script, so an assertion that raises takes the rest of its block with it,
@@ -146,28 +153,24 @@ failure rather than failures in their own right. Fixing one thing routinely
 moves dozens, and the count moves in steps rather than one at a time — the file
 and directory schemes took thirty-six with them in a single commit.
 
-Where they sit now:
+Roughly, what is left is the codecs, `image!` as a series, the compression
+algorithms with no JDK equivalent, four of the port schemes, ENBASE and DEBASE,
+the elliptic curves, and a long tail across unicode, time, map, make, module
+and parse.
 
-```
- 111  the remaining codecs — eleven separate ones, each an `if find codecs
-      'name [...]` block that raises and takes its group with it
-  55  image!, all of them wrong answers rather than blocks: the image as a
-      series is 31 of them
-  45  Brotli and LZMA, which have no JDK equivalent
-  40  the crypt port, all behind one unregistered scheme
-  38  what is left of the file ports
-  34  the checksum port
-  29  ENBASE, DEBASE and their parts
-  29  FUNCTION and its refinements
-  27  the elliptic curves
-  and a long tail across unicode, time, map, make, module and parse
-```
+**`goals.md` breaks all of it into pieces of work**, each with its size, what
+blocks it, which C file to read and how to check the answer against a real
+Rebol. **The sizes live there and are not repeated here.** It also carries the
+working method: one authority and one oracle, the measuring tools, the ratchet,
+and a rule for the assertions a real Rebol does not run either.
 
-**`goals.md` breaks all of it into fifteen independent pieces**, each with its
-size, what blocks it, which C file to read and how to check the answer against
-a real Rebol. It also carries the working method, which is the part that took
-longest to get right: two authorities, two measuring tools, a ratchet that only
-shrinks, and a rule for the assertions a real Rebol does not run either.
+Six of those goals are not porting at all. They correct faults in the measure,
+found by an audit that ran three independent adversarial passes over it — a
+handful of listed assertions that a real Rebol also fails, so that fixing them
+would move JEBOL *away* from Rebol; an allowlist with no ratchet behind it; a
+measuring tool that reports blockers the gate never sees; and a file the oracle
+itself answers differently on consecutive runs. Those come first, because until
+they are done a falling backlog does not reliably mean progress.
 
 Bigger things that are known rather than counted:
 
@@ -186,11 +189,11 @@ Bigger things that are known rather than counted:
   GZIP and ZIP and stops. Brotli and LZMA are still the choice between writing
   them and marking them not-in-this-build, which is a branch Rebol's own suite
   is written to accept.
-- **DRAW renders 22 of R3's 36 commands.** `image` and `text` are the two whose
-  absence makes a page look wrong rather than plain.
+- **DRAW does not render every command R3 does.** `image` and `text` are the
+  two whose absence makes a page look wrong rather than plain.
 - **TLS loads but does not connect.**
-- **73 of Rebol's 142 error ids can be raised**, so a script that catches by id
-  can still meet one JEBOL has no way to produce.
+- **Not every one of Rebol's error ids can be raised**, so a script that
+  catches by id can still meet one JEBOL has no way to produce.
 - **Seven of R3's scheme names are not registered.** `file`, `dir` and
   `checksum` are served now; `crypt` is the next that matters.
 - **`task!` is a datatype word and not yet a datatype.**
@@ -266,7 +269,7 @@ Java 25, Gradle, no runtime dependencies. The shipped jar is about 1,024 KB, of
 which 860 KB is the borrowed library.
 
 ```
-./gradlew check          # 16,602 tests, about four minutes
+./gradlew check          # the whole suite, about four minutes
 ./gradlew browserCheck   # the second gate: a real browser, pixel for pixel
 ```
 

@@ -106,10 +106,23 @@ class RebolSuiteTest {
         return linesOf(FAILS_ON_REBOL_TOO);
     }
 
+    /**
+     * What the port is held to: every assertion, less the three kinds that say
+     * nothing about it.
+     *
+     * <p>The two lists are read from disk and are bookkeeping. The third kind
+     * is read from the suite's own text: an assertion Rebol marks
+     * {@code --red--} describes how Red behaves, and Rebol's runner counts a
+     * failing one apart from its failures rather than as one. Deriving it from
+     * the mark rather than from a list is deliberate -- a list would have to be
+     * kept in step with the vendored files by hand, and the mark cannot drift
+     * from the assertion it is written beside.
+     */
     static Stream<SuiteFile.Assertion> assertionsExpectedToPass() {
         List<String> gaps = knownGaps();
         List<String> alsoFailingOnRebol = failingOnRebolToo();
         return everyAssertion()
+                .filter(assertion -> !assertion.redOnly())
                 .filter(assertion -> !gaps.contains(assertion.toString()))
                 .filter(assertion -> !alsoFailingOnRebol.contains(assertion.toString()));
     }
@@ -339,14 +352,25 @@ class RebolSuiteTest {
      *
      * <p>{@code --red--} and {@code --assert-er} are the two that were still
      * missing, and they cost more than their ten uses suggest: each one killed
-     * its whole file part way through. In Rebol's own runner {@code --red--}
-     * marks the next assertion as a Red comparison, so a failing one is
-     * counted apart from the failures rather than as one; here it does nothing
-     * and the assertion is judged like any other, which can only ever name a
-     * gap that is really there. {@code --assert-er} is ASSERT with an error
-     * whose id is {@code feature-na} let through, and it is not counted here
-     * at all, being one assertion in ten thousand and spelled differently
-     * enough that the slicer never sees it.
+     * its whole file part way through.
+     *
+     * <p>{@code --red--} is now a harness word and marks the assertion beside
+     * it, which {@link SuiteFile.Assertion#redOnly()} carries and
+     * {@link #assertionsExpectedToPass()} honours. It used to be bound to a
+     * no-op here, and the note beside it argued that grading such an assertion
+     * anyway was merely stricter and "can only ever name a gap that is really
+     * there". That was wrong, and it cost eight lines of the gap list:
+     * {@code power 2 16} is {@code 65536.0} in Rebol, so
+     * {@code integer? power 2 16} is false there too, and the strict reading
+     * was asking JEBOL to differ from the implementation it is measured
+     * against. A stricter rule is only safer when the thing it is strict about
+     * is true.
+     *
+     * <p>{@code --assert-er} is ASSERT with an error whose id is
+     * {@code feature-na} let through, and it is not counted here at all, being
+     * one assertion in ten thousand and spelled differently enough that the
+     * slicer never sees it. Nineteen {@code --assertf~=} assertions are missed
+     * the same way; Rebol's own runner counts all three spellings.
      */
     private static final String THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION = """
             jebol-nested: copy ""
@@ -556,6 +580,64 @@ class RebolSuiteTest {
         assertThat(failingOnRebolToo().stream().filter(gaps::contains).toList())
                 .as("an assertion is either work to do or a finding about "
                         + "Rebol; being both means one of the two is wrong")
+                .isEmpty();
+    }
+
+    /**
+     * The same ratchet as {@link #theGapListHasNoPassingEntries()}, for the
+     * other list.
+     *
+     * <p>It had none, and the two lists are not symmetrical without it. The gap
+     * list only shrinks because the build fails when a listed assertion starts
+     * passing; nothing asked the same of the findings list, so an entry moved
+     * there left the published backlog one smaller and the gate green. That was
+     * demonstrated rather than argued: moving {@code bitset-test.r3 #139},
+     * which a real Rebol passes and JEBOL fails, out of one file and into the
+     * other took the count down by one and broke nothing.
+     *
+     * <p>A finding on that list says a real Rebol does not pass this either.
+     * If JEBOL starts passing it, the finding was wrong or the world moved, and
+     * either way somebody has to go and look. The entries are excluded from
+     * {@link #assertionsExpectedToPass()} but every one of them still runs, so
+     * this costs nothing but the lookup.
+     */
+    @Test
+    @DisplayName("no finding about Rebol has quietly started passing here")
+    void theFindingsListHasNoPassingEntries() {
+        List<String> findings = failingOnRebolToo();
+        List<String> nowPassing = everyAssertion()
+                .filter(assertion -> findings.contains(assertion.toString()))
+                .filter(RebolSuiteTest::holds)
+                .map(SuiteFile.Assertion::toString)
+                .toList();
+
+        assertThat(nowPassing)
+                .as("these pass now, so the recorded finding that a real Rebol "
+                        + "fails them too needs re-checking against ./r3-head")
+                .isEmpty();
+    }
+
+    /**
+     * An assertion Rebol marks {@code --red--} is never work to do.
+     *
+     * <p>Rebol's own runner counts a failing one apart from its failures, as a
+     * difference from Red rather than a defect. Grading it here anyway is not
+     * merely stricter, because the strict reading asks for behaviour a real
+     * Rebol has not got: eight lines of the gap list wanted
+     * {@code integer? power 2 16}, which is false in Rebol, and the ratchet
+     * would have gone green for whoever made JEBOL disagree with the oracle.
+     */
+    @Test
+    @DisplayName("no assertion about Red is on the gap list")
+    void noRedOnlyAssertionIsAGap() {
+        List<String> gaps = knownGaps();
+        assertThat(everyAssertion()
+                .filter(SuiteFile.Assertion::redOnly)
+                .map(SuiteFile.Assertion::toString)
+                .filter(gaps::contains)
+                .toList())
+                .as("Rebol reports these as differences from Red, not failures; "
+                        + "fixing them would move JEBOL away from Rebol")
                 .isEmpty();
     }
 }

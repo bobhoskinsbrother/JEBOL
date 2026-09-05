@@ -74,22 +74,36 @@ a thousand more assertions.
 cd rebol3-source/src/tests && ../../../r3-head run-tests.r3
 ```
 
-**The downloaded `./r3` is still needed, to build with.** Rebol's pre-make step
-is itself a Rebol script, so an old binary is what makes the new one; after
-that it has no other job. Rebol's own build tool, Siskin, is a separate
-download and is not needed -- `scripts/resolve-nest.r3` reads
-`make/rebol3.nest` far enough to answer the one question pre-make asks, and
-clang does the rest.
+**`r3-head` builds its own replacement, and there is no second binary.** A
+downloaded 3.22.1 sat beside it for a while and is what the four wrong readings
+above were traced to, so it was deleted rather than kept for the one job it
+had. That job was real, though: Rebol's pre-make step is itself a Rebol script,
+so building a Rebol needs a working Rebol. `scripts/build-r3.sh` bootstraps
+from `r3-head` itself and compiles to `r3-head.part`, moving it into place only
+if clang succeeds, because a half-written binary there would leave nothing able
+to build the next one.
+
+Rebol's own build tool, Siskin, is a separate download and is not needed --
+`scripts/resolve-nest.r3` reads `make/rebol3.nest` far enough to answer the one
+question pre-make asks, and clang does the rest.
+
+**On a fresh clone with no `r3-head` there is nothing to bootstrap from**, and
+that is a genuine hole rather than an oversight to work around quietly: fetch a
+release from the Oldes/Rebol3 releases page, build with it once, then delete
+it. Do not leave it in the repo root, and do not consult it for an answer.
 
 ## The regression floors
 
 All of these stay where they are. A change that moves one is wrong.
 
 - **`RebolSuiteTest`** -- Rebol's own assertions, about a minute alone. The
-  inner loop between changes. **All 10,100 assertions its sixty-seven files
-  write are run**, and 1,669 fail. Every failure is named in
-  `known-gaps.txt`: not a skip list, because every line in it runs on every
-  build and the test fails if a listed assertion starts passing.
+  inner loop between changes. **Every assertion its sixty-seven files write is
+  run.** Each failure is named in `known-gaps.txt`: not a skip list, because
+  every line in it runs on every build and the test fails if a listed assertion
+  starts passing. `fails-on-rebol-too.txt` holds the ones that are not run at
+  all, each carrying the `r3-head` session showing a real Rebol does not run it
+  either. **For the counts see `TODO.md`, which is the only file that carries
+  them.**
 
   **It fails two different ways and they mean opposite things.** A
   `theAssertionHolds` failure is a regression and has to be fixed. A
@@ -113,22 +127,27 @@ All of these stay where they are. A change that moves one is wrong.
 
 - **`ActionParityTest`** -- the datatype table times the arms table, ratchet at
   zero, nothing parked behind it.
-- **`scripts/c-parity.py`** -- **279 C functions, 279 matching R3's surface.**
+- **`scripts/c-parity.py`** -- every C function matched against R3's surface.
   MISSING, WRONG LAYER, REFINEMENTS, ARGUMENTS and TYPES are all empty. The
   only thing it still prints is that JEBOL has a `java-object!` datatype and
   R3 has nothing like it, which is deliberate.
 - **`PortingBacklogTest`** -- 0 of R3's 404 functions missing, and it asks
   both `lib` and `sys`. It has been wrong three times, each because a number
   was believed and the question behind it was not.
-- **`scripts/error-parity.py`** -- 69 of Rebol's 142 error ids can be raised
-  and 73 cannot. This one is not a floor yet: it is a count that did not
-  exist until `too-long` was found to be missing by needing it. Read the
-  Script and Syntax columns first, because those name behaviour JEBOL already
-  has and reports under the wrong id or not at all.
+- **`scripts/error-parity.py`** -- how many of Rebol's error ids JEBOL can
+  raise. This one is not a floor yet: it is a count that did not exist until
+  `too-long` was found to be missing by needing it. Read the Script and Syntax
+  columns first, because those name behaviour JEBOL already has and reports
+  under the wrong id or not at all.
 
-`./gradlew check` is the gate before a commit: about 14,961 tests, 0 failed,
-0 skipped, and five to twenty-five minutes depending on what it has to
-recompile.
+**Every figure these produce is written down in `TODO.md` and nowhere else.**
+This section deliberately names what each measure asks rather than what it last
+answered: this file carried a count of raisable error ids that was both stale
+and the wrong way round, against a `TODO.md` that was right, and a reader had
+no way to tell which to believe.
+
+`./gradlew check` is the gate before a commit: 0 failed, 0 skipped, and five to
+twenty-five minutes depending on what it has to recompile.
 
 `./gradlew browserCheck` is the second gate and is not optional, only
 separate: it drives a real Chrome and compares what it paints against Java2D,

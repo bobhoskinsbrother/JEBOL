@@ -6,6 +6,14 @@ function, what the authorities are and what the regression floors say live in
 
 Every number below was checked on 2026-09-05 by running it.
 
+**This is the only file that carries these counts.** `README.md`,
+`goals.md` and `docs/porting-guide.md` describe what each measure asks and
+point here for what it answered, on purpose: the same figures were once
+written into all four, and they drifted until the porting guide and this table
+disagreed about how many error ids can be raised, with nothing to say which
+was right. A count belongs in one place or it belongs in none. The exception
+is the per-goal sizes in `goals.md`, which appear there and nowhere else.
+
 ## What the measures say now
 
 The first five are clean. Every assertion Rebol's 67 vendored files write is
@@ -17,18 +25,27 @@ now run -- Goal 1, and it is done. The sixth is not clean.
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
-| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 9,401 pass, **615 fail** and are named in `known-gaps.txt`, and 84 are in `fails-on-rebol-too.txt` and not run |
+| `RebolSuiteTest` | all 10,100 assertions Rebol's 67 vendored files write are run. 9,399 pass, **604 fail** and are named in `known-gaps.txt`, 87 are in `fails-on-rebol-too.txt`, and 10 are marked `--red--` by Rebol as describing Red rather than Rebol |
 | `scripts/error-parity.py` | **73 of Rebol's 142 error ids can be raised. 69 cannot** |
 
-`./gradlew check` is 16,602 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 16,606 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception.
 
-**The 615 remaining suite failures are broken into fifteen independent
-pieces in `goals.md`**, each with its size, what blocks it, where the C is and
-how to verify. That file also carries the working method: the two authorities,
-the two measuring tools (`scripts/sweep.py` and `org.jebol.suite.SuiteStops`),
-the ratchet, and when an assertion belongs in `fails-on-rebol-too.txt` instead.
-Start there rather than here for anything about the suite.
+**The remaining suite failures are broken into pieces of work in `goals.md`** —
+fifteen porting goals, each with its size, what blocks it, where the C is and how
+to verify, plus six that correct the measure itself. That file also carries the
+working method: the authorities, the measuring tools, the ratchet, and when an
+assertion belongs in `fails-on-rebol-too.txt` instead. Start there rather than
+here for anything about the suite.
+
+**Goals 16 to 21 come first, and until they are done a falling backlog does not
+mean progress.** An audit on 5 September 2026 ran three independent adversarial
+passes over this target. The arithmetic survived all three. The target did not:
+eleven listed entries name assertions a real Rebol also fails, so working them
+moves JEBOL away from the oracle while the ratchet turns green; the second
+allowlist has no ratchet at all; `SuiteStops` invents stops the gate never sees;
+and `./r3-head` itself is non-deterministic on `checksum-test.r3`. Details and
+reproductions are in `goals.md`.
 
 ---
 
@@ -101,7 +118,8 @@ door, and the reader refuses to answer one.
 
 ## What this leaves
 
-`known-gaps.txt` holds 615 entries, from 1,032 over 25 files. The list grew
+`known-gaps.txt` came down to its present size from 1,032 over 25 files, and
+the table at the top of this file says where it stands now. The list grew
 because the suite did. **None of those failures was new when it appeared: they
 were not passing, they were not being asked.** They are the real porting
 backlog and the honest measure of the port, and the list only ever shrinks.
@@ -344,8 +362,8 @@ anything.
 
 # Goal 9. The assertions that never run -- MOSTLY DONE
 
-**Was 510 of 1,016 never asked. Now 463 of 965, and the total has since come
-down to 615 -- see `goals.md`.** The harness cut a run of
+**Was 510 of 1,016 never asked. Now 463 of 965, and the total has come down a
+long way since -- see the table at the top, and `goals.md`.** The harness cut a run of
 setup at the next *top-level* dialect word, and codecs-test.r3 is a sequence
 of `if find codecs 'wav [...]`, `if find codecs 'der [...]` whose dialect
 words are all nested inside those blocks. The whole tail of the file was one

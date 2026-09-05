@@ -38,12 +38,47 @@ class SeriesMemoryFromTheSourceTest {
         return interpreter.display(interpreter.run(source)).equals("#(true)");
     }
 
+    /**
+     * A starting reading taken once the count has stopped moving on its own.
+     *
+     * <p>{@code SeriesMemory} keeps one process-wide total, and a reservation
+     * is subtracted from it when the collector enqueues it rather than when the
+     * script drops it. RECYCLE waits for one collection to finish, which is
+     * enough for what this test just allocated and not enough for whatever the
+     * test classes sharing this JVM left behind: those keep arriving in the
+     * reference queue afterwards, and every later STATS read drains a few more
+     * and lowers the total.
+     *
+     * <p>So a reading taken straight after one RECYCLE can be too high, and the
+     * rise this test measures then comes out short through no fault of the
+     * interpreter. It failed that way once at 1,765,560 of an expected
+     * 2,000,000 under a full parallel gate, and passed alone every time.
+     *
+     * <p>Recycling until two consecutive readings agree waits for the thing
+     * that actually has to be true. It is a named wait rather than a sleep, and
+     * bounded, so a JVM that never settles fails the assertion rather than the
+     * suite hanging.
+     */
+    private static long settledStats(Interpreter interpreter) {
+        long reading = answerToNumber(interpreter, "recycle stats");
+        for (int attempt = 0; attempt < ATTEMPTS_TO_LET_THE_COUNT_SETTLE; attempt++) {
+            long again = answerToNumber(interpreter, "recycle stats");
+            if (again == reading) {
+                return again;
+            }
+            reading = again;
+        }
+        return reading;
+    }
+
+    private static final int ATTEMPTS_TO_LET_THE_COUNT_SETTLE = 20;
+
     @Test
     @DisplayName("a string made with room for five million characters is visible in STATS")
     void alargeStringIsVisible() {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn("held: 0 before: 0");
-        long before = answerToNumber(interpreter, "recycle before: stats");
+        long before = settledStats(interpreter);
         interpreter.run("held: make string! " + A_LARGE_STRING);
         long after = answerToNumber(interpreter, "stats");
 
@@ -99,7 +134,7 @@ class SeriesMemoryFromTheSourceTest {
     void abinaryReservesItsRoom() {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn("held: 0 before: 0");
-        long before = answerToNumber(interpreter, "recycle before: stats");
+        long before = settledStats(interpreter);
         interpreter.run("held: make binary! 2000000");
 
         assertThat(answerToNumber(interpreter, "stats") - before)
@@ -111,7 +146,8 @@ class SeriesMemoryFromTheSourceTest {
     void agrowingStringIsCountedAgain() {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn("held: 0 before: 0");
-        long before = answerToNumber(interpreter, "recycle held: copy {} before: stats");
+        interpreter.run("held: copy {}");
+        long before = settledStats(interpreter);
         interpreter.run("loop 200000 [append held {x}]");
 
         assertThat(answerToNumber(interpreter, "stats") - before)
