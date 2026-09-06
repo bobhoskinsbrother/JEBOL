@@ -7646,6 +7646,26 @@ rule ChecksumAndCompressionMeasureTheirPartAgainstTheirInput {
     ensures: the_reference_series(verb) = data
 }
 
+-- And a negative count reads the run behind the position, not nothing.
+--
+-- The same rule ANegativeChangePartReplacesTheSpanBehind states for CHANGE,
+-- said again here because these three are where it was got wrong: the count
+-- was clamped at zero, so `compress/part tail data 'zlib -4` compressed
+-- nothing at all. Rebol's own suite asks for exactly that five times, once in
+-- each of its five compression groups.
+rule ANegativePartOfBytesReadsTheRunBehind {
+    when: EvaluateCall(verb, data, method)
+    requires: verb in {checksum, compress, decompress}
+    requires: refinement_asked(part)
+    requires: the_part_count < 0
+
+    ensures:
+        the_bytes_read =
+            the_items_between(
+                the_later_of(data.index - absolute(the_part_count), 1),
+                data.index)
+}
+
 -- A /dup count is an integer, or a decimal truncated to one. A percent or a
 -- pair raises invalid-type, which is a different refusal from /part's and
 -- worth knowing: the same wrong value gets a different complaint depending

@@ -209,3 +209,45 @@ lexer-test.r3 / BINARY / binary! with comments inside #418
 parse-test.r3 / COLLECT/KEEP / block collect nested (known issues) #98
 parse-test.r3 / COLLECT/KEEP / block collect nested (known issues) #99
 parse-test.r3 / COLLECT/KEEP / block collect nested (known issues) #100
+
+# ---------------------------------------------------------------------------
+#
+# SAVE/compress asks for a zlib stream that opens 78 9C, which is the header
+# a compressor writes when it was asked for the middle level. Rebol compresses
+# with libdeflate and gives it no level at all, which libdeflate reads as
+# twelve and writes as 78 DA -- so the three assertions that quote the bytes
+# quote the bytes of a build that is not this one and is not r3-head either.
+# Everything after the two header bytes is identical.
+#
+#   >> mold all [
+#        binary? b: try [save/compress none [print "Hello World!"] false]
+#        b = #{789C2B28CACC2B5150F248CDC9C95708CF2FCA495154E20200526B06D9}]
+#   == _               ; r3-head 3.22.5, and JEBOL
+#
+#   >> mold save/compress none [print "Hello World!"] false
+#   == #{78DA2B28CACC2B5150F248CDC9C95708CF2FCA495154E20200526B06D9}
+#                      ; r3-head 3.22.5, and JEBOL, byte for byte
+#
+codecs-test.r3 / SAVE function / SAVE/compress #30
+codecs-test.r3 / SAVE function / SAVE/compress #31
+codecs-test.r3 / SAVE function / SAVE/compress #32
+
+# compress-test.r3 opens each of its five algorithm groups with a guard that
+# reads "if this build has not got the algorithm, the only thing to check is
+# that it says so". This is the LZMA one, and this build has got LZMA, so the
+# guard takes its other branch and the assertion never runs -- which is what
+# happens on r3-head as well, for the same reason.
+#
+#   >> mold either error? e: try [compress "test" 'lzma] ['errored] ['no-error]
+#   == no-error        ; r3-head 3.22.5, and JEBOL
+#
+compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #83
+
+# The same guard, on the Brotli group. This build has Brotli too, so the
+# assertion that a build without it says so never runs -- exactly as on
+# r3-head.
+#
+#   >> mold either error? e: try [compress "test" 'br] ['errored] ['no-error]
+#   == no-error        ; r3-head 3.22.5, and JEBOL
+#
+compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #62

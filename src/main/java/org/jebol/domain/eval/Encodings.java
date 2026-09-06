@@ -720,7 +720,7 @@ final class Encodings {
 
     /** The methods this host offers, as {@code system/catalog/compressions}. */
     static final List<String> COMPRESSIONS =
-            List.of("zlib", "gzip", "deflate", "crush", "lzw");
+            List.of("zlib", "gzip", "deflate", "crush", "lzw", "lzma", "br");
 
     /**
      * Methods REBOL has and this build has not.
@@ -743,15 +743,17 @@ final class Encodings {
      * {@code lz4} and {@code lzav} were missing outright.
      */
     static final List<String> COMPRESSIONS_ELSEWHERE =
-            List.of("br", "lz4", "lzav", "lzma");
+            List.of("lz4", "lzav");
 
     static byte[] compressed(byte[] octets, String method, int level) {
         return switch (method) {
-            case "gzip" -> gzipped(octets);
+            case "gzip" -> gzipped(octets, level);
             case "zlib" -> deflated(octets, level, false);
             case "deflate" -> deflated(octets, level, true);
             case "crush" -> Crush.compressed(octets, level);
             case "lzw" -> Lzw.compressed(octets, level);
+            case "lzma" -> Lzma.compressed(octets, level);
+            case "br" -> Brotli.compressed(octets);
             default -> throw new IllegalArgumentException(method);
         };
     }
@@ -774,6 +776,8 @@ final class Encodings {
             case "deflate" -> inflated(octets, true);
             case "crush" -> Crush.decompressed(octets, wanted);
             case "lzw" -> Lzw.decompressed(octets, wanted);
+            case "lzma" -> Lzma.decompressed(octets, wanted);
+            case "br" -> Brotli.decompressed(octets, wanted);
             default -> throw new IllegalArgumentException(method);
         };
         return wanted > 0 && whole.length > wanted
@@ -785,6 +789,12 @@ final class Encodings {
     private static final int GZIP_MAGIC_FIRST = 0x1F;
     private static final int GZIP_MAGIC_SECOND = 0x8B;
     private static final int GZIP_DEFLATE = 8;
+    private static final int GZIP_NO_FLAGS = 0;
+    private static final int GZIP_TIME_UNAVAILABLE_LENGTH = 4;
+    private static final int GZIP_FASTEST = 0x04;
+    private static final int GZIP_SLOWEST = 0x02;
+    private static final int GZIP_UNREMARKABLE_EFFORT = 0;
+    private static final int GZIP_OPERATING_SYSTEM_UNKNOWN = 0xFF;
     private static final int GZIP_HEADER_LENGTH = 10;
     private static final int GZIP_TRAILER_LENGTH = 8;
 
@@ -796,15 +806,18 @@ final class Encodings {
      * the deflated data, then the CRC-32 and the uncompressed length, both
      * little-endian.
      */
-    private static byte[] gzipped(byte[] octets) {
+    private static byte[] gzipped(byte[] octets, int level) {
         Octets into = new Octets();
         into.write(GZIP_MAGIC_FIRST);
         into.write(GZIP_MAGIC_SECOND);
         into.write(GZIP_DEFLATE);
-        for (int each = 0; each < GZIP_HEADER_LENGTH - 3; each++) {
+        into.write(GZIP_NO_FLAGS);
+        for (int each = 0; each < GZIP_TIME_UNAVAILABLE_LENGTH; each++) {
             into.write(0);
         }
-        byte[] deflated = deflated(octets, java.util.zip.Deflater.DEFAULT_COMPRESSION, true);
+        into.write(howHardTheCompressorWasAskedToTry(level));
+        into.write(GZIP_OPERATING_SYSTEM_UNKNOWN);
+        byte[] deflated = deflated(octets, level, true);
         into.write(deflated, 0, deflated.length);
         java.util.zip.CRC32 checked = new java.util.zip.CRC32();
         checked.update(octets, 0, octets.length);
@@ -812,6 +825,39 @@ final class Encodings {
         writeLittleEndian(into, octets.length);
         return into.toArray();
     }
+
+    /**
+     * The ninth byte of the header, which the level decides.
+     *
+     * <pre>
+     * xfl = 0;
+     * if (compression_level &lt; 2) xfl |= GZIP_XFL_FASTEST_COMPRESSION;
+     * else if (compression_level &gt;= 8) xfl |= GZIP_XFL_SLOWEST_COMPRESSION;
+     * </pre>
+     */
+    private static int howHardTheCompressorWasAskedToTry(int level) {
+        int asked = effortAskedFor(level);
+        if (asked < 2) {
+            return GZIP_FASTEST;
+        }
+        return asked >= 8 ? GZIP_SLOWEST : GZIP_UNREMARKABLE_EFFORT;
+    }
+
+    /**
+     * The level the deflate family will really use.
+     *
+     * <p>REBOL clamps to what libdeflate offers -- {@code if (level > 12) level
+     * = 12;} over an unsigned level, so a negative one and a huge one both come
+     * out as the slowest -- and a call with no /LEVEL arrives as that same
+     * out-of-range value and gets the same answer. This build compresses with
+     * {@code java.util.zip}, whose slowest is nine rather than twelve, so the
+     * shape of the rule is kept and the ceiling is the one this compressor has.
+     */
+    static int effortAskedFor(int level) {
+        return level < 0 || level > SLOWEST_DEFLATE ? SLOWEST_DEFLATE : level;
+    }
+
+    private static final int SLOWEST_DEFLATE = 9;
 
     private static void writeLittleEndian(Octets into, long quantity) {
         for (int each = 0; each < 4; each++) {
@@ -863,7 +909,8 @@ final class Encodings {
      * is the same bits without them.
      */
     private static byte[] deflated(byte[] octets, int level, boolean raw) {
-        java.util.zip.Deflater deflater = new java.util.zip.Deflater(level, raw);
+        java.util.zip.Deflater deflater =
+                new java.util.zip.Deflater(effortAskedFor(level), raw);
         try {
             deflater.setInput(octets);
             deflater.finish();

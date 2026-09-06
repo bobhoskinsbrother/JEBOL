@@ -143,8 +143,9 @@ every time it runs, and it is never quietly excluded. Run it after any change to
 `PaintList`, to either renderer, or to the page.
 
 Selenium is a `testImplementation` dependency and nothing else. **The shipped jar
-has no dependencies and this does not change that** -- about 1024 KB, of which
-228 KB is the borrowed REBOL library.
+has no dependencies and this does not change that** -- about 1300 KB, of which
+228 KB is the borrowed REBOL library and 78 KB is Brotli's static dictionary,
+carried in the source because the domain may not read a file.
 
 ## Code comments: never
 

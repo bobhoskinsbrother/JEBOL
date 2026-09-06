@@ -30,7 +30,8 @@ couplings are named in the goals themselves. Two that this file used to claim
 turned out not to exist: goal 5 and goal 9 were both said to wait on goal 8, and
 neither does — that came from a measuring tool inventing environment stops, and
 goal 20 has the story. The real ones are goal 1 to goal 3, and goal 15
-double-counting eight of goal 4's assertions.
+double-counting eight of goal 4's assertions. Goal 3 is done, so the
+coupling from goals 1 and 2 to it is discharged.
 
 Goals 1, 3, 4, 6 and 14 are also one question asked five times: what the
 capability catalogues claim is present. `system/codecs` is longer here than in a
@@ -460,10 +461,14 @@ whether the change worked.
    `try [append 1 2]` reports the whole outer block. JEBOL reports the call. R3's
    answer there is a consequence of when it pushes a frame, not of the
    language.
-2. **`compress` does not produce Rebol's bytes.** Not a level setting: 3.22.5
-   compresses with **libdeflate**, not zlib, and chooses a stored block where
-   `java.util.zip` emits a fixed-Huffman one. Matching it byte for byte means
-   porting libdeflate, which is goal 3's kind of work.
+2. **The deflate family does not produce Rebol's bytes.** Narrower than it was:
+   goal 3 made the headers agree, because a level nobody asked for is now the
+   slowest here as it is there, and gzip's extra-flags and operating-system
+   bytes are written the way `gzip_compress.c` writes them. What is left is the
+   body. 3.22.5 compresses with **libdeflate**, not zlib, and chooses a stored
+   block where `java.util.zip` emits a fixed-Huffman one; matching it byte for
+   byte means porting libdeflate. LZMA and Brotli are no longer examples of
+   this -- both are byte-exact where they claim to be.
 3. **`request-color`, `request-dir` and `request-file` answer `native!` where
    R3 answers `function!`.** Deliberate and documented in
    `mezz/ORDER.txt`: R3 defines them in `mezz-osx-dialogs.reb`, which shells
@@ -512,40 +517,82 @@ The C is `rebol3-source/src/core/t-image.c`. JEBOL's side is
 `src/main/java/org/jebol/domain/eval/ImagePath.java` and the image branches of
 `Natives.java`.
 
-### 3. LZMA and Brotli — 45
+### 3. LZMA and Brotli — 45 — DONE
 
-`compress-test.r3`, which runs clean; these fail because the two algorithms do
-not exist here. Both are large third-party algorithms and neither is Rebol's
-own — unlike CRUSH and LZW, which were ported by hand and are in
-`src/main/java/org/jebol/domain/eval/Crush.java` and `Lzw.java`.
+`compress-test.r3` no longer has a single line on `known-gaps.txt`. Both
+algorithms are ported, and the port is byte-exact against `./r3-head` rather
+than merely round-tripping with itself.
 
-**This goal used to offer two routes and one of them does not exist.** It said
-you could decide the build has not got them and take the suite's "not available
-in this build" branch, and that "the rest stop being gaps". That is wrong, and it
-was checked: JEBOL **already** answers `feature-na` for both, already takes that
-branch, and the 38 Brotli and LZMA entries are on the list *because* of it. The
-harness scores an unreached assertion as a failure, so declaring a feature absent
-retires nothing. The route was taken before this file was written and yielded
-nothing further.
+**What was actually needed, against what this file predicted.** It said the
+honest size was 38 assertions that could not be cleared any other way, and that
+the other seven were incidental. Both halves were right, and the seven turned
+out to be two faults rather than seven:
 
-So the only route is to port them, which is a lot of code, and the honest size of
-this goal is 38 assertions that cannot be cleared any other way. Both are large
-third-party algorithms and neither is Rebol's own — unlike CRUSH and LZW, which
-were ported by hand and are in
-`src/main/java/org/jebol/domain/eval/Crush.java` and `Lzw.java`. `br`, `lz4` and
-`lzav` are handled by `COMPRESSIONS_ELSEWHERE` in `Encodings.java`, with the same
-consequence.
+- A negative `/part` was clamped to zero instead of reading the span behind the
+  position. `Partial1` turns the count round; five of the seven asked for
+  `compress/part tail data 'zlib -4`, once per algorithm group.
+- GZIP threw the level away and always compressed at the default, so the two
+  assertions that quote level-zero bytes could not hold. The header's ninth and
+  tenth bytes were wrong too, which nothing asserted.
 
-**And there is a trap in the other direction.** Assertion `#62` of
-`compress-test.r3` is the `feature-na` check itself, and it currently passes —
-it is one of the passes. Implement Brotli correctly and that assertion starts
-failing and the gate goes red until somebody edits a list. Expect it, and do not
-read it as a regression.
+**LZMA is byte-exact at every level.** `u-lzma.c` is the LZMA SDK of 2017-06-10,
+and the parts Rebol can reach are ported whole: the binary-tree and hash-chain
+match finders, the priced parse used from level five, the greedy one used below
+it, and the range coder. Verified on ten inputs from nothing to eighty-six
+kilobytes across all eleven levels, comparing the compressed bytes and the
+decompressed content with a real 3.22.5 in both directions. The dictionary is
+sized at whichever is smaller of the level's window and the data, which the C
+does not do and which changes no answer -- without it, compressing fourteen
+bytes at the default level allocates a hundred and thirty-four megabytes.
 
-The exact-byte assertions matter here. A compressor that reads its own output
-back is not thereby the same compressor: Rebol builds CRUSH with the constants
-Red uses, not the ones upstream ships, and a port that took the originals
-would round-trip perfectly and share not one byte with a real 3.22.5.
+**Brotli reads everything and writes level zero.** The decoder is RFC 7932 in
+full, dictionary and transforms included, and reads all 132 streams a real
+3.22.5 produced across eleven inputs and twelve levels. The encoder is
+`compress_fragment.c`, which is quality zero, and is byte-exact with a real one
+on nineteen inputs from nothing to seven hundred kilobytes -- compressible and
+not, single meta-block and several.
+
+**What Brotli still differs on, and it is worth knowing before anyone reads the
+suite as green.** `compress/level x 'br 6` answers the bytes level zero would.
+The other eleven levels are eleven other encoders -- block splitting, histogram
+clustering, context modelling, and a near-optimal parse for ten and eleven --
+and they are several thousand more lines than the decoder. Nothing in the suite
+notices, because the only exact-byte assertions Rebol writes for Brotli are at
+level zero. `BrotliFromTheSourceTest` asserts the difference rather than hiding
+it.
+
+**Three surprises, all recorded because the sizes in this file are estimates.**
+
+1. **The count fell by more than 45.** Three assertions in `codecs-test.r3` came
+   off with LZMA: `load %units/files/test2-lzma.swf` and the two that compare it
+   with the deflate SWF beside it. Nothing predicted that; the SWF codec is
+   Rebol's own mezz and it simply started working.
+2. **Two more assertions moved to `fails-on-rebol-too.txt`, and they are the
+   trap this file warned about in the other direction.** `SAVE/compress` quotes
+   a zlib stream opening `78 9C`; a real 3.22.5 answers `78 DA`, because
+   libdeflate given no level reads that as its highest. Fixing JEBOL's default
+   to the slowest -- which is right, and makes the header match -- broke two
+   assertions that had been passing for the wrong reason. Item 2 of goal 21 is
+   narrower than it was: the header bytes now agree and only the deflate body
+   differs.
+3. **Both `feature-na` guards fired, exactly as predicted.** `#62` for Brotli
+   and `#83` for LZMA are the "this build has not got it" assertions, and a
+   build that has got it never runs them. Both are in
+   `fails-on-rebol-too.txt` with the `./r3-head` output that settles it.
+
+**Two faults a round trip would never have found**, both caught by comparing
+bytes with the oracle and worth repeating wherever the next compressor is
+ported:
+
+- LZMA's reversed bit trees are walked one way in the decoder and another in
+  the encoder if you transcribe the optimised macro literally. The two agree
+  for the first two bits and part company on the third, so short data round
+  trips perfectly and anything longer comes back subtly wrong.
+- Brotli's two prefix-code builders live in different files and each has a
+  `static SortHuffmanTree` of its own. They differ by one line: the one that
+  sorts a literal code does not break a tie between equal counts, the one that
+  sorts a command code does. Using the wrong one gives a code of the same shape
+  with two symbols swapped -- valid Brotli, decodes perfectly, wrong bytes.
 
 ### 4. The crypt port — 40
 

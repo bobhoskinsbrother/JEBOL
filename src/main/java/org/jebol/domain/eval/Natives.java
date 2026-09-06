@@ -11742,9 +11742,35 @@ public final class Natives {
             Set<String> refinements, int where) {
 
         return howManyWanted(source, arguments, refinements, where)
-                .map(count -> Arrays.copyOf(octets,
-                        (int) Math.max(0, Math.min(count, octets.length))))
+                .map(count -> count < 0
+                        ? theOctetsBehind(source, octets, -count)
+                        : Arrays.copyOf(octets,
+                                (int) Math.min(count, octets.length)))
                 .orElse(octets);
+    }
+
+    /**
+     * The run of bytes ending at the position, for a /PART that counted down.
+     *
+     * <p>{@code Partial1} turns a negative count round rather than refusing it
+     * or reading it as nothing: the position moves back by that many and the
+     * count becomes positive, so the span always runs forwards from wherever
+     * it lands, clamped to what is really behind. At the head nothing is
+     * behind and the answer is empty.
+     *
+     * <p>The count is in whatever the series holds, which for a string is
+     * characters and not bytes. Measuring the span as the difference between
+     * two byte lengths from the same storage keeps that right without
+     * encoding anything twice over: what is behind is what the earlier
+     * position holds, less what this one does.
+     */
+    private static byte[] theOctetsBehind(Value source, byte[] octets, long count) {
+        if (!(source instanceof SeriesValue positioned)) {
+            return new byte[0];
+        }
+        int landsOn = (int) Math.max(1, positioned.index() - count);
+        byte[] fromThere = octetsOf(positioned.atIndex(landsOn));
+        return Arrays.copyOf(fromThere, fromThere.length - octets.length);
     }
 
     /** The one CHECKSUM method that is not a checksum but a table index. */

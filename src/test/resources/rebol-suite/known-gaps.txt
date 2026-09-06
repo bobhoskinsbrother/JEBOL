@@ -57,7 +57,6 @@ codecs-test.r3 / Codec's identify / encoding? #5
 codecs-test.r3 / Codec's identify / encoding? #6
 codecs-test.r3 / Codec's identify / encoding? #7
 codecs-test.r3 / Codec's identify / encoding? #8
-codecs-test.r3 / SAVE function / SAVE/compress #30
 codecs-test.r3 / SAVE function / invalid image SAVE #27
 codecs-test.r3 / SAVE function / invalid image SAVE #28
 codecs-test.r3 / SAVE function / invalid image SAVE #29
@@ -141,9 +140,6 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #75
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #76
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #77
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #78
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #80
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #81
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #82
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #83
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #84
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #85
@@ -161,51 +157,6 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #96
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #97
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #98
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #99
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #63
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #64
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #65
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #66
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #67
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #68
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #69
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #70
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #71
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #72
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #73
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #74
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #75
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #76
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #77
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #78
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #79
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #80
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #81
-compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #82
-compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #131
-compress-test.r3 / DEFLATE compression / decompression / compression when input is limited #37
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #41
-compress-test.r3 / GZIP compression / decompression / GZIP compress/decompress while specifing level of compression #42
-compress-test.r3 / GZIP compression / decompression / GZIP compression when input is limited #56
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #100
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #101
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #84
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #85
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #86
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #87
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #88
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #89
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #90
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #91
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #92
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #93
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #94
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #95
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #96
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #97
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #98
-compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #99
-compress-test.r3 / LZW compression / decompression / LZW compress/decompress #119
-compress-test.r3 / ZLIB compression / decompression / compression when input is limited #18
 copy-test.r3 / Simple copy / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #2

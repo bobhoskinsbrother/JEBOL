@@ -160,15 +160,15 @@ class LzwFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and the four this build has not got still say so")
+        @DisplayName("and the two this build has not got still say so")
         void theOthersStillSayFeatureNa() {
             assertThat(answerTo("""
                     collect [
-                        foreach method [br lz4 lzav lzma][
+                        foreach method [lz4 lzav][
                             raised: try [compress "x" method]
                             keep raised/id
                         ]
-                    ]""")).isEqualTo("[feature-na feature-na feature-na feature-na]");
+                    ]""")).isEqualTo("[feature-na feature-na]");
         }
     }
 }
