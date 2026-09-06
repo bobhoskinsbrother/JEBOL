@@ -5771,10 +5771,58 @@ rule CompressNeedsAMethodTheHostHas {
 }
 
 -- And they are inverses, which is the whole of what a caller needs.
-invariant CompressAndDecompressAreInverses {
+--
+-- At every level, not only at the one a caller who says nothing gets. A level
+-- changes how hard the method tries and therefore which bytes come out; it
+-- never changes what reading them back answers. Checked against a real 3.22.5
+-- across all seven methods at eighteen levels each, including levels none of
+-- them has.
+invariant CompressAndDecompressAreInversesAtEveryLevel {
     for method in host_compression_methods():
-        for octets in AnyBinary:
-            decompress(compress(octets, method), method) = octets
+        for level in AnyInteger:
+            for octets in AnyBinary:
+                decompress(compress(octets, method, level), method) = octets
+}
+
+-- A level the method has no such setting for is clamped, never refused.
+--
+-- Every method has its own range -- three settings for one, twelve for
+-- another -- and none of them raises for a number outside it. That is worth
+-- stating because the obvious alternative is a range check, and a range check
+-- would refuse `compress/level data 'crush 9`, which a real 3.22.5 compresses
+-- at the hardest setting CRUSH has.
+--
+-- The clamp is one-sided in the C and reads as a bug that has become the
+-- behaviour: the level arrives unsigned, so `MIN(top, level)` sends every
+-- negative number to the top rather than to the bottom.
+rule ACompressionLevelOutsideTheMethodsRangeIsClamped {
+    when: EvaluateCall(compress, data, method)
+    requires: refinement_asked(level)
+    requires: the_level not in levels_the_method_has(method)
+
+    ensures: CallResult(value: compress(data, method,
+        the_nearest_level_the_method_has(method, the_level)))
+}
+
+-- The level nobody asked for belongs to the method, and is not the same one
+-- for all of them.
+--
+-- It cannot be worked out from the range. For the deflate family, CRUSH and
+-- LZW it is the hardest setting; for LZMA it is five of nine and for Brotli
+-- six of eleven. So a caller who wants the smallest answer has to say so for
+-- two of the seven and must not for the other five.
+--
+-- Which makes minus one the one number that means two things. The C spells
+-- "nobody asked" as an unsigned value of all ones, so a caller who writes -1
+-- is asking for the default rather than for the hardest setting -- and for
+-- the five methods whose default *is* the hardest setting, the two readings
+-- coincide and nothing shows.
+rule TheLevelNobodyAskedForIsTheMethodsOwn {
+    when: EvaluateCall(compress, data, method)
+    requires: not refinement_asked(level) or the_level = -1
+
+    ensures: CallResult(value: compress(data, method,
+        the_level_the_method_uses_when_nobody_says(method)))
 }
 
 -- === The interpreter's own state ============================

@@ -22,7 +22,20 @@ final class Brotli {
     private Brotli() {
     }
 
-    static byte[] compressed(byte[] octets) {
+    /**
+     * The level is not passed on, because there is only one to pass it to.
+     *
+     * <p>{@link BrotliEncoder} writes quality zero and nothing else, so a
+     * caller asking for eleven gets the bytes zero would give. Named at the
+     * point where the level goes missing rather than left to be noticed: every
+     * other method reached from {@code Encodings.compressed} takes the level,
+     * and this one dropping it silently would read as an oversight.
+     *
+     * <p>Nothing observable differs except the bytes. The C clamps the level
+     * to nought through eleven and never refuses one, so an out-of-range level
+     * is accepted on both sides.
+     */
+    static byte[] compressedAtLevelZeroWhateverWasAsked(byte[] octets) {
         return BrotliEncoder.encoded(octets);
     }
 
