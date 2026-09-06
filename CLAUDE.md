@@ -118,7 +118,7 @@ that the suite would have let through.
 
 ## Porting a compressor, a codec, or anything else that must be byte-exact
 
-Three rules, each of which exists because it was broken and cost something.
+Four rules, each of which exists because it was broken and cost something.
 
 **Build the oracle before the port, not after.** The reference C is right there
 under `rebol3-source/`, and a hundred lines of shell will compile the encoder
@@ -149,6 +149,17 @@ public interface. They are the sizes at which the implementation changes what it
 does: the block it reads at once, the window, the point where a table is swapped
 for a wider one, the length at which it stops bothering to compress at all. Read
 the C for those numbers and test either side of every one.
+
+**Use the reference project's own test corpus, not one you invented.** Brotli's
+top two levels passed every input this project could think of -- English text,
+noise, long repetitions, mixtures of all three, three thousand generated cases
+-- with a constant wrong that makes one of them divide its blocks three times
+where the C divides them ten. Three files in Brotli's own corpus catch it
+immediately, and its twelve megabyte file then caught two more faults that
+nothing smaller reached. The corpus is a release asset rather than part of the
+repository: fetch `testdata.txz` from the `dev/null` release at
+https://github.com/google/brotli/releases. Where a slice of it is the only thing
+that pins a behaviour, check the slice in with its licence and say why.
 
 **Check that a fixture is what it says it is.** A test that builds a binary in
 REBOL with `to char!` gets two bytes for every value above 127, so
@@ -184,9 +195,10 @@ every time it runs, and it is never quietly excluded. Run it after any change to
 `PaintList`, to either renderer, or to the page.
 
 Selenium is a `testImplementation` dependency and nothing else. **The shipped jar
-has no dependencies and this does not change that** -- about 1400 KB, of which
-228 KB is the borrowed REBOL library and 78 KB is Brotli's static dictionary,
-carried in the source because the domain may not read a file.
+has no dependencies and this does not change that** -- about 1550 KB, of which
+228 KB is the borrowed REBOL library and about 190 KB is Brotli's static
+dictionary and the three tables that index it, all carried in the source because
+the domain may not read a file.
 
 ## Code comments: never
 

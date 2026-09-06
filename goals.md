@@ -545,22 +545,27 @@ sized at whichever is smaller of the level's window and the data, which the C
 does not do and which changes no answer -- without it, compressing fourteen
 bytes at the default level allocates a hundred and thirty-four megabytes.
 
-**Brotli reads everything and writes ten of its twelve levels.** The decoder is
-RFC 7932 in full, dictionary and transforms included. The encoder covers levels
-zero to nine, byte-exact with a real 3.22.5, verified on a four megabyte source
-tree, a seven hundred kilobyte library, three megabytes of noise, and about
-three and a half thousand generated inputs across eight data shapes.
+**Brotli is complete: all twelve levels, byte-exact.** The decoder is RFC 7932
+in full. The encoder is every level from zero to eleven, verified against a real
+3.22.5 on Brotli's own test corpus -- twenty-four files including a twelve
+megabyte one -- plus a four megabyte source tree, three megabytes of noise, and
+about three thousand generated inputs across eight data shapes.
 
-Levels two to nine are the whole generic path: four hash tables, the look-ahead
-that puts off a match when the next byte offers a better one, the dictionary
-search on the encoder side, the greedy block splitter over three alphabets, the
-choice between one, two, three and thirteen literal contexts, and the meta-block
-writer in its three forms. `BrotliLevelsTwoToNineFromTheSourceTest` covers it.
+Levels two to nine are the generic path: four hash tables, the look-ahead that
+puts off a match when the next byte offers a better one, the dictionary search
+on the encoder side, the greedy block splitter over three alphabets, the choice
+between one, two, three and thirteen literal contexts, and the meta-block writer
+in its three forms.
 
-**What Brotli still differs on.** Levels ten and eleven answer level nine's
-bytes. Their parse is a different algorithm again -- a near-optimal search with
-its own binary-tree hasher -- and it is not ported.
-`BrotliFromTheSourceTest` asserts the difference rather than hiding it.
+Levels ten and eleven are a different algorithm again. They keep every match at
+every position rather than the best one, price each in bits, and choose the
+cheapest run of commands through the whole block; eleven then does it a second
+time with prices measured from what the first pass wrote. They also choose how
+distances are split between code and extra bits per meta-block, divide each
+alphabet by pricing rather than greedily, and give every literal block type
+sixty-four histograms which are then merged back down.
+
+Three test files cover it, one per group of levels.
 
 **Three surprises, all recorded because the sizes in this file are estimates.**
 
@@ -604,6 +609,37 @@ levels; every one of them was short, and the first stream that needs the special
 case is about fifty kilobytes. Writing levels two to nine produced such a stream
 within an hour and the round-trip test caught it. Counting samples is not
 coverage, and the rule that came out of it is in `CLAUDE.md`.
+
+**Two more the arithmetic was carrying.** Both were found by the top two levels
+and both had been quietly wrong for every level above three.
+
+The C's table of logarithms for the first 256 whole numbers is an array of
+double whose every literal is written with an `f` on the end, so the compiler
+rounds each to float and only then widens it. Two hundred and forty-seven of the
+two hundred and fifty-six therefore differ from the true logarithm by about one
+part in ten million. This port had computed them instead. Nothing below level
+ten noticed, because the numbers those feed are compared against thresholds
+hundreds of bits wide; levels ten and eleven compare costs that differ in their
+last bit, and were wrong on any input over about forty kilobytes.
+
+Java has no `log2`, and `log(v) / log(2)` disagrees with the C on twenty-three
+of every hundred whole numbers. `BrotliLog2` computes it in pairs of doubles
+instead. It agrees with the C on all but a hundred and sixty values in three
+million -- and on those hundred and sixty the C is the one that is wrong, being
+a last bit away from the correctly rounded answer. Which means byte-exactness
+with "a real 3.22.5" is, in principle, platform-dependent on values whose
+logarithm falls within a hair of halfway between two doubles. It has never come
+up in practice and there is nothing to be done about it if it does.
+
+**And a lesson about whose test data to use.** Levels ten and eleven passed
+every input this project could invent -- text, noise, repetition, mixtures,
+three thousand fuzz cases -- with a constant wrong that makes level eleven
+divide its blocks three times where the C divides them ten. Three files in
+Brotli's own corpus catch it. Thirty kilobytes of one of them is now in
+`src/test/resources/brotli/`, because nothing generated here does the job. The
+twelve megabyte file in the same corpus then caught two more: an array sized to
+the C's starting capacity rather than what it grows to, and a distance setting
+that must not carry from one meta-block to the next.
 
 ### 4. The crypt port — 40
 

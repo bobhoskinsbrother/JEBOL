@@ -500,7 +500,7 @@ final class BrotliMetaBlockWriter {
     static void writeTheFullThing(byte[] data, int mask, int from, int length,
             int previousByte, int theByteBeforeThat, boolean isLast,
             BrotliDistances distances, BrotliCommand commands,
-            BrotliMetaBlockSplit split, BrotliBits into) {
+            BrotliMetaBlockSplit split, int contextMode, BrotliBits into) {
 
         writeCompressedHeader(isLast, length, into);
         BrotliCodes.Tree tree = new BrotliCodes.Tree();
@@ -518,7 +518,7 @@ final class BrotliMetaBlockWriter {
         into.write(2, distances.postfixBits());
         into.write(4, distances.directCodes() >> distances.postfixBits());
         for (int type = 0; type < split.literals.howManyTypes(); type++) {
-            into.write(2, BrotliContext.UTF8);
+            into.write(2, contextMode);
         }
 
         if (split.literalContextMap.length == 0) {
@@ -528,8 +528,13 @@ final class BrotliMetaBlockWriter {
             writeContextMap(split.literalContextMap,
                     split.howManyLiteralHistograms, tree, into);
         }
-        writeTrivialContextMap(split.howManyDistanceHistograms,
-                DISTANCE_CONTEXT_BITS, tree, into);
+        if (split.distanceContextMap.length == 0) {
+            writeTrivialContextMap(split.howManyDistanceHistograms,
+                    DISTANCE_CONTEXT_BITS, tree, into);
+        } else {
+            writeContextMap(split.distanceContextMap,
+                    split.howManyDistanceHistograms, tree, into);
+        }
 
         literals.writeTheCodes(split.literalHistograms,
                 split.howManyLiteralHistograms, LITERAL_SYMBOLS, tree, into);
@@ -541,6 +546,7 @@ final class BrotliMetaBlockWriter {
                 tree, into);
 
         boolean literalsCarryContext = split.literalContextMap.length != 0;
+        boolean distancesCarryContext = split.distanceContextMap.length != 0;
         int at = from;
         int previous = previousByte;
         int beforeThat = theByteBeforeThat;
@@ -550,7 +556,7 @@ final class BrotliMetaBlockWriter {
             for (int left = commands.insertLengthAt(which); left != 0; left--) {
                 int literal = data[at & mask] & 0xFF;
                 if (literalsCarryContext) {
-                    int context = BrotliContext.of(BrotliContext.UTF8, previous,
+                    int context = BrotliContext.of(contextMode, previous,
                             beforeThat);
                     literals.writeInContext(literal, context,
                             split.literalContextMap, LITERAL_CONTEXT_BITS, into);
@@ -573,7 +579,13 @@ final class BrotliMetaBlockWriter {
             }
             int distanceCode = commands.distancePrefixAt(which) & 0x3FF;
             int extraBits = commands.distancePrefixAt(which) >>> 10;
-            distanceSymbols.write(distanceCode, into);
+            if (distancesCarryContext) {
+                distanceSymbols.writeInContext(distanceCode,
+                        commands.distanceContextAt(which),
+                        split.distanceContextMap, DISTANCE_CONTEXT_BITS, into);
+            } else {
+                distanceSymbols.write(distanceCode, into);
+            }
             into.write(extraBits,
                     commands.distanceExtraAt(which) & 0xFFFFFFFFL);
         }

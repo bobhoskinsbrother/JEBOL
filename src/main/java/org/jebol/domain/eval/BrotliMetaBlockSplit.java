@@ -28,4 +28,11 @@ final class BrotliMetaBlockSplit {
     int howManyDistanceHistograms;
 
     int[] literalContextMap = new int[0];
+
+    /**
+     * Which histogram each of a block type's four distance contexts uses.
+     *
+     * <p>Empty below quality ten, where every context of a type shares one.
+     */
+    int[] distanceContextMap = new int[0];
 }

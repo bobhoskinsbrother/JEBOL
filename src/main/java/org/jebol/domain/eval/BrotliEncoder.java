@@ -88,22 +88,17 @@ final class BrotliEncoder {
     };
 
     /**
-     * The quality this build has an encoder for.
+     * The quality this build has an encoder for, which is now all twelve.
      *
-     * <p>{@code MAX(0, MIN(11, level))} in the C, then a fresh guess at what
-     * the level nobody asked for means: six. Ten and eleven, whose parse is not
-     * ported yet, fall back to nine -- valid Brotli, and not the bytes a real
-     * 3.22.5 writes.
+     * <p>{@code MAX(0, MIN(11, level))} in the C, then what the level nobody
+     * asked for means: six.
      */
     private static int qualityFor(int level) {
         int asked = level == NOBODY_ASKED ? DEFAULT_QUALITY : level;
-        int clamped = Integer.compareUnsigned(asked, HIGHEST_QUALITY) > 0
+        return Integer.compareUnsigned(asked, HIGHEST_QUALITY) > 0
                 ? HIGHEST_QUALITY
                 : asked;
-        return Math.min(clamped, HIGHEST_QUALITY_WITH_AN_ENCODER_HERE);
     }
-
-    private static final int HIGHEST_QUALITY_WITH_AN_ENCODER_HERE = 9;
 
     private static final int NOBODY_ASKED = -1;
     private static final int DEFAULT_QUALITY = 6;

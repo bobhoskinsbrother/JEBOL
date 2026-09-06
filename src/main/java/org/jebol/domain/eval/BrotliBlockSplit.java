@@ -64,4 +64,8 @@ final class BrotliBlockSplit {
     void oneMoreType() {
         howManyTypes++;
     }
+
+    void howManyTypesIs(int howMany) {
+        howManyTypes = howMany;
+    }
 }

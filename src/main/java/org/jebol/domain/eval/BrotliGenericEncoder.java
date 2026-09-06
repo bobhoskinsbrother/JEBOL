@@ -22,7 +22,8 @@ final class BrotliGenericEncoder {
 
     private static final int WINDOW_BITS = 22;
     private static final int LOWEST_QUALITY_HERE = 2;
-    private static final int HIGHEST_QUALITY_HERE = 9;
+    private static final int HIGHEST_QUALITY_HERE = 11;
+    private static final int LOWEST_QUALITY_THAT_PRICES_EVERYTHING = 10;
     private static final int QUALITY_THAT_FIRST_SPLITS_BLOCKS = 4;
     private static final int QUALITY_THAT_FIRST_MEASURES_ITS_CODES = 3;
     private static final int MOST_SYMBOLS_HELD_BACK_WHEN_NOT_SPLITTING = 0x2FFF;
@@ -34,9 +35,18 @@ final class BrotliGenericEncoder {
     private final int blockBits;
     private final int howMuchAMetaBlockMayHold;
     private final BrotliRingBuffer ringBuffer;
-    private final BrotliHasher hasher;
+    private final FindsTheCopies finder;
     private final BrotliBits writer;
     private final BrotliCommand commands = new BrotliCommand(64);
+    /**
+     * How distances are split between code and extra bits while the copies are
+     * being found.
+     *
+     * <p>Always the plainest setting. The two top levels choose a better one
+     * per meta-block and re-code that meta-block's commands under it, but the
+     * choice is made on a copy of the settings and does not carry to the next
+     * meta-block -- so the search always starts from here.
+     */
     private final BrotliDistances distances = BrotliDistances.PLAINEST;
 
     private final int[] recentDistances = {4, 11, 15, 16, 0, 0, 0, 0,
@@ -69,11 +79,10 @@ final class BrotliGenericEncoder {
         this.howMuchAMetaBlockMayHold =
                 1 << Math.min(ringBits, MOST_BITS_A_META_BLOCK_MAY_SPAN);
         this.ringBuffer = new BrotliRingBuffer(ringBits, blockBits);
-        boolean theInputIsLarge =
-                source.length >= INPUT_LARGE_ENOUGH_FOR_THE_WIDER_HASHES;
-        this.hasher = quality < 5
-                ? BrotliQuickHasher.forQuality(quality, theInputIsLarge)
-                : BrotliFullHasher.forQuality(quality, theInputIsLarge);
+        this.finder = quality >= LOWEST_QUALITY_THAT_PRICES_EVERYTHING
+                ? new PriceEverything(quality, source.length)
+                : new TakeTheBestMatch(quality,
+                        source.length >= INPUT_LARGE_ENOUGH_FOR_THE_WIDER_HASHES);
         this.writer = new BrotliBits(source.length / 2 + 64);
     }
 
@@ -127,10 +136,10 @@ final class BrotliGenericEncoder {
         byte[] data = ringBuffer.data();
         int mask = ringBuffer.mask();
         if (!theHasherIsReady) {
-            hasher.prepareFor(data, bytes, lastProcessedAt == 0 && isLast);
+            finder.getReady(data, bytes, lastProcessedAt == 0 && isLast);
             theHasherIsReady = true;
         }
-        hasher.stitchToPreviousBlock(data, mask, bytes, lastProcessedAt);
+        finder.stitchToPreviousBlock(data, mask, bytes, lastProcessedAt);
 
         int startedAt = lastProcessedAt;
         if (commands.count() != 0 && insertLengthNotYetSpokenFor == 0) {
@@ -138,11 +147,12 @@ final class BrotliGenericEncoder {
             bytes = inputAt - startedAt;
         }
 
-        BrotliBackwardReferences.Found found = BrotliBackwardReferences.findAll(
-                data, mask, startedAt, bytes, quality, WINDOW_BITS, hasher,
-                recentDistances, insertLengthNotYetSpokenFor, commands);
-        insertLengthNotYetSpokenFor = found.insertLengthLeftOver();
-        howManyLiterals += found.literalsWrittenIntoCommands();
+        int[] carried = {insertLengthNotYetSpokenFor};
+        long[] literals = {howManyLiterals};
+        finder.find(data, mask, startedAt, bytes, recentDistances, carried,
+                distances, commands, literals);
+        insertLengthNotYetSpokenFor = carried[0];
+        howManyLiterals = (int) literals[0];
 
         if (!isLast && worthWaitingForMoreInput()) {
             lastProcessedAt = inputAt;
@@ -158,6 +168,109 @@ final class BrotliGenericEncoder {
             return;
         }
         writeOneMetaBlock(data, mask, isLast);
+    }
+
+    /**
+     * The two ways of finding copies, which differ in more than degree.
+     *
+     * <p>Levels two to nine walk forward and take the best match they trip
+     * over. Ten and eleven price every candidate at every position and choose
+     * the cheapest run of commands overall. They keep different tables and are
+     * asked different questions, so they are two things rather than one thing
+     * with a setting.
+     */
+    private sealed interface FindsTheCopies {
+
+        void getReady(byte[] data, int howMuchInput, boolean theWholeInputAtOnce);
+
+        void stitchToPreviousBlock(byte[] data, int mask, int howManyBytes,
+                int position);
+
+        void find(byte[] data, int mask, int startedAt, int bytes,
+                int[] recentDistances, int[] insertLengthCarried,
+                BrotliDistances distances, BrotliCommand commands,
+                long[] howManyLiterals);
+    }
+
+    private static final class TakeTheBestMatch implements FindsTheCopies {
+
+        private final int quality;
+        private final BrotliHasher hasher;
+
+        TakeTheBestMatch(int quality, boolean theInputIsLarge) {
+            this.quality = quality;
+            this.hasher = quality < 5
+                    ? BrotliQuickHasher.forQuality(quality, theInputIsLarge)
+                    : BrotliFullHasher.forQuality(quality, theInputIsLarge);
+        }
+
+        @Override
+        public void getReady(byte[] data, int howMuchInput,
+                boolean theWholeInputAtOnce) {
+
+            hasher.prepareFor(data, howMuchInput, theWholeInputAtOnce);
+        }
+
+        @Override
+        public void stitchToPreviousBlock(byte[] data, int mask,
+                int howManyBytes, int position) {
+
+            hasher.stitchToPreviousBlock(data, mask, howManyBytes, position);
+        }
+
+        @Override
+        public void find(byte[] data, int mask, int startedAt, int bytes,
+                int[] recentDistances, int[] insertLengthCarried,
+                BrotliDistances distances, BrotliCommand commands,
+                long[] howManyLiterals) {
+
+            BrotliBackwardReferences.Found found =
+                    BrotliBackwardReferences.findAll(data, mask, startedAt,
+                            bytes, quality, WINDOW_BITS, hasher, recentDistances,
+                            insertLengthCarried[0], commands);
+            insertLengthCarried[0] = found.insertLengthLeftOver();
+            howManyLiterals[0] += found.literalsWrittenIntoCommands();
+        }
+    }
+
+    private static final class PriceEverything implements FindsTheCopies {
+
+        private final int quality;
+        private final BrotliBinaryTreeHasher tree;
+
+        PriceEverything(int quality, int howMuchInput) {
+            this.quality = quality;
+            this.tree = new BrotliBinaryTreeHasher(WINDOW_BITS, howMuchInput, true);
+        }
+
+        @Override
+        public void getReady(byte[] data, int howMuchInput,
+                boolean theWholeInputAtOnce) {
+        }
+
+        @Override
+        public void stitchToPreviousBlock(byte[] data, int mask,
+                int howManyBytes, int position) {
+
+            tree.stitchToPreviousBlock(data, mask, howManyBytes, position);
+        }
+
+        @Override
+        public void find(byte[] data, int mask, int startedAt, int bytes,
+                int[] recentDistances, int[] insertLengthCarried,
+                BrotliDistances distances, BrotliCommand commands,
+                long[] howManyLiterals) {
+
+            if (quality == LOWEST_QUALITY_THAT_PRICES_EVERYTHING) {
+                BrotliPricedParse.findAllForTen(data, mask, startedAt, bytes,
+                        WINDOW_BITS, tree, recentDistances, insertLengthCarried,
+                        distances, commands, howManyLiterals);
+            } else {
+                BrotliPricedParse.findAllForEleven(data, mask, startedAt, bytes,
+                        WINDOW_BITS, tree, recentDistances, insertLengthCarried,
+                        distances, commands, howManyLiterals);
+            }
+        }
     }
 
     private boolean worthWaitingForMoreInput() {
@@ -243,6 +356,10 @@ final class BrotliGenericEncoder {
                     lastFlushAt, length, isLast, distances, commands, writer);
             return;
         }
+        if (quality >= LOWEST_QUALITY_THAT_PRICES_EVERYTHING) {
+            writeTheClusteredForm(data, mask, length, isLast);
+            return;
+        }
         int[] contextMap = BrotliMetaBlock.contextMapFor(data, mask, lastFlushAt,
                 length, quality, source.length);
         BrotliMetaBlockSplit split = BrotliMetaBlock.builtGreedily(data, mask,
@@ -250,7 +367,37 @@ final class BrotliGenericEncoder {
                 commands, distances);
         BrotliMetaBlockWriter.writeTheFullThing(data, mask, lastFlushAt, length,
                 previousByte, theByteBeforeThat, isLast, distances, commands,
-                split, writer);
+                split, contextModeFor(data, mask, length), writer);
+    }
+
+    /**
+     * How literals are conditioned on the two bytes before them.
+     *
+     * <p>Below quality ten it is always the UTF-8 table; the top two levels may
+     * choose to condition on how big the previous bytes were instead, which
+     * suits data that is not text at all.
+     */
+    private int contextModeFor(byte[] data, int mask, int length) {
+        if (quality < LOWEST_QUALITY_THAT_PRICES_EVERYTHING
+                || BrotliLiteralCosts.mostlyUtf8(data, lastFlushAt, mask, length)) {
+            return BrotliContext.UTF8;
+        }
+        return BrotliContext.SIGNED;
+    }
+
+    private void writeTheClusteredForm(byte[] data, int mask, int length,
+            boolean isLast) {
+
+        int contextMode = contextModeFor(data, mask, length);
+        BrotliClusteredMetaBlock.Built built = BrotliClusteredMetaBlock.build(
+                data, mask, lastFlushAt, previousByte, theByteBeforeThat,
+                contextMode, quality, commands, distances);
+        BrotliDistances chosenForThisOne = built.distances();
+        BrotliClusteredMetaBlock.smoothForRuns(built.split(),
+                chosenForThisOne.alphabetSize());
+        BrotliMetaBlockWriter.writeTheFullThing(data, mask, lastFlushAt, length,
+                previousByte, theByteBeforeThat, isLast, chosenForThisOne,
+                commands, built.split(), contextMode, writer);
     }
 
     /**

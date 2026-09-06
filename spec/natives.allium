@@ -5844,9 +5844,9 @@ rule TheLevelNobodyAskedForIsTheMethodsOwn {
 -- absent. That is why it is written as an invariant over all data rather than
 -- as a rule with cases.
 --
--- Stated here for the methods this build writes for itself. The three that go
--- through the host's own deflate library are left out, and why is the open
--- question below.
+-- Stated here for the methods this build writes for itself, at every level each
+-- of them has. The three that go through the host's own deflate library are
+-- left out, and why is the open question below.
 invariant CompressedBytesAreTheOnesARealRebolWrites {
     for method in compression_methods_written_here():
         for level in levels_the_method_has(method):

@@ -76,6 +76,14 @@ final class BrotliCommand {
         count = 0;
     }
 
+    /**
+     * Throws away everything written after a point, so a parse can be run again
+     * from the same place with better costs.
+     */
+    void keepOnly(int howMany) {
+        count = howMany;
+    }
+
     int insertLengthAt(int which) {
         return insertLength[which];
     }
@@ -131,6 +139,30 @@ final class BrotliCommand {
      */
     int copyLengthPlusItsPlainModifier(int which) {
         return (copyLength[which] & 0x1FFFFFF) + (copyLength[which] >>> 25);
+    }
+
+    /**
+     * Which of four distance contexts this command's copy falls in.
+     *
+     * <p>Short copies after short inserts get a context of their own, which is
+     * what lets a meta-block use a different distance code for them. Only the
+     * two levels that cluster histograms make use of it.
+     */
+    int distanceContextAt(int which) {
+        int row = commandPrefix[which] >> 6;
+        int column = commandPrefix[which] & 7;
+        if ((row == 0 || row == 2 || row == 4 || row == 7) && column <= 2) {
+            return column;
+        }
+        return 3;
+    }
+
+    void distancePrefixIs(int which, int prefix) {
+        distancePrefix[which] = prefix;
+    }
+
+    void distanceExtraIs(int which, int extra) {
+        distanceExtra[which] = extra;
     }
 
     void add(int insertLengthGiven, int copyLengthGiven, int copyCodeDelta,
@@ -240,8 +272,14 @@ final class BrotliCommand {
     static int lengthCode(int insertLength, int copyLength,
             boolean useLastDistance) {
 
-        int insertCode = insertLengthCode(insertLength);
-        int copyCode = copyLengthCode(copyLength);
+        return combinedLengthCode(insertLengthCode(insertLength),
+                copyLengthCode(copyLength), useLastDistance);
+    }
+
+    /** The same, for a caller that already has the two bracket codes. */
+    static int combinedLengthCode(int insertCode, int copyCode,
+            boolean useLastDistance) {
+
         int low = (copyCode & 7) | ((insertCode & 7) << 3);
         if (useLastDistance && insertCode < 8 && copyCode < 16) {
             return copyCode < 8 ? low : low | 64;

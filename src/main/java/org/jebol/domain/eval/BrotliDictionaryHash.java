@@ -31,12 +31,24 @@ final class BrotliDictionaryHash {
 
     private static final int PACKED_LENGTH = SLOTS * 3;
 
-    private static char[] wordIndexes;
-    private static byte[] wordLengths;
+    /**
+     * The two tables, unpacked, held together so that one write publishes both.
+     *
+     * <p>Two callers arriving at once would otherwise be able to see a table
+     * that had been assigned while the one beside it had not. They cannot
+     * disagree about the contents -- the data is the same however many times it
+     * is unpacked -- so the only thing needed is that a reader sees all of it or
+     * none of it.
+     */
+    private record Unpacked(char[] wordIndexes, byte[] wordLengths) {
+    }
 
-    private static void unpack() {
-        if (wordIndexes != null) {
-            return;
+    private static Unpacked tables;
+
+    private static Unpacked unpacked() {
+        Unpacked known = tables;
+        if (known != null) {
+            return known;
         }
         byte[] raw = inflated();
         char[] indexes = new char[SLOTS];
@@ -46,8 +58,9 @@ final class BrotliDictionaryHash {
         }
         byte[] lengths = new byte[SLOTS];
         System.arraycopy(raw, SLOTS * 2, lengths, 0, SLOTS);
-        wordLengths = lengths;
-        wordIndexes = indexes;
+        Unpacked built = new Unpacked(indexes, lengths);
+        tables = built;
+        return built;
     }
 
     private static byte[] inflated() {
@@ -80,13 +93,11 @@ final class BrotliDictionaryHash {
 
     /** Zero where no word of the dictionary hashes to this slot. */
     static int wordLengthAt(int slot) {
-        unpack();
-        return wordLengths[slot];
+        return unpacked().wordLengths()[slot];
     }
 
     static int wordIndexAt(int slot) {
-        unpack();
-        return wordIndexes[slot];
+        return unpacked().wordIndexes()[slot];
     }
 
     private static final String[] DEFLATED_TABLE = {

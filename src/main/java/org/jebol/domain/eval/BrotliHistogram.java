@@ -15,8 +15,19 @@ final class BrotliHistogram {
     private final int[] counts;
     private long total;
 
+    /** What it was last reckoned to cost, kept so clustering need not re-ask. */
+    private double cost;
+
     BrotliHistogram(int alphabetSize) {
         this.counts = new int[alphabetSize];
+    }
+
+    double cost() {
+        return cost;
+    }
+
+    void costIs(double bits) {
+        cost = bits;
     }
 
     int[] counts() {
@@ -47,6 +58,7 @@ final class BrotliHistogram {
     void copyFrom(BrotliHistogram other) {
         System.arraycopy(other.counts, 0, counts, 0, counts.length);
         total = other.total;
+        cost = other.cost;
     }
 
     static BrotliHistogram[] freshRow(int howMany, int alphabetSize) {

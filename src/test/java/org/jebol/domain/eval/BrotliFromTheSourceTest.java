@@ -18,11 +18,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * one of its twelve levels, which was checked by handing it a hundred and
  * thirty-two of them.
  *
- * <p>The writing half has ten of its twelve settings. Levels zero to nine are
- * byte for byte what a real one writes; levels ten and eleven are not written
- * yet and answer what level nine answers, which is a real difference from a
- * real 3.22.5 and is asserted below rather than left to be discovered. Levels
- * two to nine have a test file of their own beside this one.
+ * <p>The writing half has all twelve of its settings, and every one of them is
+ * byte for byte what a real 3.22.5 writes. Levels two to nine and levels ten
+ * and eleven have test files of their own beside this one; what is here is
+ * levels zero and one, the reader, the dictionary, and the refusals.
  *
  * <p>One fault this file would have caught and a round trip would not: each of
  * the two files that build a prefix code has a static comparator of its own,
@@ -123,23 +122,23 @@ class BrotliFromTheSourceTest {
         }
 
         /**
-         * This is the difference from a real 3.22.5 that is left, stated rather
-         * than found. Ten and eleven search much harder for matches than nine
-         * does, and that search is not ported; they answer nine's bytes, and a
-         * real one answers something shorter.
+         * The two levels that were the last gap. They search for matches by
+         * pricing every candidate rather than taking the best one found, so
+         * they part company with nine even on fourteen bytes -- and they are
+         * now the bytes a real 3.22.5 writes.
          */
         @Test
-        @DisplayName("levels ten and eleven answer level nine's bytes, which a real one does not")
-        void levelsTenAndElevenAnswerTheLevelNineBytes() {
+        @DisplayName("levels ten and eleven, which differ from nine and from a real one no longer")
+        void levelsTenAndElevenAreExact() {
             assertThat(answerTo("""
                     reduce [
                         (compress/level "test test test" 'br 10)
                             = compress/level "test test test" 'br 9
                         (compress/level "test test test" 'br 11)
-                            = compress/level "test test test" 'br 9
-                        (compress/level "test test test" 'br 11)
                             = #{1B0D00F8A541CAE6E8C42B51C036}
-                    ]""")).isEqualTo("[#(true) #(true) #(false)]");
+                        (compress/level "test test test" 'br 10)
+                            = compress/level "test test test" 'br 11
+                    ]""")).isEqualTo("[#(false) #(true) #(true)]");
         }
 
         @Test
