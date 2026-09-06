@@ -18,12 +18,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * one of its twelve levels, which was checked by handing it a hundred and
  * thirty-two of them.
  *
- * <p>The writing half has two of its twelve settings. Levels zero and one are
- * byte for byte what a real one writes, checked on nineteen inputs from
- * nothing to seven hundred kilobytes, compressible and not. Levels two to
- * eleven are not written yet and answer what level zero answers, which is a
- * real difference from a real 3.22.5 and is asserted below rather than left to
- * be discovered.
+ * <p>The writing half has ten of its twelve settings. Levels zero to nine are
+ * byte for byte what a real one writes; levels ten and eleven are not written
+ * yet and answer what level nine answers, which is a real difference from a
+ * real 3.22.5 and is asserted below rather than left to be discovered. Levels
+ * two to nine have a test file of their own beside this one.
  *
  * <p>One fault this file would have caught and a round trip would not: each of
  * the two files that build a prefix code has a static comparator of its own,
@@ -107,22 +106,39 @@ class BrotliFromTheSourceTest {
         }
 
         /**
-         * This is the difference from a real 3.22.5 that is left, stated
-         * rather than found. There, no level means level six and the fourteen
-         * bytes come out as {@code 1B0D0000A441CAE6E8C42B516C03}; here levels
-         * two and up are not written yet and answer what level zero answers.
+         * The level nobody asks for is six, and six now writes what a real one
+         * writes. Fourteen bytes are too few for level two to bother building a
+         * code for, so it stores them where six does not.
          */
         @Test
-        @DisplayName("levels two and up answer level zero's bytes, which a real one does not")
-        void levelsTwoAndUpAnswerTheLevelZeroBytes() {
+        @DisplayName("the level nobody asks for is six, and six is exact")
+        void theLevelNobodyAsksForIsExact() {
             assertThat(answerTo("""
                     reduce [
                         (compress "test test test" 'br)
-                            = compress/level "test test test" 'br 0
-                        (compress/level "test test test" 'br 11)
-                            = compress/level "test test test" 'br 0
-                        (compress "test test test" 'br)
                             = #{1B0D0000A441CAE6E8C42B516C03}
+                        (compress/level "test test test" 'br 2)
+                            = compress/level "test test test" 'br 0
+                    ]""")).isEqualTo("[#(true) #(true)]");
+        }
+
+        /**
+         * This is the difference from a real 3.22.5 that is left, stated rather
+         * than found. Ten and eleven search much harder for matches than nine
+         * does, and that search is not ported; they answer nine's bytes, and a
+         * real one answers something shorter.
+         */
+        @Test
+        @DisplayName("levels ten and eleven answer level nine's bytes, which a real one does not")
+        void levelsTenAndElevenAnswerTheLevelNineBytes() {
+            assertThat(answerTo("""
+                    reduce [
+                        (compress/level "test test test" 'br 10)
+                            = compress/level "test test test" 'br 9
+                        (compress/level "test test test" 'br 11)
+                            = compress/level "test test test" 'br 9
+                        (compress/level "test test test" 'br 11)
+                            = #{1B0D00F8A541CAE6E8C42B51C036}
                     ]""")).isEqualTo("[#(true) #(true) #(false)]");
         }
 
@@ -214,6 +230,50 @@ class BrotliFromTheSourceTest {
                         noise = decompress compress noise 'br 'br
                         (length? compress noise 'br) - length? noise
                     ]""")).isEqualTo("[#(true) 4]");
+        }
+
+        /**
+         * A stream whose table of code lengths names exactly one length.
+         *
+         * <p>That code has a single symbol in it, so there is nothing to tell
+         * apart and it is read by spending no bits at all. Reading it as an
+         * ordinary prefix code instead spends one bit or more, and everything
+         * after it is then read at the wrong offset -- which showed up as a
+         * symbol longer than any code rather than as wrong output, so the
+         * damage was at least loud.
+         *
+         * <p>It took seventy thousand bytes to find one. Every shorter stream
+         * this file had been tested on -- a hundred and thirty two of them,
+         * written by a real 3.22.5 at all twelve levels -- reads correctly
+         * without the special case, which is why counting streams was no
+         * substitute for asking what shapes of stream exist.
+         *
+         * <p>The stream this decodes is a real 3.22.5's byte for byte: its
+         * checksum is asserted here, and that the encoder writes a real one's
+         * bytes at level six is asserted separately.
+         */
+        @Test
+        @DisplayName("one whose code over code lengths has a single symbol in it")
+        void aCodeOverCodeLengthsWithOneSymbol() {
+            assertThat(answerTo("""
+                    data: make binary! 70000
+                    h: checksum "seed" 'sha1
+                    while [(length? data) < 70000][
+                        append data h
+                        append data "the quick brown fox jumps over the lazy dog "
+                        h: checksum h 'sha1
+                    ]
+                    data: copy/part data 70000
+                    sha: func [x][trim/all enbase checksum x 'sha1 64]
+                    stream: compress/level data 'br 6
+                    reduce [
+                        sha data
+                        length? stream
+                        sha stream
+                        data = decompress stream 'br
+                    ]""")).isEqualTo("""
+                    ["CMvWZqlA9EPf/FNp1QIGG9/K/eA=" 23177 \
+                    "64A2TP3ihYDsd3SGEbJTZbenEYQ=" #(true)]""");
         }
     }
 

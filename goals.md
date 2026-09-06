@@ -545,21 +545,22 @@ sized at whichever is smaller of the level's window and the data, which the C
 does not do and which changes no answer -- without it, compressing fourteen
 bytes at the default level allocates a hundred and thirty-four megabytes.
 
-**Brotli reads everything and writes level zero.** The decoder is RFC 7932 in
-full, dictionary and transforms included, and reads all 132 streams a real
-3.22.5 produced across eleven inputs and twelve levels. The encoder is
-`compress_fragment.c`, which is quality zero, and is byte-exact with a real one
-on nineteen inputs from nothing to seven hundred kilobytes -- compressible and
-not, single meta-block and several.
+**Brotli reads everything and writes ten of its twelve levels.** The decoder is
+RFC 7932 in full, dictionary and transforms included. The encoder covers levels
+zero to nine, byte-exact with a real 3.22.5, verified on a four megabyte source
+tree, a seven hundred kilobyte library, three megabytes of noise, and about
+three and a half thousand generated inputs across eight data shapes.
 
-**What Brotli still differs on, and it is worth knowing before anyone reads the
-suite as green.** `compress/level x 'br 6` answers the bytes level zero would.
-The other eleven levels are eleven other encoders -- block splitting, histogram
-clustering, context modelling, and a near-optimal parse for ten and eleven --
-and they are several thousand more lines than the decoder. Nothing in the suite
-notices, because the only exact-byte assertions Rebol writes for Brotli are at
-level zero. `BrotliFromTheSourceTest` asserts the difference rather than hiding
-it.
+Levels two to nine are the whole generic path: four hash tables, the look-ahead
+that puts off a match when the next byte offers a better one, the dictionary
+search on the encoder side, the greedy block splitter over three alphabets, the
+choice between one, two, three and thirteen literal contexts, and the meta-block
+writer in its three forms. `BrotliLevelsTwoToNineFromTheSourceTest` covers it.
+
+**What Brotli still differs on.** Levels ten and eleven answer level nine's
+bytes. Their parse is a different algorithm again -- a near-optimal search with
+its own binary-tree hasher -- and it is not ported.
+`BrotliFromTheSourceTest` asserts the difference rather than hiding it.
 
 **Three surprises, all recorded because the sizes in this file are estimates.**
 
@@ -593,6 +594,16 @@ ported:
   sorts a literal code does not break a tie between equal counts, the one that
   sorts a command code does. Using the wrong one gives a code of the same shape
   with two symbols swapped -- valid Brotli, decodes perfectly, wrong bytes.
+
+**And one the decoder had been carrying all along.** A prefix code over code
+lengths may have a single symbol in it, and such a code is read by spending no
+bits at all -- there is nothing to tell apart. Read as an ordinary prefix code
+it spends a bit, and everything after it is then read at the wrong offset. The
+decoder had been reported as checked against 132 real streams at all twelve
+levels; every one of them was short, and the first stream that needs the special
+case is about fifty kilobytes. Writing levels two to nine produced such a stream
+within an hour and the round-trip test caught it. Counting samples is not
+coverage, and the rule that came out of it is in `CLAUDE.md`.
 
 ### 4. The crypt port — 40
 

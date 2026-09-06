@@ -270,6 +270,158 @@ final class BrotliCodes {
         return 31 - Integer.numberOfLeadingZeros(value);
     }
 
+    /**
+     * Nudges near-equal counts to be exactly equal, so the code lengths they
+     * produce can be written as a run rather than one by one.
+     *
+     * <p>{@code BrotliOptimizeHuffmanCountsForRle}. A prefix code is stored as a
+     * list of lengths with runs of equal lengths abbreviated, so a stretch of
+     * symbols whose counts are close enough to share a length costs almost
+     * nothing to declare. Rounding a run of similar counts to their average
+     * makes that happen, at the cost of a slightly worse code for the symbols
+     * themselves. The C's own comment calls the arithmetic below fixed point
+     * with eight fractional bits, which is where every multiplication by two
+     * hundred and fifty six comes from.
+     *
+     * <p>It gives up early three times over: on fewer than sixteen used symbols,
+     * on fewer than five once the trailing zeros are dropped, and on fewer than
+     * twenty eight. A small alphabet is modelled well enough as it stands.
+     */
+    static void smoothCountsIntoRuns(int size, int[] counts) {
+        int used = 0;
+        for (int each = 0; each < size; each++) {
+            if (counts[each] != 0) {
+                used++;
+            }
+        }
+        if (used < 16) {
+            return;
+        }
+        int length = size;
+        while (length != 0 && counts[length - 1] == 0) {
+            length--;
+        }
+        if (length == 0) {
+            return;
+        }
+        if (!worthSmoothing(counts, length)) {
+            return;
+        }
+        boolean[] alreadyARun = runsWorthKeeping(counts, length);
+        flattenTheRestIntoRuns(counts, length, alreadyARun);
+    }
+
+    private static boolean worthSmoothing(int[] counts, int length) {
+        int used = 0;
+        int smallest = 1 << 30;
+        for (int each = 0; each < length; each++) {
+            if (counts[each] != 0) {
+                used++;
+                smallest = Math.min(smallest, counts[each]);
+            }
+        }
+        if (used < 5) {
+            return false;
+        }
+        if (smallest < 4 && length - used < 6) {
+            fillSingleGaps(counts, length);
+        }
+        return used >= 28;
+    }
+
+    /** A lone zero between two used symbols costs more as a gap than as a one. */
+    private static void fillSingleGaps(int[] counts, int length) {
+        for (int each = 1; each < length - 1; each++) {
+            if (counts[each - 1] != 0 && counts[each] == 0
+                    && counts[each + 1] != 0) {
+                counts[each] = 1;
+            }
+        }
+    }
+
+    /** Runs already long enough to code cheaply, which must not be disturbed. */
+    private static boolean[] runsWorthKeeping(int[] counts, int length) {
+        boolean[] worthKeeping = new boolean[length];
+        int value = counts[0];
+        int run = 0;
+        for (int each = 0; each <= length; each++) {
+            if (each == length || counts[each] != value) {
+                if ((value == 0 && run >= 5) || (value != 0 && run >= 7)) {
+                    for (int back = 0; back < run; back++) {
+                        worthKeeping[each - back - 1] = true;
+                    }
+                }
+                run = 1;
+                if (each != length) {
+                    value = counts[each];
+                }
+            } else {
+                run++;
+            }
+        }
+        return worthKeeping;
+    }
+
+    /**
+     * Whether a count differs from the running average by enough to end a
+     * streak, in either direction.
+     *
+     * <p>The C writes this as one comparison of unsigned numbers, which reads
+     * as a test for "too far above" and is also a test for "too far below":
+     * subtracting a larger limit wraps the difference round to an enormous
+     * positive number, and that clears the threshold too. Written with signed
+     * numbers here, both halves have to be said.
+     */
+    private static boolean straysTooFarFrom(long limit, int count) {
+        long difference = 256L * count - limit;
+        return difference >= HOW_FAR_A_COUNT_MAY_STRAY
+                || difference < -HOW_FAR_A_COUNT_MAY_STRAY;
+    }
+
+    private static final int HOW_FAR_A_COUNT_MAY_STRAY = 1240;
+
+    private static void flattenTheRestIntoRuns(int[] counts, int length,
+            boolean[] alreadyARun) {
+
+        int run = 0;
+        long limit = 256L * (counts[0] + counts[1] + counts[2]) / 3 + 420;
+        long sum = 0;
+        for (int each = 0; each <= length; each++) {
+            boolean streakEnds = each == length
+                    || alreadyARun[each]
+                    || (each != 0 && alreadyARun[each - 1])
+                    || straysTooFarFrom(limit, counts[each]);
+            if (streakEnds) {
+                if (run >= 4 || (run >= 3 && sum == 0)) {
+                    long flattened = sum == 0 ? 0 : Math.max(1, (sum + run / 2) / run);
+                    for (int back = 0; back < run; back++) {
+                        counts[each - back - 1] = (int) flattened;
+                    }
+                }
+                run = 0;
+                sum = 0;
+                if (each < length - 2) {
+                    limit = 256L * (counts[each] + counts[each + 1]
+                            + counts[each + 2]) / 3 + 420;
+                } else if (each < length) {
+                    limit = 256L * counts[each];
+                } else {
+                    limit = 0;
+                }
+            }
+            run++;
+            if (each != length) {
+                sum += counts[each];
+                if (run >= 4) {
+                    limit = (256L * sum + run / 2) / run;
+                }
+                if (run == 4) {
+                    limit += 120;
+                }
+            }
+        }
+    }
+
     static void convertBitDepthsToSymbols(int[] depth, int depthAt,
         int length, int[] bits, int bitsAt) {
 

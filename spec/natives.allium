@@ -3848,6 +3848,8 @@ surface BuiltInFunctions {
 
 open question "Refusing a body to a native comes back under two different error ids in the C, depending on how the make was written, and it is not settled that JEBOL should keep them apart. The prototype form `make :read [[][]]` reaches Copy_Function, which returns FALSE for a value that is not a function or closure, and the make arm reports that with Trap_Reflect -- cannot-use, arg1 the definition block. The datatype form `make native! [[][]]` and `make action! [[][]]` never reach Copy_Function: Make_Function refuses REB_NATIVE and REB_ACTION outright and the arm reports that with Trap_Make -- bad-make-arg, arg1 the type. Same mistake, two doors, two ids. MakingFromANativePrototypeWithABodyIsRefused specifies the prototype form as cannot-use, matching the C for the case the suite exercises and the derivation contrast turns on. What is undecided is whether JEBOL should reproduce the datatype form's bad-make-arg as faithfully, or unify the two on one id on the grounds that a script cannot tell which arm it hit and the distinction is an artefact of the C's control flow rather than a fact about the value. It wants measuring against a real R3 on all three spellings before either is built."
 
+open question "CompressedBytesAreTheOnesARealRebolWrites holds for the four methods this build writes itself and not for the three of the deflate family -- zlib, gzip and deflate -- which a real 3.22.5 writes through libdeflate. The streams read back correctly and are a little larger, because libdeflate's parse is not the one the JVM's own deflater uses and no setting brings the two together. Three ways out and none is free. Port libdeflate, which is a second compressor of comparable size to the ones already here and buys nothing but the bytes. Declare the three methods reproducible only against JEBOL itself, which is honest and quietly makes the invariant say two different things depending on the method. Or say that reproducibility is a property of the format rather than of the encoder, and that a caller who needs the same bytes must record them rather than recompute them -- which is the most defensible position and the least useful one, since the whole point is comparing against something already written. It wants deciding before anything is built on it, because a caller who reads the invariant and does not read this cannot tell which three of the seven will disappoint them."
+
 open question "What does QUERY with a none field answer -- the information object, or the list of modes the port supports? The spec says the object, resolved earlier against a real R3, and QueryingWithNoneAnswersAnObject states it. The C disagrees: its A_QUERY arm answers the modes list, and actions.reb documents the argument as `NONE will return valid modes`. Two authorities and they cannot both be describing the same call, so one of three things is true: the measurement was of a build that differs, the modes answer belongs to a port that is open where the object answer belongs to a file path, or the C's own declaration is stale against its own code. It wants measuring again on both a file and an open port before either is trusted, because the difference is not a detail: a script reading a size off the answer gets a block of words instead."
 
 open question "A wildcard in a path read as a directory listing in the C, and cannot-open here. `read %*.r3` in a real R3 lists the matching files, because the path goes to the directory scheme and the pattern is handed to the operating system's own matcher. JEBOL takes the path literally, finds no file spelled that way and raises cannot-open. Three things to settle before it is built: whether the matching belongs in JEBOL or in the host, given that the JVM's own path matcher and a Windows shell disagree about several patterns; whether a wildcard should list only where the path names no real file, since a file genuinely called `*.r3` is legal on every system JEBOL runs on; and whether the answer is the plain names a directory listing gives, which is what would make the two forms interchangeable. Backlogged rather than open in the sense of blocking: nothing in Rebol's own library reads a wildcard, so this costs no assertions today."
@@ -5823,6 +5825,34 @@ rule TheLevelNobodyAskedForIsTheMethodsOwn {
 
     ensures: CallResult(value: compress(data, method,
         the_level_the_method_uses_when_nobody_says(method)))
+}
+
+-- Compressing is reproducible as well as reversible: the same data, method and
+-- level give the same bytes a real 3.22.5 gives, byte for byte.
+--
+-- This is much stronger than the inverse property above, and it is the one a
+-- caller actually leans on the moment a compressed value leaves the process.
+-- A checksum taken over a compressed file, a cache key built from one, a blob
+-- compared against what an existing deployment wrote, a fixture checked into a
+-- repository beside the script that made it -- every one of those breaks if the
+-- bytes merely read back correctly. Any number of encoders read back correctly;
+-- only one writes the same bytes.
+--
+-- It also has no weaker form worth having. There is no partial credit for being
+-- close: a stream that differs in one bit is a stream a comparison rejects, so
+-- either the whole encoder agrees with the reference or the property is simply
+-- absent. That is why it is written as an invariant over all data rather than
+-- as a rule with cases.
+--
+-- Stated here for the methods this build writes for itself. The three that go
+-- through the host's own deflate library are left out, and why is the open
+-- question below.
+invariant CompressedBytesAreTheOnesARealRebolWrites {
+    for method in compression_methods_written_here():
+        for level in levels_the_method_has(method):
+            for octets in AnyBinary:
+                compress(octets, method, level)
+                    = the_bytes_a_real_rebol_writes(octets, method, level)
 }
 
 -- === The interpreter's own state ============================

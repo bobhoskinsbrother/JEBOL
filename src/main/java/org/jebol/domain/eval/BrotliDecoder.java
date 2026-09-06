@@ -695,6 +695,30 @@ final class BrotliDecoder {
             return Huffman.ofLengths(lengths);
         }
 
+        /**
+         * The one code length that was given a code, when only one was.
+         *
+         * <p>A code with a single symbol is not a prefix code and cannot be
+         * read bit by bit: there is nothing to tell apart, so the symbol is the
+         * answer whatever comes next and no bits are spent asking. The C says
+         * the same thing by filling every entry of its table with that symbol
+         * at a width of zero.
+         *
+         * <p>It arises for real. A meta-block whose code lengths are all the
+         * same -- which is what a long stretch of evenly used symbols gives --
+         * names one code length and repeats it, and then the code over code
+         * lengths has one symbol in it.
+         */
+        private static int theOnlyOneNamed(int[] codeLengthLengths) {
+            for (int each = 0; each < codeLengthLengths.length; each++) {
+                if (codeLengthLengths[each] != 0) {
+                    return each;
+                }
+            }
+            throw new IllegalArgumentException(
+                    "Brotli code-length code names nothing at all");
+        }
+
         private Huffman complexCode(int alphabetSize, int skip) {
             int[] codeLengthLengths = new int[CODE_LENGTH_CODES];
             int space = 32;
@@ -717,7 +741,9 @@ final class BrotliDecoder {
                 throw new IllegalArgumentException(
                         "Brotli code-length code is not a prefix code");
             }
-            Huffman lengthCode = Huffman.ofLengths(codeLengthLengths);
+            Huffman lengthCode = named == 1
+                    ? Huffman.ofOneSymbol(theOnlyOneNamed(codeLengthLengths))
+                    : Huffman.ofLengths(codeLengthLengths);
 
             int[] lengths = new int[alphabetSize];
             int symbol = 0;

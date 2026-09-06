@@ -116,6 +116,47 @@ equal bitsets could both be empty. The suite checks `img/1` on one image; a JEBO
 walks all four hash forms. Going past the suite is how a wrong reading gets caught
 that the suite would have let through.
 
+## Porting a compressor, a codec, or anything else that must be byte-exact
+
+Three rules, each of which exists because it was broken and cost something.
+
+**Build the oracle before the port, not after.** The reference C is right there
+under `rebol3-source/`, and a hundred lines of shell will compile the encoder
+alone into a program that reads a file and writes its compressed form to stdout.
+Then any input can be diffed against the truth in a second. On the Brotli
+encoder that harness found two defects within minutes of existing, and one of
+them -- a hash table cleared at every block instead of once -- was invisible in
+every test written before it, because it needed more than one block of input to
+show. Building it first also means the port can be bisected: shrink the input
+until the smallest failing case is one line.
+
+Instrumenting the reference is fair game and often the fastest answer. Copy the
+tree into the scratchpad, add a `fprintf`, recompile. That is how the Brotli
+port learned that the encoder is told the input length even though Rebol never
+sets it -- which changes which of four hashers runs -- after reading the code
+had concluded the opposite twice.
+
+**Coverage is a list of boundaries, not a count of samples.** The Brotli decoder
+was reported as checked against a hundred and thirty two real streams at all
+twelve levels, and could not read a fifty kilobyte one. All hundred and thirty
+two were short. A number sounds like evidence and is not; what is evidence is a
+written list of the boundaries -- nothing, one, two, three bytes, one under and
+one over each block size, either side of the megabyte where the code changes --
+with the test that covers each one beside it, or the word `(none)`.
+
+For a compressor the boundaries that matter are almost never the ones in the
+public interface. They are the sizes at which the implementation changes what it
+does: the block it reads at once, the window, the point where a table is swapped
+for a wider one, the length at which it stops bothering to compress at all. Read
+the C for those numbers and test either side of every one.
+
+**Check that a fixture is what it says it is.** A test that builds a binary in
+REBOL with `to char!` gets two bytes for every value above 127, so
+`counting 16384` is forty-eight thousand bytes and a test named for a block
+boundary sits nowhere near one. Assert the input's length and checksum, not only
+the output's. A fixture that lies makes a green test that measures nothing, and
+nothing else in the build will ever notice.
+
 ## Running the suite
 
 `./gradlew check` is the gate. It takes about five minutes for 15,900 tests,
@@ -143,7 +184,7 @@ every time it runs, and it is never quietly excluded. Run it after any change to
 `PaintList`, to either renderer, or to the page.
 
 Selenium is a `testImplementation` dependency and nothing else. **The shipped jar
-has no dependencies and this does not change that** -- about 1300 KB, of which
+has no dependencies and this does not change that** -- about 1400 KB, of which
 228 KB is the borrowed REBOL library and 78 KB is Brotli's static dictionary,
 carried in the source because the domain may not read a file.
 

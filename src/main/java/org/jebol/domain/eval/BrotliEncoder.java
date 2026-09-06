@@ -91,17 +91,19 @@ final class BrotliEncoder {
      * The quality this build has an encoder for.
      *
      * <p>{@code MAX(0, MIN(11, level))} in the C, then a fresh guess at what
-     * the level nobody asked for means: six. Levels this build cannot write
-     * yet fall back to the fastest one, which is valid Brotli and not the
-     * bytes a real 3.22.5 writes.
+     * the level nobody asked for means: six. Ten and eleven, whose parse is not
+     * ported yet, fall back to nine -- valid Brotli, and not the bytes a real
+     * 3.22.5 writes.
      */
     private static int qualityFor(int level) {
         int asked = level == NOBODY_ASKED ? DEFAULT_QUALITY : level;
         int clamped = Integer.compareUnsigned(asked, HIGHEST_QUALITY) > 0
                 ? HIGHEST_QUALITY
                 : asked;
-        return clamped == TWO_PASS_QUALITY ? TWO_PASS_QUALITY : ONE_PASS_QUALITY;
+        return Math.min(clamped, HIGHEST_QUALITY_WITH_AN_ENCODER_HERE);
     }
+
+    private static final int HIGHEST_QUALITY_WITH_AN_ENCODER_HERE = 9;
 
     private static final int NOBODY_ASKED = -1;
     private static final int DEFAULT_QUALITY = 6;
@@ -110,11 +112,14 @@ final class BrotliEncoder {
     private static final int TWO_PASS_QUALITY = 1;
 
     static byte[] encoded(byte[] source, int level) {
-        if (qualityFor(level) == TWO_PASS_QUALITY) {
+        int quality = qualityFor(level);
+        if (quality == ONE_PASS_QUALITY) {
+            return new Fragment(source).run();
+        }
+        if (quality == TWO_PASS_QUALITY) {
             return twoPass(source);
         }
-        Fragment fragment = new Fragment(source);
-        return fragment.run();
+        return BrotliGenericEncoder.encoded(source, quality);
     }
 
     /**
