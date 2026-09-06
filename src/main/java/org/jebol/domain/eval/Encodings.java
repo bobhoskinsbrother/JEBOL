@@ -753,7 +753,7 @@ final class Encodings {
             case "crush" -> Crush.compressed(octets, level);
             case "lzw" -> Lzw.compressed(octets, level);
             case "lzma" -> Lzma.compressed(octets, level);
-            case "br" -> Brotli.compressedAtLevelZeroWhateverWasAsked(octets);
+            case "br" -> Brotli.compressed(octets, level);
             default -> throw new IllegalArgumentException(method);
         };
     }

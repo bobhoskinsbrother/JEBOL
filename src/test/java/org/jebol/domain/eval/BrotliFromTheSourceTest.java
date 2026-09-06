@@ -18,13 +18,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * one of its twelve levels, which was checked by handing it a hundred and
  * thirty-two of them.
  *
- * <p>The writing half is level zero, and only level zero. What it writes is
- * byte for byte what a real one writes at that level -- checked on nineteen
- * inputs from nothing to seven hundred kilobytes, compressible and not -- and
- * what this build writes at every other level is the same thing. That is a
- * real difference from a real 3.22.5 and it is named here rather than left to
- * be discovered: the eleven other levels are eleven other encoders, and
- * porting them is a far larger job than reading any of them.
+ * <p>The writing half has two of its twelve settings. Levels zero and one are
+ * byte for byte what a real one writes, checked on nineteen inputs from
+ * nothing to seven hundred kilobytes, compressible and not. Levels two to
+ * eleven are not written yet and answer what level zero answers, which is a
+ * real difference from a real 3.22.5 and is asserted below rather than left to
+ * be discovered.
  *
  * <p>One fault this file would have caught and a round trip would not: each of
  * the two files that build a prefix code has a static comparator of its own,
@@ -79,15 +78,43 @@ class BrotliFromTheSourceTest {
         }
 
         /**
-         * This is the difference from a real 3.22.5, stated rather than left
-         * to be found. There, no level means level six and the fourteen bytes
-         * come out as {@code 1B0D0000A441CAE6E8C42B516C03}; here every level
-         * is level zero, so they come out stored. Both are Brotli and either
-         * side reads the other.
+         * Level one reads the input twice: once to find the matches, once to
+         * build prefix codes from what they actually left behind. On fourteen
+         * bytes it finds nothing either way, so both settings store them.
          */
         @Test
-        @DisplayName("and every other level answers those same bytes, which a real one does not")
-        void everyLevelAnswersTheLevelZeroBytes() {
+        @DisplayName("level one is a different encoder, and on this input agrees")
+        void levelOneIsADifferentEncoder() {
+            assertThat(answerTo("""
+                    (compress/level "test test test" 'br 1)
+                        = compress/level "test test test" 'br 0"""))
+                    .isEqualTo("#(true)");
+        }
+
+        /**
+         * On enough input the two part company, and both are what a real
+         * 3.22.5 writes at that level.
+         */
+        @Test
+        @DisplayName("and on a paragraph it is not, and both match a real 3.22.5")
+        void levelOneDiffersOnAParagraph() {
+            assertThat(answerTo(LOREM + """
+                    reduce [
+                        (compress/level text 'br 1) = compress/level text 'br 0
+                        length? compress/level text 'br 0
+                        length? compress/level text 'br 1
+                    ]""")).isEqualTo("[#(false) 209 166]");
+        }
+
+        /**
+         * This is the difference from a real 3.22.5 that is left, stated
+         * rather than found. There, no level means level six and the fourteen
+         * bytes come out as {@code 1B0D0000A441CAE6E8C42B516C03}; here levels
+         * two and up are not written yet and answer what level zero answers.
+         */
+        @Test
+        @DisplayName("levels two and up answer level zero's bytes, which a real one does not")
+        void levelsTwoAndUpAnswerTheLevelZeroBytes() {
             assertThat(answerTo("""
                     reduce [
                         (compress "test test test" 'br)
