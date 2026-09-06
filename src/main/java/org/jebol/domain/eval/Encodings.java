@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.eval.brotli.Brotli;
 import org.jebol.domain.value.BitsetValue;
 
 import java.nio.charset.StandardCharsets;
