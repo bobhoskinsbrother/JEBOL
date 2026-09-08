@@ -371,3 +371,18 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #133
 #   == [-586684923 3708282373 #(false)]     ; r3-head 3.22.5, and JEBOL
 #
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #94
+
+# The mobileprovision assertion is the DER raise reached a third way. It ends
+# on `object? decode 'crt data/DeveloperCertificates/1`, a certificate is DER
+# inside, and the DER group above raised before reaching its own closing
+# `codecs/der/verbose: 0`. Run in file order, which is how the file is written,
+# a real Rebol raises here as well. On its own, at the default verbosity, every
+# line of it passes on both.
+#
+#   >> codecs/der/verbose: 2
+#   >> try [load %units/files/test.pfx]           ; raises, leaving verbose 2
+#   >> data: load %units/files/Some.mobileprovision
+#   >> e: try [decode 'crt data/DeveloperCertificates/1]  mold e/id
+#   == not-defined     ; r3-head 3.22.5, and JEBOL
+#
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #218
