@@ -1596,6 +1596,53 @@ rule ReadingADirectoryAnswersItsNames {
     ensures: CallResult(value: block_of(the_names_within(request.source)))
 }
 
+-- A path holding a star or a question mark names several files, and reading
+-- it answers the ones that match rather than opening anything.
+--
+-- The two characters are the whole of the pattern language: a star stands for
+-- any run of characters and a question mark for one. The C reaches this
+-- through {@code glob} and states the same two in WILDCARD?, which answers
+-- whether a path holds either.
+--
+-- Names, not paths. What comes back is what a listing of that one directory
+-- would give -- the last part only -- so the caller joins it back onto the
+-- directory itself, which is what Rebol's own ZIP encoder does when it is
+-- given `%units/files/issue-2186*.txt` to archive.
+rule ReadingAPatternAnswersTheNamesThatMatchIt {
+    when: EvaluateFileRead(request)
+    requires: the_source_holds_a_star_or_a_question_mark()
+
+    ensures: CallResult(value: block_of(the_names_in_that_directory_matching(
+        request.source)))
+}
+
+-- Matching nothing is an empty block and not a failure, and so is a
+-- directory that is not there at all.
+--
+-- Which is the one place a pattern behaves unlike a name. A caller asking for
+-- a file by name and not finding it has made a mistake worth raising; a
+-- caller asking which files match has asked a question, and "none of them" is
+-- an answer to it. The C says so in one line of {@code p-dir.c}: it will not
+-- raise on a failure to open when the path held a wildcard.
+rule APatternThatMatchesNothingAnswersAnEmptyBlock {
+    when: EvaluateFileRead(request)
+    requires: the_source_holds_a_star_or_a_question_mark()
+    requires: nothing_in_that_directory_matches() or the_directory_is_absent()
+
+    ensures: CallResult(value: an_empty_block)
+}
+
+-- A pattern reaches into one directory and no further. `%units/*/x.png` is
+-- not "look in every subdirectory", it is nothing at all -- the C refuses a
+-- separator standing after a wildcard outright, saying it cannot be done on
+-- Windows and would have to answer whole paths if it could.
+rule APatternDoesNotReachThroughDirectories {
+    when: EvaluateFileRead(request)
+    requires: the_source_holds_a_separator_after_a_star_or_question_mark()
+
+    ensures: CallResult(value: an_empty_block)
+}
+
 -- === Writing a file ========================================
 
 -- WRITE has nine refinements and four of them change what happens: /part

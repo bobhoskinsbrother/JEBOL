@@ -52,9 +52,6 @@ codecs-test-pdf.r3 / (no group) / (no test) #6
 codecs-test-pdf.r3 / (no group) / (no test) #7
 codecs-test-pdf.r3 / (no group) / (no test) #8
 codecs-test-pdf.r3 / (no group) / (no test) #9
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #104
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #105
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #106
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #126
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #134
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #135
@@ -214,9 +211,6 @@ error-test.r3 / Error issues / issue-553 #38
 error-test.r3 / Error issues / protected catalog #42
 error-test.r3 / Error issues / protected catalog #43
 evaluation-test.r3 / do script / do needs #44
-file-test.r3 / WILDCARD / read wildcard #46
-file-test.r3 / WILDCARD / read wildcard #47
-file-test.r3 / WILDCARD / read wildcard #48
 file-test.r3 / cd / cd / cd ~ #1
 file-test.r3 / file:// / issue-834 #41
 file-test.r3 / to-local-file / issue-1115 #16
@@ -398,8 +392,6 @@ port-test.r3 / directory port / DELETE-DIR #49
 port-test.r3 / directory port / DELETE-DIR #51
 port-test.r3 / directory port / READ wildcard #44
 port-test.r3 / directory port / READ wildcard #45
-port-test.r3 / directory port / READ wildcard #46
-port-test.r3 / directory port / READ wildcard #47
 port-test.r3 / directory port / RENAME dir #57
 port-test.r3 / directory port / exists? %/ #63
 port-test.r3 / directory port / make-dir if file exists #21

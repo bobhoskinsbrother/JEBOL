@@ -18700,6 +18700,9 @@ public final class Natives {
         }
 
         Value answerThrough(FilePort files) {
+            if (holdsAWildcard(path)) {
+                return namesMatchingThePattern(files);
+            }
             if (path.endsWith("/") || files.isDirectory(path)) {
                 return namesWithin(files);
             }
@@ -18720,6 +18723,67 @@ public final class Natives {
                     .<Value>map(name -> StringValue.of(name, Datatype.FILE))
                     .toList());
         }
+
+        /**
+         * The names in one directory that a pattern matches, as a listing of
+         * that directory rather than a set of paths.
+         *
+         * <p>{@code Read_Pattern} in {@code dev-file.c} is {@code glob}, and
+         * it cuts the answer back to the last part -- {@code dir->clen = end +
+         * 1}, "so only files are returned and not complete paths". Rebol's own
+         * ZIP encoder relies on the shape: it takes the directory off the
+         * pattern itself and joins each name back on.
+         *
+         * <p>Matching nothing is an empty block and so is a directory that is
+         * not there, because {@code p-dir.c} will not raise on a failure to
+         * open when the path held a wildcard. A caller asking for a file by
+         * name and not finding it has made a mistake; a caller asking which
+         * files match has asked a question, and none of them is an answer.
+         */
+        private Value namesMatchingThePattern(FilePort files) {
+            int lastSeparator = path.lastIndexOf('/');
+            String directory = path.substring(0, lastSeparator + 1);
+            String pattern = path.substring(lastSeparator + 1);
+            if (holdsAWildcard(directory)) {
+                return BlockValue.block(List.of());
+            }
+            List<String> names;
+            try {
+                names = files.namesIn(directory.isEmpty() ? "." : directory);
+            } catch (RuntimeException nothingThere) {
+                return BlockValue.block(List.of());
+            }
+            return BlockValue.block(names.stream()
+                    .filter(name -> matchesTheWholeOf(withoutItsSlash(name), pattern))
+                    .<Value>map(name -> StringValue.of(name, Datatype.FILE))
+                    .toList());
+        }
+
+        /**
+         * A directory arrives from a listing wearing a trailing slash, and the
+         * pattern is written against the name without one. Glob marks the
+         * answer after it has matched, which is the same order.
+         */
+        private static String withoutItsSlash(String name) {
+            return name.endsWith("/") ? name.substring(0, name.length() - 1) : name;
+        }
+
+        private static boolean matchesTheWholeOf(String name, String pattern) {
+            return patternEnd(name, 0, name.length(), pattern, true,
+                    Wildcards.STARS_AND_QUESTION_MARKS) == name.length();
+        }
+
+        /**
+         * Whether a path names several files rather than one.
+         *
+         * <p>The two characters are the whole of it, and WILDCARD? in
+         * {@code n-io.c} says which: a star for any run and a question mark
+         * for one.
+         */
+        private static boolean holdsAWildcard(String path) {
+            return path.indexOf('*') >= 0 || path.indexOf('?') >= 0;
+        }
+
 
         private byte[] theBytesAskedFor(byte[] whole) {
             int from = (int) Math.min(position.orElse(0L), whole.length);
