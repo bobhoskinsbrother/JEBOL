@@ -5801,6 +5801,24 @@ rule EnbaseAndDebaseBoundTheirReadingWithPart {
     ensures: CallResult(value: the_encoding_of_only(the_length_taken(verb)))
 }
 
+-- And the units it counts are the series' own, so a string is bounded in
+-- characters and the encoding happens after.
+--
+-- Which matters exactly where a character is more than one byte. Counting the
+-- bytes instead takes too little -- eight characters of Czech are ten bytes --
+-- and worse, it can stop halfway through one and encode a lead byte with
+-- nothing following it. Rebol's own MIME header encoder cuts its input into
+-- runs of at most seventeen characters for the line limit, so it dropped the
+-- last letter of every accented subject line and sometimes broke one in half.
+rule PartCountsTheSeriesOwnUnits {
+    when: EvaluateCall(enbase, value, base)
+    requires: refinement_asked(part)
+    requires: value.datatype in any_string
+
+    ensures: the_span_taken = that_many_characters()
+    ensures: the_bytes_encoded = the_utf8_of(the_span_taken)
+}
+
 -- The two are inverses over every base, which is the only property of them
 -- worth testing exhaustively.
 invariant EnbaseAndDebaseAreInverses {

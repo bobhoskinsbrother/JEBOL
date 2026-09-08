@@ -11177,11 +11177,11 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     int base = (int) ((IntegerValue) arguments.get(1)).magnitude();
                     requireAKnownBase(base);
-                    byte[] octets = boundedByAnyPart(
-                            arguments.getFirst() instanceof IntegerValue number
-                                    ? asFewBytesAsHoldIt(number.magnitude())
-                                    : octetsOf(arguments.getFirst()),
-                            arguments, refinements);
+                    byte[] octets = arguments.getFirst() instanceof IntegerValue number
+                            ? boundedByAnyPart(asFewBytesAsHoldIt(number.magnitude()),
+                                    arguments, refinements)
+                            : theUnitsAskedFor(
+                                    arguments.getFirst(), arguments, refinements);
                     String encoded = Encodings.enbase(
                             octets, base, refinements.contains("url"));
                     return StringValue.of(refinements.contains("flat")
@@ -16407,6 +16407,36 @@ public final class Natives {
                 .map(count -> Arrays.copyOf(octets,
                         (int) Math.max(0, Math.min(count, octets.length))))
                 .orElse(octets);
+    }
+
+    /**
+     * The bytes of as much of a series as /PART asked for, counted in the
+     * series' own units.
+     *
+     * <p>{@code Partial1} answers a length in whatever the series is made of,
+     * so a string is bounded in characters and the UTF-8 encoding happens
+     * afterwards. Bounding the bytes instead takes too little wherever a
+     * character needs more than one -- eight characters of Czech are ten bytes
+     * -- and a count landing mid-character encodes a lead byte with nothing
+     * following it. Rebol's own MIME header encoder cuts its input into runs
+     * of seventeen characters for the line limit and lost the last letter of
+     * every accented subject line.
+     */
+    private static byte[] theUnitsAskedFor(
+            Value value, List<Value> arguments, Set<String> refinements) {
+
+        int howMany = howManyWanted(value, arguments, refinements, 2)
+                .map(count -> (int) Math.max(0, count))
+                .orElse(SeriesContents.EVERY_ONE);
+        return toBytes(SeriesContents.octetsContributedBy(value, howMany));
+    }
+
+    private static byte[] toBytes(int[] octets) {
+        byte[] bytes = new byte[octets.length];
+        for (int at = 0; at < octets.length; at++) {
+            bytes[at] = (byte) octets[at];
+        }
+        return bytes;
     }
 
     private static String boundedTextByAnyPart(
