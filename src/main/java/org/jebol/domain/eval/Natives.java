@@ -16,6 +16,7 @@ import java.util.*;
 import java.util.function.DoublePredicate;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -12286,17 +12287,16 @@ public final class Natives {
         if (refinements.contains("write")) {
             requireChangeable(arguments.getFirst());
             writeThroughTheDialect(held,
-                    dialectBlockIn(arguments, refinements, "write").stream()
-                            .map(item -> valueLookedUp(item, evaluator, context))
-                            .toList());
+                    dialectBlockIn(arguments, refinements, "write"),
+                    item -> valueLookedUp(item, evaluator, context));
             if (arguments.getFirst() instanceof BinaryValue given) {
                 laidBackInto(given, cursorNamed(held, "buffer").head());
             }
         }
         if (refinements.contains("read")) {
-            Value asked = dialectCodeIn(arguments, refinements);
             return readThroughTheDialect(held,
-                    eachValueLookedUp(asked, evaluator, context),
+                    dialectCodeIn(arguments, refinements),
+                    item -> valueLookedUp(item, evaluator, context),
                     theCountGivenWith(arguments, refinements),
                     argumentFor("into", DIALECT_OPTIONAL_ARGUMENTS,
                             arguments, refinements));
@@ -12398,8 +12398,8 @@ public final class Natives {
     }
 
     /**
-     * The dialect with its get-words and get-paths resolved, everything else
-     * as written.
+     * A get-word or a get-path in the dialect, looked up; anything else as
+     * written.
      *
      * <p>The block arrives unevaluated, which is what lets a code be named
      * rather than computed. But a caller writing a protocol has values in
@@ -12408,19 +12408,11 @@ public final class Natives {
      * writes the number LENGTH holds, where {@code [UI16 length]} would be an
      * error because LENGTH is not a code.
      *
-     * <p>Resolved here rather than inside the dialect, because looking a word
-     * up is the language's work and the dialect's job is bytes.
+     * <p>Handed to the dialect to call rather than run over the block first,
+     * because when a word is looked up decides what it holds. A block that
+     * names a length on one code and spends it on the next needs the lookup to
+     * happen at the second code, after the first has run.
      */
-    private static Value eachValueLookedUp(
-            Value asked, Evaluator evaluator, Context context) {
-        if (!(asked instanceof BlockValue block)) {
-            return valueLookedUp(asked, evaluator, context);
-        }
-        return BlockValue.block(block.remaining().stream()
-                .map(item -> valueLookedUp(item, evaluator, context))
-                .toList());
-    }
-
     private static Value valueLookedUp(
             Value item, Evaluator evaluator, Context context) {
         boolean fetches = item instanceof WordValue word
@@ -12482,12 +12474,14 @@ public final class Natives {
      * that has not caught up sees what was just written, and the write cursor
      * is left where the writing stopped.
      */
-    private static void writeThroughTheDialect(
-            ObjectValue held, List<Value> dialect) {
+    private static void writeThroughTheDialect(ObjectValue held,
+            List<Value> dialect, UnaryOperator<Value> lookedUp) {
+
         BinaryValue writing = cursorNamed(held, "buffer-write");
         List<Integer> octets = octetsOfTheBuffer(writing.head());
         Bincode.Cursor cursor = new Bincode.Cursor(octets, writing.index() - 1);
-        Bincode.write(cursor, dialect, Natives::secondsSinceTheEpoch);
+        Bincode.write(cursor, new Bincode.Script(dialect, lookedUp),
+                Natives::secondsSinceTheEpoch, Natives::nameTheValueRead);
         BinaryValue written = BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray());
         held.context().set("buffer",
@@ -12515,7 +12509,9 @@ public final class Natives {
                     "reading a count of bytes into a block");
         }
         List<Value> read = Bincode.read(cursor,
-                List.of(WordValue.of("bytes"), howMany), Natives::nameTheValueRead);
+                new Bincode.Script(List.of(WordValue.of("bytes"), howMany),
+                        UnaryOperator.identity()),
+                Natives::nameTheValueRead);
         held.context().set("buffer", reading.atIndex(cursor.at() + 1));
         return read.getFirst();
     }
@@ -12534,21 +12530,23 @@ public final class Natives {
      * refinement that does, and leaves the read cursor past what it took so
      * the next call carries on from there.
      */
-    private static Value readThroughTheDialect(
-            ObjectValue held, Value asked, Value count, Value into) {
+    private static Value readThroughTheDialect(ObjectValue held, Value asked,
+            UnaryOperator<Value> lookedUp, Value count, Value into) {
+
         BinaryValue reading = cursorNamed(held, "buffer");
         Bincode.Cursor cursor = new Bincode.Cursor(
                 octetsOfTheBuffer(reading.head()), reading.index() - 1,
                 bitsAlreadyTakenIn(held));
-        if (asked instanceof IntegerValue howMany) {
+        Value theBlockItself = lookedUp.apply(asked);
+        if (theBlockItself instanceof IntegerValue howMany) {
             return theseManyBytesRead(held, reading, cursor, howMany, into);
         }
-        List<Value> codes = new ArrayList<>(codesWrittenIn(asked));
+        List<Value> codes = new ArrayList<>(codesWrittenIn(theBlockItself));
         if (!(count instanceof NoneValue)) {
             codes.add(count);
         }
-        List<Value> read = Bincode.read(cursor, codes,
-                Natives::nameTheValueRead);
+        List<Value> read = Bincode.read(cursor,
+                new Bincode.Script(codes, lookedUp), Natives::nameTheValueRead);
         held.context().set("r-mask", IntegerValue.of(cursor.bitsTaken()));
         if (cursor.cropped() > 0) {
             shortenedFromTheFront(held, cursor);
@@ -12556,7 +12554,7 @@ public final class Natives {
             held.context().set("buffer", reading.atIndex(cursor.at() + 1));
         }
         return into == null || into instanceof NoneValue
-                ? shapedLikeTheAsking(asked, read)
+                ? shapedLikeTheAsking(theBlockItself, read)
                 : laidInto(into, read);
     }
 

@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.LongSupplier;
+import java.util.function.UnaryOperator;
 
 /**
  * The binary dialect: a little language for laying numbers into bytes and
@@ -233,16 +234,63 @@ final class Bincode {
     }
 
     /**
+     * The block being run, with a word looked up only when a code asks for one.
+     *
+     * <p>The lookup has to happen at the moment the code is reached rather than
+     * before the block starts, and the C says so in every case that takes an
+     * argument: {@code next = ++value; if (IS_GET_WORD(next)) next =
+     * Get_Var(next);}. Looking the whole block up in advance reads the same for
+     * a block whose words were all set before the call, and differently for the
+     * one shape that matters -- {@code [len: UI16LE com: BYTES :len]}, where
+     * the word is set by the code in front of the one that spends it. Rebol's
+     * own ZIP codec is written that way, so an eager lookup cannot read a ZIP
+     * file at all.
+     */
+    record Script(List<Value> items, UnaryOperator<Value> lookedUp) {
+
+        int size() {
+            return items.size();
+        }
+
+        /** The item as the caller wrote it, which is what a code position is. */
+        Value asWritten(int step) {
+            return items.get(step);
+        }
+
+        /** The item as a value, which is what an argument position is. */
+        Value valueAt(int step) {
+            return lookedUp.apply(items.get(step));
+        }
+    }
+
+    /**
      * Runs a write dialect, laying each value into the bytes at the cursor.
      *
      * <p>A code taking a value reads the next item of the block as that
      * value; the position codes take a number and move instead.
+     *
+     * <p>Every item is looked up here, not only the arguments, because the C's
+     * write loop resolves in its outer switch -- {@code case REB_GET_WORD: data
+     * = Get_Var(value)} -- before it has decided whether the item is a code, a
+     * number or its own bytes. So {@code :width} may name the code as well as
+     * the value, which the read side does not allow.
+     *
+     * <p>A set-word names where the writing has got to and produces nothing,
+     * which is how a caller writes a placeholder length, writes the body, and
+     * goes back to fill the length in.
      */
-    static void write(Cursor cursor, List<Value> dialect,
-            LongSupplier secondsSinceTheEpoch) {
+    static void write(Cursor cursor, Script dialect,
+            LongSupplier secondsSinceTheEpoch,
+            BiConsumer<WordValue, Value> named) {
+
         for (int step = 0; step < dialect.size(); step++) {
-            if (carriesItsOwnBytes(dialect.get(step))) {
-                writeBytes(cursor, dialect.get(step));
+            if (dialect.asWritten(step) instanceof WordValue naming
+                    && naming.datatype() == Datatype.SET_WORD) {
+                named.accept(naming, IntegerValue.of(cursor.at + 1));
+                continue;
+            }
+            if (carriesItsOwnBytes(dialect.valueAt(step))) {
+                writeBytes(cursor, dialect.valueAt(step));
                 continue;
             }
             String code = codeAt(dialect, step);
@@ -285,7 +333,7 @@ final class Bincode {
                 || item.datatype() == Datatype.EMAIL;
     }
 
-    private static int writeOtherThanANumber(Cursor cursor, List<Value> dialect,
+    private static int writeOtherThanANumber(Cursor cursor, Script dialect,
             int step, String code, LongSupplier secondsSinceTheEpoch) {
         if (!lengthCodeOf(code).isEmpty()) {
             writeBytesAfterTheirLength(cursor, lengthCodeOf(code),
@@ -303,7 +351,7 @@ final class Bincode {
                     alignedUp(cursor.at, wholeNumberWritten(itemAt(dialect, ++step, code))));
             case "random-bytes" -> writeRandom(cursor,
                     wholeNumberWritten(itemAt(dialect, ++step, code)));
-            default -> throw refuse(dialect.get(step));
+            default -> throw refuse(dialect.asWritten(step));
         }
         return step;
     }
@@ -314,21 +362,21 @@ final class Bincode {
      * <p>The position codes produce nothing, which is why the answer is
      * gathered rather than being one value per code.
      */
-    static List<Value> read(Cursor cursor, List<Value> dialect,
+    static List<Value> read(Cursor cursor, Script dialect,
             BiConsumer<WordValue, Value> named) {
         Produced read = new Produced(named);
         for (int step = 0; step < dialect.size(); step++) {
-            if (dialect.get(step) instanceof WordValue naming
+            if (dialect.asWritten(step) instanceof WordValue naming
                     && naming.datatype() == Datatype.SET_WORD) {
                 read.willName(naming);
                 continue;
             }
-            if (dialect.get(step) instanceof BinaryValue wanted) {
+            if (dialect.asWritten(step) instanceof BinaryValue wanted) {
                 read.add(LogicValue.of(matched(cursor, wanted)));
                 continue;
             }
             String code = codeReadAt(dialect, step);
-            cursor.reading = dialect.get(step);
+            cursor.reading = dialect.asWritten(step);
             if (widthOf(code) > 0) {
                 read.add(IntegerValue.of(readWholeNumber(cursor, code)));
                 continue;
@@ -355,6 +403,11 @@ final class Bincode {
      * set-word is a tap on the way past rather than a diversion, which is what
      * lets a caller read a length into a word and keep reading in the same
      * call -- the shape every length-prefixed protocol wants.
+     *
+     * <p>Several set-words in a row all take the one value, because each is
+     * remembered rather than replacing the last: the C pushes them onto the
+     * stack and empties it against the value with
+     * {@code while (DSP > ssp) Set_Var(DS_TOP, temp)}.
      */
     private static final class Produced {
 
@@ -362,22 +415,22 @@ final class Bincode {
 
         private final BiConsumer<WordValue, Value> named;
 
-        private WordValue waiting;
+        private final List<WordValue> waiting = new ArrayList<>();
 
         private Produced(BiConsumer<WordValue, Value> named) {
             this.named = named;
         }
 
         private void willName(WordValue word) {
-            waiting = word;
+            waiting.add(word);
         }
 
         private void add(Value value) {
             values.add(value);
-            if (waiting != null) {
-                named.accept(waiting, value);
-                waiting = null;
+            for (WordValue word : waiting) {
+                named.accept(word, value);
             }
+            waiting.clear();
         }
 
         private List<Value> values() {
@@ -385,13 +438,13 @@ final class Bincode {
         }
     }
 
-    private static int readOtherThanANumber(Cursor cursor, List<Value> dialect,
+    private static int readOtherThanANumber(Cursor cursor, Script dialect,
             int step, String code, Produced read) {
         if (!lengthCodeOf(code).isEmpty()) {
             read.add(bytesAfterTheirLength(cursor, lengthCodeOf(code)));
             return step;
         }
-        Value named = dialect.get(step);
+        Value named = dialect.asWritten(step);
         switch (baseOf(code)) {
             case "at" -> moveTo(cursor,
                     wholeNumberReadAfter(dialect, ++step, named) - 1);
@@ -459,10 +512,9 @@ final class Bincode {
      * that block was the rest of codecs-test.r3 -- 187 assertions behind one
      * misread argument.
      */
-    private static int countOfBytesAt(List<Value> dialect, int step) {
-        if (!(dialect.get(step) instanceof IntegerValue howMany)) {
-            throw Raised.of(EvaluationFailure.INVALID_SPEC,
-                    Molder.mold(dialect.get(step)) + " is not a count of bytes");
+    private static int countOfBytesAt(Script dialect, int step) {
+        if (!(dialect.valueAt(step) instanceof IntegerValue howMany)) {
+            throw Raised.of(EvaluationFailure.INVALID_SPEC, dialect.asWritten(step));
         }
         return (int) howMany.magnitude();
     }
@@ -795,7 +847,7 @@ final class Bincode {
      * strips an endian suffix first and would read {@code unixtime-now-le} as
      * {@code unixtime-now-} -- a code nothing answers to.
      */
-    private static int momentWritten(Cursor cursor, List<Value> dialect,
+    private static int momentWritten(Cursor cursor, Script dialect,
             int step, String code, LongSupplier secondsSinceTheEpoch) {
         switch (code) {
             case "unixtime-now" ->
@@ -1086,9 +1138,16 @@ final class Bincode {
      * and raises here. The C's own {@code ep} is the tail rather than the
      * capacity, so the check is the intent and the missing one is the slip --
      * and a byte that was never in the message is worse than an error.
+     *
+     * <p>A count below nothing is past the end too. The C reaches that answer
+     * by arithmetic rather than by a test -- {@code n} is a {@code REBCNT}, so
+     * a count of minus one arrives as four thousand million and fails the same
+     * comparison -- and the answer is the right one however it got there: a
+     * length that came out negative is a message read wrongly, and quietly
+     * taking no bytes would hand the caller an empty field where the error is.
      */
     private static void refuseAReadPastTheEnd(Cursor cursor, int wanted) {
-        if (cursor.at + wanted > cursor.octets.size()) {
+        if (wanted < 0 || cursor.at + wanted > cursor.octets.size()) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     cursor.reading instanceof NoneValue
                             ? IntegerValue.of(cursor.at + wanted)
@@ -1106,8 +1165,8 @@ final class Bincode {
      * the value. So {@code binary/write b [FOO 1]} is {@code dialect} and
      * {@code binary/read b [FOO]} is {@code invalid-spec}, for the same word.
      */
-    private static String codeReadAt(List<Value> dialect, int step) {
-        Value item = dialect.get(step);
+    private static String codeReadAt(Script dialect, int step) {
+        Value item = dialect.asWritten(step);
         if (!(item instanceof WordValue word) || !knows(word.canonical())) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, item);
         }
@@ -1123,8 +1182,8 @@ final class Bincode {
      * usage at:". A char, a number, a tag or a block laid in on its own is
      * this error, where a binary or a string would have been its own bytes.
      */
-    private static String codeAt(List<Value> dialect, int step) {
-        Value item = dialect.get(step);
+    private static String codeAt(Script dialect, int step) {
+        Value item = dialect.valueAt(step);
         if (!(item instanceof WordValue word)) {
             throw Raised.of(EvaluationFailure.DIALECT,
                     WordValue.of("bincode"), item);
@@ -1146,11 +1205,11 @@ final class Bincode {
      * {@code dialect}, the same error as a code that means nothing, which is
      * the C's {@code error_next_value} landing in the same place.
      */
-    private static Value itemAt(List<Value> dialect, int step, String code) {
+    private static Value itemAt(Script dialect, int step, String code) {
         if (step >= dialect.size()) {
             throw refuse(code);
         }
-        return dialect.get(step);
+        return dialect.valueAt(step);
     }
 
     /**
@@ -1166,11 +1225,11 @@ final class Bincode {
      *
      * <p>One error for both looked tidier and made those three fail.
      */
-    private static Value valueReadAfter(List<Value> dialect, int step, Value code) {
+    private static Value valueReadAfter(Script dialect, int step, Value code) {
         if (step >= dialect.size()) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, code);
         }
-        return dialect.get(step);
+        return dialect.valueAt(step);
     }
 
     /**
@@ -1180,15 +1239,20 @@ final class Bincode {
      * side, which lands on {@code Trap1(RE_INVALID_SPEC, value)}. The same
      * mistake on the write side is {@code dialect}, and the pair of errors is
      * the difference between reading a spec and running one.
+     *
+     * <p>What it names is the item as the caller wrote it. Where the argument
+     * is a get-word the error reads {@code :len} rather than whatever that
+     * word turned out to hold, because the word is where the caller has to
+     * look.
      */
     private static long wholeNumberReadAfter(
-            List<Value> dialect, int step, Value code) {
+            Script dialect, int step, Value code) {
 
         Value given = valueReadAfter(dialect, step, code);
         if (given instanceof IntegerValue number) {
             return number.magnitude();
         }
-        throw Raised.of(EvaluationFailure.INVALID_SPEC, given);
+        throw Raised.of(EvaluationFailure.INVALID_SPEC, dialect.asWritten(step));
     }
 
     private static long wholeNumberWritten(Value given) {
