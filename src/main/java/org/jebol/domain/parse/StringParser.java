@@ -3,6 +3,7 @@ package org.jebol.domain.parse;
 import org.jebol.domain.eval.EvaluationFailure;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.Raised;
+import org.jebol.domain.eval.SeriesContents;
 import org.jebol.domain.value.*;
 
 import java.util.ArrayList;
@@ -226,8 +227,7 @@ public final class StringParser {
             for (int taken = begin + count; taken > begin; taken--) {
                 removeFromSource(source.index() + taken - 1);
             }
-            String swapped = replacementFor(rules.get(at + 2));
-            int[] written = swapped.codePoints().toArray();
+            int[] written = unitsToLayIn(replacementFor(rules.get(at + 2)));
             for (int added = 0; added < written.length; added++) {
                 insertIntoSource(source.index() + begin + added, written[added]);
             }
@@ -248,13 +248,12 @@ public final class StringParser {
         for (int taken = position; taken > before; taken--) {
             removeFromSource(source.index() + taken - 1);
         }
-        String replacement = replacementFor(rules.get(replacementAt));
-        int[] codepoints = replacement.codePoints().toArray();
-        for (int added = 0; added < codepoints.length; added++) {
-            insertIntoSource(source.index() + before + added, codepoints[added]);
+        int[] units = unitsToLayIn(replacementFor(rules.get(replacementAt)));
+        for (int added = 0; added < units.length; added++) {
+            insertIntoSource(source.index() + before + added, units[added]);
         }
         letters = lettersOfSeries(source);
-        position = before + codepoints.length;
+        position = before + units.length;
         return 1 + span + 1;
     }
 
@@ -287,13 +286,13 @@ public final class StringParser {
      * is fetched from its binding -- and an unset one raises no-value, as
      * {@code if (IS_UNSET(item)) Trap1(RE_NO_VALUE, rules-1)} does.
      */
-    private String replacementFor(Value replacement) {
+    private Value replacementFor(Value replacement) {
         if (replacement instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
-            return textOf(evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context));
+            return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
         }
         if (replacement instanceof WordValue word
                 && word.datatype() == Datatype.LIT_WORD) {
-            return textOf(word.as(Datatype.WORD));
+            return word.as(Datatype.WORD);
         }
         if (replacement instanceof WordValue word
                 && word.datatype() == Datatype.WORD) {
@@ -302,9 +301,9 @@ public final class StringParser {
                     || holder.slotFor(word.canonical()).value() instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
             }
-            return textOf(holder.slotFor(word.canonical()).value());
+            return holder.slotFor(word.canonical()).value();
         }
-        return textOf(replacement);
+        return replacement;
     }
 
     /** REMOVE: match the rule after it and cut what matched out. */
@@ -1067,7 +1066,7 @@ public final class StringParser {
     }
 
     /**
-     * INSERT: put text in at the position, consuming nothing.
+     * INSERT: put a value in at the position, consuming nothing.
      *
      * <p>The position ends up after what was inserted, which is what
      * stops an INSERT inside a repeat from running for ever.
@@ -1081,13 +1080,34 @@ public final class StringParser {
         if (added instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
             added = evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
         }
-        int[] codepoints = Molder.form(added).codePoints().toArray();
-        for (int step = 0; step < codepoints.length; step++) {
-            insertIntoSource(source.index() + position + step, codepoints[step]);
+        int[] units = unitsToLayIn(added);
+        for (int step = 0; step < units.length; step++) {
+            insertIntoSource(source.index() + position + step, units[step]);
         }
         this.letters = lettersOfSeries(source);
-        position += codepoints.length;
+        position += units.length;
         return 2;
+    }
+
+    /**
+     * What a value contributes to the series being parsed.
+     *
+     * <p>The series decides, which is the whole of it: PARSE's INSERT and
+     * CHANGE reach the C's own through {@code Modify_String}, so a value laid
+     * into a binary contributes bytes and the same value laid into a string
+     * contributes the text it FORMs to. {@code #{FFFF}} is honestly two bytes
+     * in one and four letters in the other.
+     *
+     * <p>Formed into text either way -- which is what this did -- a binary
+     * went in as the letters of its hex, and Rebol's own quoted-printable
+     * encoder, which folds long lines with {@code insert #{3D0D0A}} inside a
+     * PARSE over a binary, put those six letters in every message where a soft
+     * line break belonged.
+     */
+    private int[] unitsToLayIn(Value value) {
+        return source instanceof BinaryValue
+                ? SeriesContents.octetsContributedBy(value)
+                : SeriesContents.charactersContributedBy(value);
     }
 
     /**

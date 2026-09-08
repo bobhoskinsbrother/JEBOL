@@ -105,31 +105,42 @@ final class Encodings {
     /**
      * Percent-encodes octets, keeping the ones the given set allows.
      *
-     * <p>Octets, never codepoints. A character that takes two bytes in UTF-8
-     * takes two escapes, because what a URL carries is bytes.
+     * <p>Octets, never codepoints, in and out. A character that takes two
+     * bytes in UTF-8 takes two escapes, because what a URL carries is bytes --
+     * and an octet the set allows through is written back as itself, which is
+     * a thing only bytes can hold. Building a string here instead read every
+     * kept octet as a Latin-1 character, so a set wide enough to pass an
+     * accented letter turned it into two.
      */
-    static String percentEncoded(
+    static byte[] percentEncoded(
             byte[] octets, java.util.function.IntPredicate keep,
             char escape, boolean spaceIsSpecial) {
 
-        StringBuilder encoded = new StringBuilder(octets.length);
+        Octets encoded = new Octets();
         for (byte each : octets) {
             int octet = each & 0xFF;
             if (spaceIsSpecial && octet == ' ') {
-                encoded.append(spaceStandsForUnder(escape));
+                encoded.write(spaceStandsForUnder(escape));
                 continue;
             }
             if (spaceIsSpecial && octet == spaceStandsForUnder(escape)) {
-                encoded.append(escape).append("%02X".formatted(octet));
+                escapedInto(encoded, escape, octet);
                 continue;
             }
             if (keep.test(octet)) {
-                encoded.append((char) octet);
+                encoded.write(octet);
                 continue;
             }
-            encoded.append(escape).append("%02X".formatted(octet));
+            escapedInto(encoded, escape, octet);
         }
-        return encoded.toString();
+        return encoded.toArray();
+    }
+
+    private static void escapedInto(Octets encoded, char escape, int octet) {
+        String digits = "%02X".formatted(octet);
+        encoded.write(escape);
+        encoded.write(digits.charAt(0));
+        encoded.write(digits.charAt(1));
     }
 
     /**

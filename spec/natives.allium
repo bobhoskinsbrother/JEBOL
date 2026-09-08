@@ -5659,6 +5659,53 @@ rule TheDefaultUnescapedSetFollowsTheDatatype {
     ensures: CallResult(value: percent_encoded(value, keeping: uri_set()))
 }
 
+-- Both answer the datatype they were given, which for a binary means a
+-- binary and not the text of one.
+--
+-- `Set_Series(VAL_TYPE(arg), D_RET, ser)` is the last line of each, and the
+-- point of it is that the encoding is a transformation of a series rather
+-- than a way of displaying one: a caller who handed over bytes is still
+-- working in bytes afterwards and wants to go on parsing them. Rebol's own
+-- quoted-printable encoder is exactly that caller -- it enhexes a binary,
+-- then PARSEs the answer to fold the lines, and inserting the three bytes of
+-- a soft break into a string put the letters of their hex in the message
+-- instead.
+rule EscapingAnswersTheDatatypeItWasGiven {
+    when: EvaluateCall(verb, value)
+    requires: verb in {enhex, dehex}
+    ensures: CallResult(datatype: value.datatype)
+}
+
+-- Escaping is decided a byte at a time, and by the unescaped set alone.
+--
+-- A character that takes several bytes of UTF-8 takes several escapes, and
+-- each of those bytes is asked of the set separately. Nothing is escaped for
+-- being non-ASCII as such -- hand a set that reaches to 255 and a real 3.22.5
+-- writes those bytes out literally, in a string as readily as in a binary,
+-- which is a caller saying they know what their target carries.
+--
+-- The C reads as though it had a rule about non-ASCII, and it does not; that
+-- reading was tried against the oracle and refuted twice, once for text and
+-- once for bytes.
+rule TheUnescapedSetAloneDecidesWhatIsEscaped {
+    when: EvaluateCall(enhex, value)
+    ensures: a_byte_is_written_literally_exactly_when(the_set_holds_it)
+}
+
+-- So what makes the default answer the safe one is the sets, and every one
+-- the catalogue carries stops at ASCII.
+--
+-- The quoted-printable set is the plainest of them and the one that caught
+-- this: every ASCII character but the equals sign, so text passes through
+-- untouched and anything else becomes `=XX` a byte at a time. Built to 255
+-- instead, it left every accented letter in the output as a raw byte, which
+-- is the one thing the encoding exists to prevent.
+rule TheCataloguesUnescapedSetsStopAtAscii {
+    when: ReadSystemCatalogue(bitsets)
+    ensures: no_set_named_for_escaping_holds_a_character_above(
+        one_hundred_and_twenty_seven)
+}
+
 -- DEHEX is the inverse, and it reads two hexadecimal digits after the escape
 -- character. A percent sign with anything else after it stands for itself,
 -- because a URL that was never encoded must survive being decoded.
@@ -9582,6 +9629,28 @@ rule AGetWordOrGetPathInTheDialectIsLookedUp {
     requires: the_dialect_holds_a_get_word_or_get_path()
 
     ensures: the_value_used = what_that_word_or_path_holds()
+}
+
+-- And looked up through the binding the word already carries, so a name the
+-- caller has of their own beats a name the library has.
+--
+-- Which is not a fine distinction, it is the difference between the dialect
+-- working inside a function and not. Rebol's own ZIP encoder keeps its central
+-- directory in a word called DIR and writes it with `BYTES :dir/buffer`, and
+-- DIR is also the name of the library's directory-listing function. Resolving
+-- the name afresh in some other context finds that function, hands it to a
+-- code expecting bytes, and refuses -- so no archive can be written at all.
+--
+-- The C has no way to get this wrong, because {@code Get_Var} takes the word
+-- and follows the word's own binding. Binding it again on the way in is the
+-- mistake, and it is invisible until a caller happens to choose a name the
+-- library also uses.
+rule ANameInTheDialectIsTheCallersOwn {
+    when: EvaluateCall(binary, ctx)
+    requires: the_dialect_holds_a_get_word_or_get_path()
+    requires: the_same_name_is_bound_somewhere_outside_the_caller()
+
+    ensures: the_value_used = what_the_caller_s_own_word_holds()
 }
 
 -- A set-word in a read block names the next value read, and names it before

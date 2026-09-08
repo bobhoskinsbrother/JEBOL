@@ -101,11 +101,24 @@ class EncodingFromTheSourceTest {
             assertThat(answerTo("dehex/uri \"a+b\"")).isEqualTo("\"a b\"");
         }
 
+        /**
+         * This asked for a string and a real 3.22.5 answers a binary, which
+         * makes the expectation wrong rather than the answer. The C's last
+         * line is {@code Set_Series(VAL_TYPE(arg), D_RET, ser)}, so bytes in
+         * gives bytes out, and Rebol's own quoted-printable encoder depends on
+         * it: it enhexes a binary and then PARSEs the answer to fold long
+         * lines.
+         *
+         * <pre>
+         * &gt;&gt; mold reduce [enhex #{4142} enhex #{00FF}]
+         * == "[#{4142} #{253030254646}]"    ; r3-head 3.22.5
+         * </pre>
+         */
         @Test
-        @DisplayName("a binary is encoded byte by byte, not decoded first")
+        @DisplayName("a binary is encoded byte by byte, and answers a binary")
         void aBinaryIsEncodedByteByByte() {
-            assertThat(answerTo("enhex #{4142}")).isEqualTo("\"AB\"");
-            assertThat(answerTo("enhex #{00FF}")).isEqualTo("\"%00%FF\"");
+            assertThat(answerTo("enhex #{4142}")).isEqualTo("#{4142}");
+            assertThat(answerTo("enhex #{00FF}")).isEqualTo("#{253030254646}");
         }
 
         @Test

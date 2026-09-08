@@ -356,3 +356,18 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #78
 #
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #132
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #133
+
+# The ZIP central directory stores a file's CRC as a signed thirty-two bit
+# number -- codec-zip.reb reads it with `crc: SI32LE` -- and CHECKSUM answers
+# an unsigned one. The assertion compares the two, so it is false wherever the
+# top bit happens to be set, and it is set for this file. A real 3.22.5 prints
+# the same pair from inside its own codec: "CRC check failed! -586684923 <>
+# 3708282373", which are the same thirty-two bits read two ways.
+#
+#   >> bin: read %units/files/test-lzma.zip
+#   >> info: codecs/zip/decode/info bin
+#   >> data: codecs/zip/decompress-file at bin info/2/2 reduce [info/2/5 info/2/3 info/2/4]
+#   >> mold reduce [info/2/6  checksum data 'crc32  info/2/6 = checksum data 'crc32]
+#   == [-586684923 3708282373 #(false)]     ; r3-head 3.22.5, and JEBOL
+#
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #94

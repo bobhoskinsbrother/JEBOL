@@ -423,6 +423,27 @@ rule InsertAndChangeEvaluateAPath {
     ensures: RuleMatched(inserted: result_of(rule.value))
 }
 
+-- What a value contributes when it goes in is decided by the series, not by
+-- the rule, and it is the same rule INSERT itself follows.
+--
+-- Which is the whole of it: PARSE's INSERT is the C's own INSERT reached
+-- through `Modify_String` and `Modify_Block`, so a value laid into a binary
+-- contributes bytes -- a binary its own, a character its UTF-8, a whole
+-- number the single byte it names -- and the same value laid into a string
+-- contributes the text it FORMs to. `#{FFFF}` is two bytes in one and four
+-- letters in the other.
+--
+-- Formed into text either way, which is what this did, a binary went in as
+-- the letters of its hex. Rebol's own quoted-printable encoder folds long
+-- lines with `insert #{3D0D0A}` inside a PARSE over a binary, and got the six
+-- characters 3D0D0A in the message where the soft line break should be.
+rule WhatIsInsertedFollowsTheSeriesRatherThanTheRule {
+    when: MatchRule(rule, input)
+    requires: rule.keyword in {insert, change}
+
+    ensures: RuleMatched(inserted: the_units_that_value_contributes_to(input))
+}
+
 -- A lit-word loses its tick on the way in, so `change word! 'x` leaves the
 -- plain word x. The C does it by hand after the modify:
 -- `if (IS_LIT_WORD(item)) SET_TYPE(BLK_SKIP(series, index-1), REB_WORD);`

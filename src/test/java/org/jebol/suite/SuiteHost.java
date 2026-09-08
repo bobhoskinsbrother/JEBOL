@@ -82,6 +82,13 @@ final class SuiteHost {
      * assertions that were never run and read as failures of the port. Copying
      * the directory means a file that arrives is a file the tests can find,
      * without anybody remembering to add a line.
+     *
+     * <p>The whole tree, not the top of it. One of Rebol's data directories
+     * holds a directory of its own -- fourteen icons the ICO codec builds an
+     * icon file out of and the ZIP codec archives whole -- and listing only
+     * the top left it behind, so six assertions asked for a directory that was
+     * not there. A copy that stops at the first level is a copy that quietly
+     * depends on nobody ever nesting anything.
      */
     private static void layOutTheFilesTheSuiteReads(Path root) throws IOException {
         Path into = root.resolve("units").resolve("files");
@@ -90,10 +97,14 @@ final class SuiteHost {
         if (!Files.isDirectory(from)) {
             return;
         }
-        try (Stream<Path> each = Files.list(from)) {
-            for (Path one : each.toList()) {
-                Files.copy(one, into.resolve(one.getFileName().toString()),
-                        StandardCopyOption.REPLACE_EXISTING);
+        try (Stream<Path> everything = Files.walk(from)) {
+            for (Path one : everything.toList()) {
+                Path landing = into.resolve(from.relativize(one).toString());
+                if (Files.isDirectory(one)) {
+                    Files.createDirectories(landing);
+                } else {
+                    Files.copy(one, landing, StandardCopyOption.REPLACE_EXISTING);
+                }
             }
         }
     }

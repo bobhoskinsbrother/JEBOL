@@ -447,13 +447,26 @@ public final class Natives {
      */
     private static BitsetValue quotedPrintableOctets() {
         StringBuilder allowed = new StringBuilder();
-        for (int octet = 0; octet < 256; octet++) {
-            if (octet != 0x3D && octet != 0x3A && octet != 0x2E) {
-                allowed.append((char) octet);
+        for (int character = 0; character <= LAST_ASCII_CHARACTER; character++) {
+            if (character != '=') {
+                allowed.append((char) character);
             }
         }
         return charactersIn(allowed.toString());
     }
+
+    /**
+     * Where every unescaped set in the catalogue stops.
+     *
+     * <p>{@code sysobj.reb} writes each of them as a bitset literal of sixteen
+     * bytes, which is a hundred and twenty-eight bits and no more, and that
+     * bound is what makes percent encoding do its job: a byte the set cannot
+     * hold is a byte that gets escaped. The quoted-printable set built to 255
+     * instead, so every accented letter went into the output as a raw byte --
+     * exactly what the encoding exists to prevent -- and it also refused a
+     * colon and a full stop, which Rebol allows.
+     */
+    private static final int LAST_ASCII_CHARACTER = 127;
 
     private static BitsetValue rangeOfCharacters(int from, int to) {
         int[] codes = new int[to - from + 1];
@@ -6033,7 +6046,7 @@ public final class Natives {
                         yield block.head();
                     }
                     case BinaryValue bytes -> {
-                        for (int octet : octetsContributedBy(
+                        for (int octet : SeriesContents.octetsContributedBy(
                                 duplicated(arguments.get(1), arguments, refinements),
                                 partCountFor(arguments, refinements))) {
                             bytes.storage().append(octet);
@@ -6289,7 +6302,7 @@ public final class Natives {
                     }
                     case BinaryValue strandedBytes -> {
                         BinaryValue bytes = (BinaryValue) clampedToTail(strandedBytes);
-                        int[] octets = octetsContributedBy(
+                        int[] octets = SeriesContents.octetsContributedBy(
                                 duplicated(arguments.get(1), arguments, refinements),
                                 partCountFor(arguments, refinements));
                         for (int at = octets.length; at > 0; at--) {
@@ -6436,7 +6449,7 @@ public final class Natives {
                     Value replacing = duplicated(
                             arguments.get(1), arguments, refinements);
                     if (arguments.get(0) instanceof BinaryValue bytes) {
-                        int[] octets = octetsContributedBy(replacing, -1);
+                        int[] octets = SeriesContents.octetsContributedBy(replacing);
                         for (int at = 0; at < octets.length; at++) {
                             int where = bytes.index() + at;
                             if (where > bytes.storage().length()) {
@@ -8654,87 +8667,6 @@ public final class Natives {
     }
 
     /**
-     * The bytes a value contributes when it goes into a binary.
-     *
-     * <p>{@code Join_Binary} in {@code s-make.c}, and the branches of
-     * {@code Modify_String} that run when the target is a binary. One
-     * rule underneath all of it: text becomes its UTF-8 bytes, so a
-     * character above the ASCII range contributes several bytes rather
-     * than one. Writing the code point straight in gives one byte and is
-     * right for every ASCII character, which is what makes it hard to
-     * notice.
-     *
-     * <p>{@code howMany} is a {@code /part} count of the source, or a
-     * negative number for all of it. It counts characters of the source
-     * and the encoding happens afterwards, so one character of U+2190
-     * still contributes three bytes. A character value is not a series
-     * and ignores the count entirely.
-     */
-    private static int[] octetsContributedBy(Value value, int howMany) {
-        List<Integer> octets = new ArrayList<>();
-        gatherOctets(value, howMany, octets);
-        int[] gathered = new int[octets.size()];
-        for (int at = 0; at < gathered.length; at++) {
-            gathered[at] = octets.get(at);
-        }
-        return gathered;
-    }
-
-    private static void gatherOctets(Value value, int howMany, List<Integer> into) {
-        switch (value) {
-            case BinaryValue source -> {
-                int taking = howMany < 0
-                        ? source.lengthFromHere()
-                        : Math.min(howMany, source.lengthFromHere());
-                for (int at = 0; at < taking; at++) {
-                    into.add(source.storage().at(source.index() + at) & 0xFF);
-                }
-            }
-            case StringValue text -> {
-                String held = text.text();
-                int taking = howMany < 0
-                        ? held.length()
-                        : Math.min(howMany, held.length());
-                addUtf8(held.substring(0, taking), into);
-            }
-            case CharacterValue letter ->
-                    addUtf8(Character.toString(letter.codepoint()), into);
-            case IntegerValue whole -> {
-                if (whole.magnitude() < 0 || whole.magnitude() > 255) {
-                    throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                            "a byte is 0 to 255, not " + whole.magnitude());
-                }
-                into.add((int) whole.magnitude());
-            }
-            case TupleValue tuple -> {
-                for (int at = 1; at <= tuple.segmentCount(); at++) {
-                    into.add(tuple.octetAt(at));
-                }
-            }
-            case BlockValue several -> {
-                List<Value> items = several.remaining();
-                int taking = howMany < 0 ? items.size() : Math.min(howMany, items.size());
-                for (int at = 0; at < taking; at++) {
-                    if (items.get(at) instanceof BlockValue nested) {
-                        throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                                nested.datatype().literalSpelling()
-                                        + " cannot go into a binary");
-                    }
-                    gatherOctets(items.get(at), -1, into);
-                }
-            }
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    value.datatype().literalSpelling() + " cannot go into a binary");
-        }
-    }
-
-    private static void addUtf8(String text, List<Integer> into) {
-        for (byte encoded : text.getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
-            into.add(encoded & 0xFF);
-        }
-    }
-
-    /**
      * The error catalogue as errors.reb declares it: category set-words each
      * holding a block of id set-words and their message templates. Read from
      * the source {@link #useErrorCatalogue} handed in, past its own header.
@@ -9054,7 +8986,7 @@ public final class Natives {
                 }
             }
             case BinaryValue bytes -> {
-                int[] octets = octetsContributedBy(value, -1);
+                int[] octets = SeriesContents.octetsContributedBy(value);
                 for (int at = octets.length; at > 0; at--) {
                     bytes.storage().insertAt(bytes.index(), octets[at - 1]);
                 }
@@ -11209,10 +11141,14 @@ public final class Natives {
                     char escape = escapeCharacterIn(arguments, refinements);
                     java.util.function.IntPredicate keep = unescapedSetFor(
                             value, arguments, refinements);
-                    String encoded = Encodings.percentEncoded(
+                    byte[] encoded = Encodings.percentEncoded(
                             octetsOf(value), keep, escape,
                             refinements.contains("uri"));
-                    return StringValue.of(encoded, textDatatypeOf(value));
+                    return value instanceof BinaryValue
+                            ? binaryOfBytes(encoded)
+                            : StringValue.of(
+                                    new String(encoded, StandardCharsets.UTF_8),
+                                    textDatatypeOf(value));
                 });
 
         define("dehex", List.of(
@@ -12412,6 +12348,15 @@ public final class Natives {
      * because when a word is looked up decides what it holds. A block that
      * names a length on one code and spends it on the next needs the lookup to
      * happen at the second code, after the first has run.
+     *
+     * <p>And through the binding the word already carries. Binding it again
+     * here is what the C has no way to do -- {@code Get_Var} takes the word and
+     * follows it -- and rebinding finds a word of the same name wherever this
+     * happens to be looking instead. It shows only when a caller picks a name
+     * the borrowed library also uses, so it hid until Rebol's own ZIP encoder,
+     * which keeps the directory it is building in a word called DIR and writes
+     * it with {@code BYTES :dir/buffer}. Rebound, that found the library's
+     * directory-listing function and no archive could be written at all.
      */
     private static Value valueLookedUp(
             Value item, Evaluator evaluator, Context context) {
@@ -12422,8 +12367,7 @@ public final class Natives {
         if (!fetches) {
             return item;
         }
-        return evaluator.evaluateOrRaise(
-                Binder.bind(BlockValue.block(List.of(item)), context), context);
+        return evaluator.evaluateOrRaise(BlockValue.block(List.of(item)), context);
     }
 
     /** Where a dialect context keeps its bytes. */
