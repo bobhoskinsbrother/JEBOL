@@ -44,6 +44,9 @@ public final class Evaluator {
     /** The names the host was started with. None, by default. */
     private EnvironmentPort environment = EnvironmentPort.none();
 
+    /** The host's image codec. None, by default. */
+    private ImagePort images = ImagePort.none();
+
     /** Where a script reads a line from the operator. Nowhere, by default. */
     private ConsolePort console = ConsolePort.none();
 
@@ -343,6 +346,16 @@ public final class Evaluator {
     /** Gives the script an environment to read. */
     public void useEnvironment(EnvironmentPort port) {
         this.environment = port;
+    }
+
+    /** The image codec the host carries. None, by default. */
+    public ImagePort images() {
+        return images;
+    }
+
+    /** Gives the script an image codec to reach. */
+    public void useImages(ImagePort port) {
+        this.images = port;
     }
 
     /** Where a script's reading and writing goes. Nowhere, by default. */

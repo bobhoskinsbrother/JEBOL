@@ -4447,7 +4447,7 @@ public final class Natives {
                         Parameter.belongingTo("as", "type", Set.of(Datatype.WORD))),
                 Set.of("load", "save", "frame", "as"),
                 (arguments, evaluator, context, refinements) ->
-                        theOperatingSystemsImageCodec(refinements));
+                        theHostsImageCodec(arguments, evaluator, refinements));
 
         define("generate", List.of(Parameter.required("type", Set.of(Datatype.WORD))),
                 (arguments, evaluator, context) ->
@@ -12740,25 +12740,181 @@ public final class Natives {
     }
 
     /**
-     * IMAGE reaches the operating system's own encoder, which this build has
-     * not got.
+     * IMAGE reaches the platform's own image codec, through the port the host
+     * filled.
      *
-     * <p>The same answer the C gives where {@code INCLUDE_IMAGE_OS_CODEC} is
-     * undefined -- {@code Trap0(RE_FEATURE_NA)} -- and it is only defined for
-     * Windows and macOS there, as the declaration's own summary says. Asked
-     * for nothing it answers unset, because the C's branches are all on
-     * refinements and it falls out of the bottom.
+     * <p>Asked for nothing it answers unset, because the C's branches are all
+     * on refinements and it falls out of the bottom. An interpreter given no
+     * codec refuses with {@code feature-na}, which is what the C answers where
+     * {@code INCLUDE_IMAGE_OS_CODEC} is undefined.
      *
-     * <p>Not a gap to fill with an encoder of JEBOL's own: the codec family
-     * in {@code system/codecs} is where a portable one belongs, and this
-     * native is the shim onto a platform's.
+     * <p>This used to refuse always, on the reading that a portable codec
+     * belongs in {@code system/codecs} rather than here. What that missed is
+     * that Rebol's own {@code codec-image.reb} writes every entry of
+     * {@code system/codecs} for png, jpeg, gif and bmp as a call to this
+     * native, so refusing here does not leave the codec family to supply one
+     * -- it leaves four codecs in the catalogue that cannot do anything.
      */
-    private static Value theOperatingSystemsImageCodec(Set<String> refinements) {
-        if (refinements.contains("load") || refinements.contains("save")) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA,
-                    "image encoding through the operating system");
+    private static Value theHostsImageCodec(List<Value> arguments,
+            Evaluator evaluator, Set<String> refinements) {
+
+        if (refinements.contains("load")) {
+            return imageLoaded(arguments, evaluator, refinements);
+        }
+        if (refinements.contains("save")) {
+            return imageSaved(arguments, evaluator, refinements);
         }
         return UnsetValue.unset();
+    }
+
+    /**
+     * How many arguments each of IMAGE's refinements brings, in declared
+     * order.
+     *
+     * <p>/SAVE brings two -- where the bytes go, and which image -- so the
+     * usual counting of one apiece puts every argument after it one place
+     * early. IMAGE has no required arguments at all, so the first refinement's
+     * argument is the first there is.
+     */
+    private static final List<String> IMAGE_REFINEMENTS =
+            List.of("load", "save", "frame", "as");
+    private static final List<Integer> IMAGE_ARGUMENT_COUNTS = List.of(1, 2, 1, 1);
+
+    private static Value imageArgument(
+            String refinement, int which, List<Value> arguments, Set<String> asked) {
+
+        if (!asked.contains(refinement)) {
+            return null;
+        }
+        int at = 0;
+        for (int step = 0; step < IMAGE_REFINEMENTS.size(); step++) {
+            if (IMAGE_REFINEMENTS.get(step).equals(refinement)) {
+                return at + which < arguments.size() ? arguments.get(at + which) : null;
+            }
+            if (asked.contains(IMAGE_REFINEMENTS.get(step))) {
+                at += IMAGE_ARGUMENT_COUNTS.get(step);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The codec word /AS named, asked of the codec before anything else
+     * happens.
+     *
+     * <p>Before anything else because the C's whole native is missing where
+     * there is no codec -- {@code Trap0(RE_FEATURE_NA)} is the first thing it
+     * does -- so an interpreter given no port has to refuse for that reason
+     * rather than for whatever it would have tripped over first. Asking the
+     * port here is what makes it: reading a file that is not there, or being
+     * handed something that is not an image, would otherwise report those
+     * instead and hide the real answer.
+     *
+     * <p>A word the codec has not got is {@code Trap1(RE_BAD_FUNC_ARG,
+     * val_type)}, which is a different failure from bytes it cannot make sense
+     * of: one is the caller naming a format that does not exist, the other is
+     * the data. With no /AS the bytes are asked what they are, and the empty
+     * name no codec knows is not a refusal.
+     */
+    private static String imageCodecNamed(List<Value> arguments,
+            Evaluator evaluator, Set<String> refinements) {
+
+        Value named = imageArgument("as", 0, arguments, refinements);
+        String type = named instanceof WordValue word ? word.canonical() : "";
+        boolean known = evaluator.images().knows(type);
+        if (named != null && !known) {
+            throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, named);
+        }
+        return type;
+    }
+
+    private static Value imageLoaded(List<Value> arguments,
+            Evaluator evaluator, Set<String> refinements) {
+
+        String type = imageCodecNamed(arguments, evaluator, refinements);
+        Value source = imageArgument("load", 0, arguments, refinements);
+        Value frame = imageArgument("frame", 0, arguments, refinements);
+        int which = frame instanceof IntegerValue counted
+                ? (int) counted.magnitude()
+                : 1;
+        ImagePort.Pixels read = whatTheCodecMadeOf(
+                source, type, which, evaluator);
+        if (read == null) {
+            throw source instanceof BinaryValue
+                    ? Raised.of(EvaluationFailure.NO_CODEC, IntegerValue.of(0))
+                    : Raised.of(EvaluationFailure.CANNOT_OPEN, source);
+        }
+        return imageOf(read);
+    }
+
+    /**
+     * The pixels, or nothing where either the reading or the decoding failed.
+     *
+     * <p>Both count as the same answer, because both mean "this name did not
+     * give me a picture" and the caller reports them the same way. A file that
+     * is not there refused inside the filesystem port, and that refusal is the
+     * host's own kind rather than a REBOL error -- so it escaped as a Java
+     * throwable, which {@code spec/embed.allium} says nothing a script does may
+     * ever do.
+     */
+    private static ImagePort.Pixels whatTheCodecMadeOf(
+            Value source, String type, int frame, Evaluator evaluator) {
+
+        byte[] encoded;
+        try {
+            encoded = source instanceof BinaryValue bytes
+                    ? bytes.octetsFromHere()
+                    : evaluator.files().readBytes(((StringValue) source).text());
+        } catch (FilePort.Denied unreadable) {
+            return null;
+        }
+        return evaluator.images().decoded(encoded, type, frame);
+    }
+
+    private static Value imageOf(ImagePort.Pixels read) {
+        ImageValue image = ImageValue.of(read.wide(), read.high());
+        byte[] rgba = read.rgba();
+        for (int pixel = 1; pixel <= read.wide() * read.high(); pixel++) {
+            int at = (pixel - 1) * 4;
+            image.storage().setColourAt(pixel,
+                    rgba[at] & 0xFF, rgba[at + 1] & 0xFF, rgba[at + 2] & 0xFF);
+            image.storage().setAlphaAt(pixel, rgba[at + 3] & 0xFF);
+        }
+        return image;
+    }
+
+    /**
+     * Where SAVE puts the bytes, and what the call then answers.
+     *
+     * <p>A file destination is written and answered back, so a caller can go
+     * on using the name. NONE means "make me a binary", which is what
+     * {@code codec-image.reb} asks for when it encodes: {@code
+     * lib/image/save/as none data 'PNG}.
+     */
+    private static Value imageSaved(List<Value> arguments,
+            Evaluator evaluator, Set<String> refinements) {
+
+        String type = imageCodecNamed(arguments, evaluator, refinements);
+        Value destination = imageArgument("save", 0, arguments, refinements);
+        Value given = imageArgument("save", 1, arguments, refinements);
+        if (!(given instanceof ImageValue image)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
+        }
+        byte[] written = evaluator.images().encoded(theWholeOf(image), type);
+        if (written == null) {
+            throw Raised.of(EvaluationFailure.NO_CODEC, IntegerValue.of(0));
+        }
+        if (destination instanceof StringValue named
+                && destination.datatype() == Datatype.FILE) {
+            evaluator.files().write(named.text(), written);
+            return destination;
+        }
+        return binaryOfBytes(written);
+    }
+
+    private static ImagePort.Pixels theWholeOf(ImageValue image) {
+        return new ImagePort.Pixels(image.storage().wide(), image.storage().high(),
+                everyPixelOf(image.head()));
     }
 
     /**
@@ -14874,7 +15030,7 @@ public final class Natives {
             case BitsetValue members -> binaryOfBytes(members.isComplemented()
                     ? eachByteTurnedOver(members.octets())
                     : members.octets());
-            case ImageValue picture -> binaryOfBytes(pixelsOf(picture));
+            case ImageValue picture -> binaryOfBytes(everyPixelOf(picture));
             case CharacterValue letter -> binaryOfBytes(
                     Character.toString(letter.codepoint())
                             .getBytes(StandardCharsets.UTF_8));
@@ -14909,7 +15065,7 @@ public final class Natives {
     }
 
     /** An image as four bytes a pixel, which is {@code Image_To_RGBA}. */
-    private static byte[] pixelsOf(ImageValue picture) {
+    private static byte[] everyPixelOf(ImageValue picture) {
         byte[] octets = new byte[picture.storageLength() * PIXEL_PARTS];
         for (int pixel = 0; pixel < picture.storageLength(); pixel++) {
             int[] parts = picture.pixelAt(pixel + 1);

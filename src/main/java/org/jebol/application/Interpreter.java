@@ -881,7 +881,7 @@ public final class Interpreter {
     }
 
     /** Gives the script a way to start another program. */
-    public void useProcesses(org.jebol.domain.eval.ProcessPort port) {
+    public void useProcesses(ProcessPort port) {
         evaluator.useProcesses(port);
     }
 
@@ -968,8 +968,20 @@ public final class Interpreter {
      * <p>Reading only. A JVM cannot change the environment of its own
      * process, thus SET-ENV has nothing to call and refuses.
      */
-    public void useEnvironment(org.jebol.domain.eval.EnvironmentPort port) {
+    public void useEnvironment(EnvironmentPort port) {
         evaluator.useEnvironment(port);
+    }
+
+    /**
+     * Gives the script the host's image codec.
+     *
+     * <p>Until this is called, IMAGE/LOAD and IMAGE/SAVE refuse with the name
+     * the C uses on a platform that has no codec -- and so do the png, jpeg,
+     * gif and bmp entries in {@code system/codecs}, because Rebol's own
+     * codec-image.reb writes every one of them as a call to this native.
+     */
+    public void useImages(ImagePort port) {
+        evaluator.useImages(port);
     }
 
     /**

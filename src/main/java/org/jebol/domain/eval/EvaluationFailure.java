@@ -31,6 +31,8 @@ public enum EvaluationFailure {
             "a name that something else in the same catalogue already holds"),
     BAD_MEDIA(ErrorCategory.SCRIPT, "bad-media",
             "data a codec could not read, or an action it does not do"),
+    NO_CODEC(ErrorCategory.ACCESS, "no-codec",
+            "bytes no image codec here could read, or a format none can write"),
     CANNOT_USE(ErrorCategory.SCRIPT, "cannot-use", "an operation this datatype does not support"),
     BAD_MAKE_ARG(ErrorCategory.SCRIPT, "bad-make-arg", "a value this datatype cannot be made from"),
     INVALID_SPEC(ErrorCategory.SCRIPT, "invalid-spec", "a spec this datatype cannot be built from"),

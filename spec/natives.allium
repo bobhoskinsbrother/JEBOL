@@ -9495,20 +9495,87 @@ rule ImageDiffComparesOnlyTheOverlap {
     ensures: the_pixels_compared = the_smaller_of_each_dimension(a, b)
 }
 
--- IMAGE is a shim onto the operating system's own encoder, and this build has
--- not got one.
+-- IMAGE is the shim onto whatever image codec the platform has, and this
+-- platform has one.
 --
--- The C only compiles its body where INCLUDE_IMAGE_OS_CODEC is defined, which
--- its own summary says is "only on Windows and macOS so far", and gives
--- `Trap0(RE_FEATURE_NA)` everywhere else. That is the answer here: the same
--- refusal, by the same name, for the same reason.
+-- This rule used to say the opposite, and the reasoning is worth keeping
+-- because it was half right. The C compiles the body only where
+-- INCLUDE_IMAGE_OS_CODEC is defined -- "only on Windows and macOS so far" --
+-- and refuses with feature-na everywhere else, so refusing looked like
+-- faithfulness. What it missed is which platform this is. A JVM carries an
+-- image codec on every operating system it runs on, so the honest reading of
+-- "the platform's own" is that this platform has one and the refusal
+-- described a build that does not exist.
 --
--- Not a gap to fill with an encoder of JEBOL's own. The codec family in
--- system/codecs is where a portable one belongs; this native is the shim onto
--- a platform's.
-rule ImageRefusesTheOperatingSystemsCodec {
+-- It cost eighteen assertions to find out. Rebol's own codec-image.reb
+-- registers png, jpeg, gif and bmp in system/codecs and every one of them is
+-- `func [data][lib/image/load/as data 'PNG]` -- so refusing here does not
+-- leave the codec family to supply a portable one, it empties the codec
+-- family. LOAD of a PNG failed, SAVE of one failed, and system/codecs
+-- listed four codecs that could not do anything.
+--
+-- The codec still belongs outside the pure part: it is the host's, reached
+-- through a port, and an interpreter given no such port refuses.
+rule ImageLoadAnswersAnImage {
+    when: EvaluateCall(image)
+    requires: refinement_asked(load)
+
+    ensures: CallResult(datatype: image)
+    ensures: the_pixels = what_the_host_codec_read(the_source)
+}
+
+rule ImageSaveAnswersWhereItPutTheBytes {
+    when: EvaluateCall(image)
+    requires: refinement_asked(save)
+
+    ensures: CallResult(value: the_destination_given = none
+        ? a_binary_of_the_encoded_bytes
+        : the_destination_given)
+}
+
+-- /AS names the codec rather than letting the bytes say. A word this build
+-- has not got is refused by name, which is `Trap1(RE_BAD_FUNC_ARG, val_type)`
+-- in the C's own switch, and not the same thing as bytes it cannot read.
+rule ImageRefusesACodecItHasNotGot {
+    when: EvaluateCall(image)
+    requires: refinement_asked(as)
+    requires: not the_host_codec_knows(the_type_named)
+
+    ensures: CallFails(error: bad_func_arg, about: the_type_named)
+}
+
+-- Bytes the codec cannot read and a file it cannot open fail differently,
+-- because the caller has to look in different places. A binary that is not an
+-- image is no-codec; a file is cannot-open naming the file.
+rule ImageReportsBadBytesApartFromABadFile {
+    when: EvaluateCall(image)
+    requires: refinement_asked(load)
+    requires: the_source_cannot_be_read()
+
+    ensures: CallFails(error: the_source_was_a_binary()
+        ? no_codec
+        : cannot_open)
+}
+
+-- /FRAME picks one image out of a file holding several, counting from one.
+-- An animated GIF is the case that exists, and asking past the end fails
+-- rather than answering the last one.
+rule ImageFrameChoosesOneOfSeveral {
+    when: EvaluateCall(image)
+    requires: refinement_asked(load) and refinement_asked(frame)
+
+    ensures: CallResult(value: the_nth_image_counting_from_one(the_frame_asked))
+}
+
+-- An interpreter that was given no image codec refuses, by the same name the
+-- C uses on a platform without one. Which is what the old rule described, and
+-- it is still the answer -- for a host that has not supplied a port, rather
+-- than for every host.
+rule ImageWithoutAHostCodecRefuses {
     when: EvaluateCall(image)
     requires: the_call_asked_for_load_or_save()
+    requires: no_image_codec_was_given()
+
     ensures: CallFails(error: feature_na)
 }
 

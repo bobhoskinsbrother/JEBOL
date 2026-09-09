@@ -1,5 +1,6 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.adapter.host.JavaImages;
 import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
 import org.jebol.application.Interpreter;
@@ -53,14 +54,22 @@ public final class Repl {
      * <p>The screen is the only thing this grants, and only when somebody said
      * so. A console session that never mentions graphics gets exactly what it
      * always got.
+     *
+     * <p>The image codec is not a grant and is always there. It reaches no
+     * file, no window and no network: bytes go in and pixels come out, and the
+     * reading of a file is READ's business and asks for READ's grant. Holding
+     * it back would empty {@code system/codecs} instead, because Rebol's own
+     * codec-image.reb writes png, jpeg, gif and bmp as calls to it.
      */
     private static Interpreter anInterpreterFor(String[] arguments, PrintStream out) {
-        if (!ChosenScreen.wasAskedFor(arguments)) {
-            return Interpreter.writingTo(new StreamOutput(out));
+        Interpreter interpreter = ChosenScreen.wasAskedFor(arguments)
+                ? Interpreter.writingTo(new StreamOutput(out),
+                        Bounds.standard().granting(HostService.WINDOWS))
+                : Interpreter.writingTo(new StreamOutput(out));
+        interpreter.useImages(new JavaImages());
+        if (ChosenScreen.wasAskedFor(arguments)) {
+            ChosenScreen.attachTo(interpreter, arguments, out);
         }
-        Interpreter interpreter = Interpreter.writingTo(new StreamOutput(out),
-                Bounds.standard().granting(HostService.WINDOWS));
-        ChosenScreen.attachTo(interpreter, arguments, out);
         return interpreter;
     }
 

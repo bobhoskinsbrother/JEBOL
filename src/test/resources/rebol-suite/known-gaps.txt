@@ -52,29 +52,12 @@ codecs-test-pdf.r3 / (no group) / (no test) #6
 codecs-test-pdf.r3 / (no group) / (no test) #7
 codecs-test-pdf.r3 / (no group) / (no test) #8
 codecs-test-pdf.r3 / (no group) / (no test) #9
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #126
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #134
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #135
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #136
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #138
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #139
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #140
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #141
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #142
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #143
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #144
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #145
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #146
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #147
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #148
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #149
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #150
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #151
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #154
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #156
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #157
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #158
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #161
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #220
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #221
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #222
@@ -249,7 +232,6 @@ func-test.r3 / Other issues / issue-87 #115
 func-test.r3 / Other issues / issue-87 #116
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
-image-test.r3 / BLUR / premultiply image 3 (input not at its head) #203
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #204
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #205
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #206
@@ -287,7 +269,6 @@ image-test.r3 / Image as a series / REPEAT on image #211
 image-test.r3 / Image difference / image-diff (different sizes) #162
 image-test.r3 / Image difference / image-diff (different sizes) #163
 image-test.r3 / Image difference / image-diff (same sizes) #160
-image-test.r3 / Image difference / image-diff (same sizes) #161
 image-test.r3 / Image difference / image-diff/part #166
 image-test.r3 / Image difference / image-diff/part #167
 image-test.r3 / Image difference / image-diff/part #171
@@ -295,9 +276,7 @@ image-test.r3 / Image difference / image-diff/part #172
 image-test.r3 / Image difference / image-diff/part #173
 image-test.r3 / RGB - HSV conversions / HSV-TO-RGB #152
 image-test.r3 / RGB - HSV conversions / RGB-TO-HSV #148
-image-test.r3 / Save/load image / premultiply image 3 (input not at its head) #207
 image-test.r3 / Save/load image / premultiply image 3 (input not at its head) #208
-image-test.r3 / Save/load image / premultiply image 3 (input not at its head) #209
 image-test.r3 / change image / change image by image #134
 image-test.r3 / change image / change image by image #135
 image-test.r3 / change image / change image by image #136

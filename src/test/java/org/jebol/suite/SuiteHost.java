@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.stream.Stream;
 
+import org.jebol.adapter.host.JavaImages;
 import org.jebol.adapter.host.JavaProcesses;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
@@ -70,6 +71,7 @@ final class SuiteHost {
         }
         interpreter.useEnvironment(new ProcessEnvironment());
         interpreter.useProcesses(new JavaProcesses());
+        interpreter.useImages(new JavaImages());
         return interpreter;
     }
 

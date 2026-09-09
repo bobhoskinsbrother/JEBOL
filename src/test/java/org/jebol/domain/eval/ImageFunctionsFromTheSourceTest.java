@@ -216,19 +216,29 @@ class ImageFunctionsFromTheSourceTest {
         }
     }
 
+    /**
+     * An interpreter built without a host is one of these, so IMAGE refuses
+     * here for the reason the C refuses on a platform with no codec. Given a
+     * port it works, which is what {@code ImageCodecFromTheSourceTest} covers.
+     *
+     * <p>The refusal has to come before anything else the call would trip
+     * over. {@code Trap0(RE_FEATURE_NA)} is the first thing the C does, so a
+     * file that is not there and an argument that is not an image must not
+     * report themselves ahead of it -- both did, and both are here.
+     */
     @Nested
-    @DisplayName("IMAGE reaches an encoder this build has not got")
+    @DisplayName("IMAGE refuses where the host supplied no codec")
     class TheCodecShim {
 
         @Test
-        @DisplayName("/LOAD is feature-na, as the C is where the OS codec is absent")
+        @DisplayName("/LOAD is feature-na before it is a missing file")
         void loadingIsRefused() {
             assertThat(answerTo("""
                     e: try [image/load %picture.png] e/id""")).isEqualTo("feature-na");
         }
 
         @Test
-        @DisplayName("and so is /SAVE")
+        @DisplayName("and /SAVE before it is a bad argument")
         void savingIsRefused() {
             assertThat(answerTo("""
                     e: try [image/save none none] e/id""")).isEqualTo("feature-na");
