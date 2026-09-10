@@ -5,6 +5,8 @@ import org.jebol.domain.eval.ImagePort;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
+import java.awt.image.IndexColorModel;
+import java.awt.image.WritableRaster;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -12,9 +14,13 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.ImageOutputStream;
 import org.w3c.dom.Node;
 
 /**
@@ -55,6 +61,18 @@ public final class JavaImages implements ImagePort {
 
     /** The formats with nowhere to put an alpha channel. */
     private static final Set<String> HAVE_NO_ALPHA = Set.of("jpeg", "bmp");
+
+    /** The formats that store an index into a palette rather than a colour. */
+    private static final Set<String> STORES_AN_INDEX_INTO_A_PALETTE = Set.of("gif");
+
+    /** How many colours a GIF's table holds. */
+    private static final int PALETTE_ENTRIES = 256;
+
+    /**
+     * How wide an index is, which is one byte because that is what
+     * {@code TYPE_BYTE_INDEXED} stores whatever the palette's size.
+     */
+    private static final int BITS_AN_INDEX_TAKES = 8;
 
     @Override
     public boolean knows(String type) {
@@ -190,12 +208,100 @@ public final class JavaImages implements ImagePort {
             return null;
         }
         BufferedImage written = bufferedFrom(image, HAVE_NO_ALPHA.contains(format));
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        try {
-            return ImageIO.write(written, format, bytes) ? bytes.toByteArray() : null;
-        } catch (IOException | RuntimeException unwritable) {
+        if (STORES_AN_INDEX_INTO_A_PALETTE.contains(format)) {
+            written = withAPaletteOfItsOwnColours(written);
+        }
+        return theBytesWriting(written, format);
+    }
+
+    /**
+     * The encoded bytes, written a row at a time rather than interlaced.
+     *
+     * <p>Through a writer of its own rather than {@code ImageIO.write}, for
+     * one setting: left to itself the GIF writer sets the interlace flag, and
+     * its own reader then hands back a picture with the wrong rows -- a
+     * two-by-two of four colours came back as three, and JEBOL could not read
+     * a GIF it had just written even though a real 3.22.5 read it perfectly.
+     * A real 3.22.5 writes those flags as nought, and so does this now.
+     */
+    private static byte[] theBytesWriting(BufferedImage written, String format) {
+        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(format);
+        if (!writers.hasNext()) {
             return null;
         }
+        ImageWriter writer = writers.next();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ImageOutputStream stream = ImageIO.createImageOutputStream(bytes)) {
+            writer.setOutput(stream);
+            ImageWriteParam asked = writer.getDefaultWriteParam();
+            if (asked.canWriteProgressive()) {
+                asked.setProgressiveMode(ImageWriteParam.MODE_DISABLED);
+            }
+            writer.write(null, new IIOImage(written, null, null), asked);
+            stream.flush();
+            return bytes.toByteArray();
+        } catch (IOException | RuntimeException unwritable) {
+            return null;
+        } finally {
+            writer.dispose();
+        }
+    }
+
+    /**
+     * The same picture with a palette built from the colours it actually has.
+     *
+     * <p>Handed a full-colour image, ImageIO's GIF writer picks a palette by
+     * quantising, and quantising merges colours that sit close together --
+     * two dark reds a step apart came back as one, and the four colours of a
+     * two-by-two came back as three. A picture with no more colours than the
+     * table holds needs no quantiser at all: give it an entry apiece and every
+     * colour survives.
+     *
+     * <p>Past that there is no room and something must go, so the picture is
+     * left as it was and the writer quantises after all. Which colours it
+     * loses is its own business, and pinning that would pin a version of
+     * ImageIO rather than any behaviour of the language.
+     */
+    private static BufferedImage withAPaletteOfItsOwnColours(BufferedImage picture) {
+        java.util.LinkedHashSet<Integer> colours = new java.util.LinkedHashSet<>();
+        for (int down = 0; down < picture.getHeight(); down++) {
+            for (int across = 0; across < picture.getWidth(); across++) {
+                colours.add(picture.getRGB(across, down) | 0xFF000000);
+                if (colours.size() > PALETTE_ENTRIES) {
+                    return picture;
+                }
+            }
+        }
+        return laidOutAgainstThePalette(picture, colours);
+    }
+
+    private static BufferedImage laidOutAgainstThePalette(
+            BufferedImage picture, java.util.Collection<Integer> colours) {
+
+        byte[] reds = new byte[colours.size()];
+        byte[] greens = new byte[colours.size()];
+        byte[] blues = new byte[colours.size()];
+        java.util.Map<Integer, Integer> whereEachSits = new java.util.HashMap<>();
+        int at = 0;
+        for (int colour : colours) {
+            reds[at] = (byte) (colour >> 16);
+            greens[at] = (byte) (colour >> 8);
+            blues[at] = (byte) colour;
+            whereEachSits.put(colour, at);
+            at++;
+        }
+        IndexColorModel palette = new IndexColorModel(
+                BITS_AN_INDEX_TAKES, colours.size(), reds, greens, blues);
+        BufferedImage indexed = new BufferedImage(picture.getWidth(),
+                picture.getHeight(), BufferedImage.TYPE_BYTE_INDEXED, palette);
+        WritableRaster raster = indexed.getRaster();
+        for (int down = 0; down < picture.getHeight(); down++) {
+            for (int across = 0; across < picture.getWidth(); across++) {
+                raster.setSample(across, down, 0,
+                        whereEachSits.get(picture.getRGB(across, down) | 0xFF000000));
+            }
+        }
+        return indexed;
     }
 
     private static BufferedImage bufferedFrom(Pixels image, boolean withoutAlpha) {

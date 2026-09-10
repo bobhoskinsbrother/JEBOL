@@ -252,6 +252,86 @@ class ImageCodecFromTheSourceTest {
                 "image/save/as none \"not an image\" 'PNG")).isEqualTo("expect-arg");
     }
 
+    /**
+     * GIF stores an index into a palette of two hundred and fifty-six, so a
+     * picture with no more colours than that has an entry apiece and comes
+     * back exactly. This is where JEBOL is deliberately better than the
+     * oracle: a real 3.22.5 on macOS quantises even two dark reds that sit one
+     * step apart into a single colour, and matching that would mean
+     * reproducing a particular platform's quantiser.
+     */
+    @Test
+    @DisplayName("a palette holds every colour the picture has")
+    void aPaletteHoldsEveryColourThePictureHas(@TempDir Path directory)
+            throws IOException {
+
+        layOut(directory);
+        assertThat(answerTo(reaching(directory), """
+                one: decode 'gif encode 'gif make image! [1x1 #{C80000}]
+                four: decode 'gif encode 'gif
+                    make image! [2x2 #{C800000000C800C800FFFFFF}]
+                reduce [one/rgb four/rgb]"""))
+                .isEqualTo("[#{C80000} #{C800000000C800C800FFFFFF}]");
+    }
+
+    @Test
+    @DisplayName("colours a quantiser would merge stay apart")
+    void closeColoursAreNotMergedTogether(@TempDir Path directory)
+            throws IOException {
+
+        layOut(directory);
+        assertThat(answerTo(reaching(directory), """
+                near: decode 'gif encode 'gif make image! [2x1 #{000000 010000}]
+                near/rgb"""))
+                .isEqualTo("#{000000010000}");
+    }
+
+    @Test
+    @DisplayName("a palette exactly full is still exact")
+    void aFullPaletteIsStillExact(@TempDir Path directory) throws IOException {
+        layOut(directory);
+        assertThat(answerTo(reaching(directory), """
+                full: make image! 256x1
+                repeat n 256 [full/:n: to tuple! reduce [n - 1 0 0]]
+                back: decode 'gif encode 'gif full
+                reduce [back/size equal? full/rgb back/rgb]"""))
+                .isEqualTo("[256x1 #(true)]");
+    }
+
+    /**
+     * One colour past what the palette holds, so something has to go. Which
+     * colour is the platform's choice and is not pinned; that the picture
+     * still comes back the right size and readable is.
+     */
+    @Test
+    @DisplayName("one colour too many still reads back, at the right size")
+    void oneTooManyColoursStillReadsBack(@TempDir Path directory)
+            throws IOException {
+
+        layOut(directory);
+        assertThat(answerTo(reaching(directory), """
+                over: make image! 257x1
+                repeat n 257 [
+                    over/:n: to tuple! reduce [
+                        (n - 1) // 256  to integer! (n - 1) / 256  0
+                    ]
+                ]
+                back: decode 'gif encode 'gif over
+                reduce [type? back back/size]"""))
+                .isEqualTo("[#(image!) 257x1]");
+    }
+
+    @Test
+    @DisplayName("the round trip the suite makes, through a file")
+    void theSuitesRoundTripThroughAFile(@TempDir Path directory) throws IOException {
+        layOut(directory);
+        assertThat(answerTo(reaching(directory), """
+                src: make image! [2x2 #{C800000000C800C800FFFFFF}]
+                img: load save %new.gif src
+                reduce [image? img img/rgb]"""))
+                .isEqualTo("[#(true) #{C800000000C800C800FFFFFF}]");
+    }
+
     @Test
     @DisplayName("an interpreter given no codec refuses, as the C does without one")
     void withoutAHostCodecItRefuses(@TempDir Path directory) throws IOException {
