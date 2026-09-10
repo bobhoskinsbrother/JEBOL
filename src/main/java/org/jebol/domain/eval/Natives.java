@@ -597,7 +597,8 @@ public final class Natives {
         catalog.set("file-types", BlockValue.block(List.of(
                 StringValue.of(".txt", Datatype.FILE), WordValue.of("text"),
                 StringValue.of(".html", Datatype.FILE), WordValue.of("markup"),
-                StringValue.of(".htm", Datatype.FILE), WordValue.of("markup"))));
+                StringValue.of(".htm", Datatype.FILE), WordValue.of("markup"),
+                StringValue.of(".qoi", Datatype.FILE), WordValue.of("qoi"))));
 
         Context options = Context.root();
         for (String field : new String[] {

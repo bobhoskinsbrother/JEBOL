@@ -69,16 +69,86 @@ final class Codecs {
     /** {@code CODI_ERR_NA = 1, // Feature not available}. */
     private static final int NOT_AVAILABLE = 1;
 
-    /** The codec names {@code Init_Codecs} registers, in the order it does. */
-    static final List<String> REGISTERED = List.of("text", "markup");
+    /**
+     * The codec names the boot registers, in the order it does.
+     *
+     * <p>Two from {@code Init_Codecs} and one from {@code Init_QOI_Codec},
+     * which is a separate function in {@code u-qoi.c} called from the same
+     * place. QOI is here rather than left to the host's image codec because no
+     * host has it -- the format is younger than every image library a platform
+     * ships with -- and a name in {@code system/codecs} that cannot do
+     * anything is the one thing a catalogue must not be.
+     */
+    static final List<String> REGISTERED = List.of("text", "markup", "qoi");
 
     /** Runs a registered codec, or nothing when the name is not one. */
     static Answer run(String codec, Action action, Value data) {
         return switch (codec) {
             case "text" -> text(action, data);
             case "markup" -> markup(action, data);
+            case "qoi" -> qoi(action, data);
             default -> Answer.notAvailable();
         };
+    }
+
+    /**
+     * {@code Codec_QOI_Image}: bytes in and an image out, or the other way.
+     *
+     * <p>Identify reads the magic and nothing else, and the error is the
+     * inverted result, so bytes that begin "qoif" answer yes.
+     */
+    private static Answer qoi(Action action, Value data) {
+        return switch (action) {
+            case IDENTIFY -> Answer.check(Qoi.identifies(bytesOf(data)) ? 0 : 1);
+            case DECODE -> theImageIn(bytesOf(data));
+            case ENCODE -> Answer.binary(theBytesOf((ImageValue) data));
+        };
+    }
+
+    private static Answer theImageIn(byte[] bytes) {
+        Qoi.Decoded read = Qoi.decoded(bytes);
+        if (read == null) {
+            return Answer.notAvailable();
+        }
+        ImageValue picture = ImageValue.of(read.wide(), read.high());
+        byte[] pixels = read.pixels();
+        for (int pixel = 1; pixel <= read.wide() * read.high(); pixel++) {
+            int at = (pixel - 1) * 4;
+            picture.storage().setColourAt(pixel,
+                    pixels[at + 2] & 0xFF, pixels[at + 1] & 0xFF, pixels[at] & 0xFF);
+            picture.storage().setAlphaAt(pixel, pixels[at + 3] & 0xFF);
+        }
+        return new Answer(Answer.Kind.IMAGE, picture, 0);
+    }
+
+    /**
+     * A picture as the bytes the codec lays down, blue first.
+     *
+     * <p>Which is the order the C's image data is already in, so its encoder
+     * copies it without looking and what lands in the file under the format's
+     * heading "red" is the blue channel. JEBOL holds a pixel red first, so the
+     * swap that is invisible there has to happen here -- and it happens on the
+     * way back too, so a picture is itself again and only the file disagrees
+     * with the published format.
+     */
+    private static Value theBytesOf(ImageValue picture) {
+        int wide = picture.storage().wide();
+        int high = picture.storage().high();
+        byte[] pixels = new byte[wide * high * 4];
+        for (int pixel = 1; pixel <= wide * high; pixel++) {
+            int[] channels = picture.storage().pixelAt(pixel);
+            int at = (pixel - 1) * 4;
+            pixels[at] = (byte) channels[2];
+            pixels[at + 1] = (byte) channels[1];
+            pixels[at + 2] = (byte) channels[0];
+            pixels[at + 3] = (byte) channels[3];
+        }
+        byte[] written = Qoi.encoded(wide, high, pixels);
+        int[] octets = new int[written.length];
+        for (int at = 0; at < octets.length; at++) {
+            octets[at] = written[at] & 0xFF;
+        }
+        return BinaryValue.of(octets);
     }
 
     /**

@@ -197,6 +197,7 @@ public final class Interpreter {
     private static final String THE_FILE_THAT_STARTS_THE_VIEW_SYSTEM =
             "view-funcs.reb";
 
+
     /** Where the REBOL half of the standard library lives. */
     private static final String PRELUDE = "/org/jebol/prelude.reb";
 
@@ -302,6 +303,39 @@ public final class Interpreter {
                 borrowedLoadFailures.put(name, raised.failure().toString());
             }
         }
+        describeTheQoiCodec();
+    }
+
+    /**
+     * What {@code u-qoi.c}'s own base-code block does, once there is an object
+     * to do it to.
+     *
+     * <pre>
+     * if find system/codecs 'qoi [
+     *     system/codecs/qoi/title: "Quite OK Image"
+     *     system/codecs/qoi/type: 'image
+     *     system/codecs/qoi/suffixes: [%.qoi]
+     * ]
+     * </pre>
+     *
+     * <p>base-defs.reb builds the object from a switch that names the codecs
+     * the C had when it was written, so QOI comes out of it with no type and
+     * no suffixes. The suffix is what SAVE and LOAD find the codec by, so
+     * without this a {@code %.qoi} file is read as text.
+     *
+     * <p>After the whole library rather than after that one file, which is
+     * where the C runs its base-code and is also the only place it is safe:
+     * evaluating anything in the middle of the walk left the library's own
+     * {@code codecs} word holding unset, and took two hundred and fourteen
+     * suite assertions with it.
+     */
+    private void describeTheQoiCodec() {
+        run("""
+                if find system/codecs 'qoi [
+                    system/codecs/qoi/title: "Quite OK Image"
+                    system/codecs/qoi/type: 'image
+                    system/codecs/qoi/suffixes: [%.qoi]
+                ]""");
     }
 
     /**

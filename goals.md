@@ -869,9 +869,44 @@ with goal 4; on their own they are four algorithms with nowhere to run.
 
 ---
 
-## Two loose ends, both flakes
+## Three loose ends, all flakes
 
-**A flake is a fail** (see `CLAUDE.md`). Neither of these is closed.
+**A flake is a fail** (see `CLAUDE.md`). None of these is closed.
+
+### A memory test that measures the whole JVM
+
+`SeriesMemoryFromTheSourceTest / Rebol's own assertion, run whole` failed once
+under a full gate and has passed every time since -- alone, beside the suite
+three times running, and in the gate after. It is not closed, and unlike the
+two below it comes with a mechanism.
+
+`stats` answers `SeriesMemory.bytesHeld()`, and that is a `static AtomicLong`
+shared by every interpreter in the process. The assertion is
+
+    all [
+        stats >= (before + 5000000)
+        none? held: none
+        recycle
+        (stats - before) < 2000
+    ]
+
+so it asks a process-wide counter to come back to within two thousand bytes of
+where it started, across a window in which every other test in the same JVM is
+allocating and freeing series of its own. Nothing about that is under the
+test's control, and the tolerance is four hundred parts per million of the
+figure it is checking.
+
+It surfaced when the QOI tests arrived, which build 256x256 images -- a quarter
+of a megabyte apiece, several times over. That is the occasion rather than the
+cause: the fragility was already there and any test that allocates enough can
+tip it.
+
+Not narrowed and not skipped. Fixing it means either a per-interpreter figure,
+which `SeriesMemory` has no notion of because it is a phantom-reference ledger
+for the whole process, or running this one class in a JVM of its own. Both are
+real decisions and neither is a line of code.
+
+    ./gradlew cleanTest && ./gradlew check    # once in some number of runs
 
 ### The oracle is not deterministic on one file
 

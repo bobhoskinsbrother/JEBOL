@@ -551,7 +551,8 @@ variant ImageValue : Value {
 -- Nothing makes one: the Make column of `boot/types.reb` is a dash and
 -- `MT_Handle` is `return FALSE` and nothing else. So every handle a script sees
 -- was handed to it, and in a build with no ciphers and no extension API the only
--- ones are the two codecs `Init_Codecs` registers at boot.
+-- ones are the codecs the boot registers: text and markup from `Init_Codecs`,
+-- and QOI from an `Init_QOI_Codec` of its own beside it.
 --
 -- Three comparisons and they disagree with each other on purpose. `same?` is
 -- identity. `equal?` needs *both* sides to be context handles of one kind, so a

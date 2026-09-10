@@ -9587,6 +9587,79 @@ rule ImageWithNoRefinementAnswersUnset {
     ensures: CallResult(value: unset)
 }
 
+-- === QOI, the one image format the interpreter carries itself =============
+
+-- QOI is a third codec the boot registers, beside text and markup.
+--
+-- Not through a REBOL file the way gzip and json arrive: {@code u-qoi.c} has
+-- an {@code Init_QOI_Codec} that calls {@code Register_Codec} the same way
+-- {@code Init_Codecs} does for the other two, so it exists before any library
+-- file is read. Its title, its type and its suffix are set afterwards by the
+-- base-code block in that file's own header, once base-defs.reb has turned
+-- the boot handle into an object.
+--
+-- It is here rather than left to the host's codec because no host has it.
+-- The format is a hundred and fifty lines and every image library predates
+-- it, so the choice is to carry it or to be missing a codec a real 3.22.5
+-- has -- and a catalogue that names what this build cannot do is the one
+-- thing the catalogues must not be.
+rule QoiIsRegisteredAtBootLikeTheOtherTwo {
+    when: ReadSystemCatalogue(codecs)
+    ensures: a_codec_is_named(qoi)
+    ensures: its_type_is(image)
+    ensures: its_suffixes_are([dot_qoi])
+}
+
+-- Encoding answers the format: fourteen header bytes, then a chunk per run of
+-- pixels, then eight bytes that end it.
+rule QoiEncodingWritesTheFormat {
+    when: EvaluateCall(encode, qoi, picture)
+    ensures: CallResult(datatype: binary)
+    ensures: the_first_four_bytes_are(the_magic)
+    ensures: the_last_eight_bytes_are(seven_noughts_then_one)
+}
+
+-- The two are inverses, which is the property worth stating rather than any
+-- particular encoding of any particular picture.
+invariant QoiDecodingUndoesEncoding {
+    for picture in AnyImage:
+        decode(qoi, encode(qoi, picture)) = picture
+}
+
+-- The channels go into the stream in the order REBOL holds them, which is not
+-- the order the format's own document names.
+--
+-- The C hands {@code codi->bits} to {@code qoi_encode} untouched, and those
+-- bytes are blue, green, red, alpha -- so what lands in the file under the
+-- heading "red" is the blue channel. Its own decoder reads them back the same
+-- way round, so a picture survives the round trip and nothing inside Rebol
+-- ever notices.
+--
+-- Matched deliberately, and it is the uncomfortable kind of decision. Writing
+-- the format as published would make JEBOL's files correct by the
+-- specification and unreadable by the interpreter this is a port of -- red and
+-- blue swapped in every picture handed between them. Interchange with the
+-- thing being ported is worth more than agreement with a document neither of
+-- them follows, and the suite cannot tell the two apart because it only ever
+-- round trips within one interpreter.
+--
+-- open question "Whether to keep matching r3 here if r3 ever fixes it. The
+-- ratchet would catch the day it changes, because the round-trip assertions
+-- would still pass and a byte comparison against the oracle would not."
+rule QoiWritesTheChannelsInRebolsOrder {
+    when: EvaluateCall(encode, qoi, picture)
+    ensures: the_channel_the_format_calls_red = the_pictures_blue_channel
+    ensures: the_channel_the_format_calls_blue = the_pictures_red_channel
+}
+
+-- Bytes that are not a QOI image are bad-media, which is what DO-CODEC turns
+-- any codec's refusal into.
+rule QoiRefusesBytesThatAreNotOne {
+    when: EvaluateCall(decode, qoi, bytes)
+    requires: not the_bytes_begin_with(the_magic)
+    ensures: CallFails(error: bad_media)
+}
+
 -- REGISTER puts a struct's layout in a catalogue under a name, so the layout
 -- can be reached later without the value that carried it.
 --
