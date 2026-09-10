@@ -11654,6 +11654,21 @@ public final class Natives {
         };
     }
 
+    /**
+     * The name an environment variable was asked for by.
+     *
+     * <p>Written either way, because a caller has a string or a word in hand
+     * and neither is more correct: {@code get-env "HOME"} and
+     * {@code get-env 'HOME} are the same question. A word keeps the spelling
+     * it was written with rather than its canonical form, since the
+     * environment minds the case and REBOL words do not.
+     */
+    private static String environmentNameIn(Value asked) {
+        return asked instanceof WordValue word
+                ? word.spelling()
+                : ((StringValue) asked).text();
+    }
+
     /** The text of a value: a string as it stands, a binary read as UTF-8. */
     private static String textOf(Value value) {
         return switch (value) {
@@ -16863,12 +16878,13 @@ public final class Natives {
                     });
                 });
 
-        define("get-env", List.of(Parameter.required("name", Set.of(Datatype.STRING))),
+        define("get-env", List.of(Parameter.required("name",
+                        Set.of(Datatype.STRING, Datatype.WORD, Datatype.LIT_WORD))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.ENVIRONMENT);
                     return throughPort(() -> {
-                        String held = evaluator.environment().valueOf(
-                                ((StringValue) arguments.getFirst()).text());
+                        String held = evaluator.environment()
+                                .valueOf(environmentNameIn(arguments.getFirst()));
                         return held == null ? NoneValue.none() : StringValue.of(held);
                     });
                 });
@@ -16889,13 +16905,19 @@ public final class Natives {
                 });
 
         define("set-env", List.of(
-                        Parameter.required("name", Set.of(Datatype.STRING)),
-                        Parameter.required("value")),
+                        Parameter.required("name",
+                                Set.of(Datatype.STRING, Datatype.WORD, Datatype.LIT_WORD)),
+                        Parameter.required("value",
+                                Set.of(Datatype.STRING, Datatype.NONE))),
                 (arguments, evaluator, context) -> {
-                    throw Raised.of(EvaluationFailure.NO_SERVICE,
-                            "set-env is " + ServiceRefusal.NOT_PRESENT.name()
-                                    .toLowerCase(java.util.Locale.ROOT).replace('_', ' ')
-                                    + ": a JVM cannot change its own environment");
+                    requireService(HostService.ENVIRONMENT);
+                    Value given = arguments.get(1);
+                    return throughPort(() -> {
+                        evaluator.environment().nameHolds(
+                                environmentNameIn(arguments.getFirst()),
+                                given instanceof StringValue held ? held.text() : null);
+                        return given;
+                    });
                 });
 
         define("what-dir", List.of(),
@@ -17426,7 +17448,27 @@ public final class Natives {
                     command, readByTheShell, attachedToTheHostsConsole, waits,
                     inputKindOf(input), pipedBytesOf(input), fileOf(input, evaluator),
                     outputKindOf(output), fileOf(output, evaluator),
-                    outputKindOf(errors), fileOf(errors, evaluator));
+                    outputKindOf(errors), fileOf(errors, evaluator),
+                    whatTheChildInherits(evaluator));
+        }
+
+        /**
+         * The environment to start the child with, which is this
+         * interpreter's own view of one.
+         *
+         * <p>So a name SET-ENV laid over the host's reaches the child, which
+         * is the half of SET-ENV a program other than this one can observe.
+         * A script that was never granted an environment hands over none, and
+         * the child then gets the host's unchanged.
+         */
+        private static java.util.Map<String, String> whatTheChildInherits(
+                Evaluator evaluator) {
+
+            try {
+                return evaluator.environment().all();
+            } catch (FilePort.Denied noEnvironment) {
+                return java.util.Map.of();
+            }
         }
 
         private static ProcessPort.ProgramInput inputKindOf(Optional<Value> redirection) {

@@ -67,7 +67,27 @@ public final class JavaProcesses implements ProcessPort {
                 program.standardOutput(), program.outputFile()));
         builder.redirectError(outputOf(
                 program.standardError(), program.errorFile()));
+        giveItTheEnvironmentAsked(builder, program);
         return builder;
+    }
+
+    /**
+     * Replaces the child's inherited environment with the one asked for.
+     *
+     * <p>Replaces rather than adds to, because what arrives is already this
+     * interpreter's whole view -- the host's names with whatever SET-ENV laid
+     * over them -- and a name the script took away has to be missing from the
+     * child too. An empty map means nothing was asked for, so the child keeps
+     * what it would have inherited anyway.
+     */
+    private static void giveItTheEnvironmentAsked(
+            ProcessBuilder builder, ProgramToStart program) {
+
+        if (program.environment().isEmpty()) {
+            return;
+        }
+        builder.environment().clear();
+        builder.environment().putAll(program.environment());
     }
 
     private static ProcessBuilder.Redirect inputOf(ProgramToStart program) {

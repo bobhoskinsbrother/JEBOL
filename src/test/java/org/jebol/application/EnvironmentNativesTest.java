@@ -21,25 +21,51 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class EnvironmentNativesTest {
 
-    /** A stand-in environment, so the test does not depend on the machine. */
-    private static final EnvironmentPort MADE_UP = new EnvironmentPort() {
-        @Override
-        public String valueOf(String name) {
-            return all().get(name);
-        }
+    /**
+     * A stand-in environment, so the test does not depend on the machine.
+     *
+     * <p>One per interpreter rather than one for the class. Shared, a name a
+     * test set leaked into the next one and GET-ENV answered what its
+     * neighbour had written -- which is the same reason the real port keeps
+     * its overlay to itself instead of in a static.
+     */
+    private static EnvironmentPort madeUp() {
+        return new EnvironmentPort() {
 
-        @Override
-        public Map<String, String> all() {
-            return Map.of("HOME", "/home/ben", "SHELL", "/bin/zsh");
-        }
-    };
+            private final Map<String, String> laidOver = new java.util.LinkedHashMap<>();
+
+            @Override
+            public String valueOf(String name) {
+                return all().get(name);
+            }
+
+            @Override
+            public Map<String, String> all() {
+                Map<String, String> everything = new java.util.LinkedHashMap<>(
+                        Map.of("HOME", "/home/ben", "SHELL", "/bin/zsh"));
+                laidOver.forEach((name, held) -> {
+                    if (held == null) {
+                        everything.remove(name);
+                    } else {
+                        everything.put(name, held);
+                    }
+                });
+                return everything;
+            }
+
+            @Override
+            public void nameHolds(String name, String value) {
+                laidOver.put(name, value);
+            }
+        };
+    }
 
     private static Interpreter reaching(boolean granted) {
         Bounds bounds = granted
                 ? Bounds.standard().granting(HostService.ENVIRONMENT)
                 : Bounds.standard();
         Interpreter interpreter = Interpreter.withBounds(bounds);
-        interpreter.useEnvironment(MADE_UP);
+        interpreter.useEnvironment(madeUp());
         return interpreter;
     }
 
@@ -79,18 +105,30 @@ class EnvironmentNativesTest {
         assertThat(errorIdOf(reaching(false), "list-env")).isEqualTo("no-service");
     }
 
+    /**
+     * These two asked for SET-ENV to be refused whatever the host, on the
+     * ground that a JVM cannot change its own environment. That is true of
+     * the process and beside the point: what a script means by setting a
+     * variable is that GET-ENV answers it afterwards and a child sees it,
+     * both of which a JVM can do and a real 3.22.5 does.
+     *
+     * <p>So the refusal is now about the grant, like every other reach
+     * outside, and what SET-ENV does when granted is covered by
+     * {@code EnvironmentWritingFromTheSourceTest}.
+     */
     @Test
-    @DisplayName("SET-ENV is refused even when the grant is given")
-    void settingIsNeverPossible() {
-        assertThat(errorIdOf(reaching(true), "set-env \"HOME\" \"/x\""))
+    @DisplayName("SET-ENV needs the grant, like the other two")
+    void settingNeedsTheGrant() {
+        assertThat(errorIdOf(reaching(false), "set-env \"HOME\" \"/x\""))
                 .isEqualTo("no-service");
     }
 
     @Test
-    @DisplayName("the refusal says that no host can offer it")
-    void theReasonIsNotThisHost() {
-        assertThat(answerTo(reaching(true),
-                "e: try [set-env \"HOME\" \"/x\"] true? find form e/arg1 \"not present\""))
-                .isEqualTo("#(true)");
+    @DisplayName("and with the grant it changes what GET-ENV answers")
+    void withTheGrantItSets() {
+        Interpreter interpreter = reaching(true);
+        assertThat(answerTo(interpreter, """
+                set-env "HOME" "/x"
+                get-env "HOME\"""")).isEqualTo("\"/x\"");
     }
 }

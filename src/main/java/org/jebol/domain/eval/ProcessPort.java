@@ -20,6 +20,13 @@ public interface ProcessPort {
 
     enum ProgramOutput { THE_HOSTS_OWN, CAPTURED, INTO_A_FILE, DISCARDED }
 
+    /**
+     * @param environment what the child's environment is to be, rather than
+     *     what to add to it. The interpreter's own view already has whatever
+     *     SET-ENV laid over the host's, and the child inherits that view --
+     *     which is the half of SET-ENV a program other than this one can
+     *     observe, and the only half a JVM can offer at all.
+     */
     record ProgramToStart(
             List<String> command,
             boolean readByTheShell,
@@ -31,10 +38,12 @@ public interface ProcessPort {
             ProgramOutput standardOutput,
             Optional<String> outputFile,
             ProgramOutput standardError,
-            Optional<String> errorFile) {
+            Optional<String> errorFile,
+            java.util.Map<String, String> environment) {
 
         public ProgramToStart {
             command = List.copyOf(command);
+            environment = java.util.Map.copyOf(environment);
         }
     }
 

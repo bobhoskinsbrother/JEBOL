@@ -9610,6 +9610,69 @@ rule ImageWithNoRefinementAnswersUnset {
     ensures: CallResult(value: unset)
 }
 
+-- === The environment a script reads and writes ============================
+
+-- GET-ENV and SET-ENV take a name written either way, as a string or as a
+-- word, because a caller has one or the other in hand and neither is more
+-- correct. `get-env "HOME"` and `get-env 'HOME` answer the same thing.
+rule AnEnvironmentNameMayBeAStringOrAWord {
+    when: EvaluateCall(verb, name, value)
+    requires: verb in {get_env, set_env}
+    requires: name.datatype in {string, word}
+
+    ensures: the_name_used = the_text_of(name)
+}
+
+-- A name nothing holds answers none rather than an empty string, so a caller
+-- can tell "not set" from "set to nothing".
+rule ANameNothingHoldsAnswersNone {
+    when: EvaluateCall(get_env, name)
+    requires: nothing_holds(name)
+    ensures: CallResult(value: none)
+}
+
+-- SET-ENV changes what this interpreter reports and what a program it starts
+-- inherits. It does not change the host process's own environment.
+--
+-- The distinction matters here and nowhere else, because a JVM has no way to
+-- change its own: `getenv` is a read-only view and there is no portable
+-- `setenv` behind it. That was taken as a reason to refuse SET-ENV outright,
+-- and it is not one -- what a script means by setting a variable is that
+-- GET-ENV answers it afterwards and that a child sees it, both of which are
+-- reachable. A real 3.22.5 does exactly those two things and a script cannot
+-- tell whether the host's own environment moved underneath.
+--
+-- Refusing cost thirteen assertions in one block of Rebol's own suite, which
+-- opens by putting a password in a variable so it need not ask for one.
+rule SettingAnEnvironmentNameChangesWhatThisInterpreterReports {
+    when: EvaluateCall(set_env, name, value)
+
+    ensures: get_env(name) = value
+    ensures: list_env_holds(name)
+    ensures: a_program_started_afterwards_inherits(name)
+    ensures: CallResult(value: value)
+}
+
+-- Setting a name to none takes it away, so GET-ENV answers none again and
+-- LIST-ENV no longer names it.
+rule SettingANameToNoneRemovesIt {
+    when: EvaluateCall(set_env, name, value)
+    requires: value.datatype = none
+
+    ensures: get_env(name) = none
+    ensures: not list_env_holds(name)
+}
+
+-- A value that is neither text nor none is refused rather than formed into
+-- something. An environment holds strings, and a caller handing over a number
+-- has a question about what it will become that only they can answer.
+rule AnEnvironmentValueIsTextOrNothing {
+    when: EvaluateCall(set_env, name, value)
+    requires: value.datatype not in {string, none}
+
+    ensures: CallFails(error: expect_arg)
+}
+
 -- === QOI, the one image format the interpreter carries itself =============
 
 -- QOI is a third codec the boot registers, beside text and markup.

@@ -334,15 +334,6 @@ module-test.r3 / module issues / issue-1005 #54
 mold-test.r3 / form error! / form error! #214
 mold-test.r3 / mold file! / mold file escaping #68
 mold-test.r3 / mold url! / mold url escaping #56
-os-test.r3 / set-env / get-env / env-1 #1
-os-test.r3 / set-env / get-env / env-1 #2
-os-test.r3 / set-env / get-env / env-1 #3
-os-test.r3 / set-env / get-env / env-1 #4
-os-test.r3 / set-env / get-env / env-1 #5
-os-test.r3 / set-env / get-env / env-2 #6
-os-test.r3 / set-env / get-env / env-2 #7
-os-test.r3 / set-env / get-env / env-3 #8
-os-test.r3 / set-env / get-env / env-3 #9
 parse-test.r3 / Other parse issues / integer! repeat #374
 parse-test.r3 / Other parse issues / integer! repeat #375
 parse-test.r3 / Other parse issues / integer! repeat #376
