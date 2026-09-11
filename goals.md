@@ -189,7 +189,9 @@ gate green.
 
 Sizes are the number of `known-gaps.txt` entries the goal is worth, and the
 fifteen of them account for every entry with nothing left over — goal 15 exists
-to close that sum and shows the arithmetic.
+to close that sum and shows the arithmetic. The list stands at **437** entries
+as this line is written; `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt`
+is the live answer and a size above that disagrees with it is stale.
 
 **Whether a size is a floor or a ceiling is unsettled, and it matters.** This
 file used to say floor, reasoning that fixing a stop frees the assertions
@@ -482,28 +484,32 @@ whether the change worked.
 
 ---
 
-### 1. The remaining codecs — 109
+### 1. The remaining codecs — 109, now 15
 
-`codecs-test.r3`. The largest single file, and it is not one problem but about
-eleven, each an `if find codecs 'name [...]` block that raises and takes its
-whole group with it. `SuiteStops` lists them. As of writing:
+`codecs-test.r3`. Was the largest single file, and it was not one problem but
+about eleven, each an `if find codecs 'name [...]` block that raised and took
+its whole group with it.
 
-- `load` of a file whose bytes are not valid UTF-8
-- `do %units/files/issue-1677.txt` — DO of a file path, which is goal 19 and
-  not a codec problem at all
-- DER, CRT and PLIST codecs: `a word with no binding was evaluated: SEQUENCE`
-  (the decoded block holds words the codec then evaluates)
-- SWF: needs LZMA, which is goal 3
-- ZIP: `_ is not a count of bytes`
-- JPEG: `image encoding through the operating system` — needs an encoder;
-  `javax.imageio` is already on the build path via `java.desktop` and covers
-  PNG, JPEG, GIF, BMP and TIFF
-- MIME-field: `bytes that are not valid UTF-8 where text was wanted: #{C3}`
+Almost none of them turned out to be codecs to port. The DER, CRT, PLIST, ZIP
+and MIME blocks were all interpreter defects surfacing inside Rebol's own
+borrowed REBOL codec files: the binary dialect resolving a get-word too early,
+a get-path rebinding what it read, ENHEX answering the wrong datatype, PARSE's
+insert, and `enbase/part` counting bytes where it should count characters. The
+image blocks needed a port rather than a codec, and QOI needed writing. The SWF
+block fell out of the binary dialect's `VINT`, which is goal 13.
 
-Take one block at a time; each is its own commit. Note that the group names in
-`known-gaps.txt` are wrong for this file — the slicer takes the last top-level
-`===start-group===`, and this file nests its groups inside the `if` blocks, so
-102 entries all claim to be in "TEXT codec". They are not.
+What is left:
+
+- WAV, 2 entries (#51 and #54): `checksum to-binary snd/data 'crc24`. A real
+  3.22.5 has no WAV codec at all, so the test file's own expected checksums are
+  the only authority there is.
+- 13 entries in the SAFE block, all of which now stop at `no-scheme: crypt`.
+  They are blocked on **goal 4**, the crypt port, and nothing else.
+
+Note that the group names in `known-gaps.txt` are wrong for this file — the
+slicer takes the last top-level `===start-group===`, and this file nests its
+groups inside the `if` blocks, so the entries all claim to be in "TEXT codec".
+They are not.
 
 ### 2. Image, read and written — 55
 
@@ -724,22 +730,21 @@ lets a URL-safe group end short); the encoder does not.
 
 "debase/part" is 21 of the 29 and is worth a look as one piece.
 
-### 8. The environment — 9, and it unblocks nothing
+### 8. The environment — 9 — DONE
 
-`os-test.r3`. **The "unblocks others" in the old title was wrong** — it came
-from `SuiteStops` reporting stops in `port-test.r3` and `module-test.r3` that do
-not happen under the real gate, where `get-env`, `list-env` and `call/shell/wait`
-all work. See goal 20. This is nine assertions in one file and nothing waits on
-it.
+`os-test.r3` has no line left on `known-gaps.txt`. The "unblocks others" in the
+old title was wrong — it came from `SuiteStops` reporting stops in
+`port-test.r3` and `module-test.r3` that do not happen under the real gate. See
+goal 20.
 
-Seven stops, all of them here, and both causes are real:
-
-- `set-env` and `get-env` refuse a `word!` and want a `string!`. A real Rebol
-  takes either.
-- `set-env` says "a JVM cannot change its own environment", which is true of
-  the process environment but need not be true of what the interpreter
-  reports. Decide what a JVM-hosted Rebol should do here and say so in the
-  commit.
+Both causes were real and both are fixed. The three environment natives take a
+`word!` as well as a `string!`, like a real Rebol. And SET-ENV exists: the old
+refusal said "a JVM cannot change its own environment", which is true of the
+process and beside the point — what a script means by setting a variable is
+that GET-ENV answers it afterwards and a child process sees it, and a JVM can
+do both. `ProcessEnvironment` keeps a per-port overlay over the host's names,
+and `JavaProcesses` hands the whole view to a child rather than letting it
+inherit, so a name the script took away is missing from the child too.
 
 ### 9. Modules and IMPORT — 17
 
@@ -805,12 +810,29 @@ reaching the interpreter's edge is a defect of a different kind:
 `spec/embed.allium` says nothing a script does may reach the host as a
 throwable. Both should be REBOL errors; ask `./r3-head` which.
 
-### 13. The binary dialect's missing keywords — 8
+### 13. The binary dialect's missing keywords — 8 — DONE
 
-`bincode-test.r3`: `EncodedU32`, `EncodedU64`, `VINT`, `SKIPBITS`,
-`MSDOS-DATETIME`. The dialect is in
-`src/main/java/org/jebol/domain/eval/Bincode.java`; the C is
-`rebol3-source/src/core/u-bincode.c`. Each keyword is small and independent.
+`bincode-test.r3` has no line left on `known-gaps.txt`. `EncodedU32`,
+`EncodedU64`, `VINT` and `SKIPBITS` are ported; `MSDOS-DATETIME` was already
+there and failed for a different reason than the other four.
+
+That reason is worth keeping. Rebol stores a date in UTC and puts the offset
+back on only to mold it or to answer a path, so `u-bincode.c` reading the year,
+month, day and clock straight out of the struct gets the instant for free.
+JEBOL keeps the time as it was written, so a date carrying an offset went in as
+the wall time and every MS-DOS field came out an hour wrong. `DateValue`
+answers `asStoredInUtc` now and `DateParts` uses the same one for `/utc`.
+Written up as finding 21 in `docs/rebol-findings.md`.
+
+Boundary work around the four new keywords found five more divergences that no
+suite assertion covers, all now fixed and tested: the narrower variable-length
+code takes a negative down to -4294967295 and writes its lowest thirty-two bits
+rather than refusing; `SKIPBITS` reads its count unsigned, so a negative one
+runs off the end instead of doing nothing, and names the count in the error;
+and the seven-bit MS-DOS year wraps at both ends rather than raising. One
+knowing divergence is left: `MSDOS-DATETIME` given a bare time reads a date out
+of a struct holding a time, and JEBOL refuses where the C writes whatever those
+bits happened to be.
 
 ### 14. The PDF codec times out — 9
 

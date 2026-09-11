@@ -113,6 +113,37 @@ public record DateValue(
     private static final long NANOSECONDS_A_DAY = 24L * 60L * NANOSECONDS_A_MINUTE;
 
     /**
+     * The same instant with the offset resolved rather than remembered, which
+     * is the form Rebol keeps a date in.
+     *
+     * <p>{@code Adjust_Date_Zone}, whose own comment says the adjusted form
+     * "should be used for output, not stored" -- Rebol stores UTC and puts the
+     * offset back on to mold or to answer a path. JEBOL keeps the day and the
+     * clock as they were written, so anything wanting the instant asks for it
+     * here.
+     *
+     * <p>The offset moves the day as well as the clock: half past midnight an
+     * hour ahead is half past eleven the evening before. A date carrying no
+     * clock has no instant to move and answers itself.
+     */
+    public DateValue asStoredInUtc() {
+        int offsetMinutes = zoneMinutes.orElse(0);
+        if (timeOfDay.isEmpty()) {
+            return this;
+        }
+        if (offsetMinutes == 0) {
+            return new DateValue(year, month, day, timeOfDay, Optional.of(0));
+        }
+        java.time.LocalDateTime moved = java.time.LocalDate.of(year, month, day)
+                .atStartOfDay()
+                .plusNanos(timeOfDay.map(TimeValue::nanoseconds).orElse(0L))
+                .minusMinutes(offsetMinutes);
+        return new DateValue(moved.getYear(), moved.getMonthValue(), moved.getDayOfMonth(),
+                Optional.of(TimeValue.ofNanoseconds(moved.toLocalTime().toNanoOfDay())),
+                Optional.of(0));
+    }
+
+    /**
      * The year as REBOL writes it, which is four digits wide below 1000.
      *
      * <p>{@code 1-Feb-0003} rather than {@code 1-Feb-3}. The padding is not

@@ -327,7 +327,7 @@ final class DateParts {
             case "second" -> secondOf(date);
             case "weekday" -> IntegerValue.of(asLocalDate(date).getDayOfWeek().getValue());
             case "yearday" -> IntegerValue.of(asLocalDate(date).getDayOfYear());
-            case "utc" -> atZoneZero(date);
+            case "utc" -> date.asStoredInUtc();
             case "julian" -> DecimalValue.of(julianDayOf(date));
             default -> NoneValue.none();
         };
@@ -366,28 +366,6 @@ final class DateParts {
         return fraction == 0
                 ? IntegerValue.of(whole)
                 : DecimalValue.of(whole + (double) fraction / NANOSECONDS_A_SECOND);
-    }
-
-    /**
-     * The same instant with the offset dropped: {@code VAL_ZONE(val) = 0;}.
-     *
-     * <p>The instant and not the wall time, so a date two hours ahead answers a
-     * time two hours earlier. The two agree only where the offset is zero.
-     */
-    private static Value atZoneZero(DateValue date) {
-        int offsetMinutes = date.zoneMinutes().orElse(0);
-        if (date.timeOfDay().isEmpty() || offsetMinutes == 0) {
-            return new DateValue(date.year(), date.month(), date.day(),
-                    date.timeOfDay(),
-                    date.timeOfDay().isEmpty() ? Optional.empty() : Optional.of(0));
-        }
-        java.time.LocalDateTime moved = asLocalDate(date)
-                .atStartOfDay()
-                .plusNanos(nanosecondsOf(date))
-                .minusMinutes(offsetMinutes);
-        return new DateValue(moved.getYear(), moved.getMonthValue(), moved.getDayOfMonth(),
-                Optional.of(TimeValue.ofNanoseconds(moved.toLocalTime().toNanoOfDay())),
-                Optional.of(0));
     }
 
     /**

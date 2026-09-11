@@ -1,12 +1,4 @@
 bbcode-test.r3 / (no group) / (no test) #1
-bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #163
-bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU32 #164
-bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU64 #165
-bincode-test.r3 / BinCode basic read/write functions / BinCode - EncodedU64 #166
-bincode-test.r3 / BinCode basic read/write functions / BinCode - MSDOS-DATETIME #210
-bincode-test.r3 / BinCode basic read/write functions / BinCode - SKIPBITS #176
-bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #167
-bincode-test.r3 / BinCode basic read/write functions / BinCode - VINT #168
 bitset-test.r3 / modify / issue-1355 #139
 bitset-test.r3 / modify / issue-1355 #140
 checksum-test.r3 / Checksum port / checksum-port-sha512 #180
@@ -67,7 +59,6 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #231
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #232
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #51
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #54
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #83
 copy-test.r3 / Simple copy / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #2

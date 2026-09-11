@@ -9888,6 +9888,75 @@ rule ASignedFieldReadsBackNegative {
     ensures: the_value_read < 0
 }
 
+-- Two ways of writing a number in as few bytes as it needs, and they are not
+-- the same way.
+--
+-- ENCODEDU32 and ENCODEDU64 are seven bits a byte, least significant first,
+-- with the top bit set on every byte but the last. VINT counts the leading
+-- noughts of the first byte to say how many bytes follow, most significant
+-- first, and is what EBML and Matroska carry. A caller writing one format
+-- cannot use the other's spelling, so both are named and neither is a
+-- default.
+--
+-- The two differ visibly on the smallest numbers: 128 is two bytes either
+-- way, but `80 01` in the first and `40 80` in the second.
+rule TheDialectWritesTwoKindsOfVariableLengthNumber {
+    when: EvaluateCall(binary, ctx)
+    requires: the_code_is_one_of({encodedu32, encodedu64, vint})
+
+    ensures: the_bytes_written = as_few_as_that_encoding_needs(the_number)
+}
+
+rule AVariableLengthNumberReadsBackAsItself {
+    when: EvaluateCall(binary, ctx)
+    requires: the_code_is_one_of({encodedu32, encodedu64, vint})
+
+    ensures: reading_what_was_written_gives(the_number)
+}
+
+-- ENCODEDU32 refuses a number too big for thirty-two bits, where ENCODEDU64
+-- takes it. The width is in the name and it is the only thing separating
+-- them, since the bytes they write are otherwise identical.
+rule TheNarrowerOneRefusesANumberTooWideForIt {
+    when: EvaluateCall(binary, ctx)
+    requires: the_code_is(encodedu32)
+    requires: the_number_does_not_fit_in_thirty_two_bits()
+
+    ensures: CallFails(error: out_of_range)
+}
+
+-- SKIPBITS moves the read position by a count of bits rather than bytes, so a
+-- reader can step over a field it does not care about without working out
+-- where the byte boundary lands.
+rule SkipBitsMovesByBitsRatherThanBytes {
+    when: EvaluateCall(binary, ctx)
+    requires: the_call_asked_for_read()
+    requires: the_code_is(skipbits)
+
+    ensures: the_position_moves_by(that_many_bits)
+    ensures: nothing_is_added_to_the_answer()
+}
+
+-- The MS-DOS date and clock hold no offset, so a date carrying one is written
+-- as the instant it names rather than as the wall time somebody read off a
+-- clock beside it.
+--
+-- Which means the offset can move the day as well as the hour: half past
+-- midnight an hour ahead is half past eleven the evening before, and the
+-- written date is that evening's.
+--
+-- A ZIP made in Berlin and a ZIP made in London at the same moment therefore
+-- carry the same two bytes, which is the only reading under which the format's
+-- times can be compared at all.
+rule TheMsDosCodesWriteTheInstantAndNotTheWallTime {
+    when: EvaluateCall(binary, ctx)
+    requires: the_call_asked_for_write()
+    requires: the_code_is_one_of({msdos_time, msdos_date, msdos_datetime})
+    requires: the_date_carries_an_offset()
+
+    ensures: the_bytes_written = the_same_date_with_the_offset_taken_off()
+}
+
 -- A code the dialect has not got raises rather than being skipped.
 --
 -- The decision worth defending here. Eighty-one codes exist in the C and this

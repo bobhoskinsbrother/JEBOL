@@ -455,6 +455,32 @@ information stored the other way round. Everything above still has to hold, so
 `DateValue.moment` takes the zone off at the point of comparison rather than at
 the point of reading, and `Comparison.compareForSorting` orders on that.
 
+The binary dialect is where storing it the other way round costs something. The
+MS-DOS date and clock are sixteen bits each with no room for an offset, so
+`u-bincode.c` reads the year, month, day and time straight out of the struct --
+and that struct already holds UTC, so the offset resolves itself with nothing
+written to do it:
+
+```rebol
+b: binary 8  binary/write b [msdos-datetime 14-Mar-2019/00:33:18+1:00]
+probe binary/read b 'MSDOS-DATETIME     ; 13-Mar-2019/23:33:18
+```
+
+Half past midnight an hour ahead goes in as half past eleven the evening
+before, day included. JEBOL has to ask for that explicitly, which is what
+`DateValue.asStoredInUtc` is for, and any other reader of the raw fields has to
+do the same. It is also the right answer for the format: a ZIP written in
+Berlin and a ZIP written in London at the same moment carry the same two bytes.
+
+Two things about those fields bite either way. The year counts from 1980 in
+seven bits, so it wraps at both ends rather than raising -- 1979 is 127 and
+2108 is nought -- and the offset alone can reach below the epoch, since half
+past midnight on the first day of 1980 an hour ahead is the last evening of
+1979. And `MSDOS-DATETIME` given a bare time is accepted by the C and then
+reads a year, a month and a day out of a struct holding a time, so what it
+writes is whatever those bits happened to be. JEBOL refuses it; there is
+nothing there worth copying and REBOL's own suite never asks for it.
+
 ## 22. Three units wear the same plus sign beside a date
 
 Adding a number to a date is days. Adding a *decimal* to the same date is a

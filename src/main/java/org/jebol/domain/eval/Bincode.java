@@ -100,6 +100,8 @@ final class Bincode {
         return widthOf(code) > 0 || floatWidthOf(code) > 0
                 || POSITIONS.contains(baseOf(code))
                 || DATA.contains(baseOf(code))
+                || VARIABLE_WIDTH.contains(code)
+                || code.equals("skipbits")
                 || BITS.contains(code)
                 || MOMENTS.contains(code)
                 || SHAPES.contains(code)
@@ -112,6 +114,22 @@ final class Bincode {
     private static final List<String> DATA = List.of(
             "bytes", "octal-bytes", "string-bytes",
             "pad", "align", "random-bytes", "crop");
+
+    /**
+     * The codes that write a number in as few bytes as it needs.
+     *
+     * <p>Two schemes and they are not the same. The first two are seven bits a
+     * byte, least significant first, with the top bit set on every byte but
+     * the last. VINT counts the leading noughts of its first byte to say how
+     * many follow, most significant first, and is what EBML and Matroska
+     * carry. A hundred and twenty-eight is two bytes either way and a
+     * different two.
+     */
+    private static final List<String> VARIABLE_WIDTH =
+            List.of("encodedu32", "encodedu64", "vint");
+
+    /** What thirty-two bits hold, which is the only bound between the first two. */
+    private static final long WIDEST_A_NARROW_ONE_TAKES = 0xFFFFFFFFL;
 
     /**
      * The codes that count in bits rather than bytes.
@@ -351,6 +369,12 @@ final class Bincode {
                     alignedUp(cursor.at, wholeNumberWritten(itemAt(dialect, ++step, code))));
             case "random-bytes" -> writeRandom(cursor,
                     wholeNumberWritten(itemAt(dialect, ++step, code)));
+            case "encodedu32" -> writeSevenBitsAByte(cursor, refusingAWiderNumber(
+                    wholeNumberWritten(itemAt(dialect, ++step, code))));
+            case "encodedu64" -> writeSevenBitsAByte(cursor,
+                    wholeNumberWritten(itemAt(dialect, ++step, code)));
+            case "vint" -> writeAVariableNumber(cursor,
+                    wholeNumberWritten(itemAt(dialect, ++step, code)));
             default -> throw refuse(dialect.asWritten(step));
         }
         return step;
@@ -466,6 +490,12 @@ final class Bincode {
             case "fb" -> read.add(DecimalValue.of(signedBitsRead(cursor,
                     (int) wholeNumberReadAfter(dialect, ++step, named))
                     / A_WHOLE_FIXED_POINT_UNIT));
+            case "encodedu32" -> read.add(IntegerValue.of(
+                    sevenBitsAByteRead(cursor) & WIDEST_A_NARROW_ONE_TAKES));
+            case "encodedu64" -> read.add(IntegerValue.of(sevenBitsAByteRead(cursor)));
+            case "vint" -> read.add(IntegerValue.of(aVariableNumberRead(cursor)));
+            case "skipbits" -> skipBits(cursor,
+                    wholeNumberReadAfter(dialect, ++step, named));
             case "bit" -> read.add(LogicValue.of(nextBit(cursor) == 1));
             case "not-bit" -> read.add(LogicValue.of(nextBit(cursor) == 0));
             case "align" -> alignToAByte(cursor);
@@ -547,23 +577,6 @@ final class Bincode {
             counted = counted << 3 | digits.charAt(at) - '0';
         }
         return IntegerValue.of(counted);
-    }
-
-    /**
-     * Everything left, which is what a bare BYTES reads.
-     *
-     * <p>No length to give it, so it takes the rest: {@code binary/read b
-     * 'bytes} after a run of writes is how a caller gets back what they wrote
-     * without counting it.
-     *
-     * <p>And it consumes them. Reading twice running gives the bytes and then
-     * nothing, not the same bytes twice, because the read cursor ends up at
-     * the tail like every other read leaves it past what it took.
-     */
-    private static Value bytesToTheEnd(Cursor cursor) {
-        Value taken = binaryOf(cursor, cursor.at, cursor.octets.size() - cursor.at);
-        cursor.at = cursor.octets.size();
-        return taken;
     }
 
     /**
@@ -789,6 +802,153 @@ final class Bincode {
     }
 
     /**
+     * A number written seven bits to a byte, least significant first.
+     *
+     * <p>{@code cp[n] = u & 0x7F; u >>= 7; if (u != 0) cp[n] |= 0x80;} -- the
+     * top bit says another byte follows, so nought is a single nought byte and
+     * a hundred and twenty-eight is {@code 80 01}.
+     */
+    private static void writeSevenBitsAByte(Cursor cursor, long number) {
+        long left = number;
+        do {
+            int octet = (int) (left & 0x7F);
+            left >>>= 7;
+            put(cursor, cursor.at, left == 0 ? octet : octet | 0x80);
+            cursor.at++;
+        } while (left != 0);
+    }
+
+    private static long sevenBitsAByteRead(Cursor cursor) {
+        long gathered = 0;
+        int shift = 0;
+        int octet;
+        do {
+            refuseAReadPastTheEnd(cursor, 1);
+            octet = octetAt(cursor, cursor.at);
+            cursor.at++;
+            gathered |= (long) (octet & 0x7F) << shift;
+            shift += 7;
+        } while ((octet & 0x80) != 0);
+        return gathered;
+    }
+
+    /**
+     * A number written the way EBML and Matroska carry one.
+     *
+     * <p>The leading noughts of the first byte say how many bytes there are:
+     * a top bit set means one byte, {@code 01xxxxxx} means two, and so on. So
+     * the value is most significant first and the marker bit sits above it,
+     * which makes a hundred and twenty-eight {@code 40 80} where the other
+     * encoding writes {@code 80 01}.
+     */
+    private static void writeAVariableNumber(Cursor cursor, long number) {
+        refuseANumberWithNoVariableForm(number);
+        int howManyBytes = 1;
+        while (Long.compareUnsigned(number, 1L << (7 * howManyBytes)) >= 0) {
+            howManyBytes++;
+        }
+        int[] octets = new int[howManyBytes];
+        long left = number;
+        for (int at = howManyBytes - 1; at > 0; at--) {
+            octets[at] = (int) (left & 0xFF);
+            left >>>= 8;
+        }
+        octets[0] = (int) (left | (0x80 >> (howManyBytes - 1)));
+        for (int octet : octets) {
+            put(cursor, cursor.at, octet);
+            cursor.at++;
+        }
+    }
+
+    /**
+     * A number REBOL writes as negative has no VINT form, and this says so
+     * where the C does not.
+     *
+     * <p>{@code while (value >= (1ULL << (7 * count))) count++} shifts by
+     * seventy once the count reaches ten, which is undefined in C and in
+     * practice never leaves the loop -- so the C hangs rather than answering.
+     * There is nothing there to copy and refusing is the only answer that
+     * terminates.
+     */
+    private static void refuseANumberWithNoVariableForm(long number) {
+        if (number < 0) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(number));
+        }
+    }
+
+    private static long aVariableNumberRead(Cursor cursor) {
+        refuseAReadPastTheEnd(cursor, 1);
+        int first = octetAt(cursor, cursor.at);
+        int howManyBytes = 1;
+        int marker = 0x80;
+        while (marker != 0 && (first & marker) == 0) {
+            marker >>= 1;
+            howManyBytes++;
+        }
+        refuseAReadPastTheEnd(cursor, howManyBytes);
+        long gathered = first & (0xFF >> howManyBytes);
+        for (int at = 1; at < howManyBytes; at++) {
+            gathered = gathered << 8 | octetAt(cursor, cursor.at + at);
+        }
+        cursor.at += howManyBytes;
+        return gathered;
+    }
+
+    /**
+     * Steps the read position by a count of bits.
+     *
+     * <p>Whole bytes first and then the remainder, so a reader can step over a
+     * field it does not care about without working out where the byte boundary
+     * lands. It produces nothing, which is what makes it a position code
+     * rather than a field.
+     *
+     * <p>The count is read as an unsigned quantity, which the C reaches by
+     * holding it in a {@code REBCNT}. So a negative count is not a step
+     * backwards -- it is a step of four thousand million bytes, and it runs off
+     * the end. The error names the count as it was written.
+     */
+    private static void skipBits(Cursor cursor, long howManyBits) {
+        long wholeBytes = (howManyBits & 0xFFFFFFFFL) / 8;
+        if (wholeBytes > 0) {
+            refuseASkipPastTheEnd(cursor, wholeBytes, howManyBits);
+            cursor.at += (int) wholeBytes;
+        }
+        for (long left = howManyBits - wholeBytes * 8; left > 0; left--) {
+            nextBit(cursor);
+        }
+    }
+
+    private static void refuseASkipPastTheEnd(
+            Cursor cursor, long wanted, long asWritten) {
+
+        if (cursor.at + wanted > cursor.octets.size()) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    IntegerValue.of(asWritten));
+        }
+    }
+
+    /**
+     * The lowest thirty-two bits of a number the narrower code will take.
+     *
+     * <p>{@code ASSERT_U32_RANGE(next)} then {@code u = (u64)VAL_UNT32(next)},
+     * which is the only thing separating ENCODEDU32 from ENCODEDU64 -- the
+     * bytes they write are otherwise identical.
+     *
+     * <p>The range is symmetric about nought rather than a 32-bit word's,
+     * because the second half of the check is against
+     * {@code (i64)0xFFFFFFFF00000001}, which is -4294967295. So a negative is
+     * taken and written as its two's complement: -1 is the largest number the
+     * code can carry and -4294967295 is one.
+     */
+    private static long refusingAWiderNumber(long number) {
+        if (number > WIDEST_A_NARROW_ONE_TAKES
+                || number < -WIDEST_A_NARROW_ONE_TAKES) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(number));
+        }
+        return number & WIDEST_A_NARROW_ONE_TAKES;
+    }
+
+    /**
      * Throws away the rest of the byte, which is what ALIGN does.
      *
      * <p>Only when some of it has been taken. On a byte boundary it does
@@ -864,9 +1024,8 @@ final class Bincode {
     private static void msdosTimeWritten(Cursor cursor, Value given) {
         long nanoseconds = given instanceof TimeValue clock
                 ? clock.nanoseconds()
-                : given instanceof DateValue day
-                        ? day.timeOfDay().map(TimeValue::nanoseconds).orElse(0L)
-                        : refuseTheValue(given);
+                : theInstantIn(given).timeOfDay()
+                        .map(TimeValue::nanoseconds).orElse(0L);
         long seconds = nanoseconds / A_SECOND;
         writeWholeNumber(cursor, "ui16le",
                 seconds / 3600 << 11
@@ -875,37 +1034,43 @@ final class Bincode {
     }
 
     private static void msdosDateWritten(Cursor cursor, Value given) {
-        if (!(given instanceof DateValue day)) {
-            refuseTheValue(given);
-            return;
-        }
+        DateValue day = theInstantIn(given);
         writeWholeNumber(cursor, "ui16le",
-                (long) (day.year() - MSDOS_EPOCH_YEAR) << 9
+                (long) Math.floorMod(day.year() - MSDOS_EPOCH_YEAR,
+                        YEARS_THE_FIELD_COUNTS) << 9
                         | (long) day.month() << 5
                         | day.day());
     }
 
-    private static void msdosDateTimeWritten(Cursor cursor, Value given) {
-        msdosTimeWritten(cursor, given);
-        msdosDateWritten(cursor, given);
-    }
-
-    private static long refuseTheValue(Value given) {
-        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
-    }
+    /**
+     * How far the year field reaches before it comes back round to 1980.
+     *
+     * <p>Seven bits, so 2107 is the last year with a spelling of its own and
+     * 2108 is written the same as 1980. The wrap is the format's rather than a
+     * choice: there is nowhere else for the eighth bit to go.
+     */
+    private static final int YEARS_THE_FIELD_COUNTS = 128;
 
     /**
-     * A stated number of bytes, which a bare number in the dialect asks for.
+     * The moment a date names, with its offset resolved rather than dropped.
      *
-     * <p>{@code binary/read b 2} is the two bytes at the cursor. A count is
-     * how a caller reads a field whose width came from an earlier field
-     * rather than from the dialect.
+     * <p>Neither MS-DOS field has room for an offset, so a date carrying one
+     * is written as the instant it names: half past midnight an hour ahead
+     * goes in as half past eleven the evening before, day included. Rebol gets
+     * there without a line in the dialect because it stores a date in UTC
+     * already; JEBOL keeps the written time, so the resolving is here.
      */
-    private static Value bytesCounted(Cursor cursor, int wanted) {
-        refuseAReadPastTheEnd(cursor, wanted);
-        Value taken = binaryOf(cursor, cursor.at, wanted);
-        cursor.at += wanted;
-        return taken;
+    private static DateValue theInstantIn(Value given) {
+        if (!(given instanceof DateValue day)) {
+            throw refuse(given);
+        }
+        return day.asStoredInUtc();
+    }
+
+    private static void msdosDateTimeWritten(Cursor cursor, Value given) {
+        DateValue instant = theInstantIn(given);
+        msdosTimeWritten(cursor, instant);
+        msdosDateWritten(cursor, instant);
     }
 
     /**
