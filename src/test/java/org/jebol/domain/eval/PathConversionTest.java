@@ -87,4 +87,71 @@ class PathConversionTest {
         assertThat(answerTo("(split-path %dir) = [%./ %dir]")).isEqualTo("#(true)");
         assertThat(answerTo("(split-path %dir/) = [%./ %dir/]")).isEqualTo("#(true)");
     }
+
+    /**
+     * {@code To_REBOL_Path} in {@code s-file.c} tests both characters by name
+     * -- {@code if (c == '\\' || c == '/')} -- and neither test is guarded on
+     * the platform. So a Windows path converts on a machine that has never
+     * seen Windows, which is the point of having the function at all: the
+     * path came from somewhere else.
+     *
+     * <p>JEBOL replaced whatever separator this machine uses, which on macOS
+     * is a slash, so a backslash survived into the file name and came out
+     * percent-escaped as {@code %5C}.
+     */
+    @Test
+    @DisplayName("a backslash is a separator whatever machine is reading it")
+    void abackslashIsASeparatorEverywhere() {
+        assertThat(answerTo("(to-rebol-file {a\\b}) = %a/b")).isEqualTo("#(true)");
+        assertThat(answerTo("(to-rebol-file {..\\a}) = %../a")).isEqualTo("#(true)");
+        assertThat(answerTo("(to-rebol-file {\\a}) = %/a")).isEqualTo("#(true)");
+        assertThat(answerTo("(to-rebol-file %a\\b) = %a/b")).isEqualTo("#(true)");
+    }
+
+    /**
+     * {@code if (slash > 0) continue;} -- a second separator in a row is
+     * dropped. The two leading backslashes of a Windows share name come out
+     * as the one leading slash that means "from the root", which is Rebol's
+     * own test for issue 1115.
+     */
+    @Test
+    @DisplayName("and a run of separators is one separator")
+    void arunOfSeparatorsCollapses() {
+        assertThat(answerTo("(to-rebol-file {\\\\rodan\\shareddocs}) = %/rodan/shareddocs"))
+                .isEqualTo("#(true)");
+        assertThat(answerTo("(to-rebol-file {\\\\rodan\\shareddocs\\}) = %/rodan/shareddocs/"))
+                .isEqualTo("#(true)");
+
+        assertThat(answerTo("(to-rebol-file {a//b}) = %a/b")).isEqualTo("#(true)");
+        assertThat(answerTo("(to-rebol-file {a///b}) = %a/b")).isEqualTo("#(true)");
+        assertThat(answerTo("(to-rebol-file {a/\\b}) = %a/b")).isEqualTo("#(true)");
+        assertThat(answerTo("(to-rebol-file {a//}) = %a/")).isEqualTo("#(true)");
+        assertThat(answerTo("(to-rebol-file {///}) = %/")).isEqualTo("#(true)");
+        assertThat(answerTo("(to-rebol-file {\\\\\\a}) = %/a")).isEqualTo("#(true)");
+    }
+
+    @Test
+    @DisplayName("nothing else in the path is touched, escaping included")
+    void therestOfThePathSurvives() {
+        assertThat(answerTo("all [file? f: to-rebol-file {} empty? f]")).isEqualTo("#(true)");
+        assertThat(answerTo("mold to-rebol-file {a b}")).isEqualTo("\"%a%20b\"");
+        assertThat(answerTo("mold to-rebol-file {a%b}")).isEqualTo("\"%a%25b\"");
+        assertThat(answerTo("mold to-rebol-file {a:0:0}")).isEqualTo("\"%a%3A0%3A0\"");
+        assertThat(answerTo("mold to-rebol-file {C:\\temp\\x.txt}"))
+                .as("the drive letter's colon is not a separator away from Windows")
+                .isEqualTo("\"%C%3A/temp/x.txt\"");
+    }
+
+    @Test
+    @DisplayName("the other direction writes this machine's separator and undoes it")
+    void thelocalDirectionRoundTrips() {
+        assertThat(answerTo("to-local-file %a/b")).isEqualTo("\"a/b\"");
+        assertThat(answerTo("to-local-file %/a/b")).isEqualTo("\"/a/b\"");
+        assertThat(answerTo("to-local-file %a/b/")).isEqualTo("\"a/b/\"");
+        assertThat(answerTo("to-local-file %a%3A0%3A0"))
+                .as("the escaping is undone on the way out")
+                .isEqualTo("\"a:0:0\"");
+        assertThat(answerTo("to-local-file to-rebol-file {\\\\rodan\\shareddocs}"))
+                .isEqualTo("\"/rodan/shareddocs\"");
+    }
 }

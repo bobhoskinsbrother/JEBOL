@@ -40,14 +40,26 @@ final class SeekableFilePort {
         port.setField(THE_POSITION, IntegerValue.of(Math.max(0, position)));
     }
 
-    /** The path a file port was opened on. */
+    /**
+     * The path a file port was opened on.
+     *
+     * <p>PATH before REF, because a port opened on a url has both and only one
+     * of them names a file. The scheme's own INIT works the path out from the
+     * url and leaves it in the spec beside it, so {@code file://a.txt} carries
+     * {@code ref: file://a.txt} and {@code path: %a.txt}. Reading REF first
+     * asks the filesystem for a file called "file://a.txt".
+     */
     static String pathOf(PortValue port) {
-        Value spec = port.fieldNamed("spec");
-        if (spec instanceof org.jebol.domain.value.ObjectValue fields
-                && fields.context().holds("ref")
-                && fields.context().ownSlotFor("ref").value()
-                        instanceof StringValue named) {
-            return named.text();
+        if (!(port.fieldNamed("spec")
+                instanceof org.jebol.domain.value.ObjectValue fields)) {
+            return "";
+        }
+        for (String field : new String[] {"path", "ref"}) {
+            if (fields.context().holds(field)
+                    && fields.context().ownSlotFor(field).value()
+                            instanceof StringValue named) {
+                return named.text();
+            }
         }
         return "";
     }

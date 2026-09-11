@@ -442,3 +442,46 @@ image-test.r3 / BLUR / premultiply image 3 (input not at its head) #205
 # cannot pass rather than one that should.
 #
 unicode-test.r3 / /part refines with utf8 strings / take/last #381
+
+# parse-test.r3's "parse with uni-replacement-char" group is guarded on a
+# string built out of bytes that are not UTF-8, and a real 3.22.5 refuses to
+# build it. The guard is false there as it is here, so the nine assertions
+# inside the block never run on either.
+#
+# The comment above them -- ";- expected no crashes..." -- says what they were
+# for: issue 2476 was a crash when a string held the replacement character, and
+# the group was written to prove the crash was gone. TO STRING! stopped
+# accepting the bytes at some point after that, and nobody noticed the group
+# had stopped running.
+#
+#   >> to string! #{A032}
+#   ** Script error: invalid UTF encoding: #{A032}     ; r3-head 3.22.5, and JEBOL
+#   >> if not error? try [str: to string! #{A032}][print "ran"]
+#   == none            ; r3-head 3.22.5, and JEBOL
+#
+parse-test.r3 / Other parse issues / integer! repeat #374
+parse-test.r3 / Other parse issues / integer! repeat #375
+parse-test.r3 / Other parse issues / integer! repeat #376
+parse-test.r3 / Other parse issues / integer! repeat #377
+parse-test.r3 / Other parse issues / integer! repeat #378
+parse-test.r3 / Other parse issues / integer! repeat #379
+parse-test.r3 / Other parse issues / integer! repeat #380
+parse-test.r3 / Other parse issues / integer! repeat #381
+parse-test.r3 / Other parse issues / integer! repeat #382
+
+# file-test.r3's issue-1115 test has a Windows arm and a Unix arm, and only one
+# of them runs. The two here are the Windows arm, and the machine this port is
+# measured on is a Mac, so a real 3.22.5 does not run them either -- it takes
+# the other arm, whose two assertions pass on both.
+#
+# Machine-dependent rather than build-dependent, which is worth saying plainly:
+# on Windows these would run on both, and the ratchet on this file would catch
+# it if they ever started passing here.
+#
+#   >> system/platform
+#   == macOS           ; r3-head 3.22.5
+#   >> either system/platform = 'Windows [print "windows arm"]["unix arm"]
+#   == "unix arm"      ; r3-head 3.22.5
+#
+file-test.r3 / to-local-file / issue-1115 #16
+file-test.r3 / to-local-file / issue-1115 #17

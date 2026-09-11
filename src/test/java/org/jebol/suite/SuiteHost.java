@@ -73,6 +73,7 @@ final class SuiteHost {
         interpreter.useProcesses(new JavaProcesses());
         interpreter.useImages(new JavaImages());
         putHomeInsideTheDirectoryTheRunCanReach(interpreter);
+        putTheApplicationDataDirectoryThereToo(interpreter);
         return interpreter;
     }
 
@@ -96,6 +97,30 @@ final class SuiteHost {
             Interpreter interpreter) {
 
         String sayingSo = "system/options/home: %./";
+        interpreter.defineFreshWordsIn(sayingSo);
+        interpreter.run(sayingSo);
+    }
+
+    /**
+     * Says where an application keeps its own files, and makes the directory.
+     *
+     * <p>The same incoherence as the home directory above, one field along.
+     * {@code system/options/data} names a hidden folder in the operator's home
+     * -- where modules, caches and a REPL history go -- and the run is confined
+     * to a temporary directory that cannot reach it. Rebol's own boot makes
+     * that folder before anything asks for it; nothing here can, because this
+     * interpreter has no filesystem until the line above gives it one.
+     *
+     * <p>The word {@code ~} is the shortcut for it and is bound while the
+     * library loads, long before any of this, so moving the field alone leaves
+     * {@code cd ~} pointing at the old place. Both are set, which is what
+     * {@code mezz-tail.reb} does in one line.
+     */
+    private static void putTheApplicationDataDirectoryThereToo(Interpreter interpreter) {
+        String sayingSo = """
+                system/options/data: %/data/
+                make-dir/deep system/options/data
+                set '~ system/options/data""";
         interpreter.defineFreshWordsIn(sayingSo);
         interpreter.run(sayingSo);
     }

@@ -131,12 +131,6 @@ error-test.r3 / Error issues / issue-553 #38
 error-test.r3 / Error issues / protected catalog #42
 error-test.r3 / Error issues / protected catalog #43
 evaluation-test.r3 / do script / do needs #44
-file-test.r3 / cd / cd / cd ~ #1
-file-test.r3 / file:// / issue-834 #41
-file-test.r3 / to-local-file / issue-1115 #16
-file-test.r3 / to-local-file / issue-1115 #17
-file-test.r3 / to-local-file / issue-1115 #20
-file-test.r3 / to-local-file / issue-1115 #21
 file-test.r3 / to-local-file / issue-1115 #22
 file-test.r3 / to-local-file / issue-1115 #23
 file-test.r3 / to-local-file / issue-1115 #24
@@ -182,15 +176,6 @@ module-test.r3 / module issues / issue-1005 #54
 mold-test.r3 / form error! / form error! #214
 mold-test.r3 / mold file! / mold file escaping #68
 mold-test.r3 / mold url! / mold url escaping #56
-parse-test.r3 / Other parse issues / integer! repeat #374
-parse-test.r3 / Other parse issues / integer! repeat #375
-parse-test.r3 / Other parse issues / integer! repeat #376
-parse-test.r3 / Other parse issues / integer! repeat #377
-parse-test.r3 / Other parse issues / integer! repeat #378
-parse-test.r3 / Other parse issues / integer! repeat #379
-parse-test.r3 / Other parse issues / integer! repeat #380
-parse-test.r3 / Other parse issues / integer! repeat #381
-parse-test.r3 / Other parse issues / integer! repeat #382
 percent-test.r3 / percent issues / large percent #33
 percent-test.r3 / percent issues / large percent #34
 port-test.r3 / SYSTEM / query system:// #169

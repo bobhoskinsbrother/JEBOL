@@ -2065,6 +2065,26 @@ rule ReadingOrWritingThroughASchemeFindsNoScheme {
     ensures: CallFails(error: no_service, about: the_scheme_named_by(target))
 }
 
+-- The file scheme is one this host does serve, so a url naming it reads and
+-- writes the file it names rather than finding nothing. `read file://a.txt`
+-- and `read %a.txt` are the same read.
+--
+-- Where the path starts is the scheme's own business and it is written as a
+-- parse rule: up to the first colon, then at most two slashes, and what is
+-- left is the file. So `file:a.txt`, `file:/a.txt` and `file://a.txt` all
+-- name the same relative file, and a third slash is part of the path rather
+-- than part of the notation -- `file:///a.txt` names the file `%/a.txt` at
+-- the root. Reading the slashes as a fixed `://` gets the first two of those
+-- wrong and the last one off by a directory.
+rule AFileUrlNamesTheFileAfterAtMostTwoSlashes {
+    when: EvaluateCall(verb, target)
+    requires: verb in {read, write, delete, exists, open}
+    requires: names_the_file_or_directory_scheme(target)
+
+    ensures: the_file_reached() = what_follows(target,
+        the_colon_and_up_to_two_slashes_after_it())
+}
+
 -- The console port is the one that works. WRITE to it forms the data and
 -- puts it through the console, which is what makes the console reachable as
 -- a port rather than only through PRINT.
@@ -11059,6 +11079,42 @@ rule ImageWithNoRefinementAnswersUnset {
     when: EvaluateCall(image)
     requires: not the_call_asked_for_load_or_save()
     ensures: CallResult(value: unset)
+}
+
+-- === A path written the machine's way, and back ==========
+
+-- TO-REBOL-FILE reads a path the way the machine writes one and answers the
+-- file it names. Which means two things about separators, and neither of them
+-- depends on what this machine happens to use.
+--
+-- A backslash is a separator wherever it appears, so a Windows path converts
+-- on a machine that has never seen Windows: `to-rebol-file "\\rodan\docs"` is
+-- `%/rodan/docs` whatever is running it. Reading the machine's own separator
+-- and replacing only that is the plausible implementation and it is wrong on
+-- every platform but Windows, where it happens to agree.
+--
+-- And a run of separators is one separator. Two leading backslashes are what
+-- names a Windows network share, and they come out as the single leading
+-- slash that means "from the root" -- which is the whole of what the share
+-- notation converts to. A run in the middle collapses the same way, so
+-- `a//b` and `a/\b` are both `%a/b`.
+rule ASeparatorIsEitherSlashAndARunOfThemIsOne {
+    when: EvaluateCall(to_rebol_file, path)
+
+    ensures: CallResult(datatype: file)
+    ensures: the_separators_of(result) = one_slash_per_run_in(path)
+    ensures: the_rest_of(result) = the_rest_of(path)
+}
+
+-- The other direction writes the machine's separator, so on a machine whose
+-- separator is a slash a path goes out as it came in. The two are inverses
+-- only up to that collapsing: a path that arrived with a run of separators
+-- does not get it back.
+rule ToLocalFileWritesTheMachinesSeparator {
+    when: EvaluateCall(to_local_file, file)
+
+    ensures: CallResult(datatype: string)
+    ensures: the_separators_of(result) = the_separator_this_machine_uses()
 }
 
 -- === The environment a script reads and writes ============================

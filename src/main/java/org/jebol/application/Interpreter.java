@@ -109,8 +109,8 @@ public final class Interpreter {
         run("sys/make-scheme [title: \"TCP Networking\" name: 'tcp]");
         run("sys/make-scheme [title: \"DNS Lookup\" name: 'dns]");
         run("sys/make-scheme [title: \"GUI Events\" name: 'event]");
-        run("sys/make-scheme [title: \"File Access\" name: 'file]");
-        run("sys/make-scheme [title: \"File Directory Access\" name: 'dir]");
+        run(THE_FILE_SCHEME);
+        run(THE_DIRECTORY_SCHEME);
         run(THE_CHECKSUM_SCHEME);
         run(THE_CRYPT_SCHEME);
     }
@@ -147,6 +147,41 @@ public final class Interpreter {
                     set port/spec: copy system/standard/port-spec-checksum spec
                 ]
             ]""";
+
+    /**
+     * The file scheme, copied from {@code init-schemes} as it stands.
+     *
+     * <p>Its INIT is what makes a url another way of writing a path. The parse
+     * rule is where the path begins, and it is not the {@code ://} it looks
+     * like: up to the first colon, then at most two slashes, and the rest is
+     * the file. So {@code file:a.txt}, {@code file:/a.txt} and
+     * {@code file://a.txt} all name the same relative file, and a third slash
+     * is the start of an absolute path rather than part of the notation.
+     *
+     * <p>This used to be the title and the name and nothing else, so a port
+     * opened from a url had no path and every read of one said the file scheme
+     * was not served -- which was untrue, and said so about the one scheme
+     * this host has always served.
+     */
+    private static final String THE_FILE_SCHEME = """
+            sys/make-scheme [
+                title: {File Access}
+                name: 'file
+                info: system/standard/file-info
+                init: func [port /local path] [
+                    if url? port/spec/ref [
+                        parse port/spec/ref [thru #":" 0 2 slash path:]
+                        append port/spec compose [path: (to file! path)]
+                    ]
+                ]
+            ]""";
+
+    /** The directory scheme, which is the file scheme under another name. */
+    private static final String THE_DIRECTORY_SCHEME = """
+            sys/make-scheme/with [
+                title: {File Directory Access}
+                name: 'dir
+            ] 'file""";
 
     /**
      * The crypt scheme, copied from {@code init-schemes} as it stands.

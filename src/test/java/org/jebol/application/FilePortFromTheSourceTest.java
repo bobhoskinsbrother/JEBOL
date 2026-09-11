@@ -328,4 +328,102 @@ class FilePortFromTheSourceTest {
                     .isEqualTo("[#(true) #(false)]");
         }
     }
+
+    /**
+     * The file scheme is one this host serves, so a url naming it is another
+     * way of writing a path rather than a protocol nobody implemented.
+     *
+     * <p>Where the path begins is a parse rule in {@code sys-ports.reb} and
+     * not the {@code ://} it looks like:
+     * {@code parse port/spec/ref [thru #":" 0 2 slash path:]}. At most two
+     * slashes belong to the notation, so a third is the start of an absolute
+     * path, and none at all is allowed too. Every figure below was read off
+     * {@code ./r3-head} 3.22.5.
+     */
+    @Nested
+    @DisplayName("a file: url, which names a file and not a protocol")
+    class TheFileScheme {
+
+        @Test
+        @DisplayName("reading one reads the file the path would have")
+        void readingAFileUrl(@TempDir Path root) throws IOException {
+            Files.writeString(root.resolve("temp.txt"), "hello");
+
+            assertThat(answerTo(root, "read file://temp.txt"))
+                    .isEqualTo("#{68656C6C6F}");
+            assertThat(answerTo(root, "read/string file://temp.txt"))
+                    .isEqualTo("\"hello\"");
+        }
+
+        @Test
+        @DisplayName("an empty file reads as no bytes rather than failing")
+        void readingAnEmptyFileUrl(@TempDir Path root) throws IOException {
+            Files.writeString(root.resolve("temp.txt"), "");
+
+            assertThat(answerTo(root, "#{} = read file://temp.txt"))
+                    .as("Rebol's own file test asks exactly this, for issue 834")
+                    .isEqualTo("#(true)");
+        }
+
+        @Test
+        @DisplayName("none, one and two slashes all name the same relative file")
+        void theSlashesAreOptional(@TempDir Path root) throws IOException {
+            Files.writeString(root.resolve("temp.txt"), "hello");
+
+            assertThat(answerTo(root, "read file:temp.txt")).isEqualTo("#{68656C6C6F}");
+            assertThat(answerTo(root, "read file:/temp.txt")).isEqualTo("#{68656C6C6F}");
+            assertThat(answerTo(root, "read file://temp.txt")).isEqualTo("#{68656C6C6F}");
+        }
+
+        @Test
+        @DisplayName("and a third slash starts an absolute path")
+        void thethirdSlashIsPartOfThePath(@TempDir Path root) throws IOException {
+            Files.writeString(root.resolve("temp.txt"), "hello");
+
+            assertThat(answerTo(root, "read file:///temp.txt"))
+                    .as("the run's root is the sandbox root, so this one does reach it")
+                    .isEqualTo("#{68656C6C6F}");
+        }
+
+        @Test
+        @DisplayName("a file that is not there is cannot-open, as a path would be")
+        void amissingFileUrl(@TempDir Path root) {
+            assertThat(errorIdFrom(root, "read file://nope.txt")).isEqualTo("cannot-open");
+        }
+
+        @Test
+        @DisplayName("the port keeps the path it worked out beside the url it was given")
+        void theSpecCarriesBoth(@TempDir Path root) throws IOException {
+            Files.writeString(root.resolve("temp.txt"), "hello");
+
+            assertThat(answerTo(root, "p: open file://temp.txt  p/spec/path"))
+                    .isEqualTo("%temp.txt");
+            assertThat(answerTo(root, "p: open file://temp.txt  p/spec/ref"))
+                    .isEqualTo("file://temp.txt");
+        }
+
+        @Test
+        @DisplayName("writing, deleting and asking after one work the same way")
+        void theOtherVerbsReachItToo(@TempDir Path root) throws IOException {
+            assertThat(answerTo(root, """
+                    write file://w.txt "w"  read %w.txt"""))
+                    .isEqualTo("#{77}");
+            assertThat(answerTo(root, """
+                    write %e.txt "e"  exists? file://e.txt"""))
+                    .isEqualTo("file");
+
+            Files.writeString(root.resolve("gone.txt"), "x");
+            answerTo(root, "delete file://gone.txt");
+            assertThat(Files.exists(root.resolve("gone.txt"))).isFalse();
+        }
+
+        @Test
+        @DisplayName("and a dir: url lists the directory it names")
+        void adirectoryUrl(@TempDir Path root) throws IOException {
+            Files.createDirectories(root.resolve("sub"));
+            Files.writeString(root.resolve("sub/a.txt"), "x");
+
+            assertThat(answerTo(root, "read dir://sub/")).isEqualTo("[%a.txt]");
+        }
+    }
 }

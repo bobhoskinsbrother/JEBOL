@@ -17773,14 +17773,18 @@ public final class Natives {
                                         port, evaluator, arguments, refinements)
                                 : readFromPort(port, evaluator);
                     }
-                    if (routesToAScheme(arguments.getFirst())) {
+                    Optional<String> named =
+                            theFileNamedByAUrl(arguments.getFirst(), evaluator, context);
+                    if (named.isEmpty() && routesToAScheme(arguments.getFirst())) {
                         return readFromPort(
                                 portOpenedFor(arguments.getFirst(), evaluator, context),
                                 evaluator);
                     }
                     requireService(HostService.FILES);
                     return throughPort(() -> FileReading
-                            .asAskedFor(arguments, refinements)
+                            .asAskedForAt(named.orElseGet(() ->
+                                    ((StringValue) arguments.getFirst()).text()),
+                                    arguments, refinements)
                             .answerThrough(evaluator.files()));
                 });
 
@@ -17832,8 +17836,8 @@ public final class Natives {
         define("to-rebol-file", List.of(Parameter.required("path",
                         Set.of(Datatype.FILE, Datatype.STRING))),
                 (arguments, evaluator, context) -> StringValue.of(
-                        ((StringValue) arguments.getFirst()).text()
-                                .replace(localFileSeparator, '/'),
+                        oneSlashPerRunOfSeparators(
+                                ((StringValue) arguments.getFirst()).text()),
                         Datatype.FILE));
 
         define("call", List.of(
@@ -17970,12 +17974,19 @@ public final class Natives {
                     });
                 });
 
-        define("delete", List.of(Parameter.required("path", Set.of(Datatype.FILE))),
+        define("delete", List.of(Parameter.required("path",
+                        Set.of(Datatype.FILE, Datatype.URL))),
                 (arguments, evaluator, context) -> {
+                    Value target = arguments.getFirst();
+                    Optional<String> named = theFileNamedByAUrl(target, evaluator, context);
+                    if (named.isEmpty() && target.datatype() != Datatype.FILE) {
+                        throw schemeRefusal("deletes through", target);
+                    }
                     requireService(HostService.FILES);
+                    String path = named.orElseGet(() -> ((StringValue) target).text());
                     return throughPort(() -> {
-                        evaluator.files().delete(((StringValue) arguments.getFirst()).text());
-                        return arguments.getFirst();
+                        evaluator.files().delete(path);
+                        return target;
                     });
                 });
 
@@ -18304,14 +18315,15 @@ public final class Natives {
                                         SeekableFilePort.pathOf(openFile)),
                                 field));
                     }
-                    if (target instanceof PortValue || routesToAScheme(target)) {
+                    Optional<String> named = theFileNamedByAUrl(target, evaluator, context);
+                    if (named.isEmpty()
+                            && (target instanceof PortValue || routesToAScheme(target))) {
                         throw schemeRefusal("queries", target);
                     }
                     requireService(HostService.FILES);
+                    String path = named.orElseGet(() -> ((StringValue) target).text());
                     return throughPort(() -> queryAnswerFor(
-                            evaluator.files().informationAbout(
-                                    ((StringValue) target).text()),
-                            field));
+                            evaluator.files().informationAbout(path), field));
                 });
     }
 
@@ -19373,6 +19385,36 @@ public final class Natives {
     }
 
     /**
+     * A local path as REBOL writes one, from {@code To_REBOL_Path}.
+     *
+     * <p>Both characters are separators and neither test is guarded on the
+     * platform: {@code if (c == '\\' || c == '/')}. So a Windows path converts
+     * on a machine that has never seen Windows, which is the point of having
+     * the function -- the path came from somewhere else. Replacing only the
+     * separator this machine uses is the plausible implementation and it is
+     * wrong everywhere but Windows, where it happens to agree.
+     *
+     * <p>And a second separator in a row is dropped: {@code if (slash > 0)
+     * continue;}. That is what turns the two leading backslashes of a Windows
+     * share name into the one leading slash that means "from the root".
+     */
+    private static String oneSlashPerRunOfSeparators(String path) {
+        StringBuilder built = new StringBuilder(path.length());
+        boolean afterASeparator = false;
+        for (int at = 0; at < path.length(); at++) {
+            char letter = path.charAt(at);
+            if (letter != '/' && letter != '\\') {
+                built.append(letter);
+                afterASeparator = false;
+            } else if (!afterASeparator) {
+                built.append('/');
+                afterASeparator = true;
+            }
+        }
+        return built.toString();
+    }
+
+    /**
      * A REBOL path as the local system writes one, from {@code To_Local_Path}.
      *
      * <p>Two things happen whatever is asked for: the separator changes to the
@@ -19688,6 +19730,30 @@ public final class Natives {
             ChecksumPort.start(port, ChecksumPort.methodOf(port));
         }
         return port;
+    }
+
+    /**
+     * The file a target names, whether it was written as a path or as a url
+     * routed to the file scheme.
+     *
+     * <p>{@code file://a.txt} and {@code %a.txt} are the same file, and the
+     * scheme's own INIT is what says so: it works the path out of the url and
+     * leaves it in the port's spec. Opening the port is how the path is
+     * reached, because the rule lives in the scheme rather than here.
+     *
+     * <p>Empty for anything that routes somewhere else, so a caller can go on
+     * refusing what it was already refusing.
+     */
+    private Optional<String> theFileNamedByAUrl(
+            Value target, Evaluator evaluator, Context context) {
+
+        if (target.datatype() != Datatype.URL) {
+            return Optional.empty();
+        }
+        PortValue routed = portOpenedFor(target, evaluator, context);
+        return isAFilePort(routed)
+                ? Optional.of(SeekableFilePort.pathOf(routed))
+                : Optional.empty();
     }
 
     private static Raised schemeRefusal(String verbs, Value routed) {
@@ -20127,9 +20193,11 @@ public final class Natives {
 
         private static final List<String> ARGUMENT_ORDER = List.of("part", "seek");
 
-        static FileReading asAskedFor(List<Value> arguments, Set<String> refinements) {
+        static FileReading asAskedForAt(
+                String path, List<Value> arguments, Set<String> refinements) {
+
             return new FileReading(
-                    ((StringValue) arguments.getFirst()).text(),
+                    path,
                     numberFor("part", arguments, refinements),
                     refusingANegative(numberFor("seek", arguments, refinements)),
                     refinements.contains("string"),
