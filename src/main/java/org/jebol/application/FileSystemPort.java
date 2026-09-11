@@ -3,6 +3,7 @@ package org.jebol.application;
 import org.jebol.domain.eval.FileInformation;
 import org.jebol.domain.eval.FilePort;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -63,7 +64,7 @@ public final class FileSystemPort implements FilePort {
     @Override
     public String workingDirectory() {
         String inside = root.relativize(here).toString()
-                .replace(java.io.File.separatorChar, '/');
+                .replace(File.separatorChar, '/');
         return inside.isEmpty() ? "/" : "/" + inside + "/";
     }
 
@@ -168,7 +169,7 @@ public final class FileSystemPort implements FilePort {
             java.nio.file.Path real = within(path).toRealPath();
             java.nio.file.Path relative = root.toRealPath().relativize(real);
             return "/" + relative.toString().replace(
-                    java.io.File.separatorChar, '/');
+                    File.separatorChar, '/');
         } catch (java.io.IOException | Denied cannotBeResolved) {
             return null;
         }
