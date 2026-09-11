@@ -895,6 +895,64 @@ rule TranscodedSeriesStartAtHead {
 -- rule is the half that reads it back, and neither is worth having without
 -- the other.
 
+-- A construct naming text or bytes takes the value and at most a position,
+-- and nothing else at all. `#(string! "ab")`, `#(string! "ab" 2)` and no
+-- third shape: a third item, or a second one that is not a whole number, is
+-- a malconstruct. So `#(file! "ab" x)`, `#(string! "ab" 2 3)` and
+-- `#(string! "ab" 1.5)` all fail.
+--
+-- Refusing rather than reading what it can is the behaviour worth stating,
+-- because the alternative is quiet and plausible. Handing the whole lot to
+-- MAKE instead reads `#(string! "ab" 2 x)` as the string "ab2x" -- MAKE
+-- STRING! of a block joins what it is given -- and a mistyped construct
+-- comes back as a value nobody wrote.
+rule ATextConstructTakesTheValueAndAtMostAPosition {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+    requires: source_holds_construct(request.source_text)
+    requires: the_construct_names_text_or_bytes(request.source_text)
+    requires: not the_construct_holds_a_value_then_at_most_a_whole_number(
+        request.source_text)
+
+    ensures:
+        request.status = failed
+        request.failure = malconstruct
+}
+
+-- A block construct is looser and ignores what it cannot use, which is the
+-- same C written twice with one line missing: `MT_Block` checks the first
+-- item and reads the second if it is a whole number, and never looks at the
+-- rest. So `#(block! [1 2] 2 x)` is `[2]` and `#(block! [1 2] x)` is the
+-- whole block. The two families are not one rule and a reader that gives
+-- them one is wrong about whichever it copied from.
+rule ABlockConstructIgnoresWhatFollowsThePosition {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+    requires: source_holds_construct(request.source_text)
+    requires: the_construct_names_a_block_datatype(request.source_text)
+
+    ensures: the_series_read() = the_first_item_of_the_construct(request.source_text)
+    ensures: the_position_read() = the_position_named_by(
+        the_second_item_if_it_is_a_whole_number(request.source_text))
+}
+
+-- The position is clipped at both ends and never refused, and the bottom end
+-- is the surprising one. The C subtracts one from the number and then
+-- compares the result as a count rather than as a signed number, so nought
+-- and every negative number wrap round to something enormous and are clipped
+-- the same way a number past the end is. `#(string! "ab" 0)`,
+-- `#(string! "ab" -1)` and `#(string! "ab" 9)` are all the empty tail of
+-- "ab", where clamping at the head would make the first two the whole string.
+rule AConstructPositionOutsideTheSeriesLandsAtItsTail {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+    requires: source_names_a_position_in_a_construct(request.source_text)
+    requires: the_position_named(request.source_text) < 1
+        or the_position_named(request.source_text) > the_length_read() + 1
+
+    ensures: the_position_read() = the_length_read() + 1
+}
+
 -- A syntax failure produces a REBOL error! value, not a host-language
 -- exception. Errors are values in REBOL and callers can catch and inspect
 -- them, so the reader must hand back something the language can hold.
@@ -1433,6 +1491,8 @@ open question "A real R3 refuses % # $ \\ and a comma inside a word as well as a
 -- refinement worth having rather than being the only behaviour.
 
 open question "UnbalancedDelimitersAreOneIdWithTheTokenAndDelimiterAsArguments says the first argument carries the token kind, and the implementation writes the three spellings the C uses -- end-of-script, end-of-block, end-of-paren. Whether those exact words are behaviour a script may depend on, or a message detail free to change, is not settled. Rebol's own suite compares the second argument (the delimiter) directly and the money group compares an offending token's text directly, so at least some of these arguments are read; nothing yet shows the first argument being read. If it is behaviour, the three spellings belong in an enumeration here rather than as literals in the reader."
+
+open question "A malconstruct's first argument is the construct block itself in a real 3.22.5 -- `#(string! \"ab\" x)` gives `arg1: [string! \"ab\" x]`, a block! value -- and it is none here. Every other reader failure carries text: the argument pipeline from the reader to the error value is built out of strings, because a syntax failure's arguments are the token kind and the offending text. Carrying a block through it means threading a Value where a String goes, for one failure out of the whole reader. Nothing yet reads this argument -- Rebol's own suite asks only whether the load failed -- so the cost has not been paid. If a script is ever found reading it, the pipeline is what changes, not this one call site."
 
 open question "TranscodeRequest now carries both source_text and source, because the remainder a stepping read answers has to be the caller's own series advanced rather than a copy of its text. Two fields for one thing is a smell, and the honest alternative is to drop source_text and derive the text from the series. What stops that today is that every other rule in this module reads source_text and several measure lengths against it, so the change is wide. Which of the two is the real field?"
 

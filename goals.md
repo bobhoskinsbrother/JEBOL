@@ -1043,24 +1043,63 @@ not the problem — JEBOL lists all thirteen curves a real Rebol does, secp192r1
 through curve448 — so `ecdh/init` is not answering a key for at least one of
 them. `EllipticCurveKey.java` is the JEBOL side; the C is `n-crypt.c`.
 
-### 11. Sweepable files that run clean — 132 between them
+### 11. Sweepable files that run clean — 132 between them — 16 left, all blocked
 
-None of these stops, so every entry is a wrong answer and `scripts/sweep.py`
-will show it side by side with a real Rebol's. Small enough to take in one
-sitting each, and the cheapest work on the list per assertion:
+Worked on 11 and 12 September 2025. 116 of the 132 are gone: seven files are
+empty and the sixteen that remain are each behind something that is not a
+wrong answer, so `scripts/sweep.py` has nothing more to show on this goal.
 
-| file | entries | note |
-| --- | --- | --- |
-| `func-test.r3` | 29 | 15 "Other issues", 14 "OP!" |
-| `unicode-test.r3` | 21 | one stop: `repeat` refuses a `string!` count |
-| `time-test.r3` | 15 | all in "time" |
-| `map-test.r3` | 12 | 10 are "set operations with map!" |
-| `make-test.r3` | 10 | |
-| `file-test.r3` | 9 | one stop: `read file://temp.txt` — the `file://` URL scheme |
-| `thru-cache-test.r3` | 10 | |
-| `parse-test.r3` | 9 | "Other parse issues" |
-| `vector-test.r3` | 9 | |
-| `lexer-test.r3` | 8 | one is `NULLs inside loaded string`, which loads through a subprocess |
+| file | started | left | what is left |
+| --- | --- | --- | --- |
+| `func-test.r3` | 29 | 5 | relative binding, deliberately not done |
+| `unicode-test.r3` | 21 | 0 | |
+| `time-test.r3` | 15 | 0 | |
+| `map-test.r3` | 12 | 0 | |
+| `make-test.r3` | 10 | 0 | |
+| `file-test.r3` | 9 | 3 | `system/platform` naming the operating system |
+| `thru-cache-test.r3` | 10 | 10 | an HTTP client |
+| `parse-test.r3` | 9 | 0 | moved to `fails-on-rebol-too.txt` |
+| `vector-test.r3` | 9 | 1 | the new-line flag travelling with a value |
+| `lexer-test.r3` | 8 | 1 | `jebol file.r3`, which is goal 7a |
+
+**The opening sentence of this goal was wrong about two of the files, and the
+wrongness is the kind worth recording.** "None of these stops, so every entry
+is a wrong answer" was read off a sweep, and a sweep only shows what runs.
+`thru-cache-test.r3` is ten assertions behind one `if module? try [import
+'thru-cache]`, and the guard is false here, so nothing in it has ever run:
+the file needs `import` to resolve a module by name and then needs HTTPS to
+github and httpbin. Nine of `parse-test.r3`'s were behind a guard that a real
+3.22.5 fails too, and two of `file-test.r3`'s were the Windows arm of a
+platform switch on a Mac; all eleven are in `fails-on-rebol-too.txt` now with
+the `./r3-head` session that settles them.
+
+**What each of the four that remain is waiting on:**
+
+- **`thru-cache-test.r3`, ten.** `read http://` and `read https://` both
+  answer "nothing here serves the scheme", and the module the file imports is
+  fetched over the network by `import` when it is not already on disk. Both
+  halves are a subsystem rather than a fix, and the file's own assertions
+  reach raw.githubusercontent.com and httpbin.org, so making them run puts
+  the gate on the public internet. That needs a decision before it needs code.
+- **`file-test.r3`, three.** The issue-2538 group is guarded on `find [Linux
+  macOS] system/platform`, and `system/platform` is the word `JVM` here. It is
+  hard-coded in `Natives.java` with nothing recorded about why, and the choice
+  is real: a script branches on that word to pick a path separator or a shell
+  command, so answering `JVM` sends every such script down the wrong arm, and
+  answering `macOS` means the domain learning what machine it is on through a
+  host port it has not got. Undecided rather than unimplemented.
+- **`vector-test.r3`, one.** `#82` molds a block that was written across
+  several lines and expects the lines back. REBOL keeps the new-line flag in
+  the value's own header, so it travels whenever the value is copied -- which
+  is why REDUCE, COPY, APPEND, TO BLOCK! and REVERSE all keep it and a
+  computed result does not. JEBOL keeps the flags in a set of positions on the
+  storage, and only BIND and the library loader carry them across. Matching it
+  is a change to every value type, for one assertion.
+- **`lexer-test.r3`, one.** `#452` runs `system/options/boot` as a subprocess
+  with a script path. The launcher exists and starts a REPL that ignores the
+  path -- which is goal 7a's first bullet, `jebol file.reb` -- and the script
+  it would run reads a file, so it also needs the undecided answer to what the
+  command line grants (TODO.md, "the command-line REPL grants only ...").
 
 `power-test.r3` used to be a row here with eight entries, and working it would
 have made JEBOL disagree with the canonical reference. Goal 16 took them off: they are

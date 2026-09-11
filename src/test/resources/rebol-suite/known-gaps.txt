@@ -148,13 +148,6 @@ issue-test.r3 / to-hex / to-hex/size integer! #9
 issue-test.r3 / to-hex / to-hex/size tuple! #12
 issue-test.r3 / to-hex / to-hex/size tuple! #13
 issue-test.r3 / to-hex / to-hex/size tuple! #14
-lexer-test.r3 / Construction syntax / any-string! #327
-lexer-test.r3 / Construction syntax / any-string! #328
-lexer-test.r3 / Construction syntax / any-string! #329
-lexer-test.r3 / Construction syntax / any-string! #330
-lexer-test.r3 / Construction syntax / any-string! #331
-lexer-test.r3 / Construction syntax / any-string! #332
-lexer-test.r3 / Construction syntax / any-string! #333
 lexer-test.r3 / Special tests / NULLs inside loaded string #452
 module-test.r3 / make module / inlined module #13
 module-test.r3 / make module / inlined module #14

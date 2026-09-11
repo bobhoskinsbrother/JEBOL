@@ -824,6 +824,75 @@ public final class Transcoder {
             Datatype.HANDLE, Datatype.LIBRARY, Datatype.UTYPE);
 
     /**
+     * The datatypes {@code ANY_BINSTR} covers, which are the ones
+     * {@code MT_String} builds.
+     */
+    private static final java.util.Set<Datatype> READ_AS_TEXT_OR_BYTES =
+            java.util.Set.of(Datatype.STRING, Datatype.FILE, Datatype.URL,
+                    Datatype.EMAIL, Datatype.TAG, Datatype.REF, Datatype.BINARY);
+
+    /** The datatypes {@code MT_Block} builds. */
+    private static final java.util.Set<Datatype> READ_AS_A_BLOCK =
+            java.util.Set.of(Datatype.BLOCK, Datatype.PAREN, Datatype.PATH,
+                    Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
+                    Datatype.HASH);
+
+    /**
+     * A text or bytes construct, which takes the value and at most a position
+     * and refuses everything else.
+     *
+     * <p>{@code MT_String} says so in one condition before it builds anything:
+     * {@code if (!(ANY_BINSTR(data) && (IS_END(data+1) || (IS_INTEGER(data+1)
+     * && IS_END(data+2))))) return FALSE;}. A third item, or a second one that
+     * is not a whole number, is a malconstruct.
+     *
+     * <p>Reading what it can instead is quiet and plausible and wrong. MAKE
+     * STRING! of a block joins what it is given, so {@code #(string! "ab" 2 x)}
+     * came back here as the string "ab2x" and a mistyped construct became a
+     * value nobody wrote.
+     */
+    private Value textOrBytesStandingWhereItWasTold(
+            Datatype datatype, List<Value> contents) {
+
+        boolean shapeTheCAccepts = contents.size() == 1
+                || (contents.size() == 2 && contents.get(1) instanceof IntegerValue);
+        if (!shapeTheCAccepts) {
+            throw failure(SyntaxFailure.MALCONSTRUCT, null);
+        }
+        Value whole = builtFrom(datatype, List.of(contents.getFirst()));
+        return contents.size() == 1
+                ? whole
+                : standingWhereItWasTold(whole, contents.get(1));
+    }
+
+    /**
+     * A series moved to the position a construct named, clipped at both ends.
+     *
+     * <p>The bottom end is the surprising one. The C subtracts one and then
+     * compares the result as a count rather than as a signed number --
+     * {@code REBCNT i = Int32(data) - 1; if (i > VAL_TAIL(out)) i =
+     * VAL_TAIL(out);} -- so nought becomes minus one, wraps round to something
+     * enormous, and is clipped to the tail exactly as a number past the end
+     * is. Clamping at the head instead makes {@code #(string! "ab" 0)} the
+     * whole string where a real Rebol gives the empty tail.
+     *
+     * <p>A second item that is not a whole number names no position at all and
+     * leaves the series at its head, which is the block family's reading of it.
+     */
+    private Value standingWhereItWasTold(Value whole, Value position) {
+        if (!(whole instanceof SeriesValue series)) {
+            throw failure(SyntaxFailure.MALCONSTRUCT, null);
+        }
+        if (!(position instanceof IntegerValue at)) {
+            return series;
+        }
+        long tail = series.storageLength() + 1L;
+        long counted = at.magnitude() - 1;
+        return series.atIndex(
+                (int) (counted < 0 || counted > tail - 1 ? tail : counted + 1));
+    }
+
+    /**
      * A construct that carries contents, such as {@code #(decimal! 1)}.
      *
      * <p>What the reader can build itself is below; everything else goes to
@@ -841,15 +910,17 @@ public final class Transcoder {
                 && contents.get(1) instanceof BinaryValue octets) {
             return BitsetValue.of(bytesOf(octets)).complemented();
         }
-        if (contents.size() == 2 && contents.get(1) instanceof IntegerValue at
+        if (READ_AS_TEXT_OR_BYTES.contains(datatype) && contents.size() != 1) {
+            return textOrBytesStandingWhereItWasTold(datatype, contents);
+        }
+        if (READ_AS_A_BLOCK.contains(datatype) && contents.size() > 1) {
+            return standingWhereItWasTold(
+                    builtFrom(datatype, List.of(contents.getFirst())), contents.get(1));
+        }
+        if (contents.size() == 2 && contents.get(1) instanceof IntegerValue
                 && datatype.isSeries() && !alwaysReadsABlock(datatype)) {
-            Value whole = builtFrom(datatype, List.of(contents.getFirst()));
-            if (!(whole instanceof SeriesValue series)) {
-                throw failure(SyntaxFailure.MALCONSTRUCT, null);
-            }
-            long wanted = Math.max(1, Math.min(at.magnitude(),
-                    series.storageLength() + 1L));
-            return series.atIndex((int) wanted);
+            return standingWhereItWasTold(
+                    builtFrom(datatype, List.of(contents.getFirst())), contents.get(1));
         }
         if (datatype == Datatype.BITSET && contents.size() != 1) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
@@ -866,9 +937,11 @@ public final class Transcoder {
             case BITSET -> only instanceof BinaryValue octets
                     ? BitsetValue.of(bytesOf(octets))
                     : requireDatatype(only, Datatype.BITSET);
-            case STRING, FILE, URL, EMAIL, TAG, REF -> only instanceof StringValue text
-                    ? text.as(datatype)
-                    : requireDatatype(only, datatype);
+            case STRING, FILE, URL, EMAIL, TAG, REF -> switch (only) {
+                case StringValue text -> text.as(datatype);
+                case BinaryValue bytes -> madeByTheEvaluator(datatype, contents);
+                default -> requireDatatype(only, datatype);
+            };
             case BLOCK, PAREN, PATH, SET_PATH, GET_PATH, LIT_PATH, HASH ->
                     only instanceof BlockValue items
                             ? items.as(datatype)

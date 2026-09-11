@@ -68,11 +68,85 @@ class ConstructWithPositionTest {
     @DisplayName("a position past the tail clamps rather than failing")
     void aPositionPastTheEndClamps() {
         assertThat(answerTo("load {#(string! \"ab\" 9)}")).isEqualTo("\"\"");
+        assertThat(answerTo("load {#(string! \"ab\" 3)}")).isEqualTo("\"\"");
+        assertThat(answerTo("load {#(string! \"ab\" 2147483647)}")).isEqualTo("\"\"");
+    }
+
+    /**
+     * This said the head, which is the sensible answer and not the one a real
+     * 3.22.5 gives. {@code MT_String} subtracts one and then compares the
+     * result as a count rather than as a signed number -- {@code i = Int32(data)
+     * - 1; if (i > VAL_TAIL(out)) i = VAL_TAIL(out);} with {@code i} a
+     * {@code REBCNT} -- so nought becomes minus one, wraps round to something
+     * enormous, and is clipped the same way a number past the end is.
+     */
+    @Test
+    @DisplayName("and a position below the head clamps to the tail, not to the head")
+    void apositionBelowTheHeadClampsToTheTail() {
+        assertThat(answerTo("load {#(string! \"ab\" 0)}")).isEqualTo("\"\"");
+        assertThat(answerTo("load {#(string! \"ab\" -1)}")).isEqualTo("\"\"");
+        assertThat(answerTo("mold load {#(block! [1 2] 0)}")).isEqualTo("\"[]\"");
+    }
+
+    /**
+     * {@code MT_String} accepts two shapes and no others:
+     * {@code if (!(ANY_BINSTR(data) && (IS_END(data+1) || (IS_INTEGER(data+1)
+     * && IS_END(data+2))))) return FALSE;}. Anything else is a malconstruct
+     * before the value is built.
+     *
+     * <p>Reading what it can instead is quiet and plausible and wrong: MAKE
+     * STRING! of a block joins what it is given, so {@code #(string! "ab" 2 x)}
+     * came back here as the string "ab2x" and a mistyped construct became a
+     * value nobody wrote. Rebol's own lexer test asks for the refusal seven
+     * times, for issue 1034.
+     */
+    @Test
+    @DisplayName("a text construct takes the value and at most a position, nothing else")
+    void atextConstructTakesNothingElse() {
+        for (String refused : new String[] {
+            "#(string! {ab} x)",
+            "#(string! {ab} 2 x)",
+            "#(string! {ab} 2 3)",
+            "#(string! {ab} 1.5)",
+            "#(string! {ab} {c})",
+            "#(string! 2 {ab})",
+            "#(file! {ab} x)",
+            "#(file! {ab} 2 x)",
+            "#(tag! {ab} 2 x)",
+            "#(email! {ab} 2 x)",
+            "#(url! {ab} 2 x)",
+            "#(ref! {ab} 2 x)",
+            "#(binary! #{0102} 2 x)",
+        }) {
+            assertThat(errorIdFrom(refused)).as(refused).isEqualTo("malconstruct");
+        }
+    }
+
+    /**
+     * {@code MT_Block} is the same code with the shape check missing: it looks
+     * at the first item, reads the second if it is a whole number, and never
+     * looks at the rest. So the two families disagree and a reader that gives
+     * them one rule is wrong about whichever one it copied from.
+     */
+    @Test
+    @DisplayName("but a block construct ignores what follows the position")
+    void ablockConstructIgnoresTheRest() {
+        assertThat(answerTo("mold load {#(block! [1 2] 2 x)}")).isEqualTo("\"[2]\"");
+        assertThat(answerTo("mold load {#(block! [1 2] 2 3)}")).isEqualTo("\"[2]\"");
+        assertThat(answerTo("mold load {#(block! [1 2] x)}")).isEqualTo("\"[1 2]\"");
     }
 
     @Test
-    @DisplayName("a position below the head clamps to the head")
-    void aPositionBelowTheHeadClamps() {
-        assertThat(answerTo("load {#(string! \"ab\" 0)}")).isEqualTo("\"ab\"");
+    @DisplayName("and the text family still converts within itself")
+    void thetextFamilyConverts() {
+        assertThat(answerTo("mold load {#(binary! {ab})}")).isEqualTo("\"#{6162}\"");
+        assertThat(answerTo("load {#(string! #{6162})}")).isEqualTo("\"ab\"");
+        assertThat(answerTo("mold load {#(file! #{6162})}")).isEqualTo("\"%ab\"");
+        assertThat(errorIdFrom("#(string! [1 2])")).isEqualTo("malconstruct");
+    }
+
+    private static String errorIdFrom(String literal) {
+        return answerTo("e: try [load {" + literal + "}] "
+                + "either error? e [e/id] ['no-error]");
     }
 }
