@@ -1043,77 +1043,83 @@ not the problem — JEBOL lists all thirteen curves a real Rebol does, secp192r1
 through curve448 — so `ecdh/init` is not answering a key for at least one of
 them. `EllipticCurveKey.java` is the JEBOL side; the C is `n-crypt.c`.
 
-### 11. Sweepable files that run clean — 132 between them — 16 left, two blocked
+### 11. Sweepable files that run clean — 132 between them — 10 left, in one file
 
-Worked on 11 and 12 September 2026. 116 of the 132 are gone and eight of the
-ten files are empty. The sixteen that remain are all in two files, and neither
-is a wrong answer `scripts/sweep.py` can show.
+Worked on 11 and 12 September 2026. 122 of the 132 are gone and nine of the
+ten files are empty. What remains is `thru-cache-test.r3`, and it is a
+decision before it is code.
 
-| file | started | left | what is left |
-| --- | --- | --- | --- |
-| `func-test.r3` | 29 | 5 | relative binding; tried, priced, reverted |
-| `unicode-test.r3` | 21 | 0 | |
-| `time-test.r3` | 15 | 0 | |
-| `map-test.r3` | 12 | 0 | |
-| `make-test.r3` | 10 | 0 | |
-| `file-test.r3` | 9 | 0 | |
-| `thru-cache-test.r3` | 10 | 10 | an HTTP client, and a decision about the gate |
-| `parse-test.r3` | 9 | 0 | moved to `fails-on-rebol-too.txt` |
-| `vector-test.r3` | 9 | 0 | |
-| `lexer-test.r3` | 8 | 1 | a sandbox path handed to another process |
+| file | started | left |
+| --- | --- | --- |
+| `func-test.r3` | 29 | 0 |
+| `unicode-test.r3` | 21 | 0 |
+| `time-test.r3` | 15 | 0 |
+| `map-test.r3` | 12 | 0 |
+| `make-test.r3` | 10 | 0 |
+| `file-test.r3` | 9 | 0 |
+| `thru-cache-test.r3` | 10 | 10 |
+| `parse-test.r3` | 9 | 0 |
+| `vector-test.r3` | 9 | 0 |
+| `lexer-test.r3` | 8 | 0 |
 
 **The opening sentence of this goal was wrong about three of the files, and the
 wrongness is the kind worth recording.** "None of these stops, so every entry
 is a wrong answer" was read off a sweep, and a sweep only shows what runs.
-`thru-cache-test.r3` is ten assertions behind one `if module? try [import
-'thru-cache]`, and the guard is false here, so nothing in it has ever run.
-Nine of `parse-test.r3`'s were behind a guard a real 3.22.5 fails too, and two
-of `file-test.r3`'s were the Windows arm of a platform switch on a Mac; all
-eleven are in `fails-on-rebol-too.txt` now with the `./r3-head` session that
-settles them.
+Nine of `parse-test.r3`'s entries were behind a guard a real 3.22.5 fails too,
+and two of `file-test.r3`'s were the Windows arm of a platform switch on a Mac;
+all eleven are in `fails-on-rebol-too.txt` with the `./r3-head` session that
+settles them. The ten in `thru-cache-test.r3` are behind a guard that is false
+here, so none of them has ever run.
 
-**The two that are left.**
+### What is left, and the decision it needs
 
-- **`thru-cache-test.r3`, ten, and this one is a decision before it is code.**
-  `read http://` and `read https://` both answer "nothing here serves the
-  scheme", and the module the file imports is fetched over the network by
-  `import` when it is not already on disk. So it needs an HTTP client, which is
-  a subsystem rather than a fix. The part that is not mine to decide is what
-  comes after: the file's own assertions reach
-  `raw.githubusercontent.com` and `httpbin.org`, so making them pass puts
-  `./gradlew check` on the public internet. This repository's rule is that a
-  flake is a fail, and a gate that depends on two third-party services will
-  flake. Ask before building it.
+`thru-cache-test.r3` is ten assertions behind one line:
 
-  Worth knowing: vendoring the module without the HTTP client makes things
-  worse rather than better. The guard would go true, the ten assertions would
-  start running, and all ten would fail instead of never running.
+    if module? try [import 'thru-cache][ ... ]
 
-- **`lexer-test.r3`, one.** It runs a second interpreter and hands it a path.
-  `jebol file.r3` works now and matches a real 3.22.5 on every part of it, but
-  the path comes from `clean-path` inside the suite's rooted filesystem, and
-  outside that run it names nothing. Rooting is what stops a suite file writing
-  into the repository -- it had been doing so through CALL until this session
-  -- so neither side of that is wrong. What the assertion is about is tested on
-  its own in `ALongStringThroughTheReaderFromTheSourceTest`.
+`import 'thru-cache` fails here, so nothing inside has run. Making it pass
+needs two things, and the second is not a technical question.
 
-- **`func-test.r3`, five.** Relative binding. Tried on 12 September far enough
-  to price it rather than guess: the five pass under it and so do the ordinary
-  cases, and 513 others break. `known-gaps.txt` has the four subsystems that
-  each hold their own end of the binding model, which is what the work actually
-  consists of.
+**An HTTP client.** `read http://` and `read https://` both answer "nothing
+here serves the scheme", and the module the file imports is fetched over the
+network by `import` when it is not already on disk. That is a subsystem --
+connection, TLS, redirects, chunked bodies, the `read/binary/all` triple of
+code, headers and body, and the `http` and `https` schemes -- rather than a
+fix.
 
-**What the goal turned up that was not on it.** Four defects and a flake, each
-found by making a test run that had never run here:
+**And then the gate reaches the public internet.** The file's own assertions
+read `raw.githubusercontent.com` and `httpbin.org`. Seven of the ten work off
+the cache once the first three have filled it, but the first three cannot.
+This repository's rule is that a flake is a fail, and a gate that depends on
+two third-party services will flake -- so `./gradlew check` becomes a
+different kind of thing. **Ask before building it.**
+
+One trap worth naming: vendoring the module without the HTTP client makes
+things worse rather than better. The guard would go true, the ten assertions
+would start running, and all ten would fail instead of never running.
+
+### What the goal turned up that was not on it
+
+Nine defects and a flake, each found by making a test run that had never run
+here. None of them was on any list:
 
 - CALL started its children in the JVM's working directory, so a script
   confined to a temporary directory wrote outside it. Running the suite left a
   file called `a:0:0` in this repository.
+- An interpreter could start an unconfined copy of itself through
+  `system/options/boot`, which made the confinement a fiction.
 - SET wrote an absence without being asked, and where it did refuse it named
   SET rather than the target. CD depends on that refusal, so `cd ..` failed.
 - CHANGE did not spread a block into a block.
+- `Context.set` did not follow the frame a call had lent, so PARSE's
+  `copy word` wrote into the template rather than the call.
+- APPLY and the natives reached a function by a second path that kept its own
+  books on which frames were open.
+- COMPOSE/DEEP shared a nested path between two answers where the C copies it.
 - The reader read a construct's contents through the enclosing block's own
   loop, so the line feed before `#(none)` was spent inside the construct.
+- A script named on the command line was dropped without a word, and the
+  console opened instead.
 - And the two slowest Brotli levels had a five-second script deadline that
   measured the build's load rather than the encoder.
 
