@@ -191,13 +191,32 @@ gate green.
 
 ## The goals
 
-Sizes are the number of `known-gaps.txt` entries the goal is worth, and they
-account for every entry with nothing left over — goal 15 exists to close that
-sum and shows the arithmetic. Goal 4 is now 4a and 4b, split on whether the
-cipher is one the JVM already carries, so the arithmetic reads sixteen goals
-where it used to read fifteen. The list stands at **383** entries
-as this line is written; `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt`
-is the live answer and a size above that disagrees with it is stale.
+Sizes are the number of `known-gaps.txt` entries the goal is worth, and every
+entry belongs to exactly one goal. **Re-derived from the list on 11 September
+2026**, because the old figures had drifted: goal 11 was the worst at 135
+against a real 132, and goal 15 claimed 40 where the files it owns hold 31.
+Do not trust a size here that has not been re-derived since work landed —
+`grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt` is the live
+total and the table below is how it divides.
+
+    383   the whole list
+    ---
+    132   11. sweepable files that run clean
+     51    2. image
+     36    5. the file ports
+     34    6. the checksum port
+     31   15. the scattered singles and pairs
+     29    7. enbase and debase
+     27   10. the elliptic curves
+     17    9. modules and import
+     10    1. what is left of the codecs, which is not codecs
+      9   14. the pdf codec
+      7   12. Java exceptions escaping to the top
+
+Goals 3, 4a, 4b, 8, 13 and 16 to 21 are done and own nothing. To re-derive the
+table, count the list by file and read each goal for which files it names:
+
+    sed 's| /.*||' src/test/resources/rebol-suite/known-gaps.txt | sort | uniq -c | sort -rn
 
 **Whether a size is a floor or a ceiling is unsettled, and it matters.** This
 file used to say floor, reasoning that fixing a stop frees the assertions
@@ -491,7 +510,7 @@ whether the change worked.
 
 ---
 
-### 1. The remaining codecs — 109, now 13 and all of them goal 4a's
+### 1. The remaining codecs — 109, now 10, and they are not codecs
 
 `codecs-test.r3`. Was the largest single file, and it was not one problem but
 about eleven, each an `if find codecs 'name [...]` block that raised and took
@@ -513,17 +532,23 @@ a real 3.22.5 answers exactly what JEBOL answers, so they are on
 delayed module and the block's `if find codecs 'wav` guard has been false since
 the sound data stopped being a raw binary.
 
-What is left is **13 entries in the SAFE block, all of which now stop at
-`no-scheme: crypt`. They are blocked on goal 4a, the crypt port, and nothing
-else** — the SAFE codec asks for `chacha20` first and the JVM has it, so 4b is
-not in the way. Goal 1 has no work of its own remaining.
+**What is left is ten entries that are not codec work and should not be filed
+here.** The crypt port cleared four of the thirteen SAFE entries; the rest need
+SET-USER, `system/user/data` and a user's storage file — REBOL's own idea of a
+logged-in user with an encrypted store, which nothing in this file describes.
+They stay under goal 1 only because nobody has written the goal they belong to.
+
+One of the ten is worth a look before it is filed with the other nine.
+Assertion #222 answers false inside the suite while the same round trip is
+byte-identical to `./r3-head` when run on its own, so it may be a harness or
+ordering problem rather than a missing feature.
 
 Note that the group names in `known-gaps.txt` are wrong for this file — the
 slicer takes the last top-level `===start-group===`, and this file nests its
 groups inside the `if` blocks, so the entries all claim to be in "TEXT codec".
 They are not.
 
-### 2. Image, read and written — 55
+### 2. Image, read and written — 51
 
 `image-test.r3` runs to the end with no stops, so every one of these is a
 wrong answer and `scripts/sweep.py image-test.r3` will show them in pairs.
@@ -808,7 +833,7 @@ protocol differs is the header: two modes read it from the front of a write
 told apart by a length, and ChaCha20-Poly1305 takes a whole write and derives
 its nonce from it.
 
-### 5. What is left of the file ports — 38
+### 5. What is left of the file ports — 36
 
 `port-test.r3`. The file and directory schemes work now
 (`SeekableFilePort.java`); these are the remainder.
@@ -915,10 +940,11 @@ not the problem — JEBOL lists all thirteen curves a real Rebol does, secp192r1
 through curve448 — so `ecdh/init` is not answering a key for at least one of
 them. `EllipticCurveKey.java` is the JEBOL side; the C is `n-crypt.c`.
 
-### 11. Sweepable files that run clean — 135 between them
+### 11. Sweepable files that run clean — 132 between them
 
 None of these stops, so every entry is a wrong answer and `scripts/sweep.py`
-will show it. Small enough to take in one sitting each:
+will show it side by side with a real Rebol's. Small enough to take in one
+sitting each, and the cheapest work on the list per assertion:
 
 | file | entries | note |
 | --- | --- | --- |
@@ -927,7 +953,7 @@ will show it. Small enough to take in one sitting each:
 | `time-test.r3` | 15 | all in "time" |
 | `map-test.r3` | 12 | 10 are "set operations with map!" |
 | `make-test.r3` | 10 | |
-| `file-test.r3` | 12 | one stop: `read file://temp.txt` — the `file://` URL scheme |
+| `file-test.r3` | 9 | one stop: `read file://temp.txt` — the `file://` URL scheme |
 | `thru-cache-test.r3` | 10 | |
 | `parse-test.r3` | 9 | "Other parse issues" |
 | `vector-test.r3` | 9 | |
@@ -979,9 +1005,18 @@ bits happened to be.
 Either the PDF codec is doing something quadratic or it is looping. Worth
 finding out which before deciding what to do about it.
 
-### 15. The scattered singles and pairs — 40 across eighteen files
+### 15. The scattered singles and pairs — 31 across fourteen files
 
-What is left when the others above are taken out. The sum closes exactly
+What is left when the others above are taken out. Fourteen files:
+
+    6  date-test.r3          3  mold-test.r3         1  copy-test.r3
+    4  task-test.r3          2  bitset-test.r3       1  csv-test.r3
+    3  error-test.r3         2  gob-test.r3          1  datatype-test.r3
+    3  struct-test.r3        2  percent-test.r3      1  evaluation-test.r3
+                                                     1  bbcode-test.r3
+                                                     1  series-test.r3
+
+The sum closes exactly
 against the gap list as it stood when this was written, which is the point of
 the goal: 109 + 55 + 45 + 40 + 38 + 34 + 29 + 9 + 17 + 27 + 135 + 7 + 8 + 9
 = 562, leaving 40. If that no longer matches what
