@@ -2140,6 +2140,20 @@ rule ACipherPortNeedsAnAlgorithmThisBuildServes {
     ensures: CallFails(error: invalid_spec, about: the_specification_of(target))
 }
 
+-- A cipher and a mode are separate things, and every pairing of the two that
+-- the catalogue names works.
+--
+-- Which is the shape worth holding onto rather than an accident of how many
+-- happen to be written. A mode -- codebook, chaining, counting with a tag --
+-- knows nothing about its cipher beyond asking it to transform one block, so
+-- adding a cipher adds every mode with it. That is why Camellia arrived as
+-- twelve catalogue entries rather than one, and it is why a mode written for
+-- one cipher is never rewritten for the next.
+invariant EveryCipherWorksInEveryModeTheCatalogueNames {
+    for algorithm in host_cipher_algorithms():
+        a_cipher_port_opened_on(algorithm).transforms_and_transforms_back()
+}
+
 -- The same two questions are asked again when the port is *made*, which is
 -- earlier, and the answers name the thing that was wrong rather than the whole
 -- specification.

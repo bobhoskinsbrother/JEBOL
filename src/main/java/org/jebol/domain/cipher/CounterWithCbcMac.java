@@ -1,8 +1,5 @@
-package org.jebol.domain.eval;
+package org.jebol.domain.cipher;
 
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
-import java.security.GeneralSecurityException;
 import java.util.Arrays;
 
 /**
@@ -27,7 +24,7 @@ import java.util.Arrays;
  * fewer bytes to count with. That is the whole reason the nonce is seven to
  * thirteen and not any length.
  */
-final class CounterWithCbcMac {
+public final class CounterWithCbcMac {
 
     private CounterWithCbcMac() {
     }
@@ -45,12 +42,12 @@ final class CounterWithCbcMac {
      * so only the even lengths from four to sixteen have a spelling. An odd
      * length is not a shorter tag, it is no tag at all.
      */
-    static boolean canIssueATagOf(int octets) {
+    public static boolean canIssueATagOf(int octets) {
         return octets >= 4 && octets <= BLOCK && octets % 2 == 0;
     }
 
     /** What a run through the mode produced, or nothing where it could not. */
-    record Sealed(byte[] octets, boolean worked) {
+    public record Sealed(byte[] octets, boolean worked) {
 
         static Sealed nothing() {
             return new Sealed(new byte[0], false);
@@ -64,24 +61,19 @@ final class CounterWithCbcMac {
      * is counted through and nothing is authenticated, so the answer is the
      * cipher text alone.
      */
-    static Sealed enciphered(byte[] key, byte[] vector, int tagOctets,
+    public static Sealed enciphered(OneBlock cipher, byte[] vector, int tagOctets,
             byte[] header, byte[] message) {
 
         if (tagOctets != 0 && !canIssueATagOf(tagOctets)) {
             return Sealed.nothing();
         }
         byte[] nonce = nonceWithin(vector);
-        try {
-            Cipher block = theBlockCipher(key);
-            byte[] cipherText = maskedWithTheKeystream(block, nonce, message);
-            if (tagOctets == 0) {
-                return new Sealed(cipherText, true);
-            }
-            byte[] tag = theTag(block, nonce, tagOctets, header, message);
-            return new Sealed(joined(cipherText, tag), true);
-        } catch (GeneralSecurityException refused) {
-            return Sealed.nothing();
+        byte[] cipherText = maskedWithTheKeystream(cipher, nonce, message);
+        if (tagOctets == 0) {
+            return new Sealed(cipherText, true);
         }
+        byte[] tag = theTag(cipher, nonce, tagOctets, header, message);
+        return new Sealed(joined(cipherText, tag), true);
     }
 
     /**
@@ -93,7 +85,7 @@ final class CounterWithCbcMac {
      * text that was never vouched for: {@code mbedtls_ccm_compare_tags} fails
      * the whole call and the port is left with nothing to read.
      */
-    static Sealed deciphered(byte[] key, byte[] vector, int tagOctets,
+    public static Sealed deciphered(OneBlock cipher, byte[] vector, int tagOctets,
             byte[] header, byte[] sealedOctets) {
 
         if (tagOctets != 0 && !canIssueATagOf(tagOctets)) {
@@ -107,19 +99,14 @@ final class CounterWithCbcMac {
         byte[] tagWritten = Arrays.copyOfRange(
                 sealedOctets, sealedOctets.length - tagOctets, sealedOctets.length);
         byte[] nonce = nonceWithin(vector);
-        try {
-            Cipher block = theBlockCipher(key);
-            byte[] message = maskedWithTheKeystream(block, nonce, cipherText);
-            if (tagOctets == 0) {
-                return new Sealed(message, true);
-            }
-            byte[] tagComputed = theTag(block, nonce, tagOctets, header, message);
-            return theyAgree(tagWritten, tagComputed)
-                    ? new Sealed(message, true)
-                    : Sealed.nothing();
-        } catch (GeneralSecurityException refused) {
-            return Sealed.nothing();
+        byte[] message = maskedWithTheKeystream(cipher, nonce, cipherText);
+        if (tagOctets == 0) {
+            return new Sealed(message, true);
         }
+        byte[] tagComputed = theTag(cipher, nonce, tagOctets, header, message);
+        return theyAgree(tagWritten, tagComputed)
+                ? new Sealed(message, true)
+                : Sealed.nothing();
     }
 
     /**
@@ -138,14 +125,6 @@ final class CounterWithCbcMac {
             differences |= written[at] ^ computed[at];
         }
         return differences == 0;
-    }
-
-    private static Cipher theBlockCipher(byte[] key)
-            throws GeneralSecurityException {
-
-        Cipher block = Cipher.getInstance("AES/ECB/NoPadding");
-        block.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"));
-        return block;
     }
 
     /**
@@ -169,12 +148,11 @@ final class CounterWithCbcMac {
      * tag.
      */
     private static byte[] maskedWithTheKeystream(
-            Cipher block, byte[] nonce, byte[] message)
-            throws GeneralSecurityException {
+            OneBlock cipher, byte[] nonce, byte[] message) {
 
         byte[] masked = new byte[message.length];
         for (int at = 0; at < message.length; at += BLOCK) {
-            byte[] keystream = block.doFinal(
+            byte[] keystream = cipher.enciphered(
                     counterBlock(nonce, at / BLOCK + 1));
             for (int within = 0; within < BLOCK && at + within < message.length;
                     within++) {
@@ -206,17 +184,17 @@ final class CounterWithCbcMac {
      * The tag: a chained code over the lengths, the header and the message,
      * masked with the block at counter nought.
      */
-    private static byte[] theTag(Cipher block, byte[] nonce, int tagOctets,
-            byte[] header, byte[] message) throws GeneralSecurityException {
+    private static byte[] theTag(OneBlock cipher, byte[] nonce, int tagOctets,
+            byte[] header, byte[] message) {
 
-        byte[] chained = block.doFinal(
+        byte[] chained = cipher.enciphered(
                 theFirstBlock(nonce, tagOctets, header.length, message.length));
         if (header.length > 0) {
-            chained = chainedThrough(block, chained,
+            chained = chainedThrough(cipher, chained,
                     joined(theHeadersLengthWritten(header.length), header));
         }
-        chained = chainedThrough(block, chained, message);
-        byte[] maskedWith = block.doFinal(counterBlock(nonce, 0));
+        chained = chainedThrough(cipher, chained, message);
+        byte[] maskedWith = cipher.enciphered(counterBlock(nonce, 0));
         byte[] tag = new byte[tagOctets];
         for (int at = 0; at < tagOctets; at++) {
             tag[at] = (byte) (chained[at] ^ maskedWith[at]);
@@ -276,8 +254,8 @@ final class CounterWithCbcMac {
      * Runs octets through the chain, a block at a time, padding the last one
      * with noughts.
      */
-    private static byte[] chainedThrough(Cipher block, byte[] chained,
-            byte[] octets) throws GeneralSecurityException {
+    private static byte[] chainedThrough(OneBlock cipher, byte[] chained,
+            byte[] octets) {
 
         byte[] running = chained;
         for (int at = 0; at < octets.length; at += BLOCK) {
@@ -288,7 +266,7 @@ final class CounterWithCbcMac {
                         : 0;
                 combined[within] = (byte) (running[within] ^ next);
             }
-            running = block.doFinal(combined);
+            running = cipher.enciphered(combined);
         }
         return running;
     }

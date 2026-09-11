@@ -1,5 +1,10 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.cipher.BlockModes;
+import org.jebol.domain.cipher.Camellia;
+import org.jebol.domain.cipher.CounterWithCbcMac;
+import org.jebol.domain.cipher.CounterWithGalois;
+import org.jebol.domain.cipher.OneBlock;
 import org.jebol.domain.value.*;
 
 import javax.crypto.Cipher;
@@ -26,9 +31,9 @@ import java.util.Map;
  * again -- eight bytes through and back are those eight bytes followed by
  * eight noughts.
  *
- * <p>The fourteen ciphers here are the ones the JVM carries. REBOL's own
- * catalogue holds forty-two; Camellia, ARIA and counter-with-CBC-MAC are the
- * other twenty-eight and no JVM provider has them.
+ * <p>Twenty-nine ciphers of REBOL's forty-two. Eighteen are the JVM's own;
+ * counter with CBC-MAC and Camellia are written out here because no JVM
+ * provider carries either. ARIA is the rest, and nothing asks for it.
  */
 final class CryptPort {
 
@@ -47,8 +52,17 @@ final class CryptPort {
      * taken come back as sixteen.
      */
     private record Cipherworks(String transformation, String keyAlgorithm,
-            int keyOctets, int blockOctets, Mode mode) {
+            int keyOctets, int blockOctets, Mode mode, Family family) {
     }
+
+    /**
+     * Which block cipher a mode is driving, where the mode needs to know.
+     *
+     * <p>It needs to know in exactly one place: whether to ask the JVM for it
+     * or to reach for {@link Camellia}, which the JVM has not got. Everything
+     * past that point takes a {@link OneBlock} and cannot tell the two apart.
+     */
+    private enum Family { AES, CAMELLIA, OTHER }
 
     private enum Mode {
         CODEBOOK, CHAINED, COUNTER_WITH_GALOIS, COUNTER_WITH_CBC_MAC, STREAM
@@ -62,39 +76,92 @@ final class CryptPort {
 
     private static final Map<String, Cipherworks> SERVED = Map.ofEntries(
             Map.entry("aes-128-ecb", new Cipherworks(
-                    "AES/ECB/NoPadding", "AES", 16, 16, Mode.CODEBOOK)),
+                    "AES/ECB/NoPadding", "AES", 16, 16,
+                    Mode.CODEBOOK, Family.AES)),
             Map.entry("aes-192-ecb", new Cipherworks(
-                    "AES/ECB/NoPadding", "AES", 24, 16, Mode.CODEBOOK)),
+                    "AES/ECB/NoPadding", "AES", 24, 16,
+                    Mode.CODEBOOK, Family.AES)),
             Map.entry("aes-256-ecb", new Cipherworks(
-                    "AES/ECB/NoPadding", "AES", 32, 16, Mode.CODEBOOK)),
+                    "AES/ECB/NoPadding", "AES", 32, 16,
+                    Mode.CODEBOOK, Family.AES)),
             Map.entry("aes-128-cbc", new Cipherworks(
-                    "AES/CBC/NoPadding", "AES", 16, 16, Mode.CHAINED)),
+                    "AES/CBC/NoPadding", "AES", 16, 16,
+                    Mode.CHAINED, Family.AES)),
             Map.entry("aes-192-cbc", new Cipherworks(
-                    "AES/CBC/NoPadding", "AES", 24, 16, Mode.CHAINED)),
+                    "AES/CBC/NoPadding", "AES", 24, 16,
+                    Mode.CHAINED, Family.AES)),
             Map.entry("aes-256-cbc", new Cipherworks(
-                    "AES/CBC/NoPadding", "AES", 32, 16, Mode.CHAINED)),
+                    "AES/CBC/NoPadding", "AES", 32, 16,
+                    Mode.CHAINED, Family.AES)),
             Map.entry("aes-128-ccm", new Cipherworks(
-                    "AES/ECB/NoPadding", "AES", 16, 0, Mode.COUNTER_WITH_CBC_MAC)),
+                    "AES/ECB/NoPadding", "AES", 16, 0,
+                    Mode.COUNTER_WITH_CBC_MAC, Family.AES)),
             Map.entry("aes-192-ccm", new Cipherworks(
-                    "AES/ECB/NoPadding", "AES", 24, 0, Mode.COUNTER_WITH_CBC_MAC)),
+                    "AES/ECB/NoPadding", "AES", 24, 0,
+                    Mode.COUNTER_WITH_CBC_MAC, Family.AES)),
             Map.entry("aes-256-ccm", new Cipherworks(
-                    "AES/ECB/NoPadding", "AES", 32, 0, Mode.COUNTER_WITH_CBC_MAC)),
+                    "AES/ECB/NoPadding", "AES", 32, 0,
+                    Mode.COUNTER_WITH_CBC_MAC, Family.AES)),
             Map.entry("aes-128-gcm", new Cipherworks(
-                    "AES/GCM/NoPadding", "AES", 16, 0, Mode.COUNTER_WITH_GALOIS)),
+                    "AES/GCM/NoPadding", "AES", 16, 0,
+                    Mode.COUNTER_WITH_GALOIS, Family.AES)),
             Map.entry("aes-192-gcm", new Cipherworks(
-                    "AES/GCM/NoPadding", "AES", 24, 0, Mode.COUNTER_WITH_GALOIS)),
+                    "AES/GCM/NoPadding", "AES", 24, 0,
+                    Mode.COUNTER_WITH_GALOIS, Family.AES)),
             Map.entry("aes-256-gcm", new Cipherworks(
-                    "AES/GCM/NoPadding", "AES", 32, 0, Mode.COUNTER_WITH_GALOIS)),
+                    "AES/GCM/NoPadding", "AES", 32, 0,
+                    Mode.COUNTER_WITH_GALOIS, Family.AES)),
+            Map.entry("camellia-128-ecb", new Cipherworks(
+                    "", "", 16, 16,
+                    Mode.CODEBOOK, Family.CAMELLIA)),
+            Map.entry("camellia-192-ecb", new Cipherworks(
+                    "", "", 24, 16,
+                    Mode.CODEBOOK, Family.CAMELLIA)),
+            Map.entry("camellia-256-ecb", new Cipherworks(
+                    "", "", 32, 16,
+                    Mode.CODEBOOK, Family.CAMELLIA)),
+            Map.entry("camellia-128-cbc", new Cipherworks(
+                    "", "", 16, 16,
+                    Mode.CHAINED, Family.CAMELLIA)),
+            Map.entry("camellia-192-cbc", new Cipherworks(
+                    "", "", 24, 16,
+                    Mode.CHAINED, Family.CAMELLIA)),
+            Map.entry("camellia-256-cbc", new Cipherworks(
+                    "", "", 32, 16,
+                    Mode.CHAINED, Family.CAMELLIA)),
+            Map.entry("camellia-128-ccm", new Cipherworks(
+                    "", "", 16, 0,
+                    Mode.COUNTER_WITH_CBC_MAC, Family.CAMELLIA)),
+            Map.entry("camellia-192-ccm", new Cipherworks(
+                    "", "", 24, 0,
+                    Mode.COUNTER_WITH_CBC_MAC, Family.CAMELLIA)),
+            Map.entry("camellia-256-ccm", new Cipherworks(
+                    "", "", 32, 0,
+                    Mode.COUNTER_WITH_CBC_MAC, Family.CAMELLIA)),
+            Map.entry("camellia-128-gcm", new Cipherworks(
+                    "", "", 16, 0,
+                    Mode.COUNTER_WITH_GALOIS, Family.CAMELLIA)),
+            Map.entry("camellia-192-gcm", new Cipherworks(
+                    "", "", 24, 0,
+                    Mode.COUNTER_WITH_GALOIS, Family.CAMELLIA)),
+            Map.entry("camellia-256-gcm", new Cipherworks(
+                    "", "", 32, 0,
+                    Mode.COUNTER_WITH_GALOIS, Family.CAMELLIA)),
             Map.entry("chacha20", new Cipherworks(
-                    "ChaCha20", "ChaCha20", 32, 16, Mode.STREAM)),
+                    "ChaCha20", "ChaCha20", 32, 16,
+                    Mode.STREAM, Family.OTHER)),
             Map.entry("des_ecb", new Cipherworks(
-                    "DES/ECB/NoPadding", "DES", 8, 8, Mode.CODEBOOK)),
+                    "DES/ECB/NoPadding", "DES", 8, 8,
+                    Mode.CODEBOOK, Family.OTHER)),
             Map.entry("des3_ecb", new Cipherworks(
-                    "DESede/ECB/NoPadding", "DESede", 24, 8, Mode.CODEBOOK)),
+                    "DESede/ECB/NoPadding", "DESede", 24, 8,
+                    Mode.CODEBOOK, Family.OTHER)),
             Map.entry("des_cbc", new Cipherworks(
-                    "DES/CBC/NoPadding", "DES", 8, 8, Mode.CHAINED)),
+                    "DES/CBC/NoPadding", "DES", 8, 8,
+                    Mode.CHAINED, Family.OTHER)),
             Map.entry("des3_cbc", new Cipherworks(
-                    "DESede/CBC/NoPadding", "DESede", 24, 8, Mode.CHAINED)));
+                    "DESede/CBC/NoPadding", "DESede", 24, 8,
+                    Mode.CHAINED, Family.OTHER)));
 
     /**
      * The catalogue, in the order a real 3.22.5 lists the same names.
@@ -108,6 +175,10 @@ final class CryptPort {
             "aes-128-cbc", "aes-192-cbc", "aes-256-cbc",
             "aes-128-ccm", "aes-192-ccm", "aes-256-ccm",
             "aes-128-gcm", "aes-192-gcm", "aes-256-gcm",
+            "camellia-128-ecb", "camellia-192-ecb", "camellia-256-ecb",
+            "camellia-128-cbc", "camellia-192-cbc", "camellia-256-cbc",
+            "camellia-128-ccm", "camellia-192-ccm", "camellia-256-ccm",
+            "camellia-128-gcm", "camellia-192-gcm", "camellia-256-gcm",
             "chacha20", "des_ecb", "des3_ecb", "des_cbc", "des3_cbc");
 
     static List<Value> catalogue() {
@@ -157,6 +228,15 @@ final class CryptPort {
         private byte[] authenticated = new byte[0];
         private byte[] gatheredForGalois = new byte[0];
         private int handedOut;
+
+        /**
+         * The block the next chained block is combined with.
+         *
+         * <p>Kept here for a cipher written out by hand, where the JVM's own
+         * cipher object would have kept it out of sight. Either way it has to
+         * carry between writes, which is what makes chaining chaining.
+         */
+        private byte[] chaining = new byte[0];
 
         /**
          * Whether the bytes to authenticate have been taken.
@@ -448,12 +528,45 @@ final class CryptPort {
         if (works.mode() == Mode.COUNTER_WITH_CBC_MAC) {
             return;
         }
+        if (works.family() == Family.CAMELLIA) {
+            working.chaining = fittedTo(working.vector, Camellia.BLOCK);
+            return;
+        }
         working.running = cipherFor(working, works.mode() == Mode.CHAINED
                 || works.mode() == Mode.STREAM);
     }
 
     /**
-     * A JVM cipher set up the way the port was told to.
+     * The block cipher a mode should drive, whichever family it belongs to.
+     *
+     * <p>The one place the difference between a cipher the JVM has and one
+     * written out here is visible. Everything past this takes a
+     * {@link OneBlock} and cannot tell them apart, which is why Camellia
+     * arrived as twelve catalogue entries without a mode being rewritten.
+     *
+     * <p>A mode that only ever enciphers -- counting, and the tag in either
+     * authenticated mode -- asks for the enciphering direction whatever the
+     * port was told, because counting is its own inverse.
+     */
+    private static OneBlock theBlockCipherBehind(
+            Working working, boolean undoing) {
+
+        Cipherworks works = working.works();
+        byte[] key = fittedTo(working.key, works.keyOctets());
+        if (works.family() == Family.CAMELLIA) {
+            return Camellia.under(key, undoing);
+        }
+        try {
+            return OneBlock.jvmAes(key);
+        } catch (GeneralSecurityException refused) {
+            throw Raised.of(EvaluationFailure.INVALID_SPEC,
+                    WordValue.of(working.algorithm));
+        }
+    }
+
+    /**
+     * A JVM cipher set up the way the port was told to, for the modes the JVM
+     * runs whole rather than a block at a time.
      *
      * <p>ChaCha20 is the one that reads its parameters oddly: the counter is
      * the four bytes after the twelve byte nonce, most significant first, so
@@ -495,8 +608,29 @@ final class CryptPort {
     }
 
     private static byte[] transformed(Working working, byte[] octets) {
+        if (working.works().family() == Family.CAMELLIA) {
+            return throughCamellia(working, octets);
+        }
         byte[] answered = working.running.update(octets);
         return answered == null ? new byte[0] : answered;
+    }
+
+    /**
+     * Camellia in the two plain modes, which the JVM will not run for a cipher
+     * it has never heard of.
+     *
+     * <p>The chaining vector lives on the port rather than inside a JVM cipher
+     * object, so it carries from one write to the next exactly as the JVM's
+     * own would.
+     */
+    private static byte[] throughCamellia(Working working, byte[] octets) {
+        OneBlock cipher = theBlockCipherBehind(working, working.decrypting);
+        if (working.works().mode() == Mode.CODEBOOK) {
+            return BlockModes.codebook(cipher, octets);
+        }
+        return working.decrypting
+                ? BlockModes.chainingBackwards(cipher, working.chaining, octets)
+                : BlockModes.chainingForwards(cipher, working.chaining, octets);
     }
 
     /**
@@ -537,13 +671,12 @@ final class CryptPort {
      * instead of plain text nobody vouched for.
      */
     private static void throughCounterWithCbcMac(Working working) {
-        Cipherworks works = working.works();
-        byte[] key = fittedTo(working.key, works.keyOctets());
+        OneBlock cipher = theBlockCipherBehind(working, false);
         CounterWithCbcMac.Sealed answer = working.decrypting
-                ? CounterWithCbcMac.deciphered(key, working.vector,
+                ? CounterWithCbcMac.deciphered(cipher, working.vector,
                         working.tagOctets, working.authenticated,
                         working.gatheredForGalois)
-                : CounterWithCbcMac.enciphered(key, working.vector,
+                : CounterWithCbcMac.enciphered(cipher, working.vector,
                         working.tagOctets, working.authenticated,
                         working.gatheredForGalois);
         if (!answer.worked()) {
@@ -600,7 +733,7 @@ final class CryptPort {
     private static final int NO_TAG_AT_ALL = 0;
 
     private static boolean aTagOfThatLengthCanBeIssued(int wanted) {
-        return wanted >= SHORTEST_TAG && wanted <= A_WHOLE_TAG;
+        return wanted >= SHORTEST_TAG && wanted <= CounterWithGalois.WHOLE_TAG;
     }
 
     /**
@@ -624,78 +757,31 @@ final class CryptPort {
 
     /** What READ answers: the transformed bytes, without the tag. */
     private static byte[] theCipherText(Working working) {
-        return working.decrypting
-                ? thePlainTextBehind(working)
-                : withoutItsTag(galoisOver(working, working.gatheredForGalois, true));
+        return theGaloisAnswer(working).octets();
     }
 
     /** What TAKE answers after READ: the tag, cut to the length asked for. */
     private static byte[] theWholeTag(Working working) {
-        byte[] plain = working.decrypting
-                ? thePlainTextBehind(working)
-                : working.gatheredForGalois;
-        byte[] both = galoisOver(working, plain, true);
-        return Arrays.copyOfRange(both, both.length - A_WHOLE_TAG, both.length);
+        return theGaloisAnswer(working).tag();
     }
 
     /**
-     * The plain text under a cipher text, recovered without letting the JVM
-     * check the tag.
+     * One run of counting with Galois over everything gathered so far.
      *
-     * <p>The JVM will not hand a tag back while decrypting -- it compares the
-     * tag itself and throws when it disagrees -- and this port hands the tag
-     * to the caller to compare instead. Counter mode is its own inverse, so
-     * enciphering the cipher text runs the same key stream over it and gives
-     * the plain text back. The tag that comes with it is over the wrong bytes
-     * and is thrown away; the one the caller is owed is computed from the
-     * plain text afterwards.
+     * <p>Written out in {@link CounterWithGalois} rather than asked of the
+     * JVM, for two reasons. The JVM has the mode for AES and not for Camellia,
+     * and it checks the tag itself while deciphering and will not hand one
+     * back -- where this port hands the tag to the caller to compare. Doing it
+     * here serves both ciphers and drops the two-pass trick the JVM's shape
+     * forced.
      */
-    private static byte[] thePlainTextBehind(Working working) {
-        return withoutItsTag(
-                galoisOver(working, working.gatheredForGalois, false));
+    private static CounterWithGalois.Sealed theGaloisAnswer(Working working) {
+        return CounterWithGalois.through(
+                theBlockCipherBehind(working, false), working.vector,
+                working.authenticated, working.gatheredForGalois,
+                working.decrypting);
     }
 
-    private static byte[] withoutItsTag(byte[] both) {
-        return Arrays.copyOf(both, both.length - A_WHOLE_TAG);
-    }
-
-    /**
-     * How long a tag the JVM's own Galois mode will issue.
-     *
-     * <p>Always sixteen bytes, because its parameter object refuses anything
-     * below twelve and REBOL's callers ask for four. A shorter tag is the
-     * first bytes of the whole one, so computing the whole one and cutting it
-     * down answers every length a caller can ask for.
-     */
-    private static final int A_WHOLE_TAG = 16;
-
-    private static byte[] galoisOver(
-            Working working, byte[] octets, boolean authenticating) {
-
-        Cipherworks works = working.works();
-        try {
-            Cipher cipher = Cipher.getInstance(works.transformation());
-            cipher.init(Cipher.ENCRYPT_MODE,
-                    new SecretKeySpec(fittedTo(working.key, works.keyOctets()),
-                            works.keyAlgorithm()),
-                    new GCMParameterSpec(A_WHOLE_TAG * Byte.SIZE, working.vector));
-            if (authenticating && working.authenticated.length > 0) {
-                cipher.updateAAD(working.authenticated);
-            }
-            return cipher.doFinal(octets);
-        } catch (GeneralSecurityException refused) {
-            throw Raised.of(EvaluationFailure.INVALID_SPEC,
-                    WordValue.of(working.algorithm));
-        }
-    }
-
-    /**
-     * A key or a vector at exactly the length the cipher wants: noughts added
-     * where it is short, and the rest dropped where it is long.
-     *
-     * <p>Neither is refused, which is what {@code init_crypt_key} does --
-     * clear the whole field, then copy in as much as fits.
-     */
     private static byte[] fittedTo(byte[] given, int wanted) {
         return Arrays.copyOf(given, wanted);
     }

@@ -9,11 +9,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * The ciphers a cipher port serves, each against a published vector.
  *
  * <p>{@code Crypt_Init} and {@code Crypt_Crypt} in {@code p-crypt.c}. This
- * build serves the fourteen the JVM carries: AES in three key widths across
- * electronic codebook, cipher block chaining and Galois counter mode, then
- * ChaCha20 and four spellings of DES. REBOL's own catalogue holds forty-two,
- * and the missing twenty-eight are Camellia, ARIA and counter-with-CBC-MAC,
- * none of which the JVM has and all of which are goal 4b.
+ * build serves twenty-nine of the forty-two REBOL's own catalogue holds. AES,
+ * ChaCha20 and four spellings of DES come from the JVM; counter with CBC-MAC
+ * and Camellia are written out, because no JVM provider carries either. ARIA
+ * is the thirteen that are missing, and nothing asks for it.
  *
  * <p>A name in {@code system/catalog/ciphers} is a promise a script reads
  * before it chooses, so the catalogue holds what this port really serves and
@@ -68,8 +67,12 @@ class CryptPortAlgorithmsFromTheSourceTest {
         assertThat(answerTo("mold/flat system/catalog/ciphers")).isEqualTo("""
                 {[aes-128-ecb aes-192-ecb aes-256-ecb aes-128-cbc aes-192-cbc \
                 aes-256-cbc aes-128-ccm aes-192-ccm aes-256-ccm \
-                aes-128-gcm aes-192-gcm aes-256-gcm chacha20 \
-                des_ecb des3_ecb des_cbc des3_cbc]}""");
+                aes-128-gcm aes-192-gcm aes-256-gcm \
+                camellia-128-ecb camellia-192-ecb camellia-256-ecb \
+                camellia-128-cbc camellia-192-cbc camellia-256-cbc \
+                camellia-128-ccm camellia-192-ccm camellia-256-ccm \
+                camellia-128-gcm camellia-192-gcm camellia-256-gcm \
+                chacha20 des_ecb des3_ecb des_cbc des3_cbc]}""");
         assertThat(answerTo("""
                 every-one-opens: true
                 foreach named system/catalog/ciphers [
@@ -114,7 +117,8 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     /**
      * The invariant the spec states over every cipher in the catalogue, walked
-     * rather than sampled: one message through each of the fourteen and back.
+     * rather than sampled: one message through each of the twenty-nine and
+     * back.
      *
      * <p>Sixteen bytes on purpose. It is a whole number of blocks for the
      * eight byte ciphers and the sixteen byte ones alike, so nothing is padded
@@ -145,7 +149,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     /**
      * And the bytes in between are a real 3.22.5's bytes, not merely ones this
-     * port agrees with itself about. All fourteen were compared against
+     * port agrees with itself about. All twenty-nine were compared against
      * {@code ./r3-head} under the same key and vector.
      */
     @Test
@@ -166,11 +170,17 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 "E0A8F50EC76A04D5A96A175AA870EF63" "AA061FD394A67EAA4A88F12851E5C324" \
                 "72B543B75FF6D542B05B6E61C809BA2D" "3225DA78CABFF85445AD4030B03EC0F3" \
                 "132B32AF1069BD5B1DAAB020A7534E3C" "6A916607CD6A0894CEF26120A0A91DB9" \
-                "713C386454B0C9EE7A508C441FF647C1" \
-                "F564FDD8D4BD3334450A156219775678" "04B9EEE104E50ABD4CCD0452CD726D68" \
-                "D0112CE3234FCAAD35588AA9B22EE0B7" "1A4E8E57D67F11A342CE26E09D4643F9" \
-                "7D137E0C6D62961C761D7681A7FEBF3E" "53B9D08B5D6920D0197C8F4A4A24EADE" \
-                "B42A4FD9CCE368FA8056006CAB43FD42" "D281EE596286E734621AB658E489B9F5"]""");
+                "713C386454B0C9EE7A508C441FF647C1" "F564FDD8D4BD3334450A156219775678" \
+                "04B9EEE104E50ABD4CCD0452CD726D68" "D0112CE3234FCAAD35588AA9B22EE0B7" \
+                "C25A3B717B03A5AD10FFA2EAD77CC0A7" "19D1888B53D612C38E795158E3FC1B11" \
+                "749F3696F3AAD3C89ECEC548015F6B68" "4BCE2AB9FCC991B24BCA0E5E02F5A28B" \
+                "7C0DEBB298FB5054CBFAF40D1321A4B8" "9AC80C9B6327573183277FAE27DCE33F" \
+                "37C140C3F7382E25F7D50B8C9882EE49" "CF3DD51C019D90BCBD4A92224CE2D1DD" \
+                "1AAEB76095519FE132D5E625E2E40919" "DBCA6BB633A1E8FE0F974DF85B803893" \
+                "14FD9BDD0561F9FCBF84AAB5D4ADC5F0" "AFB8D5A6C4CCC646325BA0B1CEADDA39" \
+                "1A4E8E57D67F11A342CE26E09D4643F9" "7D137E0C6D62961C761D7681A7FEBF3E" \
+                "53B9D08B5D6920D0197C8F4A4A24EADE" "B42A4FD9CCE368FA8056006CAB43FD42" \
+                "D281EE596286E734621AB658E489B9F5"]""");
     }
 
     @Test
