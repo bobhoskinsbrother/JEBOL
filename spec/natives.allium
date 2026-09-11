@@ -2150,9 +2150,11 @@ rule ACipherPortNeedsAnAlgorithmThisBuildServes {
 -- twelve catalogue entries rather than one, and it is why a mode written for
 -- one cipher is never rewritten for the next.
 invariant EveryCipherWorksInEveryModeTheCatalogueNames {
-    for algorithm in host_cipher_algorithms():
+    for algorithm in host_cipher_algorithms() where it_needs_no_header:
         a_cipher_port_opened_on(algorithm).transforms_and_transforms_back()
 }
+
+open question "The invariant above excludes the one cipher that takes a header as a whole write of its own, because writing a message to it without one makes the message the header and nothing comes out. A real 3.22.5 does the same -- a walk over its own catalogue raises feature-na on that cipher. Is a port that silently eats a message worth matching, or is REBOL's behaviour here a defect nobody has reported?"
 
 -- The same two questions are asked again when the port is *made*, which is
 -- earlier, and the answers name the thing that was wrong rather than the whole
@@ -2401,6 +2403,47 @@ rule OpeningAnOpenCipherPortIsRefused {
 --
 -- Both arrive through the same WRITE, told apart by a length set beforehand.
 -- Reading answers the enciphered part; taking answers the tag after it.
+-- One authenticated cipher takes its header as a whole write of its own
+-- rather than from the front of one, and derives its nonce from that header
+-- into the bargain.
+--
+-- ChaCha20-Poly1305 is the one, and the shape is TLS's rather than the
+-- cipher's. In TLS the header begins with a record's sequence number, and the
+-- nonce for that record is the connection's fixed vector with the sequence
+-- number folded into its tail -- so no two records under one key are ever
+-- counted the same way. REBOL wires the port up to do exactly that, which is
+-- why the first write does two jobs at once.
+--
+-- Only the first eight bytes reach the nonce, and they are folded into its
+-- last eight. So a header of eight and a header of nine derive the same nonce
+-- and give the same cipher text, and differ only in the tag -- which covers
+-- the whole header however long it is.
+rule TheChaChaCipherTakesItsHeaderAsAWholeWrite {
+    when: EvaluateCall(write, target, octets)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_is_chacha_with_poly1305()
+    requires: no_header_has_been_written_yet()
+
+    ensures: the_whole_write_is_the_header()
+    ensures: nothing_is_enciphered_by_it()
+    ensures: the_nonce_used = the_vector_with_the_first_eight_folded_into_its_tail()
+}
+
+-- And reading puts the port back to wanting a header, so a second message can
+-- go through the same port with its own sequence number.
+--
+-- Which is why reading and then writing is not the same as writing twice: the
+-- first starts a new message and the second adds to the one in hand. Taking
+-- the tag does not put it back, because a tag belongs to the message that has
+-- just ended rather than to the next one.
+rule ReadingAChaChaPortStartsTheNextMessage {
+    when: EvaluateCall(read, target)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_is_chacha_with_poly1305()
+
+    ensures: the_next_write_is_taken_as_a_header()
+}
+
 rule AnAuthenticatedCipherReadsItsHeaderFromTheFrontOfWhatIsWritten {
     when: EvaluateCall(write, target, octets)
     requires: names_a_cipher_port(target)

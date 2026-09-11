@@ -9,10 +9,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * The ciphers a cipher port serves, each against a published vector.
  *
  * <p>{@code Crypt_Init} and {@code Crypt_Crypt} in {@code p-crypt.c}. This
- * build serves twenty-nine of the forty-two REBOL's own catalogue holds. AES,
- * ChaCha20 and four spellings of DES come from the JVM; counter with CBC-MAC
- * and Camellia are written out, because no JVM provider carries either. ARIA
- * is the thirteen that are missing, and nothing asks for it.
+ * build serves thirty of the forty-two REBOL's own catalogue holds. AES,
+ * ChaCha20 and four spellings of DES come from the JVM; counter with CBC-MAC,
+ * counting with Galois, Camellia and the joining of ChaCha20 to Poly1305 are
+ * written out beside it. ARIA is the twelve that are missing, and nothing
+ * asks for it.
  *
  * <p>A name in {@code system/catalog/ciphers} is a promise a script reads
  * before it chooses, so the catalogue holds what this port really serves and
@@ -72,7 +73,8 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 camellia-128-cbc camellia-192-cbc camellia-256-cbc \
                 camellia-128-ccm camellia-192-ccm camellia-256-ccm \
                 camellia-128-gcm camellia-192-gcm camellia-256-gcm \
-                chacha20 des_ecb des3_ecb des_cbc des3_cbc]}""");
+                chacha20 chacha20-poly1305 \
+                des_ecb des3_ecb des_cbc des3_cbc]}""");
         assertThat(answerTo("""
                 every-one-opens: true
                 foreach named system/catalog/ciphers [
@@ -117,8 +119,13 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     /**
      * The invariant the spec states over every cipher in the catalogue, walked
-     * rather than sampled: one message through each of the twenty-nine and
-     * back.
+     * rather than sampled: one message through each of them and back.
+     *
+     * <p>All but one. ChaCha20 with Poly1305 takes a header as a whole write
+     * of its own, so a message written to it with no header becomes the header
+     * and nothing comes out -- and a real 3.22.5 raises feature-na on the same
+     * walk for the same reason. It is covered on its own terms in
+     * {@code CryptPortChaChaWithPoly1305FromTheSourceTest}.
      *
      * <p>Sixteen bytes on purpose. It is a whole number of blocks for the
      * eight byte ciphers and the sixteen byte ones alike, so nothing is padded
@@ -134,22 +141,24 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 plain: %s
                 every-one: true
                 foreach named system/catalog/ciphers [
-                    c: open make port! [scheme: 'crypt algorithm: named]
-                    modify c 'key key   modify c 'init-vector vec
-                    write c plain
-                    sealed: read c
-                    d: open make port! [scheme: 'crypt algorithm: named]
-                    modify d 'direction 'decrypt
-                    modify d 'key key   modify d 'init-vector vec
-                    write d sealed
-                    unless equal? plain read d [every-one: false]
+                    if named <> 'chacha20-poly1305 [
+                        c: open make port! [scheme: 'crypt algorithm: named]
+                        modify c 'key key   modify c 'init-vector vec
+                        write c plain
+                        sealed: read c
+                        d: open make port! [scheme: 'crypt algorithm: named]
+                        modify d 'direction 'decrypt
+                        modify d 'key key   modify d 'init-vector vec
+                        write d sealed
+                        unless equal? plain read d [every-one: false]
+                    ]
                 ]
                 every-one""".formatted(NIST_BLOCK))).isEqualTo("#(true)");
     }
 
     /**
      * And the bytes in between are a real 3.22.5's bytes, not merely ones this
-     * port agrees with itself about. All twenty-nine were compared against
+     * port agrees with itself about. Every one was compared against
      * {@code ./r3-head} under the same key and vector.
      */
     @Test
@@ -160,10 +169,12 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 vec: #{0F0E0D0C0B0A09080706050403020100}
                 collect [
                     foreach named system/catalog/ciphers [
-                        c: open make port! [scheme: 'crypt algorithm: named]
-                        modify c 'key key   modify c 'init-vector vec
-                        write c %s
-                        keep enbase/flat read c 16
+                        if named <> 'chacha20-poly1305 [
+                            c: open make port! [scheme: 'crypt algorithm: named]
+                            modify c 'key key   modify c 'init-vector vec
+                            write c %s
+                            keep enbase/flat read c 16
+                        ]
                     ]
                 ]""".formatted(NIST_BLOCK))).isEqualTo("""
                 ["47C58D5E21CAAF840D015B7D9B910981" "1B58BC54CD0CB07A1C91B8D25339DA3B" \

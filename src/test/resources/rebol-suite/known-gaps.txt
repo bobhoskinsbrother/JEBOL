@@ -55,14 +55,6 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #230
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #231
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #232
 copy-test.r3 / Simple copy / (no test) #1
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #22
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #23
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #24
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #25
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #26
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #27
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #28
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #29
 csv-test.r3 / (no group) / (no test) #17
 datatype-test.r3 / datatype! / number? #37
 date-test.r3 / Internet date / TO-IDATE (Date to Internet date) #126

@@ -29,17 +29,17 @@ The porting goals are **mostly, not entirely, independent**, and the couplings
 are named in the goals themselves. Two that this file used to claim turned out
 not to exist: goal 5 and goal 9 were both said to wait on goal 8, and neither
 does — that came from a measuring tool inventing environment stops, and goal 20
-has the story. The real ones now are goal 1 waiting on goal 4a, goal 4b waiting
-on goal 4a, and goal 15 double-counting the eight crypt-port entries that
-belong to 4a and 4b. Goals 1 to 3 was real and is discharged: goal 3 is done.
+has the story. The real ones now are goal 15 double-counting the eight crypt-port entries
+that belonged to 4a and 4b. The rest are discharged: goal 3 is done, and so
+are 4a and 4b, so goal 1's wait on them is over.
 
 Goals 1, 6 and 14 are also one question asked three times: what the capability
 catalogues claim is present. `system/codecs` is longer here than in a real
 3.22.5, so JEBOL enters blocks a real Rebol skips and then raises inside them.
 `system/catalog/ciphers` was the same fault seen from the other side — empty
 where a real one holds forty-two — and goals 4a and 4b settled it: it now names
-the twenty-nine the port really serves, which is the shape the others should
-end up in too.
+the thirty the port really serves, which is the shape the others should end up
+in too.
 
 ---
 
@@ -195,7 +195,7 @@ Sizes are the number of `known-gaps.txt` entries the goal is worth, and they
 account for every entry with nothing left over — goal 15 exists to close that
 sum and shows the arithmetic. Goal 4 is now 4a and 4b, split on whether the
 cipher is one the JVM already carries, so the arithmetic reads sixteen goals
-where it used to read fifteen. The list stands at **391** entries
+where it used to read fifteen. The list stands at **383** entries
 as this line is written; `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt`
 is the live answer and a size above that disagrees with it is stale.
 
@@ -757,57 +757,47 @@ The pattern followed is `ChecksumPort.java` and the checksum scheme in
 an actor name in `SCHEMES_THIS_BUILD_SERVES`, and open/read/write/update/close
 branches in `Natives.java`.
 
-### 4b. The ciphers the JVM has not got — 32, now 8, and they are not what the labels say
+### 4b. The ciphers the JVM has not got — 32 — DONE
 
-**Camellia and counter with CBC-MAC are both done.** What is left is eight
-assertions that the gap list files under "Camellia tests from RFC3713" and
-which are nothing of the kind: they are ChaCha20-Poly1305, and the slicer
-mislabelled them the way `goals.md` warns it does for any file whose groups sit
-inside `if` blocks. Read the assertion, never the label.
+Every crypt-port file is off the list. `crypt-port-test.r3`,
+`crypt-port-camelia-test.r3`, `crypt-port-ccm-test.r3` and
+`crypt-port-gcm-test.r3` owe nothing between them, and
+`system/catalog/ciphers` names thirty of REBOL's forty-two.
 
-    8  crypt-port-test.r3   ChaCha20-Poly1305, behind an `if find` guard
+**Three things were written out, because no JVM provider has them.** Counter
+with CBC-MAC is a mode over a block cipher, so it came first and cheapest.
+Camellia is a whole Feistel cipher and arrived as twelve catalogue entries at
+once. ChaCha20 with Poly1305 is neither — an authenticator built on arithmetic
+modulo a prime, joined to a stream cipher — and it was the only one with a
+consumer: `prot-tls.reb` names it first when it builds its cipher suites.
 
-**Why that one was left out.** REBOL does not drive it as an ordinary
-authenticated cipher. The first write is the data to authenticate *and* it
-derives the nonce by exclusive-or-ing the first eight bytes into the vector,
-which is the arrangement TLS uses and which no JVM AEAD offers. The JVM has
-`ChaCha20-Poly1305` as a single call that takes a nonce and gives a tag, and
-the two do not line up.
+**Counting with Galois moved off the JVM along the way.** The JVM checks the
+tag itself while deciphering and will not hand one back, where this port hands
+it to the caller to compare, so AES-GCM had been deciphering twice over.
+`CounterWithGalois` does it in one pass and serves Camellia too.
 
-Doing it needs Poly1305 written out -- a different kind of code from the block
-ciphers, arithmetic modulo a prime rather than substitution and permutation --
-and then REBOL's two-step protocol on top. The pieces that exist now do not
-help much: it is not a mode over a block cipher.
-
-**It is the one missing cipher with a consumer.** `prot-tls.reb` names it
-first when it builds its cipher suites, so a JEBOL that had it would offer
-`TLS_CHACHA20-POLY1305_SHA256` where today it offers nothing of the kind. That
-is an argument the Camellia work never had.
+**What ARIA would take, if anyone ever wants it.** Twelve catalogue entries
+and no assertion anywhere behind them. It is a substitution-permutation cipher
+of the same shape as AES with its own tables, and the modes would take it for
+nothing the way they took Camellia. Nothing in the borrowed library mentions
+it. That is the whole of the remaining gap between this catalogue and REBOL's.
 
 ---
 
-#### What was done, and what it cost
+#### The package, which is the part worth keeping
 
-**Camellia** is `Camellia.java` in the new `org.jebol.domain.cipher` package:
-one round function, a key schedule that folds the key through that same
-function, and eighteen or twenty-four rounds with a pair of mixing steps every
-six. One substitution table is carried and the other three are derived from it.
-Twelve catalogue entries, all byte-identical to `./r3-head`.
+`org.jebol.domain.cipher` holds the idea that made twelve entries arrive for
+one cipher. `OneBlock` is a block cipher and nothing else, sixteen bytes in and
+sixteen out; `BlockModes`, `CounterWithCbcMac` and `CounterWithGalois` take one
+and cannot tell whether it came from the JVM or from `Camellia`. `Poly1305` and
+`ChaChaWithPoly1305` sit beside them because that pairing is not a block cipher
+at all.
 
-**The package is the part worth keeping.** `OneBlock` is a block cipher and
-nothing else -- sixteen bytes in, sixteen out. Every mode takes one and cannot
-tell whether it came from the JVM or from `Camellia`, which is why twelve
-entries arrived without a mode being rewritten. `BlockModes`,
-`CounterWithCbcMac` and `CounterWithGalois` are the modes; `CryptPort` stays in
-`eval` because it is a port rather than a cipher, and the one place the two
-families differ is `theBlockCipherBehind`.
-
-**Counting with Galois moved off the JVM while this was done**, and that was a
-simplification rather than a cost. The JVM checks the tag itself while
-deciphering and will not hand one back, so AES-GCM had been decrypting twice
-over -- once to recover the plain text and once to compute the tag the caller
-is owed. `CounterWithGalois` does it in one pass, serves Camellia as well, and
-the existing AES-GCM tests proved it byte for byte.
+`CryptPort` stays in `eval` because it is a port rather than a cipher. The one
+place the families differ is `theBlockCipherBehind`, and the one place a
+protocol differs is the header: two modes read it from the front of a write
+told apart by a length, and ChaCha20-Poly1305 takes a whole write and derives
+its nonce from it.
 
 ### 5. What is left of the file ports — 38
 

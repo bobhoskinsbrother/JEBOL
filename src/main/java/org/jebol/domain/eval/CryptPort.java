@@ -3,6 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.domain.cipher.BlockModes;
 import org.jebol.domain.cipher.Camellia;
 import org.jebol.domain.cipher.CounterWithCbcMac;
+import org.jebol.domain.cipher.ChaChaWithPoly1305;
 import org.jebol.domain.cipher.CounterWithGalois;
 import org.jebol.domain.cipher.OneBlock;
 import org.jebol.domain.value.*;
@@ -31,9 +32,10 @@ import java.util.Map;
  * again -- eight bytes through and back are those eight bytes followed by
  * eight noughts.
  *
- * <p>Twenty-nine ciphers of REBOL's forty-two. Eighteen are the JVM's own;
- * counter with CBC-MAC and Camellia are written out here because no JVM
- * provider carries either. ARIA is the rest, and nothing asks for it.
+ * <p>Thirty ciphers of REBOL's forty-two. The JVM supplies AES, ChaCha20 and
+ * DES; counter with CBC-MAC, counting with Galois, Camellia and the joining of
+ * ChaCha20 to Poly1305 are written out beside it. ARIA is the twelve that are
+ * missing, and nothing asks for it.
  */
 final class CryptPort {
 
@@ -65,13 +67,15 @@ final class CryptPort {
     private enum Family { AES, CAMELLIA, OTHER }
 
     private enum Mode {
-        CODEBOOK, CHAINED, COUNTER_WITH_GALOIS, COUNTER_WITH_CBC_MAC, STREAM
+        CODEBOOK, CHAINED, COUNTER_WITH_GALOIS, COUNTER_WITH_CBC_MAC,
+        CHACHA_WITH_POLY1305, STREAM
     }
 
     /** Whether a mode gathers everything and answers a tag beside the rest. */
     private static boolean authenticates(Mode mode) {
         return mode == Mode.COUNTER_WITH_GALOIS
-                || mode == Mode.COUNTER_WITH_CBC_MAC;
+                || mode == Mode.COUNTER_WITH_CBC_MAC
+                || mode == Mode.CHACHA_WITH_POLY1305;
     }
 
     private static final Map<String, Cipherworks> SERVED = Map.ofEntries(
@@ -150,6 +154,9 @@ final class CryptPort {
             Map.entry("chacha20", new Cipherworks(
                     "ChaCha20", "ChaCha20", 32, 16,
                     Mode.STREAM, Family.OTHER)),
+            Map.entry("chacha20-poly1305", new Cipherworks(
+                    "ChaCha20", "ChaCha20", 32, 0,
+                    Mode.CHACHA_WITH_POLY1305, Family.OTHER)),
             Map.entry("des_ecb", new Cipherworks(
                     "DES/ECB/NoPadding", "DES", 8, 8,
                     Mode.CODEBOOK, Family.OTHER)),
@@ -179,7 +186,8 @@ final class CryptPort {
             "camellia-128-cbc", "camellia-192-cbc", "camellia-256-cbc",
             "camellia-128-ccm", "camellia-192-ccm", "camellia-256-ccm",
             "camellia-128-gcm", "camellia-192-gcm", "camellia-256-gcm",
-            "chacha20", "des_ecb", "des3_ecb", "des_cbc", "des3_cbc");
+            "chacha20", "chacha20-poly1305",
+            "des_ecb", "des3_ecb", "des_cbc", "des3_cbc");
 
     static List<Value> catalogue() {
         return IN_CATALOGUE_ORDER.stream().<Value>map(WordValue::of).toList();
@@ -237,6 +245,16 @@ final class CryptPort {
          * carry between writes, which is what makes chaining chaining.
          */
         private byte[] chaining = new byte[0];
+
+        /**
+         * Whether the next write is a header rather than a message.
+         *
+         * <p>Only ChaCha20 with Poly1305 uses it: reading puts the port back
+         * to wanting a header, so a second record can go through the same port
+         * with its own sequence number. Taking the tag does not, because a tag
+         * belongs to the message that has just ended.
+         */
+        private boolean theNextWriteIsAHeader = true;
 
         /**
          * Whether the bytes to authenticate have been taken.
@@ -433,6 +451,10 @@ final class CryptPort {
             return;
         }
         if (authenticates(working.works().mode())) {
+            if (octets.length == 0
+                    && working.works().mode() == Mode.CHACHA_WITH_POLY1305) {
+                return;
+            }
             gatherToAuthenticate(working, octets);
             return;
         }
@@ -477,6 +499,9 @@ final class CryptPort {
             if (working.works().mode() == Mode.COUNTER_WITH_GALOIS) {
                 finishGalois(working);
             }
+            if (working.works().mode() == Mode.CHACHA_WITH_POLY1305) {
+                addToWhatIsReady(working, theChaChaAnswer(working).tag());
+            }
             return;
         }
         if (working.heldBack.length == 0) {
@@ -502,6 +527,10 @@ final class CryptPort {
         Value answered = binaryOf(working.ready);
         working.ready = new byte[0];
         working.somethingIsReady = false;
+        if (working.works() != null
+                && working.works().mode() == Mode.CHACHA_WITH_POLY1305) {
+            working.theNextWriteIsAHeader = true;
+        }
         return answered;
     }
 
@@ -519,13 +548,15 @@ final class CryptPort {
         working.gatheredForGalois = new byte[0];
         working.handedOut = 0;
         working.headerTaken = false;
+        working.theNextWriteIsAHeader = true;
         working.needsStarting = false;
         working.wouldNotRun = false;
         if (works.mode() == Mode.COUNTER_WITH_GALOIS) {
             working.wouldNotRun = working.vector.length == 0;
             return;
         }
-        if (works.mode() == Mode.COUNTER_WITH_CBC_MAC) {
+        if (works.mode() == Mode.COUNTER_WITH_CBC_MAC
+                || works.mode() == Mode.CHACHA_WITH_POLY1305) {
             return;
         }
         if (works.family() == Family.CAMELLIA) {
@@ -639,6 +670,10 @@ final class CryptPort {
      * the caller set beforehand.
      */
     private static void gatherToAuthenticate(Working working, byte[] octets) {
+        if (working.works().mode() == Mode.CHACHA_WITH_POLY1305) {
+            gatherForChaCha(working, octets);
+            return;
+        }
         byte[] rest = octets;
         if (working.toAuthenticateOctets > 0 && !working.headerTaken) {
             if (octets.length < working.toAuthenticateOctets) {
@@ -655,6 +690,28 @@ final class CryptPort {
             throughCounterWithCbcMac(working);
             return;
         }
+        addToWhatIsReady(working, theOctetsNotHandedOutYet(working));
+    }
+
+    /**
+     * ChaCha20 with Poly1305 takes its header as a whole write of its own, and
+     * derives the nonce from it.
+     *
+     * <p>Unlike the other two authenticated modes, where the header is the
+     * front of one write told apart by a length. Here the first write *is* the
+     * header, it produces nothing, and its first eight bytes are folded into
+     * the tail of the starting vector -- which in TLS is a record's sequence
+     * number giving that record a nonce of its own.
+     */
+    private static void gatherForChaCha(Working working, byte[] octets) {
+        if (working.theNextWriteIsAHeader) {
+            working.authenticated = octets;
+            working.chaining = ChaChaWithPoly1305.nonceFrom(
+                    fittedTo(working.vector, ChaChaWithPoly1305.NONCE), octets);
+            working.theNextWriteIsAHeader = false;
+            return;
+        }
+        working.gatheredForGalois = joined(working.gatheredForGalois, octets);
         addToWhatIsReady(working, theOctetsNotHandedOutYet(working));
     }
 
@@ -757,7 +814,21 @@ final class CryptPort {
 
     /** What READ answers: the transformed bytes, without the tag. */
     private static byte[] theCipherText(Working working) {
+        if (working.works().mode() == Mode.CHACHA_WITH_POLY1305) {
+            return theChaChaAnswer(working).octets();
+        }
         return theGaloisAnswer(working).octets();
+    }
+
+    /**
+     * One run of ChaCha20 with Poly1305 over the message gathered so far,
+     * against the nonce the header derived.
+     */
+    private static ChaChaWithPoly1305.Sealed theChaChaAnswer(Working working) {
+        return ChaChaWithPoly1305.through(
+                fittedTo(working.key, working.works().keyOctets()),
+                working.chaining, working.authenticated,
+                working.gatheredForGalois, working.decrypting);
     }
 
     /** What TAKE answers after READ: the tag, cut to the length asked for. */
