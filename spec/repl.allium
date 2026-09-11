@@ -65,6 +65,26 @@ entity BatchRun {
     }
 }
 
+-- The third way in, and the one a person reaches for first: a path on the
+-- command line is a script to run.
+--
+-- It is a batch run whose source came out of a file, and everything the batch
+-- run already says holds -- a fresh set-word gets a slot, and the number the
+-- process leaves with is whatever QUIT carried. What it adds is where the
+-- script counts from and what it can tell about itself.
+entity ScriptRun {
+    path: String            -- as it was written on the command line
+    arguments: List<String> -- whatever followed it, untouched
+
+    status: running | finished
+    exit_status: Integer when status = finished
+
+    transitions status {
+        running -> finished
+        terminal: finished
+    }
+}
+
 entity Submission {
     session: Session
     source_text: String
@@ -263,6 +283,7 @@ surface Console {
     provides:
         Submit(session, source_text) when operator.is_open
         RunAndLeave(user_context, source_text)
+        RunTheNamedScript(path, arguments)
 
     exposes:
         SubmissionOutcome
@@ -275,6 +296,84 @@ surface Console {
         -- Creating a slot for a fresh set-word happens here and nowhere
         -- else. A block handed to a function behaves the same whether or
         -- not a console is attached.
+}
+
+rule AScriptRunBegins {
+    when: RunTheNamedScript(path, arguments)
+    ensures: ScriptRun.created(
+        path: path,
+        arguments: arguments,
+        status: running
+    )
+}
+
+-- A script leaves the same number behind a batch run does, and for the same
+-- reason: what QUIT carried is the whole of what a caller can act on. A whole
+-- number is that number, an error is one, and anything else finished.
+rule AScriptRunConcludesWithWhatQuitCarried {
+    when: run: ScriptRun.created
+    requires: run.status = running
+    requires: the_path_names_something_readable(run.path)
+
+    ensures:
+        run.status = finished
+        run.exit_status = the_status_the_batch_rule_gives()
+}
+
+-- A script runs in its own directory, not in the one the shell was in.
+--
+-- Which is what makes a script that ships with data files work wherever it is
+-- called from: `%units/files/bug-load-null.r3` reads `%tmp.data` and means the
+-- one beside it. The directory the caller was in is not lost -- it stays in
+-- `system/options/path` -- so a script that wants the caller's own files can
+-- still reach them, and has to say so.
+--
+-- Getting this backwards is quiet. A script started from its own directory
+-- behaves either way, and the difference only shows when somebody runs it
+-- from somewhere else.
+rule AScriptRunsInItsOwnDirectory {
+    when: run: ScriptRun.created
+    requires: run.status = running
+
+    ensures:
+        the_directory_relative_paths_count_from() = the_directory_holding(run.path)
+        system_options_script() = the_full_path_of(run.path)
+        system_options_path() = the_directory_the_command_was_given_in()
+        system_options_args() = run.arguments
+}
+
+-- The console grants every host service, and that is a decision rather than
+-- an oversight.
+--
+-- A person typing `jebol script.r3` means what they mean typing `r3
+-- script.r3`: the script may read their files, start their programs and open
+-- their sockets, because they chose to run it. Confinement is for the other
+-- way in -- a host embedding the interpreter and handing it somebody else's
+-- script -- and that host builds its own bounds and grants nothing by
+-- default.
+--
+-- So the two defaults are opposite on purpose. Embedding grants nothing
+-- because the useful set is the one nobody guessed; the command line grants
+-- everything because a shell tool that cannot read a file is not a tool.
+rule TheConsoleGrantsEveryService {
+    when: run: ScriptRun.created
+
+    ensures: the_granted_services() = every_host_service()
+}
+
+-- A path that names nothing is a failure with a number, not a console.
+--
+-- The console opening instead is the worst of the three answers: a script
+-- that was meant to run has not, nothing said so, and whoever called it is
+-- now looking at a prompt they did not ask for. That is what JEBOL did with
+-- any path it was given.
+rule AScriptThatIsNotThereIsAFailure {
+    when: run: ScriptRun.created
+    requires: not the_path_names_something_readable(run.path)
+
+    ensures:
+        run.status = finished
+        run.exit_status = 1
 }
 
 actor ConsoleUser {

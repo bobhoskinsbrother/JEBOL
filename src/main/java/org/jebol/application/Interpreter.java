@@ -693,6 +693,29 @@ public final class Interpreter {
     }
 
     /**
+     * This process's classpath with every entry made absolute.
+     *
+     * <p>A launcher that works only from one directory is not a launcher. The
+     * entries arrive as they were typed, which for a build run out of its own
+     * tree means relative ones, and the script is started from wherever the
+     * script that called it was standing rather than from here.
+     *
+     * <p>It cost a suite assertion to notice: the child reported "Could not
+     * find or load main class" from the moment CALL started its children in
+     * the caller's directory instead of the JVM's, and before that it had
+     * worked by the accident of the two being the same.
+     */
+    private static String aClasspathThatWorksFromAnywhere() {
+        return java.util.Arrays.stream(
+                        System.getProperty("java.class.path", "")
+                                .split(java.io.File.pathSeparator))
+                .filter(entry -> !entry.isEmpty())
+                .map(entry -> java.nio.file.Path.of(entry).toAbsolutePath().toString())
+                .collect(java.util.stream.Collectors.joining(
+                        java.io.File.pathSeparator));
+    }
+
+    /**
      * A launcher script that starts this very interpreter, written once
      * per run and told to the natives as {@code system/options/boot}.
      *
@@ -711,7 +734,7 @@ public final class Interpreter {
             java.nio.file.Path launcher =
                     java.nio.file.Files.createTempFile("jebol-boot", ".sh");
             java.nio.file.Files.writeString(launcher, "#!/bin/sh\nexec \"" + jvm
-                    + "\" -cp \"" + System.getProperty("java.class.path", "")
+                    + "\" -cp \"" + aClasspathThatWorksFromAnywhere()
                     + "\" org.jebol.adapter.cli.Repl \"$@\"\n");
             if (!launcher.toFile().setExecutable(true)) {
                 return "";

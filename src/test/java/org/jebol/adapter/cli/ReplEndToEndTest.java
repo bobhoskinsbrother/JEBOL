@@ -460,4 +460,164 @@ class ReplEndToEndTest {
                     .contains("== 2");
         }
     }
+
+    /**
+     * A path on the command line is a script to run, which is the first thing
+     * anybody asks of a language's command line and the thing JEBOL could not
+     * do: a path was dropped without a word and the console opened instead,
+     * which is worse than a refusal -- the script that was meant to run has
+     * not, nothing said so, and whoever called it is looking at a prompt.
+     *
+     * <p>Every figure here was read off {@code ./r3-head} 3.22.5 running the
+     * same script.
+     */
+    @Nested
+    @DisplayName("a script named on the command line")
+    class AScriptOnTheCommandLine {
+
+        private static Ran running(java.nio.file.Path directory, String... arguments) {
+            ByteArrayOutputStream captured = new ByteArrayOutputStream();
+            PrintStream output =
+                    new PrintStream(captured, true, StandardCharsets.UTF_8);
+            int status = Repl.runTheCommandLine(arguments, output, directory.toString());
+            return new Ran(status, captured.toString(StandardCharsets.UTF_8));
+        }
+
+        private record Ran(int exitStatus, String printed) {
+        }
+
+        private static java.nio.file.Path scriptSaying(
+                java.nio.file.Path directory, String named, String source)
+                throws java.io.IOException {
+
+            java.nio.file.Path written = directory.resolve(named);
+            java.nio.file.Files.writeString(written, source);
+            return written;
+        }
+
+        @Test
+        @DisplayName("runs, prints what it prints, and leaves with nought")
+        void itRunsTheScript(@TempDir java.nio.file.Path directory) throws Exception {
+            scriptSaying(directory, "hello.r3", "print [{two and two is} 2 + 2]\n");
+
+            Ran ran = running(directory, directory.resolve("hello.r3").toString());
+
+            assertThat(ran.printed()).isEqualTo("two and two is 4\n");
+            assertThat(ran.exitStatus()).isZero();
+        }
+
+        @Test
+        @DisplayName("a script with a header runs the same way")
+        void aheaderChangesNothing(@TempDir java.nio.file.Path directory)
+                throws Exception {
+            scriptSaying(directory, "hdr.r3",
+                    "Rebol [Title: {T}]\nprint {with header}\n");
+
+            assertThat(running(directory, directory.resolve("hdr.r3").toString())
+                    .printed()).isEqualTo("with header\n");
+        }
+
+        /**
+         * The directory a script counts from is its own, so a script that
+         * ships beside its data reads that data wherever it is called from.
+         * Where the caller was is kept in {@code system/options/path}.
+         */
+        @Test
+        @DisplayName("and counts relative paths from its own directory, not the caller's")
+        void itcountsFromItsOwnDirectory(@TempDir java.nio.file.Path directory)
+                throws Exception {
+
+            java.nio.file.Path beside = directory.resolve("beside");
+            java.nio.file.Files.createDirectory(beside);
+            java.nio.file.Files.writeString(beside.resolve("data.txt"), "found it");
+            java.nio.file.Files.writeString(beside.resolve("reader.r3"),
+                    "print read/string %data.txt\n");
+
+            Ran ran = running(directory, beside.resolve("reader.r3").toString());
+
+            assertThat(ran.printed()).isEqualTo("found it\n");
+            assertThat(ran.exitStatus()).isZero();
+        }
+
+        @Test
+        @DisplayName("it can say where it is, where it came from and what followed it")
+        void itcanSayWhereItIs(@TempDir java.nio.file.Path directory) throws Exception {
+            scriptSaying(directory, "where.r3",
+                    "print [what-dir system/options/script system/options/path]\n"
+                    + "print mold system/options/args\n");
+
+            Ran ran = running(directory,
+                    directory.resolve("where.r3").toString(), "one", "two");
+
+            assertThat(ran.printed())
+                    .contains(directory.resolve("where.r3").toString())
+                    .contains("[\"one\" \"two\"]");
+        }
+
+        @Test
+        @DisplayName("QUIT/RETURN decides the number the process leaves with")
+        void quitDecidesTheStatus(@TempDir java.nio.file.Path directory)
+                throws Exception {
+            scriptSaying(directory, "q.r3", "quit/return 42\n");
+
+            assertThat(running(directory, directory.resolve("q.r3").toString())
+                    .exitStatus()).isEqualTo(42);
+        }
+
+        @Test
+        @DisplayName("a script that fails says so and leaves with one")
+        void afailingScriptLeavesWithOne(@TempDir java.nio.file.Path directory)
+                throws Exception {
+            scriptSaying(directory, "boom.r3", "print {before} 1 / 0 print {after}\n");
+
+            Ran ran = running(directory, directory.resolve("boom.r3").toString());
+
+            assertThat(ran.printed())
+                    .contains("before")
+                    .contains("zero")
+                    .as("nothing after the failure runs")
+                    .doesNotContain("after");
+            assertThat(ran.exitStatus()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("a path that names nothing is a failure, not a console")
+        void amissingScriptIsAFailure(@TempDir java.nio.file.Path directory) {
+            Ran ran = running(directory, directory.resolve("nope.r3").toString());
+
+            assertThat(ran.printed()).contains("nope.r3");
+            assertThat(ran.exitStatus()).isEqualTo(1);
+        }
+
+        /**
+         * A script run from the command line may reach the machine, because
+         * the person who typed the command chose to run it. Confinement is
+         * for a host embedding the interpreter, which builds its own bounds
+         * and is granted nothing by default.
+         */
+        @Test
+        @DisplayName("and it is granted the machine, as a shell tool has to be")
+        void itisGrantedTheMachine(@TempDir java.nio.file.Path directory)
+                throws Exception {
+            scriptSaying(directory, "writes.r3",
+                    "write %made.txt {by the script} print read/string %made.txt\n");
+
+            Ran ran = running(directory, directory.resolve("writes.r3").toString());
+
+            assertThat(ran.printed()).isEqualTo("by the script\n");
+            assertThat(java.nio.file.Files.exists(directory.resolve("made.txt"))).isTrue();
+        }
+
+        @Test
+        @DisplayName("-s is accepted and changes nothing, there being no security to lift")
+        void thesecuritySwitchIsAccepted(@TempDir java.nio.file.Path directory)
+                throws Exception {
+            scriptSaying(directory, "s.r3", "print {ran}\n");
+
+            Ran ran = running(directory, "-s", directory.resolve("s.r3").toString());
+
+            assertThat(ran.printed()).isEqualTo("ran\n");
+            assertThat(ran.exitStatus()).isZero();
+        }
+    }
 }
