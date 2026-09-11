@@ -18,11 +18,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * ciphers nobody can use sends it down a path that fails later and further
  * away.
  *
- * <p>Which is why CIPHERS names thirty where a real 3.22.1 names forty-two:
- * it grew from nothing as the cipher port did, and it holds what the port
- * really serves rather than what REBOL happens to list. FILTERS is still empty
- * for the same reason it always was -- RESIZE samples one way with no choice
- * of filter, so all fifteen names would be a lie.
+ * <p>CIPHERS grew from nothing to all forty-two as the cipher port did, and
+ * it still holds what the port really serves rather than what REBOL happens
+ * to list -- the two agree now because the port caught up, not because the
+ * number was copied. FILTERS is still empty for the same reason it always
+ * was: RESIZE samples one way with no choice of filter, so all fifteen names
+ * would be a lie.
  *
  * <p>ACTIONS and NATIVES are the two halves of the function set carried in the
  * host language, and the split is Rebol's declaration rather than a fact about
@@ -138,28 +139,28 @@ class SystemCataloguesFromTheSourceTest {
 
         /**
          * This used to assert the block was empty, and that was right while
-         * there was no cipher port. There is one now, so the catalogue names
-         * the thirty ciphers it serves and not one more. ARIA is the twelve
-         * a real 3.22.5 lists that are missing, and nothing in REBOL's own
-         * library asks for it.
+         * there was no cipher port. There is one now and it serves every
+         * cipher a real 3.22.5 names, so the two catalogues match in length
+         * and in order.
+         *
+         * <p>The rule the list grew under has not changed: it names what the
+         * port really serves. It reached forty-two because the port did, not
+         * because the number was copied across.
          */
         @Test
-        @DisplayName("CIPHERS names what the cipher port serves, and nothing else")
+        @DisplayName("CIPHERS names what the cipher port serves, which is now all of them")
         void theCiphersAreTheOnesTheCipherPortServes() {
             assertThat(answerTo("block? system/catalog/ciphers")).isEqualTo(TRUE);
-            assertThat(answerTo("30 = length? system/catalog/ciphers")).isEqualTo(TRUE);
+            assertThat(answerTo("42 = length? system/catalog/ciphers")).isEqualTo(TRUE);
             for (String served : new String[] {
                     "aes-128-cbc", "aes-128-ccm", "aes-128-gcm", "chacha20",
-                    "camellia-128-ecb", "camellia-256-gcm",
-                    "chacha20-poly1305"}) {
+                    "camellia-128-ecb", "camellia-256-gcm", "chacha20-poly1305",
+                    "aria-128-ecb", "aria-192-ccm", "aria-256-gcm"}) {
                 assertThat(answerTo("true? find system/catalog/ciphers '" + served))
                         .as(served).isEqualTo(TRUE);
             }
-            for (String absent : new String[] {
-                    "aria-128-cbc", "aria-192-ccm", "aria-256-gcm"}) {
-                assertThat(answerTo("true? find system/catalog/ciphers '" + absent))
-                        .as(absent).isEqualTo(FALSE);
-            }
+            assertThat(answerTo("true? find system/catalog/ciphers 'nonsense-1"))
+                    .isEqualTo(FALSE);
         }
 
         @Test

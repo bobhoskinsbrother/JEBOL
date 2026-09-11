@@ -762,25 +762,34 @@ branches in `Natives.java`.
 Every crypt-port file is off the list. `crypt-port-test.r3`,
 `crypt-port-camelia-test.r3`, `crypt-port-ccm-test.r3` and
 `crypt-port-gcm-test.r3` owe nothing between them, and
-`system/catalog/ciphers` names thirty of REBOL's forty-two.
+`system/catalog/ciphers` names all forty-two a real 3.22.5 does, in the same
+order.
 
-**Three things were written out, because no JVM provider has them.** Counter
+**Four things were written out, because no JVM provider has them.** Counter
 with CBC-MAC is a mode over a block cipher, so it came first and cheapest.
-Camellia is a whole Feistel cipher and arrived as twelve catalogue entries at
-once. ChaCha20 with Poly1305 is neither — an authenticator built on arithmetic
-modulo a prime, joined to a stream cipher — and it was the only one with a
-consumer: `prot-tls.reb` names it first when it builds its cipher suites.
+Camellia and ARIA are whole block ciphers and each arrived as twelve catalogue
+entries at once. ChaCha20 with Poly1305 is none of those — an authenticator
+built on arithmetic modulo a prime, joined to a stream cipher — and it was the
+only one with a consumer: `prot-tls.reb` names it first when it builds its
+cipher suites.
 
 **Counting with Galois moved off the JVM along the way.** The JVM checks the
 tag itself while deciphering and will not hand one back, where this port hands
 it to the caller to compare, so AES-GCM had been deciphering twice over.
 `CounterWithGalois` does it in one pass and serves Camellia too.
 
-**What ARIA would take, if anyone ever wants it.** Twelve catalogue entries
-and no assertion anywhere behind them. It is a substitution-permutation cipher
-of the same shape as AES with its own tables, and the modes would take it for
-nothing the way they took Camellia. Nothing in the borrowed library mentions
-it. That is the whole of the remaining gap between this catalogue and REBOL's.
+**ARIA is done too, and it closed the catalogue.** Twelve more entries with no
+assertion anywhere behind them -- it was the cheapest cipher left and the least
+useful, and it went in because a catalogue that names forty-two and serves
+thirty is the same fault this project keeps finding elsewhere.
+`system/catalog/ciphers` now matches a real 3.22.5 in length and in order.
+
+It was the third cipher through the same seam, and it needed no mode written
+for it: `Aria.java` is the algorithm and the twelve pairings arrived together.
+Its key schedule is the fiddlier of the two written out here -- four derived
+words rotated by four different amounts across a hundred and twenty-eight
+bits, in the opposite byte order from the one they are stored in -- so the
+thousand-round walk earns its keep more here than anywhere.
 
 ---
 
@@ -789,9 +798,9 @@ it. That is the whole of the remaining gap between this catalogue and REBOL's.
 `org.jebol.domain.cipher` holds the idea that made twelve entries arrive for
 one cipher. `OneBlock` is a block cipher and nothing else, sixteen bytes in and
 sixteen out; `BlockModes`, `CounterWithCbcMac` and `CounterWithGalois` take one
-and cannot tell whether it came from the JVM or from `Camellia`. `Poly1305` and
-`ChaChaWithPoly1305` sit beside them because that pairing is not a block cipher
-at all.
+and cannot tell whether it came from the JVM or from `Camellia`. `Camellia` and `Aria` are the two block ciphers
+written out; `Poly1305` and `ChaChaWithPoly1305` sit beside them because that
+pairing is not a block cipher at all.
 
 `CryptPort` stays in `eval` because it is a port rather than a cipher. The one
 place the families differ is `theBlockCipherBehind`, and the one place a

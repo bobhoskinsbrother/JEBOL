@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.cipher.Aria;
 import org.jebol.domain.cipher.BlockModes;
 import org.jebol.domain.cipher.Camellia;
 import org.jebol.domain.cipher.CounterWithCbcMac;
@@ -32,10 +33,9 @@ import java.util.Map;
  * again -- eight bytes through and back are those eight bytes followed by
  * eight noughts.
  *
- * <p>Thirty ciphers of REBOL's forty-two. The JVM supplies AES, ChaCha20 and
- * DES; counter with CBC-MAC, counting with Galois, Camellia and the joining of
- * ChaCha20 to Poly1305 are written out beside it. ARIA is the twelve that are
- * missing, and nothing asks for it.
+ * <p>All forty-two ciphers REBOL's own catalogue names. The JVM supplies AES,
+ * ChaCha20 and DES; counter with CBC-MAC, counting with Galois, Camellia,
+ * ARIA and the joining of ChaCha20 to Poly1305 are written out beside it.
  */
 final class CryptPort {
 
@@ -61,10 +61,11 @@ final class CryptPort {
      * Which block cipher a mode is driving, where the mode needs to know.
      *
      * <p>It needs to know in exactly one place: whether to ask the JVM for it
-     * or to reach for {@link Camellia}, which the JVM has not got. Everything
-     * past that point takes a {@link OneBlock} and cannot tell the two apart.
+     * or to reach for {@link Camellia} or {@link Aria}, neither of which the
+     * JVM has. Everything past that point takes a {@link OneBlock} and cannot
+     * tell them apart.
      */
-    private enum Family { AES, CAMELLIA, OTHER }
+    private enum Family { AES, CAMELLIA, ARIA, OTHER }
 
     private enum Mode {
         CODEBOOK, CHAINED, COUNTER_WITH_GALOIS, COUNTER_WITH_CBC_MAC,
@@ -151,6 +152,42 @@ final class CryptPort {
             Map.entry("camellia-256-gcm", new Cipherworks(
                     "", "", 32, 0,
                     Mode.COUNTER_WITH_GALOIS, Family.CAMELLIA)),
+            Map.entry("aria-128-ecb", new Cipherworks(
+                    "", "", 16, 16,
+                    Mode.CODEBOOK, Family.ARIA)),
+            Map.entry("aria-192-ecb", new Cipherworks(
+                    "", "", 24, 16,
+                    Mode.CODEBOOK, Family.ARIA)),
+            Map.entry("aria-256-ecb", new Cipherworks(
+                    "", "", 32, 16,
+                    Mode.CODEBOOK, Family.ARIA)),
+            Map.entry("aria-128-cbc", new Cipherworks(
+                    "", "", 16, 16,
+                    Mode.CHAINED, Family.ARIA)),
+            Map.entry("aria-192-cbc", new Cipherworks(
+                    "", "", 24, 16,
+                    Mode.CHAINED, Family.ARIA)),
+            Map.entry("aria-256-cbc", new Cipherworks(
+                    "", "", 32, 16,
+                    Mode.CHAINED, Family.ARIA)),
+            Map.entry("aria-128-ccm", new Cipherworks(
+                    "", "", 16, 0,
+                    Mode.COUNTER_WITH_CBC_MAC, Family.ARIA)),
+            Map.entry("aria-192-ccm", new Cipherworks(
+                    "", "", 24, 0,
+                    Mode.COUNTER_WITH_CBC_MAC, Family.ARIA)),
+            Map.entry("aria-256-ccm", new Cipherworks(
+                    "", "", 32, 0,
+                    Mode.COUNTER_WITH_CBC_MAC, Family.ARIA)),
+            Map.entry("aria-128-gcm", new Cipherworks(
+                    "", "", 16, 0,
+                    Mode.COUNTER_WITH_GALOIS, Family.ARIA)),
+            Map.entry("aria-192-gcm", new Cipherworks(
+                    "", "", 24, 0,
+                    Mode.COUNTER_WITH_GALOIS, Family.ARIA)),
+            Map.entry("aria-256-gcm", new Cipherworks(
+                    "", "", 32, 0,
+                    Mode.COUNTER_WITH_GALOIS, Family.ARIA)),
             Map.entry("chacha20", new Cipherworks(
                     "ChaCha20", "ChaCha20", 32, 16,
                     Mode.STREAM, Family.OTHER)),
@@ -186,6 +223,10 @@ final class CryptPort {
             "camellia-128-cbc", "camellia-192-cbc", "camellia-256-cbc",
             "camellia-128-ccm", "camellia-192-ccm", "camellia-256-ccm",
             "camellia-128-gcm", "camellia-192-gcm", "camellia-256-gcm",
+            "aria-128-ecb", "aria-192-ecb", "aria-256-ecb",
+            "aria-128-cbc", "aria-192-cbc", "aria-256-cbc",
+            "aria-128-ccm", "aria-192-ccm", "aria-256-ccm",
+            "aria-128-gcm", "aria-192-gcm", "aria-256-gcm",
             "chacha20", "chacha20-poly1305",
             "des_ecb", "des3_ecb", "des_cbc", "des3_cbc");
 
@@ -559,7 +600,7 @@ final class CryptPort {
                 || works.mode() == Mode.CHACHA_WITH_POLY1305) {
             return;
         }
-        if (works.family() == Family.CAMELLIA) {
+        if (works.family() == Family.CAMELLIA || works.family() == Family.ARIA) {
             working.chaining = fittedTo(working.vector, Camellia.BLOCK);
             return;
         }
@@ -586,6 +627,9 @@ final class CryptPort {
         byte[] key = fittedTo(working.key, works.keyOctets());
         if (works.family() == Family.CAMELLIA) {
             return Camellia.under(key, undoing);
+        }
+        if (works.family() == Family.ARIA) {
+            return Aria.under(key, undoing);
         }
         try {
             return OneBlock.jvmAes(key);
@@ -639,22 +683,24 @@ final class CryptPort {
     }
 
     private static byte[] transformed(Working working, byte[] octets) {
-        if (working.works().family() == Family.CAMELLIA) {
-            return throughCamellia(working, octets);
+        if (working.works().family() == Family.CAMELLIA
+                || working.works().family() == Family.ARIA) {
+            return throughAWrittenOutCipher(working, octets);
         }
         byte[] answered = working.running.update(octets);
         return answered == null ? new byte[0] : answered;
     }
 
     /**
-     * Camellia in the two plain modes, which the JVM will not run for a cipher
-     * it has never heard of.
+     * A cipher written out here, in the two plain modes, which the JVM will
+     * not run for a cipher it has never heard of.
      *
      * <p>The chaining vector lives on the port rather than inside a JVM cipher
      * object, so it carries from one write to the next exactly as the JVM's
      * own would.
      */
-    private static byte[] throughCamellia(Working working, byte[] octets) {
+    private static byte[] throughAWrittenOutCipher(
+            Working working, byte[] octets) {
         OneBlock cipher = theBlockCipherBehind(working, working.decrypting);
         if (working.works().mode() == Mode.CODEBOOK) {
             return BlockModes.codebook(cipher, octets);

@@ -9,11 +9,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * The ciphers a cipher port serves, each against a published vector.
  *
  * <p>{@code Crypt_Init} and {@code Crypt_Crypt} in {@code p-crypt.c}. This
- * build serves thirty of the forty-two REBOL's own catalogue holds. AES,
+ * build serves every one of the forty-two REBOL's own catalogue holds. AES,
  * ChaCha20 and four spellings of DES come from the JVM; counter with CBC-MAC,
- * counting with Galois, Camellia and the joining of ChaCha20 to Poly1305 are
- * written out beside it. ARIA is the twelve that are missing, and nothing
- * asks for it.
+ * counting with Galois, Camellia, ARIA and the joining of ChaCha20 to
+ * Poly1305 are written out beside it.
  *
  * <p>A name in {@code system/catalog/ciphers} is a promise a script reads
  * before it chooses, so the catalogue holds what this port really serves and
@@ -73,6 +72,10 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 camellia-128-cbc camellia-192-cbc camellia-256-cbc \
                 camellia-128-ccm camellia-192-ccm camellia-256-ccm \
                 camellia-128-gcm camellia-192-gcm camellia-256-gcm \
+                aria-128-ecb aria-192-ecb aria-256-ecb \
+                aria-128-cbc aria-192-cbc aria-256-cbc \
+                aria-128-ccm aria-192-ccm aria-256-ccm \
+                aria-128-gcm aria-192-gcm aria-256-gcm \
                 chacha20 chacha20-poly1305 \
                 des_ecb des3_ecb des_cbc des3_cbc]}""");
         assertThat(answerTo("""
@@ -189,6 +192,12 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 "37C140C3F7382E25F7D50B8C9882EE49" "CF3DD51C019D90BCBD4A92224CE2D1DD" \
                 "1AAEB76095519FE132D5E625E2E40919" "DBCA6BB633A1E8FE0F974DF85B803893" \
                 "14FD9BDD0561F9FCBF84AAB5D4ADC5F0" "AFB8D5A6C4CCC646325BA0B1CEADDA39" \
+                "8884337D54D724C4635408A4AC470D59" "D279869BF90140CAF3BCE287ECC57FA6" \
+                "7793C7E1E026B02E089102C2D0C1C4B3" "A41F5C17165211CF9B1AF913C157E6E4" \
+                "A8969DC2BE8A52AF306A4B4EADD9A759" "64F214ADB7EE08A9BFDD1D3DEF014591" \
+                "4A6D751FEF7BAD2F55119D1DC0BFE0A5" "F424E882E860F9CC1068F2A82F793169" \
+                "0C5EF4C456CE2B925890FEF87C62FDF7" "8E09EDE2A648F92884DE76ADCD5823BD" \
+                "29C66991D0DA8F7EC458CEAA377AB9E3" "C2A9DF8384C2FF85F9662F6F39933C4C" \
                 "1A4E8E57D67F11A342CE26E09D4643F9" "7D137E0C6D62961C761D7681A7FEBF3E" \
                 "53B9D08B5D6920D0197C8F4A4A24EADE" "B42A4FD9CCE368FA8056006CAB43FD42" \
                 "D281EE596286E734621AB658E489B9F5"]""");
