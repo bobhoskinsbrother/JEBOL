@@ -1,3 +1,21 @@
+# func-test.r3's five remaining entries are one behaviour: R3 binds a
+# function's body block in place when the function is made, and JEBOL binds it
+# by name at each call.
+#
+# The difference is invisible until a body block is shared or changed after the
+# fact, which is exactly what these test. `make function! reduce [[x] body]`
+# twice over the same block leaves the block bound to whichever function was
+# made last, so calling the first one raises; and `change f-body 'value` puts
+# an unbound word into a body that is already running, so it resolves to the
+# global `value` rather than to the argument of the same name.
+#
+# Matching it means relative binding -- words bound to a position in the
+# argument list rather than to a frame, resolved against whichever frame is
+# current. That is R3's binding model and not this one, and swapping it is a
+# change to how every function in the interpreter is bound. Five assertions do
+# not pay for it. Written down here so the next person does not start it
+# thinking it is a defect in MAKE.
+#
 bbcode-test.r3 / (no group) / (no test) #1
 bitset-test.r3 / modify / issue-1355 #139
 bitset-test.r3 / modify / issue-1355 #140
@@ -122,35 +140,11 @@ file-test.r3 / to-local-file / issue-1115 #21
 file-test.r3 / to-local-file / issue-1115 #22
 file-test.r3 / to-local-file / issue-1115 #23
 file-test.r3 / to-local-file / issue-1115 #24
-func-test.r3 / OP! / body-of op! #65
-func-test.r3 / OP! / body-of op! #66
-func-test.r3 / OP! / make op! #58
-func-test.r3 / OP! / make op! #59
-func-test.r3 / OP! / make op! #60
-func-test.r3 / OP! / make op! from action! #69
-func-test.r3 / OP! / make op! from function with refinement #64
-func-test.r3 / OP! / make op! from function! #70
-func-test.r3 / OP! / make op! from function! #71
-func-test.r3 / OP! / make op! from function! #73
-func-test.r3 / OP! / make op! from function! #74
-func-test.r3 / OP! / make op! with /local #61
-func-test.r3 / OP! / spec-of op! #67
-func-test.r3 / OP! / spec-of op! #68
 func-test.r3 / Other issues / function rebinding (closure compatibility) #135
 func-test.r3 / Other issues / function rebinding (closure compatibility) #136
 func-test.r3 / Other issues / function rebinding (closure compatibility) #141
 func-test.r3 / Other issues / function rebinding (closure compatibility) #142
-func-test.r3 / Other issues / issue-1047 #147
-func-test.r3 / Other issues / issue-168 #119
-func-test.r3 / Other issues / issue-168 #120
 func-test.r3 / Other issues / issue-2025 #97
-func-test.r3 / Other issues / issue-217 #129
-func-test.r3 / Other issues / issue-717 #148
-func-test.r3 / Other issues / issue-87 #105
-func-test.r3 / Other issues / issue-87 #113
-func-test.r3 / Other issues / issue-87 #114
-func-test.r3 / Other issues / issue-87 #115
-func-test.r3 / Other issues / issue-87 #116
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
 issue-test.r3 / to-hex / bad chars in issue #25
@@ -275,42 +269,6 @@ thru-cache-test.r3 / (no group) / (no test) #6
 thru-cache-test.r3 / (no group) / (no test) #7
 thru-cache-test.r3 / (no group) / (no test) #8
 thru-cache-test.r3 / (no group) / (no test) #9
-time-test.r3 / time / divide by tuple #66
-time-test.r3 / time / divide by tuple #67
-time-test.r3 / time / issue-1054 #70
-time-test.r3 / time / issue-1055 #65
-time-test.r3 / time / issue-1391 #58
-time-test.r3 / time / issue-1391 #59
-time-test.r3 / time / issue-1391 #60
-time-test.r3 / time / issue-1391 #61
-time-test.r3 / time / time limits #18
-time-test.r3 / time / time limits #19
-time-test.r3 / time / time limits #20
-time-test.r3 / time / time! money! math #71
-time-test.r3 / time / time! money! math #72
-time-test.r3 / time / time! money! math #73
-time-test.r3 / time / time! money! math #74
-unicode-test.r3 / /part refines with utf8 strings / lowercase/part #392
-unicode-test.r3 / /part refines with utf8 strings / take/last #381
-unicode-test.r3 / /part refines with utf8 strings / uppercase/part #396
-unicode-test.r3 / actions / find tag! #195
-unicode-test.r3 / actions / find tag! #196
-unicode-test.r3 / actions / insert/part string #257
-unicode-test.r3 / actions / insert/part string #260
-unicode-test.r3 / actions / remove #318
-unicode-test.r3 / actions / remove #319
-unicode-test.r3 / natives / difference/skip #90
-unicode-test.r3 / natives / difference/skip #91
-unicode-test.r3 / natives / difference/skip #92
-unicode-test.r3 / natives / forskip #76
-unicode-test.r3 / natives / forskip #77
-unicode-test.r3 / natives / mold/part long #137
-unicode-test.r3 / natives / mold/part long #138
-unicode-test.r3 / natives / mold/part long #139
-unicode-test.r3 / natives / mold/part long #140
-unicode-test.r3 / natives / remove-each #69
-unicode-test.r3 / natives / remove-each/count #70
-unicode-test.r3 / natives / repeat #78
 vector-test.r3 / VECTOR / MOLD/flat on vector #82
 vector-test.r3 / VECTOR statictics / float64! vector statictics #445
 vector-test.r3 / VECTOR statictics / float64! vector statictics #446

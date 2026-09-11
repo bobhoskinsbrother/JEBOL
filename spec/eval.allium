@@ -663,6 +663,17 @@ rule PathEvaluates {
 -- One segment at a time. A word segment selects by its own spelling, an
 -- integer indexes a series, and a get-word or paren segment is evaluated
 -- first and the result used as the selector.
+--
+-- Two ways a segment can fail, and they say different things. A value whose
+-- datatype can be selected from at all, asked for a part it has not got, is an
+-- invalid path: the question was fair and the answer is no. A value whose
+-- datatype has no parts -- a number, a word, a logic -- is a bad path type,
+-- because the question could never have had an answer.
+--
+-- Which datatypes those are is a table rather than a judgement, and the table
+-- is `types.reb`: a dash in its Path column means no handler at all. Answering
+-- the first failure for both said a number was missing a part, which reads as
+-- though some other number might have had one.
 rule PathSelectsNextSegment {
     when: selection: PathEvaluation.created
     requires: selection.status = selecting
@@ -672,7 +683,11 @@ rule PathSelectsNextSegment {
     let selector = selector_at(selection.path, selection.position)
 
     ensures:
-        if not can_select_from(selection.current, selector):
+        if has_no_parts_to_select_from(selection.current):
+            selection.status = raised
+            selection.failure = bad_path_type
+            selection.error = script_error(bad_path_type)
+        else if not can_select_from(selection.current, selector):
             selection.status = raised
             selection.failure = invalid_path
             selection.error = script_error(invalid_path)

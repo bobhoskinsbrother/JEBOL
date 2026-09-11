@@ -46,14 +46,21 @@ final class FunctionSpec {
             if (item instanceof BlockValue) {
                 continue;
             }
-            if (!(item instanceof WordValue word)) {
-                throw Raised.of(EvaluationFailure.CANNOT_USE,
-                        "a function spec holds words, not "
-                                + item.datatype().literalSpelling());
+            // A whole number is allowed and means nothing here. The C says why
+            // beside the case it falls into: "special case used by datatype
+            // test actions", which write their own type number into the spec.
+            if (item instanceof IntegerValue) {
+                continue;
             }
-            if (!LOCALS_REFINEMENT.equals(currentRefinement)) {
-                refuseADuplicate(word, alreadyNamed);
+            if (!(item instanceof WordValue word)
+                    || !(word.datatype() == Datatype.WORD
+                        || word.datatype() == Datatype.GET_WORD
+                        || word.datatype() == Datatype.LIT_WORD
+                        || word.datatype() == Datatype.REFINEMENT
+                        || isAReturnAnnotation(word, items, index))) {
+                throw refusingTheWholeSpec(spec);
             }
+            refuseADuplicate(word, alreadyNamed);
             if (word.datatype() == Datatype.REFINEMENT) {
                 currentRefinement = word.canonical();
                 parameters.add(Parameter.refinement(word.spelling()));
@@ -62,8 +69,7 @@ final class FunctionSpec {
             if (LOCALS_REFINEMENT.equals(currentRefinement)) {
                 continue;
             }
-            if (word.datatype() == Datatype.SET_WORD && word.canonical().equals("return")) {
-                requireAReturnAnnotationBlock(spec, items, index);
+            if (word.datatype() == Datatype.SET_WORD) {
                 continue;
             }
             parameters.add(new Parameter(
@@ -92,25 +98,63 @@ final class FunctionSpec {
         return List.copyOf(locals);
     }
 
+    /**
+     * The one set-word a specification may hold: {@code return:} followed by a
+     * block naming what the function answers.
+     *
+     * <p>Red writes a function that way and the C allows it here so that the
+     * same definition reads in both -- "It will be ignored while evaluating",
+     * says the comment, and it is. One only: a second {@code return:} is a
+     * malformed definition like any other set-word.
+     */
+    private static boolean isAReturnAnnotation(
+            WordValue word, List<Value> items, int index) {
+
+        return word.datatype() == Datatype.SET_WORD
+                && word.canonical().equals("return")
+                && index + 1 < items.size()
+                && items.get(index + 1) instanceof BlockValue;
+    }
+
+    /**
+     * Every name in a specification is counted once, locals included.
+     *
+     * <p>{@code Collect_Frame(BIND_ALL | BIND_NO_DUP | ...)} walks the whole
+     * block before anything is validated, so a word repeated anywhere in it is
+     * a duplicate -- between two arguments, between two locals, or between an
+     * argument and a local. JEBOL skipped everything after {@code /local},
+     * which let {@code func [a /local a][]} through with two names for one
+     * slot.
+     *
+     * <p>The failure names the word as it was written rather than as it was
+     * spelled, so a repeated refinement reports {@code /x} and a repeated
+     * argument reports {@code x}. {@code Trap1(RE_DUP_VARS, value)} hands over
+     * the value from the block itself.
+     */
     private static void refuseADuplicate(WordValue word, Set<String> alreadyNamed) {
         if (!alreadyNamed.add(word.canonical())) {
             throw new Raised(org.jebol.domain.value.ErrorValue.about(
                     org.jebol.domain.value.ErrorCategory.SCRIPT,
                     EvaluationFailure.DUP_VARS.errorId(),
                     EvaluationFailure.DUP_VARS.description(),
-                    WordValue.of(word.spelling())));
+                    word));
         }
     }
 
-    private static void requireAReturnAnnotationBlock(
-            BlockValue spec, List<Value> items, int index) {
-        if (index + 1 >= items.size() || !(items.get(index + 1) instanceof BlockValue)) {
-            throw new Raised(org.jebol.domain.value.ErrorValue.about(
-                    org.jebol.domain.value.ErrorCategory.SCRIPT,
-                    EvaluationFailure.BAD_FUNC_DEF.errorId(),
-                    EvaluationFailure.BAD_FUNC_DEF.description(),
-                    spec.head()));
-        }
+    /**
+     * A specification holding something that cannot be part of one, which
+     * names the whole block rather than the part that was wrong.
+     *
+     * <p>"Report full invalid function spec block in the error", says the C
+     * above the line -- and it is the more useful of the two, because a
+     * stray set-word means little without the specification around it.
+     */
+    private static Raised refusingTheWholeSpec(BlockValue spec) {
+        return new Raised(org.jebol.domain.value.ErrorValue.about(
+                org.jebol.domain.value.ErrorCategory.SCRIPT,
+                EvaluationFailure.BAD_FUNC_DEF.errorId(),
+                EvaluationFailure.BAD_FUNC_DEF.description(),
+                spec.head()));
     }
 
     private static ParameterKind kindOf(WordValue word) {

@@ -2677,6 +2677,71 @@ invariant ACipherPortDecryptsWhatACipherPortEncrypted {
                         = octets_padded_with_noughts_to_a_whole_block(octets)
 }
 
+-- === Making an operator ====================================
+
+-- MAKE OP! builds an infix operator, either from a specification and a body
+-- or from a function that already exists.
+--
+-- Two ways in and they meet at once. A block is read exactly as MAKE
+-- FUNCTION! reads one; a function or an action is taken as it stands, sharing
+-- its specification, its body and its arguments rather than being copied. So
+-- an operator made from a function is that function reached a different way,
+-- and changing one would change the other if either could be changed.
+--
+-- What the operator adds is where the first argument comes from: the value
+-- already produced to its left rather than the position after it. Nothing
+-- else about applying one is different, which is why every operator this
+-- build starts with has a prefix twin doing the same work.
+rule MakingAnOperatorFromASpecificationAndABody {
+    when: MakeValue(op, specification)
+    requires: specification.datatype = block
+
+    ensures: MakeResult(datatype: op)
+    ensures: it_dispatches_to(the_function_that_block_would_make())
+}
+
+rule MakingAnOperatorFromAFunctionThatAlreadyExists {
+    when: MakeValue(op, given)
+    requires: given.datatype in {function, action, native}
+
+    ensures: MakeResult(datatype: op)
+    ensures: it_dispatches_to(given)
+}
+
+-- Exactly two arguments, counted up to the first refinement.
+--
+-- An operator takes the value on its left and the value on its right, and
+-- there is nowhere for a third to come from. One is refused for the same
+-- reason from the other side.
+--
+-- Counted up to the refinement rather than over the whole list, which is the
+-- part worth saying: what follows a refinement is only ever supplied by a
+-- call that named one, and an operator has no way to name anything. So a
+-- function of two arguments with refinements after them makes a perfectly
+-- good operator, and its refinements are simply never asked for.
+rule AnOperatorTakesExactlyTwoArguments {
+    when: MakeValue(op, given)
+    requires: the_arguments_before_any_refinement(given) != 2
+
+    ensures: MakeFails(error: bad_make_arg)
+}
+
+-- Every reflector asks the function the operator dispatches to, rather than
+-- the operator.
+--
+-- So SPEC-OF an operator is the specification of what is behind it, and
+-- BODY-OF is that function's body -- or nothing at all where what is behind
+-- it is an action, because an action has no body to show. The C reads the
+-- datatype the operator was made from and starts the same switch again.
+rule ReflectingOnAnOperatorAsksWhatIsBehindIt {
+    when: EvaluateCall(reflect, target, field)
+    requires: target.datatype = op
+    requires: field in {spec, body, words, types}
+
+    ensures: CallResult(value: what_that_field_answers_for(
+        the_function_behind(target)))
+}
+
 -- === Building an image ======================================
 
 -- An image is built from a size followed by what fills it, and the parts have

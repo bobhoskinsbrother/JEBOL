@@ -67,18 +67,24 @@ b
 --- id failures/a-path-cannot-select-from-a-number
 --- origin JEBOL spec/eval.allium, rule PathSelectsNextSegment
 --- requires control
+--- note Two failures live one line apart in the C and say different things. A
+--- note value whose datatype can be selected from at all, asked for a part it
+--- note has not got, is an invalid-path: the path was a fair question and the
+--- note answer is no. A number has no parts to ask about, so the question could
+--- note never have had an answer, and that is a bad-path-type.
 --- code
 count: 42
 count/field
---- error script invalid-path
+--- error script bad-path-type
 
 --- id failures/a-set-path-into-something-that-is-not-an-object-raises
 --- origin JEBOL spec/eval.allium, rule SetPathAssignsFollowingValue
 --- requires control
+--- note Writing asks the same question as reading and gets the same answer.
 --- code
 count: 42
 count/field: 1
---- error script invalid-path
+--- error script bad-path-type
 
 # --- An unset is a condition, and it is true -----------------
 
@@ -125,11 +131,12 @@ not nothing
 --- id failures/calling-something-that-is-not-a-function
 --- origin JEBOL spec/eval.allium, rule ApplicationResolvesGathering
 --- requires control
---- note A path that lands on a number cannot be called, and saying so is
---- note better than silently producing the number.
+--- note A path into a number cannot be followed, and saying so is better than
+--- note silently producing the number. A number has no parts at all, so this
+--- note is bad-path-type rather than the invalid-path a missing part gives.
 --- code
 do [count: 42 count/1]
---- error script invalid-path
+--- error script bad-path-type
 
 --- id failures/arithmetic-on-a-block-raises
 --- origin REBOL/Core User Guide 2.3 section 4.7

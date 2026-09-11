@@ -2248,6 +2248,13 @@ public final class Natives {
      * number, that number meets every octet.
      */
     private static Value octetByOctet(Value left, Value right, OctetWork work) {
+        // A tuple takes a tuple or a plain number and nothing else, and what it
+        // refuses it refuses by naming the two that do not go together --
+        // `Trap_Math_Args` is the same call every datatype makes for the same
+        // reason. A time on either side is the one that looks as though it
+        // ought to work: a duration is a number everywhere else in the
+        // language and is not one here.
+        refuseATimeBesideATuple(left, right);
         if (!(left instanceof TupleValue ours)) {
             return raiseCannotUse(left, "tuple arithmetic");
         }
@@ -2269,6 +2276,14 @@ public final class Natives {
             answer[at - 1] = (int) Math.max(0, Math.min(255, worked));
         }
         return TupleValue.of(answer);
+    }
+
+    private static void refuseATimeBesideATuple(Value left, Value right) {
+        if (left instanceof TimeValue || right instanceof TimeValue) {
+            throw Raised.of(EvaluationFailure.NOT_RELATED,
+                    DatatypeValue.of(Datatype.TIME),
+                    DatatypeValue.of(Datatype.TUPLE));
+        }
     }
 
     /** Half away from zero, which is what {@code Round_Dec} does by default. */
@@ -2420,14 +2435,232 @@ public final class Natives {
      * reading, so there is no floor at midnight.
      */
     private static Value timeArithmetic(Value left, Value right, Operation operation) {
+        if (!(left instanceof TimeValue) && right instanceof TimeValue) {
+            return aNumberAgainstATime(left, (TimeValue) right, operation);
+        }
+        if (right instanceof TimeValue other) {
+            return aTimeAgainstATime(left, other, operation);
+        }
+        if (right instanceof MoneyValue rate) {
+            return aTimeAgainstAMoney(left, rate, operation);
+        }
+        if (right instanceof DecimalValue portion
+                && portion.datatype() == Datatype.PERCENT) {
+            return aTimeAgainstAProportion(left, portion, operation);
+        }
+        if (!(right instanceof IntegerValue) && !(right instanceof DecimalValue)) {
+            throw notRelatedToATime(right, operation);
+        }
         if (operation == Operation.MULTIPLY || operation == Operation.DIVIDE) {
             long scaled = (long) ((DecimalValue) decimalArithmetic(
-                    nanosecondsOf(left), Comparison.asDouble(scalarOf(right)), operation)).quantity();
+                    nanosecondsOf(left), Comparison.asDouble(right), operation)).quantity();
             return TimeValue.ofNanoseconds(scaled);
         }
-        double worked = ((DecimalValue) decimalArithmetic(
-                nanosecondsOf(left), nanosecondsOf(right), operation)).quantity();
-        return TimeValue.ofNanoseconds((long) worked);
+        return addedInWholeNanoseconds(left, right, operation);
+    }
+
+    /**
+     * Adding and subtracting durations, counted in whole nanoseconds.
+     *
+     * <p>A time is a sixty-four bit count of nanoseconds and the C adds two of
+     * them as integers. Going through a double loses the low digits of any
+     * duration past about a hundred days, because a double holds fifteen or so
+     * significant figures and a duration that long needs nineteen -- so
+     * {@code -1.0 + -596523:14:07.999999999} came back rounded to the second
+     * with the nine nines gone.
+     *
+     * <p>The other side is turned into nanoseconds before the sum rather than
+     * after, which is the C's own order: {@code (i64)(dec * SEC_SEC)} first,
+     * then an integer add. A number meeting a time is seconds.
+     */
+    private static Value addedInWholeNanoseconds(
+            Value left, Value right, Operation operation) {
+
+        long ours = wholeNanosecondsOf(left);
+        long theirs = wholeNanosecondsOf(right);
+        return TimeValue.ofNanoseconds(withinWhatADurationHolds(switch (operation) {
+            case ADD -> ours + theirs;
+            case SUBTRACT -> ours - theirs;
+            default -> {
+                requireNonZero(theirs);
+                yield operation == Operation.REMAINDER
+                        ? ours % theirs
+                        : Math.floorMod(ours, theirs);
+            }
+        }));
+    }
+
+    /**
+     * Refuses a duration longer than one can be, rather than bringing it down
+     * to the longest.
+     *
+     * <p>{@code Add_Max} traps for a time -- {@code if (type)
+     * Trap1(RE_TYPE_LIMIT, ...)} -- and only clamps where the caller passed no
+     * type to name. So adding a tenth of a second to the longest duration
+     * there is says so, where JEBOL quietly answered the longest duration
+     * again and a loop that added in a circle never noticed.
+     *
+     * <p>The limit here is not the one TO TIME! uses. That one is a count of
+     * whole seconds, this one is whole hours -- {@code MAX_HOUR * HR_SEC},
+     * which rounds down to two million five hundred and sixty-two thousand
+     * and forty-seven hours -- so a duration can be made that arithmetic will
+     * not then add to.
+     */
+    private static long withinWhatADurationHolds(long nanoseconds) {
+        if (nanoseconds < -LONGEST_DURATION || nanoseconds > LONGEST_DURATION) {
+            throw Raised.of(EvaluationFailure.TYPE_LIMIT,
+                    DatatypeValue.of(Datatype.TIME));
+        }
+        return nanoseconds;
+    }
+
+    /** {@code MAX_TIME}: whole hours, so a little short of the whole range. */
+    private static final long LONGEST_DURATION =
+            (9_223_372_036L / 3600L) * 3600L * 1_000_000_000L;
+
+    private static long wholeNanosecondsOf(Value value) {
+        if (value instanceof TimeValue time) {
+            return time.nanoseconds();
+        }
+        if (value instanceof IntegerValue seconds) {
+            return seconds.magnitude() * NANOSECONDS_A_SECOND;
+        }
+        return Math.round(Comparison.asDouble(value) * NANOSECONDS_A_SECOND);
+    }
+
+    /**
+     * A count of seconds as a duration, which TO TIME! and MAKE TIME! both
+     * want.
+     *
+     * <p>A whole number multiplies exactly. Nine thousand million seconds is
+     * nine thousand million thousand million nanoseconds, which is a
+     * nineteen-digit number and fits a sixty-four bit integer with room to
+     * spare -- but not a double, which runs out of significant figures five
+     * digits earlier and had been answering two and a half thousand hours plus
+     * half a microsecond nobody asked for.
+     *
+     * <p>A fractional number is rounded rather than truncated, which is what
+     * the block form of MAKE TIME! already did: a tenth of a second and a bit
+     * more is the nanosecond above, not the one below.
+     *
+     * <p>A count of seconds past what a duration can hold is refused rather
+     * than brought down to the largest one. Clamping answered the biggest time
+     * there is for every number above it, so a calculation that had gone wrong
+     * by a factor of a thousand came back looking like an answer -- and for a
+     * negative one it came back as {@code --2562047:-47:-16}, which is not a
+     * time at all.
+     */
+    private static Value aDurationOfSeconds(Value value) {
+        double seconds = Comparison.asDouble(value);
+        if (seconds < -MOST_SECONDS_A_DURATION_HOLDS
+                || seconds > MOST_SECONDS_A_DURATION_HOLDS) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, value);
+        }
+        return TimeValue.ofNanoseconds(wholeNanosecondsOf(value));
+    }
+
+    /**
+     * {@code MAX_SECONDS}, which is two to the sixty-third over a thousand
+     * million: as many whole seconds as a count of nanoseconds can hold.
+     */
+    private static final double MOST_SECONDS_A_DURATION_HOLDS = 9_223_372_036.0;
+
+    /**
+     * A number on the left and a duration on the right, which is a narrower
+     * set of sums than the other way round.
+     *
+     * <p>The C dispatches on the left, so this is the integer and decimal
+     * handlers rather than the time one, and they agree on less than they
+     * look as though they would. Adding works either way and so does
+     * multiplying. Subtracting works from a whole number and not from a
+     * fraction. Dividing works from neither -- there is no reading of "two
+     * divided by ten hours" that answers a duration.
+     */
+    private static Value aNumberAgainstATime(
+            Value left, TimeValue right, Operation operation) {
+
+        boolean allowed = switch (operation) {
+            case ADD, MULTIPLY -> true;
+            case SUBTRACT -> left instanceof IntegerValue;
+            default -> false;
+        };
+        if (!allowed) {
+            throw notRelatedToATime(left, operation);
+        }
+        if (operation == Operation.SUBTRACT) {
+            return addedInWholeNanoseconds(left, right, operation);
+        }
+        return timeArithmetic(right, left, operation);
+    }
+
+    /**
+     * A time against another time, where dividing changes the datatype.
+     *
+     * <p>Adding and subtracting two durations gives a duration, and so does
+     * the remainder. Dividing one by the other does not: it answers how many
+     * times the second goes into the first, which is a plain number and is
+     * what the C sets explicitly -- {@code VAL_SET(DS_RETURN, REB_DECIMAL)}.
+     * Multiplying two durations means nothing and is refused.
+     */
+    private static Value aTimeAgainstATime(
+            Value left, TimeValue right, Operation operation) {
+
+        if (operation == Operation.DIVIDE) {
+            requireNonZero(right.nanoseconds());
+            return DecimalValue.of(
+                    nanosecondsOf(left) / (double) right.nanoseconds());
+        }
+        if (operation == Operation.MULTIPLY) {
+            throw notRelatedToATime(right, operation);
+        }
+        return addedInWholeNanoseconds(left, right, operation);
+    }
+
+    /**
+     * A time against a money, which answers money and only for two of the
+     * five operations.
+     *
+     * <p>An hourly rate, which is what the pair is for. The time counts as
+     * hours -- {@code secs * NANO / 3600.0} -- so an hour and a half at five
+     * pounds an hour is seven pounds fifty, and a hundred pounds over four
+     * hours is twenty-five an hour. Adding a duration to an amount of money
+     * means nothing, and the C refuses it rather than widening one to the
+     * other.
+     */
+    private static Value aTimeAgainstAMoney(
+            Value left, MoneyValue rate, Operation operation) {
+
+        BigDecimal hours = BigDecimal.valueOf(
+                nanosecondsOf(left) / NANOSECONDS_AN_HOUR);
+        return switch (operation) {
+            case MULTIPLY -> moneyArithmetic(hours, rate.amount(), operation);
+            case DIVIDE -> moneyArithmetic(rate.amount(), hours, operation);
+            default -> throw notRelatedToATime(rate, operation);
+        };
+    }
+
+    /**
+     * A time against a percentage, which scales it and nothing else.
+     *
+     * <p>Only multiplication, and the C says why in a comment of its own:
+     * "support for actions like A_ADD does not make sense, so only MULTIPLY is
+     * supported". Half of ten hours is five hours; ten hours plus fifty per
+     * cent of nothing in particular is not a question with an answer.
+     */
+    private static Value aTimeAgainstAProportion(
+            Value left, DecimalValue portion, Operation operation) {
+
+        if (operation != Operation.MULTIPLY) {
+            throw notRelatedToATime(portion, operation);
+        }
+        return TimeValue.ofNanoseconds(
+                (long) (nanosecondsOf(left) * portion.quantity()));
+    }
+
+    private static Raised notRelatedToATime(Value other, Operation operation) {
+        return Raised.of(EvaluationFailure.NOT_RELATED,
+                WordValue.of(operation.name().toLowerCase(Locale.ROOT)),
+                DatatypeValue.of(Datatype.TIME));
     }
 
     private static final long NANOSECONDS_A_SECOND = 1_000_000_000L;
@@ -3114,6 +3347,8 @@ public final class Natives {
                     functionFrom(body, context) instanceof FunctionValue made
                             ? made.asClosure()
                             : NoneValue.none();
+            case DatatypeValue wanted when wanted.represents() == Datatype.OP ->
+                    operatorFrom(body, context);
             case DatatypeValue wanted when wanted.represents() == Datatype.ERROR ->
                     errorFromSpec(body, evaluator, context);
             case ErrorValue original when body instanceof StringValue ->
@@ -3596,10 +3831,14 @@ public final class Natives {
                     return last;
                 });
 
+        // `value [number! series! pair! none!]`. A number is how many times, a
+        // series is what to walk, and the counter is set to the series at each
+        // position rather than to what is there -- so the body reads `x/1` for
+        // the value and `index? x` for where it is, exactly as FORSKIP does.
+        // None runs nothing at all.
         define("repeat", List.of(
                         Parameter.softQuoted("counter"),
-                        Parameter.required("count",
-                                Set.of(Datatype.INTEGER, Datatype.PAIR, Datatype.IMAGE)),
+                        Parameter.required("count", WHAT_REPEAT_COUNTS_BY),
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     WordValue counter = (WordValue) arguments.get(0);
@@ -3607,12 +3846,15 @@ public final class Natives {
                     if (arguments.get(1) instanceof PairValue grid) {
                         return repeatedOverGrid(evaluator, context, counter, grid, body);
                     }
-                    if (arguments.get(1) instanceof ImageValue picture) {
-                        return countedLoop(evaluator, context, counter, body,
-                                index -> picture.atIndex(picture.index() + (int) index),
-                                picture.lengthFromHere());
+                    if (arguments.get(1) instanceof NoneValue nothing) {
+                        return nothing;
                     }
-                    long passes = ((IntegerValue) arguments.get(1)).magnitude();
+                    if (arguments.get(1) instanceof SeriesValue walked) {
+                        return countedLoop(evaluator, context, counter, body,
+                                index -> walked.atIndex(walked.index() + (int) index),
+                                walked.lengthFromHere());
+                    }
+                    long passes = (long) asMagnitude(arguments.get(1));
                     return countedLoop(
                             evaluator, context, counter, body,
                             index -> IntegerValue.of(index + 1), passes);
@@ -3690,7 +3932,8 @@ public final class Natives {
                     }
                     if (arguments.get(1) instanceof SeriesValue other
                             && !(other instanceof BlockValue)) {
-                        return removedEachFrom(other, arguments, evaluator, context);
+                        return removedEachFrom(
+                                other, arguments, refinements, evaluator, context);
                     }
                     BlockValue series = (BlockValue) arguments.get(1);
                     Context locals = Context.loopFrameOf(context);
@@ -4138,6 +4381,18 @@ public final class Natives {
      * from the last item rather than doing nothing. And the word goes back where
      * it started on the way out -- unless BREAK left the loop, which returns
      * before the line that restores it.
+     *
+     * <p>The word is read again every round, and the step is applied to
+     * whatever it holds after the body has run. So a body may move the walk
+     * along, or hand it a different series entirely: REBOL's own test walks one
+     * string while swapping the word to another at each step, and reads a
+     * character from each in turn. The C says so in a comment of its own --
+     * "Evaluation may swap the var series" -- and checks only that the
+     * datatype has not changed.
+     *
+     * <p>Keeping a cursor of its own instead made the body's assignment
+     * invisible, so the loop walked the series it started with and stopped at
+     * that one's length.
      */
     private static Value walkBySteps(
             Evaluator evaluator, WordValue word, int step, BlockValue body) {
@@ -4153,22 +4408,56 @@ public final class Natives {
             throw Raised.of(EvaluationFailure.INVALID_ARG,
                     "a step of zero would never reach the end");
         }
-        int at = start.index();
-        if (step < 0 && at > start.storageLength()) {
-            at = start.storageLength() + 1 + step;
+        Datatype walkingA = start.datatype();
+        if (step < 0 && start.index() > start.storageLength()) {
+            slot.setValue(start.atIndex(start.storageLength() + 1 + step));
         }
         Value last = NoneValue.none();
         try {
-            while (at >= 1 && at <= start.storageLength()) {
-                slot.setValue(start.atIndex(at));
+            while (slot.value() instanceof SeriesValue here
+                    && here.index() >= 1 && here.index() <= here.storageLength()) {
                 last = oneRound(evaluator, body, evaluator.systemContext());
-                at += step;
+                if (!(slot.value() instanceof SeriesValue moved)
+                        || moved.datatype() != walkingA) {
+                    return raiseCannotUse(slot.value(), "forall");
+                }
+                if (!steppedOnwards(slot, moved, step)) {
+                    break;
+                }
             }
         } catch (LoopSignal stopped) {
             return stopped.answer();
         }
         slot.setValue(start);
         return last;
+    }
+
+    /**
+     * Moves the walked word one step, and says whether there is anywhere left
+     * to go.
+     *
+     * <p>The C adds the step to the index without checking and lets the top of
+     * the loop decide, which it can because an index there is a plain number.
+     * Here a position is checked when it is made, so the same decision is made
+     * one line earlier.
+     *
+     * <p>A negative step that runs off the end comes back round to the last
+     * item, which is how walking backwards from the tail works at all: the
+     * body may move the word past the end, and the step then measures from the
+     * end rather than stopping.
+     */
+    private static boolean steppedOnwards(
+            ContextSlot slot, SeriesValue moved, int step) {
+
+        int next = moved.index() + step;
+        if (next > moved.storageLength() && step < 0) {
+            next = moved.storageLength() + 1 + step;
+        }
+        if (next < 1 || next > moved.storageLength()) {
+            return false;
+        }
+        slot.setValue(moved.atIndex(next));
+        return true;
     }
 
     /**
@@ -4956,17 +5245,19 @@ public final class Natives {
                             && arguments.get(1) instanceof DateValue to) {
                         return timeBetween(from, to);
                     }
-                    boolean mindingCase = refinements.contains("case");
-                    List<Value> ours = theMembersOf(arguments.get(0));
-                    List<Value> theirs = theMembersOf(arguments.get(1));
-                    List<Value> only = new ArrayList<>();
-                    ours.stream().filter(item -> theirs.stream()
-                            .noneMatch(other -> matches(item, other, mindingCase)))
-                            .forEach(only::add);
-                    theirs.stream().filter(item -> ours.stream()
-                            .noneMatch(other -> matches(item, other, mindingCase)))
-                            .forEach(only::add);
-                    return shapedLike(arguments.get(0), only);
+                    // Through the same code the other three use, because
+                    // /SKIP means the same thing for all four: the members are
+                    // records of that width rather than single items. This had
+                    // its own walk that compared item by item, so
+                    // `difference/skip "ač" "čbš" 2` answered the difference of
+                    // six characters instead of three records.
+                    Value width = argumentFor("skip", List.of("skip"), arguments,
+                            refinements, 2);
+                    int stride = width instanceof IntegerValue wanted
+                            ? (int) Math.max(1, wanted.magnitude())
+                            : 1;
+                    return combined(arguments, Combination.DIFFERENCE,
+                            refinements.contains("case"), stride);
                 });
 
         define("reflect", List.of(Parameter.required("value"),
@@ -5071,6 +5362,23 @@ public final class Natives {
                             case "words" -> wordsNamedIn(specOf(behind));
                             case "types" -> typesetsOf(
                                     behind.parameters(), behind.declaredRefinements());
+                            default -> NoneValue.none();
+                        };
+                    }
+                    // An operator made at runtime wraps an ordinary function,
+                    // and every reflector asks that function rather than the
+                    // wrapper. `type = VAL_GET_EXT(value); goto of_type;` --
+                    // the C reads the datatype the operator was made from and
+                    // starts the same switch again, so an operator made from
+                    // an action answers none for its body and one made from a
+                    // function answers the block it was written with.
+                    if (arguments.get(0) instanceof OperatorValue operator
+                            && operator.underlying() instanceof FunctionValue behind) {
+                        return switch (field) {
+                            case "spec" -> behind.spec();
+                            case "body" -> copied(behind.body(), true);
+                            case "words" -> wordsNamedIn(behind.spec());
+                            case "types" -> typesetsOf(behind.parameters(), Set.of());
                             default -> NoneValue.none();
                         };
                     }
@@ -5807,14 +6115,18 @@ public final class Natives {
                         return rewritten(text, change);
                     }
                     Value limit = argumentFor("part", List.of("part"), arguments, refinements, 1);
-                    int howMany = limit instanceof IntegerValue wanted
-                            ? (int) Math.max(0, Math.min(wanted.magnitude(), text.lengthFromHere()))
+                    long wanted = limit instanceof IntegerValue asked
+                            ? asked.magnitude()
                             : text.lengthFromHere();
-                    int changing = howMany;
-                    return rewritten(text, whole -> {
+                    StringValue changingFrom =
+                            (StringValue) theRunReachingBackIfNegative(text, wanted);
+                    int changing = (int) Math.max(0, Math.min(Math.abs(wanted),
+                            changingFrom.lengthFromHere()));
+                    rewritten(changingFrom, whole -> {
                         String front = theFirstCodePointsOf(whole, changing);
                         return change.apply(front) + whole.substring(front.length());
                     });
+                    return text;
                 });
     }
 
@@ -6102,17 +6414,7 @@ public final class Natives {
                         yield members;
                     }
                     case StringValue string -> {
-                        Value adding = duplicated(
-                                arguments.get(1), arguments, refinements);
-                        String text = adding instanceof BlockValue added
-                                && added.datatype() == Datatype.BLOCK
-                                ? runTogether(added)
-                                : Molder.form(adding);
-                        int wanted = howManyWanted(
-                                arguments.get(1), arguments, refinements, 2)
-                                .map(count -> Math.min(count.intValue(), text.length()))
-                                .orElse(text.length());
-                        text.substring(0, wanted).codePoints()
+                        textContributedBy(arguments, refinements).codePoints()
                                 .forEach(string.storage()::append);
                         yield string.head();
                     }
@@ -6423,10 +6725,12 @@ public final class Natives {
                                 "/key removes from a map or a bitset, not a series");
                     }
                     long howMany = howManyWanted(series, arguments, refinements, 1).orElse(1L);
-                    for (long dropped = 0; dropped < howMany && !series.atTail(); dropped++) {
-                        removeOneAt(series, series.index());
+                    SeriesValue removingFrom = theRunReachingBackIfNegative(series, howMany);
+                    for (long dropped = 0; dropped < Math.abs(howMany)
+                            && !removingFrom.atTail(); dropped++) {
+                        removeOneAt(removingFrom, removingFrom.index());
                     }
-                    return series;
+                    return removingFrom;
                 });
 
         define("reverse", List.of(Parameter.required("series"),
@@ -7710,9 +8014,17 @@ public final class Natives {
                 && !refinements.contains("only")) {
             return run.remaining().size();
         }
+        // Counted in characters and not in the units Java stores them as. A
+        // string's position is a character index, so a needle holding anything
+        // outside the basic plane -- an emoji, most of them -- made /TAIL land
+        // one place too far for every such character in it.
         return series instanceof StringValue && !refinements.contains("only")
-                ? Molder.form(wanted).length()
+                ? theCharactersIn(Molder.form(wanted))
                 : 1;
+    }
+
+    private static int theCharactersIn(String text) {
+        return text.codePointCount(0, text.length());
     }
 
     /**
@@ -9132,20 +9444,33 @@ public final class Natives {
     /**
      * REMOVE-EACH over a series that is not a block.
      *
-     * <p>A binary yields its bytes and a string its characters, and each
-     * is removed where the body answers true. Going through the storage
-     * is also what makes a protected series refuse.
+     * <p>A binary yields its bytes and a string its characters, and each is
+     * removed where the body answers true. Going through the storage is also
+     * what makes a protected series refuse.
+     *
+     * <p>Forwards, and the order matters more than it looks. This walked
+     * backwards so that removing an item could not disturb the indexes still
+     * to come -- which works for the removing and is wrong for everything
+     * else, because the body runs in that order too. REBOL's own test appends
+     * each character to a string as it goes and then checks what it collected:
+     * the answer came back reversed, and nothing about REMOVE-EACH said it
+     * would.
+     *
+     * <p>Deciding first and rewriting afterwards keeps the walk forwards and
+     * the indexes still, which is what the block path already did.
      */
     private static Value removedEachFrom(
-            SeriesValue series, List<Value> arguments, Evaluator evaluator,
-            Context within) {
+            SeriesValue series, List<Value> arguments, Set<String> refinements,
+            Evaluator evaluator, Context within) {
 
         refuseIfProtected(series);
         Context locals = Context.loopFrameOf(within);
         WordValue word = (WordValue) arguments.getFirst();
         locals.define(word.spelling());
         BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
-        for (int at = series.storageLength(); at >= series.index(); at--) {
+        List<Value> kept = new ArrayList<>();
+        int taken = 0;
+        for (int at = series.index(); at <= series.storageLength(); at++) {
             Value item = switch (series) {
                 case BinaryValue bytes -> IntegerValue.of(bytes.storage().at(at));
                 case VectorValue numbers -> numbers.elementAt(at);
@@ -9153,10 +9478,34 @@ public final class Natives {
             };
             locals.set(word.spelling(), item);
             if (evaluator.evaluateOrRaise(body, locals).isTruthy()) {
-                removeFrom(series, at, 1);
+                taken++;
+            } else {
+                kept.add(item);
             }
         }
-        return series;
+        for (int at = series.storageLength(); at >= series.index(); at--) {
+            removeFrom(series, at, 1);
+        }
+        for (int at = 0; at < kept.size(); at++) {
+            insertOneInto(series, series.index() + at, kept.get(at));
+        }
+        return refinements.contains("count") ? IntegerValue.of(taken) : series;
+    }
+
+    /**
+     * One value put back into a series that is not a block, which each kind
+     * stores its own way.
+     */
+    private static void insertOneInto(SeriesValue series, int at, Value item) {
+        switch (series) {
+            case BinaryValue bytes ->
+                    bytes.storage().insertAt(at, (int) ((IntegerValue) item).magnitude());
+            case VectorValue numbers ->
+                    numbers.storage().insertAt(at, ((IntegerValue) item).magnitude());
+            case StringValue text ->
+                    text.storage().insertAt(at, ((CharacterValue) item).codepoint());
+            default -> throw Raised.of(EvaluationFailure.CANNOT_USE, "remove-each");
+        }
     }
 
     /**
@@ -9225,9 +9574,11 @@ public final class Natives {
                 && added.datatype() == Datatype.BLOCK
                 ? runTogether(added)
                 : Molder.form(adding);
+        // Counted in characters. Cutting by Java's own string length takes half
+        // of anything outside the basic plane, so `insert/part s "🙂" 1` put in
+        // a lone surrogate that reads back as a question mark.
         return howManyWanted(arguments.get(1), arguments, refinements, 2)
-                .map(count -> written.substring(0,
-                        Math.max(0, Math.min(count.intValue(), written.length()))))
+                .map(count -> theFirstCodePointsOf(written, count.intValue()))
                 .orElse(written);
     }
 
@@ -11112,9 +11463,16 @@ public final class Natives {
                 result.add(candidate);
             }
         }
-        if (how == Combination.UNION) {
+        // DIFFERENCE is symmetric -- what is in one or the other and not in
+        // both -- so the second block contributes as well. EXCLUDE is the
+        // asymmetric one and stops above. The two agree whenever the second
+        // set is contained in the first, which is how a block DIFFERENCE that
+        // only ever looked at the first block went unnoticed.
+        if (how == Combination.UNION || how == Combination.DIFFERENCE) {
             for (List<Value> candidate : second) {
-                if (result.stream()
+                boolean inFirst = first.stream()
+                        .anyMatch(other -> sameRecord(other, candidate, mindingCase));
+                if ((how == Combination.UNION || !inFirst) && result.stream()
                         .noneMatch(kept -> sameRecord(kept, candidate, mindingCase))) {
                     result.add(candidate);
                 }
@@ -12255,6 +12613,20 @@ public final class Natives {
             }
             slotsInUse -= FRAME_VALUE_UNITS;
         }
+    }
+
+    /**
+     * {@code value [number! series! pair! none!]}, which is everything REPEAT
+     * will count by.
+     */
+    private static final Set<Datatype> WHAT_REPEAT_COUNTS_BY = whatRepeatCountsBy();
+
+    private static Set<Datatype> whatRepeatCountsBy() {
+        Set<Datatype> accepted = new java.util.HashSet<>(Typeset.NUMBER.members());
+        accepted.addAll(Typeset.SERIES.members());
+        accepted.add(Datatype.PAIR);
+        accepted.add(Datatype.NONE);
+        return Set.copyOf(accepted);
     }
 
     /**
@@ -14011,27 +14383,143 @@ public final class Natives {
     }
 
     /**
-     * A function with another's behaviour and a new declared interface.
+     * An infix operator, from a spec and a body or from a function that
+     * already exists.
      *
-     * <p>The given block holds a spec block. Anything else is a body
-     * where a spec was wanted, and R3 refuses it rather than guessing.
+     * <p>{@code Make_Function} with {@code type == REB_OP}. Two ways in and
+     * they meet immediately: a block is read as a function would be, and a
+     * function or an action is taken as it stands, sharing its spec, its body
+     * and its arguments rather than being copied. Either way what comes out
+     * dispatches to a function; the only thing the operator adds is where its
+     * first argument comes from.
+     *
+     * <p>Exactly two arguments, counted up to the first refinement -- so a
+     * function of two taking refinements after them can be made into one, and
+     * {@code (abs a - b) <= (abs a * 0.01)} with a {@code /p} nobody uses is a
+     * fair operator. One argument or three is refused, because an operator
+     * takes the value on its left and the value on its right and there is
+     * nowhere for a third to come from.
+     */
+    private Value operatorFrom(Value given, Context context) {
+        Value dispatching = given instanceof BlockValue parts
+                ? functionFrom(parts, context)
+                : given;
+        if (!dispatching.datatype().isAnyFunction()
+                || howManyArgumentsBeforeAnyRefinement(dispatching) != 2) {
+            return raiseBadMakeArg(given, "op!");
+        }
+        return new OperatorValue(AN_OPERATOR_NOBODY_HAS_NAMED, dispatching);
+    }
+
+    /**
+     * The arguments a function takes before its first refinement, which is
+     * what decides whether it can be an operator.
+     *
+     * <p>Counted up to the refinement rather than over the whole list, which
+     * is the C's own loop: {@code if (IS_REFINEMENT(args)) break;}. What
+     * follows a refinement is only ever supplied by a call that named it, and
+     * an operator has no way to name one.
+     */
+    private static int howManyArgumentsBeforeAnyRefinement(Value dispatching) {
+        List<Parameter> declared = switch (dispatching) {
+            case FunctionValue function -> function.parameters();
+            case NativeValue built -> built.parameters();
+            case OperatorValue operator ->
+                    List.of(Parameter.required("a"), Parameter.required("b"));
+            default -> List.<Parameter>of();
+        };
+        int counted = 0;
+        for (Parameter parameter : declared) {
+            if (parameter.kind() == ParameterKind.REFINEMENT) {
+                return counted;
+            }
+            if (parameter.kind() != ParameterKind.RETURN_TYPE) {
+                counted++;
+            }
+        }
+        return counted;
+    }
+
+    /**
+     * What an operator made by MAKE is called until a word is set to it.
+     *
+     * <p>An operator's name is for showing and for nothing else -- the
+     * evaluator finds one by looking up the word in front of it and seeing
+     * what the word holds, so a name it never had does not stop it working.
+     */
+    private static final String AN_OPERATOR_NOBODY_HAS_NAMED = "?";
+
+    /**
+     * A function built from another one, with either half replaced.
+     *
+     * <p>{@code Copy_Function}, which reads the block it was given as up to
+     * two things: a specification and a body, each of which may be left out.
+     * So there are four shapes and they are all one rule -- take what was
+     * given, keep what was not.
+     *
+     * <ul>
+     *   <li>{@code make :f []} is a copy, both halves kept.
+     *   <li>{@code make :f [[x]]} is a new interface over the same body.
+     *   <li>{@code make :f [[x] [y]]} is a new function that happens to have
+     *       been written beside an old one.
+     *   <li>{@code make :f [* [y]]} is a new body under the same interface,
+     *       and the star is what says "this half stays".
+     * </ul>
+     *
+     * <p>The body is bound to whichever arguments the new specification
+     * declares, which is what the third shape is for. A word that was an
+     * argument and no longer is falls back to what it meant outside: REBOL's
+     * own test makes a function whose body reads {@code a}, gives it a
+     * specification without one, and reads the {@code a} that was already
+     * there.
      */
     private static Value derivedFunction(Value original, BlockValue given) {
         List<Value> parts = given.remaining();
-        if (parts.isEmpty() || !(parts.getFirst() instanceof BlockValue spec)) {
+        if (parts.isEmpty()) {
+            return original;
+        }
+        Value first = parts.getFirst();
+        boolean keepingTheSpecification = isTheStarThatMeansKeepIt(first);
+        if (!keepingTheSpecification && !(first instanceof BlockValue)) {
             return raiseCannotUse(given, "make on a function");
         }
-        if (original instanceof NativeValue && parts.size() > 1) {
+        Value replacementBody = parts.size() > 1 ? parts.get(1) : NoneValue.none();
+        if (original instanceof NativeValue && replacementBody instanceof BlockValue) {
             return raiseCannotUse(given, "make");
         }
-        List<Parameter> parameters = FunctionSpec.parametersIn(spec);
-        return switch (original) {
-            case NativeValue built -> new NativeValue(built.nativeName(), parameters);
-            case FunctionValue written -> new FunctionValue(
-                    spec, written.body(), parameters,
-                    FunctionSpec.localNamesIn(spec), written.closedOver());
-            default -> raiseCannotUse(original, "make");
-        };
+        if (!(original instanceof FunctionValue written)) {
+            return original instanceof NativeValue built && !keepingTheSpecification
+                    ? new NativeValue(built.nativeName(),
+                            FunctionSpec.parametersIn((BlockValue) first))
+                    : original;
+        }
+        BlockValue spec = keepingTheSpecification
+                ? asABlock(written.spec())
+                : (BlockValue) first;
+        BlockValue body = replacementBody instanceof BlockValue replacement
+                ? replacement
+                : asABlock(written.body());
+        return new FunctionValue(spec, body, FunctionSpec.parametersIn(spec),
+                FunctionSpec.localNamesIn(spec), written.closedOver());
+    }
+
+    /** A function's own spec and body are always blocks; this says so once. */
+    private static BlockValue asABlock(Value half) {
+        return half instanceof BlockValue block
+                ? block
+                : BlockValue.block(List.of());
+    }
+
+    /**
+     * The {@code *} that stands where a specification would go and means "keep
+     * the one it already has".
+     *
+     * <p>{@code IS_STAR}. It is the multiplication operator's own word used as
+     * a placeholder, which reads oddly and is unambiguous: nothing else could
+     * be meant by a bare star where a block of arguments belongs.
+     */
+    private static boolean isTheStarThatMeansKeepIt(Value first) {
+        return first instanceof WordValue star && star.canonical().equals("*");
     }
 
     /**
@@ -15337,8 +15825,7 @@ public final class Natives {
                     && named.datatype() == Datatype.BLOCK
                     ? TypesetValue.of(datatypesNamedIn(named))
                     : raiseBadMakeArg(value, "typeset!");
-            case TIME -> TimeValue.ofNanoseconds(
-                    (long) (Comparison.asDouble(value) * NANOSECONDS_A_SECOND));
+            case TIME -> aDurationOfSeconds(value);
             case TUPLE -> tupleFrom(value);
             case LOGIC -> LogicValue.of(countsAsTrue(asking, value));
             case DATATYPE -> value instanceof WordValue named
@@ -16822,6 +17309,28 @@ public final class Natives {
     private static Optional<Long> howManyWanted(
             List<Value> arguments, Set<String> refinements, int where) {
         return howManyWanted(NoneValue.none(), arguments, refinements, where);
+    }
+
+    /**
+     * Where a run starts when /PART was given a negative count.
+     *
+     * <p>A negative count reaches back from the position rather than forward
+     * from it, so {@code remove/part tail s -2} takes the last two characters
+     * and {@code uppercase/part tail s -2} raises them. The count is still how
+     * many; only the direction changed, and the run is clipped at the head
+     * because there is nothing before it.
+     *
+     * <p>A count that is not negative names the series where it already
+     * stands, so every caller can ask this without deciding first.
+     */
+    private static SeriesValue theRunReachingBackIfNegative(
+            SeriesValue series, long wanted) {
+
+        if (wanted >= 0) {
+            return series;
+        }
+        int reaching = (int) Math.min(-wanted, series.index() - 1L);
+        return series.atIndex(series.index() - reaching);
     }
 
     /**

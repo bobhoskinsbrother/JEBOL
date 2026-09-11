@@ -423,3 +423,22 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #54
 #
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #204
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #205
+
+# unicode-test.r3's take/last assertion never runs in a real 3.22.5 either,
+# because of a stray pair of brackets in the test file itself. `--test--` takes
+# one string and nothing else, so the block written after the title is data:
+# it is evaluated as a block literal, discarded, and the --assert inside it is
+# never reached.
+#
+#   >> ran: 0
+#   >> --test--: func [name [any-string!]] []
+#   >> --assert: func [v][ran: ran + 1]
+#   >> --test-- "take/last" [ --assert all [...] ]
+#   >> ran
+#   == 0               ; r3-head 3.22.5
+#
+# The behaviour it meant to check works here -- `while [c: take/last s]` empties
+# a string and collects its characters in reverse -- so this is a line that
+# cannot pass rather than one that should.
+#
+unicode-test.r3 / /part refines with utf8 strings / take/last #381

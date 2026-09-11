@@ -1153,10 +1153,21 @@ public final class Evaluator {
         };
     }
 
+    /**
+     * Runs whatever an operator dispatches to.
+     *
+     * <p>Every operator this build starts with wraps a native, which is why
+     * this once handled nothing else. MAKE OP! wraps whatever it was given, so
+     * an operator made at runtime dispatches to an ordinary function written
+     * in REBOL -- and the only difference between the two is where the first
+     * argument came from, which has already been decided by the time this
+     * runs.
+     */
     private Value invokeUnderlying(
             OperatorValue operator, List<Value> arguments, Context context) {
         return switch (operator.underlying()) {
             case NativeValue built -> runNative(built, arguments, context);
+            case FunctionValue function -> applyFunction(function, arguments);
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "operator " + operator.operatorName() + " has no runnable body");
         };
@@ -1390,6 +1401,7 @@ public final class Evaluator {
         }
         Value target = select(allButLast, frame.context).value();
         Value lastSegment = segments.get(segments.size() - 1);
+        refuseAPathIntoSomethingWithNoParts(path, target);
 
         // SELF is the context looking at itself and is not a field to write
         // over. R3 answers invalid-path, which says the path is the thing
@@ -1649,10 +1661,48 @@ public final class Evaluator {
                 named.add(refinementNameOf(segment));
                 continue;
             }
+            refuseAPathIntoSomethingWithNoParts(path, current);
             current = selectWith(current, selectorFor(segment, context));
         }
         return new Selection(current, List.copyOf(refinements), List.copyOf(named));
     }
+
+    /**
+     * Refuses a path into a datatype that has no parts to select from.
+     *
+     * <p>Two failures live one line apart in the C and they say different
+     * things. A value whose datatype can be selected from at all, asked for a
+     * part it has not got, is an {@code invalid-path}: the path was a fair
+     * question and the answer is no. A value whose datatype has no parts --
+     * a number, a word, a logic -- is a {@code bad-path-type}, because the
+     * question could never have had an answer.
+     *
+     * <p>Which datatypes those are is the Path column of {@code types.reb},
+     * where a dash means no handler at all. JEBOL answered invalid-path for
+     * both, so {@code 1/1} reported a missing part of an integer rather than
+     * that an integer has no parts.
+     */
+    private static void refuseAPathIntoSomethingWithNoParts(
+            BlockValue path, Value current) {
+
+        if (HAVE_NO_PARTS_TO_SELECT.contains(current.datatype())) {
+            throw Raised.of(EvaluationFailure.BAD_PATH_TYPE,
+                    path, DatatypeValue.of(current.datatype()));
+        }
+    }
+
+    /**
+     * The datatypes {@code types.reb} gives no path handler, written out
+     * rather than derived because the table is the authority and a guess from
+     * behaviour would miss the ones nothing has asked about yet.
+     */
+    private static final java.util.Set<Datatype> HAVE_NO_PARTS_TO_SELECT =
+            java.util.Set.of(
+                    Datatype.UNSET, Datatype.NONE, Datatype.LOGIC,
+                    Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
+                    Datatype.MONEY, Datatype.DATATYPE, Datatype.TYPESET,
+                    Datatype.WORD, Datatype.SET_WORD, Datatype.GET_WORD,
+                    Datatype.LIT_WORD, Datatype.REFINEMENT, Datatype.ISSUE);
 
     private Value selectFirst(Value segment, Context context) {
         if (segment instanceof WordValue word) {

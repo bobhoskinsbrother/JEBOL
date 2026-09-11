@@ -61,8 +61,29 @@ public enum EvaluationFailure {
             "two datatypes that cannot be put in an order"),
     BAD_PATH_SET(ErrorCategory.SCRIPT, "bad-path-set",
             "a path segment that cannot be written, or a value it will not hold"),
+    /**
+     * A path into a datatype that has no parts to select from.
+     *
+     * <p>{@code bad-path-type: [{path} :arg1 {is not valid for} :arg2 {type}]},
+     * and the two arguments are the whole path and the datatype it ran into.
+     * One line apart from {@code invalid-path} in the C and asking a different
+     * question: that one is a part a value has not got, this one is a value
+     * that could never have had parts.
+     */
+    BAD_PATH_TYPE(ErrorCategory.SCRIPT, "bad-path-type",
+            "a path into a datatype that has no parts"),
     OUT_OF_RANGE(ErrorCategory.SCRIPT, "out-of-range",
             "a number outside the range this operation allows"),
+    /**
+     * A value a datatype cannot hold, as opposed to a number a call will not
+     * take.
+     *
+     * <p>{@code type-limit: [:arg1 {overflow/underflow}]}. Arithmetic on times
+     * raises it where the answer would be longer than a duration can be --
+     * {@code Add_Max} traps rather than clamping whenever it is given a type
+     * to name.
+     */
+    TYPE_LIMIT(ErrorCategory.SCRIPT, "type-limit", "overflow/underflow"),
     MISSING_ARG(ErrorCategory.SCRIPT, "missing-arg",
             "missing a required argument or refinement"),
     INVALID_TYPE(ErrorCategory.SCRIPT, "invalid-type", "type is not allowed here"),

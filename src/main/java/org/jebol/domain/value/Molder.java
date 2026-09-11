@@ -790,13 +790,41 @@ public final class Molder {
      * stand for themselves and only an unbalanced brace is escaped.
      */
     private static String moldedText(String text) {
-        long newlines = text.chars().filter(each -> each == '\n').count();
-        boolean quoted = text.indexOf('"') < 0
+        String deciding = asFarAsTheLimitLooks(text);
+        long newlines = deciding.chars().filter(each -> each == '\n').count();
+        boolean quoted = deciding.indexOf('"') < 0
                 && newlines < 3
-                && text.codePointCount(0, text.length()) <= LONGEST_QUOTED;
+                && deciding.codePointCount(0, deciding.length()) <= LONGEST_QUOTED;
         return quoted
                 ? "\"" + escape(text) + "\""
                 : "{" + escapeInBraces(text, !balancedBraces(text)) + "}";
+    }
+
+    /**
+     * As much of a string as MOLD/PART could reach, which is what decides
+     * whether it is written in quotes or in braces.
+     *
+     * <p>{@code CHECK_MOLD_LIMIT} cuts the series down to what the limit could
+     * possibly need before anything looks at it, so the form is chosen from
+     * the part that will be shown rather than from the whole. A string holding
+     * a quote at its end is written in braces; the first three characters of
+     * the same string are written in quotes, because the quote is not among
+     * them.
+     *
+     * <p>One less than the limit, because the opening delimiter is the first
+     * character of the output and is not part of the string. That is where the
+     * boundary sits: a seven-character string ending in a quote still molds
+     * quoted at a limit of seven, and turns to braces at eight.
+     */
+    private static String asFarAsTheLimitLooks(String text) {
+        int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
+        if (limit == NO_LIMIT) {
+            return text;
+        }
+        int reaching = Math.max(0, limit - 1);
+        return reaching >= text.codePointCount(0, text.length())
+                ? text
+                : text.substring(0, text.offsetByCodePoints(0, reaching));
     }
 
     private static String escape(String text) {
