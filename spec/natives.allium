@@ -158,6 +158,14 @@ entity ComparisonRequest {
     -- UNIQUE, or the object field walk. Those cross fewer datatype
     -- boundaries than the comparison natives do, so who asked changes the
     -- answer.
+    --
+    -- Also true of every pair of values reached inside another value: two
+    -- items of a block or a paren at the same position, two fields of an
+    -- object, two values a map holds under one key. A comparison native
+    -- asked about the two containers reaches this one for their contents,
+    -- however deep the nesting goes, so the outer question's strictness
+    -- decides whether the containers may differ in datatype and nothing
+    -- about how their items are compared.
     asked_by_a_series_function: Boolean
 
     -- A comparison that cannot bring the two together either answers false
@@ -4291,6 +4299,7 @@ rule ObjectEqualityComparesFieldsAsValues {
 rule EqualAllowsTwentyOneStepsBetweenDecimals {
     when: EvaluateComparison(request)
     requires: request.strictness = equal
+    requires: not request.asked_by_a_series_function
     requires: is_decimal(request.left) or is_decimal(request.right)
     ensures: ComparisonHolds(
         holds: representation_steps_between(request.left, request.right) <= 21)
@@ -4299,9 +4308,35 @@ rule EqualAllowsTwentyOneStepsBetweenDecimals {
 rule EquivAllowsNoStepsBetweenDecimals {
     when: EvaluateComparison(request)
     requires: request.strictness = equiv
+    requires: not request.asked_by_a_series_function
     requires: is_decimal(request.left) or is_decimal(request.right)
     ensures: ComparisonHolds(
         holds: representation_steps_between(request.left, request.right) = 0)
+}
+
+-- The second comparison has a third allowance, and it is neither of the
+-- two above. Ten steps, for every strictness that reaches it -- so a
+-- decimal inside a block is compared one way under `=`, `equiv` and `==`
+-- alike, and a decimal FIND is looking for is compared that same way.
+--
+-- Which makes the nested answer disagree with the plain one in both
+-- directions. `[1.0] == [1.0000000000000022]` is true where
+-- `1.0 == 1.0000000000000022` is false, because the items are allowed ten
+-- steps where the two decimals on their own are allowed none. And
+-- `[1.0] = [1.0000000000000024]` is false where
+-- `1.0 = 1.0000000000000024` is true, because the items are allowed ten
+-- where the two decimals on their own are allowed twenty-one.
+--
+-- So deriving one from the other is wrong whichever way round it is
+-- derived. This is also what settles FIND: `find [1.0000000000000047] 1.0`
+-- finds nothing, although the two decimals compare equal to each other.
+rule TheSeriesComparisonAllowsTenStepsBetweenDecimals {
+    when: EvaluateComparison(request)
+    requires: request.asked_by_a_series_function
+    requires: is_decimal(request.left) or is_decimal(request.right)
+    requires: not (is_not_a_number(request.left) and is_not_a_number(request.right))
+    ensures: ComparisonHolds(
+        holds: representation_steps_between(request.left, request.right) <= 10)
 }
 
 -- A NaN is a number that is not equal to itself, and the four strictnesses
@@ -4316,8 +4351,22 @@ rule EquivAllowsNoStepsBetweenDecimals {
 -- derived from another.
 rule NotANumberIsEqualAndNotStrictlyEqualToItself {
     when: EvaluateComparison(request)
+    requires: not request.asked_by_a_series_function
     requires: is_not_a_number(request.left) and is_not_a_number(request.right)
     ensures: ComparisonHolds(holds: request.strictness in {equal, same})
+}
+
+-- The second comparison calls two NaNs equal whichever strictness reached
+-- it, because the ten-step allowance is what it asks about and any
+-- allowance at all is enough for a NaN. So `[1.#NaN] == [1.#NaN]` is true
+-- although `1.#NaN == 1.#NaN` is false. SAME? is the one strictness that
+-- never gets here: it asks whether the two containers are one value and
+-- never looks at what they hold.
+rule NotANumberInsideAnotherValueIsAlwaysEqual {
+    when: EvaluateComparison(request)
+    requires: request.asked_by_a_series_function
+    requires: is_not_a_number(request.left) and is_not_a_number(request.right)
+    ensures: ComparisonHolds(holds: true)
 }
 
 -- === Two names, two different functions ====================
@@ -9888,6 +9937,82 @@ rule AppendingAParenOrPathKeepsItWhole {
     requires: value.datatype != block
 
     ensures: the_items_of(series) = what_it_held_then_the_value_as_one_item()
+}
+
+-- === Adding bytes to a vector ==========
+
+-- A vector holds numbers of one fixed width, so a binary added to one is read
+-- as a run of numbers of that width rather than as bytes. How many numbers it
+-- offers is the count of bytes divided by the width, and the division throws
+-- the remainder away.
+--
+-- Throwing it away rather than refusing it is the part that reads wrongly at
+-- first. Three bytes appended to a vector of sixteen-bit numbers append one
+-- number and drop the odd byte -- no failure and no warning -- because the
+-- source length is a count of whole numbers from the moment it is worked out,
+-- and a stray byte after the last whole one is never looked at again.
+--
+-- So "the binary has to divide evenly" is the wrong reading of it, and it is
+-- the reading a careful implementation arrives at. The only length that is
+-- refused is one that offers no whole number at all.
+rule ABinaryOffersAVectorAsManyWholeNumbersAsItHolds {
+    when: EvaluateCall(verb, vector, bytes)
+    requires: verb in {append, insert, change}
+    requires: is_vector(vector) and is_binary(bytes)
+
+    ensures: the_numbers_added() =
+        whole_part_of(the_bytes_taken_from(bytes) / the_width_of(vector))
+}
+
+-- A binary too short to spell one number is refused, and the failure names
+-- the binary itself rather than a description of it. An empty binary is the
+-- same case and is refused too, where appending an empty block or an empty
+-- string adds nothing and succeeds.
+rule ABinaryTooShortForOneNumberIsRefused {
+    when: EvaluateCall(verb, vector, bytes)
+    requires: verb in {append, insert, change}
+    requires: is_vector(vector) and is_binary(bytes)
+    requires: the_bytes_taken_from(bytes) < the_width_of(vector)
+
+    ensures: CallFails(error: invalid_data, about: bytes)
+}
+
+-- Which bytes are taken is where APPEND and INSERT part company with CHANGE,
+-- and the split is worth stating because /part means two different things.
+--
+-- For APPEND and INSERT, /part counts bytes out of the binary, taken before
+-- the division above -- so `append/part v #{03000400} 3` reads three bytes
+-- and adds one number, and `append/part v #{03000400} 0` reads nothing and is
+-- refused. It is the run InsertPartSplicesTheCountedRunOfTheValueEitherWay
+-- already names, counted in bytes: a negative limit reaches back from where
+-- the binary stands rather than forward, and the refusal then names the
+-- binary at the position it was moved to.
+--
+-- For CHANGE, /part says how much of the vector to replace and says nothing
+-- about the source, so the whole binary from its position is read whatever
+-- the limit is.
+rule PartCountsTheBytesReadForAppendAndInsertOnly {
+    when: EvaluateCall(verb, vector, bytes)
+    requires: verb in {append, insert, change}
+    requires: is_vector(vector) and is_binary(bytes)
+    requires: refinement_asked(part)
+
+    ensures: the_bytes_taken_from(bytes) =
+        if verb = change: the_bytes_from_its_position(bytes)
+        else: the_length_of(the_run_the_part_range_names())
+}
+
+-- And a value that is not a series takes no limit at all. The C's last branch
+-- writes one number into the buffer and never reads the length, so
+-- `append/part v 3 0` adds the 3 although the limit said to take nothing.
+rule PartDoesNotReachASingleNumberOfferedToAVector {
+    when: EvaluateCall(verb, vector, number)
+    requires: verb in {append, insert, change}
+    requires: is_vector(vector)
+    requires: not is_series(number)
+    requires: refinement_asked(part)
+
+    ensures: the_numbers_added() = 1
 }
 
 -- FORM-OID reads an object identifier out of its encoded bytes and writes it

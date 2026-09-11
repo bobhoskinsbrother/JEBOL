@@ -293,11 +293,166 @@ class VectorSeriesActionsFromTheSourceTest {
                     .isEqualTo(TRUE);
         }
 
+        /**
+         * The C works the source length out in whole elements and then asks
+         * one question about it: {@code src_len /= bpv; if (src_len == 0)
+         * Trap1(RE_INVALID_DATA, src_val);}. So the division throws the
+         * remainder away and only a length that leaves nothing at all is
+         * refused.
+         *
+         * <p>This test asserted the opposite -- that a binary has to divide
+         * evenly -- which is the reading a careful implementation arrives at
+         * and is not what a real 3.22.5 does. Three bytes appended to a
+         * vector of sixteen-bit numbers append one number and drop the odd
+         * byte, with no failure and no warning.
+         */
         @Test
-        @DisplayName("a binary that is not a whole number of elements is invalid data")
-        void ashortBinary() {
+        @DisplayName("a stray byte past the last whole number is dropped without a word")
+        void thePartialElementIsDropped() {
+            assertThat(holds("append #(i16! [1 2]) #{030004}", "#(i16! [1 2 3])"))
+                    .isEqualTo(TRUE);
+            assertThat(holds("append #(i16! [1]) #{0100020003}", "#(i16! [1 1 2])"))
+                    .isEqualTo(TRUE);
+            assertThat(holds("append #(i32! [1]) #{0200000003}", "#(i32! [1 2])"))
+                    .isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("and a binary too short to spell one number is refused, empty included")
+        void tooShortForOneNumberIsRefused() {
             assertThat(whatHappensTo("append #(i16! [1 2]) #{03}"))
                     .isEqualTo("invalid-data");
+            assertThat(whatHappensTo("append #(i16! [1 2]) #{}"))
+                    .isEqualTo("invalid-data");
+            assertThat(whatHappensTo("append #(i8! [1]) #{}"))
+                    .isEqualTo("invalid-data");
+            assertThat(whatHappensTo("append #(i32! [1]) #{030004}"))
+                    .isEqualTo("invalid-data");
+            assertThat(whatHappensTo("append #(f32! [1.0]) #{0304}"))
+                    .isEqualTo("invalid-data");
+
+            assertThat(whatHappensTo("append #(i8! [1]) #{02}"))
+                    .as("one byte is a whole number at a width of one")
+                    .isEqualTo("accepted");
+        }
+
+        /**
+         * {@code Trap1} is handed the value, so a caller catching the failure
+         * gets the binary back and can look at it. JEBOL handed it the text
+         * the binary molds to, which arrived as a word spelt "#{03}" -- it
+         * printed the same and compared equal to nothing.
+         */
+        @Test
+        @DisplayName("the failure hands back the binary itself, not a rendering of it")
+        void theFailureNamesTheBinary() {
+            assertThat(answerTo(
+                    "e: try [append #(i16! [1 2]) #{03}] type? e/arg1"))
+                    .isEqualTo("#(binary!)");
+            assertThat(answerTo(
+                    "e: try [append #(i16! [1 2]) #{03}] e/arg1 = #{03}"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo(
+                    "e: try [append/part #(i16! [1 2]) #{0304} 1] e/arg1 = #{0304}"))
+                    .as("the whole binary, not the part the limit named")
+                    .isEqualTo(TRUE);
+        }
+
+        /**
+         * /PART means two different things here. APPEND and INSERT read it as
+         * a count of bytes to take out of the binary, applied before the
+         * division into elements; CHANGE reads it as how much of the vector
+         * to replace and leaves the source alone.
+         */
+        @Test
+        @DisplayName("/PART caps the bytes read for APPEND and INSERT and not for CHANGE")
+        void partCapsTheBytesRead() {
+            assertThat(holds("append/part #(i16! [1 2]) #{03000400} 2", "#(i16! [1 2 3])"))
+                    .isEqualTo(TRUE);
+            assertThat(holds("append/part #(i16! [1 2]) #{03000400} 3", "#(i16! [1 2 3])"))
+                    .as("three bytes is one whole number and a byte dropped")
+                    .isEqualTo(TRUE);
+            assertThat(holds("append/part #(i16! [1 2]) #{03000400} 9", "#(i16! [1 2 3 4])"))
+                    .as("a limit past the end takes what is there")
+                    .isEqualTo(TRUE);
+            assertThat(whatHappensTo("append/part #(i16! [1 2]) #{03000400} 0"))
+                    .isEqualTo("invalid-data");
+            assertThat(whatHappensTo("append/part #(i16! [1 2]) #{03000400} -1"))
+                    .isEqualTo("invalid-data");
+            assertThat(whatHappensTo("insert/part #(i16! [1 2]) #{05000600} 0"))
+                    .isEqualTo("invalid-data");
+
+            assertThat(holds("head change/part #(i16! [1 2 3 4]) #{05000600} 1",
+                    "#(i16! [5 6 2 3 4])"))
+                    .as("CHANGE reads the whole binary whatever the limit says")
+                    .isEqualTo(TRUE);
+            assertThat(holds("head change/part #(i16! [1 2 3 4]) #{05000600} 3",
+                    "#(i16! [5 6 4])"))
+                    .isEqualTo(TRUE);
+        }
+
+        /**
+         * A negative /PART reaches back from where the source stands, which is
+         * what it means everywhere else, and {@code Partial1} moves the
+         * source's own position back as it counts. So the refusal names the
+         * binary where it was moved to rather than where it was handed in.
+         */
+        @Test
+        @DisplayName("a negative /PART counts back from where the source stands")
+        void anegativePartCountsBackwards() {
+            assertThat(holds("append/part #(i16! [1 2]) tail #{03000400} -2",
+                    "#(i16! [1 2 4])"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo(
+                    "e: try [append/part #(i16! [1 2]) tail #{03000400} -1] e/arg1"))
+                    .isEqualTo("#{00}");
+
+            assertThat(holds("append/part #(i16! [1 2]) [3 4] -1", "#(i16! [1 2])"))
+                    .as("at the head there is nothing behind it to take")
+                    .isEqualTo(TRUE);
+            assertThat(holds("append/part #(i16! [1 2]) #(i16! [3 4]) -1", "#(i16! [1 2])"))
+                    .isEqualTo(TRUE);
+        }
+
+        /**
+         * The C's last branch writes one number into its buffer and never
+         * reads the length, so a limit that would take nothing takes the
+         * number anyway.
+         */
+        @Test
+        @DisplayName("and /PART does not reach a bare number at all")
+        void partDoesNotReachABareNumber() {
+            assertThat(holds("append/part #(i16! [1 2]) 3 0", "#(i16! [1 2 3])"))
+                    .isEqualTo(TRUE);
+            assertThat(holds("append/part #(i16! [1 2]) [3 4] 0", "#(i16! [1 2])"))
+                    .as("a block of the same length does take the limit")
+                    .isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("INSERT and CHANGE ask the same of a binary as APPEND does")
+        void theOtherTwoAskTheSame() {
+            assertThat(holds("head insert #(i16! [1 2]) #{050006}", "#(i16! [5 1 2])"))
+                    .isEqualTo(TRUE);
+            assertThat(whatHappensTo("insert #(i16! [1 2]) #{03}"))
+                    .isEqualTo("invalid-data");
+            assertThat(holds("head change #(i16! [1 2 3 4]) #{050006}", "#(i16! [5 2 3 4])"))
+                    .isEqualTo(TRUE);
+            assertThat(whatHappensTo("change #(i16! [1 2]) #{}"))
+                    .isEqualTo("invalid-data");
+        }
+
+        @Test
+        @DisplayName("a binary is read from where it stands, not from its head")
+        void aBinaryIsReadFromItsPosition() {
+            assertThat(holds("append #(i16! [1 2]) next #{030004}", "#(i16! [1 2 1024])"))
+                    .isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("and something that is neither a number nor bytes is a bad argument")
+        void awrongTypeIsABadArgument() {
+            assertThat(whatHappensTo("append #(i16! [1 2]) \"ab\""))
+                    .isEqualTo("invalid-arg");
         }
 
         @Test

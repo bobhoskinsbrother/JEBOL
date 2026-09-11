@@ -263,6 +263,24 @@ public final class Comparison {
     private static final long STEPS_ALLOWED_BETWEEN_DECIMALS = 21;
 
     /**
+     * The same allowance for a decimal the second comparison reaches, which
+     * is a third number and not either of the two above.
+     *
+     * <p>{@code Cmp_Value} is told one thing about its caller -- whether to
+     * mind case -- and its decimal branch does not read even that. Both
+     * decimals go to {@code Eq_Decimal}, which is
+     * {@code almost_equal(a, b, 10)}, on every path through the function. So
+     * ten steps is what a decimal inside a block gets whether EQUAL?, EQUIV?
+     * or {@code ==} asked, and it is also what FIND is looking for.
+     *
+     * <p>Which makes the nested answer disagree with the plain one in both
+     * directions: {@code ==} is looser inside a block than outside it and
+     * EQUAL? is tighter. Deriving either from the other is wrong whichever
+     * way round it is derived.
+     */
+    private static final long STEPS_ALLOWED_INSIDE_A_SERIES = 10;
+
+    /**
      * Whether the coercion table has already approved this pairing of
      * datatypes, which decides whether the walk below may cross one.
      *
@@ -304,7 +322,7 @@ public final class Comparison {
      * nothing catches it until a block holds a string.
      */
     public static boolean looselyEqual(Value left, Value right) {
-        return equalValues(left, right, STEPS_ALLOWED_BETWEEN_DECIMALS, UNAPPROVED);
+        return equalValues(left, right, STEPS_ALLOWED_INSIDE_A_SERIES, UNAPPROVED);
     }
 
     /**
@@ -365,7 +383,7 @@ public final class Comparison {
             return ordering(left, right) == 0;
         }
         if (left instanceof ObjectValue leftObject && right instanceof ObjectValue rightObject) {
-            return sameFields(leftObject, rightObject, stepsAllowed);
+            return sameFields(leftObject, rightObject);
         }
         if (left instanceof BlockValue leftBlock && right instanceof BlockValue rightBlock) {
             List<Value> theirs = rightBlock.remaining();
@@ -374,14 +392,14 @@ public final class Comparison {
                 return false;
             }
             for (int at = 0; at < ours.size(); at++) {
-                if (!equalValues(ours.get(at), theirs.get(at), stepsAllowed, UNAPPROVED)) {
+                if (!looselyEqual(ours.get(at), theirs.get(at))) {
                     return false;
                 }
             }
             return true;
         }
         if (left instanceof MapValue ours && right instanceof MapValue theirs) {
-            return sameEntries(ours, theirs, stepsAllowed);
+            return sameEntries(ours, theirs);
         }
         return left.datatype() == right.datatype() && left.equals(right);
     }
@@ -400,14 +418,14 @@ public final class Comparison {
      * {@code Map.equals} minds it, and made two maps unequal that a real
      * 3.22.1 calls equal.
      */
-    private static boolean sameEntries(MapValue ours, MapValue theirs, long stepsAllowed) {
+    private static boolean sameEntries(MapValue ours, MapValue theirs) {
         if (ours.pairCount() != theirs.pairCount()) {
             return false;
         }
         for (Value key : ours.keys()) {
             if (!theirs.holds(key, MINDING_CASE)
-                    || !equalValues(ours.select(key, MINDING_CASE),
-                            theirs.select(key, MINDING_CASE), stepsAllowed, UNAPPROVED)) {
+                    || !looselyEqual(ours.select(key, MINDING_CASE),
+                            theirs.select(key, MINDING_CASE))) {
                 return false;
             }
         }
@@ -449,11 +467,8 @@ public final class Comparison {
      * <p>So this walks the fields and asks the ordinary comparison about each,
      * which is what the C means and gets right for one value in a thousand.
      */
-    private static boolean sameFields(
-            ObjectValue left, ObjectValue right, long stepsAllowed) {
-
-        return fieldsAgree(left, right,
-                (ours, theirs) -> looselyEqual(ours, theirs, stepsAllowed));
+    private static boolean sameFields(ObjectValue left, ObjectValue right) {
+        return fieldsAgree(left, right, Comparison::looselyEqual);
     }
 
     /**
@@ -517,7 +532,7 @@ public final class Comparison {
             return sameDateBitsAndTime(first, second);
         }
         if (left instanceof ObjectValue first && right instanceof ObjectValue second) {
-            return sameFields(first, second, 0) && strictFields(first, second);
+            return strictFields(first, second);
         }
         if (left instanceof BlockValue first && right instanceof BlockValue second) {
             List<Value> ours = first.remaining();
@@ -557,9 +572,36 @@ public final class Comparison {
                 && first.zoneMinutes().orElse(0).equals(second.zoneMinutes().orElse(0));
     }
 
-    /** Whether two values are the same value, minding the datatype exactly. */
+    /**
+     * Two values as {@code Cmp_Value} compares them with its case flag set:
+     * the second comparison, minding the datatype and the case of a string.
+     *
+     * <p>That is what {@code ==} asks about the items of a block and what
+     * FIND/CASE asks about the item it is looking for, and it is not the
+     * same question {@code ==} asks about two values on their own. A decimal
+     * still goes to the ten-step allowance here, because the case flag is
+     * the only thing {@code Cmp_Value} is told and its decimal branch does
+     * not read it -- so {@code [1.0] == [1.0000000000000022]} is true where
+     * {@code 1.0 == 1.0000000000000022} is false.
+     */
     public static boolean identicallyEqual(Value left, Value right) {
-        return left.datatype() == right.datatype() && strictlyEqual(left, right);
+        if (left.datatype() != right.datatype()) {
+            return false;
+        }
+        if (left instanceof DecimalValue first && right instanceof DecimalValue second) {
+            return bothAreNotANumber(first, second)
+                    || nearlyTheSameNumber(first.quantity(), second.quantity(),
+                            STEPS_ALLOWED_INSIDE_A_SERIES);
+        }
+        return strictlyEqual(left, right);
+    }
+
+    /**
+     * Two NaNs, which {@code almost_equal} calls equal before it looks at
+     * either of them whenever it is allowed a step at all.
+     */
+    private static boolean bothAreNotANumber(DecimalValue first, DecimalValue second) {
+        return Double.isNaN(first.quantity()) && Double.isNaN(second.quantity());
     }
 
     /**
@@ -642,6 +684,9 @@ public final class Comparison {
                     ? acrossTheX
                     : signOfTheDifference(leftPair.y(), rightPair.y());
         }
+        if (left instanceof BlockValue leftBlock && right instanceof BlockValue rightBlock) {
+            return orderingOfBlocks(leftBlock, rightBlock);
+        }
         if (left instanceof CharacterValue) {
             return Integer.compare(codepointOf(left), codepointOf(right));
         }
@@ -657,6 +702,55 @@ public final class Comparison {
             return Double.compare(first, second);
         }
         return compareForSorting(left, right, false);
+    }
+
+    /**
+     * Two blocks, ordered by the first item that tells them apart and then by
+     * which of them runs out first.
+     *
+     * <p>{@code Cmp_Block} walks the pairs with {@code Cmp_Value} and returns
+     * the first difference, so a block is ordered by its items and not by its
+     * text. Molding both and comparing the strings looks like the same thing
+     * and is not: a decimal molds to fifteen significant figures, so
+     * {@code [1.0]} and {@code [1.0000000000000024]} come out as the same
+     * text and neither one is above the other.
+     *
+     * <p>The block that runs out first is the lesser one, which is the C's
+     * last line reading a type off the end of the shorter series.
+     */
+    private static int orderingOfBlocks(BlockValue left, BlockValue right) {
+        List<Value> ours = left.remaining();
+        List<Value> theirs = right.remaining();
+        for (int at = 0; at < ours.size(); at++) {
+            if (at == theirs.size()) {
+                return 1;
+            }
+            int difference = orderingInsideASeries(ours.get(at), theirs.get(at));
+            if (difference != 0) {
+                return difference;
+            }
+        }
+        return ours.size() == theirs.size() ? 0 : -1;
+    }
+
+    /**
+     * One item against another as {@code Cmp_Value} orders them, which is the
+     * ordinary ordering with the ten-step allowance in front of it: two
+     * numbers either of which is a decimal are in no order at all while they
+     * sit within ten steps of each other, so {@code [1] >= [1.0]} holds.
+     */
+    private static int orderingInsideASeries(Value left, Value right) {
+        if (!ANY_NUMBER.contains(left.datatype()) || !ANY_NUMBER.contains(right.datatype())) {
+            return compareForSorting(left, right, false);
+        }
+        if (left instanceof DecimalValue || right instanceof DecimalValue) {
+            double first = asDouble(left);
+            double second = asDouble(right);
+            return nearlyTheSameNumber(first, second, STEPS_ALLOWED_INSIDE_A_SERIES)
+                    ? 0
+                    : Double.compare(first, second);
+        }
+        return ordering(left, right);
     }
 
     /**

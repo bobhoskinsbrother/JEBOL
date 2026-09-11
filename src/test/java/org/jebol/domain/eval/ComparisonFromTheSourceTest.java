@@ -520,4 +520,201 @@ class ComparisonFromTheSourceTest {
             assertThat(answerTo("strict-equal? [a] [a:]")).isEqualTo(FALSE);
         }
     }
+
+    /**
+     * How far two decimals may drift apart inside a block, which is a third
+     * answer and not either of the two the comparison natives give.
+     *
+     * <p>{@code Cmp_Value} in {@code f-series.c} is told one thing about the
+     * caller -- whether to mind case -- and its decimal branch does not read
+     * even that. Both decimals go to {@code Eq_Decimal}, which is
+     * {@code almost_equal(a, b, 10)}, on every path through the function. So
+     * the allowance is ten steps of the floating point representation for
+     * EQUAL?, EQUIV? and {@code ==} alike, where those three allow
+     * twenty-one, none and none when asked about two decimals directly.
+     *
+     * <p>That makes the nested answer disagree with the plain one in both
+     * directions, which is why neither can be derived from the other:
+     * {@code ==} is looser inside a block than outside it, and EQUAL? is
+     * tighter.
+     *
+     * <p>Every figure below was read off {@code ./r3-head} 3.22.5 first. The
+     * decimals are the exact tenth and eleventh successors of the value they
+     * are compared against, computed from the bit pattern rather than typed.
+     */
+    @Nested
+    @DisplayName("Cmp_Value's own decimal allowance, f-series.c")
+    class TheAllowanceInsideABlock {
+
+        private static final String ONE = "1.0";
+        private static final String ONE_TEN_STEPS_ON = "1.0000000000000022";
+        private static final String ONE_ELEVEN_STEPS_ON = "1.0000000000000024";
+        private static final String ONE_NINE_STEPS_ON = "1.000000000000002";
+        private static final String ONE_TWENTY_ONE_STEPS_ON = "1.0000000000000047";
+
+        @Test
+        @DisplayName("EQUAL? allows ten steps inside a block, not the twenty-one")
+        void equalIsTighterInsideABlock() {
+            assertThat(answerTo("[" + ONE + "] = [" + ONE + "]")).isEqualTo(TRUE);
+            assertThat(answerTo("[" + ONE + "] = [" + ONE_NINE_STEPS_ON + "]"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo("[" + ONE + "] = [" + ONE_TEN_STEPS_ON + "]"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo("[" + ONE + "] = [" + ONE_ELEVEN_STEPS_ON + "]"))
+                    .isEqualTo(FALSE);
+            assertThat(answerTo("[" + ONE + "] = [" + ONE_TWENTY_ONE_STEPS_ON + "]"))
+                    .isEqualTo(FALSE);
+        }
+
+        @Test
+        @DisplayName("and == allows ten steps inside one, not the none it allows outside")
+        void strictEqualIsLooserInsideABlock() {
+            assertThat(answerTo("[" + ONE + "] == [" + ONE_TEN_STEPS_ON + "]"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo("[" + ONE + "] == [" + ONE_ELEVEN_STEPS_ON + "]"))
+                    .isEqualTo(FALSE);
+
+            assertThat(answerTo("equiv? [" + ONE + "] [" + ONE_TEN_STEPS_ON + "]"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo("equiv? [" + ONE + "] [" + ONE_ELEVEN_STEPS_ON + "]"))
+                    .isEqualTo(FALSE);
+        }
+
+        @Test
+        @DisplayName("while the same three comparisons outside a block are unchanged")
+        void theTopLevelAllowancesStand() {
+            assertThat(answerTo(ONE + " = " + ONE_TWENTY_ONE_STEPS_ON)).isEqualTo(TRUE);
+            assertThat(answerTo(ONE + " = 1.0000000000000049")).isEqualTo(FALSE);
+            assertThat(answerTo(ONE + " == 1.0000000000000002")).isEqualTo(FALSE);
+            assertThat(answerTo("equiv? " + ONE + " 1.0000000000000002")).isEqualTo(FALSE);
+        }
+
+        /**
+         * Counted in steps of the representation and not as a fixed amount,
+         * so the allowance grows with the size of the number and holds at
+         * the bottom of the range where the steps are smallest there is.
+         */
+        @Test
+        @DisplayName("the ten steps follow the size of the number, sign and all")
+        void theStepsFollowTheNumber() {
+            assertThat(answerTo("[-1.0] = [-1.0000000000000022]")).isEqualTo(TRUE);
+            assertThat(answerTo("[-1.0] = [-1.0000000000000024]")).isEqualTo(FALSE);
+            assertThat(answerTo("[-1.0] == [-1.0000000000000022]")).isEqualTo(TRUE);
+
+            assertThat(answerTo("[4.56] == [4.5600000000000085]")).isEqualTo(TRUE);
+            assertThat(answerTo("[4.56] == [4.560000000000009]")).isEqualTo(FALSE);
+
+            assertThat(answerTo("[0.0] == [5e-323]")).isEqualTo(TRUE);
+            assertThat(answerTo("[0.0] == [5.4e-323]")).isEqualTo(FALSE);
+        }
+
+        /**
+         * {@code almost_equal} folds a negative zero onto the same ordinal as
+         * a positive one, so the two are no steps apart. Outside a block
+         * {@code ==} compares the raw bits instead and they are two values.
+         */
+        @Test
+        @DisplayName("the two zeroes are one number inside a block and two outside")
+        void theTwoZeroes() {
+            assertThat(answerTo("[0.0] == [-0.0]")).isEqualTo(TRUE);
+            assertThat(answerTo("0.0 == -0.0")).isEqualTo(FALSE);
+        }
+
+        @Test
+        @DisplayName("a paren, an object field and a map value all reach it")
+        void everyContainerReachesTheSameComparison() {
+            assertThat(answerTo("[[1.0]] == [[" + ONE_TEN_STEPS_ON + "]]")).isEqualTo(TRUE);
+            assertThat(answerTo("[[1.0]] == [[" + ONE_ELEVEN_STEPS_ON + "]]"))
+                    .isEqualTo(FALSE);
+
+            assertThat(answerTo("(to paren! [1.0]) == to paren! [" + ONE_TEN_STEPS_ON + "]"))
+                    .isEqualTo(TRUE);
+
+            assertThat(answerTo(
+                    "(construct [a: 1.0]) = construct [a: " + ONE_TEN_STEPS_ON + "]"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo(
+                    "(construct [a: 1.0]) = construct [a: " + ONE_ELEVEN_STEPS_ON + "]"))
+                    .isEqualTo(FALSE);
+            assertThat(answerTo(
+                    "(construct [a: 1.0]) == construct [a: " + ONE_TEN_STEPS_ON + "]"))
+                    .isEqualTo(TRUE);
+
+            assertThat(answerTo(
+                    "(make map! [a 1.0]) = make map! [a " + ONE_TEN_STEPS_ON + "]"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo(
+                    "(make map! [a 1.0]) = make map! [a " + ONE_ELEVEN_STEPS_ON + "]"))
+                    .isEqualTo(FALSE);
+        }
+
+        /**
+         * The series functions reach {@code Cmp_Value} with no container
+         * around the decimal at all, so the allowance that applies is the
+         * nested one although nothing is nested. FIND looking for a decimal
+         * that EQUAL? calls the same number finds nothing.
+         */
+        @Test
+        @DisplayName("FIND, SELECT, UNIQUE and SWITCH get the ten steps, not the twenty-one")
+        void theSeriesFunctionsGetTheSameAllowance() {
+            assertThat(answerTo("none? find [" + ONE_TEN_STEPS_ON + "] 1.0"))
+                    .isEqualTo(FALSE);
+            assertThat(answerTo("none? find [" + ONE_ELEVEN_STEPS_ON + "] 1.0"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo("none? find [" + ONE_TWENTY_ONE_STEPS_ON + "] 1.0"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo("none? find/case [" + ONE_TEN_STEPS_ON + "] 1.0"))
+                    .isEqualTo(FALSE);
+
+            assertThat(answerTo("select [" + ONE_TEN_STEPS_ON + " found] 1.0"))
+                    .isEqualTo("found");
+            assertThat(answerTo("none? select [" + ONE_ELEVEN_STEPS_ON + " found] 1.0"))
+                    .isEqualTo(TRUE);
+
+            assertThat(answerTo("length? unique [1.0 " + ONE_TEN_STEPS_ON + "]"))
+                    .isEqualTo("1");
+            assertThat(answerTo("length? unique [1.0 " + ONE_ELEVEN_STEPS_ON + "]"))
+                    .isEqualTo("2");
+
+            assertThat(answerTo("switch 1.0 [" + ONE_TEN_STEPS_ON + " ['yes]]"))
+                    .isEqualTo("yes");
+            assertThat(answerTo("none? switch 1.0 [" + ONE_ELEVEN_STEPS_ON + " ['yes]]"))
+                    .isEqualTo(TRUE);
+        }
+
+        /**
+         * {@code almost_equal} answers {@code max_diff > 0} for two NaNs
+         * before it looks at either of them, and the allowance here is ten,
+         * so every strictness that reaches the items calls them equal. SAME?
+         * is the one that never gets here: it asks whether the two blocks are
+         * one block and never opens either.
+         */
+        @Test
+        @DisplayName("two NaNs inside a block are equal however strictly they are asked about")
+        void twoNotANumbersNestedAreAlwaysEqual() {
+            assertThat(answerTo("[1.#NaN] = [1.#NaN]")).isEqualTo(TRUE);
+            assertThat(answerTo("equiv? [1.#NaN] [1.#NaN]")).isEqualTo(TRUE);
+            assertThat(answerTo("[1.#NaN] == [1.#NaN]")).isEqualTo(TRUE);
+            assertThat(answerTo("same? [1.#NaN] [1.#NaN]")).isEqualTo(FALSE);
+
+            assertThat(answerTo("equiv? 1.#NaN 1.#NaN")).isEqualTo(FALSE);
+            assertThat(answerTo("1.#NaN == 1.#NaN")).isEqualTo(FALSE);
+        }
+
+        @Test
+        @DisplayName("ordering a block orders its items by the same allowance")
+        void orderingInsideABlockUsesTheSameAllowance() {
+            assertThat(answerTo("[" + ONE_TEN_STEPS_ON + "] > [1.0]")).isEqualTo(FALSE);
+            assertThat(answerTo("[" + ONE_ELEVEN_STEPS_ON + "] > [1.0]")).isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("and the datatype still counts, ten steps or no")
+        void theDatatypeStillCounts() {
+            assertThat(answerTo("[1] = [1.0]")).isEqualTo(TRUE);
+            assertThat(answerTo("[1] == [1.0]")).isEqualTo(FALSE);
+            assertThat(answerTo("[100%] == [" + ONE_TEN_STEPS_ON + "]")).isEqualTo(FALSE);
+            assertThat(answerTo("[1.0] == [\"1.0\"]")).isEqualTo(FALSE);
+        }
+    }
 }

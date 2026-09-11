@@ -248,11 +248,3 @@ thru-cache-test.r3 / (no group) / (no test) #7
 thru-cache-test.r3 / (no group) / (no test) #8
 thru-cache-test.r3 / (no group) / (no test) #9
 vector-test.r3 / VECTOR / MOLD/flat on vector #82
-vector-test.r3 / VECTOR statictics / float64! vector statictics #445
-vector-test.r3 / VECTOR statictics / float64! vector statictics #446
-vector-test.r3 / VECTOR statictics / int8! vector statictics #441
-vector-test.r3 / VECTOR statictics / int8! vector statictics #442
-vector-test.r3 / VECTOR statictics / uint64! vector statictics #443
-vector-test.r3 / VECTOR statictics / uint64! vector statictics #444
-vector-test.r3 / Vector modification actions / APPEND vector binary (invalid) #595
-vector-test.r3 / Vector modification actions / APPEND vector binary (invalid) #596

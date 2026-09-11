@@ -8364,8 +8364,7 @@ public final class Natives {
      * <p>{@code Modify_Vector} takes four: another vector contributes its
      * elements from where it points, a block its values, a binary the elements
      * its bytes spell at the target's own width, and anything else is one
-     * number. A binary whose length is not a whole number of elements is
-     * {@code invalid-data} rather than a partial read.
+     * number.
      */
     private static List<Value> numbersContributedTo(VectorKind kind, Value value) {
         if (value instanceof VectorValue source) {
@@ -8375,19 +8374,38 @@ public final class Natives {
             return block.remaining();
         }
         if (value instanceof BinaryValue bytes) {
-            return numbersSpeltBy(kind, bytes);
+            return numbersSpeltBy(kind, bytes, bytes.lengthFromHere());
         }
         return List.of(value);
     }
 
-    private static List<Value> numbersSpeltBy(VectorKind kind, BinaryValue bytes) {
-        byte[] octets = bytes.octetsFromHere();
-        if (octets.length % kind.bytes() != 0) {
-            throw Raised.of(EvaluationFailure.INVALID_DATA, Molder.mold(bytes));
+    /**
+     * The numbers a run of bytes spells at the vector's own width, with
+     * anything left over at the end thrown away.
+     *
+     * <p>Two lines of {@code Modify_Vector} decide all of it:
+     * {@code src_len /= bpv; if (src_len == 0) Trap1(RE_INVALID_DATA,
+     * src_val);}. The source length becomes a count of whole numbers and the
+     * remainder goes with it, so three bytes offered to a vector of sixteen
+     * bit numbers give one number and drop the odd byte -- no failure and no
+     * warning. Only a run too short to spell a single number is refused.
+     *
+     * <p>"The binary must divide evenly" is the reading a careful
+     * implementation arrives at and it is not what the C does. The failure
+     * hands back the binary itself so a caller catching it can look at what
+     * was offered.
+     */
+    private static List<Value> numbersSpeltBy(
+            VectorKind kind, BinaryValue bytes, int taking) {
+
+        int wholeNumbers = Math.max(0, taking) / kind.bytes();
+        if (wholeNumbers == 0) {
+            throw Raised.of(EvaluationFailure.INVALID_DATA, bytes);
         }
+        byte[] octets = bytes.octetsFromHere();
         List<Value> numbers = new ArrayList<>();
-        for (int at = 0; at < octets.length; at += kind.bytes()) {
-            numbers.add(kind.read(kind.fromOctets(octets, at)));
+        for (int number = 0; number < wholeNumbers; number++) {
+            numbers.add(kind.read(kind.fromOctets(octets, number * kind.bytes())));
         }
         return numbers;
     }
@@ -8397,17 +8415,18 @@ public final class Natives {
      * applied.
      *
      * <p>/PART counts what the source offers, and for a binary it counts bytes
-     * rather than elements: {@code append/part v #{0304} 1} adds one byte,
-     * which is one number in an {@code int8!} vector and half of one in an
-     * {@code int16!}. Half of one is invalid data. CHANGE does not come
-     * through here with a limit at all, because its /PART counts what to
-     * remove from the target instead.
+     * rather than elements: {@code append/part v #{0304} 1} takes one byte,
+     * which is one number in an {@code int8!} vector and not enough for one in
+     * an {@code int16!}. CHANGE does not come through here with a limit at
+     * all, because its /PART counts what to remove from the target instead.
      */
     private static List<Value> numbersAddedBy(VectorKind kind, List<Value> arguments,
             Set<String> refinements, boolean limitingTheSource) {
 
-        int limit = limitingTheSource ? partCountFor(arguments, refinements) : -1;
-        List<Value> once = numbersOfferedTo(kind, arguments.get(1), limit);
+        List<Value> once = limitingTheSource && refinements.contains("part")
+                ? numbersOfferedTo(kind, arguments.get(1),
+                        partCountFor(arguments, refinements))
+                : numbersContributedTo(kind, arguments.get(1));
         Value times = argumentFor("dup", List.of("part", "dup"), arguments, refinements, 2);
         long rounds = refinements.contains("dup") && times instanceof IntegerValue counted
                 ? counted.magnitude()
@@ -8475,24 +8494,29 @@ public final class Natives {
         return vector.atIndex(vector.index() + numbers.size());
     }
 
+    /**
+     * What a source offers once /PART has said how much of it to read.
+     *
+     * <p>A count that is not a series takes no limit at all -- the C's last
+     * branch writes one value and never looks at the length -- so
+     * {@code append/part v 3 0} still adds the 3.
+     *
+     * <p>A negative count reaches back from where the source stands rather
+     * than forward from it, which is what /PART means everywhere, and the
+     * refusal below then names the binary at the position it was moved to.
+     */
     private static List<Value> numbersOfferedTo(VectorKind kind, Value value, int limit) {
-        if (value instanceof BinaryValue bytes) {
-            int offered = bytes.lengthFromHere();
-            int taking = limit < 0 ? offered : Math.min(limit, offered);
-            if (taking % kind.bytes() != 0) {
-                throw Raised.of(EvaluationFailure.INVALID_DATA, Molder.mold(bytes));
-            }
-            byte[] octets = bytes.octetsFromHere();
-            List<Value> numbers = new ArrayList<>();
-            for (int at = 0; at < taking; at += kind.bytes()) {
-                numbers.add(kind.read(kind.fromOctets(octets, at)));
-            }
-            return numbers;
+        if (!(value instanceof SeriesValue source)) {
+            return numbersContributedTo(kind, value);
         }
-        List<Value> offered = numbersContributedTo(kind, value);
-        return limit < 0 || limit >= offered.size()
-                ? offered
-                : offered.subList(0, Math.max(0, limit));
+        SeriesValue run = theRunReachingBackIfNegative(source, limit);
+        long wanted = limit >= 0 ? limit : source.index() - run.index();
+        if (run instanceof BinaryValue bytes) {
+            return numbersSpeltBy(kind, bytes,
+                    (int) Math.min(wanted, bytes.lengthFromHere()));
+        }
+        List<Value> offered = numbersContributedTo(kind, run);
+        return offered.subList(0, (int) Math.min(wanted, offered.size()));
     }
 
     /** A fresh vector of one kind holding numbers taken from another. */
