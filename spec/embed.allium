@@ -406,6 +406,28 @@ rule AStartedProgramBeginsWhereTheScriptIsStanding {
         the_host_path_of(the_directory_relative_paths_count_from(run))
 }
 
+-- And where a script can start another interpreter, that one is confined the
+-- way this one is.
+--
+-- `system/options/boot` is a launcher this interpreter writes for itself, so a
+-- script that was given a directory and nothing above it could start a copy of
+-- itself that had the whole machine -- and then write anywhere through it.
+-- Confinement that a script can step out of by running its own name is not
+-- confinement.
+--
+-- Which also makes a path mean the same thing on both sides. A script confined
+-- to a directory sees `%/units/files/x.r3`, and handing that to a child that
+-- was rooted somewhere else names nothing; handing it to a child rooted the
+-- same way names the same file.
+rule ASecondInterpreterIsConfinedAsThisOneIs {
+    when: run: ScriptRun.created
+    requires: files in run.interpreter.bounds.granted_services
+
+    ensures: the_launcher_at(system_options_boot()) =
+        a_command_that_roots_its_filesystem_at(
+            the_host_path_of(the_root_this_script_sees()))
+}
+
 -- A capture waits, and the host is told so rather than working it out. A
 -- child still running has not finished writing, so there is nothing to give
 -- back yet, and a host that answered early would answer with part of the

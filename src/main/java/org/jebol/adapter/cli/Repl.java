@@ -15,6 +15,8 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The console: read a line, evaluate it, print the result, repeat.
@@ -59,16 +61,17 @@ public final class Repl {
     static int runTheCommandLine(
             String[] arguments, PrintStream out, String startedIn) {
 
+        Path root = theRootAskedFor(arguments);
         String[] rest = withoutTheSwitchesThatSayNothing(
                 ChosenScreen.withoutTheSwitch(arguments));
         boolean namesAScript = rest.length >= 1 && !rest[0].startsWith("-");
-        Interpreter interpreter = anInterpreterFor(arguments, out, namesAScript);
+        Interpreter interpreter = anInterpreterFor(arguments, out, namesAScript, root);
         if (rest.length >= 2 && rest[0].equals("--do")) {
             interpreter.defineFreshWordsIn(rest[1]);
             return exitCodeOf(interpreter.run(rest[1]));
         }
         if (namesAScript) {
-            return new ScriptOnTheCommandLine(rest, startedIn)
+            return new ScriptOnTheCommandLine(rest, startedIn, root)
                     .runThrough(interpreter, out);
         }
         BufferedReader in = new BufferedReader(
@@ -90,9 +93,40 @@ public final class Repl {
      * Rebol's own lexer test starts a second interpreter.
      */
     private static String[] withoutTheSwitchesThatSayNothing(String[] arguments) {
-        return java.util.Arrays.stream(arguments)
-                .filter(each -> !each.equals("-s"))
-                .toArray(String[]::new);
+        List<String> kept = new ArrayList<>();
+        for (int at = 0; at < arguments.length; at++) {
+            if (arguments[at].equals("-s")) {
+                continue;
+            }
+            if (arguments[at].equals(THE_ROOT_SWITCH)) {
+                at++;
+                continue;
+            }
+            kept.add(arguments[at]);
+        }
+        return kept.toArray(String[]::new);
+    }
+
+    /** What confines an interpreter this one starts, and this one when started. */
+    static final String THE_ROOT_SWITCH = "--root";
+
+    /**
+     * The directory this run may reach, or the whole machine when none was
+     * named.
+     *
+     * <p>An interpreter that was confined hands this to any interpreter it
+     * starts, so the second is bounded the way the first is. Without it a
+     * script given one directory could start a copy of itself that had the
+     * machine, and confinement a script can step out of by running its own
+     * name is not confinement.
+     */
+    private static Path theRootAskedFor(String[] arguments) {
+        for (int at = 0; at + 1 < arguments.length; at++) {
+            if (arguments[at].equals(THE_ROOT_SWITCH)) {
+                return Path.of(arguments[at + 1]);
+            }
+        }
+        return Path.of("/");
     }
 
     /**
@@ -109,7 +143,7 @@ public final class Repl {
      * codec-image.reb writes png, jpeg, gif and bmp as calls to it.
      */
     private static Interpreter anInterpreterFor(
-            String[] arguments, PrintStream out, boolean forAScript) {
+            String[] arguments, PrintStream out, boolean forAScript, Path root) {
 
         Bounds bounds = forAScript ? theWholeMachine() : Bounds.standard();
         if (ChosenScreen.wasAskedFor(arguments)) {
@@ -119,7 +153,7 @@ public final class Repl {
                 Interpreter.writingTo(new StreamOutput(out), bounds);
         interpreter.useImages(new JavaImages());
         if (forAScript) {
-            interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("/")));
+            interpreter.useFileSystem(FileSystemPort.rootedAt(root));
             interpreter.useEnvironment(new ProcessEnvironment());
             interpreter.useProcesses(new JavaProcesses());
         }
@@ -160,13 +194,14 @@ public final class Repl {
      * was meant to run has not, nothing said so, and whoever called it is
      * looking at a prompt they did not ask for.
      */
-    private record ScriptOnTheCommandLine(String[] arguments, String startedIn) {
+    private record ScriptOnTheCommandLine(
+            String[] arguments, String startedIn, Path root) {
 
         private int runThrough(Interpreter interpreter, PrintStream out) {
-            Path script = Path.of(arguments[0]).toAbsolutePath().normalize();
+            Path script = theScriptNamed();
             String source;
             try {
-                source = Files.readString(script, StandardCharsets.UTF_8);
+                source = theSourceDecodedFrom(Files.readAllBytes(script));
             } catch (IOException unreadable) {
                 out.println("** access error: script not found: %" + script);
                 return 1;
@@ -194,10 +229,64 @@ public final class Repl {
                     system/options/path: %%%s
                     system/options/args: %s
                     change-dir %%%s""".formatted(
-                    script, dirized(startedIn), theArgumentsAfterTheScript(),
-                    dirized(script.getParent().toString()));
+                    asTheScriptSeesIt(script),
+                    dirized(asTheScriptSeesIt(Path.of(startedIn))),
+                    theArgumentsAfterTheScript(),
+                    dirized(asTheScriptSeesIt(script.getParent())));
             interpreter.defineFreshWordsIn(saying);
             interpreter.run(saying);
+        }
+
+        /**
+         * A path written the way the script can read it back.
+         *
+         * <p>The filesystem is rooted, so what the script sees counts from
+         * that root rather than from the machine. Handing it the machine's own
+         * path would name something it cannot reach -- and for a run rooted at
+         * the machine the two are the same string, which is why this was
+         * invisible until the first confined run.
+         *
+         * <p>Anything outside the root is the root itself, there being nothing
+         * else it could honestly be called.
+         */
+        private String asTheScriptSeesIt(Path host) {
+            Path absolute = host.toAbsolutePath().normalize();
+            if (!absolute.startsWith(root)) {
+                return "/";
+            }
+            String inside = root.relativize(absolute).toString().replace('\\', '/');
+            return inside.isEmpty() ? "/" : "/" + inside;
+        }
+
+        /**
+         * The script's bytes as source, which is where a byte order mark goes.
+         *
+         * <p>Decoded rather than read as text, because the mark marks the
+         * encoding rather than being part of the source -- the same thing LOAD
+         * of a binary does. Reading the file as text keeps it, and the
+         * script's first word becomes one nobody can have defined: a file an
+         * editor marked fails on its own first line.
+         */
+        private static String theSourceDecodedFrom(byte[] bytes) {
+            String text = new String(bytes, StandardCharsets.UTF_8);
+            return text.startsWith("\uFEFF") ? text.substring(1) : text;
+        }
+
+        /**
+         * The file the first argument names, read inside the root when one
+         * was given.
+         *
+         * <p>A confined script writes `%/units/files/x.r3` and means a file
+         * inside what it can see, so an interpreter it starts has to read the
+         * path the same way. Resolving it against the machine instead names
+         * nothing, or something else entirely.
+         */
+        private Path theScriptNamed() {
+            Path written = Path.of(arguments[0]);
+            Path resolved = written.isAbsolute()
+                    ? root.resolve(Path.of("/").relativize(written))
+                    : written;
+            return resolved.toAbsolutePath().normalize();
         }
 
         private static String dirized(String path) {

@@ -608,6 +608,76 @@ class ReplEndToEndTest {
             assertThat(java.nio.file.Files.exists(directory.resolve("made.txt"))).isTrue();
         }
 
+        /**
+         * {@code --root} is what an interpreter starting another one hands
+         * over, so the second is bounded the way the first is. A script
+         * confined to a directory writes {@code %/x} and means a file inside
+         * it, so the child reads the path it is given the same way -- resolving
+         * it against the machine instead would name nothing, or something else.
+         */
+        @Test
+        @DisplayName("--root confines the filesystem and every path is read inside it")
+        void therootSwitchConfinesTheScript(@TempDir java.nio.file.Path directory)
+                throws Exception {
+
+            java.nio.file.Path inside = directory.resolve("inside");
+            java.nio.file.Files.createDirectory(inside);
+            java.nio.file.Files.writeString(inside.resolve("data.txt"), "inside it");
+            java.nio.file.Files.writeString(inside.resolve("s.r3"),
+                    "print read/string %data.txt print mold what-dir\n");
+
+            Ran ran = running(directory, "--root", directory.toString(),
+                    "/inside/s.r3");
+
+            assertThat(ran.printed()).isEqualTo("inside it\n%/inside/\n");
+            assertThat(ran.exitStatus()).isZero();
+        }
+
+        @Test
+        @DisplayName("and a rooted script cannot read above its root")
+        void arootedScriptCannotReachAbove(@TempDir java.nio.file.Path directory)
+                throws Exception {
+
+            java.nio.file.Path inside = directory.resolve("inside");
+            java.nio.file.Files.createDirectory(inside);
+            java.nio.file.Files.writeString(directory.resolve("secret.txt"), "not yours");
+            java.nio.file.Files.writeString(inside.resolve("peek.r3"),
+                    "print mold try [read/string %/../secret.txt]\n");
+
+            Ran ran = running(directory, "--root", inside.toString(), "/peek.r3");
+
+            assertThat(ran.printed()).doesNotContain("not yours");
+        }
+
+        /**
+         * A file written by an editor that marks its encoding starts with
+         * three bytes that are not part of the source. Decoding drops them,
+         * as it does for LOAD of a binary; reading the file as text keeps
+         * them, and the script's first word becomes one nobody can define.
+         */
+        @Test
+        @DisplayName("a byte order mark at the front is not part of the script")
+        void abyteOrderMarkIsNotSource(@TempDir java.nio.file.Path directory)
+                throws Exception {
+
+            java.nio.file.Files.write(directory.resolve("marked.r3"),
+                    concatenated(new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF},
+                            "Rebol [Title: {T}]\nprint {ran anyway}\n"
+                                    .getBytes(StandardCharsets.UTF_8)));
+
+            Ran ran = running(directory, directory.resolve("marked.r3").toString());
+
+            assertThat(ran.printed()).isEqualTo("ran anyway\n");
+            assertThat(ran.exitStatus()).isZero();
+        }
+
+        private static byte[] concatenated(byte[] first, byte[] second) {
+            byte[] both = new byte[first.length + second.length];
+            System.arraycopy(first, 0, both, 0, first.length);
+            System.arraycopy(second, 0, both, first.length, second.length);
+            return both;
+        }
+
         @Test
         @DisplayName("-s is accepted and changes nothing, there being no security to lift")
         void thesecuritySwitchIsAccepted(@TempDir java.nio.file.Path directory)

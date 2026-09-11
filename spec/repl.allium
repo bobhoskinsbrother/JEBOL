@@ -342,6 +342,23 @@ rule AScriptRunsInItsOwnDirectory {
         system_options_args() = run.arguments
 }
 
+-- A script may be confined, and then every path it is given is a path inside
+-- what it can see.
+--
+-- `--root` is what an interpreter starting another one hands over, so the
+-- second is bounded the way the first is. A script confined to a directory
+-- writes `%/units/files/x.r3` and means a file inside it, so the child has to
+-- read the path it is given the same way -- resolving it against the machine
+-- instead would name nothing, or something else.
+rule ARootedScriptReadsEveryPathInsideItsRoot {
+    when: run: ScriptRun.created
+    requires: the_command_line_named_a_root()
+
+    ensures:
+        the_filesystem_reaches() = only_below(the_root_named())
+        the_script_read() = the_path_resolved_inside(the_root_named(), run.path)
+}
+
 -- The console grants every host service, and that is a decision rather than
 -- an oversight.
 --
@@ -359,6 +376,22 @@ rule TheConsoleGrantsEveryService {
     when: run: ScriptRun.created
 
     ensures: the_granted_services() = every_host_service()
+}
+
+-- A script is read as bytes and decoded, which is what drops a byte order
+-- mark at the front of it. LoadOfABinaryDropsAnyByteOrderMark says the same
+-- thing of LOAD, and a script on the command line has to agree: the mark
+-- marks the encoding rather than being part of the source.
+--
+-- Reading the file as text instead keeps the mark, and the first word of the
+-- script becomes a word nobody can have defined. A file written by an editor
+-- that marks its encoding then fails on its own first line.
+rule AScriptIsDecodedRatherThanReadAsText {
+    when: run: ScriptRun.created
+    requires: the_path_names_something_readable(run.path)
+
+    ensures: the_source_run() =
+        text_after_any_byte_order_mark(the_bytes_of(run.path))
 }
 
 -- A path that names nothing is a failure with a number, not a console.

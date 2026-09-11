@@ -153,31 +153,6 @@ issue-test.r3 / to-hex / to-hex/size integer! #9
 issue-test.r3 / to-hex / to-hex/size tuple! #12
 issue-test.r3 / to-hex / to-hex/size tuple! #13
 issue-test.r3 / to-hex / to-hex/size tuple! #14
-# lexer-test.r3's one remaining entry runs a second interpreter and hands it a
-# path, and the path is one only the first interpreter can resolve.
-#
-# `jebol file.r3` works now and matches a real 3.22.5 on every part of it --
-# the script runs in its own directory, system/options/script, /path and /args
-# are filled in, and the number the process leaves with is whatever QUIT
-# carried. What it cannot do is find `%/units/files/bug-load-null.r3`, because
-# the suite gets that path from `clean-path` and the suite's filesystem is
-# rooted at a temporary directory. Inside the run that path is absolute;
-# outside it names nothing. A real Rebol is never confined, so the same line
-# hands its child a path the machine has.
-#
-# Nothing to fix on either side of that. Rooting the suite's filesystem is what
-# stops a test writing into the repository -- and it had been doing so through
-# CALL until this session. Handing a child a path out of a sandbox would undo
-# the rooting.
-#
-# What the assertion is about is tested on its own in
-# ALongStringThroughTheReaderFromTheSourceTest: a forty thousand character
-# string saved and read back holds no NUL and is the text that went out,
-# either side of the size as well. Rebol shells out because its reader's
-# buffer is global and one that had already grown would hide the fault;
-# JEBOL's reader holds no such buffer, so a fresh interpreter is enough.
-#
-lexer-test.r3 / Special tests / NULLs inside loaded string #452
 module-test.r3 / make module / inlined module #13
 module-test.r3 / make module / inlined module #14
 module-test.r3 / make module / inlined module #15

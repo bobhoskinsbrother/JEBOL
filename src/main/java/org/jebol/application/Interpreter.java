@@ -728,6 +728,10 @@ public final class Interpreter {
      * none, which is the state Rebol's own boot files guard for.
      */
     private static String writtenBootLauncher() {
+        return writtenBootLauncher("/");
+    }
+
+    private static String writtenBootLauncher(String hostRoot) {
         String jvm = ProcessHandle.current().info().command()
                 .orElse(System.getProperty("java.home", "") + "/bin/java");
         try {
@@ -735,7 +739,8 @@ public final class Interpreter {
                     java.nio.file.Files.createTempFile("jebol-boot", ".sh");
             java.nio.file.Files.writeString(launcher, "#!/bin/sh\nexec \"" + jvm
                     + "\" -cp \"" + aClasspathThatWorksFromAnywhere()
-                    + "\" org.jebol.adapter.cli.Repl \"$@\"\n");
+                    + "\" org.jebol.adapter.cli.Repl --root \"" + hostRoot
+                    + "\" \"$@\"\n");
             if (!launcher.toFile().setExecutable(true)) {
                 return "";
             }
@@ -1165,6 +1170,40 @@ public final class Interpreter {
      */
     public void useFileSystem(FilePort port) {
         evaluator.useFiles(port);
+        confineAnyInterpreterThisOneStarts(port);
+    }
+
+    /**
+     * Rewrites the boot launcher so an interpreter this one starts is confined
+     * the way this one is.
+     *
+     * <p>{@code system/options/boot} is a launcher written for this run, and a
+     * script that was given one directory could otherwise start a copy of
+     * itself that had the whole machine -- and write anywhere through it.
+     * Confinement a script can step out of by running its own name is not
+     * confinement.
+     *
+     * <p>It happens here rather than at construction because the root is not
+     * known until a filesystem is installed, and the launcher has to carry it.
+     * A run rooted at the machine writes the same command it always did.
+     */
+    private void confineAnyInterpreterThisOneStarts(FilePort port) {
+        if (!bounds.grantedServices().contains(HostService.PROCESSES)) {
+            return;
+        }
+        String hostRoot;
+        try {
+            hostRoot = port.hostPathOf("/");
+        } catch (RuntimeException noRoot) {
+            return;
+        }
+        String launcher = writtenBootLauncher(hostRoot);
+        if (launcher.isEmpty()) {
+            return;
+        }
+        String saying = "system/options/boot: %" + launcher;
+        defineFreshWordsIn(saying);
+        run(saying);
     }
 
     /** Reads source without evaluating it, leaving every word unbound. */
