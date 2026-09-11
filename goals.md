@@ -651,7 +651,7 @@ twelve megabyte file in the same corpus then caught two more: an array sized to
 the C's starting capacity rather than what it grows to, and a distance setting
 that must not carry from one meta-block to the next.
 
-### 4. The crypt port — 40
+### 4. The crypt port — 40, and 13 more in goal 1 behind it
 
 `crypt-port-test.r3` stops at its first line:
 
@@ -659,13 +659,29 @@ that must not carry from one meta-block to the next.
 
 `make port!` of a block is refused, and there is no `crypt` scheme. Everything
 after that is `port is unset`. So this is one blocker in front of forty
-assertions, of which 26 are Camellia and 11 are the FIPS-197 AES vectors,
-which the JVM can do.
+assertions, of which 26 are Camellia and 11 are the FIPS-197 AES vectors.
 
-`system/catalog/ciphers` is empty here and holds about twenty entries in a
-real Rebol — the AES modes, Camellia, ChaCha20 and the rest. Filling it is
-part of the goal, and it decides which of the forty can pass: a cipher not in
-the catalogue should say so rather than answering wrongly.
+Two things about the refusal are worth having right before starting. A real
+3.22.5 answers `invalid-spec` where JEBOL answers `bad-make-arg`, so `make
+port!` of a block is its own small fix underneath the scheme. And the goal is
+worth more than the file it is named after: `codec-safe.reb` opens a crypt port
+by hand to encrypt what it saves, which is why the thirteen SAFE entries left
+in goal 1 all stop at `no-scheme: crypt`. Nothing else is waiting.
+
+`system/catalog/ciphers` is empty here and holds **42** entries in a real Rebol
+— AES, Camellia and ARIA each in ECB, CBC, CCM and GCM at three key widths,
+then ChaCha20, ChaCha20-Poly1305 and four DES spellings. Filling it is part of
+the goal, and it decides which of the forty can pass: a cipher not in the
+catalogue should say so rather than answering wrongly.
+
+**The JVM supplies about half of the 42 and no more.** Measured, not assumed:
+AES in ECB, CBC and GCM, ChaCha20, ChaCha20-Poly1305, DES and 3DES are all
+`Cipher.getInstance` away. AES-CCM is not, and neither is a single Camellia or
+ARIA mode — which is 24 of the 42, and the 26 Camellia assertions that are most
+of this goal. So this is two jobs, not one: a port that reaches the JVM for what
+the JVM has, and a Camellia implementation written from the C for what it has
+not. Do them in that order, and pin the boundary each way — a cipher the
+catalogue names and the port cannot serve is the failure mode to avoid.
 
 The pattern to follow is `ChecksumPort.java` and the checksum scheme in
 `Interpreter.java`: a scheme registered through the borrowed `sys/make-scheme`,
