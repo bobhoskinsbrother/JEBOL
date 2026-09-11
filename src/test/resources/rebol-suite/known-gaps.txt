@@ -12,9 +12,33 @@
 # Matching it means relative binding -- words bound to a position in the
 # argument list rather than to a frame, resolved against whichever frame is
 # current. That is R3's binding model and not this one, and swapping it is a
-# change to how every function in the interpreter is bound. Five assertions do
-# not pay for it. Written down here so the next person does not start it
-# thinking it is a defect in MAKE.
+# change to how every function in the interpreter is bound. Written down here
+# so the next person does not start it thinking it is a defect in MAKE.
+#
+# It was tried, on 12 September 2026, far enough to know the price rather than
+# to guess at it. The shape that works: a context per function holding the
+# words its spec declares, answering nothing until a call lends it a frame;
+# the body bound to that context in place when the function is made; and each
+# call pointing the innermost open frame of the same function at its own, which
+# is machinery JEBOL already has for recursion. All five assertions pass under
+# it and so do the ordinary cases -- recursion, locals, nesting.
+#
+# It also breaks 513 others, and the reason is that four subsystems each hold
+# their own end of the binding model:
+#
+#   - A closure's frame outlives its call, so its body must still be bound per
+#     call and copied. Solved by keeping the old path for closures alone.
+#   - There are two call paths -- the frame stack, and the one APPLY and the
+#     natives use -- and they keep different books on which frames are open.
+#     A call through the second while the first is open tramples the pointer.
+#   - PARSE resolves a `copy word` target its own way, so a rule block inside a
+#     body stopped writing to the function's local: `parse s [copy f to end]`
+#     left f none. It worked before because the call-time bind handed PARSE a
+#     freshly bound copy every time.
+#   - And whatever else is in the remaining four hundred, which were not read.
+#
+# So it is a project rather than a task, and the four above are its actual
+# contents. The attempt was reverted whole; nothing of it is in the tree.
 #
 bbcode-test.r3 / (no group) / (no test) #1
 bitset-test.r3 / modify / issue-1355 #139
