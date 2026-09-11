@@ -726,6 +726,15 @@ CCM is a *mode* wrapped round a block cipher that already works, so AES-CCM is
 nothing once Camellia lands. ARIA has no assertion behind it at all and is
 catalogue-only.
 
+**Do CCM first, whatever the assertion counts say.** It is two assertions
+against Camellia's thirty, and it is the only one of the three with a consumer
+inside JEBOL: `prot-tls.reb` offers four AES-CCM suites, two of which are TLS
+1.3's own — `TLS_AES-128-CCM_SHA256` at 0x1304 and `TLS_AES-128-CCM_8_SHA256`
+at 0x1305. Neither Camellia nor ARIA appears anywhere in the borrowed library
+at all. So CCM is the smallest piece, the one a real connection can reach, and
+the one that also unlocks Camellia-CCM later; Camellia and ARIA are catalogue
+completeness and a pile of RFC vectors.
+
 The usual rule applies with force here: build the oracle first. Every one of
 these has published test vectors, the C beside it, and a `./r3-head` that can
 answer any input — so a mismatch should be findable in a second rather than
