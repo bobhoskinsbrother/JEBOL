@@ -2076,6 +2076,225 @@ rule WritingToTheConsolePortGoesThroughTheConsole {
     ensures: the_console_shows(formed(data))
 }
 
+-- === The cipher port =======================================
+
+-- MAKE PORT! builds a port out of any of six spellings of a specification,
+-- and it does it by handing the spelling to the system's own port maker
+-- rather than knowing about any of them itself.
+--
+-- A file, a url, a block of set-words, an object, a word naming a scheme, and
+-- another port are the six. They differ only in how the scheme's name is
+-- found, which is why one function in the borrowed library reads all six and
+-- nothing in the interpreter needs to.
+--
+-- Anything else is a specification that names no scheme, and it is refused as
+-- one rather than as a wrong argument to MAKE. What the caller wrote is worth
+-- naming in the error, because a specification is usually built rather than
+-- typed and the useful question is which one came out wrong.
+rule MakingAPortReadsAnySpellingOfItsSpecification {
+    when: EvaluateCall(make, port_datatype, specification)
+    requires: names_a_scheme_somehow(specification)
+
+    ensures: CallResult(value: the_port_the_system_maker_builds(specification))
+}
+
+rule ASpecificationNamingNoSchemeIsRefusedAsOne {
+    when: EvaluateCall(make, port_datatype, specification)
+    requires: not names_a_scheme_somehow(specification)
+
+    ensures: CallFails(error: invalid_spec, about: specification)
+}
+
+-- A cipher port encrypts what is written to it, `crypt://`.
+--
+-- The shape is the checksum port's: bytes go in a write at a time and come
+-- out when there are enough of them. What makes it its own thing is that a
+-- block cipher cannot answer until it has a whole block, so a write of less
+-- than one produces nothing and the remainder waits inside the port for the
+-- next write to complete it.
+--
+-- The algorithm is named in the specification and must be one this build
+-- serves. `system/catalog/ciphers` is the list, filled in by the host like
+-- `system/catalog/checksums` beside it, because which ciphers exist depends
+-- on what the host can do. A name in that list is a promise, so a cipher the
+-- port cannot serve does not go in it.
+rule ACipherPortNeedsAnAlgorithmThisBuildServes {
+    when: EvaluateCall(open, target)
+    requires: names_a_cipher_port(target)
+    requires: the_algorithm_named(target) not in host_cipher_algorithms()
+
+    ensures: CallFails(error: invalid_spec, about: the_specification_of(target))
+}
+
+-- The key and the starting vector are taken out of the specification when the
+-- port opens, and the specification is left holding nothing where they were.
+--
+-- Which is not tidiness. A port's specification is an ordinary object a
+-- script can read, mold or pass on, and a key that stayed in it would travel
+-- everywhere the port did. Taking a copy and blanking the original means the
+-- key exists in one place that nothing can read back.
+rule OpeningTakesTheKeyAndTheVectorOutOfTheSpecification {
+    when: EvaluateCall(open, target)
+    requires: names_a_cipher_port(target)
+
+    ensures: the_specification_of(target).key = none
+    ensures: the_specification_of(target).init_vector = none
+    ensures: the_port_holds_the_key_that_was_there()
+}
+
+-- Writing feeds the cipher and produces nothing on its own. Whole blocks are
+-- transformed as soon as they are complete, and what is left over waits.
+--
+-- So the same bytes give the same answer however they are cut up: eight bytes
+-- then eight bytes is one block, and sixteen bytes at once is the same block.
+-- A caller reading a stream does not have to know the cipher's block size.
+rule WritingTransformsWholeBlocksAndHoldsTheRemainder {
+    when: EvaluateCall(write, target, octets)
+    requires: names_a_cipher_port(target)
+
+    ensures: CallResult(value: target)
+    ensures: the_port_has_ready(transformed(every_whole_block_so_far()))
+    ensures: the_port_holds_back(the_octets_past_the_last_whole_block())
+}
+
+invariant HowTheOctetsAreCutUpDoesNotChangeTheAnswer {
+    for octets in AnyBinary:
+        for cut in AnyWayOfCuttingUp(octets):
+            what_a_cipher_port_answers_for(cut)
+                = what_a_cipher_port_answers_for({octets})
+}
+
+-- Writing anything that is not a run of bytes is refused as a thing the port
+-- cannot do, rather than as a wrong argument. The port takes bytes; a string
+-- is not bytes until somebody says which encoding, and the port will not
+-- guess.
+rule ACipherPortWritesBytesAndNothingElse {
+    when: EvaluateCall(write, target, data)
+    requires: names_a_cipher_port(target)
+    requires: not is_binary(data)
+
+    ensures: CallFails(error: feature_na, about: the_reference_of(target))
+}
+
+-- Reading takes everything that is ready and leaves the port empty, so
+-- reading twice running gives the bytes and then nothing.
+--
+-- The opposite of the checksum port, which answers the same digest every time
+-- because a sum has no length. Here the port is a conveyor: what has been
+-- read has left.
+rule ReadingTakesEverythingReadyAndLeavesTheCipherPortEmpty {
+    when: EvaluateCall(read, target)
+    requires: names_a_cipher_port(target)
+    requires: the_port_has_octets_ready()
+
+    ensures: CallResult(value: every_octet_that_was_ready())
+    ensures: the_port_has_nothing_ready()
+}
+
+rule ReadingACipherPortWithNothingReadyAnswersNone {
+    when: EvaluateCall(read, target)
+    requires: names_a_cipher_port(target)
+    requires: not the_port_has_octets_ready()
+
+    ensures: CallResult(value: none)
+}
+
+-- UPDATE completes a half-finished block by padding it with noughts, which is
+-- how a caller says there is no more input coming.
+--
+-- Noughts and not a counted padding, so the padding cannot be told from data
+-- and is not removed on the way back: eight bytes encrypted and decrypted
+-- again are those eight bytes followed by eight noughts. That is the format's
+-- choice and a caller who needs to know the original length has to carry it
+-- separately.
+rule UpdateCompletesAPartialBlockWithNoughts {
+    when: EvaluateCall(update, target)
+    requires: names_a_cipher_port(target)
+    requires: the_port_holds_a_partial_block()
+
+    ensures: CallResult(value: target)
+    ensures: the_port_has_ready(transformed(
+        the_partial_block_followed_by_noughts_to_a_whole_block()))
+}
+
+rule TakingIsUpdatingAndThenReading {
+    when: EvaluateCall(take, target)
+    requires: names_a_cipher_port(target)
+
+    ensures: CallResult(value: what_reading_answers_after_updating(target))
+}
+
+-- MODIFY sets one named field and starts the cipher again from it, so a
+-- caller can run many messages through one port.
+--
+-- Starting again is the point. A block cipher in a chaining mode carries
+-- state from block to block, and that state has to be thrown away between
+-- messages or the second message decrypts to nothing. Setting any of the four
+-- fields is how a caller says a new message begins.
+rule ModifyingACipherPortStartsTheCipherAgain {
+    when: EvaluateCall(modify, target, field, value)
+    requires: names_a_cipher_port(target)
+    requires: field in {algorithm, direction, key, init_vector}
+
+    ensures: the_next_write_starts_the_cipher_from(field = value)
+}
+
+rule ModifyingAFieldACipherPortHasNotGotIsRefused {
+    when: EvaluateCall(modify, target, field, value)
+    requires: names_a_cipher_port(target)
+    requires: field not in cipher_port_fields()
+
+    ensures: CallFails(error: invalid_arg, about: field)
+}
+
+-- A value the field cannot hold answers false rather than raising. The port
+-- is unchanged and the caller is told so, which is what lets a script offer a
+-- cipher and fall back when the build has not got it.
+rule AValueACipherPortFieldCannotHoldAnswersFalse {
+    when: EvaluateCall(modify, target, field, value)
+    requires: names_a_cipher_port(target)
+    requires: field in cipher_port_fields()
+    requires: not the_field_can_hold(field, value)
+
+    ensures: CallResult(value: false)
+    ensures: the_port_is_unchanged()
+}
+
+-- Closing forgets the cipher, and every action on a closed cipher port is
+-- refused -- asking whether it is open included, which is the surprising one.
+--
+-- It falls out of where the check sits: the actor looks for its cipher before
+-- it looks at what was asked, so there is nothing left to answer the question
+-- with. Opening one that is already open is refused the same way from the
+-- other side.
+rule EveryActionOnAClosedCipherPortIsRefused {
+    when: EvaluateCall(verb, target)
+    requires: names_a_cipher_port(target)
+    requires: not the_port_is_open()
+    requires: verb in {read, write, update, take, modify, close, open?}
+
+    ensures: CallFails(error: not_open, about: the_reference_of(target))
+}
+
+rule OpeningAnOpenCipherPortIsRefused {
+    when: EvaluateCall(open, target)
+    requires: names_a_cipher_port(target)
+    requires: the_port_is_open()
+
+    ensures: CallFails(error: already_open, about: the_reference_of(target))
+}
+
+-- And the whole point of it: what one port encrypts another decrypts, given
+-- the same algorithm, key and starting vector. Padded out to a whole block,
+-- because that is what the port had to write.
+invariant ACipherPortDecryptsWhatACipherPortEncrypted {
+    for algorithm in host_cipher_algorithms():
+        for key in AnyBinary:
+            for octets in AnyBinary:
+                decrypted(encrypted(octets, algorithm, key), algorithm, key)
+                    = octets_padded_with_noughts_to_a_whole_block(octets)
+}
+
 -- === Starting another program ==============================
 
 -- CALL starts another program. Three questions decide what it does: how the

@@ -146,7 +146,7 @@ Beside it, and outliving it:
   which build an interpreter and read no `.r3` file. The suite is scaffolding
   and will be deleted when it goes green; these are what lasts.
 - **`./r3-head`, a real Rebol 3.22.5 built from the checkout beside it**, used
-  as an oracle. Where the suite and the C disagree, the C wins; where reasoning
+  as the canonical reference. Where the suite and the C disagree, the C wins; where reasoning
   and the binary disagree, the binary wins. It is the only Rebol consulted: an
   older 3.22.1 download sat beside it for a while and cost four wrong readings
   before it was deleted, so a binary that is not built from the source it is
@@ -176,15 +176,16 @@ and parse.
 **`goals.md` breaks all of it into pieces of work**, each with its size, what
 blocks it, which C file to read and how to check the answer against a real
 Rebol. **The sizes live there and are not repeated here.** It also carries the
-working method: one authority and one oracle, the measuring tools, the ratchet,
+working method: one authority and one canonical reference, the measuring tools, the ratchet,
 and a rule for the assertions a real Rebol does not run either.
 
 Six of those goals are not porting at all. They correct faults in the measure,
 found by an audit that ran three independent adversarial passes over it — a
 handful of listed assertions that a real Rebol also fails, so that fixing them
 would move JEBOL *away* from Rebol; an allowlist with no ratchet behind it; a
-measuring tool that reports blockers the gate never sees; and a file the oracle
-itself answers differently on consecutive runs. Those come first, because until
+measuring tool that reports blockers the gate never sees; and a file the
+canonical reference itself answers differently on consecutive runs. Those come
+first, because until
 they are done a falling backlog does not reliably mean progress.
 
 Bigger things that are known rather than counted:

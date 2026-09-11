@@ -120,7 +120,7 @@ that the suite would have let through.
 
 Four rules, each of which exists because it was broken and cost something.
 
-**Build the oracle before the port, not after.** The reference C is right there
+**Build the canonical reference before the port, not after.** The reference C is right there
 under `rebol3-source/`, and a hundred lines of shell will compile the encoder
 alone into a program that reads a file and writes its compressed form to stdout.
 Then any input can be diffed against the truth in a second. On the Brotli

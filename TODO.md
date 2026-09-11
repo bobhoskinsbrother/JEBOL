@@ -48,7 +48,7 @@ here for anything about the suite.
 mean progress.** An audit on 5 September 2026 ran three independent adversarial
 passes over this target. The arithmetic survived all three. The target did not:
 eleven listed entries name assertions a real Rebol also fails, so working them
-moves JEBOL away from the oracle while the ratchet turns green; the second
+moves JEBOL away from the canonical reference while the ratchet turns green; the second
 allowlist has no ratchet at all; `SuiteStops` invents stops the gate never sees;
 and `./r3-head` itself is non-deterministic on `checksum-test.r3`. Details and
 reproductions are in `goals.md`.

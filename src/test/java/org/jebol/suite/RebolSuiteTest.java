@@ -580,7 +580,7 @@ class RebolSuiteTest {
      * merely stricter, because the strict reading asks for behaviour a real
      * Rebol has not got: eight lines of the gap list wanted
      * {@code integer? power 2 16}, which is false in Rebol, and the ratchet
-     * would have gone green for whoever made JEBOL disagree with the oracle.
+     * would have gone green for whoever made JEBOL disagree with a real Rebol.
      */
     @Test
     @DisplayName("no assertion about Red is on the gap list")

@@ -256,7 +256,7 @@ class ImageCodecFromTheSourceTest {
      * GIF stores an index into a palette of two hundred and fifty-six, so a
      * picture with no more colours than that has an entry apiece and comes
      * back exactly. This is where JEBOL is deliberately better than the
-     * oracle: a real 3.22.5 on macOS quantises even two dark reds that sit one
+     * canonical reference: a real 3.22.5 on macOS quantises even two dark reds that sit one
      * step apart into a single colour, and matching that would mean
      * reproducing a particular platform's quantiser.
      */

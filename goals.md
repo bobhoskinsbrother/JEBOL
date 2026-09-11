@@ -36,8 +36,8 @@ belong to 4a and 4b. Goals 1 to 3 was real and is discharged: goal 3 is done.
 Goals 1, 4a, 6 and 14 are also one question asked four times: what the
 capability catalogues claim is present. `system/codecs` is longer here than in a
 real 3.22.5 and `system/catalog/ciphers` is empty where a real one holds
-forty-two, so JEBOL enters blocks the oracle skips and claims nothing where the
-oracle claims plenty. Both readings are wrong in the same way.
+forty-two, so JEBOL enters blocks a real Rebol skips and claims nothing where a
+real Rebol claims plenty. Both readings are wrong in the same way.
 
 ---
 
@@ -238,7 +238,7 @@ It cannot, because the strict reading demands behaviour Rebol has not got. Bind
 `--red--` the way Rebol does, and the eight lines go.
 
 The other three are ordinary misfilings, checked one at a time against the
-oracle:
+canonical reference:
 
     make-test.r3 #498, #533   error? try [make map! quote (1 2)]  -> #(false) both sides
     module-test.r3 #18        both sides answer _
@@ -249,9 +249,10 @@ Reproduce any of them:
     ./r3-head /tmp/p.r3
 
 More are suspected in `port-test.r3` and `codecs-test.r3` and could not be
-confirmed, for a structural reason worth knowing: in a file where the oracle
-performs fewer assertions than the file writes, the ordinals cannot be lined up,
-so there is no way to say which listed entry corresponds to which oracle failure.
+confirmed, for a structural reason worth knowing: in a file where the canonical
+reference performs fewer assertions than the file writes, the ordinals cannot be
+lined up, so there is no way to say which listed entry corresponds to which of
+its failures.
 Five separate counts of "how many are misfiled" came back as 8, 10, 13, 14 and
 17 for exactly this reason. **Eleven is the confirmed floor, not the answer.**
 
@@ -602,7 +603,7 @@ Three test files cover it, one per group of levels.
    `fails-on-rebol-too.txt` with the `./r3-head` output that settles it.
 
 **Two faults a round trip would never have found**, both caught by comparing
-bytes with the oracle and worth repeating wherever the next compressor is
+bytes with the canonical reference and worth repeating wherever the next compressor is
 ported:
 
 - LZMA's reversed bit trees are walked one way in the decoder and another in
@@ -735,7 +736,7 @@ at all. So CCM is the smallest piece, the one a real connection can reach, and
 the one that also unlocks Camellia-CCM later; Camellia and ARIA are catalogue
 completeness and a pile of RFC vectors.
 
-The usual rule applies with force here: build the oracle first. Every one of
+The usual rule applies with force here: build the canonical reference first. Every one of
 these has published test vectors, the C beside it, and a `./r3-head` that can
 answer any input — so a mismatch should be findable in a second rather than
 inferred from a failing suite line.
@@ -777,7 +778,7 @@ and subject to the same correction: declaring them absent retires nothing,
 because an unreached assertion is scored as a failure.
 
 **Do not settle a checksum-port question on a single `./r3-head` run.** The
-oracle is not deterministic on this file. Running `checksum-test.r3` through
+canonical reference is not deterministic on this file. Running `checksum-test.r3` through
 Rebol's own runner fails 13 assertions in roughly one run in eight, reproduced
 from cold in two unrelated directories with byte-identical inputs; the failing
 one is `--assert not open? close port`, so a real Rebol sometimes reports a
@@ -866,7 +867,7 @@ will show it. Small enough to take in one sitting each:
 | `lexer-test.r3` | 8 | one is `NULLs inside loaded string`, which loads through a subprocess |
 
 `power-test.r3` used to be a row here with eight entries, and working it would
-have made JEBOL disagree with the oracle. Goal 16 took them off: they are
+have made JEBOL disagree with the canonical reference. Goal 16 took them off: they are
 `--red--` assertions that a real Rebol fails too. Two `make-test.r3` entries
 went the same way.
 
@@ -1002,7 +1003,7 @@ real decisions and neither is a line of code.
 
     ./gradlew cleanTest && ./gradlew check    # once in some number of runs
 
-### The oracle is not deterministic on one file
+### The canonical reference is not deterministic on one file
 
 `./r3-head` fails 13 assertions in `checksum-test.r3` in roughly one run in
 eight, reproduced from cold in two unrelated directories with byte-identical
@@ -1016,7 +1017,7 @@ closed checksum port as still open.
 This is a flake in the instrument every other answer here is settled with.
 Nothing on `known-gaps.txt` depends on it today, and two audit passes still
 disagreed with each other because one of them hit a bad run and did not re-run.
-Nobody has read the C to find out why. Until someone does, ask the oracle three
+Nobody has read the C to find out why. Until someone does, ask `./r3-head` three
 times whenever the answer surprises you.
 
 ### A server test that failed once
