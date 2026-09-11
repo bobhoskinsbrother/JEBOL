@@ -2119,6 +2119,82 @@ rule ASpecificationWhoseSchemeNobodyServesNamesTheScheme {
         about: the_scheme_named_by(specification))
 }
 
+-- === A scheme may bring its own actor ======================
+
+-- Every port action goes to the port's actor, and an actor is either built in
+-- or written in REBOL.
+--
+-- Which is the whole of what makes one verb reach every kind of thing a
+-- script can open. READ of a console and READ of a file are the same call and
+-- two different actors; the verb knows nothing about either.
+--
+-- A built-in actor is a word naming the thing that serves it, and the host
+-- has to have granted that service before the port opens -- a file port needs
+-- the files service, a network port the network. An actor written in REBOL is
+-- an object of functions, and needs no service of its own at all: whatever it
+-- reaches for, it reaches for by calling ordinary words, and each of those
+-- asks the host for itself. A scheme that stores things in an encrypted file
+-- asks for nothing when it opens and asks for the files service the moment it
+-- writes.
+--
+-- So the question "may this port open" has two different answers depending on
+-- which kind of actor it has, and asking the built-in question of both is
+-- what made a scheme written in REBOL impossible to open at all.
+rule APortWithAnActorWrittenInRebolNeedsNoServiceToOpen {
+    when: EvaluateCall(open, target)
+    requires: is_port(target)
+    requires: the_actor_is_an_object(target)
+
+    ensures: not CallFails(error: no_service)
+}
+
+rule APortWithABuiltInActorNeedsItsServiceGranted {
+    when: EvaluateCall(open, target)
+    requires: is_port(target)
+    requires: the_actor_is_a_word(target)
+    requires: not the_host_granted(the_service_that_word_names(target))
+
+    ensures: CallFails(error: no_service)
+}
+
+-- An action on a port with an actor written in REBOL calls the function of
+-- that name inside it, and hands it what the action was given.
+rule AnActionOnSuchAPortCallsTheFunctionOfThatName {
+    when: EvaluateCall(verb, target)
+    requires: is_port(target)
+    requires: the_actor_is_an_object(target)
+    requires: the_actor_holds_a_function_called(verb)
+
+    ensures: CallResult(value: what_that_function_answered())
+}
+
+-- An action the actor has no function for is refused by name, so a caller
+-- learns which verb this port does not do rather than that something went
+-- wrong somewhere inside it.
+rule AnActionTheActorHasNoFunctionForIsRefused {
+    when: EvaluateCall(verb, target)
+    requires: is_port(target)
+    requires: the_actor_is_an_object(target)
+    requires: not the_actor_holds_a_function_called(verb)
+
+    ensures: CallFails(error: no_port_action, about: verb)
+}
+
+-- And an actor that is neither -- a number, a string, anything that is not a
+-- word and not an object -- is a scheme built wrongly rather than a port used
+-- wrongly.
+rule AnActorThatIsNeitherIsAnInvalidActor {
+    when: EvaluateCall(verb, target)
+    requires: is_port(target)
+    requires: not the_actor_is_an_object(target)
+    requires: not the_actor_is_a_word(target)
+    requires: not the_actor_is_none(target)
+
+    ensures: CallFails(error: invalid_actor)
+}
+
+open question "Where home is does not come from the filesystem a script was given. `system/options/home` is read off the machine, so an interpreter whose files are confined to one directory still reports the real home -- a path it will then refuse to read or write. Nothing notices until a script keeps something there, which is what REBOL's own user storage does: it puts a user's encrypted file at home and a confined interpreter cannot make one. The measuring harness now says home is the directory it made, which is the honest answer for a confined filesystem and is a decision the host is entitled to make. The question left is whether the interpreter should be asking the filesystem where home is instead of being told, so that every host gets a coherent answer rather than the ones that remember."
+
 -- A cipher port encrypts what is written to it, `crypt://`.
 --
 -- The shape is the checksum port's: bytes go in a write at a time and come

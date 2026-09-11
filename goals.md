@@ -195,12 +195,12 @@ Sizes are the number of `known-gaps.txt` entries the goal is worth, and every
 entry belongs to exactly one goal. **Re-derived from the list on 11 September
 2026**, because the old figures had drifted: goal 11 was the worst at 135
 against a real 132, and goal 15 claimed 40 where the files it owns hold 31.
-Goal 2 has since gone to nought and the total with it.
+Goals 1 and 2 have since gone to nought and the total with them.
 Do not trust a size here that has not been re-derived since work landed —
 `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt` is the live
 total and the table below is how it divides.
 
-    332   the whole list
+    322   the whole list
     ---
     132   11. sweepable files that run clean
      36    5. the file ports
@@ -209,11 +209,10 @@ total and the table below is how it divides.
      29    7. enbase and debase
      27   10. the elliptic curves
      17    9. modules and import
-     10    1. what is left of the codecs, which is not codecs
       9   14. the pdf codec
       7   12. Java exceptions escaping to the top
 
-Goals 2, 3, 4a, 4b, 8, 13 and 16 to 21 are done and own nothing. To re-derive the
+Goals 1, 2, 3, 4a, 4b, 8, 13 and 16 to 21 are done and own nothing. To re-derive the
 table, count the list by file and read each goal for which files it names:
 
     sed 's| /.*||' src/test/resources/rebol-suite/known-gaps.txt | sort | uniq -c | sort -rn
@@ -510,11 +509,12 @@ whether the change worked.
 
 ---
 
-### 1. The remaining codecs — 109, now 10, and they are not codecs
+### 1. The remaining codecs — 109 — DONE
 
-`codecs-test.r3`. Was the largest single file, and it was not one problem but
-about eleven, each an `if find codecs 'name [...]` block that raised and took
-its whole group with it.
+`codecs-test.r3` has no line on `known-gaps.txt`. It was the largest single
+file and it was not one problem but about twelve, each an
+`if find codecs 'name [...]` block that raised and took its whole group with
+it.
 
 Almost none of them turned out to be codecs to port. The DER, CRT, PLIST, ZIP
 and MIME blocks were all interpreter defects surfacing inside Rebol's own
@@ -522,7 +522,7 @@ borrowed REBOL codec files: the binary dialect resolving a get-word too early,
 a get-path rebinding what it read, ENHEX answering the wrong datatype, PARSE's
 insert, and `enbase/part` counting bytes where it should count characters. The
 image blocks needed a port rather than a codec, and QOI needed writing. The SWF
-block fell out of the binary dialect's `VINT`, which is goal 13.
+block fell out of the binary dialect's `VINT`, which was goal 13.
 
 The WAV block turned out not to be work at all. Its two checksums are stale and
 a real 3.22.5 answers exactly what JEBOL answers, so they are on
@@ -532,21 +532,53 @@ a real 3.22.5 answers exactly what JEBOL answers, so they are on
 delayed module and the block's `if find codecs 'wav` guard has been false since
 the sound data stopped being a raw binary.
 
-**What is left is ten entries that are not codec work and should not be filed
-here.** The crypt port cleared four of the thirteen SAFE entries; the rest need
-SET-USER, `system/user/data` and a user's storage file — REBOL's own idea of a
-logged-in user with an encrypted store, which nothing in this file describes.
-They stay under goal 1 only because nobody has written the goal they belong to.
+**The last ten were the SAFE block, and they were one thing rather than ten.**
+The SAFE codec and the SAFE scheme are both written in REBOL and JEBOL already
+vendors the file. The codec worked throughout: a value molded, compressed,
+checksummed and run through a cipher port, and the whole trip back. What could
+not happen was opening a port on a scheme whose actor is written in REBOL.
 
-One of the ten is worth a look before it is filed with the other nine.
-Assertion #222 answers false inside the suite while the same round trip is
-byte-identical to `./r3-head` when run on its own, so it may be a harness or
-ordering problem rather than a missing feature.
+Every port action goes to the port's actor, and an actor is one of two things:
+a word naming something built in, or an object of functions. JEBOL served only
+the first. `sys/make-scheme` accepted the scheme, put it in `system/schemes`
+with its actor intact, and then `open` refused it because the scheme's name was
+not on a hard-coded list of eight — so a scheme written in REBOL could be
+registered and never used.
 
-Note that the group names in `known-gaps.txt` are wrong for this file — the
+The distinction that decides it is which of the two needs the host's
+permission. A built-in actor is the way out of the interpreter and has to have
+its service granted first. An actor written in REBOL is not a way out of
+anything: whatever it reaches for, it reaches for by calling ordinary words,
+and each of those asks the host for itself. So it opens without asking for
+anything, and `ASchemeWrittenInRebolFromTheSourceTest` needs no host at all.
+
+Three defects surfaced doing it, each confirmed against `./r3-head` first.
+
+*Refinements were not reaching the actor.* A refinement nobody asked for brings
+no argument with it, so `remove/key store 'greeting` arrives as two values and
+the key is the second — not the fourth, where it would sit if every refinement
+kept a place in the queue. `remove/key` on such a port was deleting nothing.
+
+*A quoted parameter at the end of a block raised instead of binding unset.*
+Which is how `try [su]` releases the user: SU's name is quoted and accepts
+`unset!`, so a block with nothing after it means "no name". JEBOL now matches
+on both halves — unset where the parameter accepts it, and `expect-arg` rather
+than `no-arg` where it does not.
+
+*The measuring harness reported a home it had forbidden.* `SuiteHost` confines
+the filesystem to a directory made for the run and `system/options/home` is
+read off the machine, so `set-user` tried to write a user's storage file to the
+real home and every assertion after it was lost. A sandbox whose home lies
+outside the sandbox is an incoherent host rather than a strict one, so the
+harness now says home is the directory it made. The question underneath —
+whether the interpreter should ask the filesystem where home is rather than be
+told — is an open question in `spec/natives.allium`, because any host that
+confines files gets the same wrong answer unless it remembers to say otherwise.
+
+Note that the group names in `known-gaps.txt` were wrong for this file — the
 slicer takes the last top-level `===start-group===`, and this file nests its
-groups inside the `if` blocks, so the entries all claim to be in "TEXT codec".
-They are not.
+groups inside the `if` blocks, so every entry claimed to be in "TEXT codec".
+They were not, and the two lines left on `fails-on-rebol-too.txt` still say so.
 
 ### 2. Image, read and written — 51 — DONE
 

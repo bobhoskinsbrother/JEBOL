@@ -4854,6 +4854,11 @@ public final class Natives {
                         Parameter.required("index"),
                         Parameter.required("value", ANYTHING)),
                 (arguments, evaluator, context) -> {
+                    Optional<Value> itsOwn =
+                            theRebolActorsAnswer("poke", arguments, Set.of(), evaluator);
+                    if (itsOwn.isPresent()) {
+                        return itsOwn.get();
+                    }
                     if (arguments.get(0) instanceof VectorValue vector) {
                         VectorPath.write(vector, arguments.get(1), arguments.get(2));
                         return arguments.get(2);
@@ -5092,6 +5097,11 @@ public final class Natives {
                         Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
                 Set.of("case", "skip"),
                 (arguments, evaluator, context, refinements) -> {
+                    Optional<Value> itsOwn =
+                            theRebolActorsAnswer("put", arguments, refinements, evaluator);
+                    if (itsOwn.isPresent()) {
+                        return itsOwn.get();
+                    }
                     switch (arguments.get(0)) {
                         case MapValue map -> map.put(arguments.get(1), arguments.get(2),
                                 refinements.contains("case"));
@@ -5147,6 +5157,11 @@ public final class Natives {
                 Set.of("case", "skip", "any", "only", "last", "part", "same", "with",
                         "reverse"),
                 (arguments, evaluator, context, refinements) -> {
+                    Optional<Value> itsOwn =
+                            theRebolActorsAnswer("select", arguments, refinements, evaluator);
+                    if (itsOwn.isPresent()) {
+                        return itsOwn.get();
+                    }
                     if (arguments.get(0) instanceof MapValue map) {
                         return map.select(arguments.get(1),
                                 refinements.contains("case"));
@@ -5884,11 +5899,17 @@ public final class Natives {
                 (arguments, evaluator, context) -> pick(arguments.get(0), 3));
         define("pick", List.of(Parameter.required("series"),
                         Parameter.required("index")),
-                (arguments, evaluator, context) -> arguments.get(1)
-                        instanceof LogicValue chosen
-                        && !(arguments.getFirst() instanceof BitsetValue)
-                        ? pick(arguments.get(0), chosen.truth() ? 1 : 2)
-                        : pickFrom(arguments.get(0), arguments.get(1)));
+                (arguments, evaluator, context) -> {
+                    Optional<Value> itsOwn =
+                            theRebolActorsAnswer("pick", arguments, Set.of(), evaluator);
+                    if (itsOwn.isPresent()) {
+                        return itsOwn.get();
+                    }
+                    return arguments.get(1) instanceof LogicValue chosen
+                            && !(arguments.getFirst() instanceof BitsetValue)
+                            ? pick(arguments.get(0), chosen.truth() ? 1 : 2)
+                            : pickFrom(arguments.get(0), arguments.get(1));
+                });
 
         define("atz", List.of(Parameter.required("series"),
                         Parameter.required("position",
@@ -6374,6 +6395,11 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0) instanceof NoneValue nothing) {
                         return nothing;
+                    }
+                    Optional<Value> itsOwn =
+                            theRebolActorsAnswer("remove", arguments, refinements, evaluator);
+                    if (itsOwn.isPresent()) {
+                        return itsOwn.get();
                     }
                     if (arguments.get(0) instanceof MapValue map) {
                         if (refinements.contains("key")) {
@@ -17456,6 +17482,12 @@ public final class Natives {
                         throw Raised.of(EvaluationFailure.INVALID_ARG,
                                 "nothing knows how to open that");
                     }
+                    refuseAnActorThatIsNeitherAWordNorAnObject(port);
+                    Optional<ObjectValue> written = theActorWrittenInRebol(port);
+                    if (written.isPresent()) {
+                        return askTheActor(port, written.get(), "open",
+                                List.of(port), refinements, evaluator);
+                    }
                     requireServiceForScheme(port.schemeName());
                     if (port.schemeName().equals("tcp")) {
                         connectTheTcpPort(port, evaluator);
@@ -17475,6 +17507,11 @@ public final class Natives {
 
         define("update", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
                 (arguments, evaluator, context) -> {
+                    Optional<Value> itsOwn =
+                            theRebolActorsAnswer("update", arguments, Set.of(), evaluator);
+                    if (itsOwn.isPresent()) {
+                        return itsOwn.get();
+                    }
                     PortValue port = (PortValue) arguments.getFirst();
                     if (port.schemeName().equals("checksum")) {
                         ChecksumPort.digestSoFar(port);
@@ -17496,6 +17533,11 @@ public final class Natives {
 
         define("open?", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
                 (arguments, evaluator, context) -> {
+                    Optional<Value> itsOwn =
+                            theRebolActorsAnswer("open?", arguments, Set.of(), evaluator);
+                    if (itsOwn.isPresent()) {
+                        return itsOwn.get();
+                    }
                     PortValue port = (PortValue) arguments.getFirst();
                     if (port.schemeName().equals("crypt")) {
                         refuseAClosedCipherPort(port);
@@ -17505,6 +17547,11 @@ public final class Natives {
 
         define("close", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
                 (arguments, evaluator, context) -> {
+                    Optional<Value> itsOwn =
+                            theRebolActorsAnswer("close", arguments, Set.of(), evaluator);
+                    if (itsOwn.isPresent()) {
+                        return itsOwn.get();
+                    }
                     PortValue port = (PortValue) arguments.getFirst();
                     if (port.schemeName().equals("crypt")) {
                         refuseAClosedCipherPort(port);
@@ -17522,6 +17569,11 @@ public final class Natives {
                         Parameter.required("field", Set.of(Datatype.WORD, Datatype.NONE)),
                         Parameter.required("value")),
                 (arguments, evaluator, context) -> {
+                    Optional<Value> itsOwn =
+                            theRebolActorsAnswer("modify", arguments, Set.of(), evaluator);
+                    if (itsOwn.isPresent()) {
+                        return itsOwn.get();
+                    }
                     if (arguments.getFirst() instanceof PortValue aPort
                             && aPort.schemeName().equals("crypt")) {
                         refuseAClosedCipherPort(aPort);
@@ -17986,6 +18038,11 @@ public final class Natives {
      * must be able to tell that from an empty line.
      */
     private Value readFromPort(PortValue port, Evaluator evaluator) {
+        Optional<Value> itsOwn = theRebolActorsAnswer(
+                "read", List.of(port), Set.of(), evaluator);
+        if (itsOwn.isPresent()) {
+            return itsOwn.get();
+        }
         return switch (port.schemeName()) {
             case "console" -> lineReadFromTheConsole(evaluator);
             case "tcp" -> bytesReadFromTheConnection(port);
@@ -19087,6 +19144,11 @@ public final class Natives {
 
     private Value writeToPort(PortValue port, Value data, Evaluator evaluator,
             List<Value> arguments, Set<String> refinements) {
+        Optional<Value> itsOwn = theRebolActorsAnswer(
+                "write", List.of(port, data), refinements, evaluator);
+        if (itsOwn.isPresent()) {
+            return itsOwn.get();
+        }
         return switch (port.schemeName()) {
             case "console" -> writtenToTheConsole(port, data, evaluator);
             case "tcp" -> sentDownTheConnection(port, data);
@@ -19301,11 +19363,141 @@ public final class Natives {
     }
 
     /**
+     * The actor of a port, when it is one written in REBOL rather than a word
+     * naming something built in.
+     *
+     * <p>{@code Do_Port_Action} sorts the three cases and this is the middle
+     * one. None means the port does nothing at all; a word means a built-in
+     * actor, which is a way out of the interpreter and needs its service
+     * granted first; an object of functions is a scheme somebody wrote in
+     * REBOL, and it is no way out of anything -- whatever it reaches for, it
+     * reaches for by calling ordinary words, and each of those asks the host
+     * for itself.
+     */
+    private static Optional<ObjectValue> theActorWrittenInRebol(PortValue port) {
+        return port.fieldNamed("actor") instanceof ObjectValue actor
+                ? Optional.of(actor)
+                : Optional.empty();
+    }
+
+    /**
+     * Sends one action to an actor written in REBOL, and answers what the
+     * actor answered.
+     *
+     * <p>{@code Redo_Func} hands the actor's function the same arguments the
+     * action was called with, so PICK's key and POKE's value arrive as they
+     * were written.
+     *
+     * <p>An action the actor has no function for is refused by name rather
+     * than ignored, so a caller learns which verb this port does not do. The
+     * name goes back as a set-word because that is how the action table spells
+     * it -- `read:` rather than `read` -- and a script catching the error
+     * compares against what it was given.
+     */
+    private Value askTheActor(PortValue port, ObjectValue actor, String action,
+            List<Value> arguments, Set<String> refinements, Evaluator evaluator) {
+
+        Value theFunction = actor.context().holds(action)
+                ? actor.context().ownSlotFor(action).value()
+                : NoneValue.none();
+        if (!(theFunction instanceof FunctionValue able)) {
+            throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
+                    WordValue.of(action).as(Datatype.SET_WORD));
+        }
+        return evaluator.applyFunction(able,
+                laidOutAsTheActorDeclaresThem(able, arguments, refinements));
+    }
+
+    /**
+     * The action's arguments, laid out the way this actor's function declares
+     * them rather than the way the native does.
+     *
+     * <p>The two differ in one respect and it matters for REMOVE: a native
+     * hands over its refinement arguments as ordinary positions and says
+     * separately which refinements were asked for, while a function written in
+     * REBOL has the refinement itself as a parameter with its arguments after
+     * it. So {@code remove/key store 'greeting} arrives here as three values
+     * and one name, and has to leave as five.
+     *
+     * <p>Walking the actor's own parameters is what keeps the two in step
+     * without a table mapping one to the other. It works because an actor
+     * implements an action and takes the refinements that action declares, in
+     * the order it declares them -- so the refinement arguments line up by
+     * construction, and a parameter the actor does not declare is simply never
+     * asked for.
+     *
+     * <p>A refinement nobody asked for brings no argument with it, which is
+     * the part that has to be counted rather than assumed. The native hands
+     * over one value per refinement that <em>was</em> asked for and nothing at
+     * all for the others, so {@code remove/key store 'greeting} arrives as two
+     * values and the key is the second of them -- not the fourth, which is
+     * where it would sit if every refinement kept a place in the queue.
+     */
+    private static List<Value> laidOutAsTheActorDeclaresThem(
+            FunctionValue able, List<Value> arguments, Set<String> refinements) {
+
+        List<Value> laidOut = new ArrayList<>();
+        int fromTheNative = 0;
+        boolean theseArgumentsWereSupplied = true;
+        for (Parameter parameter : able.parameters()) {
+            if (parameter.kind() == ParameterKind.REFINEMENT) {
+                boolean asked = refinements.contains(parameter.name());
+                laidOut.add(LogicValue.of(asked));
+                theseArgumentsWereSupplied = asked;
+                continue;
+            }
+            if (!theseArgumentsWereSupplied) {
+                laidOut.add(NoneValue.none());
+                continue;
+            }
+            laidOut.add(fromTheNative < arguments.size()
+                    ? arguments.get(fromTheNative)
+                    : NoneValue.none());
+            fromTheNative++;
+        }
+        return laidOut;
+    }
+
+    /**
+     * Whether this port's work is done in REBOL, and if so the answer it gave.
+     *
+     * <p>One shape for every port action: ask, and if the port is served that
+     * way the action is over. A port with a built-in actor answers nothing
+     * here and the native carries on to the code that serves it.
+     */
+    private Optional<Value> theRebolActorsAnswer(String action,
+            List<Value> arguments, Set<String> refinements, Evaluator evaluator) {
+
+        if (!(arguments.getFirst() instanceof PortValue port)) {
+            return Optional.empty();
+        }
+        refuseAnActorThatIsNeitherAWordNorAnObject(port);
+        return theActorWrittenInRebol(port).map(actor ->
+                askTheActor(port, actor, action, arguments, refinements, evaluator));
+    }
+
+    /**
+     * An actor that is neither a word nor an object is a scheme built wrongly
+     * rather than a port used wrongly, and says so before anything else does.
+     */
+    private static void refuseAnActorThatIsNeitherAWordNorAnObject(PortValue port) {
+        Value actor = port.fieldNamed("actor");
+        if (actor instanceof ObjectValue || actor instanceof WordValue
+                || actor instanceof NoneValue) {
+            return;
+        }
+        throw Raised.of(EvaluationFailure.INVALID_ACTOR);
+    }
+
+    /**
      * Refuses a scheme whose service the host did not grant.
      *
      * <p>A port is a way out of the interpreter, thus opening one asks the
      * same question every other host call asks. The scheme names which
      * service: console for a console port, files for a file port.
+     *
+     * <p>A port whose actor is written in REBOL never reaches here, because it
+     * is not a way out and has no service to ask for.
      */
     private void requireServiceForScheme(String scheme) {
         switch (scheme) {

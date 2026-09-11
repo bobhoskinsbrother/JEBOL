@@ -76,6 +76,24 @@ public enum EvaluationFailure {
     PARSE_END(ErrorCategory.SCRIPT, "parse-end", "a repeat count with no rule after it to repeat"),
     PARSE_RULE(ErrorCategory.SCRIPT, "parse-rule",
             "a value that cannot be used as a parse rule"),
+    /**
+     * A verb this port's actor has no function for.
+     *
+     * <p>{@code no-port-action: [{this port does not support:} :arg1]}, and
+     * the argument is the action's own word as the action table spells it,
+     * which is a set-word.
+     */
+    NO_PORT_ACTION(ErrorCategory.ACCESS, "no-port-action",
+            "this port does not support"),
+
+    /**
+     * A scheme whose actor is neither a word naming something built in nor an
+     * object of functions, which is a scheme built wrongly rather than a port
+     * used wrongly.
+     */
+    INVALID_ACTOR(ErrorCategory.ACCESS, "invalid-actor",
+            "invalid port actor (must be native or object)"),
+
     NO_SERVICE(ErrorCategory.ACCESS, "no-service",
             "a host service the script was not granted, or that nothing can offer"),
     CALL_FAIL(ErrorCategory.ACCESS, "call-fail", "external process failed"),

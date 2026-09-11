@@ -44,16 +44,6 @@ codecs-test-pdf.r3 / (no group) / (no test) #6
 codecs-test-pdf.r3 / (no group) / (no test) #7
 codecs-test-pdf.r3 / (no group) / (no test) #8
 codecs-test-pdf.r3 / (no group) / (no test) #9
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #222
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #224
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #225
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #226
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #227
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #228
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #229
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #230
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #231
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #232
 copy-test.r3 / Simple copy / (no test) #1
 csv-test.r3 / (no group) / (no test) #17
 datatype-test.r3 / datatype! / number? #37

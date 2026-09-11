@@ -72,7 +72,32 @@ final class SuiteHost {
         interpreter.useEnvironment(new ProcessEnvironment());
         interpreter.useProcesses(new JavaProcesses());
         interpreter.useImages(new JavaImages());
+        putHomeInsideTheDirectoryTheRunCanReach(interpreter);
         return interpreter;
+    }
+
+    /**
+     * Says that home is the directory made for the run, because otherwise it
+     * is a place this interpreter cannot touch.
+     *
+     * <p>The filesystem above is confined to a temporary directory, and
+     * {@code system/options/home} is read from the machine rather than from
+     * that filesystem -- so a suite file asking where home is got an answer it
+     * was then refused permission to write. REBOL's own SAFE tests do exactly
+     * that: {@code set-user} keeps a user's storage file at
+     * {@code system/options/home}, and every assertion after it was lost to a
+     * path the run was never allowed to reach.
+     *
+     * <p>A sandbox whose home lies outside the sandbox is an incoherent host,
+     * not a strict one. Which of the two answers is right belongs to whoever
+     * installs the filesystem, and that is here.
+     */
+    private static void putHomeInsideTheDirectoryTheRunCanReach(
+            Interpreter interpreter) {
+
+        String sayingSo = "system/options/home: %./";
+        interpreter.defineFreshWordsIn(sayingSo);
+        interpreter.run(sayingSo);
     }
 
     /**

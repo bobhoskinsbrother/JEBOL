@@ -687,6 +687,10 @@ public final class Evaluator {
 
             if (frame.stopped || frame.atEnd()) {
                 if (!frame.stopped && !frame.pendingCalls.isEmpty()) {
+                    if (frame.pendingCalls.peek().takesTheNextValueAsWritten()) {
+                        deliver(frame, UnsetValue.unset(), frames);
+                        continue;
+                    }
                     throw Raised.of(EvaluationFailure.NO_ARG,
                             "the block ended while a call was still gathering arguments");
                 }

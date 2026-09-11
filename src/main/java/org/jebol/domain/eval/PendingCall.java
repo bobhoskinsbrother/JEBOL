@@ -143,6 +143,29 @@ final class PendingCall {
         };
     }
 
+    /**
+     * Whether the argument still wanted is one taken as written, which decides
+     * what the end of a block means for this call.
+     *
+     * <p>A quoted parameter takes the next value in the source without
+     * evaluating it, so a block that ends has given it nothing -- and nothing
+     * is unset, which the parameter's own typecheck then accepts or refuses.
+     * That is how {@code try [su]} releases the user: SU's name is quoted and
+     * accepts {@code unset!}, so a block with nothing after it means "no name".
+     *
+     * <p>An evaluated parameter is a different question. There is no
+     * expression to evaluate and no value to make up, so the block really did
+     * end a call short.
+     */
+    boolean takesTheNextValueAsWritten() {
+        int position = arguments.size();
+        return position < consuming.size()
+                && switch (consuming.get(position).kind()) {
+                    case HARD_QUOTED, SOFT_QUOTED -> true;
+                    default -> false;
+                };
+    }
+
     private static boolean optsIntoEvaluation(Value upcoming) {
         return switch (upcoming.datatype()) {
             case PAREN, GET_WORD, GET_PATH -> true;
