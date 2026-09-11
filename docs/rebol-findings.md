@@ -551,6 +551,44 @@ nobody has hit it.
 
 ---
 
+## 24. Fifteen codecs are not there until something asks for them
+
+`system/codecs` on a real 3.22.5 Bulk holds twenty-three entries. The build
+compiled thirty-eight codec files in, and fifteen of them are not among the
+twenty-three:
+
+```rebol
+probe true? find codecs 'wav     ; false
+import 'wav
+probe true? find codecs 'wav     ; true
+```
+
+The fifteen carry `Options: [delay]` in their header, and `make-boot.reb` turns
+that into `sys/load-module/delay <the molded source>`. The module is registered
+and its body is never evaluated, so the `register-codec` inside it has not run
+and the catalogue has no entry. Importing it evaluates the body and the entry
+appears. bbcode, braille, csv, html-entities, ico, mime-field, mime-types, pdb,
+pdf, plist, quoted-printable, srt, swf, wav and xml are the fifteen.
+
+JEBOL evaluates them at boot instead, so its catalogue holds forty-one entries
+from the start and `find codecs 'wav` answers true where a real Rebol answers
+false. That is a divergence in one word's value rather than in any behaviour
+underneath it: import the module in Rebol and the two agree on everything the
+codec then does.
+
+It is also why one of Rebol's own tests has been wrong for years without
+anybody noticing. `codecs-test.r3` guards its WAV block on `if find codecs
+'wav` and, unlike every other delayed codec it tests, never imports the module
+first. So the block has not run since version 0.2.0 of the codec changed the
+sound data from a raw binary to a vector, and the two CRC-24 checksums it asks
+for still describe the old shape. A real 3.22.5 with the module imported
+answers 14119576 and 5445824 where the file asks for 3097828 and 4283614 --
+which is what JEBOL answers too, so the two lines sit on
+`fails-on-rebol-too.txt` and `WavCodecFromTheSourceTest` carries the real
+numbers.
+
+---
+
 ## How this list is used
 
 Wherever JEBOL matches, the finding is also a corpus entry under `corpus/` or a

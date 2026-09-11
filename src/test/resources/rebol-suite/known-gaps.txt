@@ -57,8 +57,6 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #229
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #230
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #231
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #232
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #51
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #54
 copy-test.r3 / Simple copy / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #2

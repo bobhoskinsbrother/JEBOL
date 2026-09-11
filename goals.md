@@ -189,7 +189,7 @@ gate green.
 
 Sizes are the number of `known-gaps.txt` entries the goal is worth, and the
 fifteen of them account for every entry with nothing left over — goal 15 exists
-to close that sum and shows the arithmetic. The list stands at **437** entries
+to close that sum and shows the arithmetic. The list stands at **435** entries
 as this line is written; `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt`
 is the live answer and a size above that disagrees with it is stale.
 
@@ -484,7 +484,7 @@ whether the change worked.
 
 ---
 
-### 1. The remaining codecs — 109, now 15
+### 1. The remaining codecs — 109, now 13 and all of them goal 4's
 
 `codecs-test.r3`. Was the largest single file, and it was not one problem but
 about eleven, each an `if find codecs 'name [...]` block that raised and took
@@ -498,13 +498,17 @@ insert, and `enbase/part` counting bytes where it should count characters. The
 image blocks needed a port rather than a codec, and QOI needed writing. The SWF
 block fell out of the binary dialect's `VINT`, which is goal 13.
 
-What is left:
+The WAV block turned out not to be work at all. Its two checksums are stale and
+a real 3.22.5 answers exactly what JEBOL answers, so they are on
+`fails-on-rebol-too.txt` with the session that settles it and
+`WavCodecFromTheSourceTest` carries the real numbers. Finding 24 in
+`docs/rebol-findings.md` explains why nobody noticed: the WAV codec is a
+delayed module and the block's `if find codecs 'wav` guard has been false since
+the sound data stopped being a raw binary.
 
-- WAV, 2 entries (#51 and #54): `checksum to-binary snd/data 'crc24`. A real
-  3.22.5 has no WAV codec at all, so the test file's own expected checksums are
-  the only authority there is.
-- 13 entries in the SAFE block, all of which now stop at `no-scheme: crypt`.
-  They are blocked on **goal 4**, the crypt port, and nothing else.
+What is left is **13 entries in the SAFE block, all of which now stop at
+`no-scheme: crypt`. They are blocked on goal 4, the crypt port, and nothing
+else.** Goal 1 has no work of its own remaining.
 
 Note that the group names in `known-gaps.txt` are wrong for this file — the
 slicer takes the last top-level `===start-group===`, and this file nests its

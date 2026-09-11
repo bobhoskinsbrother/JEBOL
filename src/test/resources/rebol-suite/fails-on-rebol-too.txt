@@ -386,3 +386,24 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #94
 #   == not-defined     ; r3-head 3.22.5, and JEBOL
 #
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #218
+
+# The two WAV checksums are stale, and Rebol has never noticed because it
+# never runs them. The codec is a delayed module, so `find codecs 'wav` is
+# false at boot and the whole `if` block is skipped -- which is why nobody has
+# had to update the expected values since the sound data stopped being a raw
+# binary and became a vector in 0.2.0. Import the module by hand and a real
+# 3.22.5 answers what JEBOL answers, on both files, and neither matches what
+# the file asks for.
+#
+#   >> import 'wav
+#   >> snd: load %units/files/drumloop.wav
+#   >> reduce [snd/rate snd/channels snd/bits length? snd/data]
+#   == [44100 1 16 42158]                   ; r3-head 3.22.5, and JEBOL
+#   >> checksum to-binary snd/data 'crc24   ; the file asks for 3097828
+#   == 14119576                             ; r3-head 3.22.5, and JEBOL
+#   >> snd: decode 'WAV read %units/files/zblunk_02.wav
+#   >> checksum to-binary snd/data 'crc24   ; the file asks for 4283614
+#   == 5445824                              ; r3-head 3.22.5, and JEBOL
+#
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #51
+codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #54
