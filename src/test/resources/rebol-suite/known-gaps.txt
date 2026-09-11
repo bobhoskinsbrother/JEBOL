@@ -162,28 +162,6 @@ lexer-test.r3 / Construction syntax / any-string! #331
 lexer-test.r3 / Construction syntax / any-string! #332
 lexer-test.r3 / Construction syntax / any-string! #333
 lexer-test.r3 / Special tests / NULLs inside loaded string #452
-make-test.r3 / make char! / to char! surrogates #12
-make-test.r3 / make/to block! / to block! .. #402
-make-test.r3 / make/to block! / to block! .. #403
-make-test.r3 / make/to map / make map! .. #481
-make-test.r3 / make/to pair! / make pair! .. #192
-make-test.r3 / make/to pair! / make pair! .. #210
-make-test.r3 / make/to pair! / to pair! .. #229
-make-test.r3 / make/to pair! / to pair! .. #246
-make-test.r3 / make/to typeset / make typeset! .. #733
-make-test.r3 / make/to typeset / to typeset! .. #769
-map-test.r3 / reflection / block of map #152
-map-test.r3 / reflection / block of map #153
-map-test.r3 / set operations with map! / difference with map #177
-map-test.r3 / set operations with map! / difference with map #178
-map-test.r3 / set operations with map! / exclude with map #185
-map-test.r3 / set operations with map! / intersect with map #192
-map-test.r3 / set operations with map! / union with map #197
-map-test.r3 / set operations with map! / union with map #198
-map-test.r3 / set operations with map! / union with map #200
-map-test.r3 / set operations with map! / union with map #201
-map-test.r3 / set operations with map! / union with map #202
-map-test.r3 / set operations with map! / unique with map #205
 module-test.r3 / make module / inlined module #13
 module-test.r3 / make module / inlined module #14
 module-test.r3 / make module / inlined module #15

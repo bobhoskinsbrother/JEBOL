@@ -1418,6 +1418,10 @@ public final class Transcoder {
                 takeCharacterLiteral(lexeme);
                 continue;
             }
+            if (peek() == '%' && peekAt(1) == '"' && lexeme.indexOf("/") >= 0) {
+                takeQuotedFile(lexeme);
+                continue;
+            }
             if (endsLexeme(peek())) {
                 break;
             }
@@ -1440,6 +1444,42 @@ public final class Transcoder {
      * never have found it.
      */
     private void takeCharacterLiteral(StringBuilder lexeme) {
+        lexeme.appendCodePoint(peek());
+        advance();
+        lexeme.appendCodePoint(peek());
+        advance();
+        while (peek() != END_OF_INPUT) {
+            boolean escaped = peek() == '^';
+            lexeme.appendCodePoint(peek());
+            advance();
+            if (escaped && peek() != END_OF_INPUT) {
+                lexeme.appendCodePoint(peek());
+                advance();
+                continue;
+            }
+            if (!escaped && peek() == '"') {
+                lexeme.appendCodePoint(peek());
+                advance();
+                return;
+            }
+        }
+        throw failure(SyntaxFailure.MISSING_CLOSE, OpenDelimiter.QUOTE);
+    }
+
+    /**
+     * Copies a {@code %"name"} into the lexeme.
+     *
+     * <p>The same problem the character literal beside this one has, and the
+     * same answer. A quote ends a lexeme everywhere else, so a quoted file
+     * used as a path segment was cut in three: {@code a/%"b"/c} read as the
+     * path {@code a/%}, a string, and a second path {@code /c}.
+     *
+     * <p>Quoting is what puts a file in the middle of a path at all. An
+     * unquoted one runs to the end, because a slash is an ordinary character
+     * in a file name -- so {@code a/%b/c} is a path of two and the quotes are
+     * the only way to say otherwise.
+     */
+    private void takeQuotedFile(StringBuilder lexeme) {
         lexeme.appendCodePoint(peek());
         advance();
         lexeme.appendCodePoint(peek());
@@ -2151,13 +2191,34 @@ public final class Transcoder {
         return BlockValue.path(segments, pathType);
     }
 
-    /** Splits on slashes that are not inside a paren segment. */
+    /**
+     * Splits a path on the slashes that separate its segments, which is not
+     * every slash in it.
+     *
+     * <p>A paren holds its own, and so does a file. A slash is a perfectly
+     * ordinary character inside a file name -- it is what a directory is made
+     * of -- so {@code a/%b/c} is two segments and the second is the file
+     * {@code %b/c}, not three segments with a file called {@code b}. Once a
+     * segment begins with a percent sign the rest of the path belongs to it.
+     *
+     * <p>Unless the file is written in quotes, which is what the quotes are
+     * for: {@code %"b"} ends where the closing quote is and whatever follows
+     * is a segment of its own again. That is the only way to put a file in the
+     * middle of a path rather than at the end of one.
+     */
     private static List<String> splitOutsideParens(String body) {
         List<String> parts = new ArrayList<>();
         StringBuilder part = new StringBuilder();
         int depth = 0;
         for (int at = 0; at < body.length(); at++) {
             char character = body.charAt(at);
+            if (character == '%' && part.isEmpty() && depth == 0
+                    && startsAFileRatherThanTheWord(body, at)) {
+                int ends = whereAFileSegmentEnds(body, at);
+                part.append(body, at, ends);
+                at = ends - 1;
+                continue;
+            }
             if (character == '(') {
                 depth++;
             } else if (character == ')') {
@@ -2172,6 +2233,43 @@ public final class Transcoder {
         }
         parts.add(part.toString());
         return parts;
+    }
+
+    /**
+     * Whether a percent sign at this point begins a file or is the word.
+     *
+     * <p>A percent sign on its own is an ordinary word -- it is what REBOL
+     * calls the remainder operator -- so {@code a/%} is a path whose second
+     * segment is that word, and {@code a/%/b} is three segments with the word
+     * in the middle. It begins a file only when a name follows it.
+     *
+     * <p>A run of them is a word too -- {@code %%} is one REBOL defines -- so
+     * the question is what follows the run rather than what follows the first
+     * sign.
+     *
+     * <p>Getting this wrong in the generous direction is the dangerous one: it
+     * turns {@code '%/} from the malformed path it is into a file called
+     * {@code %/}, and a malformed path that quietly reads is worse than one
+     * that is refused.
+     */
+    private static boolean startsAFileRatherThanTheWord(String body, int at) {
+        int past = at;
+        while (past < body.length() && body.charAt(past) == '%') {
+            past++;
+        }
+        return past < body.length() && body.charAt(past) != '/';
+    }
+
+    /**
+     * Where a file segment of a path stops: after the closing quote where it
+     * has one, and at the end of the path where it has not.
+     */
+    private static int whereAFileSegmentEnds(String body, int startsAt) {
+        if (startsAt + 1 >= body.length() || body.charAt(startsAt + 1) != '"') {
+            return body.length();
+        }
+        int closing = body.indexOf('"', startsAt + 2);
+        return closing < 0 ? body.length() : closing + 1;
     }
 
     private Value readPathSegment(String segment) {

@@ -165,18 +165,29 @@ class MapPairsFromTheSourceTest {
             assertThat(answerTo("values-of make map! [a 1 b 2]")).isEqualTo("[1 2]");
         }
 
+        /**
+         * A block carries a line break per item and MOLD honours it, so the
+         * block a map hands out reads as a list of pairs where the same block
+         * written by hand reads as one line. This asserted the one-line shape,
+         * which is what JEBOL answered before the marks were set and is not
+         * what a real 3.22.5 answers.
+         */
         @Test
-        @DisplayName("BODY-OF answers the pairs, keys as stored")
+        @DisplayName("BODY-OF answers the pairs, keys as stored, a pair to a line")
         void bodyOfAnswersThePairs() {
-            assertThat(answerTo("body-of make map! [a 1 b 2]")).isEqualTo("[a: 1 b: 2]");
+            assertThat(answerTo("mold/flat body-of make map! [a 1 b 2]"))
+                    .isEqualTo("\"[a: 1 b: 2]\"");
+            assertThat(answerTo("body-of make map! [a 1 b 2]"))
+                    .isEqualTo("[\n    a: 1\n    b: 2\n]");
         }
 
         @Test
         @DisplayName("and TO BLOCK! asks the same question")
         void toBlockAsksTheSameQuestion() {
-            assertThat(answerTo("to block! make map! [a 1 b 2]"))
-                    .isEqualTo("[a: 1 b: 2]");
-            assertThat(answerTo("to block! make map! [1 2]")).isEqualTo("[1 2]");
+            assertThat(answerTo("mold/flat to block! make map! [a 1 b 2]"))
+                    .isEqualTo("\"[a: 1 b: 2]\"");
+            assertThat(answerTo("mold/flat to block! make map! [1 2]"))
+                    .isEqualTo("\"[1 2]\"");
             assertThat(answerTo("(to block! make map! [a 1]) = body-of make map! [a 1]"))
                     .isEqualTo(TRUE);
         }
@@ -194,8 +205,8 @@ class MapPairsFromTheSourceTest {
         void aRemovedKeyIsGone() {
             assertThat(answerTo(
                     "m: make map! [a 1 b 2] remove/key m 'a "
-                    + "reduce [length? m keys-of m values-of m body-of m]"))
-                    .isEqualTo("[1 [b] [2] [b: 2]]");
+                    + "mold/flat reduce [length? m keys-of m values-of m body-of m]"))
+                    .isEqualTo("\"[1 [b] [2] [b: 2]]\"");
         }
 
         @Test
@@ -203,8 +214,8 @@ class MapPairsFromTheSourceTest {
         void aKeyHoldingNoneIsStillThere() {
             assertThat(answerTo(
                     "m: make map! [a 1] m/a: none "
-                    + "reduce [length? m keys-of m body-of m]"))
-                    .isEqualTo("[1 [a] [a: _]]");
+                    + "mold/flat reduce [length? m keys-of m body-of m]"))
+                    .isEqualTo("\"[1 [a] [a: _]]\"");
         }
     }
 

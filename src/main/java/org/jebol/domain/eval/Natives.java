@@ -1974,12 +1974,17 @@ public final class Natives {
     private static final int MONTHS_A_YEAR = 12;
     private static final int LONGEST_MONTH = 31;
 
-    /** A number as a codepoint, refusing one no character can hold. */
+    /**
+     * A number as a codepoint, refusing one no character can hold.
+     *
+     * <p>The number itself is what the failure names -- {@code err/arg1 =
+     * 55349} -- rather than a sentence about it. A script catching this
+     * compares against the number it passed, which a sentence will never equal.
+     */
     private static int requireACodepoint(long wanted) {
         boolean surrogate = wanted >= 0xD800 && wanted <= 0xDFFF;
         if (wanted < 0 || wanted > MAXIMUM_CODEPOINT || surrogate) {
-            throw Raised.of(EvaluationFailure.INVALID_CHAR,
-                    wanted + " is not a character");
+            throw Raised.of(EvaluationFailure.INVALID_CHAR, IntegerValue.of(wanted));
         }
         return (int) wanted;
     }
@@ -5239,7 +5244,8 @@ public final class Natives {
                     if (arguments.get(0) instanceof TypesetValue
                             || arguments.get(0) instanceof BitsetValue
                             || arguments.get(0) instanceof MapValue) {
-                        return combined(arguments, Combination.DIFFERENCE);
+                        return combined(arguments, Combination.DIFFERENCE,
+                                refinements.contains("case"), 1);
                     }
                     if (arguments.get(0) instanceof DateValue from
                             && arguments.get(1) instanceof DateValue to) {
@@ -5318,7 +5324,8 @@ public final class Natives {
                         return switch (field) {
                             case "words" -> BlockValue.block(map.keys());
                             case "values" -> BlockValue.block(map.values());
-                            case "body" -> BlockValue.block(map.flattened());
+                            case "body" ->
+                                    aPairToALine(BlockValue.block(map.flattened()));
                             default -> NoneValue.none();
                         };
                     }
@@ -11298,20 +11305,28 @@ public final class Natives {
         MapValue theirs = right instanceof MapValue map ? map : MapValue.empty();
         MapValue kept = MapValue.empty();
         for (Value key : ours.keys()) {
-            boolean inTheirs = theirs.holds(key);
+            boolean inTheirs = theirs.holds(key, mindingCase);
             boolean wanted = switch (how) {
                 case INTERSECT -> inTheirs;
                 case UNION -> true;
                 case EXCLUDE, DIFFERENCE -> !inTheirs;
             };
-            if (wanted) {
-                kept.put(key, ours.select(key));
+            // A key already kept is left as it was rather than written over,
+            // which is what decides whose value survives. Without /CASE a map
+            // holding both `a` and `A` answers the first of them for either
+            // spelling, so the pair collapses to one and keeps the earlier
+            // value -- and `union m1 m2` keeps the left's value for every key
+            // the two share, because the left went in first.
+            if (wanted && !kept.holds(key, mindingCase)) {
+                kept.put(key, ours.select(key, mindingCase), mindingCase);
             }
         }
         if (how == Combination.UNION || how == Combination.DIFFERENCE) {
             for (Value key : theirs.keys()) {
-                if (how == Combination.UNION || !ours.holds(key)) {
-                    kept.put(key, theirs.select(key));
+                boolean inOurs = ours.holds(key, mindingCase);
+                if ((how == Combination.UNION || !inOurs)
+                        && !kept.holds(key, mindingCase)) {
+                    kept.put(key, theirs.select(key, mindingCase), mindingCase);
                 }
             }
         }
@@ -14950,6 +14965,22 @@ public final class Natives {
 
 
     /**
+     * Marks a block so that each pair molds on a line of its own.
+     *
+     * <p>A block carries a line break per item and MOLD honours it, which is
+     * why {@code to block!} of a map reads as a list of pairs where the same
+     * block written out by hand reads as one line. Without the marks a map of
+     * fifty keys molded as a hundred values in a row, which is the shape a
+     * block has and not the shape a map has.
+     */
+    private static BlockValue aPairToALine(BlockValue pairs) {
+        for (int at = 1; at <= pairs.storageLength(); at += 2) {
+            pairs.storage().setLineBreakAt(at, true);
+        }
+        return pairs;
+    }
+
+    /**
      * A date read out of a string, which is the lexer's job rather than a
      * conversion of its own.
      *
@@ -14991,7 +15022,7 @@ public final class Natives {
             return BlockValue.block(given.remaining()).as(wanted);
         }
         if (from instanceof MapValue pairs) {
-            return BlockValue.block(pairs.flattened()).as(wanted);
+            return aPairToALine(BlockValue.block(pairs.flattened())).as(wanted);
         }
         if (isAnyObject(from)) {
             return blockOfFieldsAndValues(fieldsOf(from)).as(wanted);
@@ -15821,10 +15852,15 @@ public final class Natives {
                     : raiseBadMakeArg(value, "port!");
             case MODULE -> moduleFromHeaderAndWords(value);
             case BITSET -> bitsetOf(value);
-            case TYPESET -> value instanceof BlockValue named
-                    && named.datatype() == Datatype.BLOCK
-                    ? TypesetValue.of(datatypesNamedIn(named))
-                    : raiseBadMakeArg(value, "typeset!");
+            // A typeset made from a typeset is that typeset. Every other
+            // datatype answers itself for its own MAKE and this one refused,
+            // so a typeset was the one value TYPESET! would not take.
+            case TYPESET -> switch (value) {
+                case TypesetValue already -> already;
+                case BlockValue named when named.datatype() == Datatype.BLOCK ->
+                        TypesetValue.of(datatypesNamedIn(named));
+                default -> raiseBadMakeArg(value, "typeset!");
+            };
             case TIME -> aDurationOfSeconds(value);
             case TUPLE -> tupleFrom(value);
             case LOGIC -> LogicValue.of(countsAsTrue(asking, value));
@@ -16640,14 +16676,23 @@ public final class Natives {
      * rather than filled in, and three is refused rather than trimmed. A
      * string goes through the reader, so the text {@code "1x2"} becomes
      * the pair it spells.
+     *
+     * <p>A percentage is not a number here, though it is one nearly
+     * everywhere else. Four per cent is a proportion of something, and a
+     * coordinate is not a proportion of anything -- so {@code make pair! 4%}
+     * is refused where {@code make pair! 4.0} is four by four. The same goes
+     * for a paren, which is a block by shape and a piece of unevaluated code
+     * by meaning.
      */
     private static Value asPair(Value value) {
         return switch (value) {
             case PairValue pair -> pair;
             case IntegerValue whole -> PairValue.square(whole.magnitude());
-            case DecimalValue quantity -> PairValue.square(quantity.quantity());
+            case DecimalValue quantity when quantity.datatype() != Datatype.PERCENT ->
+                    PairValue.square(quantity.quantity());
             case StringValue text -> readPair(text.text());
-            case BlockValue block -> pairOf(block.remaining());
+            case BlockValue block when block.datatype() == Datatype.BLOCK ->
+                    pairOf(block.remaining());
             default -> raiseBadMakeArg(value, "pair!");
         };
     }
@@ -16845,7 +16890,12 @@ public final class Natives {
      * a to b, and a caller who passed the wrong thing would never find out.
      */
     private static Value mapMadeFrom(Value given) {
-        if (given instanceof IntegerValue || given instanceof DecimalValue) {
+        // A percentage is not room for anything. It is a number everywhere
+        // else and is a proportion here, and a map cannot be four per cent
+        // large -- so it is refused where the plain number beside it is taken.
+        if (given instanceof IntegerValue
+                || (given instanceof DecimalValue
+                    && given.datatype() != Datatype.PERCENT)) {
             if (Comparison.asDouble(given) < 0) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                         "a map cannot have room for " + Molder.form(given) + " pairs");
