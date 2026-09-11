@@ -104,4 +104,55 @@ class SetSpreadingTest {
     void anyAllowsUnset() {
         assertThat(answerTo("set/any 'j () value? 'j")).isEqualTo("#(false)");
     }
+
+    /**
+     * {@code if (not_any && !IS_SET(val)) Trap1(RE_NEED_VALUE, word);} is the
+     * first line of the native, before it looks at what shape the target is,
+     * and {@code word} is the target as it was handed in.
+     *
+     * <p>JEBOL wrote the absence for a single word and said nothing, and where
+     * it did refuse it named SET rather than the target. Both matter to the
+     * library: CD reads a bare word by trying to fetch its value and catching
+     * this refusal, so {@code cd ..} worked only because the fetch of an
+     * unbound {@code ..} raises. Without it the TRY succeeds, the next line
+     * reads an unset {@code val}, and CD fails on every bare word.
+     */
+    @Test
+    @DisplayName("and without it an absence is refused, whatever the target's shape")
+    void anabsenceIsRefusedWithoutAny() {
+        assertThat(errorIdFrom("set 'j ()")).isEqualTo("\"need-value\"");
+        assertThat(errorIdFrom("set [k m] reduce [1 ()]")).isEqualTo("\"need-value\"");
+        assertThat(errorIdFrom("o: make object! [f: 1] set 'o/f ()"))
+                .isEqualTo("\"need-value\"");
+    }
+
+    @Test
+    @DisplayName("and the failure names the target rather than naming SET")
+    void therefusalNamesTheTarget() {
+        assertThat(answerTo("e: try [set 'j ()] mold e/arg1")).isEqualTo("\"j\"");
+        assertThat(answerTo("e: try [set [k m] reduce [1 ()]] mold e/arg1"))
+                .as("the word that could not be written, not the whole block")
+                .isEqualTo("\"m\"");
+        assertThat(answerTo("o: make object! [f: 1] e: try [set 'o/f ()] mold e/arg1"))
+                .isEqualTo("\"o/f\"");
+    }
+
+    /**
+     * CD reads a bare word by fetching its value and falling back to the word
+     * itself when the fetch refuses, which is how {@code cd ..} and
+     * {@code cd /} name directories rather than variables.
+     */
+    @Test
+    @DisplayName("which is what lets CD read a bare word as a directory name")
+    void whichIsWhatLetsCdReadABareWord() {
+        assertThat(answerTo(
+                "either all [not error? try [set 'val get/any '..] "
+                + "not any-function? :val] [val] ['..]"))
+                .isEqualTo("..");
+    }
+
+    private static String errorIdFrom(String source) {
+        return answerTo("e: try [" + source + "] "
+                + "either error? e [mold e/id] ['no-error]");
+    }
 }

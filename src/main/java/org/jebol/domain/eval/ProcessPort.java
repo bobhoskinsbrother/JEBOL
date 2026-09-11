@@ -26,6 +26,13 @@ public interface ProcessPort {
      *     SET-ENV laid over the host's, and the child inherits that view --
      *     which is the half of SET-ENV a program other than this one can
      *     observe, and the only half a JVM can offer at all.
+     * @param workingDirectory where on the machine the child starts, which is
+     *     where the script is standing rather than where the embedding
+     *     application was launched from. A script that does {@code cd sub} and
+     *     then calls a program means the two to agree, and a script confined
+     *     to a directory of its own would otherwise write outside it through
+     *     the one door confinement cannot close. Empty where no filesystem was
+     *     granted, and the child then starts wherever the host process is.
      */
     record ProgramToStart(
             List<String> command,
@@ -39,7 +46,8 @@ public interface ProcessPort {
             Optional<String> outputFile,
             ProgramOutput standardError,
             Optional<String> errorFile,
-            java.util.Map<String, String> environment) {
+            java.util.Map<String, String> environment,
+            Optional<String> workingDirectory) {
 
         public ProgramToStart {
             command = List.copyOf(command);

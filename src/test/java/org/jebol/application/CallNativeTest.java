@@ -209,6 +209,48 @@ class CallNativeTest {
                     .isEqualTo(directory.resolve("out.txt").toString());
         }
 
+        /**
+         * A script that changes directory and then calls a program means the
+         * two to agree, and a script confined to a directory of its own would
+         * otherwise write outside it the moment it called {@code touch}: the
+         * JVM's working directory belongs to the embedding application, and
+         * nothing about the process grant says a script may write there.
+         *
+         * <p>Which is how a suite file running in a temporary sandbox left a
+         * file in the repository it was run from.
+         */
+        @Test
+        @DisplayName("and the child starts where the script is standing, not where the JVM is")
+        void thechildStartsWhereTheScriptIsStanding(
+                @TempDir java.nio.file.Path directory) throws java.io.IOException {
+            java.nio.file.Files.createDirectory(directory.resolve("sub"));
+            Recorded port = new Recorded();
+            Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
+                    .granting(HostService.PROCESSES)
+                    .granting(HostService.WORKING_DIRECTORY));
+            interpreter.useProcesses(port);
+            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+
+            answerTo(interpreter, """
+                    call [{ls}]""");
+            assertThat(port.asked.workingDirectory().orElseThrow())
+                    .isEqualTo(directory.toString());
+
+            answerTo(interpreter, """
+                    change-dir %sub/ call [{ls}]""");
+            assertThat(port.asked.workingDirectory().orElseThrow())
+                    .isEqualTo(directory.resolve("sub").toString());
+        }
+
+        @Test
+        @DisplayName("and a script given no filesystem is standing nowhere, so nor is the child")
+        void withoutAfilesystemThereIsNoDirectory() {
+            Recorded port = new Recorded();
+            answerTo(reaching(true, port), """
+                    call [{ls}]""");
+            assertThat(port.asked.workingDirectory()).isEmpty();
+        }
+
         @Test
         @DisplayName("an unnamed input is the host's own")
         void anUnnamedInputIsTheHostsOwn() {

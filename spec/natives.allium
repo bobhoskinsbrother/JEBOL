@@ -9096,6 +9096,42 @@ rule AsRefusesToCrossAClassBoundary {
 
 -- === Building an object, and filling one from another ==========
 
+-- SET refuses to write an absence unless /ANY said to, and it refuses before
+-- it looks at what shape the target is: `if (not_any && !IS_SET(val))
+-- Trap1(RE_NEED_VALUE, word);` is the first line of the native. So the
+-- failure names the target as it was handed in -- the word, the path, the
+-- block or the object -- rather than naming SET.
+--
+-- The refusal is what makes `set 'x get/any 'y` a probe rather than a silent
+-- copy: a caller who has not thought about y being unset finds out, and one
+-- who has writes /ANY. It is also load-bearing in the library, which is the
+-- reason for pinning it: CD reads a bare word by trying to fetch its value
+-- and catching the refusal --
+-- `either all [not error? try [set 'val get/any path] ...][val][path]` --
+-- so `cd ..` works only because the fetch of an unbound `..` raises. Without
+-- the refusal the TRY succeeds, the next line reads an unset `val`, and the
+-- whole of CD fails on a word that has no value.
+rule SetRefusesToWriteAnAbsenceWithoutAny {
+    when: EvaluateCall(set, target, written)
+    requires: not the_call_asked_for_any()
+    requires: is_unset(written)
+
+    ensures: CallFails(error: need_value, about: target)
+}
+
+-- A block of targets is checked word by word and names the one that could
+-- not be written, because that is the word the caller has to look at. The
+-- whole-block check above fires only when the value itself is an absence.
+rule SettingAListOfWordsNamesTheOneWithNoValue {
+    when: EvaluateCall(set, target, written)
+    requires: not the_call_asked_for_any()
+    requires: is_block(target) and is_block(written)
+    requires: any_item_is_unset(written)
+
+    ensures: CallFails(error: need_value,
+        about: the_word_of(target, the_first_absent_position(written)))
+}
+
 -- SET with a path for a target writes through the path into an object's
 -- field, rather than reading the path's segments as a list of words.
 --
@@ -11162,6 +11198,39 @@ rule ToLocalFileWritesTheMachinesSeparator {
 
     ensures: CallResult(datatype: string)
     ensures: the_separators_of(result) = the_separator_this_machine_uses()
+}
+
+-- === Which machine this is ==========
+
+-- SYSTEM/PLATFORM names the operating system, as the word Rebol's own library
+-- compares against: Windows, macOS or Linux.
+--
+-- It is not decoration and it is not a label for the runtime. Six files in the
+-- borrowed library branch on it and each branch is about the operating system
+-- rather than about the interpreter: which character separates the entries of
+-- PATH, whether a shell argument is quoted with a caret or a backslash,
+-- whether a filename comparison minds case, and where the application data
+-- directory goes. A word that is true of no operating system sends every one
+-- of those down the arm meant for something else -- right on a Unix by luck,
+-- wrong on Windows.
+--
+-- Which is why answering "JVM" is the wrong answer even though it is the true
+-- one about what is running. The question the word is asked is "what are the
+-- local conventions", and a JVM on Windows has Windows conventions.
+--
+-- An operating system nothing here has a word for names itself, rather than
+-- falling back to a word that is true of none. A script testing for the three
+-- it knows behaves the same either way, and one printing what it found says
+-- something useful.
+rule SystemPlatformNamesTheOperatingSystem {
+    when: EvaluateCall(get, system_platform)
+
+    ensures: CallResult(datatype: word)
+    ensures: CallResult(value:
+        if the_host_runs_windows(): Windows
+        else if the_host_runs_macos(): macOS
+        else if the_host_runs_linux(): Linux
+        else: the_name_the_host_gives_itself())
 }
 
 -- === The environment a script reads and writes ============================

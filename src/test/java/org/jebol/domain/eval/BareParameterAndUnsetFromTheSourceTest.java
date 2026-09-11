@@ -154,11 +154,23 @@ class BareParameterAndUnsetFromTheSourceTest {
         }
     }
 
+    /**
+     * This said SET writes the absence and the word ends up holding nothing.
+     * It does not: {@code if (not_any && !IS_SET(val)) Trap1(RE_NEED_VALUE,
+     * word);} is the native's first line, so writing an absence takes /ANY and
+     * the plain call refuses. JEBOL wrote it, which is how the test passed.
+     *
+     * <p>The refusal is what makes {@code set 'x get/any 'y} a probe rather
+     * than a silent copy, and CD in the borrowed library depends on it.
+     */
     @Test
-    @DisplayName("SET threads an absence through into the word")
-    void setWritesAnAbsenceIntoTheWord() {
+    @DisplayName("SET refuses an absence, and /ANY threads it through into the word")
+    void setRefusesAnAbsenceUnlessAnyWasAsked() {
         assertThat(answerTo("""
-                set 'somewhere-to-put-it () not value? 'somewhere-to-put-it"""))
+                e: try [set 'somewhere-to-put-it ()] e/id = 'need-value"""))
+                .isEqualTo("#(true)");
+        assertThat(answerTo("""
+                set/any 'somewhere-to-put-it () not value? 'somewhere-to-put-it"""))
                 .isEqualTo("#(true)");
     }
 

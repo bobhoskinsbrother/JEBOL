@@ -54,6 +54,7 @@ public final class Interpreter {
         duringTheBoot.addAll(bounds.grantedServices());
         Natives natives = Natives.standard(duringTheBoot);
         natives.useFileSeparator(java.io.File.separatorChar);
+        natives.useOperatingSystemNamed(whatRebolCallsThisOperatingSystem());
         if (bounds.grantedServices().contains(HostService.PROCESSES)) {
             natives.useBootLauncher(writtenBootLauncher());
         }
@@ -658,6 +659,37 @@ public final class Interpreter {
     private static String fileNameIn(String entry) {
         int marker = entry.indexOf("->");
         return marker < 0 ? entry : entry.substring(0, marker).strip();
+    }
+
+    /**
+     * The operating system, under the name Rebol's own library compares
+     * against: {@code Windows}, {@code macOS} or {@code Linux}.
+     *
+     * <p>The names are not free to choose. {@code mezz-control.reb} asks
+     * {@code system/platform = 'Windows} to decide how to quote a shell
+     * argument, {@code sys-start.reb} to decide what separates the entries of
+     * PATH and where the application data directory goes,
+     * {@code mezz-secure.reb} and {@code repl-completion.reb} to decide
+     * whether a filename comparison minds case. A different spelling is a
+     * branch that never fires.
+     *
+     * <p>Anything else names itself rather than falling back to a word that is
+     * true of no operating system. A script testing for the three it knows
+     * behaves the same either way, and one printing what it found says
+     * something useful.
+     */
+    private static String whatRebolCallsThisOperatingSystem() {
+        String reported = System.getProperty("os.name", "");
+        if (reported.startsWith("Windows")) {
+            return "Windows";
+        }
+        if (reported.startsWith("Mac")) {
+            return "macOS";
+        }
+        if (reported.startsWith("Linux")) {
+            return "Linux";
+        }
+        return reported.isEmpty() ? "JVM" : reported;
     }
 
     /**

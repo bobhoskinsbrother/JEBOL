@@ -383,6 +383,29 @@ rule StartingAProgramCrossesAsACommandAndThreeStreams {
         program.standard_error in ProgramOutput
 }
 
+-- And the directory the program starts in, which is the one the script is
+-- standing in rather than the one the host process happens to be in.
+--
+-- A script that changes directory and then starts a program means the two to
+-- agree: `cd sub  call "touch a"` makes `sub/a`, because that is what the same
+-- two lines do in a shell. Leaving it to the host makes the program start
+-- wherever the embedding application was launched from, and a script confined
+-- to a directory of its own then writes outside it through the one door
+-- confinement cannot close.
+--
+-- Which is the honest limit of the arrangement rather than a hole in it. A
+-- host that grants the process service has granted the running of arbitrary
+-- programs, and no interpreter can confine those; what it can do is start
+-- them where the script thinks it is, so a script that never names an
+-- absolute path never reaches outside by accident.
+rule AStartedProgramBeginsWhereTheScriptIsStanding {
+    when: script_starts_a_program(run, program)
+    requires: processes in run.interpreter.bounds.granted_services
+
+    ensures: program.working_directory =
+        the_host_path_of(the_directory_relative_paths_count_from(run))
+}
+
 -- A capture waits, and the host is told so rather than working it out. A
 -- child still running has not finished writing, so there is nothing to give
 -- back yet, and a host that answered early would answer with part of the

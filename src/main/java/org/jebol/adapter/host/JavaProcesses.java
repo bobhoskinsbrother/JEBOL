@@ -68,7 +68,30 @@ public final class JavaProcesses implements ProcessPort {
         builder.redirectError(outputOf(
                 program.standardError(), program.errorFile()));
         giveItTheEnvironmentAsked(builder, program);
+        startItWhereTheScriptIsStanding(builder, program);
         return builder;
+    }
+
+    /**
+     * Starts the child in the directory the script is standing in rather than
+     * the one the JVM was launched from.
+     *
+     * <p>A script that changes directory and then calls a program means the
+     * two to agree, and without this a script confined to a directory of its
+     * own writes outside it the moment it calls {@code touch}: the JVM's
+     * working directory belongs to the embedding application, and nothing
+     * about the process grant says a script may write there.
+     *
+     * <p>Nothing to do where no directory came, which is a script that was
+     * granted no filesystem and so is standing nowhere.
+     */
+    private static void startItWhereTheScriptIsStanding(
+            ProcessBuilder builder, ProgramToStart program) {
+
+        program.workingDirectory()
+                .map(File::new)
+                .filter(File::isDirectory)
+                .ifPresent(builder::directory);
     }
 
     /**

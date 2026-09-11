@@ -365,4 +365,52 @@ class InterpreterStateFromTheSourceTest {
             assertThat(interpreter.display(interpreter.run("n"))).isEqualTo("0");
         }
     }
+
+    /**
+     * {@code system/platform} names the operating system, and it is the word
+     * six files in the borrowed library branch on: which character separates
+     * the entries of PATH, how a shell argument is quoted, whether a filename
+     * comparison minds case, where the application data directory goes.
+     *
+     * <p>Every one of those branches is about the local conventions rather
+     * than about what interpreter is running, so a JVM on Windows has to
+     * answer {@code Windows}. It answered {@code JVM}, which is true of the
+     * runtime and true of no operating system, and sent all six down the arm
+     * meant for something else -- right on a Unix by luck.
+     */
+    @Nested
+    @DisplayName("SYSTEM/PLATFORM")
+    class ThePlatform {
+
+        @Test
+        @DisplayName("names the operating system, as a word")
+        void itNamesTheOperatingSystem() {
+            assertThat(answerTo("word? system/platform")).isEqualTo(TRUE);
+            assertThat(answerTo("find [Windows macOS Linux] system/platform"))
+                    .as("the three this build is run on, spelt as Rebol spells them")
+                    .isNotEqualTo("_");
+        }
+
+        @Test
+        @DisplayName("and it agrees with what the JVM was told it is running on")
+        void itAgreesWithTheJvm() {
+            String reported = System.getProperty("os.name", "");
+            String expected = reported.startsWith("Windows") ? "Windows"
+                    : reported.startsWith("Mac") ? "macOS"
+                    : reported.startsWith("Linux") ? "Linux"
+                    : reported;
+            assertThat(answerTo("system/platform")).isEqualTo(expected);
+        }
+
+        @Test
+        @DisplayName("so the library's Windows branches take the right arm here")
+        void thelibraryBranchesTheRightWay() {
+            boolean onWindows = System.getProperty("os.name", "").startsWith("Windows");
+            assertThat(answerTo("system/platform = 'Windows"))
+                    .isEqualTo(onWindows ? TRUE : "#(false)");
+            assertThat(answerTo("pick \";:\" system/platform = 'Windows"))
+                    .as("sys-start.reb splits PATH on this")
+                    .isEqualTo(onWindows ? "#\";\"" : "#\":\"");
+        }
+    }
 }

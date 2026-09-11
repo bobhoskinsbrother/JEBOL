@@ -131,9 +131,6 @@ error-test.r3 / Error issues / issue-553 #38
 error-test.r3 / Error issues / protected catalog #42
 error-test.r3 / Error issues / protected catalog #43
 evaluation-test.r3 / do script / do needs #44
-file-test.r3 / to-local-file / issue-1115 #22
-file-test.r3 / to-local-file / issue-1115 #23
-file-test.r3 / to-local-file / issue-1115 #24
 func-test.r3 / Other issues / function rebinding (closure compatibility) #135
 func-test.r3 / Other issues / function rebinding (closure compatibility) #136
 func-test.r3 / Other issues / function rebinding (closure compatibility) #141

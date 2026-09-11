@@ -253,6 +253,28 @@ public final class Natives {
     }
 
     /**
+     * What {@code system/platform} answers, which is the operating system and
+     * not the runtime.
+     *
+     * <p>Six files in the borrowed library branch on that word and every
+     * branch is about the local conventions: which character separates the
+     * entries of PATH, how a shell argument is quoted, whether a filename
+     * comparison minds case, where an application keeps its own files. A JVM
+     * on Windows has Windows conventions, so the answer has to be Windows --
+     * and a word true of no operating system sends all six down the arm meant
+     * for something else.
+     *
+     * <p>The application says which, because only it may ask the machine. Its
+     * default is the C's own name for a build that knows nothing about where
+     * it is.
+     */
+    private String operatingSystemName = "JVM";
+
+    public void useOperatingSystemNamed(String named) {
+        this.operatingSystemName = named;
+    }
+
+    /**
      * The text of errors.reb, handed in by whoever can read files.
      *
      * <p>The catalogue is data the domain interprets, not a file the
@@ -680,7 +702,7 @@ public final class Natives {
         system.set("options", new ObjectValue(options));
         system.set("state", new ObjectValue(state));
         system.set("version", TupleValue.of(VERSION_PARTS));
-        system.set("platform", WordValue.of("JVM"));
+        system.set("platform", WordValue.of(operatingSystemName));
         system.set("product", WordValue.of("core"));
         system.set("license", NoneValue.none());
 
@@ -4994,16 +5016,16 @@ public final class Natives {
                     Value target = arguments.getFirst();
                     Value supplied = arguments.get(1);
                     refuseUnassignableName(target, EvaluationFailure.EXPECT_ARG);
+                    if (!refinements.contains("any")
+                            && supplied.datatype() == Datatype.UNSET) {
+                        throw Raised.of(EvaluationFailure.NEED_VALUE, target);
+                    }
                     if (target instanceof WordValue word) {
                         slotOf(word).setValue(supplied);
                         return supplied;
                     }
                     if (target instanceof BlockValue path
                             && PATH_SHAPED.contains(path.datatype())) {
-                        if (!refinements.contains("any")
-                                && supplied.datatype() == Datatype.UNSET) {
-                            throw Raised.of(EvaluationFailure.NEED_VALUE, "set");
-                        }
                         return writtenThroughPath(path, supplied);
                     }
                     List<Value> names = switch (target) {
@@ -5023,9 +5045,6 @@ public final class Natives {
                         return raiseCannotUse(target, "set");
                     }
                     boolean anyValue = refinements.contains("any");
-                    if (!anyValue && supplied.datatype() == Datatype.UNSET) {
-                        throw Raised.of(EvaluationFailure.NEED_VALUE, "set");
-                    }
                     if (target instanceof ObjectValue into
                             && supplied instanceof ObjectValue from
                             && !refinements.contains("only")) {
@@ -5040,7 +5059,8 @@ public final class Natives {
                         for (int index = 0; index < names.size()
                                 && index < values.size(); index++) {
                             if (values.get(index).datatype() == Datatype.UNSET) {
-                                throw Raised.of(EvaluationFailure.NEED_VALUE, "set");
+                                throw Raised.of(EvaluationFailure.NEED_VALUE,
+                                        names.get(index));
                             }
                         }
                     }
@@ -18610,7 +18630,31 @@ public final class Natives {
                     inputKindOf(input), pipedBytesOf(input), fileOf(input, evaluator),
                     outputKindOf(output), fileOf(output, evaluator),
                     outputKindOf(errors), fileOf(errors, evaluator),
-                    whatTheChildInherits(evaluator));
+                    whatTheChildInherits(evaluator),
+                    whereTheChildStarts(evaluator));
+        }
+
+        /**
+         * Where on the machine the child starts, which is where the script is
+         * standing.
+         *
+         * <p>A script that changes directory and then calls a program means
+         * the two to agree, and a confined script would otherwise reach
+         * outside its own directory through the one door confinement cannot
+         * close: the JVM's working directory is the embedding application's,
+         * and nothing about the grant says a script may write there.
+         *
+         * <p>Nothing where no filesystem was granted, because then the script
+         * is standing nowhere and the host's own directory is the only answer
+         * there is.
+         */
+        private static Optional<String> whereTheChildStarts(Evaluator evaluator) {
+            try {
+                return Optional.of(evaluator.files()
+                        .hostPathOf(evaluator.files().workingDirectory()));
+            } catch (FilePort.Denied noFilesystem) {
+                return Optional.empty();
+            }
         }
 
         /**
