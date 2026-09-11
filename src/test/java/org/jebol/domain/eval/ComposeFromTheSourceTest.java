@@ -98,4 +98,52 @@ class ComposeFromTheSourceTest {
         assertThat(answerTo("empty? compose []")).isEqualTo("#(true)");
         assertThat(answerTo("empty? compose/deep []")).isEqualTo("#(true)");
     }
+
+    /**
+     * {@code else { DS_PUSH(value); if (ANY_BLOCK(value)) // Include PATHS
+     * VAL_SERIES(DS_TOP) = Copy_Block(VAL_SERIES(value), 0); }} -- the C's own
+     * comment names the case. A block and a map are rebuilt because that is
+     * what descending into them means; every other block-shaped value is
+     * copied, so two composes of one template share nothing.
+     *
+     * <p>Without the copy nothing shows until something binds one of the
+     * answers, and then it reaches into the other through the shared path.
+     */
+    @Test
+    @DisplayName("/DEEP copies a nested path rather than sharing it")
+    void deepCopiesANestedPath() {
+        assertThat(answerTo("""
+                template: [x a/1 (1)]
+                same? (pick compose/deep template 2) (pick compose/deep template 2)"""))
+                .isEqualTo("#(false)");
+    }
+
+    /**
+     * Rebol's own func-test, issue 217. Two functions made out of one
+     * template: binding the second one's body reached into the first one's
+     * through the shared path, and the first function stopped working the
+     * moment the second was made.
+     */
+    @Test
+    @DisplayName("which is what keeps two functions built from one template apart")
+    void whichKeepsTwoFunctionsApart() {
+        assertThat(answerTo("""
+                f: func [c] [make function! reduce [copy [a] compose/deep [print a/1 (c)]]]
+                f1: f [print 1]
+                f2: f [print 2]
+                e: try [f1 1] e/id""")).isEqualTo("bad-path-type");
+    }
+
+    @Test
+    @DisplayName("and a block or a map is rebuilt rather than copied whole")
+    void ablockOrMapIsRebuilt() {
+        assertThat(answerTo("""
+                template: [x [(1 + 1)] (1)]
+                mold/flat compose/deep template""")).isEqualTo("\"[x [2] 1]\"");
+        assertThat(answerTo("""
+                template: [x [q] (1)]
+                same? (pick compose/deep template 2) (pick compose/deep template 2)"""))
+                .as("descending into a block gives a new block each time")
+                .isEqualTo("#(false)");
+    }
 }

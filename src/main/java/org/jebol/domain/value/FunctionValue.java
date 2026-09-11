@@ -15,7 +15,8 @@ public record FunctionValue(
         List<Parameter> parameters,
         List<String> localNames,
         Context closedOver,
-        boolean closure) implements Value {
+        boolean closure,
+        Context declaredWords) implements Value {
 
     public FunctionValue {
         if (spec == null || body == null || closedOver == null) {
@@ -27,12 +28,27 @@ public record FunctionValue(
 
     public FunctionValue(
             BlockValue spec, BlockValue body, List<Parameter> parameters,
+            List<String> localNames, Context closedOver, boolean closure) {
+        this(spec, body, parameters, localNames, closedOver, closure,
+                Context.theWordsAFunctionDeclares());
+    }
+
+    public FunctionValue(
+            BlockValue spec, BlockValue body, List<Parameter> parameters,
             List<String> localNames, Context closedOver) {
         this(spec, body, parameters, localNames, closedOver, false);
     }
 
+    /**
+     * The same function as a closure, sharing the words it declares.
+     *
+     * <p>Shared rather than fresh, because the body has already been bound to
+     * them and a new set would leave every word pointing at a context nothing
+     * ever lends a frame to.
+     */
     public FunctionValue asClosure() {
-        return new FunctionValue(spec, body, parameters, localNames, closedOver, true);
+        return new FunctionValue(spec, body, parameters, localNames, closedOver,
+                true, declaredWords);
     }
 
     public int arity() {

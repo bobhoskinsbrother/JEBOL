@@ -46,6 +46,28 @@ public final class Context {
         return new Context(parent, false);
     }
 
+    /**
+     * The words a function declares, which name slots only while one of its
+     * calls is running.
+     *
+     * <p>A function's body is bound when the function is made, and there is no
+     * frame yet to bind it to, so the words are bound to this and a call lends
+     * it one. That is what makes the same bound word read a different value
+     * each time round, and the innermost call's value inside a recursion.
+     *
+     * <p>It answers nothing of its own. A word bound to a function nobody is
+     * running names no slot, and saying so is the behaviour: a body shared
+     * between two functions belongs to whichever was made last, and calling
+     * the other one has to fail rather than read the wrong frame.
+     */
+    public static Context theWordsAFunctionDeclares() {
+        Context declared = new Context(null, false);
+        declared.onlyThroughACallThatIsRunning = true;
+        return declared;
+    }
+
+    private boolean onlyThroughACallThatIsRunning;
+
     /** A loop's own frame, hidden from CONTEXT?. */
     public static Context loopFrameOf(Context parent) {
         Context frame = childOf(parent);
@@ -75,8 +97,18 @@ public final class Context {
         this.ownedByFunction = function;
     }
 
+    /**
+     * The function whose call this frame is, following the frame a call has
+     * lent it.
+     *
+     * <p>A function's declared words are marked with the function too, so a
+     * word bound when the function was made answers the function whether or
+     * not one of its calls is running -- which is what CONTEXT? reads.
+     */
     public Value functionOwningThisFrame() {
-        return ownedByFunction;
+        return supersededBy != null
+                ? frameThatResolvesForThisOne().functionOwningThisFrame()
+                : ownedByFunction;
     }
 
     /**
@@ -124,8 +156,19 @@ public final class Context {
         this.callEnded = true;
     }
 
+    /**
+     * Whether the call this frame belongs to has finished.
+     *
+     * <p>A function's declared words say yes whenever no call is lending them
+     * a frame, because that is exactly what "no call of this function is
+     * running" means. A word kept past the end of its call is bound to them,
+     * and CONTEXT? of one has to say the call is over.
+     */
     public boolean callHasEnded() {
-        return callEnded;
+        if (supersededBy != null) {
+            return frameThatResolvesForThisOne().callHasEnded();
+        }
+        return callEnded || onlyThroughACallThatIsRunning;
     }
 
     /**
@@ -169,7 +212,7 @@ public final class Context {
 
     /** Whether this context or an ancestor holds the name. */
     public boolean knows(String canonicalName) {
-        if (unbound) {
+        if (unbound || noCallIsLendingItAFrame()) {
             return false;
         }
         if (supersededBy != null) {
@@ -189,8 +232,34 @@ public final class Context {
      * resolves, still finds it. That split is the whole of PROTECT/HIDE.
      */
     public boolean holds(String canonicalName) {
-        ContextSlot slot = unbound ? null : slotsByCanonicalName.get(canonicalName);
+        ContextSlot slot = unbound || noCallIsLendingItAFrame()
+                ? null
+                : slotsByCanonicalName.get(canonicalName);
         return slot != null && !slot.isHidden();
+    }
+
+    /**
+     * Whether this is a function's declared words with none of its calls
+     * running, which is a context that holds nothing at all.
+     */
+    private boolean noCallIsLendingItAFrame() {
+        return onlyThroughACallThatIsRunning && supersededBy == null;
+    }
+
+    /**
+     * Whether this is a function's declared words and the function declares
+     * this one, whatever is or is not running.
+     *
+     * <p>BIND asks it, and it is a different question from {@link #knows}.
+     * Binding a word into a function's words is binding it relatively -- the
+     * answer is a word that will read whichever call is running when it is
+     * evaluated -- so the target has the name because the spec declares it,
+     * not because a call is lending a frame. `bind 'x word` on a word kept
+     * past the end of its call answers the same word rather than refusing.
+     */
+    public boolean declaresItRelatively(String canonicalName) {
+        return onlyThroughACallThatIsRunning
+                && slotsByCanonicalName.containsKey(canonicalName);
     }
 
     /**
@@ -248,6 +317,9 @@ public final class Context {
     public ContextSlot define(String spelling) {
         if (unbound) {
             throw new IllegalStateException("the unbound context cannot be extended");
+        }
+        if (supersededBy != null) {
+            return frameThatResolvesForThisOne().define(spelling);
         }
         String canonical = canonicalise(spelling);
         ContextSlot existing = slotsByCanonicalName.get(canonical);

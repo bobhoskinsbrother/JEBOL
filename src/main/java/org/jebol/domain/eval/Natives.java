@@ -3327,12 +3327,44 @@ public final class Natives {
     }
 
     private static Value makeFunction(BlockValue spec, BlockValue body, Context context) {
-        return new FunctionValue(
+        return withItsBodyBound(new FunctionValue(
                 spec,
                 body,
                 FunctionSpec.parametersIn(spec),
                 FunctionSpec.localNamesIn(spec),
-                context);
+                context));
+    }
+
+    /**
+     * A function whose body has been bound to the words its spec declares.
+     *
+     * <p>Once, here, rather than at every call. The binding names the function
+     * and a call lends it a frame, so the same bound word reads that call's
+     * value and the innermost call's inside a recursion -- and a word put into
+     * the body afterwards was never bound and reads the global of its name.
+     *
+     * <p>In the body itself rather than in a copy, which is what makes a body
+     * shared between two functions belong to whichever was made last.
+     *
+     * <p>A closure is left alone. Its frame outlives the call that made it, so
+     * its body is still copied and bound per call: one context lent and handed
+     * back could not keep a closure's names alive after it returned.
+     */
+    static FunctionValue withItsBodyBound(FunctionValue made) {
+        made.declaredWords().markAsCallFrameOf(made);
+        Set<String> declared = theNamesDeclaredBy(made);
+        declared.forEach(made.declaredWords()::define);
+        Binder.bindEachInPlace(made.body(), made.declaredWords(), declared);
+        return made;
+    }
+
+    private static Set<String> theNamesDeclaredBy(FunctionValue function) {
+        Set<String> declared = new java.util.HashSet<>();
+        function.parameters().forEach(
+                parameter -> declared.add(Context.canonicalise(parameter.name())));
+        function.localNames().forEach(
+                name -> declared.add(Context.canonicalise(name)));
+        return declared;
     }
 
     /**
@@ -3682,6 +3714,9 @@ public final class Natives {
                             }
                             return word.boundTo(target);
                         }
+                        if (target.declaresItRelatively(word.canonical())) {
+                            return word.boundTo(target);
+                        }
                         if (!target.knows(word.canonical())) {
                             throw Raised.of(EvaluationFailure.NOT_IN_CONTEXT,
                                     word.spelling());
@@ -3822,10 +3857,10 @@ public final class Natives {
                 }
                 yield cloned;
             }
-            case FunctionValue function -> new FunctionValue(
+            case FunctionValue function -> withItsBodyBound(new FunctionValue(
                     function.spec(),
                     (BlockValue) clonedAndRebound(function.body(), from, into),
-                    function.parameters(), function.localNames(), into);
+                    function.parameters(), function.localNames(), into));
             default -> value;
         };
     }
@@ -7282,7 +7317,7 @@ public final class Natives {
                     built.append(composedMap(
                             nested, evaluator, context, keepingBlocksWhole, true));
                 } else {
-                    built.append(item);
+                    built.append(goingDeep ? aBlockShapeCopiedWhole(item) : item);
                 }
             } else {
                 asWritten = false;
@@ -7306,6 +7341,26 @@ public final class Natives {
             reading++;
         }
         return new BlockValue(built, 1, Datatype.BLOCK);
+    }
+
+    /**
+     * A block-shaped value /DEEP copies rather than descends into.
+     *
+     * <p>{@code else { DS_PUSH(value); if (ANY_BLOCK(value)) // Include PATHS
+     * VAL_SERIES(DS_TOP) = Copy_Block(VAL_SERIES(value), 0); }}. A block and a
+     * map are rebuilt because that is what descending into them means; a path
+     * and the rest of the family are copied, so two composes of one template
+     * share nothing.
+     *
+     * <p>Sharing shows only once something binds one of the answers, and then
+     * it reaches into the other. Two functions made from one template through
+     * `compose/deep [print a/1 (c)]` shared the path, so binding the second
+     * one's body unbound the first one's argument.
+     */
+    private static Value aBlockShapeCopiedWhole(Value item) {
+        return item instanceof BlockValue shaped
+                ? new BlockValue(new BlockStorage(shaped.remaining()), 1, shaped.datatype())
+                : item;
     }
 
     /**
@@ -14649,8 +14704,9 @@ public final class Natives {
         BlockValue body = replacementBody instanceof BlockValue replacement
                 ? replacement
                 : asABlock(written.body());
-        return new FunctionValue(spec, body, FunctionSpec.parametersIn(spec),
-                FunctionSpec.localNamesIn(spec), written.closedOver());
+        return withItsBodyBound(new FunctionValue(
+                spec, body, FunctionSpec.parametersIn(spec),
+                FunctionSpec.localNamesIn(spec), written.closedOver()));
     }
 
     /** A function's own spec and body are always blocks; this says so once. */

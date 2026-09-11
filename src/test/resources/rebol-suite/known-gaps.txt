@@ -1,44 +1,33 @@
-# func-test.r3's five remaining entries are one behaviour: R3 binds a
-# function's body block in place when the function is made, and JEBOL binds it
-# by name at each call.
+# Relative binding was built on 12 September 2026 and the five func-test
+# entries that needed it are gone. What it is, and what it cost:
 #
-# The difference is invisible until a body block is shared or changed after the
-# fact, which is exactly what these test. `make function! reduce [[x] body]`
-# twice over the same block leaves the block bound to whichever function was
-# made last, so calling the first one raises; and `change f-body 'value` puts
-# an unbound word into a body that is already running, so it resolves to the
-# global `value` rather than to the argument of the same name.
+# A function's body is bound when the function is made, to a context holding
+# the words its spec declares, and a call lends that context its frame. So the
+# same bound word reads a different value each time round and the innermost
+# call's inside a recursion -- and a word put into the body afterwards was
+# never bound, so it reads the global of its name. A body shared between two
+# functions belongs to whichever was made last, and calling the other raises
+# not-defined.
 #
-# Matching it means relative binding -- words bound to a position in the
-# argument list rather than to a frame, resolved against whichever frame is
-# current. That is R3's binding model and not this one, and swapping it is a
-# change to how every function in the interpreter is bound. Written down here
-# so the next person does not start it thinking it is a defect in MAKE.
+# A closure is bound the same way and then copied per call, because its frame
+# outlives the call. By binding rather than by name, which is what keeps the
+# two rules above true of a closure as well.
 #
-# It was tried, on 12 September 2026, far enough to know the price rather than
-# to guess at it. The shape that works: a context per function holding the
-# words its spec declares, answering nothing until a call lends it a frame;
-# the body bound to that context in place when the function is made; and each
-# call pointing the innermost open frame of the same function at its own, which
-# is machinery JEBOL already has for recursion. All five assertions pass under
-# it and so do the ordinary cases -- recursion, locals, nesting.
+# Four subsystems each held their own end of the model and each had to be
+# brought into line. Written down because the first attempt broke 513 tests
+# and these were the whole of it:
 #
-# It also breaks 513 others, and the reason is that four subsystems each hold
-# their own end of the binding model:
-#
-#   - A closure's frame outlives its call, so its body must still be bound per
-#     call and copied. Solved by keeping the old path for closures alone.
-#   - There are two call paths -- the frame stack, and the one APPLY and the
-#     natives use -- and they keep different books on which frames are open.
-#     A call through the second while the first is open tramples the pointer.
-#   - PARSE resolves a `copy word` target its own way, so a rule block inside a
-#     body stopped writing to the function's local: `parse s [copy f to end]`
-#     left f none. It worked before because the call-time bind handed PARSE a
-#     freshly bound copy every time.
-#   - And whatever else is in the remaining four hundred, which were not read.
-#
-# So it is a project rather than a task, and the four above are its actual
-# contents. The attempt was reverted whole; nothing of it is in the tree.
+#   - Context.set did not follow the frame a call had lent, so PARSE's
+#     `copy word` wrote into the template instead of the call. That one was
+#     latent before this work and would have bitten the recursion case.
+#   - APPLY and the natives call functions by a second path that kept its own
+#     books on which frames were open, so a call through it while another was
+#     open trampled the pointer. Both paths now push the same record.
+#   - CONTEXT? reads the function off the frame, so the declared words had to
+#     carry it, and to say the call is over when none is running.
+#   - COMPOSE/DEEP shared a nested path between two answers where the C copies
+#     it -- `// Include PATHS` is the C's own comment -- so binding one
+#     function's body reached into another's.
 #
 bbcode-test.r3 / (no group) / (no test) #1
 bitset-test.r3 / modify / issue-1355 #139
@@ -155,11 +144,6 @@ error-test.r3 / Error issues / issue-553 #38
 error-test.r3 / Error issues / protected catalog #42
 error-test.r3 / Error issues / protected catalog #43
 evaluation-test.r3 / do script / do needs #44
-func-test.r3 / Other issues / function rebinding (closure compatibility) #135
-func-test.r3 / Other issues / function rebinding (closure compatibility) #136
-func-test.r3 / Other issues / function rebinding (closure compatibility) #141
-func-test.r3 / Other issues / function rebinding (closure compatibility) #142
-func-test.r3 / Other issues / issue-2025 #97
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
 issue-test.r3 / to-hex / bad chars in issue #25

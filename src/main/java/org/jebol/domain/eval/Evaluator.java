@@ -387,14 +387,15 @@ public final class Evaluator {
                 function.localNames().forEach(
                         name -> locals.set(name, NoneValue.none()));
                 bindArgumentsPositionally(locals, parameters, arguments);
+                BlockValue running = theBodyThisCallRuns(function, locals);
+                theFrameThisCallTakesOverFrom(function).supersededBy(locals);
+                functionsBeingRun.push(new OpenCall("", function, locals));
                 try {
-                    yield evaluateOrRaise(
-                            Binder.bindOnly(function.body(), locals,
-                                    namesOwnedBy(function)),
-                            locals);
+                    yield evaluateOrRaise(running, locals);
                 } catch (ReturnSignal returned) {
                     yield returned.value();
                 } finally {
+                    handBackTheFrameTakenOverBy(functionsBeingRun.pop());
                     locals.markCallEnded();
                 }
             }
@@ -882,7 +883,7 @@ public final class Evaluator {
         framesOpen = frames.size();
         if (being != null) {
             functionsCalled++;
-            openFrameOf(being).ifPresent(outer -> outer.supersededBy(context));
+            theFrameThisCallTakesOverFrom(being).supersededBy(context);
             functionsBeingRun.push(new OpenCall(nameOfTheCallBeingMade, being, context));
             nameOfTheCallBeingMade = "";
             lastWordCalledThrough = "";
@@ -907,7 +908,39 @@ public final class Evaluator {
 
     private void handBackTheFrameTakenOverBy(OpenCall ending) {
         ending.locals().supersededBy(null);
-        openFrameOf(ending.function()).ifPresent(outer -> outer.supersededBy(null));
+        theFrameThisCallTakesOverFrom(ending.function()).supersededBy(null);
+    }
+
+    /**
+     * What a call of this function lends its frame to: the innermost call of
+     * the same function already running, or the function's own declared words
+     * when this is the outermost.
+     *
+     * <p>The body's words are bound to those declared words once, when the
+     * function is made, so the outermost call is what turns them from naming
+     * nothing into naming a slot. An inner call points the frame above it at
+     * its own, which is how a recursion reads the innermost values without
+     * anything walking the chain at each word.
+     */
+    private Context theFrameThisCallTakesOverFrom(FunctionValue function) {
+        return openFrameOf(function).orElseGet(function::declaredWords);
+    }
+
+    /**
+     * The block a call runs: the function's own body, already bound when the
+     * function was made, or a freshly bound copy for a closure.
+     *
+     * <p>A closure's frame outlives the call that made it, so its words cannot
+     * be bound to a context that is lent and handed back. Copying per call is
+     * what keeps the names of a call alive after it.
+     */
+    private static BlockValue theBodyThisCallRuns(
+            FunctionValue function, Context locals) {
+
+        return function.closure()
+                ? Binder.rebindWhatNamedTheFunction(
+                        function.body(), function.declaredWords(), locals)
+                : function.body();
     }
 
     /**
@@ -1314,9 +1347,7 @@ public final class Evaluator {
 
         function.localNames().forEach(name -> locals.set(name, NoneValue.none()));
 
-        push(frames,
-                Binder.bindOnly(function.body(), locals, namesOwnedBy(function)),
-                locals, function);
+        push(frames, theBodyThisCallRuns(function, locals), locals, function);
         return StepOutcome.waiting();
     }
 

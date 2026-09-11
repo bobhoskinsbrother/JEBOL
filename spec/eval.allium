@@ -436,6 +436,75 @@ rule InertValueProducesItself {
         step.consumed = 1
 }
 
+-- A function's body is bound when the function is made, and to the function
+-- rather than to any one call of it. A call then lends the function its
+-- frame, so the same bound word reads a different value each time round and
+-- reads the innermost call's value inside a recursion.
+--
+-- Both halves of "when" are observable, and each is a case somebody hits.
+--
+-- A word put into the body after the function was made was never bound, so it
+-- resolves wherever an unbound word resolves. `change body 'value` puts a
+-- `value` into a running function that reads the global one rather than the
+-- argument of the same name -- which is the whole of what makes a body
+-- adjustable from outside.
+--
+-- And a body shared between two functions belongs to whichever was made last,
+-- because making the second one binds the same block again. Calling the first
+-- afterwards raises not-defined rather than reading the second's arguments: a
+-- word bound to a function that is not running names no slot.
+--
+-- Binding by name at each call instead is the plausible implementation. It
+-- reads the same for every body nobody shares and nobody edits, which is
+-- nearly all of them, and it differs on exactly those two cases -- so it
+-- looks right until somebody writes the code this rule is about.
+rule AFunctionBodyIsBoundWhenTheFunctionIsMade {
+    when: MakeFunction(spec, body)
+
+    ensures:
+        for word in the_words_within(body):
+            word.binding =
+                if the_spec_declares(spec, word): the_function_being_made()
+                else: word.binding
+}
+
+-- A word bound to a function names a slot only while one of its calls is
+-- running, and the innermost call is the one it names.
+rule AWordBoundToAFunctionReadsTheCallThatIsRunning {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.input.binding = a_function
+
+    ensures:
+        if not the_function_is_running(step.input.binding):
+            step.status = raised
+            step.failure = not_defined
+        else:
+            step.bound_value = the_innermost_call_of(step.input.binding)
+                .slot_named(step.input.canonical)
+}
+
+-- A closure is bound the same way and then copied, because its frame outlives
+-- the call that made it. Each call gets a body of its own with the words that
+-- named the function pointed at that call's frame, so a name a closure kept
+-- still answers after the call has returned.
+--
+-- By binding rather than by name, which is what keeps the two rules above
+-- true of a closure as well: a word put into the body afterwards never named
+-- the function, so the copy leaves it alone.
+rule AClosureIsCopiedPerCallRatherThanLentAFrame {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.bound_value.datatype = closure
+
+    ensures:
+        the_body_run() = a_copy_of(the_body_of(step.bound_value))
+        for word in the_words_within(the_body_run()):
+            word.binding =
+                if it_named(word, step.bound_value): the_frame_of_this_call()
+                else: word.binding
+}
+
 -- A word looks up its binding. What it finds decides whether the step
 -- produces a value or reaches forward and calls something.
 rule WordEvaluates {
@@ -1291,6 +1360,7 @@ surface Evaluating {
 
     provides:
         Do(code, context)
+        MakeFunction(spec, body)
 
     @guarantee ErrorsAreValuesNotHostExceptions
         -- Every failure a script can cause arrives as a REBOL error!

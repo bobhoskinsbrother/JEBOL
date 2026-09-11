@@ -93,6 +93,107 @@ public final class Binder {
         return laidOutLike(block, new BlockStorage(bound));
     }
 
+    /**
+     * The same names bound, in the block itself rather than in a copy.
+     *
+     * <p>What {@code make function!} does to a body: the words the spec
+     * declares are given their binding once, where they are, and the block
+     * the caller kept a name for is the block that was bound.
+     *
+     * <p>A block that holds itself is walked once. Binding in place turns
+     * "the caller wrote something odd" into a stack overflow that copying
+     * never reached.
+     */
+    public static void bindEachInPlace(
+            BlockValue block, Context context, Set<String> names) {
+
+        bindEachInPlace(block, context, names,
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
+    }
+
+    private static void bindEachInPlace(BlockValue block, Context context,
+            Set<String> names, Set<Object> alreadyWalked) {
+
+        if (!alreadyWalked.add(block.storage())) {
+            return;
+        }
+        for (int at = block.index(); at <= block.storageLength(); at++) {
+            switch (block.storage().at(at)) {
+                case WordValue word when names.contains(word.canonical()) ->
+                        block.storage().set(at, word.boundTo(context));
+                case BlockValue nested ->
+                        bindEachInPlace(nested, context, names, alreadyWalked);
+                case MapValue map -> {
+                    for (Value key : map.keys()) {
+                        map.put(key, boundIfDeclared(
+                                map.select(key), context, names, alreadyWalked));
+                    }
+                }
+                default -> { }
+            }
+        }
+    }
+
+    /**
+     * A copy of the block with every word that named the function rebound to
+     * one call's frame.
+     *
+     * <p>What a closure does instead of being lent a frame. Its frame outlives
+     * the call that made it -- that is the whole of the datatype -- so its
+     * words cannot point at a context that is handed back, and each call gets
+     * a body of its own.
+     *
+     * <p>By binding rather than by name, which is the difference that matters.
+     * A word put into the body after the closure was made never named the
+     * function, so it is left alone and reads the global of its name, exactly
+     * as it does in a plain function.
+     */
+    public static BlockValue rebindWhatNamedTheFunction(
+            BlockValue block, Context from, Context to) {
+
+        List<Value> bound = new ArrayList<>(block.lengthFromHere());
+        for (Value item : block.remaining()) {
+            bound.add(rebindOneThatNamedIt(item, from, to));
+        }
+        return laidOutLike(block, new BlockStorage(bound));
+    }
+
+    private static Value rebindOneThatNamedIt(Value value, Context from, Context to) {
+        return switch (value) {
+            case WordValue word when word.isBound() && word.binding() == from ->
+                    word.boundTo(to);
+            case WordValue word -> word;
+            case BlockValue nested -> rebindWhatNamedTheFunction(nested, from, to);
+            case MapValue map -> {
+                for (Value key : map.keys()) {
+                    map.put(key, rebindOneThatNamedIt(map.select(key), from, to));
+                }
+                yield map;
+            }
+            default -> value;
+        };
+    }
+
+    /**
+     * One value a map holds, bound where a block's item would have been.
+     *
+     * <p>A map is not a series and cannot be walked by position, so its values
+     * are replaced rather than written over. A map literal inside a body is
+     * how {@code compose/deep #[num: (val)]} reaches an argument, and leaving
+     * it alone left VAL with no word to resolve.
+     */
+    private static Value boundIfDeclared(Value held, Context context,
+            Set<String> names, Set<Object> alreadyWalked) {
+
+        if (held instanceof WordValue word && names.contains(word.canonical())) {
+            return word.boundTo(context);
+        }
+        if (held instanceof BlockValue nested) {
+            bindEachInPlace(nested, context, names, alreadyWalked);
+        }
+        return held;
+    }
+
     private static Value bindValueOnly(
             Value value, Context context, Set<String> names) {
 

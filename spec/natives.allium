@@ -5601,6 +5601,31 @@ open question "PROTECT/HIDE takes a field out of WORDS-OF and makes the path to 
 -- (reduce [1 2]) b]` is `[a 1 2 b]`. /ONLY turns that off and puts the
 -- block in as one value.
 --
+-- /DEEP copies the block-shaped values it does not descend into, so two
+-- composes of one template share nothing. A block and a map are rebuilt,
+-- because that is what descending into them means; a path, a paren and the
+-- rest of the family are copied instead. The C says so in its own comment:
+-- `else { DS_PUSH(value); if (ANY_BLOCK(value)) // Include PATHS
+-- VAL_SERIES(DS_TOP) = Copy_Block(VAL_SERIES(value), 0); }`.
+--
+-- Without the copy the two answers share a path, and nothing shows it until
+-- something binds one of them. `f: func [c] [make function! reduce [copy [a]
+-- compose/deep [print a/1 (c)]]]` makes two functions out of one template,
+-- and binding the second one's body reaches into the first one's through the
+-- shared path -- so the first function stops working the moment the second is
+-- made. That is Rebol's own issue 217, and it is a test of COMPOSE rather
+-- than of MAKE.
+rule ComposeDeepCopiesTheBlockShapesItDoesNotRebuild {
+    when: EvaluateCall(compose, template)
+    requires: refinement_asked(deep)
+    requires: is_block(template)
+
+    ensures:
+        for item in the_items_of(template):
+            if item.is_any_block and not is_block(item) and not is_map(item):
+                shares_storage_with(the_item_in(result), item) = false
+}
+--
 -- COMPOSE/INTO fills a series the caller already has, at its position,
 -- and answers the position after what it put there -- the same shape
 -- REDUCE/INTO has, and for the same reason: a loop that builds one series
