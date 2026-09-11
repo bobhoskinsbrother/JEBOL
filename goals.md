@@ -25,17 +25,19 @@ differing, and they are `request-color`, `request-dir` and `request-file` in
 every column. Two larger things are left inside 21 and named there with the
 reason each was left: `near`/`where` on errors, and `compress` bytes.
 
-The fifteen porting goals are **mostly, not entirely, independent**, and the
-couplings are named in the goals themselves. Two that this file used to claim
-turned out not to exist: goal 5 and goal 9 were both said to wait on goal 8, and
-neither does — that came from a measuring tool inventing environment stops, and
-goal 20 has the story. The real ones are goal 1 to goal 3, and goal 15
-double-counting eight of goal 4's assertions. Goal 3 is done, so the
-coupling from goals 1 and 2 to it is discharged.
+The porting goals are **mostly, not entirely, independent**, and the couplings
+are named in the goals themselves. Two that this file used to claim turned out
+not to exist: goal 5 and goal 9 were both said to wait on goal 8, and neither
+does — that came from a measuring tool inventing environment stops, and goal 20
+has the story. The real ones now are goal 1 waiting on goal 4a, goal 4b waiting
+on goal 4a, and goal 15 double-counting the eight crypt-port entries that
+belong to 4a and 4b. Goals 1 to 3 was real and is discharged: goal 3 is done.
 
-Goals 1, 3, 4, 6 and 14 are also one question asked five times: what the
+Goals 1, 4a, 6 and 14 are also one question asked four times: what the
 capability catalogues claim is present. `system/codecs` is longer here than in a
-real 3.22.5, so JEBOL enters blocks the oracle skips and then raises inside them.
+real 3.22.5 and `system/catalog/ciphers` is empty where a real one holds
+forty-two, so JEBOL enters blocks the oracle skips and claims nothing where the
+oracle claims plenty. Both readings are wrong in the same way.
 
 ---
 
@@ -187,9 +189,11 @@ gate green.
 
 ## The goals
 
-Sizes are the number of `known-gaps.txt` entries the goal is worth, and the
-fifteen of them account for every entry with nothing left over — goal 15 exists
-to close that sum and shows the arithmetic. The list stands at **435** entries
+Sizes are the number of `known-gaps.txt` entries the goal is worth, and they
+account for every entry with nothing left over — goal 15 exists to close that
+sum and shows the arithmetic. Goal 4 is now 4a and 4b, split on whether the
+cipher is one the JVM already carries, so the arithmetic reads sixteen goals
+where it used to read fifteen. The list stands at **435** entries
 as this line is written; `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt`
 is the live answer and a size above that disagrees with it is stale.
 
@@ -484,7 +488,7 @@ whether the change worked.
 
 ---
 
-### 1. The remaining codecs — 109, now 13 and all of them goal 4's
+### 1. The remaining codecs — 109, now 13 and all of them goal 4a's
 
 `codecs-test.r3`. Was the largest single file, and it was not one problem but
 about eleven, each an `if find codecs 'name [...]` block that raised and took
@@ -507,8 +511,9 @@ delayed module and the block's `if find codecs 'wav` guard has been false since
 the sound data stopped being a raw binary.
 
 What is left is **13 entries in the SAFE block, all of which now stop at
-`no-scheme: crypt`. They are blocked on goal 4, the crypt port, and nothing
-else.** Goal 1 has no work of its own remaining.
+`no-scheme: crypt`. They are blocked on goal 4a, the crypt port, and nothing
+else** — the SAFE codec asks for `chacha20` first and the JVM has it, so 4b is
+not in the way. Goal 1 has no work of its own remaining.
 
 Note that the group names in `known-gaps.txt` are wrong for this file — the
 slicer takes the last top-level `===start-group===`, and this file nests its
@@ -651,43 +656,80 @@ twelve megabyte file in the same corpus then caught two more: an array sized to
 the C's starting capacity rather than what it grows to, and a distance setting
 that must not carry from one meta-block to the next.
 
-### 4. The crypt port — 40, and 13 more in goal 1 behind it
+### 4a. The crypt port, on the ciphers the JVM already has — 16, and 13 more behind it
 
 `crypt-port-test.r3` stops at its first line:
 
     port: open make port! [scheme: 'crypt algorithm: 'AES-128-CBC key: #{...}]
 
 `make port!` of a block is refused, and there is no `crypt` scheme. Everything
-after that is `port is unset`. So this is one blocker in front of forty
-assertions, of which 26 are Camellia and 11 are the FIPS-197 AES vectors.
+after that is `port is unset`. That one blocker stands in front of all forty
+assertions in the file, and in front of the eight in the three files beside it,
+so building the port is the whole of this goal and 4b is only about the
+algorithms underneath it.
 
-Two things about the refusal are worth having right before starting. A real
-3.22.5 answers `invalid-spec` where JEBOL answers `bad-make-arg`, so `make
-port!` of a block is its own small fix underneath the scheme. And the goal is
-worth more than the file it is named after: `codec-safe.reb` opens a crypt port
+**Which 16.** The AES vectors, which is everything in the two files that is not
+Camellia and not CCM:
+
+    11  crypt-port-test.r3   FIPS-197 test vectors
+     2  crypt-port-test.r3   NIST test vectors (ECB)
+     1  crypt-port-test.r3   NIST test vectors (CBC)
+     2  crypt-port-gcm-test.r3
+
+**And thirteen more in goal 1 behind it.** `codec-safe.reb` opens a crypt port
 by hand to encrypt what it saves, which is why the thirteen SAFE entries left
-in goal 1 all stop at `no-scheme: crypt`. Nothing else is waiting.
+in goal 1 all stop at `no-scheme: crypt`. It picks its cipher by preference and
+asks for `chacha20` first, which the JVM has, so they clear with this half
+rather than with 4b. Nothing else in the suite is waiting on either.
 
-`system/catalog/ciphers` is empty here and holds **42** entries in a real Rebol
+**`system/catalog/ciphers` is empty here and holds 42 entries in a real Rebol**
 — AES, Camellia and ARIA each in ECB, CBC, CCM and GCM at three key widths,
 then ChaCha20, ChaCha20-Poly1305 and four DES spellings. Filling it is part of
-the goal, and it decides which of the forty can pass: a cipher not in the
-catalogue should say so rather than answering wrongly.
+this goal and it is what makes the split legible: a cipher in the catalogue
+that the port cannot serve is the failure mode to avoid, so name only what is
+served and let the rest say so. 4b's job is to move names across that line.
 
-**The JVM supplies about half of the 42 and no more.** Measured, not assumed:
-AES in ECB, CBC and GCM, ChaCha20, ChaCha20-Poly1305, DES and 3DES are all
-`Cipher.getInstance` away. AES-CCM is not, and neither is a single Camellia or
-ARIA mode — which is 24 of the 42, and the 26 Camellia assertions that are most
-of this goal. So this is two jobs, not one: a port that reaches the JVM for what
-the JVM has, and a Camellia implementation written from the C for what it has
-not. Do them in that order, and pin the boundary each way — a cipher the
-catalogue names and the port cannot serve is the failure mode to avoid.
+**What the JVM gives you, measured rather than assumed.** AES in ECB, CBC and
+GCM, ChaCha20, ChaCha20-Poly1305, DES and 3DES are all one
+`Cipher.getInstance` away. That is 18 of the 42.
+
+One small fix sits underneath the scheme: a real 3.22.5 answers `invalid-spec`
+where JEBOL answers `bad-make-arg` for `make port!` of a block.
 
 The pattern to follow is `ChecksumPort.java` and the checksum scheme in
 `Interpreter.java`: a scheme registered through the borrowed `sys/make-scheme`,
 an actor name in `SCHEMES_THIS_BUILD_SERVES`, and open/read/write/update/close
-branches in `Natives.java`. `crypt-port-camelia-test.r3`,
-`crypt-port-ccm-test.r3` and `crypt-port-gcm-test.r3` are 8 more between them.
+branches in `Natives.java`.
+
+### 4b. The ciphers the JVM has not got — 32
+
+Do 4a first. This goal adds algorithms to a port that already works, and every
+assertion in it is unreachable until that port exists.
+
+**Which 32.**
+
+    26  crypt-port-test.r3            Camellia tests from RFC3713
+     4  crypt-port-camelia-test.r3    CAMELLIA-128-ECB
+     2  crypt-port-ccm-test.r3        AES-128-CCM, RFC 3610
+
+**Nothing in the JDK answers to Camellia, to ARIA, or to AES in CCM mode.**
+`Cipher.getInstance` throws `NoSuchAlgorithmException` for all three, which is
+24 of the catalogue's 42 entries and the larger share of the crypt work by
+assertion count. The shipped jar has no dependencies and this must not change
+it, so they get written rather than pulled in.
+
+Three separate pieces, and they are not equally sized. Camellia is a block
+cipher and the whole of it — RFC 3713 is the reference and
+`rebol3-source/src/core/mbedtls/camellia.c` is the C this is measured against.
+CCM is a *mode* wrapped round a block cipher that already works, so AES-CCM is
+`ccm.c` on top of what 4a built, and the same mode then gives Camellia-CCM for
+nothing once Camellia lands. ARIA has no assertion behind it at all and is
+catalogue-only.
+
+The usual rule applies with force here: build the oracle first. Every one of
+these has published test vectors, the C beside it, and a `./r3-head` that can
+answer any input — so a mismatch should be findable in a second rather than
+inferred from a failing suite line.
 
 ### 5. What is left of the file ports — 38
 
@@ -862,7 +904,7 @@ finding out which before deciding what to do about it.
 
 ### 15. The scattered singles and pairs — 40 across eighteen files
 
-What is left when the fourteen above are taken out. The sum closes exactly
+What is left when the others above are taken out. The sum closes exactly
 against the gap list as it stood when this was written, which is the point of
 the goal: 109 + 55 + 45 + 40 + 38 + 34 + 29 + 9 + 17 + 27 + 135 + 7 + 8 + 9
 = 562, leaving 40. If that no longer matches what
@@ -876,9 +918,9 @@ the entries inside it are goal 16's and are not work at all**: eight in
 work is 604 or fewer, and nobody has established the ceiling.
 
     6  date-test.r3
-    4  crypt-port-camelia-test.r3      these three are goal 4's work,
-    2  crypt-port-ccm-test.r3          not their own: the same cipher port
-    2  crypt-port-gcm-test.r3          under three more algorithms
+    4  crypt-port-camelia-test.r3      goal 4b's work, not their own
+    2  crypt-port-ccm-test.r3          goal 4b's work, not their own
+    2  crypt-port-gcm-test.r3          goal 4a's work, not its own
     4  task-test.r3
     3  error-test.r3
     3  mold-test.r3
@@ -906,8 +948,9 @@ and the line about CALL being "the same missing capability as three of goal 9's
 stops" described a coupling that does not exist. `evaluation-test.r3` now stops
 nowhere and owes one entry.
 
-The eight crypt-port entries are listed here for the arithmetic only. Do them
-with goal 4; on their own they are four algorithms with nowhere to run.
+The eight crypt-port entries are listed here for the arithmetic only. Two are
+goal 4a's and six are goal 4b's; on their own they are algorithms with nowhere
+to run.
 
 ---
 
