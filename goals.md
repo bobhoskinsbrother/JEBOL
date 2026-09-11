@@ -1043,63 +1043,79 @@ not the problem — JEBOL lists all thirteen curves a real Rebol does, secp192r1
 through curve448 — so `ecdh/init` is not answering a key for at least one of
 them. `EllipticCurveKey.java` is the JEBOL side; the C is `n-crypt.c`.
 
-### 11. Sweepable files that run clean — 132 between them — 16 left, all blocked
+### 11. Sweepable files that run clean — 132 between them — 16 left, two blocked
 
-Worked on 11 and 12 September 2025. 116 of the 132 are gone: seven files are
-empty and the sixteen that remain are each behind something that is not a
-wrong answer, so `scripts/sweep.py` has nothing more to show on this goal.
+Worked on 11 and 12 September 2026. 116 of the 132 are gone and eight of the
+ten files are empty. The sixteen that remain are all in two files, and neither
+is a wrong answer `scripts/sweep.py` can show.
 
 | file | started | left | what is left |
 | --- | --- | --- | --- |
-| `func-test.r3` | 29 | 5 | relative binding, deliberately not done |
+| `func-test.r3` | 29 | 5 | relative binding; tried, priced, reverted |
 | `unicode-test.r3` | 21 | 0 | |
 | `time-test.r3` | 15 | 0 | |
 | `map-test.r3` | 12 | 0 | |
 | `make-test.r3` | 10 | 0 | |
-| `file-test.r3` | 9 | 3 | `system/platform` naming the operating system |
-| `thru-cache-test.r3` | 10 | 10 | an HTTP client |
+| `file-test.r3` | 9 | 0 | |
+| `thru-cache-test.r3` | 10 | 10 | an HTTP client, and a decision about the gate |
 | `parse-test.r3` | 9 | 0 | moved to `fails-on-rebol-too.txt` |
-| `vector-test.r3` | 9 | 1 | the new-line flag travelling with a value |
-| `lexer-test.r3` | 8 | 1 | `jebol file.r3`, which is goal 7a |
+| `vector-test.r3` | 9 | 0 | |
+| `lexer-test.r3` | 8 | 1 | a sandbox path handed to another process |
 
-**The opening sentence of this goal was wrong about two of the files, and the
+**The opening sentence of this goal was wrong about three of the files, and the
 wrongness is the kind worth recording.** "None of these stops, so every entry
 is a wrong answer" was read off a sweep, and a sweep only shows what runs.
 `thru-cache-test.r3` is ten assertions behind one `if module? try [import
-'thru-cache]`, and the guard is false here, so nothing in it has ever run:
-the file needs `import` to resolve a module by name and then needs HTTPS to
-github and httpbin. Nine of `parse-test.r3`'s were behind a guard that a real
-3.22.5 fails too, and two of `file-test.r3`'s were the Windows arm of a
-platform switch on a Mac; all eleven are in `fails-on-rebol-too.txt` now with
-the `./r3-head` session that settles them.
+'thru-cache]`, and the guard is false here, so nothing in it has ever run.
+Nine of `parse-test.r3`'s were behind a guard a real 3.22.5 fails too, and two
+of `file-test.r3`'s were the Windows arm of a platform switch on a Mac; all
+eleven are in `fails-on-rebol-too.txt` now with the `./r3-head` session that
+settles them.
 
-**What each of the four that remain is waiting on:**
+**The two that are left.**
 
-- **`thru-cache-test.r3`, ten.** `read http://` and `read https://` both
-  answer "nothing here serves the scheme", and the module the file imports is
-  fetched over the network by `import` when it is not already on disk. Both
-  halves are a subsystem rather than a fix, and the file's own assertions
-  reach raw.githubusercontent.com and httpbin.org, so making them run puts
-  the gate on the public internet. That needs a decision before it needs code.
-- **`file-test.r3`, three.** The issue-2538 group is guarded on `find [Linux
-  macOS] system/platform`, and `system/platform` is the word `JVM` here. It is
-  hard-coded in `Natives.java` with nothing recorded about why, and the choice
-  is real: a script branches on that word to pick a path separator or a shell
-  command, so answering `JVM` sends every such script down the wrong arm, and
-  answering `macOS` means the domain learning what machine it is on through a
-  host port it has not got. Undecided rather than unimplemented.
-- **`vector-test.r3`, one.** `#82` molds a block that was written across
-  several lines and expects the lines back. REBOL keeps the new-line flag in
-  the value's own header, so it travels whenever the value is copied -- which
-  is why REDUCE, COPY, APPEND, TO BLOCK! and REVERSE all keep it and a
-  computed result does not. JEBOL keeps the flags in a set of positions on the
-  storage, and only BIND and the library loader carry them across. Matching it
-  is a change to every value type, for one assertion.
-- **`lexer-test.r3`, one.** `#452` runs `system/options/boot` as a subprocess
-  with a script path. The launcher exists and starts a REPL that ignores the
-  path -- which is goal 7a's first bullet, `jebol file.reb` -- and the script
-  it would run reads a file, so it also needs the undecided answer to what the
-  command line grants (TODO.md, "the command-line REPL grants only ...").
+- **`thru-cache-test.r3`, ten, and this one is a decision before it is code.**
+  `read http://` and `read https://` both answer "nothing here serves the
+  scheme", and the module the file imports is fetched over the network by
+  `import` when it is not already on disk. So it needs an HTTP client, which is
+  a subsystem rather than a fix. The part that is not mine to decide is what
+  comes after: the file's own assertions reach
+  `raw.githubusercontent.com` and `httpbin.org`, so making them pass puts
+  `./gradlew check` on the public internet. This repository's rule is that a
+  flake is a fail, and a gate that depends on two third-party services will
+  flake. Ask before building it.
+
+  Worth knowing: vendoring the module without the HTTP client makes things
+  worse rather than better. The guard would go true, the ten assertions would
+  start running, and all ten would fail instead of never running.
+
+- **`lexer-test.r3`, one.** It runs a second interpreter and hands it a path.
+  `jebol file.r3` works now and matches a real 3.22.5 on every part of it, but
+  the path comes from `clean-path` inside the suite's rooted filesystem, and
+  outside that run it names nothing. Rooting is what stops a suite file writing
+  into the repository -- it had been doing so through CALL until this session
+  -- so neither side of that is wrong. What the assertion is about is tested on
+  its own in `ALongStringThroughTheReaderFromTheSourceTest`.
+
+- **`func-test.r3`, five.** Relative binding. Tried on 12 September far enough
+  to price it rather than guess: the five pass under it and so do the ordinary
+  cases, and 513 others break. `known-gaps.txt` has the four subsystems that
+  each hold their own end of the binding model, which is what the work actually
+  consists of.
+
+**What the goal turned up that was not on it.** Four defects and a flake, each
+found by making a test run that had never run here:
+
+- CALL started its children in the JVM's working directory, so a script
+  confined to a temporary directory wrote outside it. Running the suite left a
+  file called `a:0:0` in this repository.
+- SET wrote an absence without being asked, and where it did refuse it named
+  SET rather than the target. CD depends on that refusal, so `cd ..` failed.
+- CHANGE did not spread a block into a block.
+- The reader read a construct's contents through the enclosing block's own
+  loop, so the line feed before `#(none)` was spent inside the construct.
+- And the two slowest Brotli levels had a five-second script deadline that
+  measured the build's load rather than the encoder.
 
 `power-test.r3` used to be a row here with eight entries, and working it would
 have made JEBOL disagree with the canonical reference. Goal 16 took them off: they are
