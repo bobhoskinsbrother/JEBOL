@@ -718,6 +718,49 @@ rule InWithABlockBindsThatBlockAndAnswersIt {
     ensures: CallResult(value: block, block_is_bound_to: subject)
 }
 
+-- === What binding a block leaves alone =====================
+
+-- Binding a block to a context touches the words that context holds itself,
+-- and leaves every other word exactly as it was. `Bind_Block(frame, block,
+-- BIND_DEEP)` walks the block looking each word up in that one frame; a word
+-- it does not find keeps whatever binding it was written with.
+--
+-- Which is what makes binding composable. A block written inside a module and
+-- then bound into a small object goes on reading the module's words -- only
+-- the object's own fields move. Rebinding the rest as well is the difference
+-- between "read these fields here" and "re-resolve this code somewhere else",
+-- and the second is never what a caller asked for.
+--
+-- The damage is invisible until a name exists in two places. Rebol's own TLS
+-- writes `log-debug: none` at the top of its file so that the debug lines cost
+-- nothing, and every one of those lines sits inside `with ctx [...]`. Binding
+-- the whole block instead of the context's own fields found the library's
+-- LOG-DEBUG, which takes a lit-word first, and the client hello stopped on the
+-- log line rather than on anything to do with TLS.
+--
+-- BIND already answers this question correctly for a single word: binding one
+-- the object does not hold is refused rather than resolved somewhere else. A
+-- block is the same question asked many times.
+rule BindingABlockTouchesOnlyWhatTheContextHoldsItself {
+    when: EvaluateCall(bind, block, target)
+    requires: is_block(block)
+
+    ensures: for word in words_of(block):
+        word_is_bound_to(word, target) when holds_itself(target, word)
+    ensures: for word in words_of(block):
+        word_keeps_the_binding_it_had(word) when not holds_itself(target, word)
+}
+
+-- WITH is the same binding followed by an evaluation, so it leaves the same
+-- words alone.
+rule WithBindsTheSameWayAndThenEvaluates {
+    when: EvaluateCall(with, target, block)
+
+    ensures: for word in words_of(block):
+        word_keeps_the_binding_it_had(word) when not holds_itself(target, word)
+    ensures: CallResult(value: result_of_evaluating(block))
+}
+
 -- GET of anything that is not a word, a path or an object answers that thing.
 -- `get 5` is 5 and `get "a"` is "a". The C's last branch is one line:
 -- `else val = word;`
@@ -2147,6 +2190,88 @@ rule ASpecificationWhoseSchemeNobodyServesNamesTheScheme {
         about: the_scheme_named_by(specification))
 }
 
+-- === What a connection tells the port that owns it ==========
+
+-- A protocol written in REBOL is a state machine driven by events. It opens a
+-- connection, and then WAIT hands the connection's port an event each time
+-- something has happened to it -- connected, written, read, closed -- and the
+-- port's AWAKE function moves the protocol along.
+--
+-- That is the whole of how one verb reaches a protocol nobody wrote in Java:
+-- `read https://example.com` runs Rebol's own HTTP, which writes a request,
+-- waits, reads headers, waits, reads a body, and answers. The interpreter
+-- supplies the connection and the waiting; the protocol supplies everything
+-- that is about HTTP.
+--
+-- Four events and they are named after what happened rather than what to do
+-- next, because the protocol decides that. A connection reports each one once,
+-- in the order the things happened, and reports nothing twice.
+enum WhatHappenedToAConnection {
+    connected           -- the far end accepted, so a request may be sent
+    | written           -- what was sent has gone
+    | arrived           -- bytes came back, and are in the port's DATA
+    | closed            -- the far end finished
+}
+
+-- WAIT hands each thing that happened to the port it happened to, one at a
+-- time, oldest first. The port's AWAKE function says whether that was the one
+-- worth stopping for: answering true ends the wait and the port is the answer,
+-- and anything else keeps the wait going.
+--
+-- So one call to WAIT can deliver several events. Rebol's own HTTP relies on
+-- exactly that: its AWAKE answers false for connected and for written, because
+-- neither finishes a request, and true only when the response is complete. A
+-- WAIT that came back after the first event would put the caller in a loop
+-- testing a state it has no way to advance.
+--
+-- Only the answer true counts, and only a real logic. A port whose AWAKE is a
+-- function that answers a string has not said to stop.
+rule WaitingOnAPortEndsWhenItsAwakeSaysSo {
+    when: EvaluateCall(wait, waited_on)
+    requires: names_a_port_with_something_to_report(waited_on)
+
+    ensures:
+        the_awake_function_of(the_port) is_called_with(
+            an_event_of(the_next_thing_it_has_to_report()))
+        the_next_thing_it_has_to_report() in WhatHappenedToAConnection
+        CallResult(value: the_port) when the_awake_function_answered_true()
+}
+
+-- A port that has nobody listening is not something to wait for, so it counts
+-- as woken the moment anything happens to it.
+rule WaitingOnAPortWithNoAwakeFunctionEndsAtOnce {
+    when: EvaluateCall(wait, waited_on)
+    requires: names_a_port_with_something_to_report(waited_on)
+    requires: not the_port_has_an_awake_function()
+
+    ensures: CallResult(value: the_port)
+}
+
+-- The time runs out when nothing left to report has woken anything. A caller
+-- reads not-a-port as the timeout, so the two answers have to be exactly a
+-- port and not-a-port -- `unless port? wait [connection timeout]` is how
+-- Rebol's own HTTP tells them apart.
+rule WaitingOnAPortNothingWakesAnswersNone {
+    when: EvaluateCall(wait, waited_on)
+    requires: is_block(waited_on)
+    requires: not any_awake_function_answered_true()
+    requires: has_elapsed(how_long_to_wait_among(waited_on))
+
+    ensures: CallResult(value: none)
+}
+
+-- Bytes that came back are put in the port's DATA rather than answered, and
+-- added to what is there rather than replacing it. A protocol reads a header
+-- and then a body out of the same buffer, and it decides when it has enough --
+-- so the connection must not throw away what the last read left behind.
+rule BytesThatArriveAreAddedToThePortsData {
+    when: EvaluateCall(read, a_connection)
+    requires: the_port_has_an_awake_function()
+
+    ensures: the_data_of(a_connection) =
+        what_it_held_then_the_bytes_that_arrived()
+}
+
 -- === A scheme may bring its own actor ======================
 
 -- Every port action goes to the port's actor, and an actor is either built in
@@ -2168,10 +2293,19 @@ rule ASpecificationWhoseSchemeNobodyServesNamesTheScheme {
 -- So the question "may this port open" has two different answers depending on
 -- which kind of actor it has, and asking the built-in question of both is
 -- what made a scheme written in REBOL impossible to open at all.
+-- However the port was reached. A url routes to a scheme and opens a port of
+-- it on the way to the verb, and that port is the same port OPEN would have
+-- made -- so `read https://example.com` asks the same question and has to get
+-- the same answer.
+--
+-- Checking the built-in question on that route and not on OPEN's is how every
+-- protocol Rebol writes in REBOL came to be unreachable through a url while
+-- being perfectly openable by hand. The list of schemes the check knew about
+-- decided which protocols existed, rather than which service each one needed.
 rule APortWithAnActorWrittenInRebolNeedsNoServiceToOpen {
-    when: EvaluateCall(open, target)
-    requires: is_port(target)
-    requires: the_actor_is_an_object(target)
+    when: EvaluateCall(verb, target)
+    requires: verb in {open, read, write, delete, query}
+    requires: names_a_scheme_whose_actor_is_an_object(target)
 
     ensures: not CallFails(error: no_service)
 }
@@ -2185,15 +2319,116 @@ rule APortWithABuiltInActorNeedsItsServiceGranted {
     ensures: CallFails(error: no_service)
 }
 
+-- And the port's STATE field belongs to that actor. It is where an actor keeps
+-- whatever it needs between one action and the next -- a built-in one keeps a
+-- handle there, and one written in REBOL keeps an object.
+--
+-- So nothing outside the actor may write it, and "is this port open" cannot be
+-- a flag stored there. Writing a logic into STATE when the port opened left
+-- Rebol's own HTTP protocol reading a true where it had put its connection,
+-- its redirect count and its response headers -- and the protocol then decided
+-- the port was already set up and went looking for fields that were not there.
+rule ThePortsStateBelongsToItsActor {
+    when: EvaluateCall(open, target)
+    requires: is_port(target)
+    requires: the_actor_is_an_object(target)
+
+    ensures: the_state_field_of(target) = what_the_actors_own_open_put_there()
+}
+
+-- A built-in actor keeps the thing the host gave it there too, and that is the
+-- other half of the same rule. `sysobj.reb` writes the two fields side by side
+-- and says what each is for: `state: internal state values (private)` and
+-- `extra: user-defined storage of local data`. So a socket and a running
+-- cipher go in STATE, and EXTRA is the script's.
+--
+-- Rebol's own TLS depends on that. Its OPEN makes a TCP port for the
+-- connection and writes `port/extra: conn/extra: make TLS-context [...]`,
+-- keeping its whole protocol state in the field the specification gives it --
+-- the version, both sequence numbers, the handshake hashes, both ports. A
+-- socket kept in EXTRA is overwritten by that one line, and the handshake
+-- writes its first record to a port with no connection left.
+--
+-- One port's actor also uses EXTRA and does it knowingly: the checksum port
+-- keeps the bytes it has been fed there, so a string written into it comes
+-- back with the digest's own bytes over the top. That is the C's behaviour and
+-- is not the general rule -- what the general rule says is that a script's
+-- EXTRA is not somewhere a handle may be hidden.
+rule ABuiltInActorKeepsItsHandleInStateAndNotInExtra {
+    when: EvaluateCall(open, target)
+    requires: is_port(target)
+    requires: the_actor_is_a_word(target)
+
+    ensures: the_state_field_of(target) = what_the_host_gave_back()
+    ensures: the_extra_field_of(target) = what_it_held_before_the_port_opened()
+        when scheme_of(target) in {tcp, crypt}
+}
+
+-- Which makes "is this port open" a question about that storage rather than a
+-- flag beside it: a port is open while its actor has something there, and
+-- closing takes it away. The C asks the same question the same way --
+-- `Awake_System` reads the state field and checks `IS_HANDLE(state)`.
+--
+-- What a built-in actor leaves there varies by scheme -- a socket, a cipher, a
+-- position in a file, or a plain mark where there is nothing to keep. An
+-- object is the one thing it never is, because STATE is also where an actor
+-- written in REBOL keeps its own and such a port answers OPEN? from its own
+-- function.
+--
+-- So an object there came from outside, and reading it as "open" is how a
+-- connection stopped being made at all. Rebol's own TLS writes `conn/state:
+-- port/parent/state` into a TCP port it has not opened yet, handing it the
+-- HTTP protocol's own object, and then asks `either open? conn [...] [open
+-- conn]`.
+rule APortIsOpenWhileItsActorHasStorage {
+    when: EvaluateCall(open?, target)
+    requires: is_port(target)
+    requires: the_actor_is_a_word(target)
+
+    ensures: CallResult(value:
+        the_state_field_of(target) = what_an_actor_puts_there())
+}
+
 -- An action on a port with an actor written in REBOL calls the function of
 -- that name inside it, and hands it what the action was given.
+--
+-- Every action, not a chosen few. `T_Port` in the C sends the lot to
+-- `Do_Port_Action` and names only three exceptions -- MAKE and TO, which build
+-- a port rather than act on one, and REFLECT, which reads the object a port is
+-- rather than the thing it stands for. So COPY of a port is the actor's COPY,
+-- and LENGTH? of a port is the actor's LENGTH?, and neither is the ordinary
+-- one that would copy the object or count its fields.
+--
+-- That is not a detail of the dispatch. Rebol's own HTTP ends a request with
+-- `body: copy port`, meaning "the response body", and a COPY that duplicated
+-- the port object instead answered a port where the caller wanted the page.
 rule AnActionOnSuchAPortCallsTheFunctionOfThatName {
     when: EvaluateCall(verb, target)
     requires: is_port(target)
     requires: the_actor_is_an_object(target)
     requires: the_actor_holds_a_function_called(verb)
+    requires: not (verb in {make, to, reflect})
 
     ensures: CallResult(value: what_that_function_answered())
+}
+
+-- And the refinements go with it. An actor's function declares its own, and
+-- what a caller asked for is part of what the action was given: `read/binary`
+-- means the actor's READ runs with BINARY true.
+--
+-- Dropping them is quiet and total. HTTP's READ answers a decoded string for
+-- `read`, the raw bytes for `read/binary` and a three-part block for
+-- `read/all`, all from the same function reading the same response -- so an
+-- actor called with no refinements can only ever give the first of the three,
+-- and gives it without complaining.
+rule TheRefinementsAskedForReachTheActor {
+    when: EvaluateCall(verb, target)
+    requires: is_port(target)
+    requires: the_actor_is_an_object(target)
+    requires: the_actor_holds_a_function_called(verb)
+
+    ensures: the_refinements_of(the_actors_function) =
+        what_the_caller_asked_for()
 }
 
 -- An action the actor has no function for is refused by name, so a caller
@@ -10578,17 +10813,61 @@ rule EcdhCurveNamesTheCurveTheContextWasMadeOn {
 rule EcdhPublicAnswersTheUncompressedPoint {
     when: EvaluateCall(ecdh, key)
     requires: the_call_asked_for_public()
+    requires: the_curve_takes_both_coordinates(key)
 
+    ensures: how_this_curve_publishes(key) =
+        HowACurvePublishesItsPoint.both_coordinates_after_a_lead_byte
     ensures: CallResult(datatype: binary)
     ensures: length_of(result) = 1 + (2 * the_coordinate_width(key))
 }
 
--- /SECRET is one coordinate of the point both sides reach, so it is half the
--- width of the published value and both sides get the same bytes.
+-- Two of the curves publish one coordinate and nothing else. They were
+-- designed for the exchange alone, and the arithmetic that does it never needs
+-- the second coordinate -- so there is no lead byte to say the point is
+-- uncompressed, because there is no other way to write it.
+--
+-- Which makes the width a caller sees differ by more than the curve's size:
+-- 32 bytes for curve25519 where a 256-bit curve of the other kind gives 65.
+-- A reader that assumed the lead byte would take the first byte of the
+-- coordinate for it and be one short at the far end.
+enum HowACurvePublishesItsPoint {
+    both_coordinates_after_a_lead_byte  -- the NIST, Koblitz and Brainpool ones
+    | one_coordinate_on_its_own         -- curve25519 and curve448
+}
+
+rule ACurveMadeForTheExchangePublishesOneCoordinate {
+    when: EvaluateCall(ecdh, key)
+    requires: the_call_asked_for_public()
+    requires: not the_curve_takes_both_coordinates(key)
+
+    ensures: how_this_curve_publishes(key) =
+        HowACurvePublishesItsPoint.one_coordinate_on_its_own
+    ensures: CallResult(datatype: binary)
+    ensures: length_of(result) = the_coordinate_width(key)
+}
+
+-- /SECRET is one coordinate of the point both sides reach, so it is as wide as
+-- a coordinate whichever way the point was published, and both sides get the
+-- same bytes.
 rule EcdhSecretIsOneCoordinateAndBothSidesAgree {
     when: each_side_combines_the_others_public_point()
     ensures: the_two_secrets_are_equal = true
     ensures: length_of(secret) = the_coordinate_width(key)
+}
+
+-- The curve the TLS client reaches for first is curve25519, and a build
+-- without it cannot make a client hello at all: `pub-key` comes back as
+-- nothing and the binary dialect refuses to write it.
+--
+-- So which curves are present is not a matter of how many the catalogue lists.
+-- JEBOL named all thirteen and served three, and the three were the ones the
+-- protocol asks for last.
+rule TheCurvesTheExchangeServes {
+    when: EvaluateCall(ecdh, key)
+    requires: the_call_asked_for_init()
+
+    ensures: the_named_curve_is_one_this_build_has() when
+        curve in {curve25519, curve448, secp256r1, secp384r1, secp521r1}
 }
 
 -- Two contexts on different curves cannot agree, and the attempt answers NONE

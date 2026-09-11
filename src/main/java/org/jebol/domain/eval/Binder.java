@@ -69,6 +69,68 @@ public final class Binder {
     }
 
     /**
+     * The block with the target's own words bound, in place, and nothing else
+     * touched.
+     *
+     * <p>What BIND and WITH do. {@code Bind_Block(frame, BLK_HEAD(body),
+     * BIND_DEEP)} looks each word up in one frame, and a word it does not find
+     * keeps the binding it was written with -- the C has nowhere else to look,
+     * because an object's frame has no parent to walk.
+     *
+     * <p>{@link #bind} does have somewhere else to look and is right to use
+     * it: JEBOL hangs every context beneath the library where the C keeps one
+     * flat frame, so resolving freshly read source means walking up. The two
+     * are different operations that happened to share a name, and the
+     * difference only shows when a word exists in two places at once -- a
+     * module that shadows a library function being the case that matters, and
+     * the case Rebol's own TLS is built on.
+     */
+    public static BlockValue bindWhatTheTargetHoldsItself(
+            BlockValue block, Context target) {
+
+        for (int at = 0; at < block.lengthFromHere(); at++) {
+            int where = block.index() + at;
+            block.storage().set(where,
+                    boundIfTheTargetHoldsIt(block.storage().at(where), target));
+        }
+        return block;
+    }
+
+    /**
+     * The same, into a copy, which is what BIND/COPY answers.
+     *
+     * <p>{@code Copy_Block_Deep} before the bind in the C, so the block the
+     * caller still holds is untouched all the way down.
+     */
+    public static BlockValue bindACopyOfWhatTheTargetHoldsItself(
+            BlockValue block, Context target) {
+
+        List<Value> bound = new ArrayList<>(block.lengthFromHere());
+        for (Value item : block.remaining()) {
+            bound.add(item instanceof BlockValue nested
+                    ? bindACopyOfWhatTheTargetHoldsItself(nested, target)
+                    : boundIfTheTargetHoldsIt(item, target));
+        }
+        return laidOutLike(block, new BlockStorage(bound));
+    }
+
+    private static Value boundIfTheTargetHoldsIt(Value value, Context target) {
+        return switch (value) {
+            case WordValue word when target.holds(word.canonical()) ->
+                    word.boundTo(target);
+            case WordValue word -> word;
+            case BlockValue nested -> bindWhatTheTargetHoldsItself(nested, target);
+            case MapValue map -> {
+                for (Value key : map.keys()) {
+                    map.put(key, boundIfTheTargetHoldsIt(map.select(key), target));
+                }
+                yield map;
+            }
+            default -> value;
+        };
+    }
+
+    /**
      * Binds only the names given, leaving every other word as it stands.
      *
      * <p>{@code Bind_Relative} in the C, and the difference from {@link #bind}

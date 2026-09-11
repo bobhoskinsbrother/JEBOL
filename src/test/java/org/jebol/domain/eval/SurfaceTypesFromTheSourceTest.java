@@ -184,13 +184,25 @@ class SurfaceTypesFromTheSourceTest {
                     rename http://a http://b""")).isEqualTo("no-service");
         }
 
+        /**
+         * A block spec naming no host reaches the protocol and stops inside
+         * it, which is a different answer from the url above and the right
+         * one: HTTP is written in REBOL and needs no service to start, so the
+         * complaint is the protocol's own. A real 3.22.5 answers exactly this
+         * -- {@code Access / Protocol / "Missing host address"} -- and the url
+         * form differs only because there is a host to connect to and the
+         * connection is what this interpreter was not granted.
+         *
+         * <p>The old expectation of {@code no-service} here was written when
+         * every scheme whose actor is an object was refused at the door.
+         */
         @Test
-        @DisplayName("a block is a port specification, routed the same way")
+        @DisplayName("a block is a port specification, and the protocol answers it")
         void aBlockIsAPortSpecification() {
             assertThat(errorIdOf("""
-                    read [scheme: 'http]""")).isEqualTo("no-service");
+                    read [scheme: 'http]""")).isEqualTo("protocol");
             assertThat(errorIdOf("""
-                    write [scheme: 'http] {x}""")).isEqualTo("no-service");
+                    write [scheme: 'http] {x}""")).isEqualTo("protocol");
         }
 
         @Test

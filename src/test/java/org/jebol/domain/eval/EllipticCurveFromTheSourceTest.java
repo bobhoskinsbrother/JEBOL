@@ -158,6 +158,96 @@ class EllipticCurveFromTheSourceTest {
         }
     }
 
+    /**
+     * Curve25519 and curve448 were designed for the exchange and for nothing
+     * else, and the arithmetic that does it never needs the second coordinate.
+     * So the published value is one coordinate on its own, with no lead byte
+     * saying the point is uncompressed -- there is no other way to write it.
+     *
+     * <p>Which matters more than the byte count suggests. Rebol's own TLS asks
+     * for curve25519 first: {@code curve: first supported-groups} and the
+     * scheme's list begins with it, so a build without it cannot write a
+     * client hello at all. {@code pub-key} comes back as nothing and the binary
+     * dialect refuses it, which is where {@code read https://} stopped.
+     */
+    @Nested
+    @DisplayName("the two curves made for the exchange alone")
+    class TheCurvesMadeForTheExchangeAlone {
+
+        @Test
+        @DisplayName("publish one coordinate, with no lead byte")
+        void publishOneCoordinateWithNoLeadByte() {
+            assertThat(answerTo("""
+                    length? ecdh/public ecdh/init none 'curve25519""")).isEqualTo("32");
+            assertThat(answerTo("""
+                    length? ecdh/public ecdh/init none 'curve448""")).isEqualTo("56");
+        }
+
+        @Test
+        @DisplayName("and both sides reach the same secret, one coordinate wide")
+        void bothSidesReachTheSameSecret() {
+            assertThat(answerTo("""
+                    a: ecdh/init none 'curve25519
+                    b: ecdh/init none 'curve25519
+                    reduce [
+                        length? ecdh/secret a ecdh/public b
+                        (ecdh/secret a ecdh/public b) = (ecdh/secret b ecdh/public a)
+                    ]""")).isEqualTo("[32 #(true)]");
+            assertThat(answerTo("""
+                    a: ecdh/init none 'curve448
+                    b: ecdh/init none 'curve448
+                    reduce [
+                        length? ecdh/secret a ecdh/public b
+                        (ecdh/secret a ecdh/public b) = (ecdh/secret b ecdh/public a)
+                    ]""")).isEqualTo("[56 #(true)]");
+        }
+
+        @Test
+        @DisplayName("two contexts publish different points")
+        void twoContextsPublishDifferentPoints() {
+            assertThat(answerTo("""
+                    (ecdh/public ecdh/init none 'curve25519)
+                        = (ecdh/public ecdh/init none 'curve25519)"""))
+                    .isEqualTo("#(false)");
+        }
+
+        @Test
+        @DisplayName("and each names the curve it was made on")
+        void eachNamesTheCurveItWasMadeOn() {
+            assertThat(answerTo("""
+                    reduce [
+                        ecdh/curve ecdh/init none 'curve25519
+                        ecdh/curve ecdh/init none 'curve448
+                    ]""")).isEqualTo("[curve25519 curve448]");
+        }
+
+        @Test
+        @DisplayName("a peer value of the wrong width answers none")
+        void aPeerValueOfTheWrongWidthAnswersNone() {
+            assertThat(answerTo("""
+                    a: ecdh/init none 'curve25519
+                    reduce [
+                        none? ecdh/secret a copy/part ecdh/public a 31
+                        none? ecdh/secret a append copy ecdh/public a #{00}
+                        none? ecdh/secret a #{}
+                    ]""")).isEqualTo("[#(true) #(true) #(true)]");
+        }
+
+        @Test
+        @DisplayName("and one from another curve answers none")
+        void oneFromAnotherCurveAnswersNone() {
+            assertThat(answerTo("""
+                    reduce [
+                        none? ecdh/secret (ecdh/init none 'curve25519)
+                            (ecdh/public ecdh/init none 'curve448)
+                        none? ecdh/secret (ecdh/init none 'curve25519)
+                            (ecdh/public ecdh/init none 'secp256r1)
+                        none? ecdh/secret (ecdh/init none 'secp256r1)
+                            (ecdh/public ecdh/init none 'curve25519)
+                    ]""")).isEqualTo("[#(true) #(true) #(true)]");
+        }
+    }
+
     @Nested
     @DisplayName("ECDSA signs and verifies")
     class TheSignature {

@@ -333,17 +333,17 @@ final class CryptPort {
         working.decrypting = decrypting;
         working.key = key;
         working.vector = noWiderThanAVector(vector);
-        port.setField("extra", HandleValue.context(HANDLE_TYPE,
+        port.setField("state", HandleValue.context(HANDLE_TYPE,
                 System.identityHashCode(port.context()),
                 JavaObjectValue.of(working)));
     }
 
     static void stop(PortValue port) {
-        port.setField("extra", NoneValue.none());
+        port.setField("state", NoneValue.none());
     }
 
     private static Working inProgress(PortValue port) {
-        if (port.fieldNamed("extra") instanceof HandleValue held
+        if (port.fieldNamed("state") instanceof HandleValue held
                 && HANDLE_TYPE.equals(held.typeName())
                 && held.payload() instanceof JavaObjectValue wrapped
                 && wrapped.held().orElse(null) instanceof Working working) {

@@ -147,6 +147,92 @@ class ASchemeWrittenInRebolFromTheSourceTest {
     }
 
     /**
+     * A scheme that answers the actions the counting one deliberately lacks,
+     * and says what refinements it was called with.
+     */
+    private static final String A_TELLING_SCHEME = """
+            sys/make-scheme [
+                title: "A teller"
+                name: 'telling
+                actor: [
+                    open:    func [port][port/data: 0  port]
+                    copy:    func [port]["what the actor copied"]
+                    length?: func [port][42]
+                    query:   func [port field][reduce ['asked field]]
+                    read:    func [
+                        port
+                        /binary /all /lines /string
+                        /part length /seek index
+                    ][
+                        reduce ['read binary all lines string length index]
+                    ]
+                ]
+            ]
+            """;
+
+    private static String answerToTelling(String source) {
+        return answerTo(A_TELLING_SCHEME
+                + "teller: open [scheme: 'telling]\n" + source);
+    }
+
+    /**
+     * COPY, LENGTH? and QUERY are actions like any other, and {@code T_Port}
+     * sends the lot to {@code Do_Port_Action}. Only MAKE, TO and REFLECT are
+     * named as exceptions, and none of those acts on a port that is already
+     * built.
+     *
+     * <p>Not a detail of the dispatch. Rebol's own HTTP ends a request with
+     * {@code body: copy port}, meaning the response body, and a COPY that
+     * duplicated the port object instead answered a port where the caller
+     * wanted the page -- so {@code read http://example.com} gave back the port
+     * it had just read through.
+     */
+    @Test
+    @DisplayName("COPY, LENGTH? and QUERY are the actor's too")
+    void copyLengthAndQueryAreTheActorsToo() {
+        assertThat(answerToTelling("""
+                reduce [copy teller  length? teller  query teller 'size]"""))
+                .isEqualTo("""
+                        ["what the actor copied" 42 [asked size]]""");
+    }
+
+    /**
+     * The refinements go with the action. An actor's function declares its
+     * own, and what the caller asked for is part of what the action was given.
+     *
+     * <p>Dropping them is quiet and total: HTTP's READ answers a decoded
+     * string for {@code read}, the raw bytes for {@code read/binary} and a
+     * three-part block for {@code read/all}, all out of one function reading
+     * one response.
+     */
+    @Test
+    @DisplayName("and the refinements the caller asked for reach it")
+    void theRefinementsTheCallerAskedForReachIt() {
+        assertThat(answerToTelling("read teller"))
+                .isEqualTo("[read _ _ _ _ _ _]");
+        assertThat(answerToTelling("read/binary teller"))
+                .isEqualTo("[read #(true) _ _ _ _ _]");
+        assertThat(answerToTelling("read/all teller"))
+                .isEqualTo("[read _ #(true) _ _ _ _]");
+        assertThat(answerToTelling("read/lines teller"))
+                .isEqualTo("[read _ _ #(true) _ _ _]");
+        assertThat(answerToTelling("read/string teller"))
+                .isEqualTo("[read _ _ _ #(true) _ _]");
+    }
+
+    /** And the value a refinement carries arrives with it, not just the flag. */
+    @Test
+    @DisplayName("and what a refinement carries arrives with it")
+    void whatARefinementCarriesArrivesWithIt() {
+        assertThat(answerToTelling("read/part teller 3"))
+                .isEqualTo("[read _ _ _ _ 3 _]");
+        assertThat(answerToTelling("read/seek teller 7"))
+                .isEqualTo("[read _ _ _ _ _ 7]");
+        assertThat(answerToTelling("read/part/seek teller 3 7"))
+                .isEqualTo("[read _ _ _ _ 3 7]");
+    }
+
+    /**
      * The built-in half is unchanged: a scheme whose actor is a word still
      * needs the service that word names, and an interpreter given no
      * filesystem still refuses a file port.

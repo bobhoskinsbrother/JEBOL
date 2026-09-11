@@ -193,22 +193,23 @@ gate green.
 
 Sizes are the number of `known-gaps.txt` entries the goal is worth, and every
 entry belongs to exactly one goal. **Re-derived from the list on 11 September
-2026**, because the old figures had drifted: goal 11 was the worst at 135
-against a real 132, and goal 15 claimed 40 where the files it owns hold 31.
-Goals 1 and 2 have since gone to nought and the total with them.
+2026** and again on 12 September, because the old figures had drifted: goal 11
+was the worst at 135 against a real 132, and goal 15 claimed 40 where the files
+it owns hold 31. Goals 1 and 2 have since gone to nought and the total with
+them, and goal 11 has gone from 132 to 10.
 Do not trust a size here that has not been re-derived since work landed —
 `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt` is the live
 total and the table below is how it divides.
 
-    322   the whole list
+    198   the whole list, on 12 September 2026
     ---
-    132   11. sweepable files that run clean
      36    5. the file ports
      34    6. the checksum port
-     31   15. the scattered singles and pairs
      29    7. enbase and debase
      27   10. the elliptic curves
-     17    9. modules and import
+     31   15. the scattered singles and pairs
+     15    9. modules and import
+     10   11. sweepable files that run clean
       9   14. the pdf codec
       7   12. Java exceptions escaping to the top
 
@@ -1043,11 +1044,35 @@ not the problem — JEBOL lists all thirteen curves a real Rebol does, secp192r1
 through curve448 — so `ecdh/init` is not answering a key for at least one of
 them. `EllipticCurveKey.java` is the JEBOL side; the C is `n-crypt.c`.
 
+**Two of the thirteen were added on 12 September 2026** because goal 11's TLS
+work needed them: curve25519 and curve448, which are the first two entries of
+the TLS scheme's `supported-groups` and so the ones a client hello reaches for.
+They are a different shape from the rest and that is the part worth knowing —
+they publish one coordinate on its own, 32 bytes and 56, with no lead byte
+saying the point is uncompressed, because their arithmetic never needs the
+second coordinate and there is no other way to write it. The JDK serves them
+through `XDH` rather than `EC`, and the wire wants the coordinate
+least-significant byte first where the JDK hands over a plain number.
+
+Five are served now and eight are not. Measured against `./r3-head`, which
+answers for all thirteen:
+
+| served | not served |
+| --- | --- |
+| secp256r1, secp384r1, secp521r1, curve25519, curve448 | secp192r1, secp224r1, secp192k1, secp224k1, secp256k1, bp256r1, bp384r1, bp512r1 |
+
+The Brainpool three were never in the JDK's default provider. The narrower NIST
+and Koblitz curves were withdrawn from it — a JDK 16 change, not something
+JEBOL chose — so serving them means carrying the curve parameters and the
+arithmetic, or none of them answering, which is what the C already does for a
+build without a curve.
+
 ### 11. Sweepable files that run clean — 132 between them — 10 left, in one file
 
 Worked on 11 and 12 September 2026. 122 of the 132 are gone and nine of the
 ten files are empty. What remains is `thru-cache-test.r3`, and it is a
-decision before it is code.
+decision before it is code — see "the decision it needs" below, which is the
+same decision it was, with the technical half of it now done.
 
 | file | started | left |
 | --- | --- | --- |
@@ -1080,12 +1105,47 @@ here, so none of them has ever run.
 `import 'thru-cache` fails here, so nothing inside has run. Making it pass
 needs two things, and the second is not a technical question.
 
-**An HTTP client.** `read http://` and `read https://` both answer "nothing
-here serves the scheme", and the module the file imports is fetched over the
-network by `import` when it is not already on disk. That is a subsystem --
-connection, TLS, redirects, chunked bodies, the `read/binary/all` triple of
-code, headers and body, and the `http` and `https` schemes -- rather than a
-fix.
+**An HTTP client.** *Done on 12 September 2026, and it was not a subsystem to
+write.* `prot-http.reb` is vendored and loaded, with its actor object intact,
+so the whole of HTTP was already here; what was missing was six things
+underneath it, each a defect in its own right and each fixed with a spec rule
+and a JEBOL test:
+
+- **WAIT came back after one event.** `Wait_Ports` loops until an AWAKE
+  answers true, and HTTP's own answers false for `connect` and false for
+  `wrote` because neither finishes a request. A wait that returned after the
+  first put `sync-op` back at the top of its loop comparing a status code
+  nobody had set.
+- **COPY, LENGTH? and QUERY never reached the actor.** `T_Port` sends every
+  action to `Do_Port_Action` and names three exceptions, none of which act on a
+  port already built. `sync-op` ends with `body: copy port` meaning the
+  response body, and a COPY that duplicated the port object answered a port
+  where the caller wanted the page.
+- **READ dropped its refinements on the way to the actor.** One function
+  answers a decoded string, the raw bytes or a three-part block depending on
+  `/binary` and `/all`, so an actor called with none of them could only ever
+  give the first.
+- **BIND and WITH rebound words the target does not hold.** `Bind_Block` looks
+  each word up in one frame and leaves the rest alone; JEBOL walked up the
+  parent chain to the library. TLS writes `log-debug: none` at the top of its
+  file and calls it inside `with ctx [...]`, so every debug line found the
+  library's LOG-DEBUG instead, which takes a lit-word.
+- **A socket lived in the port's EXTRA.** `sysobj.reb` says EXTRA is
+  "user-defined storage of local data" and STATE is "internal state values
+  (private)". TLS keeps its whole protocol context in EXTRA, which overwrote
+  the socket; and CLOSE never closed one, because nothing ever had.
+- **ECDH served three curves and TLS asks for curve25519 first.** The
+  catalogue named all thirteen. `ecdh/public` answered none, and the client
+  hello stopped in the binary dialect trying to write it.
+
+`read http://example.com` now answers the same 559-byte string a real 3.22.5
+does, `read/binary` the same 318 bytes, and `read/all` the same status, headers
+and body. `read https://` gets through the client hello and stops in the
+handshake at `insert system/ports/system make event! [...]`: JEBOL has no
+`system/ports/system`, which is the event queue `Awake_System` and `wake-up`
+work through, and the system scheme in `sys-ports.reb` is not among the ones
+`Interpreter` registers. That is the next thing, and after it the rest of the
+TLS 1.2 record layer.
 
 **And then the gate reaches the public internet.** The file's own assertions
 read `raw.githubusercontent.com` and `httpbin.org`. Seven of the ten work off
@@ -1093,6 +1153,19 @@ the cache once the first three have filled it, but the first three cannot.
 This repository's rule is that a flake is a fail, and a gate that depends on
 two third-party services will flake -- so `./gradlew check` becomes a
 different kind of thing. **Ask before building it.**
+
+The internet question is now the whole of what stands between here and those
+ten entries, and it cannot be engineered away: the assertions name
+`raw.githubusercontent.com` and `httpbin.org` in the vendored text, and a
+vendored file is a copy of Rebol's and nothing else. A fake network installed
+in `SuiteHost` would serve `http://` but not `https://`, because TLS runs
+inside the interpreter and above the socket.
+
+Worth knowing while that is undecided: `SuiteHost` now installs real sockets,
+so the gate *could* reach out. Nothing vendored does today --
+`port-http-test.r3` is not among the vendored files, and the URLs in
+`copy-test.r3` and `series-test.r3` are literals nobody reads. `thru-cache-test.r3`
+is the one file that would, and its guard is still false.
 
 One trap worth naming: vendoring the module without the HTTP client makes
 things worse rather than better. The guard would go true, the ten assertions
@@ -1122,6 +1195,14 @@ here. None of them was on any list:
   console opened instead.
 - And the two slowest Brotli levels had a five-second script deadline that
   measured the build's load rather than the encoder.
+
+Six more came out of the HTTP work on 12 September, and they are the six listed
+under "An HTTP client" above. Five of the six have nothing to do with HTTP:
+BIND rebinding words it should have left alone is a defect in the binding
+model, COPY of a port not reaching its actor is one in the action dispatch, a
+socket in EXTRA is one in the port layout, a socket CLOSE never closed is a
+leak, and three of the thirteen curves missing is arithmetic. HTTP is simply
+the first thing that used all of them at once.
 
 `power-test.r3` used to be a row here with eight entries, and working it would
 have made JEBOL disagree with the canonical reference. Goal 16 took them off: they are

@@ -48,15 +48,30 @@ public record PortValue(Context context) implements Value {
     }
 
     /**
-     * Whether this port is open.
+     * Whether this port is open, which is whether its actor has storage in
+     * STATE.
      *
      * <p>Kept in the port's own state rather than in the adapter, so that
      * {@code open?} can answer without reaching outside the interpreter. The C
-     * keeps it in the request structure and answers the same question the same
-     * way.
+     * keeps the request structure there and asks the same question the same
+     * way: {@code Awake_System} reads the field and tests {@code
+     * IS_HANDLE(state)}.
+     *
+     * <p>What a built-in actor leaves there varies by scheme -- a socket, a
+     * cipher, a position in a file, or a plain mark where there is nothing to
+     * keep. An object is the one thing it never is: STATE is also where an
+     * actor written in REBOL keeps its own, and such a port answers OPEN? from
+     * its own function and never reaches here.
+     *
+     * <p>So an object here came from outside, and reading it as "open" is how
+     * a connection stopped being made at all. Rebol's TLS hands a TCP port the
+     * HTTP protocol's object -- {@code conn/state: port/parent/state} -- and
+     * then asks {@code either open? conn [...] [open conn]}.
      */
     public boolean isOpen() {
-        return fieldNamed("state").isTruthy();
+        Value whatTheActorLeft = fieldNamed("state");
+        return !(whatTheActorLeft instanceof ObjectValue)
+                && whatTheActorLeft.isTruthy();
     }
 
     public void markOpen(boolean open) {

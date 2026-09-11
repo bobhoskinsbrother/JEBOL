@@ -9,6 +9,7 @@ import java.util.stream.Stream;
 
 import org.jebol.adapter.host.JavaImages;
 import org.jebol.adapter.host.JavaProcesses;
+import org.jebol.adapter.host.JavaSockets;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
 import org.jebol.application.FileSystemPort;
@@ -72,6 +73,7 @@ final class SuiteHost {
         interpreter.useEnvironment(new ProcessEnvironment());
         interpreter.useProcesses(new JavaProcesses());
         interpreter.useImages(new JavaImages());
+        interpreter.useNetwork(new JavaSockets());
         putHomeInsideTheDirectoryTheRunCanReach(interpreter);
         putTheApplicationDataDirectoryThereToo(interpreter);
         return interpreter;
