@@ -6650,6 +6650,53 @@ rule BodyOfAnObjectFlagsEachSetWordWithALineBreak {
             carries_a_line_break(the_body, the_set_word_position_of(field))
 }
 
+-- The flag belongs to the value rather than to the position it sits in, and
+-- travels with it. `OPTS_LINE` is a bit in the value's own header -- "Line
+-- break occurs before this value" -- so every copy of the value copies it,
+-- and every operation that moves an item from one block into another keeps
+-- the shape its author gave it.
+--
+-- Which is a long list and has to be, because the flag is not any of their
+-- business: COPY, TO BLOCK!, APPEND, INSERT, CHANGE, REVERSE, SORT, JOIN,
+-- COMPOSE and REDUCE all carry it, and they carry it because they copy the
+-- value rather than because any of them knows about lines. Reversing a block
+-- reverses the flags with the items, and sorting one sorts them.
+--
+-- Stated because the plausible reading is the other one, and it is quiet when
+-- wrong. A block that remembers which of its own positions start a line loses
+-- every flag the moment anything copies an item out of it, and then every
+-- block a script builds molds as one long line however it was written.
+rule ALineBreakTravelsWithTheValueItPrecedes {
+    when: EvaluateCall(verb, source)
+    requires: verb in {copy, to_block, append, insert, change,
+        reverse, sort, join, compose, reduce}
+    requires: is_block(source)
+
+    ensures:
+        for position in the_positions_copied_from(source):
+            carries_a_line_break(result, where_that_item_lands(position)) =
+                carries_a_line_break(source, position)
+}
+
+-- And a value that was worked out rather than copied arrives without one,
+-- which is the same rule read the other way round. REDUCE pushes a literal as
+-- it stands and keeps its flag; where the expression was a word, or a call,
+-- what it pushes is the answer and the answer has no flag of its own.
+--
+-- So `reduce [^/1^/x^/add 1 1]` marks the first item and neither of the other
+-- two, and a block laid out over three lines comes back over two. That is not
+-- a tidiness problem to fix by marking all three: Rebol's own lexer test molds
+-- exactly this shape and compares the bytes.
+rule AComputedValueArrivesWithNoLineBreak {
+    when: EvaluateCall(reduce, source)
+    requires: is_block(source)
+
+    ensures:
+        for position in the_positions_of(source):
+            if not the_item_evaluates_to_itself(source, position):
+                not carries_a_line_break(result, where_that_item_lands(position))
+}
+
 -- The two spellings a plain string molds as.
 enum StringMoldForm {
     quoted      -- "..." with every awkward character caret-escaped

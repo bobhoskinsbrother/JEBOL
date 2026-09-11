@@ -225,4 +225,3 @@ thru-cache-test.r3 / (no group) / (no test) #6
 thru-cache-test.r3 / (no group) / (no test) #7
 thru-cache-test.r3 / (no group) / (no test) #8
 thru-cache-test.r3 / (no group) / (no test) #9
-vector-test.r3 / VECTOR / MOLD/flat on vector #82

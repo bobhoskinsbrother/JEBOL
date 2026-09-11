@@ -139,6 +139,51 @@ public final class BlockStorage {
         }
     }
 
+    /**
+     * Puts a run of values in at a position, carrying their marks and moving
+     * the marks already past that position out of their way.
+     *
+     * <p>A mark belongs to the value it precedes, so a run spliced into the
+     * middle of a block takes its marks with it and pushes the rest along.
+     * Inserting one value at a time leaves the flags where they were and
+     * silently re-marks whichever values happen to land on those positions.
+     *
+     * <p>{@code marksFrom} may be null for a run that has no marks of its own,
+     * which is what a computed list of values is.
+     */
+    public void spliceInAt(int oneBasedIndex, List<Value> incoming,
+            BlockStorage marksFrom, int marksFromIndex) {
+
+        refuseIfProtected();
+        List<Integer> shifted = lineBreaks.stream()
+                .filter(marked -> marked >= oneBasedIndex)
+                .toList();
+        lineBreaks.removeAll(shifted);
+        shifted.forEach(marked -> lineBreaks.add(marked + incoming.size()));
+        for (int offset = 0; offset < incoming.size(); offset++) {
+            items.add(oneBasedIndex - 1 + offset, incoming.get(offset));
+            if (marksFrom != null && marksFrom.breaksLineAt(marksFromIndex + offset)) {
+                lineBreaks.add(oneBasedIndex + offset);
+            }
+        }
+    }
+
+    /** The marks, read out so a caller that reorders the items can put them back. */
+    public List<Boolean> lineBreaksFromHead() {
+        List<Boolean> marks = new ArrayList<>(items.size());
+        for (int at = 1; at <= items.size(); at++) {
+            marks.add(breaksLineAt(at));
+        }
+        return marks;
+    }
+
+    /** The marks, written back after the items were reordered. */
+    public void setLineBreaksFromHead(List<Boolean> marks) {
+        for (int at = 1; at <= marks.size(); at++) {
+            setLineBreakAt(at, marks.get(at - 1));
+        }
+    }
+
     public void setLineBreakAt(int oneBasedIndex, boolean breaks) {
         if (breaks) {
             lineBreaks.add(oneBasedIndex);

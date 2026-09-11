@@ -6395,9 +6395,11 @@ public final class Natives {
                                 instanceof BlockValue added
                                 && added.datatype() == Datatype.BLOCK
                                 && !refinements.contains("only")) {
-                            firstFew(arguments.get(1), added.remaining(),
-                                    arguments, refinements, 2)
-                                    .forEach(block.storage()::append);
+                            block.storage().spliceInAt(
+                                    block.storage().length() + 1,
+                                    firstFew(arguments.get(1), added.remaining(),
+                                            arguments, refinements, 2),
+                                    added.storage(), added.index());
                         } else {
                             block.storage().append(arguments.get(1));
                         }
@@ -6644,9 +6646,8 @@ public final class Natives {
                                 && added.datatype() == Datatype.BLOCK
                                 && !refinements.contains("only")) {
                             List<Value> items = partOf(added, arguments, refinements);
-                            for (int at = items.size(); at > 0; at--) {
-                                block.storage().insertAt(block.index(), items.get(at - 1));
-                            }
+                            block.storage().spliceInAt(block.index(), items,
+                                    added.storage(), added.index());
                             yield block.atIndex(block.index() + items.size());
                         }
                         block.storage().insertAt(block.index(), arguments.get(1));
@@ -6777,11 +6778,10 @@ public final class Natives {
                     if (!(arguments.get(0) instanceof BlockValue block)) {
                         return raiseWrongArgument(arguments.get(0), "reverse", "series");
                     }
-                    List<Value> items = new ArrayList<>(block.remaining());
-                    Collections.reverse(items);
-                    for (int at = 0; at < items.size(); at++) {
-                        block.storage().set(block.index() + at, items.get(at));
-                    }
+                    List<MarkedItem> slots =
+                            theMarkedItemsOf(block, block.lengthFromHere());
+                    Collections.reverse(slots);
+                    writeBackMarkedItems(block, slots);
                     return block;
                 });
 
@@ -6863,10 +6863,14 @@ public final class Natives {
                         return raiseCannotUse(arguments.get(0), "change");
                     }
                     BlockValue block = (BlockValue) clampedToTail(strandedBlock);
-                    List<Value> replacements = replacing instanceof BlockValue several
-                            && refinements.contains("dup")
-                            ? several.remaining()
-                            : List.of(arguments.get(1));
+                    BlockValue spread = !refinements.contains("only")
+                            && replacing instanceof BlockValue several
+                            && several.datatype() == Datatype.BLOCK
+                            ? several
+                            : null;
+                    List<Value> replacements = spread == null
+                            ? List.of(replacing)
+                            : spread.remaining();
                     for (int at = 0; at < replacements.size(); at++) {
                         int where = block.index() + at;
                         if (where <= block.storageLength()) {
@@ -6874,6 +6878,8 @@ public final class Natives {
                         } else {
                             block.storage().insertAt(where, replacements.get(at));
                         }
+                        block.storage().setLineBreakAt(where, spread != null
+                                && spread.storage().breaksLineAt(spread.index() + at));
                     }
                     return block.atIndex(block.index() + replacements.size());
                 });
@@ -7028,35 +7034,36 @@ public final class Natives {
                             ? argumentFor("into", List.of("into"), arguments, refinements, 1)
                             : null;
 
-                    List<Value> results;
+                    BlockValue reduced;
                     if (source instanceof BlockValue toReduce
                             && (toReduce.datatype() == Datatype.BLOCK
                                     || toReduce.datatype() == Datatype.PAREN)) {
                         if (refinements.contains("no-set")) {
-                            results = reducedLeavingSetWords(toReduce, evaluator);
+                            reduced = BlockValue.block(
+                                    reducedLeavingSetWords(toReduce, evaluator));
                         } else if (refinements.contains("only")) {
-                            results = reducedOnlyWords(toReduce, evaluator,
+                            reduced = BlockValue.block(reducedOnlyWords(toReduce, evaluator,
                                     argumentFor("only", List.of("into", "only"),
-                                            arguments, refinements, 1));
+                                            arguments, refinements, 1)));
                         } else {
-                            results = evaluator.evaluateEachOrRaise(
+                            reduced = evaluator.evaluateEachKeepingTheLineShape(
                                     toReduce, evaluator.systemContext());
                         }
                     } else if (target == null) {
                         return source;
                     } else {
-                        results = List.of(source);
+                        reduced = BlockValue.block(List.of(source));
                     }
 
                     if (!(target instanceof BlockValue into)) {
-                        return BlockValue.block(results).as(
+                        return reduced.as(
                                 source.datatype() == Datatype.PAREN
                                         ? Datatype.PAREN
                                         : Datatype.BLOCK);
                     }
-                    for (int at = results.size(); at > 0; at--) {
-                        into.storage().insertAt(into.index(), results.get(at - 1));
-                    }
+                    List<Value> results = reduced.remaining();
+                    into.storage().spliceInAt(into.index(), results,
+                            reduced.storage(), reduced.index());
                     return into.atIndex(into.index() + results.size());
                 });
 
@@ -7069,24 +7076,24 @@ public final class Natives {
                                 refinements.contains("only"),
                                 refinements.contains("deep"));
                     }
-                    List<Value> built =
+                    BlockValue built =
                             arguments.getFirst() instanceof BlockValue template
                                     ? composed(template, evaluator, context,
                                             refinements.contains("only"),
                                             refinements.contains("deep"))
-                                    : List.of(arguments.getFirst());
+                                    : BlockValue.block(List.of(arguments.getFirst()));
                     if (!(arguments.getFirst() instanceof BlockValue)
                             && (!refinements.contains("into") || arguments.size() < 2)) {
                         return arguments.getFirst();
                     }
                     if (!refinements.contains("into") || arguments.size() < 2) {
-                        return BlockValue.block(built);
+                        return built;
                     }
                     BlockValue target = (BlockValue) arguments.get(1);
-                    for (int at = built.size(); at > 0; at--) {
-                        target.storage().insertAt(target.index(), built.get(at - 1));
-                    }
-                    return target.atIndex(target.index() + built.size());
+                    List<Value> items = built.remaining();
+                    target.storage().spliceInAt(target.index(), items,
+                            built.storage(), built.index());
+                    return target.atIndex(target.index() + items.size());
                 });
 
         define("transcode",
@@ -7239,40 +7246,46 @@ public final class Natives {
      * building a block out of pieces and not only for filling in single
      * values. {@code /only} turns that off and keeps the block whole.
      */
-    private static List<Value> composed(
+    private static BlockValue composed(
             BlockValue template, Evaluator evaluator, Context context,
             boolean keepingBlocksWhole, boolean goingDeep) {
-        List<Value> built = new ArrayList<>();
+        BlockStorage built = new BlockStorage();
+        int reading = template.index();
         for (Value item : template.remaining()) {
+            boolean asWritten = true;
             if (!(item instanceof BlockValue paren) || paren.datatype() != Datatype.PAREN) {
                 if (goingDeep && item instanceof BlockValue nested
                         && nested.datatype() == Datatype.BLOCK) {
-                    built.add(BlockValue.block(composed(
-                            nested, evaluator, context, keepingBlocksWhole, true)));
-                    continue;
-                }
-                if (goingDeep && item instanceof MapValue nested) {
-                    built.add(composedMap(
+                    built.append(composed(
                             nested, evaluator, context, keepingBlocksWhole, true));
-                    continue;
-                }
-                built.add(item);
-                continue;
-            }
-            for (Value produced : evaluator.evaluateEachOrRaise(
-                    paren.as(Datatype.BLOCK), context)) {
-                if (produced instanceof UnsetValue) {
-                    continue;
-                }
-                if (!keepingBlocksWhole && produced instanceof BlockValue spliced
-                        && spliced.datatype() == Datatype.BLOCK) {
-                    built.addAll(spliced.remaining());
+                } else if (goingDeep && item instanceof MapValue nested) {
+                    built.append(composedMap(
+                            nested, evaluator, context, keepingBlocksWhole, true));
                 } else {
-                    built.add(produced);
+                    built.append(item);
+                }
+            } else {
+                asWritten = false;
+                for (Value produced : evaluator.evaluateEachOrRaise(
+                        paren.as(Datatype.BLOCK), context)) {
+                    if (produced instanceof UnsetValue) {
+                        continue;
+                    }
+                    if (!keepingBlocksWhole && produced instanceof BlockValue spliced
+                            && spliced.datatype() == Datatype.BLOCK) {
+                        built.spliceInAt(built.length() + 1, spliced.remaining(),
+                                spliced.storage(), spliced.index());
+                    } else {
+                        built.append(produced);
+                    }
                 }
             }
+            if (asWritten && template.storage().breaksLineAt(reading)) {
+                built.setLineBreakAt(built.length(), true);
+            }
+            reading++;
         }
-        return built;
+        return new BlockValue(built, 1, Datatype.BLOCK);
     }
 
     /**
@@ -7294,8 +7307,8 @@ public final class Natives {
                         paren.as(Datatype.BLOCK), context));
             } else if (goingDeep && held instanceof BlockValue nested
                     && nested.datatype() == Datatype.BLOCK) {
-                pairs.add(BlockValue.block(composed(
-                        nested, evaluator, context, keepingBlocksWhole, true)));
+                pairs.add(composed(
+                        nested, evaluator, context, keepingBlocksWhole, true));
             } else if (goingDeep && held instanceof MapValue nested) {
                 pairs.add(composedMap(
                         nested, evaluator, context, keepingBlocksWhole, true));
@@ -8088,8 +8101,11 @@ public final class Natives {
         List<Value> items = itemsOf(series).subList(
                 0, Math.min(howMany, itemsOf(series).size()));
         List<List<Value>> records = new ArrayList<>();
+        Map<List<Value>, Integer> whereEachRecordBegan = new IdentityHashMap<>();
         for (int at = 0; at + step <= items.size(); at += step) {
-            records.add(List.copyOf(items.subList(at, at + step)));
+            List<Value> record = List.copyOf(items.subList(at, at + step));
+            whereEachRecordBegan.put(record, at);
+            records.add(record);
         }
         java.util.Comparator<List<Value>> ordering = (left, right) -> {
             int order = wholeRecord && comparator == null
@@ -8104,11 +8120,13 @@ public final class Natives {
             records = mergeSorted(records, ordering);
         }
 
+        if (series instanceof BlockValue block) {
+            putTheRecordsBackWithTheirMarks(block, records, whereEachRecordBegan, step);
+            return series;
+        }
         List<Value> ordered = records.stream().flatMap(List::stream).toList();
         for (int at = 0; at < ordered.size(); at++) {
-            if (series instanceof BlockValue block) {
-                block.storage().set(block.index() + at, ordered.get(at));
-            } else if (series instanceof StringValue text
+            if (series instanceof StringValue text
                     && ordered.get(at) instanceof CharacterValue character) {
                 text.storage().set(text.index() + at, character.codepoint());
             } else if (series instanceof BinaryValue bytes
@@ -8117,6 +8135,36 @@ public final class Natives {
             }
         }
         return series;
+    }
+
+    /**
+     * The sorted records written back, each value taking its line-break mark
+     * along with it.
+     *
+     * <p>A mark belongs to the value it precedes, so a sorted block is laid
+     * out the way its values were rather than the way its positions were.
+     * Which record came from where is read off the list objects themselves --
+     * sorting reorders them and does not replace them -- because two equal
+     * records hold equal values and cannot be told apart by what they hold.
+     */
+    private static void putTheRecordsBackWithTheirMarks(
+            BlockValue block, List<List<Value>> records,
+            Map<List<Value>, Integer> whereEachRecordBegan, int step) {
+
+        List<Boolean> marksBefore = new ArrayList<>(records.size() * step);
+        for (int at = 0; at < records.size() * step; at++) {
+            marksBefore.add(block.storage().breaksLineAt(block.index() + at));
+        }
+        int landing = 0;
+        for (List<Value> record : records) {
+            int cameFrom = whereEachRecordBegan.get(record);
+            for (int within = 0; within < record.size(); within++) {
+                block.storage().set(block.index() + landing, record.get(within));
+                block.storage().setLineBreakAt(block.index() + landing,
+                        marksBefore.get(cameFrom + within));
+                landing++;
+            }
+        }
     }
 
     /**
@@ -9374,12 +9422,11 @@ public final class Natives {
         SeriesValue series = clampedToTail(stranded);
         switch (series) {
             case BlockValue block -> {
-                List<Value> items = value instanceof BlockValue added
-                        ? added.remaining()
-                        : List.of(value);
-                for (int at = items.size(); at > 0; at--) {
-                    block.storage().insertAt(block.index(), items.get(at - 1));
-                }
+                BlockValue added = value instanceof BlockValue given ? given : null;
+                block.storage().spliceInAt(block.index(),
+                        added == null ? List.of(value) : added.remaining(),
+                        added == null ? null : added.storage(),
+                        added == null ? 1 : added.index());
             }
             case StringValue text -> {
                 int[] added = Molder.form(value).codePoints().toArray();
@@ -9628,15 +9675,18 @@ public final class Natives {
         if (times == null) {
             return value;
         }
-        List<Value> pieces = value instanceof BlockValue block
+        BlockValue spread = value instanceof BlockValue block
                 && block.datatype() == Datatype.BLOCK
-                ? block.remaining()
-                : List.of(value);
-        List<Value> repeated = new ArrayList<>();
+                ? block
+                : null;
+        List<Value> pieces = spread == null ? List.of(value) : spread.remaining();
+        BlockStorage repeated = new BlockStorage();
         for (long round = 0; round < wholeCountOf(times); round++) {
-            repeated.addAll(pieces);
+            repeated.spliceInAt(repeated.length() + 1, pieces,
+                    spread == null ? null : spread.storage(),
+                    spread == null ? 1 : spread.index());
         }
-        return BlockValue.block(repeated);
+        return new BlockValue(repeated, 1, Datatype.BLOCK);
     }
 
     /** What {@code Int32} makes of a count: whole, truncated, or refused. */
@@ -9841,6 +9891,51 @@ public final class Natives {
         return copied(original, deeply, DEEP_COPIED);
     }
 
+    /** One of a block's slots: the value, and whether a line starts before it. */
+    private record MarkedItem(Value value, boolean breaksLine) {
+    }
+
+    /**
+     * A run of a block's slots, read out so that reordering them reorders the
+     * line-break marks with the values they belong to.
+     *
+     * <p>Writing the values back and leaving the marks where they were keeps
+     * the shape of the old order over the new items, which is how a sorted
+     * block came back laid out as the unsorted one had been.
+     */
+    private static List<MarkedItem> theMarkedItemsOf(BlockValue block, int howMany) {
+        List<MarkedItem> slots = new ArrayList<>(howMany);
+        for (int at = 0; at < howMany; at++) {
+            slots.add(new MarkedItem(
+                    block.storage().at(block.index() + at),
+                    block.storage().breaksLineAt(block.index() + at)));
+        }
+        return slots;
+    }
+
+    private static void writeBackMarkedItems(BlockValue block, List<MarkedItem> slots) {
+        for (int at = 0; at < slots.size(); at++) {
+            block.storage().set(block.index() + at, slots.get(at).value());
+            block.storage().setLineBreakAt(
+                    block.index() + at, slots.get(at).breaksLine());
+        }
+    }
+
+    /**
+     * A block built from another one, keeping the line-break marks and the
+     * datatype of the one it came from.
+     *
+     * <p>The marks belong to the values rather than to the positions, so a
+     * copy that leaves them behind is a copy that has lost something. Every
+     * operation that builds a block out of a block goes through here, which is
+     * how one line covers COPY, TO BLOCK! and the rest rather than each of
+     * them remembering.
+     */
+    static BlockValue laidOutLike(BlockValue source, BlockStorage built) {
+        built.takeLineBreaksFrom(source.storage(), source.index());
+        return new BlockValue(built, 1, source.datatype());
+    }
+
     /**
      * Which datatypes COPY duplicates rather than shares.
      *
@@ -9887,11 +9982,10 @@ public final class Natives {
             return original;
         }
         return switch (original) {
-            case BlockValue block -> new BlockValue(new BlockStorage(
+            case BlockValue block -> laidOutLike(block, new BlockStorage(
                     block.remaining().stream()
                             .map(item -> memberCopiedFrom(item, deeply, kinds))
-                            .toList()),
-                    1, block.datatype());
+                            .toList()));
             case StringValue text -> StringValue.of(text.text(), text.datatype());
             case BinaryValue binary -> copiedBytes(binary, binary.lengthFromHere());
             case VectorValue vector -> copiedElements(vector, vector.lengthFromHere());
@@ -9993,13 +10087,12 @@ public final class Natives {
         }
         int taking = (int) Math.max(0, Math.min(wanted, from.lengthFromHere()));
         return switch (from) {
-            case BlockValue block -> new BlockValue(new BlockStorage(
+            case BlockValue block -> laidOutLike(block, new BlockStorage(
                     block.remaining().subList(0, taking).stream()
                             .map(item -> deeply && kinds.contains(item.datatype())
                                     ? copied(item, true, kinds)
                                     : item)
-                            .toList()),
-                    1, block.datatype());
+                            .toList()));
             case StringValue text -> StringValue.of(
                     theFirstCodePointsOf(text.text(), taking), text.datatype());
             case BinaryValue bytes -> copiedBytes(bytes, taking);
@@ -10059,11 +10152,9 @@ public final class Natives {
                 : series.lengthFromHere();
         return switch (series) {
             case BlockValue block -> {
-                List<Value> front = new ArrayList<>(block.remaining().subList(0, howMany));
+                List<MarkedItem> front = theMarkedItemsOf(block, howMany);
                 Collections.reverse(front);
-                for (int at = 0; at < howMany; at++) {
-                    block.storage().set(block.index() + at, front.get(at));
-                }
+                writeBackMarkedItems(block, front);
                 yield block;
             }
             case GobValue gob -> raiseCannotUse(gob, "reverse/part");
@@ -15043,7 +15134,7 @@ public final class Natives {
      */
     private static Value blockTypeBuilt(Conversion asking, Datatype wanted, Value from) {
         if (from instanceof BlockValue given) {
-            return BlockValue.block(given.remaining()).as(wanted);
+            return laidOutLike(given, new BlockStorage(given.remaining())).as(wanted);
         }
         if (from instanceof MapValue pairs) {
             return aPairToALine(BlockValue.block(pairs.flattened())).as(wanted);

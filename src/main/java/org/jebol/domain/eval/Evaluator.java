@@ -535,9 +535,66 @@ public final class Evaluator {
      */
     public List<Value> evaluateEachOrRaise(BlockValue code, Context context) {
         List<Value> results = new ArrayList<>();
-        walk(code, context, 1, results::add);
+        walk(code, context, 1,
+                (produced, startedAt, stoppedBefore) -> results.add(produced));
         return results;
     }
+
+    /**
+     * The same walk, keeping the line-break mark each result is entitled to.
+     *
+     * <p>A mark belongs to the value rather than to the position, so REDUCE
+     * keeps one exactly where the value it produced is the item as written.
+     * Everything else -- a word, a paren, a call -- hands back something
+     * worked out, and a worked-out value has no mark of its own.
+     *
+     * <p>Deciding it here rather than in REDUCE is what makes it decidable at
+     * all: by the time the results are a list, which source item each one came
+     * from is gone.
+     */
+    public BlockValue evaluateEachKeepingTheLineShape(
+            BlockValue code, Context context) {
+
+        BlockStorage built = new BlockStorage();
+        walk(code, context, 1, (produced, startedAt, stoppedBefore) -> {
+            built.append(produced);
+            if (theItemAsWritten(code, startedAt, stoppedBefore)) {
+                built.setLineBreakAt(built.length(),
+                        code.storage().breaksLineAt(startedAt));
+            }
+            return true;
+        });
+        return new BlockValue(built, 1, Datatype.BLOCK);
+    }
+
+    /**
+     * Whether an expression was one item that evaluated to itself, which is
+     * what {@code Do_Next} pushing the block's own value amounts to.
+     */
+    private static boolean theItemAsWritten(
+            BlockValue code, int startedAt, int stoppedBefore) {
+
+        return stoppedBefore == startedAt + 1
+                && startedAt >= 1
+                && startedAt <= code.storageLength()
+                && !WORKS_SOMETHING_OUT.contains(
+                        code.storage().at(startedAt).datatype());
+    }
+
+    /**
+     * The datatypes an expression of one item does not answer with itself.
+     *
+     * <p>A word or a path is looked up, a lit-word answers a plain word, a
+     * paren is a block to walk, and a function value is called. Everything
+     * else -- a number, a string, a block, a refinement, a datatype, a none --
+     * is its own answer, which is what {@code Do_Next} pushing the block's own
+     * value amounts to.
+     */
+    private static final Set<Datatype> WORKS_SOMETHING_OUT = EnumSet.of(
+            Datatype.WORD, Datatype.SET_WORD, Datatype.GET_WORD, Datatype.LIT_WORD,
+            Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
+            Datatype.PAREN, Datatype.FUNCTION, Datatype.CLOSURE, Datatype.NATIVE,
+            Datatype.ACTION, Datatype.OP, Datatype.COMMAND);
 
     /**
      * Evaluates expressions in order until one satisfies {@code stopsHere},
@@ -551,7 +608,7 @@ public final class Evaluator {
     public Value evaluateUntilOrRaise(
             BlockValue code, Context context, Predicate<Value> stopsHere) {
         List<Value> stopped = new ArrayList<>(1);
-        Value last = walk(code, context, 1, produced -> {
+        Value last = walk(code, context, 1, (produced, startedAt, stoppedBefore) -> {
             if (stopsHere.test(produced)) {
                 stopped.add(produced);
                 return false;
@@ -594,7 +651,7 @@ public final class Evaluator {
         Frame frame = new Frame(code, context, 1);
         Deque<Frame> frames = new ArrayDeque<>();
         frames.push(frame);
-        frame.sink = produced -> false;
+        frame.sink = (produced, startedAt, stoppedBefore) -> false;
         Value produced = walkFrames(frames);
         return new Step(produced, frame.position);
     }
@@ -639,10 +696,19 @@ public final class Evaluator {
         body.stopped = true;
     }
 
-    /** Watches each top-level result; returning false stops the walk. */
+    /**
+     * Watches each top-level result; returning false stops the walk.
+     *
+     * <p>It is told where the expression began as well as what it produced,
+     * because REDUCE has to know which source item each result came from. A
+     * block's line-break marks belong to the values rather than to the
+     * positions, so a result that is the item as written keeps the mark and a
+     * result that was worked out does not, and neither can be decided from
+     * the value alone.
+     */
     @FunctionalInterface
     private interface ResultSink {
-        boolean accept(Value produced);
+        boolean accept(Value produced, int startedAt, int stoppedBefore);
     }
 
     /**
@@ -684,6 +750,9 @@ public final class Evaluator {
             stopIfAsked();
             Frame frame = frames.peek();
             trace.nowAtDepth(frames.size() - 1);
+            if (frame.expressionStartedAt < 0) {
+                frame.expressionStartedAt = frame.position;
+            }
 
             if (frame.stopped || frame.atEnd()) {
                 if (!frame.stopped && !frame.pendingCalls.isEmpty()) {
@@ -901,7 +970,10 @@ public final class Evaluator {
             }
             if (frame.pendingCalls.isEmpty()) {
                 frame.lastResult = carrying;
-                if (frame.sink != null && !frame.sink.accept(carrying)) {
+                int startedAt = frame.expressionStartedAt;
+                frame.expressionStartedAt = -1;
+                if (frame.sink != null
+                        && !frame.sink.accept(carrying, startedAt, frame.position)) {
                     frame.stopped = true;
                 }
                 return;
@@ -2061,6 +2133,12 @@ public final class Evaluator {
         private ResultSink sink;
         private boolean stopped;
         private boolean functionBody;
+
+        /**
+         * Where the expression now being worked out began, or -1 between two
+         * of them. Only a frame with a sink has any use for it.
+         */
+        private int expressionStartedAt = -1;
 
         Frame(BlockValue code, Context context, int depth) {
             this.code = code;

@@ -362,6 +362,32 @@ public final class Transcoder {
      */
     private Set<Integer> lineStarts = new LinkedHashSet<>();
 
+    /**
+     * A nested sequence read without disturbing the line marks of the level
+     * around it.
+     *
+     * <p>A construct and a map literal read their contents through the loop an
+     * enclosing block uses, and that loop keeps the pending line feed and the
+     * marks so far in fields rather than on a stack. Sharing them costs twice
+     * over: the line feed before {@code #(none)} is spent on the first thing
+     * inside the construct, so the value it becomes never begins a line, and
+     * that same first thing marks position one of the block around it.
+     *
+     * <p>A block or a paren inside the construct is not affected either way,
+     * because those push a level of their own.
+     */
+    private List<Value> theContentsOfANestedForm(int closing) {
+        boolean aLineFeedWasWaiting = crossedALine;
+        Set<Integer> theMarksAroundIt = lineStarts;
+        lineStarts = new LinkedHashSet<>();
+        try {
+            return readSequence(closing);
+        } finally {
+            lineStarts = theMarksAroundIt;
+            crossedALine = aLineFeedWasWaiting;
+        }
+    }
+
     private void recordWhetherTheValueBeginsALine(int oneBasedPosition) {
         if (crossedALine) {
             lineStarts.add(oneBasedPosition);
@@ -724,7 +750,7 @@ public final class Transcoder {
         advance();
         List<Value> contents;
         try {
-            contents = readSequence(')');
+            contents = theContentsOfANestedForm(')');
         } catch (MalformedSource unreadable) {
             if (unreadable.failure == SyntaxFailure.MISSING_CLOSE) {
                 throw unreadable;
@@ -774,7 +800,7 @@ public final class Transcoder {
     private Value readMap() {
         advance();
         advance();
-        List<Value> pairs = readSequence(']');
+        List<Value> pairs = theContentsOfANestedForm(']');
         if (pairs.size() % 2 != 0) {
             throw failure(SyntaxFailure.INVALID_ARG, null);
         }
