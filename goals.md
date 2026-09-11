@@ -199,10 +199,10 @@ Do not trust a size here that has not been re-derived since work landed —
 `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt` is the live
 total and the table below is how it divides.
 
-    383   the whole list
+    352   the whole list
     ---
     132   11. sweepable files that run clean
-     51    2. image
+     20    2. image
      36    5. the file ports
      34    6. the checksum port
      31   15. the scattered singles and pairs
@@ -548,13 +548,36 @@ slicer takes the last top-level `===start-group===`, and this file nests its
 groups inside the `if` blocks, so the entries all claim to be in "TEXT codec".
 They are not.
 
-### 2. Image, read and written — 51
+### 2. Image, read and written — 51, now 20
 
 `image-test.r3` runs to the end with no stops, so every one of these is a
 wrong answer and `scripts/sweep.py image-test.r3` will show them in pairs.
-The biggest group is "Image as a series" (31): an image is a series of pixels
-and the series operations on it are not all right yet. "Image difference" is
-another 9.
+**"Image as a series" is done — all 31.** APPEND, INSERT, CHANGE, FIND and
+REPEAT all refused an image, which made it a series that could not be used as
+one. `ImageSeries.java` is the one place that knows what counts as a pixel;
+the natives gained an arm each.
+
+The part worth carrying forward is the height. It is not stored: it is how
+many whole rows the pixels make, so three pixels in an image two wide are a
+row and a spare, the size says 2x1 and the length says 3. The spare is really
+there and the next pixel appended lifts the height. `ImageStorage` already
+worked that way; nothing above it did.
+
+Two things the canonical reference settled that reading would not have.
+FIND's /ONLY drops the alpha from the comparison, so a four-part tuple matches
+a pixel whose alpha differs — the same "look at the thing, not into it" that
+/ONLY means everywhere. And CHANGE does not lengthen an image: pixels past the
+end are dropped, because the width is fixed and a longer image would be a
+different shape.
+
+What is left, all of it wrong answers rather than refusals:
+
+     8  Image difference
+     5  change image
+     3  BLUR
+     2  RGB - HSV conversions
+     1  construct image
+     1  Save/load image
 
 The C is `rebol3-source/src/core/t-image.c`. JEBOL's side is
 `src/main/java/org/jebol/domain/eval/ImagePath.java` and the image branches of

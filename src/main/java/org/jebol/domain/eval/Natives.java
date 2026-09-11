@@ -3593,13 +3593,19 @@ public final class Natives {
 
         define("repeat", List.of(
                         Parameter.softQuoted("counter"),
-                        Parameter.required("count", Set.of(Datatype.INTEGER, Datatype.PAIR)),
+                        Parameter.required("count",
+                                Set.of(Datatype.INTEGER, Datatype.PAIR, Datatype.IMAGE)),
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     WordValue counter = (WordValue) arguments.get(0);
                     BlockValue body = (BlockValue) arguments.get(2);
                     if (arguments.get(1) instanceof PairValue grid) {
                         return repeatedOverGrid(evaluator, context, counter, grid, body);
+                    }
+                    if (arguments.get(1) instanceof ImageValue picture) {
+                        return countedLoop(evaluator, context, counter, body,
+                                index -> picture.atIndex(picture.index() + (int) index),
+                                picture.lengthFromHere());
                     }
                     long passes = ((IntegerValue) arguments.get(1)).magnitude();
                     return countedLoop(
@@ -6099,6 +6105,11 @@ public final class Natives {
                         }
                         yield vector.head();
                     }
+                    case ImageValue picture -> {
+                        refuseUnfinishedRefinements(refinements, "append");
+                        yield ImageSeries.appended(picture, arguments.get(1),
+                                howManyTimesOver(arguments, refinements));
+                    }
                     default -> raiseCannotUse(arguments.get(0), "append");
                 });
 
@@ -6240,6 +6251,9 @@ public final class Natives {
                         int at = searched.storage().positionOf(wanted.storage());
                         return at == 0 ? NoneValue.none() : searched.atIndex(at);
                     }
+                    if (arguments.get(0) instanceof ImageValue picture) {
+                        return thePixelFoundIn(picture, arguments.get(1), refinements);
+                    }
                     if (!(arguments.get(0) instanceof SeriesValue series)
                             || series instanceof VectorValue) {
                         return raiseCannotUse(arguments.get(0), "find");
@@ -6335,6 +6349,11 @@ public final class Natives {
                                             vector.kind(), numbers.get(at - 1)));
                         }
                         yield vector.atIndex(vector.index() + numbers.size());
+                    }
+                    case ImageValue picture -> {
+                        refuseUnfinishedRefinements(refinements, "insert");
+                        yield ImageSeries.inserted(picture, arguments.get(1),
+                                howManyTimesOver(arguments, refinements));
                     }
                     default -> raiseCannotUse(arguments.get(0), "insert");
                 });
@@ -6487,6 +6506,10 @@ public final class Natives {
                         return changedElements(
                                 (VectorValue) clampedToTail(strandedVector),
                                 arguments, refinements);
+                    }
+                    if (arguments.get(0) instanceof ImageValue picture) {
+                        return ImageSeries.changed(picture, arguments.get(1),
+                                howManyTimesOver(arguments, refinements));
                     }
                     if (!(arguments.get(0) instanceof BlockValue strandedBlock)) {
                         return raiseCannotUse(arguments.get(0), "change");
@@ -16179,6 +16202,43 @@ public final class Natives {
 
     /** The largest codepoint a character can hold, as MAX_CHAR does. */
     private static final long MAXIMUM_CODEPOINT = 0x10FFFF;
+
+    /**
+     * FIND over an image, which needs its own arm because a pixel is not
+     * compared the way an element of a block is.
+     *
+     * <p>A tuple of three names a colour whatever its alpha; a tuple of four
+     * matches the alpha too, and a whole number matches nothing but the alpha.
+     * /ONLY drops the alpha from the comparison, which is the same idea it
+     * carries everywhere else: look at the thing and not into it.
+     */
+    private static Value thePixelFoundIn(
+            ImageValue picture, Value wanted, Set<String> refinements) {
+
+        if (!ImageSeries.couldBeAPixel(wanted)) {
+            return NoneValue.none();
+        }
+        int at = ImageSeries.positionOf(picture, wanted,
+                refinements.contains("match"), refinements.contains("only"));
+        if (at == 0) {
+            return NoneValue.none();
+        }
+        return picture.atIndex(refinements.contains("tail") ? at + 1 : at);
+    }
+
+    /**
+     * How many times over /DUP asks for what was written, which is once where
+     * it was not asked for at all.
+     */
+    private static long howManyTimesOver(
+            List<Value> arguments, Set<String> refinements) {
+
+        Value times = argumentFor("dup", List.of("part", "dup"),
+                arguments, refinements, 2);
+        return refinements.contains("dup") && times instanceof IntegerValue counted
+                ? Math.max(0, counted.magnitude())
+                : 1;
+    }
 
     /**
      * Refuses a value nothing can be made from, naming both the type and the

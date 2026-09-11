@@ -166,37 +166,6 @@ gob-test.r3 / MOVE gob! / move gob! #13
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #204
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #205
 image-test.r3 / BLUR / premultiply image 3 (input not at its head) #206
-image-test.r3 / Image as a series / APPEND on image #228
-image-test.r3 / Image as a series / APPEND on image #229
-image-test.r3 / Image as a series / APPEND on image #230
-image-test.r3 / Image as a series / CHANGE on image #250
-image-test.r3 / Image as a series / CHANGE on image #251
-image-test.r3 / Image as a series / CHANGE on image #252
-image-test.r3 / Image as a series / CHANGE on image #253
-image-test.r3 / Image as a series / CHANGE on image #254
-image-test.r3 / Image as a series / CHANGE on image #255
-image-test.r3 / Image as a series / FIND integer on image (alpha) #225
-image-test.r3 / Image as a series / FIND integer on image (alpha) #226
-image-test.r3 / Image as a series / FIND tuple on image #214
-image-test.r3 / Image as a series / FIND tuple on image #215
-image-test.r3 / Image as a series / FIND tuple on image #216
-image-test.r3 / Image as a series / FIND tuple on image #217
-image-test.r3 / Image as a series / FIND tuple on image #218
-image-test.r3 / Image as a series / FIND tuple on image #219
-image-test.r3 / Image as a series / FIND tuple on image #220
-image-test.r3 / Image as a series / FIND tuple on image #221
-image-test.r3 / Image as a series / FIND tuple on image #223
-image-test.r3 / Image as a series / FIND tuple on image #224
-image-test.r3 / Image as a series / INSERT on image #232
-image-test.r3 / Image as a series / INSERT on image #233
-image-test.r3 / Image as a series / INSERT on image #234
-image-test.r3 / Image as a series / INSERT on image #235
-image-test.r3 / Image as a series / INSERT on image #236
-image-test.r3 / Image as a series / INSERT on image #237
-image-test.r3 / Image as a series / INSERT/tail on image #241
-image-test.r3 / Image as a series / INSERT/tail on image #244
-image-test.r3 / Image as a series / REPEAT on image #210
-image-test.r3 / Image as a series / REPEAT on image #211
 image-test.r3 / Image difference / image-diff (different sizes) #162
 image-test.r3 / Image difference / image-diff (different sizes) #163
 image-test.r3 / Image difference / image-diff (same sizes) #160

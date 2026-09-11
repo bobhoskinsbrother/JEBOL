@@ -2601,6 +2601,82 @@ invariant ACipherPortDecryptsWhatACipherPortEncrypted {
                         = octets_padded_with_noughts_to_a_whole_block(octets)
 }
 
+-- === An image is a series of pixels ========================
+
+-- Every series action works on an image, because an image is a run of pixels
+-- with a width written beside it rather than a kind of its own.
+--
+-- `QUAD_SKIP` turns a pixel index into a byte offset and nothing else about
+-- navigating one is special, so APPEND, INSERT, CHANGE, FIND and REPEAT all
+-- mean on an image what they mean on a block. Refusing them would make an
+-- image a series that cannot be used as one.
+rule EverySeriesActionWorksOnAnImage {
+    when: EvaluateCall(verb, target, value)
+    requires: is_image(target)
+    requires: verb in {append, insert, change, find, repeat}
+
+    ensures: not CallFails(error: cannot_use)
+}
+
+-- Growing an image adds pixels, and the height is worked out from how many
+-- there are rather than stored.
+--
+-- Which is what makes a partial row possible: three pixels in an image two
+-- wide is one whole row and a spare, so the size says two by one and the
+-- length says three. The spare is really there -- it reads back, it can be
+-- changed, and the next pixel appended completes the row and the size grows
+-- by one.
+--
+-- Saying the height rather than deriving it would need a decision about what
+-- a half-finished row is, and there is no good answer. Deriving it means the
+-- question never arises.
+rule AnImagesHeightIsHowManyWholeRowsItHas {
+    when: EvaluateCall(verb, target, value)
+    requires: is_image(target)
+    requires: verb in {append, insert}
+
+    ensures: length_of(target) = the_pixels_before_plus_the_pixels_added()
+    ensures: height_of(target) = length_of(target) / width_of(target)
+}
+
+-- FIND on an image looks for a pixel and answers the position of it, the same
+-- as FIND on a block answers a position rather than a copy.
+--
+-- A tuple of three names a colour whatever its alpha, and a tuple of four
+-- names a colour with one. A whole number on its own is an alpha, which is
+-- the one spelling that reads oddly and is what lets a caller find a
+-- transparent pixel without naming its colour.
+rule FindingAPixelAnswersWhereItIs {
+    when: EvaluateCall(find, target, wanted)
+    requires: is_image(target)
+    requires: the_image_holds(wanted)
+
+    ensures: CallResult(value: the_image_at(the_first_pixel_matching(wanted)))
+}
+
+rule FindingAPixelThatIsNotThereAnswersNone {
+    when: EvaluateCall(find, target, wanted)
+    requires: is_image(target)
+    requires: not the_image_holds(wanted)
+
+    ensures: CallResult(value: none)
+}
+
+-- CHANGE writes over the pixels that are there and does not lengthen the
+-- image, so more pixels than there is room for are dropped rather than added.
+--
+-- Which is CHANGE's meaning on every series: it replaces what is at the
+-- position. An image differs only in that running past the end has nowhere to
+-- go, because the width is fixed and a longer image would be a different
+-- shape.
+rule ChangingAnImageWritesOverWhatIsThere {
+    when: EvaluateCall(change, target, value)
+    requires: is_image(target)
+
+    ensures: length_of(target) = length_of_the_image_before()
+    ensures: CallResult(value: the_image_just_past_what_was_written())
+}
+
 -- === Starting another program ==============================
 
 -- CALL starts another program. Three questions decide what it does: how the
