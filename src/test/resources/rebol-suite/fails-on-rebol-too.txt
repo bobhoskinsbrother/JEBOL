@@ -407,3 +407,19 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #218
 #
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #51
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #54
+
+# Two of the four BLUR checksums are stale in the same way the WAV ones are,
+# and for a plainer reason: CHECKSUM stopped answering a signed number and the
+# file was never updated. Both expectations here are negative, both actual
+# answers are the same number plus four thousand million, and a real 3.22.5
+# fails both. The other two assertions in the group ask for positive numbers
+# and pass on both.
+#
+#   >> i: load %units/files/flower.png  t: copy i
+#   >> blur t 5  checksum to binary! t 'crc32    ; the file asks for -1700743341
+#   == 2594223955      ; r3-head 3.22.5, and JEBOL
+#   >> blur t 5  checksum to binary! t 'crc32    ; the file asks for -583506697
+#   == 3711460599      ; r3-head 3.22.5, and JEBOL
+#
+image-test.r3 / BLUR / premultiply image 3 (input not at its head) #204
+image-test.r3 / BLUR / premultiply image 3 (input not at its head) #205

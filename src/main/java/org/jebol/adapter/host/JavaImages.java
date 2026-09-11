@@ -37,10 +37,13 @@ import org.w3c.dom.Node;
  * the conversion is here rather than in the domain -- one place, and the side
  * that knows Java.
  *
- * <p>JPEG and BMP have no alpha channel to write into. Handing ImageIO an
- * image that still has one gives a refusal for BMP and a picture with its
- * colours rotated for JPEG, so the channel comes off here and those two come
- * back opaque -- which is what they would have been anyway.
+ * <p>JPEG has no alpha channel to write into, and handing ImageIO a picture
+ * that still has one gives back a picture with its colours rotated -- so the
+ * channel comes off here and a JPEG comes back opaque, which is what it would
+ * have been anyway.
+ *
+ * <p>A BMP does have somewhere to put one and is written by hand, because the
+ * runtime's own BMP writer refuses every thirty-two-bit picture it is offered.
  */
 public final class JavaImages implements ImagePort {
 
@@ -60,7 +63,7 @@ public final class JavaImages implements ImagePort {
     private static final int CHANNELS_A_PIXEL = 4;
 
     /** The formats with nowhere to put an alpha channel. */
-    private static final Set<String> HAVE_NO_ALPHA = Set.of("jpeg", "bmp");
+    private static final Set<String> HAVE_NO_ALPHA = Set.of("jpeg");
 
     /** The formats that store an index into a palette rather than a colour. */
     private static final Set<String> STORES_AN_INDEX_INTO_A_PALETTE = Set.of("gif");
@@ -207,11 +210,87 @@ public final class JavaImages implements ImagePort {
         if (format == null) {
             return null;
         }
+        if (format.equals("bmp")) {
+            return aBitmapOfThirtyTwoBits(image);
+        }
         BufferedImage written = bufferedFrom(image, HAVE_NO_ALPHA.contains(format));
         if (STORES_AN_INDEX_INTO_A_PALETTE.contains(format)) {
             written = withAPaletteOfItsOwnColours(written);
         }
         return theBytesWriting(written, format);
+    }
+
+    /**
+     * A BMP written by hand, because the runtime's own writer will not write
+     * one with an alpha channel.
+     *
+     * <p>It refuses thirty-two bits a pixel under every compression type it
+     * offers -- "Image can not be encoded with compression type BI_RGB and 32
+     * bits per pixel" -- so going through it means either writing
+     * twenty-four bits and losing the transparency or not writing a BMP at
+     * all. A real 3.22.5 loses nothing, and the format it uses is short
+     * enough to write out directly.
+     *
+     * <p>The fifth version of the header is what makes the alpha possible: it
+     * carries a mask per channel, so the file says which bits are which
+     * rather than leaving a reader to assume. The runtime reads that back
+     * perfectly; it is only writing it that is missing.
+     */
+    private static byte[] aBitmapOfThirtyTwoBits(Pixels image) {
+        int pixelBytes = image.wide() * image.high() * CHANNELS_A_PIXEL;
+        byte[] file = new byte[FILE_HEADER_BYTES + FIFTH_HEADER_BYTES + pixelBytes];
+        file[0] = 'B';
+        file[1] = 'M';
+        putFourBytes(file, 2, file.length);
+        putFourBytes(file, 10, FILE_HEADER_BYTES + FIFTH_HEADER_BYTES);
+
+        int header = FILE_HEADER_BYTES;
+        putFourBytes(file, header, FIFTH_HEADER_BYTES);
+        putFourBytes(file, header + 4, image.wide());
+        putFourBytes(file, header + 8, -image.high());
+        putTwoBytes(file, header + 12, 1);
+        putTwoBytes(file, header + 14, Byte.SIZE * CHANNELS_A_PIXEL);
+        putFourBytes(file, header + 16, EACH_CHANNEL_HAS_A_MASK);
+        putFourBytes(file, header + 20, pixelBytes);
+        putFourBytes(file, header + 40, 0x00FF0000);
+        putFourBytes(file, header + 44, 0x0000FF00);
+        putFourBytes(file, header + 48, 0x000000FF);
+        putFourBytes(file, header + 52, 0xFF000000);
+        putFourBytes(file, header + 56, THE_USUAL_COLOUR_SPACE);
+
+        byte[] rgba = image.rgba();
+        int writing = FILE_HEADER_BYTES + FIFTH_HEADER_BYTES;
+        for (int at = 0; at < pixelBytes; at += CHANNELS_A_PIXEL) {
+            file[writing++] = rgba[at + 2];
+            file[writing++] = rgba[at + 1];
+            file[writing++] = rgba[at];
+            file[writing++] = rgba[at + 3];
+        }
+        return file;
+    }
+
+    private static final int FILE_HEADER_BYTES = 14;
+
+    /** {@code BITMAPV5HEADER}, the version that names a mask per channel. */
+    private static final int FIFTH_HEADER_BYTES = 124;
+
+    /** {@code BI_BITFIELDS}: the four masks below say which bits are which. */
+    private static final int EACH_CHANNEL_HAS_A_MASK = 3;
+
+    /** {@code LCS_sRGB}, written as the four letters {@code BGRs}. */
+    private static final int THE_USUAL_COLOUR_SPACE = 0x73524742;
+
+    /** Least significant byte first, which is the only order a BMP has. */
+    private static void putFourBytes(byte[] file, int at, int value) {
+        file[at] = (byte) value;
+        file[at + 1] = (byte) (value >> 8);
+        file[at + 2] = (byte) (value >> 16);
+        file[at + 3] = (byte) (value >> 24);
+    }
+
+    private static void putTwoBytes(byte[] file, int at, int value) {
+        file[at] = (byte) value;
+        file[at + 1] = (byte) (value >> 8);
     }
 
     /**

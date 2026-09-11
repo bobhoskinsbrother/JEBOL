@@ -2601,6 +2601,91 @@ invariant ACipherPortDecryptsWhatACipherPortEncrypted {
                         = octets_padded_with_noughts_to_a_whole_block(octets)
 }
 
+-- === Building an image ======================================
+
+-- An image is built from a size followed by what fills it, and the parts have
+-- to arrive in that order: the size, then the colours, then the alpha, then
+-- the position to stand at.
+--
+-- The size is a pair and comes first because nothing else can be read without
+-- it -- a run of bytes means nothing until the width says where each row
+-- ends.
+rule BuildingAnImageStartsWithItsSize {
+    when: MakeValue(image, specification)
+    requires: not first_of(specification).datatype = pair
+
+    ensures: MakeFails(error: malconstruct)
+}
+
+-- Neither dimension may be negative. A width of nought is fine and makes an
+-- empty image, but a width of minus one is not a smaller image than that; it
+-- is a caller who has computed the size wrongly, and answering an empty
+-- image would hide it.
+--
+-- This is the one place where writing the value out and reading it back
+-- disagree with MAKE given a bare pair, which clamps a negative dimension to
+-- nought instead. The difference is real in a real Rebol and is kept: the
+-- bare pair goes through the code that makes a blank image of a size, and a
+-- size that cannot exist becomes the nearest one that can.
+rule ANegativeDimensionCannotBeBuilt {
+    when: MakeValue(image, specification)
+    requires: specification.size.width < 0 or specification.size.height < 0
+
+    ensures: MakeFails(error: malconstruct)
+}
+
+-- What fills the image is a run of colour bytes, or one colour to paint the
+-- whole of it, and nothing else.
+--
+-- Three bytes to a pixel where it is a run, so the bytes are the colours on
+-- their own and the alpha is a separate run after them. Too few bytes leave
+-- the rest of the picture white and too many are ignored, because a picture
+-- with a size already knows how many pixels it wants.
+rule AnImageIsFilledByBytesOrByOneColour {
+    when: MakeValue(image, specification)
+    requires: specification.holds_a_fill
+
+    ensures: the_bytes_are_read_three_to_a_pixel_where_it_is_a_run()
+    ensures: the_colour_paints_every_pixel_where_it_is_one_colour()
+}
+
+-- A position may follow, counted from one the way every other position in
+-- the language is, and nought or less is refused.
+--
+-- Past the end is not refused. An image built to stand past its own last
+-- pixel is an empty one that remembers where it came from, and taking its
+-- head gives the picture back -- which is exactly what a position past the
+-- end means everywhere else in the language.
+rule APositionOfNoughtOrLessIsRefused {
+    when: MakeValue(image, specification)
+    requires: specification.holds_a_position
+    requires: specification.position <= 0
+
+    ensures: MakeFails(error: out_of_range)
+}
+
+rule APositionPastTheEndIsAllowed {
+    when: MakeValue(image, specification)
+    requires: specification.holds_a_position
+    requires: specification.position > length_of(the_image_built())
+
+    ensures: MakeSucceeds()
+    ensures: the_image_reads_as_empty()
+    ensures: head_of(result) = the_whole_picture()
+}
+
+-- Anything left over after the parts have been read refuses the whole thing,
+-- which is what makes a mistyped specification a failure rather than a
+-- picture that quietly ignored half of what it was told.
+rule AnythingLeftOverRefusesTheWholeThing {
+    when: MakeValue(image, specification)
+    requires: specification.has_unread_parts
+
+    ensures: MakeFails(error: malconstruct)
+}
+
+open question "A block of tuples is read as a run of pixels and then refused anyway, because the reader that consumes it never steps past it and the leftover check above then fires on the block it has just used. So `make image! [2x1 [1.1.1 2.2.2]]` is a malconstruct in a real 3.22.5 even though the block is exactly what the code that reads it wants, and the only way to give an image a list of colours is to write them as bytes. JEBOL matches it, because a caller catching the failure is relying on it and because guessing at the intent of an unreachable branch is how a port stops being a port. Whether the branch is meant to work is a question for REBOL rather than for JEBOL."
+
 -- === An image is a series of pixels ========================
 
 -- Every series action works on an image, because an image is a run of pixels
@@ -2675,6 +2760,81 @@ rule ChangingAnImageWritesOverWhatIsThere {
 
     ensures: length_of(target) = length_of_the_image_before()
     ensures: CallResult(value: the_image_just_past_what_was_written())
+}
+
+-- Writing one image into another is the exception, and it is a rectangle
+-- rather than a run.
+--
+-- Every other thing CHANGE accepts is a run of pixels laid down one after
+-- another, wrapping from the end of one row to the start of the next. An
+-- image is not, because an image has a shape: it goes in as a block with its
+-- own width, its top-left corner at the position, and a row of the source
+-- lands on a row of the target.
+--
+-- The position names a column and a row, counted from the target's width, so
+-- `change at img 2x2 other` puts the other image's top-left pixel at the
+-- second column of the second row.
+rule ChangingAnImageIntoAnImageWritesARectangle {
+    when: EvaluateCall(change, target, value)
+    requires: is_image(target)
+    requires: is_image(value)
+
+    ensures: the_written_block_is(width: width_of(value), height: height_of(value))
+    ensures: the_block_starts_at(column: the_position_column(), row: the_position_row())
+    ensures: each_source_row_lands_on_one_target_row()
+}
+
+-- What will not fit is dropped at both edges, and dropped rather than
+-- wrapped: a source wider than the room left on the row loses its right-hand
+-- columns instead of spilling onto the next row, and rows past the bottom are
+-- not written at all.
+rule ARectangleTooBigForTheRoomLeftIsClipped {
+    when: EvaluateCall(change, target, value)
+    requires: is_image(target)
+    requires: is_image(value)
+
+    ensures: the_columns_written = min(width_of(value), width_of(target) - the_position_column())
+    ensures: the_rows_written = min(height_of(value), height_of(target) - the_position_row())
+}
+
+-- The source is read from its head whatever position it stands at, which is
+-- the same property the five whole-image operations have and is worth saying
+-- here because CHANGE is otherwise a position-respecting word.
+rule TheSourceRectangleIsReadFromItsHead {
+    when: EvaluateCall(change, target, value)
+    requires: is_image(target)
+    requires: is_image(value)
+    ensures: the_pixels_read = value.every_pixel
+}
+
+-- And the position answered back moves by one pixel, not by the size of the
+-- rectangle written.
+--
+-- This reads as a mistake and is not. The step CHANGE takes is the count of
+-- things it was given times the /dup count, and one image is one thing
+-- however many pixels it carries. So changing a four-by-four image into a
+-- larger one answers the position one pixel along, with sixteen pixels
+-- written behind it.
+rule ChangingAnImageIntoAnImageStepsOnePixel {
+    when: EvaluateCall(change, target, value)
+    requires: is_image(target)
+    requires: is_image(value)
+    requires: no_refinement_asked(dup)
+
+    ensures: CallResult(value: the_image_one_pixel_past_the_position())
+}
+
+-- Which /dup makes plainer: it multiplies the step and nothing else. The
+-- rectangle is written once whatever count is asked for, so /dup on an image
+-- source moves the answer along and leaves the picture alone.
+rule DuplicatingAnImageRectangleMovesOnlyTheAnswer {
+    when: EvaluateCall(change, target, value)
+    requires: is_image(target)
+    requires: is_image(value)
+    requires: refinement_asked(dup)
+
+    ensures: the_rectangle_was_written_once()
+    ensures: CallResult(value: the_image_that_many_pixels_past_the_position())
 }
 
 -- === Starting another program ==============================
@@ -9988,6 +10148,71 @@ rule GenerateRefusesAnythingThatIsNotAWord {
     ensures: CallFails(error: expect_arg)
 }
 
+-- === Saying a colour the other way round ===================
+
+-- RGB-TO-HSV and HSV-TO-RGB say the same colour in the two ways people say
+-- colours, and both take a tuple and answer a tuple.
+--
+-- Red, green and blue is how a screen makes a colour and is a poor way to
+-- describe one: there is no way to say "the same colour but paler" without
+-- changing all three numbers. Hue, saturation and value separates the three
+-- questions -- which colour, how strong, how bright -- so paler is one number
+-- down and nothing else moves.
+--
+-- Both are kept to a single byte each, hue included. A hue is really an angle
+-- round a circle of colours, usually written as nought to three hundred and
+-- sixty degrees, and squeezing that into nought to two hundred and
+-- fifty-five is why a colour does not always survive the trip out and back
+-- unchanged.
+rule ConvertingAColourAnswersATuple {
+    when: EvaluateCall(rgb_to_hsv, colour)
+
+    ensures: CallResult(datatype: tuple)
+    ensures: the_first_part_answered() = which_colour_it_is(colour)
+    ensures: the_second_part_answered() = how_strong_it_is(colour)
+    ensures: the_third_part_answered() = how_bright_it_is(colour)
+}
+
+-- A grey has no hue and no saturation to speak of, so both come back as
+-- nought and only the brightness is kept. Which is the one case that cannot
+-- round-trip: every grey converts to the same shape of answer, and
+-- converting back gives the grey, so the trip is lossless here and lossy
+-- almost everywhere else.
+rule AGreyHasNoHueAndNoSaturation {
+    when: EvaluateCall(rgb_to_hsv, colour)
+    requires: colour.red = colour.green
+    requires: colour.green = colour.blue
+
+    ensures: the_first_part_answered() = 0
+    ensures: the_second_part_answered() = 0
+    ensures: the_third_part_answered() = colour.red
+}
+
+rule NoSaturationConvertsBackToAGrey {
+    when: EvaluateCall(hsv_to_rgb, colour)
+    requires: colour.saturation = 0
+
+    ensures: the_first_part_answered() = colour.value
+    ensures: the_second_part_answered() = colour.value
+    ensures: the_third_part_answered() = colour.value
+}
+
+-- Whatever a tuple carries past its third part is handed back untouched by
+-- both, which is what makes the pair usable on a pixel.
+--
+-- A tuple of four is a colour with an alpha, and converting one is a fair
+-- thing to want: the alpha is not part of the colour and has no business
+-- being reinterpreted as a hue. So it passes through, and so does anything
+-- beyond it -- these convert the first three parts of a tuple and leave the
+-- tuple otherwise as it was, length included.
+rule EverythingPastTheThirdPartIsHandedBack {
+    for conversion in [rgb_to_hsv, hsv_to_rgb]:
+        when: EvaluateCall(conversion, colour)
+
+        ensures: the_length_answered() = length_of(colour)
+        ensures: the_parts_past_the_third_answered() = the_parts_past_the_third(colour)
+}
+
 -- The five image functions work on the whole image, never from where it
 -- stands.
 --
@@ -10030,6 +10255,63 @@ rule BlurDoesNothingForARadiusOfNoneOrLess {
     requires: radius <= 0
     ensures: image = unchanged
     ensures: CallResult(value: image)
+}
+
+-- A radius wider than the image is brought down to half the shorter side, so
+-- no radius is ever too large to ask for. A caller passing a hundred thousand
+-- gets the most blurred the picture can be rather than an error, and blurring
+-- an already fully blurred image again changes nothing further.
+rule ARadiusWiderThanTheImageIsBroughtDown {
+    when: EvaluateCall(blur, image, radius)
+    requires: radius > 0
+
+    ensures: the_radius_used = min(radius, width_of(image) / 2, height_of(image) / 2)
+    ensures: CallResult(value: image)
+}
+
+-- What BLUR does is a Gaussian blur reached by three box blurs rather than by
+-- a Gaussian kernel.
+--
+-- A box blur replaces each pixel by the plain average of its neighbours in a
+-- line, which is cheap and looks wrong. Three of them in a row look almost
+-- exactly like a Gaussian and still cost the same, and that is the whole
+-- trick: the cost stays proportional to the radius where a real Gaussian
+-- kernel costs its square.
+--
+-- The three are not the same width. They are chosen so their combined spread
+-- matches the Gaussian that was asked for, which makes two of them one width
+-- and the third another, and which of the three is the odd one out depends on
+-- the radius.
+rule BlurIsThreeBoxBlursOfChosenWidths {
+    when: EvaluateCall(blur, image, radius)
+    requires: radius > 0
+
+    ensures: three_box_blurs_ran()
+    ensures: their_combined_spread_matches(radius)
+}
+
+-- Each box blur runs twice over the picture, once along the rows and once
+-- down the columns, which is what makes it a box rather than a line.
+--
+-- Alpha is blurred with the colour. All four channels go through the same
+-- pass and nothing treats transparency specially, so a blurred edge fades in
+-- transparency as well as in colour.
+rule EachBoxBlurRunsAlongTheRowsThenDownTheColumns {
+    when: EvaluateCall(blur, image, radius)
+    requires: radius > 0
+
+    ensures: every_channel_was_blurred(including: alpha)
+    ensures: the_rows_pass_ran_before_the_columns_pass()
+}
+
+-- At the edges the picture is treated as though it continued, with the first
+-- pixel of each line repeated to the left of it and the last repeated to the
+-- right. The alternative -- averaging only the neighbours that exist -- makes
+-- the border darker or lighter than the rest, which is visible and wrong.
+rule TheEdgePixelIsRepeatedBeyondTheEdge {
+    when: EvaluateCall(blur, image, radius)
+    requires: radius > 0
+    ensures: the_pixels_beyond_the_edge = the_edge_pixel_repeated()
 }
 
 -- RESIZE is the one of the five that answers a new image, because the old one
@@ -10095,6 +10377,56 @@ rule ImageDiffComparesOnlyTheOverlap {
     requires: size_of(a) != size_of(b)
     ensures: the_pixels_compared = the_smaller_of_each_dimension(a, b)
 }
+
+-- /PART narrows the comparison to a rectangle, given as a corner and a size.
+--
+-- The corner is counted from nought, which the declaration says outright:
+-- "Zero based top-left corner". So `0x0` is the first pixel of the first row
+-- and there is no off-by-one against every other position in the language,
+-- because this is not a position -- it is a coordinate into a picture.
+rule ImageDiffPartComparesOnlyTheRectangle {
+    when: EvaluateCall(image_diff, a, b, offset, size)
+    requires: refinement_asked(part)
+
+    ensures: the_pixels_compared = the_rectangle_at(offset, size)
+    ensures: the_corner_is_counted_from_nought()
+}
+
+-- A negative size is read as a rectangle reaching back from the corner, so
+-- `2x2 -1x-2` names the same pixels as `1x0 1x2`. The corner moves by the
+-- negative amount and the size becomes positive, which is how a caller can
+-- name a region by its far corner.
+rule ANegativeSizeReachesBackFromTheCorner {
+    when: EvaluateCall(image_diff, a, b, offset, size)
+    requires: refinement_asked(part)
+    requires: size.width < 0 or size.height < 0
+
+    ensures: the_corner_moved_by(size)
+    ensures: the_size_used() = the_absolute_value_of(size)
+}
+
+-- A rectangle of no width or no height is refused rather than answered as
+-- nought per cent, because a caller who asked to compare nothing has almost
+-- certainly computed the size wrongly.
+rule ARectangleWithNoAreaIsRefused {
+    when: EvaluateCall(image_diff, a, b, offset, size)
+    requires: refinement_asked(part)
+    requires: size.width = 0 or size.height = 0
+    ensures: CallFails(error: invalid_data)
+}
+
+-- As is a corner outside the larger of the two images. Outside is measured
+-- against the larger because the pair is compared over the union of their
+-- sizes, not the overlap: a corner inside the bigger picture is a fair thing
+-- to ask about even where the smaller one does not reach it.
+rule ACornerOutsideBothImagesIsRefused {
+    when: EvaluateCall(image_diff, a, b, offset, size)
+    requires: refinement_asked(part)
+    requires: offset.x >= the_wider_of(a, b) or offset.y >= the_taller_of(a, b)
+    ensures: CallFails(error: invalid_data)
+}
+
+open question "A rectangle reaching past the right or bottom edge is neither clipped to the edge nor refused: the C subtracts the size a second time -- `wide = maxx - ofsx - wide` where clipping would be `maxx - ofsx` -- and a rectangle one column too wide comes out with a negative width. Nothing is then compared and the answer is nought per cent, so `image-diff/part i1 i2 0x0 1x3` on a pair of two-by-two images says the two are identical when the pixels it was pointed at differ. JEBOL matches it because REBOL's own test asserts that nought per cent twice and the whole point of the port is to answer what a real 3.22.5 answers. It is recorded here rather than fixed because fixing it would be a change to REBOL, not a change to JEBOL, and because the next person to read the clamping will otherwise assume the port got it wrong."
 
 -- IMAGE is the shim onto whatever image codec the platform has, and this
 -- platform has one.

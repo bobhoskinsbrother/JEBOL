@@ -195,14 +195,14 @@ Sizes are the number of `known-gaps.txt` entries the goal is worth, and every
 entry belongs to exactly one goal. **Re-derived from the list on 11 September
 2026**, because the old figures had drifted: goal 11 was the worst at 135
 against a real 132, and goal 15 claimed 40 where the files it owns hold 31.
+Goal 2 has since gone to nought and the total with it.
 Do not trust a size here that has not been re-derived since work landed —
 `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt` is the live
 total and the table below is how it divides.
 
-    352   the whole list
+    332   the whole list
     ---
     132   11. sweepable files that run clean
-     20    2. image
      36    5. the file ports
      34    6. the checksum port
      31   15. the scattered singles and pairs
@@ -213,7 +213,7 @@ total and the table below is how it divides.
       9   14. the pdf codec
       7   12. Java exceptions escaping to the top
 
-Goals 3, 4a, 4b, 8, 13 and 16 to 21 are done and own nothing. To re-derive the
+Goals 2, 3, 4a, 4b, 8, 13 and 16 to 21 are done and own nothing. To re-derive the
 table, count the list by file and read each goal for which files it names:
 
     sed 's| /.*||' src/test/resources/rebol-suite/known-gaps.txt | sort | uniq -c | sort -rn
@@ -548,13 +548,16 @@ slicer takes the last top-level `===start-group===`, and this file nests its
 groups inside the `if` blocks, so the entries all claim to be in "TEXT codec".
 They are not.
 
-### 2. Image, read and written — 51, now 20
+### 2. Image, read and written — 51 — DONE
 
-`image-test.r3` runs to the end with no stops, so every one of these is a
-wrong answer and `scripts/sweep.py image-test.r3` will show them in pairs.
-**"Image as a series" is done — all 31.** APPEND, INSERT, CHANGE, FIND and
-REPEAT all refused an image, which made it a series that could not be used as
-one. `ImageSeries.java` is the one place that knows what counts as a pixel;
+`image-test.r3` has no line on `known-gaps.txt` at all. Every one of the
+fifty-one was a wrong answer rather than a refusal, which is why the file ran
+to the end throughout and `scripts/sweep.py image-test.r3` showed them in
+pairs.
+
+**"Image as a series" was the first thirty-one.** APPEND, INSERT, CHANGE, FIND
+and REPEAT all refused an image, which made it a series that could not be used
+as one. `ImageSeries.java` is the one place that knows what counts as a pixel;
 the natives gained an arm each.
 
 The part worth carrying forward is the height. It is not stored: it is how
@@ -570,18 +573,63 @@ a pixel whose alpha differs — the same "look at the thing, not into it" that
 end are dropped, because the width is fixed and a longer image would be a
 different shape.
 
-What is left, all of it wrong answers rather than refusals:
+**The remaining twenty came apart into six defects, two of which nothing on
+the list was pointing at.**
 
-     8  Image difference
-     5  change image
-     3  BLUR
-     2  RGB - HSV conversions
-     1  construct image
-     1  Save/load image
+*An image written into an image is a rectangle, not a run.* Everything else
+CHANGE accepts is pixels laid down one after another, wrapping at the end of a
+row. An image goes in as a block: its corner at the position, each of its rows
+on one row of the target, and what will not fit dropped at both edges rather
+than spilled onto the next row. The position answered back still steps one
+pixel, because one image is one thing however many pixels it carries.
 
-The C is `rebol3-source/src/core/t-image.c`. JEBOL's side is
-`src/main/java/org/jebol/domain/eval/ImagePath.java` and the image branches of
-`Natives.java`.
+*COPY of an image was not a copy.* It answered the same image, sharing its
+pixels, so blurring a copy blurred the original. Nothing caught it because
+every test that copied a picture went on to read the copy — REBOL's own suite
+only notices three assertions later, when a checksum taken before the copy no
+longer matches. COPY/PART with a pair takes a rectangle too, and a plain COPY
+takes whole rows: three rows and a spare come back as three rows.
+
+*BLUR was an approximation where the C is an algorithm.* It is Ivan Kuckir's
+three box blurs, whose widths are chosen so their combined spread matches the
+Gaussian asked for, each run along the rows and then down the columns. Alpha
+goes through with the colour. The radius comes down to half the shorter side,
+which on a picture of even width is one pixel wider than the row — so the C
+runs off the end of every row it blurs at that radius, and reads what the
+allocator left. On a picture of any size that is zeros, and the port reads
+zeros too: all three of REBOL's own checksums on a 256×256 photograph match,
+the widest radius included.
+
+*IMAGE-DIFF ignored its `/part` refinement entirely* — the arguments were
+declared and dropped. The clamping is the C's, verbatim, including the line
+that subtracts the size a second time where clipping would subtract only the
+corner: a rectangle one column too wide comes out with a negative width, and
+the answer is nought per cent for a pair that differs. REBOL's own test asserts
+that nought twice.
+
+*The two colour conversions threw away everything past the third part.* They
+write through the first three octets of the caller's own tuple and stop, so an
+alpha passes through untouched and a tuple of one keeps its length.
+
+*A specification that could not be built was quietly built anyway.* A negative
+dimension, a position of nought, a block of colours and anything left over are
+all refused now, and the construct form goes through the same code as MAKE
+from a block rather than handing the maker a bare pair.
+
+Two of the three BLUR assertions fail on a real 3.22.5 as well and are recorded
+in `fails-on-rebol-too.txt`: they ask for negative checksums from a CHECKSUM
+that stopped answering signed numbers, and the file was never updated.
+
+One thing outside `image-test.r3` came out of this. The runtime's own BMP
+writer refuses every thirty-two-bit picture it is offered, so JEBOL wrote
+twenty-four bits and lost the transparency. A real 3.22.5 writes the fifth
+header version with a mask per channel, and `JavaImages` now writes those same
+hundred and fifty-four bytes by hand.
+
+The C is `rebol3-source/src/core/t-image.c`, `n-image.c` and
+`u-image-blur.c`. JEBOL's side is `ImageSeries.java`, `ImageOperations.java`,
+`ImagePath.java`, the image branches of `Natives.java`, and `JavaImages.java`
+for the codec.
 
 ### 3. LZMA and Brotli — 45 — DONE
 

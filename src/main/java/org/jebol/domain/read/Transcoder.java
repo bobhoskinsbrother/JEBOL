@@ -912,7 +912,8 @@ public final class Transcoder {
         if (maker == null) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
         }
-        Value specification = contents.size() == 1 || readsOneLooseValue(datatype)
+        Value specification = !alwaysReadsABlock(datatype)
+                && (contents.size() == 1 || readsOneLooseValue(datatype))
                 ? contents.getFirst()
                 : BlockValue.block(contents);
         Value made;
@@ -941,6 +942,22 @@ public final class Transcoder {
      */
     private static boolean readsOneLooseValue(Datatype datatype) {
         return datatype == Datatype.TIME;
+    }
+
+    /**
+     * A datatype whose maker has to see a block even where the construct holds
+     * a single value.
+     *
+     * <p>An image is the one. {@code MT_Image} calls {@code Create_Image} and
+     * nothing else, so a written image is always read as a specification --
+     * and a specification refuses a size that cannot exist. Handing the maker
+     * a bare pair instead reaches the code that makes a blank picture of a
+     * size, which brings an impossible size down to the nearest possible, so
+     * {@code #(image! 1x-1)} quietly read as a picture one wide and none tall
+     * where a real Rebol refuses it.
+     */
+    private static boolean alwaysReadsABlock(Datatype datatype) {
+        return datatype == Datatype.IMAGE;
     }
 
     /**

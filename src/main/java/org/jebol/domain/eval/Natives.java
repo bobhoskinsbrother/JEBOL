@@ -4440,9 +4440,8 @@ public final class Natives {
                         Parameter.belongingTo("part", "size", Set.of(Datatype.PAIR))),
                 Set.of("part"),
                 (arguments, evaluator, context, refinements) ->
-                        DecimalValue.percent(ImageOperations.differenceBetween(
-                                (ImageValue) arguments.get(0),
-                                (ImageValue) arguments.get(1))));
+                        DecimalValue.percent(theDifferenceBetweenImages(
+                                arguments, refinements)));
 
         define("image", List.of(
                         Parameter.belongingTo("load", "src-file",
@@ -6211,6 +6210,11 @@ public final class Natives {
                     }
                     Value limit = argumentFor("part", List.of("part", "types"),
                             arguments, refinements, 1);
+                    if (series instanceof ImageValue picture
+                            && limit instanceof PairValue shape) {
+                        return ImageSeries.rectangleCopiedFrom(picture,
+                                (int) shape.x(), (int) shape.y());
+                    }
                     return copiedFront(series, limit, deeply, kinds);
                 });
 
@@ -9477,6 +9481,7 @@ public final class Natives {
             case BinaryValue binary -> copiedBytes(binary, binary.lengthFromHere());
             case VectorValue vector -> copiedElements(vector, vector.lengthFromHere());
             case BitsetValue members -> members.duplicate();
+            case ImageValue picture -> copiedPixels(picture, picture.lengthFromHere());
             case MapValue pairs -> {
                 List<Value> flattened = pairs.flattened();
                 List<Value> copiedPairs = new ArrayList<>(flattened.size());
@@ -10809,16 +10814,32 @@ public final class Natives {
         return image.atIndex(image.index() + pixels.size());
     }
 
-    /** The first pixels of an image, as an image of the same width. */
+    /**
+     * The pixels from where an image stands, as a picture of whole rows.
+     *
+     * <p>Whole rows, which is the part worth saying: a copy that would come to
+     * three rows and a spare comes to three rows, and the spare pixels are
+     * dropped rather than left hanging off the bottom. {@code h = len / w} and
+     * then {@code memcpy(..., w * h * 4)} -- the height is worked out first
+     * and only that many pixels are taken.
+     *
+     * <p>Fewer pixels than the picture is wide makes a single row of exactly
+     * that many, so copying three pixels out of a picture four wide is a
+     * three-wide picture rather than a four-wide one with a gap.
+     */
     private static ImageValue copiedPixels(ImageValue image, int howMany) {
-        ImageStorage into = ImageStorage.of(
-                Math.max(1, Math.min(howMany, image.storage().wide())), 0);
-        ImageValue made = new ImageValue(into, 1);
-        for (int at = 1; at <= howMany; at++) {
+        int taking = Math.max(0, Math.min(howMany, image.lengthFromHere()));
+        int wideEnoughForARow = Math.max(1, image.storage().wide());
+        int wide = taking <= wideEnoughForARow ? taking : wideEnoughForARow;
+        int high = wide == 0 ? 0
+                : taking <= wideEnoughForARow ? 1 : taking / wideEnoughForARow;
+        ImageStorage into = ImageStorage.of(wide, high);
+        for (int at = 1; at <= wide * high; at++) {
             int[] channels = image.pixelAt(at);
-            into.insertAt(at, channels[0], channels[1], channels[2], channels[3]);
+            into.setColourAt(at, channels[0], channels[1], channels[2]);
+            into.setAlphaAt(at, channels[3]);
         }
-        return made;
+        return new ImageValue(into, 1);
     }
 
     private enum Combination { INTERSECT, UNION, EXCLUDE, DIFFERENCE }
@@ -13905,7 +13926,7 @@ public final class Natives {
             return ImageValue.of(sideOf(size.x()), sideOf(size.y()));
         }
         if (from instanceof BlockValue parts && !parts.remaining().isEmpty()) {
-            return imageFromParts(parts.remaining());
+            return imageFromParts(parts);
         }
         return raiseMalconstruct(from);
     }
@@ -13926,12 +13947,29 @@ public final class Natives {
         return Math.max(side, 0);
     }
 
-    /** `Create_Image`: a size, and then whichever contents follow it. */
-    private static Value imageFromParts(List<Value> parts) {
+    /**
+     * `Create_Image`: a size, and then whichever contents follow it.
+     *
+     * <p>It reads the parts in one fixed order and refuses the whole
+     * specification the moment a part it cannot read is left over -- which is
+     * also how a block of colours comes to be refused. The branch that reads
+     * one never steps past it, so the leftover check below fires on the very
+     * block it has just used and the branch is unreachable. That leaves bytes
+     * as the only way to give a picture a list of colours, and it is what a
+     * real 3.22.5 does.
+     *
+     * <p>Whatever was wrong, the value named in the failure is the whole
+     * specification rather than the part that could not be read: the caller
+     * is handed nothing but a no, and raises with the block it was given.
+     */
+    private static Value imageFromParts(BlockValue specification) {
+        List<Value> parts = specification.remaining();
         if (!(parts.getFirst() instanceof PairValue size)) {
-            return raiseMalconstruct(parts.getFirst());
+            return raiseMalconstruct(specification);
         }
-        ImageValue made = ImageValue.of(sideOf(size.x()), sideOf(size.y()));
+        ImageValue made = ImageValue.of(
+                sideThatCanExist(size.x(), specification),
+                sideThatCanExist(size.y(), specification));
         int at = 1;
         if (at < parts.size() && parts.get(at) instanceof BinaryValue colours) {
             fillColoursFrom(made, colours);
@@ -13941,7 +13979,7 @@ public final class Natives {
                 at++;
             }
             if (at < parts.size() && parts.get(at) instanceof IntegerValue start) {
-                made = made.atIndex(Math.max(1, (int) start.magnitude()));
+                made = made.standingAt(aPositionOfAtLeastOne(start));
                 at++;
             }
         } else if (at < parts.size() && parts.get(at) instanceof TupleValue colour) {
@@ -13953,11 +13991,45 @@ public final class Natives {
                 }
                 at++;
             }
-        } else if (at < parts.size() && parts.get(at) instanceof BlockValue tuples) {
-            fillFromTuples(made, tuples.remaining());
-            at++;
         }
-        return at == parts.size() ? made : raiseMalconstruct(parts.get(at));
+        return at == parts.size() ? made : raiseMalconstruct(specification);
+    }
+
+    /**
+     * A side written down as part of a specification, which unlike a side
+     * asked for on its own cannot be negative.
+     *
+     * <p>{@code if (w < 0 || h < 0) return 0;} and the caller turns that into
+     * malconstruct. The two readings differ on purpose and the difference is
+     * visible: `make image! -1x-1` gives an empty picture where
+     * `make image! [-1x-1]` is refused, because a bare pair goes through the
+     * code that makes a blank picture of a size and brings an impossible one
+     * down to the nearest possible, while a specification is a thing somebody
+     * wrote out and got wrong.
+     */
+    private static int sideThatCanExist(double given, BlockValue specification) {
+        if (given < 0) {
+            throw Raised.of(EvaluationFailure.MALCONSTRUCT,
+                    Molder.mold(specification));
+        }
+        return sideOf(given);
+    }
+
+    /**
+     * The position a specification ends with, which is counted from one like
+     * every other position in the language.
+     *
+     * <p>{@code Int32s(block, 1)} is "a whole number of at least one", so
+     * nought and anything below it is out of range rather than a malformed
+     * construct: the shape of the specification was right and the number in it
+     * was not. Past the end is not refused at all -- the picture is still
+     * there and taking its head gives it back.
+     */
+    private static int aPositionOfAtLeastOne(IntegerValue start) {
+        if (start.magnitude() < 1) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, start);
+        }
+        return (int) Math.min(start.magnitude(), Integer.MAX_VALUE);
     }
 
     /**
@@ -14059,21 +14131,25 @@ public final class Natives {
         }
     }
 
-    /** `Tuples_To_RGBA`: the pixels one by one, as far as either side reaches. */
-    private static void fillFromTuples(ImageValue made, List<Value> tuples) {
-        int pixels = Math.min(made.storageLength(), tuples.size());
-        for (int pixel = 1; pixel <= pixels; pixel++) {
-            if (!(tuples.get(pixel - 1) instanceof TupleValue colour)) {
-                raiseMalconstruct(tuples.get(pixel - 1));
-                return;
-            }
-            int[] parts = colour.segments();
-            made.storage().setColourAt(pixel,
-                    parts.length > 0 ? parts[0] : 0,
-                    parts.length > 1 ? parts[1] : 0,
-                    parts.length > 2 ? parts[2] : 0);
-            made.storage().setAlphaAt(pixel, parts.length > 3 ? parts[3] : 0xFF);
+    /**
+     * IMAGE-DIFF over all of both pictures, or over the rectangle /PART names.
+     *
+     * <p>The C takes one branch for both the rectangle and a pair of different
+     * sizes, and a simpler one only where the sizes match and no rectangle was
+     * asked for -- which is the same answer by a shorter route.
+     */
+    private static double theDifferenceBetweenImages(
+            List<Value> arguments, Set<String> refinements) {
+
+        ImageValue first = (ImageValue) arguments.get(0);
+        ImageValue second = (ImageValue) arguments.get(1);
+        if (!refinements.contains("part")) {
+            return ImageOperations.differenceBetween(first, second);
         }
+        PairValue corner = (PairValue) arguments.get(2);
+        PairValue size = (PairValue) arguments.get(3);
+        return ImageOperations.differenceOverTheRectangle(first, second,
+                (int) corner.x(), (int) corner.y(), (int) size.x(), (int) size.y());
     }
 
     private static Value raiseMalconstruct(Value from) {
@@ -14142,10 +14218,21 @@ public final class Natives {
      * as a script can tell -- except that the C's caller keeps its own copy
      * changed, which a script sees only if it held the tuple in a word. Pinned in
      * the tests either way.
+     *
+     * <p>Writing through a colour pointer reaches the first three octets and
+     * stops, so the tuple keeps its length and everything past the third octet
+     * is handed back untouched. Which is what makes these usable on a pixel: a
+     * fourth octet is an alpha, and an alpha has no business being read as a
+     * hue. A tuple of fewer than three keeps its length too, so the octets the
+     * mold pads it out with stay at nought however bright the colour was.
      */
     private static Value recolouredTuple(
             TupleValue colour, java.util.function.UnaryOperator<int[]> formula) {
-        int[] made = formula.apply(threeParts(colour));
+        int[] made = colour.segments().clone();
+        int[] recoloured = formula.apply(threeParts(colour));
+        for (int octet = 0; octet < Math.min(made.length, recoloured.length); octet++) {
+            made[octet] = recoloured[octet];
+        }
         return TupleValue.of(made);
     }
 

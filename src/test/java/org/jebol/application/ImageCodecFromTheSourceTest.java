@@ -132,6 +132,76 @@ class ImageCodecFromTheSourceTest {
                 .isEqualTo("[2x2 255]");
     }
 
+    /**
+     * A BMP does have somewhere to put an alpha channel, and a real 3.22.5
+     * uses it: thirty-two bits a pixel under the fifth version of the header,
+     * which is the one that names a mask per channel.
+     *
+     * <p>JEBOL wrote twenty-four bits and threw the alpha away, because the
+     * runtime's own BMP writer refuses a picture that still has one -- "Image
+     * can not be encoded with compression type BI_RGB and 32 bits per pixel",
+     * and it says the same of every compression type it offers. So a
+     * see-through picture came back opaque, which was written down as what a
+     * BMP can do and is not.
+     */
+    @Test
+    @DisplayName("a BMP keeps its alpha, which the runtime's own writer will not")
+    void aBmpKeepsItsAlpha(@TempDir Path directory) throws IOException {
+        layOut(directory);
+        assertThat(answerTo(reaching(directory), """
+                see-through: make image! [2x2 255.0.0.10]
+                back-again: image/load/as
+                    image/save/as none see-through 'BMP 'BMP
+                reduce [back-again/size  to binary! back-again]"""))
+                .isEqualTo("[2x2 #{FF00000AFF00000AFF00000AFF00000A}]");
+    }
+
+    /**
+     * The bytes of that two-by-two, which are the bytes a real 3.22.5 writes:
+     * a fourteen-byte file header, a hundred and twenty-four bytes of the
+     * fifth header version, and sixteen of pixels. Blue first and alpha last
+     * in each, and the rows written top down -- which the header says by
+     * giving the height as a negative number.
+     */
+    @Test
+    @DisplayName("and it writes the same bytes a real Rebol writes")
+    void itWritesTheSameBytesARealRebolWrites(@TempDir Path directory)
+            throws IOException {
+
+        layOut(directory);
+        assertThat(answerTo(reaching(directory), """
+                written: image/save/as none make image! [2x2 255.0.0.10] 'BMP
+                reduce [length? written  enbase/flat written 16]"""))
+                .isEqualTo("""
+                        [154 {424D9A000000000000008A0000007C00000002000000\
+                        FEFFFFFF010020000300000010000000000000000000\
+                        000000000000000000000000FF0000FF0000FF000000\
+                        000000FF424752730000000000000000000000000000\
+                        00000000000000000000000000000000000000000000\
+                        00000000000000000000000000000000000000000000\
+                        0000000000000000FF0A0000FF0A0000FF0A0000FF0A}]""");
+    }
+
+    /**
+     * Three rows of two, so a picture written bottom up rather than top down
+     * comes back upside down and says so.
+     */
+    @Test
+    @DisplayName("and the rows come back in the order they went in")
+    void theRowsComeBackInTheOrderTheyWentIn(@TempDir Path directory)
+            throws IOException {
+
+        layOut(directory);
+        assertThat(answerTo(reaching(directory), """
+                striped: make image! 2x3
+                repeat n 6 [poke striped n to tuple! reduce [n n n 255]]
+                back-again: image/load/as
+                    image/save/as none striped 'BMP 'BMP
+                reduce [back-again/size  enbase/flat back-again/rgb 16]"""))
+                .isEqualTo("""
+                        [2x3 "010101020202030303040404050505060606"]""");
+    }
+
     @Test
     @DisplayName("saving to a file answers the file, and puts the bytes there")
     void savingToAFileAnswersTheFile(@TempDir Path directory) throws IOException {

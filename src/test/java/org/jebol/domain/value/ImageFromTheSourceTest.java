@@ -123,11 +123,24 @@ class ImageFromTheSourceTest {
                     .isEqualTo("255.0.0.128");
         }
 
+        /**
+         * This asserted the opposite until a real 3.22.5 was asked, and the
+         * reading it was written on is the obvious one: {@code Create_Image}
+         * has a branch that reads a block of colours as a run of pixels, so a
+         * block of colours must be a way to fill a picture.
+         *
+         * <p>It is not, because the branch cannot be reached. Every other
+         * branch steps past what it has just read and that one does not, so
+         * the check for anything left over fires on the very block it has used
+         * and refuses the whole specification. Bytes are the only way to give
+         * a picture a list of colours.
+         */
         @Test
-        @DisplayName("a block of tuples is the pixels one by one")
-        void aBlockOfTuples() {
-            assertThat(answerTo("img: make image! [2x1 [255.0.0 0.255.0]] img/2"))
-                    .isEqualTo("0.255.0.255");
+        @DisplayName("a block of colours is read as pixels and then refused anyway")
+        void aBlockOfTuplesIsRefused() {
+            assertThat(answerTo("""
+                    e: try [make image! [2x1 [255.0.0 0.255.0]]] e/id"""))
+                    .isEqualTo("malconstruct");
         }
 
         @Test

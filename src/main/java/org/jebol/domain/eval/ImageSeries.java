@@ -27,8 +27,6 @@ final class ImageSeries {
     /** What a pixel with no alpha given gets, which is wholly opaque. */
     private static final int WHOLLY = 0xFF;
 
-    private static final int CHANNELS = 4;
-
     /**
      * One pixel as four channels, from whatever a caller wrote it as.
      *
@@ -124,9 +122,10 @@ final class ImageSeries {
      * past the end are dropped.
      */
     static Value changed(ImageValue image, Value given, long howManyTimes) {
-        List<int[]> pixels = given instanceof ImageValue other
-                ? everyPixelOf(other)
-                : everyPixelIn(given, "change");
+        if (given instanceof ImageValue rectangle) {
+            return rectangleWritten(image, rectangle, howManyTimes);
+        }
+        List<int[]> pixels = everyPixelIn(given, "change");
         ImageStorage storage = image.storage();
         int at = image.index();
         for (long again = 0; again < howManyTimes; again++) {
@@ -142,12 +141,74 @@ final class ImageSeries {
         return image.atIndex(at);
     }
 
-    private static List<int[]> everyPixelOf(ImageValue image) {
-        List<int[]> pixels = new ArrayList<>();
-        for (int at = image.index(); at <= image.storage().length(); at++) {
-            pixels.add(image.storage().pixelAt(at));
+    /**
+     * One image written into another, which is the one thing CHANGE lays down
+     * as a block rather than as a run.
+     *
+     * <p>{@code Copy_Rect_Data}. Every other thing CHANGE accepts is pixels one
+     * after another, wrapping from the end of a row to the start of the next.
+     * An image is not, because an image has a shape: its top-left corner goes
+     * where the position points and each of its rows lands on one row of the
+     * target, so what will not fit on a row is dropped rather than spilled onto
+     * the next.
+     *
+     * <p>The step taken afterwards is one pixel, not the size of what was
+     * written -- {@code index + dup * part} with {@code part} left at one,
+     * because one image is one thing however many pixels it carries. /DUP
+     * multiplies that step and nothing else, so the rectangle goes in once
+     * however many times it was asked for.
+     */
+    private static Value rectangleWritten(
+            ImageValue image, ImageValue rectangle, long howManyTimes) {
+
+        ImageStorage storage = image.storage();
+        if (storage.wide() == 0 || howManyTimes == 0) {
+            return image;
         }
-        return pixels;
+        int column = (image.index() - 1) % storage.wide();
+        int row = (image.index() - 1) / storage.wide();
+        int columns = Math.min(rectangle.storage().wide(), storage.wide() - column);
+        int rows = Math.min(rectangle.storage().high(), storage.high() - row);
+        for (int down = 0; down < rows; down++) {
+            for (int across = 0; across < columns; across++) {
+                int[] pixel = rectangle.storage()
+                        .pixelAt((down * rectangle.storage().wide()) + across + 1);
+                int into = ((row + down) * storage.wide()) + column + across + 1;
+                storage.setColourAt(into, pixel[0], pixel[1], pixel[2]);
+                storage.setAlphaAt(into, pixel[3]);
+            }
+        }
+        return image.standingAt(image.index() + (int) howManyTimes);
+    }
+
+    /**
+     * A rectangle taken out of an image as a picture of its own, which is what
+     * COPY/PART means when the part is a shape rather than a count.
+     *
+     * <p>The corner is where the image stands, read as a column and a row the
+     * same way CHANGE reads one, and the shape is clipped to what is left of
+     * the row and of the picture below it. So a rectangle asked for at the
+     * last column comes back one wide, and one asked for larger than the
+     * picture comes back as the picture.
+     */
+    static Value rectangleCopiedFrom(ImageValue image, int wanted, int tall) {
+        ImageStorage storage = image.storage();
+        int from = Math.min(image.index() - 1, storage.length());
+        int column = storage.wide() == 0 ? 0 : from % storage.wide();
+        int row = storage.wide() == 0 ? 0 : from / storage.wide();
+        int columns = Math.min(Math.max(wanted, 0), storage.wide() - column);
+        int rows = Math.min(Math.max(tall, 0), storage.high() - row);
+        ImageStorage into = ImageStorage.of(columns, Math.max(rows, 0));
+        for (int down = 0; down < rows; down++) {
+            for (int across = 0; across < columns; across++) {
+                int[] pixel = storage.pixelAt(
+                        ((row + down) * storage.wide()) + column + across + 1);
+                int at = (down * columns) + across + 1;
+                into.setColourAt(at, pixel[0], pixel[1], pixel[2]);
+                into.setAlphaAt(at, pixel[3]);
+            }
+        }
+        return new ImageValue(into, 1);
     }
 
     /**

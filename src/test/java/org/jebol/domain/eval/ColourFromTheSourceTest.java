@@ -163,6 +163,53 @@ class ColourFromTheSourceTest {
             assertThat(answerTo("c: 255.0.0 rgb-to-hsv c")).isEqualTo("0.255.255");
             assertThat(answerTo("c: 255.0.0 rgb-to-hsv c c")).isEqualTo("255.0.0");
         }
+
+        /**
+         * {@code return R_ARG1} writes through the first three bytes of the
+         * caller's own tuple and answers it, so the fourth byte and everything
+         * after it is not touched. Which is what makes the pair usable on a
+         * pixel: an alpha is not part of the colour and has no business being
+         * read as a hue.
+         */
+        @Test
+        @DisplayName("the fourth part is an alpha, and both conversions hand it back")
+        void theAlphaIsHandedBack() {
+            assertThat(answerTo("rgb-to-hsv 134.116.10.100"))
+                    .isEqualTo("36.235.134.100");
+            assertThat(answerTo("hsv-to-rgb 134.116.10.100"))
+                    .isEqualTo("5.9.10.100");
+        }
+
+        @Test
+        @DisplayName("and so is everything past the fourth")
+        void andSoIsEverythingPastTheFourth() {
+            assertThat(answerTo("rgb-to-hsv 1.2.3.4.5")).isEqualTo("148.170.3.4.5");
+            assertThat(answerTo("hsv-to-rgb 1.2.3.4.5")).isEqualTo("3.2.2.4.5");
+            assertThat(answerTo("rgb-to-hsv to tuple! [1 2 3 4 5 6 7 8 9 10 11 12]"))
+                    .isEqualTo("148.170.3.4.5.6.7.8.9.10.11.12");
+        }
+
+        /**
+         * A tuple keeps how many parts were written down even where it shows
+         * three, and the conversions keep that count. So a tuple of one part
+         * has only its first byte written back and the two the mold pads it
+         * out with stay at nought, however bright the colour was.
+         */
+        @Test
+        @DisplayName("a tuple shorter than three keeps its length, so the rest reads as nought")
+        void aShortTupleKeepsItsLength() {
+            assertThat(answerTo("rgb-to-hsv to tuple! [200]")).isEqualTo("0.0.0");
+            assertThat(answerTo("rgb-to-hsv to tuple! [200 100]")).isEqualTo("21.255.0");
+            assertThat(answerTo("hsv-to-rgb to tuple! [200]")).isEqualTo("0.0.0");
+            assertThat(answerTo("hsv-to-rgb to tuple! [200 100]")).isEqualTo("0.0.0");
+        }
+
+        @Test
+        @DisplayName("and a grey with an alpha keeps both")
+        void aGreyWithAnAlphaKeepsBoth() {
+            assertThat(answerTo("rgb-to-hsv 9.9.9.77")).isEqualTo("0.0.9.77");
+            assertThat(answerTo("hsv-to-rgb 9.0.9.77")).isEqualTo("9.9.9.77");
+        }
     }
 
     @Nested

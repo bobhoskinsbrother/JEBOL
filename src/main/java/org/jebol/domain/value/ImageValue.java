@@ -40,6 +40,22 @@ public record ImageValue(ImageStorage storage, int index) implements SeriesValue
         return new ImageValue(storage, oneBasedIndex);
     }
 
+    /**
+     * The image standing at a position, with anything past the last pixel
+     * brought back to the tail.
+     *
+     * <p>Rebol stores a position past the end and shows it brought back, which
+     * comes to the same thing everywhere a script can see it: an image built to
+     * stand at nine on a picture of four reads as standing at five. Bringing it
+     * back here keeps a position an honest one rather than a number every
+     * reader has to interpret, and the C's own arithmetic runs past the tail
+     * often enough to need it -- writing a rectangle at the tail steps one
+     * pixel further on from a place that was already the end.
+     */
+    public ImageValue standingAt(int oneBasedIndex) {
+        return atIndex(Math.min(oneBasedIndex, storage.length() + 1));
+    }
+
     @Override
     public ImageValue head() {
         return atIndex(1);
