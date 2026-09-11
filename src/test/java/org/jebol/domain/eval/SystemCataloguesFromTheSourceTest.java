@@ -163,11 +163,33 @@ class SystemCataloguesFromTheSourceTest {
                     .isEqualTo(FALSE);
         }
 
+        /**
+         * This asserted the catalogue was empty, on the reasoning that RESIZE
+         * samples one way and naming all fifteen would be a lie. The reasoning
+         * was wrong, and the cipher catalogue above is what shows why: a
+         * catalogue names what may be <em>asked for</em>, so a caller can check
+         * before asking. Which filter runs changes how a shrunken photograph
+         * looks; it does not change what RESIZE is.
+         *
+         * <p>The lie was the empty one. It said no filter could be named, and
+         * meanwhile a mistyped name was accepted in silence -- so a caller
+         * asking for one that means nothing got the default and no word about
+         * it. Naming the fifteen and refusing the sixteenth is the honest pair.
+         */
         @Test
-        @DisplayName("and FILTERS likewise, because RESIZE samples one way")
-        void thereAreNoFiltersYet() {
+        @DisplayName("and FILTERS names the fifteen RESIZE can be asked for")
+        void theFiltersAreTheOnesResizeCanBeAskedFor() {
             assertThat(answerTo("block? system/catalog/filters")).isEqualTo(TRUE);
-            assertThat(answerTo("empty? system/catalog/filters")).isEqualTo(TRUE);
+            assertThat(answerTo("15 = length? system/catalog/filters")).isEqualTo(TRUE);
+            for (String named : new String[] {
+                    "Point", "Box", "Triangle", "Hermite", "Hanning", "Hamming",
+                    "Blackman", "Gaussian", "Quadratic", "Cubic", "Catrom",
+                    "Mitchell", "Lanczos", "Bessel", "Sinc"}) {
+                assertThat(answerTo("true? find system/catalog/filters '" + named))
+                        .as(named).isEqualTo(TRUE);
+            }
+            assertThat(answerTo("true? find system/catalog/filters 'nonsense"))
+                    .isEqualTo(FALSE);
         }
 
         @Test

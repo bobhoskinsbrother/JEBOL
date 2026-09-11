@@ -2649,20 +2649,27 @@ rule AnImageIsFilledByBytesOrByOneColour {
     ensures: the_colour_paints_every_pixel_where_it_is_one_colour()
 }
 
--- A position may follow, counted from one the way every other position in
--- the language is, and nought or less is refused.
+-- A position may follow the colour bytes, counted from one the way every
+-- other position in the language is, and nought or less is refused.
 --
--- Past the end is not refused. An image built to stand past its own last
--- pixel is an empty one that remembers where it came from, and taking its
--- head gives the picture back -- which is exactly what a position past the
--- end means everywhere else in the language.
+-- Only after the colour bytes. The slot a trailing whole number fills depends
+-- on what came before it: after a run of bytes it is a position, after one
+-- colour it is that colour's alpha, and after nothing at all it is a part
+-- nothing can read -- so `make image! [2x2 0]` is a malformed specification
+-- rather than a position out of range.
 rule APositionOfNoughtOrLessIsRefused {
     when: MakeValue(image, specification)
+    requires: specification.holds_colour_bytes
     requires: specification.holds_a_position
     requires: specification.position <= 0
 
     ensures: MakeFails(error: out_of_range)
 }
+
+-- Past the end is not refused. An image built to stand past its own last
+-- pixel is an empty one that remembers where it came from, and taking its
+-- head gives the picture back -- which is exactly what a position past the
+-- end means everywhere else in the language.
 
 rule APositionPastTheEndIsAllowed {
     when: MakeValue(image, specification)
@@ -2684,6 +2691,47 @@ rule AnythingLeftOverRefusesTheWholeThing {
     ensures: MakeFails(error: malconstruct)
 }
 
+-- A side wider than sixty-five thousand five hundred and thirty-five cannot
+-- be built, and which failure it gives depends on how it was asked for.
+--
+-- A bare pair is a size out of range: somebody asked for a picture too big
+-- and the number is the thing that is wrong. A specification is a malformed
+-- construct, because the maker there is handed nothing but a no and refuses
+-- the whole block rather than the number inside it. The same size two ways,
+-- two errors, and both are what a real 3.22.5 gives.
+rule ASideTooWideCannotBeBuilt {
+    when: MakeValue(image, size)
+    requires: size.datatype = pair
+    requires: size.width > 65535 or size.height > 65535
+
+    ensures: MakeFails(error: size_limit)
+}
+
+rule ASideTooWideInASpecificationIsMalformed {
+    when: MakeValue(image, specification)
+    requires: specification.size.width > 65535
+        or specification.size.height > 65535
+
+    ensures: MakeFails(error: malconstruct)
+}
+
+-- And a written image carries no position at all.
+--
+-- MAKE from a block reads one, because the block is a specification and a
+-- specification may say where to stand. The written form goes through the
+-- same reader, so `#(image! 2x2 3)` looks as though it should mean the same
+-- thing -- and it does not, because a construct is read by the generic
+-- machinery for "a series and where it stands" before it ever reaches the
+-- image maker, and an image is not one of the series that machinery knows.
+-- Both the position and the picture are refused together.
+rule AWrittenImageCarriesNoPosition {
+    when: ReadConstruct(image, parts)
+    requires: parts.holds_a_trailing_whole_number
+    requires: not parts.holds_colour_bytes
+
+    ensures: ReadFails(error: malconstruct)
+}
+
 open question "A block of tuples is read as a run of pixels and then refused anyway, because the reader that consumes it never steps past it and the leftover check above then fires on the block it has just used. So `make image! [2x1 [1.1.1 2.2.2]]` is a malconstruct in a real 3.22.5 even though the block is exactly what the code that reads it wants, and the only way to give an image a list of colours is to write them as bytes. JEBOL matches it, because a caller catching the failure is relying on it and because guessing at the intent of an unreachable branch is how a port stops being a port. Whether the branch is meant to work is a question for REBOL rather than for JEBOL."
 
 -- === An image is a series of pixels ========================
@@ -2701,6 +2749,53 @@ rule EverySeriesActionWorksOnAnImage {
     requires: verb in {append, insert, change, find, repeat}
 
     ensures: not CallFails(error: cannot_use)
+}
+
+-- What counts as a pixel to write is a colour, an alpha, a run of bytes, or a
+-- block of the first two.
+--
+-- A run of bytes is four to a pixel and not three, which is the opposite way
+-- round from building an image: `make image! [1x1 #{FFFFFF}]` reads its bytes
+-- three at a time because the alpha arrives separately, and appending a
+-- binary reads four because there is nowhere else for the alpha to come from.
+rule WhatCanBeWrittenIntoAnImage {
+    when: EvaluateCall(verb, target, value)
+    requires: is_image(target)
+    requires: verb in {append, insert, change}
+
+    ensures: a_tuple_is_a_colour()
+    ensures: a_whole_number_is_an_alpha()
+    ensures: a_binary_is_four_bytes_to_a_pixel()
+    ensures: a_block_holds_any_number_of_the_first_two()
+}
+
+-- Anything else is refused by its type rather than by the action, because
+-- what is wrong is the value and not the asking.
+rule WhatIsNotAPixelIsRefusedByItsType {
+    when: EvaluateCall(verb, target, value)
+    requires: is_image(target)
+    requires: verb in {append, insert, change}
+    requires: not the_value_can_be_a_pixel(value)
+
+    ensures: CallFails(error: invalid_type)
+    ensures: length_of(target) = length_of_the_image_before()
+}
+
+-- A whole number on its own is an alpha and touches nothing else, which is
+-- the one write that reaches part of a pixel rather than all of it.
+--
+-- {@code Fill_Channel_Line} writes the alpha byte and steps over the other
+-- three, so a pixel changed this way keeps the colour it had. Appending one
+-- keeps the colour the new pixel started with, which is the white every fresh
+-- pixel is: the image is grown first and filled afterwards.
+rule AWholeNumberWritesTheAlphaAndNothingElse {
+    when: EvaluateCall(verb, target, value)
+    requires: is_image(target)
+    requires: verb in {append, insert, change}
+    requires: value.datatype = integer
+
+    ensures: the_alpha_written = value
+    ensures: the_colour = what_it_was()
 }
 
 -- Growing an image adds pixels, and the height is worked out from how many
@@ -2760,6 +2855,23 @@ rule ChangingAnImageWritesOverWhatIsThere {
 
     ensures: length_of(target) = length_of_the_image_before()
     ensures: CallResult(value: the_image_just_past_what_was_written())
+}
+
+-- /ONLY leaves the alpha alone, which is the same "look at the thing, not
+-- into it" that /ONLY means everywhere else and the same reading FIND gives
+-- it.
+--
+-- Without it a colour of three parts writes an alpha anyway, and writes it
+-- wholly opaque -- so changing a half-transparent pixel to a new colour makes
+-- it solid unless /ONLY says otherwise. That is the C's own default and is
+-- worth knowing before relying on it.
+rule ChangingWithOnlyKeepsTheAlphaThatWasThere {
+    when: EvaluateCall(change, target, value)
+    requires: is_image(target)
+    requires: refinement_asked(only)
+
+    ensures: the_alpha = what_it_was()
+    ensures: the_colour_written = value
 }
 
 -- Writing one image into another is the exception, and it is a rectangle
@@ -2832,10 +2944,41 @@ rule DuplicatingAnImageRectangleMovesOnlyTheAnswer {
     requires: is_image(target)
     requires: is_image(value)
     requires: refinement_asked(dup)
+    requires: the_count > 0
 
     ensures: the_rectangle_was_written_once()
     ensures: CallResult(value: the_image_that_many_pixels_past_the_position())
 }
+
+-- A count of nothing writes nothing and does not move either, which is the
+-- one case where the step and the writing agree.
+rule DuplicatingNoTimesDoesNothingAtAll {
+    when: EvaluateCall(change, target, value)
+    requires: is_image(target)
+    requires: refinement_asked(dup)
+    requires: the_count = 0
+
+    ensures: target = unchanged
+    ensures: CallResult(value: the_image_where_it_already_stood())
+}
+
+-- /PART says how big the rectangle is, rather than how many pixels to write.
+--
+-- Which is the only reading that makes sense of a shape: a rectangle two
+-- across and two down is four pixels, and saying "four" would not say which
+-- four. So a pair is the size, and the source is read from its own head to
+-- fill it.
+rule PartOnAnImageIsTheSizeOfTheRectangle {
+    when: EvaluateCall(change, target, value, part)
+    requires: is_image(target)
+    requires: is_image(value)
+    requires: refinement_asked(part)
+    requires: part.datatype = pair
+
+    ensures: the_written_block_is(width: part.x, height: part.y)
+}
+
+open question "A /PART given as a count rather than a shape writes nothing at all. The C reads the count into the variable that holds how many things were given and leaves the rectangle's width and height at nought, and the copy then returns before writing a pixel -- so `change/part target other 2` moves the position by two and changes no colour. It is unreachable as anything useful and JEBOL matches it, because a caller catching the no-op is relying on it. Whether a count was ever meant to mean anything here is a question for REBOL."
 
 -- === Starting another program ==============================
 
@@ -10213,18 +10356,29 @@ rule EverythingPastTheThirdPartIsHandedBack {
         ensures: the_parts_past_the_third_answered() = the_parts_past_the_third(colour)
 }
 
--- The five image functions work on the whole image, never from where it
--- stands.
+-- Four image functions work on the whole image, never from where it stands:
+-- PREMULTIPLY, BLUR, RESIZE and IMAGE-DIFF.
 --
--- One property shared by all of them and worth stating once. An image is a
+-- One property shared by all four and worth stating once. An image is a
 -- series, so it has a position, and every other series function respects it.
 -- These do not: the C flags it in a comment of its own -- "All pixels are
 -- modified even when the input image is not at its head!" -- so an image
 -- standing at its third pixel is still blurred, premultiplied and compared
 -- from its first.
-invariant ImageOperationsIgnoreThePosition {
-    for operation in ImageOperations:
-        operation.pixels_affected = operation.image.every_pixel
+--
+-- TINT, LUMINOSITY and GRAYSCALE are not among them and must not be swept in.
+-- They look like the same kind of thing and are not: each reads from the
+-- position the way an ordinary series function does, in the C and here.
+--
+-- "The whole image" is width times height, which is not the same as every
+-- pixel it holds. An image whose last row is partly filled has pixels past
+-- its final whole row -- three in a picture two wide is a row and a spare --
+-- and the spare is a real pixel that reads back and can be changed. These
+-- four never reach it, because each walks the rectangle rather than the run.
+invariant TheFourWholeImageOperationsIgnoreThePosition {
+    for operation in [premultiply, blur, resize, image_diff]:
+        operation.pixels_affected
+            = the_rectangle_of(width_times_height(operation.image))
 }
 
 -- PREMULTIPLY scales each colour by that pixel's own alpha, in place.
@@ -10335,6 +10489,59 @@ rule ResizeReadsAWholeNumberAsAWidthAndKeepsTheShape {
     ensures: height_of(result) = (size * the_height_it_had) / the_width_it_had
 }
 
+-- A width so small that the height works out at nothing is refused rather
+-- than brought up to one. Three across a picture ten by one is a tenth of a
+-- row, and there is no such picture -- so asking for one is a failure to
+-- create rather than a picture one row tall that nobody asked for.
+rule AWidthThatLeavesNoHeightIsRefused {
+    when: EvaluateCall(resize, image, size)
+    requires: size.datatype = integer
+    requires: (size * the_height_it_had) / the_width_it_had = 0
+
+    ensures: CallFails(error: no_create)
+}
+
+-- A pair with one side left at nought means "work that side out from the
+-- shape", which is the same thing a whole number means and says which of the
+-- two is being given.
+--
+-- So only a pair with both sides at nought is refused. That is a picture with
+-- no pixels in it and no shape to recover either side from.
+rule APairWithOneSideAtNoughtTakesThatSideFromTheShape {
+    when: EvaluateCall(resize, image, size)
+    requires: size.datatype = pair
+    requires: size.width = 0 or size.height = 0
+    requires: not (size.width = 0 and size.height = 0)
+
+    ensures: the_side_that_was_given = what_was_asked_for()
+    ensures: the_other_side = the_side_given_scaled_by_the_shape()
+}
+
+rule APairWithNoSidesAtAllIsRefused {
+    when: EvaluateCall(resize, image, size)
+    requires: size.datatype = pair
+    requires: size.width = 0
+    requires: size.height = 0
+
+    ensures: CallFails(error: invalid_arg)
+}
+
+-- /FILTER names how the pixels are sampled, out of the fifteen in
+-- `system/catalog/filters`, and anything else is refused.
+--
+-- Which filter runs changes how a shrunken photograph looks and does not
+-- change what RESIZE is, so a build that samples one way for all of them is
+-- still RESIZE. Accepting a name that means nothing is a different matter: a
+-- caller who mistypes one should hear about it rather than quietly get the
+-- default.
+rule ResizeRefusesAFilterItDoesNotHave {
+    when: EvaluateCall(resize, image, size, filter)
+    requires: refinement_asked(filter)
+    requires: not the_catalogue_of_filters_holds(filter)
+
+    ensures: CallFails(error: invalid_arg)
+}
+
 -- IMAGE-DIFF is how far apart two images look, nought per cent to a hundred.
 --
 -- Not a plain distance in red, green and blue, because equal steps in those
@@ -10355,7 +10562,22 @@ rule ImageDiffWeighsColourTheWayTheEyeDoes {
 rule TwoImagesTheSameAreNoughtPerCentApart {
     when: EvaluateCall(image_diff, a, b)
     requires: every_pixel_matches(a, b)
+    requires: the_pixels_compared > 0
     ensures: CallResult(value: nought_per_cent)
+}
+
+-- Two pictures with no pixels between them are not nought per cent apart.
+-- They are not any distance apart: the total is divided by how many pixels
+-- were compared, and none were, so the answer is the one number that says
+-- "this question had no answer".
+--
+-- Nought per cent would be the tidier answer and would be a lie -- it claims
+-- two pictures were compared and found identical when nothing was looked at.
+rule ComparingNoPixelsAtAllAnswersNotANumber {
+    when: EvaluateCall(image_diff, a, b)
+    requires: the_pixels_compared = 0
+
+    ensures: CallResult(value: not_a_number)
 }
 
 -- Black against white is a hundred per cent exactly, and it is exact only
@@ -10403,6 +10625,19 @@ rule ANegativeSizeReachesBackFromTheCorner {
 
     ensures: the_corner_moved_by(size)
     ensures: the_size_used() = the_absolute_value_of(size)
+}
+
+-- And a corner before the picture starts is brought up to nought, taking that
+-- much off the size as it comes. A rectangle two wide starting one column
+-- before the left edge is one wide, not two shifted right: the part that was
+-- outside is lost rather than moved.
+rule ACornerBeforeTheStartIsBroughtUpToNought {
+    when: EvaluateCall(image_diff, a, b, offset, size)
+    requires: refinement_asked(part)
+    requires: offset.x < 0 or offset.y < 0
+
+    ensures: the_corner_used() = nought_on_the_side_that_was_negative()
+    ensures: the_size_used() = the_size_less_what_fell_outside()
 }
 
 -- A rectangle of no width or no height is refused rather than answered as
@@ -10464,6 +10699,23 @@ rule ImageSaveAnswersWhereItPutTheBytes {
     ensures: CallResult(value: the_destination_given = none
         ? a_binary_of_the_encoded_bytes
         : the_destination_given)
+}
+
+-- A binary handed in as the destination is written into, and it is the same
+-- binary that comes back rather than a copy of it.
+--
+-- Which is what makes it a destination at all. A caller passing one has a
+-- hold on it and expects to read the bytes from there afterwards; handing
+-- back a fresh binary and leaving theirs empty looks like it worked and
+-- quietly does nothing. A file destination behaves the same way -- the bytes
+-- go where the caller said and the caller's own handle is what is answered.
+rule SavingIntoABinaryFillsTheOneItWasGiven {
+    when: EvaluateCall(image)
+    requires: refinement_asked(save)
+    requires: the_destination_is_a_binary()
+
+    ensures: the_bytes_in_the_destination() = the_encoded_bytes()
+    ensures: CallResult(value: the_very_same_binary_that_was_given())
 }
 
 -- /AS names the codec rather than letting the bytes say. A word this build

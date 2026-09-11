@@ -202,6 +202,64 @@ class ImageCodecFromTheSourceTest {
                         [2x3 "010101020202030303040404050505060606"]""");
     }
 
+    /**
+     * A binary handed in as the destination is written into, and it is that
+     * very binary that comes back rather than a copy. Which is what makes it a
+     * destination at all: a caller passing one has a hold on it and expects to
+     * read the bytes from there afterwards.
+     *
+     * <p>JEBOL ignored it and answered a fresh binary, so the caller's own was
+     * still empty and the call looked as though it had worked.
+     *
+     * <p>How many bytes a PNG of four white pixels takes is the runtime's
+     * business and not REBOL's -- a real 3.22.5 writes a hundred and fifty-six
+     * where this writes seventy-one, and both are PNGs of the same picture. So
+     * what is checked is that the bytes are there, that they are the ones the
+     * call would otherwise have answered, and that they read back.
+     */
+    @Test
+    @DisplayName("saving into a binary fills the one it was given")
+    void savingIntoABinaryFillsTheOneItWasGiven(@TempDir Path directory)
+            throws IOException {
+
+        layOut(directory);
+        assertThat(answerTo(reaching(directory), """
+                destination: copy #{}
+                answered: image/save/as destination make image! 2x2 'PNG
+                elsewhere: image/save/as none make image! 2x2 'PNG
+                read-back: image/load/as destination 'PNG
+                reduce [
+                    same? destination answered
+                    destination = elsewhere
+                    read-back/size
+                ]"""))
+                .isEqualTo("[#(true) #(true) 2x2]");
+    }
+
+    /**
+     * From the position, and everything after it goes. The bytes are one whole
+     * file and half of a previous one behind them would not be, so a binary
+     * standing at its third byte keeps the two in front and loses the rest.
+     */
+    @Test
+    @DisplayName("and it writes from the position, dropping whatever followed")
+    void itWritesFromThePositionDroppingWhateverFollowed(@TempDir Path directory)
+            throws IOException {
+
+        layOut(directory);
+        assertThat(answerTo(reaching(directory), """
+                destination: copy #{DEADBEEF}
+                image/save/as destination make image! 2x2 'PNG
+                copy/part destination 4"""))
+                .isEqualTo("#{89504E47}");
+        assertThat(answerTo(reaching(directory), """
+                destination: copy #{DEADBEEF}
+                image/save/as (next destination) make image! 2x2 'PNG
+                whole: head destination
+                reduce [length? whole  copy/part whole 4]"""))
+                .isEqualTo("[72 #{DE89504E}]");
+    }
+
     @Test
     @DisplayName("saving to a file answers the file, and puts the bytes there")
     void savingToAFileAnswersTheFile(@TempDir Path directory) throws IOException {

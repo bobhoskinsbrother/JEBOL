@@ -275,7 +275,72 @@ class ImageFunctionsFromTheSourceTest {
         @DisplayName("a size of nothing is refused rather than making an empty image")
         void aZeroSizeIsRefused() {
             assertThat(answerTo("""
-                    e: try [resize (make image! 4x4) 0x0] error? e""")).isEqualTo(TRUE);
+                    e: try [resize (make image! 4x4) 0x0] e/id""")).isEqualTo("invalid-arg");
+        }
+
+        /**
+         * A pair with one side left at nought means "work that side out from
+         * the shape", which is the same thing a whole number means and says
+         * which of the two is being given. So only a pair with both sides at
+         * nought is refused -- JEBOL refused all three.
+         */
+        @Test
+        @DisplayName("but one side at nought is taken from the shape instead")
+        void oneSideAtNoughtIsTakenFromTheShape() {
+            assertThat(answerTo("r: resize (make image! 10x4) 5x0  mold r/size"))
+                    .isEqualTo("\"5x2\"");
+            assertThat(answerTo("r: resize (make image! 10x4) 0x5  mold r/size"))
+                    .isEqualTo("\"12x5\"");
+            assertThat(answerTo("r: resize (make image! 10x4) 0x2  mold r/size"))
+                    .isEqualTo("\"5x2\"");
+        }
+
+        /**
+         * A tenth of a row is not a picture, so asking for one fails to create
+         * rather than quietly giving back a single row nobody asked for.
+         */
+        @Test
+        @DisplayName("a width that leaves no height at all is refused")
+        void aWidthThatLeavesNoHeightIsRefused() {
+            assertThat(answerTo("""
+                    e: try [resize (make image! 10x1) 3] e/id""")).isEqualTo("no-create");
+            assertThat(answerTo("""
+                    e: try [resize (make image! 10x4) 1] e/id""")).isEqualTo("no-create");
+            assertThat(answerTo("r: resize (make image! 10x4) 3  mold r/size"))
+                    .isEqualTo("\"3x1\"");
+        }
+
+        /**
+         * Which filter runs changes how a shrunken photograph looks and does
+         * not change what RESIZE is, so sampling one way for all sixteen is
+         * still RESIZE. Accepting a name that means nothing is a different
+         * matter: a caller who mistypes one should hear about it.
+         */
+        @Test
+        @DisplayName("and a filter it has never heard of is refused by name")
+        void aFilterItHasNeverHeardOfIsRefused() {
+            assertThat(answerTo("""
+                    e: try [resize/filter (make image! 4x4) 2x2 'nonsense]
+                    reduce [e/id  word? e/arg1  e/arg1]"""))
+                    .isEqualTo("[invalid-arg #(true) nonsense]");
+            assertThat(answerTo("""
+                    e: try [resize/filter (make image! 4x4) 2x2 99] e/id"""))
+                    .isEqualTo("invalid-arg");
+            assertThat(answerTo("""
+                    r: resize/filter (make image! 4x4) 2x2 'box  mold r/size"""))
+                    .isEqualTo("\"2x2\"");
+        }
+
+        @Test
+        @DisplayName("the catalogue names the fifteen it can be asked for")
+        void theCatalogueNamesTheFifteen() {
+            assertThat(answerTo("length? system/catalog/filters")).isEqualTo("15");
+            assertThat(answerTo("""
+                    reduce [
+                        not none? find system/catalog/filters 'Point
+                        not none? find system/catalog/filters 'Lanczos
+                        not none? find system/catalog/filters 'Sinc
+                    ]""")).isEqualTo("[#(true) #(true) #(true)]");
         }
     }
 
@@ -288,6 +353,20 @@ class ImageFunctionsFromTheSourceTest {
         void theSameIsNought() {
             assertThat(answerTo("image-diff (make image! 2x2) (make image! 2x2)"))
                     .isEqualTo("0%");
+        }
+
+        /**
+         * Two pictures with no pixels between them are not nought per cent
+         * apart. They are not any distance apart: the total is divided by how
+         * many pixels were compared, and none were. Nought per cent is the
+         * tidier answer and is a lie -- it claims two pictures were compared
+         * and found identical when nothing was looked at.
+         */
+        @Test
+        @DisplayName("but comparing no pixels at all is not a number")
+        void comparingNoPixelsAtAllIsNotANumber() {
+            assertThat(answerTo("image-diff (make image! 0x0) (make image! 0x0)"))
+                    .isEqualTo("1.#NaN");
         }
 
         @Test
@@ -526,6 +605,35 @@ class ImageFunctionsFromTheSourceTest {
                     a: make image! 2x2
                     c: make image! 2x2
                     (image-diff next a c) = (image-diff a c)""")).isEqualTo(TRUE);
+        }
+
+        /**
+         * "The whole image" is width times height, which is not the same as
+         * every pixel it holds. Three pixels in a picture two wide are a row
+         * and a spare, and the spare is a real pixel that reads back and can
+         * be changed -- but it is past the final whole row, and all four of
+         * these walk the rectangle rather than the run.
+         *
+         * <p>JEBOL's PREMULTIPLY reached it where its BLUR and RESIZE did not,
+         * so the one class contradicted itself. The C counts width times
+         * height in all four.
+         */
+        @Test
+        @DisplayName("and the spare pixel of a partly-filled row is past all of them")
+        void theSparePixelOfAPartlyFilledRowIsPastAllOfThem() {
+            assertThat(answerTo("""
+                    i: make image! [2x1 200.100.50]
+                    append i 200.100.50
+                    poke i 3 200.100.50.128
+                    premultiply i
+                    reduce [mold i/1  mold i/3]"""))
+                    .isEqualTo("""
+                            ["200.100.50.255" "200.100.50.128"]""");
+            assertThat(answerTo("""
+                    i: make image! [2x1 200.100.50]
+                    poke i 1 200.100.50.128
+                    premultiply i
+                    mold i/1""")).isEqualTo("\"100.50.25.128\"");
         }
     }
 }

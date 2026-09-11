@@ -124,8 +124,23 @@ public enum EvaluationFailure {
      *
      * <p>`size-limit: [{maximum limit reached:} :arg1]`, which an image raises
      * for a side past 0xFFFF: `Trap1(RE_SIZE_LIMIT, Get_Type(REB_IMAGE))`.
+     *
+     * <p>A script failure and not an internal one. `errors.reb` files it under
+     * Script, which is where a mistake in what was asked for goes -- a caller
+     * who wants a picture seventy thousand across can catch this. Internal is
+     * where a defect in the interpreter goes, and saying so of a size somebody
+     * typed points the blame at the wrong side.
      */
-    SIZE_LIMIT(ErrorCategory.INTERNAL, "size-limit", "maximum limit reached"),
+    SIZE_LIMIT(ErrorCategory.SCRIPT, "size-limit", "maximum limit reached"),
+
+    /**
+     * Something that cannot be made at the size or shape asked for.
+     *
+     * <p>`no-create: [{cannot create:} :arg1]`, filed under Access. RESIZE
+     * raises it for a width so small the height works out at nothing: a tenth
+     * of a row is not a picture, and there is no picture to answer with.
+     */
+    NO_CREATE(ErrorCategory.ACCESS, "no-create", "cannot create"),
     ZERO_DIVIDE(ErrorCategory.MATH, "zero-divide", "division by zero"),
     VECTOR_NOT_COMPATIBLE(ErrorCategory.SCRIPT, "vector-not-compatible",
             "two vectors that do not hold their numbers the same way"),

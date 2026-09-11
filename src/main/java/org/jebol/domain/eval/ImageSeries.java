@@ -27,24 +27,66 @@ final class ImageSeries {
     /** What a pixel with no alpha given gets, which is wholly opaque. */
     private static final int WHOLLY = 0xFF;
 
+    /** How many bytes of a binary make one pixel, which is all four channels. */
+    private static final int CHANNELS = 4;
+
     /**
-     * One pixel as four channels, from whatever a caller wrote it as.
+     * One pixel's worth of change: the channels to write, and which of them to
+     * write at all.
+     *
+     * <p>Not every write touches a whole pixel. A whole number on its own is
+     * an alpha and reaches nothing else -- {@code Fill_Channel_Line} writes
+     * that one byte and steps over the other three -- and /ONLY asks for the
+     * opposite, a colour with the alpha left as it was. Carrying the two
+     * questions separately is what keeps a caller's transparency from being
+     * silently rewritten by a colour that never mentioned it.
+     */
+    private record APixelWrite(int red, int green, int blue, int alpha,
+            boolean writesTheColour, boolean writesTheAlpha) {
+
+        static APixelWrite ofAColourAndAnAlpha(int red, int green, int blue, int alpha) {
+            return new APixelWrite(red, green, blue, alpha, true, true);
+        }
+
+        static APixelWrite ofAColourAlone(int red, int green, int blue) {
+            return new APixelWrite(red, green, blue, 0, true, false);
+        }
+
+        static APixelWrite ofAnAlphaAlone(int alpha) {
+            return new APixelWrite(0, 0, 0, alpha, false, true);
+        }
+
+        void into(ImageStorage storage, int pixel) {
+            if (writesTheColour) {
+                storage.setColourAt(pixel, red, green, blue);
+            }
+            if (writesTheAlpha) {
+                storage.setAlphaAt(pixel, alpha);
+            }
+        }
+    }
+
+    /**
+     * One pixel's worth of change, from whatever a caller wrote it as.
      *
      * <p>A tuple of three is a colour that is wholly opaque, a tuple of four
      * carries its own alpha, and a whole number on its own is an alpha with no
      * colour -- which is the spelling that lets a caller say "find a
      * transparent pixel" without naming one.
      */
-    private static int[] asAPixel(Value written) {
+    private static APixelWrite asAPixel(Value written, boolean colourOnly) {
         if (written instanceof TupleValue colour) {
             int[] parts = colour.segments();
-            return new int[] {
-                part(parts, 0), part(parts, 1), part(parts, 2),
-                parts.length > 3 ? parts[3] : WHOLLY
-            };
+            if (colourOnly) {
+                return APixelWrite.ofAColourAlone(
+                        part(parts, 0), part(parts, 1), part(parts, 2));
+            }
+            return APixelWrite.ofAColourAndAnAlpha(
+                    part(parts, 0), part(parts, 1), part(parts, 2),
+                    parts.length > 3 ? parts[3] : WHOLLY);
         }
         if (written instanceof IntegerValue alpha) {
-            return new int[] {0, 0, 0, (int) alpha.magnitude() & 0xFF};
+            return APixelWrite.ofAnAlphaAlone((int) alpha.magnitude() & 0xFF);
         }
         return null;
     }
@@ -54,27 +96,54 @@ final class ImageSeries {
     }
 
     /**
-     * The pixels a caller named, whether singly or in a block, refused as a
-     * whole if any one of them is not a pixel.
+     * The pixels a caller named, refused as a whole if any one of them is not
+     * a pixel.
+     *
+     * <p>Four ways of naming them. A colour or an alpha on its own, a block
+     * holding any number of those, or a run of bytes -- and the bytes are four
+     * to a pixel, which is the other way round from building an image.
+     * {@code make image! [1x1 #{FFFFFF}]} reads three at a time because the
+     * alpha arrives in a run of its own, and a binary written here reads four
+     * because there is nowhere else for the alpha to come from.
      *
      * <p>Refused as a whole because a half-applied APPEND is worse than a
      * refused one: REBOL's own test writes a string at an image and then
      * checks the length has not moved.
      */
-    private static List<int[]> everyPixelIn(Value given, String verb) {
-        List<int[]> pixels = new ArrayList<>();
+    private static List<APixelWrite> everyPixelIn(Value given, boolean colourOnly) {
+        if (given instanceof BinaryValue bytes) {
+            return theBytesReadFourAtATime(bytes, colourOnly);
+        }
+        List<APixelWrite> pixels = new ArrayList<>();
         List<Value> named = given instanceof BlockValue block
                 && block.datatype() == Datatype.BLOCK
                 ? block.remaining()
                 : List.of(given);
         for (Value one : named) {
-            int[] pixel = asAPixel(one);
+            APixelWrite pixel = asAPixel(one, colourOnly);
             if (pixel == null) {
-                throw Raised.of(EvaluationFailure.CANNOT_USE,
-                        WordValue.of(verb),
-                        WordValue.of(one.datatype().literalSpelling()));
+                throw Raised.of(EvaluationFailure.INVALID_TYPE,
+                        DatatypeValue.of(one.datatype()));
             }
             pixels.add(pixel);
+        }
+        return pixels;
+    }
+
+    private static List<APixelWrite> theBytesReadFourAtATime(
+            BinaryValue bytes, boolean colourOnly) {
+
+        List<APixelWrite> pixels = new ArrayList<>();
+        int howMany = bytes.lengthFromHere() / CHANNELS;
+        for (int pixel = 0; pixel < howMany; pixel++) {
+            int at = bytes.index() + (pixel * CHANNELS);
+            int red = bytes.storage().at(at);
+            int green = bytes.storage().at(at + 1);
+            int blue = bytes.storage().at(at + 2);
+            pixels.add(colourOnly
+                    ? APixelWrite.ofAColourAlone(red, green, blue)
+                    : APixelWrite.ofAColourAndAnAlpha(
+                            red, green, blue, bytes.storage().at(at + 3)));
         }
         return pixels;
     }
@@ -84,12 +153,11 @@ final class ImageSeries {
      * APPEND answers on every series.
      */
     static Value appended(ImageValue image, Value given, long howManyTimes) {
-        List<int[]> pixels = everyPixelIn(given, "append");
+        List<APixelWrite> pixels = everyPixelIn(given, WRITES_THE_ALPHA_TOO);
         ImageStorage storage = image.storage();
         for (long again = 0; again < howManyTimes; again++) {
-            for (int[] pixel : pixels) {
-                storage.insertAt(storage.length() + 1,
-                        pixel[0], pixel[1], pixel[2], pixel[3]);
+            for (APixelWrite pixel : pixels) {
+                grownWhiteAndThenWritten(storage, storage.length() + 1, pixel);
             }
         }
         return image.head();
@@ -100,17 +168,36 @@ final class ImageSeries {
      * which is what INSERT answers on every series.
      */
     static Value inserted(ImageValue image, Value given, long howManyTimes) {
-        List<int[]> pixels = everyPixelIn(given, "insert");
+        List<APixelWrite> pixels = everyPixelIn(given, WRITES_THE_ALPHA_TOO);
         ImageStorage storage = image.storage();
         int at = image.index();
         for (long again = 0; again < howManyTimes; again++) {
-            for (int[] pixel : pixels) {
-                storage.insertAt(at, pixel[0], pixel[1], pixel[2], pixel[3]);
+            for (APixelWrite pixel : pixels) {
+                grownWhiteAndThenWritten(storage, at, pixel);
                 at++;
             }
         }
         return image.atIndex(at);
     }
+
+    /**
+     * A new pixel is made first and written into second, which is why an alpha
+     * on its own leaves a white pixel behind rather than a black one.
+     *
+     * <p>{@code Expand_Series} then {@code CLEAR_IMAGE} then the fill: the C
+     * makes room, whitens it, and only then writes whichever channels were
+     * named. So `append img 7` adds an almost-invisible white pixel, and
+     * nothing anywhere decided that -- it falls out of the order.
+     */
+    private static void grownWhiteAndThenWritten(
+            ImageStorage storage, int at, APixelWrite pixel) {
+
+        storage.insertAt(at, WHOLLY, WHOLLY, WHOLLY, WHOLLY);
+        pixel.into(storage, at);
+    }
+
+    /** Growing an image writes every channel, so /ONLY never reaches it. */
+    private static final boolean WRITES_THE_ALPHA_TOO = false;
 
     /**
      * Writes over the pixels that are there and answers the image just past
@@ -121,20 +208,22 @@ final class ImageSeries {
      * its width is fixed, so a longer one would be a different shape. Pixels
      * past the end are dropped.
      */
-    static Value changed(ImageValue image, Value given, long howManyTimes) {
+    static Value changed(ImageValue image, Value given, long howManyTimes,
+            boolean colourOnly, Value shapeOfTheRectangle) {
+
         if (given instanceof ImageValue rectangle) {
-            return rectangleWritten(image, rectangle, howManyTimes);
+            return rectangleWritten(image, rectangle, howManyTimes,
+                    shapeOfTheRectangle);
         }
-        List<int[]> pixels = everyPixelIn(given, "change");
+        List<APixelWrite> pixels = everyPixelIn(given, colourOnly);
         ImageStorage storage = image.storage();
         int at = image.index();
         for (long again = 0; again < howManyTimes; again++) {
-            for (int[] pixel : pixels) {
+            for (APixelWrite pixel : pixels) {
                 if (at > storage.length()) {
                     return image.atIndex(at);
                 }
-                storage.setColourAt(at, pixel[0], pixel[1], pixel[2]);
-                storage.setAlphaAt(at, pixel[3]);
+                pixel.into(storage, at);
                 at++;
             }
         }
@@ -157,9 +246,16 @@ final class ImageSeries {
      * because one image is one thing however many pixels it carries. /DUP
      * multiplies that step and nothing else, so the rectangle goes in once
      * however many times it was asked for.
+     *
+     * <p>/PART says how big the rectangle is rather than how many pixels to
+     * write, which is the only reading a shape allows: two across and two down
+     * is four pixels, and "four" would not say which four. A count given where
+     * a shape belongs writes nothing at all -- the C reads it into the
+     * variable holding how many things were given and leaves the rectangle at
+     * nought by nought.
      */
-    private static Value rectangleWritten(
-            ImageValue image, ImageValue rectangle, long howManyTimes) {
+    private static Value rectangleWritten(ImageValue image, ImageValue rectangle,
+            long howManyTimes, Value shapeOfTheRectangle) {
 
         ImageStorage storage = image.storage();
         if (storage.wide() == 0 || howManyTimes == 0) {
@@ -167,8 +263,17 @@ final class ImageSeries {
         }
         int column = (image.index() - 1) % storage.wide();
         int row = (image.index() - 1) / storage.wide();
-        int columns = Math.min(rectangle.storage().wide(), storage.wide() - column);
-        int rows = Math.min(rectangle.storage().high(), storage.high() - row);
+        int wanted = rectangle.storage().wide();
+        int tall = rectangle.storage().high();
+        if (shapeOfTheRectangle instanceof PairValue shape) {
+            wanted = Math.max(0, (int) shape.x());
+            tall = Math.max(0, (int) shape.y());
+        } else if (!(shapeOfTheRectangle instanceof NoneValue)) {
+            wanted = 0;
+            tall = 0;
+        }
+        int columns = Math.min(wanted, storage.wide() - column);
+        int rows = Math.min(tall, storage.high() - row);
         for (int down = 0; down < rows; down++) {
             for (int across = 0; across < columns; across++) {
                 int[] pixel = rectangle.storage()

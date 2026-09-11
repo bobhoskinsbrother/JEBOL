@@ -93,6 +93,40 @@ class MakingAnImageFromTheSourceTest {
             assertThat(errorIdFrom("load {#(image! x)}")).isEqualTo("malconstruct");
             assertThat(errorIdFrom("make image! [3]")).isEqualTo("malconstruct");
         }
+
+        /**
+         * Sixty-five thousand five hundred and thirty-five a side, and the
+         * failure depends on how the size was asked for. A bare pair is a size
+         * out of range: somebody asked for a picture too big and the number is
+         * what is wrong. A specification is a malformed construct, because the
+         * maker there is handed nothing but a no and refuses the whole block.
+         */
+        @Test
+        @DisplayName("a side too wide is a size limit on its own and malformed in a block")
+        void aSideTooWideIsRefusedTwoDifferentWays() {
+            assertThat(errorIdFrom("make image! 70000x1")).isEqualTo("size-limit");
+            assertThat(errorIdFrom("make image! [70000x1]")).isEqualTo("malconstruct");
+        }
+
+        @Test
+        @DisplayName("and the widest side there is still builds")
+        void theWidestSideThereIsStillBuilds() {
+            assertThat(answerTo("r: make image! 65535x1  mold r/size"))
+                    .isEqualTo("\"65535x1\"");
+            assertThat(errorIdFrom("make image! 65536x1")).isEqualTo("size-limit");
+        }
+
+        /**
+         * A size out of range is a script error, the kind a caller is meant to
+         * catch. JEBOL raised it in the internal category, which is where a
+         * defect in the interpreter goes rather than a mistake in the script.
+         */
+        @Test
+        @DisplayName("and it is a script failure rather than an internal one")
+        void itIsAScriptFailureRatherThanAnInternalOne() {
+            assertThat(answerTo("""
+                    e: try [make image! 70000x1] mold e/type""")).isEqualTo("\"Script\"");
+        }
     }
 
     @Nested
@@ -113,6 +147,35 @@ class MakingAnImageFromTheSourceTest {
         void oneIsTheHead() {
             assertThat(answerTo("mold make image! [1x1 #{FFFFFF} 1]"))
                     .isEqualTo("\"make image! [1x1 #{FFFFFF}]\"");
+        }
+
+        /**
+         * Only after the colour bytes. Which slot a trailing whole number
+         * fills depends on what came before it: after a run of bytes it is a
+         * position, after one colour it is that colour's alpha, and after
+         * nothing at all it is a part nothing can read.
+         */
+        @Test
+        @DisplayName("a number with no colours before it is not a position at all")
+        void aNumberWithNoColoursBeforeItIsNotAPosition() {
+            assertThat(errorIdFrom("make image! [2x2 0]")).isEqualTo("malconstruct");
+            assertThat(errorIdFrom("make image! [2x2 3]")).isEqualTo("malconstruct");
+        }
+
+        /**
+         * And a written image carries no position at all. MAKE from a block
+         * reads one because a block is a specification; the written form looks
+         * as though it should mean the same and does not, because a construct
+         * is read by the generic machinery for "a series and where it stands"
+         * before it reaches the image maker, and an image is not one of the
+         * series that machinery knows.
+         */
+        @Test
+        @DisplayName("and the written form has no position slot either")
+        void theWrittenFormHasNoPositionSlot() {
+            assertThat(errorIdFrom("load {#(image! 2x2 3)}")).isEqualTo("malconstruct");
+            assertThat(errorIdFrom("load {#(image! 2x2 0)}")).isEqualTo("malconstruct");
+            assertThat(errorIdFrom("load {#(image! 2x2 1)}")).isEqualTo("malconstruct");
         }
 
         /**

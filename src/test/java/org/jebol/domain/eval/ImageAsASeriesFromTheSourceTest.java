@@ -200,6 +200,133 @@ class ImageAsASeriesFromTheSourceTest {
     }
 
     /**
+     * Refused by its type rather than by the action: what is wrong is the
+     * value, not the asking. JEBOL said cannot-use, which reads as "an image
+     * cannot be appended to" and is the opposite of true.
+     */
+    @Test
+    @DisplayName("and the refusal names the type, not the verb")
+    void theRefusalNamesTheType() {
+        assertThat(answerTo("""
+                img: make image! 2x0
+                e: try [append img {a}] reduce [e/id mold e/arg1]"""))
+                .isEqualTo("""
+                        [invalid-type "#(string!)"]""");
+    }
+
+    /**
+     * Four bytes to a pixel, which is the other way round from building an
+     * image: {@code make image! [1x1 #{FFFFFF}]} reads three at a time because
+     * the alpha arrives in a run of its own, and there is nowhere else for an
+     * appended binary's alpha to come from.
+     */
+    @Test
+    @DisplayName("a run of bytes is four to a pixel")
+    void aRunOfBytesIsFourToAPixel() {
+        assertThat(answerTo("""
+                img: make image! [2x0 1.1.1]
+                append img #{FF000000}
+                reduce [length? img  mold img/1]"""))
+                .isEqualTo("""
+                        [1 "255.0.0.0"]""");
+        assertThat(answerTo("""
+                img: make image! [2x0 1.1.1]
+                append img #{FF00000000FF0080}
+                reduce [length? img  mold img/1  mold img/2]"""))
+                .isEqualTo("""
+                        [2 "255.0.0.0" "0.255.0.128"]""");
+    }
+
+    /**
+     * The one write that reaches part of a pixel rather than all of it.
+     * {@code Fill_Channel_Line} writes the alpha byte and steps over the other
+     * three, so a pixel changed this way keeps the colour it had. JEBOL read
+     * the number as a whole pixel and blacked the colour out.
+     */
+    @Test
+    @DisplayName("a whole number writes the alpha and leaves the colour alone")
+    void aWholeNumberWritesTheAlphaAndLeavesTheColourAlone() {
+        assertThat(answerTo("""
+                img: make image! [2x2 1.1.1]
+                change img 7
+                enbase/flat to binary! img 16""")).isEqualTo("""
+                        "01010107010101FF010101FF010101FF\"""");
+    }
+
+    /**
+     * Appending one keeps the colour the new pixel started with, which is the
+     * white every fresh pixel is: the image is grown first and filled after.
+     */
+    @Test
+    @DisplayName("and appending one adds a white pixel wearing that alpha")
+    void appendingOneAddsAWhitePixelWearingThatAlpha() {
+        assertThat(answerTo("""
+                img: make image! [2x2 1.1.1]
+                append img 7
+                reduce [length? img  mold last img]"""))
+                .isEqualTo("""
+                        [5 "255.255.255.7"]""");
+    }
+
+    /**
+     * The same "look at the thing, not into it" that /ONLY means everywhere,
+     * and the same reading FIND gives it. Without it a colour of three parts
+     * writes an alpha anyway and writes it wholly opaque, so changing a
+     * half-transparent pixel makes it solid.
+     */
+    @Test
+    @DisplayName("CHANGE/ONLY keeps the alpha that was there")
+    void changeOnlyKeepsTheAlphaThatWasThere() {
+        assertThat(answerTo("""
+                img: make image! [2x2 1.1.1]
+                img/1: 9.9.9.77
+                change/only img 1.2.3
+                mold img/1""")).isEqualTo("\"1.2.3.77\"");
+        assertThat(answerTo("""
+                img: make image! [2x2 1.1.1]
+                img/1: 9.9.9.77
+                change img 1.2.3
+                mold img/1""")).isEqualTo("\"1.2.3.255\"");
+    }
+
+    /**
+     * /PART says how big the rectangle is rather than how many pixels to
+     * write, which is the only reading that makes sense of a shape: two
+     * across and two down is four pixels, and "four" would not say which four.
+     */
+    @Test
+    @DisplayName("CHANGE/PART with a pair is the size of the rectangle")
+    void changePartWithAPairIsTheSizeOfTheRectangle() {
+        assertThat(answerTo("""
+                img: make image! [4x4 1.1.1]
+                change/part img make image! [3x3 9.9.9] 2x2
+                enbase/flat img/rgb 16""")).isEqualTo("""
+                        {090909090909010101010101\
+                        090909090909010101010101\
+                        010101010101010101010101\
+                        010101010101010101010101}""");
+    }
+
+    /**
+     * A count where a shape belongs writes nothing at all. The C reads it into
+     * the variable holding how many things were given and leaves the
+     * rectangle's width and height at nought, and the copy returns before
+     * writing a pixel.
+     */
+    @Test
+    @DisplayName("and a count where a shape belongs writes nothing")
+    void aCountWhereAShapeBelongsWritesNothing() {
+        assertThat(answerTo("""
+                img: make image! [4x4 1.1.1]
+                change/part img make image! [3x3 9.9.9] 2
+                enbase/flat img/rgb 16""")).isEqualTo("""
+                        {010101010101010101010101\
+                        010101010101010101010101\
+                        010101010101010101010101\
+                        010101010101010101010101}""");
+    }
+
+    /**
      * CHANGE writes over what is there and does not lengthen the image, so
      * more pixels than there is room for are dropped. The width is fixed and a
      * longer image would be a different shape.

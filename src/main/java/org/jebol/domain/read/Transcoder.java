@@ -842,7 +842,7 @@ public final class Transcoder {
             return BitsetValue.of(bytesOf(octets)).complemented();
         }
         if (contents.size() == 2 && contents.get(1) instanceof IntegerValue at
-                && datatype.isSeries()) {
+                && datatype.isSeries() && !alwaysReadsABlock(datatype)) {
             Value whole = builtFrom(datatype, List.of(contents.getFirst()));
             if (!(whole instanceof SeriesValue series)) {
                 throw failure(SyntaxFailure.MALCONSTRUCT, null);
@@ -955,6 +955,14 @@ public final class Transcoder {
      * size, which brings an impossible size down to the nearest possible, so
      * {@code #(image! 1x-1)} quietly read as a picture one wide and none tall
      * where a real Rebol refuses it.
+     *
+     * <p>It has to hold off the generic "a series and where it stands" branch
+     * as well, which is the other way a written image slipped past the maker.
+     * That branch reads {@code #(block! [a b] 2)} as a block standing at its
+     * second item and would read {@code #(image! 2x2 3)} the same way, so a
+     * picture with a position quietly appeared where a real Rebol refuses the
+     * whole construct. An image is a series and is not one of the series that
+     * branch knows.
      */
     private static boolean alwaysReadsABlock(Datatype datatype) {
         return datatype == Datatype.IMAGE;

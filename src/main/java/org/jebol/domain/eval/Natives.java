@@ -572,9 +572,14 @@ public final class Natives {
         // that lies about what asking for one does is worse than a short one.
         catalog.set("ciphers", BlockValue.block(CryptPort.catalogue()));
 
-        // Still empty, and for the same reason: RESIZE samples one way with no
-        // choice of filter, so all fifteen names would be a lie.
-        catalog.set("filters", BlockValue.block(List.of()));
+        // How RESIZE may be asked to sample, which the C declares in
+        // u-image-resize.c and base-collected.reb appends here. Which one runs
+        // changes how a shrunken photograph looks and does not change what
+        // RESIZE is, so naming all fifteen is honest even where the sampling
+        // is the same -- what is not honest is accepting a name that means
+        // nothing, and a catalogue is how a caller checks before asking.
+        catalog.set("filters", BlockValue.block(
+                THE_FILTERS.stream().<Value>map(WordValue::of).toList()));
 
         catalog.set("elliptic-curves", BlockValue.block(
                 EllipticCurveKey.curveNames().stream()
@@ -4431,7 +4436,7 @@ public final class Natives {
                         Parameter.belongingTo("blur", "factor", Typeset.NUMBER.members())),
                 Set.of("filter", "blur"),
                 (arguments, evaluator, context, refinements) ->
-                        resizedImage(arguments));
+                        resizedImage(arguments, refinements));
 
         define("image-diff", List.of(
                         Parameter.required("a", Set.of(Datatype.IMAGE)),
@@ -6453,6 +6458,12 @@ public final class Natives {
                         refuseUnfinishedRefinements(refinements, "change");
                         return structChangedBy(struct, arguments.get(1));
                     }
+                    if (arguments.get(0) instanceof ImageValue picture) {
+                        return ImageSeries.changed(picture, arguments.get(1),
+                                howManyTimesOver(arguments, refinements),
+                                refinements.contains("only"),
+                                theShapeOfTheRectangle(arguments, refinements));
+                    }
                     if (refinements.contains("part") && arguments.size() > 2
                             && arguments.get(0) instanceof SeriesValue stranded) {
                         Value replacement = copied(arguments.get(1),
@@ -6510,10 +6521,6 @@ public final class Natives {
                         return changedElements(
                                 (VectorValue) clampedToTail(strandedVector),
                                 arguments, refinements);
-                    }
-                    if (arguments.get(0) instanceof ImageValue picture) {
-                        return ImageSeries.changed(picture, arguments.get(1),
-                                howManyTimesOver(arguments, refinements));
                     }
                     if (!(arguments.get(0) instanceof BlockValue strandedBlock)) {
                         return raiseCannotUse(arguments.get(0), "change");
@@ -12858,29 +12865,93 @@ public final class Natives {
      * and a resize that squashed a photograph because only one number was
      * given would be a surprise nobody wants.
      */
-    private static Value resizedImage(List<Value> arguments) {
+    private static Value resizedImage(
+            List<Value> arguments, Set<String> refinements) {
+
         ImageValue image = (ImageValue) arguments.getFirst();
         int wasWide = image.storage().wide();
         int wasHigh = image.storage().high();
         Value asked = arguments.get(1);
+        refuseAFilterTheCatalogueHasNot(arguments, refinements);
         int wide;
         int high;
         if (asked instanceof PairValue size) {
             wide = (int) size.x();
             high = (int) size.y();
+            if (wide == 0 && high == 0) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
+            }
+            if (wide == 0) {
+                wide = scaledFrom(high, wasWide, wasHigh);
+            }
+            if (high == 0) {
+                high = scaledFrom(wide, wasHigh, wasWide);
+            }
         } else if (asked instanceof DecimalValue portion
                 && portion.datatype() == Datatype.PERCENT) {
             wide = (int) Math.round(wasWide * portion.quantity());
             high = (int) Math.round(wasHigh * portion.quantity());
         } else {
             wide = (int) Math.round(asMagnitude(asked));
-            high = wasWide == 0 ? 0 : Math.max(1, (wide * wasHigh) / wasWide);
+            high = scaledFrom(wide, wasHigh, wasWide);
         }
         if (wide <= 0 || high <= 0) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
+            throw Raised.of(EvaluationFailure.NO_CREATE,
+                    DatatypeValue.of(Datatype.IMAGE));
         }
         return ImageOperations.resized(image, wide, high);
     }
+
+    /**
+     * The side that was not given, worked out from the shape.
+     *
+     * <p>Which is what a whole number means -- "integer value is used as
+     * width", says the declaration, and the height follows so a photograph is
+     * not squashed -- and what a pair with one side left at nought means too.
+     * The two spellings ask the same question and one of them says which side
+     * is being given.
+     *
+     * <p>Not brought up to one. A width so small that the height works out at
+     * nothing is a tenth of a row, and there is no such picture: the caller
+     * hears about it rather than getting a single row nobody asked for.
+     */
+    private static int scaledFrom(int given, int toKeep, int against) {
+        return against == 0 ? 0 : (given * toKeep) / against;
+    }
+
+    /**
+     * /FILTER names how the pixels are sampled, and a name the catalogue has
+     * not got is refused.
+     *
+     * <p>Which filter runs changes how a shrunken photograph looks and does
+     * not change what RESIZE is, so a build that samples one way for all
+     * fifteen is still RESIZE. Accepting a name that means nothing is a
+     * different matter: a caller who mistypes one should hear about it rather
+     * than quietly getting the default.
+     */
+    private static void refuseAFilterTheCatalogueHasNot(
+            List<Value> arguments, Set<String> refinements) {
+
+        if (!refinements.contains("filter")) {
+            return;
+        }
+        Value named = argumentFor("filter", List.of("filter", "blur"),
+                arguments, refinements, 2);
+        boolean known = named instanceof WordValue word
+                && THE_FILTERS.stream().anyMatch(word.canonical()::equalsIgnoreCase);
+        if (!known) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, named);
+        }
+    }
+
+    /**
+     * The fifteen filters {@code system/catalog/filters} names, in the order
+     * {@code u-image-resize.c} declares them.
+     */
+    static final List<String> THE_FILTERS = List.of(
+            "Point", "Box", "Triangle", "Hermite", "Hanning", "Hamming",
+            "Blackman", "Gaussian", "Quadratic", "Cubic", "Catrom",
+            "Mitchell", "Lanczos", "Bessel", "Sinc");
 
     /**
      * IMAGE reaches the platform's own image codec, through the port the host
@@ -13052,7 +13123,39 @@ public final class Natives {
             evaluator.files().write(named.text(), written);
             return destination;
         }
+        if (destination instanceof BinaryValue holding) {
+            return filledWithTheEncodedBytes(holding, written);
+        }
         return binaryOfBytes(written);
+    }
+
+    /**
+     * A binary handed in as the destination is written into, and it is that
+     * very binary that comes back.
+     *
+     * <p>Which is what makes it a destination at all. A caller passing one has
+     * a hold on it and means to read the bytes from there afterwards; handing
+     * back a fresh binary and leaving theirs empty looks as though it worked
+     * and quietly does nothing. A file destination behaves the same way, and
+     * this is the same promise in the other shape.
+     *
+     * <p>From the position, and everything after it goes. Writing a picture
+     * into a binary is not adding to what is there -- the bytes are one whole
+     * file and half of a previous one behind them would not be. So a binary
+     * standing at its third byte keeps the two in front and loses the rest,
+     * exactly as writing to a file from an offset would.
+     */
+    private static Value filledWithTheEncodedBytes(
+            BinaryValue destination, byte[] written) {
+
+        BinaryStorage storage = destination.storage();
+        while (storage.length() >= destination.index()) {
+            storage.removeAt(destination.index());
+        }
+        for (byte octet : written) {
+            storage.append(octet & 0xFF);
+        }
+        return destination;
     }
 
     private static ImagePort.Pixels theWholeOf(ImageValue image) {
@@ -13942,7 +14045,8 @@ public final class Natives {
     private static int sideOf(double given) {
         int side = (int) given;
         if (side > ImageStorage.LONGEST_SIDE) {
-            throw Raised.of(EvaluationFailure.SIZE_LIMIT, "image!");
+            throw Raised.of(EvaluationFailure.SIZE_LIMIT,
+                    DatatypeValue.of(Datatype.IMAGE));
         }
         return Math.max(side, 0);
     }
@@ -14006,13 +14110,18 @@ public final class Natives {
      * code that makes a blank picture of a size and brings an impossible one
      * down to the nearest possible, while a specification is a thing somebody
      * wrote out and got wrong.
+     *
+     * <p>A side too wide goes the same way and for the same reason. On its own
+     * it is a size out of range, because the number is the thing that is
+     * wrong; here the maker is handed nothing but a no and refuses the whole
+     * block, so the same size two ways gives two different errors.
      */
     private static int sideThatCanExist(double given, BlockValue specification) {
-        if (given < 0) {
+        if (given < 0 || given > ImageStorage.LONGEST_SIDE) {
             throw Raised.of(EvaluationFailure.MALCONSTRUCT,
                     Molder.mold(specification));
         }
-        return sideOf(given);
+        return (int) given;
     }
 
     /**
@@ -16311,6 +16420,23 @@ public final class Natives {
             return NoneValue.none();
         }
         return picture.atIndex(refinements.contains("tail") ? at + 1 : at);
+    }
+
+    /**
+     * How big /PART says the rectangle is when one image is written into
+     * another, and nothing when it was not asked for.
+     *
+     * <p>A shape rather than a count, because a count cannot say which pixels
+     * of a rectangle it meant. What a caller gives instead of a shape is not
+     * refused -- it writes nothing, which is what the C does and is the one
+     * thing here nobody would have guessed.
+     */
+    private static Value theShapeOfTheRectangle(
+            List<Value> arguments, Set<String> refinements) {
+
+        return refinements.contains("part")
+                ? argumentFor("part", List.of("part", "dup"), arguments, refinements, 2)
+                : NoneValue.none();
     }
 
     /**

@@ -25,6 +25,19 @@ final class ImageOperations {
     private static final int OPAQUE = 0xFF;
 
     /**
+     * How many pixels these four reach, which is width times height and not
+     * how many the image holds.
+     *
+     * <p>An image whose last row is partly filled has pixels past its final
+     * whole row -- three in a picture two wide is a row and a spare -- and the
+     * spare is a real pixel that reads back and can be changed. None of the
+     * four reach it, because each walks the rectangle rather than the run.
+     */
+    private static int theWholePicture(ImageStorage storage) {
+        return storage.wide() * storage.high();
+    }
+
+    /**
      * Scales each colour by the pixel's own alpha, in place.
      *
      * <p>What a renderer wants before it composites: a half-transparent red
@@ -35,7 +48,7 @@ final class ImageOperations {
      */
     static void premultiply(ImageValue image) {
         ImageStorage storage = image.storage();
-        for (int pixel = 1; pixel <= storage.length(); pixel++) {
+        for (int pixel = 1; pixel <= theWholePicture(storage); pixel++) {
             int[] rgba = storage.pixelAt(pixel);
             int alpha = rgba[3];
             if (alpha == OPAQUE) {
@@ -300,9 +313,6 @@ final class ImageOperations {
         ImageStorage right = second.storage();
         int wide = Math.min(left.wide(), right.wide());
         int high = Math.min(left.high(), right.high());
-        if (wide == 0 || high == 0) {
-            return 0;
-        }
         return howFarApart(left, right, 0, 0, wide, high);
     }
 
@@ -375,6 +385,12 @@ final class ImageOperations {
      * which says two pictures are identical when the pixels it was pointed at
      * differ. REBOL's own test asserts that nought twice, so it is behaviour
      * rather than an accident to be tidied away.
+     *
+     * <p>A rectangle of no pixels at all is a different thing and gets a
+     * different answer: dividing nothing by nothing is not a number, and that
+     * is what comes back. Nought per cent would be the tidier answer and would
+     * be a lie -- it claims two pictures were compared and found identical
+     * when none of them was looked at.
      */
     private static double howFarApart(ImageStorage left, ImageStorage right,
             int fromX, int fromY, int wide, int high) {
@@ -395,7 +411,11 @@ final class ImageOperations {
             leftCursor += left.wide() - fromX - wide;
             rightCursor += right.wide() - fromX - wide;
         }
-        return Math.round((apart / ((long) wide * high)) * PICOUNITS)
+        long counted = (long) wide * high;
+        if (counted == 0) {
+            return Double.NaN;
+        }
+        return Math.round((apart / counted) * PICOUNITS)
                 / WIDEST_DISTANCE_IN_PICOUNITS;
     }
 
