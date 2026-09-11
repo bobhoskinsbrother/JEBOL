@@ -25,6 +25,8 @@ public enum EvaluationFailure {
             "a port that could not be opened on what it names"),
     NOT_OPEN(ErrorCategory.ACCESS, "not-open",
             "a port asked to carry something before it was opened"),
+    ALREADY_OPEN(ErrorCategory.ACCESS, "already-open",
+            "a port asked to open when it was open already"),
     NO_CONNECT(ErrorCategory.ACCESS, "no-connect",
             "a connection that could not be made or that broke"),
     ALREADY_USED(ErrorCategory.SCRIPT, "already-used",

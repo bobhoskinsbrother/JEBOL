@@ -33,11 +33,13 @@ has the story. The real ones now are goal 1 waiting on goal 4a, goal 4b waiting
 on goal 4a, and goal 15 double-counting the eight crypt-port entries that
 belong to 4a and 4b. Goals 1 to 3 was real and is discharged: goal 3 is done.
 
-Goals 1, 4a, 6 and 14 are also one question asked four times: what the
-capability catalogues claim is present. `system/codecs` is longer here than in a
-real 3.22.5 and `system/catalog/ciphers` is empty where a real one holds
-forty-two, so JEBOL enters blocks a real Rebol skips and claims nothing where a
-real Rebol claims plenty. Both readings are wrong in the same way.
+Goals 1, 6 and 14 are also one question asked three times: what the capability
+catalogues claim is present. `system/codecs` is longer here than in a real
+3.22.5, so JEBOL enters blocks a real Rebol skips and then raises inside them.
+`system/catalog/ciphers` was the same fault seen from the other side — empty
+where a real one holds forty-two — and goal 4a settled it: it now names the
+fourteen the port really serves, which is the shape the others should end up
+in too.
 
 ---
 
@@ -193,7 +195,7 @@ Sizes are the number of `known-gaps.txt` entries the goal is worth, and they
 account for every entry with nothing left over — goal 15 exists to close that
 sum and shows the arithmetic. Goal 4 is now 4a and 4b, split on whether the
 cipher is one the JVM already carries, so the arithmetic reads sixteen goals
-where it used to read fifteen. The list stands at **435** entries
+where it used to read fifteen. The list stands at **407** entries
 as this line is written; `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt`
 is the live answer and a size above that disagrees with it is stale.
 
@@ -657,17 +659,58 @@ twelve megabyte file in the same corpus then caught two more: an array sized to
 the C's starting capacity rather than what it grows to, and a distance setting
 that must not carry from one meta-block to the next.
 
-### 4a. The crypt port, on the ciphers the JVM already has — 16, and 13 more behind it
+### 4a. The crypt port, on the ciphers the JVM already has — 16 — DONE, and it was 28
 
-`crypt-port-test.r3` stops at its first line:
+`crypt-port-test.r3`, `crypt-port-gcm-test.r3` and four lines of `codecs-test.r3`
+have come off the list: 435 entries down to 407. Twelve more than the estimate,
+because the file's own chunked-input tests sit outside the `foreach` that the
+catalogue guards and ran as soon as the port existed.
+
+**Three things were built, not one.** `make port!` now hands its specification
+to `sys/make-port*` like `MT_Port` does, so a block, a url, a word, a file, an
+object and a port all make one; what is no specification at all answers
+`invalid-spec` and a specification whose scheme nobody serves answers
+`no-scheme`. `system/catalog/ciphers` holds the fourteen the JVM carries.
+`CryptPort.java` is the port, and `Interpreter.THE_CRYPT_SCHEME` quotes the
+scheme's INIT out of `init-schemes` so the three ways of naming an algorithm
+stay REBOL's.
+
+**Two tests were asserting something a real Rebol refuses.**
+`make port! system/standard/port` used to answer a port here because MAKE
+wrapped an object; a real 3.22.5 raises `no-scheme`, because the object names
+none. Both now say `to port!`, which is the spelling that wraps.
+
+**Weeding the spec afterwards found three defects fifty passing tests had
+missed**, and they are the reason to run it rather than treat it as a
+formality. Opening never re-checked the algorithm, so a port closed, given an
+unserved algorithm in its specification and reopened would open with no cipher
+behind it and take a NullPointerException to the top of the interpreter on the
+next write. Galois counter mode put the tag in place of the cipher text instead
+of after it, so a TAKE with no READ before it lost the message — invisible
+because REBOL's own test always reads first. And a second write to a Galois
+port re-enciphered everything gathered so far, handing the first bytes back
+twice. All three are fixed, tested, and were confirmed against `./r3-head`
+before and after. Two more gap entries came off with them.
+
+**The SAFE block did not clear the way this goal predicted.** The crypt port
+unblocked its encryption and four of the thirteen pass, but the ninth assertion
+onwards needs SET-USER, `system/user/data` and a user's storage file, which is
+neither 4a nor 4b. `codecs-test.r3` owes ten entries and they are a user-account
+goal nobody has written down yet. One of them, #222, answers false inside the
+suite while the same round trip is byte-identical to `./r3-head` when run on its
+own — worth a look before assuming it belongs with the other nine.
+
+### 4a as it was scoped, kept because 4b still leans on it
+
+`crypt-port-test.r3` used to stop at its first line:
 
     port: open make port! [scheme: 'crypt algorithm: 'AES-128-CBC key: #{...}]
 
-`make port!` of a block is refused, and there is no `crypt` scheme. Everything
-after that is `port is unset`. That one blocker stands in front of all forty
-assertions in the file, and in front of the eight in the three files beside it,
-so building the port is the whole of this goal and 4b is only about the
-algorithms underneath it.
+`make port!` of a block was refused, and there was no `crypt` scheme.
+Everything after that was `port is unset`. That one blocker stood in front of
+all forty assertions in the file, and in front of the eight in the three files
+beside it, which is why building the port was the whole of this goal and 4b is
+only about the algorithms underneath it.
 
 **Which 16.** The AES vectors, which is everything in the two files that is not
 Camellia and not CCM:
@@ -681,23 +724,34 @@ Camellia and not CCM:
 by hand to encrypt what it saves, which is why the thirteen SAFE entries left
 in goal 1 all stop at `no-scheme: crypt`. It picks its cipher by preference and
 asks for `chacha20` first, which the JVM has, so they clear with this half
-rather than with 4b. Nothing else in the suite is waiting on either.
+rather than with 4b. Nothing else in the suite is waiting on either. *(Four of
+the thirteen cleared. See the note above: the rest want SET-USER.)*
 
-**`system/catalog/ciphers` is empty here and holds 42 entries in a real Rebol**
-— AES, Camellia and ARIA each in ECB, CBC, CCM and GCM at three key widths,
-then ChaCha20, ChaCha20-Poly1305 and four DES spellings. Filling it is part of
-this goal and it is what makes the split legible: a cipher in the catalogue
-that the port cannot serve is the failure mode to avoid, so name only what is
-served and let the rest say so. 4b's job is to move names across that line.
+**`system/catalog/ciphers` was empty here and holds 42 entries in a real
+Rebol** — AES, Camellia and ARIA each in ECB, CBC, CCM and GCM at three key
+widths, then ChaCha20, ChaCha20-Poly1305 and four DES spellings. Filling it was
+part of this goal and it is what makes the split legible: a cipher in the
+catalogue that the port cannot serve is the failure mode to avoid, so it names
+only what is served and lets the rest say so. **4b's job is to move names
+across that line.**
 
 **What the JVM gives you, measured rather than assumed.** AES in ECB, CBC and
 GCM, ChaCha20, ChaCha20-Poly1305, DES and 3DES are all one
-`Cipher.getInstance` away. That is 18 of the 42.
+`Cipher.getInstance` away. That is 18 of the 42, and fourteen of them are in
+the catalogue: ChaCha20-Poly1305 is left out because REBOL drives it through a
+two-step protocol of its own that does not map to a JVM AEAD, and it has no
+assertion behind it here.
 
-One small fix sits underneath the scheme: a real 3.22.5 answers `invalid-spec`
-where JEBOL answers `bad-make-arg` for `make port!` of a block.
+**Galois counter mode needed a trick worth knowing.** The port hands the
+computed tag back for the caller to compare; the JVM compares it itself while
+decrypting and throws when it disagrees, so it will not hand one back. Counter
+mode is its own inverse, so enciphering the cipher text recovers the plain
+text, and enciphering *that* produces the tag the caller is owed. Two passes,
+no hand-written cryptography. Tags are always computed at sixteen bytes and cut
+down, because the JVM's parameter object refuses anything under twelve and
+REBOL's own tests ask for four.
 
-The pattern to follow is `ChecksumPort.java` and the checksum scheme in
+The pattern followed is `ChecksumPort.java` and the checksum scheme in
 `Interpreter.java`: a scheme registered through the borrowed `sys/make-scheme`,
 an actor name in `SCHEMES_THIS_BUILD_SERVES`, and open/read/write/update/close
 branches in `Natives.java`.

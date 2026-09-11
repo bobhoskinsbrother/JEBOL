@@ -44,10 +44,7 @@ codecs-test-pdf.r3 / (no group) / (no test) #6
 codecs-test-pdf.r3 / (no group) / (no test) #7
 codecs-test-pdf.r3 / (no group) / (no test) #8
 codecs-test-pdf.r3 / (no group) / (no test) #9
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #220
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #221
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #222
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #223
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #224
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #225
 codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #226
@@ -64,15 +61,10 @@ crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #3
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #4
 crypt-port-ccm-test.r3 / (no group) / (no test) #1
 crypt-port-ccm-test.r3 / (no group) / (no test) #2
-crypt-port-gcm-test.r3 / (no group) / (no test) #1
-crypt-port-gcm-test.r3 / (no group) / (no test) #2
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #15
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #16
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #17
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #18
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #19
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #20
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #21
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #22
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #23
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #24
@@ -87,26 +79,6 @@ crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked inpu
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #33
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #34
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #35
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #36
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #37
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #38
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #39
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #40
-crypt-port-test.r3 / FIPS-197 test vectors / (no test) #1
-crypt-port-test.r3 / FIPS-197 test vectors / (no test) #2
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #3
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #4
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #5
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #6
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #7
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input #8
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input which needs padding #10
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input which needs padding #11
-crypt-port-test.r3 / FIPS-197 test vectors / AES-128-CBC with chunked input which needs padding #9
-crypt-port-test.r3 / NIST test vectors (CBC) / AES-128-CBC with chunked input which needs padding #14
-crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #12
-crypt-port-test.r3 / NIST test vectors (ECB) / AES-128-CBC with chunked input which needs padding #13
-crypt-test.r3 / PPK codec / Init RSA key from encrypted PPK file #35
 csv-test.r3 / (no group) / (no test) #17
 datatype-test.r3 / datatype! / number? #37
 date-test.r3 / Internet date / TO-IDATE (Date to Internet date) #126

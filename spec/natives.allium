@@ -2087,10 +2087,15 @@ rule WritingToTheConsolePortGoesThroughTheConsole {
 -- found, which is why one function in the borrowed library reads all six and
 -- nothing in the interpreter needs to.
 --
--- Anything else is a specification that names no scheme, and it is refused as
--- one rather than as a wrong argument to MAKE. What the caller wrote is worth
--- naming in the error, because a specification is usually built rather than
--- typed and the useful question is which one came out wrong.
+-- The two ways it can fail are told apart, and the difference is worth the
+-- two errors. A number or a string is not a specification at all, and the
+-- answer says the specification is wrong. A block or an object *is* a
+-- specification, and it failed because the scheme it names is one nothing
+-- serves -- so the answer names the scheme instead.
+--
+-- A caller reading the first has written the wrong kind of thing. A caller
+-- reading the second has written the right kind of thing about a doorway that
+-- is not there, which is a different fix.
 rule MakingAPortReadsAnySpellingOfItsSpecification {
     when: EvaluateCall(make, port_datatype, specification)
     requires: names_a_scheme_somehow(specification)
@@ -2098,11 +2103,20 @@ rule MakingAPortReadsAnySpellingOfItsSpecification {
     ensures: CallResult(value: the_port_the_system_maker_builds(specification))
 }
 
-rule ASpecificationNamingNoSchemeIsRefusedAsOne {
+rule AThingThatIsNoSpecificationAtAllIsRefusedAsOne {
     when: EvaluateCall(make, port_datatype, specification)
-    requires: not names_a_scheme_somehow(specification)
+    requires: not could_name_a_scheme(specification)
 
     ensures: CallFails(error: invalid_spec, about: specification)
+}
+
+rule ASpecificationWhoseSchemeNobodyServesNamesTheScheme {
+    when: EvaluateCall(make, port_datatype, specification)
+    requires: could_name_a_scheme(specification)
+    requires: not the_host_serves(the_scheme_named_by(specification))
+
+    ensures: CallFails(error: no_scheme,
+        about: the_scheme_named_by(specification))
 }
 
 -- A cipher port encrypts what is written to it, `crypt://`.
@@ -2124,6 +2138,34 @@ rule ACipherPortNeedsAnAlgorithmThisBuildServes {
     requires: the_algorithm_named(target) not in host_cipher_algorithms()
 
     ensures: CallFails(error: invalid_spec, about: the_specification_of(target))
+}
+
+-- The same two questions are asked again when the port is *made*, which is
+-- earlier, and the answers name the thing that was wrong rather than the whole
+-- specification.
+--
+-- Asking twice is not belt and braces. Making a port settles what the
+-- specification means -- the algorithm may arrive as a field, as a url's
+-- target or as its host, and the direction as a fragment or a field -- so that
+-- is the moment to refuse a spelling nobody can read. Opening is later, and a
+-- specification is an ordinary object a script may have written to in between,
+-- so what was approved then is not what arrives now.
+rule MakingACipherPortSettlesTheAlgorithmAndTheDirection {
+    when: EvaluateCall(make, port_datatype, specification)
+    requires: names_the_cipher_scheme(specification)
+    requires: the_algorithm_named(specification) not in host_cipher_algorithms()
+
+    ensures: CallFails(error: invalid_spec,
+        about: the_algorithm_named(specification))
+}
+
+rule ACipherPortEitherEnciphersOrDeciphers {
+    when: EvaluateCall(make, port_datatype, specification)
+    requires: names_the_cipher_scheme(specification)
+    requires: the_direction_named(specification) not in {encrypt, decrypt}
+
+    ensures: CallFails(error: invalid_spec,
+        about: the_direction_named(specification))
 }
 
 -- The key and the starting vector are taken out of the specification when the
@@ -2157,11 +2199,18 @@ rule WritingTransformsWholeBlocksAndHoldsTheRemainder {
     ensures: the_port_holds_back(the_octets_past_the_last_whole_block())
 }
 
+-- True of the block ciphers and not of the stream cipher, which is the one
+-- place REBOL is not self-consistent. ChaCha20 is given a block of sixteen
+-- although it has none, and that block decides only whether it runs at all:
+-- once it has that much it takes the whole write, tail and all. So twenty-one
+-- octets in one write answer twenty-one, and the same twenty-one cut as five
+-- and sixteen answer sixteen and then a padded sixteen.
 invariant HowTheOctetsAreCutUpDoesNotChangeTheAnswer {
-    for octets in AnyBinary:
-        for cut in AnyWayOfCuttingUp(octets):
-            what_a_cipher_port_answers_for(cut)
-                = what_a_cipher_port_answers_for({octets})
+    for algorithm in host_cipher_algorithms() where it_works_in_blocks:
+        for octets in AnyBinary:
+            for cut in AnyWayOfCuttingUp(octets):
+                what_a_cipher_port_answers_for(cut, algorithm)
+                    = what_a_cipher_port_answers_for({octets}, algorithm)
 }
 
 -- Writing anything that is not a run of bytes is refused as a thing the port
@@ -2195,6 +2244,21 @@ rule ReadingACipherPortWithNothingReadyAnswersNone {
     when: EvaluateCall(read, target)
     requires: names_a_cipher_port(target)
     requires: not the_port_has_octets_ready()
+
+    ensures: CallResult(value: none)
+}
+
+-- A cipher that would not start remembers it and answers nothing from then
+-- on, rather than raising at the write that discovered it.
+--
+-- Which is the same none as a port that has nothing ready yet, and that is
+-- deliberate: a caller reading a stream is already looping until something
+-- comes out, and a cipher that cannot run is a stream that never produces.
+-- The place to find out why is the specification the port was opened on.
+rule ACipherThatWouldNotStartAnswersNothingRatherThanRaising {
+    when: EvaluateCall(read, target)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_could_not_be_started()
 
     ensures: CallResult(value: none)
 }
@@ -2234,17 +2298,45 @@ rule TakingIsUpdatingAndThenReading {
 rule ModifyingACipherPortStartsTheCipherAgain {
     when: EvaluateCall(modify, target, field, value)
     requires: names_a_cipher_port(target)
-    requires: field in {algorithm, direction, key, init_vector}
+    requires: field in {algorithm, direction, key, iv, init_vector}
 
     ensures: the_next_write_starts_the_cipher_from(field = value)
 }
 
+-- The tag length and the length to authenticate are the two exceptions: they
+-- are set and nothing restarts.
+--
+-- Which is the right reading of what they are. The other four say how the
+-- cipher works, and changing one means a new message. These two say how to
+-- read what it produces, and a caller may settle that at any point without
+-- throwing away what has already gone in.
+rule TheTagLengthsAreSetWithoutStartingTheCipherAgain {
+    when: EvaluateCall(modify, target, field, value)
+    requires: names_a_cipher_port(target)
+    requires: field in {tag_length, aad_length}
+
+    ensures: everything_written_so_far_is_kept()
+}
+
+-- An unknown field is refused by name. Something that is not a word at all is
+-- not: the port answers itself and changes nothing, because the C looks at
+-- whether it has a word before it looks at which one.
 rule ModifyingAFieldACipherPortHasNotGotIsRefused {
     when: EvaluateCall(modify, target, field, value)
     requires: names_a_cipher_port(target)
+    requires: is_word(field)
     requires: field not in cipher_port_fields()
 
     ensures: CallFails(error: invalid_arg, about: field)
+}
+
+rule ModifyingSomethingThatNamesNoFieldChangesNothing {
+    when: EvaluateCall(modify, target, field, value)
+    requires: names_a_cipher_port(target)
+    requires: not is_word(field)
+
+    ensures: CallResult(value: target)
+    ensures: the_port_is_unchanged()
 }
 
 -- A value the field cannot hold answers false rather than raising. The port
@@ -2284,15 +2376,123 @@ rule OpeningAnOpenCipherPortIsRefused {
     ensures: CallFails(error: already_open, about: the_reference_of(target))
 }
 
+-- Some ciphers also answer for the bytes as well as hiding them, and those
+-- have two more fields and a second thing to read.
+--
+-- A tag is a short number computed over everything, which a reader recomputes
+-- and compares: the same bytes give the same tag, and one changed byte gives
+-- a different one. Data to authenticate is bytes covered by the tag and not
+-- enciphered -- a message header that has to arrive unaltered but need not be
+-- secret.
+--
+-- Both arrive through the same WRITE, told apart by a length set beforehand.
+-- Reading answers the enciphered part; taking answers the tag after it.
+rule AnAuthenticatedCipherReadsItsHeaderFromTheFrontOfWhatIsWritten {
+    when: EvaluateCall(write, target, octets)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_authenticates()
+    requires: the_length_to_authenticate_is_set()
+    requires: nothing_has_been_enciphered_yet()
+    requires: length_of(octets) >= the_length_to_authenticate()
+
+    ensures: the_first_octets_are_authenticated_and_not_enciphered()
+    ensures: the_rest_are_enciphered()
+}
+
+-- The header comes off one write, not several, and a write too short to hold
+-- it is thrown away whole with nothing said.
+--
+-- This loses data, and it is what a real 3.22.5 does: the C looks for the
+-- header only while nothing has been enciphered yet, and returns an error for
+-- a write shorter than one -- an error the port remembers rather than raises.
+-- Gathering the header across writes would be kinder and would answer
+-- differently, so it is not done.
+rule AWriteTooShortToHoldTheHeaderIsDiscarded {
+    when: EvaluateCall(write, target, octets)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_authenticates()
+    requires: nothing_has_been_enciphered_yet()
+    requires: length_of(octets) < the_length_to_authenticate()
+
+    ensures: nothing_of_those_octets_is_kept()
+}
+
+rule TakingAnAuthenticatedCipherAnswersTheTagAfterTheCipherText {
+    when: EvaluateCall(take, target)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_authenticates()
+
+    ensures: CallResult(value: everything_not_read_yet_then_the_tag())
+}
+
+-- The tag is cut to the length asked for, and a shorter tag is the first bytes
+-- of a longer one rather than a different number. Four bytes is the shortest
+-- there is and sixteen the longest.
+rule ATagIsCutToTheLengthAskedFor {
+    when: EvaluateCall(take, target)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_authenticates()
+    requires: the_tag_length_asked_for() >= 4
+    requires: the_tag_length_asked_for() <= 16
+
+    ensures: length_of(the_tag_answered()) = the_tag_length_asked_for()
+}
+
+-- A length outside that leaves the cipher with no answer at all, which is the
+-- same nothing a port that never started gives. Asking for no tag is not that:
+-- it is a caller saying they do not want one, and the port carries on.
+rule ATagLengthOutsideWhatCanBeIssuedLeavesNothing {
+    when: EvaluateCall(take, target)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_authenticates()
+    requires: the_tag_length_asked_for() > 0
+    requires: the_tag_length_asked_for() < 4 or the_tag_length_asked_for() > 16
+
+    ensures: CallResult(value: none)
+}
+
+rule AskingForNoTagAnswersNothingWithoutSpoilingThePort {
+    when: EvaluateCall(take, target)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_authenticates()
+    requires: the_tag_length_asked_for() = 0
+
+    ensures: CallResult(value: none)
+}
+
+-- Deciphering hands the computed tag back rather than checking it, so a
+-- caller that does not compare has not checked anything.
+--
+-- Which looks like a hole and is a choice: the port has no way to tell a
+-- caller *which* byte disagreed, and a protocol usually wants the tag itself
+-- to put in its own reply. Comparing is the caller's to do, and REBOL's own
+-- test does exactly that.
+rule DecipheringAnswersTheTagRatherThanCheckingIt {
+    when: EvaluateCall(take, target)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_authenticates()
+    requires: the_call_asked_to_decipher()
+
+    ensures: CallResult(value: the_tag_computed_over_what_was_written())
+    ensures: no_comparison_is_made()
+}
+
 -- And the whole point of it: what one port encrypts another decrypts, given
 -- the same algorithm, key and starting vector. Padded out to a whole block,
 -- because that is what the port had to write.
+--
+-- A starting vector is needed and not optional. The unauthenticated ciphers
+-- take a vector of noughts where none was given; an authenticated one has no
+-- answer at all, because a repeated vector under one key is what breaks the
+-- mode outright and defaulting it would hide that.
 invariant ACipherPortDecryptsWhatACipherPortEncrypted {
     for algorithm in host_cipher_algorithms():
         for key in AnyBinary:
-            for octets in AnyBinary:
-                decrypted(encrypted(octets, algorithm, key), algorithm, key)
-                    = octets_padded_with_noughts_to_a_whole_block(octets)
+            for vector in AnyBinaryThatIsNotEmpty:
+                for octets in AnyBinary:
+                    decrypted(encrypted(octets, algorithm, key, vector),
+                            algorithm, key, vector)
+                        = octets_padded_with_noughts_to_a_whole_block(octets)
 }
 
 -- === Starting another program ==============================

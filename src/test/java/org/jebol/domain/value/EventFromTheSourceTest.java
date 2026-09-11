@@ -56,11 +56,16 @@ class EventFromTheSourceTest {
     /**
      * A port to hang an event on.
      *
-     * <p>{@code make port! system/standard/port} is the way to one here: a scheme
-     * has to be granted before OPEN will answer a port, and none of the schemes a
-     * test may open has anything to do with events.
+     * <p>{@code to port!} and not {@code make port!}, which is the difference
+     * between wrapping an object and building one from a specification. MAKE
+     * hands the object to {@code sys/make-port*}, which wants a scheme and
+     * raises {@code no-scheme} when the object names none -- and
+     * {@code system/standard/port} names none. TO wraps what it is given.
+     *
+     * <p>This test used to say MAKE and passed, because MAKE used to wrap an
+     * object too. It was asserting something a real 3.22.5 refuses.
      */
-    private static final String A_PORT = "p: make port! system/standard/port ";
+    private static final String A_PORT = "p: to port! system/standard/port ";
 
     @Nested
     @DisplayName("the type, which is a position in a catalogue")

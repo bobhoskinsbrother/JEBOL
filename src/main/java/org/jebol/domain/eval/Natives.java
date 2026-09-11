@@ -565,14 +565,15 @@ public final class Natives {
                 "trace", "halt", "cgi", "boot-level", "no-window", "no-color",
                 "legacy-repl"));
 
-        // Empty, and empty is the answer rather than a missing field. A real
-        // 3.22.1 lists forty-two ciphers and fifteen resize filters, and both
-        // describe a port this build has not got: there is no block cipher
-        // here, and RESIZE samples one way with no choice of filter. Naming
-        // them would be the catalogue lying about what asking for one does,
-        // which is worse than an empty list -- a script reads a catalogue so
-        // it need not guess.
-        catalog.set("ciphers", BlockValue.block(List.of()));
+        // Fourteen of the forty-two a real 3.22.1 lists: the ones the JVM
+        // carries. Camellia, ARIA and counter-with-CBC-MAC are the rest and no
+        // provider has them, so they are left out rather than named. A name
+        // here is a promise a script reads before it chooses, and a catalogue
+        // that lies about what asking for one does is worse than a short one.
+        catalog.set("ciphers", BlockValue.block(CryptPort.catalogue()));
+
+        // Still empty, and for the same reason: RESIZE samples one way with no
+        // choice of filter, so all fifteen names would be a lie.
         catalog.set("filters", BlockValue.block(List.of()));
 
         catalog.set("elliptic-curves", BlockValue.block(
@@ -4762,6 +4763,12 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0) instanceof NoneValue nothing) {
                         return nothing;
+                    }
+                    if (arguments.get(0) instanceof PortValue port
+                            && port.schemeName().equals("crypt")) {
+                        refuseAClosedCipherPort(port);
+                        CryptPort.update(port);
+                        return CryptPort.read(port);
                     }
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.get(0), "take");
@@ -12183,7 +12190,83 @@ public final class Natives {
      * grows only when an actor does.
      */
     private static final Set<String> SCHEMES_THIS_BUILD_SERVES =
-            Set.of("console", "tcp", "dns", "event", "checksum", "file", "dir");
+            Set.of("console", "tcp", "dns", "event", "checksum", "file", "dir",
+                    "crypt");
+
+    /**
+     * Builds the cipher a crypt port was opened for, and empties the
+     * specification of what it was told.
+     *
+     * <p>{@code Crypt_Open} copies the key and the starting vector into its
+     * own context and then blanks both fields, with a comment saying why: "as
+     * we have a copy, make it invisible from the spec". A specification is an
+     * ordinary object a script can read, mold or pass on, so a key that stayed
+     * in it would travel everywhere the port did.
+     *
+     * <p>The algorithm is checked here as well as in the scheme's INIT, and
+     * the C checks it twice for the same reason: INIT runs when the port is
+     * made and a specification is an ordinary object a script can write to
+     * afterwards, so what INIT approved is not what OPEN necessarily gets.
+     * Without the second look the port opens with no cipher behind it and the
+     * next write reaches for one that is not there.
+     */
+    private static void startTheCipherBehind(PortValue port) {
+        if (CryptPort.isWorking(port)) {
+            throw Raised.of(EvaluationFailure.ALREADY_OPEN,
+                    port.fieldNamed("spec") instanceof ObjectValue spec
+                            ? valueInSpec(spec, "ref")
+                            : NoneValue.none());
+        }
+        if (!(port.fieldNamed("spec") instanceof ObjectValue spec)) {
+            throw Raised.of(EvaluationFailure.INVALID_SPEC, port);
+        }
+        String algorithm = valueInSpec(spec, "algorithm") instanceof WordValue named
+                ? named.canonical()
+                : "";
+        if (!CryptPort.serves(algorithm)) {
+            throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
+        }
+        CryptPort.start(port, algorithm,
+                valueInSpec(spec, "direction") instanceof WordValue wanted
+                        && wanted.canonical().equals("decrypt"),
+                octetsInSpec(spec, "key"), octetsInSpec(spec, "init-vector"));
+        spec.context().set("key", NoneValue.none());
+        spec.context().set("init-vector", NoneValue.none());
+    }
+
+    private static Value valueInSpec(ObjectValue spec, String field) {
+        return spec.context().holds(field)
+                ? spec.context().ownSlotFor(field).value()
+                : NoneValue.none();
+    }
+
+    private static byte[] octetsInSpec(ObjectValue spec, String field) {
+        return switch (valueInSpec(spec, field)) {
+            case BinaryValue octets -> octets.octetsFromHere();
+            case StringValue text -> text.text()
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            default -> new byte[0];
+        };
+    }
+
+    /**
+     * Refuses every action on a closed cipher port, asking whether it is open
+     * included.
+     *
+     * <p>Which reads as wrong until you see where the check sits in the C: the
+     * actor looks for its cipher above the switch on what was asked, so a
+     * closed port has nothing left to answer the question with.
+     */
+    private static void refuseAClosedCipherPort(PortValue port) {
+        if (CryptPort.isWorking(port)) {
+            return;
+        }
+        throw Raised.of(EvaluationFailure.NOT_OPEN,
+                port.fieldNamed("spec") instanceof ObjectValue spec
+                        ? valueInSpec(spec, "ref")
+                        : NoneValue.none());
+    }
+
 
     /** The types a cipher context publishes. */
     private static final String RC4_HANDLE_TYPE = "rc4";
@@ -14659,6 +14742,44 @@ public final class Natives {
                 null, Context.root());
     }
 
+    /**
+     * The six spellings of a port specification, all read by one borrowed
+     * function.
+     *
+     * <p>{@code MT_Port} in {@code t-port.c} does nothing itself either: it
+     * hands the specification to {@code sys/make-port*}, which is REBOL rather
+     * than C. That function reads a file, a url, a block of set-words, an
+     * object, a word naming a scheme, or another port, and the six differ only
+     * in where the scheme's name is found -- so nothing here needs to know
+     * about any of them.
+     *
+     * <p>What is not one of the six is refused before the call rather than
+     * after it, because the borrowed function answers none for anything else
+     * and none is not a port. The two refusals say different things: a number
+     * is no specification at all, while a block naming a scheme nothing serves
+     * is a good specification about a doorway that is not there, and the
+     * borrowed function raises that one itself.
+     */
+    private Value portMadeFrom(Value from, Evaluator evaluator, Context context) {
+        if (!CAN_NAME_A_SCHEME.contains(from.datatype())) {
+            throw Raised.of(EvaluationFailure.INVALID_SPEC, from);
+        }
+        Value built = evaluator.applyFunction(
+                systemInternalFunction(context, "make-port*"), List.of(from));
+        if (!(built instanceof PortValue port)) {
+            throw Raised.of(EvaluationFailure.INVALID_SPEC, from);
+        }
+        return port;
+    }
+
+    /**
+     * The datatypes that could be naming a scheme, which is what separates the
+     * two refusals.
+     */
+    private static final Set<Datatype> CAN_NAME_A_SCHEME = Set.of(
+            Datatype.FILE, Datatype.URL, Datatype.BLOCK,
+            Datatype.OBJECT, Datatype.WORD, Datatype.PORT);
+
     private Value makeOfDatatype(
             DatatypeValue wanted, Value from, Evaluator evaluator, Context context) {
         if (wanted.represents() == Datatype.STRUCT) {
@@ -14676,6 +14797,9 @@ public final class Natives {
         }
         if (wanted.represents() == Datatype.VECTOR) {
             return madeVector(from, evaluator, context);
+        }
+        if (wanted.represents() == Datatype.PORT) {
+            return portMadeFrom(from, evaluator, context);
         }
         if (wanted.represents() == Datatype.DATE
                 && (from instanceof BlockValue || from instanceof DateValue)) {
@@ -17063,6 +17187,9 @@ public final class Natives {
                     if (port.schemeName().equals("tcp")) {
                         connectTheTcpPort(port, evaluator);
                     }
+                    if (port.schemeName().equals("crypt")) {
+                        startTheCipherBehind(port);
+                    }
                     port.markOpen(true);
                     if (port.schemeName().equals("checksum")) {
                         ChecksumPort.start(port, ChecksumPort.methodOf(port));
@@ -17080,6 +17207,11 @@ public final class Natives {
                         ChecksumPort.digestSoFar(port);
                         return port;
                     }
+                    if (port.schemeName().equals("crypt")) {
+                        refuseAClosedCipherPort(port);
+                        CryptPort.update(port);
+                        return port;
+                    }
                     return NoneValue.none();
                 });
 
@@ -17090,12 +17222,21 @@ public final class Natives {
                 });
 
         define("open?", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
-                (arguments, evaluator, context) -> LogicValue.of(
-                        ((PortValue) arguments.getFirst()).isOpen()));
+                (arguments, evaluator, context) -> {
+                    PortValue port = (PortValue) arguments.getFirst();
+                    if (port.schemeName().equals("crypt")) {
+                        refuseAClosedCipherPort(port);
+                    }
+                    return LogicValue.of(port.isOpen());
+                });
 
         define("close", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
                 (arguments, evaluator, context) -> {
                     PortValue port = (PortValue) arguments.getFirst();
+                    if (port.schemeName().equals("crypt")) {
+                        refuseAClosedCipherPort(port);
+                        CryptPort.stop(port);
+                    }
                     port.markOpen(false);
                     if (port.schemeName().equals("checksum")) {
                         ChecksumPort.stop(port);
@@ -17108,6 +17249,15 @@ public final class Natives {
                         Parameter.required("field", Set.of(Datatype.WORD, Datatype.NONE)),
                         Parameter.required("value")),
                 (arguments, evaluator, context) -> {
+                    if (arguments.getFirst() instanceof PortValue aPort
+                            && aPort.schemeName().equals("crypt")) {
+                        refuseAClosedCipherPort(aPort);
+                        if (!(arguments.get(1) instanceof WordValue named)) {
+                            return aPort;
+                        }
+                        return CryptPort.modify(aPort, named.canonical(),
+                                arguments.get(2));
+                    }
                     if (!(arguments.get(1) instanceof WordValue mode)
                             || !CONSOLE_MODES.contains(mode.canonical())) {
                         throw Raised.of(EvaluationFailure.INVALID_ARG,
@@ -17568,6 +17718,10 @@ public final class Natives {
             case "tcp" -> bytesReadFromTheConnection(port);
             case "dns" -> addressesOfTheNameThePortNames(port, evaluator);
             case "checksum" -> ChecksumPort.digestSoFar(port);
+            case "crypt" -> {
+                refuseAClosedCipherPort(port);
+                yield CryptPort.read(port);
+            }
             default -> throw Raised.of(EvaluationFailure.NO_SERVICE,
                     "nothing here reads the " + port.schemeName() + " scheme");
         };
@@ -18638,12 +18792,33 @@ public final class Natives {
         };
     }
 
+    /**
+     * Feeds a run of bytes to a cipher port and answers the port, so writes
+     * chain.
+     *
+     * <p>Bytes and nothing else. A string is not bytes until somebody says
+     * which encoding, and the port will not guess -- so the refusal is
+     * feature-na, a thing this port cannot do, rather than a wrong argument.
+     */
+    private Value encipheredIntoThePort(PortValue port, Value data) {
+        refuseAClosedCipherPort(port);
+        if (!(data instanceof BinaryValue octets)) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA,
+                    port.fieldNamed("spec") instanceof ObjectValue spec
+                            ? valueInSpec(spec, "ref")
+                            : NoneValue.none());
+        }
+        CryptPort.write(port, octets.octetsFromHere());
+        return port;
+    }
+
     private Value writeToPort(PortValue port, Value data, Evaluator evaluator,
             List<Value> arguments, Set<String> refinements) {
         return switch (port.schemeName()) {
             case "console" -> writtenToTheConsole(port, data, evaluator);
             case "tcp" -> sentDownTheConnection(port, data);
             case "checksum" -> summedIntoThePort(port, data, arguments, refinements);
+            case "crypt" -> encipheredIntoThePort(port, data);
             case "file" -> writtenToTheFileBehind(
                     port, data, evaluator, arguments, refinements);
             default -> throw schemeRefusal("writes", port);
@@ -18865,7 +19040,7 @@ public final class Natives {
             case "file", "dir" -> requireService(HostService.FILES);
             case "tcp", "dns" -> requireService(HostService.NETWORK);
             case "event" -> requireService(HostService.WINDOWS);
-            case "checksum" -> theSchemeReachesNothingOutside();
+            case "checksum", "crypt" -> theSchemeReachesNothingOutside();
             default -> {
                 throw Raised.of(EvaluationFailure.NO_SERVICE,
                         scheme.isEmpty()
@@ -18880,7 +19055,9 @@ public final class Natives {
      *
      * <p>A checksum port opens no file, no socket and no console: it sums
      * bytes the script is already holding. There is no service to ask a host
-     * for, and refusing it for want of one would refuse arithmetic.
+     * for, and refusing it for want of one would refuse arithmetic. A cipher
+     * port is the same shape -- it transforms bytes the script already has,
+     * and reaches nothing.
      *
      * <p>A console port is the other one, and for a narrower reason. Opening
      * it reaches nothing and carries nothing: all it will answer is how wide a

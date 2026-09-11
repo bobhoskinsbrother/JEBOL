@@ -112,6 +112,7 @@ public final class Interpreter {
         run("sys/make-scheme [title: \"File Access\" name: 'file]");
         run("sys/make-scheme [title: \"File Directory Access\" name: 'dir]");
         run(THE_CHECKSUM_SCHEME);
+        run(THE_CRYPT_SCHEME);
     }
 
     /**
@@ -144,6 +145,53 @@ public final class Interpreter {
                         cause-error 'access 'invalid-spec method
                     ]
                     set port/spec: copy system/standard/port-spec-checksum spec
+                ]
+            ]""";
+
+    /**
+     * The crypt scheme, copied from {@code init-schemes} as it stands.
+     *
+     * <p>Its INIT is what makes {@code crypt:chacha20},
+     * {@code crypt://AES-128-CBC#decrypt} and a spec block all name the same
+     * port: the algorithm can arrive as a field, as a url's target or as its
+     * host, and the direction as the url's fragment or as a field. It is also
+     * where an algorithm outside {@code system/catalog/ciphers} is refused, so
+     * the catalogue is the one place that decides what this build serves.
+     */
+    private static final String THE_CRYPT_SCHEME = """
+            sys/make-scheme [
+                title: {Crypt}
+                spec: system/standard/port-spec-crypt
+                name: 'crypt
+                init: function [port [port!]][
+                    spec: port/spec
+                    algorithm: any [
+                        select spec 'algorithm
+                        select spec 'target
+                        select spec 'host
+                    ]
+                    direction: any [
+                        select spec 'fragment
+                        select spec 'direction
+                    ]
+                    if any [
+                        error? try [spec/algorithm: to word! :algorithm]
+                        not find system/catalog/ciphers spec/algorithm
+                    ][
+                        cause-error 'access 'invalid-spec :algorithm
+                    ]
+                    if any [
+                        error? try [spec/direction: to word! :direction]
+                        not find [encrypt decrypt] spec/direction
+                    ][
+                        cause-error 'access 'invalid-spec :direction
+                    ]
+                    set port/spec: copy system/standard/port-spec-crypt spec
+                    if block? port/spec/ref [
+                        port/spec/ref: as url! ajoin [
+                            {crypt://} :algorithm #"#" :direction
+                        ]
+                    ]
                 ]
             ]""";
 

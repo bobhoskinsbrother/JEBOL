@@ -42,6 +42,8 @@ class SystemCataloguesFromTheSourceTest {
 
     private static final String TRUE = "#(true)";
 
+    private static final String FALSE = "#(false)";
+
     @Nested
     @DisplayName("the catalogues of what the interpreter carries")
     class TheFunctionCatalogues {
@@ -134,13 +136,26 @@ class SystemCataloguesFromTheSourceTest {
                     .isEqualTo(TRUE);
         }
 
+        /**
+         * This used to assert the block was empty, and that was right while
+         * there was no cipher port. There is one now, so the catalogue names
+         * the fourteen ciphers it serves and not one more: Camellia, ARIA and
+         * counter-with-CBC-MAC are the other twenty-eight a real 3.22.5 lists
+         * and no JVM provider has them.
+         */
         @Test
-        @DisplayName("CIPHERS is an empty block, because there is no block cipher here")
-        void thereAreNoCiphersYet() {
-            // Empty rather than absent, and empty rather than a list of
-            // forty-two things asking for one would not get.
+        @DisplayName("CIPHERS names what the cipher port serves, and nothing else")
+        void theCiphersAreTheOnesTheCipherPortServes() {
             assertThat(answerTo("block? system/catalog/ciphers")).isEqualTo(TRUE);
-            assertThat(answerTo("empty? system/catalog/ciphers")).isEqualTo(TRUE);
+            assertThat(answerTo("14 = length? system/catalog/ciphers")).isEqualTo(TRUE);
+            assertThat(answerTo("true? find system/catalog/ciphers 'aes-128-cbc"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo("true? find system/catalog/ciphers 'chacha20"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo("true? find system/catalog/ciphers 'camellia-128-cbc"))
+                    .isEqualTo(FALSE);
+            assertThat(answerTo("true? find system/catalog/ciphers 'aes-128-ccm"))
+                    .isEqualTo(FALSE);
         }
 
         @Test

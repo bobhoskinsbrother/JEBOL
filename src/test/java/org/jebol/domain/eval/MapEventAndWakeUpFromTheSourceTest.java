@@ -37,8 +37,15 @@ class MapEventAndWakeUpFromTheSourceTest {
     private static final String TRUE = "#(true)";
     private static final String FALSE = "#(false)";
 
-    /** A port, and the only way to one here. */
-    private static final String A_PORT = "p: make port! system/standard/port ";
+    /**
+     * A port, and the only way to one here.
+     *
+     * <p>TO and not MAKE: MAKE hands the object to {@code sys/make-port*},
+     * which raises {@code no-scheme} because {@code system/standard/port}
+     * names none. TO wraps what it is given. This said MAKE and passed while
+     * MAKE also wrapped, which a real 3.22.5 refuses.
+     */
+    private static final String A_PORT = "p: to port! system/standard/port ";
 
     @Nested
     @DisplayName("MAP-EVENT")
