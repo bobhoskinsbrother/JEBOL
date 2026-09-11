@@ -1,9 +1,12 @@
 package org.jebol.domain.eval.brotli;
 
+import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -49,8 +52,23 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class BrotliLevelsTenAndElevenFromTheSourceTest {
 
+    /**
+     * The five-second default is the embedding default -- what a host gets for
+     * saying nothing -- and it is not a measure of anything here. These two
+     * levels read a quarter of a megabyte four times over at the slowest
+     * settings the format has, which takes a couple of seconds on an idle
+     * machine and longer on a busy one.
+     *
+     * <p>So the default deadline is a stopwatch on the build's own load rather
+     * than on the encoder: the class passes in eight seconds run alone and
+     * failed once inside a `check` that took seven minutes instead of five,
+     * with "the script ran longer than 5000ms". A minute is still a limit --
+     * a runaway encoder is caught -- and is not a number the machine's mood
+     * can reach.
+     */
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
+                .withWallClockLimit(Duration.ofMinutes(1)));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
