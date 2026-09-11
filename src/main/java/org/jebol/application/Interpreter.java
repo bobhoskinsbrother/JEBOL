@@ -110,11 +110,84 @@ public final class Interpreter {
         run("sys/make-scheme [title: \"TCP Networking\" name: 'tcp]");
         run("sys/make-scheme [title: \"DNS Lookup\" name: 'dns]");
         run("sys/make-scheme [title: \"GUI Events\" name: 'event]");
+        run(THE_SYSTEM_SCHEME);
         run(THE_FILE_SCHEME);
         run(THE_DIRECTORY_SCHEME);
         run(THE_CHECKSUM_SCHEME);
         run(THE_CRYPT_SCHEME);
     }
+
+    /**
+     * The system port's scheme, copied from {@code init-schemes} as it stands.
+     *
+     * <p>Its AWAKE is the whole of the event loop and has to be exact, which is
+     * why it is copied rather than written again: it takes each event off the
+     * queue, calls WAKE-UP on the port the event names, keeps a list of the
+     * ports that said they were finished, and answers true when one of the
+     * ports the caller named is on it. Eight events at a time, and the comment
+     * saying why is Rebol's.
+     *
+     * <p>Taking an event off before waking its port is the subtle part, and the
+     * comment beside it says what it costs: waking a port can call WAIT again,
+     * and an event still on the queue would then be dealt with twice.
+     */
+    private static final String THE_SYSTEM_SCHEME = """
+            sys/make-scheme [
+                title: "System Port"
+                name: 'system
+                awake: func [
+                    sport "System port (State block holds events)"
+                    ports "Port list (Copy of block passed to WAIT)"
+                    /only
+                    /local event event-list n-event port waked
+                ][
+                    waked: sport/data ; The wake list (pending awakes)
+
+                    if only [
+                        unless block? ports [return none] ;short cut for a pause
+                    ]
+
+                    ; Process all events (even if no awake ports).
+                    n-event: 0
+                    event-list: sport/state
+                    while [not empty? event-list][
+                        if n-event > 8 [break] ; Do only 8 events at a time (to prevent polling lockout).
+                        event: first event-list
+                        port: event/port
+                        either any [
+                            none? only
+                            find ports port
+                        ][
+                            remove event-list ;avoid event overflow caused by wake-up recursively calling into wait
+                            if wake-up port event [
+                                ; Add port to wake list:
+                                unless find waked port [append waked port]
+                            ]
+                            ++ n-event
+                        ][
+                            event-list: next event-list
+                        ]
+                    ]
+
+                    ; No wake ports (just a timer), return now.
+                    unless block? ports [return none]
+
+                    ; Are any of the requested ports awake?
+                    forall ports [
+                        if find waked first ports [return true]
+                    ]
+
+                    either zero? n-event [
+                        none ;events are ignored
+                    ][
+                        false ; keep waiting
+                    ]
+                ]
+                init: func [port] [
+                    port/data: copy [] ; The port wake list
+                ]
+            ]
+            """;
 
     /**
      * The checksum scheme, copied from {@code init-schemes} as it stands.
@@ -250,7 +323,24 @@ public final class Interpreter {
         }
         run("unless port? system/ports/event "
                 + "[system/ports/event: lib/open [scheme: 'event]]");
+        openTheSystemPort();
         openTheOutputPort();
+    }
+
+    /**
+     * Opens {@code system/ports/system}, the one queue everything that happens
+     * goes on.
+     *
+     * <p>Its STATE is the events waiting to be dealt with and its DATA is the
+     * ports that have woken, and WAIT is nothing but a loop over its AWAKE.
+     * Without it a protocol has nowhere to put an event for a port other than
+     * the one an event arrived on -- which is exactly what TLS needs, because
+     * its caller waits on the TLS port while the events come from the TCP port
+     * underneath.
+     */
+    private void openTheSystemPort() {
+        run("unless port? system/ports/system "
+                + "[system/ports/system: lib/open [scheme: 'system]]");
     }
 
     /**

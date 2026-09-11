@@ -1033,6 +1033,17 @@ it and finding which step does not happen here.
 
 After that: `import`, which is the substance of the goal.
 
+**Measured on 12 September 2026, from goal 11's side.** `import 'thru-cache`
+fails with `cannot-open "thru-cache" "module not found"`, and two things are
+missing rather than one. `system/options/modules` is none, which is the part
+this goal already names. The second is `system/modules`: `sysobj.reb` starts
+that object as a table of addresses -- `thru-cache:
+https://src.rebol.tech/modules/thru-cache.reb` is one of forty-odd -- and
+`import` falls back to `select system/modules source` and downloads what it
+finds. Here the object starts empty and fills with the modules this build has
+loaded, so the fallback has nothing to find. `read https://` works now, so
+filling the table would make the download work.
+
 ### 10. The elliptic curves — 27
 
 `dh-test.r3` stops at
@@ -1138,14 +1149,29 @@ and a JEBOL test:
   catalogue named all thirteen. `ecdh/public` answered none, and the client
   hello stopped in the binary dialect trying to write it.
 
-`read http://example.com` now answers the same 559-byte string a real 3.22.5
-does, `read/binary` the same 318 bytes, and `read/all` the same status, headers
-and body. `read https://` gets through the client hello and stops in the
-handshake at `insert system/ports/system make event! [...]`: JEBOL has no
-`system/ports/system`, which is the event queue `Awake_System` and `wake-up`
-work through, and the system scheme in `sys-ports.reb` is not among the ones
-`Interpreter` registers. That is the next thing, and after it the rest of the
-TLS 1.2 record layer.
+A seventh followed, and it is the one that made HTTPS work as well.
+
+- **WAIT kept its own event list in Java and never touched
+  `system/ports/system`.** That port is the one queue everything goes on: its
+  STATE is the events waiting and its DATA the ports that have woken, and
+  `Wait_Ports` is a loop over its AWAKE, which is written in REBOL in
+  `sys-ports.reb`. A list per connection cannot express what TLS needs -- its
+  caller waits on the TLS port while the events arrive on the TCP port
+  underneath, and the protocol moves itself along by putting an event of its
+  own on the queue naming the port the caller is actually waiting for.
+  `insert system/ports/system make event! [type: 'close port: parent]` is that
+  line, and it had nowhere to go.
+
+The system scheme is registered now, the port is opened at boot, the block
+actions on it work, and the Java dispatch is gone -- Rebol's own AWAKE and the
+`wake-up` native do it.
+
+**So `read https://` works.** JEBOL fetches the same 93 bytes from
+`raw.githubusercontent.com` that a real 3.22.5 does, gzip and all: the TLS 1.2
+handshake, the certificate handling, the record layer and the content decoding
+are Rebol's own REBOL, and none of it was written here. `read
+http://example.com` answers the same 559-byte string, `read/binary` the same
+318 bytes, and `read/all` the same status, headers and body.
 
 **And then the gate reaches the public internet.** The file's own assertions
 read `raw.githubusercontent.com` and `httpbin.org`. Seven of the ten work off
@@ -1154,12 +1180,22 @@ This repository's rule is that a flake is a fail, and a gate that depends on
 two third-party services will flake -- so `./gradlew check` becomes a
 different kind of thing. **Ask before building it.**
 
-The internet question is now the whole of what stands between here and those
-ten entries, and it cannot be engineered away: the assertions name
-`raw.githubusercontent.com` and `httpbin.org` in the vendored text, and a
-vendored file is a copy of Rebol's and nothing else. A fake network installed
-in `SuiteHost` would serve `http://` but not `https://`, because TLS runs
-inside the interpreter and above the socket.
+**One technical step is left and it belongs to goal 9.** `import 'thru-cache`
+still fails, with `cannot-open "thru-cache" "module not found"`, and the reason
+is measured rather than guessed: `system/options/modules` is none, and
+`system/modules` here holds the modules this build has loaded rather than the
+table of addresses `sysobj.reb` starts it with. A real Rebol has
+`thru-cache: https://src.rebol.tech/modules/thru-cache.reb` in that table and
+downloads the module on the first import -- which now works here, so filling
+the table would be enough.
+
+**And then the internet question, which cannot be engineered away.** The
+assertions name `raw.githubusercontent.com` and `httpbin.org` in the vendored
+text, and a vendored file is a copy of Rebol's and nothing else. Downloading
+the module reaches `src.rebol.tech` as well, and vendoring the module instead
+only moves that one hop. A fake network in `SuiteHost` would serve `http://`
+but not `https://`, because TLS runs inside the interpreter and above the
+socket.
 
 Worth knowing while that is undecided: `SuiteHost` now installs real sockets,
 so the gate *could* reach out. Nothing vendored does today --
@@ -1196,8 +1232,9 @@ here. None of them was on any list:
 - And the two slowest Brotli levels had a five-second script deadline that
   measured the build's load rather than the encoder.
 
-Six more came out of the HTTP work on 12 September, and they are the six listed
-under "An HTTP client" above. Five of the six have nothing to do with HTTP:
+Seven more came out of the HTTP work on 12 September, and they are the seven
+listed under "An HTTP client" above. Five of the seven have nothing to do with
+HTTP:
 BIND rebinding words it should have left alone is a defect in the binding
 model, COPY of a port not reaching its actor is one in the action dispatch, a
 socket in EXTRA is one in the port layout, a socket CLOSE never closed is a

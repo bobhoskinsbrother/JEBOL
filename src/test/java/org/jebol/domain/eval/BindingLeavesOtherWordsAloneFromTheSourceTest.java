@@ -132,6 +132,25 @@ class BindingLeavesOtherWordsAloneFromTheSourceTest {
                 .isEqualTo("#(true)");
     }
 
+    /**
+     * WITH binds into the target and then evaluates where the caller stands:
+     * {@code Bind_Block(frame, ...)} and then {@code DO_BLK(D_ARG(2))}, which
+     * runs the block wherever WITH was called from.
+     *
+     * <p>So a word the block sets and the target did not have is a new word of
+     * the caller's, not a new field of the object. Running the body inside the
+     * target instead would make WITH a way of adding fields to an object,
+     * which is what MAKE and APPEND are for.
+     */
+    @Test
+    @DisplayName("WITH evaluates where the caller stands, not inside the target")
+    void withEvaluatesWhereTheCallerStands() {
+        assertThat(answerTo("""
+                with small [fresh-word: 99]
+                reduce [fresh-word  true? find words-of small 'fresh-word]"""))
+                .isEqualTo("[99 #(false)]");
+    }
+
     @Test
     @DisplayName("BIND answers the block it was given, and BIND/COPY a copy")
     void bindAnswersTheBlockAndBindCopyACopy() {

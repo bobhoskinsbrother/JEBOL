@@ -130,13 +130,23 @@ class WaitingOnAPortFromTheSourceTest {
                 + waiting);
     }
 
+    /**
+     * The queue is emptied before the answer is decided, so an AWAKE saying
+     * true does not stop the events behind it being delivered. The system
+     * port's own AWAKE drains the queue -- up to eight at a time -- and only
+     * then asks whether any port the caller named is on the wake list.
+     *
+     * <p>Which is why all three are seen here although the second one woke the
+     * port. Nothing is lost that way, and an event left on the queue would be
+     * handed out again at the next wait.
+     */
     @Test
     @DisplayName("the wait ends where the awake function says true")
     void theWaitEndsWhereTheAwakeFunctionSaysTrue() {
         assertThat(afterThreeThingsHappened(
                 "event/type = 'wrote",
                 "reduce [port? wait [c 1] seen]"))
-                .isEqualTo("[#(true) [connect wrote]]");
+                .isEqualTo("[#(true) [connect wrote read]]");
     }
 
     @Test

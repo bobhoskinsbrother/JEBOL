@@ -6251,6 +6251,9 @@ public final class Natives {
                         "length?", arguments, Set.of(), evaluator)
                 .orElseGet(() -> switch (arguments.get(0)) {
                     case NoneValue nothing -> nothing;
+                    case PortValue queued when theEventQueueOf(queued).isPresent() ->
+                            IntegerValue.of(theEventQueueOf(queued).orElseThrow()
+                                    .lengthFromHere());
                     case MapValue map -> IntegerValue.of(map.pairCount());
                     case TupleValue tuple -> IntegerValue.of(tuple.shownCount());
                     case WordValue word -> IntegerValue.of(
@@ -6282,6 +6285,10 @@ public final class Natives {
                             theRebolActorsAnswer("pick", arguments, Set.of(), evaluator);
                     if (itsOwn.isPresent()) {
                         return itsOwn.get();
+                    }
+                    Optional<BlockValue> queue = theEventQueueOf(arguments.getFirst());
+                    if (queue.isPresent()) {
+                        return pickFrom(queue.get(), arguments.get(1));
                     }
                     return arguments.get(1) instanceof LogicValue chosen
                             && !(arguments.getFirst() instanceof BitsetValue)
@@ -6449,6 +6456,9 @@ public final class Natives {
                         Parameter.belongingTo("dup", "count", DUP_COUNT)),
                 Set.of("part", "only", "dup"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
+                    case PortValue queued when theEventQueueOf(queued).isPresent() ->
+                            queuedOnThePort(queued, theEventQueueOf(queued).orElseThrow(),
+                                    arguments.get(1), true);
                     case BlockValue block -> {
                         if (duplicated(arguments.get(1), arguments, refinements)
                                 instanceof BlockValue added
@@ -6697,6 +6707,9 @@ public final class Natives {
                         Parameter.belongingTo("dup", "count", DUP_COUNT)),
                 Set.of("only", "part", "dup"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
+                    case PortValue queued when theEventQueueOf(queued).isPresent() ->
+                            queuedOnThePort(queued, theEventQueueOf(queued).orElseThrow(),
+                                    arguments.get(1), false);
                     case BitsetValue members -> {
                         requireChangeable(members);
                         members.holdAll((BitsetValue) bitsMeantBy(arguments.get(1)), true);
@@ -6775,6 +6788,10 @@ public final class Natives {
                             theRebolActorsAnswer("remove", arguments, refinements, evaluator);
                     if (itsOwn.isPresent()) {
                         return itsOwn.get();
+                    }
+                    if (theEventQueueOf(arguments.getFirst()).isPresent()) {
+                        throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
+                                WordValue.of("remove").as(Datatype.SET_WORD));
                     }
                     if (arguments.get(0) instanceof MapValue map) {
                         if (refinements.contains("key")) {
@@ -6954,6 +6971,13 @@ public final class Natives {
                     case NoneValue nothing -> nothing;
                     case PortValue port when isAFilePort(port) ->
                             truncatedAtThePosition(port, evaluator);
+                    case PortValue queued when theEventQueueOf(queued).isPresent() -> {
+                        BlockValue queue = theEventQueueOf(queued).orElseThrow();
+                        while (queue.storage().length() > 0) {
+                            queue.storage().removeAt(1);
+                        }
+                        yield queued;
+                    }
                     case BitsetValue members -> {
                         requireChangeable(members);
                         members.clear();
@@ -11263,74 +11287,99 @@ public final class Natives {
     }
 
     /**
-     * The port that has said to stop waiting, having been told what happened.
+     * The port that woke, having run Rebol's own event loop until one did.
      *
-     * <p>WAIT over ports is how a protocol written in REBOL is driven: the
-     * port's AWAKE function is handed an event saying what happened, moves the
-     * protocol along, and says whether that was the thing worth coming back
-     * for. Rebol's own HTTP reads the difference as `unless port? wait
-     * [connection timeout]`, so a port means something moved and anything else
-     * means the time ran out.
+     * <p>{@code Wait_Ports} is a loop over {@code Awake_System}, and
+     * {@code Awake_System} is one call into REBOL: the system port's own AWAKE,
+     * written in {@code sys-ports.reb} and copied into this build by
+     * {@code Interpreter}. It takes each event off the queue, calls WAKE-UP on
+     * the port the event names, collects the ports that said they were finished,
+     * and answers true when one of those is a port the caller named.
      *
-     * <p>Several events per call, not one. {@code Wait_Ports} loops -- `if
-     * ((result = Awake_System(ports, only)) > 0) return TRUE;` -- so a wait
-     * ends where an AWAKE answers true and carries on everywhere else. HTTP
-     * depends on exactly that: {@code read-sync-awake} answers false for
-     * `connect` and false for `wrote`, because neither finishes a request, and
-     * a wait that came back after the first would hand {@code sync-op} a
-     * response nobody had read yet.
+     * <p>So the loop here is `if ((result = Awake_System(ports, only)) > 0)
+     * return TRUE;` and nothing else. Doing the dispatch in Java instead meant a
+     * second copy of a decision REBOL already states once, and one that could
+     * only reach the ports an event arrived on: TLS waits on a port whose events
+     * come from the TCP port underneath it, and moves itself along by putting an
+     * event of its own on this queue.
      *
-     * <p>The loop runs again after every event, because handling one makes
-     * the next: the `wrote` handler calls READ, and the bytes that arrive are
-     * what the `read` handler is waiting for.
+     * <p>A round that handled nothing ends it. The C would go on polling the
+     * operating system until the timeout, and there is nothing here to poll -- a
+     * connection is read on the thread that asked for it, so an empty queue
+     * cannot fill while this loop spins. Sleeping the timeout out would be a
+     * delay rather than a wait.
      */
-    private Optional<Value> whicheverPortSaysToStopWaiting(
+    private static Value whicheverPortWoke(
             List<Value> waitedOn, Evaluator evaluator) {
 
-        boolean somethingWasReported = true;
-        while (somethingWasReported) {
-            somethingWasReported = false;
-            for (Value each : waitedOn) {
-                if (!(each instanceof PortValue port)) {
-                    continue;
-                }
-                Optional<String> happened = theNextThingThatHappenedTo(port);
-                if (happened.isEmpty()) {
-                    continue;
-                }
-                somethingWasReported = true;
-                if (theAwakeFunctionOfSaysToStop(port, happened.get(), evaluator)) {
-                    return Optional.of(port);
-                }
+        if (!(evaluator.hostPort("system") instanceof PortValue queue)
+                || !queue.fieldNamed("awake").datatype().isAnyFunction()) {
+            return NoneValue.none();
+        }
+        BlockValue ports = BlockValue.block(new ArrayList<>(waitedOn));
+        while (true) {
+            Value said = evaluator.applyFunction(
+                    queue.fieldNamed("awake"), List.of(queue, ports));
+            if (said instanceof LogicValue answered && answered.truth()) {
+                return theFirstWokenAmong(waitedOn, queue);
+            }
+            if (!(said instanceof LogicValue)) {
+                theWakeListOf(queue).ifPresent(Natives::emptied);
+                return NoneValue.none();
             }
         }
-        return Optional.empty();
     }
 
     /**
-     * Hands one event to a port's AWAKE function, and reads its answer.
+     * The first port the caller named that woke, and the wake list emptied.
      *
-     * <p>The answer has to be a logic <em>and</em> be true: {@code if
-     * (!(IS_LOGIC(val) && VAL_LOGIC(val))) return R_FALSE;}. A truthy
-     * non-logic does not count, which a reading of "if the awake function says
-     * so" would get wrong.
-     *
-     * <p>A port with nobody listening has nothing to drive, so anything that
-     * happens to it is worth stopping for. The event is taken off the list
-     * either way: it happened, and a port that heard about it does not get to
-     * hear about it twice.
+     * <p>{@code Sieve_Ports} does both at once: it strikes out of the waited-on
+     * block every port not on the wake list, empties the list, and WAIT answers
+     * the head of what is left. Emptying matters as much as answering -- a port
+     * left on it would end the next wait before anything had happened.
      */
-    private boolean theAwakeFunctionOfSaysToStop(
+    private static Value theFirstWokenAmong(List<Value> waitedOn, PortValue queue) {
+        List<Value> woken = theWakeListOf(queue)
+                .map(BlockValue::remaining)
+                .orElse(List.of());
+        Value answer = waitedOn.stream()
+                .filter(one -> one instanceof PortValue && woken.contains(one))
+                .findFirst()
+                .orElse(NoneValue.none());
+        theWakeListOf(queue).ifPresent(Natives::emptied);
+        return answer;
+    }
+
+    private static Optional<BlockValue> theWakeListOf(PortValue queue) {
+        return queue.fieldNamed("data") instanceof BlockValue list
+                ? Optional.of(list)
+                : Optional.empty();
+    }
+
+    private static void emptied(BlockValue list) {
+        while (list.storage().length() > 0) {
+            list.storage().removeAt(1);
+        }
+    }
+
+    /**
+     * Puts an event for a port on the one queue everything goes on.
+     *
+     * <p>Which port the event names is what matters and is not always the port
+     * the caller is waiting on: a TLS port's events all arrive on the TCP port
+     * beneath it, and the protocol reads those and queues one of its own when it
+     * has a whole record.
+     */
+    private static void queueWhatHappenedTo(
             PortValue port, String happened, Evaluator evaluator) {
 
-        Value listener = port.fieldNamed("awake");
-        if (!listener.datatype().isAnyFunction()) {
-            return true;
+        if (!(evaluator.hostPort("system") instanceof PortValue queue)) {
+            return;
         }
-        int named = EventCatalogue.typeIndexOf(happened).orElseThrow();
-        Value said = evaluator.applyFunction(listener, List.of(
-                new EventValue(named, Set.of(), EventValue.Model.PORT, 0, port)));
-        return said instanceof LogicValue answered && answered.truth();
+        theEventQueueOf(queue).ifPresent(onIt -> onIt.storage().insertAt(
+                onIt.storage().length() + 1,
+                new EventValue(EventCatalogue.typeIndexOf(happened).orElseThrow(),
+                        Set.of(), EventValue.Model.PORT, 0, port)));
     }
 
     /**
@@ -12654,13 +12703,11 @@ public final class Natives {
                         return waitedOnTheScreen(port, evaluator);
                     }
                     List<Value> waitedOn = asked instanceof BlockValue block
-                            ? evaluator.evaluateEachOrRaise(
-                                    block, evaluator.systemContext())
+                            ? evaluator.evaluateEachOrRaise(block, context)
                             : List.of(asked);
-                    Optional<Value> woken =
-                            whicheverPortSaysToStopWaiting(waitedOn, evaluator);
-                    if (woken.isPresent()) {
-                        return woken.get();
+                    if (whicheverPortWoke(waitedOn, evaluator)
+                            instanceof PortValue woken) {
+                        return woken;
                     }
                     asked = howLongToWaitAmong(waitedOn);
                     if (!(asked instanceof IntegerValue || asked instanceof DecimalValue
@@ -18369,6 +18416,7 @@ public final class Natives {
                     if (isAFilePort(port)) {
                         openTheFileBehind(port, evaluator, refinements);
                     }
+                    theEventQueueOf(port);
                     markOpenWhateverTheActorLeftInState(port);
                     return port;
                 });
@@ -18946,7 +18994,7 @@ public final class Natives {
         }
         return switch (port.schemeName()) {
             case "console" -> lineReadFromTheConsole(evaluator);
-            case "tcp" -> bytesReadFromTheConnection(port);
+            case "tcp" -> bytesReadFromTheConnection(port, evaluator);
             case "dns" -> addressesOfTheNameThePortNames(port, evaluator);
             case "checksum" -> ChecksumPort.digestSoFar(port);
             case "crypt" -> {
@@ -18972,14 +19020,14 @@ public final class Natives {
      * <p>An empty binary means the other end has finished and closed, which
      * is how a reader knows to stop rather than waiting for ever.
      */
-    private Value bytesReadFromTheConnection(PortValue port) {
+    private Value bytesReadFromTheConnection(PortValue port, Evaluator evaluator) {
         requireService(HostService.NETWORK);
         NetworkPort.Connection connection = connectionBehind(port);
         return throughNetwork(() -> {
             BinaryValue arrived = BinaryValue.of(unsignedOctets(connection.read()));
             addToThePortsData(port, arrived);
-            whatToReportOn(connection).add(
-                    arrived.lengthFromHere() == 0 ? "close" : "read");
+            queueWhatHappenedTo(port,
+                    arrived.lengthFromHere() == 0 ? "close" : "read", evaluator);
             return arrived;
         });
     }
@@ -20133,7 +20181,7 @@ public final class Natives {
         }
         return switch (port.schemeName()) {
             case "console" -> writtenToTheConsole(port, data, evaluator);
-            case "tcp" -> sentDownTheConnection(port, data);
+            case "tcp" -> sentDownTheConnection(port, data, evaluator);
             case "checksum" -> summedIntoThePort(port, data, arguments, refinements);
             case "crypt" -> encipheredIntoThePort(port, data);
             case "file" -> writtenToTheFileBehind(
@@ -20232,12 +20280,14 @@ public final class Natives {
     }
 
     /** Sends bytes and answers the port, so writes chain as a caller expects. */
-    private Value sentDownTheConnection(PortValue port, Value data) {
+    private Value sentDownTheConnection(
+            PortValue port, Value data, Evaluator evaluator) {
+
         requireService(HostService.NETWORK);
         NetworkPort.Connection connection = connectionBehind(port);
         return throughNetwork(() -> {
             connection.write(octetsOf(data));
-            whatToReportOn(connection).add("wrote");
+            queueWhatHappenedTo(port, "wrote", evaluator);
             return port;
         });
     }
@@ -20504,6 +20554,7 @@ public final class Natives {
             case "file", "dir" -> requireService(HostService.FILES);
             case "tcp", "dns" -> requireService(HostService.NETWORK);
             case "event" -> requireService(HostService.WINDOWS);
+            case "system", "callback" -> theSchemeReachesNothingOutside();
             case "checksum", "crypt" -> theSchemeReachesNothingOutside();
             default -> {
                 throw Raised.of(EvaluationFailure.NO_SERVICE,
@@ -20530,6 +20581,12 @@ public final class Natives {
      * READ and WRITE natives where the data actually moves. Refusing to open
      * it refused HELP, which asks the width on its first line, to every
      * interpreter that had not been handed a console.
+     *
+     * <p>The system and callback ports are the third shape. They are queues of
+     * events inside this interpreter -- a block in a field -- and what put an
+     * event on one already asked the host for whatever it was doing. Refusing
+     * the system port for want of a service would refuse WAIT itself, since
+     * everything that happens passes through it.
      */
     private static void theSchemeReachesNothingOutside() {
     }
@@ -20886,7 +20943,7 @@ public final class Natives {
         throughNetwork(() -> {
             NetworkPort.Connection made = evaluator.network().connectTo(host, number);
             port.setField("state", JavaObjectValue.of(made));
-            whatToReportOn(made).add("connect");
+            queueWhatHappenedTo(port, "connect", evaluator);
             return port;
         });
     }
@@ -20927,50 +20984,70 @@ public final class Natives {
     }
 
     /**
-     * What each open connection still has to tell the port that owns it.
+     * The three schemes whose port is a queue of events.
      *
-     * <p>A protocol written in REBOL is a state machine driven by events: it
-     * opens a connection, and WAIT hands the port an event each time something
-     * has happened to it. The interpreter supplies the connection and the
-     * waiting; the protocol supplies everything that is about HTTP.
-     *
-     * <p>Kept beside the connection rather than in the port, because the port's
-     * STATE field belongs to its actor and a protocol keeps its own object
-     * there.
+     * <p>{@code Init_Event_Scheme} registers one actor for all of them:
+     * {@code Register_Scheme(SYM_SYSTEM, 0, Event_Actor)} and the same for
+     * EVENT and CALLBACK. What they hold and what may be done to them is the
+     * same thing three times over.
      */
-    private final Map<NetworkPort.Connection, Deque<String>>
-            whatEachConnectionHasToReport = new IdentityHashMap<>();
+    private static final Set<String> THE_SCHEMES_THAT_ARE_QUEUES =
+            Set.of("system", "event", "callback");
 
-    private Deque<String> whatToReportOn(NetworkPort.Connection connection) {
-        return whatEachConnectionHasToReport.computeIfAbsent(
-                connection, one -> new ArrayDeque<>());
+    /**
+     * The queue a port of that family keeps in STATE, if it is one of them.
+     *
+     * <p>{@code Event_Actor} serves the block actions by pointing them at that
+     * field and running them there -- {@code *D_ARG(1) = *state; result =
+     * T_Block(ds, action);} -- so INSERT on the system port is INSERT on its
+     * queue. The port comes back as the answer rather than the block, because
+     * the C saves it first and puts it back before returning.
+     *
+     * <p>Made on demand, as the C does: {@code if (!IS_BLOCK(state))
+     * Set_Block(state, Make_Block(EVENTS_CHUNK - 1));}.
+     */
+    private static Optional<BlockValue> theEventQueueOf(Value value) {
+        if (!(value instanceof PortValue port)
+                || !THE_SCHEMES_THAT_ARE_QUEUES.contains(port.schemeName())) {
+            return Optional.empty();
+        }
+        if (!(port.fieldNamed("state") instanceof BlockValue queue)) {
+            BlockValue made = BlockValue.block(List.of());
+            port.setField("state", made);
+            return Optional.of(made);
+        }
+        return Optional.of(queue);
     }
 
     /**
-     * The next thing that happened to a port, taken off its list.
+     * Puts an event on that queue, refusing anything that is not one.
      *
-     * <p>Each is reported once, in the order the things happened, which is
-     * what lets a protocol read a request's progress as a sequence rather than
-     * having to ask what state a socket is in.
+     * <p>{@code if (!IS_EVENT(arg)) Trap_Arg(arg);} guards INSERT and APPEND
+     * both, so a protocol cannot leave a note to itself among the events.
      */
-    private Optional<String> theNextThingThatHappenedTo(PortValue port) {
-        if (!(port.fieldNamed("state") instanceof JavaObjectValue carried)
-                || !(carried.held().orElse(null) instanceof NetworkPort.Connection open)) {
-            return Optional.empty();
+    private static Value queuedOnThePort(
+            PortValue port, BlockValue queue, Value happening, boolean atTheEnd) {
+
+        if (!(happening instanceof EventValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, happening);
         }
-        Deque<String> waiting = whatEachConnectionHasToReport.get(open);
-        return waiting == null || waiting.isEmpty()
-                ? Optional.empty()
-                : Optional.of(waiting.removeFirst());
+        queue.storage().insertAt(
+                atTheEnd ? queue.storage().length() + 1 : queue.index(), happening);
+        return port;
     }
 
     /**
      * Leaves a plain mark in STATE for a scheme that keeps nothing there.
      *
      * <p>The actor's own storage is what says a port is open -- a socket, a
-     * cipher, a position in a file -- so a scheme that has none of those needs
-     * something, and a scheme that has one must not have it written over. A
-     * console port and a directory port are the two that reach here.
+     * cipher, a position in a file, a queue of events -- so a scheme that has
+     * none of those needs something, and a scheme that has one must not have
+     * it written over.
+     *
+     * <p>The console and checksum ports are the two that reach here. A
+     * directory port looks as though it should and does not: opening one
+     * writes its position into the field literally named STATE, so there is
+     * already something there by the time this is asked.
      */
     private static void markOpenWhateverTheActorLeftInState(PortValue port) {
         if (!port.isOpen()) {
@@ -20982,17 +21059,13 @@ public final class Natives {
      * Closes the socket a port was holding, if it was holding one.
      *
      * <p>CLOSE takes the actor's storage away, and a socket that is only
-     * forgotten stays open at the far end until the process ends. What the
-     * port still has to report goes with it: an event about a connection
-     * nobody can read from is a message to nowhere.
+     * forgotten stays open at the far end until the process ends.
      */
-    private void handBackTheConnectionBehind(PortValue port) {
-        if (!(port.fieldNamed("state") instanceof JavaObjectValue carried)
-                || !(carried.held().orElse(null) instanceof NetworkPort.Connection open)) {
-            return;
+    private static void handBackTheConnectionBehind(PortValue port) {
+        if (port.fieldNamed("state") instanceof JavaObjectValue carried
+                && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
+            open.close();
         }
-        whatEachConnectionHasToReport.remove(open);
-        open.close();
     }
 
     /**

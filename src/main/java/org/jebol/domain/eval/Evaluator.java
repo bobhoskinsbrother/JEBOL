@@ -2011,7 +2011,7 @@ public final class Evaluator {
      * 3.22.1 as much as here. Rebol's own event test guards its port case with
      * `if system/ports/event [...]` for that reason.
      */
-    private Value hostPort(String named) {
+    public Value hostPort(String named) {
         if (!systemContext.knows("system")) {
             return NoneValue.none();
         }

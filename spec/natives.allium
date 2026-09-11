@@ -738,9 +738,11 @@ rule InWithABlockBindsThatBlockAndAnswersIt {
 -- LOG-DEBUG, which takes a lit-word first, and the client hello stopped on the
 -- log line rather than on anything to do with TLS.
 --
--- BIND already answers this question correctly for a single word: binding one
--- the object does not hold is refused rather than resolved somewhere else. A
--- block is the same question asked many times.
+-- BIND with a single word and an object target already answers this question
+-- the same way: binding one the object does not hold is refused rather than
+-- resolved somewhere else. With a bound word as the target it does not -- it
+-- walks up from there -- so the two forms of BIND disagree with each other,
+-- and which of them is right for a word target is an open question below.
 rule BindingABlockTouchesOnlyWhatTheContextHoldsItself {
     when: EvaluateCall(bind, block, target)
     requires: is_block(block)
@@ -753,11 +755,20 @@ rule BindingABlockTouchesOnlyWhatTheContextHoldsItself {
 
 -- WITH is the same binding followed by an evaluation, so it leaves the same
 -- words alone.
+--
+-- And it evaluates where the caller stands rather than inside the target:
+-- `Bind_Block(frame, ...)` and then `DO_BLK(D_ARG(2))`, which runs the block
+-- wherever WITH was called from. So a word the block sets and the target did
+-- not have is a new word of the caller's, not a new field of the object --
+-- `with obj [fresh: 99]` leaves OBJ with the fields it had and FRESH readable
+-- outside. Running the body inside the target instead would make WITH a way of
+-- adding fields to an object, which is what MAKE and APPEND are for.
 rule WithBindsTheSameWayAndThenEvaluates {
     when: EvaluateCall(with, target, block)
 
     ensures: for word in words_of(block):
         word_keeps_the_binding_it_had(word) when not holds_itself(target, word)
+    ensures: the_block_is_evaluated_in(where_the_caller_stands)
     ensures: CallResult(value: result_of_evaluating(block))
 }
 
@@ -2206,35 +2217,80 @@ rule ASpecificationWhoseSchemeNobodyServesNamesTheScheme {
 -- Four events and they are named after what happened rather than what to do
 -- next, because the protocol decides that. A connection reports each one once,
 -- in the order the things happened, and reports nothing twice.
+--
+-- The words are the protocol's, not private labels: `read-sync-awake` switches
+-- on `connect` and `close`, `http-awake` on `read`, `wrote`, `connect` and
+-- `close`, and a spelling that is nearly right is a branch that never fires.
+--
+-- Four of the connection's own. A protocol adds more of its own making for the
+-- ports above it -- HTTP's awake answers `ready`, `done`, `custom` and `error`
+-- as well -- and those are put on the queue by the protocol rather than by
+-- anything here.
 enum WhatHappenedToAConnection {
-    connected           -- the far end accepted, so a request may be sent
-    | written           -- what was sent has gone
-    | arrived           -- bytes came back, and are in the port's DATA
-    | closed            -- the far end finished
+    connect             -- the far end accepted, so a request may be sent
+    | wrote             -- what was sent has gone
+    | read              -- bytes came back, and are in the port's DATA
+    | close             -- the far end finished
 }
 
--- WAIT hands each thing that happened to the port it happened to, one at a
--- time, oldest first. The port's AWAKE function says whether that was the one
--- worth stopping for: answering true ends the wait and the port is the answer,
--- and anything else keeps the wait going.
+-- Everything that happens goes on one queue, and that queue is a port.
 --
--- So one call to WAIT can deliver several events. Rebol's own HTTP relies on
--- exactly that: its AWAKE answers false for connected and for written, because
--- neither finishes a request, and true only when the response is complete. A
--- WAIT that came back after the first event would put the caller in a loop
--- testing a state it has no way to advance.
+-- `system/ports/system` holds it: its STATE is the events that have happened
+-- and not yet been dealt with, and its DATA is the ports that have woken since
+-- the wait began. Block actions on it act on the queue -- INSERT and APPEND put
+-- an event on the end and answer the port, LENGTH? counts it, CLEAR empties it,
+-- PICK reads one.
 --
--- Only the answer true counts, and only a real logic. A port whose AWAKE is a
--- function that answers a string has not said to stop.
-rule WaitingOnAPortEndsWhenItsAwakeSaysSo {
+-- One queue rather than one per connection, because an event's port is not
+-- always the port somebody is waiting on. `read https://` waits on the TLS
+-- port, and the events come from the TCP port underneath it; the TLS protocol
+-- reads those, and when it has a whole record it puts an event of its own on
+-- the queue naming the TLS port -- `insert system/ports/system make event!
+-- [type: 'close port: parent]` is one of them. A protocol cannot reach a
+-- per-connection list, so with one there is no way for it to wake the port its
+-- caller is actually waiting for.
+entity TheSystemPort {
+    what_has_happened: [Event]  -- STATE: the queue, oldest first
+    what_has_woken: [Port]      -- DATA: the ports whose AWAKE said to stop
+}
+
+-- WAIT hands the queue to that port's own AWAKE, which is written in REBOL in
+-- `sys-ports.reb` and does the dispatching: it takes each event in turn, calls
+-- WAKE-UP on the port the event names, and puts that port on the wake list when
+-- WAKE-UP says the port is finished waiting. Then it answers true if any port
+-- the caller named is on that list.
+--
+-- So one call to WAIT delivers many events, and `Wait_Ports` loops until the
+-- answer is true -- `if ((result = Awake_System(ports, only)) > 0) return
+-- TRUE;`. Rebol's own HTTP relies on that: its AWAKE answers false for
+-- connected and for written, because neither finishes a request, and true only
+-- when the response is complete. A WAIT that came back after the first event
+-- would put the caller in a loop testing a state it has no way to advance.
+--
+-- Eight events at a time, and the rest wait for the next turn round the loop --
+-- "Do only 8 events at a time (to prevent polling lockout)" is the comment
+-- beside it. An event is taken off the queue before its port is woken, because
+-- waking a port can call WAIT again and the same event must not be dealt with
+-- twice.
+rule WaitingHandsTheQueueToTheSystemPortsAwake {
     when: EvaluateCall(wait, waited_on)
-    requires: names_a_port_with_something_to_report(waited_on)
+    requires: not is_empty(what_has_happened(TheSystemPort))
 
     ensures:
-        the_awake_function_of(the_port) is_called_with(
-            an_event_of(the_next_thing_it_has_to_report()))
-        the_next_thing_it_has_to_report() in WhatHappenedToAConnection
-        CallResult(value: the_port) when the_awake_function_answered_true()
+        the_awake_function_of(TheSystemPort) is_called_with(waited_on)
+        CallResult(value: the_port)
+            when the_port in what_has_woken(TheSystemPort)
+}
+
+-- WAKE-UP is the one that asks a single port. Only the answer true counts, and
+-- only a real logic: `if (!(IS_LOGIC(val) && VAL_LOGIC(val))) return R_FALSE;`.
+-- A port whose AWAKE is a function that answers a string has not said to stop.
+rule WakeUpAsksOnePortAndOnlyTrueCounts {
+    when: EvaluateCall(wake_up, target, happening)
+
+    ensures:
+        the_awake_function_of(target) is_called_with(happening)
+        CallResult(value: the_awake_function_answered_the_logic_true())
 }
 
 -- A port that has nobody listening is not something to wait for, so it counts
@@ -2245,6 +2301,16 @@ rule WaitingOnAPortWithNoAwakeFunctionEndsAtOnce {
     requires: not the_port_has_an_awake_function()
 
     ensures: CallResult(value: the_port)
+}
+
+-- Something happening to a connection is put on the queue as an event naming
+-- the port it happened to, which is what lets one queue serve every port.
+rule WhatHappensToAConnectionGoesOnTheQueue {
+    when: something_happens_to(a_connection)
+    requires: it in WhatHappenedToAConnection
+
+    ensures: what_has_happened(TheSystemPort) =
+        what_it_held_then_an_event_of(it, naming: the_port_that_owns(a_connection))
 }
 
 -- The time runs out when nothing left to report has woken anything. A caller
@@ -2266,7 +2332,6 @@ rule WaitingOnAPortNothingWakesAnswersNone {
 -- so the connection must not throw away what the last read left behind.
 rule BytesThatArriveAreAddedToThePortsData {
     when: EvaluateCall(read, a_connection)
-    requires: the_port_has_an_awake_function()
 
     ensures: the_data_of(a_connection) =
         what_it_held_then_the_bytes_that_arrived()
@@ -2350,10 +2415,10 @@ rule ThePortsStateBelongsToItsActor {
 -- writes its first record to a port with no connection left.
 --
 -- One port's actor also uses EXTRA and does it knowingly: the checksum port
--- keeps the bytes it has been fed there, so a string written into it comes
--- back with the digest's own bytes over the top. That is the C's behaviour and
--- is not the general rule -- what the general rule says is that a script's
--- EXTRA is not somewhere a handle may be hidden.
+-- keeps its running sum there, so a string written into that field comes back
+-- with the digest's own bytes over the top. That is the C's behaviour, checked
+-- against it, and it is why the rule below names the two schemes it holds for
+-- rather than claiming EXTRA is always the script's.
 rule ABuiltInActorKeepsItsHandleInStateAndNotInExtra {
     when: EvaluateCall(open, target)
     requires: is_port(target)
@@ -2455,6 +2520,16 @@ rule AnActorThatIsNeitherIsAnInvalidActor {
 
     ensures: CallFails(error: invalid_actor)
 }
+
+open question "Only fifteen verbs reach a port's actor, where `T_Port` sends every action except MAKE, TO and REFLECT. POKE, PUT, SELECT, LENGTH?, PICK, COPY, REMOVE, UPDATE, OPEN?, CLOSE, MODIFY, QUERY, READ, WRITE and OPEN are wired by hand; APPEND, INSERT, CHANGE, CLEAR, TAKE, FIND, INDEX?, HEAD, TAIL, SKIP, AT, CREATE and RENAME run their ordinary series path on a port instead, and none of them raises no-port-action either. It is not hypothetical: prot-mysql.reb's actor declares an INSERT that can never be called. The question is whether the dispatch should be made general, as the C's is, or whether the rule should be narrowed to the verbs that are wired -- and the first cannot be done without deciding what every series action means for a port that does not serve it."
+
+open question "A url reaches an actor for OPEN, READ and WRITE and not for QUERY or DELETE. `query https://x` never reaches prot-http's own QUERY, which it does declare, and answers no-service instead; `delete https://x` has no actor hook at all and answers the same, where the right answer would be no-port-action because the protocol declares no DELETE. So APortWithAnActorWrittenInRebolNeedsNoServiceToOpen is satisfied by neither path, and its verb list is either too long or the routing is too short."
+
+open question "The refinement arguments an actor is given are truncated on three paths, because the argument list handed over is rebuilt rather than passed through: COPY hands over the port alone, OPEN the port alone, WRITE the port and the data. The missing positions are filled with none, so `copy/part port 10` reaches the actor with PART true and LENGTH none. Latent rather than live -- HTTP's COPY and OPEN take only a port and TLS's WRITE takes a port and a value -- and the fix is the one READ already has, which keeps everything after the first position. TheRefinementsAskedForReachTheActor says nothing about the arguments, which is the half that is wrong."
+
+open question "BIND with a bound word as its target walks up from that word's context; BIND with a block does not. So `bind 'outer 'local` binds OUTER and `bind [outer] 'local` leaves it alone, which is one native disagreeing with itself. The block form matches `Bind_Block` and the C has no parent chain to walk, so the word form is the one to change -- but it is the older of the two and something may be relying on it. It wants measuring against a real 3.22.5 on a word target before either is moved."
+
+open question "`wait [connection]` with no timeout in the block answers none at once, where the C waits for ever. Nothing here can arrive during that wait -- a connection is read on the thread that asked for it, so an empty queue cannot fill while WAIT spins -- which makes answering none the honest end of a wait that could never finish. Whether that is right depends on whether a connection will ever be read on a thread of its own, and until it is, waiting for ever would be a hang rather than a wait."
 
 open question "Where home is does not come from the filesystem a script was given. `system/options/home` is read off the machine, so an interpreter whose files are confined to one directory still reports the real home -- a path it will then refuse to read or write. Nothing notices until a script keeps something there, which is what REBOL's own user storage does: it puts a user's encrypted file at home and a confined interpreter cannot make one. The measuring harness now says home is the directory it made, which is the honest answer for a confined filesystem and is a decision the host is entitled to make. The question left is whether the interpreter should be asking the filesystem where home is instead of being told, so that every host gets a coherent answer rather than the ones that remember."
 
@@ -10867,7 +10942,8 @@ rule TheCurvesTheExchangeServes {
     requires: the_call_asked_for_init()
 
     ensures: the_named_curve_is_one_this_build_has() when
-        curve in {curve25519, curve448, secp256r1, secp384r1, secp521r1}
+        curve in {curve25519, curve448, secp256k1,
+                  secp256r1, secp384r1, secp521r1}
 }
 
 -- Two contexts on different curves cannot agree, and the attempt answers NONE
@@ -10891,9 +10967,24 @@ rule EcdhRefusesTwoActionsAtOnce {
 -- uses, rather than the two numbers laid end to end. That matters to a caller
 -- passing one to anything else, and it is why the length varies by a byte or
 -- two between signatures of the same key.
+-- A key on one of the two exchange-only curves signs nothing, and says so with
+-- NONE rather than by raising. It is a number to multiply a point by and not a
+-- signing key -- the signature scheme those curves belong to is a different
+-- one, with a different name, and this native does not implement it.
+--
+-- VERIFY answers NONE there too, which is not the same as false: false would
+-- mean the signature did not hold.
+rule SigningOnACurveMadeForTheExchangeAnswersNone {
+    when: EvaluateCall(ecdsa, key, hash)
+    requires: not the_curve_takes_both_coordinates(key)
+
+    ensures: CallResult(value: none)
+}
+
 rule EcdsaSignAnswersAnAsn1Signature {
     when: EvaluateCall(ecdsa, key, hash)
     requires: the_call_asked_for_sign()
+    requires: the_curve_takes_both_coordinates(key)
 
     ensures: CallResult(datatype: binary)
     ensures: CallResult(value: an_asn1_sequence_of_two_numbers())

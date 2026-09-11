@@ -233,6 +233,27 @@ class EllipticCurveFromTheSourceTest {
                     ]""")).isEqualTo("[#(true) #(true) #(true)]");
         }
 
+        /**
+         * A key on one of them signs nothing. It is a number to multiply a
+         * point by and not a signing key -- the signature scheme those curves
+         * belong to has a different name and is not this native.
+         *
+         * <p>NONE rather than false from VERIFY, which is the same distinction
+         * the /VERIFY refinement already makes elsewhere: false would mean the
+         * signature did not hold.
+         */
+        @Test
+        @DisplayName("and neither of them signs anything")
+        void neitherOfThemSignsAnything() {
+            assertThat(answerTo("""
+                    k: ecdh/init none 'curve25519
+                    reduce [none? ecdsa/sign k hash  none? ecdsa/verify k hash #{3045}]"""))
+                    .isEqualTo("[#(true) #(true)]");
+            assertThat(answerTo("""
+                    none? ecdsa/sign (ecdh/init none 'curve448) hash"""))
+                    .isEqualTo("#(true)");
+        }
+
         @Test
         @DisplayName("and one from another curve answers none")
         void oneFromAnotherCurveAnswersNone() {
