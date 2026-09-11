@@ -50,7 +50,15 @@ final class CryptPort {
             int keyOctets, int blockOctets, Mode mode) {
     }
 
-    private enum Mode { CODEBOOK, CHAINED, COUNTER_WITH_GALOIS, STREAM }
+    private enum Mode {
+        CODEBOOK, CHAINED, COUNTER_WITH_GALOIS, COUNTER_WITH_CBC_MAC, STREAM
+    }
+
+    /** Whether a mode gathers everything and answers a tag beside the rest. */
+    private static boolean authenticates(Mode mode) {
+        return mode == Mode.COUNTER_WITH_GALOIS
+                || mode == Mode.COUNTER_WITH_CBC_MAC;
+    }
 
     private static final Map<String, Cipherworks> SERVED = Map.ofEntries(
             Map.entry("aes-128-ecb", new Cipherworks(
@@ -65,6 +73,12 @@ final class CryptPort {
                     "AES/CBC/NoPadding", "AES", 24, 16, Mode.CHAINED)),
             Map.entry("aes-256-cbc", new Cipherworks(
                     "AES/CBC/NoPadding", "AES", 32, 16, Mode.CHAINED)),
+            Map.entry("aes-128-ccm", new Cipherworks(
+                    "AES/ECB/NoPadding", "AES", 16, 0, Mode.COUNTER_WITH_CBC_MAC)),
+            Map.entry("aes-192-ccm", new Cipherworks(
+                    "AES/ECB/NoPadding", "AES", 24, 0, Mode.COUNTER_WITH_CBC_MAC)),
+            Map.entry("aes-256-ccm", new Cipherworks(
+                    "AES/ECB/NoPadding", "AES", 32, 0, Mode.COUNTER_WITH_CBC_MAC)),
             Map.entry("aes-128-gcm", new Cipherworks(
                     "AES/GCM/NoPadding", "AES", 16, 0, Mode.COUNTER_WITH_GALOIS)),
             Map.entry("aes-192-gcm", new Cipherworks(
@@ -92,6 +106,7 @@ final class CryptPort {
     private static final List<String> IN_CATALOGUE_ORDER = List.of(
             "aes-128-ecb", "aes-192-ecb", "aes-256-ecb",
             "aes-128-cbc", "aes-192-cbc", "aes-256-cbc",
+            "aes-128-ccm", "aes-192-ccm", "aes-256-ccm",
             "aes-128-gcm", "aes-192-gcm", "aes-256-gcm",
             "chacha20", "des_ecb", "des3_ecb", "des_cbc", "des3_cbc");
 
@@ -337,8 +352,8 @@ final class CryptPort {
         if (working.wouldNotRun) {
             return;
         }
-        if (working.works().mode() == Mode.COUNTER_WITH_GALOIS) {
-            gatherForGalois(working, octets);
+        if (authenticates(working.works().mode())) {
+            gatherToAuthenticate(working, octets);
             return;
         }
         byte[] waiting = joined(working.heldBack, octets);
@@ -378,9 +393,10 @@ final class CryptPort {
         if (working == null || working.wouldNotRun) {
             return;
         }
-        if (working.works() != null
-                && working.works().mode() == Mode.COUNTER_WITH_GALOIS) {
-            finishGalois(working);
+        if (working.works() != null && authenticates(working.works().mode())) {
+            if (working.works().mode() == Mode.COUNTER_WITH_GALOIS) {
+                finishGalois(working);
+            }
             return;
         }
         if (working.heldBack.length == 0) {
@@ -427,6 +443,9 @@ final class CryptPort {
         working.wouldNotRun = false;
         if (works.mode() == Mode.COUNTER_WITH_GALOIS) {
             working.wouldNotRun = working.vector.length == 0;
+            return;
+        }
+        if (works.mode() == Mode.COUNTER_WITH_CBC_MAC) {
             return;
         }
         working.running = cipherFor(working, works.mode() == Mode.CHAINED
@@ -485,7 +504,7 @@ final class CryptPort {
      * to encipher after, both through the same WRITE, told apart by a length
      * the caller set beforehand.
      */
-    private static void gatherForGalois(Working working, byte[] octets) {
+    private static void gatherToAuthenticate(Working working, byte[] octets) {
         byte[] rest = octets;
         if (working.toAuthenticateOctets > 0 && !working.headerTaken) {
             if (octets.length < working.toAuthenticateOctets) {
@@ -498,7 +517,42 @@ final class CryptPort {
                     octets.length);
         }
         working.gatheredForGalois = joined(working.gatheredForGalois, rest);
+        if (working.works().mode() == Mode.COUNTER_WITH_CBC_MAC) {
+            throughCounterWithCbcMac(working);
+            return;
+        }
         addToWhatIsReady(working, theOctetsNotHandedOutYet(working));
+    }
+
+    /**
+     * Counter with CBC-MAC answers everything at the write, tag included,
+     * because it computes its tag as it goes rather than at the end.
+     *
+     * <p>"The tag is computed immediatelly, so no need to finish CCM" --
+     * {@code Crypt_Update} says exactly that and returns without doing
+     * anything, which is why TAKE and READ answer the same thing here.
+     *
+     * <p>And it checks the tag while deciphering rather than handing it back,
+     * so a message whose tag disagrees leaves the port with nothing at all
+     * instead of plain text nobody vouched for.
+     */
+    private static void throughCounterWithCbcMac(Working working) {
+        Cipherworks works = working.works();
+        byte[] key = fittedTo(working.key, works.keyOctets());
+        CounterWithCbcMac.Sealed answer = working.decrypting
+                ? CounterWithCbcMac.deciphered(key, working.vector,
+                        working.tagOctets, working.authenticated,
+                        working.gatheredForGalois)
+                : CounterWithCbcMac.enciphered(key, working.vector,
+                        working.tagOctets, working.authenticated,
+                        working.gatheredForGalois);
+        if (!answer.worked()) {
+            working.wouldNotRun = true;
+            return;
+        }
+        working.ready = answer.octets();
+        working.handedOut = answer.octets().length;
+        working.somethingIsReady = true;
     }
 
     /**

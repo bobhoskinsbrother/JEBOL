@@ -139,23 +139,25 @@ class SystemCataloguesFromTheSourceTest {
         /**
          * This used to assert the block was empty, and that was right while
          * there was no cipher port. There is one now, so the catalogue names
-         * the fourteen ciphers it serves and not one more: Camellia, ARIA and
-         * counter-with-CBC-MAC are the other twenty-eight a real 3.22.5 lists
-         * and no JVM provider has them.
+         * the seventeen ciphers it serves and not one more: Camellia and ARIA
+         * are the other twenty-five a real 3.22.5 lists, and no JVM provider
+         * has either.
          */
         @Test
         @DisplayName("CIPHERS names what the cipher port serves, and nothing else")
         void theCiphersAreTheOnesTheCipherPortServes() {
             assertThat(answerTo("block? system/catalog/ciphers")).isEqualTo(TRUE);
-            assertThat(answerTo("14 = length? system/catalog/ciphers")).isEqualTo(TRUE);
-            assertThat(answerTo("true? find system/catalog/ciphers 'aes-128-cbc"))
-                    .isEqualTo(TRUE);
-            assertThat(answerTo("true? find system/catalog/ciphers 'chacha20"))
-                    .isEqualTo(TRUE);
-            assertThat(answerTo("true? find system/catalog/ciphers 'camellia-128-cbc"))
-                    .isEqualTo(FALSE);
-            assertThat(answerTo("true? find system/catalog/ciphers 'aes-128-ccm"))
-                    .isEqualTo(FALSE);
+            assertThat(answerTo("17 = length? system/catalog/ciphers")).isEqualTo(TRUE);
+            for (String served : new String[] {
+                    "aes-128-cbc", "aes-128-ccm", "aes-128-gcm", "chacha20"}) {
+                assertThat(answerTo("true? find system/catalog/ciphers '" + served))
+                        .as(served).isEqualTo(TRUE);
+            }
+            for (String absent : new String[] {
+                    "camellia-128-cbc", "aria-128-cbc", "chacha20-poly1305"}) {
+                assertThat(answerTo("true? find system/catalog/ciphers '" + absent))
+                        .as(absent).isEqualTo(FALSE);
+            }
         }
 
         @Test

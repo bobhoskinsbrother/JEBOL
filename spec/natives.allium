@@ -2427,13 +2427,18 @@ rule TakingAnAuthenticatedCipherAnswersTheTagAfterTheCipherText {
 
 -- The tag is cut to the length asked for, and a shorter tag is the first bytes
 -- of a longer one rather than a different number. Four bytes is the shortest
--- there is and sixteen the longest.
+-- there is and sixteen the longest, and counting counter with CBC-MAC will
+-- only issue the even lengths between them.
+--
+-- Why the two modes differ: counting with Galois cuts a sixteen byte tag
+-- down, so any length up to sixteen is a prefix of the same number. Counter
+-- with CBC-MAC builds the tag length into the first block it authenticates,
+-- as `(t - 2) / 2` in three bits, so an odd length has no spelling at all.
 rule ATagIsCutToTheLengthAskedFor {
     when: EvaluateCall(take, target)
     requires: names_a_cipher_port(target)
     requires: the_cipher_authenticates()
-    requires: the_tag_length_asked_for() >= 4
-    requires: the_tag_length_asked_for() <= 16
+    requires: the_tag_length_asked_for() in lengths_this_mode_will_issue()
 
     ensures: length_of(the_tag_answered()) = the_tag_length_asked_for()
 }
@@ -2446,9 +2451,26 @@ rule ATagLengthOutsideWhatCanBeIssuedLeavesNothing {
     requires: names_a_cipher_port(target)
     requires: the_cipher_authenticates()
     requires: the_tag_length_asked_for() > 0
-    requires: the_tag_length_asked_for() < 4 or the_tag_length_asked_for() > 16
+    requires: the_tag_length_asked_for() not in lengths_this_mode_will_issue()
 
     ensures: CallResult(value: none)
+}
+
+-- Counter with CBC-MAC reads a nonce of seven to thirteen bytes, and a length
+-- outside that is brought to the nearer end rather than refused.
+--
+-- The nonce and the count of blocks share sixteen bytes between them, so a
+-- longer nonce leaves fewer bytes to count with. Seven and thirteen are where
+-- that trade runs out at each end. A short nonce is read as seven bytes with
+-- noughts after it, and a long one has its tail ignored -- so fourteen bytes
+-- and sixteen bytes and the first thirteen of either all answer alike.
+rule CounterWithCbcMacReadsSevenToThirteenBytesOfNonce {
+    when: EvaluateCall(write, target, octets)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_counts_with_cbc_mac()
+
+    ensures: the_nonce_used = the_first_octets_of_the_vector(
+        clamped(length_of(the_vector), 7, 13))
 }
 
 rule AskingForNoTagAnswersNothingWithoutSpoilingThePort {
@@ -2460,21 +2482,48 @@ rule AskingForNoTagAnswersNothingWithoutSpoilingThePort {
     ensures: CallResult(value: none)
 }
 
--- Deciphering hands the computed tag back rather than checking it, so a
--- caller that does not compare has not checked anything.
+-- The two authenticated modes disagree about whose job it is to check the
+-- tag, and the difference is worth knowing before trusting either.
 --
--- Which looks like a hole and is a choice: the port has no way to tell a
--- caller *which* byte disagreed, and a protocol usually wants the tag itself
--- to put in its own reply. Comparing is the caller's to do, and REBOL's own
--- test does exactly that.
-rule DecipheringAnswersTheTagRatherThanCheckingIt {
+-- Counting with Galois hands the computed tag back and compares nothing, so a
+-- caller that does not compare has not checked anything. That reads as a hole
+-- and is a choice: the port cannot say which byte disagreed, and a protocol
+-- usually wants the tag itself to put in its own reply. REBOL's own test
+-- compares.
+--
+-- Counter with CBC-MAC compares for itself, and a tag that disagrees leaves
+-- the port with no answer at all -- the plain text is not handed over, so
+-- there is nothing for a careless caller to use by mistake. The tag is
+-- consumed off the end of what was written rather than produced.
+rule CountingWithGaloisAnswersTheTagRatherThanCheckingIt {
     when: EvaluateCall(take, target)
     requires: names_a_cipher_port(target)
-    requires: the_cipher_authenticates()
+    requires: the_cipher_counts_with_galois()
     requires: the_call_asked_to_decipher()
 
     ensures: CallResult(value: the_tag_computed_over_what_was_written())
     ensures: no_comparison_is_made()
+}
+
+rule CounterWithCbcMacChecksTheTagItself {
+    when: EvaluateCall(read, target)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_counts_with_cbc_mac()
+    requires: the_call_asked_to_decipher()
+    requires: the_tag_written_disagrees_with_the_tag_computed()
+
+    ensures: CallResult(value: none)
+    ensures: the_plain_text_is_not_handed_over()
+}
+
+rule DecipheringWithCounterAndCbcMacTakesItsTagFromTheEnd {
+    when: EvaluateCall(write, target, octets)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_counts_with_cbc_mac()
+    requires: the_call_asked_to_decipher()
+
+    ensures: the_last_octets_are_the_tag_to_check()
+    ensures: the_octets_between_the_header_and_the_tag_are_deciphered()
 }
 
 -- And the whole point of it: what one port encrypts another decrypts, given

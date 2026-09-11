@@ -59,8 +59,6 @@ crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #1
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #2
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #3
 crypt-port-camelia-test.r3 / CAMELLIA-128-ECB / (no test) #4
-crypt-port-ccm-test.r3 / (no group) / (no test) #1
-crypt-port-ccm-test.r3 / (no group) / (no test) #2
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #15
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #16
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #17
@@ -73,12 +71,6 @@ crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked inpu
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #27
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #28
 crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #29
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #30
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #31
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #32
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #33
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #34
-crypt-port-test.r3 / Camellia tests from RFC3713 / AES-128-CBC with chunked input which needs padding #35
 csv-test.r3 / (no group) / (no test) #17
 datatype-test.r3 / datatype! / number? #37
 date-test.r3 / Internet date / TO-IDATE (Date to Internet date) #126

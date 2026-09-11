@@ -38,7 +38,7 @@ catalogues claim is present. `system/codecs` is longer here than in a real
 3.22.5, so JEBOL enters blocks a real Rebol skips and then raises inside them.
 `system/catalog/ciphers` was the same fault seen from the other side — empty
 where a real one holds forty-two — and goal 4a settled it: it now names the
-fourteen the port really serves, which is the shape the others should end up
+seventeen the port really serves, which is the shape the others should end up
 in too.
 
 ---
@@ -195,7 +195,7 @@ Sizes are the number of `known-gaps.txt` entries the goal is worth, and they
 account for every entry with nothing left over — goal 15 exists to close that
 sum and shows the arithmetic. Goal 4 is now 4a and 4b, split on whether the
 cipher is one the JVM already carries, so the arithmetic reads sixteen goals
-where it used to read fifteen. The list stands at **407** entries
+where it used to read fifteen. The list stands at **399** entries
 as this line is written; `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt`
 is the live answer and a size above that disagrees with it is stale.
 
@@ -670,7 +670,7 @@ catalogue guards and ran as soon as the port existed.
 to `sys/make-port*` like `MT_Port` does, so a block, a url, a word, a file, an
 object and a port all make one; what is no specification at all answers
 `invalid-spec` and a specification whose scheme nobody serves answers
-`no-scheme`. `system/catalog/ciphers` holds the fourteen the JVM carries.
+`no-scheme`. `system/catalog/ciphers` holds the seventeen the JVM can be made to carry.
 `CryptPort.java` is the port, and `Interpreter.THE_CRYPT_SCHEME` quotes the
 scheme's INIT out of `init-schemes` so the three ways of naming an algorithm
 stay REBOL's.
@@ -737,10 +737,11 @@ across that line.**
 
 **What the JVM gives you, measured rather than assumed.** AES in ECB, CBC and
 GCM, ChaCha20, ChaCha20-Poly1305, DES and 3DES are all one
-`Cipher.getInstance` away. That is 18 of the 42, and fourteen of them are in
+`Cipher.getInstance` away. That is 18 of the 42, and fourteen of them went in
 the catalogue: ChaCha20-Poly1305 is left out because REBOL drives it through a
 two-step protocol of its own that does not map to a JVM AEAD, and it has no
-assertion behind it here.
+assertion behind it here. The three AES-CCM entries came later, from 4b, and
+are built rather than found — so the catalogue is seventeen.
 
 **Galois counter mode needed a trick worth knowing.** The port hands the
 computed tag back for the caller to compare; the JVM compares it itself while
@@ -756,39 +757,49 @@ The pattern followed is `ChecksumPort.java` and the checksum scheme in
 an actor name in `SCHEMES_THIS_BUILD_SERVES`, and open/read/write/update/close
 branches in `Natives.java`.
 
-### 4b. The ciphers the JVM has not got — 32
+### 4b. The ciphers the JVM has not got — 32, now 16 — CCM DONE, Camellia and ARIA left
 
 Do 4a first. This goal adds algorithms to a port that already works, and every
-assertion in it is unreachable until that port exists.
+assertion in it was unreachable until that port existed.
 
-**Which 32.**
+**Counter with CBC-MAC is done**, at all three key widths, and both files it
+owned are off the list. `CounterWithCbcMac.java` builds it out of a single
+block of AES, which is what the JVM does have: the tag is a chained code over a
+first block naming the lengths, then the header, then the message, and the
+cipher text is the message masked with the same AES run over a counter.
 
-    26  crypt-port-test.r3            Camellia tests from RFC3713
+It was the right one to do first for the reasons below, and doing it also
+settled two things the spec had wrong about authenticated modes in general.
+This mode checks the tag itself and hands back nothing when it disagrees,
+where counting with Galois hands the tag over and compares nothing — so
+`DecipheringAnswersTheTagRatherThanCheckingIt` was only ever true of one of
+them. And it will issue only the *even* tag lengths from four to sixteen,
+because the length is built into the first block it authenticates as
+`(t - 2) / 2` in three bits.
+
+**Which 16 are left.**
+
+    12  crypt-port-test.r3            Camellia tests from RFC3713
      4  crypt-port-camelia-test.r3    CAMELLIA-128-ECB
-     2  crypt-port-ccm-test.r3        AES-128-CCM, RFC 3610
 
-**Nothing in the JDK answers to Camellia, to ARIA, or to AES in CCM mode.**
-`Cipher.getInstance` throws `NoSuchAlgorithmException` for all three, which is
-24 of the catalogue's 42 entries and the larger share of the crypt work by
-assertion count. The shipped jar has no dependencies and this must not change
-it, so they get written rather than pulled in.
+**Nothing in the JDK answers to Camellia or to ARIA.**
+`Cipher.getInstance` throws `NoSuchAlgorithmException` for both, which is 25 of
+the catalogue's 42 entries. The shipped jar has no dependencies and this must
+not change it, so they get written rather than pulled in.
 
-Three separate pieces, and they are not equally sized. Camellia is a block
-cipher and the whole of it — RFC 3713 is the reference and
+Camellia is a block cipher and the whole of it — RFC 3713 is the reference and
 `rebol3-source/src/core/mbedtls/camellia.c` is the C this is measured against.
-CCM is a *mode* wrapped round a block cipher that already works, so AES-CCM is
-`ccm.c` on top of what 4a built, and the same mode then gives Camellia-CCM for
-nothing once Camellia lands. ARIA has no assertion behind it at all and is
-catalogue-only.
+Once it lands, Camellia-CBC, Camellia-GCM and Camellia-CCM all come with it,
+because the modes are already built and take a block cipher as a part. ARIA
+has no assertion behind it at all and is catalogue-only.
 
-**Do CCM first, whatever the assertion counts say.** It is two assertions
-against Camellia's thirty, and it is the only one of the three with a consumer
-inside JEBOL: `prot-tls.reb` offers four AES-CCM suites, two of which are TLS
-1.3's own — `TLS_AES-128-CCM_SHA256` at 0x1304 and `TLS_AES-128-CCM_8_SHA256`
-at 0x1305. Neither Camellia nor ARIA appears anywhere in the borrowed library
-at all. So CCM is the smallest piece, the one a real connection can reach, and
-the one that also unlocks Camellia-CCM later; Camellia and ARIA are catalogue
-completeness and a pile of RFC vectors.
+**Neither has a consumer.** Camellia and ARIA appear nowhere in the borrowed
+library — not a codec, not a protocol, not a fallback — so this is catalogue
+completeness and a pile of RFC vectors rather than anything a script can
+currently reach. That is the argument for leaving it, and the argument against
+is that the ratchet cannot reach zero while sixteen entries a real Rebol
+passes sit on the list. They are not `fails-on-rebol-too.txt` material: a real
+Rebol passes every one.
 
 The usual rule applies with force here: build the canonical reference first. Every one of
 these has published test vectors, the C beside it, and a `./r3-head` that can

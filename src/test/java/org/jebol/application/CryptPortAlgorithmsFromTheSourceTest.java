@@ -67,7 +67,8 @@ class CryptPortAlgorithmsFromTheSourceTest {
     void theCatalogueNamesWhatThisBuildServes() {
         assertThat(answerTo("mold/flat system/catalog/ciphers")).isEqualTo("""
                 {[aes-128-ecb aes-192-ecb aes-256-ecb aes-128-cbc aes-192-cbc \
-                aes-256-cbc aes-128-gcm aes-192-gcm aes-256-gcm chacha20 \
+                aes-256-cbc aes-128-ccm aes-192-ccm aes-256-ccm \
+                aes-128-gcm aes-192-gcm aes-256-gcm chacha20 \
                 des_ecb des3_ecb des_cbc des3_cbc]}""");
         assertThat(answerTo("""
                 every-one-opens: true
@@ -164,6 +165,8 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 ["47C58D5E21CAAF840D015B7D9B910981" "1B58BC54CD0CB07A1C91B8D25339DA3B" \
                 "E0A8F50EC76A04D5A96A175AA870EF63" "AA061FD394A67EAA4A88F12851E5C324" \
                 "72B543B75FF6D542B05B6E61C809BA2D" "3225DA78CABFF85445AD4030B03EC0F3" \
+                "132B32AF1069BD5B1DAAB020A7534E3C" "6A916607CD6A0894CEF26120A0A91DB9" \
+                "713C386454B0C9EE7A508C441FF647C1" \
                 "F564FDD8D4BD3334450A156219775678" "04B9EEE104E50ABD4CCD0452CD726D68" \
                 "D0112CE3234FCAAD35588AA9B22EE0B7" "1A4E8E57D67F11A342CE26E09D4643F9" \
                 "7D137E0C6D62961C761D7681A7FEBF3E" "53B9D08B5D6920D0197C8F4A4A24EADE" \
