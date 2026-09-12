@@ -14674,13 +14674,14 @@ public final class Natives {
                         Parameter.belongingTo("size", "width", Set.of(Datatype.INTEGER))),
                 Set.of("size"),
                 (arguments, evaluator, context, refinements) -> {
-                    java.util.OptionalInt width =
+                    OptionalLong width =
                             refinements.contains("size") && arguments.size() > 1
-                            ? java.util.OptionalInt.of(
-                                    (int) ((IntegerValue) arguments.get(1)).magnitude())
-                            : java.util.OptionalInt.empty();
+                            ? OptionalLong.of(
+                                    ((IntegerValue) arguments.get(1)).magnitude())
+                            : OptionalLong.empty();
+                    width.ifPresent(Natives::refuseASizeItCannotWrite);
                     return WordValue.of(switch (arguments.getFirst()) {
-                        case TupleValue tuple -> hexOfEachSegment(tuple);
+                        case TupleValue tuple -> hexOfEachSegment(tuple, width);
                         case CharacterValue character -> hexSizedToItsMagnitude(
                                 character.codepoint(), width);
                         default -> hexSixteenWide(
@@ -16625,41 +16626,49 @@ public final class Natives {
     /**
      * The spelling a piece of text gives, or a failure.
      *
-     * <p>Trailing spaces and tabs are dropped rather than held against
-     * it: the reader takes the word and stops, and what is left over is
-     * whitespace. Anything else left over means the text was more than
-     * one thing, or something other than a word, and neither can be a
-     * word's name.
+     * <p>{@code Qualify_String} in three steps: skip the leading blanks, take
+     * the word up to the next blank, and require everything after it to be
+     * blank as well. Nothing taken is too-short -- there was no name in it, as
+     * opposed to a bad one -- and anything but a blank afterwards means the
+     * text was more than one thing.
      *
-     * <p>Both ends are trimmed, and only of spaces and tabs. A newline is not
-     * whitespace for this purpose -- {@code to word! "^^/a^^/"} is
-     * invalid-chars where {@code to word! "^^-a"} is the word {@code a} --
-     * because the C skips {@code IS_SPACE}, which is those two characters and
-     * nothing else. Trimming the tail alone made a leading space refuse a
-     * perfectly good name.
+     * <p><b>What counts as a blank differs between the two ends, and that is
+     * the whole of the asymmetry.</b> Skipping uses the lexer's own test, which
+     * a control character passes -- its default class is written
+     * {@code LEX_DEFAULT (LEX_DELIMIT|LEX_DELIMIT_SPACE)} with the comment
+     * "control chars = spaces". The trailing check uses {@code IS_SPACE},
+     * which only a space and a tab pass. So {@code make issue! "^^(01)a"} is
+     * {@code #a} and {@code make issue! "a^^(01)"} is refused, from the same
+     * two characters in the other order.
      *
-     * <p>Text that is nothing but whitespace is too-short rather than
-     * invalid-chars: there was no name in it, as opposed to a bad one.
+     * <p>A line feed and a carriage return are blanks at neither end: they have
+     * a lexer entry of their own where the other control characters have none.
      *
-     * <p>An issue takes a laxer rule -- {@code Scan_Issue} rather than
-     * {@code Scan_Word} -- which is what lets one hold a version number
-     * or a reference with dots and pluses in it.
+     * <p>Neither refusal carries the text back. {@code Trap0} takes no
+     * argument, and a caller handed the string would print a control character
+     * into whatever it logged with.
+     *
+     * <p>An issue takes a laxer rule for what it may then hold --
+     * {@code Scan_Issue} rather than {@code Scan_Word} -- which is what lets
+     * one carry a version number or a reference with dots and pluses in it.
      */
     private static String spellingReadAs(String text, Datatype kind) {
-        int end = text.length();
-        while (end > 0 && isSpaceOrTab(text.charAt(end - 1))) {
-            end--;
-        }
         int from = 0;
-        while (from < end && isSpaceOrTab(text.charAt(from))) {
+        while (from < text.length() && isLexicalSpace(text.charAt(from))) {
             from++;
+        }
+        int end = from;
+        while (end < text.length() && !isLexicalSpace(text.charAt(end))) {
+            end++;
         }
         String trimmed = text.substring(from, end);
         if (trimmed.isEmpty()) {
-            throw Raised.of(EvaluationFailure.TOO_SHORT, text);
+            throw Raised.of(EvaluationFailure.TOO_SHORT);
         }
-        if (trimmed.codePoints().anyMatch(letter -> letter < 0x20 || letter == 0x7F)) {
-            throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
+        for (int after = end; after < text.length(); after++) {
+            if (!isSpaceOrTab(text.charAt(after))) {
+                throw Raised.of(EvaluationFailure.INVALID_CHARS);
+            }
         }
         List<Value> read;
         try {
@@ -16668,13 +16677,13 @@ public final class Natives {
                     .map(BlockValue::remaining)
                     .orElse(List.of());
         } catch (RuntimeException unreadable) {
-            throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
+            throw Raised.of(EvaluationFailure.INVALID_CHARS);
         }
         Datatype wanted = kind == Datatype.ISSUE ? Datatype.ISSUE : Datatype.WORD;
         if (read.size() != 1 || !(read.getFirst() instanceof WordValue word)
                 || word.datatype() != wanted
                 || !word.spelling().equals(trimmed)) {
-            throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
+            throw Raised.of(EvaluationFailure.INVALID_CHARS);
         }
         return word.spelling();
     }
@@ -17883,7 +17892,40 @@ public final class Natives {
         return whole.subList(from, from + count);
     }
 
-    private static String hexOfEachSegment(TupleValue tuple) {
+    /**
+     * The sizes TO-HEX/SIZE will not write, refused before the subject is even
+     * looked at.
+     *
+     * <p>{@code if (VAL_INT64(D_ARG(3)) <= 0 || VAL_UNT64(D_ARG(3)) > MAX_U32)
+     * Trap_Arg(D_ARG(3));} -- the first line of the native, before the branch
+     * on what is being converted, which is why a char and a tuple are refused
+     * the same way a number is.
+     *
+     * <p>Nought is the one that has to be named rather than assumed. A width of
+     * nought leaves an issue with no spelling, and there is no such value: it
+     * reached the host as {@code IllegalArgumentException: a word needs a
+     * spelling}, which {@code spec/embed.allium} forbids outright.
+     */
+    private static void refuseASizeItCannotWrite(long width) {
+        if (width <= 0 || width > 0xFFFFFFFFL) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, IntegerValue.of(width));
+        }
+    }
+
+    /**
+     * A tuple in hex, cut from the right to the size asked for.
+     *
+     * <p>The other way about from a number. A tuple is a run of bytes in the
+     * order they were written, so the size says how many digits to keep from
+     * the left; a number is right aligned and keeps its low digits.
+     *
+     * <p>The ceiling is twice the tuple's own length rather than sixteen, and
+     * the tuple decides it: {@code if (len > 2 * MAX_TUPLE || len > 2 *
+     * VAL_TUPLE_LEN(arg)) len = 2 * VAL_TUPLE_LEN(arg);}. So a size wider than
+     * the tuple does not pad it out -- there is nothing to pad with that would
+     * not be a different colour.
+     */
+    private static String hexOfEachSegment(TupleValue tuple, OptionalLong width) {
         StringBuilder hex = new StringBuilder();
         for (int segment : tuple.segments()) {
             hex.append("%02X".formatted(segment));
@@ -17892,22 +17934,39 @@ public final class Natives {
                 padded < TupleValue.MINIMUM_SHOWN_SEGMENTS; padded++) {
             hex.append("00");
         }
-        return hex.toString();
+        if (width.isEmpty()) {
+            return hex.toString();
+        }
+        long kept = Math.min(width.getAsLong(), 2L * tuple.segmentCount());
+        return hex.substring(0, (int) Math.min(kept, hex.length()));
     }
 
-    private static String hexSizedToItsMagnitude(
-            int codepoint, java.util.OptionalInt width) {
+    private static String hexSizedToItsMagnitude(int codepoint, OptionalLong width) {
         int digits = codepoint <= 0xFF ? 2
                 : codepoint <= 0xFFFF ? 4
                 : codepoint <= 0xFFFFFF ? 6
                 : 8;
         return trimmedToWidth("%016X".formatted((long) codepoint),
-                width.orElse(digits));
+                width.isPresent() ? atMostSixteen(width.getAsLong()) : digits);
     }
 
-    private static String hexSixteenWide(long magnitude, java.util.OptionalInt width) {
+    private static String hexSixteenWide(long magnitude, OptionalLong width) {
         String hex = "%016X".formatted(magnitude);
-        return width.isPresent() ? trimmedToWidth(hex, width.getAsInt()) : hex;
+        return width.isEmpty()
+                ? hex
+                : trimmedToWidth(hex, atMostSixteen(width.getAsLong()));
+    }
+
+    /**
+     * Sixteen digits is the widest a number is written, whatever was asked for:
+     * {@code if (len == NO_LIMIT || len > MAX_HEX_LEN) len = MAX_HEX_LEN;}.
+     *
+     * <p>Which is also what keeps the largest size the C accepts from arriving
+     * here as a Java {@code int} that has already wrapped -- {@code
+     * to-hex/size 255 4294967295} crashed for that reason and is a valid call.
+     */
+    private static int atMostSixteen(long width) {
+        return (int) Math.min(width, 16L);
     }
 
     private static String trimmedToWidth(String hex, int width) {

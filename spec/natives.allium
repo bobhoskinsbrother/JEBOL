@@ -7415,6 +7415,109 @@ rule ToHexAnswersAnIssueForAnIntegerACharOrATuple {
         else: two_digits_per_byte_of(subject)))
 }
 
+-- /SIZE says how many hex digits to answer, and it is checked before the
+-- subject is looked at: `if (VAL_INT64(D_ARG(3)) <= 0 || VAL_UNT64(D_ARG(3)) >
+-- MAX_U32) Trap_Arg(D_ARG(3));`. So a size of nought or below is refused for an
+-- integer, a char and a tuple alike, and so is one above what fits in
+-- thirty-two bits unsigned.
+--
+-- Nought is the one worth stating rather than assuming. A width of nought
+-- would leave an issue with no spelling, which is not a value REBOL has -- and
+-- the refusal names the size rather than the subject, because the size is what
+-- the caller got wrong.
+rule ToHexRefusesASizeOutsideWhatItCanWrite {
+    when: EvaluateCall(to_hex, subject, size)
+    requires: the_call_asked_for_size()
+    requires: size <= 0 or size > 4294967295
+
+    ensures: CallFails(error: invalid_arg, about: size)
+}
+
+-- With a size it can write, an integer or a char is the value in hex, right
+-- aligned in that many digits: `to-hex/size 255 1` is `#F` and
+-- `to-hex/size 255 15` is `#0000000000000FF`. Sixteen is the ceiling --
+-- `if (len == NO_LIMIT || len > MAX_HEX_LEN) len = MAX_HEX_LEN;` -- so asking
+-- for more than sixteen answers sixteen rather than a wider number.
+rule ToHexSizesAnIntegerOrACharRightAligned {
+    when: EvaluateCall(to_hex, subject, size)
+    requires: the_call_asked_for_size()
+    requires: is_integer(subject) or is_char(subject)
+
+    ensures: length_of(result) = minimum(size, 16)
+    ensures: CallResult(value: the_low_digits_of(subject, minimum(size, 16)))
+}
+
+-- A tuple is the other way about: its digits are written out first and the
+-- size says how many of them to keep, from the left. `to-hex/size 1.2.3.4.5.6
+-- 8` is `#01020304` -- it truncates -- where the same call on a three-segment
+-- tuple answers all six digits however much more is asked for.
+--
+-- The ceiling is twice the tuple's own length rather than sixteen, and it is
+-- the tuple that decides it: `if (len > 2 * MAX_TUPLE || len > 2 *
+-- VAL_TUPLE_LEN(arg)) len = 2 * VAL_TUPLE_LEN(arg);`. So a size wider than the
+-- tuple does not pad it out -- there is nothing to pad with that would not be a
+-- different colour.
+--
+-- Which makes /SIZE mean two different things by datatype, and the difference
+-- is not arbitrary. An integer is a number and its low digits are the ones that
+-- matter, so it is padded and truncated from the left. A tuple is a run of
+-- bytes in the order they were written, so it is cut from the right.
+rule ToHexSizesATupleByCuttingFromTheRight {
+    when: EvaluateCall(to_hex, subject, size)
+    requires: the_call_asked_for_size()
+    requires: is_tuple(subject)
+
+    ensures: length_of(result) = minimum(size, 2 * segment_count(subject))
+    ensures: CallResult(value: the_first_digits_of(
+        two_digits_per_segment(subject),
+        minimum(size, 2 * segment_count(subject))))
+}
+
+-- === Making a word or an issue out of a string ==============
+
+-- A string is qualified before it becomes a word or an issue, and the three
+-- steps of that are what decide which of two errors a caller gets.
+-- `Qualify_String` skips leading space, copies characters up to the next
+-- space, and then requires everything after that run to be space as well.
+--
+-- **A control character counts as space for the skipping and not for the
+-- checking**, and that is the whole of the asymmetry. The lexer's default class
+-- says so in its own comment -- `LEX_DEFAULT (LEX_DELIMIT|LEX_DELIMIT_SPACE)
+-- /* control chars = spaces */` -- so a control character at the head is
+-- stepped over like a blank. The trailing check uses a stricter test that only
+-- a real blank passes, so the same character after the word is not.
+--
+-- Which means `make issue! "^^(01)a"` is `#a` and `make issue! "a^^(01)"` is
+-- refused, from the same two characters in the other order.
+enum WhyAStringCannotBeAWord {
+    too_short       -- nothing left once the leading blanks are stepped over
+    | invalid_chars -- something that is not a blank after the word ended
+}
+
+rule LeadingBlanksAndControlCharactersAreSteppedOver {
+    when: EvaluateCall(make, issue, subject)
+    requires: is_string(subject)
+
+    ensures: CallResult(value: an_issue_of(
+        what_follows_the_leading_blanks_and_control_characters(subject)))
+}
+
+rule AStringOfNothingButBlanksIsTooShort {
+    when: EvaluateCall(make, issue, subject)
+    requires: is_string(subject)
+    requires: is_empty(what_follows_the_leading_blanks_and_control_characters(subject))
+
+    ensures: CallFails(error: WhyAStringCannotBeAWord.too_short)
+}
+
+rule AnythingButABlankAfterTheWordIsInvalid {
+    when: EvaluateCall(make, issue, subject)
+    requires: is_string(subject)
+    requires: not is_blank(what_follows_the_word_in(subject))
+
+    ensures: CallFails(error: WhyAStringCannotBeAWord.invalid_chars)
+}
+
 -- CHECKSUM answers a binary, and the method decides how long it is.
 --
 -- A word names the method, and it must be one the build offers:

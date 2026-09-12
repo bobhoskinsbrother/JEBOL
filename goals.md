@@ -32,7 +32,7 @@ or in none. Every number below was checked on 2026-09-12 by running it.
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
 | `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
-| `known-gaps.txt` | **182 fail**, and they are goals 1 to 8 below |
+| `known-gaps.txt` | **175 fail**, and they are goals 1 to 7 below |
 | `fails-on-rebol-too.txt` | 146 a real 3.22.5 also fails or never runs |
 | `scripts/error-parity.py` | **81 of Rebol's 142 error ids can be raised. 61 cannot** |
 
@@ -41,7 +41,7 @@ fails the build outright -- no list, no exception. `./gradlew browserCheck` is
 the second gate and is not optional; it renders the same paint list in Java2D
 and in a real Chrome and compares them pixel for pixel.
 
-The 182 are broken into the first eight goals below. The rest own no entries:
+The 175 are broken into the first seven goals below. The rest own no entries:
 they are equivalence the suite cannot see, the two security goals, and the
 engineering and tooling work.
 
@@ -244,20 +244,7 @@ and the count goes up, that is the answer, so write it down here.
 
 ---
 
-### 1. Two Java exceptions escaping to the top -- 7
-
-`issue-test.r3`. These are not wrong answers but crashes, and a Java exception
-reaching the interpreter's edge is a defect of a different kind:
-
-    to-hex/size 1  0   -> java.lang.IllegalArgumentException: a word needs a spelling
-    to-hex/size 1 -1   -> java.lang.StringIndexOutOfBoundsException: Range [17, 16)
-
-`spec/embed.allium` says nothing a script does may reach the host as a
-throwable. Both should be REBOL errors; ask `./r3-head` which.
-
----
-
-### 2. What is left of the file ports -- 33
+### 1. What is left of the file ports -- 33
 
 `port-test.r3`. The file and directory schemes work now
 (`SeekableFilePort.java`); these are the remainder.
@@ -280,7 +267,7 @@ The rest are wrong answers, so sweep the file: `scripts/sweep.py port-test.r3`.
 
 ---
 
-### 3. The checksum port -- 34
+### 2. The checksum port -- 34
 
 `checksum-test.r3` has one stop, and it is environment-dependent:
 `file-checksum system/options/boot` — the boot path is outside the sandbox
@@ -307,7 +294,7 @@ Run it three times.
 
 ---
 
-### 4. ENBASE, DEBASE and their parts -- 29
+### 3. ENBASE, DEBASE and their parts -- 29
 
 `enbase-test.r3`. One stop — `load` of bytes that are not valid UTF-8,
 `#{B7D3}` — and then wrong answers.
@@ -325,7 +312,7 @@ lets a URL-safe group end short); the encoder does not.
 
 ---
 
-### 5. The elliptic curves -- 27
+### 4. The elliptic curves -- 27
 
 `dh-test.r3` stops at
 
@@ -361,7 +348,7 @@ build without a curve.
 
 ---
 
-### 6. Modules and IMPORT -- 12
+### 5. Modules and IMPORT -- 12
 
 `module-test.r3` stopped nine times, and every one came back to
 `system/options/modules` being none.
@@ -419,7 +406,7 @@ that got further than before:
 
 ---
 
-### 7. The PDF codec times out -- 9
+### 6. The PDF codec times out -- 9
 
 `codecs-test-pdf.r3` runs past the harness's 5000ms limit on its first step.
 Either the PDF codec is doing something quadratic or it is looping. Worth
@@ -427,7 +414,7 @@ finding out which before deciding what to do about it.
 
 ---
 
-### 8. The scattered singles and pairs -- 31 across fourteen files
+### 7. The scattered singles and pairs -- 31 across fourteen files
 
 What is left when the others above are taken out:
 
@@ -452,7 +439,7 @@ in goal 18 below and is a larger decision than four assertions warrant on its ow
 
 ---
 
-### 9. The error catalogue: 61 ids cannot be raised
+### 8. The error catalogue: 61 ids cannot be raised
 
 `too-long` is one of Rebol's error ids and JEBOL simply did not have it. That
 was found by needing it, which is no way to find things, so the whole catalogue
@@ -481,7 +468,7 @@ remembered.
 
 ---
 
-### 10. What reaching zero would not prove
+### 9. What reaching zero would not prove
 
 None of this is on `known-gaps.txt` and none of it can be, because the suite
 tests what functions **return** and these are all about what functions **say
@@ -567,7 +554,7 @@ whether the change worked.
 
 ---
 
-### 11. What the suite does not ask
+### 10. What the suite does not ask
 
 **The suite is the measure, and it is not the whole surface.** Running all 930
 combinations of MAKE and TO against fifteen target types and thirty-one source
@@ -676,7 +663,7 @@ found two things that four separate readings of the C had not. See
 
 ---
 
-### 12. The 32 prelude forks
+### 11. The 32 prelude forks
 
 `prelude.reb` defines 36 words and Rebol defines 32 of them in `src/mezz` too:
 
@@ -692,7 +679,7 @@ the same function, and if not, why was it forked?
 
 ---
 
-### 13. Loose ends
+### 12. Loose ends
 
 **`task!` is a datatype word and not yet a datatype.** `task!` answers
 `#(datatype!)` on both, but `make task! [1 + 1]` gives `#(task!)` on a real
@@ -720,7 +707,7 @@ ask. `pid` works.
 
 ---
 
-### 14. Graphics -- fourteen DRAW commands
+### 13. Graphics -- fourteen DRAW commands
 
 **DRAW renders 22 of R3's 36 commands.** The fourteen it does not:
 
@@ -736,7 +723,7 @@ path, VID, Android, and the events-name-the-wrong-window one.
 
 ---
 
-### 15. Code from outside is not authenticated -- the TLS client
+### 14. Code from outside is not authenticated -- the TLS client
 
 **Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
 failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
@@ -807,7 +794,7 @@ does not control should know that before it does.
 
 ---
 
-### 16. Code from outside is not verified -- no checksum on a fetched module
+### 15. Code from outside is not verified -- no checksum on a fetched module
 
 **Nothing crosses the wire today**, which is why this is a goal rather than a
 live hole: the thirteen modules this build has no other way to reach are bundled
@@ -855,7 +842,7 @@ wants that more than it wants either check.
 
 ---
 
-### 17. The type-major refactor
+### 16. The type-major refactor
 
 **The original complaint, and much the largest piece left.** One `t-*.c` per
 increment, bitset as the pilot.
@@ -867,7 +854,7 @@ enumerate every arm that needed work. That is what the action seam wants.
 
 ---
 
-### 18. The boot -- 343ms cold, 72ms warm
+### 17. The boot -- 343ms cold, 72ms warm
 
 **343ms for the first interpreter, 72ms once the JVM has settled.** A
 7900-test run pays the 72ms per class, and that is the floor rather than the
@@ -878,7 +865,7 @@ already in that allocation path, and it costs about 2ms of the 72.
 
 ---
 
-### 19. LLM-friendly MCP tools
+### 18. LLM-friendly MCP tools
 
 **The reader will only ever be an LLM, and that decides the design.** A model
 does not misunderstand, it infers confidently from training data that is mostly
@@ -978,6 +965,45 @@ tokens -- what earns space is only what contradicts the prior: `if 0` is true,
 
 One thing to price before starting: error text becomes an interface. Reword it
 later and whatever was built on the old wording breaks.
+
+---
+
+### 19. Javadoc where a name would do
+
+**Every javadoc on something a caller outside the package cannot reach should
+be a name instead.** `CLAUDE.md` bans code comments outright and says the itch
+to write one is the signal to extract a method, rename a variable or introduce a
+named constant. Javadoc on a private method is the same itch wearing a jacket,
+and this codebase is full of it.
+
+What stays: a public class, a public method, an interface, an enum -- anything a
+caller outside the package reaches for, where the documentation is the contract
+and a name cannot carry it.
+
+What goes: the rest. Read each one and ask what it is doing. Most of them are
+one of three things:
+
+- **Naming the method again in a sentence.** Delete it; the name already says it.
+- **Explaining a step inside the body.** Extract that step into a method whose
+  name is the sentence, and the comment disappears with it.
+- **Carrying a fact about the C that the name cannot.** That one is real and
+  does not belong beside the code either -- it belongs in `docs/`, or in the
+  spec under the rule it is evidence for, or in the commit that made the
+  change. A reader who needs to know why `Form_Hex_Pad` pads from the left is
+  not reading a private helper to find out.
+
+**Do it a file at a time and let the gate hold the line.** Nothing about
+behaviour changes, so any test that moves is a test that was depending on
+something it should not have been.
+
+Worth deciding first, because it governs how much comes out: whether a
+`*FromTheSourceTest` class javadoc counts as public. The argument that it does
+is that it is the only place the C's reasoning is written down beside a
+runnable check of it, and those have earned their keep repeatedly -- every one
+of them names the line of C it was read from. The argument that it does not is
+that a test class is not an interface either. **Settle that before starting**,
+because on the first reading most of the surviving prose in this port lives in
+exactly those classes.
 
 ---
 

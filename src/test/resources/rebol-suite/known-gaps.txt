@@ -146,13 +146,6 @@ error-test.r3 / Error issues / protected catalog #43
 evaluation-test.r3 / do script / do needs #44
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
-issue-test.r3 / to-hex / bad chars in issue #25
-issue-test.r3 / to-hex / bad chars in issue #26
-issue-test.r3 / to-hex / to-hex/size integer! #10
-issue-test.r3 / to-hex / to-hex/size integer! #9
-issue-test.r3 / to-hex / to-hex/size tuple! #12
-issue-test.r3 / to-hex / to-hex/size tuple! #13
-issue-test.r3 / to-hex / to-hex/size tuple! #14
 module-test.r3 / make module / inlined module #13
 module-test.r3 / make module / inlined module #14
 module-test.r3 / make module / inlined module #15
