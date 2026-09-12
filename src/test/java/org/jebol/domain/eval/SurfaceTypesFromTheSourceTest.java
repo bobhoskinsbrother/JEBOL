@@ -293,13 +293,21 @@ class SurfaceTypesFromTheSourceTest {
                     query 1-Jan-2000 'nonsense""")).isEqualTo("cannot-use");
         }
 
+        /**
+         * A none field never routes anywhere: it reads the names off the
+         * port's own scheme and returns, so a url answers without a connection
+         * being made. HTTP's are the seven a file has plus the three its own
+         * protocol adds, which is the point of reading them from the scheme
+         * rather than from one fixed list.
+         */
         @Test
-        @DisplayName("a url, a word and a port route to schemes this host has not got")
-        void theSchemeTargetsAreRefused() {
-            assertThat(errorIdOf("""
-                    query http://example.com none""")).isEqualTo("no-service");
-            assertThat(errorIdOf("""
-                    query 'nowhere none""")).isEqualTo("no-service");
+        @DisplayName("a url answers its scheme's own names, without reaching out")
+        void aUrlAnswersItsSchemesOwnNames() {
+            assertThat(answerTo("""
+                    (query http://example.com none) = [
+                        name size type date modified accessed created
+                        response-line status-code headers]"""))
+                    .isEqualTo("#(true)");
         }
     }
 

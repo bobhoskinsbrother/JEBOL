@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 /**
  * A filesystem a script may reach, rooted at one directory.
@@ -63,7 +65,11 @@ public final class FileSystemPort implements FilePort {
      */
     @Override
     public String workingDirectory() {
-        String inside = root.relativize(here).toString()
+        return asADirectoryNameFromTheRoot(here);
+    }
+
+    private String asADirectoryNameFromTheRoot(Path target) {
+        String inside = root.relativize(target).toString()
                 .replace(File.separatorChar, '/');
         return inside.isEmpty() ? "/" : "/" + inside + "/";
     }
@@ -81,19 +87,42 @@ public final class FileSystemPort implements FilePort {
         return within(path).toString();
     }
 
+    /**
+     * Moves, and names the directory it meant when it cannot.
+     *
+     * <p>The C rewrites its own argument into the absolute path before it
+     * tries the move -- {@code SET_FILE(arg, ser)} -- and the trap then reads
+     * that slot, so a relative target comes back absolute in the error. Which
+     * is the half a caller acts on: {@code %issues/2446} says nothing about
+     * where the interpreter was standing when it failed to find it.
+     */
     @Override
     public void changeDirectory(String path) {
         Path target = within(path);
         if (!Files.isDirectory(target)) {
-            throw new Denied("cannot-open", path + " is not a directory");
+            throw new Denied("cannot-open", path + " is not a directory",
+                    asADirectoryNameFromTheRoot(target));
         }
         here = target;
     }
 
+    /**
+     * {@code mkdir}, which refuses where anything already answers to the name.
+     *
+     * <p>The refusal is no-create rather than cannot-open, and the two are not
+     * interchangeable to a caller: cannot-open says the path could not be
+     * reached, no-create says it was reached and the directory could not be
+     * made there. Rebol's own MAKE-DIR relies on the difference -- it asks
+     * EXISTS? first and answers the path where a directory is already there,
+     * so the only way to reach {@code mkdir} is with something else in the way.
+     */
     @Override
     public void makeDirectory(String path, boolean andItsParents) {
         requireWritable();
         Path target = within(path);
+        if (Files.exists(target) && !Files.isDirectory(target)) {
+            throw new Denied("no-create", "cannot make a directory at " + path, path);
+        }
         try {
             if (andItsParents) {
                 Files.createDirectories(target);
@@ -101,17 +130,33 @@ public final class FileSystemPort implements FilePort {
                 Files.createDirectory(target);
             }
         } catch (IOException refused) {
-            throw new Denied("cannot-open", "cannot make a directory at " + path);
+            throw new Denied("cannot-open", "cannot make a directory at " + path, path);
         }
     }
 
+    /**
+     * {@code rmdir} where the name claims a directory, {@code remove} where it
+     * does not -- the split {@code Delete_File} makes -- so
+     * {@code delete %f.txt/} fails rather than taking the file away.
+     *
+     * <p>Nothing there is false rather than a failure, and every other reason
+     * it could not be done is a failure. The C reads that off errno: only
+     * {@code -ENOENT} comes back as false.
+     */
     @Override
-    public void delete(String path) {
+    public boolean delete(String path) {
         requireWritable();
+        Path target = within(path);
+        if (namesADirectory(path) && !Files.isDirectory(target)) {
+            if (Files.exists(target)) {
+                throw new Denied("no-delete", "cannot delete " + path, path);
+            }
+            return false;
+        }
         try {
-            Files.delete(within(path));
+            return Files.deleteIfExists(target);
         } catch (IOException refused) {
-            throw new Denied("cannot-open", "cannot delete " + path);
+            throw new Denied("no-delete", "cannot delete " + path, path);
         }
     }
 
@@ -135,7 +180,7 @@ public final class FileSystemPort implements FilePort {
                     .sorted()
                     .toList();
         } catch (IOException unreadable) {
-            throw new Denied("cannot-open", "cannot read the directory at " + path);
+            throw new Denied("cannot-open", "cannot read the directory at " + path, path);
         }
     }
 
@@ -205,10 +250,11 @@ public final class FileSystemPort implements FilePort {
      */
     @Override
     public java.util.Optional<FileInformation> informationAbout(String path) {
-        Path target = within(path);
-        if (!Files.exists(target)) {
+        java.util.Optional<Path> found = whatTheNameClaimsIsThere(path);
+        if (found.isEmpty()) {
             return java.util.Optional.empty();
         }
+        Path target = found.get();
         try {
             java.nio.file.attribute.BasicFileAttributes read = Files.readAttributes(
                     target, java.nio.file.attribute.BasicFileAttributes.class);
@@ -252,9 +298,11 @@ public final class FileSystemPort implements FilePort {
 
     @Override
     public byte[] readBytes(String path) {
-        Path file = within(path);
+        if (namesADirectory(path)) {
+            throw new Denied("cannot-open", "cannot read " + path, path);
+        }
         try {
-            return Files.readAllBytes(file);
+            return Files.readAllBytes(within(path));
         } catch (IOException unreadable) {
             throw new Denied("cannot-open", "cannot read " + path, path);
         }
@@ -304,14 +352,37 @@ public final class FileSystemPort implements FilePort {
 
     @Override
     public boolean exists(String path) {
-        return Files.exists(within(path));
+        return whatTheNameClaimsIsThere(path).isPresent();
     }
 
     /**
-     * The path a script named, resolved beneath the root, or a refusal.
+     * The path a script named, or empty when nothing answers to that name.
      *
-     * <p>Checked after normalising, because {@code a/../../b} only looks like
-     * it stays inside until the dots are worked out.
+     * <p>A name ending in a slash claims the thing is a directory, and POSIX
+     * checks the claim: {@code stat("f.txt/")} fails with ENOTDIR, so a real
+     * R3 answers none for {@code exists? %f.txt/} where it answers
+     * {@code file} for {@code exists? %f.txt}. A JVM does not check it --
+     * {@link Files#exists} trims the slash before it looks -- so the check
+     * belongs here.
+     *
+     * <p>It runs one way only. A name without a slash claims nothing, so it
+     * answers for a directory as readily as for a file, which is what lets
+     * {@code read %somewhere} list a directory.
+     */
+    private java.util.Optional<Path> whatTheNameClaimsIsThere(String path) {
+        Path target = within(path);
+        if (namesADirectory(path) ? Files.isDirectory(target) : Files.exists(target)) {
+            return java.util.Optional.of(target);
+        }
+        return java.util.Optional.empty();
+    }
+
+    private static boolean namesADirectory(String path) {
+        return path.endsWith("/");
+    }
+
+    /**
+     * The path a script named, resolved beneath the root.
      *
      * <p>A path beginning with a slash counts from this port's root and not
      * from the machine's. That is the vocabulary the port already speaks:
@@ -320,18 +391,57 @@ public final class FileSystemPort implements FilePort {
      * Resolving it against the machine instead made the round trip fail, and
      * made {@code cd %/} mean somewhere the script may not go rather than the
      * top of what it can see.
+     *
+     * <p>Which settles what {@code ..} does at the top: it stays there.
+     * {@code /..} is {@code /} on a real filesystem -- {@code change-dir %../}
+     * at the root of a machine answers {@code %/} and moves nothing -- so a
+     * root that refused it would be telling the script it is somewhere other
+     * than the top, and Rebol's own port test moves up from where it is
+     * standing and expects to arrive.
+     *
+     * <p>This is confinement rather than a warning. A climbing path cannot
+     * reach outside because there is no outside to reach:
+     * {@code %../../../etc/passwd} names {@code /etc/passwd} within the root,
+     * which is the same thing {@code %/etc/passwd} names and finds nothing for
+     * the same reason. Refusing it would say the same thing about safety and a
+     * different thing about where the script is standing, and the second is
+     * what a script acts on.
      */
     private Path within(String path) {
         try {
-            Path resolved = path.startsWith("/")
-                    ? root.resolve(path.substring(1)).normalize()
-                    : here.resolve(path).toAbsolutePath().normalize();
-            if (!resolved.startsWith(root)) {
-                throw new Denied("outside-root", path + " is outside what this port allows");
+            Deque<String> segments = new ArrayDeque<>();
+            if (!path.startsWith("/")) {
+                addEach(root.relativize(here).toString()
+                        .replace(File.separatorChar, '/'), segments);
+            }
+            addEach(path, segments);
+            Path resolved = root;
+            for (String segment : segments) {
+                resolved = resolved.resolve(segment);
             }
             return resolved;
         } catch (InvalidPathException malformed) {
             throw new Denied("outside-root", path + " is not a path this port can resolve");
+        }
+    }
+
+    /**
+     * Adds one written path's segments, working the dots out as it goes.
+     *
+     * <p>A {@code ..} with nothing above it is dropped, which is the clamp:
+     * {@link Deque#pollLast} on an empty deque does nothing, so no sequence of
+     * them can take the walk above the root.
+     */
+    private static void addEach(String path, Deque<String> segments) {
+        for (String segment : path.split("/")) {
+            if (segment.isEmpty() || segment.equals(".")) {
+                continue;
+            }
+            if (segment.equals("..")) {
+                segments.pollLast();
+            } else {
+                segments.addLast(segment);
+            }
         }
     }
 }

@@ -485,3 +485,54 @@ parse-test.r3 / Other parse issues / integer! repeat #382
 #
 file-test.r3 / to-local-file / issue-1115 #16
 file-test.r3 / to-local-file / issue-1115 #17
+
+# port-test.r3's write/part asks for a CRC-24 of 10873462 over a file that is
+# a hundred thousand zero bytes with five bytes written over the front of it.
+# A real 3.22.5 answers 2851051 on exactly that sequence, and so does JEBOL:
+# the same first bytes, the same length, the same checksum. The expectation is
+# stale in the same way the WAV and BLUR ones are.
+#
+#   >> a: make binary! 100000  insert/dup a #{00} 100000
+#   >> write %zeroes-445.txt a
+#   >> f: open %zeroes-445.txt  write/part f #{1020304050} 100  close f
+#   >> copy/part read %zeroes-445.txt 8
+#   == #{1020304050000000}                   ; r3-head 3.22.5, and JEBOL
+#   >> length? read %zeroes-445.txt
+#   == 100000                                ; r3-head 3.22.5, and JEBOL
+#   >> checksum read %zeroes-445.txt 'crc24  ; the file asks for 10873462
+#   == 2851051                               ; r3-head 3.22.5, and JEBOL
+#
+port-test.r3 / file port / write/part #135
+
+# Six of port-test.r3's assertions sit inside a platform guard that is false on
+# the machine this is measured on, so they never run on a real 3.22.5 here
+# either. Three are Windows-only and three are Linux-only.
+#
+#   >> system/platform
+#   == macOS           ; r3-head 3.22.5
+#
+# #51, #57 and #63 are each inside an `if system/platform = 'Windows [...]`:
+# a directory that cannot be deleted while a file in it is open, the drive
+# listing `read %/` gives on Windows, and the `none? info/modified` arm of an
+# either whose other arm (#64) is the one that runs here.
+#
+# #163 to #166 are the four inside
+# `if all [system/platform != 'Windows exists? %/proc/cpuinfo]`, which reads
+# Linux's virtual files. There is no /proc on macOS.
+#
+port-test.r3 / directory port / DELETE-DIR #51
+port-test.r3 / directory port / RENAME dir #57
+port-test.r3 / directory port / exists? %/ #63
+port-test.r3 / file port / APPEND file-port #163
+port-test.r3 / file port / APPEND file-port #164
+port-test.r3 / file port / APPEND file-port #165
+port-test.r3 / file port / APPEND file-port #166
+
+# And two more of the same shape in the DELETE file test: #155 is the Windows
+# arm of an either whose other arm (#156) is the one that runs here, and #157
+# is inside an `if system/platform = 'Windows`. Both are about a file staying
+# locked while a port is open on it, which Posix does not do -- the file's own
+# comment says so: "on Posix it can be deleted".
+#
+port-test.r3 / file port / DELETE file #155
+port-test.r3 / file port / DELETE file #157

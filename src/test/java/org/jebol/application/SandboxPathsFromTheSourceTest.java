@@ -129,20 +129,52 @@ class SandboxPathsFromTheSourceTest {
     @DisplayName("the boundary, which none of this moves")
     class TheBoundary {
 
+        /**
+         * The dots are worked out and a {@code ..} with nothing above it is
+         * dropped, so a climbing path names something inside the root rather
+         * than being refused: {@code %/../../../etc/passwd} is
+         * {@code /etc/passwd} within it, which is the same thing
+         * {@code %/etc/passwd} names and finds nothing for the same reason.
+         *
+         * <p>That is confinement, not a weakening of it -- there is no outside
+         * to reach. And it is what a real filesystem does at its own top:
+         * {@code change-dir %../} at {@code /} answers {@code %/} and moves
+         * nothing, which Rebol's own port test relies on.
+         */
         @Test
-        @DisplayName("dots after a slash cannot climb past the root")
+        @DisplayName("dots after a slash clamp at the root and reach nothing")
         void dotsAfterASlash(@TempDir Path root) {
             assertThat(grantedFilesUnder(root)
                     .run("read %/../../../etc/passwd").errorId())
-                    .contains("outside-root");
+                    .contains("cannot-open");
         }
 
         @Test
-        @DisplayName("nor dots without one")
+        @DisplayName("nor do dots without one climb out")
         void dotsWithoutASlash(@TempDir Path root) {
             assertThat(grantedFilesUnder(root)
                     .run("read %../../../etc/passwd").errorId())
-                    .contains("outside-root");
+                    .contains("cannot-open");
+        }
+
+        /**
+         * And what they clamp to is inside, which is the part that has to be
+         * checked rather than assumed: a file written through a climbing path
+         * lands under the root and is readable back through the plain one.
+         */
+        @Test
+        @DisplayName("and a climbing path writes inside the root, not above it")
+        void aClimbingPathWritesInsideTheRoot(@TempDir Path root) throws Exception {
+            assertThat(answerTo(grantedFilesUnder(root), """
+                    write %../../../climbed.txt "inside"
+                    to string! read %/climbed.txt""")).isEqualTo("\"inside\"");
+            assertThat(java.nio.file.Files.exists(root.resolve("climbed.txt")))
+                    .as("it landed under the root")
+                    .isTrue();
+            assertThat(java.nio.file.Files.exists(
+                    root.getParent().resolve("climbed.txt")))
+                    .as("and nothing was written above it")
+                    .isFalse();
         }
 
         @Test

@@ -183,6 +183,15 @@ final class SuiteHost {
      * <p>The names alone, not the tree. Nothing reads their contents from here:
      * the harness reads each suite file from the repository, and these are
      * copies standing in a directory so that a pattern has something to match.
+     *
+     * <p>{@code run-tests.r3} stands there too, and is the one file that has
+     * to be fetched from somewhere else. {@code port-test.r3} asserts
+     * {@code read %run-tests.?3} to exercise the single-character wildcard, so
+     * a name matching {@code run-tests.?3} must exist -- and the runner itself
+     * cannot live beside the suite files, because this harness runs every
+     * {@code .r3} it finds there and would try to run it as a test. It is
+     * vendored one directory down instead, which {@link Files#list} does not
+     * reach into.
      */
     private static void putTheSuiteFilesWhereARunStandsAmongThem(Path root)
             throws IOException {
@@ -198,6 +207,11 @@ final class SuiteHost {
                             StandardCopyOption.REPLACE_EXISTING);
                 }
             }
+        }
+        Path theRunner = from.resolve("beside-a-run").resolve("run-tests.r3");
+        if (Files.isRegularFile(theRunner)) {
+            Files.copy(theRunner, root.resolve("run-tests.r3"),
+                    StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

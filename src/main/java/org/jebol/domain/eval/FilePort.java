@@ -62,8 +62,21 @@ public interface FilePort {
     /** Makes a directory, and says nothing if there is one there already. */
     void makeDirectory(String path, boolean andItsParents);
 
-    /** Removes a file or an empty directory. */
-    void delete(String path);
+    /**
+     * Removes a file or an empty directory, and says whether there was one.
+     *
+     * <p>Three outcomes and not two, because the C's DELETE arm has three:
+     * {@code if (result >= 0) return R_ARG2; if (result == -2) return R_FALSE;
+     * Trap1(RE_NO_DELETE, path);}. The {@code -2} is {@code -ENOENT}, so
+     * nothing to delete is false rather than a failure, and every other reason
+     * it could not be done is a failure rather than false.
+     *
+     * <p>Which is why asking first would be the wrong shape. A caller that
+     * checks whether something is there and then deletes it has two answers
+     * where the filesystem gave one, and they can disagree between the two
+     * calls.
+     */
+    boolean delete(String path);
 
     /** Gives a file another name. */
     void rename(String from, String to);
@@ -159,7 +172,7 @@ public interface FilePort {
             }
 
             @Override
-            public void delete(String path) {
+            public boolean delete(String path) {
                 throw refuse();
             }
 

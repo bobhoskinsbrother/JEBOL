@@ -126,8 +126,19 @@ class PortsTest {
     @DisplayName("the port is a boundary, not a suggestion")
     class TheBoundaryHolds {
 
+        /**
+         * The dots are worked out and a {@code ..} with nothing above it is
+         * dropped, so the path names {@code /etc/passwd} within the root --
+         * the same thing {@code %/etc/passwd} names, and nothing is there.
+         *
+         * <p>Clamping rather than refusing, because a refusal tells a confined
+         * script it is somewhere other than the top of what it can see, and a
+         * real filesystem does not: {@code change-dir %../} at {@code /}
+         * answers {@code %/} and moves nothing. The confinement is unchanged --
+         * there is no outside to reach.
+         */
         @Test
-        @DisplayName("a script cannot climb out of the directory it was given")
+        @DisplayName("a script climbing out reaches inside the root instead")
         void escapingTheRootIsRefused(@TempDir Path directory) throws IOException {
             Files.writeString(directory.resolve("inside.txt"), "fine");
             Interpreter interpreter = grantedFiles();
@@ -138,7 +149,24 @@ class PortsTest {
             assertThat(outcome.conclusion())
                     .as("a relative path must not reach outside the root")
                     .isEqualTo(Conclusion.RAISED);
-            assertThat(outcome.errorId()).contains("outside-root");
+            assertThat(outcome.errorId()).contains("cannot-open");
+        }
+
+        /** And what it clamps to really is inside, which has to be checked. */
+        @Test
+        @DisplayName("and a climbing write lands under the root, not above it")
+        void aClimbingWriteLandsUnderTheRoot(@TempDir Path directory) {
+            Interpreter interpreter = grantedFiles();
+            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+
+            interpreter.run("write %../../../climbed.txt \"inside\"");
+
+            assertThat(Files.exists(directory.resolve("climbed.txt")))
+                    .as("it landed under the root")
+                    .isTrue();
+            assertThat(Files.exists(directory.getParent().resolve("climbed.txt")))
+                    .as("and nothing was written above it")
+                    .isFalse();
         }
 
         @Test
@@ -171,7 +199,7 @@ class PortsTest {
         }
 
         @Test
-        @DisplayName("and dots in an absolute path cannot climb past the root either")
+        @DisplayName("and dots in an absolute path clamp at the root the same way")
         void dotsInAnAbsolutePathCannotClimbOut(@TempDir Path directory) {
             Interpreter interpreter = grantedFiles();
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
@@ -179,7 +207,7 @@ class PortsTest {
             ScriptOutcome outcome = interpreter.run("read %/../../../etc/passwd");
 
             assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
-            assertThat(outcome.errorId()).contains("outside-root");
+            assertThat(outcome.errorId()).contains("cannot-open");
         }
 
         @Test

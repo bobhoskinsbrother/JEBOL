@@ -1221,8 +1221,21 @@ rule ComplementingAnImageFlipsEveryChannelIncludingAlpha {
 -- A word asks for one fact and answers it bare: `query %a 'size` is a
 -- number.
 --
--- None asks for everything and answers an object, whose fields are the six
--- facts plus `date` as a second name for `modified`.
+-- None asks what can be asked, and answers the names rather than the facts:
+-- `[name size type date modified accessed created]`, every time and for
+-- anything. It is the one shape that does not look at the target at all --
+-- `Ret_File_Modes` reads the names off the scheme's own info object and
+-- returns before the path is touched, so a file that is not there answers
+-- the same list as one that is.
+--
+-- Which reads as a wrong answer until the question is read the other way
+-- round. `query %a 'size` is "how big is it" and `query %a none` is "what
+-- may I ask about it" -- a script that has a field name in hand uses the
+-- first, and one discovering what this port reports uses the second.
+-- Rebol's own suite asserts exactly that, three times over, by comparing
+-- the answer against `words-of system/standard/file-info`.
+--
+-- The object is still reachable and is what `query %a object!` answers.
 --
 -- A block asks for several and answers a block -- and whether each fact is
 -- labelled depends on how the word was written. A plain word puts itself
@@ -1238,7 +1251,8 @@ rule ComplementingAnImageFlipsEveryChannelIncludingAlpha {
 enum QueryShape {
     one_field       -- a word: the fact alone
     | several       -- a block: a block, labelled or not, word by word
-    | everything    -- none: an object of all six facts
+    | what_may_be_asked  -- none: the names, not the facts
+    | everything    -- object!: an object of all six facts
 }
 
 rule QueryingWithAWordAnswersTheFactAlone {
@@ -1247,9 +1261,78 @@ rule QueryingWithAWordAnswersTheFactAlone {
     ensures: QueryResult(shape: one_field, value: fact_of(target, field))
 }
 
-rule QueryingWithNoneAnswersAnObject {
+-- A path with no name in it answers none rather than asking the host about
+-- the current directory, which is what an empty string would otherwise mean.
+-- The C guards it in one line before the query goes out: `if (VAL_LEN(path)
+-- == 0) return R_NONE;`.
+rule QueryingAnEmptyFileNameAnswersNone {
+    when: EvaluateQuery(target, field)
+    requires: target.spelling = ""
+
+    ensures: QueryResult(value: none)
+}
+
+-- A scheme whose actor has no arm for the verb refuses with no-port-action,
+-- naming the verb -- and names it as a set-word, because the C reads the
+-- action's own word out of its table: `Trap1(RE_NO_PORT_ACTION,
+-- Get_Action_Word(action))`, which is how `query system://` comes back with
+-- `arg1: query:` rather than `arg1: query`.
+--
+-- Distinct from no-service, which says this host was not given the thing at
+-- all. no-port-action says the scheme is here and does not do that, and a
+-- script telling them apart knows whether to ask for a grant or to stop
+-- asking.
+rule AVerbAPortsActorHasNoArmForIsNoPortAction {
+    when: EvaluateQuery(target, field)
+    requires: routes_to_a_scheme(target)
+    requires: not the_schemes_actor_answers_queries(target)
+
+    ensures: QueryFailed(failure: no_port_action, about: as_a_set_word(query))
+}
+
+rule QueryingWithNoneAnswersTheNamesThatMayBeAsked {
     when: EvaluateQuery(target, field)
     requires: field = none
+    ensures: QueryResult(
+        shape: what_may_be_asked,
+        value: the_field_names_of(the_scheme_info_of(target)))
+}
+
+-- The names come off the target's own scheme rather than off one fixed list,
+-- which is what the C reads: `Get_Object_Words(In_Object(port,
+-- STD_PORT_SCHEME, STD_SCHEME_INFO, 0))`. A file and a directory share
+-- `system/standard/file-info` and answer the same seven; HTTP answers those
+-- seven plus response-line, status-code and headers, because prot-http.reb
+-- built its scheme's info from the same prototype and added three.
+--
+-- So the answer is about what that scheme reports, which is the question
+-- asked, and a list written out here would have been right for two schemes
+-- and wrong for the rest.
+rule QueryingWithNoneReadsTheTargetsOwnScheme {
+    when: EvaluateQuery(target, field)
+    requires: field = none
+    requires: routes_to_a_scheme(target)
+
+    ensures: QueryResult(value: the_field_names_of(the_scheme_info_of(target)))
+}
+
+-- And it answers them for a target that is not there, and for one that would
+-- need a connection, because it never looks. The names a port reports are a
+-- fact about the port rather than about what it names, so `query
+-- http://example.com none` answers without reaching the network and a file
+-- that is absent answers the same list as one that is there.
+rule QueryingWithNoneDoesNotLookAtTheTarget {
+    when: EvaluateQuery(target, field)
+    requires: field = none
+    requires: nothing_is_there_for(target)
+    ensures: QueryResult(
+        shape: what_may_be_asked,
+        value: the_field_names_of(the_scheme_info_of(target)))
+}
+
+rule QueryingWithTheObjectTypeAnswersAnObject {
+    when: EvaluateQuery(target, field)
+    requires: field = object_datatype
     ensures: QueryResult(shape: everything, is_object: true)
 }
 
@@ -1427,7 +1510,8 @@ rule TheBinaryRefinementIsThePlainAnswerAskedForOutright {
 }
 
 -- /string decodes the bytes as UTF text and standardises the line endings on
--- the way: a carriage return and line feed together become one line feed.
+-- the way, by the rule below: every carriage return becomes a line feed, and
+-- a pair of the two in either order counts as one ending.
 --
 -- So a file written on one system reads the same on another, which is what
 -- "standard text string" means in the declaration. Rebol's own port-test.r3
@@ -1441,6 +1525,37 @@ rule TheStringRefinementDecodesAndStandardisesLineEndings {
 
     ensures: the_text_read(request) =
         with_line_endings_standardised(decoded_as_utf_text(the_bytes_read(request)))
+}
+
+-- What standardising them means, exactly, because the obvious reading is
+-- wrong in three places. It is not "replace CRLF with LF": a lone carriage
+-- return is an ending too, and Rebol's own comment on the function says so --
+-- "converts any combination of CR and LF line endings to the internal REBOL
+-- line ending".
+--
+-- The whole of it is six lines of `Replace_CRLF_to_LF_Bytes`, walking one
+-- character at a time:
+--
+--     if ((c = *cp++) == LF) { if (*cp == CR) cp++; }
+--     else if (c == CR)      { c = LF; if (*cp == LF) cp++; }
+--     *tp++ = c;
+--
+-- So a carriage return becomes a line feed, and a pair of the two counts as
+-- one ending whichever order it came in. The three that catch an
+-- implementation out: a lone carriage return converts, a line feed followed
+-- by a carriage return is also one ending rather than two, and CR CR LF is
+-- two endings rather than one -- the first return is alone and the second
+-- takes the line feed with it.
+--
+-- Rebol's own port test asserts all three. The same conversion is what DELINE
+-- does, and what ENLINE does on any machine that is not Windows.
+rule StandardisingLineEndingsTakesEveryCarriageReturn {
+    let text = with_line_endings_standardised(source)
+
+    ensures: text = source.walked_replacing(
+        carriage_return_then_line_feed => one_line_feed,
+        line_feed_then_carriage_return => one_line_feed,
+        a_lone_carriage_return => one_line_feed)
 }
 
 -- Which encoding is decided by the marks in the bytes. A UTF-8 byte order
@@ -1705,6 +1820,57 @@ rule APatternDoesNotReachThroughDirectories {
     ensures: CallResult(value: an_empty_block)
 }
 
+-- === A name that ends in a slash claims to be a directory ==================
+
+-- The slash is a hint in one direction and a claim in the other, and the
+-- asymmetry is the whole of it. `%somewhere` says nothing about what is
+-- there, so it works on a file and on a directory alike. `%somewhere/` says
+-- it is a directory, and a name that says so about a file finds nothing.
+--
+-- That is the operating system's own rule rather than a decision Rebol made.
+-- POSIX requires a path ending in a slash to name a directory, so
+-- `stat("f.txt/")` fails with ENOTDIR, and the C passes the path through
+-- unchanged: `Query_File` is `Get_File_Info` is `stat`. Every verb inherits
+-- it -- QUERY answers none, EXISTS? answers none because it is QUERY, READ
+-- raises cannot-open, DELETE raises no-delete because it is `rmdir`.
+--
+-- It needs saying because a JVM does not inherit it. `Files.exists` trims a
+-- trailing slash before it looks, so the claim goes unchecked and
+-- `exists? %f.txt/` answers `file` -- which then costs a caller the answer
+-- further up. Rebol's own MAKE-DIR asks EXISTS? first and refuses with
+-- cannot-open when it sees a file; in a real R3 it never sees one, falls
+-- through to CREATE, and CREATE's `mkdir` gives the no-create that names what
+-- actually went wrong.
+rule ANameEndingInASlashFindsNothingWhereAFileIs {
+    when: EvaluateQuery(target, field)
+    requires: target.spelling_ends_in_a_slash
+    requires: not there_is_a_directory_at(target)
+
+    ensures: QueryResult(value: none)
+}
+
+-- And MAKE-DIR over a file is no-create rather than cannot-open, because it
+-- reaches CREATE rather than stopping at the EXISTS? that guards it.
+--
+-- The two ids are not interchangeable to a caller. cannot-open says the path
+-- could not be reached; no-create says it was reached and the directory could
+-- not be made there, which is the one a script retries or reports on.
+rule MakingADirectoryWhereAFileIsRefusesWithNoCreate {
+    when: EvaluateCall(make_dir, path)
+    requires: there_is_a_file_at(path)
+
+    ensures: CallFails(error: no_create, about: dirized(path))
+}
+
+-- CREATE says the same thing on its own, which is where MAKE-DIR gets it.
+rule CreatingADirectoryWhereAFileIsRefusesWithNoCreate {
+    when: EvaluateCall(create, path)
+    requires: path.spelling_ends_in_a_slash
+    requires: there_is_a_file_at(path)
+
+    ensures: CallFails(error: no_create, about: path)
+}
+
 -- === Writing a file ========================================
 
 -- WRITE has nine refinements and four of them change what happens: /part
@@ -1793,6 +1959,33 @@ rule ASeekPositionBeatsAnAppend {
     requires: request.position_asked_for != null
 
     ensures: first_byte_written_at(request) = clipped_to_the_size_of(request)
+}
+
+-- APPEND on a file port is WRITE/APPEND, and it is the same arm: the C's
+-- A_APPEND case sets the end position and falls through into A_WRITE without
+-- a break. So it writes at the end, answers the file rather than the port,
+-- and takes every one of WRITE's refinements.
+--
+-- Which is what makes /dup and /only wrong rather than merely unused. They
+-- are APPEND's own refinements and mean nothing to a write, so the arm
+-- refuses them before it does anything: `args = Find_Refines(ds,
+-- AM_APPEND_DUP | AM_APPEND_ONLY); if (args > 0) Trap0(RE_BAD_REFINES);`.
+-- Accepting them silently would put ten line feeds where the caller asked
+-- for ten, or one, and neither guess is the C's.
+rule AppendingToAFilePortWritesAtItsEnd {
+    when: EvaluateCall(append, target, data)
+    requires: is_a_file_port(target)
+
+    ensures: first_byte_written_at(target) = size_of_the_file(target)
+    ensures: CallResult(value: the_file_the_port_names(target))
+}
+
+rule AppendingToAFilePortRefusesItsOwnRefinements {
+    when: EvaluateCall(append, target, data)
+    requires: is_a_file_port(target)
+    requires: asked_for_dup_or_only()
+
+    ensures: CallFails(error: bad_refines)
 }
 
 -- A seek position past the end of the file is clipped back to the size, so
@@ -5416,8 +5609,6 @@ surface BuiltInFunctions {
 open question "Refusing a body to a native comes back under two different error ids in the C, depending on how the make was written, and it is not settled that JEBOL should keep them apart. The prototype form `make :read [[][]]` reaches Copy_Function, which returns FALSE for a value that is not a function or closure, and the make arm reports that with Trap_Reflect -- cannot-use, arg1 the definition block. The datatype form `make native! [[][]]` and `make action! [[][]]` never reach Copy_Function: Make_Function refuses REB_NATIVE and REB_ACTION outright and the arm reports that with Trap_Make -- bad-make-arg, arg1 the type. Same mistake, two doors, two ids. MakingFromANativePrototypeWithABodyIsRefused specifies the prototype form as cannot-use, matching the C for the case the suite exercises and the derivation contrast turns on. What is undecided is whether JEBOL should reproduce the datatype form's bad-make-arg as faithfully, or unify the two on one id on the grounds that a script cannot tell which arm it hit and the distinction is an artefact of the C's control flow rather than a fact about the value. It wants measuring against a real R3 on all three spellings before either is built."
 
 open question "CompressedBytesAreTheOnesARealRebolWrites holds for the four methods this build writes itself and not for the three of the deflate family -- zlib, gzip and deflate -- which a real 3.22.5 writes through libdeflate. The streams read back correctly and are a little larger, because libdeflate's parse is not the one the JVM's own deflater uses and no setting brings the two together. Three ways out and none is free. Port libdeflate, which is a second compressor of comparable size to the ones already here and buys nothing but the bytes. Declare the three methods reproducible only against JEBOL itself, which is honest and quietly makes the invariant say two different things depending on the method. Or say that reproducibility is a property of the format rather than of the encoder, and that a caller who needs the same bytes must record them rather than recompute them -- which is the most defensible position and the least useful one, since the whole point is comparing against something already written. It wants deciding before anything is built on it, because a caller who reads the invariant and does not read this cannot tell which three of the seven will disappoint them."
-
-open question "What does QUERY with a none field answer -- the information object, or the list of modes the port supports? The spec says the object, resolved earlier against a real R3, and QueryingWithNoneAnswersAnObject states it. The C disagrees: its A_QUERY arm answers the modes list, and actions.reb documents the argument as `NONE will return valid modes`. Two authorities and they cannot both be describing the same call, so one of three things is true: the measurement was of a build that differs, the modes answer belongs to a port that is open where the object answer belongs to a file path, or the C's own declaration is stale against its own code. It wants measuring again on both a file and an open port before either is trusted, because the difference is not a detail: a script reading a size off the answer gets a block of words instead."
 
 open question "A wildcard in a path read as a directory listing in the C, and cannot-open here. `read %*.r3` in a real R3 lists the matching files, because the path goes to the directory scheme and the pattern is handed to the operating system's own matcher. JEBOL takes the path literally, finds no file spelled that way and raises cannot-open. Three things to settle before it is built: whether the matching belongs in JEBOL or in the host, given that the JVM's own path matcher and a Windows shell disagree about several patterns; whether a wildcard should list only where the path names no real file, since a file genuinely called `*.r3` is legal on every system JEBOL runs on; and whether the answer is the plain names a directory listing gives, which is what would make the two forms interchangeable. Backlogged rather than open in the sense of blocking: nothing in Rebol's own library reads a wildcard, so this costs no assertions today."
 
@@ -12057,6 +12248,81 @@ rule SettingANameToNoneRemovesIt {
 
     ensures: get_env(name) = none
     ensures: not list_env_holds(name)
+}
+
+-- === Where the interpreter is standing =====================
+
+-- CHANGE-DIR moves the working directory and writes PWD with it, so GET-ENV
+-- answers where the interpreter is rather than where the shell that started it
+-- was. `OS_Set_Current_Dir` does both in three lines, and the comment names the
+-- issue it was written for:
+--
+--     if (chdir(path) == 0) {
+--         // directory changed... update PWD
+--         setenv("PWD", path, 1);
+--
+-- So `pwd = to-rebol-file get-env "PWD"` holds before a move and after one, and
+-- Rebol's own port test asserts it on both sides of a `change-dir %../`.
+--
+-- It holds against whatever the shell exported, too: starting with
+-- `PWD=/nowhere/at/all` in the environment still answers the real directory,
+-- because the value is written at the first change and the boot makes one.
+--
+-- Which is what makes the answer usable from inside a confined interpreter. A
+-- PWD read straight from the host names a directory such a script cannot reach,
+-- and is the same incoherence as a HOME outside the sandbox: the honest answer
+-- to "where am I" is where this interpreter is standing.
+rule ChangingDirectoryWritesPwdWithIt {
+    when: EvaluateCall(change_dir, target)
+    requires: the_host_granted_an_environment()
+
+    ensures: get_env("PWD") = as_the_host_writes_it(what_dir())
+}
+
+-- And it answers where the interpreter now is, not what it was handed. The
+-- C rewrites its own argument before using it -- `SET_FILE(arg, ser)` where
+-- `ser` is the path made absolute and given a trailing slash -- and then
+-- `return R_ARG1` hands back the rewritten value. So `change-dir %inner`
+-- answers `%/somewhere/inner/`, and `what-dir = change-dir %.` holds, which
+-- is what Rebol's own port test asserts.
+--
+-- Worth stating rather than leaving to the implementation, because handing
+-- the argument straight back is the obvious thing to write and it reads as
+-- correct: the caller gets a file back either way. What they cannot do with
+-- the wrong one is compare it against WHAT-DIR, or keep it to return to
+-- later from somewhere else.
+rule ChangingDirectoryAnswersWhereTheInterpreterNowIs {
+    when: EvaluateCall(change_dir, target)
+
+    ensures: what_dir() = absolute_and_dirized(target)
+    ensures: CallResult(value: what_dir())
+}
+
+-- A move that failed names the same rewritten path rather than what the
+-- caller wrote, because the C rewrites the slot before it tries the move and
+-- the trap reads the slot. So a relative target comes back absolute in the
+-- error too, which is what tells the caller which directory was meant.
+rule AMoveThatFailedNamesTheAbsolutePath {
+    when: EvaluateCall(change_dir, target)
+    requires: not there_is_a_directory_at(target)
+
+    ensures: CallFails(error: cannot_open, about: absolute_and_dirized(target))
+}
+
+-- A host that granted no environment has nowhere to write PWD, and that is
+-- not a reason to refuse the move. The writing is something CHANGE-DIR does
+-- alongside moving, not a thing moving depends on: a script that may not read
+-- the environment cannot tell whether the name was written, and one that may
+-- walk the filesystem is entitled to walk it either way.
+--
+-- Refusing here would make the two grants a pair when the host was offered
+-- them one at a time, which is the whole point of naming a service.
+rule ChangingDirectoryMovesWithoutAnEnvironmentToWriteTo {
+    when: EvaluateCall(change_dir, target)
+    requires: not the_host_granted_an_environment()
+
+    ensures: what_dir() = target
+    ensures: CallResult(value: target)
 }
 
 -- A value that is neither text nor none is refused rather than formed into

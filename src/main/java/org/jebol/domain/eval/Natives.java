@@ -6473,6 +6473,9 @@ public final class Natives {
                     case PortValue queued when theEventQueueOf(queued).isPresent() ->
                             queuedOnThePort(queued, theEventQueueOf(queued).orElseThrow(),
                                     arguments.get(1), true);
+                    case PortValue openFile when isAFilePort(openFile) ->
+                            appendedToTheFileBehind(
+                                    openFile, arguments.get(1), evaluator, refinements);
                     case BlockValue block -> {
                         if (duplicated(arguments.get(1), arguments, refinements)
                                 instanceof BlockValue added
@@ -10537,6 +10540,7 @@ public final class Natives {
      */
     private Value truncatedAtThePosition(PortValue port, Evaluator evaluator) {
         refuseAClosedPosition(port);
+        refuseAPortOpenedOnlyToRead(port, EvaluationFailure.WRITE_ERROR);
         requireService(HostService.FILES);
         return throughPort(() -> {
             String path = SeekableFilePort.pathOf(port);
@@ -10594,7 +10598,28 @@ public final class Natives {
         if (wasClosed) {
             port.markOpen(false);
         }
-        return read;
+        return asTextWhereAskedFor(read, refinements);
+    }
+
+    /**
+     * The same decoding a READ of the file itself does, because the C runs the
+     * same two lines on both: {@code if (args & (AM_READ_STRING |
+     * AM_READ_LINES)) ser = Decode_UTF_String(..., TRUE, NULL);} in
+     * {@code Read_File_Port}, and /LINES then splits what /STRING would have
+     * answered.
+     */
+    private static Value asTextWhereAskedFor(Value read, Set<String> refinements) {
+        if (!(read instanceof BinaryValue bytes)
+                || !(refinements.contains("string") || refinements.contains("lines"))) {
+            return read;
+        }
+        Optional<String> text = FileReading.decodedUtfText(bytes.octetsFromHere());
+        if (text.isEmpty()) {
+            return read;
+        }
+        return refinements.contains("lines")
+                ? BlockValue.block(linesOf(text.orElseThrow()))
+                : StringValue.of(text.orElseThrow());
     }
 
     /**
@@ -10631,7 +10656,43 @@ public final class Natives {
                 return NoneValue.none();
             });
         }
-        SeekableFilePort.moveTo(port, 0);
+        SeekableFilePort.openedAt(port, 0, mayWrite(refinements));
+    }
+
+    /**
+     * Writes PWD with the directory the interpreter has just moved to.
+     *
+     * <p>{@code OS_Set_Current_Dir} does both in three lines, and the comment
+     * beside it names the issue it was written for: {@code // directory
+     * changed... update PWD}. So `pwd = to-rebol-file get-env "PWD"` holds
+     * before a move and after one, which is what Rebol's own port test asserts
+     * on both sides of a `change-dir %../`.
+     *
+     * <p>Over the host's value rather than instead of it, which is the one
+     * sense a JVM can write an environment at all -- and enough, because what a
+     * caller means by PWD is where this interpreter is standing. A value read
+     * straight from the host names a directory a confined script cannot reach.
+     *
+     * <p>After the move rather than before, so a refused CHANGE-DIR leaves both
+     * where they were rather than PWD lying about it.
+     *
+     * <p>And only where the host granted an environment to write to. Moving
+     * does not depend on the writing: a script that may not read the
+     * environment cannot tell whether the name was written, and one that may
+     * walk the filesystem is entitled to walk it either way. Refusing here
+     * would make the two grants a pair when the host was offered them one at a
+     * time, which is the whole point of naming a service.
+     */
+    private void sayWhereTheInterpreterIsStanding(Evaluator evaluator) {
+        if (!thereIsAnEnvironmentToWriteTo()) {
+            return;
+        }
+        evaluator.environment().nameHolds(
+                "PWD", evaluator.files().workingDirectory());
+    }
+
+    private boolean thereIsAnEnvironmentToWriteTo() {
+        return grantedServices.contains(HostService.ENVIRONMENT);
     }
 
     /**
@@ -14775,6 +14836,7 @@ public final class Natives {
         defineTabbing("entab", true);
         defineTabbing("detab", false);
 
+
         define("deline", List.of(Parameter.required("text", Typeset.ANY_STRING.members())),
                 Set.of("lines"),
                 (arguments, evaluator, context, refinements) -> {
@@ -14782,7 +14844,7 @@ public final class Natives {
                     if (refinements.contains("lines")) {
                         return BlockValue.block(linesOf(text.text()));
                     }
-                    return rewritten(text, whole -> whole.replace("\r\n", "\n"));
+                    return rewritten(text, Natives::withOneLineFeedPerEnding);
                 });
         define("enline", List.of(Parameter.required("text",
                         Set.of(Datatype.STRING, Datatype.BLOCK))),
@@ -14792,7 +14854,7 @@ public final class Natives {
                                 "joining a block of lines is not written yet");
                     }
                     return rewritten((StringValue) arguments.getFirst(),
-                            whole -> whole.replace("\r\n", "\n"));
+                            Natives::withOneLineFeedPerEnding);
                 });
 
         define("as", List.of(
@@ -16069,6 +16131,46 @@ public final class Natives {
             octets[at] = bytes[at] & 0xFF;
         }
         return BinaryValue.of(octets);
+    }
+
+    /**
+     * Every line ending written as one line feed, whatever it arrived as.
+     *
+     * <p>Not a replacement of CRLF with LF, which is the obvious reading and
+     * is wrong in three places. Rebol's own comment says what it is --
+     * "converts any combination of CR and LF line endings to the internal
+     * REBOL line ending" -- and {@code Replace_CRLF_to_LF_Bytes} is six lines:
+     *
+     * <pre>
+     * if ((c = *cp++) == LF) { if (*cp == CR) cp++; }
+     * else if (c == CR)      { c = LF; if (*cp == LF) cp++; }
+     * *tp++ = c;
+     * </pre>
+     *
+     * <p>So a lone carriage return converts; a line feed followed by a return
+     * is one ending rather than two; and a return, a return and a line feed
+     * are two endings rather than one, because the first return stands alone
+     * and the second takes the line feed with it. Rebol's own port test
+     * asserts all three.
+     */
+    private static String withOneLineFeedPerEnding(String text) {
+        StringBuilder standardised = new StringBuilder(text.length());
+        int at = 0;
+        while (at < text.length()) {
+            char here = text.charAt(at++);
+            if (here == '\n' || here == '\r') {
+                if (at < text.length() && text.charAt(at) == theOtherEnding(here)) {
+                    at++;
+                }
+                here = '\n';
+            }
+            standardised.append(here);
+        }
+        return standardised.toString();
+    }
+
+    private static char theOtherEnding(char one) {
+        return one == '\n' ? '\r' : '\n';
     }
 
     /**
@@ -18417,10 +18519,12 @@ public final class Natives {
         define("change-dir", List.of(Parameter.required("path", Set.of(Datatype.FILE))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.WORKING_DIRECTORY);
+                    String asked = ((StringValue) arguments.getFirst()).text();
                     return throughPort(() -> {
-                        evaluator.files().changeDirectory(
-                                ((StringValue) arguments.getFirst()).text());
-                        return arguments.getFirst();
+                        evaluator.files().changeDirectory(asked);
+                        sayWhereTheInterpreterIsStanding(evaluator);
+                        return StringValue.of(
+                                evaluator.files().workingDirectory(), Datatype.FILE);
                     });
                 });
 
@@ -18461,13 +18565,12 @@ public final class Natives {
                     }
                     requireService(HostService.FILES);
                     String path = named.orElseGet(() -> ((StringValue) target).text());
-                    if (!evaluator.files().exists(path)) {
-                        return LogicValue.of(false);
-                    }
                     Value itsPort = evaluator.applyFunction(
                             systemInternalFunction(context, "make-port*"), List.of(target));
                     try {
-                        evaluator.files().delete(path);
+                        if (!evaluator.files().delete(path)) {
+                            return LogicValue.of(false);
+                        }
                     } catch (FilePort.Denied refused) {
                         throw Raised.of(EvaluationFailure.NO_DELETE, target);
                     }
@@ -18799,46 +18902,64 @@ public final class Natives {
                                 CONSOLE_MEASUREMENTS,
                                 part -> IntegerValue.of(measureOfTheConsole(part)));
                     }
+                    if (field instanceof NoneValue) {
+                        return theNamesThatPortMayBeAskedFor(target, evaluator, context);
+                    }
                     if (target instanceof PortValue openFile && isAFilePort(openFile)) {
                         requireService(HostService.FILES);
                         return throughPort(() -> queryAnswerFor(
                                 evaluator.files().informationAbout(
                                         SeekableFilePort.pathOf(openFile)),
-                                field));
+                                field, evaluator));
                     }
                     Optional<String> named = theFileNamedByAUrl(target, evaluator, context);
                     if (named.isEmpty()
                             && (target instanceof PortValue || routesToAScheme(target))) {
-                        throw schemeRefusal("queries", target);
+                        throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
+                                WordValue.of("query").as(Datatype.SET_WORD));
                     }
                     requireService(HostService.FILES);
                     String path = named.orElseGet(() -> ((StringValue) target).text());
+                    if (path.isEmpty()) {
+                        return NoneValue.none();
+                    }
                     return throughPort(() -> queryAnswerFor(
-                            evaluator.files().informationAbout(path), field));
+                            evaluator.files().informationAbout(path), field,
+                            evaluator));
                 });
     }
 
     /**
      * QUERY's answer, in the shape the question was asked.
      *
-     * <p>{@code Ret_Query_File} has three branches and the middle one is the
-     * one nobody guesses. A word asks for one fact and gets it bare. None asks
-     * for everything and gets an object. A block asks for several and gets a
-     * block -- and whether each fact is labelled depends on how its word was
-     * written, per word rather than per block: a plain word puts itself in the
-     * answer as a set-word before its value, a get-word contributes the value
-     * alone.
+     * <p>Four shapes of question, and the one that reads as wrong is the one
+     * the suite asks three times. A word asks for one fact and gets it bare. A
+     * block asks for several and gets a block. {@code object!} asks for
+     * everything and gets an object. None asks <em>what may be asked</em> and
+     * gets the names rather than the facts.
      *
-     * <p>So {@code query %a [type size]} is {@code [type: file size: 5]} and
-     * {@code query %a [:type :size]} is {@code [file 5]}. Rebol's own LIST-DIR
-     * asks the second form and reads the answer by position, so reading the
-     * block as a plain list of field names breaks it.
+     * <p>The C splits the last two before {@code Ret_Query_File} is reached:
+     * {@code if (IS_NONE(D_ARG(ARG_QUERY_FIELD))) { Ret_File_Modes(port,
+     * D_RET); return R_RET; }} in both the file arm and the directory arm.
+     * Anything else falls through to the three branches of
+     * {@code Ret_Query_File} itself.
      *
-     * <p>A path with nothing at it answers none whichever shape was asked,
-     * because "there is nothing there" is an answer a script acts on.
+     * <p>Whether a fact is labelled in the block form depends on how its word
+     * was written, per word rather than per block: a plain word puts itself in
+     * the answer as a set-word before its value, a get-word contributes the
+     * value alone. So {@code query %a [type size]} is {@code [type: file
+     * size: 5]} and {@code query %a [:type :size]} is {@code [file 5]}.
+     * Rebol's own LIST-DIR asks the second form and reads the answer by
+     * position, so reading the block as a plain list of field names breaks it.
+     *
+     * <p>A path with nothing at it answers none for every shape but the names,
+     * because "there is nothing there" is an answer a script acts on. The
+     * names are a fact about the port rather than about the file, so they come
+     * back either way.
      */
     private static Value queryAnswerFor(
-            java.util.Optional<FileInformation> found, Value field) {
+            java.util.Optional<FileInformation> found, Value field,
+            Evaluator evaluator) {
 
         if (found.isEmpty()) {
             return NoneValue.none();
@@ -18879,14 +19000,49 @@ public final class Natives {
         };
     }
 
-    /** All six facts as an object, which is what a field of none asks for. */
+    /**
+     * The names a file may be asked about, which is what a field of none
+     * answers.
+     *
+     * <p>Read off {@code system/standard/file-info} at the moment of asking,
+     * which is what {@code Ret_File_Modes} does in its one line:
+     * {@code Set_Block(ret, Get_Object_Words(In_Object(port,
+     * STD_PORT_SCHEME, STD_SCHEME_INFO, 0)))}. A list written out here could
+     * drift from the object a script compares the answer against, and
+     * comparing them is exactly what Rebol's own suite does -- three times,
+     * for a directory, a file and an open file port.
+     */
+    private Value theNamesThatPortMayBeAskedFor(
+            Value target, Evaluator evaluator, Context context) {
+
+        Value built = target instanceof PortValue already
+                ? already
+                : evaluator.applyFunction(
+                        systemInternalFunction(context, "make-port*"), List.of(target));
+        Value described = built instanceof PortValue port
+                ? pathInto(port.context(), "scheme", "info")
+                : NoneValue.none();
+        if (!(described instanceof ObjectValue itsInfo)) {
+            return BlockValue.block(List.of());
+        }
+        return BlockValue.block(itsInfo.context().slots().stream()
+                .filter(slot -> !slot.canonical().equals("self"))
+                .<Value>map(slot -> WordValue.of(slot.spelling()))
+                .toList());
+    }
+
+    /**
+     * All six facts as an object, which is what a field of {@code object!}
+     * asks for. Written in {@code sysobj.reb}'s order, so the object matches
+     * the prototype a caller built their own from.
+     */
     private static Value everythingKnownAbout(FileInformation about) {
         Context fields = Context.root();
         fields.set("name", StringValue.of(about.name(), Datatype.FILE));
         fields.set("size", about.size().<Value>map(IntegerValue::of).orElseGet(NoneValue::none));
         fields.set("type", WordValue.of(about.isDirectory() ? "dir" : "file"));
-        fields.set("modified", asDateValue(about.modified()));
         fields.set("date", asDateValue(about.modified()));
+        fields.set("modified", asDateValue(about.modified()));
         fields.set("accessed", asDateValue(about.accessed()));
         fields.set("created", asDateValue(about.created()));
         return new ObjectValue(fields);
@@ -20397,11 +20553,39 @@ public final class Natives {
      * {@code write %f "a"} and {@code write port "a"} answer the same kind of
      * thing.
      */
+    private static void refuseAPortOpenedOnlyToRead(
+            PortValue port, EvaluationFailure failure) {
+
+        if (!SeekableFilePort.mayWriteThrough(port)) {
+            throw Raised.of(failure, StringValue.of(
+                    SeekableFilePort.pathOf(port), Datatype.FILE));
+        }
+    }
+
+    private Value appendedToTheFileBehind(
+            PortValue port, Value data, Evaluator evaluator, Set<String> refinements) {
+
+        if (refinements.contains("dup") || refinements.contains("only")) {
+            throw Raised.of(EvaluationFailure.BAD_REFINES,
+                    "append on a file port is a write, and takes no dup or only");
+        }
+        return writtenToTheFileBehind(
+                port, data, evaluator, List.of(), Set.of("append"));
+    }
+
     private Value writtenToTheFileBehind(
             PortValue port, Value data, Evaluator evaluator,
             List<Value> arguments, Set<String> refinements) {
 
         requireService(HostService.FILES);
+        if (port.isOpen()) {
+            refuseAPortOpenedOnlyToRead(port, EvaluationFailure.READ_ONLY);
+        }
+        if (refinements.contains("append")) {
+            SeekableFilePort.moveTo(port, throughPort(
+                    () -> SeekableFilePort.wholeSize(evaluator.files(), port))
+                    instanceof IntegerValue size ? size.magnitude() : 0);
+        }
         Value seek = refinements.contains("seek")
                 ? argumentFor("seek", FileWriting.ARGUMENT_ORDER,
                         arguments, refinements, 2)
@@ -20933,8 +21117,8 @@ public final class Natives {
 
         private static Optional<String> decodedUtfText(byte[] bytes) {
             try {
-                return Optional.of(
-                        strictlyDecodedByItsMark(bytes).replace("\r\n", "\n"));
+                return Optional.of(withOneLineFeedPerEnding(
+                        strictlyDecodedByItsMark(bytes)));
             } catch (java.nio.charset.CharacterCodingException undecodable) {
                 return Optional.empty();
             }

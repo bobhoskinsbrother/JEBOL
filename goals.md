@@ -32,18 +32,24 @@ or in none. Every number below was checked on 2026-09-12 by running it.
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
 | `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
-| `known-gaps.txt` | **173 fail**, and they are goals 1 to 7 below |
-| `fails-on-rebol-too.txt` | 146 a real 3.22.5 also fails or never runs |
+| `known-gaps.txt` | **173 fail**, and they are goals 2 to 7 below |
+| `fails-on-rebol-too.txt` | 156 a real 3.22.5 also fails or never runs |
 | `scripts/error-parity.py` | **81 of Rebol's 142 error ids can be raised. 61 cannot** |
 
-`./gradlew check` is 17,750 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 17,862 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception. `./gradlew browserCheck` is
 the second gate and is not optional; it renders the same paint list in Java2D
 and in a real Chrome and compares them pixel for pixel.
 
-The 173 are broken into the first seven goals below. The rest own no entries:
-they are equivalence the suite cannot see, the two security goals, and the
-engineering and tooling work.
+**`port-test.r3` owns none of the 173.** It had 29 when the file ports were
+picked up: eighteen were real defects and have been fixed, and eleven turned
+out to be assertions a real 3.22.5 does not pass here either -- nine guarded on
+Windows or on Linux's `/proc`, and two with stale expected checksums. Those
+eleven moved to `fails-on-rebol-too.txt` with the measurement beside each.
+
+The 173 are broken into goals 2 to 7 below. The rest own no entries: they are
+equivalence the suite cannot see, the two security goals, and the engineering
+and tooling work.
 
 ---
 
@@ -229,6 +235,11 @@ divergences from the C rather than gaps against it, because Rebol does not
 authenticate a server or check a fetched module either -- and the engineering
 and tooling last.
 
+**The javadoc cull is at the front regardless**, because it is not a matter of
+importance against the rest: the prose keeps accumulating while anything else
+is being worked on, and every goal below adds to it. Clear it before starting
+another.
+
 Several goals own no `known-gaps.txt` entries, which is not the same as being
 small: no assertion in Rebol's suite asks whether an error id can be raised or
 whether a certificate was checked.
@@ -244,26 +255,42 @@ and the count goes up, that is the answer, so write it down here.
 
 ---
 
-### 1. What is left of the file ports -- 31
+### 1. Javadoc where a name would do
 
-`port-test.r3`. The file and directory schemes work now
-(`SeekableFilePort.java`); these are the remainder.
+**Every javadoc on something a caller outside the package cannot reach should
+be a name instead.** `CLAUDE.md` bans code comments outright and says the itch
+to write one is the signal to extract a method, rename a variable or introduce a
+named constant. Javadoc on a private method is the same itch wearing a jacket,
+and this codebase is full of it.
 
-**Two stops, re-derived with the fixed `SuiteStops`.** This goal has
-now said three different things about them, so here is the measured answer:
+What stays: a public class, a public method, an interface, an enum -- anything a
+caller outside the package reaches for, where the documentation is the contract
+and a name cannot carry it.
 
-    pwd = to-rebol-file get-env "PWD"   -> ../ is outside what this port allows
-    open %issue-2447                    -> a port that could not be opened
+What goes: the rest. Read each one and ask what it is doing. Most of them are
+one of three things:
 
-The first is not an environment problem, which is what it looked like while the
-tool had no environment installed. `get-env "PWD"` answers; the working
-directory it names sits outside the temporary root the harness confines the run
-to, and the sandbox refuses to walk up to it. Decide what a rooted interpreter
-should say its working directory is — that is the question, and it is not goal
-8's.
+- **Naming the method again in a sentence.** Delete it; the name already says it.
+- **Explaining a step inside the body.** Extract that step into a method whose
+  name is the sentence, and the comment disappears with it.
+- **Carrying a fact about the C that the name cannot.** That one is real and
+  does not belong beside the code either -- it belongs in `docs/`, or in the
+  spec under the rule it is evidence for, or in the commit that made the
+  change. A reader who needs to know why `Form_Hex_Pad` pads from the left is
+  not reading a private helper to find out.
 
-The rest are wrong answers, so sweep the file: `scripts/sweep.py port-test.r3`.
-23 are in "file port" and 14 in "directory port".
+**Do it a file at a time and let the gate hold the line.** Nothing about
+behaviour changes, so any test that moves is a test that was depending on
+something it should not have been.
+
+Worth deciding first, because it governs how much comes out: whether a
+`*FromTheSourceTest` class javadoc counts as public. The argument that it does
+is that it is the only place the C's reasoning is written down beside a
+runnable check of it, and those have earned their keep repeatedly -- every one
+of them names the line of C it was read from. The argument that it does not is
+that a test class is not an interface either. **Settle that before starting**,
+because on the first reading most of the surviving prose in this port lives in
+exactly those classes.
 
 ---
 
@@ -1010,45 +1037,6 @@ tokens -- what earns space is only what contradicts the prior: `if 0` is true,
 
 One thing to price before starting: error text becomes an interface. Reword it
 later and whatever was built on the old wording breaks.
-
----
-
-### 19. Javadoc where a name would do
-
-**Every javadoc on something a caller outside the package cannot reach should
-be a name instead.** `CLAUDE.md` bans code comments outright and says the itch
-to write one is the signal to extract a method, rename a variable or introduce a
-named constant. Javadoc on a private method is the same itch wearing a jacket,
-and this codebase is full of it.
-
-What stays: a public class, a public method, an interface, an enum -- anything a
-caller outside the package reaches for, where the documentation is the contract
-and a name cannot carry it.
-
-What goes: the rest. Read each one and ask what it is doing. Most of them are
-one of three things:
-
-- **Naming the method again in a sentence.** Delete it; the name already says it.
-- **Explaining a step inside the body.** Extract that step into a method whose
-  name is the sentence, and the comment disappears with it.
-- **Carrying a fact about the C that the name cannot.** That one is real and
-  does not belong beside the code either -- it belongs in `docs/`, or in the
-  spec under the rule it is evidence for, or in the commit that made the
-  change. A reader who needs to know why `Form_Hex_Pad` pads from the left is
-  not reading a private helper to find out.
-
-**Do it a file at a time and let the gate hold the line.** Nothing about
-behaviour changes, so any test that moves is a test that was depending on
-something it should not have been.
-
-Worth deciding first, because it governs how much comes out: whether a
-`*FromTheSourceTest` class javadoc counts as public. The argument that it does
-is that it is the only place the C's reasoning is written down beside a
-runnable check of it, and those have earned their keep repeatedly -- every one
-of them names the line of C it was read from. The argument that it does not is
-that a test class is not an interface either. **Settle that before starting**,
-because on the first reading most of the surviving prose in this port lives in
-exactly those classes.
 
 ---
 

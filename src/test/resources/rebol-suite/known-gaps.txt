@@ -163,37 +163,6 @@ mold-test.r3 / mold file! / mold file escaping #68
 mold-test.r3 / mold url! / mold url escaping #56
 percent-test.r3 / percent issues / large percent #33
 percent-test.r3 / percent issues / large percent #34
-port-test.r3 / SYSTEM / query system:// #169
-port-test.r3 / directory port / CHANGE-DIR #52
-port-test.r3 / directory port / CHANGE-DIR #53
-port-test.r3 / directory port / CHANGE-DIR #54
-port-test.r3 / directory port / CHANGE-DIR #55
-port-test.r3 / directory port / DELETE-DIR #51
-port-test.r3 / directory port / READ wildcard #45
-port-test.r3 / directory port / RENAME dir #57
-port-test.r3 / directory port / exists? %/ #63
-port-test.r3 / directory port / make-dir if file exists #21
-port-test.r3 / directory port / query directory info #8
-port-test.r3 / file port / APPEND file-port #160
-port-test.r3 / file port / APPEND file-port #161
-port-test.r3 / file port / APPEND file-port #162
-port-test.r3 / file port / APPEND file-port #163
-port-test.r3 / file port / APPEND file-port #164
-port-test.r3 / file port / APPEND file-port #165
-port-test.r3 / file port / APPEND file-port #166
-port-test.r3 / file port / CLEAR file port #150
-port-test.r3 / file port / CLEAR file port #152
-port-test.r3 / file port / DELETE file #155
-port-test.r3 / file port / DELETE file #157
-port-test.r3 / file port / Query empty file name #168
-port-test.r3 / file port / WRITE/APPEND file-port #159
-port-test.r3 / file port / query file info #68
-port-test.r3 / file port / query file info (port) #75
-port-test.r3 / file port / read write CRLF conversion #114
-port-test.r3 / file port / read write CRLF conversion #115
-port-test.r3 / file port / read write CRLF conversion #118
-port-test.r3 / file port / read write CRLF conversion #119
-port-test.r3 / file port / write/part #135
 series-test.r3 / DELINE / ENLINE / ENLINE #1229
 struct-test.r3 / Invalid struct construction / (no test) #175
 struct-test.r3 / Invalid struct construction / (no test) #176

@@ -166,16 +166,61 @@ class QueryFromTheSourceTest {
                     + "all [file? info/1 5 = info/2 date? info/3]")).isEqualTo(TRUE);
         }
 
+        /**
+         * The shape nobody guesses, and the reason the question has to be read
+         * the other way round. {@code query %a 'size} asks how big it is;
+         * {@code query %a none} asks what may be asked about it, and answers
+         * the names rather than the facts.
+         *
+         * <p>{@code Ret_File_Modes} is two lines and reads the names off the
+         * scheme's own info object: {@code Set_Block(ret, Get_Object_Words(
+         * In_Object(port, STD_PORT_SCHEME, STD_SCHEME_INFO, 0)))}. Rebol's own
+         * suite asserts it three times by comparing against
+         * {@code words-of system/standard/file-info}, once for a directory,
+         * once for a file and once for an open file port.
+         */
         @Test
-        @DisplayName("none asks for everything and answers an object")
-        void noneAnswersAnObject() throws Exception {
+        @DisplayName("none asks what may be asked, and answers the names")
+        void noneAnswersTheNamesThatMayBeAsked() throws Exception {
             givenAFile("five.txt", "12345");
-            assertThat(answerTo("object? query %five.txt none")).isEqualTo(TRUE);
-            assertThat(answerTo("info: query %five.txt none 5 = info/size")).isEqualTo(TRUE);
-            assertThat(answerTo("info: query %five.txt none 'file = info/type"))
+            assertThat(answerTo("mold query %five.txt none"))
+                    .isEqualTo("\"[name size type date modified accessed created]\"");
+            assertThat(answerTo("block? query %five.txt none")).isEqualTo(TRUE);
+            assertThat(answerTo(
+                    "(words-of system/standard/file-info) = query %five.txt none"))
                     .isEqualTo(TRUE);
-            assertThat(answerTo("info: query %five.txt none "
-                    + "info/date = info/modified")).isEqualTo(TRUE);
+        }
+
+        /** For a directory and for an open port as much as for a file. */
+        @Test
+        @DisplayName("and the same names whatever the target is")
+        void theSameNamesWhateverTheTargetIs() throws Exception {
+            givenAFile("five.txt", "12345");
+            assertThat(answerTo(
+                    "(words-of system/standard/file-info) = query %. none"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo("""
+                    f: open %five.txt
+                    answer: (words-of system/standard/file-info) = query f none
+                    close f
+                    answer""")).isEqualTo(TRUE);
+        }
+
+        /**
+         * The object is still reachable, and {@code object!} is what asks for
+         * it. The C's else arm clones the scheme's info object and fills it in,
+         * which is the branch anything that is not a word, a block or none
+         * falls into.
+         */
+        @Test
+        @DisplayName("and the object is what the object type asks for")
+        void theObjectTypeAsksForTheObject() throws Exception {
+            givenAFile("five.txt", "12345");
+            assertThat(answerTo("object? query %five.txt object!")).isEqualTo(TRUE);
+            assertThat(answerTo("info: query %five.txt object! 5 = info/size"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo("info: query %five.txt object! 'file = info/type"))
+                    .isEqualTo(TRUE);
         }
 
         @Test
@@ -195,8 +240,65 @@ class QueryFromTheSourceTest {
         @DisplayName("a file that is not there answers none rather than raising")
         void aMissingFileAnswersNone() {
             assertThat(answerTo("none? query %nowhere.txt 'size")).isEqualTo(TRUE);
-            assertThat(answerTo("none? query %nowhere.txt none")).isEqualTo(TRUE);
+            assertThat(answerTo("none? query %nowhere.txt object!")).isEqualTo(TRUE);
             assertThat(errorIdOf("query %nowhere.txt 'size")).isEqualTo(NO_ERROR);
+        }
+
+        /**
+         * Except for the none form, which never looks at the target: the names
+         * a port reports are a fact about the port rather than about the file,
+         * so the C returns them before the path is touched and a file that is
+         * not there answers the same list as one that is.
+         */
+        @Test
+        @DisplayName("but the names come back for a file that is not there")
+        void theNamesComeBackForAFileThatIsNotThere() {
+            assertThat(answerTo(
+                    "(words-of system/standard/file-info) = query %nowhere.txt none"))
+                    .isEqualTo(TRUE);
+            assertThat(answerTo(
+                    "(words-of system/standard/file-info) = query %no-dir/ none"))
+                    .isEqualTo(TRUE);
+            assertThat(errorIdOf("query %nowhere.txt none")).isEqualTo(NO_ERROR);
+        }
+
+        /**
+         * A path with no name in it answers none rather than asking about the
+         * current directory, which is what an empty string would otherwise
+         * mean. One line of the C, before the query goes out:
+         * {@code if (VAL_LEN(path) == 0) return R_NONE;}.
+         */
+        @Test
+        @DisplayName("and a file name with nothing in it answers none")
+        void anEmptyFileNameAnswersNone() {
+            assertThat(answerTo("none? query %\"\" 'type")).isEqualTo(TRUE);
+            assertThat(answerTo("none? query %\"\" 'size")).isEqualTo(TRUE);
+            assertThat(answerTo("none? query %\"\" object!")).isEqualTo(TRUE);
+            assertThat(errorIdOf("query %\"\" 'type")).isEqualTo(NO_ERROR);
+        }
+
+        /**
+         * A scheme whose actor has no arm for the verb refuses with
+         * no-port-action, naming the verb as a set-word because the C reads
+         * the action's own word out of its table:
+         * {@code Trap1(RE_NO_PORT_ACTION, Get_Action_Word(action))}.
+         *
+         * <p>Distinct from no-service, which says the host was not given the
+         * thing at all. This one says the scheme is here and does not do that,
+         * and a script telling them apart knows whether to ask for a grant or
+         * to stop asking.
+         */
+        @Test
+        @DisplayName("a scheme with no query arm is no-port-action, naming the verb")
+        void aSchemeWithNoQueryArmIsNoPortAction() {
+            assertThat(answerTo("""
+                    e: try [query system:// object!]
+                    reduce [e/id  mold e/arg1]"""))
+                    .isEqualTo("[no-port-action \"query:\"]");
+            assertThat(answerTo("""
+                    e: try [query checksum://md5 object!]
+                    reduce [e/id  mold e/arg1]"""))
+                    .isEqualTo("[no-port-action \"query:\"]");
         }
 
         @Test

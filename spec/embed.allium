@@ -383,6 +383,31 @@ rule StartingAProgramCrossesAsACommandAndThreeStreams {
         program.standard_error in ProgramOutput
 }
 
+-- === Where the root is, from inside ========================
+
+-- A confined script sees the root it was given as `/`, and every path it names
+-- is resolved beneath that. Which settles what `..` does at the top: **it stays
+-- where it is.** `/..` is `/` on a real filesystem -- `change-dir %../` at the
+-- root of a machine answers `%/` and moves nothing -- and a root that behaved
+-- differently would be telling the script it is somewhere other than the top.
+--
+-- So the dots are worked out as they are anywhere else, and a `..` with nothing
+-- above it is dropped rather than refused. `%../../../etc/passwd` from inside
+-- names `/etc/passwd` *within the root*, which is the same thing
+-- `%/etc/passwd` names and reaches nothing for the same reason.
+--
+-- This is confinement, not a warning: a path that climbs cannot reach outside,
+-- because there is no outside to reach. Refusing it instead would say the same
+-- thing about safety and a different thing about where the script is standing,
+-- and the second is what a script acts on.
+rule TheDotsAreWorkedOutAndClampAtTheRoot {
+    when: a_confined_script_names(path)
+
+    ensures: the_file_reached(path) =
+        beneath_the_root(the_segments_of_with_dots_dropped(path))
+    ensures: not is_outside(the_root, the_file_reached(path))
+}
+
 -- And the directory the program starts in, which is the one the script is
 -- standing in rather than the one the host process happens to be in.
 --

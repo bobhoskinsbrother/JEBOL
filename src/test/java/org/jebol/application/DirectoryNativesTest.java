@@ -158,12 +158,35 @@ class DirectoryNativesTest {
                 .isEqualTo("\"found\"");
     }
 
+    /**
+     * Moving up from the top stays at the top and does not fail, which is what
+     * a real filesystem does: {@code change-dir %../} at {@code /} answers
+     * {@code %/} and moves nothing. Rebol's own port test relies on it -- it
+     * moves up from wherever it is standing and expects to arrive.
+     *
+     * <p>The confinement is unchanged. A climbing path cannot reach outside
+     * because there is no outside to reach; it names something within the
+     * root, which is checked below.
+     */
     @Test
-    @DisplayName("CHANGE-DIR cannot leave the directory the port was given")
+    @DisplayName("CHANGE-DIR up from the root stays at the root")
     void theRootStillHolds(@TempDir Path directory) {
         Interpreter interpreter = reaching(
                 directory, HostService.WORKING_DIRECTORY, HostService.FILES);
-        assertThat(errorIdOf(interpreter, "change-dir %../")).isEqualTo("outside-root");
+        assertThat(answerTo(interpreter, "change-dir %../ what-dir")).isEqualTo("%/");
+    }
+
+    @Test
+    @DisplayName("and what it can see up there is still only what is inside")
+    void whatItCanSeeUpThereIsStillInside(@TempDir Path directory) throws Exception {
+        Files.writeString(directory.getParent().resolve("outside.txt"), "not yours");
+        Files.writeString(directory.resolve("inside.txt"), "yours");
+        Interpreter interpreter = reaching(
+                directory, HostService.WORKING_DIRECTORY, HostService.FILES);
+        assertThat(answerTo(interpreter, """
+                change-dir %../
+                reduce [exists? %outside.txt  exists? %inside.txt]"""))
+                .isEqualTo("[_ file]");
     }
 
     @Test

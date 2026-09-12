@@ -27,17 +27,45 @@ final class SeekableFilePort {
     private SeekableFilePort() {
     }
 
-    /** Where the position is kept, in the port's own STATE field. */
-    private static final String THE_POSITION = "state";
+    /**
+     * The port's own STATE field, holding the position and whether the open
+     * allowed writing -- the two things the C keeps side by side in the file
+     * request, {@code file->file.index} and {@code RFM_WRITE}.
+     *
+     * <p>Both are needed because a read-only port would otherwise take a CLEAR
+     * or a WRITE and silently do nothing, which is the case the C's own
+     * comment on the CLEAR arm was written for.
+     */
+    private static final String THE_PORTS_OWN_STATE = "state";
 
     static long positionOf(PortValue port) {
-        return port.fieldNamed(THE_POSITION) instanceof IntegerValue at
-                ? at.magnitude()
-                : 0;
+        return switch (port.fieldNamed(THE_PORTS_OWN_STATE)) {
+            case IntegerValue at -> at.magnitude();
+            case org.jebol.domain.value.BlockValue kept
+                    when kept.remaining().getFirst() instanceof IntegerValue at ->
+                    at.magnitude();
+            default -> 0;
+        };
     }
 
     static void moveTo(PortValue port, long position) {
-        port.setField(THE_POSITION, IntegerValue.of(Math.max(0, position)));
+        setState(port, Math.max(0, position), mayWriteThrough(port));
+    }
+
+    static boolean mayWriteThrough(PortValue port) {
+        return !(port.fieldNamed(THE_PORTS_OWN_STATE)
+                        instanceof org.jebol.domain.value.BlockValue kept)
+                || kept.remaining().get(1).isTruthy();
+    }
+
+    static void openedAt(PortValue port, long position, boolean mayWrite) {
+        setState(port, position, mayWrite);
+    }
+
+    private static void setState(PortValue port, long position, boolean mayWrite) {
+        port.setField(THE_PORTS_OWN_STATE, org.jebol.domain.value.BlockValue.block(
+                java.util.List.of(IntegerValue.of(position),
+                        org.jebol.domain.value.LogicValue.of(mayWrite))));
     }
 
     /**

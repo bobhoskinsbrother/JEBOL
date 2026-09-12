@@ -75,12 +75,25 @@ class FileServiceGrantTest {
         assertThat(Files.readString(directory.resolve("c.txt"))).isEqualTo("there");
     }
 
+    /**
+     * The dots are worked out and a {@code ..} with nothing above it is
+     * dropped, so the path names {@code secret.txt} inside the root and finds
+     * nothing there. That is confinement, not a weakening of it: there is no
+     * outside to reach, and the answer is the same one {@code %/secret.txt}
+     * gets.
+     *
+     * <p>The refusal was changed to a clamp because refusing tells a confined
+     * script it is somewhere other than the top of what it can see, and a real
+     * filesystem does not -- {@code change-dir %../} at {@code /} answers
+     * {@code %/} and moves nothing.
+     */
     @Test
-    @DisplayName("a path outside the directory is refused")
-    void theAdapterKeepsTheScriptInside(@TempDir Path directory) {
+    @DisplayName("a path climbing out of the directory reaches nothing inside it")
+    void theAdapterKeepsTheScriptInside(@TempDir Path directory) throws Exception {
         Interpreter interpreter = readingUnder(
                 Bounds.standard().granting(HostService.FILES), directory);
-        assertThat(errorIdOf(interpreter, "read %../secret.txt")).isEqualTo("outside-root");
+        Files.writeString(directory.getParent().resolve("secret.txt"), "not yours");
+        assertThat(errorIdOf(interpreter, "read %../secret.txt")).isEqualTo("cannot-open");
     }
 
     @Test
