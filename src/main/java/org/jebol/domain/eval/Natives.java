@@ -10609,17 +10609,100 @@ public final class Natives {
             PortValue port, Evaluator evaluator, Set<String> refinements) {
 
         String path = SeekableFilePort.pathOf(port);
-        if (refinements.contains("new")) {
+        if (port.schemeName().equals("dir")) {
+            if (!((LogicValue) throughPort(() -> LogicValue.of(
+                    somethingIsThereFor(path, evaluator.files())))).truth()) {
+                throw Raised.of(EvaluationFailure.CANNOT_OPEN,
+                        StringValue.of(path, Datatype.FILE));
+            }
+            SeekableFilePort.moveTo(port, 0);
+            return;
+        }
+        boolean alreadyThere = ((LogicValue) throughPort(() ->
+                LogicValue.of(evaluator.files().exists(path)))).truth();
+        if (!mayWrite(refinements)) {
+            if (!alreadyThere) {
+                throw Raised.of(EvaluationFailure.CANNOT_OPEN,
+                        StringValue.of(path, Datatype.FILE));
+            }
+        } else if (!alreadyThere || emptiesWhatIsThere(refinements)) {
             throughPort(() -> {
                 evaluator.files().write(path, new byte[0]);
                 return NoneValue.none();
             });
-        } else if (!port.schemeName().equals("dir")
-                && !((LogicValue) throughPort(() ->
-                        LogicValue.of(evaluator.files().exists(path)))).truth()) {
-            throw Raised.of(EvaluationFailure.CANNOT_OPEN, path);
         }
         SeekableFilePort.moveTo(port, 0);
+    }
+
+    /**
+     * Whether a directory port names something that is there.
+     *
+     * <p>A pattern names what matches it, so it is there when at least one name
+     * does. The C reads the directory as it opens and raises when that fails --
+     * {@code if (result < 0) Trap_Port(RE_CANNOT_OPEN, port, dir->error);} --
+     * where READ of the same pattern answers an empty block and never raises.
+     * Opening asks for a thing and reading asks a question: no matches is an
+     * answer to the second and not to the first.
+     */
+    private static boolean somethingIsThereFor(String path, FilePort files) {
+        if (!FileReading.holdsAWildcard(path)) {
+            return files.exists(path);
+        }
+        int lastSeparator = path.lastIndexOf('/');
+        String directory = path.substring(0, lastSeparator + 1);
+        String pattern = path.substring(lastSeparator + 1);
+        if (FileReading.holdsAWildcard(directory)) {
+            return false;
+        }
+        try {
+            return files.namesIn(directory.isEmpty() ? "." : directory).stream()
+                    .anyMatch(name -> FileReading.matchesTheWholeOf(
+                            FileReading.withoutItsSlash(name), pattern));
+        } catch (RuntimeException nothingThere) {
+            return false;
+        }
+    }
+
+    /**
+     * Whether this open may write, which is what makes the file.
+     *
+     * <p>The device carries {@code O_CREAT} for anything that may write, so
+     * only {@code open/read} is left unable to make a file.
+     */
+    private static boolean mayWrite(Set<String> refinements) {
+        return refinements.contains("write") || namesNeitherWay(refinements);
+    }
+
+    /**
+     * Whether this open may read.
+     *
+     * <p>Both are filled in when the caller names neither: {@code if (!(args &
+     * (AM_OPEN_READ | AM_OPEN_WRITE))) args |= (AM_OPEN_READ | AM_OPEN_WRITE);}
+     * is the first line of the C's A_OPEN. Which is why the truncation below
+     * has to ask this rather than ask what the caller wrote -- a bare OPEN
+     * reads, so it does not empty the file, and only the filled-in modes say
+     * so.
+     */
+    private static boolean mayRead(Set<String> refinements) {
+        return refinements.contains("read") || namesNeitherWay(refinements);
+    }
+
+    private static boolean namesNeitherWay(Set<String> refinements) {
+        return !refinements.contains("read") && !refinements.contains("write");
+    }
+
+    /**
+     * Whether this open empties a file that is already there.
+     *
+     * <p>{@code modes |= O_TRUNC} when /NEW was asked for, or when the open
+     * neither reads nor seeks. So {@code open/write %f} empties it and
+     * {@code open %f} does not, which is the difference between opening a file
+     * to rewrite it and opening one to work in. A caller that wanted the second
+     * and got the first has lost the file, so the default keeps it.
+     */
+    private static boolean emptiesWhatIsThere(Set<String> refinements) {
+        return refinements.contains("new")
+                || !(mayRead(refinements) || refinements.contains("seek"));
     }
 
     /** Whether protection means anything for this kind of value. */

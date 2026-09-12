@@ -5072,9 +5072,66 @@ rule OpeningAFileThatIsNotThereRaisesCannotOpen {
     requires: verb in {open, read}
     requires: is_file(target)
     requires: not host_has_anything_at(target)
+    requires: not opening_it_may_write(the_refinements_asked_for())
 
     ensures: CallFails(error: cannot_open, about: target)
 }
+
+-- Which only holds when the port is being opened to read. **A port opened to
+-- write makes the file**, and OPEN without a refinement is opened to both:
+-- `if (!(args & (AM_OPEN_READ | AM_OPEN_WRITE))) args |= (AM_OPEN_READ |
+-- AM_OPEN_WRITE);` is the first line of the C's A_OPEN, and writing carries
+-- `O_CREAT` down in the device.
+--
+-- So `open %not-there` answers a port and leaves an empty file behind, and
+-- only `open/read %not-there` is refused. Rebol's own port test opens a file
+-- that way to make one -- "create locked file..." is its comment -- and every
+-- assertion after that line was lost here to a refusal.
+rule OpeningAFileToWriteMakesIt {
+    when: EvaluateCall(open, target)
+    requires: is_file(target)
+    requires: not host_has_anything_at(target)
+    requires: opening_it_may_write(the_refinements_asked_for())
+
+    ensures: CallResult(datatype: port)
+    ensures: host_has_anything_at(target)
+    ensures: the_size_of(target) = 0
+}
+
+-- And whether an existing file is emptied is a second question with a
+-- different answer. `modes |= O_TRUNC` only when /NEW was asked for, or when
+-- the open names neither reading nor seeking -- so `open/write %f` empties it
+-- and `open %f` does not.
+--
+-- Which is the difference between opening a file to rewrite it and opening
+-- one to work in. A caller that wanted the second and got the first has lost
+-- the file, so the default is the one that keeps it.
+rule OnlyAWriteThatNamesNothingElseEmptiesTheFile {
+    when: EvaluateCall(open, target)
+    requires: is_file(target)
+    requires: host_has_anything_at(target)
+
+    ensures: the_size_of(target) = 0 when
+        asked_for(new) or (asked_for(write)
+            and not (asked_for(read) or asked_for(seek)))
+    ensures: the_size_of(target) = what_it_was when
+        not (asked_for(new) or (asked_for(write)
+            and not (asked_for(read) or asked_for(seek))))
+}
+
+-- A directory is not made by opening one to read or to write. There is no mode
+-- that means "make this directory" -- MAKE-DIR is the verb for that -- so a
+-- directory port names something that has to be there already.
+rule OpeningADirectoryThatIsNotThereIsRefused {
+    when: EvaluateCall(open, target)
+    requires: names_the_directory_scheme(target)
+    requires: not host_has_anything_at(target)
+    requires: not asked_for(new)
+
+    ensures: CallFails(error: cannot_open, about: target)
+}
+
+open question "`open/new` on a directory that is not there does two different things on consecutive runs of a real 3.22.5, in a fresh directory both times with byte-identical input. The first run answers a port and the second raises `no-create` naming the directory, and the directory exists afterwards either way -- so it is made and then something after the making disagrees about whether that counts. Nothing on `known-gaps.txt` turns on it and no assertion in the suite asks, which is why it is a question rather than a rule: specifying either answer would be specifying a coin toss. It is the second place the canonical reference has been caught being non-deterministic, the first being `checksum-test.r3`, and both are recorded so that a single run is never taken as settling one of them."
 
 rule TryPassesThroughASuccessfulResult {
     when: EvaluateTry(body)

@@ -32,7 +32,7 @@ or in none. Every number below was checked on 2026-09-12 by running it.
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
 | `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
-| `known-gaps.txt` | **175 fail**, and they are goals 1 to 7 below |
+| `known-gaps.txt` | **173 fail**, and they are goals 1 to 7 below |
 | `fails-on-rebol-too.txt` | 146 a real 3.22.5 also fails or never runs |
 | `scripts/error-parity.py` | **81 of Rebol's 142 error ids can be raised. 61 cannot** |
 
@@ -41,7 +41,7 @@ fails the build outright -- no list, no exception. `./gradlew browserCheck` is
 the second gate and is not optional; it renders the same paint list in Java2D
 and in a real Chrome and compares them pixel for pixel.
 
-The 175 are broken into the first seven goals below. The rest own no entries:
+The 173 are broken into the first seven goals below. The rest own no entries:
 they are equivalence the suite cannot see, the two security goals, and the
 engineering and tooling work.
 
@@ -244,7 +244,7 @@ and the count goes up, that is the answer, so write it down here.
 
 ---
 
-### 1. What is left of the file ports -- 33
+### 1. What is left of the file ports -- 31
 
 `port-test.r3`. The file and directory schemes work now
 (`SeekableFilePort.java`); these are the remainder.
@@ -406,13 +406,58 @@ that got further than before:
 
 ---
 
-### 6. The PDF codec times out -- 9
+### 6. The PDF encoder hangs where the C takes a millisecond -- 9
 
-`codecs-test-pdf.r3` runs past the harness's 5000ms limit on its first step.
-Either the PDF codec is doing something quadratic or it is looping. Worth
-finding out which before deciding what to do about it.
+**Measured on 12 September 2026, and it is not what this goal said.** PDF *is*
+implemented: `codec-pdf.reb` is Rebol's own REBOL, vendored and loaded like
+every other borrowed file, and it registers `system/codecs/pdf`. Loading works
+here. One encode hangs.
 
----
+Both interpreters, same six files, same machine:
+
+| | `./r3-head` | JEBOL |
+| --- | --- | --- |
+| load all six | under 10ms total | fast, all six answer an object |
+| save all six | **13ms total** | `hello-1`, `hello-2` fast, then **hangs on `hello-linearized.pdf`** |
+
+That is where the harness's five-second limit goes. The codec's own header
+warns that "the loading is not optimal" and that it is "not designed for real
+life processing of large PDF documents" -- which is true and is not this: the
+reference does the whole set in a twentieth of a second, and the file that hangs
+is 1ms there.
+
+**So this is a defect to find, not a codec to drop.** Something JEBOL does
+differently -- a series operation, a PARSE rule, a loop that never advances --
+makes Rebol's own encoder loop on a linearized PDF. A thousand-fold gap on
+borrowed REBOL nearly always means a primitive is wrong, and a primitive that is
+wrong here is wrong everywhere else it is used; that is the reason to chase it
+rather than the nine entries.
+
+Where to start: `save %tmp.pdf p1` on `%units/files/hello-linearized.pdf`, with
+`system/options/log/pdf: 3` on. A linearized PDF is the one with its
+cross-reference table at the front, so the encoder walks it differently from the
+other five, and whatever it does there is the ground to dig.
+
+### And no Java PDF implementation, now or later
+
+**Decided.** Fixing the hang is equivalence work and is in scope. Writing a
+Java PDF implementation is not, and will not be, however much of PDF the
+borrowed codec turns out not to do.
+
+The borrowed codec is what Rebol has, so matching it is the whole obligation.
+Its own header is honest about the ceiling -- it decodes the object structure
+"for examination" and is "not yet much useful for document creation" -- and
+JEBOL is not going to exceed that by writing a second implementation in Java.
+Doing so would be the thing this port does not do: reimplementing in Java what
+Rebol writes in REBOL.
+
+**Anything beyond it is an optional extension and a dependency the caller
+chooses.** A real PDF capability means a real PDF library, and the shipped jar
+has no dependencies at all -- about 1,700 KB of which the borrowed library and
+the bundled modules are most of it, and nothing on the classpath that the JVM
+does not bring. That stays true. Somebody who wants more than the borrowed
+codec gives adds the library and a bridge to it themselves, and with neither
+present nothing registers and nothing is attempted.
 
 ### 7. The scattered singles and pairs -- 31 across fourteen files
 

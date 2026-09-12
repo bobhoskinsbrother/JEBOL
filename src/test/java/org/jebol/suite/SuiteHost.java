@@ -168,6 +168,40 @@ final class SuiteHost {
     }
 
     /**
+     * Puts the suite's own files in the directory a run stands in.
+     *
+     * <p>Rebol runs its tests from {@code src/tests/}, where {@code
+     * run-tests.r3} sits beside a dozen other scripts, and a suite file can see
+     * that: {@code port-test.r3} asserts {@code port? p: try [open %*.r3]},
+     * which opens only when the pattern matches something.
+     *
+     * <p>So the working directory is part of what the file is written against,
+     * the same way {@code units/files/} is. Without them the assertion passed
+     * here for the wrong reason -- every wildcard opened, matching or not --
+     * and correcting that was what made it visible.
+     *
+     * <p>The names alone, not the tree. Nothing reads their contents from here:
+     * the harness reads each suite file from the repository, and these are
+     * copies standing in a directory so that a pattern has something to match.
+     */
+    private static void putTheSuiteFilesWhereARunStandsAmongThem(Path root)
+            throws IOException {
+
+        Path from = Path.of("src", "test", "resources", "rebol-suite");
+        if (!Files.isDirectory(from)) {
+            return;
+        }
+        try (Stream<Path> suiteFiles = Files.list(from)) {
+            for (Path one : suiteFiles.toList()) {
+                if (Files.isRegularFile(one) && one.getFileName().toString().endsWith(".r3")) {
+                    Files.copy(one, root.resolve(one.getFileName().toString()),
+                            StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+        }
+    }
+
+    /**
      * Puts every vendored data file where the tests look for it.
      *
      * <p>Named individually once, six of them, while seventy-two sat in the
@@ -185,6 +219,7 @@ final class SuiteHost {
      * depends on nobody ever nesting anything.
      */
     private static void layOutTheFilesTheSuiteReads(Path root) throws IOException {
+        putTheSuiteFilesWhereARunStandsAmongThem(root);
         Path into = root.resolve("units").resolve("files");
         Files.createDirectories(into);
         Path from = Path.of("src", "test", "resources", "rebol-suite", "units", "files");

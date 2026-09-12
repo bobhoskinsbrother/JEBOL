@@ -291,11 +291,27 @@ class FilePortFromTheSourceTest {
                     .isEqualTo("[#(true) 0 file]");
         }
 
+        /**
+         * Only an open that cannot write is refused. A bare OPEN names neither
+         * reading nor writing, so the C fills in both -- {@code if (!(args &
+         * (AM_OPEN_READ | AM_OPEN_WRITE))) args |= (AM_OPEN_READ |
+         * AM_OPEN_WRITE);} -- and anything that may write carries
+         * {@code O_CREAT}.
+         *
+         * <p>This asserted the opposite until it was measured, which is what
+         * kept Rebol's own port test from getting past the line whose comment
+         * is "create locked file...". `OpeningAFileMakesItFromTheSourceTest`
+         * has the whole rule.
+         */
         @Test
-        @DisplayName("and without it a name that is not there cannot be")
-        void withoutItTheFileMustExist(@TempDir Path root) {
-            assertThat(errorIdFrom(root, "open %never-existed"))
+        @DisplayName("and without it, only an open that cannot write is refused")
+        void withoutItOnlyAReadIsRefused(@TempDir Path root) {
+            assertThat(errorIdFrom(root, "open/read %never-existed"))
                     .isEqualTo("cannot-open");
+            assertThat(answerTo(root, """
+                    p: open %never-existed
+                    reduce [port? p exists? %never-existed]"""))
+                    .isEqualTo("[#(true) file]");
         }
 
         @Test
