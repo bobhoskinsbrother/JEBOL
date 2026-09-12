@@ -709,8 +709,31 @@ design or a gap in the CLI has never been decided.
 `egid` -- where a real Rebol answers a number. The JVM has no portable way to
 ask. `pid` works.
 
-**55 open questions across nine spec files**, the heaviest being
-`natives.allium` with 19.
+**61 open questions across nine spec files**, the heaviest being
+`natives.allium` with 26. It read 55 and 19 until 2026-09-13, and the drift is
+the point rather than a slip: **finishing every goal above would not empty this
+list, and the list grows as the goals are worked.** Each goal that ports a
+subsystem properly tends to leave a question behind, because reading the C
+closely is what turns "we never thought about it" into "here are two readings
+and neither is obviously right".
+
+Roughly a third are owned by a goal above and would be forced by doing it: the
+four in `draw.allium` and two of the six in `screen.allium` by the graphics
+goal, two of the seven in `load.allium` by modules and IMPORT, and a handful in
+`natives.allium` by the error catalogue and the surface sweeps.
+
+The rest are owned by nothing, and three groups stand out. **All three in
+`parse.allium`** -- what THEN commits to, what a word holding a foreign position
+names, and how far backtracking goes -- because no goal covers PARSE. **All five
+in `embed.allium`**: how often the evaluator checks whether to stop, whether
+there is a memory bound as well as a time bound, what a host sees of a script's
+progress, and the two about a started program's streams. And the standing design
+questions in `natives.allium`: where SECURE's boundary sits, whether a `struct!`
+is ever more than its layout, which verbs reach a port's actor, and whether
+values may cross between interpreter instances.
+
+Those want a pass of their own rather than a line here, and it is not one of the
+goals above.
 
 ---
 
