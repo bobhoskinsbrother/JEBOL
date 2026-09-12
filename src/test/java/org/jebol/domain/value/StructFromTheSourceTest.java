@@ -10,39 +10,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The {@code struct!} datatype, from {@code t-struct.c}.
- *
- * <p>A struct is three things: a layout saying what the bytes mean, a run of
- * bytes, and an offset into them. Everything that looks surprising follows
- * from the bytes being shared. A field of struct type answers a value at a
- * further offset in the same bytes, so {@code s/pos/x: 22} reaches the
- * parent; an element taken out of an array of structs keeps seeing what the
- * parent writes afterwards.
- *
- * <p>Fields are packed with no alignment padding at all -- the C accumulates
- * {@code size * dimension} into a running offset and never rounds it up -- so
- * a {@code uint16!} followed by a two-byte struct is four bytes and not six.
- *
- * <p>Two asymmetries are worth naming because neither is a mistake. Reading
- * an array field through a path gives a vector for the numeric types and a
- * block for the rest, while reflecting the same field gives a block either
- * way, because {@code Get_Struct_Field_Value} and {@code Get_Struct_Reflect}
- * build different things from the same bytes. And reflection tests
- * {@code dimension > 1} where the reader tests whether a count was written at
- * all, so {@code [uint8! [1]]} reflects as a bare number and reads as a
- * vector of one.
- *
- * <p>Every expectation here was run against a Rebol built by
- * {@code scripts/build-r3.sh} before it was written down.
- */
 class StructFromTheSourceTest {
 
-    /**
-     * What JEBOL answers, with the quotes MOLD's own result arrives in taken
-     * off. Everything here asks for a molded form, and displaying a string
-     * molds it a second time.
-     */
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn(source);

@@ -32,11 +32,11 @@ or in none. Every number below was checked on 2026-09-12 by running it.
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
 | `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
-| `known-gaps.txt` | **173 fail**, and they are goals 2 to 7 below |
+| `known-gaps.txt` | **173 fail**, and they are goals 1 to 6 below |
 | `fails-on-rebol-too.txt` | 156 a real 3.22.5 also fails or never runs |
 | `scripts/error-parity.py` | **81 of Rebol's 142 error ids can be raised. 61 cannot** |
 
-`./gradlew check` is 17,862 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 17,870 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception. `./gradlew browserCheck` is
 the second gate and is not optional; it renders the same paint list in Java2D
 and in a real Chrome and compares them pixel for pixel.
@@ -47,7 +47,7 @@ out to be assertions a real 3.22.5 does not pass here either -- nine guarded on
 Windows or on Linux's `/proc`, and two with stale expected checksums. Those
 eleven moved to `fails-on-rebol-too.txt` with the measurement beside each.
 
-The 173 are broken into goals 2 to 7 below. The rest own no entries: they are
+The 173 are broken into goals 1 to 6 below. The rest own no entries: they are
 equivalence the suite cannot see, the two security goals, and the engineering
 and tooling work.
 
@@ -175,7 +175,7 @@ ratchet could reach them, and the reasons went stale without anything to
 notice: they had been settled against a 3.22.1 binary, and 24 of the 33 pass
 here now.
 
-Goal 18 emptied it and the directory is gone. **A vendored file is a copy of
+The suite-selection work emptied it and the directory is gone. **A vendored file is a copy of
 Rebol's and nothing else** — `everyVendoredFileIsUnchanged` fails on any
 difference, and `noTestHasLostItsAssertions` catches the shape a cut assertion
 leaves even without Rebol's checkout present. An assertion that should not be
@@ -186,9 +186,10 @@ graded goes in one of the two lists above, where the ratchet can see it.
 The suite is scaffolding and will be deleted when it goes green. A behaviour
 fixed because of a suite assertion gets a test in `src/test/java` that stands
 on its own: builds an interpreter, asserts on JEBOL, reads no `.r3` file.
-Name it `*FromTheSourceTest`. Quote the C in the javadoc, and go past what the
-suite checks — that is how a wrong reading gets caught that the suite would
-have let through.
+Name it `*FromTheSourceTest`. Put the C it was read from in `docs/`, not above
+the class — a test carries no javadoc and no comment — and go past what the
+suite checks, because that is how a wrong reading gets caught that the suite
+would have let through.
 
 Every figure in such a test should have been read off `./r3-head` first. When
 a test of mine disagreed with a real Rebol it was the test that was wrong,
@@ -235,11 +236,6 @@ divergences from the C rather than gaps against it, because Rebol does not
 authenticate a server or check a fetched module either -- and the engineering
 and tooling last.
 
-**The javadoc cull is at the front regardless**, because it is not a matter of
-importance against the rest: the prose keeps accumulating while anything else
-is being worked on, and every goal below adds to it. Clear it before starting
-another.
-
 Several goals own no `known-gaps.txt` entries, which is not the same as being
 small: no assertion in Rebol's suite asks whether an error id can be raised or
 whether a certificate was checked.
@@ -255,46 +251,7 @@ and the count goes up, that is the answer, so write it down here.
 
 ---
 
-### 1. Javadoc where a name would do
-
-**Every javadoc on something a caller outside the package cannot reach should
-be a name instead.** `CLAUDE.md` bans code comments outright and says the itch
-to write one is the signal to extract a method, rename a variable or introduce a
-named constant. Javadoc on a private method is the same itch wearing a jacket,
-and this codebase is full of it.
-
-What stays: a public class, a public method, an interface, an enum -- anything a
-caller outside the package reaches for, where the documentation is the contract
-and a name cannot carry it.
-
-What goes: the rest. Read each one and ask what it is doing. Most of them are
-one of three things:
-
-- **Naming the method again in a sentence.** Delete it; the name already says it.
-- **Explaining a step inside the body.** Extract that step into a method whose
-  name is the sentence, and the comment disappears with it.
-- **Carrying a fact about the C that the name cannot.** That one is real and
-  does not belong beside the code either -- it belongs in `docs/`, or in the
-  spec under the rule it is evidence for, or in the commit that made the
-  change. A reader who needs to know why `Form_Hex_Pad` pads from the left is
-  not reading a private helper to find out.
-
-**Do it a file at a time and let the gate hold the line.** Nothing about
-behaviour changes, so any test that moves is a test that was depending on
-something it should not have been.
-
-Worth deciding first, because it governs how much comes out: whether a
-`*FromTheSourceTest` class javadoc counts as public. The argument that it does
-is that it is the only place the C's reasoning is written down beside a
-runnable check of it, and those have earned their keep repeatedly -- every one
-of them names the line of C it was read from. The argument that it does not is
-that a test class is not an interface either. **Settle that before starting**,
-because on the first reading most of the surviving prose in this port lives in
-exactly those classes.
-
----
-
-### 2. The checksum port -- 34
+### 1. The checksum port -- 34
 
 `checksum-test.r3` has one stop, and it is environment-dependent:
 `file-checksum system/options/boot` — the boot path is outside the sandbox
@@ -321,7 +278,7 @@ Run it three times.
 
 ---
 
-### 3. ENBASE, DEBASE and their parts -- 29
+### 2. ENBASE, DEBASE and their parts -- 29
 
 `enbase-test.r3`. One stop — `load` of bytes that are not valid UTF-8,
 `#{B7D3}` — and then wrong answers.
@@ -339,7 +296,7 @@ lets a URL-safe group end short); the encoder does not.
 
 ---
 
-### 4. The elliptic curves -- 27
+### 3. The elliptic curves -- 27
 
 `dh-test.r3` stops at
 
@@ -375,7 +332,7 @@ build without a curve.
 
 ---
 
-### 5. Modules and IMPORT -- 12
+### 4. Modules and IMPORT -- 12
 
 `module-test.r3` stopped nine times, and every one came back to
 `system/options/modules` being none.
@@ -433,7 +390,7 @@ that got further than before:
 
 ---
 
-### 6. The PDF encoder hangs where the C takes a millisecond -- 9
+### 5. The PDF encoder hangs where the C takes a millisecond -- 9
 
 **Measured on 12 September 2026, and it is not what this goal said.** PDF *is*
 implemented: `codec-pdf.reb` is Rebol's own REBOL, vendored and loaded like
@@ -486,7 +443,7 @@ does not bring. That stays true. Somebody who wants more than the borrowed
 codec gives adds the library and a bridge to it themselves, and with neither
 present nothing registers and nothing is attempted.
 
-### 7. The scattered singles and pairs -- 31 across fourteen files
+### 6. The scattered singles and pairs -- 31 across fourteen files
 
 What is left when the others above are taken out:
 
@@ -507,11 +464,12 @@ cold, because each one is small enough to hold in your head whole.
     task-test.r3   to task! [...]   -> cannot use to task! on block!
 
 `task!` is a datatype word here without a datatype behind it, which is recorded
-in goal 18 below and is a larger decision than four assertions warrant on its own.
+under the loose ends below and is a larger decision than four assertions warrant
+on its own.
 
 ---
 
-### 8. The error catalogue: 61 ids cannot be raised
+### 7. The error catalogue: 61 ids cannot be raised
 
 `too-long` is one of Rebol's error ids and JEBOL simply did not have it. That
 was found by needing it, which is no way to find things, so the whole catalogue
@@ -540,7 +498,7 @@ remembered.
 
 ---
 
-### 9. What reaching zero would not prove
+### 8. What reaching zero would not prove
 
 None of this is on `known-gaps.txt` and none of it can be, because the suite
 tests what functions **return** and these are all about what functions **say
@@ -626,7 +584,7 @@ whether the change worked.
 
 ---
 
-### 10. What the suite does not ask
+### 9. What the suite does not ask
 
 **The suite is the measure, and it is not the whole surface.** Running all 930
 combinations of MAKE and TO against fifteen target types and thirty-one source
@@ -735,7 +693,7 @@ found two things that four separate readings of the C had not. See
 
 ---
 
-### 11. The 32 prelude forks
+### 10. The 32 prelude forks
 
 `prelude.reb` defines 36 words and Rebol defines 32 of them in `src/mezz` too:
 
@@ -751,7 +709,7 @@ the same function, and if not, why was it forked?
 
 ---
 
-### 12. Loose ends
+### 11. Loose ends
 
 **`task!` is a datatype word and not yet a datatype.** `task!` answers
 `#(datatype!)` on both, but `make task! [1 + 1]` gives `#(task!)` on a real
@@ -779,7 +737,7 @@ ask. `pid` works.
 
 ---
 
-### 13. Graphics -- fourteen DRAW commands
+### 12. Graphics -- fourteen DRAW commands
 
 **DRAW renders 22 of R3's 36 commands.** The fourteen it does not:
 
@@ -795,7 +753,7 @@ path, VID, Android, and the events-name-the-wrong-window one.
 
 ---
 
-### 14. Code from outside is not authenticated -- the TLS client
+### 13. Code from outside is not authenticated -- the TLS client
 
 **Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
 failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
@@ -866,7 +824,7 @@ does not control should know that before it does.
 
 ---
 
-### 15. Code from outside is not verified -- no checksum on a fetched module
+### 14. Code from outside is not verified -- no checksum on a fetched module
 
 **Nothing crosses the wire today**, which is why this is a goal rather than a
 live hole: the thirteen modules this build has no other way to reach are bundled
@@ -904,7 +862,7 @@ A bundled module is a different and much weaker case: it cannot change under a
 running system, so a digest there guards a corrupted build rather than an
 attacker. Worth having, not urgent.
 
-**Goal 1 is the other half of this.** A checksum answers "is this the code I
+**The TLS client goal is the other half of this.** A checksum answers "is this the code I
 expected"; authenticating the server answers "am I even talking to who I think".
 Neither is being asked, and a fetch wants both.
 
@@ -914,7 +872,7 @@ wants that more than it wants either check.
 
 ---
 
-### 16. The type-major refactor
+### 15. The type-major refactor
 
 **The original complaint, and much the largest piece left.** One `t-*.c` per
 increment, bitset as the pilot.
@@ -926,7 +884,7 @@ enumerate every arm that needed work. That is what the action seam wants.
 
 ---
 
-### 17. The boot -- 343ms cold, 72ms warm
+### 16. The boot -- 343ms cold, 72ms warm
 
 **343ms for the first interpreter, 72ms once the JVM has settled.** A
 7900-test run pays the 72ms per class, and that is the floor rather than the
@@ -937,7 +895,7 @@ already in that allocation path, and it costs about 2ms of the 72.
 
 ---
 
-### 18. LLM-friendly MCP tools
+### 17. LLM-friendly MCP tools
 
 **The reader will only ever be an LLM, and that decides the design.** A model
 does not misunderstand, it infers confidently from training data that is mostly

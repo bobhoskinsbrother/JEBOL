@@ -2,27 +2,6 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * Brotli at quality one, which reads the input twice.
- *
- * <p>{@code compress_fragment_two_pass.c}. The first pass finds the matches
- * and puts the commands and the literal bytes in two buffers of their own; the
- * second builds prefix codes from what those buffers actually contain and
- * writes them out. Quality zero cannot do that -- it writes as it goes, so its
- * literal code has to be guessed from the input before any matching -- and the
- * whole difference between the two settings is that guess.
- *
- * <p>It also looks for longer matches on bigger inputs. The match table is up
- * to a hundred and thirty thousand entries against quality zero's thirty-two
- * thousand, and once the table is wider than fifteen bits the shortest match
- * worth taking goes from four bytes to six.
- *
- * <p>A command is packed into one number: the low eight bits are the symbol
- * and the rest are its extra bits. The symbols are not the ones the format
- * uses -- they are sixty-four of its seven hundred and four, in an order that
- * suits the emitting code -- so the depths are shuffled into place before the
- * code is stored, and the shuffle is not the same one quality zero uses.
- */
 final class BrotliTwoPassEncoder {
 
     private BrotliTwoPassEncoder() {
@@ -34,9 +13,8 @@ final class BrotliTwoPassEncoder {
     private static final int INPUT_MARGIN_BYTES = 16;
     private static final long HASH_MULTIPLIER = 0x1E35A7BDL;
 
-    /** Two per cent is what the C is willing to lose to skip a hopeless block. */
-    private static final double MIN_RATIO = 0.98;
-    private static final int SAMPLE_RATE = 43;
+    private static final double LITERALS_PER_BYTE_BELOW_WHICH_MATCHES_PAID = 0.98;
+    private static final int ONE_BYTE_IN_THIS_MANY_IS_SAMPLED = 43;
 
     private static final int[] EXTRA_BITS = {
             0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
@@ -54,7 +32,6 @@ final class BrotliTwoPassEncoder {
             34, 50, 66, 98, 130, 194, 322, 578, 1090, 2114, 6210, 22594,
     };
 
-    /** Writes one window's worth into the stream the caller is building. */
     static void writeOneFragment(byte[] source, int at, int size,
             boolean isLast, BrotliBits into) {
 
@@ -88,11 +65,6 @@ final class BrotliTwoPassEncoder {
             this.writer = writer;
         }
 
-        /**
-         * {@code BrotliCompressFragmentTwoPass}, including its last act: if
-         * what came out is longer than the same bytes stored plainly would
-         * have been, throw it away and store them.
-         */
         private void writeFragment(int at, int size, boolean isLast) {
             int openedAt = writer.at();
             prepareTable(size);
@@ -122,15 +94,6 @@ final class BrotliTwoPassEncoder {
             }
         }
 
-        /**
-         * How wide the match table is, and therefore how long a match has to
-         * be to be worth taking.
-         *
-         * <p>{@code HashTableSize}, without the odd-widths-only rule quality
-         * zero has. Above fifteen bits the table indexes six bytes rather than
-         * four, which is what makes this setting find longer matches on longer
-         * input and none at all on input too short to fill a wide table.
-         */
         private void prepareTable(int size) {
             int wide = 256;
             while (wide < MAX_TABLE_SIZE && wide < size) {
@@ -196,7 +159,6 @@ final class BrotliTwoPassEncoder {
             return matched;
         }
 
-        /** The first pass: matches into {@link #commands}, bytes into {@link #literals}. */
         private void createCommands(int baseAt, int from, int blockSize, int fragmentEnd) {
             commandCount = 0;
             literalCount = 0;
@@ -257,7 +219,9 @@ final class BrotliTwoPassEncoder {
                         nextEmit = emitRemainder(nextEmit, end);
                         return;
                     }
-                    candidate = baseAt + rehashAfterAnInsert(at, baseAt);
+                    candidate = baseAt
+                            + rehashAfterAnInsertFilingTheThirdPositionUnderTheFirstsHash(
+                                    at, baseAt);
 
                     while (at - candidate <= MAX_DISTANCE && isMatch(at, candidate)) {
                         base = at;
@@ -291,25 +255,9 @@ final class BrotliTwoPassEncoder {
             return end;
         }
 
-        /**
-         * Puts the positions just before {@code at} into the table and answers
-         * the candidate for {@code at} itself.
-         *
-         * <p>Five of them when a match is six bytes and three when it is four,
-         * because a wider hash needs more of the copy behind it before the
-         * next position can be looked up.
-         *
-         * <p>The C does this at two places and the two are not the same. After
-         * a match that followed some literals it hashes offsets nought, one and
-         * <em>nought again</em>, so the third position is filed under the first
-         * one's hash; after a match that followed another match it hashes
-         * nought, one and two. It reads like a slip and it is one, but it is a
-         * slip that decides which candidate the next position finds, so it is
-         * part of what a real 3.22.5 writes and it is reproduced rather than
-         * tidied. Only the four-byte case differs; the six-byte one is the same
-         * at both places.
-         */
-        private int rehashAfterAnInsert(int at, int baseAt) {
+        /** The repeated nought is the C's, and correcting it changes the bytes. */
+        private int rehashAfterAnInsertFilingTheThirdPositionUnderTheFirstsHash(
+                int at, int baseAt) {
             if (minMatch != 4) {
                 return rehashSixBytes(at, baseAt);
             }
@@ -446,27 +394,27 @@ final class BrotliTwoPassEncoder {
             writer.writeBytes(input, at, size);
         }
 
-        /**
-         * Whether the matches found were worth the prefix codes.
-         *
-         * <p>{@code ShouldCompress}. If the matches covered even two per cent
-         * of the block it is worth it outright; otherwise the block is sampled
-         * one byte in forty-three and kept only if those bytes carry less than
-         * eight bits of surprise each.
-         */
         private boolean worthCompressing(int at, int size) {
-            if ((double) literalCount < MIN_RATIO * (double) size) {
+            if (theMatchesCoveredEnoughToPayOutright(size)) {
                 return true;
             }
-            double mostItCouldCost = (double) size * 8 * MIN_RATIO / SAMPLE_RATE;
+            double mostTheSampledBytesMayCost = (double) size * 8
+                    * LITERALS_PER_BYTE_BELOW_WHICH_MATCHES_PAID
+                    / ONE_BYTE_IN_THIS_MANY_IS_SAMPLED;
             Arrays.fill(literalHistogram, 0);
-            for (int each = 0; each < size; each += SAMPLE_RATE) {
+            for (int each = 0; each < size;
+                    each += ONE_BYTE_IN_THIS_MANY_IS_SAMPLED) {
                 literalHistogram[input[at + each] & 0xFF]++;
             }
-            return BrotliCodes.bitsEntropy(literalHistogram, 256) < mostItCouldCost;
+            return BrotliCodes.bitsEntropyFlooredAtOneBitPerLiteral(literalHistogram, 256)
+                    < mostTheSampledBytesMayCost;
         }
 
-        /** The second pass: the codes, then everything the first pass found. */
+        private boolean theMatchesCoveredEnoughToPayOutright(int size) {
+            return (double) literalCount
+                    < LITERALS_PER_BYTE_BELOW_WHICH_MATCHES_PAID * (double) size;
+        }
+
         private void storeCommands() {
             Arrays.fill(literalHistogram, 0);
             Arrays.fill(commandDepth, 0);
@@ -504,21 +452,14 @@ final class BrotliTwoPassEncoder {
             }
         }
 
-        /**
-         * The command and distance codes, shuffled into the full alphabet.
-         *
-         * <p>The sixty-four symbols this encoder uses are sixty-four of the
-         * format's seven hundred and four, in an order that suits the emitting
-         * code rather than the format. The shuffle is not the one quality zero
-         * uses, because the two settings number their commands differently:
-         * here the insert lengths come first and there they come last.
-         */
         private void buildAndStoreCommandPrefixCode() {
             int[] spreadDepth = new int[BrotliCodes.COMMAND_SYMBOLS];
             int[] spreadBits = new int[64];
 
-            tree.build(commandHistogram, 0, 64, 15, commandDepth, 0);
-            tree.build(commandHistogram, 64, 64, 14, commandDepth, 64);
+            tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+                    commandHistogram, 0, 64, 15, commandDepth, 0);
+            tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+                    commandHistogram, 64, 64, 14, commandDepth, 64);
 
             System.arraycopy(commandDepth, 24, spreadDepth, 0, 24);
             System.arraycopy(commandDepth, 0, spreadDepth, 24, 8);

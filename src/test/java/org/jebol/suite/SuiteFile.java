@@ -11,32 +11,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * One of Rebol's own test scripts, read into the assertions it makes.
- *
- * <p>The scripts are ordinary REBOL, so nothing here parses REBOL: the
- * reader does that, and this walks the values it produced. The six words
- * the test dialect uses ({@code ~~~start-file~~~}, {@code ===start-group===}
- * and so on) are the only ones treated specially, and everything between
- * two of them is either an assertion or setup.
- *
- * <p>Assertions are sliced syntactically rather than by DO/NEXT, which is
- * sound for this suite because it writes one expression per {@code --assert}
- * and never two. Each slice is molded back to source and run on its own, so
- * one failure cannot take the rest of the file with it.
- */
 record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
 
-    /**
-     * One thing to run, in file order.
-     *
-     * <p>A test file is a script, not a list of independent expressions:
-     * assertions lean on words set up above them, sometimes many lines
-     * above. Running each assertion in a fresh interpreter loses that, and
-     * it showed up as roughly four hundred failures on words called a, b,
-     * i and obj -- which is the shape of a harness bug rather than of a
-     * language one.
-     */
     record Step(Assertion assertion, String setup, List<Assertion> nested,
             String numberedSetup) {
 
@@ -52,14 +28,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             return assertion != null;
         }
 
-        /**
-         * The source to run: the source as written, with each nested
-         * {@code --assert} told which assertion it is.
-         *
-         * <p>Falls back to the source exactly as written wherever the
-         * numbering could not be shown to mean the same thing, which costs
-         * the exactness and keeps the step.
-         */
         String sourceToRun() {
             return numberedSetup == null
                     ? (assertion != null ? assertion.source() : setup)
@@ -67,15 +35,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         }
     }
 
-    /**
-     * One {@code --assert}, with enough context to say where it came from.
-     *
-     * @param from  where the assertion begins in its file, counted in code
-     *              points, so that whatever wants to cut it out again cuts
-     *              in the right place. The {@code --assert} word itself is
-     *              not included: this is the expression it asserts.
-     * @param to    one past where it ends
-     */
     record Assertion(String file, String group, String test, int ordinal, String source,
             int from, int to, boolean redOnly) {
 
@@ -84,15 +43,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             this(file, group, test, ordinal, source, from, to, false);
         }
 
-        /**
-         * Unique within its file, because the ordinal counts assertions
-         * across the whole file rather than within a test.
-         *
-         * <p>Numbering within a test looked tidier and produced duplicate
-         * ids wherever two tests shared a name, which made a gap list
-         * unusable: one assertion under a shared id passed while another
-         * failed.
-         */
         @Override
         public String toString() {
             return file + " / " + group + " / " + test + " #" + ordinal;
@@ -106,15 +56,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
     private static final String TEST = "--test--";
     private static final String ASSERT = "--assert";
 
-    /**
-     * Rebol's mark for an assertion that describes Red rather than Rebol.
-     *
-     * <p>{@code quick-test-module.r3} binds it to {@code as-red-only}, and a
-     * failing assertion under the flag is reported as "not like Red" instead of
-     * being counted a failure. It is a harness word here so the mark reaches
-     * the assertion; left as an ordinary word it was swept into the setup and
-     * lost, and eight assertions that a real Rebol fails were graded as gaps.
-     */
     private static final String RED_ONLY = "--red--";
 
     private static boolean isHarnessWord(Value value) {
@@ -126,35 +67,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
     }
 
 
-    /** What a nested {@code --assert} becomes, so its report carries its number. */
     static final String NUMBERED_ASSERT = "--assert-numbered";
 
-    /**
-     * The source as written, with each nested {@code --assert} told which
-     * assertion it is.
-     *
-     * <p>An assertion inside a block cannot be sliced out and run on its own,
-     * so the enclosing expression runs and each {@code --assert} inside
-     * reports as it goes. Reporting only whether it held means the reports
-     * have to be matched to the assertions by counting, and counting is wrong
-     * twice over: a function defined in one step and called in another
-     * reports where it ran rather than where it was written, and a loop
-     * reports three assertions a hundred times. Carrying the number makes
-     * both exact.
-     *
-     * <p>The number goes into the text rather than into a molded copy of the
-     * values. Molding would put the port's own MOLD between the suite and
-     * what the suite actually runs -- the measure would depend on a part of
-     * the thing being measured, and a mold that broke would quietly change
-     * the tests rather than fail. The reader is already unavoidable here,
-     * since nothing can slice the file without reading it; MOLD is not, so it
-     * stays out.
-     *
-     * <p>Scanning text for a word is a guess, so the result is checked
-     * against the source it came from: read both, walk them together, and
-     * every value must be the same except the numbered ones. A step that
-     * fails that check keeps the source it was written with.
-     */
     private static String numberedSource(String written, int firstOrdinal) {
         StringBuilder out = new StringBuilder();
         int ordinal = firstOrdinal;
@@ -233,10 +147,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return 1;
     }
 
-    /**
-     * Whether the numbered source reads as the source it came from, allowing
-     * for the numbers.
-     */
     private static boolean saysTheSameThing(
             String written, String numbered, int firstOrdinal) {
 
@@ -280,16 +190,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return here == after.size();
     }
 
-    /**
-     * How many {@code --assert} words a run of values holds inside blocks.
-     *
-     * <p>The slicer takes top-level values, so an assertion written inside a
-     * FOREACH or an IF was never anybody's step: not sliced, not run, not
-     * counted. Thirty-seven of Rebol's files put assertions there, and
-     * crypt-port-camelia-test.r3 puts all four of its inside two nested
-     * loops, so it reported zero of four while a real Rebol ran them two
-     * thousand times.
-     */
     private static int assertionsNestedIn(List<Value> values) {
         int found = 0;
         for (Value value : values) {
@@ -348,18 +248,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return new SuiteFile(name, List.copyOf(everyOne), steps);
     }
 
-    /**
-     * As much of a file as the reader can take in.
-     *
-     * <p>Walks forward rather than bisecting. Bisection needs the question
-     * "does this prefix read" to stay false once it turns false, and it does
-     * not: a prefix cut in the middle of a multi-line block fails for the
-     * missing bracket rather than for anything wrong, and a longer prefix
-     * that closes the block reads again. Bisecting that predicate stops at
-     * the first open bracket it lands on -- it cost error-test.r3 thirteen
-     * assertions the reader could already have had, and it named line 14 of
-     * copy-test.r3 as the stop when the refusal is on line 30.
-     */
     private static String longestReadablePrefix(String source) {
         List<String> lines = source.lines().toList();
         int readable = 0;
@@ -433,10 +321,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return List.copyOf(found);
     }
 
-    /**
-     * The {@code Rebol [...]} header is data, not code, and evaluating it
-     * would call whatever REBOL is bound to.
-     */
     private static int skipScriptHeader(List<Value> values) {
         if (values.size() >= 2
                 && values.get(0) instanceof WordValue word
@@ -448,23 +332,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
     }
 
 
-    /**
-     * Turns a run of setup into steps, one per expression it was written as.
-     *
-     * <p>Left whole, one raise takes the rest of the run with it, and a run is
-     * everything up to the next *top-level* dialect word. codecs-test.r3 is a
-     * sequence of {@code if find codecs 'wav [...]},
-     * {@code if find codecs 'der [...]}, {@code if find codecs 'crt [...]}
-     * whose dialect words are all nested inside those blocks, so the whole
-     * tail of the file was one step: the DER codec raising took the WAV, CRT
-     * and SWF groups with it, and 187 assertions were recorded as failures of
-     * the port when they had never been asked.
-     *
-     * <p>Every place that built a setup step used to write these six lines out
-     * again, and the first attempt at cutting changed only one of the three.
-     * The one it missed was the one that mattered -- {@code ===end-group===}
-     * falls to the default arm, and what follows it is the tail of the file.
-     */
     private static int addSetupSteps(List<Step> found, String file, String group,
             String test, int ordinal, String source, List<Value> values,
             List<Transcoder.SourceSpan> spans, int from, int count) {
@@ -485,31 +352,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return ordinal;
     }
 
-    /**
-     * A run of setup, cut into the separate expressions it was written as.
-     *
-     * <p>The cut is where a word begins a line, because that is how these
-     * files are written and because nothing here knows REBOL's arity well
-     * enough to find an expression boundary properly.
-     *
-     * <p>Only a *word* may open one. Cutting at any value that begins a line
-     * splits {@code switch-fun: func [/local i][} from its body block
-     * whenever the bracket starts a line, and both halves read perfectly well
-     * on their own: one is a function of one argument, the other is a block.
-     * Reading is not the same as meaning the same thing, and 32 assertions
-     * that had been passing said so.
-     *
-     * <p>The position arrives counted in code points, as every offset the
-     * reader hands out does. Indexing the source in Java's sixteen-bit units
-     * instead put every position after the file's first emoji in the middle
-     * of some other line, so the cut never fired and left no trace of not
-     * having fired.
-     *
-     * <p>It is still a guess, so every piece has to read on its own and a run
-     * with a piece that does not is left exactly as it was.
-     *
-     * @return {@code {from, count\}} pairs into the value list
-     */
     private static List<int[]> expressionsIn(String source, List<Value> values,
             List<Transcoder.SourceSpan> spans, int from, int count) {
 
@@ -539,7 +381,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                 : whole;
     }
 
-    /** Whether only whitespace stands between the start of the line and here. */
     private static boolean beginsALine(String source, int codePointsIn) {
         int at = source.offsetByCodePoints(0, codePointsIn);
         for (int back = at - 1; back >= 0; back--) {
@@ -574,16 +415,6 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return values.isEmpty() ? fallback : Molder.form(values.get(0));
     }
 
-    /**
-     * The source text of a run of top-level expressions, as written.
-     *
-     * <p>This used to mold the values back into source, which is lossy in
-     * REBOL and equally lossy in R3: molding
-     * {@code 1.7976931348623157e308} gives fifteen digits, and reading
-     * that back gives {@code 1.#INF}. Sixteen assertions were being run
-     * in a form the file never contained, and a measuring tool built on
-     * this then reported that R3 fails its own tests.
-     */
     private static int beginningOf(List<Transcoder.SourceSpan> spans, int at) {
         return at < spans.size() ? spans.get(at).from() : 0;
     }

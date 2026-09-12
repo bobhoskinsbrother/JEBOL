@@ -6,23 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * How MOLD lays out a long run of bytes, from {@code Mold_Binary} and
- * {@code Mold_Image_Data}.
- *
- * <p>Both break the digits into lines once there are enough of them, so a
- * binary long enough to matter arrives as an even block instead of one line
- * running off the screen. A binary takes thirty-two bytes to a line and an
- * image ten pixels, and each stays flat below its own threshold.
- *
- * <p>MOLD only. FORM writes the digits bare and unbroken, because FIND forms
- * its needle before looking for it and a newline through the middle would stop
- * it matching.
- *
- * <p>Asserted through REBOL rather than on the molded text itself, because the
- * answers are strings holding newlines and comparing them in Java would mean
- * escaping the very characters under test.
- */
 class MoldedBytesFromTheSourceTest {
 
     private static String answerTo(String source) {

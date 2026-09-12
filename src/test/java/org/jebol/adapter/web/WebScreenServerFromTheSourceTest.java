@@ -14,25 +14,6 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The page, served over the JDK's own HTTP server.
- *
- * <p>Driven with a real client over a real socket, because the thing worth
- * testing here is the crossing rather than the objects on either side of it.
- * The client is {@code java.net.http}, which is in the JDK, so this needs
- * nothing the project has not already got.
- *
- * <p>Server-sent events are why this is a long-lived GET rather than a socket
- * upgrade: a browser has needed nothing extra for it in a decade, and it keeps
- * the whole transport inside a class library the project already depends on.
- *
- * <p>What is not tested here and is said rather than hidden: no browser runs.
- * The script in {@code WebScreenPage} executes a paint list and nothing here
- * proves it does. What is proved is that the list crosses whole, that events
- * come back, and that a page nobody has opened is a screen that is not there.
- *
- * <p>Specified in {@code spec/screen.allium}.
- */
 class WebScreenServerFromTheSourceTest {
 
     private WebScreenServer serving;
@@ -48,7 +29,6 @@ class WebScreenServerFromTheSourceTest {
                 .connectTimeout(Duration.ofSeconds(5)).build();
     }
 
-    /** The stream a browser keeps open, closed when the test finishes. */
     private java.io.InputStream pictureStream;
 
     @AfterEach
@@ -59,27 +39,16 @@ class WebScreenServerFromTheSourceTest {
         serving.close();
     }
 
-    /** As though somebody had opened the page and left it open. */
     private void aBrowserOpensThePage() throws Exception {
         pictureStream = openThePictureStream();
     }
 
-    /** The same, having also said how big it is. */
     private void aBrowserOpensThePage(int wide, int high) throws Exception {
         aBrowserOpensThePage();
         post("event", """
                 {"kind":"measure","wide":%d,"high":%d}""".formatted(wide, high));
     }
 
-    /**
-     * Reads until a whole picture has arrived.
-     *
-     * <p>Until the message ends rather than until a byte count, because a
-     * count that guessed too high waits for bytes that will never come and
-     * the test hangs instead of failing. The stream also carries a comment
-     * when it opens, so the end is looked for after the picture starts rather
-     * than anywhere.
-     */
     private String theNextPicture() throws IOException {
         StringBuilder message = new StringBuilder();
         while (true) {
@@ -108,15 +77,6 @@ class WebScreenServerFromTheSourceTest {
                 HttpResponse.BodyHandlers.ofString());
     }
 
-    /**
-     * The status a post came back with, and the whole answer where it fails.
-     *
-     * <p>The body is read rather than discarded so that a status nobody
-     * expected arrives with the server's own explanation attached. This test
-     * failed once with 404 under a full parallel run and passed on its own
-     * every time after, and a bare number said nothing about which server had
-     * answered or why.
-     */
     private int post(String path, String body) throws Exception {
         URI where = URI.create(serving.address() + path);
         HttpResponse<String> answer = client.send(
@@ -128,10 +88,8 @@ class WebScreenServerFromTheSourceTest {
         return answer.statusCode();
     }
 
-    /** What the last post came back with, for an assertion that fails. */
     private String lastPostSaid = "nothing posted yet";
 
-    /** Opens the picture stream and keeps it open, as a browser does. */
     private java.io.InputStream openThePictureStream() throws Exception {
         HttpResponse<java.io.InputStream> streaming = client.send(
                 HttpRequest.newBuilder(URI.create(serving.address() + "paint")).build(),
@@ -170,9 +128,6 @@ class WebScreenServerFromTheSourceTest {
         @DisplayName("and nothing it loads comes from anywhere else")
         @Timeout(20)
         void itLoadsNothingFromElsewhere() throws Exception {
-            // No script tag with a source, no stylesheet link, no font. The
-            // page is one file because a renderer that needed a content
-            // network would be a renderer that stops working offline.
             String page = get("").body();
 
             assertThat(page).doesNotContain("<script src");

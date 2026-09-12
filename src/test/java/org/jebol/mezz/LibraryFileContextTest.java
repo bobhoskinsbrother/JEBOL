@@ -7,32 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Which context each file of Rebol's own library defines its words in.
- *
- * <p>Read out of {@code Do_Global_Block} in {@code src/core/b-init.c}, which
- * is four lines and decides all of it:
- *
- * <pre>
- * Bind_Block(rebind &gt; 1 ? Sys_Context : Lib_Context, BLK_HEAD(block), BIND_SET);
- * if (rebind &lt; 0) Bind_Block(Sys_Context, BLK_HEAD(block), 0);
- * if (rebind &gt; 0) Bind_Block(Lib_Context, BLK_HEAD(block), BIND_DEEP);
- * if (rebind &gt; 1) Bind_Block(Sys_Context, BLK_HEAD(block), BIND_DEEP);
- * </pre>
- *
- * <p>The base files run with rebind 1 and the sys files with rebind 2, so a
- * base file adds its new words to the library and a sys file adds its to the
- * system internals. Both bind deep into the library, which is how a helper
- * calls a standard function.
- *
- * <p>JEBOL loaded every file into one context. That is not a smaller
- * interpreter, it is a wrong answer, and it cost three functions that this
- * class names one at a time. The failure is silent in every case: the word
- * still answers, it just answers something else.
- *
- * <p>Specified in {@code spec/load.allium} under "Loading Rebol's own
- * library".
- */
 class LibraryFileContextTest {
 
     private static String answerTo(String source) {

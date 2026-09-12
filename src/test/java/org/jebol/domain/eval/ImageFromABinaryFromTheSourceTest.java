@@ -7,22 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TO IMAGE! of a binary, which is four bytes a pixel laid out at a width the
- * interpreter picks rather than the caller.
- *
- * <p>MAKE IMAGE! wants a size and reads a block; TO takes bytes and has no
- * size to go on, so {@code t-image.c} chooses one: as many pixels across as
- * there are up to a hundred, a hundred to a row up to ten thousand, five
- * hundred to a row beyond that. The height follows, and the last row may be
- * short -- the pixels nobody supplied stay the opaque white a new image is
- * filled with.
- *
- * <p>Fewer than four bytes is not an empty picture but an error, and something
- * that is not a binary at all is refused by type rather than by argument,
- * because {@code Trap_Type(arg)} is the last line of the branch and
- * {@code Trap_Make} is the line above it.
- */
 class ImageFromABinaryFromTheSourceTest {
 
     private static String answerTo(String source) {

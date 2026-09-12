@@ -7,27 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What MAKE ERROR! refuses, and what ASSERT actually checks.
- *
- * <p>The catalogue is what makes an error spec valid, and it says no three
- * times. {@code Find_Error_Info} looks the type up and then the id inside it,
- * and each miss raises invalid-arg naming the word that was not found. Then a
- * third refusal names the whole spec: an error whose code is below a hundred
- * cannot be built by hand. That is the Throw category, which numbers from
- * nothing -- so a script may not manufacture a BREAK or a HALT and throw it as
- * though the interpreter had.
- *
- * <p>An error rebuilt from an object skips that third check, because the
- * object branch returns three lines before it. That is what makes the round
- * trip work: TO-OBJECT an error, change what you like, TO-ERROR it back.
- *
- * <p>ASSERT walked its block with DO and looked at the value, which is not
- * what it does: it checks every expression in turn and stops at the first
- * false one. So {@code assert [true 1 + 3 = 2 true]} passed, the last
- * expression being true. What it raises with is the block itself rather than a
- * sentence about it, so a script can read back what did not hold.
- */
 class MakeErrorAndAssertFromTheSourceTest {
 
     private static String answerTo(String source) {

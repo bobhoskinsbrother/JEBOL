@@ -6,14 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Quoted words and paths in a parse rule, from {@code src/core/u-parse.c}.
- *
- * <p>Three cases sit together in that file's value switch:
- * {@code REB_LIT_WORD}, {@code REB_LIT_PATH} and {@code SYM_QUOTE}. Each
- * exists so a rule can look for a value that would otherwise be read as a
- * rule to run.
- */
 class QuotedRulesFromTheSourceTest {
 
     private static String answerTo(String source) {

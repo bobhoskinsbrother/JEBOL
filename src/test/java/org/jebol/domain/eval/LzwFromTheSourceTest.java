@@ -7,31 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * LZW, in the variant {@code u-lzw.c} carries: David Bryant's, with a
- * recycling dictionary and adjusted-binary codes.
- *
- * <p>Two things make it unlike the textbook algorithm and both change the
- * bytes, which is why the bytes are asserted here and not only the round trip.
- *
- * <p>The codes are written in adjusted binary. A dictionary holding 257
- * strings would normally spend nine bits on every code; here the codes below a
- * threshold spend eight and only those above it spend nine, and the threshold
- * moves as the dictionary grows. The width of a code therefore depends on how
- * many strings existed when it was written, and a reader counting differently
- * would read the rest of the stream wrong.
- *
- * <p>The dictionary is never simply cleared when it fills. Entries nothing
- * longer is built on are recycled one at a time, and the encoder starts over
- * only when too few remain or when a decaying average of the compression ratio
- * says it has stopped paying.
- *
- * <p>COMPRESS/LEVEL picks the widest symbol, and the mapping reads backwards
- * until you notice how it is written: levels one to seven give nine to fifteen
- * bits, and everything else -- including level zero, which is spelled as "less
- * than one" -- gives nine or sixteen. So the narrowest and the widest sit at
- * opposite ends with the ordinary range between them.
- */
 class LzwFromTheSourceTest {
 
     private static String answerTo(String source) {

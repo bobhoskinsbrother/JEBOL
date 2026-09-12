@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * REDUCE, tested against {@code REBNATIVE(reduce)} in
- * {@code src/core/n-control.c} and the three walks it calls in
- * {@code c-do.c}.
- *
- * <p>The C's shape is: work out the values, then store them.
- * {@code Copy_Stack_Values} does the storing and is the same for every
- * branch, thus /INTO behaves the same however the values were reached.
- */
 class ReduceFromTheSourceTest {
 
     private static String answerTo(String source) {

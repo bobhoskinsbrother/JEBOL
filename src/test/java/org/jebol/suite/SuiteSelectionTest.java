@@ -18,24 +18,6 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * That the vendored suite is the whole suite, minus a list that says why.
- *
- * <p>Twenty-two of Rebol's seventy-six unit files were vendored and the other
- * fifty-four were not. Nothing was wrong with any measure: the suite passed,
- * the count was true, and the count was of the files that happened to be
- * there. A number that only describes what it was given cannot report what it
- * was not given, so the absence has to be checked separately or not at all.
- *
- * <p>Which is what this does. Rebol's own {@code run-tests.r3} names the files
- * it runs; that list is the authority. Every name on it is either vendored
- * here or written in {@code not-vendored.txt} with the reason. A file that
- * appears upstream and lands in neither place fails the build.
- *
- * <p>Only runs when the Rebol checkout is present, because that is a symlink
- * to somebody's working copy and not everybody has one. It is skipped rather
- * than silently passing, so the reason shows in the run.
- */
 class SuiteSelectionTest {
 
     private static final Path VENDORED = Path.of("src", "test", "resources", "rebol-suite");
@@ -45,7 +27,6 @@ class SuiteSelectionTest {
         return Files.exists(REBOL_TESTS.resolve("run-tests.r3"));
     }
 
-    /** The files Rebol's own runner runs, read from the runner. */
     private static Set<String> whatRebolRuns() {
         try {
             String runner = Files.readString(
@@ -141,28 +122,6 @@ class SuiteSelectionTest {
                 .isEmpty();
     }
 
-    /**
-     * Every vendored file is the upstream file, byte for byte.
-     *
-     * <p>The tests above account for whole files and stop there, and a count of
-     * files cannot report a missing line. Thirty-three assertions had been cut
-     * out of nine vendored files -- fifty-five lines gone and none added -- and
-     * nothing in the build could see it: {@code SuiteCoverageTest} counts the
-     * vendored text against itself and reported every assertion present, which
-     * was true of the text it was given.
-     *
-     * <p>They were cut for reasons written down at the time and kept in a
-     * directory beside the suite, and the reasons went stale without anything
-     * to notice. Three of the thirty-three were live failures of this port,
-     * excluded on the grounds that they needed files that had since been
-     * vendored; twenty-four had been excluded as needing functions that the
-     * Rebol now being measured against has.
-     *
-     * <p>So the rule is now that a vendored file is a copy and nothing else. A
-     * difference of any kind fails here, and an assertion that should not be
-     * graded is named in a list where the ratchet can reach it, rather than
-     * removed from the file where nothing can.
-     */
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("every vendored file is the upstream file, byte for byte")
@@ -181,14 +140,6 @@ class SuiteSelectionTest {
                 .isEmpty();
     }
 
-    /**
-     * The modules the run puts on disk are Rebol's own, byte for byte.
-     *
-     * <p>IMPORT would otherwise fetch each from {@code src.rebol.tech} and
-     * evaluate what came back. Bundling them removes that, and this is what
-     * stops a copy quietly becoming something Rebol does not publish -- the
-     * same rule the vendored test files are held to, for the same reason.
-     */
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("and every bundled module is Rebol's own module")
@@ -223,15 +174,6 @@ class SuiteSelectionTest {
         }
     }
 
-    /**
-     * Tests Rebol itself leaves empty, which are not a symptom of anything.
-     *
-     * <p>Each has its assertions commented out upstream with a note saying why
-     * -- "Not supported anymore!", "need to decide, which result is correct" --
-     * so they are Rebol's own unfinished business rather than something lost in
-     * the vendoring. Named rather than pattern-matched, so that a tenth one
-     * appearing is a thing somebody has to look at.
-     */
     private static final Set<String> EMPTY_UPSTREAM_TOO = Set.of(
             "pair-test.r3 / pmul-3",
             "pair-test.r3 / pmul-4",
@@ -240,16 +182,6 @@ class SuiteSelectionTest {
             "vector-test.r3 / Compact construction syntax (empty)",
             "vector-test.r3 / Compact construction syntax (size)");
 
-    /**
-     * No test in the suite has lost the assertions it was written to make.
-     *
-     * <p>The byte comparison above needs Rebol's checkout to be present, and it
-     * is a gitignored symlink. This asks a weaker question that needs nothing
-     * but the vendored files, and it would have caught the same thirty-three:
-     * cutting an assertion out leaves its {@code --test--} header standing, so
-     * {@code pair-test.r3} carried nine test names and no assertions under any
-     * of them.
-     */
     @Test
     @DisplayName("no test has lost the assertions written under it")
     void noTestHasLostItsAssertions() {
@@ -265,18 +197,6 @@ class SuiteSelectionTest {
                 .isEmpty();
     }
 
-    /**
-     * Tests with no {@code --assert} written anywhere between them and the next
-     * dialect word.
-     *
-     * <p>Read from the text rather than from the slicer, on purpose. The slicer
-     * gives an assertion the last <em>top-level</em> test name, so an assertion
-     * inside an {@code if} block is attributed to a name written above the
-     * block, and asking it which tests own assertions calls forty innocent
-     * tests empty. The text cannot be confused that way: what a cut assertion
-     * leaves behind is a {@code --test--} line with the next dialect word
-     * directly after it, and that is all this looks for.
-     */
     private static Set<String> testsAssertingNothingIn(SuiteFile file) {
         Set<String> hollow = new TreeSet<>();
         List<String> lines = readAll(VENDORED.resolve(file.name())).lines().toList();

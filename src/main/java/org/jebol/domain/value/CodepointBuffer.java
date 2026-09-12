@@ -2,14 +2,6 @@ package org.jebol.domain.value;
 
 import java.util.Arrays;
 
-/**
- * A growable sequence of Unicode codepoints.
- *
- * <p>REBOL strings are mutable series indexed by character with constant-time
- * access. {@link String} is immutable and indexed by UTF-16 code unit, so
- * {@code "a😀b".charAt(1)} is half an emoji. Neither property is negotiable
- * for a {@code string!}, so the storage is codepoints and this is it.
- */
 final class CodepointBuffer {
 
     private static final int INITIAL_CAPACITY = 16;

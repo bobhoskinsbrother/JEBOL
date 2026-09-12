@@ -14,19 +14,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * How much of Rebol's own library JEBOL can simply run.
- *
- * <p>Two thirds of Rebol's standard library is written in REBOL. If the
- * core is real, those files should load and work as they are, rather than
- * being reimplemented here one function at a time. Whatever fails to load
- * names something the core is missing, which is a far better work list
- * than a ranked pile of failing assertions.
- *
- * <p>Reports rather than asserts. The files are not vendored, so this runs
- * only where the Rebol source has been fetched; it is a measuring tool for
- * a person, not a gate.
- */
 class MezzanineLoadTest {
 
     private static final Path SOURCE = Path.of(
@@ -67,7 +54,6 @@ class MezzanineLoadTest {
         assertThat(attempts).as("found no mezzanine files to try").isNotEmpty();
     }
 
-    /** Everything after the script header, which is data rather than code. */
     private static String withHeaderRemoved(String withLeadingBlock) {
         int depth = 0;
         for (int at = 0; at < withLeadingBlock.length(); at++) {

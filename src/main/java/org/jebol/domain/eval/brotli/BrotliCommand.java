@@ -1,23 +1,5 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * One insert-and-copy step, as the encoder holds it before writing it.
- *
- * <p>{@code command.h}. A command says how many literals to insert, how long a
- * copy follows, and where the copy comes from. The format has one symbol for
- * the insert length and the copy length together -- seven hundred and four of
- * them -- so both are turned into bracket codes and then combined, and the
- * combining has a shortcut for the common case where the distance is the last
- * one used.
- *
- * <p>Held as parallel arrays rather than objects, because a meta-block has one
- * of these per match and there may be a million of them.
- *
- * <p>The distance is stored as if the meta-block used no postfix bits and no
- * direct codes. Which parameters the meta-block really uses is not decided
- * until after its histograms have been clustered, and the distance is recomputed
- * then.
- */
 final class BrotliCommand {
 
     static final int DISTANCE_SHORT_CODES = 16;
@@ -44,13 +26,11 @@ final class BrotliCommand {
 
     private int[] insertLength = new int[0];
 
-    /** The copy length, and in its top seven bits how far its code differs. */
-    private int[] copyLength = new int[0];
+    private int[] copyLengthAndItsCodeDeltaInTheTopSevenBits = new int[0];
     private int[] distanceExtra = new int[0];
     private int[] commandPrefix = new int[0];
 
-    /** The distance code, and in its top six bits how many extra bits it has. */
-    private int[] distancePrefix = new int[0];
+    private int[] distancePrefixAndItsExtraBitsInTheTopSixBits = new int[0];
 
     BrotliCommand(int room) {
         grow(room);
@@ -62,10 +42,12 @@ final class BrotliCommand {
         }
         room = Math.max(wanted, room * 2);
         insertLength = java.util.Arrays.copyOf(insertLength, room);
-        copyLength = java.util.Arrays.copyOf(copyLength, room);
+        copyLengthAndItsCodeDeltaInTheTopSevenBits = java.util.Arrays.copyOf(
+                copyLengthAndItsCodeDeltaInTheTopSevenBits, room);
         distanceExtra = java.util.Arrays.copyOf(distanceExtra, room);
         commandPrefix = java.util.Arrays.copyOf(commandPrefix, room);
-        distancePrefix = java.util.Arrays.copyOf(distancePrefix, room);
+        distancePrefixAndItsExtraBitsInTheTopSixBits = java.util.Arrays.copyOf(
+                distancePrefixAndItsExtraBitsInTheTopSixBits, room);
     }
 
     int count() {
@@ -76,10 +58,6 @@ final class BrotliCommand {
         count = 0;
     }
 
-    /**
-     * Throws away everything written after a point, so a parse can be run again
-     * from the same place with better costs.
-     */
     void keepOnly(int howMany) {
         count = howMany;
     }
@@ -97,7 +75,7 @@ final class BrotliCommand {
     }
 
     int distancePrefixAt(int which) {
-        return distancePrefix[which];
+        return distancePrefixAndItsExtraBitsInTheTopSixBits[which];
     }
 
     void commandPrefixIs(int which, int prefix) {
@@ -105,49 +83,24 @@ final class BrotliCommand {
     }
 
     int copyLengthAt(int which) {
-        return copyLength[which] & 0x1FFFFFF;
+        return copyLengthAndItsCodeDeltaInTheTopSevenBits[which] & 0x1FFFFFF;
     }
 
-    /**
-     * The copy length as its code names it, which may differ from the length
-     * actually copied.
-     *
-     * <p>A dictionary word is written with a length that says which word it is
-     * rather than how long the transformed word came out, so the two part
-     * company by a small signed amount kept in the top seven bits.
-     */
     int copyLengthCodeAt(int which) {
-        int modifier = copyLength[which] >>> 25;
+        int modifier = copyLengthAndItsCodeDeltaInTheTopSevenBits[which] >>> 25;
         int delta = (byte) (modifier | ((modifier & 0x40) << 1));
-        return (copyLength[which] & 0x1FFFFFF) + delta;
+        return (copyLengthAndItsCodeDeltaInTheTopSevenBits[which] & 0x1FFFFFF) + delta;
     }
 
-    /** Lengthens a copy that turned out to carry on into the next block. */
     void copyLengthGrows(int which) {
-        copyLength[which]++;
+        copyLengthAndItsCodeDeltaInTheTopSevenBits[which]++;
     }
 
-    /**
-     * The copy length plus its modifier read as a plain seven bit number.
-     *
-     * <p>This is not {@link #copyLengthCodeAt}, which reads the same seven bits
-     * as a signed amount. The C reads them the plain way in one place only --
-     * where it re-codes a command it has just lengthened -- and the two agree
-     * for every command whose length was not shifted downward by a dictionary
-     * word. Reproduced as the C has it rather than corrected, because the bytes
-     * are what is being matched.
-     */
-    int copyLengthPlusItsPlainModifier(int which) {
-        return (copyLength[which] & 0x1FFFFFF) + (copyLength[which] >>> 25);
+    int copyLengthPlusItsModifierReadPlainlyAsTheCReadsIt(int which) {
+        return (copyLengthAndItsCodeDeltaInTheTopSevenBits[which] & 0x1FFFFFF)
+                + (copyLengthAndItsCodeDeltaInTheTopSevenBits[which] >>> 25);
     }
 
-    /**
-     * Which of four distance contexts this command's copy falls in.
-     *
-     * <p>Short copies after short inserts get a context of their own, which is
-     * what lets a meta-block use a different distance code for them. Only the
-     * two levels that cluster histograms make use of it.
-     */
     int distanceContextAt(int which) {
         int row = commandPrefix[which] >> 6;
         int column = commandPrefix[which] & 7;
@@ -158,7 +111,7 @@ final class BrotliCommand {
     }
 
     void distancePrefixIs(int which, int prefix) {
-        distancePrefix[which] = prefix;
+        distancePrefixAndItsExtraBitsInTheTopSixBits[which] = prefix;
     }
 
     void distanceExtraIs(int which, int extra) {
@@ -171,39 +124,33 @@ final class BrotliCommand {
         grow(count + 1);
         int delta = copyCodeDelta & 0xFF;
         insertLength[count] = insertLengthGiven;
-        copyLength[count] = copyLengthGiven | (delta << 25);
+        copyLengthAndItsCodeDeltaInTheTopSevenBits[count] =
+                copyLengthGiven | (delta << 25);
         long encoded = encodedDistance(distanceCode, directCodes, postfixBits);
-        distancePrefix[count] = (int) (encoded >>> 32);
+        distancePrefixAndItsExtraBitsInTheTopSixBits[count] = (int) (encoded >>> 32);
         distanceExtra[count] = (int) encoded;
         commandPrefix[count] = lengthCode(insertLengthGiven,
                 copyLengthGiven + copyCodeDelta,
-                (distancePrefix[count] & 0x3FF) == 0);
+                (distancePrefixAndItsExtraBitsInTheTopSixBits[count] & 0x3FF) == 0);
         count++;
     }
 
-    /** The last command of a meta-block, which inserts and copies nothing. */
-    void addInsertOnly(int insertLengthGiven) {
+    void addInsertOnlyWhichIsHowAMetaBlockEnds(int insertLengthGiven) {
         grow(count + 1);
         insertLength[count] = insertLengthGiven;
-        copyLength[count] = 4 << 25;
+        copyLengthAndItsCodeDeltaInTheTopSevenBits[count] = 4 << 25;
         distanceExtra[count] = 0;
-        distancePrefix[count] = DISTANCE_SHORT_CODES;
+        distancePrefixAndItsExtraBitsInTheTopSixBits[count] = DISTANCE_SHORT_CODES;
         commandPrefix[count] = lengthCode(insertLengthGiven, 4, false);
         count++;
     }
 
-    /**
-     * The distance the command really meant, recovered from the code.
-     *
-     * <p>Needed after the meta-block has chosen its postfix bits and direct
-     * codes, because the code stored at the time assumed neither.
-     */
     int restoredDistanceCodeAt(int which, int directCodes, int postfixBits) {
-        int code = distancePrefix[which] & 0x3FF;
+        int code = distancePrefixAndItsExtraBitsInTheTopSixBits[which] & 0x3FF;
         if (code < DISTANCE_SHORT_CODES + directCodes) {
             return code;
         }
-        int width = distancePrefix[which] >>> 10;
+        int width = distancePrefixAndItsExtraBitsInTheTopSixBits[which] >>> 10;
         int postfixMask = (1 << postfixBits) - 1;
         int high = (code - directCodes - DISTANCE_SHORT_CODES) >>> postfixBits;
         int low = (code - directCodes - DISTANCE_SHORT_CODES) & postfixMask;
@@ -261,14 +208,6 @@ final class BrotliCommand {
         return 23;
     }
 
-    /**
-     * The one symbol that says both lengths.
-     *
-     * <p>The magic constant is the C's, and its comment explains it: the nine
-     * possible offsets are all a multiple of sixty-four, and the multipliers
-     * minus their index need only two bits each, so all nine fit in one number
-     * to be shifted out.
-     */
     static int lengthCode(int insertLength, int copyLength,
             boolean useLastDistance) {
 
@@ -276,7 +215,6 @@ final class BrotliCommand {
                 copyLengthCode(copyLength), useLastDistance);
     }
 
-    /** The same, for a caller that already has the two bracket codes. */
     static int combinedLengthCode(int insertCode, int copyCode,
             boolean useLastDistance) {
 
@@ -285,9 +223,11 @@ final class BrotliCommand {
             return copyCode < 8 ? low : low | 64;
         }
         int offset = 2 * ((copyCode >> 3) + 3 * (insertCode >> 3));
-        offset = (offset << 5) + 0x40 + ((0x520D40 >> offset) & 0xC0);
+        offset = (offset << 5) + 0x40 + ((NINE_OFFSET_MULTIPLIERS >> offset) & 0xC0);
         return offset | low;
     }
+
+    private static final int NINE_OFFSET_MULTIPLIERS = 0x520D40;
 
     static int insertBase(int code) {
         return INSERT_BASE[code];

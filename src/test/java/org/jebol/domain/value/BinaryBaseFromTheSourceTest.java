@@ -7,21 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@code system/options/binary-base}, and the three notations a binary molds
- * in.
- *
- * <p>{@code Mold_Binary} reads the option at the moment it writes, so the
- * notation is a property of the interpreter's state rather than of the call.
- * JEBOL wrote hex whatever the option said, which meant a script that set the
- * option got no error and no change.
- *
- * <p>Each base also has its own rule for when a binary is long enough to
- * break into lines, and the three do not agree. Base sixty-four is the one
- * that catches people out: its runs are forty-eight bytes long but it writes
- * on one line up to sixty-four, because the two numbers come from different
- * places in the C.
- */
 class BinaryBaseFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@code =} on decimals allows the last few bits to differ; {@code ==} does not.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1, boundary included.
- *
- * <p>The allowance is counted in steps of the floating point
- * representation rather than as a fixed amount, so it scales with the size
- * of the numbers. Ten steps or fewer is equal; more is not. A fixed
- * tolerance would be too coarse for small numbers and far too fine for
- * large ones at the same time.
- */
 class DecimalEqualityTest {
 
     private static String answerTo(String source) {

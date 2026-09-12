@@ -7,37 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * INIT-TOP-WINDOW: the gob every window hangs under, and the command that is
- * spent as soon as it has been used.
- *
- * <p>Three lines in {@code src/os/posix/host-window.c} and all three matter:
- * {@code Gob_Root = ...} remembers the gob, {@code Gob_Root->parent = NULL}
- * cuts it loose, and two calls to {@code OS_Get_Metrics} write the screen's
- * size onto it.
- *
- * <p>The size is the one that catches people out. VIEW centres a window with
- * {@code screen/size - window/size / 2}, so a root of the wrong size puts
- * every centred window in the wrong place and a root of no size puts them all
- * in the same place.
- *
- * <p>Nothing here calls the command by name, and that is the behaviour rather
- * than an omission. INIT-VIEW-SYSTEM ends with {@code init-top-window:
- * init-view-system: 'done}, so both words hold a word by the time any script
- * runs -- the view system may be started once and nothing may take the screen
- * over afterwards. In a real 3.22.1 that costs nothing, because the graphics
- * host is registered before the library loads. In JEBOL the screen arrives
- * after the interpreter is built, which is what
- * {@code ScreenPort.takeAsTheRoot} exists for.
- *
- * <p>It answers rather than refuses on a machine with no display. INIT-VIEW-SYSTEM
- * runs while {@code view-funcs.reb} is still loading, so refusing would stop
- * that file partway on any machine without a screen -- and a build server is
- * exactly that, so the library under test would be a different library from
- * the one that ships.
- *
- * <p>Specified in {@code spec/screen.allium}.
- */
 class TopWindowFromTheSourceTest {
 
     private static final String TRUE = "#(true)";

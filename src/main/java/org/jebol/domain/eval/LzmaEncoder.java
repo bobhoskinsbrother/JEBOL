@@ -2,33 +2,6 @@ package org.jebol.domain.eval;
 
 import java.util.Arrays;
 
-/**
- * LZMA, the compressing half.
- *
- * <p>{@code LzmaEnc.c} of the LZMA SDK, dated 2018-04-29, as Rebol vendors it
- * in {@code u-lzma.c}. Everything Rebol can reach is here and nothing else is:
- * the end marker is not written, because {@code CompressLzma} passes zero for
- * it, and the stream-at-a-time interface is not ported, because Rebol always
- * hands over a whole buffer.
- *
- * <p>What the format is: an arithmetic coder over adaptive bit models. Each
- * step writes either a literal byte or a repeat of something earlier, and a
- * twelve-value state remembers what the last few steps were so the models can
- * be conditioned on it. A repeat is either one of the four most recent
- * distances, which are cheap to name, or a fresh distance written as a slot,
- * some direct bits and four aligned bits.
- *
- * <p>Two ways of choosing what to write, and the level picks one. Below level
- * five it is greedy with one byte of lookahead. From level five it prices
- * every choice over a window of up to four thousand positions and walks the
- * cheapest path back, which is what makes the same bytes come out as a real
- * 3.22.5 rather than merely something that reads back.
- *
- * <p>The prices are in sixteenths of a bit, from a table built once at
- * construction, and they are refreshed as the models drift: the length tables
- * on a counter, the distance and alignment tables when enough matches have
- * gone by.
- */
 final class LzmaEncoder {
 
     private static final int NUMBER_OF_STATES = 12;
@@ -80,19 +53,11 @@ final class LzmaEncoder {
     private static final byte[] AFTER_A_SHORT_REPEAT =
             {9, 9, 9, 9, 9, 9, 9, 11, 11, 11, 11, 11};
 
-    private static final int[] PROBABILITY_PRICES = probabilityPrices();
+    private static final int[] PROBABILITY_PRICES =
+            pricesInSixteenthsOfABitPerRoundedProbability();
     private static final byte[] SLOT_OF_A_SMALL_DISTANCE = slotTable();
 
-    /**
-     * The price in sixteenths of a bit of coding a bit whose model stands at
-     * each of the 128 rounded probabilities.
-     *
-     * <p>Squaring the probability four times and counting how far it has to be
-     * shifted back under sixteen bits is a base-two logarithm worked out in
-     * integers, which is what the C does and why the table is not simply
-     * {@code -log2(p)} rounded.
-     */
-    private static int[] probabilityPrices() {
+    private static int[] pricesInSixteenthsOfABitPerRoundedProbability() {
         int[] prices = new int[BIT_MODEL_TOTAL >> MOVE_REDUCING_BITS];
         for (int each = 0; each < prices.length; each++) {
             int weight = (each << MOVE_REDUCING_BITS)
@@ -112,7 +77,6 @@ final class LzmaEncoder {
         return prices;
     }
 
-    /** Which slot a distance below {@code 1 << 19} falls in, six bits down. */
     private static byte[] slotTable() {
         byte[] table = new byte[1 << LOG_BITS];
         table[0] = 0;
@@ -141,15 +105,6 @@ final class LzmaEncoder {
         return SLOT_OF_A_SMALL_DISTANCE[distance >>> shift] + shift * 2;
     }
 
-    /**
-     * The five bytes a stream opens with: how the literal context is split,
-     * then the dictionary size.
-     *
-     * <p>The size written is not the size asked for. Below four megabytes it
-     * is rounded up to two or three times a power of two, and above that to a
-     * whole number of megabytes, so a reader can size its window from one byte
-     * of exponent rather than from an arbitrary number.
-     */
     static byte[] properties(int level) {
         Settings settings = Settings.forLevel(level);
         byte[] written = new byte[5];
@@ -180,14 +135,6 @@ final class LzmaEncoder {
         return dictionarySize;
     }
 
-    /**
-     * Everything the level decides, worked out once.
-     *
-     * <p>{@code LzmaEncProps_Normalize}. Rebol asks for a level and leaves
-     * every other field at its default, so this is the whole of what a level
-     * means: how far back to look, how hard to look, and whether to price the
-     * choices or take the first good one.
-     */
     private record Settings(
             int dictionarySize,
             int literalContextBits,
@@ -198,17 +145,6 @@ final class LzmaEncoder {
             boolean pricing,
             int cutValue) {
 
-        /**
-         * {@code level = (level == UNKNOWN) ? 5 : MIN(9, level);} in
-         * {@code CompressLzma}, over an unsigned level.
-         *
-         * <p>Which makes minus one the level nobody asked for and every other
-         * negative the slowest, because it arrives as a number near four
-         * thousand million and gets clamped down to nine. That is not a
-         * reading of the C so much as a consequence of it, and
-         * {@code compress/level x 'lzma -5} really does answer what level nine
-         * answers.
-         */
         static Settings forLevel(int asked) {
             int level = asked == NOBODY_ASKED
                     ? 5
@@ -497,16 +433,6 @@ final class LzmaEncoder {
         return Math.min(span, LENGTH_TO_POSITION_STATES - 1);
     }
 
-    /**
-     * Asks the finder about this position and leaves the pair count in
-     * {@link #freshPairCount}.
-     *
-     * <p>The C passes the count out through a pointer that the caller aims at
-     * either a local or at {@code p->numPairs}, and the difference matters:
-     * {@code GetOptimumFast} shortens its own copy while looking for a nearer
-     * match of the same length, and that shortening must not be visible the
-     * next time the field is read.
-     */
     private int readMatchDistances() {
         additionalOffset++;
         available = finder.availableBytes();
@@ -803,17 +729,7 @@ final class LzmaEncoder {
         choiceExtra[at] = 0;
     }
 
-    /**
-     * Walks the cheapest path back from where the search stopped.
-     *
-     * <p>{@code Backward}. The forward pass left each position holding what it
-     * cost to arrive there and what the last step was, so the answer is read
-     * out by following those steps back to the start and writing them into the
-     * same array in order. An {@code extra} on a step means the step was a
-     * match or repeat followed by a literal and then a repeat of distance
-     * zero, which is stored as one choice and unpacks into two or three.
-     */
-    private int walkBack(int from) {
+    private int walkTheCheapestPathBack(int from) {
         int at = from;
         int writeAt = from + 1;
         choiceEnd = writeAt;
@@ -1007,14 +923,14 @@ final class LzmaEncoder {
         int at = 0;
         while (true) {
             if (++at == last) {
-                return walkBack(at);
+                return walkTheCheapestPathBack(at);
             }
             int newLength = readMatchDistances();
             int freshPairs = freshPairCount;
             if (newLength >= settings.numFastBytes) {
                 numPairs = freshPairs;
                 longestMatchLen = newLength;
-                return walkBack(at);
+                return walkTheCheapestPathBack(at);
             }
 
             int previous = at - choiceLength[at];
@@ -1304,11 +1220,6 @@ final class LzmaEncoder {
         }
     }
 
-    /**
-     * The length of a match, written as one of three brackets: eight short
-     * lengths per position state, eight more, and then 256 long ones shared
-     * between every position state.
-     */
     private static final class LengthModel {
 
         private final short[] low =
@@ -1346,7 +1257,6 @@ final class LzmaEncoder {
         }
     }
 
-    /** What each length costs, per position state, refreshed on a counter. */
     private static final class LengthPrices {
 
         private int tableSize;
@@ -1402,16 +1312,6 @@ final class LzmaEncoder {
         }
     }
 
-    /**
-     * The arithmetic coder.
-     *
-     * <p>A range and a low bound, both notionally thirty-two bits wide. Each
-     * bit written splits the range in proportion to its model, and whenever the
-     * range gets too narrow a byte of the low bound is settled and shifted out.
-     * The carry is why a byte cannot simply be written: a run of {@code FF}
-     * bytes is held back in {@code pendingOnes} until something below them
-     * decides whether they carry.
-     */
     private static final class RangeEncoder {
 
         private long range = 0xFFFFFFFFL;

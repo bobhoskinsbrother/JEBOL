@@ -14,22 +14,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * One gob tree, walked once, as the thing every renderer is handed.
- *
- * <p>This file is where the claim "the desktop and the browser show the same
- * picture" is either true or not. It is not a promise checked afterwards by
- * comparing screenshots: the list is the single input to every renderer, so
- * two renderers cannot disagree about where a rectangle goes, because neither
- * of them works it out.
- *
- * <p>What is left for comparing pictures, and is not tested here: glyph
- * shapes and anti-aliased edges. No two rasterisers agree on those and no
- * amount of shared input fixes it. Geometry and colour need no tolerance;
- * text does.
- *
- * <p>Specified in {@code spec/screen.allium}.
- */
 class PaintListFromTheSourceTest {
 
     private static GobValue gobFrom(String source) {
@@ -80,9 +64,6 @@ class PaintListFromTheSourceTest {
         @Test
         @DisplayName("a whole branch is painted before the next branch starts")
         void abranchFinishesBeforeTheNext() {
-            // Depth first, not breadth first. Breadth first would put a
-            // grandchild behind an uncle, which is a picture with the wrong
-            // thing on top and reads as a renderer bug.
             List<PaintInstruction> list = listFor("""
                     parent: make gob! [size: 60x60 color: 1.1.1]
                     first-branch: make gob! [size: 20x20 color: 2.2.2]
@@ -104,9 +85,6 @@ class PaintListFromTheSourceTest {
         @Test
         @DisplayName("a root sits at the origin whatever offset it carries")
         void arootSitsAtTheOrigin() {
-            // A root's own offset is where a window goes on the screen, not
-            // where its contents go inside it, so it does not shift what it
-            // paints.
             assertThat(fillAt(listFor(
                     "make gob! [offset: 300x200 size: 40x40 color: 1.1.1]"), 0)
                     .where().across()).isZero();
@@ -143,10 +121,6 @@ class PaintListFromTheSourceTest {
         @Test
         @DisplayName("a fractional offset lands on a whole pixel")
         void afractionalOffsetIsRounded() {
-            // A gob's offsets and sizes are float pixels and a surface has
-            // whole ones. Rounded once here rather than by each renderer,
-            // because two renderers that rounded differently would be a
-            // pixel apart and nothing would say which was right.
             Placement where = fillAt(listFor("""
                     parent: make gob! [size: 40x40 color: 1.1.1]
                     append parent make gob! [offset: 7.6x9.4 size: 10x10 color: 2.2.2]
@@ -216,8 +190,6 @@ class PaintListFromTheSourceTest {
         @Test
         @DisplayName("a child touching its parent's edge is clipped to nothing")
         void touchingTheEdgeIsNothing() {
-            // The off point. Twenty across on a parent twenty wide starts
-            // exactly where the parent ends, so the overlap has no width.
             assertThat(listFor("""
                     parent: make gob! [size: 20x20 color: 1.1.1]
                     append parent make gob! [offset: 20x0 size: 10x10 color: 2.2.2]
@@ -308,9 +280,6 @@ class PaintListFromTheSourceTest {
         @Test
         @DisplayName("the colour's own fourth octet multiplies in as well")
         void thecolourOpacityMultipliesToo() {
-            // A gob carries two opacities and both apply: its alpha, and the
-            // fourth octet of its colour. Combining them here is what stops
-            // one renderer applying both and another applying one.
             assertThat(fillAt(listFor(
                     "make gob! [size: 10x10 color: 1.1.1.128 alpha: 128]"), 0)
                     .where().opacity()).isEqualTo(64);
@@ -352,9 +321,6 @@ class PaintListFromTheSourceTest {
         @Test
         @DisplayName("an image becomes a picture")
         void animageBecomesAPicture() {
-            // The spec block of a MAKE is not evaluated, so the image has to
-            // be made first and named. Writing `image: make image! 4x4` inside
-            // it puts the MAKE native in the field.
             assertThat(listFor("""
                     picture: make image! 4x4
                     make gob! [size: 10x10 image: picture]""")
@@ -382,9 +348,6 @@ class PaintListFromTheSourceTest {
         @Test
         @DisplayName("a draw block paints nothing yet, and the gap is here rather than three times")
         void adrawBlockPaintsNothing() {
-            // Named rather than hidden. The DRAW dialect is thirty commands
-            // from boot/draw.reb, and when it lands it adds instruction kinds
-            // here -- once -- instead of a walk in each of three renderers.
             assertThat(listFor("""
                     make gob! [size: 20x20 draw: [pen red line 0x0 20x20]]"""))
                     .isEmpty();
@@ -414,9 +377,6 @@ class PaintListFromTheSourceTest {
         @Test
         @DisplayName("the same tree flattens to the same list, every time")
         void itIsDeterministic() {
-            // The whole arrangement rests on this. A list that varied between
-            // two walks of one tree could not hold two renderers to the same
-            // picture, however faithfully each executed what it was given.
             String source = """
                     parent: make gob! [size: 60x60 color: 1.1.1 alpha: 200]
                     child: make gob! [offset: 5x5 size: 40x40 color: 2.2.2]

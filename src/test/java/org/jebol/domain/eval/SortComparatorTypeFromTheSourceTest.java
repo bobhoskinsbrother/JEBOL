@@ -6,11 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * SORT/compare hands the comparator values of the series' own kind, from
- * {@code series-test.r3}. A byte of a binary arrives as a char; a whole record
- * of a binary under /all arrives as a binary; a string's element is a char.
- */
 class SortComparatorTypeFromTheSourceTest {
 
     private static String answerTo(String source) {

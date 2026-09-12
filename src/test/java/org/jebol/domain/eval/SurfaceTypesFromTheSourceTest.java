@@ -7,12 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Declared parameter types the C has and JEBOL lacked, or the other way
- * round: the /part range family ({@code Partial1} in f-stubs.c), /dup
- * counts ({@code Int32}), ENBASE and DEBASE limits, COMPOSE/INTO targets,
- * IN on a module, and TO-HEX on a char or tuple (n-strings.c).
- */
 class SurfaceTypesFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -184,18 +178,6 @@ class SurfaceTypesFromTheSourceTest {
                     rename http://a http://b""")).isEqualTo("no-service");
         }
 
-        /**
-         * A block spec naming no host reaches the protocol and stops inside
-         * it, which is a different answer from the url above and the right
-         * one: HTTP is written in REBOL and needs no service to start, so the
-         * complaint is the protocol's own. A real 3.22.5 answers exactly this
-         * -- {@code Access / Protocol / "Missing host address"} -- and the url
-         * form differs only because there is a host to connect to and the
-         * connection is what this interpreter was not granted.
-         *
-         * <p>The old expectation of {@code no-service} here was written when
-         * every scheme whose actor is an object was refused at the door.
-         */
         @Test
         @DisplayName("a block is a port specification, and the protocol answers it")
         void aBlockIsAPortSpecification() {
@@ -293,13 +275,6 @@ class SurfaceTypesFromTheSourceTest {
                     query 1-Jan-2000 'nonsense""")).isEqualTo("cannot-use");
         }
 
-        /**
-         * A none field never routes anywhere: it reads the names off the
-         * port's own scheme and returns, so a url answers without a connection
-         * being made. HTTP's are the seven a file has plus the three its own
-         * protocol adds, which is the point of reading them from the scheme
-         * rather than from one fixed list.
-         */
         @Test
         @DisplayName("a url answers its scheme's own names, without reaching out")
         void aUrlAnswersItsSchemesOwnNames() {

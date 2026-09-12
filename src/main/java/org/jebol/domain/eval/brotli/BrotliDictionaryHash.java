@@ -4,24 +4,6 @@ import java.util.Base64;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
-/**
- * Where in the static dictionary a four byte run has been seen.
- *
- * <p>{@code dictionary_hash.c}. The encoder cannot search a hundred and
- * twenty thousand dictionary words at every position, so it keeps one table of
- * thirty two thousand slots holding, for each hash of four bytes, at most one
- * word that starts with them. A slot names the word by its length and its index
- * within the words of that length.
- *
- * <p>The table is precomputed in the C and copied here, rather than rebuilt.
- * Rebuilding it would need the same insertion order and the same collision
- * losses to come out the same, and a table that differs by one slot compresses
- * differently.
- *
- * <p>Carried deflated and base64 encoded in the source for the same reason the
- * dictionary itself is: this package may not read a file. Ninety six kilobytes
- * of mostly empty slots deflate to twenty three.
- */
 final class BrotliDictionaryHash {
 
     private BrotliDictionaryHash() {
@@ -31,22 +13,13 @@ final class BrotliDictionaryHash {
 
     private static final int PACKED_LENGTH = SLOTS * 3;
 
-    /**
-     * The two tables, unpacked, held together so that one write publishes both.
-     *
-     * <p>Two callers arriving at once would otherwise be able to see a table
-     * that had been assigned while the one beside it had not. They cannot
-     * disagree about the contents -- the data is the same however many times it
-     * is unpacked -- so the only thing needed is that a reader sees all of it or
-     * none of it.
-     */
-    private record Unpacked(char[] wordIndexes, byte[] wordLengths) {
+    private record UnpackedTogetherSoOneWritePublishesBoth(char[] wordIndexes, byte[] wordLengths) {
     }
 
-    private static Unpacked tables;
+    private static UnpackedTogetherSoOneWritePublishesBoth tables;
 
-    private static Unpacked unpacked() {
-        Unpacked known = tables;
+    private static UnpackedTogetherSoOneWritePublishesBoth unpacked() {
+        UnpackedTogetherSoOneWritePublishesBoth known = tables;
         if (known != null) {
             return known;
         }
@@ -58,7 +31,8 @@ final class BrotliDictionaryHash {
         }
         byte[] lengths = new byte[SLOTS];
         System.arraycopy(raw, SLOTS * 2, lengths, 0, SLOTS);
-        Unpacked built = new Unpacked(indexes, lengths);
+        UnpackedTogetherSoOneWritePublishesBoth built =
+                new UnpackedTogetherSoOneWritePublishesBoth(indexes, lengths);
         tables = built;
         return built;
     }
@@ -91,7 +65,6 @@ final class BrotliDictionaryHash {
         }
     }
 
-    /** Zero where no word of the dictionary hashes to this slot. */
     static int wordLengthAt(int slot) {
         return unpacked().wordLengths()[slot];
     }

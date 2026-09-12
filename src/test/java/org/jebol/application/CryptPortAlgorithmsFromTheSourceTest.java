@@ -5,28 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The ciphers a cipher port serves, each against a published vector.
- *
- * <p>{@code Crypt_Init} and {@code Crypt_Crypt} in {@code p-crypt.c}. This
- * build serves every one of the forty-two REBOL's own catalogue holds. AES,
- * ChaCha20 and four spellings of DES come from the JVM; counter with CBC-MAC,
- * counting with Galois, Camellia, ARIA and the joining of ChaCha20 to
- * Poly1305 are written out beside it.
- *
- * <p>A name in {@code system/catalog/ciphers} is a promise a script reads
- * before it chooses, so the catalogue holds what this port really serves and
- * nothing else.
- *
- * <p>Two quirks worth knowing before reading the assertions. A key shorter
- * than the cipher wants is padded with noughts rather than refused, and one
- * longer is truncated -- so a sixteen byte key and a thirty-two byte key whose
- * first sixteen bytes match give AES-128 the same answer. And ChaCha20 takes
- * its block counter from bytes twelve to fifteen of the starting vector, so
- * the vector is a twelve byte nonce and a four byte counter run together.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written.
- */
 class CryptPortAlgorithmsFromTheSourceTest {
 
     private static final String AES_128_KEY = "#{2B7E151628AED2A6ABF7158809CF4F3C}";
@@ -43,12 +21,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /**
-     * One message through one port, as hexadecimal. The key and the vector go
-     * on with MODIFY rather than in the specification, because a specification
-     * block is evaluated as an object and a field set from a word of its own
-     * name would read the field rather than the variable.
-     */
     private static String through(String algorithm, String key,
             String vector, String data) {
 
@@ -88,7 +60,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 every-one-opens""")).isEqualTo("#(true)");
     }
 
-    /** FIPS-197 appendix C, one vector per key width. */
     @Test
     @DisplayName("AES in electronic codebook, at all three key widths")
     void aesInElectronicCodebook() {
@@ -104,7 +75,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 .isEqualTo("\"8EA2B7CA516745BFEAFC49904B496089\"");
     }
 
-    /** SP 800-38A section F.2, the first vector of each key width. */
     @Test
     @DisplayName("AES in cipher block chaining, at all three key widths")
     void aesInCipherBlockChaining() {
@@ -120,21 +90,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 .isEqualTo("\"F58C4C04D6E5F1BA779EABFB5F7BFBD6\"");
     }
 
-    /**
-     * The invariant the spec states over every cipher in the catalogue, walked
-     * rather than sampled: one message through each of them and back.
-     *
-     * <p>All but one. ChaCha20 with Poly1305 takes a header as a whole write
-     * of its own, so a message written to it with no header becomes the header
-     * and nothing comes out -- and a real 3.22.5 raises feature-na on the same
-     * walk for the same reason. It is covered on its own terms in
-     * {@code CryptPortChaChaWithPoly1305FromTheSourceTest}.
-     *
-     * <p>Sixteen bytes on purpose. It is a whole number of blocks for the
-     * eight byte ciphers and the sixteen byte ones alike, so nothing is padded
-     * and the answer coming back is the message rather than the message and
-     * some noughts.
-     */
     @Test
     @DisplayName("every cipher in the catalogue decrypts what it encrypted")
     void everyCipherDecryptsWhatItEncrypted() {
@@ -159,11 +114,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 every-one""".formatted(NIST_BLOCK))).isEqualTo("#(true)");
     }
 
-    /**
-     * And the bytes in between are a real 3.22.5's bytes, not merely ones this
-     * port agrees with itself about. Every one was compared against
-     * {@code ./r3-head} under the same key and vector.
-     */
     @Test
     @DisplayName("and the cipher text between is what a real 3.22.5 writes")
     void theCipherTextBetweenIsWhatARealRebolWrites() {
@@ -215,12 +165,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 read p""".formatted(AES_128_KEY))).isEqualTo(NIST_BLOCK);
     }
 
-    /**
-     * A key too short is padded with noughts and a key too long is truncated,
-     * neither of which is refused. Four lengths either side of sixteen, and
-     * the answers say which happened: the short ones all differ, and the long
-     * ones all match the exact key.
-     */
     @Test
     @DisplayName("a key shorter than the cipher wants is padded with noughts")
     void aKeyShorterThanTheCipherWantsIsPaddedWithNoughts() {
@@ -246,11 +190,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 "none", NIST_BLOCK)).isEqualTo(exactly);
     }
 
-    /**
-     * No starting vector at all is a vector of noughts, which makes the first
-     * block of chaining the same as electronic codebook. A short vector is
-     * padded and a long one truncated, exactly as the key is.
-     */
     @Test
     @DisplayName("no vector is a vector of noughts, so the first block matches codebook")
     void noVectorIsAVectorOfNoughts() {
@@ -268,15 +207,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 .isEqualTo("\"7649ABAC8119B246CEE98E9B12E9197D\"");
     }
 
-    /**
-     * RFC 8439 section 2.4.2. The vector is a twelve byte nonce followed by a
-     * four byte block counter read most significant first, so the counter here
-     * is one and the keystream is the second block of the example.
-     *
-     * <p>And the port pads to sixteen even though ChaCha20 is a stream cipher
-     * with no block to fill: four bytes written and taken give the same
-     * sixteen bytes as sixteen written and read.
-     */
     @Test
     @DisplayName("ChaCha20 takes its counter from the end of the vector")
     void chaCha20TakesItsCounterFromTheEndOfTheVector() {
@@ -303,12 +233,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 .isEqualTo("\"10F1E7E4D13B5915500FDD1FA32071C4\"");
     }
 
-    /**
-     * The classic vector: "Now is t" under the key {@code 0123456789ABCDEF}.
-     * DES has an eight byte block where AES has sixteen, which is the only
-     * other block size this build serves and therefore the only other place
-     * the holding-back can be wrong.
-     */
     @Test
     @DisplayName("DES and triple DES, in both modes")
     void desAndTripleDes() {
@@ -338,15 +262,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                         [_ "2E764270BE5A461A"]""");
     }
 
-    /**
-     * Galois counter mode answers a cipher text and then a tag, which is what
-     * makes READ and TAKE different things on the same port rather than two
-     * names for one.
-     *
-     * <p>The tag is truncated to whatever length was asked for. Fifteen bytes
-     * is below what the JVM's own parameter object accepts and four is far
-     * below it, so both are computed whole and cut down.
-     */
     @Test
     @DisplayName("GCM answers a cipher text and then its tag")
     void gcmAnswersACipherTextAndThenItsTag() {
@@ -380,11 +295,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                         ["5B7D2C86BFB5BA192B5F3F96E6453930" "1EBD3FDE595B9B955B0BC93841930F44"]""");
     }
 
-    /**
-     * Decrypting hands the computed tag back rather than checking it. The
-     * caller compares, which is what REBOL's own test does, and it is why a
-     * wrong tag here is a wrong answer rather than an exception.
-     */
     @Test
     @DisplayName("decrypting answers the tag rather than checking it")
     void decryptingAnswersTheTagRatherThanCheckingIt() {
@@ -396,17 +306,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                         ["0B30950735729B9A9C9365A71EAF7A0D" "4F584D5960EEB2CB2C3708FD0BF0FF23"]""");
     }
 
-    /**
-     * TAKE on its own hands back the cipher text and the tag together, because
-     * UPDATE appends the tag to the buffer rather than replacing what is in
-     * it: {@code Extend_Series(bin, ctx->tag_len)} then
-     * {@code SERIES_TAIL(bin) += ctx->tag_len}.
-     *
-     * <p>Which only shows when nothing read first. REBOL's own GCM test reads
-     * and then takes, so the cipher text has already left and the take answers
-     * a tag alone -- and a port that threw the cipher text away instead would
-     * pass that test and lose the message here.
-     */
     @Test
     @DisplayName("taking without reading first answers the cipher text and the tag")
     void takingWithoutReadingFirstAnswersBoth() {
@@ -416,11 +315,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 .isEqualTo("\"2275F76D886B5A14\"");
     }
 
-    /**
-     * And a second write answers only what the second write added. A port that
-     * re-enciphered everything gathered so far would hand the first eight
-     * bytes back twice, and twenty-four bytes would come out for sixteen in.
-     */
     @Test
     @DisplayName("a second write answers only the bytes the second write added")
     void aSecondWriteAnswersOnlyItsOwnBytes() {
@@ -444,16 +338,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 .isEqualTo("\"2275F76D886B5A14EDBE6C03CDD01C8B\"");
     }
 
-    /**
-     * An authenticated cipher with no starting vector has no answer at all: a
-     * repeated vector under one key is what breaks the mode outright, so there
-     * is no vector of noughts to fall back on the way the block ciphers have.
-     *
-     * <p>And it answers nothing rather than raising, which is what the C does
-     * by remembering the failure in {@code ctx->error} and letting
-     * {@code A_READ} return none. The block ciphers take a vector of noughts
-     * and carry on, which is the contrast worth having beside it.
-     */
     @Test
     @DisplayName("an authenticated cipher with no vector answers nothing at all")
     void anAuthenticatedCipherWithNoVectorAnswersNothing() {
@@ -467,14 +351,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 .isEqualTo("\"69C4E0D86A7B0430D8CDB78070B4C55A\"");
     }
 
-    /**
-     * A tag length outside four to sixteen leaves the cipher with no answer.
-     *
-     * <p>{@code mbedtls_gcm_finish} refuses a length outside that range, the
-     * failure is remembered in {@code ctx->error}, and READ answers none from
-     * then on. So one, three, seventeen and a negative all come back as
-     * nothing, and four is the shortest tag there is.
-     */
     @Test
     @DisplayName("a tag length outside four to sixteen leaves nothing to take")
     void aTagLengthOutsideFourToSixteenLeavesNothing() {
@@ -484,11 +360,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
         }
     }
 
-    /**
-     * And asking for no tag at all leaves nothing to take either, rather than
-     * an empty run of bytes. The C only computes one {@code if (ctx->tag_len)},
-     * so nothing new becomes ready and the port stays empty.
-     */
     @Test
     @DisplayName("asking for no tag leaves nothing to take, not an empty binary")
     void askingForNoTagLeavesNothing() {
@@ -506,16 +377,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 take p""".formatted(tagLength));
     }
 
-    /**
-     * Setting the tag length does not start the cipher again, where setting
-     * the starting vector does.
-     *
-     * <p>The C assigns {@code ctx->tag_len} and restarts nothing, while
-     * {@code init_crypt_iv} sets the state back to needing initialisation. So
-     * a tag length set between two writes keeps both blocks and a vector set
-     * between them throws the first away. This settles the open question the
-     * spec used to carry.
-     */
     @Test
     @DisplayName("a tag length between writes keeps both, a vector keeps only the second")
     void aTagLengthDoesNotStartTheCipherAgainButAVectorDoes() {
@@ -536,20 +397,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 length? read p""".formatted(COUNTING_BLOCK, between, COUNTING_BLOCK));
     }
 
-    /**
-     * The bytes to authenticate come off the front of one write, and a write
-     * too short to hold them is thrown away whole.
-     *
-     * <p>{@code if (ctx->state == CRYPT_PORT_NO_DATA && ctx->aad_len)} acts
-     * only while nothing has been enciphered yet, and the line below it
-     * returns an error when that write is shorter than the header. So two
-     * bytes then ten leaves the first two discarded, the next four read as the
-     * header and six enciphered -- not four bytes of header gathered across
-     * the pair.
-     *
-     * <p>This loses data with no error a caller can see, and it is what a real
-     * 3.22.5 does.
-     */
     @Test
     @DisplayName("the bytes to authenticate come off one write, not several")
     void theBytesToAuthenticateComeOffOneWrite() {
@@ -565,15 +412,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 .isEqualTo("\"2160D058CB36\"");
     }
 
-    /**
-     * ChaCha20's block of sixteen only decides whether the cipher runs at all.
-     * Once it has that much it takes everything, tail included, because the C
-     * returns early below a block and its ChaCha20 arm then consumes the whole
-     * input.
-     *
-     * <p>So twenty-one bytes answer twenty-one and leave nothing, where a
-     * block cipher would answer sixteen and hold five.
-     */
     @Test
     @DisplayName("ChaCha20 keeps nothing back once it has a block's worth")
     void chaCha20KeepsNothingBackOnceItHasABlock() {
@@ -586,11 +424,6 @@ class CryptPortAlgorithmsFromTheSourceTest {
                 .isEqualTo("[21 _]");
     }
 
-    /**
-     * A cipher that would not start answers nothing to UPDATE and TAKE as well
-     * as to READ, which is the whole of what {@code ctx->error} does: it is
-     * read once, above the switch on what was asked.
-     */
     @Test
     @DisplayName("a cipher that would not start answers nothing to update and take too")
     void aCipherThatWouldNotStartAnswersNothingToUpdateAndTake() {

@@ -6,12 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Making a word out of text, and refusing bytes that are not text.
- *
- * <p>Two rules that both come down to what counts as whitespace and where the
- * refusal points.
- */
 class WordFromTextAndBadUtfFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -6,12 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TAKE, INSERT and REMOVE with /part, from {@code series-test.r3}. /deep clones
- * the nested series that /part took; INSERT/part splices only the counted run
- * and refuses a count outside the 32-bit range; and REMOVE/part reads a length
- * from a position into the same series.
- */
 class TakeInsertRemovePartFromTheSourceTest {
 
     private static String answerTo(String source) {

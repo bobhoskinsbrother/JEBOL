@@ -7,24 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@code s/width}, which is how many columns a string takes on a terminal.
- *
- * <p>Three different questions a string answers about its length, and they
- * disagree on purpose: {@code length?} counts characters, {@code s/size}
- * counts the bytes they encode to, and {@code s/width} counts the columns they
- * occupy. So a string of three characters can be five bytes long and two
- * columns wide.
- *
- * <p>JEBOL worked the width out from Java's own character properties -- a
- * combining mark takes none, a CJK script takes two, plus a handful of ranges
- * written out by hand. That is a reasonable guess and it is not the answer:
- * the C looks each character up in four sorted tables generated from
- * {@code UnicodeData.txt} and {@code EastAsianWidth.txt}. Those tables are now
- * ported by {@code scripts/terminal-width-table.py} rather than approximated,
- * which is what makes the lightning bolt two columns wide -- it is in the East
- * Asian wide table and belongs to no CJK script at all.
- */
 class TerminalWidthFromTheSourceTest {
 
     private static String answerTo(String source) {

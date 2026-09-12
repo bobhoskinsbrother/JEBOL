@@ -7,36 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * LZMA, ported from the SDK Rebol vendors in {@code u-lzma.c}.
- *
- * <p>An arithmetic coder over adaptive bit models. Each step is a literal
- * byte, a repeat of one of the four most recent distances, or a fresh distance
- * and length; a twelve-value state remembers what the last few steps were so
- * the models can be conditioned on it.
- *
- * <p>Rebol frames it its own way, and the framing is what makes a Rebol stream
- * unreadable to 7-Zip and the other way round: five property bytes, the
- * stream, then the uncompressed length in four bytes little endian. A file
- * written by 7-Zip has an eight-byte length in the header instead and nothing
- * at the end.
- *
- * <p>The bytes are asserted and not only the round trip, because a compressor
- * that reads its own output back is not thereby the same compressor. Every
- * expected value here came out of {@code ./r3-head}, and a sweep of ten inputs
- * from nothing to eighty-six kilobytes across all eleven levels answers byte
- * for byte what a real 3.22.5 answers -- which is the claim worth making,
- * because the level chooses between a greedy parse and a priced one and only
- * the priced one has to agree about which of several equal-length matches to
- * take.
- *
- * <p>Two faults that this file would have caught and a round trip would not,
- * both found by the sweep rather than by reading: a reversed bit tree walked
- * the wrong way from its third bit, so the decoder adapted a different model
- * from the one the encoder had used; and a repeat of exactly two bytes decodes
- * to the length symbol zero, which was being read as "this repeat wrote its
- * own single byte", losing the last two bytes of anything that ended on one.
- */
 class LzmaFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -96,12 +66,6 @@ class LzmaFromTheSourceTest {
         }
     }
 
-    /**
-     * The level chooses the dictionary and how the parse is made, and only the
-     * dictionary shows in the header. Below five the parse is greedy and from
-     * five it is priced, which is why the body changes between four and five
-     * and not between five and six.
-     */
     @Nested
     @DisplayName("what the level decides")
     class WhatTheLevelDecides {
@@ -141,12 +105,6 @@ class LzmaFromTheSourceTest {
                         = compress {test test test} 'lzma""")).isEqualTo("#(true)");
         }
 
-        /**
-         * {@code MIN(9, level)} over an unsigned level, so a negative that is
-         * not minus one arrives as a number near four thousand million and
-         * comes out as nine. Checked against r3-head rather than reasoned
-         * about.
-         */
         @Test
         @DisplayName("every other negative is the slowest level, and so is anything above nine")
         void everyOtherNegativeIsTheSlowest() {
@@ -212,13 +170,6 @@ class LzmaFromTheSourceTest {
                     .isEqualTo("#(true)");
         }
 
-        /**
-         * A run of exactly two bytes at the very end is the case a shorter
-         * round trip never reaches: it decodes to the length symbol zero,
-         * which reads as "no length was written" unless the two are told
-         * apart. Two hundred and five characters of Lorem is the shortest
-         * prefix that ends on one.
-         */
         @Test
         @DisplayName("a stream that ends on a two-byte repeat keeps its last two bytes")
         void aStreamEndingOnATwoByteRepeat() {

@@ -2,26 +2,6 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * Merging histograms until only the ones worth their own code are left.
- *
- * <p>{@code cluster_inc.h}. Coding literals by their context gives sixty four
- * histograms per block type, which is far more codes than the format allows and
- * far more than the data justifies. Most of them are nearly the same, so pairs
- * are merged wherever merging costs fewer bits than keeping them apart, and the
- * map from context to whichever histogram survived is written into the stream.
- *
- * <p>Merging happens in two passes. The first takes the histograms sixty four
- * at a time, which keeps the number of pairs to compare manageable; the second
- * merges what is left, with a cap on how many pairs it will hold at once. After
- * that every original histogram is re-pointed at whichever survivor now costs
- * it least, which may not be the one it was merged into.
- *
- * <p>The queue of candidate pairs is not a heap, despite the C calling it one.
- * Only the first entry is ordered; the rest sit in whatever order they arrived,
- * and a new pair either displaces the front or is appended. That is what the C
- * does and the order it leaves behind decides which merges happen.
- */
 final class BrotliClustering {
 
     private static final int HOW_MANY_AT_A_TIME = 64;
@@ -30,7 +10,6 @@ final class BrotliClustering {
     private BrotliClustering() {
     }
 
-    /** One candidate merge, and what merging would cost. */
     private static final class Pair {
         int first;
         int second;
@@ -52,13 +31,6 @@ final class BrotliClustering {
         }
     }
 
-    /**
-     * How much of the context map itself is saved by merging two clusters.
-     *
-     * <p>Nothing to do with the histograms: this is the entropy of the map that
-     * says which context uses which histogram, and merging two clusters makes
-     * that map more predictable.
-     */
     private static double whatTheMapSaves(int firstSize, int secondSize) {
         int together = firstSize + secondSize;
         return firstSize * BrotliCodes.fastLog2(firstSize)
@@ -134,7 +106,6 @@ final class BrotliClustering {
             }
         }
 
-        /** Drops every pair touching either of the two just merged. */
         void forgetPairsTouching(int first, int second) {
             int keptSoFar = 0;
             for (int each = 0; each < howMany; each++) {
@@ -161,11 +132,6 @@ final class BrotliClustering {
         return histogram.cost();
     }
 
-    /**
-     * Merges until nothing more is worth merging, or the cap is reached.
-     *
-     * <p>{@code BrotliHistogramCombine}. Answers how many clusters are left.
-     */
     static int combine(BrotliHistogram[] histograms,
             BrotliHistogram scratch, int[] clusterSize, int[] belongsTo,
             int belongsToAt, int[] clusters, int clustersAt, Queue queue,
@@ -218,7 +184,6 @@ final class BrotliClustering {
         return left;
     }
 
-    /** What it would cost to move this histogram into that cluster. */
     static double costOfMoving(BrotliHistogram histogram,
             BrotliHistogram candidate, BrotliHistogram scratch, int alphabetSize) {
 
@@ -230,12 +195,6 @@ final class BrotliClustering {
         return BrotliHistogramCost.of(scratch, alphabetSize) - candidate.cost();
     }
 
-    /**
-     * Merges the histograms and answers how many are left, filling in which
-     * one each of the originals now uses.
-     *
-     * <p>{@code BrotliClusterHistograms}.
-     */
     static int clusterInto(BrotliHistogram[] given, int howManyGiven,
             BrotliHistogram[] into, int[] whichOneEachUses, int alphabetSize) {
 
@@ -273,13 +232,10 @@ final class BrotliClustering {
 
         remap(given, howManyGiven, clusters, howManyClusters, into, scratch,
                 whichOneEachUses, alphabetSize);
-        return renumber(into, whichOneEachUses, howManyGiven, alphabetSize);
+        return renumberNoughtUpwardInTheOrderTheyAreFirstUsed(
+                into, whichOneEachUses, howManyGiven, alphabetSize);
     }
 
-    /**
-     * Points each original histogram at whichever survivor costs it least,
-     * then rebuilds the survivors from what actually ended up in them.
-     */
     private static void remap(BrotliHistogram[] given, int howManyGiven,
             int[] clusters, int howManyClusters, BrotliHistogram[] into,
             BrotliHistogram scratch, int[] whichOneEachUses, int alphabetSize) {
@@ -306,11 +262,7 @@ final class BrotliClustering {
         }
     }
 
-    /**
-     * Renumbers the survivors so they are named nought upward in the order
-     * they are first used, which is the form the stream wants.
-     */
-    private static int renumber(BrotliHistogram[] into, int[] whichOneEachUses,
+    private static int renumberNoughtUpwardInTheOrderTheyAreFirstUsed(BrotliHistogram[] into, int[] whichOneEachUses,
             int howMany, int alphabetSize) {
 
         int[] newName = new int[howMany];

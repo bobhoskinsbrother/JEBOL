@@ -7,27 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What a syntax error carries besides its id, from {@code Scan_Error} in
- * {@code rebol3-source/src/core/l-scan.c}.
- *
- * <p>Three fields, filled from three different places, and a script reads each for
- * something different:
- *
- * <pre>
- * Set_String(&amp;error-&gt;nearest, "(line " + line_count + ") " + the whole line);
- * Set_String(&amp;error-&gt;arg1, the token's name);
- * Set_String(&amp;error-&gt;arg2, Copy_Bytes(arg, size));   // the token's own text
- * </pre>
- *
- * <p>So ARG1 says what the reader was building, ARG2 says what it was reading, and
- * NEAR says where to look. Rebol's suite asserts on all three, in different groups:
- * the money group compares ARG2, the word and path cases compare ARG1, and the
- * TRANSCODE group compares NEAR.
- *
- * <p>ARG2 used to be given the whole line here, which put the same text in two
- * fields and left the one scripts compare with the wrong thing in it.
- */
 class SyntaxErrorArgumentsFromTheSourceTest {
 
     private static String answerTo(String source) {

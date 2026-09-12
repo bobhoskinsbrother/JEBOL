@@ -11,28 +11,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A user's encrypted key-value storage, which is what REBOL's SAFE codec and
- * scheme are between them.
- *
- * <p>{@code codec-safe.reb}, and every line of it is REBOL. The codec writes a
- * header, a checksum and the data through a cipher port; the scheme wraps a
- * file of that shape as something a script can PUT and SELECT. Nothing here is
- * Java, which is why this is the test that SAFE works rather than a test of
- * anything JEBOL wrote: what was missing was the ability to open a port on a
- * scheme written in REBOL at all.
- *
- * <p>{@code set-user} and {@code su} in {@code mezz-shell.reb} are the words a
- * script uses. They reach the scheme through
- * {@code open [scheme: 'safe pass: ... path: ... target: ...]}, so a build that
- * cannot open one has no logged-in user either.
- *
- * <p>The password would otherwise be asked for at the console --
- * {@code ask/hide "Enter password: "} -- so every test here passes one, the
- * same way REBOL's own suite avoids the prompt with an environment variable.
- *
- * <p>Every expectation was read off a real 3.22.5 first.
- */
 class TheSafeSchemeFromTheSourceTest {
 
     private static Interpreter reaching(Path directory) {
@@ -56,10 +34,6 @@ class TheSafeSchemeFromTheSourceTest {
         return interpreter.display(interpreter.run(withAPassword));
     }
 
-    /**
-     * The codec on its own, which worked all along: a value molded, compressed,
-     * checksummed and enciphered, and the whole trip back again.
-     */
     @Nested
     @DisplayName("the codec, which is what SAVE and LOAD of a .safe file use")
     class TheCodec {
@@ -95,11 +69,6 @@ class TheSafeSchemeFromTheSourceTest {
         }
     }
 
-    /**
-     * The scheme, which is the half that could not run. A port on it is a map
-     * that lives in a file: PUT stores, SELECT reads back, and closing it
-     * writes the file out.
-     */
     @Nested
     @DisplayName("the scheme, which wraps such a file as a store")
     class TheScheme {
@@ -145,11 +114,6 @@ class TheSafeSchemeFromTheSourceTest {
         }
     }
 
-    /**
-     * SET-USER is the word a script uses, and the scheme is how it keeps what
-     * it is given. /N makes the storage file when it is not there yet, and
-     * without it a user nobody has set up is reported and not created.
-     */
     @Nested
     @DisplayName("SET-USER, which is the whole of it from a script's side")
     class TheUser {

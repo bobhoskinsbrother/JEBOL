@@ -6,19 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The two ways COMPRESS refuses a method, which are two different answers.
- *
- * <p>A name nobody has heard of is an invalid argument. A method REBOL really
- * has and this build was not compiled with is {@code feature-na}, which is
- * what that error is for and what tells a caller to look for another build
- * rather than for a typo.
- *
- * <p>Rebol's own suite is written for both: each of the four groups for a
- * method that may be missing opens with a try and accepts {@code feature-na}
- * as the whole answer, because a build without the algorithm is an ordinary
- * build rather than a broken one.
- */
 class CompressionThisBuildLacksFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -27,17 +14,6 @@ class CompressionThisBuildLacksFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /**
-     * The names are Rebol's, and taking them from anywhere else is the bug.
-     *
-     * <p>This asked about {@code brotli} because that is what JEBOL called
-     * it. Rebol calls it {@code br} -- {@code system/catalog/compressions} is
-     * {@code [deflate zlib gzip br crush lz4 lzav lzma lzw]} -- so the one
-     * name Rebol's own suite asks about answered {@code invalid-arg}, a name
-     * nobody has heard of, where the suite was waiting to be told the build
-     * has not got it. A test written from the port rather than from the thing
-     * being ported agrees with the port and finds nothing.
-     */
     @Test
     @DisplayName("a real method this build has not got is a feature that is not available")
     void aMissingMethodIsFeatureNa() {

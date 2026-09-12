@@ -7,14 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A word keeps its previous value when the expression assigned to it
- * raises.
- *
- * <p>Claimed as a guarantee in {@code spec/eval.allium}, so it needs a test
- * rather than a reading of the code. There must be no state in which a slot
- * holds a partly computed result.
- */
 class AssignmentSafetyTest {
 
     private static Interpreter freshInterpreter(String... lines) {

@@ -6,28 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * An action says it is an action, where a native says it is a native.
- *
- * <p>Both are written in the host language, so nothing about the
- * implementation tells them apart, and JEBOL answered {@code native!} for all
- * of them. Which is which is Rebol's declaration and not derivable:
- * {@code src/boot/actions.reb} names the sixty and {@code src/boot/natives.reb}
- * names the rest.
- *
- * <p>An action is the polymorphic kind -- one name with an arm per datatype --
- * and {@code Do_Act} dispatches on the value's type where a native has one body
- * for every caller. The distinction is visible to a script through
- * {@code type?}, {@code action?} and {@code native?}, and nothing else here
- * gives it away.
- *
- * <p>Nothing in Rebol's own suite catches this: {@code action?} appears zero
- * times across all sixty-seven vendored files. It was found by asking two
- * running interpreters the same question, which is what
- * {@code scripts/runtime-parity.py} does, and it was 120 of the 582 words
- * Rebol's library holds -- more than sixty, because a second spelling bound to
- * the same function is an action too.
- */
 class ActionDatatypeFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -104,16 +82,6 @@ class ActionDatatypeFromTheSourceTest {
         assertThat(answerTo("action! = type? :append")).isEqualTo(TRUE);
     }
 
-    /**
-     * A type-test is an action too, and that half is a rule rather than a list.
-     *
-     * <p>{@code types.reb} generates one per datatype, so the datatypes are
-     * already enumerated and listing the predicates again would be a second
-     * place to keep in step. The line falls exactly at the datatypes: a
-     * predicate over a *typeset* is a borrowed REBOL function, which is why
-     * {@code series?} answers {@code function!} in a real R3 and must go on
-     * doing so here.
-     */
     @Test
     @DisplayName("a datatype's own test is an action")
     void adatatypesTestIsAnAction() {

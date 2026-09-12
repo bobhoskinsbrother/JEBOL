@@ -7,35 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What TO-HEX/SIZE does, and what it refuses.
- *
- * <p>{@code REBNATIVE(to_hex)} in {@code n-strings.c} checks the size before it
- * looks at the subject at all:
- *
- * <pre>
- * if (VAL_INT64(D_ARG(3)) &lt;= 0 || VAL_UNT64(D_ARG(3)) &gt; MAX_U32)
- *     Trap_Arg(D_ARG(3));
- * </pre>
- *
- * <p>None of that was here, and the three sizes it refuses each reached the
- * host as a Java exception rather than a REBOL error --
- * {@code IllegalArgumentException: a word needs a spelling} for nought, because
- * an issue with no spelling is not a value REBOL has, and
- * {@code StringIndexOutOfBoundsException} for a negative one.
- * {@code spec/embed.allium} says nothing a script does may reach the host as a
- * throwable, so these were a defect of a different kind from a wrong answer.
- *
- * <p>The third crash was not on any list: {@code to-hex/size 255 4294967295} is
- * the largest size the C accepts, and the width arrived here as a Java
- * {@code int} that had already wrapped to -1.
- *
- * <p>/SIZE then means two different things by datatype, and the difference is
- * not arbitrary. An integer is a number, so it is right aligned and its low
- * digits are the ones kept. A tuple is a run of bytes in the order they were
- * written, so it is cut from the right. Every expectation was read off
- * {@code ./r3-head} first.
- */
 class ToHexSizeFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -53,12 +24,6 @@ class ToHexSizeFromTheSourceTest {
     @DisplayName("the size, which is checked before the subject is looked at")
     class TheSize {
 
-        /**
-         * Nought is the one worth stating rather than assuming: a width of
-         * nought leaves an issue with no spelling, and there is no such value.
-         * The refusal names the size because the size is what the caller got
-         * wrong.
-         */
         @Test
         @DisplayName("nought or less is refused, and names the size")
         void noughtOrLessIsRefused() {
@@ -66,7 +31,6 @@ class ToHexSizeFromTheSourceTest {
             assertThat(errorFrom("to-hex/size 255 -1")).isEqualTo("[invalid-arg -1]");
         }
 
-        /** For every subject, because the check comes before the type branch. */
         @Test
         @DisplayName("and for a char and a tuple as much as a number")
         void forEverySubject() {
@@ -81,11 +45,6 @@ class ToHexSizeFromTheSourceTest {
             assertThat(answerTo("to-hex/size 255 1")).isEqualTo("#F");
         }
 
-        /**
-         * The ceiling is what fits in thirty-two bits unsigned, and it is a
-         * ceiling on the argument rather than on the answer -- the answer is
-         * sixteen digits long either way.
-         */
         @Test
         @DisplayName("and the largest is what fits in thirty-two bits unsigned")
         void theLargestIsWhatFitsInThirtyTwoBits() {
@@ -115,7 +74,6 @@ class ToHexSizeFromTheSourceTest {
             assertThat(answerTo("to-hex/size 255 15")).isEqualTo("#0000000000000FF");
         }
 
-        /** The low digits are the ones that matter, so it cuts from the left. */
         @Test
         @DisplayName("and keeping its low digits when the size is narrower")
         void keepingItsLowDigits() {
@@ -123,11 +81,6 @@ class ToHexSizeFromTheSourceTest {
             assertThat(answerTo("to-hex/size 4660 2")).isEqualTo("#34");
         }
 
-        /**
-         * Sixteen is the ceiling on the answer: {@code if (len == NO_LIMIT ||
-         * len > MAX_HEX_LEN) len = MAX_HEX_LEN;}. Asking for more answers
-         * sixteen rather than a wider number.
-         */
         @Test
         @DisplayName("sixteen digits is the widest it will write")
         void sixteenIsTheWidest() {
@@ -143,7 +96,6 @@ class ToHexSizeFromTheSourceTest {
             assertThat(answerTo("to-hex/size #\"a\" 1")).isEqualTo("#1");
         }
 
-        /** Without a size, the width follows the character rather than being fixed. */
         @Test
         @DisplayName("and without a size the width follows what it is")
         void withoutASizeTheWidthFollowsWhatItIs() {
@@ -156,11 +108,6 @@ class ToHexSizeFromTheSourceTest {
     @DisplayName("a tuple, cut from the right")
     class ATuple {
 
-        /**
-         * The other way about from a number. A tuple is a run of bytes in the
-         * order they were written, so the size says how many digits to keep
-         * from the left and the rest are dropped.
-         */
         @Test
         @DisplayName("truncated to the size asked for")
         void truncatedToTheSizeAskedFor() {
@@ -168,7 +115,6 @@ class ToHexSizeFromTheSourceTest {
             assertThat(answerTo("to-hex/size 1.2.3 4")).isEqualTo("#0102");
         }
 
-        /** Including an odd size, which cuts a byte in half. */
         @Test
         @DisplayName("including an odd one, which stops mid-byte")
         void includingAnOddOne() {
@@ -177,12 +123,6 @@ class ToHexSizeFromTheSourceTest {
             assertThat(answerTo("to-hex/size 1.2.3.4.5.6 11")).isEqualTo("#01020304050");
         }
 
-        /**
-         * The ceiling is twice the tuple's own length rather than sixteen, and
-         * it is the tuple that decides it. A size wider than the tuple does not
-         * pad it out -- there is nothing to pad with that would not be a
-         * different colour.
-         */
         @Test
         @DisplayName("and a size wider than the tuple does not pad it")
         void aSizeWiderThanTheTupleDoesNotPadIt() {

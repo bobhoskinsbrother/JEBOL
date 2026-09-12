@@ -8,17 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The infinities, NaN, and negative money.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Two surprises here. Dividing by zero raises only when both sides are
- * whole numbers, so the decimal side follows the hardware and the integer
- * side does not. And the two equalities disagree about NaN in the opposite
- * direction to every other pair of values: the loose = says NaN equals
- * itself and the strict == says it does not.
- */
 class SpecialNumberLiteralsTest {
 
     private static String answerTo(String source) {

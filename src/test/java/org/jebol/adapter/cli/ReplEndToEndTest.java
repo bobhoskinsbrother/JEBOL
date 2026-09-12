@@ -15,16 +15,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The console, driven the way a person drives it: text in, text out.
- *
- * <p>Nothing here reaches past the interface to call an evaluator directly.
- * Green unit tests prove the pieces; only this proves the system, and when the
- * two disagree this is the one to believe.
- */
 class ReplEndToEndTest {
 
-    /** A session: lines typed, everything the console printed. */
     private static String session(String... linesTyped) {
         String typed = String.join("\n", List.of(linesTyped)) + "\nquit\n";
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
@@ -36,7 +28,6 @@ class ReplEndToEndTest {
         return captured.toString(StandardCharsets.UTF_8);
     }
 
-    /** The same session, with a filesystem to reach under one directory. */
     private static String sessionWithFiles(java.nio.file.Path directory, String... linesTyped) {
         String typed = String.join("\n", List.of(linesTyped)) + "\nquit\n";
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
@@ -361,7 +352,6 @@ class ReplEndToEndTest {
         }
     }
 
-    /** The same session, allowed to start real programs on this machine. */
     private static String sessionWithProcesses(String... linesTyped) {
         String typed = String.join("\n", List.of(linesTyped)) + "\nquit\n";
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
@@ -461,16 +451,6 @@ class ReplEndToEndTest {
         }
     }
 
-    /**
-     * A path on the command line is a script to run, which is the first thing
-     * anybody asks of a language's command line and the thing JEBOL could not
-     * do: a path was dropped without a word and the console opened instead,
-     * which is worse than a refusal -- the script that was meant to run has
-     * not, nothing said so, and whoever called it is looking at a prompt.
-     *
-     * <p>Every figure here was read off {@code ./r3-head} 3.22.5 running the
-     * same script.
-     */
     @Nested
     @DisplayName("a script named on the command line")
     class AScriptOnTheCommandLine {
@@ -517,11 +497,6 @@ class ReplEndToEndTest {
                     .printed()).isEqualTo("with header\n");
         }
 
-        /**
-         * The directory a script counts from is its own, so a script that
-         * ships beside its data reads that data wherever it is called from.
-         * Where the caller was is kept in {@code system/options/path}.
-         */
         @Test
         @DisplayName("and counts relative paths from its own directory, not the caller's")
         void itcountsFromItsOwnDirectory(@TempDir java.nio.file.Path directory)
@@ -589,12 +564,6 @@ class ReplEndToEndTest {
             assertThat(ran.exitStatus()).isEqualTo(1);
         }
 
-        /**
-         * A script run from the command line may reach the machine, because
-         * the person who typed the command chose to run it. Confinement is
-         * for a host embedding the interpreter, which builds its own bounds
-         * and is granted nothing by default.
-         */
         @Test
         @DisplayName("and it is granted the machine, as a shell tool has to be")
         void itisGrantedTheMachine(@TempDir java.nio.file.Path directory)
@@ -608,13 +577,6 @@ class ReplEndToEndTest {
             assertThat(java.nio.file.Files.exists(directory.resolve("made.txt"))).isTrue();
         }
 
-        /**
-         * {@code --root} is what an interpreter starting another one hands
-         * over, so the second is bounded the way the first is. A script
-         * confined to a directory writes {@code %/x} and means a file inside
-         * it, so the child reads the path it is given the same way -- resolving
-         * it against the machine instead would name nothing, or something else.
-         */
         @Test
         @DisplayName("--root confines the filesystem and every path is read inside it")
         void therootSwitchConfinesTheScript(@TempDir java.nio.file.Path directory)
@@ -649,12 +611,6 @@ class ReplEndToEndTest {
             assertThat(ran.printed()).doesNotContain("not yours");
         }
 
-        /**
-         * A file written by an editor that marks its encoding starts with
-         * three bytes that are not part of the source. Decoding drops them,
-         * as it does for LOAD of a binary; reading the file as text keeps
-         * them, and the script's first word becomes one nobody can define.
-         */
         @Test
         @DisplayName("a byte order mark at the front is not part of the script")
         void abyteOrderMarkIsNotSource(@TempDir java.nio.file.Path directory)

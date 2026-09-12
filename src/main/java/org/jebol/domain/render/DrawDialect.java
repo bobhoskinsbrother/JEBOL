@@ -10,16 +10,9 @@ import java.util.Optional;
 /**
  * A gob's draw block, read once into paint instructions.
  *
- * <p>Thirty commands and ten sub-commands, understood here and drawn as many
- * times as there are renderers. Rebol's C fused the reading and the drawing in
- * {@code host-draw.c}, and the cost is visible in the source we vendor: there
- * is a win32 one and no posix one, so a stock R3 on macOS or Linux draws
- * nothing.
- *
  * <p>The block arrives already parsed by DELECT into a flat run of commands,
- * each followed by its slots in declared order and padded with none. So this
- * walks a list rather than parsing anything, and every number is already the
- * type its slot declared.
+ * each followed by its slots in declared order and padded with none, so this
+ * walks a list rather than parsing anything.
  *
  * <p>Every default here is read off the gob being drawn on, which nothing
  * documents and which is what makes the dialect terse: {@code box} alone fills
@@ -33,11 +26,8 @@ public final class DrawDialect {
     }
 
     /**
-     * What a draw block paints on a gob of this size.
-     *
-     * <p>Answers nothing when the block says nothing this build paints, which
-     * is not the same as it being empty: a block of gradients and images reads
-     * whole and produces no instructions.
+     * What a draw block paints on a gob of this size. Nothing is not the same
+     * as empty: a block of gradients and images reads whole and paints none.
      */
     public static List<PaintInstruction> instructionsFor(
             BlockValue drawBlock, ObjectValue dialect,
@@ -48,7 +38,6 @@ public final class DrawDialect {
         return reading.painted();
     }
 
-    /** One walk of one draw block, holding the state as it changes. */
     private static final class Reading {
 
         private final ObjectValue dialect;
@@ -71,30 +60,15 @@ public final class DrawDialect {
             return List.copyOf(painted);
         }
 
-        /**
-         * Reads the block one command at a time.
-         *
-         * <p>One at a time rather than all at once, and that is what saves
-         * this file from holding a copy of the dialect's command names. Asked
-         * for the whole block, DELECT answers a flat run and finding where one
-         * command's arguments stop would mean knowing which words are
-         * commands. Asked for one, it answers exactly one and says where it
-         * got to.
-         */
         void walk(BlockValue block) {
             try {
-                readEveryCommandOf(block);
-            } catch (org.jebol.domain.eval.Raised malformed) {
-                // A draw block that will not parse paints what it managed and
-                // stops. Letting the raise out would take the whole window
-                // down for one mistyped argument, and a gob's content is not
-                // a place a script is standing: nobody is there to catch it.
-                // What has been painted so far stands, which is the same
-                // answer an unpainted command gets.
+                readEveryCommandOfOneAtATime(block);
+            } catch (org.jebol.domain.eval.Raised
+                    malformedSoWhatWasPaintedStandsRatherThanTakingTheWindowDown) {
             }
         }
 
-        private void readEveryCommandOf(BlockValue block) {
+        private void readEveryCommandOfOneAtATime(BlockValue block) {
             BlockValue left = block;
             BlockValue answer = BlockValue.block();
             while (Delect.read(dialect, left, answer, false, null, Context.unbound())
@@ -143,19 +117,12 @@ public final class DrawDialect {
                 case "skew" -> skewedBy(arguments);
                 case "matrix" -> matrixFrom(arguments);
                 case "reset-matrix" -> transform = Transform.NONE;
-                case "push" -> pushed(arguments);
+                case "push" -> drawnWithEverythingPutBackAfterwards(arguments);
                 default -> {
                 }
             }
         }
 
-        /**
-         * A shape, painted with the state and transform as they stand.
-         *
-         * <p>A shape with nothing to paint it with is dropped rather than
-         * drawn invisibly, because {@code pen off fill-pen off} is a legal way
-         * to say so and a renderer should not be handed work with no effect.
-         */
         private void paint(List<PathStep> path) {
             if (path.isEmpty() || state.paintsNothing()) {
                 return;
@@ -194,14 +161,7 @@ public final class DrawDialect {
                     asNumber(numbers.get(4)), asNumber(numbers.get(5))));
         }
 
-        /**
-         * A block drawn with everything put back afterwards.
-         *
-         * <p>Which is what makes a piece of drawing composable: it may set
-         * whatever it likes and nothing after it is affected. Without it every
-         * command would have to undo itself.
-         */
-        private void pushed(List<Value> arguments) {
+        private void drawnWithEverythingPutBackAfterwards(List<Value> arguments) {
             if (arguments.isEmpty()
                     || !(arguments.getFirst() instanceof BlockValue inside)) {
                 return;
@@ -213,7 +173,6 @@ public final class DrawDialect {
             transform = transformBefore;
         }
 
-        /** Two corners, defaulting to the whole gob, with rounded corners. */
         private List<PathStep> aBox(List<Value> arguments) {
             PairValue corner = pairAt(arguments, 0).orElse(PairValue.of(0, 0));
             PairValue end = pairAt(arguments, 1).orElse(PairValue.of(wide, high));
@@ -225,12 +184,6 @@ public final class DrawDialect {
                     new PathStep.Close());
         }
 
-        /**
-         * A centre and one radius or two, defaulting to the biggest that fits.
-         *
-         * <p>{@code min(centre.x, centre.y)} in the C, the centre being half
-         * the gob, so a hundred-square gob gives a radius of fifty.
-         */
         private List<PathStep> aCircle(List<Value> arguments) {
             PairValue centre = pairAt(arguments, 0)
                     .orElse(PairValue.of(wide / 2, high / 2));
@@ -241,7 +194,6 @@ public final class DrawDialect {
                     centre.x(), centre.y(), across, down));
         }
 
-        /** A corner and a diameter: the same shape said the other way round. */
         private List<PathStep> anEllipse(List<Value> arguments) {
             PairValue corner = pairAt(arguments, 0).orElse(PairValue.of(0, 0));
             PairValue across = pairAt(arguments, 1).orElse(PairValue.of(wide, high));
@@ -250,13 +202,6 @@ public final class DrawDialect {
                     across.x() / 2, across.y() / 2));
         }
 
-        /**
-         * A run of points, open or closed.
-         *
-         * <p>Fewer than two paints nothing: one point is a position rather
-         * than a shape, and painting a dot would invent a decision the dialect
-         * never made.
-         */
         private List<PathStep> aRunOfPoints(List<Value> arguments, boolean closes) {
             List<PairValue> points = everyPairIn(arguments);
             if (points.size() < 2) {
@@ -272,13 +217,6 @@ public final class DrawDialect {
             return List.copyOf(path);
         }
 
-        /**
-         * Three points or four: a quadratic or a cubic.
-         *
-         * <p>The same word meaning two different curves depending on how many
-         * arrived, which is the dialect's argument counting doing real work.
-         * The C switches on it the same way.
-         */
         private List<PathStep> aCurve(List<Value> arguments) {
             List<PairValue> points = everyPairIn(arguments);
             if (points.size() == 3) {
@@ -299,7 +237,6 @@ public final class DrawDialect {
             return List.of();
         }
 
-        /** A quarter turn unless told otherwise: {@code IS_NONE(arg+3) ? 90}. */
         private List<PathStep> anArc(List<Value> arguments) {
             PairValue centre = pairAt(arguments, 0).orElse(PairValue.of(0, 0));
             PairValue radius = pairAt(arguments, 1).orElse(PairValue.of(wide, high));
@@ -317,7 +254,6 @@ public final class DrawDialect {
         }
     }
 
-    // ---- reading one argument out of a slot -------------------------------
 
     private static Optional<Colour> colourIn(List<Value> arguments) {
         return arguments.isEmpty() || !(arguments.getFirst() instanceof TupleValue parts)

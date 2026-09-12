@@ -12,35 +12,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The DRAW dialect: what a gob's draw block paints.
- *
- * <p>Read by DELECT and turned into paint instructions here, once, so that a
- * desktop window, a browser and a phone execute the same drawing without any
- * of them knowing a dialect exists. Rebol's C fused the reading and the
- * drawing in {@code host-draw.c}, and the cost of that is visible in the
- * source we vendor: there is a win32 one and no posix one, so a stock R3 on
- * macOS or Linux draws nothing at all.
- *
- * <p>The defaults are the part worth reading twice, because nothing documents
- * them and they are read off the gob being drawn on. {@code box} with no
- * arguments fills the whole gob. {@code circle} with none is the biggest
- * circle that fits. {@code arc} with no length turns ninety degrees rather
- * than nothing. All three come from {@code host-draw.c} and all three are
- * pinned below.
- *
- * <p>Specified in {@code spec/draw.allium}.
- */
 class DrawDialectFromTheSourceTest {
 
-    /**
-     * A gob, and the dialect its draw block is read against.
-     *
-     * <p>Both from one interpreter, because the dialect is
-     * {@code system/dialects/draw} and {@code dial-draw.reb} builds it while
-     * the library loads. A flattening given no dialect paints no draw blocks,
-     * so a test that forgot it would see empty lists and read as a defect.
-     */
     private record AGobAndItsDialect(
             GobValue gob, org.jebol.domain.value.ObjectValue dialect) {
     }
@@ -59,7 +32,6 @@ class DrawDialectFromTheSourceTest {
         return gobAndDialectFrom(source).gob();
     }
 
-    /** What a draw block on a hundred-pixel-square gob paints. */
     private static List<PaintInstruction> drawingOf(String drawBlock) {
         AGobAndItsDialect drawn = gobAndDialectFrom(
                 "make gob! [size: 100x100 draw: [" + drawBlock + "]]");
@@ -150,8 +122,6 @@ class DrawDialectFromTheSourceTest {
         @Test
         @DisplayName("a width of zero is a width of one, and so is a negative")
         void awidthOfZeroIsOne() {
-            // boot/draw.reb says so in the declaration: "Zero, or negative
-            // values, produce a line-width of 1."
             assertThat(onlyDrawing("line-width 0 box 10x10 50x50")
                     .painted().lineWidth()).isEqualTo(1);
             assertThat(onlyDrawing("line-width -5 box 10x10 50x50")
@@ -204,8 +174,6 @@ class DrawDialectFromTheSourceTest {
         @Test
         @DisplayName("and BOX with no arguments fills the whole gob")
         void aboxWithNoArgumentsFillsTheGob() {
-            // The default nothing documents. The C reads the corners off
-            // `zero_pair` and `size_pair`, which is the gob being painted.
             List<PathStep> path = onlyDrawing("box").path();
 
             assertThat(path.getFirst()).isEqualTo(new PathStep.MoveTo(0, 0));
@@ -229,8 +197,6 @@ class DrawDialectFromTheSourceTest {
         @Test
         @DisplayName("and CIRCLE with none is the biggest that fits")
         void acircleWithNoRadiusIsTheBiggestThatFits() {
-            // `min(centre.x, centre.y)` in the C, the centre being half the
-            // gob: a hundred square gives a radius of fifty.
             assertThat(onlyDrawing("circle").path())
                     .containsExactly(new PathStep.EllipseAt(50, 50, 50, 50));
         }
@@ -292,8 +258,6 @@ class DrawDialectFromTheSourceTest {
         @Test
         @DisplayName("ARC with no length turns a quarter, not nothing")
         void anarcDefaultsToAQuarterTurn() {
-            // `IS_NONE(arg+3) ? 90`. An arc of no length would draw nothing
-            // and be indistinguishable from a command nobody wrote.
             PathStep.ArcTo arc = (PathStep.ArcTo) onlyDrawing("arc 50x50 20x20 0")
                     .path().getFirst();
 
@@ -329,8 +293,6 @@ class DrawDialectFromTheSourceTest {
         @Test
         @DisplayName("a lit-word step is measured from where the path stands")
         void alitWordStepIsRelative() {
-            // The reason losing a lit-word's mark in DELECT would have been
-            // serious: every relative path would have quietly become absolute.
             assertThat(onlyDrawing("shape [move 10x10 'line 5x5]").path())
                     .containsExactly(
                             new PathStep.MoveTo(10, 10),
@@ -441,11 +403,6 @@ class DrawDialectFromTheSourceTest {
         @Test
         @DisplayName("a command this build does not paint is skipped")
         void anunpaintedCommandIsSkipped() {
-            // The opposite of the binary dialect's call, and deliberately.
-            // There an unknown code writes a message of the wrong length and
-            // the far end cannot read it. Here the cost of skipping is a
-            // picture missing one thing, and of refusing, a picture missing
-            // everything.
             assertThat(drawingOf("grad-pen linear normal box 10x10 50x50"))
                     .as("the box still draws")
                     .hasSize(1);
@@ -454,9 +411,6 @@ class DrawDialectFromTheSourceTest {
         @Test
         @DisplayName("and a block that will not parse paints what it managed, not nothing")
         void amalformedBlockPaintsWhatItManaged() {
-            // A gob's content is not a place a script is standing, so nobody
-            // is there to catch a raise. Letting one out would take the whole
-            // window down for one mistyped argument.
             assertThat(drawingOf("box 10x10 50x50 grad-pen linear normal 0x0 0x100 1x1"))
                     .as("the box drew before the bad arguments were reached")
                     .hasSize(1);

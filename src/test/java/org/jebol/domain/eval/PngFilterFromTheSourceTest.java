@@ -7,22 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * FILTER and UNFILTER, the PNG delta filters.
- *
- * <p>Read out of {@code u-png-filter.c}. Byte arithmetic and nothing else:
- * each output byte is the input byte less a prediction made from its
- * neighbours, and the whole point is that the differences compress better than
- * the values.
- *
- * <p>The predictions are not guessable and each is tested against a worked
- * example rather than against the port. AVERAGE floors its mean with a shift
- * rather than rounding, and PAETH's tie-breaks are ordered -- left, then
- * above, then above-left -- so a reordering of the comparisons would pass a
- * careless test and fail a real image.
- *
- * <p>Specified in {@code spec/natives.allium} under "The PNG delta filters".
- */
 class PngFilterFromTheSourceTest {
 
     private static String answerTo(String source) {

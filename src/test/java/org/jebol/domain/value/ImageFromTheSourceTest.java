@@ -7,36 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The image datatype, read out of {@code t-image.c}.
- *
- * <p>An image is a series and that is the whole trick of it. The element is four
- * bytes -- {@code QUAD_SKIP(s, n)} is {@code data + n * 4} -- the tail is
- * {@code w * h}, and the width and height sit beside the data. So a position is
- * a pixel index and every navigation action comes free from being a series:
- * {@code at img 3} is the third pixel of the same image, not a smaller one.
- *
- * <p>The bytes are red, green, blue, alpha here on every platform, and Rebol's
- * own order is not: {@code include/reb-c.h} picks ARGB on a big-endian host, RGBA
- * on Android and BGRA elsewhere. What a script sees is fixed either way, so the
- * fixed order is the language and the varying one is storage. Decision 20 says
- * why that matters more here than there.
- *
- * <p>Three rules in the C that no name would suggest:
- *
- * <ul>
- *   <li>A fresh image is opaque <em>white</em>. {@code CLEAR_IMAGE} is
- *   {@code memset(p, 0xFF, ...)}, and the comment beside it says so.
- *   <li>Molding writes the alpha binary only when some pixel needs it, decided
- *   by walking every pixel rather than by reading a flag: {@code if (~*p++ &
- *   0xff000000)}.
- *   <li>A pixel written as an integer sets the <em>alpha</em> and leaves the
- *   colour: {@code *dp = (*dp & 0xffffff) | (n << 24)}.
- * </ul>
- *
- * <p>Specified in {@code spec/values.allium} as {@code ImageStorage} and
- * {@code ImageValue}.
- */
 class ImageFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -123,18 +93,6 @@ class ImageFromTheSourceTest {
                     .isEqualTo("255.0.0.128");
         }
 
-        /**
-         * This asserted the opposite until a real 3.22.5 was asked, and the
-         * reading it was written on is the obvious one: {@code Create_Image}
-         * has a branch that reads a block of colours as a run of pixels, so a
-         * block of colours must be a way to fill a picture.
-         *
-         * <p>It is not, because the branch cannot be reached. Every other
-         * branch steps past what it has just read and that one does not, so
-         * the check for anything left over fires on the very block it has used
-         * and refuses the whole specification. Bytes are the only way to give
-         * a picture a list of colours.
-         */
         @Test
         @DisplayName("a block of colours is read as pixels and then refused anyway")
         void aBlockOfTuplesIsRefused() {

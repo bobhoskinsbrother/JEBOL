@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The port that hashes what is written to it, {@code checksum://}.
- *
- * <p>{@code Checksum_Actor} in {@code p-checksum.c}. What makes it worth
- * having rather than a call to CHECKSUM is that the sum is built up across
- * writes, so a file too large to hold can be summed a block at a time.
- *
- * <p>Reading must not end the sum, and that is the part most easily got wrong:
- * the C says so in a comment beside the copy it makes, and a port read twice
- * has to answer the same thing both times and still accept more writes
- * afterwards.
- */
 class ChecksumPortFromTheSourceTest {
 
     private static String answerTo(String source) {

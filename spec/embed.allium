@@ -320,6 +320,11 @@ rule RefusedServiceRaises {
 -- Four things exist to call code written in C, thus no host can offer
 -- them and no grant can turn them on. They are refused before the grant
 -- is even looked at, and the reason says so.
+--
+-- The four are LOAD-EXTENSION, DO-CALLBACK, DO-COMMANDS and ACCESS-OS. A
+-- JVM can be made to do all of them, and the result stops being portable,
+-- which is the one thing JEBOL is for -- so this is the refusal that never
+-- changes, where the other two are a host's decision on the day.
 rule ExtensionServicesAreNeverAvailable {
     when: script_asks_for(run, service)
     requires: service.is_an_extension_point

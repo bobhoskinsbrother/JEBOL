@@ -8,29 +8,8 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Optional;
 
-/**
- * One side of a Diffie-Hellman exchange: a generated key pair whose private
- * half never leaves.
- *
- * <p>Two parties who have never met need a shared secret over a line anyone
- * can read. Each makes a private number, publishes something derived from it,
- * and combines the other's published value with their own private one. Both
- * arrive at the same secret, and a listener who saw both published values
- * cannot work it out.
- *
- * <p>That is why the context here is unlike RSA's. An RSA context holds a key
- * the caller supplied; this holds a key the interpreter generated, and the
- * only things a caller can do with it are publish and agree.
- */
 final class DiffieHellmanKey {
 
-    /**
-     * What the C will accept as a field prime, in bytes.
-     *
-     * <p>{@code if (n < 64 || n > 512) goto error;} -- below the lower bound
-     * the exchange is not worth performing, and above the upper one it is
-     * slower than anything reasonable wants.
-     */
     private static final int NARROWEST_PRIME = 64;
     private static final int WIDEST_PRIME = 512;
 
@@ -44,10 +23,6 @@ final class DiffieHellmanKey {
         this.widthInBytes = widthInBytes;
     }
 
-    /**
-     * A fresh key pair for these parameters, or nothing when they will not
-     * carry an exchange.
-     */
     static Optional<DiffieHellmanKey> generatedFor(byte[] generator, byte[] prime) {
         try {
             BigInteger p = new BigInteger(1, prime);
@@ -66,22 +41,11 @@ final class DiffieHellmanKey {
         }
     }
 
-    /**
-     * The value to send, padded to the width of the field prime.
-     *
-     * <p>Padded because the peer reads it as a fixed-width number and a
-     * leading zero byte would otherwise be dropped, giving a value one byte
-     * short every few exchanges and a secret that does not agree.
-     */
-    byte[] published() {
+    byte[] publishedPaddedToTheWidthOfThePrime() {
         return fixedWidth(((javax.crypto.interfaces.DHPublicKey) pair.getPublic())
                 .getY());
     }
 
-    /**
-     * The secret both sides reach, or nothing when the peer's value is not a
-     * usable one.
-     */
     Optional<byte[]> agreedWith(byte[] peersPublicValue) {
         try {
             BigInteger theirs = new BigInteger(1, peersPublicValue);

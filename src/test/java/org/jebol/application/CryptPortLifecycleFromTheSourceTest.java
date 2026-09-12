@@ -5,24 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Opening, closing and reconfiguring a cipher port.
- *
- * <p>{@code Crypt_Actor} in {@code p-crypt.c}, and the {@code crypt} scheme's
- * own INIT in {@code sys-ports.reb}. The scheme reads the algorithm from any
- * of three places -- {@code algorithm:} in a block, the host of
- * {@code crypt://AES-128-CBC}, or the target of {@code crypt:chacha20} -- and
- * the direction from the url's fragment or a {@code direction:} field. So
- * {@code open crypt://AES-128-CBC#decrypt} and a five-line block are the same
- * port.
- *
- * <p>The actor looks for its cipher before it looks at what was asked, which
- * is why every action on a closed port is refused and not only the ones that
- * would need the cipher. Asking whether it is open is refused too, which is
- * the surprising one and is pinned below.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written.
- */
+
 class CryptPortLifecycleFromTheSourceTest {
 
     private static final String KEY = "#{2B7E151628AED2A6ABF7158809CF4F3C}";
@@ -83,12 +66,6 @@ class CryptPortLifecycleFromTheSourceTest {
                 .isEqualTo("\"sideways\"");
     }
 
-    /**
-     * The key and the starting vector are copied into the port and blanked in
-     * the specification. A specification is an ordinary object a script can
-     * read, mold or pass on, so a key that stayed in it would travel
-     * everywhere the port did.
-     */
     @Test
     @DisplayName("the key and the vector do not stay in the specification")
     void theKeyAndTheVectorDoNotStayInTheSpecification() {
@@ -115,20 +92,6 @@ class CryptPortLifecycleFromTheSourceTest {
                 .isEqualTo("\"7649ABAC8119B246CEE98E9B12E9197D\"");
     }
 
-    /**
-     * Opening checks the algorithm again, and not only the scheme's INIT does.
-     *
-     * <p>They run at different moments and a port can be changed in between:
-     * INIT runs when the port is made, and the specification is an ordinary
-     * object a script can write to afterwards. {@code Crypt_Open} reads
-     * {@code spec/algorithm} for itself and traps {@code RE_INVALID_SPEC}
-     * before it builds anything.
-     *
-     * <p>Without the second check the port opens with no cipher behind it and
-     * the next write reaches for one that is not there. That was a
-     * NullPointerException escaping to the top of the interpreter, which is
-     * the one kind of failure a port must never produce.
-     */
     @Test
     @DisplayName("opening checks the algorithm, not only making the port")
     void openingChecksTheAlgorithmAgain() {
@@ -149,10 +112,6 @@ class CryptPortLifecycleFromTheSourceTest {
                 .isEqualTo("crypt://AES-128-CBC#encrypt");
     }
 
-    /**
-     * Every one of them, because the actor looks for its cipher above the
-     * switch on what was asked. Closing twice is refused for the same reason.
-     */
     @Test
     @DisplayName("every action on a closed port is refused, and names the port")
     void everyActionOnAClosedPortIsRefused() {
@@ -166,12 +125,6 @@ class CryptPortLifecycleFromTheSourceTest {
                 .isEqualTo("crypt://AES-128-CBC#encrypt");
     }
 
-    /**
-     * Asking whether a closed port is open raises rather than answering false,
-     * which reads as wrong until you see where the check sits: the actor wants
-     * its cipher before it reads the question, and a closed port has not got
-     * one to answer with.
-     */
     @Test
     @DisplayName("asking whether a closed port is open raises rather than answering")
     void askingWhetherAClosedPortIsOpenRaises() {
@@ -191,11 +144,6 @@ class CryptPortLifecycleFromTheSourceTest {
                 .isEqualTo("crypt://AES-128-CBC#encrypt");
     }
 
-    /**
-     * Only an unknown *word* is refused. A field that is not a word at all
-     * answers the port and changes nothing, because the C breaks out of the
-     * switch before it looks anything up: {@code if (!IS_WORD(arg1)) break}.
-     */
     @Test
     @DisplayName("a field that is not a word changes nothing and is not refused")
     void aFieldThatIsNotAWordChangesNothing() {
@@ -212,11 +160,6 @@ class CryptPortLifecycleFromTheSourceTest {
                 .isEqualTo("nonsense");
     }
 
-    /**
-     * A value the field cannot hold answers false rather than raising, which
-     * is what lets a script offer a cipher and fall back when the build has
-     * not got it.
-     */
     @Test
     @DisplayName("a value a field cannot hold answers false")
     void aValueAFieldCannotHoldAnswersFalse() {
@@ -228,12 +171,6 @@ class CryptPortLifecycleFromTheSourceTest {
                 modify p 'init-vector {abc}""")).isEqualTo("#(false)");
     }
 
-    /**
-     * The key is the one field that takes text as well as bytes, because its
-     * arm accepts a string where the vector's arm accepts only a binary. So
-     * sixteen characters of ASCII are a key and sixteen characters of ASCII
-     * are not a starting vector.
-     */
     @Test
     @DisplayName("a key may be text where a vector may not")
     void aKeyMayBeTextWhereAVectorMayNot() {
@@ -255,10 +192,6 @@ class CryptPortLifecycleFromTheSourceTest {
                 .isEqualTo("\"7649ABAC8119B246CEE98E9B12E9197D\"");
     }
 
-    /**
-     * One port can run several ciphers in turn. Changing the algorithm throws
-     * the old cipher away, so the key has to be set again after it.
-     */
     @Test
     @DisplayName("the algorithm can be changed on an open port")
     void theAlgorithmCanBeChangedOnAnOpenPort() {

@@ -84,7 +84,8 @@ public final class SeriesContents {
                     into.add(source.storage().at(source.index() + at) & 0xFF);
                 }
             }
-            case StringValue text -> addUtf8(theFirst(howMany, text.text()), into);
+            case StringValue text ->
+                    addUtf8(theFirstCountedInCodePoints(howMany, text.text()), into);
             case CharacterValue letter ->
                     addUtf8(Character.toString(letter.codepoint()), into);
             case IntegerValue whole -> {
@@ -122,17 +123,8 @@ public final class SeriesContents {
         }
     }
 
-    /**
-     * The first so many characters of a string, counted as REBOL counts them.
-     *
-     * <p>Which is code points, the same thing LENGTH? answers. Java's own
-     * count is of sixteen-bit units, so a character outside the basic plane
-     * counts twice there and once here, and a bound measured the other way
-     * stops in the middle of one. Half a surrogate pair is not a character:
-     * encoding it gives a question mark, so a count of one over a string
-     * beginning with an emoji answered the bytes of {@code ?}.
-     */
-    private static String theFirst(int howManyCharacters, String text) {
+    private static String theFirstCountedInCodePoints(
+            int howManyCharacters, String text) {
         if (howManyCharacters < 0) {
             return text;
         }

@@ -7,31 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * INVALID-UTF?, from {@code REBNATIVE(invalid_utfq)} and {@code UTF8_Check}.
- *
- * <p>The whole native is four lines: check the bytes, answer none if they are
- * all right, otherwise answer the binary standing at the trouble. What it
- * answers is a position and not a count, which is what lets a caller carry on
- * reading from there.
- *
- * <p>The position is the start of the sequence that failed, not the byte that
- * gave it away. {@code UTF8_Check} keeps a pointer to the last character it
- * accepted and answers {@code acc + 1}, so a broken two-byte sequence is
- * reported at its lead byte even though the decoder only found out on the
- * second one.
- *
- * <p>Two things it does that a strict decoder would not. An unfinished sequence
- * at the very end is a failure -- the loop ends with the state part way through
- * and the last line answers {@code acc + 1} for it. And a surrogate pair
- * written as two three-byte sequences is accepted, which no well-formed UTF-8
- * has: the decoder rejects the first half, then {@code Decode_Surrogate_Pair}
- * looks at the six bytes together and lets them through.
- *
- * <p>/UTF and its NUM are declared and never read. {@code data} is the only
- * argument the C touches, so asking for another encoding gets the UTF-8 answer.
- * They are here so that a script written for Rebol can make the call at all.
- */
 class InvalidUtfFromTheSourceTest {
 
     private static String answerTo(String source) {

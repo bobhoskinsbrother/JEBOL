@@ -36,13 +36,6 @@ public final class Binder {
         return laidOutLike(block, new BlockStorage(bound));
     }
 
-    /**
-     * A new storage wearing the old one's line starts, as a block value.
-     *
-     * <p>Binding copies, and a copy that dropped the flags molded every
-     * script's blocks on one line. The flags shift with the copy, because a
-     * bound block starts at its head where the one it came from may not.
-     */
     private static BlockValue laidOutLike(BlockValue older, BlockStorage bound) {
         bound.takeLineBreaksFrom(older.storage(), older.index());
         return new BlockValue(bound, 1, older.datatype());
@@ -236,14 +229,6 @@ public final class Binder {
         };
     }
 
-    /**
-     * One value a map holds, bound where a block's item would have been.
-     *
-     * <p>A map is not a series and cannot be walked by position, so its values
-     * are replaced rather than written over. A map literal inside a body is
-     * how {@code compose/deep #[num: (val)]} reaches an argument, and leaving
-     * it alone left VAL with no word to resolve.
-     */
     private static Value boundIfDeclared(Value held, Context context,
             Set<String> names, Set<Object> alreadyWalked) {
 

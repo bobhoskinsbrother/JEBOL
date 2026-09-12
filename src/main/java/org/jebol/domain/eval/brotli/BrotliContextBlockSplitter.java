@@ -1,18 +1,5 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * The same splitter as {@link BrotliBlockSplitter}, for literals that are coded
- * differently depending on the two bytes before them.
- *
- * <p>{@code ContextBlockSplitter} in {@code metablock.c}. One block type now
- * owns two or three histograms rather than one -- a letter after a space is
- * counted separately from a letter after a letter -- and the decision to split
- * or merge is taken on the total across all of them, so the contexts move
- * together and a block type is never half one thing and half another.
- *
- * <p>Because each type costs several codes rather than one, the ceiling on types
- * comes down in proportion.
- */
 final class BrotliContextBlockSplitter {
 
     private static final double SECOND_LAST_MUST_BEAT_LAST_BY = 20.0;
@@ -93,7 +80,7 @@ final class BrotliContextBlockSplitter {
         split.lengthIs(0, blockSize);
         split.typeIs(0, 0);
         for (int context = 0; context < howManyContexts; context++) {
-            lastEntropy[context] = BrotliCodes.bitsEntropy(
+            lastEntropy[context] = BrotliCodes.bitsEntropyFlooredAtOneBitPerLiteral(
                     histograms[context].counts(), alphabetSize);
             lastEntropy[howManyContexts + context] = lastEntropy[context];
         }
@@ -119,13 +106,13 @@ final class BrotliContextBlockSplitter {
         double[] costOfMerging = new double[2];
         for (int context = 0; context < howManyContexts; context++) {
             int mine = currentHistogram + context;
-            onItsOwn[context] = BrotliCodes.bitsEntropy(
+            onItsOwn[context] = BrotliCodes.bitsEntropyFlooredAtOneBitPerLiteral(
                     histograms[mine].counts(), alphabetSize);
             for (int which = 0; which < 2; which++) {
                 int slot = which * howManyContexts + context;
                 merged[slot].copyFrom(histograms[mine]);
                 merged[slot].addAll(histograms[lastHistogram[which] + context]);
-                mergedEntropy[slot] = BrotliCodes.bitsEntropy(
+                mergedEntropy[slot] = BrotliCodes.bitsEntropyFlooredAtOneBitPerLiteral(
                         merged[slot].counts(), alphabetSize);
                 costOfMerging[which] +=
                         mergedEntropy[slot] - onItsOwn[context] - lastEntropy[slot];

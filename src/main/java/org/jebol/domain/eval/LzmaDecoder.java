@@ -2,22 +2,6 @@ package org.jebol.domain.eval;
 
 import java.util.Arrays;
 
-/**
- * LZMA, the reading half.
- *
- * <p>{@code LzmaDec.c} of the LZMA SDK, dated 2018-02-28, as Rebol vendors it
- * in {@code u-lzma.c}. The window is the answer itself: {@code LzmaDecode}
- * points the dictionary straight at the caller's output buffer and sizes it to
- * how much output was asked for, so nothing here wraps and nothing is copied
- * twice.
- *
- * <p>The stream is read one symbol at a time until the output is as long as
- * was asked for. A symbol is a literal byte, a repeat of one of the four most
- * recent distances, or a fresh distance and a length. Running out of input
- * part way through a symbol is an error rather than a short answer, which is
- * what {@code LzmaDec_TryDummy} arranges in the C by refusing to start a
- * symbol it cannot finish.
- */
 final class LzmaDecoder {
 
     private static final int TOP_VALUE = 1 << 24;
@@ -50,24 +34,8 @@ final class LzmaDecoder {
     private static final int LITERAL_MODELS = 0x300;
     private static final int SMALLEST_DICTIONARY = 1 << 12;
 
-    /**
-     * The code a stream cannot open with.
-     *
-     * <p>{@code kBadRepCode}. Before a single byte has been produced there is
-     * nothing to repeat, so a first symbol that would decode as a repeat is
-     * data that was never LZMA. The constant is what the range coder's first
-     * two decisions come to when both go that way.
-     */
-    private static final long BAD_REPEAT_CODE = 0xC0000000L - 0x400;
+    private static final long CODE_A_STREAM_CANNOT_OPEN_WITH = 0xC0000000L - 0x400;
 
-    /**
-     * The distance that means "the stream stops here".
-     *
-     * <p>Rebol never writes one -- {@code CompressLzma} passes zero for the
-     * end mark and states the length in four bytes of its own instead -- but a
-     * stream from anywhere else may, and the C treats it as the end rather
-     * than as damage: it stops and reports how much it made.
-     */
     private static final int END_OF_STREAM = -1;
 
     private final int literalContextBits;
@@ -104,14 +72,6 @@ final class LzmaDecoder {
     private boolean finished;
     private final int[] recentDistances = {1, 1, 1, 1};
 
-    /**
-     * Reads the five property bytes and builds a decoder from them.
-     *
-     * <p>The first byte packs three numbers into one: how many bits of the
-     * previous byte condition a literal, how many bits of the position do, and
-     * how many bits of the position condition everything else. The other four
-     * are the dictionary size, little endian, floored at four kilobytes.
-     */
     private LzmaDecoder(byte[] properties, byte[] input, int from, int length,
             int wanted) {
 
@@ -141,13 +101,6 @@ final class LzmaDecoder {
         this.output = new byte[wanted];
     }
 
-    /**
-     * Reads {@code wanted} bytes of answer out of a stream.
-     *
-     * <p>Rebol always knows how long the answer is before it starts: either
-     * DECOMPRESS/SIZE said so or the four bytes Rebol appends to the stream
-     * did, so the buffer is made once and the decoder stops when it is full.
-     */
     static byte[] decoded(byte[] properties, byte[] input, int from, int length,
             int wanted) {
 
@@ -191,7 +144,7 @@ final class LzmaDecoder {
         if (output.length == 0) {
             return;
         }
-        if (Long.compareUnsigned(code, BAD_REPEAT_CODE) >= 0) {
+        if (Long.compareUnsigned(code, CODE_A_STREAM_CANNOT_OPEN_WITH) >= 0) {
             throw new IllegalArgumentException("LZMA stream opens with a repeat");
         }
         while (outputAt < output.length && !finished) {
@@ -240,17 +193,7 @@ final class LzmaDecoder {
         return (howManyDone & positionMask) << POSITION_BITS_MAX;
     }
 
-    /**
-     * Once the answer is longer than the dictionary, the dictionary is what
-     * bounds a distance rather than how much has been made.
-     *
-     * <p>{@code checkDicSize}. Until then a distance may not reach before the
-     * start of the answer; after it, it may not reach further back than the
-     * window the stream was written with. The C sets it between calls to the
-     * inner loop and caps that loop so the crossing lands on a boundary; here
-     * the crossing is noticed at the next symbol, which is the same boundary.
-     */
-    private void noteWhetherTheDictionaryIsFull() {
+    private void noteWhetherTheDictionaryRatherThanTheAnswerNowBoundsADistance() {
         if (checkedDictionarySize == 0
                 && Integer.compareUnsigned(processed, dictionarySize) >= 0) {
             checkedDictionarySize = dictionarySize;
@@ -258,7 +201,7 @@ final class LzmaDecoder {
     }
 
     private void decodeOneSymbol() {
-        noteWhetherTheDictionaryIsFull();
+        noteWhetherTheDictionaryRatherThanTheAnswerNowBoundsADistance();
         int positionState = positionStateFor(processed);
         if (decodeBit(isMatch, positionState + state) == 0) {
             decodeLiteral();
@@ -272,10 +215,11 @@ final class LzmaDecoder {
             return;
         }
         length = decodeRepeat(positionState);
-        if (length == THE_REPEAT_WAS_A_SINGLE_BYTE) {
+        if (length
+                == THE_REPEAT_WAS_A_SINGLE_BYTE_WHICH_IS_NOT_A_LENGTH_OF_ZERO) {
             return;
         }
-        copyFromTheDistance(length);
+        copyFromTheDistanceStoppingShortRatherThanRefusing(length);
     }
 
     private void decodeLiteral() {
@@ -309,19 +253,9 @@ final class LzmaDecoder {
         output[outputAt++] = (byte) symbol;
     }
 
-    /**
-     * The single-byte repeat writes itself and has no length to report.
-     *
-     * <p>It cannot be reported as a length of zero, because zero is the
-     * shortest length a real repeat has: the symbol zero means two bytes,
-     * lengths being written with two subtracted. Conflating the two lost the
-     * last two bytes of anything that ended on a two-byte repeat, and only
-     * the last two, which is exactly the kind of fault a round trip through
-     * short data never shows.
-     */
-    private static final int THE_REPEAT_WAS_A_SINGLE_BYTE = -1;
+    private static final int
+            THE_REPEAT_WAS_A_SINGLE_BYTE_WHICH_IS_NOT_A_LENGTH_OF_ZERO = -1;
 
-    /** The length symbol of the repeat, or {@link #THE_REPEAT_WAS_A_SINGLE_BYTE}. */
     private int decodeRepeat(int positionState) {
         if (decodeBit(isRepeatG0, state) == 0) {
             if (decodeBit(isRepeat0Long, positionState + state) == 0) {
@@ -329,7 +263,7 @@ final class LzmaDecoder {
                 outputAt++;
                 processed++;
                 state = state < LITERAL_STATES ? 9 : 11;
-                return THE_REPEAT_WAS_A_SINGLE_BYTE;
+                return THE_REPEAT_WAS_A_SINGLE_BYTE_WHICH_IS_NOT_A_LENGTH_OF_ZERO;
             }
         } else {
             int distance;
@@ -375,11 +309,13 @@ final class LzmaDecoder {
             distance = 2 | (slot & 1);
             if (slot < END_POSITION_MODEL_INDEX) {
                 distance <<= directBits;
-                distance += readReversed(specialPositions, distance, directBits);
+                distance += readLeastSignificantBitFirst(
+                        specialPositions, distance, directBits);
             } else {
-                distance = readTheDirectBits(distance, directBits - ALIGN_BITS);
+                distance = readTheBitsWithNoModelBehindThem(
+                        distance, directBits - ALIGN_BITS);
                 distance = (distance << ALIGN_BITS)
-                        | readReversed(align, 0, ALIGN_BITS);
+                        | readLeastSignificantBitFirst(align, 0, ALIGN_BITS);
                 if (distance == END_OF_STREAM) {
                     finished = true;
                     return;
@@ -398,22 +334,11 @@ final class LzmaDecoder {
         if (Integer.compareUnsigned(distance, reachable) >= 0) {
             throw new IllegalArgumentException("LZMA distance reaches before the start");
         }
-        copyFromTheDistance(length);
+        copyFromTheDistanceStoppingShortRatherThanRefusing(length);
     }
 
-    /**
-     * A bit tree read least significant bit first, which is how both the low
-     * bits of a near distance and the four aligned bits of a far one are
-     * written.
-     *
-     * <p>The node walked to is {@code (node &lt;&lt; 1) | bit} and the answer is
-     * built up the other way round, one bit at a time from the bottom. That is
-     * the exact inverse of {@code RcTree_ReverseEncode}, and it has to be
-     * spelled that way round: the encoder and the decoder must arrive at the
-     * same node for the same run of bits, or they adapt different models and
-     * the second run of three bits already disagrees.
-     */
-    private int readReversed(short[] models, int base, int howManyBits) {
+    private int readLeastSignificantBitFirst(
+            short[] models, int base, int howManyBits) {
         int at = 1;
         int symbol = 0;
         for (int each = 0; each < howManyBits; each++) {
@@ -424,16 +349,7 @@ final class LzmaDecoder {
         return symbol;
     }
 
-    /**
-     * Bits with no model behind them, which is how the middle of a large
-     * distance is written.
-     *
-     * <p>Subtracting the halved range and looking at whether it went below
-     * zero is the comparison and the update in one, which is what the C does
-     * to keep the branch out of the loop. Java has no thirty-two bit unsigned
-     * type, so the subtraction is masked back before its top bit is read.
-     */
-    private int readTheDirectBits(int startingFrom, int howManyBits) {
+    private int readTheBitsWithNoModelBehindThem(int startingFrom, int howManyBits) {
         int distance = startingFrom;
         for (int each = 0; each < howManyBits; each++) {
             normalize();
@@ -450,15 +366,7 @@ final class LzmaDecoder {
     }
 
 
-    /**
-     * Copies the run, and stops short when the answer is already as long as
-     * was asked for.
-     *
-     * <p>A run may reach past the end of what was wanted, which is not an
-     * error: DECOMPRESS/SIZE asks for the front of something and the last run
-     * before that point is allowed to be longer than the room left.
-     */
-    private void copyFromTheDistance(int length) {
+    private void copyFromTheDistanceStoppingShortRatherThanRefusing(int length) {
         int wholeLength = length + MATCH_MIN_LEN;
         int room = output.length - outputAt;
         if (room == 0) {

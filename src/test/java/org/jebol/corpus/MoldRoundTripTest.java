@@ -17,13 +17,6 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Anything MOLD prints, the reader reads back as an equal value.
- *
- * <p>This is the invariant that keeps code-as-data honest, and it is checked
- * against fourteen real programs rather than against examples chosen to make
- * it pass.
- */
 class MoldRoundTripTest {
 
     static Stream<Path> programmes() {

@@ -7,22 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What a specification has to look like before an image is built from it.
- *
- * <p>{@code Create_Image} in {@code t-image.c}, which both MAKE from a block
- * and the {@code #(image! ...)} written form go through. It reads the parts in
- * one fixed order -- a size, then the colours, then the alpha, then the
- * position -- and refuses the lot if anything is left over when it stops.
- *
- * <p>The refusals are the part worth having tests for. A size that cannot
- * exist and a position of nought are both caught, and they are caught with
- * different errors: the size is a malformed construct and the position is out
- * of range. JEBOL accepted every one of these, so a mistyped specification
- * built a picture that had quietly ignored half of what it was told.
- *
- * <p>Every expectation here was read off a real 3.22.5 first.
- */
 class MakingAnImageFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -53,10 +37,6 @@ class MakingAnImageFromTheSourceTest {
             assertThat(errorIdFrom("load {#(image! -1x1)}")).isEqualTo("malconstruct");
         }
 
-        /**
-         * Either dimension on its own is enough to refuse the pair, so the
-         * check is on both rather than on the area.
-         */
         @Test
         @DisplayName("one negative dimension is enough, even beside a nought")
         void oneNegativeDimensionIsEnough() {
@@ -73,13 +53,6 @@ class MakingAnImageFromTheSourceTest {
                     .isEqualTo("\"make image! [0x5 #{}]\"");
         }
 
-        /**
-         * A bare pair does not come through here at all. It goes to the code
-         * that makes a blank image of a size, which brings a negative
-         * dimension down to nought instead of refusing it -- so the same size
-         * written two ways gives two answers, and that is true of a real
-         * 3.22.5 rather than a slip of the port.
-         */
         @Test
         @DisplayName("and a bare pair clamps where a block refuses")
         void aBarePairClampsWhereABlockRefuses() {
@@ -94,13 +67,6 @@ class MakingAnImageFromTheSourceTest {
             assertThat(errorIdFrom("make image! [3]")).isEqualTo("malconstruct");
         }
 
-        /**
-         * Sixty-five thousand five hundred and thirty-five a side, and the
-         * failure depends on how the size was asked for. A bare pair is a size
-         * out of range: somebody asked for a picture too big and the number is
-         * what is wrong. A specification is a malformed construct, because the
-         * maker there is handed nothing but a no and refuses the whole block.
-         */
         @Test
         @DisplayName("a side too wide is a size limit on its own and malformed in a block")
         void aSideTooWideIsRefusedTwoDifferentWays() {
@@ -116,11 +82,6 @@ class MakingAnImageFromTheSourceTest {
             assertThat(errorIdFrom("make image! 65536x1")).isEqualTo("size-limit");
         }
 
-        /**
-         * A size out of range is a script error, the kind a caller is meant to
-         * catch. JEBOL raised it in the internal category, which is where a
-         * defect in the interpreter goes rather than a mistake in the script.
-         */
         @Test
         @DisplayName("and it is a script failure rather than an internal one")
         void itIsAScriptFailureRatherThanAnInternalOne() {
@@ -149,12 +110,6 @@ class MakingAnImageFromTheSourceTest {
                     .isEqualTo("\"make image! [1x1 #{FFFFFF}]\"");
         }
 
-        /**
-         * Only after the colour bytes. Which slot a trailing whole number
-         * fills depends on what came before it: after a run of bytes it is a
-         * position, after one colour it is that colour's alpha, and after
-         * nothing at all it is a part nothing can read.
-         */
         @Test
         @DisplayName("a number with no colours before it is not a position at all")
         void aNumberWithNoColoursBeforeItIsNotAPosition() {
@@ -162,14 +117,6 @@ class MakingAnImageFromTheSourceTest {
             assertThat(errorIdFrom("make image! [2x2 3]")).isEqualTo("malconstruct");
         }
 
-        /**
-         * And a written image carries no position at all. MAKE from a block
-         * reads one because a block is a specification; the written form looks
-         * as though it should mean the same and does not, because a construct
-         * is read by the generic machinery for "a series and where it stands"
-         * before it reaches the image maker, and an image is not one of the
-         * series that machinery knows.
-         */
         @Test
         @DisplayName("and the written form has no position slot either")
         void theWrittenFormHasNoPositionSlot() {
@@ -178,11 +125,6 @@ class MakingAnImageFromTheSourceTest {
             assertThat(errorIdFrom("load {#(image! 2x2 1)}")).isEqualTo("malconstruct");
         }
 
-        /**
-         * Past the end is not refused. The picture is still there and taking
-         * the head gives it back; the image simply stands where a position
-         * past the end stands on every other series, which is at the tail.
-         */
         @Test
         @DisplayName("past the end stands at the tail, with the picture still behind it")
         void pastTheEndStandsAtTheTail() {
@@ -235,13 +177,6 @@ class MakingAnImageFromTheSourceTest {
                     .isEqualTo("\"make image! [1x1 #{141414} #{3C}]\"");
         }
 
-        /**
-         * A block of colours is read as a run of pixels and then refused
-         * anyway. The reader that consumes it never steps past it, so the
-         * leftover check fires on the block it has just used -- which makes
-         * the branch unreachable, and makes bytes the only way to give an
-         * image a list of colours.
-         */
         @Test
         @DisplayName("and a block of colours is refused however well formed it is")
         void aBlockOfColoursIsRefused() {

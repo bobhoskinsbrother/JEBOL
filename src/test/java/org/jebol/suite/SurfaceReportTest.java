@@ -12,24 +12,6 @@ import java.util.TreeMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Every function JEBOL offers, with its arguments and refinements.
- *
- * <p>Printed in the shape Rebol declares its own, so the two can be compared
- * line for line against the declared specs in {@code r3/c-surface.txt}, which
- * {@code scripts/c-surface.py} writes from Rebol's source. JEBOL's natives carry
- * a rebuilt spec rather than a REBOL block, so this reads the registry instead.
- *
- * <p>Why this exists: without it, the only way to learn that a native is
- * missing, or that it refuses an argument Rebol accepts, is to run
- * the suite and read the failure. That finds them one at a time and in no
- * useful order. The two surfaces side by side give the whole list at once,
- * and say which of the three kinds of gap each one is: a function that is
- * not there, a refinement that is not there, or a parameter that takes
- * fewer datatypes than it should.
- *
- * <p>Reports rather than asserts, like the other work-list tools here.
- */
 class SurfaceReportTest {
 
     @Test
@@ -48,13 +30,6 @@ class SurfaceReportTest {
         assertThat(byName).as("an empty surface means nothing was registered").isNotEmpty();
     }
 
-    /**
-     * The same lines, written where `scripts/c-parity.py` can read them.
-     *
-     * <p>Printing alone means the surface can only be compared by eye. The
-     * audit compares Rebol's own C declarations against this, so this one has
-     * to be a file.
-     */
     private static void writeForTheAudit(java.util.Collection<String> lines) {
         java.nio.file.Path into = java.nio.file.Path.of("build", "jebol-surface.txt");
         try {
@@ -65,15 +40,6 @@ class SurfaceReportTest {
         }
     }
 
-    /**
-     * The same lines with JEBOL's own datatype table in front of them.
-     *
-     * <p>An argument Rebol declares {@code any-type!} can only be written as
-     * every datatype in a Java {@code Set}, so the audit needs both tables to
-     * see that the two say the same thing. Without them the 41 arguments
-     * declared that way each reported the difference between the two tables,
-     * which is two datatypes and belongs on one line rather than eighty-two.
-     */
     private static List<String> withTheDatatypeTable(java.util.Collection<String> lines) {
         List<String> everything = new java.util.ArrayList<>();
         for (Datatype datatype : Datatype.values()) {
@@ -83,7 +49,6 @@ class SurfaceReportTest {
         return everything;
     }
 
-    /** One function's arguments and refinements, or nothing if it is not one. */
     private static Optional<String> describe(Value value) {
         if (value instanceof OperatorValue operator) {
             return describe(operator.underlying());
@@ -114,13 +79,6 @@ class SurfaceReportTest {
         }
     }
 
-    /**
-     * The datatypes a parameter accepts, spelled as Rebol spells them.
-     *
-     * <p>Left off when the parameter accepts everything, because that is how
-     * Rebol declares an unconstrained argument too, and a list of fifty-eight
-     * names would bury the ones that matter.
-     */
     private static void appendAcceptedTypes(StringBuilder shape, Parameter parameter) {
         Set<Datatype> accepted = parameter.acceptedTypes();
         if (accepted.isEmpty() || accepted.size() == Datatype.values().length) {

@@ -200,7 +200,7 @@ has no dependencies and this does not change that** -- about 1550 KB, of which
 dictionary and the three tables that index it, all carried in the source because
 the domain may not read a file.
 
-## Code comments: never
+## Code comments: never. Javadoc: only on the contract
 
 **Never write a code comment. Make the variable, method and type names carry the
 explanation instead.** This is absolute and it supersedes the global rule's
@@ -208,6 +208,44 @@ allowance for short "why" comments: the itch to write one is the signal to
 extract a method, rename a variable, or introduce a named constant whose name
 says what the comment would have said. What cannot be said in a name goes in the
 design notes (`docs/`), not beside the code.
+
+**Javadoc is the same itch wearing a jacket, and the same rule applies to it with
+one exception.** The exception is a contract a caller outside the package reaches
+for: a public type, a public or protected member of one, an interface, an enum.
+There the documentation is the contract and a name cannot carry it.
+
+**An `@Override` is not that exception.** The contract lives on the interface or
+the superclass, and the implementation restating it puts the same promise in two
+places that can drift apart. A javadoc on an override earns its place only where
+the implementation genuinely promises something the contract does not, and then
+it says the difference and nothing else.
+
+Everything else goes, and there are only three kinds:
+
+- **Naming the thing again in a sentence.** Delete it. The name already said it.
+- **Explaining a step inside the body.** Extract that step into a method whose
+  name is the sentence, and the javadoc disappears with it.
+- **Carrying a fact about the C.** That one is real and still does not belong
+  beside the code. It belongs in `spec/` under the rule it is evidence for, or
+  in `docs/rebol-findings.md` where no rule owns it -- a reader who needs to
+  know why `Form_Hex_Pad` pads from the left is not reading a private helper to
+  find out.
+
+**One more thing may stay, and only in `src/main`: a one-line signpost where
+tidying the code would break it.** `BrotliDictionaryMatches` keeps the C's shape and indentation on
+purpose, and `BrotliLog2` computes a logarithm the long way for a measured
+reason. A line saying "see `docs/brotli-port.md`, and do not tidy this" is not
+restating a name -- it is the only thing standing between the file and a
+well-meant cleanup. Nothing longer, and only where the danger is real.
+
+**Tests carry no comment and no javadoc at all, class level included.** The
+`@DisplayName` beside each test says what it asserts, and the class name says
+what the file is about; a paragraph above either one is the same sentence a
+third time. This rule once carved out the class doc on a `*FromTheSourceTest`
+on the grounds that it named the C function each expectation was read from --
+and that carve-out kept three hundred and sixty essays in the test tree. The
+evidence is worth having and it belongs in `docs/`, where the next reader looks
+for it, rather than above a class they have to open the file to find.
 
 ## Writing tests that carry REBOL source
 

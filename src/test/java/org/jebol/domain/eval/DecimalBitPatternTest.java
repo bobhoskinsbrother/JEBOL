@@ -6,19 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A decimal and its bits, each convertible to the other.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>This is how a test suite pins floating point exactly, without writing
- * decimals whose text form has already rounded. Rebol's own decimal-test.r3
- * leans on it throughout.
- *
- * <p>The boundaries are the patterns that are not ordinary numbers: both
- * zeroes, both infinities, a NaN, and a binary shorter than the eight bytes
- * a double occupies.
- */
 class DecimalBitPatternTest {
 
     private static String answerTo(String source) {

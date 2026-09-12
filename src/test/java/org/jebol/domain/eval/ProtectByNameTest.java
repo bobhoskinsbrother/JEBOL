@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * PROTECT/VALUES and PROTECT/WORDS, which take a block of words.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Complements, and neither does the other's job. Without them,
- * {@code protect/values [a b]} protects the literal block holding the two
- * words and nothing else: accepted, plausible, and leaving everything it
- * was meant to guard wide open.
- */
 class ProtectByNameTest {
 
     private static String errorIdOf(String setup, String attempt) {
@@ -74,7 +64,6 @@ class ProtectByNameTest {
                 .isEqualTo("no-error");
     }
 
-    /** An object holding a number and an object, the shape the suite uses. */
     private static final String NESTED = "o: object [a: 1 o: object [a: 2]] ";
 
     private static String answerTo(String source) {

@@ -1,25 +1,5 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * Walking the input once, turning it into insert-and-copy commands.
- *
- * <p>{@code backward_references_inc.h}. At each position it asks the hasher for
- * the best copy starting there. No copy means one more literal to insert; a copy
- * means a command, and the walk jumps past what was copied.
- *
- * <p>Two things stop that being a plain greedy walk.
- *
- * <p>It looks one byte ahead before committing. If the copy starting at the next
- * byte scores a hundred and seventy five better, the byte here is written as a
- * literal and the better copy taken instead. That may repeat, but only four
- * times in a row, so a pathological input cannot walk it forward for ever.
- *
- * <p>And it gives up on data that is not compressing. After sixty four bytes
- * with no copy found it starts hashing every second position instead of every
- * one, and after another two hundred and fifty six it hashes every fourth. The
- * point is not only speed: hashes of incompressible data would crowd out the
- * hashes of the compressible data that may follow.
- */
 final class BrotliBackwardReferences {
 
     private static final long WORST_MATCH_WORTH_TAKING = 30 * 8L * 8L + 100;
@@ -29,35 +9,20 @@ final class BrotliBackwardReferences {
     private BrotliBackwardReferences() {
     }
 
-    /**
-     * How far back a copy may reach.
-     *
-     * <p>Sixteen short of the window, so that a distance and the window it sits
-     * in cannot be confused at the boundary.
-     */
     static int furthestBack(int windowBits) {
-        return (1 << windowBits) - 16;
+        return (1 << windowBits) - SHORT_OF_THE_WINDOW_SO_THE_TWO_CANNOT_BE_CONFUSED;
     }
+
+    private static final int SHORT_OF_THE_WINDOW_SO_THE_TWO_CANNOT_BE_CONFUSED = 16;
 
     private static int howFarApartCopiesMayBeBeforeSearchingSparsely(int quality) {
         return quality < 9 ? 64 : 512;
     }
 
-    /**
-     * Whether the look ahead starts from nothing or from what it must beat.
-     *
-     * <p>Below quality five it is told the length it has to improve on, which
-     * lets the hasher stop early. From five up it searches afresh, and so may
-     * find a shorter match that scores better for being nearer.
-     */
     private static boolean searchesAheadFromNothing(int quality) {
         return quality >= 5;
     }
 
-    /**
-     * What one pass over a block leaves behind: literals not yet spoken for, and
-     * how many were written into commands.
-     */
     record Found(int insertLengthLeftOver, int literalsWrittenIntoCommands) {
     }
 
@@ -149,21 +114,15 @@ final class BrotliBackwardReferences {
             literalsWrittenIntoCommands += insertLength;
             insertLength = 0;
 
-            rememberTheInsideOfTheCopy(ringBuffer, mask, hasher, at, best,
+            rememberTheInsideOfTheCopyButNotAllOfIt(
+                    ringBuffer, mask, hasher, at, best,
                     rememberUntil);
             at += (int) best.length;
         }
         return new Found(insertLength + (end - at), literalsWrittenIntoCommands);
     }
 
-    /**
-     * Hashes the positions the copy skipped over, but not all of them.
-     *
-     * <p>A copy of a long run of one byte would otherwise fill the table with
-     * hashes of that run and evict everything useful, so a copy whose distance is
-     * short relative to its length has only its last stretch hashed.
-     */
-    private static void rememberTheInsideOfTheCopy(byte[] ringBuffer, int mask,
+    private static void rememberTheInsideOfTheCopyButNotAllOfIt(byte[] ringBuffer, int mask,
             BrotliHasher hasher, int at, BrotliMatch best, int rememberUntil) {
 
         int from = at + 2;
@@ -175,14 +134,6 @@ final class BrotliBackwardReferences {
         hasher.rememberRange(ringBuffer, mask, from, until);
     }
 
-    /**
-     * Which of the sixteen short codes says this distance, or none of them.
-     *
-     * <p>Zero and one say "the last distance" and "the one before it". Ten more
-     * say one of those plus or minus a small amount, and which code means which
-     * offset is packed four bits at a time into the two constants below. Anything
-     * else is written out in full.
-     */
     static int distanceCodeFor(long distance, long furthestBack,
             int[] recentDistances) {
 

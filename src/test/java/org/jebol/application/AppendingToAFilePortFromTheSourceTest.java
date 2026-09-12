@@ -11,18 +11,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * APPEND on a file port is WRITE/APPEND, and the C makes them the same arm:
- * {@code case A_APPEND} sets the end position and falls through into
- * {@code case A_WRITE} without a break.
- *
- * <p>So it writes at the end, answers the file rather than the port, and takes
- * every one of WRITE's refinements -- while refusing the two that are APPEND's
- * own, because /dup and /only mean nothing to a write and guessing at them
- * would put ten line feeds where the caller asked for ten, or one.
- *
- * <p>Every expectation was read off {@code ./r3-head} first.
- */
 class AppendingToAFilePortFromTheSourceTest {
 
     private static Path root;
@@ -75,7 +63,6 @@ class AppendingToAFilePortFromTheSourceTest {
                     reduce [file? answer  answer]""")).isEqualTo("[#(true) %w]");
         }
 
-        /** A freshly opened port is at nought, so the end is where the size is. */
         @Test
         @DisplayName("from the end rather than from wherever the port was standing")
         void fromTheEndRatherThanTheCurrentPosition() {
@@ -87,7 +74,6 @@ class AppendingToAFilePortFromTheSourceTest {
                     read/string %w""")).isEqualTo("\"12345X\"");
         }
 
-        /** A seek position beats it, which is the order the C sets them in. */
         @Test
         @DisplayName("unless a seek position was named too, which wins")
         void aSeekPositionWins() {
@@ -141,7 +127,6 @@ class AppendingToAFilePortFromTheSourceTest {
                     append/only p "aa\"""")).isEqualTo("bad-refines");
         }
 
-        /** And refuses them before writing anything, so nothing lands. */
         @Test
         @DisplayName("before writing anything")
         void beforeWritingAnything() {
@@ -154,16 +139,6 @@ class AppendingToAFilePortFromTheSourceTest {
         }
     }
 
-    /**
-     * A port opened only to read refuses a change rather than taking it and
-     * doing nothing, which is what the C's own comment on the CLEAR arm was
-     * written for: "When the port is opened with a read-only policy, this call
-     * would be silently ignored without the check below."
-     *
-     * <p>Two different ids, because the two arms trap differently:
-     * {@code Trap1(RE_WRITE_ERROR, path)} on CLEAR and
-     * {@code Trap1(RE_READ_ONLY, path)} on WRITE.
-     */
     @Nested
     @DisplayName("a port opened only to read")
     class APortOpenedOnlyToRead {
@@ -196,7 +171,6 @@ class AppendingToAFilePortFromTheSourceTest {
                     append p "more\"""")).isEqualTo("read-only");
         }
 
-        /** Where a port opened the ordinary way takes both. */
         @Test
         @DisplayName("where a port opened the ordinary way takes both")
         void aPortOpenedTheOrdinaryWayTakesBoth() {

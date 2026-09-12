@@ -49,20 +49,12 @@ public record PairValue(double x, double y) implements Value {
     private static final String AREA = "area";
 
     public PairValue {
-        x = narrowedToSinglePrecision(x);
-        y = narrowedToSinglePrecision(y);
+        x = narrowedToSinglePrecisionGoingInfiniteRatherThanRefusing(x);
+        y = narrowedToSinglePrecisionGoingInfiniteRatherThanRefusing(y);
     }
 
-    /**
-     * A half as a {@code REBD32} holds it: rounded to single precision, and
-     * infinite where it was too large for one.
-     *
-     * <p>An earlier version of this refused an infinity on the grounds that
-     * it would not mold back. It molds back perfectly well as
-     * {@code 1.#INF}, and refusing it made {@code as-pair 1e300 -1e300}
-     * fail where Rebol answers a pair.
-     */
-    private static double narrowedToSinglePrecision(double half) {
+    private static double narrowedToSinglePrecisionGoingInfiniteRatherThanRefusing(
+            double half) {
         return (float) half;
     }
 

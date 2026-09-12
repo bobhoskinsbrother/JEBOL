@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * /ANY reads the needle as a shape, and /SAME minds case.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>A question mark stands for one character and a star for any run of
- * them. The match may then be longer or shorter than the needle, which is
- * why what comes after it cannot be worked out by counting characters.
- */
 class WildcardSearchTest {
 
     private static String answerTo(String source) {

@@ -12,11 +12,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Specified in {@code spec/natives.allium} under "Starting another program"
- * and in {@code spec/embed.allium} as ProgramToStart and ProgramResult, read
- * from {@code n-io.c} and {@code call-test.r3}.
- */
 class CallNativeTest {
 
     private static final class Recorded implements ProcessPort {
@@ -209,16 +204,6 @@ class CallNativeTest {
                     .isEqualTo(directory.resolve("out.txt").toString());
         }
 
-        /**
-         * A script that changes directory and then calls a program means the
-         * two to agree, and a script confined to a directory of its own would
-         * otherwise write outside it the moment it called {@code touch}: the
-         * JVM's working directory belongs to the embedding application, and
-         * nothing about the process grant says a script may write there.
-         *
-         * <p>Which is how a suite file running in a temporary sandbox left a
-         * file in the repository it was run from.
-         */
         @Test
         @DisplayName("and the child starts where the script is standing, not where the JVM is")
         void thechildStartsWhereTheScriptIsStanding(

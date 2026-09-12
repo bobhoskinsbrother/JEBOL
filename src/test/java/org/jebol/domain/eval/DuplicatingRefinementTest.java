@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * /DUP, which repeats what is being added.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Its count had no parameter, so the number was never consumed: it
- * leaked out as the expression's own value and the operation happened
- * once. Every assertion here answered a bare number before.
- */
 class DuplicatingRefinementTest {
 
     private static String answerTo(String source) {

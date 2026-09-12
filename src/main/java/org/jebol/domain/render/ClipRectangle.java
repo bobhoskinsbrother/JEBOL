@@ -1,12 +1,8 @@
 package org.jebol.domain.render;
 
 /**
- * The area an instruction is allowed to paint in, measured from the surface.
- *
- * <p>Absolute, and carried on every instruction rather than pushed and popped
- * around them. A stack would have to survive being written down and sent
- * somewhere, and a renderer that lost its place in one would paint the rest of
- * the picture wrong with nothing to say why.
+ * The area an instruction is allowed to paint in, measured from the surface:
+ * absolute, and carried on every instruction rather than pushed and popped.
  *
  * <p>Specified in {@code spec/screen.allium}.
  */
@@ -26,14 +22,7 @@ public record ClipRectangle(int across, int down, int wide, int high) {
         return wide <= 0 || high <= 0;
     }
 
-    /**
-     * The part of this that is also inside the other.
-     *
-     * <p>What narrowing down a tree comes to: a child is clipped to its
-     * parent, its parent to its own parent, and so on to the root. Doing it
-     * as an overlap rather than as a nested stack is what lets the answer
-     * travel on its own.
-     */
+    /** The part of this that is also inside the other. */
     public ClipRectangle overlapWith(ClipRectangle other) {
         int left = Math.max(across, other.across);
         int top = Math.max(down, other.down);

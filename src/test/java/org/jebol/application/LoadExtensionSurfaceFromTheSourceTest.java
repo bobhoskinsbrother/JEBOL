@@ -5,10 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * LOAD-EXTENSION declares the C's surface from {@code natives.reb} even
- * though {@code HostServiceGrantTest} pins that it always refuses.
- */
 class LoadExtensionSurfaceFromTheSourceTest {
 
     private static String errorIdOf(String source) {

@@ -2,19 +2,6 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * The list of candidate matches at one position.
- *
- * <p>{@code BackwardMatch} in {@code hash.h}, held as parallel arrays because
- * a hundred and twenty eight of them may be found at every byte of the input.
- *
- * <p>A match is a distance and a length. A match on a dictionary word carries a
- * third thing: the length its code will name, which is the length of the word
- * before the transform rather than the length of the bytes it produces. The C
- * packs that into the low five bits of the length and spells "same as the
- * length" as zero, and that is kept, because the packing is what the priced
- * parse compares.
- */
 final class BrotliMatches {
 
     private long[] distance = new long[0];
@@ -54,10 +41,6 @@ final class BrotliMatches {
         return code != 0 ? code : lengthAt(which);
     }
 
-    /**
-     * Keeps one match and throws the rest away, which is what happens when a
-     * copy turns out long enough that nothing shorter is worth pricing.
-     */
     void keepOnly(int which) {
         distance[0] = distance[which];
         lengthAndCode[0] = lengthAndCode[which];

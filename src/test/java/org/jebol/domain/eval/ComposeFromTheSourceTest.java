@@ -6,14 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * COMPOSE, tested against {@code Compose_Block} in {@code src/core/c-do.c}.
- *
- * <p>That walk has four rules and each is a branch in the loop: a paren
- * is evaluated, a block it answers is spread unless /ONLY, an unset it
- * answers is dropped, and /DEEP reaches into nested blocks and copies any
- * block it passes over.
- */
 class ComposeFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -99,16 +91,6 @@ class ComposeFromTheSourceTest {
         assertThat(answerTo("empty? compose/deep []")).isEqualTo("#(true)");
     }
 
-    /**
-     * {@code else { DS_PUSH(value); if (ANY_BLOCK(value)) // Include PATHS
-     * VAL_SERIES(DS_TOP) = Copy_Block(VAL_SERIES(value), 0); }} -- the C's own
-     * comment names the case. A block and a map are rebuilt because that is
-     * what descending into them means; every other block-shaped value is
-     * copied, so two composes of one template share nothing.
-     *
-     * <p>Without the copy nothing shows until something binds one of the
-     * answers, and then it reaches into the other through the shared path.
-     */
     @Test
     @DisplayName("/DEEP copies a nested path rather than sharing it")
     void deepCopiesANestedPath() {
@@ -118,12 +100,6 @@ class ComposeFromTheSourceTest {
                 .isEqualTo("#(false)");
     }
 
-    /**
-     * Rebol's own func-test, issue 217. Two functions made out of one
-     * template: binding the second one's body reached into the first one's
-     * through the shared path, and the first function stopped working the
-     * moment the second was made.
-     */
     @Test
     @DisplayName("which is what keeps two functions built from one template apart")
     void whichKeepsTwoFunctionsApart() {

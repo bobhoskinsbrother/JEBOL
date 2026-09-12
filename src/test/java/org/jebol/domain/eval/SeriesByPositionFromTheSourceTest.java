@@ -7,26 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Reading and writing a series by position: PICK, PICKZ, PUT, and what a binary
- * will accept.
- *
- * <p>Read out of {@code Pick_Block} and the PUT arm of {@code t-block.c},
- * {@code REBNATIVE(pickz)} in {@code f-series.c}, and the byte range checks in
- * {@code t-string.c}. Every case checked against the R3 binary.
- *
- * <p>Four things here are easy to get wrong in the convenient direction. There
- * is no position zero and a negative position counts back from where the series
- * is, so {@code pick tail s -1} is the last item. PICKZ renumbers forwards only,
- * so {@code pickz s -1} and {@code pick s -1} are one question. PUT looks at
- * every position rather than every other one, so it writes after the first
- * matching key and not the first key of a pair. And a number that will not fit
- * in a byte is refused rather than truncated -- {@code a/1: 400} used to store
- * 144 and answer 400.
- *
- * <p>Specified in {@code spec/natives.allium} under "Reading and writing a
- * series by position".
- */
 class SeriesByPositionFromTheSourceTest {
 
     private static String answerTo(String source) {

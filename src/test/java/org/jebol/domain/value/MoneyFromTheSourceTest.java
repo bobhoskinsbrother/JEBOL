@@ -7,24 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The money datatype, read out of {@code src/core/t-money.c} and the
- * {@code deci} arithmetic in {@code src/core/f-deci.c}.
- *
- * <p>Written from the C and not from the Java beside it. Each group names the
- * function it was taken from, so a disagreement can be settled by reading that
- * function rather than by arguing about what a money ought to do.
- *
- * <p>A money is not a floating point number and it is not an unbounded
- * decimal either. {@code sys-deci.h} packs one into ninety-six bits: a sign
- * bit, an eight-bit signed power of ten, and a whole-number significand spread
- * across three fields totalling eighty-seven bits. So it carries exactly
- * twenty-six significant digits and its exponent runs from -128 to 127, and
- * arithmetic that leaves either bound raises rather than widening.
- *
- * <p>Ninety-six bits is also twelve bytes, which is why a money converts to
- * and from a binary at all, and why a shorter binary is padded from the left.
- */
 class MoneyFromTheSourceTest {
 
     private static String answerTo(String source) {

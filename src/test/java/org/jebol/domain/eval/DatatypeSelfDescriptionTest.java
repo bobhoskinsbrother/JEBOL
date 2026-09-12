@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A datatype describing itself.
- *
- * <p>Specified in {@code spec/natives.allium}, taken verbatim from a real
- * R3.
- *
- * <p>Both the title and the type are data rather than derivations. The
- * title is a string a script compares against, and the type names R3's own
- * families, several of which group datatypes JEBOL has not built. Neither
- * can be worked out from what JEBOL knows.
- */
 class DatatypeSelfDescriptionTest {
 
     private static String answerTo(String source) {

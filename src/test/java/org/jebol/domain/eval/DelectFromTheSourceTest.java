@@ -7,28 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * DELECT: the parser every REBOL dialect is read by.
- *
- * <p>{@code u-dialect.c}, 560 lines. DRAW, EFFECT, TEXT and REBCODE are all
- * read this way -- {@code system/dialects} holds one object per dialect and
- * each object's fields are its commands -- so this is the thing that has to
- * work before any of them can.
- *
- * <p>The idea is not how any other parser works and it is worth stating before
- * reading the tests. A command declares the <em>types</em> of its arguments
- * rather than their order, and each argument goes to whichever slot will take
- * it. So {@code cmd 3 a@b} comes back as {@code [cmd a@b 3]}: neither argument
- * moved to where it was written, both went to where they fit. That is what
- * lets a dialect read as a description instead of as a call.
- *
- * <p>Rebol's own {@code delect-test.r3} is the third authority and its five
- * assertions are the first five tests here. Everything else was run against a
- * real 3.22.1 before it was written down, which is how the truncation and the
- * lit-word rules got settled -- both of them the opposite of the obvious guess.
- *
- * <p>Specified in {@code spec/dialect.allium}.
- */
 class DelectFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -37,7 +15,6 @@ class DelectFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The dialect Rebol's own test uses: one command, a string and a number. */
     private static final String REBOLS_OWN_DIALECT = """
             d: context [default: [] cmd: [any-string! integer!]]
             out: make block! 4
@@ -58,9 +35,6 @@ class DelectFromTheSourceTest {
         @Test
         @DisplayName("and written the other way round, answered in slot order all the same")
         void outOfOrderComesBackInOrder() {
-            // The whole point of a dialect, in one assertion. An email is an
-            // any-string!, so it takes the first slot however late it was
-            // written.
             assertThat(answerTo(REBOLS_OWN_DIALECT + """
                     delect d [cmd 3 a@b] out
                     mold out""")).isEqualTo("\"[cmd a@b 3]\"");
@@ -155,8 +129,6 @@ class DelectFromTheSourceTest {
         @Test
         @DisplayName("a fraction in a whole number's slot is cut down, not rounded")
         void afractionIsTruncated() {
-            // `(REBI64)VAL_DECIMAL(value)`. Rounding is the reasonable guess
-            // and it is wrong: 3.7 becomes 3.
             assertThat(answerTo(NUMBERS + """
                     delect d [whole 3.7] out
                     mold out""")).isEqualTo("\"[whole 3]\"");
@@ -250,8 +222,6 @@ class DelectFromTheSourceTest {
         @Test
         @DisplayName("but a word the dialect does know is never looked up")
         void adialectsOwnWordIsNotLookedUp() {
-            // Or every option word would have to be a defined variable, and a
-            // dialect could not use a word that happened to name something.
             assertThat(answerTo("""
                     d: context [default: [] spline: [* pair! word!] closed: none]
                     out: make block! 8
@@ -288,10 +258,6 @@ class DelectFromTheSourceTest {
         @Test
         @DisplayName("a word nothing will take is refused rather than skipped")
         void awordNothingTakesIsRefused() {
-            // The decision worth defending. A dialect is something somebody
-            // typed, and a word nobody serves is almost always a misspelling.
-            // Skipping it draws a picture missing one shape, with nothing
-            // anywhere saying which.
             assertThat(answerTo("""
                     d: context [default: [pair!] box: [pair! pair!]]
                     out: make block! 8

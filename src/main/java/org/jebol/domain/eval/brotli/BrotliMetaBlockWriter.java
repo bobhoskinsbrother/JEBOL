@@ -2,19 +2,6 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * Writing one meta-block: its header, its codes, and then its symbols under
- * those codes.
- *
- * <p>{@code brotli_bit_stream.c}. Three ways out, chosen by quality. Quality two
- * writes a code for the literals and takes fixed codes for everything else.
- * Quality three measures all three alphabets but keeps one code for each.
- * Qualities four and up write the full thing: several codes per alphabet, the
- * switching between them, and a map saying which code a literal's context uses.
- *
- * <p>A fourth way out is no compression at all, which the caller falls back to
- * when the compressed form came out longer than the bytes it replaces.
- */
 final class BrotliMetaBlockWriter {
 
     private static final int LITERAL_SYMBOLS = 256;
@@ -24,7 +11,6 @@ final class BrotliMetaBlockWriter {
     private static final int SYMBOL_BITS = 9;
     private static final int LONGEST_RUN_CODE = 6;
 
-    /** The first length each block-length code covers, and its extra bits. */
     private static final int[] BLOCK_LENGTH_FROM = {
             1, 5, 9, 13, 17, 25, 33, 41, 49, 65, 81, 97, 113,
             145, 177, 209, 241, 305, 369, 497, 753, 1265, 2289, 4337, 8433, 16625,
@@ -51,12 +37,6 @@ final class BrotliMetaBlockWriter {
         return code;
     }
 
-    /**
-     * How many nibbles the length needs, and the length itself.
-     *
-     * <p>{@code BrotliEncodeMlen}. Sixteen bits is the smallest the format will
-     * write, so a short meta-block still spends four nibbles on its length.
-     */
     private static void writeTheLength(int length, BrotliBits into) {
         int bitsNeeded = length == 1 ? 1 : BrotliCodes.log2Floor(length - 1) + 1;
         int nibbles = (bitsNeeded < 16 ? 16 : bitsNeeded + 3) / 4;
@@ -77,8 +57,7 @@ final class BrotliMetaBlockWriter {
         }
     }
 
-    /** Stores a number no larger than two hundred and fifty five. */
-    private static void writeSmallNumber(int number, BrotliBits into) {
+    private static void writeNumberNoLargerThanAByte(int number, BrotliBits into) {
         if (number == 0) {
             into.write(1, 0);
             return;
@@ -114,14 +93,6 @@ final class BrotliMetaBlockWriter {
         }
     }
 
-    /**
-     * Writes a prefix code for one alphabet, and fills in the lengths and bit
-     * patterns the caller will write symbols with.
-     *
-     * <p>{@code BuildAndStoreHuffmanTree}. One symbol needs no code at all, only
-     * a note of which symbol it is; four or fewer are named outright; more than
-     * that goes out as a list of code lengths.
-     */
     private static void writeATreeFor(int[] histogram, int histogramLength,
             int alphabetSize, BrotliCodes.Tree tree, int[] depth, int depthAt,
             int[] bits, int bitsAt, BrotliBits into) {
@@ -153,7 +124,8 @@ final class BrotliMetaBlockWriter {
         }
 
         Arrays.fill(depth, depthAt, depthAt + histogramLength, 0);
-        tree.build(histogram, 0, histogramLength, 15, depth, depthAt);
+        tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+                histogram, 0, histogramLength, 15, depth, depthAt);
         BrotliCodes.convertBitDepthsToSymbols(depth, depthAt, histogramLength,
                 bits, bitsAt);
 
@@ -187,18 +159,10 @@ final class BrotliMetaBlockWriter {
         }
     }
 
-    /**
-     * The context map, coded as a list of which histogram each context uses.
-     *
-     * <p>{@code EncodeContextMap}. Each entry is first replaced by how long ago
-     * that histogram was last named, which turns a map that keeps returning to
-     * the same few histograms into a great many zeros, and the zeros are then
-     * run-length coded.
-     */
     private static void writeContextMap(int[] contextMap, int howManyHistograms,
             BrotliCodes.Tree tree, BrotliBits into) {
 
-        writeSmallNumber(howManyHistograms - 1, into);
+        writeNumberNoLargerThanAByte(howManyHistograms - 1, into);
         if (howManyHistograms == 1) {
             return;
         }
@@ -259,15 +223,6 @@ final class BrotliMetaBlockWriter {
     private record RunCoded(int howManySymbols, int longestRunCode) {
     }
 
-    /**
-     * Replaces runs of zeros with a code for their length, and shifts everything
-     * else up out of the way of those codes.
-     *
-     * <p>The code of a run of length L is its floor-log-two, and it carries that
-     * many extra bits, which are kept in this array above the ninth bit until
-     * they are written. The longest code actually needed is measured first and
-     * declared, so a map with no long runs pays for no long run codes.
-     */
     private static RunCoded codeRunsOfZeros(int[] values, int mostBitsARunMayUse) {
         int longestRun = 0;
         for (int at = 0; at < values.length; ) {
@@ -310,18 +265,10 @@ final class BrotliMetaBlockWriter {
         return new RunCoded(written, longestCode);
     }
 
-    /**
-     * The context map for the case where each block type has exactly one
-     * histogram, so every context of a type maps to the same place.
-     *
-     * <p>{@code StoreTrivialContextMap}. Written as one entry followed by a run
-     * covering the rest of that type's contexts, which is much shorter than
-     * naming sixty four identical entries.
-     */
     private static void writeTrivialContextMap(int howManyTypes, int contextBits,
             BrotliCodes.Tree tree, BrotliBits into) {
 
-        writeSmallNumber(howManyTypes - 1, into);
+        writeNumberNoLargerThanAByte(howManyTypes - 1, into);
         if (howManyTypes <= 1) {
             return;
         }
@@ -349,11 +296,6 @@ final class BrotliMetaBlockWriter {
         into.write(1, 1);
     }
 
-    /**
-     * Writes the symbols of one alphabet, switching code where the split says.
-     *
-     * <p>{@code BlockEncoder} in {@code brotli_bit_stream.c}.
-     */
     private static final class OneAlphabet {
 
         private final int alphabetLength;
@@ -370,8 +312,7 @@ final class BrotliMetaBlockWriter {
         private int whichBlock;
         private int leftInTheBlock;
 
-        /** Where in the code tables the current block type's code starts. */
-        private int codeAt;
+        private int whereTheCurrentBlockTypesCodeStarts;
         private int[] depths = new int[0];
         private int[] bits = new int[0];
 
@@ -402,7 +343,7 @@ final class BrotliMetaBlockWriter {
                 lengthHistogram[blockLengthCodeFor(split.lengthAt(block))]++;
             }
 
-            writeSmallNumber(howManyTypes - 1, into);
+            writeNumberNoLargerThanAByte(howManyTypes - 1, into);
             if (howManyTypes <= 1) {
                 return;
             }
@@ -458,25 +399,23 @@ final class BrotliMetaBlockWriter {
         void write(int symbol, BrotliBits into) {
             int newType = startTheNextBlockIfThisOneRanOut(into);
             if (newType >= 0) {
-                codeAt = newType * alphabetLength;
+                whereTheCurrentBlockTypesCodeStarts = newType * alphabetLength;
             }
             leftInTheBlock--;
-            into.write(depths[codeAt + symbol], bits[codeAt + symbol]);
+            into.write(depths[whereTheCurrentBlockTypesCodeStarts + symbol],
+                    bits[whereTheCurrentBlockTypesCodeStarts + symbol]);
         }
 
-        /**
-         * The same, except that the block type names a stretch of the context
-         * map rather than a code directly, and the map says which code.
-         */
         void writeInContext(int symbol, int context, int[] contextMap,
                 int contextBits, BrotliBits into) {
 
             int newType = startTheNextBlockIfThisOneRanOut(into);
             if (newType >= 0) {
-                codeAt = newType << contextBits;
+                whereTheCurrentBlockTypesCodeStarts = newType << contextBits;
             }
             leftInTheBlock--;
-            int whichCode = contextMap[codeAt + context];
+            int whichCode =
+                    contextMap[whereTheCurrentBlockTypesCodeStarts + context];
             int at = whichCode * alphabetLength + symbol;
             into.write(depths[at], bits[at]);
         }
@@ -648,7 +587,6 @@ final class BrotliMetaBlockWriter {
         }
     }
 
-    /** Quality three: one measured code per alphabet, and no splitting at all. */
     static void writeWithOneCodePerAlphabet(byte[] data, int mask, int from,
             int length, boolean isLast, BrotliDistances distances,
             BrotliCommand commands, BrotliBits into) {
@@ -685,12 +623,6 @@ final class BrotliMetaBlockWriter {
     private static final int MOST_DISTANCE_SYMBOLS_A_SIMPLE_CODE_NEEDS = 140;
     private static final int TOO_FEW_COMMANDS_TO_MEASURE = 128;
 
-    /**
-     * Quality two: a code for the literals, and fixed codes for the rest.
-     *
-     * <p>With few enough commands it does not even count the commands or the
-     * distances, taking codes chosen once for all inputs instead.
-     */
     static void writeWithMostlyFixedCodes(byte[] data, int mask, int from,
             int length, boolean isLast, BrotliDistances distances,
             BrotliCommand commands, BrotliBits into) {

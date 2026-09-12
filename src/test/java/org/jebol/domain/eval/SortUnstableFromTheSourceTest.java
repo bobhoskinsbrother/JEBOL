@@ -7,13 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * /UNSTABLE is the symmetry-partition sort, and its permutation is part of the
- * contract: {@code series-test.r3} pins both orders of the same twenty-five field
- * names compared by length, under "SORT infinite loop case". The two nested
- * classes fail differently on purpose -- the pinned permutation catches a change
- * of algorithm, the property catches a sort that stopped sorting.
- */
 class SortUnstableFromTheSourceTest {
 
     private static String answerTo(String source) {

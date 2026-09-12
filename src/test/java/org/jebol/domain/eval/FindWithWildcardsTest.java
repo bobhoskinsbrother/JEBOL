@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * FIND/ANY, where {@code *} stands for any run and {@code ?} for one.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>How much the star takes depends on where it sits: a trailing star
- * takes the rest of the series, and a star with anything after it takes as
- * little as it can. Neither a wholly greedy star nor a wholly lazy one
- * fits, and the difference only shows in where the match ENDS, which is
- * what /TAIL stands after.
- */
 class FindWithWildcardsTest {
 
     private static String answerTo(String source) {

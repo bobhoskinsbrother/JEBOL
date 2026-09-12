@@ -9,14 +9,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Nine small differences from Rebol, each with its own cause.
- *
- * <p>They have nothing in common except where they were found: Rebol's own
- * {@code series-test.r3}, which could not be read at all until {@code vector!}
- * existed and which turned out to be holding a hundred and seventy-eight
- * failures behind that.
- */
 class SmallDivergencesFromTheSourceTest {
 
     private static String answerTo(String source) {

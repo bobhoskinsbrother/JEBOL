@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Writing a date's offset, which two names do in opposite ways.
- *
- * <p>{@code PD_Date} in {@code t-date.c}. ZONE keeps the clock and changes
- * what it is an offset from; TIMEZONE keeps the instant and moves the clock by
- * the difference between the offsets. They agree only where that difference is
- * nothing, which means setting an offset a date already has -- and not, as a
- * reader might expect, on a date that has no offset at all.
- *
- * <p>A date is a value rather than a series, so writing a field replaces what
- * the word holds instead of changing something in place.
- */
 class DateZoneWrittenFromTheSourceTest {
 
     private static String answerTo(String source) {

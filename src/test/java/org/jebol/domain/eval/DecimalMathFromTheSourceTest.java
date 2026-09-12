@@ -7,23 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The decimal datatype and the maths natives over it, read out of
- * {@code src/core/t-decimal.c} and {@code src/core/n-math.c}.
- *
- * <p>Written from the C and not from the Java beside it. Each group names the
- * function it was taken from, so a disagreement can be settled by reading that
- * function rather than by arguing about what the arithmetic ought to answer.
- *
- * <p>Two ideas run through most of it, and both are about a number that is
- * almost but not quite what it should be. Rebol does not leave those alone: it
- * snaps them. A remainder too small to matter at the scale of its own operands
- * becomes exactly zero; a sine or cosine within one step of the representation
- * becomes exactly zero; a tangent close enough to a right angle becomes an
- * infinity. Each snap is a named place in the C rather than a general policy,
- * and each has an assertion in Rebol's own suite that no amount of correct
- * floating point arithmetic will pass.
- */
 class DecimalMathFromTheSourceTest {
 
     private static String answerTo(String source) {

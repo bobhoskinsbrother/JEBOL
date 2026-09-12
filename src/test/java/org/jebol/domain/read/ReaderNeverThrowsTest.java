@@ -8,17 +8,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The reader answers with a result or a failure, and never with a host
- * exception. Whatever it is handed.
- *
- * <p>{@code spec/load.allium} promises that a syntax failure arrives as an
- * {@code error!} a script could catch. That promise was quietly broken by
- * {@code #[unset!]}, which threw {@link IllegalArgumentException} out of the
- * reader because a bare hash left an empty word behind. Found by molding one
- * of every datatype and reading each back, which is a thing worth doing to
- * anything claiming to round-trip.
- */
 class ReaderNeverThrowsTest {
 
     @ParameterizedTest(name = "[{0}]")
@@ -64,7 +53,6 @@ class ReaderNeverThrowsTest {
         assertThat(readBack(UnsetValue.unset())).isEqualTo(UnsetValue.unset());
     }
 
-    /** A value molded to source and read straight back. */
     private static Value readBack(Value value) {
         TranscodeResult reread = Transcoder.transcode(Molder.mold(value));
         assertThat(reread.succeeded())

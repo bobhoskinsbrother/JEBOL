@@ -39,23 +39,8 @@ public final class StringStorage {
         return new StringStorage(text);
     }
 
-    /**
-     * Whether this storage refuses modification.
-     *
-     * <p>On the storage rather than on the value, because two series
-     * values sharing storage are two views of one thing and cannot
-     * disagree about whether it can change. PROTECT of either protects
-     * both, which is what makes protection worth anything.
-     */
     private boolean isProtected;
 
-    /**
-     * Stops a change to protected storage.
-     *
-     * <p>Here rather than in the natives, because every mutation passes
-     * through this class and a check per native is a check that can be
-     * left off the next one.
-     */
     private void refuseIfProtected() {
         if (isProtected) {
             throw new ProtectedFromChange();

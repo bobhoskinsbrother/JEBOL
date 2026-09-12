@@ -7,27 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CASE evaluates its branch, and runs the branch only if what it evaluated to
- * is a block.
- *
- * <p>JEBOL took a branch that was not a block literally, so {@code case [true
- * x]} answered the word {@code x} rather than what {@code x} held. The C does
- * two things in a row and JEBOL was doing neither: {@code index =
- * Do_Next(block, index, 0)} evaluates one expression, and then {@code if
- * (IS_BLOCK(ds)) ds = DO_BLK(ds)} runs the answer if the answer is a block.
- *
- * <p>Both halves matter and they are separate. One expression is not one
- * value, so {@code case [true 1 + 2]} is three. And it is the *result* that is
- * tested for being a block, not the source, so a word holding a block has its
- * block run.
- *
- * <p>Found through REWORD, which is thirty lines of Rebol's own REBOL and
- * opens with {@code wtype: lib/case [case binary! tag? source string! 'else
- * type? source]}. Every branch there is a bare word, so every one of them came
- * back as a word and the next line asked TO for a datatype it had not got.
- * Twenty-three assertions were failing on this one line.
- */
 class CaseBranchesAreEvaluatedFromTheSourceTest {
 
     private static String answerTo(String source) {

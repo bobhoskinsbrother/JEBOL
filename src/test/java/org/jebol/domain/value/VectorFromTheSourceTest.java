@@ -10,26 +10,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * VECTOR!, the last datatype R3 has and JEBOL had not.
- *
- * <p>A vector holds numbers of one fixed machine width rather than REBOL
- * values, which is the whole point of it: ten thousand bytes are ten thousand
- * bytes and not ten thousand boxed integers. The width is part of the value,
- * so a number put into an {@code int8!} vector comes back wrapped to eight
- * bits, and that wrapping is the behaviour rather than an overflow to be
- * guarded against.
- *
- * <p>Read from {@code t-vector.c}, the ten encodings in {@code sys-value.h},
- * and Rebol's own {@code vector-test.r3}. Where the vendored source and the
- * 3.22.1 binary disagree the source wins, and they disagree in one place:
- * asking an empty vector for its sum answers zero on the binary and none in
- * the C, and the vendored tests agree with the C.
- *
- * <p>Every expectation not taken from Rebol's own test file was checked
- * against {@code ./r3} before it was written down. Three of them were wrong
- * first time.
- */
 class VectorFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -38,13 +18,6 @@ class VectorFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /**
-     * An answer that is a string, without the delimiters molding puts round it.
-     *
-     * <p>Which pair those are depends on the text: one holding a newline molds
-     * inside braces rather than quotes, which is exactly the case a vector of
-     * more than ten numbers produces.
-     */
     private static String theTextOf(String source) {
         String molded = answerTo(source);
         boolean inBraces = molded.startsWith("{") && molded.endsWith("}");

@@ -2,51 +2,19 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * Every match at a position, not just the best one, for the two levels that
- * price them all.
- *
- * <p>{@code hash_to_binary_tree_inc.h}, the C's H10. Each hash owns a binary
- * search tree of the positions whose next four bytes hash the same way, ordered
- * by what the bytes there say rather than by where they are. Walking that tree
- * from a new position visits candidates in order of how well they match, so the
- * walk can stop early and every match it passes is worth recording.
- *
- * <p>The walk rebuilds the tree as it goes. The new position becomes the root
- * and everything it passed is hung underneath on the side it belongs, so the
- * tree stays sorted without a second pass. That only happens when there are a
- * hundred and twenty eight bytes left to compare: a position with fewer cannot
- * be placed, because where it belongs depends on bytes that have not arrived.
- *
- * <p>The tree lives in one flat array of two entries per position, the left and
- * right children of whatever sits at that position in the window. Nothing is
- * ever removed; a position that has fallen out of the window is recognised by
- * being too far back rather than by being deleted.
- */
 final class BrotliBinaryTreeHasher {
 
     private static final int MIXING_MULTIPLIER = 0x1E35A7BD;
     private static final int BUCKET_BITS = 17;
     private static final int HOW_FAR_DOWN_THE_TREE_TO_WALK = 64;
 
-    /** How many bytes are compared before two positions are called alike. */
     static final int LONGEST_COMPARED = 128;
 
-    /** Sixty-four from the near scan plus one per level of the tree walk. */
     static final int MOST_MATCHES_AT_ONE_POSITION = 128;
 
     private final int windowMask;
 
-    /**
-     * What an empty branch of the tree holds.
-     *
-     * <p>The C spells it as an unsigned position so far past the end that the
-     * distance to it always fails the too-far test. Held here as the same bits,
-     * which read as a negative number, so every comparison against it has to be
-     * made unsigned or made to treat a negative distance as too far -- which is
-     * what the walk below does.
-     */
-    private final int nowhere;
+    private final int nowhereWhichReadsAsNegativeSoEveryCompareMustAllowForIt;
     private final int[] buckets = new int[1 << BUCKET_BITS];
     private final int[] forest;
 
@@ -54,13 +22,14 @@ final class BrotliBinaryTreeHasher {
             boolean theWholeInputAtOnce) {
 
         this.windowMask = (1 << windowBits) - 1;
-        this.nowhere = -windowMask;
+        this.nowhereWhichReadsAsNegativeSoEveryCompareMustAllowForIt = -windowMask;
         int positions = 1 << windowBits;
         if (theWholeInputAtOnce && howMuchInputThereIs < positions) {
             positions = howMuchInputThereIs;
         }
         this.forest = new int[2 * Math.max(positions, 1)];
-        Arrays.fill(buckets, nowhere);
+        Arrays.fill(buckets,
+                nowhereWhichReadsAsNegativeSoEveryCompareMustAllowForIt);
     }
 
     static int howManyBytesItLooksAhead() {
@@ -83,13 +52,7 @@ final class BrotliBinaryTreeHasher {
         return 2 * (position & windowMask) + 1;
     }
 
-    /**
-     * Walks the tree for this position, recording matches and re-rooting.
-     *
-     * <p>Answers how many matches were written. Passing no room for matches
-     * makes it a pure store, which is what the positions inside a copy get.
-     */
-    private int walk(byte[] data, int at, int mask, int maxLength,
+    private int walkRecordingMatchesAndReRootingOrMerelyStoringWhereThereIsNoRoom(byte[] data, int at, int mask, int maxLength,
             int maxBackward, int[] bestLengthSoFar, BrotliMatches into,
             int writtenSoFar) {
 
@@ -112,8 +75,10 @@ final class BrotliBinaryTreeHasher {
             int previous = previousAt & mask;
             if (backward <= 0 || backward > maxBackward || depthLeft == 0) {
                 if (shouldReRoot) {
-                    forest[nodeLeft] = nowhere;
-                    forest[nodeRight] = nowhere;
+                    forest[nodeLeft] =
+                            nowhereWhichReadsAsNegativeSoEveryCompareMustAllowForIt;
+                    forest[nodeRight] =
+                            nowhereWhichReadsAsNegativeSoEveryCompareMustAllowForIt;
                 }
                 break;
             }
@@ -151,15 +116,6 @@ final class BrotliBinaryTreeHasher {
         return written;
     }
 
-    /**
-     * Every match worth having at this position, in increasing length order.
-     *
-     * <p>Three sources, in this order. A plain scan of the last sixteen
-     * positions -- sixty four at the top level -- which catches the very short
-     * matches the tree will not, and only runs while nothing longer than two
-     * bytes has been found. Then the tree. Then the dictionary, for lengths
-     * longer than anything the tree turned up.
-     */
     int findAll(byte[] data, int mask, int at, int maxLength, int maxBackward,
             int dictionaryDistance, int furthestDistanceAllowed,
             boolean atTheTopLevel, BrotliMatches into) {
@@ -185,7 +141,8 @@ final class BrotliBinaryTreeHasher {
             }
         }
         if (bestLength[0] < maxLength) {
-            written = walk(data, at, mask, maxLength, maxBackward, bestLength,
+            written = walkRecordingMatchesAndReRootingOrMerelyStoringWhereThereIsNoRoom(
+                    data, at, mask, maxLength, maxBackward, bestLength,
                     into, written);
         }
         return written + dictionaryMatches(data, here, maxLength, bestLength[0],
@@ -197,7 +154,7 @@ final class BrotliBinaryTreeHasher {
             BrotliMatches into, int writtenSoFar) {
 
         int[] found = new int[BrotliDictionaryMatches.LONGEST_MATCH + 1];
-        Arrays.fill(found, BrotliDictionaryMatches.NOTHING_FOUND);
+        Arrays.fill(found, BrotliDictionaryMatches.NOTHING_FOUND_WHICH_IS_SEVEN_FS_NOT_EIGHT);
         int shortest = Math.max(4, bestSoFar + 1);
         if (!BrotliDictionaryMatches.findAll(data, here, shortest, maxLength, found)) {
             return 0;
@@ -207,7 +164,7 @@ final class BrotliBinaryTreeHasher {
         for (int length = shortest; length <= longest; length++) {
             int packed = found[length];
             if (Integer.compareUnsigned(packed,
-                    BrotliDictionaryMatches.NOTHING_FOUND) >= 0) {
+                    BrotliDictionaryMatches.NOTHING_FOUND_WHICH_IS_SEVEN_FS_NOT_EIGHT) >= 0) {
                 continue;
             }
             long distance = dictionaryDistance + (packed >>> 5) + 1;
@@ -219,19 +176,12 @@ final class BrotliBinaryTreeHasher {
         return written;
     }
 
-    /** Places a position in the tree without asking what it matches. */
     void remember(byte[] data, int mask, int at) {
         int furthestBack = windowMask - 16 + 1;
-        walk(data, at, mask, LONGEST_COMPARED, furthestBack, null, null, 0);
+        walkRecordingMatchesAndReRootingOrMerelyStoringWhereThereIsNoRoom(
+                data, at, mask, LONGEST_COMPARED, furthestBack, null, null, 0);
     }
 
-    /**
-     * Places a run of positions, skipping most of a long run.
-     *
-     * <p>Only the last sixty-three matter for what comes next, and placing a
-     * whole copy's worth would cost more than it saves, so a long run is
-     * sampled every eighth position until near its end.
-     */
     void rememberRange(byte[] data, int mask, int from, int until) {
         int at = from;
         int sampleUntil = from;
@@ -258,7 +208,8 @@ final class BrotliBinaryTreeHasher {
         int until = Math.min(position, from + howManyBytes);
         for (int at = from; at < until; at++) {
             int furthestBack = windowMask - Math.max(15, position - at);
-            walk(data, at, mask, LONGEST_COMPARED, furthestBack, null, null, 0);
+            walkRecordingMatchesAndReRootingOrMerelyStoringWhereThereIsNoRoom(
+                data, at, mask, LONGEST_COMPARED, furthestBack, null, null, 0);
         }
     }
 }

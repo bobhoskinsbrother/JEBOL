@@ -6,21 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * LENGTH and LENGTH?, which are two codes and were one.
- *
- * <p>{@code SYM_LENGTH} reads a length written the way certificates write it:
- * a first byte up to and including 128 is the length itself, and anything
- * above has its low seven bits saying how many bytes carry the number, most
- * significant first. {@code SYM_LENGTHQ} consumes nothing and answers how
- * many bytes are left.
- *
- * <p>JEBOL had both spellings answering the second. So every DER structure --
- * every certificate, every key, every PKCS container -- came back with its
- * fields at the wrong offsets, and the tag after a long length was read out
- * of the middle of the length itself. {@code load %some.pfx} gave a tree with
- * plausible-looking words in it and nothing in the right place.
- */
 class BincodeLengthPrefixFromTheSourceTest {
 
     private static String answerTo(String source) {

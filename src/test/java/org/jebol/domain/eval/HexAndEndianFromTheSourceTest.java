@@ -9,16 +9,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * ENHEX's two character sets, SWAP-ENDIAN's /PART, and what the set
- * operations will not take.
- *
- * <p>The first was JEBOL using RFC 3986's idea of which characters are safe
- * where Rebol has its own, written out in {@code boot/sysobj.reb} as two
- * bitsets. They differ in both directions, so a URL came back with brackets
- * left in and an ordinary string came back with its brackets and quotes
- * escaped that Rebol leaves alone.
- */
 class HexAndEndianFromTheSourceTest {
 
     private static String answerTo(String source) {

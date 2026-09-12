@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TRIM's five modes, which are not variations on each other.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Four of them were declared and never read, so each silently did what
- * the plain form does -- which is right often enough on a string with
- * nothing but leading and trailing spaces to look like it works.
- */
 class TrimModesTest {
 
     private static String answerTo(String source) {

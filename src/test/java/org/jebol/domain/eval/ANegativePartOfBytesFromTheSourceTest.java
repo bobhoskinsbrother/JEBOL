@@ -7,32 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CHECKSUM, COMPRESS and DECOMPRESS read a run of bytes, and a negative /PART
- * names the run behind the position rather than ahead of it.
- *
- * <p>{@code Partial1} in f-stubs.c turns the count round instead of refusing it
- * or reading it as nothing:
- *
- * <pre>
- * len = -len;
- * if (len &gt; (REBINT)VAL_INDEX(sval)) len = (REBINT)VAL_INDEX(sval);
- * VAL_INDEX(sval) -= (REBCNT)len;
- * </pre>
- *
- * <p>So the span always runs forwards from wherever the position lands, it is
- * clamped to what is actually behind, and at the head there is nothing behind
- * and the answer is empty. The three natives share that one function, which is
- * why one test file covers all three.
- *
- * <p>Rebol's own suite asks for it five times -- once in each of the ZLIB,
- * DEFLATE, GZIP, LZW and CRUSH groups of compress-test.r3, all spelled
- * {@code compress/part tail data 'zlib -4} -- and every one of them failed
- * here, because the count was clamped to zero and nothing was compressed.
- *
- * <p>Every expected value below was read from {@code ./r3-head} rather than
- * worked out, including the ones that look obvious.
- */
 class ANegativePartOfBytesFromTheSourceTest {
 
     private static String answerTo(String source) {

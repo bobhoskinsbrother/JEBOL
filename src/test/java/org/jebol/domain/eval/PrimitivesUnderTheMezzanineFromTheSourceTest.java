@@ -9,19 +9,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Three primitives that Rebol's own library stands on and JEBOL got wrong.
- *
- * <p>None of these was found by reading the C. They were found by reading
- * which of Rebol's mezzanine functions gave the wrong answer and then asking
- * what each one was standing on: PAD is four lines of REBOL and one of them is
- * {@code insert/dup}, SUM is three and one of them is {@code make}, and the
- * whole bitwise-on-binary group is one arm that never accepted two binaries.
- *
- * <p>That is why they are worth pinning here rather than only through the
- * functions above them. A borrowed file that loads is not a borrowed file that
- * works, and the failure surfaces a long way from its cause.
- */
 class PrimitivesUnderTheMezzanineFromTheSourceTest {
 
     private static String answerTo(String source) {

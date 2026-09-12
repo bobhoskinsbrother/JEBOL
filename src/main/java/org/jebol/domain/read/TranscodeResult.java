@@ -68,7 +68,6 @@ public sealed interface TranscodeResult {
             }
         }
 
-        /** The older three-field form, for a failure that names no token. */
         Failure(
                 SyntaxFailure failure,
                 SourcePosition position,
@@ -77,7 +76,6 @@ public sealed interface TranscodeResult {
                     Optional.empty(), Optional.empty(), Optional.empty());
         }
 
-        /** The form that names a token and a line but not the offending text. */
         Failure(
                 SyntaxFailure failure,
                 SourcePosition position,
@@ -97,16 +95,6 @@ public sealed interface TranscodeResult {
             return Optional.empty();
         }
 
-        /**
-         * The failure as an error value, in the shape R3 gives one.
-         *
-         * <p>ARG1 names the kind of token the reader was building -- "word-lit",
-         * "tag", "end-of-script" -- and ARG2 carries what it was reading or
-         * what it wanted instead. NEAR is the line number and the source
-         * fragment, written as R3 writes it: {@code (line 2) 1d}. A script
-         * catching a syntax error reads those three rather than the message,
-         * and Rebol's own suite asserts on all of them.
-         */
         @Override
         public Optional<ErrorValue> error() {
             ErrorValue built = ErrorValue.of(
@@ -114,18 +102,26 @@ public sealed interface TranscodeResult {
                     failure.errorId(),
                     failure.description() + " at " + position);
             if (tokenKind.isPresent()) {
+                Value theKindOfTokenTheReaderWasBuilding =
+                        StringValue.of(tokenKind.orElseThrow());
+                Value whatItWasReadingOrWantedInstead =
+                        offendingText.<Value>map(StringValue::of).orElseGet(NoneValue::none);
                 built = ErrorValue.about(
                         ErrorCategory.SYNTAX,
                         failure.errorId(),
                         failure.description() + " at " + position,
-                        StringValue.of(tokenKind.orElseThrow()),
-                        offendingText.<Value>map(StringValue::of).orElseGet(NoneValue::none),
+                        theKindOfTokenTheReaderWasBuilding,
+                        whatItWasReadingOrWantedInstead,
                         NoneValue.none());
             }
             return Optional.of(fragment.isPresent()
-                    ? built.near(StringValue.of(
-                            "(line " + position.line() + ") " + fragment.orElseThrow()))
+                    ? built.near(theLineAndFragmentWrittenAsRebolWritesThem())
                     : built);
+        }
+
+        private StringValue theLineAndFragmentWrittenAsRebolWritesThem() {
+            return StringValue.of(
+                    "(line " + position.line() + ") " + fragment.orElseThrow());
         }
     }
 }

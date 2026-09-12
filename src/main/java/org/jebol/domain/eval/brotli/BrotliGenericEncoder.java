@@ -1,23 +1,5 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * Brotli qualities two to nine.
- *
- * <p>{@code EncodeData} in {@code encode.c}. The input is taken in blocks, each
- * block searched for repeats, and the commands that come out kept until enough
- * have gathered to be worth writing as one meta-block. Waiting pays: a
- * meta-block writes its own codes, so the more symbols share them the less the
- * codes cost each.
- *
- * <p>Three things end the wait. The end of the input, a meta-block that has
- * grown as large as the format allows, and -- for the two qualities that do not
- * split blocks at all -- simply having enough symbols to be going on with.
- *
- * <p>What is written then depends on the quality. Two and three write one code
- * per alphabet. Four and up divide each alphabet into stretches with a code
- * apiece. And if the compressed form comes out longer than the bytes it
- * replaced, all of it is thrown away and the bytes are written as they stand.
- */
 final class BrotliGenericEncoder {
 
     private static final int WINDOW_BITS = 22;
@@ -38,15 +20,6 @@ final class BrotliGenericEncoder {
     private final FindsTheCopies finder;
     private final BrotliBits writer;
     private final BrotliCommand commands = new BrotliCommand(64);
-    /**
-     * How distances are split between code and extra bits while the copies are
-     * being found.
-     *
-     * <p>Always the plainest setting. The two top levels choose a better one
-     * per meta-block and re-code that meta-block's commands under it, but the
-     * choice is made on a copy of the settings and does not carry to the next
-     * meta-block -- so the search always starts from here.
-     */
     private final BrotliDistances distances = BrotliDistances.PLAINEST;
 
     private final int[] recentDistances = {4, 11, 15, 16, 0, 0, 0, 0,
@@ -86,13 +59,6 @@ final class BrotliGenericEncoder {
         this.writer = new BrotliBits(source.length / 2 + 64);
     }
 
-    /**
-     * How much input one pass of the reference search takes.
-     *
-     * <p>{@code ComputeLgBlock}. The two qualities that never split blocks read
-     * sixteen kilobytes at a time; quality nine, which splits hardest, reads
-     * two hundred and fifty six.
-     */
     private static int howManyBytesAreReadAtOnce(int quality) {
         if (quality < QUALITY_THAT_FIRST_SPLITS_BLOCKS) {
             return 14;
@@ -160,7 +126,7 @@ final class BrotliGenericEncoder {
         }
 
         if (insertLengthNotYetSpokenFor > 0) {
-            commands.addInsertOnly(insertLengthNotYetSpokenFor);
+            commands.addInsertOnlyWhichIsHowAMetaBlockEnds(insertLengthNotYetSpokenFor);
             howManyLiterals += insertLengthNotYetSpokenFor;
             insertLengthNotYetSpokenFor = 0;
         }
@@ -170,15 +136,6 @@ final class BrotliGenericEncoder {
         writeOneMetaBlock(data, mask, isLast);
     }
 
-    /**
-     * The two ways of finding copies, which differ in more than degree.
-     *
-     * <p>Levels two to nine walk forward and take the best match they trip
-     * over. Ten and eleven price every candidate at every position and choose
-     * the cheapest run of commands overall. They keep different tables and are
-     * asked different questions, so they are two things rather than one thing
-     * with a setting.
-     */
     private sealed interface FindsTheCopies {
 
         void getReady(byte[] data, int howMuchInput, boolean theWholeInputAtOnce);
@@ -328,16 +285,6 @@ final class BrotliGenericEncoder {
         }
     }
 
-    /**
-     * Whether to throw away what was just written and store the bytes plainly.
-     *
-     * <p>The C writes each meta-block into a buffer of its own, starting at
-     * whatever few bits were left over from the one before, and weighs the input
-     * against how many whole bytes that buffer holds. So the leftover bits count
-     * toward this meta-block's size even though they belong to the last one, and
-     * a meta-block four bytes larger than its input is kept while one five bytes
-     * larger is not.
-     */
     private boolean theCompressedFormOutgrewTheInput(int length, int startedAt) {
         int bitsWrittenIntoTheBuffer = writer.at() - startedAt + (startedAt & 7);
         return length + 4 < bitsWrittenIntoTheBuffer >> 3;
@@ -370,13 +317,6 @@ final class BrotliGenericEncoder {
                 split, contextModeFor(data, mask, length), writer);
     }
 
-    /**
-     * How literals are conditioned on the two bytes before them.
-     *
-     * <p>Below quality ten it is always the UTF-8 table; the top two levels may
-     * choose to condition on how big the previous bytes were instead, which
-     * suits data that is not text at all.
-     */
     private int contextModeFor(byte[] data, int mask, int length) {
         if (quality < LOWEST_QUALITY_THAT_PRICES_EVERYTHING
                 || BrotliLiteralCosts.mostlyUtf8(data, lastFlushAt, mask, length)) {
@@ -400,14 +340,6 @@ final class BrotliGenericEncoder {
                 commands, built.split(), contextMode, writer);
     }
 
-    /**
-     * Whether the bytes look compressible enough to be worth trying.
-     *
-     * <p>{@code ShouldCompress}. Almost no copies found and almost everything a
-     * literal is the shape of incompressible data, and if a sample of one byte
-     * in thirteen is close to eight bits of entropy then it really is, so the
-     * work of building codes is skipped.
-     */
     private boolean worthCompressing(byte[] data, int mask, int length) {
         if (length <= 2) {
             return false;
@@ -428,17 +360,9 @@ final class BrotliGenericEncoder {
         }
         double asMuchEntropyAsIsWorthIt =
                 (double) length * 7.92 / (double) everyNth;
-        return BrotliCodes.bitsEntropy(sample, 256) <= asMuchEntropyAsIsWorthIt;
+        return BrotliCodes.bitsEntropyFlooredAtOneBitPerLiteral(sample, 256) <= asMuchEntropyAsIsWorthIt;
     }
 
-    /**
-     * Grows the previous command's copy if the bytes just read carry on where it
-     * left off.
-     *
-     * <p>{@code ExtendLastCommand}. A copy that ran up against the end of a block
-     * can only be continued once the next block has arrived, and continuing it is
-     * much cheaper than starting a fresh command.
-     */
     private int extendTheLastCommand(byte[] data, int mask, int startedAt) {
         int which = commands.count() - 1;
         int copyLength = commands.copyLengthAt(which);
@@ -464,7 +388,7 @@ final class BrotliGenericEncoder {
         }
         commands.commandPrefixIs(which, BrotliCommand.lengthCode(
                 commands.insertLengthAt(which),
-                commands.copyLengthPlusItsPlainModifier(which),
+                commands.copyLengthPlusItsModifierReadPlainlyAsTheCReadsIt(which),
                 (commands.distancePrefixAt(which) & 0x3FF) == 0));
         return at;
     }

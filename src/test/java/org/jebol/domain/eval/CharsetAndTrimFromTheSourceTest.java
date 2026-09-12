@@ -6,11 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A batch from {@code series-test.r3}: a charset built from a block spreads
- * a string member's characters (issue-88), TRIM with both /head and /tail
- * trims both ends, and TRIM/WITH an integer removes that one code point.
- */
 class CharsetAndTrimFromTheSourceTest {
 
     private static String answerTo(String source) {

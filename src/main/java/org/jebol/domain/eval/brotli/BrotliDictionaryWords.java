@@ -4,26 +4,6 @@ import java.util.Base64;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
-/**
- * Every dictionary word that starts with a given four bytes, not just one.
- *
- * <p>{@code static_dict_lut_inc.h}. The table {@link BrotliDictionaryHash}
- * carries holds at most one word per hash, which is all the levels that take
- * the first good match they find can use. The two levels that price every
- * candidate need all of them, so this is a second table: a bucket per hash, and
- * a run of words in each bucket with the last one marked.
- *
- * <p>A word here is its length, which of the transforms produced it, and which
- * word of that length it is. The transform matters because the same four bytes
- * may start an ordinary word and a capitalised one, and they are different
- * distances.
- *
- * <p>Precomputed in the C and copied rather than rebuilt, for the same reason as
- * the other table: rebuilding needs the same insertion order to come out the
- * same, and a bucket whose words are in a different order picks a different
- * match. Carried deflated and base64 encoded because this package may not read
- * a file.
- */
 final class BrotliDictionaryWords {
 
     private BrotliDictionaryWords() {
@@ -32,27 +12,19 @@ final class BrotliDictionaryWords {
     static final int BUCKETS = 32768;
     static final int ITEMS = 31705;
 
-    /** Set on the length of the last word in a bucket. */
     static final int LAST_IN_ITS_BUCKET = 0x80;
 
     private static final int PACKED_LENGTH = BUCKETS * 2 + ITEMS * 4;
 
-    /**
-     * The four tables, unpacked, held together so that one write publishes all
-     * of them.
-     *
-     * <p>Two callers arriving at once would otherwise be able to see one table
-     * assigned and the next not. They cannot disagree about the contents, so all
-     * that is needed is that a reader sees the whole set or none of it.
-     */
-    private record Unpacked(char[] bucketStarts, byte[] wordLengths,
+    private record UnpackedTogetherSoOneWritePublishesAll(
+            char[] bucketStarts, byte[] wordLengths,
             byte[] wordTransforms, char[] wordIndexes) {
     }
 
-    private static Unpacked tables;
+    private static UnpackedTogetherSoOneWritePublishesAll tables;
 
-    private static Unpacked unpacked() {
-        Unpacked known = tables;
+    private static UnpackedTogetherSoOneWritePublishesAll unpacked() {
+        UnpackedTogetherSoOneWritePublishesAll known = tables;
         if (known != null) {
             return known;
         }
@@ -74,7 +46,9 @@ final class BrotliDictionaryWords {
             indexes[item] = (char) ((raw[at + item * 2] & 0xFF)
                     | ((raw[at + item * 2 + 1] & 0xFF) << 8));
         }
-        Unpacked built = new Unpacked(starts, lengths, transforms, indexes);
+        UnpackedTogetherSoOneWritePublishesAll built =
+                new UnpackedTogetherSoOneWritePublishesAll(
+                        starts, lengths, transforms, indexes);
         tables = built;
         return built;
     }
@@ -107,12 +81,10 @@ final class BrotliDictionaryWords {
         }
     }
 
-    /** Zero where no word hashes to this bucket. */
     static int firstWordOfBucket(int bucket) {
         return unpacked().bucketStarts()[bucket];
     }
 
-    /** The length, with {@link #LAST_IN_ITS_BUCKET} possibly set on top. */
     static int lengthAndFlagOf(int word) {
         return unpacked().wordLengths()[word] & 0xFF;
     }

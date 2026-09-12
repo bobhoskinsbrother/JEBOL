@@ -7,19 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The tuple datatype, read out of {@code src/core/t-tuple.c}.
- *
- * <p>Written from the C and not from the Java beside it. Each group names
- * the function it was taken from, so a disagreement can be settled by
- * reading that function rather than by arguing about what a tuple ought to
- * do.
- *
- * <p>The one idea underneath all of it: a tuple keeps a length and twelve
- * octets, and the octets past the length are zeros rather than absent. So
- * {@code 1.2.3} and {@code 1.2.3.0} hold the same twelve octets and differ
- * only in their length, which is why they are equal and are not the same.
- */
 class TupleFromTheSourceTest {
 
     private static String answerTo(String source) {

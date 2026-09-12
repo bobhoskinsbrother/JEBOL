@@ -9,22 +9,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * SHOW: making the screen's windows match the gob tree.
- *
- * <p>One verb doing three jobs, and which job it does is read off the gob
- * rather than said by the caller. {@code OS_Show_Gob} in
- * {@code src/os/posix/host-window.c} says so in its own comment: a new window
- * "will be in Gob_Root/pane but will not have GOBF_WINDOW set", and a closed
- * one "will have no PARENT and will not be in the Gob_Root/pane but will have
- * GOBF_WINDOW set".
- *
- * <p>That is why UNVIEW is four lines. It takes the gob out of the screen's
- * pane and calls SHOW on it, and the removal is what turns the same call from
- * "refresh this" into "close this". Nothing anywhere says close.
- *
- * <p>Specified in {@code spec/screen.allium}.
- */
 class ShowingGobsFromTheSourceTest {
 
     private static final String TRUE = "#(true)";
@@ -45,14 +29,6 @@ class ShowingGobsFromTheSourceTest {
         return RecordingScreen.measuring(1024, 768);
     }
 
-    /**
-     * The screen gob, with one window gob appended to its pane.
-     *
-     * <p>The screen gob rather than a fresh one, because INIT-TOP-WINDOW is
-     * spent by the time any script runs -- {@code init-top-window:
-     * init-view-system: 'done} is the last thing INIT-VIEW-SYSTEM does. A
-     * script cannot nominate a root; it uses the one the view system took.
-     */
     private static final String A_ROOT_WITH_ONE_WINDOW = """
             root: system/view/screen-gob
             w: make gob! [size: 200x100]

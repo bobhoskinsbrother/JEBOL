@@ -6,22 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * PARSE walking a binary one byte at a time.
- *
- * <p>Specified in {@code spec/parse.allium} and measured against a real R3
- * 3.22.1.
- *
- * <p>A binary went to the block walker before this, which wrapped it as a
- * single item in a list of one. So {@code parse #{0102} [2 skip]} saw one
- * thing rather than two bytes, and no rule written as a binary could match
- * anything. It now goes to the same walker a string does, each byte
- * standing in for a character.
- *
- * <p>What differs is only what comes back out: a span is a binary, a
- * single item is the byte's number, and a rule written as a binary is
- * compared byte for byte rather than as the text MOLD would give.
- */
 class BinaryParseTest {
 
     private static String answerTo(String source) {

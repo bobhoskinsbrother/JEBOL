@@ -130,6 +130,18 @@ Rules out shared mutable state between concurrently running scripts. Two
 scripts that need to talk do it through whatever the host provides, not by
 holding values into the same series.
 
+**Which is what governs every toolkit listener in the adapters.** Swing calls a
+listener on its own event thread, so each one in `DesktopScreen` does exactly
+one thing: it puts an event on a queue and returns. Nothing there runs a
+handler, evaluates a block or touches a series, because anything more would be
+a second thread inside the interpreter -- and two threads appending to one block
+corrupt it without either of them failing.
+
+The other direction waits: work handed to the toolkit goes through
+`invokeAndWait`, because SHOW answers when the window is there rather than when
+it has been asked for, and a caller that opened a window and then measured it
+would otherwise measure nothing.
+
 ## 5. Infix operators and path evaluation are in milestone 1
 
 Without them milestone 1 can read real REBOL and cannot run it. The
@@ -568,6 +580,30 @@ was found by reading a catalogue, and none would have been:
   fields, and a set-path cannot create a field. Absent fields do not degrade,
   they stop the file that writes to one.
 
+### Two things about binding that the order alone does not give you
+
+**A sys file needs two binds, not one.** R3 runs these with rebind 2, which is
+`Bind_Block(Sys_Context, ..., BIND_SET)` followed by `Bind_Block(Lib_Context,
+..., BIND_DEEP)`: the file's own set-words go to sys and everything else goes
+to lib. Two rather than one, because a sys file can use the same spelling for
+both. `base-defs.reb` declares `decode-url: none` with the note "set in sys
+init", and `sys-ports.reb` sets it with `set 'decode-url` from inside a nested
+block -- that lit-word has to reach the library while the top-level
+`decode-url: none` on the next line has to reach sys. Loading them into the
+library instead is what made DECODE-URL none: the two became one word and the
+none, being last, won.
+
+**Every sys word is declared before any sys file is bound.** A file is bound as
+it is loaded and a word with nothing to bind to stays unbound for good, so a
+sys file calling a helper defined in a later sys file gets a word that never
+resolves. That is not a load failure and says so nowhere: the file loads, the
+function is defined, and it raises the first time anybody calls it. `sys/do*`
+in `sys-base.reb` calls `do-needs`, defined in `sys-load.reb` three files
+later, so every script run through it stopped on `do-needs has no value`. R3
+has no such ordering because the sys context is built from a boot list before a
+line of it runs; JEBOL does the same thing in two passes, which is cheap
+because `LibrarySource` reads each file once for the whole process.
+
 ## 17. A function body is bound to its own words, and to nothing else
 
 `Bind_Relative` in the C. A call rebinds the function's arguments,
@@ -596,6 +632,116 @@ corpus case that uses either.
 The fix is `Binder.bindOnly`, which takes the set of names the function owns.
 It is the smaller operation and the correct one: binding is not something a
 call does to a body, it is something the body already has.
+
+### A word that escapes its call still means the innermost call
+
+Rebol binds a function's body once and stamps the *function* into every word
+there, never a call. So a word in a body has no frame of its own, and `Get_Var`
+finds one at the moment it is read - the C's comment says it plainly: "a
+negative index indicates that the value is in a frame on the data stack, so now
+we must find it by walking back the stack looking for the function that the word
+is bound to". It walks from the innermost call outwards and stops at the first
+frame of that function, so a word a function wrote always means the innermost
+call's copy.
+
+JEBOL binds a body to the frame of the call running it, which is a different
+object each time and almost always the innermost one anyway. The exception is a
+word that escapes: a function hands a value holding one of its own words to a
+call of *itself*, and that word is read while the inner call is running. Rebol
+reads the inner call's value; the straightforward port reads the outer call's.
+
+So an outer frame carries a pointer to the call that has superseded it, and
+points back at nothing when that call ends.
+
+Rebol's own ARRAY is built on this. Each level of a multi-dimensional array puts
+the word `block` into a list of index expressions and passes the list down, and
+every level's copy of that word has to read the level that is running when the
+innermost one finally evaluates it.
+
+Two related facts fall out of the same design. A function's declared words are a
+context that holds nothing when no call is running - a body shared between two
+functions belongs to whichever was made last, and calling the other one has to
+fail rather than read the wrong frame. And the C reuses a returned function's
+stack frame, so a word still bound into one answers whatever call took the frame
+over; under DO, that is DO.
+
+### A declaration *is* a spec, and Rebol keeps them in three places
+
+The docstring, the parameters with their types and their own docstrings, and the
+refinements in the order they were written with their arguments after them. That
+is what SPEC-OF and WORDS-OF answer out of - not something rebuilt from the
+native registry, which knows the types and not the order, not the documentation,
+and not which refinements take no argument at all.
+
+`actions.reb` declares the sixty actions and `natives.reb` the hand-written
+natives. The rest are written as comments beside the C that implements them, and
+Rebol's build collects those into `generated/gen-natives.reb`. Missing that third
+file left 45 functions - `gcd`, `access-os`, `compress` and the like - still
+answering a rebuilt spec with no refinements in it.
+
+### `system/platform` names the operating system, not the runtime
+
+Six files in the borrowed library branch on that word, and every branch is about
+local conventions: which character separates the entries of PATH, how a shell
+argument is quoted, whether a filename comparison minds case, where an
+application keeps its own files. A JVM on Windows has Windows conventions, so the
+answer has to be Windows - and a word true of no operating system at all sends
+all six down the arm meant for something else.
+
+The application supplies it, because only the application may ask the machine.
+The domain's default is `JVM`, which is the C's own name for a build that knows
+nothing about where it is.
+
+### Control-flow signals stop being signals at the outermost walk
+
+BREAK, CONTINUE, RETURN and THROW travel as Java exceptions, which is how a loop
+catches one without every native in between having to hand it back. When there is
+no loop and no function, the signal arrives at the top - and the C has an error for
+each: `break: {no loop to break}`, `continue:`, `return:` and `throw:`, the whole
+of the Throw category in `boot/errors.reb`.
+
+So the outermost walk is where they are turned into those errors. `spec/embed.allium`
+says nothing a script does may reach the host as a throwable, and `do reduce [p 7]`
+with a BREAK path in P throws `LoopSignal` out of the interpreter otherwise.
+
+TRY does **not** do this itself, and that is deliberate: the C's TRY traps errors and
+lets a thrown value past, so `try [break]` still ends the script. Only TRY/ALL disarms
+one, and it makes the same four errors.
+
+### NEAR and WHERE are filled in on the way out, once
+
+Both fields exist because a script reads them, and they cannot be filled in where the
+failure happens - a native raising `zero-divide` has no idea what block it is in. So
+they are attached at the one place that has the frames: the walk's own catch.
+
+NEAR is the fragment from where the *innermost call* began, which is why the pending
+call records that - by then the block has moved past it. WHERE is the chain of names
+those calls were reached through, innermost first.
+
+Once, and only if nothing has said already, because that catch sits in a loop every
+enclosing frame also runs: the innermost answer is the true one and the outer passes
+must leave it alone.
+
+It is not R3's answer exactly and cannot be. R3 fills both from its own data stack, so
+WHERE runs on down into the console's frames - `[/ try do either either if -apply-]` -
+and NEAR points at the *caller's* block whenever a failure happens before the callee
+gets a frame, which is where its argument checking runs. What matches is the part that
+is about the script rather than about the interpreter.
+
+### The record of open calls is a field, and the walk's frames are not
+
+The frames are local and go when the walk returns, however it returns. The record of
+which calls are open is a field, so a raise that unwinds past the loop leaves every
+call it passed through still recorded - which makes STACK/DEPTH climb by one for every
+error a script catches and never come back down, and those same entries are what DS
+prints. Closing the record in the walk rather than where a frame is popped covers the
+exceptional way out as well as the ordinary one.
+
+A paren and a function body push a frame rather than recursing, so a script that
+recurses a thousand deep costs a thousand small objects on the heap instead of a
+thousand JVM frames. That is what lets the depth limit be a promise rather than a
+hope, and why `forever: func [n] [forever n]` reports an error instead of killing the
+process.
 
 ## 18. No runtime dependencies. The JDK, or write it out
 
@@ -735,3 +881,153 @@ patterns earning their name applies. What is fixed today is the half that costs
 nothing: the value stores RGBA, and nothing above `ImageValue` ever sees a byte
 order. If that holds, adding the three adapters later is additive. If it does not,
 the language has become three languages.
+
+## 21. What ImageIO gets wrong, and what is written by hand because of it
+
+The JVM's own image codec arrives with the runtime and reads and writes PNG,
+JPEG, GIF and BMP everywhere Java runs, so the "only on Windows and macOS so
+far" the C says of its own shim is not a limit this platform has. Four of its
+behaviours are wrong for this port, and each cost a real defect before it was
+understood. They are recorded here because `JavaImages` now reads as ordinary
+code and nothing in it says why.
+
+**The BMP writer refuses every thirty-two-bit picture it is offered**, under
+every compression type: "Image can not be encoded with compression type BI_RGB
+and 32 bits per pixel". Going through it means writing twenty-four bits and
+losing the transparency, or not writing a BMP at all. A real 3.22.5 loses
+nothing, so the file is written out directly instead. The fifth version of the
+header is what makes the alpha possible -- `BITMAPV5HEADER` carries a mask per
+channel, so the file says which bits are which rather than leaving a reader to
+assume. The runtime reads that back perfectly; only writing it is missing.
+
+**Left to itself the GIF writer sets the interlace flag**, and its own reader
+then hands back a picture with the rows in the wrong order. A two-by-two of four
+colours came back as three, and JEBOL could not read a GIF it had just written
+even though a real 3.22.5 read it perfectly. A real 3.22.5 writes those flags as
+nought, so the writer is driven directly and progressive mode is disabled.
+
+**Handed a full-colour image, the GIF writer picks a palette by quantising**,
+and quantising merges colours that sit close together -- two dark reds a step
+apart came back as one. A picture with no more colours than the table holds
+needs no quantiser: it gets an entry apiece and every colour survives. Past two
+hundred and fifty-six there is no room and something must go, so the picture is
+left as it was and the writer quantises after all. Which colours it loses is its
+own business, and pinning that would pin a version of ImageIO rather than any
+behaviour of the language.
+
+**JPEG has no alpha channel**, and handing ImageIO a picture that still has one
+gives back a picture with its colours rotated. The channel comes off before
+writing and a JPEG comes back opaque, which is what it would have been anyway.
+
+One more that is not a fault, only a shape: `ImageIO.read` takes the first image
+in a stream and an animated GIF holds several, so reading goes through a reader
+that is asked for its own count first. Every frame up to the one wanted is
+drawn, not just that one -- a GIF frame after the first is usually a patch
+rather than a picture, a small rectangle placed at an offset covering only what
+changed, so reading it alone gives that patch on its own. What a viewer shows is
+the patch laid over what was already on the canvas, and that is what the
+checksums a real 3.22.5 answers are taken of.
+
+## 22. The library is read once per process, and never shared
+
+Rebol's own library is six hundred thousand characters and every interpreter
+was reading all of it. That was most of the sixty milliseconds a new
+interpreter cost, and a suite that builds sixteen thousand of them spent most
+of its afternoon on it. The text does not change between interpreters, so
+neither does what it reads as -- `LibrarySource` reads each file once for the
+whole process.
+
+**What does change is what happens to it afterwards, and that is the whole of
+the risk.** A block loaded from source is the block a function's body *is*, so
+a script that appends to a literal inside one is changing that literal for
+good. Within one interpreter that is REBOL behaving as it should; across two it
+is a disaster. So nothing shared is ever handed out: every series in the cached
+reading is copied on the way to the caller.
+
+**A reading holding a series the copier does not know how to copy is not cached
+at all.** Construction syntax can put a map, a bitset, a vector or an image into
+a source, and each has mutable storage of its own. None appears in the files
+JEBOL borrows today; the day one does, that file drops out of the cache rather
+than sharing storage between every interpreter in the process. Refusing to cache
+is slower and always right, where guessing that some other datatype is safe to
+share would be faster and wrong in a way no test would name.
+
+## 23. The boot order, and why each step sits where it does
+
+`Interpreter`'s constructor runs eight steps and the order of five of them is
+forced by something. The code now reads as a plain list of calls, so the
+reasons live here.
+
+**The prelude before anything else.** The standard function set is two layers:
+natives written in Java because they reach something the language cannot, and
+`prelude.reb`, written in REBOL because it can be. Loading it in the
+constructor rather than lazily means its functions see the natives and each
+other, and that nothing can observe an interpreter without it. A failure there
+is a defect in JEBOL rather than something a script did, so it raises rather
+than leaving an interpreter half-built -- which is true of every step below.
+
+**`system/modules` before the borrowed library, not after.** A module that
+loads replaces its own address in the same object: `repend system/modules [name
+module]` is the last thing LOAD-MODULE does. So that table is both the list of
+what may be fetched and the record of what has been, and filling it in
+afterwards would write the addresses back over the modules.
+
+Each address names the `bundled:` scheme rather than `src.rebol.tech`, so a
+module is read out of this build and cannot change under a running system.
+Rebol evaluates what comes back from that host with no signature, no checksum
+and no pinned version between the wire and the evaluator. DOWNLOAD-EXTENSION
+does `content: read source` either way and never learns the difference. Only
+the thirteen modules this build has no other way to reach are listed: Rebol's
+table also names fourteen compiled shared libraries, which nothing here can
+load, and nineteen modules this build already vendors.
+
+**The schemes partway through the borrowed library, not after it.** Exactly one
+borrowed file forces this. `view-funcs.reb` ends by calling INIT-VIEW-SYSTEM,
+which reads `system/ports/event/extra` on its ninth line, so the event port has
+to be open before that file runs -- and opening it needs MAKE-SCHEME, which
+comes from `sys-ports.reb`, loaded earlier in the same walk.
+
+The event port is opened even where no host supplied a screen, and a real
+3.22.1 does the same: its console build has a whole event port with a default
+AWAKE that prints and no graphics behind it.
+
+**`system/ports/system` is the one queue everything goes on.** Its STATE is the
+events waiting and its DATA is the ports that have woken, and WAIT is nothing
+but a loop over its AWAKE. Without it a protocol has nowhere to put an event
+for a port other than the one the event arrived on -- which is exactly what TLS
+needs, because its caller waits on the TLS port while the events come from the
+TCP port underneath.
+
+**`system/ports/output` exists even though nothing writes through it.** The
+output port does the writing; REBOL code asks the console port how wide the
+terminal is, and HELP asks on its first line. Left as none, a script calling
+HELP got `query does not allow none!` instead of help.
+
+**JEBOL's own boot steps are REBOL files, not Java text blocks.** They live in
+`/org/jebol/boot/` because a scheme's INIT is a function and a table of
+addresses is a block, and neither reads as either when quoted inside another
+language. Writing any of the six scheme registrations in Java would be a second
+implementation of a rule REBOL already states once. A missing one is a broken
+build rather than something a script did.
+
+**RESIZE samples the nearest pixel.** The C offers a choice of filters, named in
+`system/catalog/filters`, and defaults to Lanczos. Choosing between them changes
+how a shrunken photograph looks; it does not change what RESIZE is, and nothing
+here can yet ask for one.
+
+**MD4 and RIPEMD-160 are written out, because the catalogue lists them and
+`java.security` has not got them.** The shipped jar takes no dependencies, so the
+alternative to writing them is not offering them, and a name in
+`system/catalog/checksums` that cannot do anything is the one thing a catalogue
+must not be. MD4 is thoroughly broken as a cryptographic hash and has been since
+the nineties; it is here because file formats and protocols written when it was
+new still carry MD4 sums, and reading one of those means computing one.
+
+**A `string!` is stored as codepoints, not as the host language's string type.**
+REBOL strings are mutable series indexed by character with constant-time access.
+Java's `String` is immutable and indexed by UTF-16 code unit, so `"a😀b".charAt(1)`
+is half an emoji. Neither property is negotiable for a `string!`.
+
+**SHAPE is read directly rather than through DELECT**, because its arguments are
+all pairs and numbers in written order - ten commands, each with a relative form
+written as a lit-word. Specified in `spec/draw.allium`.

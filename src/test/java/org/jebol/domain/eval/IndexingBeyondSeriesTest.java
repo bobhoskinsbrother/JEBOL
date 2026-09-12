@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Indexing things that are not series, and dividing with decimals.
- *
- * <p>Each specified in {@code spec/natives.allium} and confirmed against a
- * real R3.
- *
- * <p>A pair and a tuple answer their parts by number the same way a series
- * does, decimal index and all. An error answers its fields the way an
- * object does, because that is what it is.
- */
 class IndexingBeyondSeriesTest {
 
     private static String answerTo(String source) {

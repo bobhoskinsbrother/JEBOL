@@ -7,24 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The ten functions Rebol writes in C and JEBOL had written in REBOL.
- *
- * <p>Each was a fork by the layer rule -- a function Rebol implements in C is
- * Java here -- and each blocked the Rebol file that defines it from ever being
- * loaded over the top. They are tested together because they moved together,
- * and each is read from its own C function: {@code also} and {@code comment}
- * from {@code n-control.c}, {@code forever} and {@code forskip} from
- * {@code n-loop.c}, {@code to-value} and the four ordinals from
- * {@code n-data.c}, {@code unique} from {@code n-sets.c}.
- *
- * <p>Three of them behave in ways the REBOL versions had got wrong, and all
- * three come from reading the C rather than the name. COMMENT evaluates its
- * argument and throws the value away, where the REBOL version quoted it and so
- * threw the work away too. FORSKIP walks backwards from the tail when the step
- * is negative. And FORSKIP puts the word back where it started, unless BREAK
- * left the loop -- because the C returns before the line that restores it.
- */
 class MovedToJavaFromTheSourceTest {
 
     private static String answerTo(String source) {

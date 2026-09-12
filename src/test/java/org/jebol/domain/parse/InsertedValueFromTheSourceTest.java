@@ -7,22 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What PARSE's INSERT and CHANGE put in, read out of {@code Get_Parse_Value}
- * and the {@code do_modify} block in {@code src/core/u-parse.c}.
- *
- * <p>Three rules, and the first is the one that matters: the value is looked
- * up before it is used. A word in that place contributes what the word holds
- * and not the word itself. Taking it as written leaves a rule that looks like
- * a working INSERT until something reads the result.
- *
- * <p>Found through Rebol's own ENUM, whose rule is
- * {@code pos: word! insert enum-value (...)} counting up as it goes. With the
- * word taken as written every entry gets the same word instead of its own
- * number, and the object then evaluates that word once at construction, so
- * every name in the enumeration comes out holding the final count. `enum [a b
- * c]` gave 3 for all three instead of 0, 1 and 2.
- */
 class InsertedValueFromTheSourceTest {
 
     private static String answerTo(String source) {

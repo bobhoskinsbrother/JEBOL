@@ -5,18 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The half of the standard library that is written in REBOL.
- *
- * <p>Natives are written in Java because they reach something the language
- * cannot: machine arithmetic, the reader, the evaluator. Everything that
- * can be said in REBOL is said in REBOL, in {@code prelude.reb}, evaluated
- * once when an interpreter is built.
- *
- * <p>This is not an optimisation. REBOL is extended in REBOL, and an
- * implementation that can only be extended in its host language is a
- * program that parses REBOL rather than a REBOL.
- */
 class PreludeTest {
 
     @Test

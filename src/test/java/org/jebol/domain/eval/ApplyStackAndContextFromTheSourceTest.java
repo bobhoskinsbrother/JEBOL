@@ -7,15 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * APPLY adjusts the block to the whole frame in two lines --
- * {@code if (len &lt; n) n = len;} then {@code for (; n &lt; len; n++) DS_PUSH_NONE;} --
- * and jumps rather than calling DO when handed the DO native. STACK counts its own
- * frame as zero and answers none for an offset naming nothing,
- * {@code sp = Stack_Frame(index); if (!sp) return R_NONE;}. CONTEXT? tells the
- * three kinds of frame apart, {@code if (IS_INT_SERIES(VAL_WORD_FRAME(word)))
- * return R_NONE;} for a loop's.
- */
 class ApplyStackAndContextFromTheSourceTest {
 
     private static String answerTo(String source) {

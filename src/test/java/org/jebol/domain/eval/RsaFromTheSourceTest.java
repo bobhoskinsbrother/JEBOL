@@ -7,33 +7,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * RSA, which is two natives as RC4 is: RSA-INIT builds a key context and RSA
- * uses it.
- *
- * <p>{@code n-crypt.c}. The split is not about state -- an RSA operation
- * carries nothing between calls -- but about cost and shape. The key arrives
- * as raw numbers, each a binary, and turning those into something that can
- * encipher means checking they really are a key: {@code
- * mbedtls_rsa_check_pubkey} for a public one, {@code check_privkey} for a
- * private one. A caller holding a context has somewhere to be told the numbers
- * were wrong before any data is handed over.
- *
- * <p>The failure shape is the surprise and is pinned below. A wrong handle
- * raises and wrong refinements raise, but numbers that do not form a key
- * answer <em>none</em>, and so does asking a public-only context to decrypt.
- *
- * <p>The key material is a real 1024-bit pair, and every expectation here was
- * run against a real 3.22.1 with these exact numbers. 1024 rather than 512
- * because OAEP needs sixty-six bytes of overhead and a 512-bit modulus has
- * only sixty-four, so a smaller key answers none for that mode and the test
- * would have proved nothing.
- *
- * <p>Specified in {@code spec/natives.allium} under RSA.
- */
 class RsaFromTheSourceTest {
 
-    /** A 1024-bit key pair, fixed so the tests do not depend on generation. */
     private static final String KEY = """
             n: #{B8092F6F04726A921CFAB2D313AE9D2F01C7CE465FAB7DA62C7A5C73FACE5FFB
                  A2F1DD80A29ADC43399CFCA22279B89A264810E5B926BB5E0D3F727A763E1601
@@ -63,7 +38,6 @@ class RsaFromTheSourceTest {
     private static final String TRUE = "#(true)";
     private static final String FALSE = "#(false)";
 
-    /** 1024 bits is 128 bytes, and every ciphertext is that wide. */
     private static final String MODULUS_WIDTH = "128";
 
     @Nested
@@ -101,9 +75,6 @@ class RsaFromTheSourceTest {
         @Test
         @DisplayName("though the two primes may arrive either way round, since they multiply")
         void thePrimesMayBeSwapped() {
-            // Not a mismatch: p times q is q times p, so the key is the same
-            // key. Asserting this refuses would have been a guess, and the
-            // binary answers a perfectly good context.
             assertThat(answerTo("handle? rsa-init/private n e d q p")).isEqualTo(TRUE);
         }
 
@@ -219,9 +190,6 @@ class RsaFromTheSourceTest {
         @Test
         @DisplayName("PSS signs and verifies as its own scheme")
         void pssRoundTrips() {
-            // The nested call is parenthesised because /VERIFY takes a third
-            // argument: without them the signature slot swallows the word
-            // RSA and the rest reads as its arguments.
             assertThat(answerTo("rsa/verify/pss pub msg (rsa/sign/pss priv msg)"))
                     .isEqualTo(TRUE);
         }

@@ -18,18 +18,8 @@ public final class ContextSlot {
     private Value value = UnsetValue.unset();
     private boolean protectedFromAssignment;
 
-    /** Whether the protection is permanent, as PROTECT/LOCK makes it. */
     private boolean locked;
 
-    /**
-     * Whether this field is invisible from outside the object.
-     *
-     * <p>PROTECT/HIDE does not lock a field, it conceals it: the object
-     * stops listing it, molding it and answering for it, and a path to it
-     * fails as though there were no such field. Code written inside the
-     * object still reaches it, which is the whole point -- it is how an
-     * object keeps something to itself.
-     */
     private boolean hidden;
 
     ContextSlot(Context context, String spelling, String canonical) {
@@ -94,7 +84,10 @@ public final class ContextSlot {
         return locked;
     }
 
-    /** Whether this field is concealed from outside the object. */
+    /**
+     * Whether this field is concealed from outside the object. Code written
+     * inside the object still reaches it.
+     */
     public boolean isHidden() {
         return hidden;
     }

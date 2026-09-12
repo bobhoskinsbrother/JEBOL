@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * RIPEMD-160, which JEBOL writes out because the JVM has not got it.
- *
- * <p>{@code system/catalog/checksums} lists it, so a script may ask for it and
- * a port may be opened on it, and {@code java.security} offers MD5, the SHA
- * family and nothing else. The shipped jar takes no dependencies, so the
- * alternative to writing it was not offering it.
- *
- * <p>Checked against the published vectors rather than against JEBOL itself,
- * which is the only honest way to test a hash: an implementation that is
- * wrong in the same way twice still agrees with itself.
- */
 class RipeMd160FromTheSourceTest {
 
     private static String answerTo(String source) {

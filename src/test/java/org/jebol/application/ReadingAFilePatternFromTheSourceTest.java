@@ -11,29 +11,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * READ of a path holding a star or a question mark.
- *
- * <p>{@code p-dir.c} reaches {@code Read_Pattern}, which is {@code glob} on
- * POSIX, and WILDCARD? in {@code n-io.c} says which two characters make a path
- * one: a star for any run and a question mark for exactly one. The answer is
- * cut back to the last part -- {@code dir->clen = end + 1}, "so only files are
- * returned and not complete paths" -- so it reads like a listing of that one
- * directory rather than a set of paths.
- *
- * <p>A pattern that matches nothing answers an empty block rather than
- * raising, and so does a directory that is not there. {@code p-dir.c} says so
- * in one line: "don't throw an error if the original path contains wildcard
- * chars * or ?". A caller asking for a file by name and not finding it has
- * made a mistake; a caller asking which files match has asked a question, and
- * none of them is an answer.
- *
- * <p>Rebol's own ZIP encoder is the caller that wanted this. Given
- * {@code %units/files/issue-2186*.txt} it does {@code foreach file read file},
- * joining each name back onto the directory, and without it archived nothing.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written.
- */
 class ReadingAFilePatternFromTheSourceTest {
 
     private static Interpreter reaching(Path directory) {

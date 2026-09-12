@@ -10,15 +10,7 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The directory natives, and the grants each one needs.
- *
- * <p>Specified in {@code spec/embed.allium}.
- *
- * <p>WHAT-DIR and CHANGE-DIR need the working directory grant. The rest
- * need the files grant. They are separate kinds because a host can want a
- * script to read files and not want it to wander.
- */
+
 class DirectoryNativesTest {
 
     private static Interpreter reaching(Path directory, HostService... granted) {
@@ -49,10 +41,7 @@ class DirectoryNativesTest {
         assertThat(Files.isDirectory(directory.resolve("sub"))).isTrue();
     }
 
-    /**
-     * This had an empty body and asserted nothing, which the runner counts as
-     * a pass. The name said what it should check, so it is checked here.
-     */
+
     @Test
     @DisplayName("MAKE-DIR says nothing when the directory is there already")
     void makeDirIsQuietTheSecondTime(@TempDir Path directory) {
@@ -63,19 +52,7 @@ class DirectoryNativesTest {
         assertThat(Files.isDirectory(directory.resolve("sub"))).isTrue();
     }
 
-    /**
-     * {@code cd ~} goes to where an application keeps its own files, not to
-     * the operator's home. {@code ~} is a word, not punctuation the reader
-     * knows about, and {@code mezz-tail.reb} binds it with
-     * {@code ~: system/options/data}; CD's own word branch then reads the
-     * word's value and changes to it.
-     *
-     * <p>So a caller who moves {@code system/options/data} and expects
-     * {@code cd ~} to follow has to move the word too. That is what Rebol's
-     * own file test asks for -- {@code cd /} and {@code cd ~} both without a
-     * failure -- and what failed here, because the word still named a
-     * directory outside the sandbox.
-     */
+
     @Test
     @DisplayName("CD ~ goes where the application keeps its own files")
     void changingToTheDataDirectory(@TempDir Path directory) throws Exception {
@@ -158,16 +135,7 @@ class DirectoryNativesTest {
                 .isEqualTo("\"found\"");
     }
 
-    /**
-     * Moving up from the top stays at the top and does not fail, which is what
-     * a real filesystem does: {@code change-dir %../} at {@code /} answers
-     * {@code %/} and moves nothing. Rebol's own port test relies on it -- it
-     * moves up from wherever it is standing and expects to arrive.
-     *
-     * <p>The confinement is unchanged. A climbing path cannot reach outside
-     * because there is no outside to reach; it names something within the
-     * root, which is checked below.
-     */
+
     @Test
     @DisplayName("CHANGE-DIR up from the root stays at the root")
     void theRootStillHolds(@TempDir Path directory) {

@@ -50,50 +50,19 @@ public final class MapValue implements Value {
         }
         Map<Value, Value> built = new LinkedHashMap<>();
         for (int at = 0; at < pairs.size(); at += 2) {
-            built.put(lockedIfItIsText(keyOf(pairs.get(at))), pairs.get(at + 1));
+            built.put(copiedAndLockedIfItIsText(
+                    anyWordStoredAsTheSetWordItNames(pairs.get(at))), pairs.get(at + 1));
         }
         return new MapValue(built);
     }
 
-    /**
-     * Any kind of word is stored as the set-word it names.
-     *
-     * <p>{@code if (ANY_WORD(key) && VAL_TYPE(key) != REB_SET_WORD) ...
-     * VAL_SET(set, REB_SET_WORD);}. So {@code #[a: 1]} and
-     * {@code make map! [a 1]} hold one key, and so do a lit-word, a get-word
-     * and a refinement of the same spelling: a map is keyed by what a word
-     * names rather than by how it was written.
-     *
-     * <p>The direction matters as much as the fact. Storing the set-word is
-     * what makes a molded map read back as an equal map -- the colon comes from
-     * the key and not from the molder, which is why a map keyed by an integer
-     * molds as {@code #[1 2]} with no colon anywhere. KEYS-OF turns them back,
-     * and so does the walk; nothing else does.
-     */
-    private static Value keyOf(Value written) {
+    private static Value anyWordStoredAsTheSetWordItNames(Value written) {
         return written instanceof WordValue word && word.datatype() != Datatype.SET_WORD
                 ? word.as(Datatype.SET_WORD)
                 : written;
     }
 
-    /**
-     * A text key taken as the map's own, copied and locked.
-     *
-     * <p>A key is what the map is hashed on, so a caller who keeps hold of it
-     * and appends to it would move the entry out from under its own hash. The
-     * map therefore stores a copy and protects that, which is why
-     * {@code append first keys-of #["key" 1] "x"} is a {@code protected} error
-     * and why appending to the block the keys came from is not: the two are no
-     * longer the same series.
-     *
-     * <p>Only text. A block key is stored as it stands and is not locked, and
-     * Rebol's own suite says so in a comment -- "note that keys are not
-     * implicitly protected!" -- and then shows what follows: poking with a
-     * block a caller still holds, and then emptying it, gives a map with two
-     * keys that are both {@code [b]}. Copying every key would have been the
-     * tidier rule and is not the one REBOL has.
-     */
-    private static Value lockedIfItIsText(Value key) {
+    private static Value copiedAndLockedIfItIsText(Value key) {
         if (!(key instanceof StringValue text)) {
             return key;
         }
@@ -102,33 +71,15 @@ public final class MapValue implements Value {
         return own;
     }
 
-    /** A stored key as KEYS-OF and the walk hand it out: a word, not a set-word. */
-    private static Value keyAsAskedAbout(Value stored) {
+    private static Value keyHandedBackAsAWordNotASetWord(Value stored) {
         return stored instanceof WordValue word && word.datatype() == Datatype.SET_WORD
                 ? word.as(Datatype.WORD)
                 : stored;
     }
 
-    /**
-     * The key this map holds that matches the one asked about, or none.
-     *
-     * <p>{@code Find_Entry} takes a {@code cased} flag and its callers do not
-     * agree about it: a path read, SELECT, FIND, PUT and POKE pass false, while
-     * MAKE and REMOVE/KEY pass true. So the two ends of a map behave
-     * differently on purpose -- building one keeps {@code "k"} and {@code "K"}
-     * apart, and looking one up does not -- and that is what lets a caller use
-     * whatever case is to hand while the map can still hold both.
-     *
-     * <p>Whichever was stored first, and not the exact one. A map holding both
-     * {@code &lt;a&gt;} and {@code &lt;A&gt;} answers the first of them to
-     * either spelling, so {@code select m &lt;A&gt;} is the value under
-     * {@code &lt;a&gt;}. Preferring the exact key reads as the friendlier
-     * answer and is not the one a real 3.22.1 gives -- and it made an uncased
-     * SELECT indistinguishable from SELECT/CASE on exactly the maps where the
-     * difference matters.
-     */
-    private Value theKeyMatching(Value asked, boolean mindingCase) {
-        Value wanted = keyOf(asked);
+    private Value theFirstStoredKeyMatchingNotTheExactOne(
+            Value asked, boolean mindingCase) {
+        Value wanted = anyWordStoredAsTheSetWordItNames(asked);
         if (mindingCase) {
             return entries.containsKey(wanted) ? wanted : NoneValue.none();
         }
@@ -138,19 +89,6 @@ public final class MapValue implements Value {
                 .orElseGet(NoneValue::none);
     }
 
-    /**
-     * Whether two keys are the same but for case.
-     *
-     * <p>Only something with letters in it can be, which is why this is not a
-     * general comparison: an integer key and a pair key have no case to differ
-     * by, and asking whether they match without minding it is asking whether
-     * they are equal.
-     *
-     * <p>A binary is not among them although it holds the same bytes a string
-     * would. {@code #\{61}} and {@code #\{41}} are two keys however they are
-     * asked for, because a binary is bytes rather than letters and nothing
-     * says which of them stand for text.
-     */
     private static boolean alikeApartFromCase(Value held, Value wanted) {
         if (held instanceof StringValue one && wanted instanceof StringValue other) {
             return one.datatype() == other.datatype()
@@ -173,7 +111,7 @@ public final class MapValue implements Value {
     }
 
     public Value select(Value key, boolean mindingCase) {
-        Value found = theKeyMatching(key, mindingCase);
+        Value found = theFirstStoredKeyMatchingNotTheExactOne(key, mindingCase);
         return found instanceof NoneValue
                 ? NoneValue.none()
                 : entries.getOrDefault(found, NoneValue.none());
@@ -184,7 +122,8 @@ public final class MapValue implements Value {
     }
 
     public boolean holds(Value key, boolean mindingCase) {
-        return !(theKeyMatching(key, mindingCase) instanceof NoneValue);
+        return !(theFirstStoredKeyMatchingNotTheExactOne(key, mindingCase)
+                instanceof NoneValue);
     }
 
     /**
@@ -202,7 +141,7 @@ public final class MapValue implements Value {
     }
 
     public Value storedKeyLike(Value asked, boolean mindingCase) {
-        return theKeyMatching(asked, mindingCase);
+        return theFirstStoredKeyMatchingNotTheExactOne(asked, mindingCase);
     }
 
     /** Adds or replaces a key, in place. */
@@ -222,9 +161,9 @@ public final class MapValue implements Value {
      */
     public void put(Value key, Value value, boolean mindingCase) {
         refuseIfProtected();
-        Value existing = theKeyMatching(key, mindingCase);
+        Value existing = theFirstStoredKeyMatchingNotTheExactOne(key, mindingCase);
         entries.put(existing instanceof NoneValue
-                ? lockedIfItIsText(keyOf(key))
+                ? copiedAndLockedIfItIsText(anyWordStoredAsTheSetWordItNames(key))
                 : existing, value);
     }
 
@@ -236,17 +175,9 @@ public final class MapValue implements Value {
 
     public void remove(Value key) {
         refuseIfProtected();
-        entries.remove(keyOf(key));
+        entries.remove(anyWordStoredAsTheSetWordItNames(key));
     }
 
-    /**
-     * Refuses a change to a map somebody protected.
-     *
-     * <p>{@code TRAP_PROTECT(VAL_SERIES(value))} is the first line of every
-     * branch of MT_Map that writes, and the error it raises is `protected`.
-     * JEBOL kept the flag and let every write through, so PROTECT on a map
-     * was a word that did nothing.
-     */
     private void refuseIfProtected() {
         if (protectedFromChange) {
             throw new ProtectedFromChange();
@@ -269,7 +200,8 @@ public final class MapValue implements Value {
      * wrote.
      */
     public List<Value> keys() {
-        return entries.keySet().stream().map(MapValue::keyAsAskedAbout).toList();
+        return entries.keySet().stream()
+                .map(MapValue::keyHandedBackAsAWordNotASetWord).toList();
     }
 
     public List<Value> values() {
@@ -304,7 +236,7 @@ public final class MapValue implements Value {
     public List<Value> walkable() {
         List<Value> flat = new ArrayList<>();
         entries.forEach((key, value) -> {
-            flat.add(keyAsAskedAbout(key));
+            flat.add(keyHandedBackAsAWordNotASetWord(key));
             flat.add(value);
         });
         return List.copyOf(flat);
@@ -338,7 +270,6 @@ public final class MapValue implements Value {
         return new MapValue(new LinkedHashMap<>(entries));
     }
 
-    /** Same keys with equal values. Insertion order plays no part. */
     @Override
     public boolean equals(Object other) {
         return other instanceof MapValue map && entries.equals(map.entries);

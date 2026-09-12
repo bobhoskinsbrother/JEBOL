@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * SORT needs an ordering, which REBOL's comparison does not provide.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>{@code 1.#NaN < 1} and {@code 1 < 1.#NaN} are both true, so asking
- * the comparison which of two values comes first answers "the left one"
- * whichever way round it is asked. A sort built on that produces whatever
- * the algorithm happens to do. SORT therefore has its own rule: every NaN
- * goes last, and two of them are equal.
- */
 class SortOrdersNaNLastTest {
 
     private static String answerTo(String source) {

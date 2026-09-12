@@ -67,25 +67,13 @@ public final class JavaProcesses implements ProcessPort {
                 program.standardOutput(), program.outputFile()));
         builder.redirectError(outputOf(
                 program.standardError(), program.errorFile()));
-        giveItTheEnvironmentAsked(builder, program);
-        startItWhereTheScriptIsStanding(builder, program);
+        replaceTheChildsEnvironmentWithTheOneAsked(builder, program);
+        startItWhereTheScriptIsStandingRatherThanWhereTheJvmWasLaunched(
+                builder, program);
         return builder;
     }
 
-    /**
-     * Starts the child in the directory the script is standing in rather than
-     * the one the JVM was launched from.
-     *
-     * <p>A script that changes directory and then calls a program means the
-     * two to agree, and without this a script confined to a directory of its
-     * own writes outside it the moment it calls {@code touch}: the JVM's
-     * working directory belongs to the embedding application, and nothing
-     * about the process grant says a script may write there.
-     *
-     * <p>Nothing to do where no directory came, which is a script that was
-     * granted no filesystem and so is standing nowhere.
-     */
-    private static void startItWhereTheScriptIsStanding(
+    private static void startItWhereTheScriptIsStandingRatherThanWhereTheJvmWasLaunched(
             ProcessBuilder builder, ProgramToStart program) {
 
         program.workingDirectory()
@@ -94,23 +82,18 @@ public final class JavaProcesses implements ProcessPort {
                 .ifPresent(builder::directory);
     }
 
-    /**
-     * Replaces the child's inherited environment with the one asked for.
-     *
-     * <p>Replaces rather than adds to, because what arrives is already this
-     * interpreter's whole view -- the host's names with whatever SET-ENV laid
-     * over them -- and a name the script took away has to be missing from the
-     * child too. An empty map means nothing was asked for, so the child keeps
-     * what it would have inherited anyway.
-     */
-    private static void giveItTheEnvironmentAsked(
+    private static void replaceTheChildsEnvironmentWithTheOneAsked(
             ProcessBuilder builder, ProgramToStart program) {
 
-        if (program.environment().isEmpty()) {
+        if (nothingWasAskedFor(program)) {
             return;
         }
         builder.environment().clear();
         builder.environment().putAll(program.environment());
+    }
+
+    private static boolean nothingWasAskedFor(ProgramToStart program) {
+        return program.environment().isEmpty();
     }
 
     private static ProcessBuilder.Redirect inputOf(ProgramToStart program) {

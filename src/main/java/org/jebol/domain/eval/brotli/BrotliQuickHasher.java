@@ -2,27 +2,11 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * The forgetful table of where five byte runs were last seen, for qualities
- * two, three and four.
- *
- * <p>{@code hash_longest_match_quickly_inc.h}, which the C compiles three times
- * with different sizes to make its H2, H3 and H4. It is forgetful on purpose:
- * one slot holds one position and a later position overwrites it, so a match
- * that was findable a moment ago may not be findable now. Losing matches is the
- * point -- it is what makes these qualities fast.
- *
- * <p>Quality three widens the search by giving each hash two slots and quality
- * four gives it four, chosen by three bits of the position so that consecutive
- * positions land in different slots rather than evicting each other. Quality
- * three is also the only one of the twelve that never consults the dictionary.
- */
 final class BrotliQuickHasher implements BrotliHasher {
 
     private static final long MIXING_MULTIPLIER = 0x1FE35A7BD3579BD3L;
     private static final int SHORTEST_MATCH_WORTH_TAKING = 4;
 
-    /** Below this much input the table is cleared slot by slot, not wholesale. */
     private static final int TOO_SMALL_TO_CLEAR_WHOLESALE_SHIFT = 5;
 
     private final int bucketBits;
@@ -34,11 +18,6 @@ final class BrotliQuickHasher implements BrotliHasher {
     private final int[] buckets;
     private final BrotliDictionarySearch dictionary = new BrotliDictionarySearch();
 
-    /**
-     * Quality four has a second, wider table for input of a megabyte or more,
-     * hashing seven bytes into a million slots rather than five into a hundred
-     * and thirty thousand, and not consulting the dictionary at all.
-     */
     static BrotliQuickHasher forQuality(int quality, boolean theInputIsLarge) {
         return switch (quality) {
             case 2 -> new BrotliQuickHasher(16, 0, 5, true);
@@ -77,14 +56,6 @@ final class BrotliQuickHasher implements BrotliHasher {
         return (int) (mixed >>> (64 - bucketBits));
     }
 
-    /**
-     * Clears the table before use.
-     *
-     * <p>Clearing is not needed for correctness -- a stale position simply
-     * fails to match -- but without it the answer would depend on whatever was
-     * in memory, so short inputs clear only the slots they could reach and long
-     * ones clear the lot.
-     */
     @Override
     public void prepareFor(byte[] data, int inputSize,
             boolean theWholeInputAtOnce) {
@@ -123,10 +94,6 @@ final class BrotliQuickHasher implements BrotliHasher {
         }
     }
 
-    /**
-     * The three positions before this block whose hashes need bytes from both
-     * it and the block before, and so could not be taken until now.
-     */
     @Override
     public void stitchToPreviousBlock(byte[] data, int mask, int howManyBytes,
             int position) {
@@ -138,7 +105,6 @@ final class BrotliQuickHasher implements BrotliHasher {
         }
     }
 
-    /** This hasher only ever looks at the most recent distance, already there. */
     @Override
     public void prepareDistanceCache(int[] recentDistances) {
     }

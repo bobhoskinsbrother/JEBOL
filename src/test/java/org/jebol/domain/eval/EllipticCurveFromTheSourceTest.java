@@ -7,28 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * ECDH and ECDSA: the exchange and the signature over an elliptic curve.
- *
- * <p>{@code n-crypt.c}. ECDH is Diffie-Hellman again with different
- * arithmetic. Instead of raising a generator to a private power in a field of
- * integers, each side multiplies a point on a curve by a private number: the
- * published value is a point and the secret is one coordinate of the point
- * both sides reach.
- *
- * <p>Everything about the shape follows from that. A curve has to be named, a
- * context remembers which one, the published value is a lead byte plus two
- * coordinates, the secret is one coordinate wide, and two contexts on
- * different curves cannot agree on anything.
- *
- * <p>Two answers here are not what the declarations suggest and were taken
- * from a real 3.22.1 rather than from reading. ECDSA's /VERIFY says "returns
- * true or false" and answers <em>none</em> when a signature does not hold. And
- * signing is randomised, unlike RSA's, so two signatures over one hash differ
- * and both verify.
- *
- * <p>Specified in {@code spec/natives.allium} under ECDH and ECDSA.
- */
 class EllipticCurveFromTheSourceTest {
 
     private static final String KEYS = """
@@ -158,18 +136,6 @@ class EllipticCurveFromTheSourceTest {
         }
     }
 
-    /**
-     * Curve25519 and curve448 were designed for the exchange and for nothing
-     * else, and the arithmetic that does it never needs the second coordinate.
-     * So the published value is one coordinate on its own, with no lead byte
-     * saying the point is uncompressed -- there is no other way to write it.
-     *
-     * <p>Which matters more than the byte count suggests. Rebol's own TLS asks
-     * for curve25519 first: {@code curve: first supported-groups} and the
-     * scheme's list begins with it, so a build without it cannot write a
-     * client hello at all. {@code pub-key} comes back as nothing and the binary
-     * dialect refuses it, which is where {@code read https://} stopped.
-     */
     @Nested
     @DisplayName("the two curves made for the exchange alone")
     class TheCurvesMadeForTheExchangeAlone {
@@ -233,15 +199,6 @@ class EllipticCurveFromTheSourceTest {
                     ]""")).isEqualTo("[#(true) #(true) #(true)]");
         }
 
-        /**
-         * A key on one of them signs nothing. It is a number to multiply a
-         * point by and not a signing key -- the signature scheme those curves
-         * belong to has a different name and is not this native.
-         *
-         * <p>NONE rather than false from VERIFY, which is the same distinction
-         * the /VERIFY refinement already makes elsewhere: false would mean the
-         * signature did not hold.
-         */
         @Test
         @DisplayName("and neither of them signs anything")
         void neitherOfThemSignsAnything() {
@@ -305,9 +262,6 @@ class EllipticCurveFromTheSourceTest {
         @Test
         @DisplayName("a signature that does not hold answers NONE, not false")
         void aFailedVerifyAnswersNone() {
-            // The declaration says "returns true or false" and a real 3.22.1
-            // answers none. It matters because `if ecdsa/verify ...` reads
-            // the same either way and `= false` does not.
             assertThat(answerTo("none? ecdsa/verify alice other ecdsa/sign alice hash"))
                     .isEqualTo(TRUE);
         }

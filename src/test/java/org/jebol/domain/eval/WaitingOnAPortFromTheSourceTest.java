@@ -14,38 +14,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What WAIT over a port does, which is the whole of how a protocol runs.
- *
- * <p>{@code Wait_Ports} in {@code c-port.c} loops: {@code if ((result =
- * Awake_System(ports, only)) &gt; 0) return TRUE;}. It does not come back after
- * the first event -- it keeps handing events to ports until one of them says to
- * stop. The system port's own AWAKE, written in {@code sys-ports.reb}, is what
- * decides: it calls {@code wake-up} on each port, adds the port to a wake list
- * when that answers true, and only then answers true itself.
- *
- * <p>JEBOL answered the port after the first event, and that is a difference
- * with a consequence rather than a detail. Rebol's own HTTP reads a response by
- * waiting: {@code read-sync-awake} answers false for {@code connect} and false
- * for {@code wrote}, because neither finishes a request, and true only when the
- * response is complete. A WAIT that returned after {@code connect} put
- * {@code sync-op} back at the top of its loop with a status code nobody had
- * set, where {@code state/info/status-code &gt;= 300} compares a none with an
- * integer and raises.
- *
- * <p>The network here is a fake, so every expectation is about the
- * interpreter rather than about a host on the internet. The canned replies
- * were taken from a real exchange first.
- */
 class WaitingOnAPortFromTheSourceTest {
 
-    /**
-     * A network that says what it was told and replies with what it was given.
-     *
-     * <p>The seam the domain owns. A test that reached a real host would be
-     * measuring somebody else's server, and would measure nothing at all on a
-     * machine with no network.
-     */
     private static final class ACannedServer implements NetworkPort {
 
         private final Deque<byte[]> replies = new ArrayDeque<>();
@@ -110,11 +80,6 @@ class WaitingOnAPortFromTheSourceTest {
         return answerFrom(new ACannedServer(), source);
     }
 
-    /**
-     * Three things have happened to the connection by the time WAIT is
-     * reached, so how many of them one call delivers is a question the test
-     * can ask rather than infer.
-     */
     private static String afterThreeThingsHappened(String awakeBody, String waiting) {
         return answerFrom(new ACannedServer().willReply("some bytes back"), """
                 seen: copy []
@@ -130,16 +95,6 @@ class WaitingOnAPortFromTheSourceTest {
                 + waiting);
     }
 
-    /**
-     * The queue is emptied before the answer is decided, so an AWAKE saying
-     * true does not stop the events behind it being delivered. The system
-     * port's own AWAKE drains the queue -- up to eight at a time -- and only
-     * then asks whether any port the caller named is on the wake list.
-     *
-     * <p>Which is why all three are seen here although the second one woke the
-     * port. Nothing is lost that way, and an event left on the queue would be
-     * handed out again at the next wait.
-     */
     @Test
     @DisplayName("the wait ends where the awake function says true")
     void theWaitEndsWhereTheAwakeFunctionSaysTrue() {

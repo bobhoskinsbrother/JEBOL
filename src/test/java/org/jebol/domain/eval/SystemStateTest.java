@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@code system/state}, which records what just happened.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>It is what lets a handler that was given no arguments find out what
- * it is handling. A /WITH handler written as a function can read its
- * argument; one written as a block has only this.
- */
 class SystemStateTest {
 
     private static String answerTo(String source) {

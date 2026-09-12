@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Characters compare equal without regard to case, and in order with it.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>The two questions are answered differently on purpose. Folding for
- * both would put the letters in an order nobody asked for; folding for
- * neither makes {@code switch} and {@code find} miss a capital they were
- * meant to catch.
- */
 class CharacterComparisonTest {
 
     private static String answerTo(String source) {
@@ -25,7 +14,6 @@ class CharacterComparisonTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

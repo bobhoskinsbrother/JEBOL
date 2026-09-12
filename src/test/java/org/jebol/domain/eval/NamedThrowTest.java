@@ -8,19 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A throw may carry a name, and the name decides who may catch it.
- *
- * <p>Specified by {@code CatchTakesOnlyAThrowItWasExpecting} and
- * {@code CatchWithRunsItsHandlerOnlyOnAThrow} in
- * {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>The pairing is strict in both directions, and that is the point: an
- * unnamed CATCH is not a catch-all, so a throw meant for an outer handler
- * goes straight past an inner one that was not expecting it. The
- * boundaries are therefore the four combinations of named and unnamed on
- * each side, plus the deliberate catch-all.
- */
 class NamedThrowTest {
 
     private static String answerTo(String source) {
@@ -33,7 +20,6 @@ class NamedThrowTest {
         return interpreter.display(outcome);
     }
 
-    /** Whether the inner CATCH took it, seen from an outer catch-all. */
     private static String escapesTo(String inner) {
         return answerTo("catch/all [" + inner + " 'not-thrown]");
     }

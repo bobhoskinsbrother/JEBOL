@@ -3,26 +3,13 @@ package org.jebol.domain.cipher;
 import java.util.Arrays;
 
 /**
- * Counter with CBC-MAC, built out of the block cipher rather than found.
+ * Counter with CBC-MAC, NIST SP 800-38C, assembled here because no JVM
+ * provider offers it.
  *
- * <p>NIST SP 800-38C, and {@code ccm.c}. No JVM provider offers this mode, so
- * it is assembled here from the one thing the JVM does have: a single block of
- * AES. Everything below is that block called in two patterns.
- *
- * <p>The tag is a cipher-block-chaining message authentication code -- each
- * block is combined with the one before it and enciphered, so the last one
- * depends on every byte that went in. What goes in is a first block naming the
- * lengths and the settings, then the header, then the message, each padded out
- * to a whole block.
- *
- * <p>The cipher text is the message masked with a keystream, and the keystream
- * is the same block cipher run over a counter. The block at counter nought is
- * not used for the message: it masks the tag instead, which is what binds the
- * two halves together and stops a tag being moved from one message to another.
- *
- * <p>The nonce and the counter share sixteen bytes, so a longer nonce leaves
- * fewer bytes to count with. That is the whole reason the nonce is seven to
- * thirteen and not any length.
+ * <p>The block at counter nought masks the tag rather than the message, which
+ * is what binds the two halves together and stops a tag being moved from one
+ * message to another. The nonce and the counter share sixteen bytes, which is
+ * why the nonce is seven to thirteen and not any length.
  */
 public final class CounterWithCbcMac {
 
@@ -36,11 +23,9 @@ public final class CounterWithCbcMac {
     private static final int LONGEST_NONCE = 13;
 
     /**
-     * The tag lengths this mode can name.
-     *
-     * <p>Three bits of the first authenticated block hold {@code (t - 2) / 2},
-     * so only the even lengths from four to sixteen have a spelling. An odd
-     * length is not a shorter tag, it is no tag at all.
+     * The tag lengths this mode can name: three bits of the first
+     * authenticated block hold {@code (t - 2) / 2}, so only the even lengths
+     * from four to sixteen have a spelling.
      */
     public static boolean canIssueATagOf(int octets) {
         return octets >= 4 && octets <= BLOCK && octets % 2 == 0;
@@ -55,11 +40,9 @@ public final class CounterWithCbcMac {
     }
 
     /**
-     * Enciphers a message and answers it followed by its tag.
-     *
-     * <p>A tag length of nought is the starred form of the mode: the message
-     * is counted through and nothing is authenticated, so the answer is the
-     * cipher text alone.
+     * Enciphers a message and answers it followed by its tag. A tag length of
+     * nought is the starred form of the mode: nothing is authenticated and the
+     * answer is the cipher text alone.
      */
     public static Sealed enciphered(OneBlock cipher, byte[] vector, int tagOctets,
             byte[] header, byte[] message) {
@@ -67,8 +50,8 @@ public final class CounterWithCbcMac {
         if (tagOctets != 0 && !canIssueATagOf(tagOctets)) {
             return Sealed.nothing();
         }
-        byte[] nonce = nonceWithin(vector);
-        byte[] cipherText = maskedWithTheKeystream(cipher, nonce, message);
+        byte[] nonce = nonceClampedWithNoughtsAfterAShortOne(vector);
+        byte[] cipherText = maskedWithTheKeystreamCountingFromOne(cipher, nonce, message);
         if (tagOctets == 0) {
             return new Sealed(cipherText, true);
         }
@@ -78,12 +61,8 @@ public final class CounterWithCbcMac {
 
     /**
      * Deciphers a message and checks its tag, answering nothing when the two
-     * disagree.
-     *
-     * <p>Checking here rather than handing the tag back is what separates this
-     * mode from counting with Galois, and it means a caller cannot use plain
-     * text that was never vouched for: {@code mbedtls_ccm_compare_tags} fails
-     * the whole call and the port is left with nothing to read.
+     * disagree -- so a caller cannot reach plain text that was never vouched
+     * for.
      */
     public static Sealed deciphered(OneBlock cipher, byte[] vector, int tagOctets,
             byte[] header, byte[] sealedOctets) {
@@ -98,25 +77,19 @@ public final class CounterWithCbcMac {
                 Arrays.copyOf(sealedOctets, sealedOctets.length - tagOctets);
         byte[] tagWritten = Arrays.copyOfRange(
                 sealedOctets, sealedOctets.length - tagOctets, sealedOctets.length);
-        byte[] nonce = nonceWithin(vector);
-        byte[] message = maskedWithTheKeystream(cipher, nonce, cipherText);
+        byte[] nonce = nonceClampedWithNoughtsAfterAShortOne(vector);
+        byte[] message = maskedWithTheKeystreamCountingFromOne(cipher, nonce, cipherText);
         if (tagOctets == 0) {
             return new Sealed(message, true);
         }
         byte[] tagComputed = theTag(cipher, nonce, tagOctets, header, message);
-        return theyAgree(tagWritten, tagComputed)
+        return theyAgreeInTheSameTimeWhicheverByteDisagrees(tagWritten, tagComputed)
                 ? new Sealed(message, true)
                 : Sealed.nothing();
     }
 
-    /**
-     * A comparison that takes the same time whichever byte disagrees.
-     *
-     * <p>Stopping at the first difference tells anybody timing the call how
-     * much of their guess was right, which is how a tag gets found a byte at a
-     * time. So every byte is looked at whatever the earlier ones said.
-     */
-    private static boolean theyAgree(byte[] written, byte[] computed) {
+    private static boolean theyAgreeInTheSameTimeWhicheverByteDisagrees(
+            byte[] written, byte[] computed) {
         if (written.length != computed.length) {
             return false;
         }
@@ -127,27 +100,12 @@ public final class CounterWithCbcMac {
         return differences == 0;
     }
 
-    /**
-     * The nonce, brought to seven bytes at the short end and thirteen at the
-     * long one.
-     *
-     * <p>{@code ctx->IV_len = MAX(7, MIN(13, ctx->IV_len))}, over a buffer
-     * that was cleared first -- so a shorter vector is read with noughts after
-     * it rather than refused, and a longer one has its tail ignored.
-     */
-    private static byte[] nonceWithin(byte[] vector) {
+    private static byte[] nonceClampedWithNoughtsAfterAShortOne(byte[] vector) {
         return Arrays.copyOf(vector,
                 Math.clamp(vector.length, SHORTEST_NONCE, LONGEST_NONCE));
     }
 
-    /**
-     * The message masked with the keystream, which both enciphers and
-     * deciphers because masking twice with the same stream undoes itself.
-     *
-     * <p>Counting starts at one. The block at nought is kept back to mask the
-     * tag.
-     */
-    private static byte[] maskedWithTheKeystream(
+    private static byte[] maskedWithTheKeystreamCountingFromOne(
             OneBlock cipher, byte[] nonce, byte[] message) {
 
         byte[] masked = new byte[message.length];
@@ -163,10 +121,6 @@ public final class CounterWithCbcMac {
         return masked;
     }
 
-    /**
-     * A counter block: how many bytes the count takes, then the nonce, then
-     * the count itself filling what is left.
-     */
     private static byte[] counterBlock(byte[] nonce, long count) {
         int countOctets = BLOCK - 1 - nonce.length;
         byte[] counter = new byte[BLOCK];
@@ -180,10 +134,6 @@ public final class CounterWithCbcMac {
         return counter;
     }
 
-    /**
-     * The tag: a chained code over the lengths, the header and the message,
-     * masked with the block at counter nought.
-     */
     private static byte[] theTag(OneBlock cipher, byte[] nonce, int tagOctets,
             byte[] header, byte[] message) {
 
@@ -202,14 +152,6 @@ public final class CounterWithCbcMac {
         return tag;
     }
 
-    /**
-     * The block every tag starts from: a byte of settings, the nonce, and how
-     * long the message is.
-     *
-     * <p>The settings byte is where the tag length is spelled, as
-     * {@code (t - 2) / 2} in three bits, which is why only the even lengths
-     * exist. The top bit says whether there is a header at all.
-     */
     private static byte[] theFirstBlock(byte[] nonce, int tagOctets,
             int headerOctets, int messageOctets) {
 
@@ -227,15 +169,8 @@ public final class CounterWithCbcMac {
         return first;
     }
 
-    /**
-     * How long the header is, written in front of it.
-     *
-     * <p>Three spellings by size, because the length has to be told apart from
-     * the header that follows it: two bytes up to just under sixty-five
-     * thousand, then a marker and four bytes, then a marker and eight.
-     */
     private static byte[] theHeadersLengthWritten(int octets) {
-        if (octets < A_SHORT_HEADER) {
+        if (octets < WHERE_TWO_BYTES_STOP_BEING_ENOUGH_FOR_A_HEADER) {
             return new byte[] {(byte) (octets >>> 8), (byte) octets};
         }
         byte[] written = new byte[6];
@@ -247,13 +182,8 @@ public final class CounterWithCbcMac {
         return written;
     }
 
-    /** Where two bytes stop being enough to say how long a header is. */
-    private static final int A_SHORT_HEADER = 0xFF00;
+    private static final int WHERE_TWO_BYTES_STOP_BEING_ENOUGH_FOR_A_HEADER = 0xFF00;
 
-    /**
-     * Runs octets through the chain, a block at a time, padding the last one
-     * with noughts.
-     */
     private static byte[] chainedThrough(OneBlock cipher, byte[] chained,
             byte[] octets) {
 

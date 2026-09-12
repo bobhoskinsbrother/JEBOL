@@ -7,29 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What COMPRESS/LEVEL means, asked of every method rather than of one.
- *
- * <p>The seven methods have seven different ranges -- three settings for
- * CRUSH, twelve for the deflate family -- and none of them refuses a number
- * outside its own. A level too high is the highest it has; a level below zero
- * is also the highest it has, because the C takes the level unsigned and
- * {@code MIN(top, level)} sends every negative number upward.
- *
- * <p>Minus one is the exception, and it is the one number that means two
- * things. "Nobody asked" is spelled as an unsigned value of all ones, so a
- * caller writing -1 gets the method's own default. For the five methods whose
- * default is already the hardest setting the two readings coincide and nothing
- * shows; for LZMA and Brotli they differ, and that is where it is worth
- * testing.
- *
- * <p>The assertions here are relations -- this level answers what that level
- * answers -- rather than bytes, on purpose. Three of the seven methods are not
- * byte-exact with a real 3.22.5 and never will be without porting libdeflate,
- * so quoting its checksums would test five methods and skip two. Every
- * relation below was measured on {@code ./r3-head} across all seven methods at
- * eighteen levels each.
- */
 class CompressionLevelFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -38,7 +15,6 @@ class CompressionLevelFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The seven this build offers, and the highest setting each of them has. */
     private static final String THE_METHODS_AND_THEIR_TOPS =
             "methods: [zlib deflate gzip crush lzw lzma br]\n"
                     + "tops: [12 12 12 2 9 9 11]\n"
@@ -79,11 +55,6 @@ class CompressionLevelFromTheSourceTest {
                     ]""")).isEqualTo(ALL_SEVEN_TRUE);
         }
 
-        /**
-         * Upward, not downward. This is the one that would go the other way if
-         * anybody wrote the range check the obvious way, and it is the reason
-         * the spec says clamped rather than checked.
-         */
         @Test
         @DisplayName("a level below zero answers what the top answers, not the bottom")
         void belowZeroClampsUpward() {
@@ -142,11 +113,6 @@ class CompressionLevelFromTheSourceTest {
                     ]""")).isEqualTo(ALL_SEVEN_TRUE);
         }
 
-        /**
-         * The five where the default is the hardest setting, so that minus one
-         * and minus ninety-nine happen to agree and the difference between
-         * "nobody asked" and "out of range" cannot be seen.
-         */
         @Test
         @DisplayName("five of the seven default to their hardest setting")
         void fiveDefaultToTheirTop() {
@@ -160,10 +126,6 @@ class CompressionLevelFromTheSourceTest {
                     ]""")).isEqualTo("[#(true) #(true) #(true) #(true) #(true)]");
         }
 
-        /**
-         * And the two where it is not, which is where minus one can be told
-         * apart from minus two.
-         */
         @Test
         @DisplayName("LZMA defaults to five of nine and Brotli to six of eleven")
         void twoDefaultToAMiddleLevel() {
@@ -177,10 +139,6 @@ class CompressionLevelFromTheSourceTest {
         }
     }
 
-    /**
-     * The invariant the spec states, run rather than argued: a level changes
-     * which bytes come out and never changes what reading them back answers.
-     */
     @Nested
     @DisplayName("compress and decompress are inverses at every level")
     class InversesAtEveryLevel {
@@ -233,10 +191,6 @@ class CompressionLevelFromTheSourceTest {
             assertThat(refusalFor("1x1")).isEqualTo("expect-arg");
         }
 
-        /**
-         * A decimal is refused here where /PART truncates one, which is worth
-         * knowing: the two refinements read a number two different ways.
-         */
         @Test
         @DisplayName("even a decimal that is a whole number")
         void evenAWholeDecimal() {

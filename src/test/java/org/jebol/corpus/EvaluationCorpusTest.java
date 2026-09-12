@@ -9,15 +9,6 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * End to end over the whole interpreter, driven by published REBOL examples
- * and their published results.
- *
- * <p>Only entries that need nothing beyond what is built run here. Anything
- * needing a capability we have not written is reported by
- * {@link CorpusCoverageReportTest} rather than skipped silently, so the gap
- * stays visible instead of becoming a flattering number.
- */
 class EvaluationCorpusTest {
 
     static Stream<CorpusEntry> runnableEntries() {

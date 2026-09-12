@@ -7,25 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * SORT, read out of {@code Sort_Block} in {@code src/core/t-block.c}.
- *
- * <p>Two things in there are not guessable and decide most of the
- * behaviour.
- *
- * <p>The comparator is called with its arguments the other way round:
- * {@code Compare_Call} sets {@code v1 = p2} and {@code v2 = p1} before
- * applying the function. And its answer is read by a rule that starts at
- * -1 and only leaves it for a true logic or a number at or above zero. So
- * a comparator written as a strict predicate, which is how nearly all of
- * them are written, answers false for two equal items and that false
- * means "the second one first" rather than "leave them alone".
- *
- * <p>Together those two make {@code sort/compare b func [a b] [a &lt; b]}
- * stable, and reading either of them the obvious way makes it unstable
- * while still sorting correctly. The stability only shows up when
- * something else depends on the order of equal keys.
- */
 class SortFromTheSourceTest {
 
     private static String answerTo(String source) {

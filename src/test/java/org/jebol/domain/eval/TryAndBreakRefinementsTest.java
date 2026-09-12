@@ -10,16 +10,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TRY/ALL, TRY/WITH, BREAK/RETURN and ATTEMPT/SAFER.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>The boundary that matters for each is the same one: whether the thing
- * being widened to actually happened. A handler that runs when nothing
- * failed is a finally rather than a handler, and a refinement that changes
- * the answer on the ordinary path has changed more than it was asked to.
- */
 class TryAndBreakRefinementsTest {
 
     private static String answerTo(String source) {
@@ -32,13 +22,6 @@ class TryAndBreakRefinementsTest {
         return interpreter.display(outcome);
     }
 
-    /**
-     * The id of the error a script failed with.
-     *
-     * <p>Read from the outcome rather than through TRY, because the four
-     * signals are exactly the ones TRY does not catch: they have to reach the
-     * top for this to say anything.
-     */
     private static String errorIdFrom(String source) {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn(source);

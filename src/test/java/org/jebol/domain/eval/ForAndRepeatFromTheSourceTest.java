@@ -6,11 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * FOR and REPEAT from {@code evaluation-test.r3}. FOR over whole numbers traps
- * an overflow after the body has run; FOR walks a series from a start position;
- * and REPEAT over a pair walks a two-dimensional grid.
- */
 class ForAndRepeatFromTheSourceTest {
 
     private static String answerTo(String source) {

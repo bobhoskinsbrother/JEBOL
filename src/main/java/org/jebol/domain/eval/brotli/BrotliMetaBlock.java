@@ -1,20 +1,5 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * Turning a run of commands into the three divided alphabets a meta-block is
- * written from.
- *
- * <p>{@code BrotliBuildMetaBlockGreedy} in {@code metablock.c}, which is what
- * qualities four to nine use. It walks the commands once, feeding each command
- * symbol, each inserted literal and each distance to its own splitter, and lets
- * the splitters decide as they go. Nothing is reconsidered afterwards.
- *
- * <p>Before the walk it decides whether literals should be coded by context at
- * all. That decision is made from a sample: sixty four bytes out of every four
- * kilobytes, counted as pairs of what kind of character followed what kind. If
- * knowing the previous character would save less than a fifth of a bit per
- * literal, it is not worth the extra codes and one context is used.
- */
 final class BrotliMetaBlock {
 
     private static final int LITERAL_SYMBOLS = 256;
@@ -35,8 +20,8 @@ final class BrotliMetaBlock {
     private static final int HOW_OFTEN_THE_INPUT_IS_SAMPLED = 4096;
     private static final int HOW_MUCH_OF_IT_IS_LOOKED_AT = 64;
 
-    /** Space, then everything else, then a byte that continues a character. */
-    private static final int[] WHICH_KIND_OF_CHARACTER = {0, 0, 1, 2};
+    private static final int[] SPACE_THEN_ANYTHING_ELSE_THEN_A_CONTINUATION_BYTE =
+            {0, 0, 1, 2};
 
     private static final int[] TWO_CONTEXTS = contextMapOf(0, 0, 1, 1);
     private static final int[] THREE_CONTEXTS = contextMapOf(1, 1, 2, 2);
@@ -44,16 +29,6 @@ final class BrotliMetaBlock {
     private static final int INPUT_LARGE_ENOUGH_FOR_THIRTEEN_CONTEXTS = 1 << 20;
     private static final int THIRTEEN_CONTEXTS_COUNT = 13;
 
-    /**
-     * Thirteen contexts, grouped by what kind of character came before.
-     *
-     * <p>{@code kStaticContextMapComplexUTF8}. The four entries of each row are
-     * the four contexts the UTF-8 table gives for one kind of preceding
-     * character, so a letter after a full stop is coded separately from a letter
-     * after a bracket. The C's own comments name the rows: newline, space,
-     * punctuation, quotes, brackets both ways, colons, the full stop, the
-     * closing angle bracket, digits, capitals and lower case.
-     */
     private static final int[] THIRTEEN_CONTEXTS = {
             11, 11, 12, 12,
             0, 0, 0, 0,
@@ -76,13 +51,6 @@ final class BrotliMetaBlock {
     private BrotliMetaBlock() {
     }
 
-    /**
-     * A map over all sixty four contexts that only distinguishes the first four.
-     *
-     * <p>The first four are the ones the UTF-8 context table produces for a
-     * character that follows a space or a newline, and they are the only ones
-     * these two maps tell apart.
-     */
     private static int[] contextMapOf(int first, int second, int third,
             int fourth) {
 
@@ -94,13 +62,6 @@ final class BrotliMetaBlock {
         return map;
     }
 
-    /**
-     * The context map to code literals with, or nothing to code them plainly.
-     *
-     * <p>{@code DecideOverLiteralContextModeling}. The complex thirteen context
-     * map the C can also choose needs a declared input size of a megabyte or
-     * more, which nothing in Rebol supplies, so it never fires and is not here.
-     */
     static int[] contextMapFor(byte[] data, int mask, int from, int length,
             int quality, int howMuchInputThereIs) {
 
@@ -117,9 +78,9 @@ final class BrotliMetaBlock {
         for (int at = from; at + HOW_MUCH_OF_IT_IS_LOOKED_AT <= end;
                 at += HOW_OFTEN_THE_INPUT_IS_SAMPLED) {
             int stretchEnd = at + HOW_MUCH_OF_IT_IS_LOOKED_AT;
-            int before = WHICH_KIND_OF_CHARACTER[(data[at & mask] & 0xFF) >> 6] * 3;
+            int before = SPACE_THEN_ANYTHING_ELSE_THEN_A_CONTINUATION_BYTE[(data[at & mask] & 0xFF) >> 6] * 3;
             for (int pos = at + 1; pos < stretchEnd; pos++) {
-                int kind = WHICH_KIND_OF_CHARACTER[(data[pos & mask] & 0xFF) >> 6];
+                int kind = SPACE_THEN_ANYTHING_ELSE_THEN_A_CONTINUATION_BYTE[(data[pos & mask] & 0xFF) >> 6];
                 pairs[before + kind]++;
                 before = kind * 3;
             }
@@ -127,15 +88,6 @@ final class BrotliMetaBlock {
         return chooseContextMap(quality, pairs);
     }
 
-    /**
-     * Whether coding literals by thirteen contexts pays for the thirteen codes.
-     *
-     * <p>{@code ShouldUseComplexStaticContextMap}. Literals are counted by their
-     * top five bits only, once without context and once per context, and the two
-     * entropies compared. It is refused if the contexts save less than a fifth
-     * of a bit per literal, and also if what is left is still above three bits a
-     * literal -- data that compresses badly either way is not worth the codes.
-     */
     private static boolean thirteenContextsAreWorthIt(byte[] data, int mask,
             int from, int length) {
 
@@ -312,12 +264,6 @@ final class BrotliMetaBlock {
         return highest;
     }
 
-    /**
-     * Every block type gets its own copy of the context map, offset so that its
-     * contexts name its own histograms rather than the first type's.
-     *
-     * <p>{@code MapStaticContexts}.
-     */
     private static int[] spreadOverBlockTypes(int[] contextMap,
             int howManyContexts, int howManyTypes) {
 

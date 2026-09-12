@@ -14,15 +14,6 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The end-to-end test for reading: fourteen complete REBOL programs, written
- * by other people for a different implementation, loaded whole.
- *
- * <p>None of them can be run without a graphics stack. All of them must load,
- * and between them they carry 184 pairs, 90 tuples, 771 set-words, 478 paths,
- * 86 lit-words, 28 refinements and 21 get-words. No hand-written example
- * would have thought to include what these do.
- */
 class SourceProgrammeLoadingTest {
 
     static Stream<Path> programmes() {

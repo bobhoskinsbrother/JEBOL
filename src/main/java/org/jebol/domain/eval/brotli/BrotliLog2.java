@@ -1,29 +1,6 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * Logarithm to base two of a whole number, rounded the way the C rounds it.
- *
- * <p>This exists because Java has no {@code log2} and the obvious substitutes
- * are not close enough. Brotli's encoder prices every choice it makes in bits,
- * and two candidates often cost within a hair of each other, so a result that
- * differs from the C's in its last bit picks a different match and writes
- * different bytes. Measured over the three million whole numbers from two
- * hundred and fifty six upward: {@code log(v) / log(2)} disagrees with the C
- * on twenty-three in a hundred, and even reducing the argument to the range one
- * to two first still disagrees on one in a hundred.
- *
- * <p>The C's own {@code log2} is correctly rounded on the platforms this was
- * checked against -- confirmed against exact decimal arithmetic on four
- * thousand values -- so the answer is to compute the correctly rounded result
- * rather than to imitate any particular library.
- *
- * <p>The method is the usual one. A number is split into a power of two and a
- * mantissa between one and two; the mantissa is divided by the nearest
- * sixteenth, whose logarithm is in a table; and what is left, a number within
- * one part in thirty-three of one, goes through a short series. All of it is
- * carried in pairs of doubles, which hold about a hundred and six bits between
- * them -- far more than the fifty-three needed to round correctly.
- */
+/** The JDK's is not close enough: docs/brotli-port.md has the measurement. */
 final class BrotliLog2 {
 
     private BrotliLog2() {
@@ -45,14 +22,7 @@ final class BrotliLog2 {
             4.4407139084295174e-17, 3.2653869625311436e-17, 4.991495917345345e-17, -3.7239566747188146e-17,
     };
 
-    /**
-     * The odd reciprocals the series needs, as far as it goes.
-     *
-     * <p>The series is twice the sum of {@code s} to an odd power over that
-     * power. With {@code s} never larger than one thirty-third, the twelfth
-     * term is already smaller than anything a pair of doubles can hold.
-     */
-    private static final int HOW_MANY_TERMS = 12;
+    private static final int HOW_MANY_TERMS_BEFORE_A_PAIR_OF_DOUBLES_STOPS_CARING = 12;
 
     static double of(long value) {
         if (value <= 0) {
@@ -68,7 +38,7 @@ final class BrotliLog2 {
         int sixteenth = (int) ((mantissa - 1.0) * 16.0);
         double nearby = 1.0 + sixteenth / 16.0;
 
-        double[] ratio = divide(mantissa, 0.0, nearby, 0.0);
+        double[] ratio = divideCorrectedTwiceBecauseOnceRoundsSomeWrong(mantissa, 0.0, nearby, 0.0);
         double[] logarithmOfTheRatio = naturalLogNearOne(ratio[0], ratio[1]);
         double[] inBitsRatio = multiply(logarithmOfTheRatio[0], logarithmOfTheRatio[1],
                 INV_LN2_HIGH, INV_LN2_LOW);
@@ -78,21 +48,14 @@ final class BrotliLog2 {
         return answer[0];
     }
 
-    /**
-     * The natural logarithm of something very close to one.
-     *
-     * <p>Written as twice the inverse hyperbolic tangent of {@code (x-1)/(x+1)},
-     * which is the series that converges fastest here because that quantity is
-     * tiny and only its odd powers appear.
-     */
     private static double[] naturalLogNearOne(double high, double low) {
         double[] above = add(high, low, -1.0, 0.0);
         double[] below = add(high, low, 1.0, 0.0);
-        double[] ratio = divide(above[0], above[1], below[0], below[1]);
+        double[] ratio = divideCorrectedTwiceBecauseOnceRoundsSomeWrong(above[0], above[1], below[0], below[1]);
         double[] squared = multiply(ratio[0], ratio[1], ratio[0], ratio[1]);
 
-        double[] sum = {1.0 / (2 * HOW_MANY_TERMS - 1), 0.0};
-        for (int term = HOW_MANY_TERMS - 1; term >= 1; term--) {
+        double[] sum = {1.0 / (2 * HOW_MANY_TERMS_BEFORE_A_PAIR_OF_DOUBLES_STOPS_CARING - 1), 0.0};
+        for (int term = HOW_MANY_TERMS_BEFORE_A_PAIR_OF_DOUBLES_STOPS_CARING - 1; term >= 1; term--) {
             sum = multiply(sum[0], sum[1], squared[0], squared[1]);
             sum = add(sum[0], sum[1], 1.0 / (2 * term - 1), 0.0);
         }
@@ -121,15 +84,7 @@ final class BrotliLog2 {
         return new double[]{tightened, low - (tightened - high)};
     }
 
-    /**
-     * Division, corrected twice.
-     *
-     * <p>One correction leaves the answer a fraction of a bit short, which
-     * showed up as a hundred and sixty results out of three million rounding
-     * the wrong way. The second correction costs three more multiplications and
-     * makes them all agree.
-     */
-    private static double[] divide(double firstHigh, double firstLow,
+    private static double[] divideCorrectedTwiceBecauseOnceRoundsSomeWrong(double firstHigh, double firstLow,
             double secondHigh, double secondLow) {
 
         double roughly = firstHigh / secondHigh;

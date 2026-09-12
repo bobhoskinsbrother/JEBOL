@@ -7,19 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What a word answers to, read out of {@code REBTYPE(Word)} in
- * {@code src/core/t-word.c}.
- *
- * <p>Only two actions, and both are surprising. A word has a LENGTH?,
- * which is the count of code points in its spelling and not anything to
- * do with a series. And TO WORD! of a string runs the scanner over that
- * string and refuses it unless the whole thing reads as one word.
- *
- * <p>The refusal is the part that matters. Without it {@code to word! "a
- * b"} builds a word that no reader can ever load back, and the mistake
- * only shows up later, in a saved file that will not read.
- */
 class WordActionsFromTheSourceTest {
 
     private static String answerTo(String source) {

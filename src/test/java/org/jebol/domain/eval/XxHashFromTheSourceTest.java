@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * xxHash, the thirty-two and sixty-four bit forms, written out because the JVM
- * has not got them.
- *
- * <p>Not cryptographic, and REBOL lists them beside the digests anyway: a
- * caller reaches for one to tell whether two blocks differ, not to keep a
- * secret.
- *
- * <p>Checked against the published vectors and at every length that changes
- * which branch runs -- under a block, exactly a block, a block and a tail --
- * because those boundaries are where a hash implementation goes wrong.
- */
 class XxHashFromTheSourceTest {
 
     private static String answerTo(String source) {

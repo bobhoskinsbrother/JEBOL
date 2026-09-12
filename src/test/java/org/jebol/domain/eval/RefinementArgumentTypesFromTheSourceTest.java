@@ -6,11 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A refinement's argument is type-checked like any other, read from
- * {@code func-test.r3}: {@code fce/ref1 "a" ""} refuses the string where
- * {@code /ref1} declared an integer, with expect-arg.
- */
 class RefinementArgumentTypesFromTheSourceTest {
 
     private static String answerTo(String source) {

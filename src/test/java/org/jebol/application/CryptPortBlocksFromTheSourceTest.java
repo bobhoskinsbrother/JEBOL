@@ -5,35 +5,12 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * How a cipher port cuts a stream of bytes into blocks.
- *
- * <p>{@code Crypt_Write} in {@code p-crypt.c}. A block cipher cannot answer
- * until it has a whole block, so a write of less than one produces nothing and
- * the remainder waits inside the port for the next write to complete it. That
- * is what lets a caller read a stream and feed it through without knowing the
- * cipher's block size.
- *
- * <p>AES has a sixteen byte block, so every boundary here is sixteen: nothing
- * at all, one byte, fifteen, sixteen, seventeen, thirty-one, thirty-two and
- * thirty-three, and the same total arriving in two writes cut three different
- * ways.
- *
- * <p>UPDATE is how a caller says there is no more input coming: it completes a
- * half-finished block by padding it with noughts. Noughts and not a counted
- * padding, so the padding cannot be told from data and is not removed on the
- * way back -- which is pinned below, because it is the part that surprises
- * anybody who expects PKCS#7.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written.
- */
 class CryptPortBlocksFromTheSourceTest {
 
     private static final String KEY = "#{2B7E151628AED2A6ABF7158809CF4F3C}";
 
     private static final String VECTOR = "#{000102030405060708090A0B0C0D0E0F}";
 
-    /** Three NIST blocks running together, so any prefix is a fixture. */
     private static final String FORTY_EIGHT_BYTES =
             "#{6BC1BEE22E409F96E93D7E117393172A"
             + "AE2D8A571E03AC9C9EB76FAC45AF8E51"
@@ -45,7 +22,6 @@ class CryptPortBlocksFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** An electronic-codebook port, whose blocks do not depend on each other. */
     private static String codebook() {
         return """
                 whole: %s
@@ -53,19 +29,10 @@ class CryptPortBlocksFromTheSourceTest {
                 """.formatted(FORTY_EIGHT_BYTES, KEY);
     }
 
-    /**
-     * The answer as hexadecimal where there is one, and the answer itself
-     * where there is not, so nothing at all still reads as nothing rather than
-     * as the text of the word.
-     */
     private static String hexOf(String expression) {
         return "either binary? r: " + expression + " [enbase/flat r 16] [r]";
     }
 
-    /**
-     * The fixture has to be what it says it is, or a test named for a block
-     * boundary sits nowhere near one.
-     */
     @Test
     @DisplayName("the fixture is three whole blocks")
     void theFixtureIsThreeWholeBlocks() {
@@ -108,11 +75,6 @@ class CryptPortBlocksFromTheSourceTest {
         }
     }
 
-    /**
-     * The same sixteen bytes in two writes, cut either side of the middle and
-     * at both extremes. All three are one block, which is the whole point of
-     * the port holding a remainder.
-     */
     @Test
     @DisplayName("how the bytes are cut up does not change the answer")
     void howTheBytesAreCutUpDoesNotChangeTheAnswer() {
@@ -135,11 +97,6 @@ class CryptPortBlocksFromTheSourceTest {
                 .isEqualTo("_");
     }
 
-    /**
-     * One byte and fifteen, either side of the block. Both answer a whole
-     * block, and the two answers differ from each other and from the block of
-     * real data, which is what says the padding really went in.
-     */
     @Test
     @DisplayName("update pads a partial block with noughts")
     void updatePadsThePartialBlockWithNoughts() {
@@ -176,13 +133,6 @@ class CryptPortBlocksFromTheSourceTest {
                 .isEqualTo("\"8EE6979FDE06A0590BB075BE7F125F5C\"");
     }
 
-    /**
-     * The padding is noughts, and nothing takes them off again. Eight bytes
-     * encrypted and then decrypted are those eight bytes followed by eight
-     * noughts, so a caller who needs the original length has to carry it
-     * separately. REBOL's own test says so in a comment: "the result contains
-     * padded data!".
-     */
     @Test
     @DisplayName("the padding is noughts and comes back as noughts")
     void thePaddingIsNoughtsAndComesBackAsNoughts() {
@@ -201,13 +151,6 @@ class CryptPortBlocksFromTheSourceTest {
                 .isEqualTo("#{6BC1BEE22E409F960000000000000000}");
     }
 
-    /**
-     * Chaining carries from one write to the next, so the second block is
-     * encrypted against the first block's output rather than against the
-     * starting vector. Setting the vector again is how a caller says a new
-     * message begins -- REBOL's own test puts it as "must reset IV, because it
-     * was changed internally".
-     */
     @Test
     @DisplayName("chaining carries between writes until the vector is set again")
     void chainingCarriesBetweenWritesUntilTheVectorIsSetAgain() {

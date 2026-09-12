@@ -12,44 +12,13 @@ import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.host.HostService;
 
-/**
- * Says where each suite file stops, and how many gaps it still owes.
- *
- * <p>The counterpart to {@code scripts/sweep.py}. The sweep says which
- * assertions answer wrongly; this says which raise, and a raise is worth more
- * than a wrong answer because everything after it in the file never runs at
- * all. A file with one stop near the top can owe a hundred entries and need
- * one fix.
- *
- * <p>Run it, and give it the smallest gap count worth reporting:
- *
- * <pre>
- * ./gradlew compileTestJava
- * java -cp build/classes/java/main:build/classes/java/test:build/resources/main:build/resources/test \
- *      org.jebol.suite.SuiteStops 7
- * </pre>
- *
- * <p>A {@code main} rather than a test on purpose. It runs every suite file
- * twice over and takes a minute, and it answers a question about the state of
- * the port rather than asserting anything, so it has no business in the gate.
- */
 public final class SuiteStops {
 
     private SuiteStops() {
     }
 
-    /** How many stops to print per file before the rest are taken as read. */
     private static final int ENOUGH_STOPS_TO_SEE_THE_SHAPE = 10;
 
-    /**
-     * The interpreter the gate runs each file in, built by {@link SuiteHost}.
-     *
-     * <p>It used to build its own, granting every service and installing only a
-     * filesystem. Granting a service is not providing one, so this reported
-     * stops on {@code get-env}, {@code list-env} and {@code call/shell} that
-     * the gate never sees, and four pieces of work in {@code goals.md} were
-     * written from them.
-     */
     private static Interpreter fullyBounded() throws Exception {
         Interpreter interpreter = SuiteHost.installOn(
                 Interpreter.withBounds(SuiteHost.grantingEverything()));

@@ -7,36 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Where the reader starts counting lines, and what it reports when it stops.
- *
- * <p>From {@code REBNATIVE(transcode)} in {@code rebol3-source/src/core/l-scan.c}:
- *
- * <pre>
- * if (line) {
- *     if (0 &gt;= VAL_INT64(count)) Trap1(RE_OUT_OF_RANGE, count);
- *     scan_state.line_count = VAL_UNT32(count);
- * }
- * </pre>
- *
- * <p>and, at the end of the same function:
- *
- * <pre>
- * if (line) {
- *     SET_INTEGER(count, scan_state.line_count);
- *     Append_Val(blk, count);
- * }
- * </pre>
- *
- * <p>A source carries no record of where it came from, so a reader handed the middle
- * of a file would call that fragment's first line line one. Every error after the
- * first would then name the wrong place. The caller keeps the count instead: it hands
- * a number in and gets one back, and the one that comes back is what it hands in next.
- *
- * <p>The count comes back only when the caller is walking the source, because the C
- * appends it to the same block that carries the unread text, and that block is only
- * built when a refinement asked to stop after one value.
- */
 class LineCountFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -45,7 +15,6 @@ class LineCountFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The line a failure names, so a mistaken count shows up as a number. */
     private static String lineNamedBy(String call) {
         return answerTo("e: try [" + call + "] "
                 + "either error? e ["

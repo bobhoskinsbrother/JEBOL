@@ -7,30 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Brotli, ported from the reference library Rebol vendors under
- * {@code src/core/brotli/}.
- *
- * <p>The reading half is RFC 7932 in full: block switching, the four ways a
- * literal can be conditioned on the two bytes before it, and the hundred and
- * twenty thousand bytes of dictionary that a distance past the start of the
- * answer names a word in. It reads every stream a real 3.22.5 writes at every
- * one of its twelve levels, which was checked by handing it a hundred and
- * thirty-two of them.
- *
- * <p>The writing half has all twelve of its settings, and every one of them is
- * byte for byte what a real 3.22.5 writes. Levels two to nine and levels ten
- * and eleven have test files of their own beside this one; what is here is
- * levels zero and one, the reader, the dictionary, and the refusals.
- *
- * <p>One fault this file would have caught and a round trip would not: each of
- * the two files that build a prefix code has a static comparator of its own,
- * and they differ by a line. The one that sorts the literal code does not
- * break a tie between two symbols of equal count; the one that sorts the
- * command code does. Using the wrong one gives a code of exactly the same
- * shape with two symbols swapped -- valid Brotli, decodes perfectly, and not
- * the bytes a real one writes.
- */
 class BrotliFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -50,11 +26,6 @@ class BrotliFromTheSourceTest {
     @DisplayName("the bytes it writes")
     class TheBytes {
 
-        /**
-         * Six bits: a window size of four megabytes, then "this is the last
-         * meta-block" and "it is empty". The other two bits of the byte are
-         * padding.
-         */
         @Test
         @DisplayName("nothing is one byte, and that byte is 3B")
         void nothingIsOneByte() {
@@ -62,11 +33,6 @@ class BrotliFromTheSourceTest {
                     compress/level "" 'br 0""")).isEqualTo("#{3B}");
         }
 
-        /**
-         * Fourteen bytes are not worth a prefix code, so they go down as they
-         * stand: a header saying so, then the bytes, then an empty last
-         * meta-block.
-         */
         @Test
         @DisplayName("and fourteen bytes are stored, not compressed")
         void fourteenBytesAreStored() {
@@ -75,11 +41,6 @@ class BrotliFromTheSourceTest {
                     .isEqualTo("#{8B0680746573742074657374207465737403}");
         }
 
-        /**
-         * Level one reads the input twice: once to find the matches, once to
-         * build prefix codes from what they actually left behind. On fourteen
-         * bytes it finds nothing either way, so both settings store them.
-         */
         @Test
         @DisplayName("level one is a different encoder, and on this input agrees")
         void levelOneIsADifferentEncoder() {
@@ -89,10 +50,6 @@ class BrotliFromTheSourceTest {
                     .isEqualTo("#(true)");
         }
 
-        /**
-         * On enough input the two part company, and both are what a real
-         * 3.22.5 writes at that level.
-         */
         @Test
         @DisplayName("and on a paragraph it is not, and both match a real 3.22.5")
         void levelOneDiffersOnAParagraph() {
@@ -104,11 +61,6 @@ class BrotliFromTheSourceTest {
                     ]""")).isEqualTo("[#(false) 209 166]");
         }
 
-        /**
-         * The level nobody asks for is six, and six now writes what a real one
-         * writes. Fourteen bytes are too few for level two to bother building a
-         * code for, so it stores them where six does not.
-         */
         @Test
         @DisplayName("the level nobody asks for is six, and six is exact")
         void theLevelNobodyAsksForIsExact() {
@@ -121,12 +73,6 @@ class BrotliFromTheSourceTest {
                     ]""")).isEqualTo("[#(true) #(true)]");
         }
 
-        /**
-         * The two levels that were the last gap. They search for matches by
-         * pricing every candidate rather than taking the best one found, so
-         * they part company with nine even on fourteen bytes -- and they are
-         * now the bytes a real 3.22.5 writes.
-         */
         @Test
         @DisplayName("levels ten and eleven, which differ from nine and from a real one no longer")
         void levelsTenAndElevenAreExact() {
@@ -151,11 +97,6 @@ class BrotliFromTheSourceTest {
                     ]""")).isEqualTo("[225 209]");
         }
 
-        /**
-         * A real 3.22.5 answers these same bytes. They were taken from
-         * {@code ./r3-head} and not from this build, which is the only way the
-         * assertion means anything.
-         */
         @Test
         @DisplayName("a short sentence, byte for byte what a real 3.22.5 writes")
         void aShortSentence() {
@@ -231,26 +172,6 @@ class BrotliFromTheSourceTest {
                     ]""")).isEqualTo("[#(true) 4]");
         }
 
-        /**
-         * A stream whose table of code lengths names exactly one length.
-         *
-         * <p>That code has a single symbol in it, so there is nothing to tell
-         * apart and it is read by spending no bits at all. Reading it as an
-         * ordinary prefix code instead spends one bit or more, and everything
-         * after it is then read at the wrong offset -- which showed up as a
-         * symbol longer than any code rather than as wrong output, so the
-         * damage was at least loud.
-         *
-         * <p>It took seventy thousand bytes to find one. Every shorter stream
-         * this file had been tested on -- a hundred and thirty two of them,
-         * written by a real 3.22.5 at all twelve levels -- reads correctly
-         * without the special case, which is why counting streams was no
-         * substitute for asking what shapes of stream exist.
-         *
-         * <p>The stream this decodes is a real 3.22.5's byte for byte: its
-         * checksum is asserted here, and that the encoder writes a real one's
-         * bytes at level six is asserted separately.
-         */
         @Test
         @DisplayName("one whose code over code lengths has a single symbol in it")
         void aCodeOverCodeLengthsWithOneSymbol() {
@@ -276,11 +197,6 @@ class BrotliFromTheSourceTest {
         }
     }
 
-    /**
-     * The streams here were written by {@code ./r3-head} and pasted in. They
-     * are the point of the exercise: a decoder that only ever reads what this
-     * build wrote would agree with itself about a format it had misread.
-     */
     @Nested
     @DisplayName("streams a real 3.22.5 wrote")
     class RealStreams {
@@ -313,11 +229,6 @@ class BrotliFromTheSourceTest {
 
     }
 
-    /**
-     * The dictionary is a hundred and twenty thousand bytes of data carried in
-     * the source, and a mistake in it would show up as a wrong answer on some
-     * stream nobody happened to try. These check the bytes themselves.
-     */
     @Nested
     @DisplayName("the dictionary every decoder carries")
     class TheDictionary {
@@ -346,12 +257,6 @@ class BrotliFromTheSourceTest {
                     .isEqualTo("firstvideolight");
         }
 
-        /**
-         * Transform zero is {@code {49, IDENTITY, 49}} and piece 49 is the
-         * empty one, so it adds nothing. Transform one hangs a space on the
-         * end and transform seven puts "s " in front of that, which is how one
-         * dictionary word covers "time", "time " and "s time ".
-         */
         @Test
         @DisplayName("and a transform hangs a prefix and a suffix on a word")
         void transformsAddPrefixesAndSuffixes() {

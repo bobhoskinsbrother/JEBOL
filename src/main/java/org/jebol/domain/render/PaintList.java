@@ -9,19 +9,8 @@ import java.util.Optional;
 /**
  * One gob tree, walked once, as the thing every renderer is handed.
  *
- * <p>Three renderers are wanted -- a desktop window, a phone and a browser --
- * and where the tree gets walked decides whether they stay alike. If each
- * renderer walks it, each has its own opinion about offsets, clipping and
- * opacity, and they drift apart in ways only somebody comparing screenshots
- * would notice.
- *
- * <p>So the walk happens here and nowhere else. A renderer executes the list
- * and decides nothing, which means two renderers cannot disagree about where
- * a thing goes: neither of them works it out.
- *
- * <p>What comparing pictures is still for, after this: glyph shapes and
- * anti-aliased edges, which no two rasterisers agree on and which no amount
- * of shared input fixes. Geometry and colour need no tolerance; text does.
+ * <p>The walk happens here and nowhere else: a renderer executes the list and
+ * decides nothing, so two renderers cannot disagree about where a thing goes.
  *
  * <p>Specified in {@code spec/screen.allium}.
  */
@@ -40,25 +29,14 @@ public record PaintList(List<PaintInstruction> instructions) {
     }
 
     /**
-     * A gob tree flattened, clipped to the gob's own area.
-     *
-     * <p>With no dialect, so a gob carrying a draw block paints nothing. Every
-     * flattening that might meet one takes the dialect, and the ones that
-     * cannot -- a lone coloured gob in a test -- do not have to invent it.
+     * A gob tree flattened, clipped to the gob's own area, with no dialect --
+     * so a gob carrying a draw block paints nothing.
      */
     public static PaintList of(GobValue root) {
         return of(root, null);
     }
 
-    /**
-     * The same, reading any draw block it meets against a dialect.
-     *
-     * <p>The dialect is {@code system/dialects/draw} and it is passed rather
-     * than reached, because flattening a gob tree has no way to a system
-     * object and should not learn one. Threaded rather than held somewhere
-     * shared, because a host runs many interpreters at once and each has its
-     * own.
-     */
+    /** The same, reading any draw block it meets against a dialect. */
     public static PaintList of(GobValue root, ObjectValue drawDialect) {
         int wide = whole(root.storage().size().x());
         int high = whole(root.storage().size().y());
@@ -71,20 +49,12 @@ public record PaintList(List<PaintInstruction> instructions) {
     }
 
     /**
-     * The whole screen: the root gob and every window under it.
+     * The whole screen: the root gob and every window under it, with the titles
+     * of both left out.
      *
-     * <p>Different from {@link #of} in one thing, and it is the thing that
-     * makes a page look right. The same {@code text} field means two things
-     * depending on where a gob sits: on an ordinary gob it is content and gets
-     * painted, and on a window it is the title bar's words. VIEW writes
-     * {@code window/text: any [opts/title window/text "REBOL: untitled"]}, and
-     * the screen gob itself carries {@code text: "Top Gob"}, which is a name
-     * for the thing rather than anything anybody should see.
-     *
-     * <p>Painting them is a quiet failure: a window shows its own title across
-     * its top left corner, in black, over whatever was meant to be there. It
-     * was in the desktop renderer and nobody noticed, because no test gob had
-     * any text.
+     * <p>The same {@code text} field means two things depending on where a gob
+     * sits: content on an ordinary gob, and the title bar's words on a window
+     * or on the screen gob itself.
      */
     public static PaintList ofTheScreen(
             GobValue root, int wide, int high, ObjectValue drawDialect) {
@@ -100,10 +70,6 @@ public record PaintList(List<PaintInstruction> instructions) {
         return within(window, ClipRectangle.wholeSurface(wide, high), 1, drawDialect);
     }
 
-    /**
-     * How many levels down from where the walk starts hold titles rather than
-     * content: the screen gob itself, and every window in its pane.
-     */
     private static final int DEPTHS_WHOSE_TEXT_IS_A_TITLE = 2;
 
     private static PaintList within(
@@ -111,20 +77,12 @@ public record PaintList(List<PaintInstruction> instructions) {
             ObjectValue drawDialect) {
 
         List<PaintInstruction> gathered = new ArrayList<>();
-        gather(gathered, root.storage(), 0, 0, surface, Placement.OPAQUE,
+        gatherParentBeforeChildrenWhichIsWhatInFrontMeans(gathered,root.storage(), 0, 0, surface, Placement.OPAQUE,
                 titledDepths, drawDialect);
         return new PaintList(gathered);
     }
 
-    /**
-     * One gob and everything under it, parent first.
-     *
-     * <p>Parent before children because that is the whole of what "in front"
-     * means, and the C's compositor relies on the same order. A list in the
-     * wrong order is a picture with the wrong thing on top, which reads as a
-     * bug in whichever renderer somebody happened to be looking at.
-     */
-    private static void gather(
+    private static void gatherParentBeforeChildrenWhichIsWhatInFrontMeans(
             List<PaintInstruction> gathered, GobStorage gob,
             int across, int down, ClipRectangle within, int inheritedOpacity,
             int titledDepths, ObjectValue drawDialect) {
@@ -151,7 +109,7 @@ public record PaintList(List<PaintInstruction> instructions) {
 
         for (Value child : gob.pane()) {
             if (child instanceof GobValue held) {
-                gather(gathered, held.storage(),
+                gatherParentBeforeChildrenWhichIsWhatInFrontMeans(gathered,held.storage(),
                         across + whole(held.storage().offset().x()),
                         down + whole(held.storage().offset().y()),
                         own, opacity, titledDepths - 1, drawDialect);
@@ -159,15 +117,6 @@ public record PaintList(List<PaintInstruction> instructions) {
         }
     }
 
-    /**
-     * Whether this gob's content is words for a title bar rather than
-     * something to paint.
-     *
-     * <p>Only its text is. A window may carry a colour or an image and those
-     * are painted as any other gob's would be, which matters because VIEW puts
-     * a background in by inserting a gob rather than by colouring the window
-     * -- so a window that does carry a colour was given one on purpose.
-     */
     private static boolean itsTextIsATitle(GobStorage gob) {
         return gob.contentKind() == GobStorage.Content.STRING
                 || gob.contentKind() == GobStorage.Content.TEXT;
@@ -185,27 +134,11 @@ public record PaintList(List<PaintInstruction> instructions) {
         return DrawDialect.instructionsFor(block, drawDialect, where, wide, high);
     }
 
-    /**
-     * Two opacities as one, which is what nesting them means.
-     *
-     * <p>A half-transparent gob inside another half-transparent one is a
-     * quarter. Multiplied here rather than by each renderer, because
-     * compositing is where toolkits differ most and the arithmetic is the part
-     * that must not.
-     */
     private static int multipliedOpacity(int inherited, int own) {
         return Math.round(inherited * Math.clamp(own, 0, Placement.OPAQUE)
                 / (float) Placement.OPAQUE);
     }
 
-    /**
-     * What one gob paints, if anything.
-     *
-     * <p>Four of the eight content kinds paint. A draw block, an effect, a
-     * native widget and nothing itself produce no instruction, and that gap is
-     * the same gap in all three renderers because it is decided here rather
-     * than three times.
-     */
     private static java.util.Optional<PaintInstruction> instructionFor(
             GobStorage gob, Placement where) {
 
@@ -252,7 +185,6 @@ public record PaintList(List<PaintInstruction> instructions) {
                 : Optional.empty();
     }
 
-    /** A gob's sizes and offsets are float pixels; a surface wants whole ones. */
     private static int whole(double measurement) {
         return (int) Math.round(measurement);
     }

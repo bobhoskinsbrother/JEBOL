@@ -7,41 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * An angle bracket part-way through a value, from {@code scanword} in
- * {@code rebol3-source/src/core/l-scan.c}.
- *
- * <p>Two rules meet here, and which one applies depends on what came before the
- * bracket.
- *
- * <p><b>A number simply ends.</b> A path is assembled from separate tokens, so the
- * last segment of {@code a/3<} is scanned as a number, and a number stops at any
- * character that is not a digit. The word rule is never consulted. The same holds
- * without a path: {@code 1<}, {@code 1.0<a>} and {@code 1.#INF<} all end at the
- * bracket, and {@code WordCharactersTest} has pinned that half for a while.
- *
- * <p><b>A word obeys {@code scanword}</b>, whose comment states the rule outright:
- * "Allow word&lt;tag&gt; and word&lt;/tag&gt; but not word&lt; word&lt;=
- * word&lt;&gt; etc."
- *
- * <pre>
- * cp = Skip_To_Char(cp, scan_state-&gt;end, '&lt;');
- * if (cp[1] == '&lt;' || cp[1] == '&gt;' || cp[1] == '=' ||
- *     IS_LEX_SPACE(cp[1]) || (cp[1] != '/' &amp;&amp; IS_LEX_DELIMIT(cp[1])))
- *     return -type;
- * scan_state-&gt;end = cp;
- * </pre>
- *
- * <p>So the character after the bracket decides. A name or a slash means a tag or an
- * arrow word is beginning and the word is finished. Another bracket, an equals, a
- * space or the end of input means somebody wrote an operator hard against a name,
- * and that is a mistake rather than two values.
- *
- * <p>Which is what separates {@code a/3<} from {@code a/b<}: the same path shape,
- * the same bracket at the same place, and the last segment is the whole difference.
- * Rebol's own lexer test asserts the pair side by side, and no single reading of
- * either rule explains both.
- */
 class WordThenAngleFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -50,14 +15,6 @@ class WordThenAngleFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /**
-     * Whether loading this failed as a refused word.
-     *
-     * <p>Both halves asked at once, as Rebol's own test asks them:
-     * {@code all [error? e: try [load {a/b<}] e/id = 'invalid e/arg1 = "word"]}.
-     * Molding the pair instead would put the answer inside a string that itself
-     * holds quotes, and then the assertion is about how a string displays.
-     */
     private static String refusedAsAWord(String source) {
         return answerTo("e: try [load " + source + "] "
                 + "all [error? e e/id = 'invalid e/arg1 = \"word\"]");

@@ -11,10 +11,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Specified in {@code spec/natives.allium} under "Reading a file", read from
- * {@code p-file.c} and {@code port-test.r3}.
- */
 class ReadRefinementsFromTheSourceTest {
 
     private static Interpreter readingUnder(Path directory) {

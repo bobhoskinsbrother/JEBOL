@@ -7,25 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Reading a map's pairs out, and walking over them.
- *
- * <p>Read out of {@code Map_To_Block} and {@code Find_Entry} in {@code t-map.c}
- * and {@code Loop_Each} in {@code n-loop.c}, and every case checked against the
- * R3 binary before any of it was written.
- *
- * <p>The one thing to understand before reading the rest: a word key is not
- * stored as a word. Every kind of word becomes a set-word going in, so `a`,
- * `'a`, `:a` and `/a` are one key rather than four, and that is why a map molds
- * as {@code #[a: 1]} while a map keyed by a string molds as
- * {@code #["k" 1]} -- the colon belongs to the key, not to the map.
- *
- * <p>Coming back out, only two questions turn it back: KEYS-OF, and the walk.
- * BODY-OF and {@code to block!} show what is stored.
- *
- * <p>Specified in {@code spec/natives.allium} under "The pairs of a map, read
- * out and walked over".
- */
 class MapPairsFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -165,13 +146,6 @@ class MapPairsFromTheSourceTest {
             assertThat(answerTo("values-of make map! [a 1 b 2]")).isEqualTo("[1 2]");
         }
 
-        /**
-         * A block carries a line break per item and MOLD honours it, so the
-         * block a map hands out reads as a list of pairs where the same block
-         * written by hand reads as one line. This asserted the one-line shape,
-         * which is what JEBOL answered before the marks were set and is not
-         * what a real 3.22.5 answers.
-         */
         @Test
         @DisplayName("BODY-OF answers the pairs, keys as stored, a pair to a line")
         void bodyOfAnswersThePairs() {

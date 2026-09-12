@@ -2,27 +2,6 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * Dividing a run of symbols into stretches, by finding the division that costs
- * fewest bits rather than by growing stretches greedily.
- *
- * <p>{@code block_splitter_inc.h}, used only by the two levels that price
- * everything. The greedy splitter the lower levels use decides once, as each
- * batch of symbols arrives, and never reconsiders. This one takes a handful of
- * candidate histograms, works out the cheapest assignment of every symbol to
- * one of them, rebuilds the histograms from that assignment, and repeats -- so
- * a stretch in the middle can change its mind about which histogram it belongs
- * to because of what came later.
- *
- * <p>Three passes of that, then the stretches are merged by clustering, which
- * is what lets two stretches far apart share a code without the ones between
- * them having to.
- *
- * <p>The candidate histograms are seeded from samples taken at random. The
- * generator is the C's -- multiply by sixteen thousand eight hundred and seven,
- * starting from seven -- and the seed matters: a different sequence gives
- * different starting histograms and a different division.
- */
 final class BrotliBlockSplitting {
 
     private static final int SHORTEST_WORTH_SPLITTING = 128;
@@ -30,14 +9,6 @@ final class BrotliBlockSplitting {
     private static final int FEWEST_SAMPLES = 100;
     private static final int HISTOGRAMS_PER_BATCH = 64;
     private static final int MOST_TYPES_ALLOWED = 256;
-    /**
-     * How many times the assignment is redone.
-     *
-     * <p>Three at level ten and ten at level eleven, which is the only place
-     * the two levels' block splitting differs and is worth a constant of its
-     * own: with three rounds level eleven settles on a division two symbols
-     * away from the C's on some inputs and writes different bytes.
-     */
     private static final int ROUNDS_AT_TEN = 3;
     private static final int ROUNDS_AT_ELEVEN = 10;
 
@@ -54,17 +25,12 @@ final class BrotliBlockSplitting {
     private static final int SYMBOLS_PER_COMMAND_HISTOGRAM = 530;
     private static final int SYMBOLS_PER_DISTANCE_HISTOGRAM = 544;
 
-    /**
-     * The widest a distance alphabet gets, which is what a histogram is sized
-     * for regardless of how many codes this meta-block actually uses.
-     */
     private static final int DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS = 544;
 
     private BrotliBlockSplitting() {
     }
 
-    /** The C's own generator, whose sequence the answer depends on. */
-    private static final class Rolling {
+    private static final class TheCsOwnGeneratorWhoseSequenceTheAnswerDependsOn {
         private int seed = 7;
 
         int next() {
@@ -73,8 +39,7 @@ final class BrotliBlockSplitting {
         }
     }
 
-    /** A count of nought is priced as minus two bits, which the C does on purpose. */
-    private static double bitCost(int count) {
+    private static double bitCostPricingAnAbsentSymbolAtMinusTwoBits(int count) {
         return count == 0 ? -2.0 : BrotliCodes.fastLog2(count);
     }
 
@@ -116,10 +81,6 @@ final class BrotliBlockSplitting {
                 DISTANCE_STRIDE, DISTANCE_SWITCH_COST, rounds, distances);
     }
 
-    /**
-     * Copies every inserted literal into one run, so the splitter sees them
-     * without the copies in between.
-     */
     private static void gatherLiterals(BrotliCommand commands, byte[] data,
             int from, int mask, int[] into) {
 
@@ -171,17 +132,11 @@ final class BrotliBlockSplitting {
                 alphabetSize);
     }
 
-    /**
-     * Starts the histograms off from evenly spaced samples, jittered.
-     *
-     * <p>Each sample is a stretch of the run taken at a place chosen partly by
-     * position and partly at random, which stops two histograms starting out
-     * identical on data that repeats at a regular interval.
-     */
     private static void seedFromSamples(int[] symbols, int howMany, int stride,
             int howManyHistograms, BrotliHistogram[] histograms) {
 
-        Rolling rolling = new Rolling();
+        TheCsOwnGeneratorWhoseSequenceTheAnswerDependsOn rolling =
+                new TheCsOwnGeneratorWhoseSequenceTheAnswerDependsOn();
         int blockLength = howMany / howManyHistograms;
         for (int which = 0; which < howManyHistograms; which++) {
             histograms[which].clear();
@@ -198,7 +153,6 @@ final class BrotliBlockSplitting {
         }
     }
 
-    /** Feeds each histogram more samples, round robin, to settle it down. */
     private static void refineFromSamples(int[] symbols, int howMany, int stride,
             int howManyHistograms, BrotliHistogram[] histograms) {
 
@@ -206,7 +160,8 @@ final class BrotliBlockSplitting {
                 / stride + FEWEST_SAMPLES;
         howManySamples = (howManySamples + howManyHistograms - 1)
                 / howManyHistograms * howManyHistograms;
-        Rolling rolling = new Rolling();
+        TheCsOwnGeneratorWhoseSequenceTheAnswerDependsOn rolling =
+                new TheCsOwnGeneratorWhoseSequenceTheAnswerDependsOn();
         BrotliHistogram sample = histograms[howManyHistograms];
         for (long each = 0; each < howManySamples; each++) {
             sample.clear();
@@ -225,16 +180,6 @@ final class BrotliBlockSplitting {
         }
     }
 
-    /**
-     * Works out which histogram each symbol should use, then traces back to
-     * find where the switches actually are.
-     *
-     * <p>{@code FindBlocks}. Going forward it keeps, for each histogram, how
-     * much more it costs to have arrived here using that one than using the
-     * cheapest; capping that at the cost of a switch is what marks a place
-     * where switching would have paid. Going backward it takes those marks and
-     * turns them into the divisions.
-     */
     private static int assign(int[] symbols, int howMany, double switchCost,
             int howManyHistograms, BrotliHistogram[] histograms,
             int[] whichHistogram, int alphabetSize) {
@@ -254,7 +199,8 @@ final class BrotliBlockSplitting {
             for (int which = 0; which < howManyHistograms; which++) {
                 costOfASymbol[symbol * howManyHistograms + which] =
                         costOfASymbol[which]
-                                - bitCost(histograms[which].counts()[symbol]);
+                                - bitCostPricingAnAbsentSymbolAtMinusTwoBits(
+                                        histograms[which].counts()[symbol]);
             }
         }
 
@@ -303,7 +249,6 @@ final class BrotliBlockSplitting {
         return howManyBlocks;
     }
 
-    /** Renames the histograms nought upward in the order they are first used. */
     private static int renumber(int[] whichHistogram, int howMany,
             int howManyHistograms) {
 
@@ -333,21 +278,6 @@ final class BrotliBlockSplitting {
         }
     }
 
-    /**
-     * Merges the stretches so that far-apart ones may share a code.
-     *
-     * <p>{@code ClusterBlocks}. Stretches are histogrammed sixty four at a time
-     * and merged within each batch, then all the survivors are merged together,
-     * then every stretch is re-pointed at whichever survivor costs it least,
-     * preferring the one the stretch before it used so that two adjacent
-     * stretches do not switch code for nothing.
-     *
-     * <p>Not the same as the clustering the context histograms get, though it
-     * shares the merging step. The first pass here caps each batch at sixty
-     * four survivors rather than two hundred and fifty six, and the final
-     * numbering falls out of the re-pointing rather than being a pass of its
-     * own.
-     */
     private static void clusterTheBlocks(int[] symbols, int howMany,
             int howManyBlocks, int[] whichHistogram, BrotliBlockSplit split,
             int alphabetSize) {

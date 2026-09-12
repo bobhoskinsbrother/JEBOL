@@ -5,14 +5,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * One thing on a page, gathered from a layout dialect.
- *
- * <p>A face in REBOL/View is an object with a size, an offset, a colour and
- * some text. Here it is the same idea aimed at markup rather than at a
- * window: a kind, a caption, and whatever styling the dialect attached to it.
- *
- * <p>Deliberately not a REBOL value. The dialect is read into these and these
- * are turned into markup, so neither half has to know about the other.
+ * One thing on a page, gathered from a layout dialect: a kind, a caption, and
+ * whatever styling the dialect attached to it. Deliberately not a REBOL value.
  */
 public final class Face {
 

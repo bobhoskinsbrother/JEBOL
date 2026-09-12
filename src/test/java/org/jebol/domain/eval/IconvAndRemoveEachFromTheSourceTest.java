@@ -9,13 +9,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * ICONV's codepage numbers, and BREAK inside REMOVE-EACH.
- *
- * <p>Two unrelated gaps that Rebol's own {@code series-test.r3} covers and
- * nothing here did, because that file would not load until {@code vector!}
- * existed.
- */
 class IconvAndRemoveEachFromTheSourceTest {
 
     private static String answerTo(String source) {

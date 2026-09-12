@@ -6,32 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What percent escaping answers, and which characters it lets through.
- *
- * <p>{@code n-strings.c}. Both ENHEX and DEHEX end on
- * {@code Set_Series(VAL_TYPE(arg), D_RET, ser)}, so the answer wears the
- * argument's datatype: bytes in, bytes out. The encoding is a transformation
- * of a series rather than a way of displaying one, and a caller who handed
- * over a binary is still working in bytes afterwards.
- *
- * <p>Rebol's own quoted-printable encoder is that caller, and it is how the
- * difference was found. It enhexes a binary and then PARSEs the answer to fold
- * long lines, inserting {@code #{3D0D0A}} at each break; given a string
- * instead, those three bytes went in as the six letters of their hex and every
- * wrapped line read {@code abc3D0D0Ade}.
- *
- * <p>Two rules about what is escaped, and they look like one rule until you
- * read the C twice. Escaping <em>text</em>, {@code c >= 0x80} is tested before
- * the unescaped set is consulted at all -- a character needing several bytes
- * of UTF-8 cannot go literally into an ASCII target however permissive the set
- * is. Escaping <em>bytes</em> there is no such test and the set alone decides;
- * a byte above ASCII is escaped only because every set the catalogue carries
- * is a hundred and twenty-eight bits wide. Hand a wider set and those bytes
- * pass through, which a real 3.22.5 confirms.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written.
- */
 class PercentEscapingFromTheSourceTest {
 
     private static String answerTo(String source) {

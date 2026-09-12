@@ -7,29 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * RC4, the stream cipher, which is two calls rather than one.
- *
- * <p>{@code n-crypt.c}. /KEY mixes a key into a context and answers a HANDLE;
- * /STREAM runs data through that context. The split exists because the cipher
- * has state: every byte enciphered advances a 256-byte permutation, so a key
- * applied to two halves of a message gives a different answer from the key
- * applied to the whole. A caller who had to hand the key in on every call
- * could never encipher a stream, which is the one thing this cipher is for.
- *
- * <p>Two things about the shape are easy to get wrong and are pinned below.
- * {@code RC4_crypt(ctx, data, data, len)} reads and writes one buffer, so the
- * argument is rewritten where it stands, and {@code DS_RET_VALUE(val_data)}
- * hands that same binary back rather than a copy. And a handle of the wrong
- * kind is refused by name -- {@code NOT_VALID_CONTEXT_HANDLE(val_ctx,
- * SYM_RC4)} -- because reading a codec's payload as a permutation would
- * encipher something and the answer would be rubbish nobody could trace.
- *
- * <p>Every expectation was run on a real 3.22.1 before being written down,
- * including the ciphertexts.
- *
- * <p>Specified in {@code spec/natives.allium} under RC4.
- */
 class Rc4FromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -53,9 +30,6 @@ class Rc4FromTheSourceTest {
         @Test
         @DisplayName("of type RC4, which is the only thing it will say about itself")
         void itNamesItsType() {
-            // Through a word, not `(rc4/key ...)/type` -- a paren before a
-            // slash is not a path head, and a real 3.22.1 reads that as two
-            // values in the same way.
             assertThat(answerTo("k: rc4/key #{0102030405}  k/type = 'rc4"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("k: rc4/key #{0102030405}  word? k/type"))

@@ -11,19 +11,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * INPUT and ASK, and the grant a script needs to stop and wait.
- *
- * <p>Specified in {@code spec/embed.allium}.
- *
- * <p>A script that waits for a person is a script the host has to have
- * agreed to. Reading is a separate grant from writing, because a host
- * almost always wants to see what a script printed and almost never wants
- * it to stop.
- */
 class ConsoleNativesTest {
 
-    /** A console that answers the lines it was given, in order. */
     private static final class Prepared implements ConsolePort {
 
         private final Deque<String> lines;

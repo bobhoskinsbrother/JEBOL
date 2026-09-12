@@ -14,21 +14,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * DIR?, which Rebol writes in C and JEBOL had written in REBOL.
- *
- * <p>The layer was the smaller half of it. The prelude version answered on a
- * trailing forward slash alone, so it had neither the backslash the C also
- * accepts nor {@code /check}, which is the refinement that makes the question
- * worth asking: without it DIR? reads a name, and with it DIR? reads the disk.
- * A directory whose name does not end in a slash is the ordinary case, and
- * every one of them came back false.
- *
- * <p>{@code n-io.c} consults the disk only for a {@code file!}, and only ever
- * to say true: a check that finds nothing falls through to the slash test
- * rather than answering false, which is why {@code dir?/check http://a/} is
- * still true.
- */
 class DirectoryQuestionFromTheSourceTest {
 
     private static final String TRUE = "#(true)";

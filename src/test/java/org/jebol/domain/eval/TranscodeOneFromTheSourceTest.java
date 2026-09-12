@@ -7,32 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TRANSCODE/ONE reads one value and stops.
- *
- * <p>Which sounds like a detail and is not: nothing past that value is looked at, so
- * nothing past it can fail. {@code transcode/one "1]"} is 1, and
- * {@code transcode/one/error "<]>"} is the word {@code <} -- neither notices the
- * bracket that closes a block nobody opened.
- *
- * <p>Reading the whole source and then taking the first value gives the same answer
- * only when the rest happens to be well formed. Where it is not, the error travels
- * out of a call that had already found what it was asked for. That was four of
- * Rebol's own assertions, in two groups that look unrelated: the tag cases
- * {@code <]>} and {@code <)>}, and the /part cases
- * {@code transcode/part/one "123]" 4}.
- *
- * <p><b>The boundary has to be the reader's.</b> The tempting substitute is a walk
- * over successively longer prefixes, keeping the longest that parses as one value --
- * which /NEXT still does. It is a different question, and it answers {@code '%} for
- * {@code '%/} where the C fails: two characters in, {@code '%} parses perfectly well
- * as a lit-word, and the reader would never have stopped there. Trying it cost twelve
- * tests, three of them written an hour earlier.
- *
- * <p>So the Transcoder answers it directly now, by stopping the walk when one whole
- * top-level value has been read -- which is what {@code Scan_Token} gives the C for
- * free and what this had no way to be asked.
- */
 class TranscodeOneFromTheSourceTest {
 
     private static String answerTo(String source) {

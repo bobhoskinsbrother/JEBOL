@@ -9,23 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * ACCESS-OS, which asked the operating system five things and JEBOL refused
- * all five.
- *
- * <p>It was declared with one argument and no refinement against R3's two and
- * one, so {@code access-os/set 'pid [id signal]} could not be written here at
- * all, and {@code access-os 'pid} answered a refusal where a real Rebol
- * answers a number.
- *
- * <p>Four of the five fields stay refused, and refused is the C's own answer
- * for them: {@code n-io.c} maps a platform with no such call to {@code
- * OS_ENA}, which raises {@code not-here} naming the field. The JVM has a
- * process id and has no portable user or group id, so {@code pid} is answered
- * and {@code uid}, {@code euid}, {@code gid} and {@code egid} take that path.
- * A real Rebol on this machine answers all five, and that is the remaining
- * difference.
- */
 class AccessOsFromTheSourceTest {
 
     private static String answerTo(String source) {

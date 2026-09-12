@@ -17,19 +17,6 @@ import static org.assertj.core.api.Assertions.as;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.STRING;
 
-/**
- * Tests for the thing that decides what the suite score means.
- *
- * <p>{@link SuiteFile} slices Rebol's test scripts into the assertions
- * they make, and the whole pass count rests on it. It had no tests. That
- * showed up when a measuring tool built on it reported that a real R3
- * fails {@code even? 1.7976931348623157e308}, which R3 answers true to:
- * the number had lost digits somewhere between the file and the run.
- *
- * <p>So the property that matters is not "does it produce something" but
- * "does it produce what the file says". Each test below asks one thing,
- * and the aggregate one at the bottom asks it of all 3,556 assertions.
- */
 class SuiteFileTest {
 
     @TempDir
@@ -223,22 +210,6 @@ class SuiteFileTest {
         }
     }
 
-    /**
-     * {@code --red--}, which says an assertion describes Red rather than Rebol.
-     *
-     * <p>In {@code rebol3-source/src/tests/quick-test-module.r3} it binds to
-     * {@code as-red-only}, which sets {@code qt-red-only}; a failing assertion
-     * under that flag lands in {@code qt-file-incompatible} and is reported as
-     * "not like Red" rather than counted among the failures. So it marks a
-     * documented difference from another language, not a defect in this one.
-     *
-     * <p>This was read as a no-op for a while, on the reasoning that grading
-     * such an assertion anyway is merely stricter and "can only ever name a gap
-     * that is really there". It cannot: {@code power 2 16} is {@code 65536.0}
-     * in Rebol, so {@code integer? power 2 16} is false there too, and eight
-     * entries on the gap list were asking for JEBOL to differ from the thing it
-     * is measured against.
-     */
     @Nested
     @DisplayName("an assertion marked as describing Red")
     class MarkedRedOnly {

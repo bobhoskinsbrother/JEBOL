@@ -7,31 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A set-word in a walk's name list is a position, not a value.
- *
- * <p>{@code Init_Loop} in {@code n-loop.c} accepts a word or a set-word and
- * remembers which of the two each name was -- {@code VAL_SET(word,
- * VAL_TYPE(spec))} -- and {@code Loop_Each} then has an arm for each. A word
- * takes the next value and moves on. A set-word is handed the series itself,
- * standing where the walk has got to, and the index is left alone; the C's own
- * note beside that line reads "do not increment block."
- *
- * <p>What it is for: a walk that inserts or removes where it stands. Rebol's
- * own HANDLE-EVENTS is written on it, walking the handler list for the first
- * with a lower priority and doing {@code insert here handler}.
- *
- * <p>Reading it as an ordinary name is a quiet failure rather than a loud one,
- * which is why it went unnoticed. The loop still runs. It just takes two
- * values a round instead of one, so half of them are skipped and the second
- * name holds a value from the series where a position was meant to be.
- * HANDLE-EVENTS then reached {@code hand/priority} on a none and raised, which
- * stopped every script that showed a window.
- *
- * <p>Every expectation below was checked against a real 3.22.1 first.
- *
- * <p>Specified in {@code spec/natives.allium}.
- */
 class WalkPositionFromTheSourceTest {
 
     private static String answerTo(String source) {

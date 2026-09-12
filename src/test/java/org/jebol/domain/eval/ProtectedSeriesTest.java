@@ -8,17 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A protected series refuses every change and allows every read.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>PROTECT answers the value it was given rather than unset, which is
- * what makes {@code b: protect #{0102}} a way to build a protected value
- * and keep hold of it in one step. Answering unset leaves b with no value
- * at all, and then every later use fails on the missing word rather than
- * on the protection -- which reads as though the protection is working.
- */
 class ProtectedSeriesTest {
 
     private static String errorIdOf(String setup, String attempt) {

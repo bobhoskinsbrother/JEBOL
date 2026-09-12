@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * REMOVE/KEY on a block read as keys and values.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>Only an odd place holds a key. JEBOL ignored the refinement and took
- * the first item out instead, whatever the caller asked for, so the block
- * always changed and never in the way that was wanted.
- */
 class RemoveKeyTest {
 
     private static String answerTo(String source) {

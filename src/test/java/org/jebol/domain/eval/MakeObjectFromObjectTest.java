@@ -8,18 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * MAKE given a prototype and a second object merges the two.
- *
- * <p>Specified in {@code spec/natives.allium} and confirmed against a real
- * R3. Until now the second argument was cast to a block, so passing an
- * object threw a ClassCastException straight out of JEBOL -- which
- * {@code spec/embed.allium} promises cannot happen.
- *
- * <p>The interesting boundary is not the field values but the methods: one
- * that still closed over the object it was written in would read the wrong
- * values and, worse, write into the prototype when called on the copy.
- */
 class MakeObjectFromObjectTest {
 
     private static final String TWO_OBJECTS =

@@ -7,35 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A lexeme opening with a digit is a number, and a bad one is a failure rather than a
- * name. From {@code LEX_CLASS_NUMBER} in {@code rebol3-source/src/core/l-scan.c}.
- *
- * <p>A word cannot begin with a digit, so once every numeric reading has been tried
- * there is nothing left for `1d` to be. R3 never reaches a word from there and reports
- * a malformed integer.
- *
- * <p>The case label carries the warning that makes this work:
- *
- * <pre>
- * case LEX_CLASS_NUMBER:      /* order of tests is important *&#47;
- * num:
- *     if (HAS_LEX_FLAG(flags, LEX_SPECIAL_LESSER)) {   /* 1&lt;tag&gt; 1.1&lt;tag&gt; *&#47;
- *         scan_state-&gt;end = Skip_To_Char(cp, scan_state-&gt;end, '&lt;');
- *         flags = Prescan_Part(scan_state, scan_state-&gt;end - cp);
- *     }
- *     if (!flags) return TOKEN_INTEGER;
- * </pre>
- *
- * <p>The angle bracket is cut off <em>first</em>, so {@code 1<} is the number and the
- * word before the refusal can see it. Refuse first and the whole `<` family goes with
- * it -- which two earlier attempts here did, at about twenty assertions each.
- *
- * <p>And it needed a third thing that looks unrelated: `0:0.001` had to become a time.
- * It was falling through to a word, and refusing words meant `mezz-debug.reb` stopped
- * loading. See {@link TimeLiteralFromTheSourceTest}. Three changes, none of which
- * works alone.
- */
 class MalformedNumberFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -11,22 +11,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A bound word names the context that holds its slot, never a descendant
- * that only reaches the slot through a parent.
- *
- * <p>Claimed in {@code spec/values.allium} and used by the rule
- * {@code LoadBindsIntoTargetContext} in {@code spec/load.allium}. It matters
- * because BIND asked for the home of a word answers whatever the word says,
- * and code that then defines a name there expects the definition to outlive
- * the block that was being bound. REBOL's own boot writes its six reflector
- * functions that way, inside a USE whose scope is thrown away straight
- * afterwards.
- *
- * <p>The boundaries here are the depths at which a slot can sit relative to
- * the target: in the target itself, one context up, several up, in two
- * places at once, and nowhere at all.
- */
 class BindingNamesTheHolderTest {
 
     private static final String WORD = "counted";

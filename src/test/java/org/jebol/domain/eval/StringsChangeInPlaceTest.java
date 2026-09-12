@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * UPPERCASE, LOWERCASE and TRIM change the string they were given.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Building a new string agrees on the answer and disagrees on
- * everything else: a caller holding the string never sees the change, and
- * a protected string is quietly rewritten rather than refusing. The
- * refusal lives in the storage, so a native that never touches the storage
- * never meets it.
- */
 class StringsChangeInPlaceTest {
 
     private static String answerTo(String source) {

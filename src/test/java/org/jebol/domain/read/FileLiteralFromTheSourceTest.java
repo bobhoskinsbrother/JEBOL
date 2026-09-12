@@ -7,36 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What a file literal and an email literal may hold, from {@code Scan_Item},
- * {@code Scan_File} and {@code Scan_Email}.
- *
- * <p>A file is not "everything up to the next space", and it is read in two
- * stages that have to be kept apart.
- *
- * <p><b>First the lexer finds where the token ends.</b> {@code scan_state->end}
- * stops at any {@code IS_LEX_DELIMIT} character: whitespace and
- * <code>( ) [ ] { } " ;</code>. The file case then walks on over slashes on
- * purpose, which is what lets a whole path be one file.
- *
- * <p><b>Then {@code Scan_File} checks what was found</b>, against a set of
- * characters to refuse: {@code ":;()[]\"^"} for an unquoted name. Five of those
- * eight are also delimiters, so they ended the token and can never be inside one
- * -- which leaves the <b>colon</b> and the <b>caret</b> as the two that really
- * bite. Getting the ordering wrong makes {@code (clean-path %a/b) = %a/b} a syntax
- * error, because the closing bracket is read as part of the name.
- *
- * <p>The caret is the surprising one, because it is an escape everywhere else in
- * the language. The C says why in a comment beside the check: "checks also if not
- * used in file like: %a^b which must be invalid!". Inside a quoted name the
- * refused set narrows to {@code ":;\""} and the caret becomes an escape again.
- *
- * <p>A percent sign is an escape and wants two hex digits. That rule is in
- * {@code Scan_Item} for a file and written out again in {@code Scan_Email} for an
- * email, which also insists on exactly one at-sign.
- *
- * <p>JEBOL validated none of it and read every one of these as a file.
- */
 class FileLiteralFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -45,7 +15,6 @@ class FileLiteralFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id LOAD gives up for a source it will not read. */
     private static String errorIdFromLoading(String source) {
         return answerTo("e: try [load " + source + "] "
                 + "either error? e [e/id] ['no-error]");

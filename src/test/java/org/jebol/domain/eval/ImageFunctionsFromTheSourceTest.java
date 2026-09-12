@@ -7,29 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The five functions {@code n-image.c} performs on a whole image.
- *
- * <p>Whole rather than from a position, which all five share and the C flags
- * in a comment of its own: "All pixels are modified even when the input image
- * is not at its head!" An image is a series and has a position; these ignore
- * it where every other series function obeys it.
- *
- * <p>Three change the image and answer it back, so a caller holding the value
- * sees the change. RESIZE is the exception, making a new image because the old
- * one is the wrong size to hold the answer. IMAGE is the shim onto an
- * operating system's own encoder, which this build has not got.
- *
- * <p>IMAGE-DIFF was the one worth reading the C for rather than guessing. It
- * is the redmean approximation from compuphase, which the C cites: green
- * weighted at four throughout, and the red and blue weights sliding with how
- * red the pair already is. Alpha takes no part at all, and the mean is rounded
- * to a whole number of picounits before dividing -- without which black
- * against white is a true 99.9999999999999% that reads as a mistake. Every
- * number below was checked against a real 3.22.1.
- *
- * <p>Specified in {@code spec/natives.allium} under the image functions.
- */
 class ImageFunctionsFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -118,16 +95,6 @@ class ImageFunctionsFromTheSourceTest {
                     (mold i/2) <> "0.0.0.255\"""")).isEqualTo(TRUE);
         }
 
-        /**
-         * One white pixel in the top-left corner of an otherwise black
-         * picture, blurred, and every byte checked. A single spot is the
-         * sharpest input there is: the answer is the blur's own shape, so a
-         * kernel of the wrong width or a pass run in the wrong order shows up
-         * in the first row.
-         *
-         * <p>Every expectation was read off a real 3.22.5 and confirmed
-         * against the reference C compiled on its own.
-         */
         private static String aSpotBlurred(int wide, int high, String radius) {
             return answerTo("""
                     i: make image! [%dx%d 0.0.0]
@@ -157,12 +124,6 @@ class ImageFunctionsFromTheSourceTest {
                     020202FF010101FF010101FF000000FF000000FF}""");
         }
 
-        /**
-         * Half the shorter side is as blurred as a picture gets, so every
-         * radius at or above it gives the same answer. Two on a four-wide
-         * picture is that half, and five and a hundred thousand both come
-         * down to it.
-         */
         @Test
         @DisplayName("a radius wider than the picture comes down to half its shorter side")
         void aRadiusWiderThanThePictureComesDown() {
@@ -176,11 +137,6 @@ class ImageFunctionsFromTheSourceTest {
             assertThat(aSpotBlurred(4, 4, "100000")).isEqualTo(atTheLimit);
         }
 
-        /**
-         * Half of one is nought, so a picture with a side shorter than two
-         * cannot be blurred at all however large a radius is asked for. It
-         * comes back exactly as it was rather than as an error.
-         */
         @Test
         @DisplayName("a picture too small to blur comes back untouched")
         void aPictureTooSmallToBlurComesBackUntouched() {
@@ -203,13 +159,6 @@ class ImageFunctionsFromTheSourceTest {
                     .isEqualTo("[#(true) \"0x0\" #(true)]");
         }
 
-        /**
-         * Two by two is the smallest picture there is any blurring to do on,
-         * and the one the C handles worst: the box it uses is wider than the
-         * picture, so it writes past the end of each row and what comes back
-         * is not the average of anything. It is still what a real 3.22.5
-         * answers.
-         */
         @Test
         @DisplayName("the smallest picture there is anything to do on")
         void theSmallestPictureThereIsAnythingToDoOn() {
@@ -217,12 +166,6 @@ class ImageFunctionsFromTheSourceTest {
                     .isEqualTo("\"717171FF383838E2383838E21C1C1C8D\"");
         }
 
-        /**
-         * Alpha goes through the same pass as the three colours, so a blurred
-         * edge fades in transparency as well as in colour. Nothing treats it
-         * specially, which is visible above: the two-by-two case blurs its
-         * alpha down from 255 along with everything else.
-         */
         @Test
         @DisplayName("and alpha is blurred with the colour, not carried past it")
         void alphaIsBlurredWithTheColour() {
@@ -278,12 +221,6 @@ class ImageFunctionsFromTheSourceTest {
                     e: try [resize (make image! 4x4) 0x0] e/id""")).isEqualTo("invalid-arg");
         }
 
-        /**
-         * A pair with one side left at nought means "work that side out from
-         * the shape", which is the same thing a whole number means and says
-         * which of the two is being given. So only a pair with both sides at
-         * nought is refused -- JEBOL refused all three.
-         */
         @Test
         @DisplayName("but one side at nought is taken from the shape instead")
         void oneSideAtNoughtIsTakenFromTheShape() {
@@ -295,10 +232,6 @@ class ImageFunctionsFromTheSourceTest {
                     .isEqualTo("\"5x2\"");
         }
 
-        /**
-         * A tenth of a row is not a picture, so asking for one fails to create
-         * rather than quietly giving back a single row nobody asked for.
-         */
         @Test
         @DisplayName("a width that leaves no height at all is refused")
         void aWidthThatLeavesNoHeightIsRefused() {
@@ -310,12 +243,6 @@ class ImageFunctionsFromTheSourceTest {
                     .isEqualTo("\"3x1\"");
         }
 
-        /**
-         * Which filter runs changes how a shrunken photograph looks and does
-         * not change what RESIZE is, so sampling one way for all sixteen is
-         * still RESIZE. Accepting a name that means nothing is a different
-         * matter: a caller who mistypes one should hear about it.
-         */
         @Test
         @DisplayName("and a filter it has never heard of is refused by name")
         void aFilterItHasNeverHeardOfIsRefused() {
@@ -355,13 +282,6 @@ class ImageFunctionsFromTheSourceTest {
                     .isEqualTo("0%");
         }
 
-        /**
-         * Two pictures with no pixels between them are not nought per cent
-         * apart. They are not any distance apart: the total is divided by how
-         * many pixels were compared, and none were. Nought per cent is the
-         * tidier answer and is a lie -- it claims two pictures were compared
-         * and found identical when nothing was looked at.
-         */
         @Test
         @DisplayName("but comparing no pixels at all is not a number")
         void comparingNoPixelsAtAllIsNotANumber() {
@@ -372,9 +292,6 @@ class ImageFunctionsFromTheSourceTest {
         @Test
         @DisplayName("black against white is exactly a hundred, thanks to the rounding")
         void blackAgainstWhiteIsAHundred() {
-            // Exactly, because the mean is rounded to a whole number of
-            // picounits before dividing -- "used rounding to have nice 100%
-            // when completely different". Without it: 99.9999999999999%.
             assertThat(answerTo("""
                     a: make image! 2x2
                     c: make image! 2x2
@@ -395,9 +312,6 @@ class ImageFunctionsFromTheSourceTest {
         @Test
         @DisplayName("and the weighting is the redmean one, to the last digit")
         void theWeightingIsRedmean() {
-            // White against pure red. An equal-weighted distance would call
-            // this 66.7%; the redmean measure says this, and so does a real
-            // 3.22.1.
             assertThat(answerTo("""
                     a: make image! 2x2
                     c: make image! 2x2
@@ -413,13 +327,6 @@ class ImageFunctionsFromTheSourceTest {
         }
     }
 
-    /**
-     * Two by two, white along the top row and black along the bottom, against
-     * a wholly white one. So every rectangle naming only the top row is
-     * nought per cent, every rectangle naming only the bottom row is a
-     * hundred, and one naming both is fifty -- which makes each answer say
-     * which pixels were compared.
-     */
     @Nested
     @DisplayName("and /PART narrows it to a rectangle")
     class TheRectangle {
@@ -442,11 +349,6 @@ class ImageFunctionsFromTheSourceTest {
                     + " either error? e [e/id] ['no-error]");
         }
 
-        /**
-         * "Zero based top-left corner", says the declaration, so there is no
-         * off-by-one against every other position in the language. This is a
-         * coordinate into a picture rather than a position in a series.
-         */
         @Test
         @DisplayName("the corner is counted from nought")
         void theCornerIsCountedFromNought() {
@@ -465,10 +367,6 @@ class ImageFunctionsFromTheSourceTest {
             assertThat(comparing("0x0 2x2")).isEqualTo("50%");
         }
 
-        /**
-         * The corner moves by the negative amount and the size becomes
-         * positive, so `2x2 -1x-2` names the same pixels as `1x0 1x2`.
-         */
         @Test
         @DisplayName("a negative size reaches back from the corner")
         void aNegativeSizeReachesBack() {
@@ -500,7 +398,6 @@ class ImageFunctionsFromTheSourceTest {
             assertThat(refusing("0x2 1x2")).isEqualTo("invalid-data");
         }
 
-        /** One inside the edge is the last corner that works. */
         @Test
         @DisplayName("one column inside the edge still works")
         void oneInsideTheEdgeStillWorks() {
@@ -518,12 +415,6 @@ class ImageFunctionsFromTheSourceTest {
                     .isEqualTo("\"3x0\"");
         }
 
-        /**
-         * The corner is measured against the larger of the two pictures, not
-         * the overlap, so a rectangle reaching past the smaller one still
-         * compares -- and the pixels the smaller one does not have read as
-         * whatever is behind them.
-         */
         @Test
         @DisplayName("the corner is measured against the larger of the two")
         void theCornerIsMeasuredAgainstTheLarger() {
@@ -532,14 +423,6 @@ class ImageFunctionsFromTheSourceTest {
                     + "round/to image-diff/part i1 i3 0x0 1x1 1%")).isEqualTo("100%");
         }
 
-        /**
-         * A rectangle reaching past the right or bottom edge is neither
-         * clipped nor refused: the C subtracts the size a second time, so a
-         * rectangle one column too wide comes out with a negative width and
-         * nothing is compared at all. The answer is nought per cent, which
-         * says the two pictures are identical when the pixels it was pointed
-         * at differ. REBOL's own test asserts it twice.
-         */
         @Test
         @DisplayName("and a rectangle reaching past the edge compares nothing at all")
         void aRectanglePastTheEdgeComparesNothing() {
@@ -549,16 +432,6 @@ class ImageFunctionsFromTheSourceTest {
         }
     }
 
-    /**
-     * An interpreter built without a host is one of these, so IMAGE refuses
-     * here for the reason the C refuses on a platform with no codec. Given a
-     * port it works, which is what {@code ImageCodecFromTheSourceTest} covers.
-     *
-     * <p>The refusal has to come before anything else the call would trip
-     * over. {@code Trap0(RE_FEATURE_NA)} is the first thing the C does, so a
-     * file that is not there and an argument that is not an image must not
-     * report themselves ahead of it -- both did, and both are here.
-     */
     @Nested
     @DisplayName("IMAGE refuses where the host supplied no codec")
     class TheCodecShim {
@@ -607,17 +480,6 @@ class ImageFunctionsFromTheSourceTest {
                     (image-diff next a c) = (image-diff a c)""")).isEqualTo(TRUE);
         }
 
-        /**
-         * "The whole image" is width times height, which is not the same as
-         * every pixel it holds. Three pixels in a picture two wide are a row
-         * and a spare, and the spare is a real pixel that reads back and can
-         * be changed -- but it is past the final whole row, and all four of
-         * these walk the rectangle rather than the run.
-         *
-         * <p>JEBOL's PREMULTIPLY reached it where its BLUR and RESIZE did not,
-         * so the one class contradicted itself. The C counts width times
-         * height in all four.
-         */
         @Test
         @DisplayName("and the spare pixel of a partly-filled row is past all of them")
         void theSparePixelOfAPartlyFilledRowIsPastAllOfThem() {

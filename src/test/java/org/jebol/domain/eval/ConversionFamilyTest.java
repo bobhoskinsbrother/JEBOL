@@ -8,22 +8,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The TO-X family: one function per datatype a value can be made of.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1, name list included. Forty-five datatypes get one and thirteen
- * do not, and which thirteen is not something to reason out: END, UNSET and
- * NONE hold one value each so there is nothing to convert to, and the rest
- * are the interpreter's own.
- *
- * <p>Every generated function is exactly {@code to <type>! :value}, so the
- * cases below are checked against TO rather than against a written-out
- * answer wherever the point is agreement rather than the value itself.
- */
 class ConversionFamilyTest {
 
-    /** Every datatype R3 gives a TO-X, measured from the binary. */
     private static final List<String> CONVERTIBLE = List.of(
             "logic", "integer", "decimal", "percent", "money", "char", "pair", "tuple",
             "time", "date", "binary", "string", "file", "email", "ref", "url", "tag",
@@ -32,13 +18,6 @@ class ConversionFamilyTest {
             "get-word", "lit-word", "refinement", "issue", "command", "closure",
             "function", "object", "module", "error", "port", "gob", "event");
 
-    /**
-     * Every datatype R3 gives no TO-X.
-     *
-     * <p>JAVA-OBJECT! is JEBOL's own and joins the list until the interop
-     * boundary is specified. A conversion that nothing has asked for would
-     * be a decision about that boundary taken by accident.
-     */
     private static final List<String> NOT_CONVERTIBLE = List.of(
             "end", "unset", "none", "native", "action", "rebcode", "op", "frame",
             "task", "handle", "struct", "library", "utype", "java-object");
@@ -49,7 +28,6 @@ class ConversionFamilyTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no error" if it raises none. */
     private static String errorFrom(String source) {
         String shown = answerTo(
                 "e: try [" + source + "] either error? e [form e/id] [\"no error\"]");
@@ -116,14 +94,6 @@ class ConversionFamilyTest {
                 """)).isEqualTo("\"[]\"");
     }
 
-    /**
-     * These two said the conversions carry no title "because this build has no
-     * autodocs", and asserted a spec of {@code [value]} with one element. A
-     * real 3.22.5 answers {@code ["Converts to tuple! value." value]}, and
-     * always did: {@code mezz-types.reb} builds each one with
-     * {@code reform ["Converts to" form type "value."]}. The tests were
-     * describing a limitation here as though it were the language.
-     */
     @Test
     @DisplayName("each one carries the title mezz-types.reb builds for it")
     void theyCarryAtitle() {
@@ -181,7 +151,6 @@ class ConversionFamilyTest {
         assertThat(answerTo("mold to-integer -1.9")).isEqualTo("\"-1\"");
     }
 
-    /** A REBOL block literal of the names, so the loop above can read them. */
     private static String quoted(List<String> names) {
         return "[" + String.join(" ", names.stream().map(name -> "\"" + name + "\"").toList())
                 + "]";

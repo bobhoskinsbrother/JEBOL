@@ -5,30 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Counter with CBC-MAC, the second authenticated mode and the one the JVM has
- * not got.
- *
- * <p>{@code ccm.c}, and NIST SP 800-38C. No JVM provider offers it, so it is
- * built here out of the AES the JVM does have: the tag is a CBC-MAC over a
- * first block naming the lengths, then the header, then the message; the
- * cipher text is the message counted through the same AES; and the two are
- * joined by masking the tag with the block at counter nought.
- *
- * <p>It is the mode TLS 1.3 carries alongside Galois counter mode, and the one
- * constrained hardware reaches for -- CCMP in WPA2, Bluetooth Low Energy,
- * Zigbee, and DTLS for CoAP.
- *
- * <p>Two things set it apart from counting with Galois, and both are pinned
- * below. It will only issue the <em>even</em> tag lengths from four to
- * sixteen, because the length is built into the first block it authenticates
- * as {@code (t - 2) / 2} in three bits and an odd one has no spelling. And it
- * checks the tag itself while deciphering, answering nothing when it
- * disagrees, where Galois hands the tag back and compares nothing.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written,
- * and the first is RFC 3610's own vector.
- */
+
 class CryptPortCounterWithCbcMacFromTheSourceTest {
 
     private static final String KEY = "#{C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF}";
@@ -46,7 +23,6 @@ class CryptPortCounterWithCbcMacFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** One message through one port, as hexadecimal, or the answer itself. */
     private static String sealed(String algorithm, String key, String nonce,
             int tagLength, String header, String message) {
 
@@ -66,7 +42,6 @@ class CryptPortCounterWithCbcMacFromTheSourceTest {
         return sealed("AES-128-CCM", KEY, NONCE, tagLength, HEADER, MESSAGE);
     }
 
-    /** RFC 3610's first packet vector, header and all. */
     @Test
     @DisplayName("the RFC 3610 vector, cipher text and tag together")
     void theRfc3610Vector() {
@@ -103,12 +78,6 @@ class CryptPortCounterWithCbcMacFromTheSourceTest {
                 {59615510A7C43BFB123D636B4613C03C6CE26907102A3FB5572A172D4916D5}""");
     }
 
-    /**
-     * The tag length is built into the first block that gets authenticated, so
-     * it changes the tag rather than merely trimming it. Four is the shortest
-     * and sixteen the longest, and the message is twenty-three bytes, so the
-     * whole answer is twenty-three plus the tag.
-     */
     @Test
     @DisplayName("only the even lengths from four to sixteen are issued")
     void onlyTheEvenLengthsFourToSixteenAreIssued() {
@@ -126,12 +95,6 @@ class CryptPortCounterWithCbcMacFromTheSourceTest {
                 {588C979A61C663D2F066D0C2C0F989806D5F6B61DAC384509DA654E32DEAC369C2DAE7133CB08D}""");
     }
 
-    /**
-     * A shorter tag is a different number rather than the first bytes of a
-     * longer one, which is the opposite of counting with Galois. The four byte
-     * tag is {@code 50198BBC} and the sixteen byte tag begins {@code 509DA654}
-     * -- one byte in common and then nothing.
-     */
     @Test
     @DisplayName("a shorter tag is a different number, not a prefix of a longer one")
     void aShorterTagIsADifferentNumberNotAPrefix() {
@@ -147,12 +110,6 @@ class CryptPortCounterWithCbcMacFromTheSourceTest {
         }
     }
 
-    /**
-     * Asking for no tag at all is the starred form of the mode, which counts
-     * the message through and authenticates nothing. The cipher text is the
-     * same twenty-three bytes as before, because the tag length does not
-     * reach the counting.
-     */
     @Test
     @DisplayName("asking for no tag gives the cipher text alone")
     void askingForNoTagGivesTheCipherTextAlone() {
@@ -165,11 +122,6 @@ class CryptPortCounterWithCbcMacFromTheSourceTest {
                 .isEqualTo("\"588C979A61C663D2F066D0C2C0F989806D5F6B61DAC384\"");
     }
 
-    /**
-     * The header reaches the tag and not the cipher text, so dropping it
-     * leaves the first twenty-three bytes where they were and changes the
-     * eight after them.
-     */
     @Test
     @DisplayName("the header changes the tag and not the cipher text")
     void theHeaderChangesTheTagAndNotTheCipherText() {
@@ -185,13 +137,6 @@ class CryptPortCounterWithCbcMacFromTheSourceTest {
                 .isEqualTo("\"E4288AC378000FF5\"");
     }
 
-    /**
-     * The nonce and the count of blocks share sixteen bytes, so a longer nonce
-     * leaves fewer bytes to count with and seven to thirteen is where that
-     * trade runs out. Four, six and seven all differ, so a short nonce is read
-     * with noughts after it rather than refused; thirteen, fourteen and
-     * sixteen agree, so a long one has its tail ignored.
-     */
     @Test
     @DisplayName("the nonce is clamped to seven bytes and to thirteen")
     void theNonceIsClampedToSevenAndThirteen() {
@@ -224,12 +169,6 @@ class CryptPortCounterWithCbcMacFromTheSourceTest {
                         {F24AB18BC56570F758B1A55699A25AFDB4A17A0F42FB3EDFBBBEB60179BA30}""");
     }
 
-    /**
-     * The part that differs from counting with Galois: this mode compares the
-     * tag for itself and hands nothing over when it disagrees, so a careless
-     * caller cannot use plain text that was never vouched for. One byte
-     * changed anywhere -- in the tag or in the cipher text -- is caught.
-     */
     @Test
     @DisplayName("a tag that disagrees gives nothing back, plain text included")
     void aTagThatDisagreesGivesNothingBack() {

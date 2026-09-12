@@ -12,13 +12,6 @@ import java.nio.file.Files;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The whole journey a person takes: {@code system/options/boot} names the
- * runnable this interpreter was started from, a shell runs it with {@code --do},
- * and the status the child left with comes back as the answer. Rebol's own
- * {@code evaluation-test.r3} writes these two calls exactly this way, and they
- * are the only assertions in the suite that leave the process.
- */
 class BootProcessFromTheSourceTest {
 
     private static String answerTo(String source) {

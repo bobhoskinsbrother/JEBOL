@@ -6,19 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A character above the basic plane, through every series operation that
- * walks text.
- *
- * <p>JEBOL stores text as code points and Java counts it in sixteen-bit units.
- * Every operation that reached for {@code String.length()} or
- * {@code charAt()} to walk a series was wrong by that difference, and the
- * failure was always the same shape: a character split into two halves, one of
- * which is a lone surrogate and not a character at all.
- *
- * <p>Seven places had it. This asserts the rule once for each of them, so the
- * next one to appear fails here rather than somewhere in the suite.
- */
 class WideCharactersThroughSeriesTest {
 
     private static String answerTo(String source) {

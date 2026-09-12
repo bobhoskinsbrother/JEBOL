@@ -10,23 +10,6 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The whole journey, through the only interface a person has: a REBOL script.
- *
- * <p>Nothing here calls a native directly or reaches for a Java method a
- * script cannot reach. A script describes a window, shows it, waits, and
- * carries on when the operator closes it, and every one of those steps is
- * written the way somebody would write it.
- *
- * <p>The screen behind it is a recording one rather than a real display,
- * because the gate runs with {@code java.awt.headless=true} and the real
- * adapter refuses on every machine the suite runs on. That is a substitution
- * at the port and nowhere else: setup says what the display measures and
- * plays the part of a person closing a window, and the test body writes
- * REBOL.
- *
- * <p>Specified in {@code spec/screen.allium}.
- */
 class ViewingAWindowEndToEndTest {
 
     private static final String TRUE = "#(true)";
@@ -125,11 +108,6 @@ class ViewingAWindowEndToEndTest {
         @DisplayName("a layout block fails, because there is no VID to lay it out")
         @Timeout(20)
         void alayoutBlockFails() {
-            // Not a gap in JEBOL: `layout` is defined nowhere in src/mezz or
-            // src/boot, so a real 3.22.1 fails here too. There was a native
-            // that answered its own argument, which made a VID program report
-            // success and draw nothing -- a stub that says yes is worse than
-            // the failure it hides.
             assertThat(sessionOn(RecordingScreen.measuring(1440, 900), """
                     e: try [view/no-wait [button "Press"]]
                     error? e""")).isEqualTo(TRUE);
@@ -159,10 +137,6 @@ class ViewingAWindowEndToEndTest {
         @DisplayName("and the two refusals are told apart, because they need different fixes")
         @Timeout(20)
         void theTwoRefusalsAreDifferent() {
-            // Both carry the id no-service and differ in what they say, which
-            // is how every host service here reports the three refusal
-            // reasons: the id names the kind of failure and the message says
-            // which of not granted, not present and nothing can offer it.
             assertThat(whatViewingSays(Interpreter.create()))
                     .contains("not granted");
             assertThat(whatViewingSays(withAScreen(RecordingScreen.absent())))

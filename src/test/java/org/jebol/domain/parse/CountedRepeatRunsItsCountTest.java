@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A counted rule runs its count even when a round consumes nothing.
- *
- * <p>Specified in {@code spec/parse.allium}, confirmed against a real R3.
- *
- * <p>The open-ended repeats need a guard against a round that gets nowhere,
- * or {@code some [()]} never ends. A counted rule is bounded by the count
- * and cannot loop for ever, so the guard there buys nothing and costs the
- * rounds that were asked for.
- */
 class CountedRepeatRunsItsCountTest {
 
     private static String answerTo(String source) {

@@ -2,32 +2,23 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * How often each symbol of one alphabet was used.
- *
- * <p>{@code histogram.h}. The encoder keeps one of these per block type per
- * alphabet and turns each into a prefix code at the end. Merging two is how the
- * block splitter asks whether two stretches of input are alike enough to share
- * a code.
- */
 final class BrotliHistogram {
 
     private final int[] counts;
     private long total;
 
-    /** What it was last reckoned to cost, kept so clustering need not re-ask. */
-    private double cost;
+    private double costKeptSoClusteringNeedNotReAsk;
 
     BrotliHistogram(int alphabetSize) {
         this.counts = new int[alphabetSize];
     }
 
     double cost() {
-        return cost;
+        return costKeptSoClusteringNeedNotReAsk;
     }
 
     void costIs(double bits) {
-        cost = bits;
+        costKeptSoClusteringNeedNotReAsk = bits;
     }
 
     int[] counts() {
@@ -58,7 +49,7 @@ final class BrotliHistogram {
     void copyFrom(BrotliHistogram other) {
         System.arraycopy(other.counts, 0, counts, 0, counts.length);
         total = other.total;
-        cost = other.cost;
+        costKeptSoClusteringNeedNotReAsk = other.costKeptSoClusteringNeedNotReAsk;
     }
 
     static BrotliHistogram[] freshRow(int howMany, int alphabetSize) {

@@ -7,26 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A run of slashes is an ordinary word, and can be assigned to and read from.
- *
- * <p>{@code /} divides and {@code //} divides as whole numbers -- both are rows of
- * {@code boot/ops.reb}, where {@code %} is the one that takes a remainder. So both
- * are words the library binds to functions. Which means a script has to be able to write
- * {@code /: :my-divide} to rebind one, and {@code :/} to pass it around -- and
- * neither spelling works by accident, because a slash is a
- * {@code LEX_DELIMIT_SLASH} and would otherwise end the token before the colon.
- *
- * <p>So the C gives each its own arm, and the get-word arm says why in a comment:
- * "must be modified, because / is delimiter!". Both arms walk the run of slashes
- * and then insist a delimiter follows it.
- *
- * <p>The trap is that a *refinement* may not end in a colon -- {@code /a:} is
- * refused -- and that check lives in a different arm of the same case. Reading the
- * two as one rule refuses {@code /:} along with {@code /a:}, which is what
- * happened here: what sits between the slashes and the colon is the whole
- * difference.
- */
 class SlashWordFromTheSourceTest {
 
     private static String answerTo(String source) {

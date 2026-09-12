@@ -6,22 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Which argument belongs to which refinement, read out of {@code Do_Args}
- * in {@code src/core/c-do.c}.
- *
- * <p>The values after a call are read in the order the path wrote its
- * refinements, not in the order the function declares them. The C says so
- * in as many words: when the path names a refinement that is not the next
- * one in the spec, it restarts the spec walk at that refinement, under a
- * comment reading "refinement out of sequence, resequence arg order".
- *
- * <p>Reading them in declared order agrees with the path whenever the two
- * orders happen to match, which is most calls, so the defect hides until
- * someone writes the refinements the other way round. SORT is where it
- * showed: {@code sort/compare/skip s 1 3} sorted by the wrong column and
- * gave an answer that looked plausible.
- */
 class RefinementOrderFromTheSourceTest {
 
     private static String answerTo(String source) {

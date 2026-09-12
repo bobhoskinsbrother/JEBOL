@@ -13,30 +13,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What "standardises the line endings" means, exactly.
- *
- * <p>Not "replace CRLF with LF", which is the obvious reading and is wrong in
- * three places. Rebol's own comment on the function says what it is: "converts
- * any combination of CR and LF line endings to the internal REBOL line
- * ending", and the whole of it is six lines of
- * {@code Replace_CRLF_to_LF_Bytes}:
- *
- * <pre>
- * if ((c = *cp++) == LF) { if (*cp == CR) cp++; }
- * else if (c == CR)      { c = LF; if (*cp == LF) cp++; }
- * *tp++ = c;
- * </pre>
- *
- * <p>So a carriage return becomes a line feed, and a pair of the two counts as
- * one ending whichever order it arrived in. The three cases that catch an
- * implementation out are all asserted by Rebol's own port test: a lone
- * carriage return converts; a line feed followed by a carriage return is one
- * ending rather than two; and CR CR LF is two endings rather than one, because
- * the first return stands alone and the second takes the line feed with it.
- *
- * <p>Every expectation was read off {@code ./r3-head} first.
- */
 class StandardisingLineEndingsFromTheSourceTest {
 
     private static Path root;
@@ -56,7 +32,6 @@ class StandardisingLineEndingsFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** READ/STRING of exactly these bytes, so nothing else can be blamed. */
     private static String readAsText(String bytes) {
         return answerTo("read/string write/binary %tmp " + bytes);
     }
@@ -78,7 +53,6 @@ class StandardisingLineEndingsFromTheSourceTest {
             assertThat(readAsText("#{0D0A}")).isEqualTo("\"^/\"");
         }
 
-        /** The first of the three the obvious reading gets wrong. */
         @Test
         @DisplayName("and a carriage return on its own is a line feed too")
         void aLoneCarriageReturnIsALineFeed() {
@@ -86,18 +60,12 @@ class StandardisingLineEndingsFromTheSourceTest {
             assertThat(readAsText("#{610D62}")).isEqualTo("\"a^/b\"");
         }
 
-        /** The second: the pair counts either way round. */
         @Test
         @DisplayName("and a line feed followed by a return is one ending, not two")
         void aLineFeedThenAReturnIsOneEnding() {
             assertThat(readAsText("#{0A0D}")).isEqualTo("\"^/\"");
         }
 
-        /**
-         * The third, and the one that shows the rule is a walk rather than a
-         * substitution: the first return stands alone and becomes an ending of
-         * its own, and the second takes the line feed with it.
-         */
         @Test
         @DisplayName("but two returns then a line feed are two endings")
         void twoReturnsThenALineFeedAreTwoEndings() {
@@ -118,11 +86,6 @@ class StandardisingLineEndingsFromTheSourceTest {
         }
     }
 
-    /**
-     * The same conversion, reached the other way. DELINE runs it on a string
-     * already in hand, so the two cannot disagree without one of them being
-     * wrong.
-     */
     @Nested
     @DisplayName("DELINE, which is the same conversion")
     class DelineIsTheSameConversion {
@@ -142,11 +105,6 @@ class StandardisingLineEndingsFromTheSourceTest {
             assertThat(answerTo("deline {a^M^M^/b}")).isEqualTo("\"a^/^/b\"");
         }
 
-        /**
-         * And on a string wide enough not to be bytes, which the C converts
-         * with a second copy of the same six lines. Rebol's own test uses
-         * {@code #"á"} for exactly this reason, and says so in a comment.
-         */
         @Test
         @DisplayName("and on a wide string, which the C converts separately")
         void andOnAWideString() {

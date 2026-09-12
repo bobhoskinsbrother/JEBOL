@@ -2,32 +2,12 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * The chained table of where four byte runs were seen, for qualities five to
- * nine.
- *
- * <p>{@code hash_longest_match_inc.h}, the C's H5. Where the quick hasher keeps
- * one position per hash and forgets the rest, this keeps a run of them -- from
- * sixteen at quality five to two hundred and fifty six at quality nine -- and
- * walks them newest first. Walking further is the whole of what the higher
- * qualities buy.
- *
- * <p>It also tries the recently used distances before it tries the table at all,
- * because a copy that repeats a distance already in the reader's cache costs
- * almost nothing to place. Quality five checks four of them, seven and eight ten,
- * nine all sixteen.
- *
- * <p>The count of how many positions a hash has seen is kept sixteen bits wide
- * and is allowed to wrap, exactly as the C's is. It is a position within a ring,
- * so wrapping loses nothing that was not already being overwritten.
- */
 final class BrotliFullHasher implements BrotliHasher {
 
     private static final int FOUR_BYTE_MULTIPLIER = 0x1E35A7BD;
     private static final long FIVE_BYTE_MULTIPLIER = 0x1FE35A7BD3579BD3L << 24;
     private static final int SHORTEST_MATCH_FROM_THE_TABLE = 4;
 
-    /** Below this much input the counts are cleared one hash at a time. */
     private static final int TOO_SMALL_TO_CLEAR_WHOLESALE_SHIFT = 6;
 
     private final int hashShift;
@@ -40,11 +20,6 @@ final class BrotliFullHasher implements BrotliHasher {
     private final int[] positions;
     private final BrotliDictionarySearch dictionary = new BrotliDictionarySearch();
 
-    /**
-     * For input of a megabyte or more the same qualities use a wider hash --
-     * five bytes read out of eight, into a fixed thirty two thousand slots --
-     * and reject a candidate outright unless its first four bytes match.
-     */
     static BrotliFullHasher forQuality(int quality, boolean theInputIsLarge) {
         int bucketBits = theInputIsLarge || quality >= 7 ? 15 : 14;
         int blockBits = quality - 1;
@@ -126,13 +101,6 @@ final class BrotliFullHasher implements BrotliHasher {
         }
     }
 
-    /**
-     * Fills in the near misses around the two most recent distances.
-     *
-     * <p>A copy one byte nearer or further than the last one is common enough
-     * to be worth its own cache slot, so the cache holds the last two distances
-     * plus or minus one, two and three.
-     */
     @Override
     public void prepareDistanceCache(int[] recentDistances) {
         if (howManyRecentDistancesToCheck <= 4) {

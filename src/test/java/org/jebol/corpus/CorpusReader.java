@@ -8,13 +8,6 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Stream;
 
-/**
- * Reads the {@code .corpus} files described in {@code corpus/README.md}.
- *
- * <p>Deliberately not written in terms of the interpreter: the corpus has to
- * be readable when the reader is broken, or it cannot be used to find out that
- * the reader is broken.
- */
 public final class CorpusReader {
 
     private static final Path CORPUS_DIRECTORY = Path.of("corpus");
@@ -23,7 +16,6 @@ public final class CorpusReader {
     private CorpusReader() {
     }
 
-    /** Every entry in every corpus file, in file then document order. */
     public static List<CorpusEntry> allEntries() {
         try (Stream<Path> files = Files.list(CORPUS_DIRECTORY)) {
             List<CorpusEntry> entries = new ArrayList<>();
@@ -36,7 +28,6 @@ public final class CorpusReader {
         }
     }
 
-    /** The complete REBOL programs used as loader and rendering material. */
     public static List<Path> sourceProgrammes() {
         Path sources = CORPUS_DIRECTORY.resolve("sources");
         try (Stream<Path> files = Files.list(sources)) {
@@ -94,7 +85,6 @@ public final class CorpusReader {
         return line.substring(FIELD_PREFIX.length() + field.length() + 1).trim();
     }
 
-    /** Accumulates one entry as its lines arrive. */
     private static final class EntryBuilder {
 
         private final String id;

@@ -6,19 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Decimals handed to things that want a whole number.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>The two rules go opposite ways in the same language, which is exactly
- * why both were checked rather than assumed. EVEN? and ODD? round half away
- * from zero, so 1.5 is even. A path index truncates towards zero, so
- * {@code b/1.6} is the first item.
- *
- * <p>The boundaries are the halves. Every whole decimal agrees under either
- * rule, so a wrong guess only shows up at .5.
- */
 class DecimalsWhereWholeNumbersGoTest {
 
     private static String answerTo(String source) {

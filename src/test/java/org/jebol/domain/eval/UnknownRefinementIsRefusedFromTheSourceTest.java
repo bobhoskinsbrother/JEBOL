@@ -6,27 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A refinement a function does not have raises, whoever wrote the function.
- *
- * <p>Natives and actions refused one already. A function written in REBOL did
- * not: the check sat behind {@code callee instanceof NativeValue} and a
- * user-defined function fell straight past it, so {@code f/nope 1} ran as
- * though the refinement had been left off. That is every function in the
- * borrowed library as well as every function a script writes, which makes it
- * the widest silent-wrong-answer in the port -- and the sharpest answer to
- * whether a borrowed {@code .reb} passing its own tests says the port is right.
- *
- * <p>The note that used to sit on the check said a user function "needs none of
- * this: its refinements are parameters and its arity already accounts for
- * them". Both halves are true and neither makes the refusal unnecessary: a
- * refinement that is not a parameter at all still has to be refused rather than
- * ignored.
- *
- * <p>{@code no-refine} appears zero times in all sixty-seven vendored suite
- * files, so nothing in Rebol's own tests could have caught this. Every
- * expectation was read off `./r3-head`.
- */
 class UnknownRefinementIsRefusedFromTheSourceTest {
 
     private static String errorIdFrom(String source) {

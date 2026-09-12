@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * MD4, which java.security dropped and old formats still carry.
- *
- * <p>Thoroughly broken as a cryptographic hash and has been since the
- * nineties, which is why the JVM no longer offers it. It is here because
- * protocols and file formats written when it was new still store MD4 sums,
- * and reading one of those means computing one.
- *
- * <p>Checked against the published vectors rather than against JEBOL, which is
- * the only honest way to test a hash.
- */
 class Md4FromTheSourceTest {
 
     private static String answerTo(String source) {

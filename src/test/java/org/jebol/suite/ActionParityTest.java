@@ -11,39 +11,8 @@ import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Every action Rebol's C implements for a datatype, called on that datatype
- * here.
- *
- * <p>The declared surface says APPEND takes a {@code series!}, a {@code port!},
- * a {@code map!}, a {@code gob!}, an {@code object!} and a {@code bitset!}. It
- * does not say which of those the C has an arm for, and it does not say which of
- * them JEBOL has an arm for. Every gap found by hand in the last round was of
- * that shape -- APPEND on a map, CHANGE on a binary, FIND on an object, the walk
- * over a map -- and each was invisible in the declaration.
- *
- * <p>So this reads {@code r3/c-surface.txt}, which
- * {@code scripts/c-surface.py} builds from Rebol's own source: the datatype
- * table in {@code types.reb} says which typeclass serves each datatype, and the
- * {@code REBTYPE} blocks say which actions each typeclass implements. The
- * product of the two is the list of calls that must do something here.
- *
- * <p>A call "does something" when it does not come back as
- * {@code cannot-use}, which is what JEBOL answers for an arm it has not got, or
- * as {@code expect-arg}, which is what it answers when the declared spec refuses
- * the datatype before the arm is reached. Any other outcome counts -- including
- * a different error, because an arm that exists and refuses these particular
- * arguments is a question about the arguments and not about the arm.
- */
 class ActionParityTest {
 
-    /**
-     * A value of each datatype JEBOL has, written as source.
-     *
-     * <p>The datatypes JEBOL has not got are simply absent, and the pairs that
-     * name them are skipped: those are a datatype backlog rather than a parity
-     * gap, and mixing the two would bury the second in the first.
-     */
     private static final Map<String, String> A_VALUE_OF = new LinkedHashMap<>();
 
     static {
@@ -89,15 +58,6 @@ class ActionParityTest {
         A_VALUE_OF.put("op!", ":+");
     }
 
-    /**
-     * How each action is called, with {@code %s} where the value goes.
-     *
-     * <p>The arguments are the least a call can carry, because what is being
-     * asked is whether the arm exists rather than whether it works. MAKE and TO
-     * are left out: both take a datatype rather than a value of one, so the
-     * matrix row for them says something different from the rest and they have
-     * their own tests.
-     */
     private static final Map<String, String> A_CALL_TO = new LinkedHashMap<>();
 
     static {
@@ -151,28 +111,8 @@ class ActionParityTest {
         A_CALL_TO.put("modify", "modify %s 'a 1");
     }
 
-    /** What JEBOL answers when the arm is not there. */
     private static final Set<String> MEANS_NO_ARM = Set.of("cannot-use", "expect-arg");
 
-    /**
-     * Pairings where the C has the arm and the arm turns this datatype away.
-     *
-     * <p>This measure multiplies the datatype table by the arms table, and
-     * that product says which {@code case} labels exist rather than which of
-     * them do anything. Where the first line inside a case is a refusal, the
-     * product over-counts, and a faithful port has to look like a gap here or
-     * disagree with Rebol.
-     *
-     * <p>{@code REBTYPE(Block)}'s RANDOM is the whole of the list:
-     * {@code if (!IS_BLOCK(value)) Trap_Action(VAL_TYPE(value), action);} is
-     * its second line, so every block-like datatype that is not a plain block
-     * -- the four paths, a hash and a paren -- reaches the arm and is sent
-     * away with {@code cannot-use}. Rebol's own series-test.r3 pins it:
-     * {@code all [error? e: try [random 'a/b/c] e/id = 'cannot-use]}.
-     *
-     * <p>Nothing goes on this list without the line of C that refuses and the
-     * assertion that wants it. It is not a place to park work.
-     */
     private static final Set<String> REFUSED_BY_THE_C_TOO = Set.of(
             "path! random", "set-path! random", "get-path! random",
             "lit-path! random", "hash! random", "paren! random");
@@ -229,30 +169,8 @@ class ActionParityTest {
                 .isLessThanOrEqualTo(KNOWN_GAPS);
     }
 
-    /**
-     * How many arms are missing today.
-     *
-     * <p>A ratchet, not a target. Lower it when an arm lands and never raise it:
-     * going up means an arm that used to answer does not any more.
-     */
     private static final long KNOWN_GAPS = 0;
 
-    /**
-     * Datatype to the actions Rebol's C implements for it and lets it reach.
-     *
-     * <p>Three tables meet here, and all three are needed.
-     *
-     * <p>The datatype table says which typeclass serves the datatype, and the
-     * arms table says which actions that typeclass has a case for. Their
-     * product is what the C implements.
-     *
-     * <p>The declared spec then narrows it, and leaving that out asks for
-     * things a real R3 refuses. Every scalar with a position has a POKE arm --
-     * `REBTYPE(Pair)` has `case A_POKE` -- and POKE declares
-     * {@code series! port! map! gob! bitset!}, so `poke 1x2 1 5` is an error
-     * there as it is here. Those arms are reached by writing through a path
-     * instead, which is a different question and has its own tests.
-     */
     private static Map<String, Set<String>> whatTheCImplements() {
         Map<String, String> typeclassOf = new LinkedHashMap<>();
         Map<String, Set<String>> armsOf = new LinkedHashMap<>();
@@ -306,7 +224,6 @@ class ActionParityTest {
         return wanted;
     }
 
-    /** The datatypes the first argument of a declared spec accepts. */
     private static Set<String> firstArgumentsTypes(String shape) {
         int opens = shape.indexOf('<');
         int firstRefinement = shape.indexOf('/');

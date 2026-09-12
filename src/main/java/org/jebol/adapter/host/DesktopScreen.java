@@ -18,25 +18,11 @@ import java.util.List;
 /**
  * The operator's own screen, through Swing and Java2D.
  *
- * <p>The native renderer, and one of three the same port is meant to carry: a
- * desktop window here, a phone and a browser later. Nothing above this line
- * names a toolkit, so the other two are adapters rather than programs.
+ * <p>Refuses SHOW when there is no display, and no more than SHOW: measurements
+ * answer zero and taking the root gob is accepted, because the view system comes
+ * up while the library is still loading and a build server has no screen.
  *
- * <p>Swing rather than JavaFX because JavaFX left the JDK in 11 and this
- * project has no runtime dependencies. {@code Graphics2D} covers the whole
- * DRAW dialect when that arrives -- pen, fill, shapes, clip, anti-alias, text
- * and image -- at close to one call each.
- *
- * <p>The threading rule this obeys is not a preference. An interpreter is
- * owned by one thread and that is what lets series share mutable storage with
- * nothing synchronising them. Swing calls a listener on its own event thread,
- * so every listener here does one thing: it puts an event on a queue and
- * returns. The interpreter's thread takes it later, inside WAIT.
- *
- * <p>Refuses when there is no display, exactly as {@link DesktopWindows} does
- * and for the same reason. But it refuses only SHOW: measurements answer zero
- * and taking the root gob is accepted, because the view system comes up while
- * the library is still loading and a build server has no screen.
+ * <p>Decision 4 in {@code docs/decisions.md} governs the threading here.
  */
 public final class DesktopScreen implements ScreenPort {
 
@@ -58,7 +44,6 @@ public final class DesktopScreen implements ScreenPort {
         this.present = present;
     }
 
-    /** A screen, or one that refuses if this machine has not got one. */
     public static DesktopScreen onThisMachine() {
         return new DesktopScreen(!GraphicsEnvironment.isHeadless());
     }
@@ -89,16 +74,6 @@ public final class DesktopScreen implements ScreenPort {
         }
     }
 
-    /**
-     * What each metric means on this toolkit.
-     *
-     * <p>Two of the twelve have no counterpart the JDK will tell us. A window
-     * frame's thickness is not a system metric in Java, so the border ones are
-     * read off a frame this class makes and throws away, which is the only
-     * place the answer honestly is. And the smallest a window may be is a
-     * Windows notion with no equivalent, so it is the smallest frame Swing
-     * will lay out.
-     */
     private PairValue measurementOf(ScreenMetric metric, int display) {
         Rectangle whole = boundsOfDisplay(display);
         Rectangle usable = workAreaOfDisplay(display);
@@ -145,21 +120,15 @@ public final class DesktopScreen implements ScreenPort {
     }
 
     private Insets furnitureOfAResizableWindow() {
-        return furnitureOfAWindow(true);
+        return furnitureOfAWindowTheJdkWillNotStateSoItIsMeasured(true);
     }
 
     private Insets furnitureOfAFixedWindow() {
-        return furnitureOfAWindow(false);
+        return furnitureOfAWindowTheJdkWillNotStateSoItIsMeasured(false);
     }
 
-    /**
-     * How thick a window's frame is, measured rather than looked up.
-     *
-     * <p>The JDK has no system metric for it, and a frame only knows its own
-     * insets once it has been given a peer. So one is made, made
-     * displayable, measured and disposed without ever being shown.
-     */
-    private Insets furnitureOfAWindow(boolean resizable) {
+    private Insets furnitureOfAWindowTheJdkWillNotStateSoItIsMeasured(
+            boolean resizable) {
         JFrame measured = new JFrame();
         try {
             measured.setResizable(resizable);
@@ -206,14 +175,11 @@ public final class DesktopScreen implements ScreenPort {
         closeTheWindowFor(gob);
     }
 
-    /**
-     * Closing what left the pane, then opening what arrived in it.
-     *
-     * <p>That order because the C walks it that way, and it is not arbitrary:
-     * a host with a fixed number of window slots that opened first could run
-     * out while still holding slots for windows already dismissed.
-     */
     private void reconcileEveryWindow() {
+        closeWhatLeftThePaneBeforeOpeningWhatArrivedInIt();
+    }
+
+    private void closeWhatLeftThePaneBeforeOpeningWhatArrivedInIt() {
         for (GobValue standing : List.copyOf(windows.keySet())) {
             if (!isInTheRootsPane(standing)) {
                 closeTheWindowFor(standing);
@@ -241,10 +207,10 @@ public final class DesktopScreen implements ScreenPort {
     private void openOrRefresh(GobValue gob) {
         JFrame standing = windowFor(gob);
         if (standing != null) {
-            onTheToolkitThread(standing::repaint);
+            onTheToolkitThreadAndWaitedFor(standing::repaint);
             return;
         }
-        onTheToolkitThread(() -> windows.put(gob, aWindowShowing(gob)));
+        onTheToolkitThreadAndWaitedFor(() -> windows.put(gob, aWindowShowing(gob)));
     }
 
     private JFrame windowFor(GobValue gob) {
@@ -262,7 +228,7 @@ public final class DesktopScreen implements ScreenPort {
             return;
         }
         windows.entrySet().removeIf(each -> each.getValue() == standing);
-        onTheToolkitThread(standing::dispose);
+        onTheToolkitThreadAndWaitedFor(standing::dispose);
     }
 
     private JFrame aWindowShowing(GobValue gob) {
@@ -271,7 +237,7 @@ public final class DesktopScreen implements ScreenPort {
         frame.setContentPane(aSurfacePainting(gob));
         frame.pack();
         frame.setLocationRelativeTo(null);
-        listenOnBehalfOf(frame, gob);
+        everyListenerOnlyQueuesAndReturns(frame, gob);
         frame.setVisible(true);
         return frame;
     }
@@ -298,7 +264,7 @@ public final class DesktopScreen implements ScreenPort {
             @Override
             protected void paintComponent(Graphics onto) {
                 super.paintComponent(onto);
-                DesktopPainting.paintTheContentsOf(
+                DesktopPainting.paintTheContentsOfLeavingItsTitleToTheTitleBar(
                         (Graphics2D) onto, gob, drawDialect);
             }
         };
@@ -308,16 +274,7 @@ public final class DesktopScreen implements ScreenPort {
         return surface;
     }
 
-    /**
-     * Every listener does one thing: it queues and returns.
-     *
-     * <p>Nothing here runs a handler, evaluates a block or touches a series.
-     * Swing calls these on its own thread and the interpreter is owned by
-     * another, so anything more would be a second thread inside the
-     * interpreter -- and two threads appending to one block corrupt it
-     * without either of them failing.
-     */
-    private void listenOnBehalfOf(JFrame frame, GobValue gob) {
+    private void everyListenerOnlyQueuesAndReturns(JFrame frame, GobValue gob) {
         frame.addWindowListener(new WindowAdapter() {
 
             @Override
@@ -402,14 +359,7 @@ public final class DesktopScreen implements ScreenPort {
         return taken;
     }
 
-    /**
-     * Runs a piece of toolkit work where the toolkit wants it run, and waits.
-     *
-     * <p>Waiting because SHOW answers when the window is there rather than
-     * when it has been asked for, and a caller that opened a window and then
-     * measured it would otherwise measure nothing.
-     */
-    private static void onTheToolkitThread(Runnable work) {
+    private static void onTheToolkitThreadAndWaitedFor(Runnable work) {
         if (SwingUtilities.isEventDispatchThread()) {
             work.run();
             return;

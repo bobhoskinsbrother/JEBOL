@@ -9,13 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A pair holds two decimals, which is not what {@code 1x2} looks like.
- *
- * <p>Each test here asks one question. The behaviour of the natives that
- * take pairs lives in {@code corpus/pairs.corpus}, where it is checked
- * against a real R3 rather than against an opinion.
- */
 class PairValueTest {
 
     @Nested

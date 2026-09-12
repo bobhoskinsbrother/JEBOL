@@ -1,22 +1,5 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * Decides where one code should stop and the next begin, as the symbols arrive.
- *
- * <p>{@code metablock_inc.h}. It gathers a target number of symbols, then asks
- * whether that batch is better off with a code of its own. Three answers are
- * possible: start a new type, hand the batch to the type before last, or fold it
- * into the type it just used.
- *
- * <p>The question it asks is whether merging costs entropy. If merging the batch
- * into either of the last two types would add more than the threshold to the
- * total, the batch is different enough to deserve its own code. If merging into
- * the type before last is at least twenty bits cheaper than merging into the
- * last, the content has gone back to what it was two batches ago and that type
- * is reused. Otherwise it merges into the last, and every second consecutive
- * merge raises the target, so a long uniform stretch is asked about less and
- * less often.
- */
 final class BrotliBlockSplitter {
 
     private static final double SECOND_LAST_MUST_BEAT_LAST_BY = 20.0;
@@ -88,7 +71,7 @@ final class BrotliBlockSplitter {
     private void startTheFirstBlock() {
         split.lengthIs(0, blockSize);
         split.typeIs(0, 0);
-        lastEntropy[0] = BrotliCodes.bitsEntropy(
+        lastEntropy[0] = BrotliCodes.bitsEntropyFlooredAtOneBitPerLiteral(
                 histograms[0].counts(), alphabetSize);
         lastEntropy[1] = lastEntropy[0];
         howManyBlocks++;
@@ -101,14 +84,14 @@ final class BrotliBlockSplitter {
     }
 
     private void decideWhatToDoWithTheBatch() {
-        double onItsOwn = BrotliCodes.bitsEntropy(
+        double onItsOwn = BrotliCodes.bitsEntropyFlooredAtOneBitPerLiteral(
                 histograms[currentHistogram].counts(), alphabetSize);
         double[] mergedEntropy = new double[2];
         double[] costOfMerging = new double[2];
         for (int which = 0; which < 2; which++) {
             merged[which].copyFrom(histograms[currentHistogram]);
             merged[which].addAll(histograms[lastHistogram[which]]);
-            mergedEntropy[which] = BrotliCodes.bitsEntropy(
+            mergedEntropy[which] = BrotliCodes.bitsEntropyFlooredAtOneBitPerLiteral(
                     merged[which].counts(), alphabetSize);
             costOfMerging[which] =
                     mergedEntropy[which] - onItsOwn - lastEntropy[which];

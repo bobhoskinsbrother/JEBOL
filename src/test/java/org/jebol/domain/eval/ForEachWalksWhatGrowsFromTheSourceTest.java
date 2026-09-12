@@ -6,19 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * FOREACH asks the series how long it is on every round, not once.
- *
- * <p>{@code while (index < (tail = SERIES_TAIL(series)))} in {@code Loop_Each}.
- * The assignment sits inside the condition, which is easy to read past and is
- * the whole behaviour: whatever the body appends is walked as well.
- *
- * <p>Taking a copy of the items first is the obvious way to write the loop and
- * it answers differently. Rebol's own test puts a third key into a map halfway
- * through a walk over that map and asserts on a sum that only comes out right
- * if the third key was visited. Checked against a real Rebol for a block too,
- * where a body that appends runs until something else stops it.
- */
 class ForEachWalksWhatGrowsFromTheSourceTest {
 
     private static String answerTo(String source) {

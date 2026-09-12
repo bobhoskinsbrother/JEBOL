@@ -5,31 +5,14 @@ import org.jebol.domain.value.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * SHAPE: a path written by hand, a step at a time.
- *
- * <p>Ten commands, and each has a relative form written as a lit-word. That is
- * what the lit-word marking in DELECT is for, and it is why losing the mark
- * would have been serious rather than cosmetic: every relative path in every
- * drawing would have quietly become an absolute one.
- *
- * <p>Read directly rather than through DELECT, because the sub-dialect's
- * arguments are all pairs and numbers in written order, and the thing DELECT
- * buys -- putting arguments into slots by type -- has nothing to do here.
- * {@code system/dialects/draw} holds the shape commands in the same object as
- * the draw ones for the C's convenience, not because they are read the same
- * way.
- *
- * <p>Specified in {@code spec/draw.allium}.
- */
 final class ShapeSubDialect {
 
     private ShapeSubDialect() {
     }
 
-    /** Every step of a shape block, as one path. */
     static List<PathStep> pathFrom(BlockValue steps) {
-        Walk walk = new Walk();
+        WhereARelativeStepIsMeasuredFrom walk =
+                new WhereARelativeStepIsMeasuredFrom();
         List<Value> written = steps.remaining();
         int at = 0;
         while (at < written.size()) {
@@ -54,8 +37,7 @@ final class ShapeSubDialect {
         return ahead;
     }
 
-    /** Where the path stands, which is what a relative step is measured from. */
-    private static final class Walk {
+    private static final class WhereARelativeStepIsMeasuredFrom {
 
         private final List<PathStep> path = new ArrayList<>();
         private double across;

@@ -15,14 +15,6 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * End to end over the reader, driven by real REBOL rather than by examples
- * invented to suit the implementation.
- *
- * <p>Every entry is a line lifted from the fourteen programs in
- * {@code corpus/sources}, cited by file and line. Real code uses the awkward
- * combinations; a hand-written example tends not to.
- */
 class LoadingCorpusTest {
 
     static Stream<CorpusEntry> entriesWithTypeAssertions() {

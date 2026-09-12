@@ -7,33 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The ten bytes a gzip member opens with, and which of them the level decides.
- *
- * <p>Rebol writes the header itself in {@code gzip_compress.c} and only the
- * ninth byte varies:
- *
- * <pre>
- * xfl = 0;
- * if (compression_level &lt; 2) xfl |= GZIP_XFL_FASTEST_COMPRESSION;  // 0x04
- * else if (compression_level &gt;= 8) xfl |= GZIP_XFL_SLOWEST_COMPRESSION;  // 0x02
- * </pre>
- *
- * <p>The tenth is {@code GZIP_OS_UNKNOWN}, which is {@code FF} and not zero.
- * This wrote seven zero bytes after the first three and so got both wrong.
- *
- * <p>The level itself never reached the compressor at all, which is the defect
- * Rebol's suite catches twice: it asks for {@code compress/level "" 'gzip 0}
- * and expects stored blocks, and this answered whatever the default level
- * produced.
- *
- * <p>Two differences from a real 3.22.5 remain and are not defects here.
- * Rebol compresses with libdeflate, which has twelve levels where
- * {@code java.util.zip} has nine, so a level above nine is clamped to nine
- * rather than to twelve; and a level nobody asked for is the slowest one in
- * both, which is twelve there and nine here. Both build valid gzip that either
- * side reads, and neither is byte for byte the other above level one.
- */
 class GzipFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -63,11 +36,6 @@ class GzipFromTheSourceTest {
                           74657374026A5B230E000000}""")).isEqualTo("#(true)");
         }
 
-        /**
-         * The checksum here is the one the gzip format names, which is not the
-         * one {@code checksum "test test test" 'crc32} answers: that is Rebol's
-         * own table and gives 593193474 where this trailer holds 593495554.
-         */
         @Test
         @DisplayName("the trailer is the CRC-32 and then the length, little endian")
         void theTrailerIsTheChecksumAndTheLength() {

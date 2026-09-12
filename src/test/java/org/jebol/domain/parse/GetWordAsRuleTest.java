@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A get-word marks a place, so it cannot be asked to match anything.
- *
- * <p>Specified in {@code spec/parse.allium} and measured against a real R3
- * 3.22.1, which raises parse-rule.
- *
- * <p>Allowed through as COPY's rule it moved the position backwards and
- * left the capture reading a span that runs the wrong way. That failed as
- * a Java exception rather than as a REBOL error, which
- * {@code spec/embed.allium} says cannot happen.
- */
 class GetWordAsRuleTest {
 
     private static String answerTo(String source) {
@@ -25,7 +14,6 @@ class GetWordAsRuleTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

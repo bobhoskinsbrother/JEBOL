@@ -10,26 +10,12 @@ import java.util.Set;
 import java.util.function.IntPredicate;
 
 /**
- * The one comparison every comparison native reaches, ported from
- * {@code Compare_Values} in {@code src/core/n-math.c} and the {@code CT_}
- * function of each datatype it dispatches to.
- *
- * <p>Ten natives, six questions, one answer. The question is carried as a
- * {@link Strictness} and it decides three separate things: whether two
- * different datatypes may be brought together at all, how far two decimals
- * may drift apart and still count as one number, and whether a pairing that
- * cannot be brought together answers false or refuses to answer.
- *
- * <p>That last split is the one worth stating twice. Asking whether a
- * character equals a string answers false; asking whether it is below one
- * raises {@code invalid-compare}. Both go through the same failed coercion
- * and part company on one line of the C.
- *
- * <p>Only two of the four ordering natives ask a question of their own.
- * {@code >} asks {@link Strictness#GREATER} and {@code <=} negates the same
- * answer; {@code >=} asks {@link Strictness#GREATER_OR_EQUAL} and {@code <}
- * negates it. So {@code a < b} is worked out as "not (a >= b)", which is why
- * {@code <} raises on the pairings {@code >} raises on.
+ * The one comparison every comparison native reaches. Ten natives, six
+ * questions, one answer: the question is carried as a {@link Strictness}, which
+ * decides whether two different datatypes may be brought together at all, how
+ * far two decimals may drift apart and still count as one number, and whether a
+ * pairing that cannot be brought together answers false or raises
+ * {@code invalid-compare}.
  */
 public final class Comparison {
 
@@ -37,12 +23,9 @@ public final class Comparison {
     }
 
     /**
-     * How strict a comparison is, as the C's {@code strictness} argument.
-     *
-     * <p>The numbers are Rebol's own and are load-bearing rather than
-     * decorative: the C tests {@code strictness > 1} to decide whether to
-     * coerce at all and {@code strictness < 0} to decide whether a failed
-     * coercion raises, so the order of these is the behaviour.
+     * How strict a comparison is. The numbers are Rebol's own and are
+     * load-bearing: above one stops the coercion, below zero makes a failed
+     * coercion raise.
      */
     public enum Strictness {
         /** {@code =}, EQUAL?, and NOT-EQUAL? negated. */
@@ -64,30 +47,15 @@ public final class Comparison {
             this.mode = mode;
         }
 
-        /** The two ordering questions, which are the only ones that can refuse. */
         boolean isAboutOrder() {
             return mode < 0;
         }
 
-        /**
-         * The two strictest, which answer false for two datatypes rather than
-         * bringing them together. {@code strictness > 1} in the C.
-         */
         boolean mindsTheDatatype() {
             return mode > 1;
         }
     }
 
-    /**
-     * Datatypes whose {@code CT_} function ends in {@code return -1} rather
-     * than answering the ordering question, which back in
-     * {@code Compare_Values} becomes {@code invalid-compare}.
-     *
-     * <p>Read from the typeclass column of {@code src/boot/types.reb}, which
-     * names the {@code CT_} function each datatype uses, and then from those
-     * functions. An error is an object as far as this table is concerned, and
-     * so is a module and a port.
-     */
     private static final Set<Datatype> REFUSE_TO_BE_ORDERED = Set.of(
             Datatype.UNSET, Datatype.END, Datatype.NONE, Datatype.LOGIC,
             Datatype.BITSET, Datatype.MAP, Datatype.TYPESET,
@@ -97,19 +65,12 @@ public final class Comparison {
             Datatype.ACTION, Datatype.CLOSURE, Datatype.COMMAND,
             Datatype.JAVA_OBJECT);
 
-    /** The three numbers a time will meet. A money is not among them. */
-    private static final Set<Datatype> MEETS_A_TIME =
+    private static final Set<Datatype> NUMBERS_A_TIME_WILL_MEET_WHICH_EXCLUDE_MONEY =
             Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT);
 
     private static final long NANOSECONDS_PER_SECOND = 1_000_000_000L;
 
-    /**
-     * Whether the comparison holds at this strictness.
-     *
-     * <p>The shape of {@code Compare_Values}: bring the two to one datatype,
-     * then ask that datatype's own question. Everything hard is in the
-     * bringing together.
-     */
+    /** Whether the comparison holds at this strictness. */
     public static boolean holds(Value left, Value right, Strictness strictness) {
         Value first = left;
         Value second = right;
@@ -117,7 +78,8 @@ public final class Comparison {
             if (strictness.mindsTheDatatype()) {
                 return false;
             }
-            Optional<Value[]> brought = broughtTogether(left, right);
+            Optional<Value[]> brought =
+                    broughtTogetherBySwitchingOnTheLeftAlone(left, right);
             if (brought.isEmpty()) {
                 if (!strictness.isAboutOrder()) {
                     return false;
@@ -136,18 +98,8 @@ public final class Comparison {
                         + " with " + right.datatype().literalSpelling());
     }
 
-    /**
-     * The coercion table, one branch per case label in the C's switch on the
-     * left value's datatype. Empty where the switch falls through, which is
-     * where the caller decides between false and a refusal.
-     *
-     * <p>The table is not symmetric and must not be made so. A character
-     * against an integer takes the character's branch and folds both sides'
-     * case; an integer against a character takes the integer's branch and
-     * folds nothing. {@code #"A" = 97} is true and {@code 97 = #"A"} is
-     * false, and both were confirmed by running them.
-     */
-    private static Optional<Value[]> broughtTogether(Value left, Value right) {
+    private static Optional<Value[]> broughtTogetherBySwitchingOnTheLeftAlone(
+            Value left, Value right) {
         Datatype theirs = right.datatype();
         return switch (left.datatype()) {
             case INTEGER -> fromAnInteger((IntegerValue) left, right, theirs);
@@ -174,7 +126,8 @@ public final class Comparison {
 
         return switch (theirs) {
             case DECIMAL, PERCENT -> both(DecimalValue.of(left.magnitude()), right);
-            case MONEY -> both(asMoney(left.magnitude(), (MoneyValue) right), right);
+            case MONEY -> both(asMoneyInTheCurrencyItIsMeeting(
+                    left.magnitude(), (MoneyValue) right), right);
             case CHAR -> both(left, IntegerValue.of(((CharacterValue) right).codepoint()));
             case TIME -> both(DecimalValue.of(left.magnitude()), asSeconds((TimeValue) right));
             default -> Optional.empty();
@@ -186,7 +139,8 @@ public final class Comparison {
 
         return switch (theirs) {
             case INTEGER -> both(left, DecimalValue.of(((IntegerValue) right).magnitude()));
-            case MONEY -> both(asMoney(left.quantity(), (MoneyValue) right), right);
+            case MONEY -> both(asMoneyInTheCurrencyItIsMeeting(
+                    left.quantity(), (MoneyValue) right), right);
             case DECIMAL, PERCENT -> both(left, right);
             case TIME -> both(left, asSeconds((TimeValue) right));
             default -> Optional.empty();
@@ -197,14 +151,16 @@ public final class Comparison {
             MoneyValue left, Value right, Datatype theirs) {
 
         return switch (theirs) {
-            case INTEGER -> both(left, asMoney(((IntegerValue) right).magnitude(), left));
-            case DECIMAL, PERCENT -> both(left, asMoney(((DecimalValue) right).quantity(), left));
+            case INTEGER -> both(left, asMoneyInTheCurrencyItIsMeeting(
+                    ((IntegerValue) right).magnitude(), left));
+            case DECIMAL, PERCENT -> both(left, asMoneyInTheCurrencyItIsMeeting(
+                    ((DecimalValue) right).quantity(), left));
             default -> Optional.empty();
         };
     }
 
     private static Optional<Value[]> fromATime(TimeValue left, Value right, Datatype theirs) {
-        if (!MEETS_A_TIME.contains(theirs)) {
+        if (!NUMBERS_A_TIME_WILL_MEET_WHICH_EXCLUDE_MONEY.contains(theirs)) {
             return Optional.empty();
         }
         Value theirNumber = theirs == Datatype.INTEGER
@@ -217,20 +173,13 @@ public final class Comparison {
         return Optional.of(new Value[] {left, right});
     }
 
-    /**
-     * A number as a money, carrying the currency of the money it is about to
-     * meet.
-     *
-     * <p>Rebol's {@code deci} holds no currency at all, so a comparison
-     * cannot see one. Taking the other side's designator is how a value with
-     * no opinion about currency avoids being made to disagree with one that
-     * has: {@code USD$1 = 1} is true.
-     */
-    private static MoneyValue asMoney(double amount, MoneyValue meeting) {
+    private static MoneyValue asMoneyInTheCurrencyItIsMeeting(
+            double amount, MoneyValue meeting) {
         return new MoneyValue(BigDecimal.valueOf(amount), meeting.currency());
     }
 
-    private static MoneyValue asMoney(long amount, MoneyValue meeting) {
+    private static MoneyValue asMoneyInTheCurrencyItIsMeeting(
+            long amount, MoneyValue meeting) {
         return new MoneyValue(BigDecimal.valueOf(amount), meeting.currency());
     }
 
@@ -238,11 +187,12 @@ public final class Comparison {
         return DecimalValue.of((double) time.nanoseconds() / NANOSECONDS_PER_SECOND);
     }
 
-    /** The {@code Compare_Types[]} dispatch, once both sides are one datatype. */
     private static boolean atOneDatatype(Value left, Value right, Strictness strictness) {
         return switch (strictness) {
-            case EQUAL -> equalValues(left, right, STEPS_ALLOWED_BETWEEN_DECIMALS, APPROVED);
-            case EQUIV -> equalValues(left, right, 0, APPROVED);
+            case EQUAL -> equalValues(left, right, STEPS_ALLOWED_BETWEEN_DECIMALS,
+                    THE_COERCION_TABLE_APPROVED_THIS_PAIRING);
+            case EQUIV -> equalValues(left, right, 0,
+                    THE_COERCION_TABLE_APPROVED_THIS_PAIRING);
             case STRICT_EQUAL -> strictlyEqual(left, right);
             case SAME -> isSameValue(left, right);
             case GREATER_OR_EQUAL -> ordersAs(left, right, ordering -> ordering >= 0);
@@ -250,93 +200,34 @@ public final class Comparison {
         };
     }
 
-    /**
-     * How many steps of the floating point representation {@code =} allows
-     * two decimals to differ by and still count as the same number.
-     *
-     * <p>Twenty-one, from {@code CT_Decimal}, where the comment beside it
-     * says: "there was 10, but 21 is the minimum to have:
-     * (100% // 3% = 1%) == true". An allowance of ten passes every other
-     * decimal assertion in Rebol's suite and fails that one, which is how the
-     * wrong number survives being tested.
-     */
     private static final long STEPS_ALLOWED_BETWEEN_DECIMALS = 21;
 
-    /**
-     * The same allowance for a decimal the second comparison reaches, which
-     * is a third number and not either of the two above.
-     *
-     * <p>{@code Cmp_Value} is told one thing about its caller -- whether to
-     * mind case -- and its decimal branch does not read even that. Both
-     * decimals go to {@code Eq_Decimal}, which is
-     * {@code almost_equal(a, b, 10)}, on every path through the function. So
-     * ten steps is what a decimal inside a block gets whether EQUAL?, EQUIV?
-     * or {@code ==} asked, and it is also what FIND is looking for.
-     *
-     * <p>Which makes the nested answer disagree with the plain one in both
-     * directions: {@code ==} is looser inside a block than outside it and
-     * EQUAL? is tighter. Deriving either from the other is wrong whichever
-     * way round it is derived.
-     */
     private static final long STEPS_ALLOWED_INSIDE_A_SERIES = 10;
 
-    /**
-     * Whether the coercion table has already approved this pairing of
-     * datatypes, which decides whether the walk below may cross one.
-     *
-     * <p>Two comparison functions with different rules, and Rebol runs both.
-     * {@code Compare_Values} approves five pairings before it compares
-     * anything -- the numbers with each other, a time with the non-money
-     * numbers, a character with an integer, any word with any word, any
-     * string with any string. {@code Cmp_Value} in {@code f-series.c}
-     * approves only two: the numbers with each other, and the words with each
-     * other. Its one line says so:
-     * {@code if ((ANY_NUMBER(s) && ANY_NUMBER(t)) || (ANY_WORD(s) && ANY_WORD(t)))}.
-     *
-     * <p>So the same two values get different answers depending on which one
-     * asked. {@code equal? "a" %a} is true and {@code equal? ["a"] [%a]} is
-     * false; {@code equal? 0:0:1 1} is true and {@code equal? [0:0:1] [1]} is
-     * false. FIND, SELECT, SWITCH and SORT walk items and get the strict
-     * answer; the comparison natives get the loose one. Both confirmed by
-     * running them.
-     */
-    private static final boolean APPROVED = true;
+    private static final boolean THE_COERCION_TABLE_APPROVED_THIS_PAIRING = true;
 
-    private static final boolean UNAPPROVED = false;
+    private static final boolean IT_DID_NOT = false;
 
-    /** The four datatypes {@code ANY_NUMBER} covers. A time is not one. */
-    private static final Set<Datatype> ANY_NUMBER =
+    private static final Set<Datatype> ANY_NUMBER_WHICH_EXCLUDES_A_TIME =
             Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT, Datatype.MONEY);
 
     /**
-     * REBOL's {@code =} as {@code Cmp_Value} asks it: equal, folding case,
-     * and a number may meet a number and a word a word.
-     *
-     * <p>This is the comparison every series function uses -- FIND, SELECT,
-     * SWITCH, SORT, UNIQUE and the object field walk. It is stricter about
-     * datatypes than the comparison natives are, and deliberately so; see
-     * {@link #APPROVED}.
-     *
-     * <p>All the way down. Folding case for a bare string while comparing a
-     * nested one strictly is the kind of split nobody writes on purpose, and
-     * nothing catches it until a block holds a string.
+     * REBOL's {@code =} as the series functions ask it: equal, folding case,
+     * and a number may meet a number and a word a word. This is what FIND,
+     * SELECT, SWITCH, SORT, UNIQUE and the object field walk use, and it is
+     * stricter about datatypes than the comparison natives are.
      */
     public static boolean looselyEqual(Value left, Value right) {
-        return equalValues(left, right, STEPS_ALLOWED_INSIDE_A_SERIES, UNAPPROVED);
+        return equalValues(left, right, STEPS_ALLOWED_INSIDE_A_SERIES, IT_DID_NOT);
     }
 
     /**
      * The same comparison, with the decimal allowance chosen by the caller.
-     *
-     * <p>EQUIV? sits between the two other comparisons and needs zero here:
-     * it folds case and lets an integer meet a decimal, exactly as {@code =}
-     * does, and then insists on the bits. Passing the allowance down rather
-     * than writing a second walk keeps the two from drifting, which matters
-     * most inside a block, where the difference would only show once
-     * something nested a decimal.
+     * EQUIV? needs zero: it folds case and lets an integer meet a decimal
+     * exactly as {@code =} does, and then insists on the bits.
      */
     public static boolean looselyEqual(Value left, Value right, long stepsAllowed) {
-        return equalValues(left, right, stepsAllowed, UNAPPROVED);
+        return equalValues(left, right, stepsAllowed, IT_DID_NOT);
     }
 
     private static boolean equalValues(
@@ -399,26 +290,13 @@ public final class Comparison {
             return true;
         }
         if (left instanceof MapValue ours && right instanceof MapValue theirs) {
-            return sameEntries(ours, theirs);
+            return sameKeysAgainstLooselyEqualValues(ours, theirs);
         }
         return left.datatype() == right.datatype() && left.equals(right);
     }
 
-    /**
-     * Whether two maps hold the same keys against equal values.
-     *
-     * <p>Order does not count, because a map is not a series and the pairs
-     * came out of a hash. The keys are already the same whichever sigil they
-     * were written with -- a map stores {@code c:}, {@code c} and {@code 'c}
-     * as one key -- so what is left is to ask the ordinary comparison about
-     * each value rather than trusting the entry map's own equality.
-     *
-     * <p>That last part is the whole of the fix. EQUAL? does not mind case, so
-     * a map holding {@code "a"} equals one holding {@code "A"}; Java's own
-     * {@code Map.equals} minds it, and made two maps unequal that a real
-     * 3.22.1 calls equal.
-     */
-    private static boolean sameEntries(MapValue ours, MapValue theirs) {
+    private static boolean sameKeysAgainstLooselyEqualValues(
+            MapValue ours, MapValue theirs) {
         if (ours.pairCount() != theirs.pairCount()) {
             return false;
         }
@@ -438,81 +316,45 @@ public final class Comparison {
         return Character.toLowerCase(codepointOf(left)) == Character.toLowerCase(codepointOf(right));
     }
 
-    /**
-     * Whether the two are numbers this comparison will put side by side.
-     *
-     * <p>A time is a number to {@code Compare_Values} and not to
-     * {@code Cmp_Value}, which is the whole of why {@code equal? 0:0:1 1} is
-     * true and {@code equal? [0:0:1] [1]} is false.
-     */
     private static boolean numbersMeet(Value left, Value right, boolean approved) {
         if (approved) {
             return isNumeric(left) && isNumeric(right);
         }
-        return ANY_NUMBER.contains(left.datatype()) && ANY_NUMBER.contains(right.datatype())
+        return ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(left.datatype())
+                && ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(right.datatype())
                 || left.datatype() == Datatype.TIME && right.datatype() == Datatype.TIME;
     }
 
-    /**
-     * Whether two objects declare the same fields holding equal values.
-     *
-     * <p>{@code Equal_Object} compares each field with {@code Cmp_Value},
-     * which coerces across the four number datatypes, so an object holding
-     * the integer 1 equals one holding {@code $1}. It does not go through
-     * {@code Compare_Values} -- the C carries a comment saying it ought to --
-     * and the difference shows on exactly this case, because {@code Cmp_Value}
-     * reads a money's first eight bytes as a whole number and gets the right
-     * answer for {@code $1} by luck rather than by rule.
-     *
-     * <p>So this walks the fields and asks the ordinary comparison about each,
-     * which is what the C means and gets right for one value in a thousand.
-     */
     private static boolean sameFields(ObjectValue left, ObjectValue right) {
         return fieldsAgree(left, right, Comparison::looselyEqual);
     }
 
-    /**
-     * The field walk again, minding the datatype. {@code Equal_Object} is
-     * handed {@code mode > 1} as its case flag, and {@code Cmp_Value} reads
-     * that flag as "stop coercing".
-     */
     private static boolean strictFields(ObjectValue left, ObjectValue right) {
         return fieldsAgree(left, right, Comparison::identicallyEqual);
     }
 
-    /**
-     * The names in order, then the values pairwise.
-     *
-     * <p>The hidden fields are counted and not compared, because a hidden
-     * field has no name and no value to compare and is still there. Two
-     * objects with the same visible fields and different hidden ones are not
-     * equal.
-     */
     private static boolean fieldsAgree(
             ObjectValue left, ObjectValue right, java.util.function.BiPredicate<Value, Value> agree) {
 
         Map<String, Value> ours = left.context().fieldsExcludingSelf();
         Map<String, Value> theirs = right.context().fieldsExcludingSelf();
         if (!ours.keySet().equals(theirs.keySet())
-                || left.context().fieldCount() != right.context().fieldCount()) {
+                || theyHideDifferentNumbersOfFields(left, right)) {
             return false;
         }
         return ours.entrySet().stream()
                 .allMatch(field -> agree.test(field.getValue(), theirs.get(field.getKey())));
     }
 
+    private static boolean theyHideDifferentNumbersOfFields(
+            ObjectValue left, ObjectValue right) {
+        return left.context().fieldCount() != right.context().fieldCount();
+    }
+
     /**
-     * Strict equality, which for decimals means the identical bits.
-     *
-     * <p>Three comparisons that disagree, all read from {@code CT_Decimal}.
-     * The loose = asks whether two values are the same number, so both zeroes
-     * are equal and so are two NaNs. This compares the bits and excludes a
-     * NaN by name, so the zeroes are not equal and neither are the NaNs.
-     * SAME? compares the bits with no exclusion, which makes two NaNs the
-     * same value and the two zeroes different ones.
-     *
-     * <p>No two of the three agree on both cases, which is why each has its
-     * own answer written down rather than being derived from another.
+     * Strict equality, which for decimals means the identical bits with a NaN
+     * excluded by name -- so the two zeroes are not equal and neither are two
+     * NaNs. Loose equality and SAME? each answer both of those differently.
      */
     public static boolean strictlyEqual(Value left, Value right) {
         if (left.datatype() != right.datatype()) {
@@ -550,38 +392,24 @@ public final class Comparison {
         return left.equals(right);
     }
 
-    /**
-     * Whether two dates are strictly the same, which is what
-     * {@code CT_Date} answers above mode one.
-     *
-     * <p>It compares the packed date word and the time, and the packed word
-     * carries the zone. So the zone counts here where it does not for
-     * ordinary equality -- and a date written without one is at zero rather
-     * than at no zone at all, which is the distinction JEBOL keeps in an
-     * empty Optional and the C does not keep at all.
-     *
-     * <p>Comparing the record whole made {@code 1-Jan-1970/0:00} unequal to
-     * the same date built from a timestamp, because one had written its zone
-     * down and the other had not.
-     */
     private static boolean sameDateBitsAndTime(DateValue first, DateValue second) {
         return first.year() == second.year()
                 && first.month() == second.month()
                 && first.day() == second.day()
                 && first.timeOfDay().equals(second.timeOfDay())
-                && first.zoneMinutes().orElse(0).equals(second.zoneMinutes().orElse(0));
+                && aMissingZoneCountsAsZero(first).equals(aMissingZoneCountsAsZero(second));
+    }
+
+    private static Integer aMissingZoneCountsAsZero(DateValue date) {
+        return date.zoneMinutes().orElse(0);
     }
 
     /**
-     * Two values as {@code Cmp_Value} compares them with its case flag set:
-     * the second comparison, minding the datatype and the case of a string.
-     *
-     * <p>That is what {@code ==} asks about the items of a block and what
-     * FIND/CASE asks about the item it is looking for, and it is not the
-     * same question {@code ==} asks about two values on their own. A decimal
-     * still goes to the ten-step allowance here, because the case flag is
-     * the only thing {@code Cmp_Value} is told and its decimal branch does
-     * not read it -- so {@code [1.0] == [1.0000000000000022]} is true where
+     * What {@code ==} asks about the items of a block and what FIND/CASE asks
+     * about the item it is looking for: minding the datatype and the case of a
+     * string. It is not the same question {@code ==} asks about two values on
+     * their own -- a decimal still gets the ten-step allowance here, so
+     * {@code [1.0] == [1.0000000000000022]} is true where
      * {@code 1.0 == 1.0000000000000022} is false.
      */
     public static boolean identicallyEqual(Value left, Value right) {
@@ -596,22 +424,14 @@ public final class Comparison {
         return strictlyEqual(left, right);
     }
 
-    /**
-     * Two NaNs, which {@code almost_equal} calls equal before it looks at
-     * either of them whenever it is allowed a step at all.
-     */
     private static boolean bothAreNotANumber(DecimalValue first, DecimalValue second) {
         return Double.isNaN(first.quantity()) && Double.isNaN(second.quantity());
     }
 
     /**
-     * Whether two values are one thing rather than two equal things.
-     *
-     * <p>Everything that holds its contents somewhere answers by where, not by
-     * what: {@code VAL_SERIES(a) == VAL_SERIES(b)} is the whole of mode three
-     * for a series, and a map and a bitset are series underneath. Falling
-     * through to an equality that reads the contents made a map the same value
-     * as its own copy, which is precisely the question COPY's own tests ask.
+     * Whether two values are one thing rather than two equal things. Everything
+     * that holds its contents somewhere answers by where, not by what, so a map
+     * is never the same value as its own copy.
      */
     public static boolean isSameValue(Value left, Value right) {
         if (left.datatype() != right.datatype()) {
@@ -646,12 +466,9 @@ public final class Comparison {
     }
 
     /**
-     * Whether two values of one datatype stand in the asked-for order.
-     *
-     * <p>A datatype whose {@code CT_} function has no ordering branch refuses
-     * the question rather than answering it, which is the second way into
-     * {@code invalid-compare} and the only one that does not go through a
-     * failed coercion. Two objects reach it, and so do two logic values.
+     * Whether two values of one datatype stand in the asked-for order. A
+     * datatype with no ordering of its own -- an object, a logic value, a map
+     * -- raises {@code invalid-compare} rather than answering false.
      */
     public static boolean ordersAs(Value left, Value right, IntPredicate wanted) {
         if (REFUSE_TO_BE_ORDERED.contains(left.datatype())
@@ -661,16 +478,6 @@ public final class Comparison {
         return wanted.test(ordering(left, right));
     }
 
-    /**
-     * Where the left value sits relative to the right one.
-     *
-     * <p>A pair orders on its first half and breaks the tie on its second,
-     * which {@code Cmp_Pair} does in two lines and which makes {@code <} a
-     * total order over pairs after all: {@code 1x2 < 2x1} is true because the
-     * x halves decide it before the y halves are looked at. Comparing both
-     * halves and requiring both to agree gives false, and was what JEBOL did
-     * until the C was read.
-     */
     private static int ordering(Value left, Value right) {
         if (left instanceof HandleValue first && right instanceof HandleValue second) {
             return first.compareWith(second);
@@ -679,9 +486,10 @@ public final class Comparison {
             return orderingOfVectors(first, second);
         }
         if (left instanceof PairValue leftPair && right instanceof PairValue rightPair) {
-            int acrossTheX = signOfTheDifference(leftPair.x(), rightPair.x());
-            return acrossTheX != 0
-                    ? acrossTheX
+            int theXHalvesDecideItFirst =
+                    signOfTheDifference(leftPair.x(), rightPair.x());
+            return theXHalvesDecideItFirst != 0
+                    ? theXHalvesDecideItFirst
                     : signOfTheDifference(leftPair.y(), rightPair.y());
         }
         if (left instanceof BlockValue leftBlock && right instanceof BlockValue rightBlock) {
@@ -704,20 +512,6 @@ public final class Comparison {
         return compareForSorting(left, right, false);
     }
 
-    /**
-     * Two blocks, ordered by the first item that tells them apart and then by
-     * which of them runs out first.
-     *
-     * <p>{@code Cmp_Block} walks the pairs with {@code Cmp_Value} and returns
-     * the first difference, so a block is ordered by its items and not by its
-     * text. Molding both and comparing the strings looks like the same thing
-     * and is not: a decimal molds to fifteen significant figures, so
-     * {@code [1.0]} and {@code [1.0000000000000024]} come out as the same
-     * text and neither one is above the other.
-     *
-     * <p>The block that runs out first is the lesser one, which is the C's
-     * last line reading a type off the end of the shorter series.
-     */
     private static int orderingOfBlocks(BlockValue left, BlockValue right) {
         List<Value> ours = left.remaining();
         List<Value> theirs = right.remaining();
@@ -725,22 +519,23 @@ public final class Comparison {
             if (at == theirs.size()) {
                 return 1;
             }
-            int difference = orderingInsideASeries(ours.get(at), theirs.get(at));
-            if (difference != 0) {
-                return difference;
+            int theFirstItemThatTellsThemApart =
+                    orderingInsideASeries(ours.get(at), theirs.get(at));
+            if (theFirstItemThatTellsThemApart != 0) {
+                return theFirstItemThatTellsThemApart;
             }
         }
+        return theShorterBlockIsTheLesserOne(ours, theirs);
+    }
+
+    private static int theShorterBlockIsTheLesserOne(
+            List<Value> ours, List<Value> theirs) {
         return ours.size() == theirs.size() ? 0 : -1;
     }
 
-    /**
-     * One item against another as {@code Cmp_Value} orders them, which is the
-     * ordinary ordering with the ten-step allowance in front of it: two
-     * numbers either of which is a decimal are in no order at all while they
-     * sit within ten steps of each other, so {@code [1] >= [1.0]} holds.
-     */
     private static int orderingInsideASeries(Value left, Value right) {
-        if (!ANY_NUMBER.contains(left.datatype()) || !ANY_NUMBER.contains(right.datatype())) {
+        if (!ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(left.datatype())
+                || !ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(right.datatype())) {
             return compareForSorting(left, right, false);
         }
         if (left instanceof DecimalValue || right instanceof DecimalValue) {
@@ -753,14 +548,6 @@ public final class Comparison {
         return ordering(left, right);
     }
 
-    /**
-     * Two vectors, compared element by element and then by what is left over.
-     *
-     * <p>{@code Compare_Vector} refuses a counting vector against a measuring
-     * one outright, and that refusal is the answer rather than a false: there
-     * is no reading of {@code #(i64! [1]) = #(f64! [1.0])} that is not a
-     * guess, so the C makes the caller choose.
-     */
     private static int orderingOfVectors(VectorValue left, VectorValue right) {
         if (left.kind().measures() != right.kind().measures()) {
             throw Raised.of(EvaluationFailure.NOT_SAME_TYPE,
@@ -769,20 +556,6 @@ public final class Comparison {
         return left.compareWith(right);
     }
 
-    /**
-     * Which way one half sits against another, as {@code Cmp_Pair} works it
-     * out: subtract, then take the sign.
-     *
-     * <p>Not {@code Double.compare}, and the difference is not academic.
-     * Subtracting makes a negative zero equal to a zero, so
-     * {@code -32767x-32767 % -32767} equals {@code 0x0} although it molds as
-     * {@code -0x-0}. {@code Double.compare} puts -0.0 below 0.0 and answers
-     * that they are two different pairs.
-     *
-     * <p>It also makes two infinite halves equal, because the difference is a
-     * NaN and a NaN is neither above nor below zero. That is what lets
-     * {@code p = p} hold for a pair built out of 1e300.
-     */
     private static int signOfTheDifference(double half, double other) {
         double difference = half - other;
         return difference > 0.0 ? 1 : (difference < 0.0 ? -1 : 0);
@@ -790,16 +563,8 @@ public final class Comparison {
 
     /**
      * The default order for SORT: numbers by size, dates by the instant they
-     * name, everything else by its text.
-     *
-     * <p>Case is folded unless {@code /case} was asked for, so "a" and "A"
-     * land together rather than every capital coming first.
-     *
-     * <p>Dates need their own line because their written form does not sort
-     * into their order at all. As text, {@code 9-Jan-2000} comes after
-     * {@code 10-Jan-2000} and {@code 1-Jan-2000} comes before
-     * {@code 2-Feb-1999}, and both of those were the answer here until the
-     * instant was compared instead.
+     * name, everything else by its text, with case folded unless {@code /case}
+     * was asked for.
      */
     public static int compareForSorting(Value left, Value right, boolean mindingCase) {
         if (left instanceof DateValue first && right instanceof DateValue second) {
@@ -821,42 +586,16 @@ public final class Comparison {
                 : Molder.form(left).compareToIgnoreCase(Molder.form(right));
     }
 
-    /**
-     * Whether two decimals are the same number as far as {@code =} cares.
-     *
-     * <p>Counted in steps of the representation rather than as a fixed
-     * amount, so the allowance scales with the size of the numbers. A fixed
-     * tolerance is wrong in two directions at once: far too coarse near zero
-     * and far too fine out at a million.
-     *
-     * <p>Without this, `(0.1 + 0.2) = 0.3` is false and so is
-     * `0.5 = cosine 60`, and every test that computes a decimal and compares
-     * it with a written-out one fails for what looks like an arithmetic bug.
-     *
-     * <p>The bit patterns are shifted into one running order first, because
-     * the sign bit alone would put the negatives in reverse and leave a gulf
-     * between -0.0 and 0.0 that REBOL says is not there. Collapsing the two
-     * zeroes is why `equiv? 0.0 -0.0` is true at an allowance of nothing.
-     */
     private static boolean nearlyTheSameNumber(double first, double second, long stepsAllowed) {
         long steps = inRunningOrder(first) - inRunningOrder(second);
         return Math.abs(steps) <= stepsAllowed;
     }
 
-    /** A double's bits renumbered so that ordering them orders the numbers. */
     private static long inRunningOrder(double number) {
         long bits = Double.doubleToRawLongBits(number);
         return bits < 0 ? Long.MIN_VALUE - bits : bits;
     }
 
-    /**
-     * A code point, read from a character or from an integer standing for one.
-     *
-     * <p>The C has no conversion here at all: {@code VAL_CHAR} reads the
-     * low bits of whichever value it is handed, so an integer beside a
-     * character is simply read as a code point. Truncating the same way keeps
-     * a number outside Unicode's range from failing where the C would answer.
-     */
     private static int codepointOf(Value value) {
         return value instanceof CharacterValue character
                 ? character.codepoint()

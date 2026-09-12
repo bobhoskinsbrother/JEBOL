@@ -12,23 +12,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What a slash at the front of a path means to a script, and what the script
- * is told about where it is.
- *
- * <p>The port reports a path from the root it was given -- TO-REAL-FILE
- * answers {@code %/units/files/x} and WHAT-DIR answers {@code %/} -- and then
- * has to reach the same file when the script hands that path back. It did not:
- * a leading slash was resolved against the machine, so the round trip left the
- * root and was refused, and WHAT-DIR meanwhile gave out the machine path the
- * root was supposed to hide.
- *
- * <p>The boundary is unchanged by this. A path that climbs with dots is still
- * refused, whichever end it starts from, and the only caller that learns where
- * the root really sits is the one handing a path to a program CALL is about to
- * run -- which is outside the sandbox and would make nothing of a path that
- * only means something inside it.
- */
 class SandboxPathsFromTheSourceTest {
 
     private static Interpreter grantedFilesUnder(Path root) {
@@ -129,18 +112,6 @@ class SandboxPathsFromTheSourceTest {
     @DisplayName("the boundary, which none of this moves")
     class TheBoundary {
 
-        /**
-         * The dots are worked out and a {@code ..} with nothing above it is
-         * dropped, so a climbing path names something inside the root rather
-         * than being refused: {@code %/../../../etc/passwd} is
-         * {@code /etc/passwd} within it, which is the same thing
-         * {@code %/etc/passwd} names and finds nothing for the same reason.
-         *
-         * <p>That is confinement, not a weakening of it -- there is no outside
-         * to reach. And it is what a real filesystem does at its own top:
-         * {@code change-dir %../} at {@code /} answers {@code %/} and moves
-         * nothing, which Rebol's own port test relies on.
-         */
         @Test
         @DisplayName("dots after a slash clamp at the root and reach nothing")
         void dotsAfterASlash(@TempDir Path root) {
@@ -157,11 +128,6 @@ class SandboxPathsFromTheSourceTest {
                     .contains("cannot-open");
         }
 
-        /**
-         * And what they clamp to is inside, which is the part that has to be
-         * checked rather than assumed: a file written through a climbing path
-         * lands under the root and is readable back through the plain one.
-         */
         @Test
         @DisplayName("and a climbing path writes inside the root, not above it")
         void aClimbingPathWritesInsideTheRoot(@TempDir Path root) throws Exception {

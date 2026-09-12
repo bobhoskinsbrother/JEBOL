@@ -91,18 +91,6 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
         return other instanceof BlockValue block && block.storage == storage;
     }
 
-    /**
-     * REBOL's {@code ==}: same datatype and the same remaining items, compared
-     * in turn. Contents rather than storage, so two separately built blocks
-     * holding equal items are equal; {@link #sharesStorageWith} is the
-     * identity question, REBOL's {@code same?}.
-     *
-     * <p>A block that has been made to contain itself would recurse forever
-     * here. That cannot happen yet, because only mutation can build a cycle
-     * and the natives that mutate arrive in a later milestone. Recorded as an
-     * open question in {@code spec/values.allium} rather than guarded against
-     * speculatively.
-     */
     @Override
     public boolean equals(Object other) {
         return other instanceof BlockValue block

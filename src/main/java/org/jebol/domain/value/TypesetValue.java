@@ -35,11 +35,6 @@ public record TypesetValue(Optional<Typeset> named, Set<Datatype> members) imple
         return members.contains(datatype);
     }
 
-    /**
-     * Two sets are equal when they hold the same datatypes, named or not:
-     * {@code (to typeset! [integer!]) = integer-only-set} must not depend
-     * on how either side was built.
-     */
     @Override
     public boolean equals(Object other) {
         return other instanceof TypesetValue set && members.equals(set.members);
@@ -55,15 +50,6 @@ public record TypesetValue(Optional<Typeset> named, Set<Datatype> members) imple
         return Datatype.TYPESET;
     }
 
-    /**
-     * The members, never the name.
-     *
-     * <p>{@code Mold_Typeset} walks the bits and writes what it finds, and it
-     * has no way to know a set was asked for by name -- a typeset is its
-     * members and nothing else. So {@code mold number!} is
-     * {@code make typeset! [integer! decimal! percent!]} and not the word that
-     * fetched it, which is what answering the name gave.
-     */
     @Override
     public String toString() {
         return "make typeset! [" + spelledOut() + "]";

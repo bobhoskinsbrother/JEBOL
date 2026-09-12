@@ -31,7 +31,7 @@ public final class Brotli {
     }
 
     public static byte[] decompressed(byte[] octets, int wanted) {
-        return BrotliDecoder.decoded(octets,
+        return BrotliDecoder.decodedStoppingOnceTheAnswerPassesTheLimit(octets,
                 wanted > 0 ? wanted : BrotliDecoder.NO_LIMIT);
     }
 }

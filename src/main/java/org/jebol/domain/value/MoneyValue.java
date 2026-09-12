@@ -77,10 +77,8 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency) implement
      */
     public static final int BINARY_WIDTH = 12;
 
-    /** The largest significand eighty-seven bits will hold: ten to the 26th. */
     private static final BigInteger SIGNIFICAND_LIMIT = BigInteger.TEN.pow(26);
 
-    /** The power of ten fits in a signed byte, so it runs from -128 to 127. */
     private static final int SMALLEST_EXPONENT = -128;
     private static final int LARGEST_EXPONENT = 127;
 
@@ -173,16 +171,6 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency) implement
         return twelve;
     }
 
-    /**
-     * {@code $1.50} equals {@code $1.5}, under the loose and the strict
-     * operator alike.
-     *
-     * <p>Confirmed against a real R3, which answers true to both while still
-     * molding {@code $1.50} with its trailing zero. The scale is kept for
-     * printing and ignored for comparing, so {@code BigDecimal.compareTo} is
-     * what both operators mean and {@code BigDecimal.equals} is what neither
-     * means.
-     */
     @Override
     public boolean equals(Object other) {
         return other instanceof MoneyValue money

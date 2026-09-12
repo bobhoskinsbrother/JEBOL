@@ -6,11 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * BODY-OF and MAKE on a function, read from {@code func-test.r3}: BODY-OF
- * answers a copy so a change to it does not reach the function (issue-166),
- * and MAKE from a native prototype refuses a body block (issue-1052).
- */
 class BodyOfAndMakeFunctionFromTheSourceTest {
 
     private static String answerTo(String source) {

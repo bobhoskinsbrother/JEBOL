@@ -9,28 +9,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * An error's fields can be written, because an error is an object.
- *
- * <p>{@code boot/types.reb} gives error! the object path handler, and
- * {@code PD_Object} answers {@code PE_SET} for any field the frame holds. So
- * {@code e/id: 'boom} is an ordinary field write and not a special case
- * anybody had to allow.
- *
- * <p>It was refused here because JEBOL derived the eight fields rather than
- * holding them: {@code code} came from the catalogue, {@code type} from the
- * category and {@code id} from a string. A derived field has nowhere to write
- * to, so the whole of the difference is that an error now carries what was
- * written over the top.
- *
- * <p>Why anybody would: rethrowing with a different id, and testing a handler
- * by building the error it is meant to see rather than provoking one. Rebol's
- * own {@code cause-error} is the second of those written down.
- *
- * <p>Every expectation was checked against a real 3.22.1.
- *
- * <p>Specified in {@code spec/values.allium}.
- */
 class ErrorFieldsFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -120,9 +98,6 @@ class ErrorFieldsFromTheSourceTest {
         @Test
         @DisplayName("so two words holding one error see one change")
         void twoWordsSeeOneChange() {
-            // The reason this is a modelling change rather than a line. An
-            // error is an object, and an object in REBOL is shared: writing
-            // through one name is visible through the other.
             assertThat(answerTo(A_CAUGHT_ERROR + """
                     f: e
                     e/id: 'boom

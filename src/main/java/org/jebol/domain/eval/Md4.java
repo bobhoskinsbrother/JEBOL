@@ -1,18 +1,5 @@
 package org.jebol.domain.eval;
 
-/**
- * MD4, written out because the JVM has not got it.
- *
- * <p>{@code system/catalog/checksums} lists it, and {@code java.security}
- * dropped it long ago -- it is thoroughly broken as a cryptographic hash and
- * has been since the nineties. It is still here because file formats and
- * protocols written when it was new still carry MD4 sums in them, and reading
- * one of those means computing one.
- *
- * <p>MD5's older and simpler relation: the same little-endian layout and the
- * same padding, three rounds instead of four, and no per-step constant table.
- * Each round has one constant of its own and one way of mixing three words.
- */
 final class Md4 {
 
     private Md4() {
@@ -22,32 +9,22 @@ final class Md4 {
         0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476,
     };
 
-    /** Which message word each step of each round takes. */
     private static final int[][] WORD_ORDER = {
         {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
         {0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15},
         {0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15},
     };
 
-    /** How far each step rotates, four values repeating through the round. */
-    private static final int[][] ROTATIONS = {
+    private static final int[][] ROTATIONS_REPEATING_FOUR_TO_A_ROUND = {
         {3, 7, 11, 19},
         {3, 5, 9, 13},
         {3, 9, 11, 15},
     };
 
-    /**
-     * One constant a round, where MD5 has one a step.
-     *
-     * <p>The first is nought, which is why the first round looks as though it
-     * has no constant at all. It is the sines table MD5 introduced that is
-     * missing here, and its absence is part of why MD4 fell.
-     */
     private static final int[] ROUND_CONSTANTS = {
         0x00000000, 0x5A827999, 0x6ED9EBA1,
     };
 
-    /** The digest of some bytes, sixteen of them. */
     static byte[] of(byte[] message) {
         int[] words = STARTING_WORDS.clone();
         byte[] padded = padded(message);
@@ -89,9 +66,11 @@ final class Md4 {
         for (int round = 0; round < 3; round++) {
             for (int step = 0; step < 16; step++) {
                 int turned = Integer.rotateLeft(first
-                        + mixed(round, second, third, fourth)
+                        + mixedByChoiceThenMajorityThenExclusiveOr(
+                                round, second, third, fourth)
                         + block[WORD_ORDER[round][step]]
-                        + ROUND_CONSTANTS[round], ROTATIONS[round][step % 4]);
+                        + ROUND_CONSTANTS[round],
+                        ROTATIONS_REPEATING_FOUR_TO_A_ROUND[round][step % 4]);
                 first = fourth;
                 fourth = third;
                 third = second;
@@ -104,15 +83,8 @@ final class Md4 {
         words[3] += fourth;
     }
 
-    /**
-     * The round's own way of mixing three words: choose, majority, then
-     * exclusive-or.
-     *
-     * <p>MD5 uses four; MD4 has three and reuses none of them. The middle one
-     * is the majority function, which is the only one of the three that is not
-     * a selection.
-     */
-    private static int mixed(int round, int second, int third, int fourth) {
+    private static int mixedByChoiceThenMajorityThenExclusiveOr(
+            int round, int second, int third, int fourth) {
         return switch (round) {
             case 0 -> second & third | ~second & fourth;
             case 1 -> second & third | second & fourth | third & fourth;

@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Three things a real Rebol refuses and JEBOL quietly did.
- *
- * <p>Each answers rather than raising, which is the shape worth naming: a
- * caller cannot tell a refusal it never got from a result, so the script
- * carries on with a value nobody meant it to have.
- *
- * <p>None is reachable from Rebol's own suite. They were found by asking two
- * running interpreters the same questions, and every expectation here was read
- * off `./r3-head` before it was written down.
- */
 class RefusalsTheSuiteNeverAsksForFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -43,13 +32,6 @@ class RefusalsTheSuiteNeverAsksForFromTheSourceTest {
         assertThat(errorIdFrom("make block! 10")).isEqualTo("no-error");
     }
 
-    /**
-     * Only the whole-number form raises, which is worth pinning because it
-     * looks like an inconsistency and is not: an integer scale of nothing is a
-     * division, and a decimal one is a scale so small the answer rounds to the
-     * nearest whole. `round/to 1.5 0` is 1 in a real 3.22.5 and `round/to 1
-     * 0.0` is 1.0.
-     */
     @Test
     @DisplayName("ROUND/TO nothing divides by nothing and says so")
     void roundingToNothingDividesByZero() {

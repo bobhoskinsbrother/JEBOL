@@ -6,26 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * STATS counts the bytes the series buffers hold, and RECYCLE gives them back.
- *
- * <p>Rebol's STATS answers {@code PG_Mem_Usage}, the total its allocator has
- * handed out for series. JEBOL answered the JVM's heap, which is a different
- * quantity: it counts everything the interpreter and the runtime are holding
- * and it moves when a collection runs whether or not the script released
- * anything.
- *
- * <p>Rebol's own test is the one that catches it. It makes a five million
- * character string, asks whether the number rose by at least that much, drops
- * the string, recycles, and asks whether the number came back. Against a heap
- * reading the first question passed by luck and the second did not pass at all.
- *
- * <p>The number here is not Rebol's number and cannot be. A Rebol block holds
- * its values inline where a Java one holds references to values counted where
- * they live, so the two count a tree of series differently. What matches is
- * the behaviour the test asks about: a large buffer arriving is visible, and
- * letting go of it gives the bytes back.
- */
 class SeriesMemoryFromTheSourceTest {
 
     private static final int A_LARGE_STRING = 5_000_000;
@@ -38,27 +18,6 @@ class SeriesMemoryFromTheSourceTest {
         return interpreter.display(interpreter.run(source)).equals("#(true)");
     }
 
-    /**
-     * A starting reading taken once the count has stopped moving on its own.
-     *
-     * <p>{@code SeriesMemory} keeps one process-wide total, and a reservation
-     * is subtracted from it when the collector enqueues it rather than when the
-     * script drops it. RECYCLE waits for one collection to finish, which is
-     * enough for what this test just allocated and not enough for whatever the
-     * test classes sharing this JVM left behind: those keep arriving in the
-     * reference queue afterwards, and every later STATS read drains a few more
-     * and lowers the total.
-     *
-     * <p>So a reading taken straight after one RECYCLE can be too high, and the
-     * rise this test measures then comes out short through no fault of the
-     * interpreter. It failed that way once at 1,765,560 of an expected
-     * 2,000,000 under a full parallel gate, and passed alone every time.
-     *
-     * <p>Recycling until two consecutive readings agree waits for the thing
-     * that actually has to be true. It is a named wait rather than a sleep, and
-     * bounded, so a JVM that never settles fails the assertion rather than the
-     * suite hanging.
-     */
     private static long settledStats(Interpreter interpreter) {
         long reading = answerToNumber(interpreter, "recycle stats");
         for (int attempt = 0; attempt < ATTEMPTS_TO_LET_THE_COUNT_SETTLE; attempt++) {

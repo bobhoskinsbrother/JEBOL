@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * SPLIT-PATH, TO-LOCAL-FILE and TO-REBOL-FILE, ported off the backlog.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>A REBOL path uses a slash between the parts on every machine. A local
- * path uses whatever the machine uses.
- */
 class PathConversionTest {
 
     private static String answerTo(String source) {
@@ -88,17 +79,6 @@ class PathConversionTest {
         assertThat(answerTo("(split-path %dir/) = [%./ %dir/]")).isEqualTo("#(true)");
     }
 
-    /**
-     * {@code To_REBOL_Path} in {@code s-file.c} tests both characters by name
-     * -- {@code if (c == '\\' || c == '/')} -- and neither test is guarded on
-     * the platform. So a Windows path converts on a machine that has never
-     * seen Windows, which is the point of having the function at all: the
-     * path came from somewhere else.
-     *
-     * <p>JEBOL replaced whatever separator this machine uses, which on macOS
-     * is a slash, so a backslash survived into the file name and came out
-     * percent-escaped as {@code %5C}.
-     */
     @Test
     @DisplayName("a backslash is a separator whatever machine is reading it")
     void abackslashIsASeparatorEverywhere() {
@@ -108,12 +88,6 @@ class PathConversionTest {
         assertThat(answerTo("(to-rebol-file %a\\b) = %a/b")).isEqualTo("#(true)");
     }
 
-    /**
-     * {@code if (slash > 0) continue;} -- a second separator in a row is
-     * dropped. The two leading backslashes of a Windows share name come out
-     * as the one leading slash that means "from the root", which is Rebol's
-     * own test for issue 1115.
-     */
     @Test
     @DisplayName("and a run of separators is one separator")
     void arunOfSeparatorsCollapses() {

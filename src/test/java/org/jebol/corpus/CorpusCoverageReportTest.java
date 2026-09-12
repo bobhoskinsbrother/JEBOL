@@ -10,16 +10,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * How much of the corpus the interpreter actually gets right, including the
- * entries needing capabilities that do not exist yet.
- *
- * <p>Reports rather than asserts, apart from a floor that stops it going
- * backwards. The point is to see the gap. An entry failing for a known reason
- * is still failing, and calling it "skipped" would make the number flattering
- * rather than useful -- which is exactly how a corpus with no loops in it came
- * to read as sixty out of sixty.
- */
+
 class CorpusCoverageReportTest {
 
     @Test

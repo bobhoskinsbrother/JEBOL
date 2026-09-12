@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * KEEP with no COLLECT, and COLLECT INTO something that cannot hold it.
- *
- * <p>Specified in {@code spec/parse.allium} and measured against a real R3
- * 3.22.1, which raises parse-no-collect and parse-into-type. JEBOL had
- * neither failure.
- *
- * <p>Both were silent before. A KEEP outside a COLLECT dropped what it
- * kept and carried on matching, and a COLLECT INTO the wrong kind of thing
- * delivered nowhere, so in each case the rule looked like it worked and
- * the values simply went missing.
- */
 class CollectGuardsTest {
 
     private static String answerTo(String source) {
@@ -26,7 +14,6 @@ class CollectGuardsTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

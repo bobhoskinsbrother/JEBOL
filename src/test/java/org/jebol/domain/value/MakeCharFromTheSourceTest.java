@@ -10,23 +10,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The six things {@code make char!} takes, from {@code t-char.c}.
- *
- * <p>The C's {@code A_MAKE} arm switches on six datatypes and JEBOL answered
- * only three of them, so {@code make char! #"a"} was a bad make argument and
- * so were both {@code make char! #{3132}} and {@code make char! #61}.
- * make-test.r3 asserts the binary form four times.
- *
- * <p>The boundary worth naming is that the C writes {@code *bp > 0x80} rather
- * than {@code >= 0x80}. A binary opening with the byte 128 is therefore code
- * point 128 taken literally, while a binary opening with 129 is refused for
- * being a continuation byte with no lead in front of it.
- *
- * <p>Everything is asserted as a code point rather than as a molded character
- * so that no expectation here needs a quote in it. Every one was run against a
- * Rebol built by {@code scripts/build-r3.sh} before it was written down.
- */
 class MakeCharFromTheSourceTest {
 
     private static String answerTo(String source) {

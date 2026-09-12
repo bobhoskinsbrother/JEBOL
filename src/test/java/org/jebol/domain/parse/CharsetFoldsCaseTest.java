@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A bitset folds case like everything else in a parse.
- *
- * <p>Specified in {@code spec/parse.allium}, confirmed against a real R3.
- *
- * <p>Asking the set only about the character as written makes a charset
- * the one rule in the dialect that always minds case -- not something a
- * rule author would expect, and not something /CASE could switch off,
- * because it was already on.
- */
 class CharsetFoldsCaseTest {
 
     private static String answerTo(String source) {

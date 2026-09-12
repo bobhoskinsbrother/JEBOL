@@ -59,13 +59,6 @@ public final class VectorPath {
         }
     }
 
-    /**
-     * Where in the whole storage a selector points, counting from one.
-     *
-     * <p>Null when the selector is not a number at all. Zero and negative
-     * answers are left for the caller, because reading and writing differ on
-     * what they mean.
-     */
     private static Integer positionChosenBy(VectorValue vector, Value selector) {
         long asked;
         if (selector instanceof IntegerValue number) {

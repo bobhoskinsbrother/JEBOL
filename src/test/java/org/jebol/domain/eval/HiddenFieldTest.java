@@ -6,21 +6,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * PROTECT/HIDE conceals a field rather than locking it.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>The object stops listing it, molding it and answering for it, and a
- * path to it fails as though there were no such field. Code written inside
- * the object still reaches it, which is the whole point: it is how an
- * object keeps something to itself. JEBOL treated /HIDE as ordinary
- * protection, so the field stayed visible and merely refused assignment.
- */
 class HiddenFieldTest {
 
-    /** An object with one field hidden and a function that still uses it. */
     private static final String CONCEALED =
             "o: object [f: 1 g: 2 test: does [f]] protect/hide in o 'f ";
 
@@ -30,7 +17,6 @@ class HiddenFieldTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String setup, String attempt) {
         return answerTo(setup + "e: try [" + attempt + "] "
                 + "either error? e [e/id] ['no-error]");

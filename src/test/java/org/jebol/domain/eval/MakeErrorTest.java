@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * MAKE ERROR!, which builds the error its spec asks for.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Two shapes. A block names a type and an id from the catalogue; a
- * string raises something of the script's own, which needs no catalogue
- * entry at all.
- */
 class MakeErrorTest {
 
     private static String answerTo(String source) {

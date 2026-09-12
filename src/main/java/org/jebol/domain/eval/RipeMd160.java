@@ -1,35 +1,14 @@
 package org.jebol.domain.eval;
 
-/**
- * RIPEMD-160, written out because the JVM has not got it.
- *
- * <p>{@code system/catalog/checksums} lists it, so a script may ask for it and
- * a port may be opened on it, and {@code java.security} offers MD5, the SHA
- * family and nothing else. The shipped jar takes no dependencies, so the
- * alternative to writing it is not offering it.
- *
- * <p>The algorithm is Dobbertin, Bosselaers and Preneel's, and it is two
- * chains of eighty steps run over the same message block and added together at
- * the end. That doubling is the whole design: each chain is weak on its own
- * and they use different constants, a different order of message words and a
- * different order of rotations, so a weakness in one does not line up with the
- * other.
- *
- * <p>Little-endian throughout, unlike SHA. The length is appended as a
- * little-endian count of bits, and each word of the digest comes out low byte
- * first.
- */
 final class RipeMd160 {
 
     private RipeMd160() {
     }
 
-    /** The five words the chains start from, and end up added to. */
     private static final int[] STARTING_WORDS = {
         0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0,
     };
 
-    /** Which message word each of the eighty steps of the left chain takes. */
     private static final int[] LEFT_WORD_ORDER = {
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
         7, 4, 13, 1, 10, 6, 15, 3, 12, 0, 9, 5, 2, 14, 11, 8,
@@ -62,7 +41,6 @@ final class RipeMd160 {
         8, 5, 12, 9, 12, 5, 14, 6, 8, 13, 6, 5, 15, 13, 11, 11,
     };
 
-    /** One constant for each round of sixteen steps, added to every step. */
     private static final int[] LEFT_CONSTANTS = {
         0x00000000, 0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xA953FD4E,
     };
@@ -71,13 +49,6 @@ final class RipeMd160 {
         0x50A28BE6, 0x5C4DD124, 0x6D703EF3, 0x7A6D76E9, 0x00000000,
     };
 
-    /**
-     * The digest of some bytes, twenty of them.
-     *
-     * <p>The message is padded the way MD5 and SHA-1 pad theirs: a set bit,
-     * then noughts up to eight short of a block, then the length in bits. The
-     * length is little-endian here where SHA's is big.
-     */
     static byte[] of(byte[] message) {
         int[] words = STARTING_WORDS.clone();
         byte[] padded = padded(message);
@@ -86,7 +57,7 @@ final class RipeMd160 {
             for (int word = 0; word < 16; word++) {
                 block[word] = littleEndianWordAt(padded, at + word * 4);
             }
-            compress(words, block);
+            compressBothChainsAndFoldRotatedByOne(words, block);
         }
         return digestOf(words);
     }
@@ -111,15 +82,8 @@ final class RipeMd160 {
                 | (bytes[at + 3] & 0xFF) << 24;
     }
 
-    /**
-     * Runs both chains over one block and folds them into the running words.
-     *
-     * <p>The fold at the end is the part that is easy to get wrong and easy to
-     * miss, because a wrong one still produces a plausible-looking digest: the
-     * five words are rotated by one as they are added, so word two takes the
-     * left chain's third and the right chain's fourth rather than its own.
-     */
-    private static void compress(int[] words, int[] block) {
+    private static void compressBothChainsAndFoldRotatedByOne(
+            int[] words, int[] block) {
         int leftA = words[0];
         int leftB = words[1];
         int leftC = words[2];
@@ -159,13 +123,6 @@ final class RipeMd160 {
         words[0] = carried;
     }
 
-    /**
-     * The round's own way of mixing three words, of which there are five.
-     *
-     * <p>The right chain runs them in the opposite order, which is why it is
-     * asked for {@code 4 - round}. Using the same order in both would make the
-     * two chains far more alike than the design intends.
-     */
     private static int mixed(int round, int first, int second, int third) {
         return switch (round) {
             case 0 -> first ^ second ^ third;

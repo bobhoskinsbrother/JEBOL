@@ -7,23 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CONSTRUCT, read out of {@code Do_Construct} in {@code src/core/c-do.c}
- * and {@code Scan_Net_Header} in {@code l-types.c}.
- *
- * <p>CONSTRUCT builds an object without evaluating anything, which is what
- * makes it safe for a script header that arrived from somewhere else. A
- * word standing where a value goes is not looked up, so nothing in the
- * block can run.
- *
- * <p>Seven words are the exception. NONE, TRUE, ON, YES, FALSE, OFF and NO
- * become the values they name, because a header full of {@code yes} and
- * {@code no} would otherwise be a header full of words. Every other word
- * stays a word, and {@code /only} takes even those seven literally.
- *
- * <p>Given a string or a binary it does something else entirely: it reads
- * an internet-style header, one field per line, and every value is text.
- */
 class ConstructFromTheSourceTest {
 
     private static String answerTo(String source) {

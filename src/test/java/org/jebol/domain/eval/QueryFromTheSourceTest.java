@@ -14,29 +14,11 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * QUERY, read out of {@code Ret_Query_File} and {@code Set_File_Mode_Value} in
- * {@code src/core/p-file.c}.
- *
- * <p>Written from the C and not from the Java beside it. QUERY is the function
- * the rest of the file library is built on: {@code size?} and
- * {@code modified?} are one line each over it, and {@code list-dir} and
- * {@code dir-tree} both ask it for three fields at once. Getting it wrong
- * would be wrong in five places.
- *
- * <p>The shape of the second argument decides the shape of the answer, and
- * the block form is the one nobody guesses. A plain word in the block puts
- * itself in the answer as a set-word before its value; a get-word contributes
- * the value alone. So {@code query %a [type size]} and
- * {@code query %a [:type :size]} are two different answers to the same
- * question, and Rebol's own {@code list-dir} depends on the second.
- */
 class QueryFromTheSourceTest {
 
     @TempDir
     private Path directory;
 
-    /** An interpreter granted the filesystem, rooted at the test's directory. */
     private Interpreter reachingTheFilesystem() {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().granting(HostService.FILES)
@@ -166,19 +148,6 @@ class QueryFromTheSourceTest {
                     + "all [file? info/1 5 = info/2 date? info/3]")).isEqualTo(TRUE);
         }
 
-        /**
-         * The shape nobody guesses, and the reason the question has to be read
-         * the other way round. {@code query %a 'size} asks how big it is;
-         * {@code query %a none} asks what may be asked about it, and answers
-         * the names rather than the facts.
-         *
-         * <p>{@code Ret_File_Modes} is two lines and reads the names off the
-         * scheme's own info object: {@code Set_Block(ret, Get_Object_Words(
-         * In_Object(port, STD_PORT_SCHEME, STD_SCHEME_INFO, 0)))}. Rebol's own
-         * suite asserts it three times by comparing against
-         * {@code words-of system/standard/file-info}, once for a directory,
-         * once for a file and once for an open file port.
-         */
         @Test
         @DisplayName("none asks what may be asked, and answers the names")
         void noneAnswersTheNamesThatMayBeAsked() throws Exception {
@@ -191,7 +160,6 @@ class QueryFromTheSourceTest {
                     .isEqualTo(TRUE);
         }
 
-        /** For a directory and for an open port as much as for a file. */
         @Test
         @DisplayName("and the same names whatever the target is")
         void theSameNamesWhateverTheTargetIs() throws Exception {
@@ -206,12 +174,6 @@ class QueryFromTheSourceTest {
                     answer""")).isEqualTo(TRUE);
         }
 
-        /**
-         * The object is still reachable, and {@code object!} is what asks for
-         * it. The C's else arm clones the scheme's info object and fills it in,
-         * which is the branch anything that is not a word, a block or none
-         * falls into.
-         */
         @Test
         @DisplayName("and the object is what the object type asks for")
         void theObjectTypeAsksForTheObject() throws Exception {
@@ -244,12 +206,6 @@ class QueryFromTheSourceTest {
             assertThat(errorIdOf("query %nowhere.txt 'size")).isEqualTo(NO_ERROR);
         }
 
-        /**
-         * Except for the none form, which never looks at the target: the names
-         * a port reports are a fact about the port rather than about the file,
-         * so the C returns them before the path is touched and a file that is
-         * not there answers the same list as one that is.
-         */
         @Test
         @DisplayName("but the names come back for a file that is not there")
         void theNamesComeBackForAFileThatIsNotThere() {
@@ -262,12 +218,6 @@ class QueryFromTheSourceTest {
             assertThat(errorIdOf("query %nowhere.txt none")).isEqualTo(NO_ERROR);
         }
 
-        /**
-         * A path with no name in it answers none rather than asking about the
-         * current directory, which is what an empty string would otherwise
-         * mean. One line of the C, before the query goes out:
-         * {@code if (VAL_LEN(path) == 0) return R_NONE;}.
-         */
         @Test
         @DisplayName("and a file name with nothing in it answers none")
         void anEmptyFileNameAnswersNone() {
@@ -277,17 +227,6 @@ class QueryFromTheSourceTest {
             assertThat(errorIdOf("query %\"\" 'type")).isEqualTo(NO_ERROR);
         }
 
-        /**
-         * A scheme whose actor has no arm for the verb refuses with
-         * no-port-action, naming the verb as a set-word because the C reads
-         * the action's own word out of its table:
-         * {@code Trap1(RE_NO_PORT_ACTION, Get_Action_Word(action))}.
-         *
-         * <p>Distinct from no-service, which says the host was not given the
-         * thing at all. This one says the scheme is here and does not do that,
-         * and a script telling them apart knows whether to ask for a grant or
-         * to stop asking.
-         */
         @Test
         @DisplayName("a scheme with no query arm is no-port-action, naming the verb")
         void aSchemeWithNoQueryArmIsNoPortAction() {

@@ -16,56 +16,31 @@ import java.util.List;
 /**
  * Executes a paint list on a Java2D surface.
  *
- * <p>It walks no gob tree, adds up no offsets and works out no clip. Every
- * one of those decisions was made once in {@link PaintList}, which is what
- * keeps this and a browser and a phone showing the same picture: they are not
- * three walks that happen to agree, they are three executions of one list.
- *
- * <p>Apart from the surface it knows nothing about windows, so it paints onto
- * a window, onto an image, or onto anything else Java2D can draw on. That is
- * what lets the painting be tested where no display exists -- a
- * {@link BufferedImage} works with {@code java.awt.headless=true}, and a test
- * can read the pixels back.
+ * <p>Apart from the surface it knows nothing about windows, so it paints onto a
+ * window, onto an image, or onto anything else Java2D can draw on.
  */
 public final class DesktopPainting {
 
     private static final int OPAQUE = Placement.OPAQUE;
     private static final Font TEXT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
 
-    /** How far in from a gob's corner a line of writing starts. */
     private static final int WRITING_INSET = 2;
 
     private DesktopPainting() {
     }
 
-    /** Paints a gob and everything under it, at the origin of the surface. */
     static void paint(Graphics2D onto, GobValue gob) {
         execute(onto, PaintList.of(gob));
     }
 
-    /**
-     * Paints one window's contents, leaving its title to the title bar.
-     *
-     * <p>A window gob's {@code text} is the words VIEW put there for the title
-     * bar, and painting them as content writes the window's own title across
-     * its top left corner in black. That was happening and nobody noticed,
-     * because no test gob had any text until a browser rendered a real VIEW.
-     */
-    static void paintTheContentsOf(
+    static void paintTheContentsOfLeavingItsTitleToTheTitleBar(
             Graphics2D onto, GobValue window,
             org.jebol.domain.value.ObjectValue drawDialect) {
 
         execute(onto, PaintList.ofAWindow(window, drawDialect));
     }
 
-    /**
-     * Paints a list that was flattened somewhere else.
-     *
-     * <p>Public because a paint list is the currency between renderers, and
-     * anything that has one and a {@code Graphics2D} can draw the same picture
-     * a window would: a report, a printer, an image on disk, or a test holding
-     * this against what a browser drew.
-     */
+    /** Paints a list that was flattened somewhere else. */
     public static void execute(Graphics2D onto, PaintList painting) {
         Graphics2D own = (Graphics2D) onto.create();
         try {
@@ -135,14 +110,6 @@ public final class DesktopPainting {
         onto.drawImage(asJavaImage(shown.pixels()), where.across(), where.down(), null);
     }
 
-    /**
-     * A path, filled then stroked, under whatever transform it carried.
-     *
-     * <p>Filled before stroked because a stroke straddles the outline: half of
-     * it lies inside the shape, so filling afterwards would paint over the
-     * inner half of every line and make every stroke look half as wide as it
-     * was asked to be.
-     */
     private static void draw(Graphics2D onto, PaintInstruction.Drawn drawing) {
         Path2D.Double path = pathFrom(drawing.path(), drawing.painted());
         onto.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
@@ -150,6 +117,12 @@ public final class DesktopPainting {
                         ? RenderingHints.VALUE_ANTIALIAS_ON
                         : RenderingHints.VALUE_ANTIALIAS_OFF);
         onto.transform(javaTransformOf(drawing.transform()));
+
+        fillBeforeStrokingSoTheStrokeKeepsItsFullWidth(onto, drawing, path);
+    }
+
+    private static void fillBeforeStrokingSoTheStrokeKeepsItsFullWidth(
+            Graphics2D onto, PaintInstruction.Drawn drawing, Path2D.Double path) {
 
         drawing.painted().fillColour().ifPresent(colour -> {
             onto.setColor(javaColourOf(colour));
@@ -178,7 +151,8 @@ public final class DesktopPainting {
     private static void obeyOnThePath(Path2D.Double path, PathStep step) {
         switch (step) {
             case PathStep.MoveTo to -> path.moveTo(to.across(), to.down());
-            case PathStep.LineTo to -> lineOrMoveTo(path, to);
+            case PathStep.LineTo to ->
+                    lineOrMoveToBecauseJava2dRefusesALineOnAnEmptyPath(path, to);
             case PathStep.QuadraticTo to -> path.quadTo(
                     to.controlAcross(), to.controlDown(), to.across(), to.down());
             case PathStep.CubicTo to -> path.curveTo(
@@ -199,14 +173,8 @@ public final class DesktopPainting {
         }
     }
 
-    /**
-     * A line with nothing before it starts the path instead of raising.
-     *
-     * <p>Java2D refuses a {@code lineTo} on an empty path, and a draw block
-     * that opens with one is a person's mistake rather than something worth
-     * ending the picture over.
-     */
-    private static void lineOrMoveTo(Path2D.Double path, PathStep.LineTo to) {
+    private static void lineOrMoveToBecauseJava2dRefusesALineOnAnEmptyPath(
+            Path2D.Double path, PathStep.LineTo to) {
         if (path.getCurrentPoint() == null) {
             path.moveTo(to.across(), to.down());
             return;
@@ -239,7 +207,6 @@ public final class DesktopPainting {
         return new Color(colour.red(), colour.green(), colour.blue());
     }
 
-    /** A REBOL image as one Java can draw, a pixel at a time. */
     static BufferedImage asJavaImage(ImageValue pixels) {
         PairValue size = pixels.size();
         int wide = Math.max(1, (int) Math.round(size.x()));

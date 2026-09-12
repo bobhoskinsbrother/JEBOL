@@ -17,27 +17,6 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The addresses in {@code system/modules} are the ones Rebol publishes.
- *
- * <p>JEBOL builds the system object in Java rather than loading
- * {@code sysobj.reb}, so every table in that file is re-expressed here -- the
- * event catalogue, the security policies, the checksum bitsets, the shape of a
- * port. The module addresses are one more of those, and they are the kind that
- * goes stale quietly: a version number in a release url changes upstream and
- * nothing here would ever notice.
- *
- * <p>So this reads the block out of Rebol's own source and holds what this
- * build offers to it: every name offered must be one Rebol publishes, and no
- * compiled extension may be offered at all, because nothing here can load a
- * shared library and an address for one only turns "no such module" into a
- * download that fails afterwards.
- *
- * <p>What it does not hold is the addresses themselves, which differ on
- * purpose. Rebol's send IMPORT to {@code src.rebol.tech}; these name the
- * BUNDLED scheme, so the module is read out of this build and cannot change
- * under a running system.
- */
 class TheModuleTableIsRebolsFromTheSourceTest {
 
     private static final Path SYSOBJ =
@@ -47,12 +26,6 @@ class TheModuleTableIsRebolsFromTheSourceTest {
         return Files.exists(SYSOBJ);
     }
 
-    /**
-     * Every {@code name: url} pair in the {@code modules:} block, in order.
-     *
-     * <p>The block ends at the first line that is a closing bracket on its
-     * own, which is how that file is written throughout.
-     */
     private static Map<String, String> whatRebolPublishes() {
         String source;
         try {
@@ -92,16 +65,6 @@ class TheModuleTableIsRebolsFromTheSourceTest {
                 .containsKey("brotli");
     }
 
-    /**
-     * Every name this build offers is one Rebol publishes, and every address is
-     * the BUNDLED scheme rather than an address on the wire.
-     *
-     * <p>The names have to be Rebol's because IMPORT is asked for them by name
-     * and a name nobody else uses reaches nothing. The addresses have to be
-     * local because an address on the wire is evaluated as it arrives, with no
-     * signature, no checksum and no pinned version between it and the
-     * evaluator.
-     */
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("and every name offered is Rebol's, read out of this build")
@@ -124,11 +87,6 @@ class TheModuleTableIsRebolsFromTheSourceTest {
                 .isEmpty();
     }
 
-    /**
-     * And what is offered is what is bundled. An address for a module the build
-     * has not got answers cannot-open when IMPORT reads it, which is a worse
-     * failure than never offering it.
-     */
     @Test
     @DisplayName("and every one of them is a module this build can read")
     void everyOneOfThemIsAModuleThisBuildCanRead() {
@@ -155,13 +113,6 @@ class TheModuleTableIsRebolsFromTheSourceTest {
         return List.of(held.substring(1, held.length() - 1).trim().split("\\s+"));
     }
 
-    /**
-     * No compiled extension is offered, and none can be. Each is a shared
-     * library -- {@code name-platform-arch.rebx} from a release page -- and
-     * nothing here can load one, so an address for one only turns "no such
-     * module" into a download that fails afterwards. Several name things JEBOL
-     * has anyway: BROTLI is the {@code br} compression method.
-     */
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("and no compiled extension is offered, because none can be loaded")

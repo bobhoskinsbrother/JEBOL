@@ -23,7 +23,6 @@ import java.util.Map;
  */
 public final class Layout {
 
-    /** The face kinds, and the HTML element each becomes. */
     private static final Map<String, String> KINDS = Map.ofEntries(
             Map.entry("text", "p"),
             Map.entry("label", "label"),
@@ -43,7 +42,6 @@ public final class Layout {
             Map.entry("check", "input"),
             Map.entry("toggle", "button"));
 
-    /** The colour words REBOL defines, as the demo sources use them. */
     private static final Map<String, int[]> COLOURS = Map.ofEntries(
             Map.entry("black", new int[] {0, 0, 0}),
             Map.entry("white", new int[] {255, 255, 255}),
@@ -85,13 +83,9 @@ public final class Layout {
     }
 
     /**
-     * The same, looking words up as it goes.
-     *
-     * <p>A layout is not evaluated -- evaluating it would call the face kinds
-     * as though they were functions -- but a word in it still means what it
-     * names, so {@code button caption} shows whatever caption holds. Words
-     * that name a face kind or a colour are the dialect's own and are not
-     * looked up.
+     * The same, looking words up as it goes: a layout is not evaluated, but a
+     * word in it still means what it names, except where it is the dialect's
+     * own.
      */
     public static List<Face> facesIn(
             BlockValue layout, java.util.function.Function<String, java.util.Optional<Value>> lookUp) {
@@ -108,12 +102,11 @@ public final class Layout {
             if (current == null) {
                 continue;
             }
-            decorate(current, resolved(item, lookUp));
+            decorateByDatatypeSoNothingHasToBeNamed(current, resolved(item, lookUp));
         }
         return List.copyOf(faces);
     }
 
-    /** A word that is not the dialect's own stands for whatever it names. */
     private static Value resolved(
             Value item,
             java.util.function.Function<String, java.util.Optional<Value>> lookUp) {
@@ -127,12 +120,7 @@ public final class Layout {
         return lookUp.apply(word.canonical()).orElse(item);
     }
 
-    /**
-     * Attaches one value to the face it followed. What a value means is
-     * decided by its datatype, which is what lets a layout be written without
-     * naming any of these properties.
-     */
-    private static void decorate(Face face, Value item) {
+    private static void decorateByDatatypeSoNothingHasToBeNamed(Face face, Value item) {
         switch (item) {
             case StringValue text -> face.setCaption(text.text());
             case PairValue size -> {

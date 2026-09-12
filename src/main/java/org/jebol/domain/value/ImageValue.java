@@ -87,7 +87,6 @@ public record ImageValue(ImageStorage storage, int index) implements SeriesValue
         return PairValue.of(storage.wide(), storage.high());
     }
 
-    /** REBOL's {@code ==}: the same shape and the same remaining pixels. */
     @Override
     public boolean equals(Object other) {
         if (!(other instanceof ImageValue image)) {

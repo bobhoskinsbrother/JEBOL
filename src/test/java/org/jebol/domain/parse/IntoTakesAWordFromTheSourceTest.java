@@ -7,23 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * INTO, read from {@code case SYM_INTO} in {@code u-parse.c}.
- *
- * <p>Four lines of C and three of them were missing here. It resolves the
- * rule after it with {@code Get_Parse_Value}, so a word naming a block is a
- * rule and a rule can therefore name itself and recurse. It steps into
- * {@code ANY_BINSTR(val) || ANY_BLOCK(val)}, so a string and a binary are as
- * good as a block. And a rule that is not a block once resolved is
- * {@code goto bad_rule}, an error rather than a failure to match.
- *
- * <p>Rebol's COMBINE is the thing that showed it. Its whole treatment of a
- * nested block is {@code block-rule: [ahead block! into rule]}, one line, and
- * without the word being resolved that line matched nothing: the delimiter
- * went between the top-level values and nowhere else, so
- * {@code combine/with [a [b c]] "--"} came out {@code "a--bc"} instead of
- * {@code "a--b--c"}.
- */
 class IntoTakesAWordFromTheSourceTest {
 
     private static String answerTo(String source) {

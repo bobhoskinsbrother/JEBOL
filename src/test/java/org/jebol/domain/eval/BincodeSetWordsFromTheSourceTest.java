@@ -6,33 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Naming a field in the binary dialect, in both directions.
- *
- * <p>{@code u-bincode.c}. A set-word means different things reading and
- * writing, and the C says so in two places. Reading, {@code case REB_SET_WORD}
- * pushes the word and continues, and the loop's tail then runs
- * {@code while (DSP > ssp) Set_Var(DS_TOP, temp)} after every code that
- * produced a value -- so the word is bound the moment the value exists, not
- * when the block runs out. Writing, the same case sets the word to
- * {@code VAL_INDEX(buffer_write) + 1} at once and produces nothing.
- *
- * <p>The timing is the whole point, and it is why Rebol's own ZIP codec can be
- * read at all. A ZIP file says how long its comment is and then gives the
- * comment, so {@code codec-zip.reb} reads
- * {@code [len: UI16LE com: BYTES :len]}: a length named on one code and spent
- * on the next. Binding the names only once the block had been read left that
- * second code with an unset word and refused every ZIP file in existence.
- *
- * <p>Three codes move the cursor without producing anything -- AT, SKIP and
- * PAD each {@code continue} past the assignment -- so a set-word in front of
- * one waits for the code after it. INDEX {@code break}s instead, so it does
- * produce a value and does answer a waiting set-word. Getting that pair the
- * same way round is what makes {@code [p: AT 3 UI8]} name the byte at three
- * rather than nothing.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written.
- */
 class BincodeSetWordsFromTheSourceTest {
 
     private static String answerTo(String source) {

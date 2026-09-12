@@ -7,28 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * MAP-GOB-OFFSET, from {@code REBNATIVE(map_gob_offset)} and
- * {@code Map_Gob_Inner} in {@code n-data.c}.
- *
- * <p>What a window system asks when a click arrives: given a point in the
- * outermost gob, which gob was actually clicked and where in that gob. So it
- * walks <em>down</em> the tree by default, and /REVERSE walks back up.
- *
- * <p>Both directions are the same two lines of arithmetic seen from either end.
- * Going down, each gob it enters has its offset subtracted from the point. Going
- * up, each gob it leaves has its offset added.
- *
- * <p>Two things about the descent are not obvious from the name. It searches each
- * pane <em>backwards</em> -- {@code gop = GOB_HEAD(gob) + len - 1} and then
- * {@code gop--} -- so the child added last wins where two overlap, which is what
- * "topmost" means on a screen. And the rectangle test is half-open:
- * {@code xo >= x + GOB_X} and {@code xo < x + GOB_X + GOB_W}, so a point on the
- * left edge is inside and a point on the right edge is not.
- *
- * <p>The answer is a two-item block: the gob it reached and the point in that
- * gob's own coordinates. {@code Return_Gob_Pair} builds it.
- */
 class MapGobOffsetFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -43,7 +21,6 @@ class MapGobOffsetFromTheSourceTest {
 
     private static final String TRUE = "#(true)";
 
-    /** A parent at nothing, holding one child at 10x10 that is 20 by 20. */
     private static final String ONE_CHILD =
             "p: make gob! [size: 100x100] "
             + "c: make gob! [offset: 10x10 size: 20x20] append p c ";

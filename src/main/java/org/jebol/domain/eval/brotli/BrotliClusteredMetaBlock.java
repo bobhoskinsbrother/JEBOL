@@ -1,29 +1,5 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * The meta-block the two top levels build, where the divisions are found by
- * pricing rather than grown greedily.
- *
- * <p>{@code BrotliBuildMetaBlock} in {@code metablock.c}. Four things happen
- * here that the greedy builder below it never does.
- *
- * <p>It chooses how distances are split between a code and its extra bits,
- * trying every combination of postfix bits and direct codes the format allows
- * and keeping whichever prices this meta-block's distances cheapest. The
- * commands are then re-coded under the winner.
- *
- * <p>It divides each alphabet by finding the cheapest assignment of symbols to
- * histograms rather than by deciding as it goes.
- *
- * <p>It gives every literal block type a full sixty four histograms, one per
- * context, and then merges them back down -- so two contexts that behave alike
- * end up sharing a code and two that do not keep their own, decided by the data
- * rather than by a fixed map.
- *
- * <p>And it does the same for distances, four contexts per block type, which is
- * the one place in the format where a distance code depends on what the command
- * looked like.
- */
 final class BrotliClusteredMetaBlock {
 
     private static final int LITERAL_SYMBOLS = 256;
@@ -35,7 +11,6 @@ final class BrotliClusteredMetaBlock {
     private BrotliClusteredMetaBlock() {
     }
 
-    /** What was built, and the distance parameters it was built under. */
     record Built(BrotliMetaBlockSplit split, BrotliDistances distances) {
     }
 
@@ -86,15 +61,6 @@ final class BrotliClusteredMetaBlock {
         return new Built(built, chosen);
     }
 
-    /**
-     * Tries every split of a distance between its code and its extra bits, and
-     * keeps whichever costs this meta-block's distances least.
-     *
-     * <p>The search is the C's and it is not exhaustive: it walks the direct
-     * code count upward until the cost stops improving, then halves where it
-     * restarts for the next postfix width. Which combinations get tried
-     * therefore depends on the order, and the order is kept.
-     */
     private static BrotliDistances cheapestDistanceParameters(
             BrotliCommand commands, BrotliDistances startingFrom) {
 
@@ -135,10 +101,6 @@ final class BrotliClusteredMetaBlock {
         return best;
     }
 
-    /**
-     * What the distances would cost under these parameters, or not-a-number if
-     * some distance cannot be written under them at all.
-     */
     private static double costOfDistancesUnder(BrotliCommand commands,
             BrotliDistances asWritten, BrotliDistances candidate,
             BrotliHistogram scratch) {
@@ -192,7 +154,6 @@ final class BrotliClusteredMetaBlock {
         }
     }
 
-    /** Walks a split, answering which type each successive symbol belongs to. */
     private static final class Walk {
 
         private final BrotliBlockSplit split;
@@ -256,10 +217,6 @@ final class BrotliClusteredMetaBlock {
         }
     }
 
-    /**
-     * Smooths every histogram toward runs, which is what the levels from four
-     * upward all do before their codes are built.
-     */
     static void smoothForRuns(BrotliMetaBlockSplit built, int distanceCodes) {
         for (int which = 0; which < built.howManyLiteralHistograms; which++) {
             BrotliCodes.smoothCountsIntoRuns(LITERAL_SYMBOLS,

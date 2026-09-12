@@ -9,33 +9,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Turning bytes into text and back: percent encoding, the numeric bases,
- * checksums and compression.
- *
- * <p>Read out of {@code n-strings.c}, {@code n-crypt.c} and
- * {@code u-compress.c}. Kept apart from {@link Natives} because none of it is
- * about REBOL: it is arithmetic over octets, and every one of these functions
- * would say the same thing in any language. The natives here are the thinnest
- * wrapper that reaches it.
- *
- * <p>Nothing in here touches a REBOL value. That is deliberate: a mistake in
- * base 64 is easier to find in a function that takes bytes and answers text
- * than in one that also has to work out which datatype it was handed.
- */
 final class Encodings {
 
     private Encodings() {
     }
 
-    /**
-     * A growable run of octets.
-     *
-     * <p>Written out rather than using {@code ByteArrayOutputStream} because
-     * the dependency rule keeps {@code java.io} out of the domain, and it is
-     * right to: a class whose name says "stream" is how reading and writing
-     * creep inward. Nothing here is a stream; it is a byte array that grows.
-     */
     private static final class Octets {
 
         private byte[] held = new byte[64];
@@ -65,53 +43,26 @@ final class Encodings {
         }
     }
 
-    /**
-     * The characters a URI may carry without escaping.
-     *
-     * <p>{@code system/catalog/bitsets/uri} holds the same set, and this is
-     * the same list the C builds: the unreserved characters of RFC 3986 plus
-     * the reserved ones a path is allowed to keep.
-     */
     private static final String URI_UNESCAPED =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
                     + "!#$&'()*+,-./:;=?@_~";
 
-    /** The narrower set, for one component of a URI rather than the whole. */
     private static final String URI_COMPONENT_UNESCAPED =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
                     + "!'()*-._~";
 
-    /** Whether a byte is in the default set for a file or a url. */
     static boolean uriKeeps(int octet) {
         return octet < 128 && URI_UNESCAPED.indexOf(octet) >= 0;
     }
 
-    /** Whether a byte is in the default set for anything else. */
     static boolean uriComponentKeeps(int octet) {
         return octet < 128 && URI_COMPONENT_UNESCAPED.indexOf(octet) >= 0;
     }
 
-    /**
-     * The character a space becomes under /URI.
-     *
-     * <p>The C decides it from the escape character, which is the awkward part
-     * worth writing down: a plus, unless the escape character is an equals
-     * sign, in which case an underscore.
-     */
     static char spaceStandsForUnder(char escape) {
         return escape == '=' ? '_' : '+';
     }
 
-    /**
-     * Percent-encodes octets, keeping the ones the given set allows.
-     *
-     * <p>Octets, never codepoints, in and out. A character that takes two
-     * bytes in UTF-8 takes two escapes, because what a URL carries is bytes --
-     * and an octet the set allows through is written back as itself, which is
-     * a thing only bytes can hold. Building a string here instead read every
-     * kept octet as a Latin-1 character, so a set wide enough to pass an
-     * accented letter turned it into two.
-     */
     static byte[] percentEncoded(
             byte[] octets, java.util.function.IntPredicate keep,
             char escape, boolean spaceIsSpecial) {
@@ -143,14 +94,6 @@ final class Encodings {
         encoded.write(digits.charAt(1));
     }
 
-    /**
-     * Reads percent escapes back into octets.
-     *
-     * <p>Two hexadecimal digits are required. An escape character with
-     * anything else after it stands for itself, because a URL that was never
-     * encoded has to survive being decoded: {@code dehex "100%"} is
-     * {@code "100%"} and not an error.
-     */
     static byte[] percentDecoded(String text, char escape, boolean spaceIsSpecial) {
         Octets octets = new Octets();
         char special = spaceStandsForUnder(escape);
@@ -176,12 +119,10 @@ final class Encodings {
         return octets.toArray();
     }
 
-    /** Whether a bitset holds a byte, used when /EXCEPT names the set. */
     static boolean setHolds(BitsetValue set, int octet) {
         return set.holds(octet);
     }
 
-    /** The five bases ENBASE and DEBASE know, and no others. */
     static final List<Integer> BASES = List.of(2, 16, 36, 64, 85);
 
     private static final String BASE64 =
@@ -224,29 +165,10 @@ final class Encodings {
         return text.toString();
     }
 
-    /**
-     * The characters {@code Decode_Base16} and {@code Decode_Base2} step over
-     * without counting them: space, line feed, carriage return, and the
-     * end-of-file byte.
-     *
-     * <p>{@code lex > LEX_DELIMIT_RETURN} is the test, and those four are the
-     * only classes below it. Anything else that is not a digit stops the
-     * decode.
-     */
     private static boolean skippedBetweenDigits(char letter) {
         return letter == ' ' || letter == '\n' || letter == '\r';
     }
 
-    /**
-     * Base sixteen, where an odd length means a leading zero nibble.
-     *
-     * <p>{@code if (len & 1) count = 1;} primes the accumulator, so
-     * {@code debase "123" 16} is {@code #{0123}} rather than an error. The
-     * length that is tested is the whole input, spaces included, and the
-     * spaces are then stepped over without counting -- which is why
-     * {@code debase "12 34" 16} fails: five characters is an odd length and
-     * only four of them are digits, so the last nibble has no partner.
-     */
     private static byte[] octetsOfHex(String text) {
         Octets decoded = new Octets();
         int nibblesSoFar = text.length() % 2;
@@ -281,16 +203,6 @@ final class Encodings {
         return text.toString();
     }
 
-    /**
-     * Base two, where a length that is not a whole number of bytes is padded
-     * with leading zero bits.
-     *
-     * <p>{@code count = len & 7; if (count) count = 8 - count;} is the
-     * priming, so {@code debase "01" 2} is {@code #{01}} and
-     * {@code debase "000000010" 2} -- nine bits -- is {@code #{0002}}. As with
-     * base sixteen the length counted is the whole input including the spaces
-     * that are then stepped over.
-     */
     private static byte[] octetsOfBits(String text) {
         Octets decoded = new Octets();
         int bitsSoFar = text.length() % 8;
@@ -341,23 +253,6 @@ final class Encodings {
         return text.toString();
     }
 
-    /**
-     * Base sixty-four, which unlike the other two will not decode a group it
-     * has only part of.
-     *
-     * <p>Four digits are three bytes and there is no padding rule that lets
-     * three digits stand for two, so {@code debase "YWJ" 64} is an error where
-     * {@code debase "123" 16} is a number. The equals signs are how a short
-     * last group is written down: one of them after three digits ends the
-     * decode with two bytes, and two of them after two digits end it with one.
-     * A single equals after two digits is refused, because the C looks ahead
-     * for the second and fails when it is not there.
-     *
-     * <p>URL-safe decoding is the exception the C makes for itself. It is
-     * allowed to end a group short, and meeting a {@code -} or a {@code _}
-     * while reading the plain alphabet switches to the safe one and starts the
-     * whole decode again.
-     */
     private static byte[] octetsOfBase64(String text, String alphabet) {
         Octets decoded = new Octets();
         boolean urlSafe = BASE64_URL.equals(alphabet);
@@ -413,14 +308,6 @@ final class Encodings {
         return decoded.toArray();
     }
 
-    /**
-     * The bases that are not a power of two, done as one big number.
-     *
-     * <p>Base 36 and base 85 do not divide the octets into fixed groups, so
-     * the whole input is one integer and the digits are its remainders. A
-     * leading zero octet would be lost that way, so the count of them is
-     * written first as a digit of its own.
-     */
     private static String bigBaseOf(byte[] octets, String alphabet) {
         int leadingZeroes = 0;
         while (leadingZeroes < octets.length && octets[leadingZeroes] == 0) {
@@ -473,12 +360,6 @@ final class Encodings {
         return octets;
     }
 
-    /**
-     * Whitespace is ignored wherever it falls.
-     *
-     * <p>Which is what lets a long base 64 value be written over several
-     * lines, and is why ENBASE has a /FLAT to turn the line breaks off.
-     */
     private static String withoutWhitespace(String text) {
         StringBuilder kept = new StringBuilder(text.length());
         for (int at = 0; at < text.length(); at++) {
@@ -489,7 +370,6 @@ final class Encodings {
         return kept.toString();
     }
 
-    /** Where ENBASE breaks a line when /FLAT was not asked for. */
     static final int LINE_WIDTH = 64;
 
     static String brokenIntoLines(String text) {
@@ -504,14 +384,6 @@ final class Encodings {
         return wrapped.toString();
     }
 
-    /**
-     * The methods this host offers, in the order the catalogue lists them.
-     *
-     * <p>Which hashes exist is the host's business rather than the language's,
-     * which is why R3 fills {@code system/catalog/checksums} from
-     * {@code Init_Crypt} rather than writing it in {@code sysobj.reb}. The
-     * name here is R3's; the value is what {@code java.security} calls it.
-     */
     static final Map<String, String> DIGESTS = digestMethods();
 
     private static Map<String, String> digestMethods() {
@@ -533,10 +405,8 @@ final class Encodings {
         return Map.copyOf(named);
     }
 
-    /** The checksums that answer a number rather than a digest. */
     static final List<String> CYCLIC = List.of("crc32", "adler32", "crc24", "tcp");
 
-    /** Every method name, digests and cyclic together. */
     static List<String> checksumMethods() {
         List<String> every = new ArrayList<>(DIGESTS.keySet());
         every.addAll(CYCLIC);
@@ -566,12 +436,6 @@ final class Encodings {
                 | ((octets[from + 3] & 0xFF) << 24);
     }
 
-    /**
-     * MurmurHash3 over bytes, which is what {@code Hash_Binary} answers.
-     *
-     * <p>Case sensitive, unlike the string form, because a binary has no
-     * cases to fold.
-     */
     static int murmurOf(byte[] octets) {
         int hash = 0;
         int wholeWords = octets.length / 4;
@@ -590,19 +454,6 @@ final class Encodings {
         return avalanched(hash ^ octets.length);
     }
 
-    /**
-     * The same mixing one byte at a time, lowering each byte on its own, which
-     * is what {@code Hash_String_Value} does to a string.
-     *
-     * <p>The bytes are the UTF-8 ones, and each is lowered as though it were a
-     * whole character, so only the letters that encode to a single byte fold
-     * their case at all. That is why a real Rebol answers differently for
-     * {@code "é"} and {@code "É"} while answering the same for {@code "a"} and
-     * {@code "A"} -- and why {@code "é" = "É"} is false there.
-     *
-     * <p>One byte to a block also means a string and the binary holding those
-     * same bytes mix differently, since the binary goes four bytes at a time.
-     */
     static int caseFoldedHashOf(byte[] utf8) {
         int hash = 0;
         for (byte each : utf8) {
@@ -611,21 +462,12 @@ final class Encodings {
         return avalanched(hash ^ utf8.length);
     }
 
-    /**
-     * The name for the one digest written out here rather than asked for.
-     *
-     * <p>It sits in the same table as the rest so that every question about
-     * which methods exist has one answer, and the dispatcher reads it as the
-     * signal to use JEBOL's own rather than the JVM's.
-     */
     static final String RIPEMD_160 = "RIPEMD160";
 
-    /** The two xxHash forms JEBOL writes out, named the same way. */
     static final String XXH_32 = "XXH32";
 
     static final String XXH_64 = "XXH64";
 
-    /** MD4, which java.security dropped and old formats still carry. */
     static final String MD_4 = "MD4";
 
     static byte[] digestOf(byte[] octets, String method) {
@@ -634,10 +476,10 @@ final class Encodings {
             return RipeMd160.of(octets);
         }
         if (XXH_32.equals(named)) {
-            return XxHash.of32(octets);
+            return XxHash.of32MostSignificantByteFirst(octets);
         }
         if (XXH_64.equals(named)) {
-            return XxHash.of64(octets);
+            return XxHash.of64MostSignificantByteFirst(octets);
         }
         if (MD_4.equals(named)) {
             return Md4.of(octets);
@@ -650,7 +492,6 @@ final class Encodings {
         }
     }
 
-    /** A keyed digest, which is what /WITH asks for when the key is text. */
     static byte[] keyedDigestOf(byte[] octets, String method, byte[] key) {
         try {
             String named = "Hmac" + DIGESTS.get(method).replace("-", "");
@@ -680,13 +521,6 @@ final class Encodings {
         return running.getValue();
     }
 
-    /**
-     * The same twenty-four bit sum, for what seeds a random sequence.
-     *
-     * <p>{@code Set_Random(Compute_CRC24(...))} is how a string, a binary and
-     * a tuple each become a seed, so RANDOM needs the sum CHECKSUM already
-     * computes rather than one of its own.
-     */
     static long checksumSeedOf(byte[] octets) {
         return crc24Of(octets);
     }
@@ -719,41 +553,12 @@ final class Encodings {
         return (~running) & 0xFFFF;
     }
 
-    /**
-     * The three whose empty input is empty output rather than an error.
-     *
-     * <p>CRUSH and LZW both open with a header -- a length, a symbol width --
-     * so nothing at all is data that ends before it starts, and both say
-     * bad-press. The deflate family has no header to be missing, and
-     * {@code decompress #{} 'zlib} is {@code #{}}.
-     */
     private static final List<String> COMPRESSIONS_WITH_NO_HEADER =
             List.of("zlib", "gzip", "deflate");
 
-    /** The methods this host offers, as {@code system/catalog/compressions}. */
     static final List<String> COMPRESSIONS =
             List.of("zlib", "gzip", "deflate", "crush", "lzw", "lzma", "br");
 
-    /**
-     * Methods REBOL has and this build has not.
-     *
-     * <p>Kept apart from the ones that work, because the two refusals are not
-     * the same thing. A name nobody has heard of is a bad argument; a real
-     * method this build was not compiled with is a feature that is not
-     * available, and REBOL has an error id that says exactly that.
-     *
-     * <p>Rebol's own suite is written for both: each of these groups opens
-     * with {@code either error? e: try [compress "test" 'lzw]} and accepts
-     * {@code feature-na} as the whole answer, because a build without the
-     * algorithm is an ordinary build rather than a broken one.
-     *
-     * <p>These are the names {@code system/catalog/compressions} uses, which
-     * is where they had to come from and did not: Brotli is {@code br} there
-     * and this said {@code brotli}, so the one method the suite asks about by
-     * name answered {@code invalid-arg} -- a name nobody has heard of --
-     * where the suite was waiting to be told the build has not got it.
-     * {@code lz4} and {@code lzav} were missing outright.
-     */
     static final List<String> COMPRESSIONS_ELSEWHERE =
             List.of("lz4", "lzav");
 
@@ -770,14 +575,6 @@ final class Encodings {
         };
     }
 
-    /**
-     * Reads compressed bytes back, stopping at a size when one was asked for.
-     *
-     * <p>DECOMPRESS/SIZE is how a script reads the front of something without
-     * the whole of it. CRUSH takes the limit as it decodes -- its header says
-     * how long the answer will be, so it can simply make less -- and the
-     * deflate family has no such header, so the answer is cut afterwards.
-     */
     static byte[] decompressed(byte[] octets, String method, int wanted) {
         if (octets.length == 0 && COMPRESSIONS_WITH_NO_HEADER.contains(method)) {
             return octets;
@@ -797,7 +594,6 @@ final class Encodings {
                 : whole;
     }
 
-    /** The ten bytes a gzip member opens with, and the two that name it. */
     private static final int GZIP_MAGIC_FIRST = 0x1F;
     private static final int GZIP_MAGIC_SECOND = 0x8B;
     private static final int GZIP_DEFLATE = 8;
@@ -810,14 +606,6 @@ final class Encodings {
     private static final int GZIP_HEADER_LENGTH = 10;
     private static final int GZIP_TRAILER_LENGTH = 8;
 
-    /**
-     * Gzip: raw deflate with a header in front and a checksum behind.
-     *
-     * <p>Written out rather than using {@code GZIPOutputStream}, which is a
-     * stream and so belongs to {@code java.io}. The format is ten fixed bytes,
-     * the deflated data, then the CRC-32 and the uncompressed length, both
-     * little-endian.
-     */
     private static byte[] gzipped(byte[] octets, int level) {
         Octets into = new Octets();
         into.write(GZIP_MAGIC_FIRST);
@@ -838,15 +626,6 @@ final class Encodings {
         return into.toArray();
     }
 
-    /**
-     * The ninth byte of the header, which the level decides.
-     *
-     * <pre>
-     * xfl = 0;
-     * if (compression_level &lt; 2) xfl |= GZIP_XFL_FASTEST_COMPRESSION;
-     * else if (compression_level &gt;= 8) xfl |= GZIP_XFL_SLOWEST_COMPRESSION;
-     * </pre>
-     */
     private static int howHardTheCompressorWasAskedToTry(int level) {
         int asked = effortAskedFor(level);
         if (asked < 2) {
@@ -855,16 +634,6 @@ final class Encodings {
         return asked >= 8 ? GZIP_SLOWEST : GZIP_UNREMARKABLE_EFFORT;
     }
 
-    /**
-     * The level the deflate family will really use.
-     *
-     * <p>REBOL clamps to what libdeflate offers -- {@code if (level > 12) level
-     * = 12;} over an unsigned level, so a negative one and a huge one both come
-     * out as the slowest -- and a call with no /LEVEL arrives as that same
-     * out-of-range value and gets the same answer. This build compresses with
-     * {@code java.util.zip}, whose slowest is nine rather than twelve, so the
-     * shape of the rule is kept and the ceiling is the one this compressor has.
-     */
     static int effortAskedFor(int level) {
         return level < 0 || level > SLOWEST_DEFLATE ? SLOWEST_DEFLATE : level;
     }
@@ -913,13 +682,6 @@ final class Encodings {
         return at + 1;
     }
 
-    /**
-     * Deflate, with or without the zlib wrapper.
-     *
-     * <p>The wrapper is the whole difference between the two methods: zlib is
-     * deflate with a two-byte header and an Adler-32 trailer, and raw deflate
-     * is the same bits without them.
-     */
     private static byte[] deflated(byte[] octets, int level, boolean raw) {
         java.util.zip.Deflater deflater =
                 new java.util.zip.Deflater(effortAskedFor(level), raw);
@@ -959,20 +721,6 @@ final class Encodings {
         }
     }
 
-    /**
-     * Scrambles or unscrambles octets in place, against a key.
-     *
-     * <p>{@code Cloak} in s-ops.c, line for line. Rebol's own cipher, and not
-     * presented as a strong one -- the C's summary is "Simple data scrambler.
-     * Quality depends on the key length."
-     *
-     * <p>Three steps and the order of them is the whole algorithm. Decoding
-     * runs the chain backwards first; both directions then flip the first byte
-     * against a sum of all the others; encoding runs the chain forwards last.
-     * That middle step is why a one-byte binary still changes.
-     *
-     * @return false when the key has no bytes, which the caller raises on
-     */
     static boolean cloak(boolean decode, byte[] octets, byte[] key) {
         if (octets.length == 0) {
             return true;
@@ -997,13 +745,6 @@ final class Encodings {
         return true;
     }
 
-    /**
-     * The real key: twenty bytes, the SHA-1 of the given key cycled to twenty.
-     *
-     * <p>So a one-byte key and a twenty-byte key are equally long by the time
-     * the scrambling starts, which is what "quality depends on the key length"
-     * is about -- the entropy, not the byte count.
-     */
     static byte[] hashedKey(byte[] key) {
         if (key.length == 0) {
             return key;
@@ -1015,27 +756,20 @@ final class Encodings {
         return digestOf(cycled, "sha1");
     }
 
-    /** Whether this host has a character set by that name. */
     static boolean hasCharacterSet(String named) {
         return charsetNamed(named) != null;
     }
 
-    /**
-     * Octets read as a named character set, keeping a byte order mark that is
-     * part of the text.
-     *
-     * <p>An encoding named outright says which way round the bytes are, so a
-     * {@code FEFF} at the front of it is a zero-width space rather than a mark
-     * to be obeyed and dropped. Rebol keeps it and the JVM's UTF-32 decoders
-     * throw it away, which is a character's difference in the length of every
-     * such string. The two-and four-byte forms are simple enough to read here
-     * rather than argue with the decoder about.
-     */
     static String textDecodedAs(byte[] octets, java.nio.charset.Charset named) {
         boolean bigEndian = "UTF-32BE".equalsIgnoreCase(named.name());
         if (!bigEndian && !"UTF-32LE".equalsIgnoreCase(named.name())) {
             return new String(octets, named);
         }
+        return utf32KeepingTheLeadingMarkTheJvmWouldDrop(octets, bigEndian);
+    }
+
+    private static String utf32KeepingTheLeadingMarkTheJvmWouldDrop(
+            byte[] octets, boolean bigEndian) {
         StringBuilder text = new StringBuilder();
         for (int at = 0; at + 4 <= octets.length; at += 4) {
             int point = 0;
@@ -1048,13 +782,6 @@ final class Encodings {
         return text.toString();
     }
 
-    /**
-     * Octets read as whatever their byte order mark says, or UTF-8 when there
-     * is not one.
-     *
-     * <p>What the TEXT codec does: the bytes arrived from somewhere and the
-     * mark is the only thing that says how to read them.
-     */
     static String textBehindAnyMark(byte[] octets) {
         java.nio.charset.Charset named;
         int width;
@@ -1091,12 +818,6 @@ final class Encodings {
         return true;
     }
 
-    /**
-     * A character set by the name REBOL uses for it, or null.
-     *
-     * <p>R3's names are not always Java's, and R3 also takes a Windows
-     * codepage number where the JVM takes only a name.
-     */
     static java.nio.charset.Charset charsetNamed(String named) {
         String canonical = CODEPAGES.getOrDefault(
                 named.toLowerCase(java.util.Locale.ROOT), named);
@@ -1107,24 +828,6 @@ final class Encodings {
         }
     }
 
-    /**
-     * The spellings Rebol accepts for a character set that Java does not.
-     *
-     * <p>Read out of the 372-row table in {@code src/core/u-iconv.c}, which
-     * exists because ICONV takes a Windows codepage number as readily as a
-     * name: {@code iconv data 28592} is ISO 8859-2 and {@code iconv data
-     * 65001} is UTF-8. A number is a name the JVM can never resolve on its
-     * own, and it is the form most of Rebol's own tests use.
-     *
-     * <p>Only the rows the JVM cannot already answer are here. Rebol's table
-     * lists a hundred and thirty-five more whose character sets no JVM ships,
-     * mostly EBCDIC and the Mac scripts, and those stay unresolvable: a host
-     * that has not got an encoding should say so rather than guess a near one.
-     *
-     * <p>Written as one string rather than a hundred and forty-four map
-     * entries because it is a table rather than code, and because the layer
-     * rule keeps the domain from reading a resource file.
-     */
     private static final String REBOL_CODEPAGES =
             "UTF-8:65001,CP65001;"
             + "UTF-16LE:1200,UTF16LE,UCS-2LE,UCS2LE,UCS-2-INTERNAL,CP1200;"
@@ -1168,20 +871,10 @@ final class Encodings {
         return java.util.Map.copyOf(found);
     }
 
-    /** The five filters, numbered as the PNG format numbers them. */
     static final List<String> PNG_FILTERS = List.of("none", "sub", "up", "average", "paeth");
 
-    /**
-     * The prediction PNG's fifth filter makes: whichever neighbour is closest
-     * to their linear estimate.
-     *
-     * <p>Ported line for line, because the tie-breaks are ordered and the order
-     * is observable. `if ((pa <= pb) && (pa <= pc)) return a; else if (pb <= pc)
-     * return b; return c;` -- left first, then above, then above-left. Equal
-     * distances are common in flat colour, so reordering the comparisons would
-     * pass a careless test and corrupt a real image.
-     */
-    private static int paethPredictor(int left, int above, int aboveLeft) {
+    private static int paethPredictorBreakingTiesLeftThenAboveThenAboveLeft(
+            int left, int above, int aboveLeft) {
         int estimate = left + above - aboveLeft;
         int toLeft = Math.abs(estimate - left);
         int toAbove = Math.abs(estimate - above);
@@ -1192,17 +885,10 @@ final class Encodings {
         return toAbove <= toAboveLeft ? above : aboveLeft;
     }
 
-    /**
-     * Applies one PNG filter to every scanline.
-     *
-     * <p>The line above the first is treated as zeros, which is what makes the
-     * first line encode as itself. Every subtraction is modulo 256, which is
-     * what makes it reversible without carrying a sign.
-     */
     static byte[] pngFiltered(byte[] data, int width, int filter, int bytesPerPixel) {
         int rows = data.length / width;
         byte[] out = new byte[data.length];
-        byte[] previous = new byte[width];
+        byte[] previous = zerosSoTheFirstLineEncodesAsItself(width);
         for (int row = 0; row < rows; row++) {
             int from = row * width;
             applyOneLine(data, from, out, from, width, filter, bytesPerPixel,
@@ -1214,25 +900,18 @@ final class Encodings {
         return out;
     }
 
-    /**
-     * Reverses one PNG filter over every scanline.
-     *
-     * <p>With a named filter the lines are bare. Without one, each line opens
-     * with a byte naming its own filter, which is how a PNG stores it -- so the
-     * two forms take different widths and the type byte is the difference.
-     */
     static byte[] pngUnfiltered(
             byte[] data, int width, int namedFilter, int bytesPerPixel) {
 
-        boolean typePerLine = namedFilter < 0;
-        int stride = typePerLine ? width + 1 : width;
+        boolean everyLineOpensWithItsOwnFilterByte = namedFilter < 0;
+        int stride = everyLineOpensWithItsOwnFilterByte ? width + 1 : width;
         int rows = data.length / stride;
         byte[] out = new byte[rows * width];
-        byte[] previous = new byte[width];
+        byte[] previous = zerosSoTheFirstLineEncodesAsItself(width);
         for (int row = 0; row < rows; row++) {
             int from = row * stride;
             int filter = namedFilter;
-            if (typePerLine) {
+            if (everyLineOpensWithItsOwnFilterByte) {
                 filter = data[from] & 0xFF;
                 from++;
             }
@@ -1244,22 +923,18 @@ final class Encodings {
         return out;
     }
 
-    /**
-     * One scanline, filtered or unfiltered.
-     *
-     * <p>The two directions differ only in which line the left-hand neighbour
-     * is read from: filtering reads the original, unfiltering reads what it has
-     * already reconstructed. Writing them as one function keeps the five
-     * predictions in one place, which is where they have to agree.
-     */
+    private static byte[] zerosSoTheFirstLineEncodesAsItself(int width) {
+        return new byte[width];
+    }
+
     private static void applyOneLine(
             byte[] source, int from, byte[] out, int into, int width,
-            int filter, int bytesPerPixel, byte[] previous, boolean forward) {
+            int filter, int bytesPerPixel, byte[] previous, boolean filtering) {
 
         for (int at = 0; at < width; at++) {
             int here = source[from + at] & 0xFF;
             int left = at >= bytesPerPixel
-                    ? (forward
+                    ? (filtering
                             ? source[from + at - bytesPerPixel] & 0xFF
                             : out[into + at - bytesPerPixel] & 0xFF)
                     : 0;
@@ -1272,21 +947,15 @@ final class Encodings {
                 case 2 -> above;
                 case 3 -> at >= bytesPerPixel ? (left + above) >> 1 : above >> 1;
                 case 4 -> at >= bytesPerPixel
-                        ? paethPredictor(left, above, aboveLeft)
+                        ? paethPredictorBreakingTiesLeftThenAboveThenAboveLeft(
+                                left, above, aboveLeft)
                         : above;
                 default -> 0;
             };
-            out[into + at] = (byte) (forward ? here - prediction : here + prediction);
+            out[into + at] = (byte) (filtering ? here - prediction : here + prediction);
         }
     }
 
-    /**
-     * Reverses each group of bytes, in place.
-     *
-     * <p>Two, four or eight and nothing else, which the C checks before it
-     * starts. A tail that does not fill a group is left as it is rather than
-     * partly reversed, because half a swap is not a smaller swap.
-     */
     static void swapEndian(byte[] octets, int howFar, int width) {
         if (width != 2 && width != 4 && width != 8) {
             throw new IllegalArgumentException("width " + width);

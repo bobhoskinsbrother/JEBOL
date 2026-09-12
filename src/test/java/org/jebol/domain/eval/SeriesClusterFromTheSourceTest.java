@@ -7,12 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A batch of series behaviors from {@code series-test.r3}, each read from
- * the C: FORM drops a word's sigil, AJOIN drops an unset, REDUCE/INTO fills
- * any block-family target, FIND/SAME asks series identity, and POKE writes a
- * char into a binary.
- */
 class SeriesClusterFromTheSourceTest {
 
     private static String answerTo(String source) {

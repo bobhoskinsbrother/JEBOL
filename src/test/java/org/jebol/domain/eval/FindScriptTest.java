@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * FIND-SCRIPT and SCRIPT?, ported off the porting backlog.
- *
- * <p>Specified in {@code spec/load.allium} and measured against a real R3
- * 3.22.1.
- *
- * <p>A header must begin a line. Only spaces can come before it, so text
- * that holds the word REBOL in the middle of a line has no header.
- */
 class FindScriptTest {
 
     private static String answerTo(String source) {

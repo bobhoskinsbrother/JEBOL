@@ -8,17 +8,6 @@ import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What {@code equals} means on a value.
- *
- * <p>Java's {@code equals} is REBOL's {@code ==}, the strict one: same
- * datatype, same contents, case sensitive. REBOL's looser {@code =} is
- * offered separately where the two differ, and identity, REBOL's
- * {@code same?}, is {@code sharesStorageWith}.
- *
- * <p>Three questions, three methods. Collapsing them would make one of them
- * silently wrong.
- */
 class ValueEqualityTest {
 
     @Nested

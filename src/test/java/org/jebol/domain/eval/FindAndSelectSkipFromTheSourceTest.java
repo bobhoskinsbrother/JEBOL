@@ -6,12 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * FIND and SELECT with /skip, from {@code series-test.r3}. /reverse and /last
- * step one element at a time whatever the record width; a sub-one forward skip
- * misses on a string but is refused on a block; and a block key matches a run
- * inside a record.
- */
 class FindAndSelectSkipFromTheSourceTest {
 
     private static String answerTo(String source) {

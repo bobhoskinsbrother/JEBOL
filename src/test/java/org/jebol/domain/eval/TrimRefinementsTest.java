@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TRIM refuses refinements that ask for two different things.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1, the whole matrix of refinements against string, binary and
- * block.
- *
- * <p>Two quarrels, both raising bad-refines. /HEAD and /TAIL say which end
- * to work on while /ALL and /WITH say to work everywhere. And /WITH, /AUTO
- * and /LINES are about text, so a binary or a block refuses all three
- * while still accepting /HEAD, /TAIL and /ALL.
- */
 class TrimRefinementsTest {
 
     private static String answerTo(String source) {
@@ -26,7 +14,6 @@ class TrimRefinementsTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

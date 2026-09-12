@@ -7,29 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What TRANSCODE hands back, which is not the same question as what it reads.
- *
- * <p>One line of {@code REBNATIVE(transcode)} in
- * {@code rebol3-source/src/core/l-scan.c} decides the whole shape:
- *
- * <pre>
- * // Scan_Code clears the next flag!
- * // Decide if result should contain also modified input position.
- * // (with refinements /next, /only and /error)
- * next = scan_state.opts &gt; 0;
- * </pre>
- *
- * <p>{@code opts} is raised by /NEXT, /ONE, /ONLY and /ERROR, and by nothing else. So
- * the local named {@code next} means "the caller asked to stop before the end", and the
- * unread text is appended for all of them. /ONE is the exception, and only because it
- * returns two lines earlier with the value alone.
- *
- * <p>Read as a name the line looks like a bug. Read as a question -- is this caller
- * stepping through a source -- the other three cases fall out of it, because a caller
- * who asked for the failure as a value has the same reason to want the rest as a
- * caller who asked for one value.
- */
 class TranscodeAnswerShapeFromTheSourceTest {
 
     private static String answerTo(String source) {

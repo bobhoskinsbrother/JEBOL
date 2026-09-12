@@ -7,14 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * /ONLY is the difference between adding a series and adding its items, and a
- * paren is added whole either way. A refinement written {@code /:word} is granted
- * or declined by what the word holds when the call is made -- Rebol's own
- * "Dynamic refinements" group writes {@code repend/:only s [1 + 2 3 * 4]} twice
- * with the word set differently -- and a granted one naming no declared
- * refinement is refused with no-refine.
- */
 class AppendOnlyAndDynamicRefinementFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -78,14 +78,6 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
         return other instanceof StringValue string && string.storage == storage;
     }
 
-    /**
-     * REBOL's {@code ==}: same datatype, same remaining contents, case
-     * sensitive. Contents rather than storage, so two separately built
-     * strings holding the same text are equal; {@link #sharesStorageWith} is
-     * the identity question, REBOL's {@code same?}.
-     *
-     * <p>REBOL's looser {@code =} is {@link #equalsIgnoringCase}.
-     */
     @Override
     public boolean equals(Object other) {
         return other instanceof StringValue string

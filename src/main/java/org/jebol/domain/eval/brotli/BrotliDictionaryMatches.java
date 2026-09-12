@@ -2,33 +2,7 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * Every dictionary word that could be written at this position, and how long
- * each would come out.
- *
- * <p>{@code BrotliFindAllStaticDictionaryMatchesFor} in {@code static_dict.c}.
- * The levels that take the first good match they find need only the best word;
- * the two that price everything need all of them, because a shorter word may
- * cost fewer bits once the distance is counted.
- *
- * <p>Most of this is one long decision tree over what follows the word. A
- * hundred and twenty one transforms exist, and about eighty of them are a word
- * with a fixed suffix stuck on the end -- "the ", " of ", "ing ", "'", "=\"" --
- * so the search reads the bytes after the word and walks down the tree of
- * suffixes to see which transforms could have produced what is there. The tree
- * is written out in the C rather than driven from a table, and it is written
- * out here too: it was converted from the C mechanically rather than by hand,
- * because four hundred lines of nested character comparisons is exactly where a
- * transcription error hides and never shows up except as different bytes.
- *
- * <p>The whole thing runs three times per position: once on the bytes as they
- * are, once skipping a leading space or full stop, and once skipping a leading
- * two-character prefix. Those are the three prefixes the transforms allow.
- *
- * <p>Answers are collected by length: {@code matches[len]} holds the cheapest
- * way found of writing {@code len} bytes, packed as the distance shifted up five
- * bits with the length the code will name in the low five.
- */
+/** The shape below is the C's, converted mechanically. Do not tidy it. */
 final class BrotliDictionaryMatches {
 
     private BrotliDictionaryMatches() {
@@ -36,16 +10,7 @@ final class BrotliDictionaryMatches {
 
     static final int LONGEST_MATCH = 37;
 
-    /**
-     * What an unfilled slot holds: seven hexadecimal Fs, not eight.
-     *
-     * <p>The C's {@code kInvalidMatch} is {@code 0xFFFFFFF}, which is larger
-     * than any real match can be -- the furthest a dictionary word can sit is
-     * about a quarter of a million, and a match packs the distance up five bits
-     * -- so it loses to every real answer under the comparison that keeps the
-     * cheapest. Writing eight Fs would work too and is not what the C says.
-     */
-    static final int NOTHING_FOUND = 0xFFFFFFF;
+    static final int NOTHING_FOUND_WHICH_IS_SEVEN_FS_NOT_EIGHT = 0xFFFFFFF;
 
     private static final long CUTTING_TRANSFORM_FOR_EACH_AMOUNT = 0x071B520ADA2D3200L;
     private static final int UPPERCASE_FIRST = 10;
@@ -53,7 +18,7 @@ final class BrotliDictionaryMatches {
 
     static int[] room() {
         int[] matches = new int[LONGEST_MATCH + 1];
-        Arrays.fill(matches, NOTHING_FOUND);
+        Arrays.fill(matches, NOTHING_FOUND_WHICH_IS_SEVEN_FS_NOT_EIGHT);
         return matches;
     }
 
@@ -65,12 +30,6 @@ final class BrotliDictionaryMatches {
         return (fourBytes * MIXING_MULTIPLIER) >>> (32 - 15);
     }
 
-    /**
-     * Keeps the cheapest way of writing this many bytes.
-     *
-     * <p>Cheapest means smallest when packed, which puts the nearest distance
-     * first because the distance occupies the high bits.
-     */
     private static void addMatch(int[] matches, int distance, int length,
             int lengthCode) {
 
@@ -93,14 +52,6 @@ final class BrotliDictionaryMatches {
         return agreeing;
     }
 
-    /**
-     * Whether the word, once its transform is applied, is what the data says.
-     *
-     * <p>Only the two capitalising transforms are checked here; the rest are
-     * accounted for by the suffix tree. The dictionary holds no capitals of its
-     * own, so capitalising is exclusive-or with thirty two on a lower case
-     * letter and nothing on anything else.
-     */
     private static boolean wordMatches(byte[] data, int at, int wordLength,
             int wordTransform, int wordIndex, int mostThatCouldMatch) {
 
@@ -140,14 +91,6 @@ final class BrotliDictionaryMatches {
         return true;
     }
 
-    /**
-     * Fills in {@code matches} and answers whether anything was found.
-     *
-     * <p>Converted from the C by script. The shape below is the C's shape and
-     * the indentation is the C's indentation, deliberately: this is the one
-     * place in the port where reading the two side by side is how a difference
-     * would be found.
-     */
     static boolean findAll(byte[] data, int at, int minLength, int maxLength,
             int[] matches) {
 

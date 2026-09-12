@@ -64,7 +64,8 @@ public final class VectorSpec {
         }
         Value leading = parts.getFirst();
         if (leading instanceof IntegerValue || leading instanceof DecimalValue) {
-            return filled(leading instanceof IntegerValue
+            return filledLeavingZerosAndIgnoringTheExtra(
+                    leading instanceof IntegerValue
                     ? THE_WIDEST_WHOLE_NUMBER
                     : THE_WIDEST_DECIMAL, parts.size(), BlockValue.block(parts), 1);
         }
@@ -78,14 +79,6 @@ public final class VectorSpec {
         return readSpelledOutSpec(parts, resolveGetWord);
     }
 
-    /**
-     * The older spelling: an optional sign word, then a datatype word, then a
-     * width.
-     *
-     * <p>All three of those the C insists on in that order, and it refuses
-     * outright rather than guessing: {@code unsigned decimal!} is no kind, and
-     * eight or sixteen bits is a width only whole numbers have.
-     */
     private static Optional<VectorValue> readSpelledOutSpec(List<Value> parts,
             UnaryOperator<Value> resolveGetWord) {
 
@@ -126,10 +119,6 @@ public final class VectorSpec {
         return assembled(kind.get(), parts.subList(at + 1, parts.size()), resolveGetWord);
     }
 
-    /**
-     * What follows the kind: a count, then data, then a position, all optional
-     * and all in that order.
-     */
     private static Optional<VectorValue> assembled(VectorKind kind, List<Value> parts,
             UnaryOperator<Value> resolveGetWord) {
 
@@ -164,7 +153,7 @@ public final class VectorSpec {
         if (looking != null) {
             return Optional.empty();
         }
-        return filled(kind, howMany, data, position);
+        return filledLeavingZerosAndIgnoringTheExtra(kind, howMany, data, position);
     }
 
     private static Value lookedUp(List<Value> parts, int at,
@@ -186,15 +175,8 @@ public final class VectorSpec {
         return ((BinaryValue) data).lengthFromHere() / kind.bytes();
     }
 
-    /**
-     * A vector of a stated size, filled from data that may be shorter or
-     * longer.
-     *
-     * <p>Shorter leaves zeros behind it and longer is ignored, because the C
-     * writes into a series whose tail was already set from the size: the extra
-     * values land in slack the vector does not count.
-     */
-    private static Optional<VectorValue> filled(VectorKind kind, int howMany, Value data,
+    private static Optional<VectorValue> filledLeavingZerosAndIgnoringTheExtra(
+            VectorKind kind, int howMany, Value data,
             int position) {
 
         VectorStorage storage = new VectorStorage(kind, howMany);

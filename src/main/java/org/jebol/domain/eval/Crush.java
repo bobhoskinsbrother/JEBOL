@@ -2,27 +2,6 @@ package org.jebol.domain.eval;
 
 import java.util.Arrays;
 
-/**
- * CRUSH, which is Rebol's own compressor rather than a standard one.
- *
- * <p>{@code u-crush.c}, ported from Ilya Muravyov's public-domain original.
- * LZ77 with the matches written out in a bit code of its own: a length in one
- * of six brackets and then a distance in one of sixteen slots, packed least
- * significant bit first. The first four bytes are the uncompressed length,
- * little endian, which is how DECOMPRESS knows how much to make before it
- * starts.
- *
- * <p>Rebol builds it with the constants Red uses rather than the ones the
- * original shipped with -- a smaller window and smaller hash tables, which
- * the comment beside them says give better results on Rebol-like data. The
- * two sets are not compatible, so this uses the same ones the C compiles
- * with and nothing else would read the bytes back.
- *
- * <p>The three levels differ in one number: how far down a hash chain the
- * compressor is willing to look for a longer match, and whether it looks
- * ahead one byte to see if waiting would pay. Level two is the only one that
- * looks ahead.
- */
 final class Crush {
 
     private Crush() {
@@ -57,19 +36,11 @@ final class Crush {
     private static final int HASH1_SHIFT = 7;
     private static final int HASH2_SHIFT = 5;
 
-    /** How far down a chain each level will look. */
-    private static final int[] MAX_CHAIN = {4, 256, 1 << 12};
+    private static final int[] HOW_FAR_DOWN_A_CHAIN_EACH_LEVEL_LOOKS =
+            {4, 256, 1 << 12};
 
     private static final int HEADER_BYTES = 4;
 
-    /**
-     * Writes and reads the bit stream, least significant bit of each byte
-     * first.
-     *
-     * <p>Both directions hold a buffer of bits that have not made a whole byte
-     * yet, which is why the writer has to flush seven zero bits at the end:
-     * without them the last partial byte never reaches the output.
-     */
     private static final class Bits {
 
         private int buffer;
@@ -116,15 +87,8 @@ final class Crush {
         return ((hash << HASH2_SHIFT) + octet) & HASH2_MASK;
     }
 
-    /**
-     * How much further away a match has to be worth being.
-     *
-     * <p>A match twice as far off has to be a byte longer to be preferred, and
-     * so on by eights. It is what stops the compressor trading a short near
-     * match for a slightly longer one on the far side of the window, whose
-     * distance costs more bits than the extra length saves.
-     */
-    private static int penaltyFor(int distance, int against) {
+    private static int penaltyMakingATwiceDistantMatchWorthAByteMore(
+            int distance, int against) {
         int penalty = 0;
         while (distance > against) {
             distance >>= 3;
@@ -181,7 +145,7 @@ final class Crush {
             }
 
             if (length < MAX_MATCH) {
-                int chain = MAX_CHAIN[wanted];
+                int chain = HOW_FAR_DOWN_A_CHAIN_EACH_LEVEL_LOOKS[wanted];
                 int start = head[hash2 + HASH1_SIZE];
                 while (chain-- != 0 && start >= oldest) {
                     if (octetAt(source, start + length) == octetAt(source, at + length)
@@ -192,7 +156,9 @@ final class Crush {
                                         == octetAt(source, at + matched)) {
                             matched++;
                         }
-                        if (matched > length + penaltyFor((at - start) >> 4, offset)) {
+                        if (matched > length
+                                + penaltyMakingATwiceDistantMatchWorthAByteMore(
+                                        (at - start) >> 4, offset)) {
                             length = matched;
                             offset = at - start;
                         }
@@ -211,7 +177,7 @@ final class Crush {
             if (wanted >= 2 && length >= MIN_MATCH && length < longestPossible) {
                 int next = at + 1;
                 int lazily = Math.min(length + 4, longestPossible);
-                int chain = MAX_CHAIN[wanted];
+                int chain = HOW_FAR_DOWN_A_CHAIN_EACH_LEVEL_LOOKS[wanted];
                 int start = head[updatedHash2(hash2,
                         octetAt(source, next + HASH2_LEN - 1)) + HASH1_SIZE];
                 while (chain-- != 0 && start >= oldest) {
@@ -223,7 +189,9 @@ final class Crush {
                                         == octetAt(source, next + matched)) {
                             matched++;
                         }
-                        if (matched > length + penaltyFor(next - start, offset)) {
+                        if (matched > length
+                                + penaltyMakingATwiceDistantMatchWorthAByteMore(
+                                        next - start, offset)) {
                             length = 0;
                             break;
                         }
@@ -259,7 +227,6 @@ final class Crush {
         return Arrays.copyOf(bits.data, bits.index);
     }
 
-    /** Six brackets, each a run of zero bits then the offset into the bracket. */
     private static void writeTheLength(Bits bits, int length) {
         if (length < A) {
             bits.put(1, 1);
@@ -282,7 +249,6 @@ final class Crush {
         }
     }
 
-    /** A slot number, then the distance within that slot's range. */
     private static void writeTheOffset(Bits bits, int offset) {
         int slot = W_BITS - NUM_SLOTS;
         while (offset >= (2 << slot)) {
@@ -296,13 +262,6 @@ final class Crush {
         }
     }
 
-    /**
-     * Reads it back, given as many bytes as the header says or fewer.
-     *
-     * <p>{@code if (limit && size > limit) size = limit} -- DECOMPRESS/SIZE
-     * asks for the first so many bytes and stops there, which is how a script
-     * reads the front of something without the whole of it.
-     */
     static byte[] decompressed(byte[] source, int limit) {
         if (source.length < HEADER_BYTES) {
             throw new IllegalArgumentException("crush data ends before its length");

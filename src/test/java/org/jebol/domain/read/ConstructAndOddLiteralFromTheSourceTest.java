@@ -7,15 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The constructs and the tokens that are nearly something else. A complemented
- * bitset is written {@code #(bitset! not #{FF})}; a trailing number is a position
- * and belongs only to a series, so anything else carrying one is malformed. The
- * char literal refuses what {@code IS_INVALID_CHAR} names -- {@code if (type >
- * MAX_UNI || IS_SURROGATE(type)) return -TOKEN_CHAR;} -- and the C's Scan_Quote
- * refuses the same code points inside a string, {@code if (IS_INVALID_CHAR(chr))
- * return 0;}.
- */
 class ConstructAndOddLiteralFromTheSourceTest {
 
     private static String answerTo(String source) {

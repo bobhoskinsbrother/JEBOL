@@ -11,24 +11,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The five things a script may ask the operator for through a window, and the
- * three ways it can be told no.
- *
- * <p>Specs read from {@code src/boot/natives.reb} for BROWSE, REQUEST-FILE and
- * REQUEST-DIR, and from {@code src/mezz/mezz-osx-dialogs.reb} for
- * REQUEST-COLOR and REQUEST-PASSWORD, which is where the platform ones are
- * written.
- *
- * <p>The distinction this file exists to pin: **a declined dialog answers
- * none, and a refused service raises.** A person who closes a file chooser has
- * answered the question. A script that cannot tell that from "you were not
- * granted a screen" retries the wrong one, and the operator gets the dialog
- * again for as long as they keep closing it.
- */
 class WindowServiceTest {
 
-    /** A screen that answers whatever the test tells it to. */
     private static final class Screen implements WindowPort {
 
         private final List<String> files;
@@ -46,7 +30,6 @@ class WindowServiceTest {
             this.password = password;
         }
 
-        /** An operator who declines everything. */
         static Screen decliningEverything() {
             return new Screen(List.of(), Optional.empty(),
                     Optional.empty(), Optional.empty());

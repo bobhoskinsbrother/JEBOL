@@ -2,26 +2,6 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * What each byte would cost to write as a literal, guessed before any code
- * exists.
- *
- * <p>{@code literal_cost.c}. The two levels that price every match need to know
- * what the alternative costs, and the alternative is writing the byte out. The
- * guess is the surprise of that byte among its neighbours: a window of two
- * thousand bytes slides along, and each byte costs the logarithm of how much of
- * the window it accounts for.
- *
- * <p>Text gets a better guess. If the data is mostly UTF-8 the window narrows
- * to four hundred and ninety-five and three histograms are kept rather than one,
- * chosen by whether the previous byte started a character, continued a two byte
- * one, or continued a three byte one. That separates the leading bytes from the
- * trailing ones, which have quite different distributions.
- *
- * <p>Everything is worked out in double and written down as float, which is
- * what the C does and what the priced parse then compares. Keeping the wider
- * type would change which match wins.
- */
 final class BrotliLiteralCosts {
 
     private static final double THREE_QUARTERS_IS_ENOUGH_TO_CALL_IT_UTF8 = 0.75;
@@ -44,17 +24,12 @@ final class BrotliLiteralCosts {
         estimateAsAnythingElse(data, from, length, mask, cost);
     }
 
-    /**
-     * Whether more than three quarters of the bytes parse as UTF-8.
-     *
-     * <p>Also decides, at the two top levels, whether literals are coded by
-     * what characters came before them or by how big the previous bytes were.
-     */
     static boolean mostlyUtf8(byte[] data, int from, int mask, int length) {
         long howMuchIsUtf8 = 0;
         int at = 0;
         while (at < length) {
-            int howManyBytes = oneCharacter(data, (from + at) & mask, length - at);
+            int howManyBytes = oneCharacterWithAFlagAboveTheLowByteWhereItIsNotOne(
+                    data, (from + at) & mask, length - at);
             at += howManyBytes & 0xFF;
             if ((howManyBytes >>> 8) == 0) {
                 howMuchIsUtf8 += howManyBytes & 0xFF;
@@ -64,11 +39,7 @@ final class BrotliLiteralCosts {
                 > THREE_QUARTERS_IS_ENOUGH_TO_CALL_IT_UTF8 * (double) length;
     }
 
-    /**
-     * How many bytes the character here occupies, with a flag above the low
-     * byte saying it was not a character at all.
-     */
-    private static int oneCharacter(byte[] data, int at, int left) {
+    private static int oneCharacterWithAFlagAboveTheLowByteWhereItIsNotOne(byte[] data, int at, int left) {
         int first = data[at] & 0xFF;
         if ((first & 0x80) == 0 && first > 0) {
             return 1;
@@ -98,13 +69,6 @@ final class BrotliLiteralCosts {
         return 1 | (NOT_A_CHARACTER << 8);
     }
 
-    /**
-     * Which of the three histograms a byte belongs to, given what came before.
-     *
-     * <p>Zero for a byte that starts a character, one for the second byte of a
-     * character, two for the third. Clamped, because how many histograms are in
-     * use is decided separately.
-     */
     private static int whereInACharacter(int previous, int here, int mostAllowed) {
         if (here < 128) {
             return 0;
@@ -115,13 +79,7 @@ final class BrotliLiteralCosts {
         return previous < 0xE0 ? 0 : Math.min(2, mostAllowed);
     }
 
-    /**
-     * How many histograms are worth keeping.
-     *
-     * <p>The C's own comment says this should be two and that one compresses
-     * better, which is why the count starts at one and only ever falls.
-     */
-    private static int howManyHistogramsAreWorthIt(byte[] data, int from,
+    private static int howManyHistogramsAreWorthItStartingAtOneAndOnlyFalling(byte[] data, int from,
             int length, int mask) {
 
         int[] counts = new int[3];
@@ -137,7 +95,9 @@ final class BrotliLiteralCosts {
     private static void estimateAsText(byte[] data, int from, int length,
             int mask, float[] cost) {
 
-        int howManyHistograms = howManyHistogramsAreWorthIt(data, from, length, mask);
+        int howManyHistograms =
+                howManyHistogramsAreWorthItStartingAtOneAndOnlyFalling(
+                        data, from, length, mask);
         int windowHalf = WINDOW_HALF_FOR_TEXT;
         int inWindow = Math.min(windowHalf, length);
         int[] histogram = new int[3 * 256];

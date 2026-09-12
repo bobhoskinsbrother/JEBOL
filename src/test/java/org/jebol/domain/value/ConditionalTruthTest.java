@@ -9,14 +9,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Only {@code none} and a false {@code logic} are false. Everything else is
- * true, including zero, the empty string and the empty block.
- *
- * <p>This is the single most surprising thing about REBOL for anyone arriving
- * from another language, and every conditional native leans on it, so it is
- * tested exhaustively rather than by sampling.
- */
 class ConditionalTruthTest {
 
     @Nested

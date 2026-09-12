@@ -3,15 +3,8 @@ package org.jebol.domain.render;
 import java.util.List;
 
 /**
- * Turns faces into HTML.
- *
- * <p>A pure function from values to markup, so it can be cached and served
- * from anywhere. Nothing here reads a clock, touches a file or evaluates
- * anything: by the time a face arrives, every decision has been made.
- *
- * <p>Everything a script supplied is escaped. A layout is data, and data
- * arriving from a script must not become markup, or the first person to put
- * user input in a caption has an injection.
+ * Turns faces into HTML: a pure function from values to markup, with
+ * everything a script supplied escaped.
  */
 public final class Html {
 
@@ -67,7 +60,6 @@ public final class Html {
         return element.equals("input") || element.equals("img");
     }
 
-    /** Escapes everything a script could have put here. */
     static String escape(String text) {
         StringBuilder escaped = new StringBuilder(text.length());
         text.chars().forEach(character -> {

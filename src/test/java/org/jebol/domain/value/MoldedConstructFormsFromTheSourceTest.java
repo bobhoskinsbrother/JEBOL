@@ -7,19 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What MOLD/ALL writes, and what MOLD/FLAT does to it.
- *
- * <p>{@code Pre_Mold} writes {@code #(type! } under MOLD/ALL and
- * {@code make type! } without it, and {@code End_Mold} closes the bracket only
- * in the first case. Nine datatypes go through that pair, and JEBOL had it for
- * two of them.
- *
- * <p>MOLD/FLAT is the other half. It is a flag on the mold rather than a way
- * of molding, so it combines with MOLD/ALL; picking one function out of a
- * chain of conditionals threw away whichever refinement lost, and
- * {@code mold/flat/all} quietly did what {@code mold/flat} does.
- */
 class MoldedConstructFormsFromTheSourceTest {
 
     private static String answerTo(String source) {

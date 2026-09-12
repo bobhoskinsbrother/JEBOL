@@ -7,22 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * When a function's body acquires its bindings, which is when the function is
- * made rather than when it is called.
- *
- * <p>R3 binds the body block in place: each word the spec declares is given a
- * binding that names the function, and a call lends the function its frame. So
- * the same bound word reads a different value each time round, and the
- * innermost call's value inside a recursion.
- *
- * <p>Binding by name at each call instead is the plausible implementation, and
- * it reads the same for every body nobody shares and nobody edits -- which is
- * nearly all of them. It differs on exactly two cases, and Rebol's own
- * func-test asserts both.
- *
- * <p>Every figure here was read off {@code ./r3-head} 3.22.5.
- */
 class WhenAFunctionBodyIsBoundFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -95,12 +79,6 @@ class WhenAFunctionBodyIsBoundFromTheSourceTest {
         }
     }
 
-    /**
-     * Rebol's own func-test, "function rebinding (closure compatibility)", for
-     * issue 2048. A word put into the body after the function was made was
-     * never bound, so it reads the global one -- which is the whole of what
-     * makes a body adjustable from outside.
-     */
     @Nested
     @DisplayName("a word put into the body afterwards, which was never bound")
     class AWordPutInAfterwards {
@@ -136,11 +114,6 @@ class WhenAFunctionBodyIsBoundFromTheSourceTest {
         }
     }
 
-    /**
-     * Rebol's own func-test, issue 2025 and issue 2044. Making the second
-     * function binds the same block again, so the words belong to it, and a
-     * word bound to a function that is not running names no slot.
-     */
     @Nested
     @DisplayName("a body shared between two functions, which the second one takes")
     class ABodySharedByTwo {
@@ -165,13 +138,6 @@ class WhenAFunctionBodyIsBoundFromTheSourceTest {
                     f 1""")).isEqualTo("\"not-defined\"");
         }
 
-        /**
-         * Both of them, which is the part that reads as a surprise. Making the
-         * second function binds only the words its own spec declares, so the
-         * body is left half belonging to one function and half to the other
-         * and neither can run it. Assigning the missing word at the top level
-         * does not help: the word is bound, just not to anything running.
-         */
         @Test
         @DisplayName("and so does the second, each holding half the body's words")
         void thesecondStopsTooAndTheGlobalDoesNotHelp() {
@@ -183,10 +149,6 @@ class WhenAFunctionBodyIsBoundFromTheSourceTest {
                     g 5""")).isEqualTo("\"not-defined\"");
         }
 
-        /**
-         * The whole of Rebol's own issue-2025 test, which asks only that
-         * calling the first function afterwards fails at all.
-         */
         @Test
         @DisplayName("which is what Rebol's own issue-2025 asks")
         void whichIsWhatIssue2025Asks() {
@@ -201,12 +163,6 @@ class WhenAFunctionBodyIsBoundFromTheSourceTest {
                     error? try [f 1]""")).isEqualTo("#(true)");
         }
 
-        /**
-         * And BIND still reaches such a word. Binding into a function's own
-         * words is binding relatively -- the answer reads whichever call is
-         * running when it is evaluated -- so the target has the name because
-         * the spec declares it, not because a call is lending a frame.
-         */
         @Test
         @DisplayName("but BIND still binds into a function nobody is running")
         void bindStillReachesIt() {
@@ -216,12 +172,6 @@ class WhenAFunctionBodyIsBoundFromTheSourceTest {
         }
     }
 
-    /**
-     * A closure's frame outlives the call that made it, so it cannot be lent
-     * a context that is handed back. Its body is copied per call and the words
-     * that named the function are pointed at that call's frame -- by binding
-     * rather than by name, which is what keeps the rules above true of it.
-     */
     @Nested
     @DisplayName("a closure, which is copied per call rather than lent a frame")
     class AClosure {

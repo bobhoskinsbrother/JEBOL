@@ -6,23 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Which characters a word may hold, and what happens when one appears.
- *
- * <p>Specified in {@code spec/load.allium}, confirmed against a real R3.
- *
- * <p>Three parts, and no two of them can be dropped. A word may not mix
- * letters with an angle bracket; a run made only of symbols is a word
- * whatever it contains; and a number followed by a symbol run splits in
- * two. A rule where {@code <} always begins a tag fails on {@code a<}, and
- * one where it is absorbed into a word fails on {@code 1<}.
- *
- * <p>% # $ and \ are refused inside a word as well, which had to wait
- * for based binaries: a hash is how `2#{01}` and `2#01` are written, so
- * refusing one in a word only works once those forms are recognised
- * first. A comma is still accepted, and that is recorded as an open
- * question -- the reader splits the lexeme on it before any check sees it.
- */
 class WordCharactersTest {
 
     private static String answerTo(String source) {

@@ -6,27 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The two ways the binary dialect writes a number in as few bytes as it needs.
- *
- * <p>{@code u-bincode.c}. ENCODEDU32 and ENCODEDU64 are seven bits a byte,
- * least significant first, with the top bit set on every byte but the last --
- * {@code cp[n] = u & 0x7F; u >>= 7; if (u) cp[n] |= 0x80;}. VINT counts the
- * leading noughts of its first byte to say how many follow, most significant
- * first, and is what EBML and Matroska carry.
- *
- * <p>They are not interchangeable and the difference shows on the smallest
- * numbers: a hundred and twenty-eight is two bytes either way, {@code 80 01}
- * in the first and {@code 40 80} in the second. The narrower of the first two
- * refuses a number past thirty-two bits, which is the only thing separating
- * it from the wider one.
- *
- * <p>SKIPBITS is here because it belongs to the same family of things a
- * reader needs when a format does not align to bytes: it steps the position by
- * a count of bits and produces nothing.
- *
- * <p>Every byte string here was read off a real 3.22.5 before it was written.
- */
 class BincodeVariableWidthFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -119,11 +98,6 @@ class BincodeVariableWidthFromTheSourceTest {
                 .isEqualTo("[0 1 128 129 130 2214768806]");
     }
 
-    /**
-     * Either side of where a VINT needs a second byte. Seven bits hold up to a
-     * hundred and twenty-seven, and fourteen up to sixteen thousand three
-     * hundred and eighty-three.
-     */
     @Test
     @DisplayName("a VINT at the widest each length holds")
     void aVintAtTheWidestEachLengthHolds() {
@@ -134,14 +108,6 @@ class BincodeVariableWidthFromTheSourceTest {
                 .isEqualTo("[\"FF\" \"7FFF\"]");
     }
 
-    /**
-     * The narrower code's range is symmetric about nought rather than being a
-     * 32-bit word's: {@code (i64)VAL_UNT64(v) > 0xFFFFFFFF ||
-     * (i64)VAL_UNT64(v) < (i64)0xFFFFFFFF00000001}, whose second half is
-     * -4294967295. A number inside it is then written as
-     * {@code (u64)VAL_UNT32(next)}, which is its lowest thirty-two bits, so -1
-     * is the largest number the code can carry and -4294967295 is one.
-     */
     @Test
     @DisplayName("the narrower one takes a negative as its lowest thirty-two bits")
     void theNarrowerOneTakesANegativeAsItsUnsignedSelf() {
@@ -158,7 +124,6 @@ class BincodeVariableWidthFromTheSourceTest {
                 binary/write b [EncodedU32 -4294967296]""")).isEqualTo("out-of-range");
     }
 
-    /** The wider code has no range check at all, so every bit of -1 is written. */
     @Test
     @DisplayName("the wider one has no floor either")
     void theWiderOneTakesANegativeWhole() {
@@ -168,12 +133,6 @@ class BincodeVariableWidthFromTheSourceTest {
                 enbase/flat b/buffer 16""")).isEqualTo("\"FFFFFFFFFFFFFFFFFF01\"");
     }
 
-    /**
-     * Eight bytes is as far as a VINT reaches, because the marker is a bit
-     * within the first byte and the eighth spelling uses the last one it has.
-     * So fifty-six bits is the widest number with a form, and the widest one
-     * writes a lone {@code 01} marker byte followed by every bit set.
-     */
     @Test
     @DisplayName("the widest number a VINT can carry, and one step inside it")
     void theWidestAVintCanCarry() {
@@ -196,12 +155,6 @@ class BincodeVariableWidthFromTheSourceTest {
                 enbase/flat b/buffer 16""")).isEqualTo("\"204000\"");
     }
 
-    /**
-     * A negative number has no VINT form and JEBOL says so, where the C does
-     * not: {@code while (value >= (1ULL << (7 * count))) count++} shifts past
-     * sixty-four once the count reaches ten, which is undefined, and in
-     * practice never stops. Refusing is the only answer that terminates.
-     */
     @Test
     @DisplayName("a VINT refuses a number it has no form for")
     void aVintRefusesANumberItCannotCarry() {
@@ -245,11 +198,6 @@ class BincodeVariableWidthFromTheSourceTest {
                 binary/read 2#{11000011} [SKIPBITS 0 UB 2]""")).isEqualTo("[3]");
     }
 
-    /**
-     * Either side of the whole byte, since the C handles whole bytes and left
-     * over bits by different routes: {@code if (i >= 8) { i /= 8; cp += i; ... }}
-     * and then a loop over what is left.
-     */
     @Test
     @DisplayName("a skip of exactly one byte, and of one bit less")
     void aSkipOfExactlyOneByte() {
@@ -258,11 +206,6 @@ class BincodeVariableWidthFromTheSourceTest {
                 binary/read 2#{11000011} [SKIPBITS 7 UB 1]""")).isEqualTo("[1]");
     }
 
-    /**
-     * The count is read as an unsigned quantity, so a negative one is not a
-     * step backwards -- it is a step of four thousand million bytes, and it
-     * runs off the end. The error names the count that was given.
-     */
     @Test
     @DisplayName("a negative skip runs off the end rather than backwards")
     void aNegativeSkipRunsOffTheEnd() {

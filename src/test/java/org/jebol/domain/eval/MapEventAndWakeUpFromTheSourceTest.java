@@ -7,21 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * MAP-EVENT and WAKE-UP, the two functions the event datatype unblocked.
- *
- * <p>Both are the window system's side of the language, and neither needs a
- * window to do what it does.
- *
- * <p>MAP-EVENT is MAP-GOB-OFFSET with the gob and the point taken out of an
- * event: it finds the deepest gob under the click and rewrites the event to name
- * that gob and a point inside it. Same {@code Map_Gob_Inner}, one caller along.
- *
- * <p>WAKE-UP asks a port to deal with an event. Two steps, and each has a
- * condition on it: the port's UPDATE action runs only if its actor is a native,
- * and its AWAKE function runs only if it has one. The answer says whether the
- * port is finished waiting, and the default is yes.
- */
 class MapEventAndWakeUpFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -37,21 +22,12 @@ class MapEventAndWakeUpFromTheSourceTest {
     private static final String TRUE = "#(true)";
     private static final String FALSE = "#(false)";
 
-    /**
-     * A port, and the only way to one here.
-     *
-     * <p>TO and not MAKE: MAKE hands the object to {@code sys/make-port*},
-     * which raises {@code no-scheme} because {@code system/standard/port}
-     * names none. TO wraps what it is given. This said MAKE and passed while
-     * MAKE also wrapped, which a real 3.22.5 refuses.
-     */
     private static final String A_PORT = "p: to port! system/standard/port ";
 
     @Nested
     @DisplayName("MAP-EVENT")
     class MappingAnEvent {
 
-        /** A window holding one child at 10x10 that is 20 by 20, and a click in it. */
         private static final String A_WINDOW =
                 "w: make gob! [size: 100x100] "
                 + "c: make gob! [offset: 10x10 size: 20x20] append w c ";

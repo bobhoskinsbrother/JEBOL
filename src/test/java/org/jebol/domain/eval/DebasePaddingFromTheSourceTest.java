@@ -7,21 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * DEBASE, and what each base does with an input that does not divide evenly.
- *
- * <p>The three decoders in {@code f-enbase.c} do not agree, and JEBOL had them
- * agreeing. Base sixteen and base two both pad at the front: an odd number of
- * hex digits gains a leading zero nibble, and a run of bits that is not a
- * whole number of bytes gains leading zero bits. Base sixty-four refuses,
- * because four of its digits are three bytes and there is no shorter group.
- *
- * <p>The padding is decided from the length of the whole input, spaces
- * included, and the spaces are then stepped over without being counted. That
- * is why {@code debase "12 34" 16} fails while {@code debase "1234" 16} does
- * not: five characters is an odd length, so the decoder primes itself for a
- * leading nibble that never arrives.
- */
 class DebasePaddingFromTheSourceTest {
 
     private static String answerTo(String source) {

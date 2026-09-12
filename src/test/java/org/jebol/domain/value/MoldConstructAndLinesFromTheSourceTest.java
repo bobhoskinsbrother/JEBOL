@@ -7,16 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Mold_Url writes a url bare only where the scanner would read it back as the
- * same value, and falls back to construct syntax everywhere else. Inside a
- * construct the datatype is already named, so Mold_Block writes a path's
- * segments as a block and Mold_All_String forces a positioned string to its
- * plain quoted text. The line breaks a block carries are rendered by
- * {@code New_Indented_Line} at each flagged position, and BODY-OF flags every
- * set-word with {@code VAL_SET_LINE} -- which together are the bytes a saved
- * script's header is checksummed on.
- */
 class MoldConstructAndLinesFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -146,16 +136,6 @@ class MoldConstructAndLinesFromTheSourceTest {
     @DisplayName("a block carrying line breaks molds one item to a line")
     class TheLinedBlock {
 
-        /**
-         * The indent goes up for a break before the *first* item and for no
-         * other, and comes down again for the bracket.
-         *
-         * <p>{@code if(!had_lines && !line_flag) { had_lines = TRUE;
-         * mold->indent++; }} in {@code Mold_Block_Series}. A break in the
-         * middle of a block is a bare newline, and the closing bracket
-         * follows the last item on the same line, which is what this
-         * asserted the opposite of until a real 3.22 was asked.
-         */
         @Test
         @DisplayName("a break after the first item is bare, with no indent")
         void oneFlaggedPosition() {

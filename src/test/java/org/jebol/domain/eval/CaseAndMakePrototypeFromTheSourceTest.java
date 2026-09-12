@@ -7,22 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Two C behaviours Rebol's own CLEAN-PATH needs, read out of
- * {@code REBNATIVE(case)} in {@code src/core/n-control.c} and the
- * {@code A_MAKE} arm of {@code REBTYPE(String)} in
- * {@code src/core/t-string.c}.
- *
- * <p>Both are in one test file because they are one piece of work: CLEAN-PATH
- * uses each once, and it will not load without both. CLEAN-PATH is in
- * {@code mezz-files.reb}, which is where LIST-DIR lives, which is the first
- * thing {@code mezz-shell.reb} asks for. So these two natives are what stands
- * between JEBOL and twenty-five of Rebol's own functions.
- *
- * <p>Neither is about files. Both are general rules that happened to be
- * discovered through a file function, which is the argument for reading the C
- * rather than the caller.
- */
 class CaseAndMakePrototypeFromTheSourceTest {
 
     private static String answerTo(String source) {

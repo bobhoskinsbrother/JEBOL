@@ -7,23 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The arrow-like words, from {@code Skip_Left_Arrow}, {@code Skip_Right_Arrow} and
- * the two {@code Scan_Token} cases that call them.
- *
- * <p>A run starting with {@code <} that holds nothing but arrow characters is a
- * word, not a tag: {@code <>}, {@code <=}, {@code <-->} and {@code <~~~>} are all
- * words a script can bind. Which characters count is a short list --
- * {@code Skip_Left_Arrow} consumes the run of {@code <} and then any of
- * {@code - = > ~} -- and anything else in the run makes it a tag or a failure.
- *
- * <p>And a colon at the end belongs to the word. {@code Skip_Left_Arrow} consumes
- * it and stops -- {@code if (*cp == ':') { cp++; break; }} -- and the caller reads
- * the last character to decide which token it has:
- * {@code return (np[-1] == ':' ? TOKEN_SET : TOKEN_WORD);}. So {@code <-->:} is one
- * set-word, and without that it comes back as the word and a stray colon, which is
- * a set-word nobody can write.
- */
 class ArrowWordFromTheSourceTest {
 
     private static String answerTo(String source) {

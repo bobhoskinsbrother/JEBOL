@@ -6,19 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TAKE answers a series of the kind it took from.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Answering a block for everything loses the datatype silently, and the
- * loss shows up somewhere else entirely -- when the result is molded, or
- * appended to something that minds what kind it is.
- *
- * <p>The counts are the boundaries: zero, negative, exactly the length, and
- * past the end. All of them clamp rather than failing, because taking from
- * a series that has run out is an ordinary thing for a loop to do.
- */
 class TakeKeepsTheDatatypeTest {
 
     private static String answerTo(String source) {

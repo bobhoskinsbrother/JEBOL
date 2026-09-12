@@ -12,24 +12,7 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * DO given a file, which runs a script rather than evaluating a name.
- *
- * <p>{@code n-control.c} sends {@code REB_FILE}, {@code REB_URL},
- * {@code REB_STRING} and {@code REB_BINARY} to the same place:
- * {@code Do_Sys_Func(SYS_CTX_DO_P, ...)}, which is {@code sys/do*} in
- * {@code sys-base.reb}. So running a script is not written in C at all. That
- * function loads the file with its header, runs its needs, interns it, and
- * evaluates it with the working directory moved to the file's own -- which is
- * why the suite asserts {@code dir = what-dir} after each one.
- *
- * <p>JEBOL matched a file against the Java {@code StringValue} case, because a
- * file is one, and evaluated the file's <em>name</em> as source. So
- * {@code do %units/files/unset.r3} raised {@code no-value} on the word
- * {@code units}. The three assertions that would have shown it had been cut out
- * of the vendored suite and the fourth, which asks only that an error comes
- * back, passed on the wrong error.
- */
+
 class DoFileFromTheSourceTest {
 
     private static Interpreter grantedFilesUnder(Path root) {

@@ -7,30 +7,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Diffie-Hellman: DH-INIT makes a key and DH uses it, once to publish and once
- * to agree.
- *
- * <p>{@code n-crypt.c}. What it is for explains the shape. Two parties who
- * have never met need a shared secret over a line anyone can read. Each makes
- * a private number, publishes something derived from it, and combines the
- * other's published value with their own private one. Both reach the same
- * secret; a listener who saw both published values cannot work it out.
- *
- * <p>So the context is unlike RSA's. An RSA context holds a key the caller
- * supplied. This one holds a key the interpreter <em>generated</em>, and the
- * private half never leaves it -- the only things a caller can do are publish
- * and agree.
- *
- * <p>The parameters below are RFC 3526 group 5, the 1536-bit MODP group, which
- * is what {@code prot-tls.reb} reaches for. Every expectation was run against
- * a real 3.22.1 with them, except the one marked as a divergence.
- *
- * <p>Specified in {@code spec/natives.allium} under Diffie-Hellman.
- */
 class DiffieHellmanFromTheSourceTest {
 
-    /** RFC 3526 group 5, and the generator that goes with it. */
     private static final String PARAMETERS = """
             p: #{FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74
                  020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F1437
@@ -52,7 +30,6 @@ class DiffieHellmanFromTheSourceTest {
 
     private static final String TRUE = "#(true)";
 
-    /** 1536 bits is 192 bytes, and both the public value and secret are that wide. */
     private static final String PRIME_WIDTH = "192";
 
     @Nested
@@ -163,8 +140,6 @@ class DiffieHellmanFromTheSourceTest {
         @Test
         @DisplayName("a handle of another type answers none, which the C doubts in a comment")
         void aHandleOfAnotherTypeAnswersNone() {
-            // `return R_NONE; //or? Trap0(RE_INVALID_HANDLE);` -- so this one
-            // declines where RC4 and RSA raise. Followed as written.
             assertThat(answerTo("none? dh/public rc4/key #{01}")).isEqualTo(TRUE);
             assertThat(answerTo("none? dh/secret (rc4/key #{01}) #{02}")).isEqualTo(TRUE);
         }
@@ -172,12 +147,6 @@ class DiffieHellmanFromTheSourceTest {
         @Test
         @DisplayName("and naming neither answers none, where a real 3.22.1 reads free memory")
         void noRefinementAnswersNone() {
-            // The C's branches are `if (refPublic)` and `if (refSecret)`, and
-            // with neither taken it reaches `return R_RET` having never
-            // written the return slot. A real 3.22.1 hands back whatever that
-            // memory held: a binary of nothing in particular here, and a
-            // segmentation fault when two contexts were built in one
-            // expression. Not a rule to port.
             assertThat(answerTo("none? dh alice")).isEqualTo(TRUE);
         }
 

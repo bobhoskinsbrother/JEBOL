@@ -7,25 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The module datatype: MAKE, TO, and what a module answers about itself.
- *
- * <p>Read out of {@code Make_Module} in {@code src/core/c-frame.c} and the
- * MAKE and TO branches for {@code REB_MODULE} in {@code src/core/t-object.c}.
- *
- * <p>The C is four lines and one of them is
- * {@code Do_Sys_Func(SYS_CTX_MAKE_MODULE_P, spec, 0)}. So MAKE MODULE! does
- * not build the module: it hands the spec to MAKE-MODULE* in
- * {@code sys-base.reb} and answers what that gives back. This is the same
- * arrangement as MAKE PORT!, and the reason is the same. Those ninety lines
- * of REBOL are where the EXPORT and HIDDEN keywords in a module body are
- * handled and where the header is checked, and every one of those is
- * behaviour a script can observe. A copy in the host language would be a
- * second set of answers.
- *
- * <p>Specified in {@code spec/values.allium} as ModuleValue and in
- * {@code spec/natives.allium} under "Making a module".
- */
 class ModuleDatatypeFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -41,7 +22,6 @@ class ModuleDatatypeFromTheSourceTest {
     private static final String TRUE = "#(true)";
     private static final String FALSE = "#(false)";
 
-    /** A module with one exported word and one private one. */
     private static final String A_MODULE =
             "make module! [[Title: \"t\" Name: probe-module Exports: [shown]] "
             + "[shown: 1 hidden-one: 2]]";

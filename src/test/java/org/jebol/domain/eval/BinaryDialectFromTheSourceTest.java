@@ -7,29 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * BINARY, the entry point of a little language for laying numbers into bytes.
- *
- * <p>{@code u-bincode.c}. A protocol is a sequence of fields of stated widths,
- * and writing one by hand means shifting and masking at every field. The
- * dialect states the widths instead: {@code [UI8 5 UI16 300]} writes one byte
- * then two, and {@code [UI8 UI16]} reads them back. That is what
- * {@code prot-tls.reb} is built on, TLS being nothing but framed fields of
- * stated widths.
- *
- * <p>Every byte pattern below was checked against a real 3.22.1, including
- * that writing answers the <em>context</em> rather than the bytes -- which is
- * what lets a caller write field after field, each call taking the last one's
- * answer.
- *
- * <p>Eighty-one codes exist in the C and this carries the ones for whole
- * numbers, position and raw bytes. A code outside that set raises rather than
- * being skipped, which is the decision here worth defending and is pinned
- * below: a dialect that ignores what it does not understand writes a message
- * of the wrong length and leaves the far end to discover it.
- *
- * <p>Specified in {@code spec/natives.allium} under the binary dialect.
- */
 class BinaryDialectFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -132,10 +109,6 @@ class BinaryDialectFromTheSourceTest {
         @Test
         @DisplayName("but a single word answers that value, not a block holding it")
         void aSingleWordAnswersTheValueItself() {
-            // The shape follows the asking. `binary/read ctx 'UI16` is a
-            // caller saying "one number, please", and prot-tls.reb reads a
-            // field this way inside a loop and appends the answer straight
-            // into a list -- a block there would quietly nest.
             assertThat(answerTo("mold binary/read #{0102} 'UI16")).isEqualTo("\"258\"");
             assertThat(answerTo("integer? binary/read #{0102} 'UI16")).isEqualTo(TRUE);
         }
@@ -165,8 +138,6 @@ class BinaryDialectFromTheSourceTest {
         @Test
         @DisplayName("a signed field with its top bit set reads back negative")
         void aSignedFieldIsNegative() {
-            // Or an SI8 of -1 reads as 255: the same eight bits and a
-            // different number.
             assertThat(answerTo("mold binary/read #{FF} [SI8]")).isEqualTo("\"[-1]\"");
             assertThat(answerTo("mold binary/read #{FFFF} [SI16]")).isEqualTo("\"[-1]\"");
         }
@@ -226,9 +197,6 @@ class BinaryDialectFromTheSourceTest {
         @Test
         @DisplayName("including one whose own segment is a get-word, as prot-tls writes it")
         void aGetPathWithAGetWordSegment() {
-            // `binary/write tail supported-elliptic-curves
-            //     [UI16BE :*EllipticCurves/:curve]` -- a curve's number looked
-            // up in an enumeration by a word the loop is holding.
             assertThat(answerTo("""
                     table: make object! [secp256r1: 23 secp384r1: 24]
                     curve: 'secp384r1

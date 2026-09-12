@@ -11,11 +11,6 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Typeset membership is asserted against explicit tables rather than against
- * the implementation's own sets, so that adding a datatype forces a decision
- * about every typeset instead of silently defaulting to "not a member".
- */
 class DatatypeTest {
 
     private static final Set<Datatype> EXPECTED_ANY_STRING = EnumSet.of(
@@ -50,11 +45,6 @@ class DatatypeTest {
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT, Datatype.MONEY,
             Datatype.CHAR, Datatype.PAIR, Datatype.TUPLE, Datatype.TIME, Datatype.DATE);
 
-    /**
-     * All seven rows {@code types.reb} gives the {@code function} typeclass,
-     * which is what a real 3.22.5 answers for {@code to block! any-function!}.
-     * This named three of them and was wrong about the other four.
-     */
     private static final Set<Datatype> EXPECTED_ANY_FUNCTION = EnumSet.of(
             Datatype.NATIVE, Datatype.ACTION, Datatype.REBCODE, Datatype.COMMAND,
             Datatype.OP, Datatype.CLOSURE, Datatype.FUNCTION);

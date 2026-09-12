@@ -6,32 +6,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A scheme whose actor is written in REBOL, which JEBOL could not open at all.
- *
- * <p>{@code Do_Port_Action} in {@code c-port.c}. Every port action goes to the
- * port's actor, and an actor is one of two things: a word naming something
- * built in, or an object of functions written in REBOL. JEBOL served only the
- * first, and refused every scheme whose name was not on a list of eight -- so
- * {@code sys/make-scheme} accepted a scheme, put it in {@code system/schemes}
- * with its actor intact, and then no port could ever be opened on it.
- *
- * <p>The distinction that matters is which of the two needs the host's
- * permission. A built-in actor is the way out of the interpreter and has to
- * have its service granted first. An actor written in REBOL is not a way out
- * of anything: whatever it reaches for, it reaches for by calling ordinary
- * words, and each of those asks the host for itself. So it opens without
- * asking for anything, and this test class needs no host at all.
- *
- * <p>Every expectation was read off a real 3.22.5 first.
- */
 class ASchemeWrittenInRebolFromTheSourceTest {
 
-    /**
-     * A scheme that counts, with six of the ten actions and deliberately
-     * without READ or WRITE, so what happens for an action the actor has no
-     * function for can be asked.
-     */
     private static final String A_COUNTING_SCHEME = """
             sys/make-scheme [
                 title: "A counter"
@@ -83,12 +59,6 @@ class ASchemeWrittenInRebolFromTheSourceTest {
                 reduce [port? counter  counter/data]""")).isEqualTo("[#(true) 0]");
     }
 
-    /**
-     * Each verb reaching the function of its own name, with the arguments it
-     * was given -- {@code Redo_Func} hands the actor's function the same stack
-     * the action was called on, so PICK's key and POKE's value arrive as they
-     * were written.
-     */
     @Test
     @DisplayName("every action reaches the function of its own name")
     void everyActionReachesTheFunctionOfItsOwnName() {
@@ -112,11 +82,6 @@ class ASchemeWrittenInRebolFromTheSourceTest {
                 reduce [counter/data  open? counter]""")).isEqualTo("[_ #(false)]");
     }
 
-    /**
-     * Refused by name, so a caller learns which verb this port does not do
-     * rather than that something went wrong somewhere inside it. The name
-     * arrives as a set-word, which is how the action table spells it.
-     */
     @Test
     @DisplayName("an action the actor has no function for is refused by name")
     void anActionTheActorHasNoFunctionForIsRefusedByName() {
@@ -133,11 +98,6 @@ class ASchemeWrittenInRebolFromTheSourceTest {
                 e: try [select counter 'k] e/id""")).isEqualTo("no-port-action");
     }
 
-    /**
-     * An actor that is neither a word nor an object is a scheme built wrongly
-     * rather than a port used wrongly, and says so at the door: the refusal is
-     * on OPEN, before any verb has been sent.
-     */
     @Test
     @DisplayName("and an actor that is neither a word nor an object is invalid")
     void anActorThatIsNeitherIsInvalid() {
@@ -146,10 +106,6 @@ class ASchemeWrittenInRebolFromTheSourceTest {
                 e: try [open [scheme: 'broken]] e/id""")).isEqualTo("invalid-actor");
     }
 
-    /**
-     * A scheme that answers the actions the counting one deliberately lacks,
-     * and says what refinements it was called with.
-     */
     private static final String A_TELLING_SCHEME = """
             sys/make-scheme [
                 title: "A teller"
@@ -175,18 +131,6 @@ class ASchemeWrittenInRebolFromTheSourceTest {
                 + "teller: open [scheme: 'telling]\n" + source);
     }
 
-    /**
-     * COPY, LENGTH? and QUERY are actions like any other, and {@code T_Port}
-     * sends the lot to {@code Do_Port_Action}. Only MAKE, TO and REFLECT are
-     * named as exceptions, and none of those acts on a port that is already
-     * built.
-     *
-     * <p>Not a detail of the dispatch. Rebol's own HTTP ends a request with
-     * {@code body: copy port}, meaning the response body, and a COPY that
-     * duplicated the port object instead answered a port where the caller
-     * wanted the page -- so {@code read http://example.com} gave back the port
-     * it had just read through.
-     */
     @Test
     @DisplayName("COPY, LENGTH? and QUERY are the actor's too")
     void copyLengthAndQueryAreTheActorsToo() {
@@ -196,15 +140,6 @@ class ASchemeWrittenInRebolFromTheSourceTest {
                         ["what the actor copied" 42 [asked size]]""");
     }
 
-    /**
-     * The refinements go with the action. An actor's function declares its
-     * own, and what the caller asked for is part of what the action was given.
-     *
-     * <p>Dropping them is quiet and total: HTTP's READ answers a decoded
-     * string for {@code read}, the raw bytes for {@code read/binary} and a
-     * three-part block for {@code read/all}, all out of one function reading
-     * one response.
-     */
     @Test
     @DisplayName("and the refinements the caller asked for reach it")
     void theRefinementsTheCallerAskedForReachIt() {
@@ -220,7 +155,6 @@ class ASchemeWrittenInRebolFromTheSourceTest {
                 .isEqualTo("[read _ _ _ #(true) _ _]");
     }
 
-    /** And the value a refinement carries arrives with it, not just the flag. */
     @Test
     @DisplayName("and what a refinement carries arrives with it")
     void whatARefinementCarriesArrivesWithIt() {
@@ -232,11 +166,6 @@ class ASchemeWrittenInRebolFromTheSourceTest {
                 .isEqualTo("[read _ _ _ _ 3 7]");
     }
 
-    /**
-     * The built-in half is unchanged: a scheme whose actor is a word still
-     * needs the service that word names, and an interpreter given no
-     * filesystem still refuses a file port.
-     */
     @Test
     @DisplayName("a built-in actor still needs its service granted")
     void aBuiltInActorStillNeedsItsServiceGranted() {

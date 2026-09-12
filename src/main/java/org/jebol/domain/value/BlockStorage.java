@@ -14,14 +14,6 @@ public final class BlockStorage {
 
     private final List<Value> items;
 
-    /**
-     * The positions carrying a line break, one-based.
-     *
-     * <p>A marker is a property of a position rather than a value in the
-     * block, which is why NEW-LINE and NEW-LINE? are natives of their own
-     * rather than something you could write by inserting a value. It
-     * survives MOLD and is what makes a molded block keep its shape.
-     */
     private final Set<Integer> lineBreaks = new HashSet<>();
 
     public BlockStorage() {
@@ -57,23 +49,8 @@ public final class BlockStorage {
         return new BlockStorage(List.of(initialItems));
     }
 
-    /**
-     * Whether this storage refuses modification.
-     *
-     * <p>On the storage rather than on the value, because two series
-     * values sharing storage are two views of one thing and cannot
-     * disagree about whether it can change. PROTECT of either protects
-     * both, which is what makes protection worth anything.
-     */
     private boolean isProtected;
 
-    /**
-     * Stops a change to protected storage.
-     *
-     * <p>Here rather than in the natives, because every mutation passes
-     * through this class and a check per native is a check that can be
-     * left off the next one.
-     */
     private void refuseIfProtected() {
         if (isProtected) {
             throw new ProtectedFromChange();

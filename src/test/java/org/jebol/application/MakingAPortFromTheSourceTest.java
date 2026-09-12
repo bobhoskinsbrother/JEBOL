@@ -6,38 +6,12 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * MAKE PORT! reads six spellings of a specification, and refuses the rest two
- * different ways.
- *
- * <p>{@code MT_Port} in {@code t-port.c} does nothing itself: it hands the
- * specification to {@code sys/make-port*}, which is REBOL rather than C. That
- * one function reads a file, a url, a block of set-words, an object, a word
- * naming a scheme, or another port, and the six differ only in where the
- * scheme's name is found. So nothing in the interpreter needs to know about
- * any of them.
- *
- * <p>The two refusals are worth telling apart. A number or a string is not a
- * specification at all and answers {@code invalid-spec}; a block or an object
- * <em>is</em> one and failed because nothing serves the scheme it names, so it
- * answers {@code no-scheme} and names the scheme. A caller reading the first
- * wrote the wrong kind of thing; a caller reading the second wrote the right
- * kind of thing about a doorway that is not there.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written.
- */
 class MakingAPortFromTheSourceTest {
 
     private static String answerTo(String source) {
         return answerFrom(Interpreter.create(), source);
     }
 
-    /**
-     * The file arm is the one that needs a filesystem to make a port at all:
-     * {@code make-port*} asks {@code dir?/check} whether the path names a
-     * directory, so the scheme's name comes off the disk rather than off the
-     * value.
-     */
     private static String answerReachingTheFilesystem(
             java.nio.file.Path directory, String source) {
 
@@ -105,11 +79,6 @@ class MakingAPortFromTheSourceTest {
                 p/spec/scheme""")).isEqualTo("checksum");
     }
 
-    /**
-     * A file is the file scheme and a wildcard is the directory scheme, which
-     * is the one arm that reads the name out of the shape of the value rather
-     * than out of a field.
-     */
     @Test
     @DisplayName("a file is the file scheme, and a wildcard is the directory scheme")
     void aFileIsTheFileSchemeAndAWildcardIsTheDirectoryScheme(
@@ -125,12 +94,6 @@ class MakingAPortFromTheSourceTest {
                 p/spec/scheme""")).isEqualTo("dir");
     }
 
-    /**
-     * A block, an object, a word and a url are all specifications. When one of
-     * them names a scheme nothing serves, the error names the scheme -- and
-     * where there is no name at all to give, it names nothing rather than
-     * inventing one.
-     */
     @Test
     @DisplayName("a specification whose scheme nobody serves names the scheme")
     void aSchemeNobodyServesNamesTheScheme() {
@@ -157,13 +120,6 @@ class MakingAPortFromTheSourceTest {
                 .isEqualTo("no-scheme");
     }
 
-    /**
-     * A number, a fraction, text and nothing at all are not specifications of
-     * any kind, so the answer is about the specification rather than about a
-     * scheme. The error names what was written, because a specification is
-     * usually built rather than typed and the useful question is which one
-     * came out wrong.
-     */
     @Test
     @DisplayName("what is no specification at all is refused as a specification")
     void whatIsNoSpecificationAtAllIsRefusedAsOne() {

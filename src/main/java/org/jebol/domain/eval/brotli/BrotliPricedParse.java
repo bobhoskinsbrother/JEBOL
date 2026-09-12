@@ -2,25 +2,6 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * The cheapest way through the input, rather than the first good one.
- *
- * <p>{@code backward_references_hq.c}. Levels two to nine walk forward taking
- * matches as they find them. These two build a table of the cheapest way of
- * reaching every position, filling it left to right, and then walk back from
- * the end to read off the commands. A shorter match now can win if it leaves a
- * better one available afterwards, which is the whole difference.
- *
- * <p>The table would be far too slow filled honestly, so three things prune it.
- * Only the eight cheapest starting positions are kept, and only the first of
- * them is tried at level ten and the first five at eleven. A copy longer than a
- * hundred and fifty bytes -- three hundred and twenty five at level eleven --
- * is taken as read rather than compared against shorter ones. And a position
- * already reachable more cheaply than any command could manage is skipped.
- *
- * <p>Level eleven then does all of it twice: once with costs guessed from the
- * data, then again with costs measured from the commands the first pass wrote.
- */
 final class BrotliPricedParse {
 
     private static final int LONG_ENOUGH_TO_STOP_COMPARING_AT_TEN = 150;
@@ -40,14 +21,6 @@ final class BrotliPricedParse {
     private final int[] distance;
     private final int[] shortCodeAndInsertLength;
 
-    /**
-     * Cost while the position is still ahead, then the shortcut once it is
-     * behind, then the step to the next command once the walk back has run.
-     *
-     * <p>The C keeps all three in one union and so does this, because the
-     * overwriting is deliberate: a position's cost is finished with at the
-     * moment its shortcut is worked out.
-     */
     private final int[] costThenShortcutThenNext;
 
     private BrotliPricedParse(int howManyBytes) {
@@ -108,14 +81,7 @@ final class BrotliPricedParse {
         costIs(landing, cost);
     }
 
-    /**
-     * The eight cheapest places a command could have started, cheapest first.
-     *
-     * <p>Cheapest means the least it costs to reach that position beyond what
-     * writing everything up to it as literals would cost, so a position that is
-     * expensive in absolute terms can still be a good place to start from.
-     */
-    private static final class Starts {
+    private static final class TheCheapestPlacesACommandCouldHaveStarted {
 
         private final int[] position = new int[HOW_MANY_STARTS_ARE_KEPT];
         private final int[][] recentDistances = new int[HOW_MANY_STARTS_ARE_KEPT][4];
@@ -164,15 +130,6 @@ final class BrotliPricedParse {
         }
     }
 
-    /**
-     * Where the last four distances would stand if the cheapest path so far
-     * were the one taken.
-     *
-     * <p>The shortcut chain skips straight back over commands that did not
-     * change the recent distances -- a dictionary word, or a copy that reused
-     * the last distance -- so following it four times gives the four that would
-     * be in the reader's cache.
-     */
     private void recentDistancesAt(int position, int[] startingFrom, int[] into) {
         int filled = 0;
         int walk = costThenShortcutThenNext[position];
@@ -202,13 +159,10 @@ final class BrotliPricedParse {
         return costThenShortcutThenNext[position - copyLength - insertLength];
     }
 
-    /**
-     * Works out a position's shortcut and, if it is worth starting from, adds
-     * it to the queue. Doing so destroys its cost, which is why the cost is
-     * read out first.
-     */
-    private void evaluate(int blockStart, int position, int furthestBack,
-            int[] startingDistances, BrotliCostModel model, Starts starts) {
+    private void workOutTheShortcutAndQueueItIfWorthStartingFrom(
+            int blockStart, int position, int furthestBack,
+            int[] startingDistances, BrotliCostModel model,
+            TheCheapestPlacesACommandCouldHaveStarted starts) {
 
         float itsCost = costAt(position);
         costThenShortcutThenNext[position] =
@@ -221,14 +175,6 @@ final class BrotliPricedParse {
         }
     }
 
-    /**
-     * The shortest copy that could possibly improve on what is already known.
-     *
-     * <p>If everything within reach is already cheaper than the best a command
-     * from here could manage, there is no point offering short copies at all.
-     * The floor rises by a bit at each copy-length bracket, because a longer
-     * copy needs another extra bit to write.
-     */
     private int shortestCopyWorthTrying(float startCost, int position) {
         float floor = startCost;
         int copyLength = 2;
@@ -246,17 +192,12 @@ final class BrotliPricedParse {
         return copyLength;
     }
 
-    /**
-     * Offers every match at this position to every starting position kept, and
-     * records the ones that beat what was already known.
-     *
-     * <p>Answers the longest copy it recorded, which tells the caller how far it
-     * may skip ahead.
-     */
-    private int offerEverythingAt(byte[] data, int mask, int blockStart,
-                                  int position, int quality, int furthestBack, int[] startingDistances,
-                                  int howManyMatches, BrotliMatches matches, BrotliDistances distances,
-                                  BrotliCostModel model, Starts starts) {
+    private int offerEverythingAtAnsweringTheLongestCopyRecorded(
+            byte[] data, int mask, int blockStart, int position, int quality,
+            int furthestBack, int[] startingDistances, int howManyMatches,
+            BrotliMatches matches, BrotliDistances distances,
+            BrotliCostModel model,
+            TheCheapestPlacesACommandCouldHaveStarted starts) {
 
         int here = blockStart + position;
         int hereMasked = here & mask;
@@ -269,7 +210,8 @@ final class BrotliPricedParse {
         int howManyStartsToTry = quality <= 10 ? 1 : 5;
         int longest = 0;
 
-        evaluate(blockStart, position, furthestBack, startingDistances, model, starts);
+        workOutTheShortcutAndQueueItIfWorthStartingFrom(
+                blockStart, position, furthestBack, startingDistances, model, starts);
 
         int shortestWorthTrying;
         {
@@ -367,13 +309,6 @@ final class BrotliPricedParse {
         return longest;
     }
 
-    /**
-     * Walks back from the end, turning the cheapest path into a chain of steps.
-     *
-     * <p>The C answers how many commands the chain has, so its caller can keep
-     * a running total; here the commands are appended to a list that knows its
-     * own length, so there is nothing to answer.
-     */
     private void readTheAnswerBack() {
         int at = howManyBytes;
         while (insertLengthAt(at) == 0 && length[at] == 1) {
@@ -387,11 +322,6 @@ final class BrotliPricedParse {
         }
     }
 
-    /**
-     * Turns the chain into commands, updating the recent distances as it goes.
-     *
-     * <p>{@code BrotliZopfliCreateCommands}.
-     */
     private void writeTheCommands(int blockStart, int windowBits,
             int[] recentDistances, int[] insertLengthCarried,
             BrotliDistances distances, BrotliCommand commands,
@@ -429,12 +359,6 @@ final class BrotliPricedParse {
         insertLengthCarried[0] += howManyBytes - at;
     }
 
-    /**
-     * Level ten: one pass, asking the hasher for matches as it goes.
-     *
-     * <p>{@code BrotliZopfliComputeShortestPath} followed by
-     * {@code BrotliZopfliCreateCommands}.
-     */
     static void findAllForTen(byte[] data, int mask, int blockStart,
             int howManyBytes, int windowBits, BrotliBinaryTreeHasher hasher,
             int[] recentDistances, int[] insertLengthCarried,
@@ -454,7 +378,8 @@ final class BrotliPricedParse {
         int rememberUntil = howManyBytes >= BrotliBinaryTreeHasher.LONGEST_COMPARED
                 ? blockStart + howManyBytes - BrotliBinaryTreeHasher.LONGEST_COMPARED + 1
                 : blockStart;
-        Starts starts = new Starts();
+        TheCheapestPlacesACommandCouldHaveStarted starts =
+                new TheCheapestPlacesACommandCouldHaveStarted();
         BrotliMatches matches = new BrotliMatches();
 
         for (int at = 0; at + 3 < howManyBytes; at++) {
@@ -469,7 +394,8 @@ final class BrotliPricedParse {
                 matches.keepOnly(howManyMatches - 1);
                 howManyMatches = 1;
             }
-            int skip = parse.offerEverythingAt(data, mask, blockStart, at, 10,
+            int skip = parse.offerEverythingAtAnsweringTheLongestCopyRecorded(
+                    data, mask, blockStart, at, 10,
                     furthestBack, recentDistances, howManyMatches, matches,
                     distances, model, starts);
             if (skip < LONG_ENOUGH_TO_SKIP_AHEAD) {
@@ -488,7 +414,8 @@ final class BrotliPricedParse {
                     if (at + 3 >= howManyBytes) {
                         break;
                     }
-                    parse.evaluate(blockStart, at, furthestBack, recentDistances,
+                    parse.workOutTheShortcutAndQueueItIfWorthStartingFrom(
+                            blockStart, at, furthestBack, recentDistances,
                             model, starts);
                     skip--;
                 }
@@ -499,13 +426,6 @@ final class BrotliPricedParse {
                 insertLengthCarried, distances, commands, howManyLiterals);
     }
 
-    /**
-     * Level eleven: gather every match first, then parse twice.
-     *
-     * <p>{@code BrotliCreateHqZopfliBackwardReferences}. The second parse uses
-     * costs measured from what the first one wrote, so it knows which symbols
-     * are actually common in this data rather than guessing.
-     */
     static void findAllForEleven(byte[] data, int mask, int blockStart,
             int howManyBytes, int windowBits, BrotliBinaryTreeHasher hasher,
             int[] recentDistances, int[] insertLengthCarried,
@@ -568,7 +488,8 @@ final class BrotliPricedParse {
             parse.forgetEverything();
             parse.length[0] = 0;
             parse.costIs(0, 0.0f);
-            parse.iterate(data, mask, blockStart, howManyBytes, furthestBack,
+            parse.iterateOverMatchesGatheredBeforehand(
+                    data, mask, blockStart, howManyBytes, furthestBack,
                     recentDistances, howManyMatchesAt, allMatches, distances,
                     model);
             parse.writeTheCommands(blockStart, windowBits, recentDistances,
@@ -576,18 +497,13 @@ final class BrotliPricedParse {
         }
     }
 
-    /**
-     * One pass over matches that were gathered beforehand.
-     *
-     * <p>{@code ZopfliIterate}. Unlike level ten's pass this never asks the
-     * hasher for anything, because every match is already in hand.
-     */
-    private void iterate(byte[] data, int mask, int blockStart, int howManyBytes,
+    private void iterateOverMatchesGatheredBeforehand(byte[] data, int mask, int blockStart, int howManyBytes,
             int furthestBack, int[] recentDistances, int[] howManyMatchesAt,
             BrotliMatches allMatches, BrotliDistances distances,
             BrotliCostModel model) {
 
-        Starts starts = new Starts();
+        TheCheapestPlacesACommandCouldHaveStarted starts =
+                new TheCheapestPlacesACommandCouldHaveStarted();
         BrotliMatches window = new BrotliMatches();
         int matchesSoFar = 0;
         for (int at = 0; at + 3 < howManyBytes; at++) {
@@ -595,7 +511,8 @@ final class BrotliPricedParse {
             for (int which = 0; which < howMany; which++) {
                 window.copyOneOverFrom(which, allMatches, matchesSoFar + which);
             }
-            int skip = offerEverythingAt(data, mask, blockStart, at, 11,
+            int skip = offerEverythingAtAnsweringTheLongestCopyRecorded(
+                    data, mask, blockStart, at, 11,
                     furthestBack, recentDistances, howMany, window, distances,
                     model, starts);
             if (skip < LONG_ENOUGH_TO_SKIP_AHEAD) {
@@ -613,7 +530,8 @@ final class BrotliPricedParse {
                     if (at + 3 >= howManyBytes) {
                         break;
                     }
-                    evaluate(blockStart, at, furthestBack, recentDistances,
+                    workOutTheShortcutAndQueueItIfWorthStartingFrom(
+                            blockStart, at, furthestBack, recentDistances,
                             model, starts);
                     matchesSoFar += howManyMatchesAt[at];
                     skip--;

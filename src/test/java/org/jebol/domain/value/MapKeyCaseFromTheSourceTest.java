@@ -7,27 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A map finds a key without minding its case, unless it is told to.
- *
- * <p>{@code Find_Entry} in {@code t-map.c} takes a {@code cased} flag and its
- * six callers do not agree about it. A path read, SELECT, FIND, PUT and POKE
- * all pass false, so they match without minding case. MAKE and REMOVE/KEY pass
- * true, and so do {@code select/case} and {@code put/case}.
- *
- * <p>Which means the two ends of a map behave differently on purpose: building
- * one keeps {@code "k"} and {@code "K"} apart, and looking one up does not.
- * That is not an inconsistency to tidy -- it is what lets a map be written with
- * whatever case a caller has to hand while still being able to hold both.
- *
- * <p>Three things here would be got wrong by reasoning and were checked
- * against a real 3.22.1 instead. FIND answers the key <em>as stored</em> rather
- * than as asked. A write that matches without case updates the existing entry
- * and keeps the spelling that was there first. And this is not only about
- * strings: a word key matches the same way.
- *
- * <p>Specified in {@code spec/natives.allium}.
- */
 class MapKeyCaseFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -62,9 +41,6 @@ class MapKeyCaseFromTheSourceTest {
         @Test
         @DisplayName("and FIND finds it, answering the key as it is stored")
         void findAnswersTheStoredKey() {
-            // The part that would be got wrong by reasoning. FIND on a map
-            // answers the key rather than the value, and the key it answers is
-            // the one the map holds -- so asking with "K" answers "k".
             assertThat(answerTo(A_MAP_KEYED_LOWER + """
                     mold find m "K\"""")).isEqualTo("{\"k\"}");
         }
@@ -171,9 +147,6 @@ class MapKeyCaseFromTheSourceTest {
         @Test
         @DisplayName("MAKE keeps two keys that differ only by case")
         void makeKeepsBoth() {
-            // The other end of the same rule, and why it is not an
-            // inconsistency: a map can hold both, and a caller looking one up
-            // need not know which it was written with.
             assertThat(answerTo("""
                     2 = length? make map! ["k" 1 "K" 2]""")).isEqualTo("#(true)");
         }

@@ -7,38 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The event datatype, read out of {@code t-event.c} and {@code reb-event.h}.
- *
- * <p>A thing that happened, waiting to be answered: a click, a key, a connection
- * opening, a file dropped on a window. Not a series and not a container -- the C
- * keeps one in a single twelve-byte value cell, and says why in a comment:
- * "events are kept compact in order to fit into normal 128 bit values cells. This
- * provides high performance for high frequency events". So an event has MAKE, TO
- * and nothing else, and every field a script reads is unpacked from those bytes.
- *
- * <p>The packing is where the surprises are, and there are three.
- *
- * <p><b>The type is an index into a block a script can read.</b>
- * {@code system/catalog/event-types} lists 47 words and the event stores the
- * position of one. Which means the catalogue is the authority on what type words
- * exist, and index 0 -- the word {@code ignore} -- reads back as none rather than
- * as that word.
- *
- * <p><b>Offset, key and code are one field seen three ways.</b> Four bytes, with
- * two flags saying how to read them: an offset packs two signed shorts and raises
- * HAS_XY, while a key or a code puts a number there and raises HAS_CODE. Writing
- * either takes the other's flag down, so an event with a key has no offset --
- * which Rebol's own test asserts.
- *
- * <p><b>And port, gob and data share one slot.</b> The model byte says which is
- * in it, {@code window} and {@code gob} are two names for the same field, and a
- * GUI event with nothing in the slot answers {@code system/ports/event} for its
- * port rather than none.
- *
- * <p>Rebol's own {@code event-test.r3} settles seven of these and is quoted where
- * it does. Specified in {@code spec/values.allium} as {@code EventValue}.
- */
 class EventFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -53,18 +21,6 @@ class EventFromTheSourceTest {
 
     private static final String TRUE = "#(true)";
 
-    /**
-     * A port to hang an event on.
-     *
-     * <p>{@code to port!} and not {@code make port!}, which is the difference
-     * between wrapping an object and building one from a specification. MAKE
-     * hands the object to {@code sys/make-port*}, which wants a scheme and
-     * raises {@code no-scheme} when the object names none -- and
-     * {@code system/standard/port} names none. TO wraps what it is given.
-     *
-     * <p>This test used to say MAKE and passed, because MAKE used to wrap an
-     * object too. It was asserting something a real 3.22.5 refuses.
-     */
     private static final String A_PORT = "p: to port! system/standard/port ";
 
     @Nested
@@ -309,16 +265,6 @@ class EventFromTheSourceTest {
         @Test
         @DisplayName("and none means the event belongs to the GUI, whose port is the host's")
         void noneMeansTheGui() {
-            // Writing none is not clearing the field. `else if (IS_NONE(val))
-            // VAL_EVENT_MODEL(value) = EVM_GUI;` -- it says which of the
-            // seven models this event uses, and reading the field back then
-            // answers the one port every GUI event belongs to: `if
-            // (IS_EVENT_MODEL(value, EVM_GUI)) *val = *Get_System(SYS_PORTS,
-            // PORTS_EVENT);`.
-            //
-            // This asserted `none? system/ports/event` until that port
-            // existed, which pinned a gap in JEBOL rather than anything the C
-            // does. A real 3.22.1 has the port even in a console build.
             assertThat(answerTo("port? system/ports/event")).isEqualTo(TRUE);
             assertThat(answerTo(
                     "e: make event! [port: none] same? e/port system/ports/event"))

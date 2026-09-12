@@ -7,20 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Putting things into a binary, read out of {@code Join_Binary} in
- * {@code s-make.c} and {@code Modify_String} in {@code f-modify.c}.
- *
- * <p>One rule underneath all of it: text put into a binary becomes its
- * UTF-8 bytes. A string, a file, a character and each item of a block all
- * go the same way, so a character above the ASCII range contributes
- * several bytes rather than one.
- *
- * <p>That makes the count of bytes added different from the count of
- * things added, which is where {@code /part} gets interesting: it counts
- * characters of the source and the encoding happens afterwards, so one
- * character can be three bytes.
- */
 class BinaryModifyFromTheSourceTest {
 
     private static String answerTo(String source) {

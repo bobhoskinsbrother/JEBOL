@@ -11,15 +11,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Every value survives a round trip through MOLD.
- *
- * <p>The earlier round-trip tests only ever molded values fresh from the
- * reader, which are unbound, so they never noticed that a bound block did not
- * survive. Binding is not syntax and MOLD does not print it, so a round trip
- * cannot preserve it; what it must preserve is the value, and in REBOL two
- * words are equal when they are spelled alike regardless of binding.
- */
 class RoundTripInvariantTest {
 
     private static BlockValue read(String source) {

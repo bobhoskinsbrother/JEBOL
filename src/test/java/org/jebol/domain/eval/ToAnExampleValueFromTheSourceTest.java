@@ -7,24 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TO given something that is not a datatype.
- *
- * <p>Its first argument is spelled {@code type [any-type!] "The datatype or
- * example value"}, and MAKE says the same. So {@code to "" #{6162}} is
- * {@code to string!}: the example is read for its type and then thrown away.
- * JEBOL took a datatype and nothing else, which is what stopped Rebol's own
- * quoted-printable codec -- it ends on {@code to data output}, where DATA is
- * whatever the caller passed in, and handing back the kind of thing it was
- * given is the whole point of the form.
- *
- * <p>The other half of this is where TO and MAKE are the same code.
- * {@code case A_MAKE: case A_TO:} with nothing between the labels is how
- * {@code t-object.c}, {@code t-function.c} and {@code t-struct.c} are written,
- * so an error, a function, a closure and a struct are built the same way
- * whichever word asked. Objects and modules are the exception: they have a TO
- * of their own, a few lines below, that takes only one thing each.
- */
 class ToAnExampleValueFromTheSourceTest {
 
     private static String answerTo(String source) {

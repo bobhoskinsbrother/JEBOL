@@ -16,32 +16,19 @@ import java.util.Optional;
 /**
  * The operator's own screen, through the JDK's desktop and Swing.
  *
- * <p>Every other host service has an adapter and this is the one for windows.
- * Without it the five dialogs are reachable and can never succeed: a host
- * would have to write its own, and BROWSE could not open a browser in any
- * shipped configuration.
- *
- * <p>Refuses when there is no display. A machine with no screen has no such
- * service to give, which is {@code not_present} rather than a host withholding
- * something, and it is the same answer {@link WindowPort#none()} gives for the
- * same reason. Checking it here rather than letting Swing throw keeps a
- * headless server from seeing an {@code AWTError} out of a script.
- *
  * <p>Every dialog answers empty when the operator declines, which is an answer
- * rather than a refusal. Swing says the same thing three different ways --
- * a null file, {@code CANCEL_OPTION}, a null colour -- so each is translated
- * here rather than left for the domain to know about.
+ * rather than a refusal, and refuses with {@code no-service} where the machine
+ * has no screen at all.
  */
 public final class DesktopWindows implements WindowPort {
 
-    /** A screen, or a refusal if this machine has not got one. */
     public static DesktopWindows onThisMachine() {
         return new DesktopWindows();
     }
 
     @Override
     public void browse(String target) {
-        requireADisplay();
+        requireADisplayBeforeSwingIsTouchedAtAll();
         if (!Desktop.isDesktopSupported()
                 || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
             throw new Denied("no-service", "this machine has no browser to open");
@@ -64,7 +51,7 @@ public final class DesktopWindows implements WindowPort {
             Optional<String> suggestedName, Optional<String> title,
             List<String> filterPairs) {
 
-        requireADisplay();
+        requireADisplayBeforeSwingIsTouchedAtAll();
         JFileChooser chooser = new JFileChooser();
         chooser.setMultiSelectionEnabled(allowingMany);
         title.ifPresent(chooser::setDialogTitle);
@@ -102,7 +89,7 @@ public final class DesktopWindows implements WindowPort {
     public Optional<String> chooseDirectory(
             Optional<String> startingAt, Optional<String> title) {
 
-        requireADisplay();
+        requireADisplayBeforeSwingIsTouchedAtAll();
         JFileChooser chooser = new JFileChooser();
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         title.ifPresent(chooser::setDialogTitle);
@@ -117,7 +104,7 @@ public final class DesktopWindows implements WindowPort {
 
     @Override
     public Optional<int[]> chooseColour(Optional<int[]> suggested) {
-        requireADisplay();
+        requireADisplayBeforeSwingIsTouchedAtAll();
         Color start = suggested
                 .filter(octets -> octets.length >= 3)
                 .map(octets -> new Color(octets[0], octets[1], octets[2]))
@@ -131,7 +118,7 @@ public final class DesktopWindows implements WindowPort {
 
     @Override
     public Optional<String> askForPassword() {
-        requireADisplay();
+        requireADisplayBeforeSwingIsTouchedAtAll();
         JPasswordField typing = new JPasswordField();
         int chose = JOptionPane.showConfirmDialog(
                 null, typing, "Password",
@@ -145,14 +132,7 @@ public final class DesktopWindows implements WindowPort {
         return Optional.of(secret);
     }
 
-    /**
-     * Refuses when this machine has no screen.
-     *
-     * <p>Asked before Swing is touched. Swing throws an {@code AWTError} in a
-     * headless JVM, and an error is exactly what must never escape a script:
-     * the promise is that every failure arrives as a catchable {@code error!}.
-     */
-    private static void requireADisplay() {
+    private static void requireADisplayBeforeSwingIsTouchedAtAll() {
         if (GraphicsEnvironment.isHeadless()) {
             throw new Denied("no-service", "this machine has no screen to put a window on");
         }

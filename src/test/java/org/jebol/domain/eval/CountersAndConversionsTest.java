@@ -8,16 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * ++ and --, TRUNCATE, and the conversions to binary! and file!.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Two of these answer something other than the obvious. ++ answers what
- * the word held before it changed, and TO BINARY! of an integer gives all
- * eight bytes of its machine width rather than the fewest that would hold
- * it. Both readings are defensible and both are wrong.
- */
 class CountersAndConversionsTest {
 
     private static String answerTo(String source) {

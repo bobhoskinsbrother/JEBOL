@@ -37,13 +37,6 @@ public record DateValue(
         }
     }
 
-    /**
-     * How long a month is, which February makes a question about the year.
-     *
-     * <p>{@code Month_Length} in {@code t-date.c}, leap rule included, and it
-     * is what makes {@code 29-Feb-2001} an {@code invalid} rather than a date.
-     * Checking the day against a flat 31 accepted it.
-     */
     private static int daysIn(int month, int year) {
         if (month != 2) {
             return LENGTH_OF_MONTH[month - 1];
@@ -143,29 +136,14 @@ public record DateValue(
                 Optional.of(0));
     }
 
-    /**
-     * The year as REBOL writes it, which is four digits wide below 1000.
-     *
-     * <p>{@code 1-Feb-0003} rather than {@code 1-Feb-3}. The padding is not
-     * decoration: a molded date has to read back as the same date, and
-     * {@code 1-Feb-3} reads back as 2003 because a year of one or two digits
-     * is the shorthand form.
-     */
-    private String writtenYear() {
+    private String writtenYearPaddedToFourSoItReadsBack() {
         return year < 0 || year >= 1000 ? String.valueOf(year) : "%04d".formatted(year);
     }
 
-    /**
-     * The written form: the day, then the time, then the offset.
-     *
-     * <p>An offset of zero is written as nothing at all, which is what a real
-     * R3 does: {@code 1-Jan-2000/12:00+0:00} molds as {@code 1-Jan-2000/12:00}.
-     * So the written form does not distinguish an offset of zero from a date
-     * that never carried one, and reading either back gives a zone of 0:00.
-     */
     @Override
     public String toString() {
-        String rendered = day + "-" + MONTH_NAMES[month - 1] + "-" + writtenYear();
+        String rendered = day + "-" + MONTH_NAMES[month - 1] + "-"
+                + writtenYearPaddedToFourSoItReadsBack();
         if (timeOfDay.isEmpty()) {
             return rendered;
         }
@@ -215,14 +193,6 @@ public record DateValue(
         return written + "." + digits;
     }
 
-    /**
-     * The offset, or nothing at all where it is nothing.
-     *
-     * <p>The same rule the ordinary written form follows, and for the same
-     * reason: an offset of zero and no offset at all are one thing, so
-     * writing {@code +00:00} would claim a distinction the value does not
-     * carry.
-     */
     private String isoOffset() {
         int minutes = zoneMinutes.orElse(0);
         if (minutes == 0) {

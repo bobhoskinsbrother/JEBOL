@@ -7,21 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * PARSE counts the subject in characters, not in Java's sixteen-bit halves.
- *
- * <p>The parser walked a Java string and kept its position as an index into
- * one, so a subject holding anything above the basic plane made the position
- * and the count disagree from that character onwards. SKIP landed in the
- * middle of a character, and building a character out of half of one threw an
- * IllegalArgumentException clean out of the interpreter -- the one failure
- * the evaluator promises never to produce.
- *
- * <p>The parts that already counted by character were the ones that were
- * right: CHANGE moving past what it wrote, INSERT moving past what it put in.
- * Everything else was measuring in the other unit, which is why the two only
- * disagreed on subjects nobody had tried.
- */
 class ParseCountsCharactersTest {
 
     private static String answerTo(String source) {

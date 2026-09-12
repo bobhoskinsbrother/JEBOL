@@ -7,23 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Reading a date's parts, and reading a date literal that carries a time.
- *
- * <p>Read out of {@code PD_Date} and {@code Gregorian_To_Julian_Date} in
- * {@code t-date.c}, and every answer checked against the R3 binary. Nothing here
- * reads the clock, so every case is a fixed value.
- *
- * <p>Four of these are not what a reader would assume. SECOND is a whole number
- * until there is a fraction and a decimal after that, so the datatype of the
- * answer depends on the value. JULIAN counts from noon, so a bare day comes out
- * a whole number and not a half. Every clock part of a date with no time is none
- * rather than zero. And a written offset of zero is written as nothing at all,
- * so a date that carried an offset and a date that never did are the same
- * afterwards.
- *
- * <p>Specified in {@code spec/natives.allium} under "Reading a date's parts".
- */
 class DatePartsFromTheSourceTest {
 
     private static String answerTo(String source) {

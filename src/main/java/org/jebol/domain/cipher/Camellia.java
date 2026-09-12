@@ -1,23 +1,11 @@
 package org.jebol.domain.cipher;
 
 /**
- * Camellia, written out because no JVM provider carries it.
+ * Camellia, RFC 3713, written out because no JVM provider carries it.
  *
- * <p>RFC 3713, and {@code camellia.c}. A Feistel cipher with the same block
- * and the same three key widths as AES, standardised in ISO/IEC 18033-3 and on
- * Japan's CRYPTREC list. Nothing in REBOL's own library asks for it; it is
- * here because REBOL's catalogue names it and a name in a catalogue is a
- * promise.
- *
- * <p>The shape is one round function used twice over. Eighteen rounds for a
- * short key and twenty-four for the others, with a pair of mixing steps every
- * six rounds, and the key schedule folds the key through that same round
- * function to make the subkeys. So there is one piece of arithmetic here and
- * everything else is bookkeeping about where its inputs come from.
- *
- * <p>Deciphering is enciphering with the subkeys reversed, which is what a
- * Feistel design buys: the round function is never undone, only applied in the
- * other order.
+ * <p>Here because REBOL's catalogue names it, and a name in a catalogue is a
+ * promise: nothing else asks for it. A Feistel design, so deciphering is
+ * enciphering with the subkeys reversed and the round function is never undone.
  */
 public final class Camellia {
 
@@ -27,12 +15,7 @@ public final class Camellia {
     /** How many bytes go in and come out, which is the same for every key. */
     public static final int BLOCK = 16;
 
-    /**
-     * A cipher ready to transform blocks under one key, in one direction.
-     *
-     * <p>The direction is settled here rather than per block, because it is
-     * the subkey order that changes and that is worked out once.
-     */
+    /** A cipher ready to transform blocks under one key, in one direction. */
     public static OneBlock under(byte[] key, boolean deciphering) {
         int[] subkeys = deciphering
                 ? forDeciphering(key)
@@ -41,13 +24,6 @@ public final class Camellia {
         return block -> transformed(block, subkeys, rounds);
     }
 
-    /**
-     * The round function: substitute every byte, then mix the two halves.
-     *
-     * <p>{@code camellia_feistel}. Four substitution boxes, which are one
-     * table read four ways -- the other three are rotations of the first, so
-     * only one is carried.
-     */
     private static void round(int[] state, int at, int[] key, int keyAt,
             int[] into, int intoAt) {
 
@@ -94,10 +70,6 @@ public final class Camellia {
         return SUBSTITUTION[(index << 1 ^ index >>> 7) & 0xFF] & 0xFF;
     }
 
-    /**
-     * The two mixing steps that break the Feistel pattern every six rounds,
-     * and stop the rounds being a chain of identical steps.
-     */
     private static void mixTheFirstHalf(int[] state, int leftKey, int rightKey) {
         int masked = state[0] & leftKey;
         state[1] ^= masked << 1 | masked >>> 31;
@@ -136,11 +108,6 @@ public final class Camellia {
         return theHalvesSwapped(state, subkeys, key);
     }
 
-    /**
-     * The last four subkeys go on, and the two halves come out the other way
-     * round -- the swap every Feistel cipher ends with, so that deciphering is
-     * the same walk with the keys reversed.
-     */
     private static byte[] theHalvesSwapped(int[] state, int[] subkeys, int key) {
         state[2] ^= subkeys[key];
         state[3] ^= subkeys[key + 1];
@@ -166,18 +133,6 @@ public final class Camellia {
         octets[at + 3] = (byte) word;
     }
 
-    /**
-     * The subkeys for enciphering.
-     *
-     * <p>The key is folded through the round function to make two or four
-     * derived keys, and those are rotated by fifteen bits at a time and dealt
-     * out to the rounds. Which rotation goes where is a table rather than a
-     * pattern, which is why the tables below are carried rather than computed.
-     *
-     * <p>A 192-bit key is stored as a 256-bit one whose last eight bytes are
-     * the complement of the eight before them, so only two widths of schedule
-     * exist rather than three.
-     */
     private static int[] forEnciphering(byte[] key) {
         int width = key.length <= 16 ? 0 : 1;
         byte[] stored = new byte[32];
@@ -193,7 +148,7 @@ public final class Camellia {
         }
         foldTheKeyThrough(derived, key.length > 16);
 
-        int[] subkeys = new int[HOW_MANY_SUBKEYS];
+        int[] subkeys = new int[HOW_MANY_SUBKEYS_THE_LONGEST_SCHEDULE_NEEDS];
         int[] rotating = new int[20];
         placeRotationsOf(derived, 0, width, subkeys, rotating);
         if (key.length > 16) {
@@ -204,15 +159,14 @@ public final class Camellia {
             placeRotationsOf(derived, 3, width, subkeys, rotating);
         }
         for (int at = 0; at < 20; at++) {
-            if (TRANSPOSES[width][at] != -1) {
-                subkeys[32 + 12 * width + at] = subkeys[TRANSPOSES[width][at]];
+            if (THE_LAST_SUBKEYS_WHICH_COPY_EARLIER_ONES[width][at] != -1) {
+                subkeys[32 + 12 * width + at] = subkeys[THE_LAST_SUBKEYS_WHICH_COPY_EARLIER_ONES[width][at]];
             }
         }
         return subkeys;
     }
 
-    /** Room for the longest schedule, which the shorter one does not fill. */
-    private static final int HOW_MANY_SUBKEYS = 68;
+    private static final int HOW_MANY_SUBKEYS_THE_LONGEST_SCHEDULE_NEEDS = 68;
 
     private static void foldTheKeyThrough(int[] derived, boolean longKey) {
         for (int at = 0; at < 4; at++) {
@@ -235,27 +189,22 @@ public final class Camellia {
         round(derived, 14, SIGMA, 10, derived, 12);
     }
 
-    /**
-     * Rotates one derived key by fifteen bits, four times over, and deals the
-     * five results out to whichever rounds want them.
-     */
     private static void placeRotationsOf(int[] derived, int which, int width,
             int[] subkeys, int[] rotating) {
 
         System.arraycopy(derived, which * 4, rotating, 0, 4);
         for (int step = 1; step <= 4; step++) {
-            if (SHIFTS[width][which][step - 1] != 0) {
+            if (WHICH_ROTATIONS_EACH_DERIVED_KEY_NEEDS[width][which][step - 1] != 0) {
                 rotateBy(rotating, step * 4, 15 * step % 32);
             }
         }
         for (int at = 0; at < 20; at++) {
-            if (INDEXES[width][which][at] != -1) {
-                subkeys[INDEXES[width][which][at]] = rotating[at];
+            if (WHICH_ROUND_EACH_ROTATION_IS_DEALT_TO[width][which][at] != -1) {
+                subkeys[WHICH_ROUND_EACH_ROTATION_IS_DEALT_TO[width][which][at]] = rotating[at];
             }
         }
     }
 
-    /** A rotation of the whole hundred and twenty-eight bits at once. */
     private static void rotateBy(int[] words, int into, int places) {
         for (int at = 0; at < 4; at++) {
             words[into + at] = words[at] << places
@@ -263,17 +212,10 @@ public final class Camellia {
         }
     }
 
-    /**
-     * The subkeys for deciphering: the same ones, read back to front.
-     *
-     * <p>The four at each end stay where they are and the pairs between them
-     * reverse, which is the whole of what a Feistel cipher needs to run
-     * backwards.
-     */
     private static int[] forDeciphering(byte[] key) {
         int[] forwards = forEnciphering(key);
         int width = key.length <= 16 ? 0 : 1;
-        int[] backwards = new int[HOW_MANY_SUBKEYS];
+        int[] backwards = new int[HOW_MANY_SUBKEYS_THE_LONGEST_SCHEDULE_NEEDS];
         int from = 48 + 16 * width;
         int to = 0;
         for (int at = 0; at < 4; at++) {
@@ -291,21 +233,18 @@ public final class Camellia {
         return backwards;
     }
 
-    /** The constants the key schedule folds against, as pairs of words. */
     private static final int[] SIGMA = {
         0xA09E667F, 0x3BCC908B, 0xB67AE858, 0x4CAA73B2,
         0xC6EF372F, 0xE94F82BE, 0x54FF53A5, 0xF1D36F1C,
         0x10E527FA, 0xDE682D1D, 0xB05688C2, 0xB3E6C1FD
     };
 
-    /** Which of the four rotations each derived key actually needs. */
-    private static final int[][][] SHIFTS = {
+    private static final int[][][] WHICH_ROTATIONS_EACH_DERIVED_KEY_NEEDS = {
         {{1, 1, 1, 1}, {0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}},
         {{1, 0, 1, 1}, {1, 1, 0, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}}
     };
 
-    /** Which round each rotation is dealt to, or nowhere at all. */
-    private static final int[][][] INDEXES = {
+    private static final int[][][] WHICH_ROUND_EACH_ROTATION_IS_DEALT_TO = {
         {
             {0, 1, 2, 3, 8, 9, 10, 11, 38, 39,
                 36, 37, 23, 20, 21, 22, 27, -1, -1, 26},
@@ -328,22 +267,13 @@ public final class Camellia {
         }
     };
 
-    /** The last few subkeys, which are copies of earlier ones. */
-    private static final int[][] TRANSPOSES = {
+    private static final int[][] THE_LAST_SUBKEYS_WHICH_COPY_EARLIER_ONES = {
         {21, 22, 23, 20, -1, -1, -1, -1, 18, 19, 16, 17,
             11, 8, 9, 10, 15, 12, 13, 14},
         {25, 26, 27, 24, 29, 30, 31, 28, 18, 19, 16, 17,
             -1, -1, -1, -1, -1, -1, -1, -1}
     };
 
-    /**
-     * The substitution box, and the only table here that is not bookkeeping.
-     *
-     * <p>One of four in the specification and the only one carried: the other
-     * three are this one rotated by a bit or read at a rotated index, which
-     * {@link #substituted2} and its neighbours do rather than storing three
-     * more copies.
-     */
     private static final byte[] SUBSTITUTION = {
         112, -126, 44, -20, -77, 39, -64, -27, -28, -123, 87, 53, -22, 12, -82, 65,
         35, -17, 107, -109, 69, 25, -91, 33, -19, 14, 79, 78, 29, 101, -110, -67,

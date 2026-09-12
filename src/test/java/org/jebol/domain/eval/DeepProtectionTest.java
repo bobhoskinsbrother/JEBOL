@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * /DEEP reaches everything inside, including an object inside an object.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Stopping at the outer object leaves free exactly the case a caller
- * reached for /DEEP to cover, and it does so quietly -- the shallow guard
- * still refuses the shallow write, so the refinement looks like it works.
- */
 class DeepProtectionTest {
 
     private static String errorIdOf(String setup, String attempt) {
@@ -94,21 +85,6 @@ class DeepProtectionTest {
                 .isEqualTo("no-error");
     }
 
-    /**
-     * A block given to /WORDS may hold paths, not only words.
-     *
-     * <p>{@code natives.reb} spells the refinement out: {@code /words "Process
-     * list as words (and path words)"}. The parenthetical is the whole of it,
-     * and skipping a path in the block is silent -- the call answers the block
-     * it was given either way, so nothing says the request was ignored.
-     *
-     * <p>Rebol's own library depends on it. {@code protect-system} in
-     * {@code mezz-secure.reb} protects every word of SYSTEM and then hands back
-     * the few a script must be able to write, with
-     * {@code unprotect/words [system/script]}. When that did nothing here,
-     * {@code sys/do*} could not record the script it was about to run, and so
-     * DO of any file raised {@code locked-word} instead of running it.
-     */
     private static final String NAMED_BY_PATH =
             "o: make object! [a: 10] ignore: protect/words [o/a] ";
 
@@ -149,13 +125,6 @@ class DeepProtectionTest {
         assertThat(errorIdOf(both, "o/a: 11")).isEqualTo("locked-word");
     }
 
-    /**
-     * /DEEP reaches what the slot holds, named by a word or by a path alike.
-     *
-     * <p>Both checked against a real 3.22.5. They look like the same request
-     * written two ways and they are, which is worth pinning: the path form
-     * behaved differently here for as long as paths were skipped altogether.
-     */
     @Test
     @DisplayName("/deep through a word reaches the value it holds")
     void deepThroughAWordReachesTheValue() {

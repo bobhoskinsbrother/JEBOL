@@ -6,11 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Parse command words from {@code parse-test.r3}: NOT negates the rule after it
- * and consumes nothing, LIMIT is reserved and raises not-done, and TO or THRU
- * refuse a parse command word as a target with parse-rule.
- */
 class ParseKeywordsFromTheSourceTest {
 
     private static String answerTo(String source) {

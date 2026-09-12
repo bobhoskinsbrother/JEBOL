@@ -8,15 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CLEAN-PATH works out the dots and the double slashes in a path.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>/ONLY leaves a relative path relative. Without it the path is put
- * after the current directory, which needs the working directory grant.
- */
 class CleanPathTest {
 
     private static String answerTo(String source) {

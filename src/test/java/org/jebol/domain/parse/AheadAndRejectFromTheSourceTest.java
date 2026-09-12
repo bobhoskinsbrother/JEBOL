@@ -6,11 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * AHEAD and REJECT from {@code parse-test.r3}. AHEAD looks at a compound rule
- * without consuming input, and REJECT fails the current block at once without
- * trying its later alternatives.
- */
 class AheadAndRejectFromTheSourceTest {
 
     private static String answerTo(String source) {

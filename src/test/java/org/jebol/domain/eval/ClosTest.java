@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CLOS makes a closure, ported off the porting backlog.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>R3 writes this as {@code make closure!}. JEBOL has no closure
- * datatype to make, and its FUNC already keeps a frame that outlives the
- * call, so FUNC is what a closure means here. That is FUNC being wrong
- * rather than CLOS being right, and the note beside CLOSURE in the prelude
- * says so.
- */
 class ClosTest {
 
     private static String answerTo(String source) {

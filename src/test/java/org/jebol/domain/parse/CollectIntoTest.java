@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Telling PARSE's COLLECT where to put what it gathers.
- *
- * <p>Specified in {@code spec/parse.allium}, confirmed against a real R3.
- *
- * <p>The target need not be a block: a string takes the text of what it is
- * given rather than the values, so collecting characters into one gives a
- * string and not a block of characters.
- */
 class CollectIntoTest {
 
     private static String answerTo(String source) {

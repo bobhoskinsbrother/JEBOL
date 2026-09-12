@@ -8,24 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * SET-ENV, and what a script means by setting an environment variable.
- *
- * <p>It used to refuse outright, on the ground that a JVM cannot change its
- * own environment. That much is true -- {@code System.getenv} is a read-only
- * view and there is no portable {@code setenv} behind it -- but it is not a
- * reason to refuse. What a script means by setting a variable is that GET-ENV
- * answers it afterwards and that a program it starts sees it, and both of
- * those are reachable. A real 3.22.5 does exactly those two things, and from
- * inside the interpreter there is no way to tell whether the host's own
- * environment moved underneath.
- *
- * <p>Refusing cost thirteen assertions in one block of Rebol's own suite,
- * which opens by putting a password in a variable so it need not stop and ask
- * for one.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written.
- */
 class EnvironmentWritingFromTheSourceTest {
 
     private static Interpreter reaching() {
@@ -127,11 +109,6 @@ class EnvironmentWritingFromTheSourceTest {
                 .isEqualTo("[expect-arg expect-arg expect-arg]");
     }
 
-    /**
-     * A name the host already had is shadowed rather than lost: putting the
-     * old value back restores it, which is what the SAFE block of Rebol's own
-     * suite does with the password variable it borrows.
-     */
     @Test
     @DisplayName("setting over a name the host had shadows it, and putting it back restores it")
     void settingOverAHostNameShadowsIt() {
@@ -144,11 +121,6 @@ class EnvironmentWritingFromTheSourceTest {
                 .isEqualTo("[#(true) #(true)]");
     }
 
-    /**
-     * The half that reaches outside the interpreter. A JVM cannot change its
-     * own environment, but it decides what a child's is, so this is the part
-     * of SET-ENV that a program other than this one can observe.
-     */
     @Test
     @DisplayName("a program started afterwards inherits what was set")
     void aStartedProgramInheritsIt() {

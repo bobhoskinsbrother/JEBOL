@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * COMPOSE fills the parens in a template and leaves everything else alone.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>The boundaries here are depth -- top level only, one deep, several
- * deep -- and what a paren answers with, since a block splices unless
- * /ONLY says otherwise.
- */
 class ComposeTest {
 
     private static String answerTo(String source) {

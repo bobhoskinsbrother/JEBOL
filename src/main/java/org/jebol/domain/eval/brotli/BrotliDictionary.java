@@ -3,32 +3,7 @@ package org.jebol.domain.eval.brotli;
 import java.util.Arrays;
 import java.util.Base64;
 
-/**
- * The hundred and twenty thousand bytes of English, HTML and code that every
- * Brotli stream may quote from without having sent them.
- *
- * <p>This is what makes Brotli small on short inputs where nothing has been
- * seen yet: a distance past the end of what has been decoded so far names a
- * word in this dictionary instead of a repeat, and one of a hundred and
- * twenty-one transforms may be applied to it -- a prefix, a suffix, dropping
- * letters from either end, or upper-casing.
- *
- * <p>The words themselves are {@code dictionary.bin} from Rebol's vendored
- * copy of the reference library, carried here deflated and then written in
- * base 64, and inflated once on the first stream that reaches for them. A
- * build that only ever writes Brotli never pays for them at all.
- *
- * <p>Carried rather than read from a file beside the class, because the domain
- * does nothing a file system or a stream is needed for and a dependency-rule
- * test holds it to that. Deflated and base 64 rather than a hundred and
- * twenty thousand numbers, because the numbers would be seven hundred
- * kilobytes of source and would not fit in one method anyway. What it costs
- * is seventy-eight kilobytes of the jar against fifty-eight for a resource.
- *
- * <p>Two of the twenty-three transform kinds, the two that shift a code point,
- * are not here: they exist for shared dictionaries, which take their shift
- * amount from a parameter table, and the built-in transforms use neither.
- */
+/** Carried in the source rather than read from a file: see docs/brotli-port.md. */
 final class BrotliDictionary {
 
     private BrotliDictionary() {
@@ -36,17 +11,8 @@ final class BrotliDictionary {
 
     static final int MIN_WORD_LENGTH = 4;
 
-    /**
-     * The longest length that has a slot in the tables, which is longer than
-     * the longest length that has any words in it.
-     *
-     * <p>Lengths twenty-five to thirty-one have a slot holding zero, so a
-     * stream that asks for one of them is refused for asking about a length
-     * nobody has words of rather than for reading off the end of a table.
-     */
     static final int LONGEST_LENGTH_WITH_A_SLOT = 31;
 
-    /** How many words there are of each length, as a power of two. */
     private static final int[] SIZE_BITS_BY_LENGTH = {
             0, 0, 0, 0, 10, 10, 11, 11,
             10, 10, 10, 10, 10, 9, 9, 8,
@@ -54,7 +20,6 @@ final class BrotliDictionary {
             5, 0, 0, 0, 0, 0, 0, 0,
     };
 
-    /** Where the words of each length begin. */
     private static final int[] OFFSETS_BY_LENGTH = {
             0, 0, 0, 0, 0, 4096, 9216, 21504,
             35840, 44032, 53248, 63488, 74752, 87040, 93696, 100864,
@@ -64,11 +29,7 @@ final class BrotliDictionary {
 
     private static final int WORDS_LENGTH = 122784;
 
-    /**
-     * Every prefix and suffix a transform can add, one after another, each
-     * with its length in front of it.
-     */
-    private static final int[] PREFIX_AND_SUFFIX = {
+    private static final int[] PREFIX_AND_SUFFIX_EACH_WITH_ITS_LENGTH_IN_FRONT = {
             1, 32, 2, 44, 32, 8, 32, 111, 102, 32, 116, 104, 101, 32, 4, 32, 111, 102,
             32, 2, 115, 32, 1, 46, 5, 32, 97, 110, 100, 32, 4, 32, 105, 110, 32, 1,
             34, 4, 32, 116, 111, 32, 2, 34, 62, 1, 10, 2, 46, 32, 1, 93, 5, 32,
@@ -84,7 +45,6 @@ final class BrotliDictionary {
             0,
     };
 
-    /** Where in {@link #PREFIX_AND_SUFFIX} each numbered piece begins. */
     private static final int[] PIECE_STARTS = {
             0x00, 0x02, 0x05, 0x0E, 0x13, 0x16, 0x18, 0x1E, 0x23, 0x25,
             0x2A, 0x2D, 0x2F, 0x32, 0x34, 0x3A, 0x3E, 0x45, 0x47, 0x4E,
@@ -99,8 +59,7 @@ final class BrotliDictionary {
     private static final int OMIT_FIRST_1 = 12;
     private static final int OMIT_FIRST_9 = 20;
 
-    /** A prefix piece, a kind, and a suffix piece, for each transform. */
-    private static final int[] TRANSFORMS = {
+    private static final int[] A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH = {
             49, 0, 49, 49, 0, 0, 0, 0, 0, 49, 12, 49,
             49, 10, 0, 49, 0, 47, 0, 0, 49, 4, 0, 0,
             49, 0, 3, 49, 10, 49, 49, 0, 6, 49, 13, 49,
@@ -134,17 +93,11 @@ final class BrotliDictionary {
             0, 10, 34,
     };
 
-    static final int TRANSFORM_COUNT = TRANSFORMS.length / 3;
+    static final int TRANSFORM_COUNT =
+            A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH.length / 3;
 
     private static byte[] words;
 
-    /**
-     * The words, inflated on the first call and kept.
-     *
-     * <p>Not synchronised, because two threads racing here both build the same
-     * bytes from the same constant and the later write wins with the same
-     * answer. A lock would cost every reader to protect nothing.
-     */
     static byte[] words() {
         byte[] known = words;
         if (known != null) {
@@ -157,7 +110,8 @@ final class BrotliDictionary {
 
     private static byte[] inflatedWords() {
         StringBuilder joined = new StringBuilder();
-        for (String piece : DEFLATED_WORDS) {
+        for (String piece
+                : DEFLATED_WORDS_IN_PIECES_NONE_OVER_THE_CLASS_FILE_STRING_LIMIT) {
             joined.append(piece.replace("\n", ""));
         }
         byte[] packed = Base64.getDecoder().decode(joined.toString());
@@ -184,13 +138,8 @@ final class BrotliDictionary {
         }
     }
 
-    /**
-     * The dictionary, deflated and written in base 64.
-     *
-     * <p>Several pieces rather than one, because a string constant in a class
-     * file may not exceed sixty-five thousand bytes and this is more than that.
-     */
-    private static final String[] DEFLATED_WORDS = {
+    private static final String[]
+            DEFLATED_WORDS_IN_PIECES_NONE_OVER_THE_CLASS_FILE_STRING_LIMIT = {
             """
                     eNo8velyHMe1LvrbiOA7lNpni8Q20QBJTSYGB0dJ3hq4Bcq+2z4ORXZVdncB1VWtyiqATUkR4ICB4ABSnAXOMyUCIDhiIIGI\
                     wxeg/pH/FOeiuhsR9yHu962EbBkS0J2VlcMavrVyrZWJX9FeNBgGflEHupgUlNvvRp72VKJMORqMwqBm/ES7flKLqjrsS00S\
@@ -1003,7 +952,6 @@ final class BrotliDictionary {
                     29oUrNZXqX3Ghr8TuigkT48Q+TXwvXvGjv0foSWBhw==""",
     };
 
-    /** How many words of the given length there are, as a power of two. */
     static int sizeBitsFor(int wordLength) {
         return SIZE_BITS_BY_LENGTH[wordLength];
     }
@@ -1012,21 +960,13 @@ final class BrotliDictionary {
         return OFFSETS_BY_LENGTH[wordLength];
     }
 
-    /**
-     * Writes one dictionary word, transformed, and answers how long it came
-     * out.
-     *
-     * <p>{@code BrotliTransformDictionaryWord}. The prefix goes down first,
-     * then the word with letters dropped from one end or the other, then the
-     * case change if the transform asks for one, then the suffix.
-     */
     static int writeTransformedWord(byte[] into, int at, int wordAt,
             int wordLength, int transform) {
 
         byte[] dictionary = words();
-        int prefix = PIECE_STARTS[TRANSFORMS[transform * 3]];
-        int kind = TRANSFORMS[transform * 3 + 1];
-        int suffix = PIECE_STARTS[TRANSFORMS[transform * 3 + 2]];
+        int prefix = PIECE_STARTS[A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3]];
+        int kind = A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3 + 1];
+        int suffix = PIECE_STARTS[A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3 + 2]];
         int written = at;
         written = copyPiece(prefix, into, written);
         int from = wordAt;
@@ -1057,23 +997,14 @@ final class BrotliDictionary {
     }
 
     private static int copyPiece(int start, byte[] into, int at) {
-        int howMany = PREFIX_AND_SUFFIX[start];
+        int howMany = PREFIX_AND_SUFFIX_EACH_WITH_ITS_LENGTH_IN_FRONT[start];
         int written = at;
         for (int each = 0; each < howMany; each++) {
-            into[written++] = (byte) PREFIX_AND_SUFFIX[start + 1 + each];
+            into[written++] = (byte) PREFIX_AND_SUFFIX_EACH_WITH_ITS_LENGTH_IN_FRONT[start + 1 + each];
         }
         return written;
     }
 
-    /**
-     * Upper-cases one code point in place, and answers how many bytes it was.
-     *
-     * <p>The C calls this "an overly simplified uppercasing model for UTF-8",
-     * and it is: a two-byte sequence has bit five of its second byte flipped
-     * and a three-byte one has bit two of its third byte flipped, neither of
-     * which is upper-casing in any language. It is what the format says
-     * happens, so it is what has to happen here.
-     */
     private static int upperCased(byte[] bytes, int at) {
         int first = bytes[at] & 0xFF;
         if (first < 0xC0) {
@@ -1090,7 +1021,6 @@ final class BrotliDictionary {
         return 3;
     }
 
-    /** Only for the test that checks the resource is the dictionary it claims. */
     static int wordsLength() {
         return WORDS_LENGTH;
     }

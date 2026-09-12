@@ -141,8 +141,10 @@ public record ErrorValue(
             return Optional.of(writtenFields.get(name));
         }
         return switch (name) {
-            case "code" -> Optional.of(IntegerValue.of(codeNumber()));
-            case "type" -> Optional.of(WordValue.of(categoryWord()));
+            case "code" ->
+                    Optional.of(IntegerValue.of(codeNumberedInHundredsByCategory()));
+            case "type" ->
+                    Optional.of(WordValue.of(categoryWordCapitalisedAsR3WritesIt()));
             case "id" -> Optional.of(WordValue.of(errorId));
             case "arg1" -> Optional.of(subject.orElseGet(NoneValue::none));
             case "arg2" -> Optional.of(secondArgument.orElseGet(NoneValue::none));
@@ -153,11 +155,7 @@ public record ErrorValue(
         };
     }
 
-    /**
-     * R3 numbers its failures in hundreds by category, and code 400 for
-     * a maths error is what a script compares against.
-     */
-    private long codeNumber() {
+    private long codeNumberedInHundredsByCategory() {
         int fromCatalogue = ErrorCatalogue.codeFor(
                 category.name().charAt(0) + category.name().substring(1).toLowerCase(
                         Locale.ROOT),
@@ -178,20 +176,10 @@ public record ErrorValue(
         };
     }
 
-    /** Capitalised, as R3 writes it: Math, Script, Access. */
-    private String categoryWord() {
+    private String categoryWordCapitalisedAsR3WritesIt() {
         String spelling = category.spelling();
         return Character.toUpperCase(spelling.charAt(0)) + spelling.substring(1);
     }
-
-    /**
-     * What the failure was about, when the message names it.
-     *
-     * <p>The raiser writes the offending word or value at the front of
-     * the message, so this reads it back. A structured field carrying the
-     * value itself would be better; this is what can be had without
-     * changing every raise site.
-     */
 
     public static ErrorValue script(String errorId, String message) {
         return of(ErrorCategory.SCRIPT, errorId, message);

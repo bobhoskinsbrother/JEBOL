@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * ENUM builds an enumeration object from names and values.
- *
- * <p>Ported from Rebol's own {@code src/mezz/mezz-func.reb}, and the
- * object it builds on from {@code sysobj.reb}. Specified in
- * {@code spec/natives.allium}.
- *
- * <p>A name with no value after it takes the one after the last, counting
- * from zero. A name with a value takes that value, and the counting starts
- * again from there.
- */
 class EnumTest {
 
     private static String answerTo(String source) {
@@ -25,7 +14,6 @@ class EnumTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

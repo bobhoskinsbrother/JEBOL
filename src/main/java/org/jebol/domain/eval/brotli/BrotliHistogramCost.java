@@ -1,18 +1,5 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * How many bits a histogram would cost if it were written out as a code.
- *
- * <p>{@code bit_cost_inc.h}. The clustering asks this of every histogram and of
- * every pair it might merge, so it has to be quick and it does not have to be
- * exact -- it is a guess used to compare, not a measurement.
- *
- * <p>Four or fewer symbols get a flat answer, because the format has a short
- * form for those and its cost is known without building anything. Anything
- * larger is the entropy of the symbols plus a guess at what declaring the code
- * itself costs, which is worked out by counting how many symbols would land at
- * each depth and how long the runs of unused symbols are.
- */
 final class BrotliHistogramCost {
 
     private static final double ONE_SYMBOL = 12;
@@ -47,7 +34,8 @@ final class BrotliHistogramCost {
             return theShortForm(counts, whichAreUsed, howManyAreUsed,
                     histogram.total());
         }
-        return theLongForm(counts, alphabetSize, histogram.total());
+        return theEntropyPlusAGuessAtDeclaringTheCode(
+                counts, alphabetSize, histogram.total());
     }
 
     private static double theShortForm(int[] counts, int[] whichAreUsed,
@@ -84,16 +72,7 @@ final class BrotliHistogramCost {
         return FOUR_SYMBOLS + 3 * twoSmallest + 2L * (four[0] + four[1]) - largest;
     }
 
-    /**
-     * The entropy of the symbols, plus a guess at what declaring the code costs.
-     *
-     * <p>The guess counts how many symbols would sit at each depth if each cost
-     * its own surprise rounded to the nearest bit, and how long the runs of
-     * unused symbols are, since a run of three or more is written as a repeat
-     * with three extra bits. The final run of unused symbols is free -- the
-     * format takes the code as ending there -- so it is not counted.
-     */
-    private static double theLongForm(int[] counts, int alphabetSize, long total) {
+    private static double theEntropyPlusAGuessAtDeclaringTheCode(int[] counts, int alphabetSize, long total) {
         double bits = 0.0;
         int deepest = 1;
         int[] howManyAtEachDepth = new int[CODE_LENGTH_CODES];
@@ -135,7 +114,7 @@ final class BrotliHistogramCost {
             }
         }
         bits += 18 + 2 * deepest;
-        bits += BrotliCodes.bitsEntropy(howManyAtEachDepth, CODE_LENGTH_CODES);
+        bits += BrotliCodes.bitsEntropyFlooredAtOneBitPerLiteral(howManyAtEachDepth, CODE_LENGTH_CODES);
         return bits;
     }
 }

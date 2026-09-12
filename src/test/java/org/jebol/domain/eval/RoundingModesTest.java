@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * ROUND's six modes, each measured against a real R3.
- *
- * <p>Specified in {@code spec/natives.allium}. They disagree in more
- * places than the names suggest, so each is checked at both halves and on
- * either side of one: /DOWN and /FLOOR agree on every positive and part
- * company on every negative, and /HALF-DOWN and /HALF-CEILING agree
- * everywhere except on an exact half.
- */
 class RoundingModesTest {
 
     private static String answerTo(String source) {

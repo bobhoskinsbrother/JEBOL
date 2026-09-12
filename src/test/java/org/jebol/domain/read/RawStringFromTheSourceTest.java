@@ -6,23 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A raw string, {@code %{...}%}, read out of {@code Scan_Raw_String} in
- * {@code l-scan.c}.
- *
- * <p>The C's own summary says what it is for: "Scan a raw string (without any
- * modifications). Eliminates need of double escaping and allowes unmatched
- * braces." So a caret is a caret and a brace need not be matched -- everything a
- * braced string reads as an instruction is content here.
- *
- * <p>The part worth knowing is how it closes: the run of percent signs that
- * opened it is the run that closes it. That is what lets a raw string hold the
- * closing sequence of a shorter one, and it means the way to write the
- * terminator is a longer run rather than an escape.
- *
- * <p>Specified in {@code spec/natives.allium} under "A raw string, and what it
- * does not read".
- */
 class RawStringFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -6,20 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Reading a field an object may not have, from Rebol's own idiom for it:
- * {@code any [get in obj 'field  default]}.
- *
- * <p>IN answers none for a word the object does not hold, and GET of none
- * answers none. The two are written to work together, and both were confirmed
- * against the binary. JEBOL refused on each half, thus the idiom failed at the
- * first absent field.
- *
- * <p>Rebol's own MAKE-PORT* reads its awake handler this way:
- * {@code port/awake: any [get in port/spec 'awake :scheme/awake]}. The port
- * specification has three fields and awake is not one of them, so every call
- * to OPEN went through the absent case.
- */
 class OptionalFieldFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -1,18 +1,5 @@
 package org.jebol.adapter.web;
 
-/**
- * The page a browser loads, and the whole of what runs in it.
- *
- * <p>Two dozen lines of script, and they execute a paint list. They add up no
- * offsets, work out no clip and multiply no opacity, because every one of
- * those was decided once in {@code PaintList}. That is the whole reason a page
- * and a desktop window show the same picture, and it is why this file is
- * short: a browser renderer that needed to be clever would be a browser
- * renderer that could disagree.
- *
- * <p>Held as a string rather than a resource file so that the jar has one
- * fewer thing in it and the page cannot go missing.
- */
 final class WebScreenPage {
 
     private WebScreenPage() {

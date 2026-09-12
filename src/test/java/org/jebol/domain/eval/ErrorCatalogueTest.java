@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * REBOL 3's error catalogue, and the codes that come out of it.
- *
- * <p>Specified in {@code spec/natives.allium}, taken verbatim from a real
- * R3.
- *
- * <p>A code is its category's base plus the id's position in that
- * category, so it depends on the id and not only on the family. Each
- * category also carries a {@code type} field naming itself, which is not
- * an error id: counting it would shift every code in the category by one.
- */
 class ErrorCatalogueTest {
 
     private static String answerTo(String source) {

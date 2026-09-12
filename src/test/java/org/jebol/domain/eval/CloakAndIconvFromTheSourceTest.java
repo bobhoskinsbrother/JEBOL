@@ -7,22 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * ENCLOAK, DECLOAK and ICONV.
- *
- * <p>The first two are Rebol's own scrambler, written out in the fifty-five
- * lines of {@code Cloak} in {@code s-ops.c}. Not a standard cipher and not
- * presented as a strong one: the C's own summary is "Simple data scrambler.
- * Quality depends on the key length."
- *
- * <p>Every case here is read from that function rather than from a description
- * of it. The key handling in particular is not guessable -- a one-byte key and
- * a twenty-byte key end up the same length, and an integer key overrides the
- * refinement that would have kept it literal.
- *
- * <p>Specified in {@code spec/natives.allium} under "Rebol's own scrambler,
- * and changing character set".
- */
 class CloakAndIconvFromTheSourceTest {
 
     private static String answerTo(String source) {

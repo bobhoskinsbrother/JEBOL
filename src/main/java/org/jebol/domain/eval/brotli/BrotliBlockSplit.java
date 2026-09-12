@@ -1,17 +1,5 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * How one alphabet's symbols are divided into stretches, and which code each
- * stretch uses.
- *
- * <p>{@code BlockSplit} in {@code block_splitter.h}. The reader is told the
- * lengths in order and switches code when a length runs out, so this is the
- * shape the meta-block header is written from.
- *
- * <p>Two stretches far apart may share a type, which is the whole point: text
- * that alternates between two kinds of content pays for two codes rather than
- * one muddled one.
- */
 final class BrotliBlockSplit {
 
     static final int MOST_TYPES_ALLOWED = 256;

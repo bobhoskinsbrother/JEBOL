@@ -6,12 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * MOLD/ALL and LOAD, read from {@code load-test.r3}: a positioned series
- * round-trips through the construct form, and a binary that is not valid
- * UTF-8 is refused with invalid-chars rather than read as replacement
- * characters.
- */
 class LoadAndMoldFromTheSourceTest {
 
     private static String answerTo(String source) {

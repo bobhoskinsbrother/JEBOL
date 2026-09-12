@@ -71,7 +71,6 @@ public final class GobStorage {
         }
     }
 
-    /** What {@code Make_Gob} writes over the cleared struct. */
     private static final double FRESH_SIDE = 100;
     private static final int OPAQUE = 255;
 
@@ -289,7 +288,6 @@ public final class GobStorage {
         return spec;
     }
 
-    /** Which field name the content molds under. No content molds no name. */
     private String moldedContentName() {
         return switch (contentKind) {
             case COLOUR -> "color";

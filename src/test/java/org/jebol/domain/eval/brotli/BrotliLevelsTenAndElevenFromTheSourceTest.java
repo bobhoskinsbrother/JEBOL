@@ -10,62 +10,8 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The two Brotli levels that price every match rather than taking the best one
- * they find.
- *
- * <p>Levels two to nine walk the input once and commit to a match as soon as
- * one scores well enough, looking a single byte ahead before they do. Ten and
- * eleven keep every candidate match at every position and then choose the run
- * of them that costs fewest bits overall, which needs a table of matches, a
- * price for each symbol taken from the data itself, and a walk backwards
- * through the answer. Eleven does the same thing again with prices learnt from
- * the first attempt.
- *
- * <p>Three things only these two levels do, and each has tests here because
- * each was measured actually happening rather than assumed:
- *
- * <ul>
- * <li>Literals may be conditioned on how big the previous bytes were rather
- * than on what characters they spelled. Fifty kilobytes of noise is enough to
- * make the encoder choose that.</li>
- * <li>The way distances are split between a code and its extra bits is chosen
- * per meta-block rather than fixed. It stays at the plainest setting for a
- * paragraph, moves a little for a library of Rebol source, and goes to the
- * furthest the format allows -- three postfix bits and a hundred and twenty
- * direct codes -- for data that repeats.</li>
- * <li>Block types are found by clustering histograms rather than by growing
- * them greedily, so a meta-block may end up with types that are not
- * contiguous.</li>
- * </ul>
- *
- * <p>Every expectation was measured on {@code ./r3-head}.
- *
- * <p>One thing these two levels do is not covered here and is covered nowhere
- * else in the build: the distance splitting a meta-block chooses must not carry
- * to the next meta-block. Getting that wrong is invisible until a stream has
- * more than one meta-block, and a meta-block holds eight megabytes, so the
- * smallest test would be an eight megabyte one -- too slow for this gate, and
- * too slow to build inside the interpreter at all. It was found and is checked
- * by comparing against a real 3.22.5 on the twelve megabyte file in Brotli's
- * own corpus, which is a thing done by hand rather than by the build.
- */
 class BrotliLevelsTenAndElevenFromTheSourceTest {
 
-    /**
-     * The five-second default is the embedding default -- what a host gets for
-     * saying nothing -- and it is not a measure of anything here. These two
-     * levels read a quarter of a megabyte four times over at the slowest
-     * settings the format has, which takes a couple of seconds on an idle
-     * machine and longer on a busy one.
-     *
-     * <p>So the default deadline is a stopwatch on the build's own load rather
-     * than on the encoder: the class passes in eight seconds run alone and
-     * failed once inside a `check` that took seven minutes instead of five,
-     * with "the script ran longer than 5000ms". A minute is still a limit --
-     * a runaway encoder is caught -- and is not a number the machine's mood
-     * can reach.
-     */
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
                 .withWallClockLimit(Duration.ofMinutes(1)));
@@ -73,11 +19,6 @@ class BrotliLevelsTenAndElevenFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /**
-     * Three shapes of data, each built in bulk so that a quarter of a megabyte
-     * costs a few thousand loops rather than a quarter of a million, and a short
-     * checksum so a large answer fits on one line.
-     */
     private static final String THE_DATA_AND_HOW_TO_MEASURE_IT = """
             mixture: func [n [integer!] /local b h][
                 b: make binary! n
@@ -129,11 +70,6 @@ class BrotliLevelsTenAndElevenFromTheSourceTest {
                         3D3A96AB7D8A00110C}""")).isEqualTo("#(true)");
         }
 
-        /**
-         * The paragraph the level two to nine tests use, so the two files can be
-         * read side by side. Both of these are shorter than any of the eight
-         * below them manage, which is the whole point of the priced parse.
-         */
         @Test
         @DisplayName("a paragraph, at both levels")
         void aParagraph() {
@@ -154,10 +90,6 @@ class BrotliLevelsTenAndElevenFromTheSourceTest {
                     ]""")).isEqualTo("[78 #(true) 78 #(true)]");
         }
 
-        /**
-         * And the difference from the levels below, which is what buys the extra
-         * work: eighty-eight bytes at level six, seventy-eight at ten and eleven.
-         */
         @Test
         @DisplayName("both beat every level below them on that paragraph")
         void bothBeatTheLevelsBelow() {
@@ -180,11 +112,6 @@ class BrotliLevelsTenAndElevenFromTheSourceTest {
     @DisplayName("lengths at the bottom of the range")
     class TheShortestInputs {
 
-        /**
-         * Too short for any of it to matter: under three bytes there is nothing
-         * a code could pay for, and these come out exactly as every level from
-         * two upward writes them.
-         */
         @Test
         @DisplayName("nothing to five bytes, which every level agrees on")
         void theShortestLengths() {
@@ -203,12 +130,6 @@ class BrotliLevelsTenAndElevenFromTheSourceTest {
     @DisplayName("lengths either side of one block of input")
     class AroundABlockBoundary {
 
-        /**
-         * These two levels read a quarter of a megabyte at a time, four times
-         * what levels four to eight read, so their block join is at a different
-         * place and needs its own tests. One under, exactly one, one over, and
-         * two whole blocks.
-         */
         @Test
         @DisplayName("a quarter of a megabyte, at both levels")
         void aroundAQuarterOfAMegabyte() {
@@ -242,12 +163,6 @@ class BrotliLevelsTenAndElevenFromTheSourceTest {
     @DisplayName("three shapes of data")
     class ShapesOfData {
 
-        /**
-         * Text, a phrase repeated, and noise. The noise case is the one that
-         * makes the encoder condition literals on how big the previous bytes
-         * were rather than on what characters they spelled; below level ten that
-         * choice is never offered.
-         */
         @Test
         @DisplayName("text, repetition and noise, at both levels")
         void threeShapes() {
@@ -265,21 +180,6 @@ class BrotliLevelsTenAndElevenFromTheSourceTest {
         }
     }
 
-    /**
-     * Thirty kilobytes from Brotli's own test corpus, and the one thing here
-     * that no generated input catches.
-     *
-     * <p>These two levels divide their symbols into stretches by redoing the
-     * division until it settles -- ten times at eleven, three at ten. On every
-     * shape of data this project can invent, three rounds and ten rounds settle
-     * on the same division, so getting that count wrong is invisible. On three
-     * of the twenty-four files in Brotli's own corpus it is not, and this is a
-     * slice of the smallest of them.
-     *
-     * <p>Which is worth stating plainly: the count was wrong here, and the
-     * tests above all passed with it wrong. What found it was comparing against
-     * the C on somebody else's corpus, and what keeps it found is this file.
-     */
     @Nested
     @DisplayName("a file from Brotli's own corpus")
     class SomebodyElsesData {

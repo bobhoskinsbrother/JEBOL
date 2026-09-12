@@ -7,12 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Specified in {@code spec/natives.allium} and {@code spec/values.allium},
- * read from {@code t-char.c}, {@code n-control.c}, {@code t-function.c},
- * {@code s-unicode.c} and the error catalog, with the suite lines named
- * beside each group.
- */
 class SmallSuiteBehavioursFromTheSourceTest {
 
     private static String answerTo(String source) {

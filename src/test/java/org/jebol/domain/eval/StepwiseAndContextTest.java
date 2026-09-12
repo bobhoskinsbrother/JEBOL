@@ -8,15 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * DO/NEXT, CONSTRUCT/ONLY, CONTEXT? and RESOLVE.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Each of these is about not evaluating something: DO/NEXT stops after
- * one expression, CONSTRUCT/ONLY refuses even to turn the word `none` into
- * the none value, and RESOLVE leaves alone whatever the target already had.
- */
 class StepwiseAndContextTest {
 
     private static String answerTo(String source) {

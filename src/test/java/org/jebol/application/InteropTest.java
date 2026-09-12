@@ -9,20 +9,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Two-way interop between REBOL and the host.
- *
- * <p>Written before it exists. What a host may reach is a policy the host
- * sets, not a paragraph of documentation saying to be careful: the shape is
- * taken from GraalVM's {@code HostAccess}, because "your problem, expressed
- * in code" is a better place for it to live than "your problem, mentioned in
- * a file".
- *
- * <p>Mutability of host objects remains the caller's concern. An interpreter
- * owns its REBOL values; a Java object it holds may be changed by anyone, and
- * closing that would mean copying or freezing everything crossing the
- * boundary, which would make interop useless for what people want it for.
- */
 class InteropTest {
 
     @Nested

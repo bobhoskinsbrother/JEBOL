@@ -9,23 +9,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Reading a module out of the build instead of off the wire.
- *
- * <p>IMPORT's last resort is {@code select system/modules name}, and what
- * DOWNLOAD-EXTENSION does with what it finds is {@code content: read source}
- * followed by {@code write file content} -- an ordinary READ of whatever the
- * url names. So a scheme served from the build turns the fetch into a read of
- * the build, and neither IMPORT nor DOWNLOAD-EXTENSION has to know the
- * difference.
- *
- * <p>Which is the point rather than an optimisation. Rebol's table sends IMPORT
- * to {@code src.rebol.tech} and evaluates what comes back, with no signature,
- * no checksum and no pinned version between the wire and the evaluator -- so a
- * proxy in between, or an upstream that changes, is evaluated as it arrives. A
- * module bundled with the build has been looked at once, by whoever put it
- * there, and cannot change under a running system.
- */
 class TheBundledSchemeFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -68,11 +51,6 @@ class TheBundledSchemeFromTheSourceTest {
                 .isEqualTo("#(true)");
     }
 
-    /**
-     * Refused the way a missing file is, rather than answering nothing. A
-     * caller that cannot tell "no such module" from "an empty module" writes
-     * the second to disk.
-     */
     @Test
     @DisplayName("a name nothing is bundled as is refused, not answered empty")
     void aNameNothingIsBundledAsIsRefused() {
@@ -82,22 +60,12 @@ class TheBundledSchemeFromTheSourceTest {
                 e: try [read bundled://] e/id""")).isEqualTo("cannot-open");
     }
 
-    /**
-     * No service asked for, because nothing is reached. The bytes are in the
-     * build already, and this interpreter was granted neither a filesystem nor
-     * a network.
-     */
     @Test
     @DisplayName("and it asks for no service, having nothing to reach")
     void itAsksForNoService() {
         assertThat(answerTo("binary? read bundled://upgrade.reb")).isEqualTo("#(true)");
     }
 
-    /**
-     * A path with a directory in it is refused. The scheme names one flat set
-     * of modules and nothing about it is a filesystem, so a name that tries to
-     * climb out of it is a name it does not carry.
-     */
     @Test
     @DisplayName("and a name that tries to climb out of it is refused")
     void aNameThatTriesToClimbOutIsRefused() {
@@ -127,11 +95,6 @@ class TheBundledSchemeFromTheSourceTest {
                 ]""")).isEqualTo("[]");
     }
 
-    /**
-     * The whole of it, end to end: IMPORT finds the address, reads it out of
-     * the build, writes it into the modules directory and loads it. Which is
-     * exactly what it does for an address on the wire, minus the wire.
-     */
     @Test
     @DisplayName("so IMPORT finds a module without reaching anything")
     void soImportFindsAModuleWithoutReachingAnything(@TempDir Path root) {

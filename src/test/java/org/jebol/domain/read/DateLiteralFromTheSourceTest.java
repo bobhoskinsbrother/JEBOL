@@ -10,27 +10,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Reading a date, at every boundary {@code Scan_Date} draws.
- *
- * <p>It draws them by counting digits rather than by judging what a number
- * could plausibly mean, and that is the part a reasonable implementation gets
- * wrong. {@code if (size >= 4) year = num; else if (size) day = num;} decides
- * whether the first part is a year or a day, so {@code 2000-01-01} and
- * {@code 1-1-2000} are the same date and {@code 100-Jan-2000} is not a date
- * at all. The last part is counted the same way: three digits or more is the
- * year as written, two or fewer is a shorthand resolved against the year the
- * program is running in.
- *
- * <p>Reading day-first always meant an ISO date reached {@code DateValue.of}
- * as a day of 2000 and threw {@code IllegalArgumentException} straight out of
- * the interpreter. That is worse than a wrong answer: it is not a REBOL error,
- * so nothing could catch it, and one such literal in make-test.r3 took an
- * entire suite run down before a single assertion had run.
- *
- * <p>Every expectation here was run on a real Rebol first, built from the
- * vendored source by {@code scripts/build-r3.sh}.
- */
 class DateLiteralFromTheSourceTest {
 
     private static String answerTo(String source) {

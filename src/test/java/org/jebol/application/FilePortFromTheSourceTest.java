@@ -12,25 +12,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * An open file, which is the one port that behaves like a series.
- *
- * <p>{@code p-file.c}. It has a position: SKIP and BACK move it, HEAD and TAIL
- * go to the ends, INDEX? reports it, and READ takes from it and leaves it past
- * what it took. So reading a port twice gives the whole file and then nothing,
- * which is the assertion the suite opens this section with.
- *
- * <p>LENGTH? and SIZE? are the pair worth keeping straight. LENGTH? counts
- * what is left from the position, SIZE? counts the whole file wherever the
- * position stands -- so after writing one byte at the head, the length is
- * nothing and the size is one.
- *
- * <p>Which operations mind a closed port is not obvious and is not arbitrary.
- * Everything about the position raises not-open, because a closed port has no
- * position. SIZE? does not, being about the file. READ and WRITE do not
- * either: they open it, do the work and close it again, which is why a script
- * can read the same closed port three times and get the whole file each time.
- */
 class FilePortFromTheSourceTest {
 
     private static Interpreter grantedFilesUnder(Path root) {
@@ -291,18 +272,6 @@ class FilePortFromTheSourceTest {
                     .isEqualTo("[#(true) 0 file]");
         }
 
-        /**
-         * Only an open that cannot write is refused. A bare OPEN names neither
-         * reading nor writing, so the C fills in both -- {@code if (!(args &
-         * (AM_OPEN_READ | AM_OPEN_WRITE))) args |= (AM_OPEN_READ |
-         * AM_OPEN_WRITE);} -- and anything that may write carries
-         * {@code O_CREAT}.
-         *
-         * <p>This asserted the opposite until it was measured, which is what
-         * kept Rebol's own port test from getting past the line whose comment
-         * is "create locked file...". `OpeningAFileMakesItFromTheSourceTest`
-         * has the whole rule.
-         */
         @Test
         @DisplayName("and without it, only an open that cannot write is refused")
         void withoutItOnlyAReadIsRefused(@TempDir Path root) {
@@ -345,17 +314,6 @@ class FilePortFromTheSourceTest {
         }
     }
 
-    /**
-     * The file scheme is one this host serves, so a url naming it is another
-     * way of writing a path rather than a protocol nobody implemented.
-     *
-     * <p>Where the path begins is a parse rule in {@code sys-ports.reb} and
-     * not the {@code ://} it looks like:
-     * {@code parse port/spec/ref [thru #":" 0 2 slash path:]}. At most two
-     * slashes belong to the notation, so a third is the start of an absolute
-     * path, and none at all is allowed too. Every figure below was read off
-     * {@code ./r3-head} 3.22.5.
-     */
     @Nested
     @DisplayName("a file: url, which names a file and not a protocol")
     class TheFileScheme {

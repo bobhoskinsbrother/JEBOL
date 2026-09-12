@@ -8,35 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * LIMIT-USAGE, and the two lines elsewhere that decide what it is worth.
- *
- * <p>The native itself is four lines: record a number for `eval` or for
- * `memory`, once each, and answer unset. `if (Eval_Limit == 0) Eval_Limit =
- * Int64(...)` is the whole rule, so a second call for the same field writes
- * nothing, and a field that is neither falls out of the bottom untouched.
- *
- * <p>Two things elsewhere make it do less than it looks.
- *
- * <p>Nothing enforces the number. It is read once, in {@code Do_Signals}, and
- * handed to {@code Check_Security(SYM_EVAL, POL_EXEC, 0)}; every policy in
- * {@code boot/sysobj.reb} starts at {@code 0.0.0}, which is ALLOW, and an allowed
- * policy does nothing at all.
- *
- * <p>And no script can call it. {@code mezz-secure.reb} ends the boot with
- * {@code unset in lib 'limit-usage}, so the word is gone by the time a script
- * runs. That is Rebol's own file doing it, borrowed here verbatim, and it leaves
- * SECURE broken in Rebol as well: SECURE's body is bound to the slot that was
- * unset, so `secure [eval 100]` raises no-value there exactly as it does here.
- *
- * <p>So the native exists for the surface and for the caller Rebol intended, and
- * its whole observable behaviour from a script is that the word is not there.
- * Writing an enforcement would mean JEBOL stopping a script Rebol would let run;
- * writing a way to reach it would mean adding a word Rebol takes away.
- *
- * <p>Specified in {@code spec/natives.allium} under "Recording a limit that
- * nothing yet enforces".
- */
 class LimitUsageFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -76,7 +47,6 @@ class LimitUsageFromTheSourceTest {
     @DisplayName("what the native does when it is reached")
     class TheNativeItself {
 
-        /** Reached through the registry, because the library word is gone. */
         private static Value called(Evaluator evaluator, String field, Value limit) {
             return Natives.standard(java.util.Set.of()).behaviours()
                     .get("limit-usage")

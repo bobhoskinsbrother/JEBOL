@@ -7,28 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A run of percent signs is a word, and what a sigil'd one may be followed by.
- *
- * <p>{@code %} is a word, and so are {@code %%} and {@code %%%}. The C gives them
- * their own arm in three token cases, each with the same comment -- "special words
- * like :%, :%%, :%%% etc..." -- because a lone percent would otherwise begin a file:
- *
- * <pre>
- * if (cp[1] == '%') {
- *     do { ++cp; } while (*cp == '%');
- *     return (IS_LEX_DELIMIT(*cp)) ? TOKEN_GET : -TOKEN_GET;
- * }
- * </pre>
- *
- * <p>A delimiter has to follow the run. A slash is a delimiter, so {@code '%/} gets
- * past that test as a lit-word -- and then the block scanner sees the slash and
- * builds a <em>path</em> out of it, which has no second segment and fails.
- *
- * <p>Which is why the error says {@code path} and not {@code word}: the token kind
- * reported is the one the reader had reached by the time it failed, and a script
- * reads it as ARG1. Rebol's own test asserts all four spellings.
- */
 class PercentWordFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -37,7 +15,6 @@ class PercentWordFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** Whether reading this failed as a refused path, both halves at once. */
     private static String refusedAsAPath(String source) {
         return answerTo("e: try [transcode/one " + source + "] "
                 + "all [error? e e/id = 'invalid e/arg1 = \"path\"]");

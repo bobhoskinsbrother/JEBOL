@@ -1,20 +1,10 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * The fixed prefix codes quality two writes when there is little to go on.
- *
- * <p>{@code entropy_encode_static.h}. A meta-block of a hundred and twenty
- * eight commands or fewer does not have enough of them to make measuring
- * worthwhile, so the encoder writes a code chosen once for all inputs and
- * spends its bits on the literals instead. The two trees below are stored as
- * fixed bit patterns rather than built.
- */
 final class BrotliStaticCodes {
 
     private BrotliStaticCodes() {
     }
 
-    /** The command tree's own declaration, written out as it stands. */
     static void writeTheCommandTree(BrotliBits into) {
         into.write(56, 0x92624416307003L);
         into.write(3, 0);

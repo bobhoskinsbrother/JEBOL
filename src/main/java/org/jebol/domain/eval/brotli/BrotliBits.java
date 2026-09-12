@@ -2,20 +2,6 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * The bit stream a Brotli encoder writes, least significant bit of each byte
- * first.
- *
- * <p>{@code write_bits.h}. Every write leaves the byte after the last one it
- * touched at zero, so the next write can simply OR into the partial byte it
- * starts in. The two places that go back over what they wrote -- storing a
- * block plainly after deciding the compressed form was not worth it, and
- * widening a meta-block's declared length after deciding to carry on into it
- * -- both depend on that.
- *
- * <p>Shared by every quality rather than owned by one, because they all write
- * the same bits and only differ in what they decide to write.
- */
 final class BrotliBits {
 
     private byte[] data;
@@ -72,7 +58,6 @@ final class BrotliBits {
         position = newPosition;
     }
 
-    /** Overwrites bits already written, which is how a meta-block grows. */
     void updateBits(int howManyBits, int bits, int at) {
         int left = howManyBits;
         int value = bits;

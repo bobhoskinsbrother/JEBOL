@@ -13,23 +13,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The functions that ask the interpreter about itself: VERSION, POKEZ,
- * TO-REAL-FILE, RECYCLE, STATS, HALT and STACK.
- *
- * <p>Read out of {@code b-init.c} (version), {@code f-series.c} (pokez),
- * {@code n-io.c} (to-real-file) and {@code n-system.c}. Each spec is the one
- * declared there, verbatim.
- *
- * <p>Grouped because they share one property: each is a window onto something
- * the host owns, so each needs the host's answer rather than a rule from the
- * C. STACK is the exception and the interesting one -- it is answerable at all
- * only because evaluation state lives in frames on the heap rather than in JVM
- * stack frames. See decision 1.
- *
- * <p>Specified in {@code spec/natives.allium} under "The interpreter's own
- * state".
- */
 class InterpreterStateFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -366,18 +349,6 @@ class InterpreterStateFromTheSourceTest {
         }
     }
 
-    /**
-     * {@code system/platform} names the operating system, and it is the word
-     * six files in the borrowed library branch on: which character separates
-     * the entries of PATH, how a shell argument is quoted, whether a filename
-     * comparison minds case, where the application data directory goes.
-     *
-     * <p>Every one of those branches is about the local conventions rather
-     * than about what interpreter is running, so a JVM on Windows has to
-     * answer {@code Windows}. It answered {@code JVM}, which is true of the
-     * runtime and true of no operating system, and sent all six down the arm
-     * meant for something else -- right on a Unix by luck.
-     */
     @Nested
     @DisplayName("SYSTEM/PLATFORM")
     class ThePlatform {

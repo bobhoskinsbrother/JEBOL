@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A complemented bitset keeps a flag rather than flipping every bit.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1. COMPLEMENT? came off the porting backlog and could not be
- * written until the set knew it was a complement.
- *
- * <p>Flipped bits give a set that answers every membership question the
- * same way, so nothing is wrong until something asks the set what it is.
- * Then MOLD prints a wall of FF and COMPLEMENT? has nothing to read.
- */
 class ComplementedBitsetTest {
 
     private static String answerTo(String source) {

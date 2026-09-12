@@ -6,12 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Four more functions ported off the backlog, and the crash one of them found.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1, whose own definitions were read out of the binary.
- */
 class MorePortedFunctionsTest {
 
     private static String answerTo(String source) {

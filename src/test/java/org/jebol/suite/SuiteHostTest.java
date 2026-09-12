@@ -6,23 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * That a measuring tool answers what the gate answers.
- *
- * <p>The tools that report on the suite are only worth their output if they run
- * a file the way the gate runs it. Two of them did not: they granted every host
- * service and installed only a filesystem, so a suite file asking for the
- * environment or for a process was told it had none. That is not a smaller host
- * but a differently wrong one, and it is worse than no tool, because it reports
- * a blocker where the gate sees none and the difference is invisible in the
- * output.
- *
- * <p>Four pieces of work in {@code goals.md} were written from those phantom
- * stops. The cost was not the tools; it was believing them.
- *
- * <p>So this asks the three things granting alone does not give, through the
- * interpreter every one of them now builds.
- */
 class SuiteHostTest {
 
     private static String answerTo(String source) {

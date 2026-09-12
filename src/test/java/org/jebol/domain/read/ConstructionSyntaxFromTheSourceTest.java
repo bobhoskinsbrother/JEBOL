@@ -10,27 +10,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Construction syntax, and the three other things that stopped the reader.
- *
- * <p>Rebol keeps no list of which datatypes {@code #(...)} works for.
- * {@code Construct_Value} skips the datatype word and calls
- * {@code Make_Dispatch[type]} on what is left, so a type has the syntax
- * exactly when it has a maker. JEBOL had a hardcoded switch whose
- * {@code default} answered {@code malconstruct}, and that one line stopped
- * ten of Rebol's own test files dead -- make-test.r3 at 216 of its 1,029
- * assertions, copy-test.r3 at 0 of 223.
- *
- * <p>The other three are unrelated to each other and to construction. A
- * percent may carry an exponent. A file may open with a percent escape. And a
- * path may hold a tag or a character, both of which were being cut out of the
- * lexeme and read as separate values -- the character silently, since
- * {@code b/#"a"} read as two values instead of one without changing how many
- * assertions a file appeared to have.
- *
- * <p>Every expectation here was run against a Rebol built from the vendored
- * source by {@code scripts/build-r3.sh} before it was written down.
- */
 class ConstructionSyntaxFromTheSourceTest {
 
     private static String answerTo(String source) {

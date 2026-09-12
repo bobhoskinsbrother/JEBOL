@@ -22,8 +22,7 @@ import java.util.stream.Stream;
  */
 public final class Molder {
 
-    /** The word every object holds for itself. Never molded; see below. */
-    private static final String SELF = "self";
+    private static final String THE_WORD_EVERY_OBJECT_HOLDS_FOR_ITSELF = "self";
 
     private Molder() {
     }
@@ -53,16 +52,6 @@ public final class Molder {
                 .replace("[ ", "[").replace(" ]", "]"));
     }
 
-    /**
-     * Whether the mold in progress is forbidden to break a line.
-     *
-     * <p>{@code MOPT_INDENT}, which MOLD/FLAT sets and which a binary and an
-     * image each read before deciding how to lay their digits out. A flag
-     * rather than a pass over the finished text, because the breaks a binary
-     * writes carry no indent to strip: flattening by replacing every newline
-     * with a space turned {@code #\{AAAA\nBBBB\}} into a binary with spaces
-     * through the middle of it, which is not a binary at all.
-     */
     private static final ThreadLocal<Boolean> WRITING_ON_ONE_LINE =
             ThreadLocal.withInitial(() -> false);
 
@@ -76,19 +65,6 @@ public final class Molder {
         }
     }
 
-    /**
-     * How much of the mold the caller asked for, or nothing for all of it.
-     *
-     * <p>{@code CHECK_MOLD_LIMIT} cuts the count of bytes or pixels down to
-     * what the limit could possibly need, and does it *before* the code that
-     * decides whether to break lines. So {@code mold/part} of a huge binary
-     * with a limit of eight is {@code #\{FFFFFF} and not
-     * {@code #\{} followed by a newline: the limit made it a short binary,
-     * and a short binary stays on one line.
-     *
-     * <p>Cutting the finished text instead left the newline in, which is the
-     * one character a caller asking for eight is least likely to want.
-     */
     private static final int NO_LIMIT = -1;
 
     private static final ThreadLocal<Integer> AS_MUCH_AS_WAS_ASKED_FOR =
@@ -109,21 +85,6 @@ public final class Molder {
         }
     }
 
-    /**
-     * As many pixels as a limit could still reach, after what is already
-     * written.
-     *
-     * <p>{@code if (MOLD_REST(mold) < len) len = MOLD_REST(mold)}, where the
-     * rest is the characters left rather than the pixels left -- a generous
-     * cut, since a pixel costs six, but the one the C makes.
-     *
-     * <p>What is already written has to come off, and that is what decides
-     * the answer here. {@code mold/part/all img 30} has spent twenty-one
-     * characters on {@code #(image! 3840x2160 #\{} before a pixel is reached,
-     * so nine are left, so nine pixels at most, so fewer than ten and no line
-     * break at all. Counting from the whole limit instead left a newline
-     * where the C has none.
-     */
     private static int asManyPixelsAsTheLimitCouldUse(int pixels, int alreadyWritten) {
         int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
         return limit == NO_LIMIT
@@ -136,21 +97,8 @@ public final class Molder {
         return render(value, true);
     }
 
-    /**
-     * Where a series stands, never past the end of what it stands in.
-     *
-     * <p>{@code // Reset index if it is over series tail: (a: [1 2] b: tail a
-     * clear a mold b)} -- the C's own comment, and its own example. Emptying
-     * a series leaves every other name for it holding a position that is no
-     * longer there, and molding that position would write a construct LOAD
-     * could not read: {@code #(path! [] 4)} says the fourth of nothing.
-     *
-     * <p>Blocks and paths only, because the reset is a line in
-     * {@code Mold_Block} and text goes nowhere near it. So the same emptying
-     * done to a string really does mold as {@code #(string! "" 9)}, and the
-     * two datatypes disagree in a real 3.22 exactly as they do here.
-     */
-    private static int standsWithin(SeriesValue series) {
+    private static int standsWithinNeverPastTheEndForABlockOrAPath(
+            SeriesValue series) {
         return series instanceof BlockValue
                 ? Math.min(series.index(), series.storageLength() + 1)
                 : series.index();
@@ -174,9 +122,11 @@ public final class Molder {
             if (value instanceof ImageValue picture) {
                 return render(picture, true);
             }
-            if (value instanceof SeriesValue series && standsWithin(series) > 1) {
+            if (value instanceof SeriesValue series
+                    && standsWithinNeverPastTheEndForABlockOrAPath(series) > 1) {
                 return "#(" + value.datatype().literalSpelling() + " "
-                        + constructBodyOf(series) + " " + standsWithin(series) + ")";
+                        + constructBodyOf(series) + " "
+                        + standsWithinNeverPastTheEndForABlockOrAPath(series) + ")";
             }
             if (value instanceof StringValue tag && tag.datatype() == Datatype.TAG
                     && tag.storageLength() == 0) {
@@ -186,20 +136,6 @@ public final class Molder {
         });
     }
 
-    /**
-     * Whether everything being written is being written the all way.
-     *
-     * <p>{@code MOPT_MOLD_ALL} is a flag on the mold state, so it is not a
-     * choice made once at the top: every value below reads it and writes
-     * itself differently for it. A date writes ISO, a typeset writes its
-     * construct form, and a path that has to fall back to a construct sets the
-     * flag for its own contents whether or not the caller asked for it --
-     * {@code if (all) { SET_FLAG(mold->opts, MOPT_MOLD_ALL); ... }}.
-     *
-     * <p>A field on the molder is what the C has and JEBOL has no molder to
-     * put one on, so it sits beside the two the file already keeps for depth
-     * and for what is being written twice.
-     */
     private static final ThreadLocal<Boolean> WRITING_EVERYTHING_OUT =
             ThreadLocal.withInitial(() -> false);
 
@@ -213,13 +149,6 @@ public final class Molder {
         }
     }
 
-    /**
-     * The content of a positioned construct form, molded in the construct
-     * body's own notation rather than the value's literal one.
-     * {@code Mold_All_String} forces the type to a plain string and
-     * {@code Mold_Block} brackets a path, so {@code mold/all next next 'p/p}
-     * is {@code #(path! [p p] 3)} and a positioned url quotes its text.
-     */
     private static String constructBodyOf(SeriesValue series) {
         return switch (series) {
             case StringValue text -> moldedText(text.head().text());
@@ -246,30 +175,10 @@ public final class Molder {
         return renderLined(block, true, WITH_NO_BRACKETS);
     }
 
-    /**
-     * Whether the block being written puts brackets round itself.
-     *
-     * <p>{@code sep[1]}, which MOLD/ONLY sets to nothing. It decides more
-     * than the brackets: a flagged first value breaks the line only when
-     * there is a bracket for the break to follow, so the same block writes
-     * a leading newline with brackets and none without.
-     */
     private static final boolean BETWEEN_BRACKETS = true;
 
     private static final boolean WITH_NO_BRACKETS = false;
 
-    /**
-     * What is already being molded further out, so a cycle stops.
-     *
-     * <p>A series may hold itself. Rebol writes {@code [1 [...]]} for a block
-     * that does and {@code self: #[...]} for a map, and JEBOL recursed until
-     * the stack ran out -- which only became reachable when construction
-     * syntax started reading maps, and then took seven tests down with a
-     * StackOverflowError rather than a wrong answer.
-     *
-     * <p>Held per thread, because molding is re-entrant and two threads
-     * molding at once must not see each other's depth.
-     */
     private static final ThreadLocal<Set<Object>> ALREADY_INSIDE =
             ThreadLocal.withInitial(() -> Collections.newSetFromMap(
                     new IdentityHashMap<>()));
@@ -289,13 +198,6 @@ public final class Molder {
         return renderOne(value, forReading);
     }
 
-    /**
-     * How a series that holds itself is written: its own delimiters, with
-     * nothing but an ellipsis between them.
-     *
-     * <p>{@code [1 [...]]} rather than {@code [1 ...]}, so the shape of what
-     * was there is still visible.
-     */
     private static String alreadyInsideItself(Value value) {
         return switch (value) {
             case MapValue ignored -> "#[...]";
@@ -310,7 +212,6 @@ public final class Molder {
         };
     }
 
-    /** What a value nests through, or null when it cannot nest. */
     private static Object nestingIdentityOf(Value value) {
         return switch (value) {
             case BlockValue block -> block.storage();
@@ -375,15 +276,6 @@ public final class Molder {
         };
     }
 
-    /**
-     * A struct, which shows its whole layout only when asked to be readable.
-     *
-     * <p>Plainly, Rebol writes the identifier it filed the layout under:
-     * {@code #(struct! 749277710 [a: 0.0])}. That number is a hash of the
-     * layout block, and every struct built from the same layout shares it, so
-     * a reader that has seen one can recognise the rest. Under MOLD/ALL the
-     * layout itself is written instead, which is the form that reads back.
-     */
     private static String renderStruct(StructValue struct, boolean forReading) {
         String layout = forReading
                 ? render(struct.spec().declaration(), true)
@@ -392,30 +284,10 @@ public final class Molder {
                 + render(BlockValue.block(struct.body()), forReading) + ")";
     }
 
-    /** How many significant digits a decimal is printed to. */
     private static final int SIGNIFICANT_DIGITS = 15;
 
-    /**
-     * Below this exponent the exponent form is used. Above it, the threshold
-     * is the digit count rather than a constant, because
-     * {@code Emit_Decimal} compares against the digits it was asked for and a
-     * pair asks for half as many as a decimal does.
-     */
     private static final int SMALLEST_PLAIN_EXPONENT = -6;
 
-    /**
-     * Fifteen significant digits, always with a decimal point.
-     *
-     * <p>Confirmed against a real R3 rather than reasoned about, because the
-     * reasoning was wrong: this used to print the shortest form that reads
-     * back, on the assumption that R3 must differ from REBOL 2 here. It does
-     * not. {@code 0.1 + 0.2} molds as {@code 0.3}, and {@code 10 / 3} as
-     * {@code 3.33333333333333}.
-     *
-     * <p>So {@link Double#toString} is the wrong tool. It gives seventeen
-     * digits where fifteen are wanted, and the extra two are exactly the ones
-     * that make floating point look broken to whoever is reading the output.
-     */
     private static String renderDecimal(DecimalValue decimal) {
         double quantity = decimal.quantity();
         return decimal.datatype() == Datatype.PERCENT && hasDigits(quantity)
@@ -423,30 +295,10 @@ public final class Molder {
                 : renderDouble(quantity);
     }
 
-    /**
-     * Whether a number is made of digits at all, which infinity and
-     * not-a-number are not.
-     *
-     * <p>{@code Emit_Decimal} writes the four characters of {@code #INF} or
-     * {@code #NaN} and then jumps past the end of the function, so the
-     * per-cent sign at the bottom of it is never reached. An infinite percent
-     * molds as {@code 1.#INF} with no sign after it -- a hundredth of
-     * infinity is still infinity, and there is nothing for the sign to mean.
-     */
     private static boolean hasDigits(double quantity) {
         return !Double.isNaN(quantity) && !Double.isInfinite(quantity);
     }
 
-    /**
-     * How many significant digits a pair's half prints with, and why it is
-     * half as many as a decimal's.
-     *
-     * <p>{@code s-mold.c} molds a pair by calling {@code Emit_Decimal} on
-     * each half with {@code mold->digits / 2}, and {@code mold->digits} is
-     * fifteen. Seven digits is also about what a single precision half can
-     * carry, so the two agree by design rather than by accident: printing
-     * more would print digits the half never had.
-     */
     private static final int PAIR_HALF_DIGITS = SIGNIFICANT_DIGITS / 2;
 
     /**
@@ -469,25 +321,10 @@ public final class Molder {
         return renderDouble(half, PAIR_HALF_DIGITS, MINIMAL);
     }
 
-    /**
-     * {@code DEC_MOLD_MINIMAL}: drop the point rather than putting a zero
-     * after it. A decimal keeps its point or it would read back as an
-     * integer; a pair half has the {@code x} to say what it is, so it does
-     * not need one.
-     */
     private static final boolean MINIMAL = true;
 
     private static final boolean KEEPS_ITS_POINT = false;
 
-    /**
-     * The digits MOLD/ALL prints a decimal to, which is every one it has.
-     *
-     * <p>{@code if (GET_MOPT(mold, MOPT_MOLD_ALL)) len = MAX_DIGITS} at the
-     * top of {@code Reset_Mold}. Seventeen is the count at which a double
-     * reads back as itself, so {@code mold/all 0.1} is
-     * {@code 0.10000000000000001} where {@code mold 0.1} is {@code 0.1}: the
-     * first is the number and the second is what a person meant by it.
-     */
     private static final int EVERY_DIGIT_A_DOUBLE_HAS = 17;
 
     private static String renderDouble(double quantity) {
@@ -518,7 +355,6 @@ public final class Molder {
                 : pointAsWanted(rounded.toPlainString(), minimal);
     }
 
-    /** {@code 1.0e15}: a mantissa that always has a point, and a bare e. */
     private static String withExponent(
             BigDecimal rounded, int exponent, boolean minimal) {
 
@@ -527,11 +363,12 @@ public final class Molder {
     }
 
     private static String pointAsWanted(String rendered, boolean minimal) {
-        return minimal ? trimTrailingZero(withPoint(rendered)) : withPoint(rendered);
+        return minimal
+                ? trimTrailingZero(withThePointADecimalNeverLoses(rendered))
+                : withThePointADecimalNeverLoses(rendered);
     }
 
-    /** A decimal never loses its point, or it would read back as an integer. */
-    private static String withPoint(String rendered) {
+    private static String withThePointADecimalNeverLoses(String rendered) {
         return rendered.indexOf('.') >= 0 ? rendered : rendered + ".0";
     }
 
@@ -547,14 +384,6 @@ public final class Molder {
                 + money.amount().abs().toPlainString();
     }
 
-    /**
-     * {@code #[]} when empty, and one pair per line otherwise.
-     *
-     * <p>A map is the one thing whose construct form is not the plain form
-     * with a datatype name added: {@code #[a: 1]} plainly and
-     * {@code #(map! [a: 1])} under MOLD/ALL, so the brackets change shape as
-     * well as gaining a name.
-     */
     private static String renderMap(MapValue map, boolean forReading) {
         if (!forReading) {
             return formedPairsOf(map);
@@ -585,19 +414,6 @@ public final class Molder {
                 + (onSeparateLines ? aLineIndentedAsDeepAsWeAre() : "") + shuts;
     }
 
-    /**
-     * FORM of a map: the same pairs with none of the punctuation.
-     *
-     * <p>{@code Mold_Map} skips the brackets and the indent when it is not
-     * molding, and puts a bare newline between pairs rather than an indented
-     * one -- {@code else if (count > 1) Append_Byte(mold->series, '\n')}. There
-     * is none after the last pair, so an empty map forms as nothing at all.
-     *
-     * <p>Each key and each value is still molded, whichever way round the map
-     * is written: {@code Emit(mold, "V V", val, val+1)} is the same line in
-     * both branches, so a text key keeps its quotes where FORM of a string
-     * would have dropped them.
-     */
     private static String formedPairsOf(MapValue map) {
         List<Value> flat = map.flattened();
         StringBuilder written = new StringBuilder();
@@ -612,10 +428,6 @@ public final class Molder {
         return written.toString();
     }
 
-    /**
-     * Escaped for the braced form, which spares the quotes and nothing
-     * else: a caret is still doubled or the text would not read back.
-     */
     private static String escapeInBraces(String text, boolean bracesAreUnbalanced) {
         StringBuilder escaped = new StringBuilder();
         text.codePoints().forEach(codepoint -> {
@@ -629,7 +441,6 @@ public final class Molder {
         return escaped.toString();
     }
 
-    /** Whether braces in the text would still pair up inside braces. */
     private static boolean balancedBraces(String text) {
         int open = 0;
         for (int at = 0; at < text.length(); at++) {
@@ -660,13 +471,6 @@ public final class Molder {
         };
     }
 
-    /**
-     * Whether a url or an email needs construction syntax to survive a
-     * round trip. {@code Mold_Url}: the text is emitted bare only when the
-     * lexer would read it back as the same value, so an empty one, one
-     * missing its colon or at-sign, one holding a delimiter, and the other
-     * shapes the scanner refuses all fall back to {@code #(url! "...")}.
-     */
     private static boolean wouldNotReadBackAsItself(StringValue string) {
         char required = string.datatype() == Datatype.EMAIL ? '@' : ':';
         String remaining = string.text();
@@ -697,38 +501,10 @@ public final class Molder {
         return found < 0 || found == remaining.length() - 1;
     }
 
-    /**
-     * The delimiters a ref may not carry, which are the lexer's own.
-     *
-     * <p>{@code IS_LEX_DELIMIT} in {@code Mold_Ref}. Each one ends a word
-     * where it stands, so a ref holding it would read back as a shorter ref
-     * followed by something else.
-     */
     private static final String LEXER_DELIMITERS = "()[]{}\"/;";
 
-    /**
-     * The one character above the control range that a ref cannot hold.
-     *
-     * <p>{@code if (c == '@') goto mold_ref_all}, the very first test in
-     * {@code Mold_Ref}. A second at-sign would make the whole thing an email
-     * rather than a ref, so {@code @a@b} does not read back and
-     * {@code #(ref! "a@b")} is what gets written.
-     */
     private static final char OPENS_AN_EMAIL_INSTEAD = '@';
 
-    /**
-     * Whether a ref can be written with its at-sign and nothing else.
-     *
-     * <p>{@code Mold_Ref} walks the text and keeps only letters and digits.
-     * Anything below decimal twenty-one, any space and any delimiter sends
-     * the whole thing to the construct form, and so does a second at-sign.
-     *
-     * <p>Twenty-one is the C's own number and not a rounding of the control
-     * range: {@code if (c < 21 || ...)}, which lets the four characters from
-     * twenty-one to twenty-four through where the word class would not.
-     * Nothing spells a ref with one, and JEBOL writes the same boundary
-     * rather than a tidier one that would disagree.
-     */
     private static boolean spellsARefTheLexerWouldReadBack(String text) {
         return text.codePoints().noneMatch(codepoint ->
                 codepoint == OPENS_AN_EMAIL_INSTEAD
@@ -745,26 +521,10 @@ public final class Molder {
                 + (string.index() > 1 ? " " + string.index() : "") + ")";
     }
 
-    /** The longest string molded with quotes before braces are used. */
     private static final int LONGEST_QUOTED = 50;
 
-    /**
-     * The characters a file literal escapes as {@code %XX}: the lexer's own
-     * delimiters, the control range and space, and the percent and colon.
-     * The rest of {@code URL_Escapes}' file set.
-     */
     private static final String FILE_DELIMITERS = ";\"()[]{}<>\\^%:";
 
-    /**
-     * A file molded, escaping the characters that would not read back as
-     * part of one. Without this a space truncated the path and a control
-     * character vanished, so {@code load mold} did not round-trip.
-     *
-     * <p>A file with no name at all is written {@code %""}, because a bare
-     * percent sign is not a file: the lexer reads it as the modulo operator,
-     * so molding the empty file as {@code %} produced something that read
-     * back as a word.
-     */
     private static String moldedFile(String text) {
         if (text.isEmpty()) {
             return "%\"\"";
@@ -781,14 +541,6 @@ public final class Molder {
         return written.toString();
     }
 
-    /**
-     * A plain string molded, choosing quotes or braces as the C does.
-     *
-     * <p>{@code Mold_String_Series} uses the quoted form only when the text
-     * holds no quote, fewer than three newlines, and no more than fifty
-     * characters. Otherwise it uses braces, where a quote and a newline
-     * stand for themselves and only an unbalanced brace is escaped.
-     */
     private static String moldedText(String text) {
         String deciding = asFarAsTheLimitLooks(text);
         long newlines = deciding.chars().filter(each -> each == '\n').count();
@@ -800,22 +552,6 @@ public final class Molder {
                 : "{" + escapeInBraces(text, !balancedBraces(text)) + "}";
     }
 
-    /**
-     * As much of a string as MOLD/PART could reach, which is what decides
-     * whether it is written in quotes or in braces.
-     *
-     * <p>{@code CHECK_MOLD_LIMIT} cuts the series down to what the limit could
-     * possibly need before anything looks at it, so the form is chosen from
-     * the part that will be shown rather than from the whole. A string holding
-     * a quote at its end is written in braces; the first three characters of
-     * the same string are written in quotes, because the quote is not among
-     * them.
-     *
-     * <p>One less than the limit, because the opening delimiter is the first
-     * character of the output and is not part of the string. That is where the
-     * boundary sits: a seven-character string ending in a quote still molds
-     * quoted at a limit of seven, and turns to braces at eight.
-     */
     private static String asFarAsTheLimitLooks(String text) {
         int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
         if (limit == NO_LIMIT) {
@@ -834,22 +570,6 @@ public final class Molder {
         return escaped.toString();
     }
 
-    /**
-     * One code point as REBOL writes it inside a string or a character.
-     *
-     * <p>Three regions, and the middle one is the surprise. Below a
-     * space, a code point is a caret and the letter sixty-four above it,
-     * so 0 is {@code ^@}, 1 is {@code ^A} and 31 is {@code ^_}. That is
-     * an escape a reader has to know, not a decoration: it is how REBOL
-     * has always written control characters, and the hex form is only
-     * for what has no letter. From a space to 126 the character stands
-     * for itself, and from 127 up it is {@code ^(7F)} with upper-case
-     * hex.
-     *
-     * <p>Tab and newline have their own spellings and are handled by the
-     * caller before this is reached, because {@code ^-} and {@code ^/}
-     * are what a person reading the output expects to see.
-     */
     private static String escapedCodepoint(int codepoint) {
         if (codepoint == 0x1E || (codepoint >= 0x7F && codepoint <= 0x9F)) {
             return "^(" + "%02X".formatted(codepoint) + ")";
@@ -865,12 +585,6 @@ public final class Molder {
         };
     }
 
-    /**
-     * Bytes as hex: wrapped in {@code #{}} for MOLD, bare for FORM.
-     *
-     * <p>The bare form is what lets a binary be looked for inside a
-     * string, since FIND forms its needle first.
-     */
     private static String hexOf(byte[] octets) {
         StringBuilder hex = new StringBuilder();
         for (byte octet : octets) {
@@ -879,34 +593,8 @@ public final class Molder {
         return hex.toString();
     }
 
-    /**
-     * How many pixels a molded image writes to a line, and the count below
-     * which it writes them all to one.
-     *
-     * <p>{@code if (size < 10) indented = FALSE}, with a comment saying why:
-     * "use `flat` result for images with less than 10 pixels (looks better in
-     * console)". So the same number sets both the width of a line and the
-     * point at which lines start.
-     */
     private static final int PIXELS_TO_A_LINE = 10;
 
-    /**
-     * An image as its size and its pixels, from `Mold_Image_Data`.
-     *
-     * <p>`Pre_Mold` writes `make image! [` for an ordinary mold and `#(image! `
-     * for MOLD/ALL, so the two forms differ in their brackets rather than in
-     * their content. Six hex digits a pixel, from the position the image stands
-     * at -- `size = VAL_IMAGE_LEN(value)` counts from the index -- except under
-     * /ALL, which sets the index to zero first and molds the whole thing.
-     *
-     * <p>The alpha binary appears only when some pixel needs it, and that is
-     * decided by walking the pixels rather than by reading a flag. One byte a
-     * pixel, in the same order.
-     *
-     * <p>Ten pixels to a line once there are ten of them, with the break
-     * written before each tenth pixel rather than after, so the digits start
-     * on the line below the opening brace and the closing one stands alone.
-     */
     private static String renderImage(ImageValue image, boolean forReading) {
         String size = image.storage().wide() + "x" + image.storage().high();
         boolean asAConstruct = WRITING_EVERYTHING_OUT.get();
@@ -937,17 +625,6 @@ public final class Molder {
                 + closing + shuts;
     }
 
-    /**
-     * Where a series stands, written after its contents by MOLD/ALL.
-     *
-     * <p>{@code Post_Mold} appends the index only when the series is not at
-     * its head, so {@code #(image! 8x1 #\{...\})} and
-     * {@code #(image! 8x1 #\{...\} 2)} are the same picture read from
-     * different places. The pixels are written from the head either way --
-     * {@code VAL_INDEX(&val) = 0; // mold all of it} -- because a construct
-     * that dropped the pixels behind the position could not put the position
-     * back.
-     */
     private static String positionOf(SeriesValue series) {
         return series.index() > 1 ? " " + series.index() : "";
     }
@@ -960,29 +637,11 @@ public final class Molder {
         return forReading ? moldedBytes(octets) : hexOf(octets);
     }
 
-    /**
-     * How many bytes a limit could still reach.
-     *
-     * <p>{@code CHECK_MOLD_LIMIT} cuts the byte count against the characters
-     * left, which is generous -- a byte costs two characters in hex and eight
-     * in binary -- but it is the cut the C makes, and it is what stops
-     * {@code mold/part} of a thirty-three-megabyte image encoding all of it
-     * to throw away everything past the eighth character.
-     */
     private static int asManyBytesAsTheLimitCouldUse(int bytes) {
         int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
         return limit == NO_LIMIT ? bytes : Math.min(bytes, Math.max(0, limit));
     }
 
-    /**
-     * Which notation a binary molds in: sixteen, sixty-four or two.
-     *
-     * <p>{@code Mold_Binary} reads {@code system/options/binary-base} at the
-     * moment it writes, so the answer is a property of the interpreter's state
-     * and not of the call. FORM does not read it -- {@code form #\{FFAA\}} is
-     * {@code FFAA} whatever the option says -- because forming a binary is
-     * asking for its digits rather than for source that reads back.
-     */
     private static final ThreadLocal<Integer> BINARY_BASE =
             ThreadLocal.withInitial(() -> 16);
 
@@ -997,58 +656,26 @@ public final class Molder {
         }
     }
 
-    /**
-     * A binary in braces, in the base the system object names, broken into
-     * lines once there is enough of it.
-     *
-     * <p>Each base has its own run length and its own rule for when the run
-     * is long enough to be worth breaking at all, and the three do not agree:
-     * base sixteen breaks at thirty-two bytes, base two at eight, base
-     * sixty-four at forty-eight. Each writes a newline after {@code #\{} as
-     * well, so a binary long enough to matter arrives as a block of even
-     * lines instead of one that runs off the screen.
-     *
-     * <p>MOLD only. FORM writes the digits bare and unbroken, because FIND
-     * forms its needle before looking for it and a newline in the middle
-     * would stop it matching.
-     */
     private static String moldedBytes(byte[] whole) {
         byte[] octets = Arrays.copyOf(whole,
                 asManyBytesAsTheLimitCouldUse(whole.length));
         boolean mayBreakLines = !WRITING_ON_ONE_LINE.get();
         return switch (BINARY_BASE.get()) {
-            case 2 -> "2#{" + base2Digits(octets, mayBreakLines) + "}";
+            case 2 -> "2#{" + base2DigitsDroppingTheLastAtExactlyEightBytes(
+                    octets, mayBreakLines) + "}";
             case 64 -> "64#{" + base64Digits(octets, mayBreakLines) + "}";
             default -> "#{" + base16Digits(octets, mayBreakLines) + "}";
         };
     }
 
-    /** How many bytes of a binary each base writes before breaking the line. */
     private static final int BYTES_TO_A_HEX_LINE = 32;
 
     private static final int BYTES_TO_A_BINARY_LINE = 8;
 
     private static final int BYTES_TO_A_BASE_SIXTY_FOUR_LINE = 48;
 
-    /**
-     * Base sixty-four writes on one line up to sixty-four bytes, though its
-     * runs are forty-eight bytes long.
-     *
-     * <p>The two numbers come from different places in {@code Mold_Binary} --
-     * one decides whether to break at all, the other how often -- and a
-     * binary of between forty-nine and sixty-four bytes is where they
-     * disagree.
-     */
     private static final int BYTES_TO_A_BASE_SIXTY_FOUR_LINE_BREAK = 64;
 
-    /**
-     * The digits with a newline before the first and after each full run.
-     *
-     * <p>The closing brace follows the last run's digits, so a length that is
-     * an exact multiple of the run leaves it alone on the line after -- the
-     * newline belongs to the full run rather than being written before the
-     * brace.
-     */
     private static String brokenIntoRuns(String digits, int digitsToARun) {
         StringBuilder written = new StringBuilder("\n");
         for (int at = 0; at < digits.length(); at += digitsToARun) {
@@ -1068,18 +695,8 @@ public final class Molder {
                 : digits;
     }
 
-    /**
-     * Eight ones and noughts a byte, and the last of them dropped when there
-     * are exactly eight bytes.
-     *
-     * <p>{@code if (len == 8) --p} in {@code Encode_Base2} was written to
-     * remove the newline that a run of eight would have left at the end. At
-     * exactly eight bytes there is no newline to remove, because the break is
-     * only written when the length is more than eight, so what it removes is
-     * the last digit. A real 3.22 does it, {@code mold #\{FFAAFFAAFFAAFFAA\}}
-     * comes back a bit short, and JEBOL does it too rather than disagree.
-     */
-    private static String base2Digits(byte[] octets, boolean mayBreakLines) {
+    private static String base2DigitsDroppingTheLastAtExactlyEightBytes(
+            byte[] octets, boolean mayBreakLines) {
         StringBuilder digits = new StringBuilder();
         for (byte octet : octets) {
             for (int bit = 7; bit >= 0; bit--) {
@@ -1097,17 +714,6 @@ public final class Molder {
     private static final String BASE_SIXTY_FOUR_ALPHABET =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    /**
-     * The one base whose breaks are written as it goes rather than counted
-     * over the finished digits.
-     *
-     * <p>{@code Encode_Base64} breaks on a byte boundary inside the loop over
-     * whole groups, and the two or three bytes left over are written after
-     * the loop has finished breaking. A run that ends exactly where the
-     * leftovers begin therefore carries no newline, which counting
-     * sixty-four characters at a time over the finished digits would have
-     * put in.
-     */
     private static String base64Digits(byte[] octets, boolean mayBreakLines) {
         boolean brokenIntoLines =
                 mayBreakLines && octets.length > BYTES_TO_A_BASE_SIXTY_FOUR_LINE_BREAK;
@@ -1142,25 +748,15 @@ public final class Molder {
         }
     }
 
-    /** How deep the mold is inside line-broken blocks, for the indent. */
     private static final ThreadLocal<Integer> LINED_DEPTH =
             ThreadLocal.withInitial(() -> 0);
 
     private static final String ONE_INDENT = "    ";
 
-    /** {@code New_Indented_Line}: a break and four spaces a level. */
     private static String aLineIndentedAsDeepAsWeAre() {
         return "\n" + ONE_INDENT.repeat(LINED_DEPTH.get());
     }
 
-    /**
-     * Writes something one level further in.
-     *
-     * <p>{@code mold->indent++} around the fields of an object, the pairs of
-     * a map and the fields of an event. The counter is shared, so a block
-     * inside a map's value is written two levels in and not one, which is
-     * what makes a map holding a laid-out block come back laid out.
-     */
     private static String oneLevelIn(Supplier<String> written) {
         LINED_DEPTH.set(LINED_DEPTH.get() + 1);
         try {
@@ -1170,24 +766,8 @@ public final class Molder {
         }
     }
 
-    /**
-     * How many numbers a vector fits on one line before it breaks.
-     *
-     * <p>{@code Mold_Vector} counts to ten and starts a new indented line, and
-     * only bothers at all when there are more than ten to show. A vector of
-     * exactly ten stays on its line.
-     */
     private static final int NUMBERS_TO_A_LINE = 10;
 
-    /**
-     * A vector as {@code #(int32! [1 2 3])}, or as its numbers alone.
-     *
-     * <p>{@code positionToName} is what MOLD/ALL adds after the closing
-     * bracket so that LOAD reads the value back at the position it was at, and
-     * is left off when that position is the head. Plain MOLD passes one, which
-     * is the head and so never shows, and shows only what is left from where
-     * the value points; MOLD/ALL shows the whole storage.
-     */
     private static String writtenAsAVector(VectorValue vector, int from,
             boolean forReading, int positionToName) {
         List<String> numbers = new ArrayList<>();
@@ -1225,29 +805,6 @@ public final class Molder {
         return out.append(')').toString();
     }
 
-    /**
-     * A block written out the shape its author laid it out in.
-     *
-     * <p>{@code Mold_Block_Series}, and the three things it keeps track of
-     * matter more than they look. A break is written *before* a flagged
-     * value, so the flag says "this value begins a line" rather than "a line
-     * ends here". The indent goes up once, at the first break, and comes down
-     * once, before the closing bracket -- so a block laid out over ten lines
-     * is indented by one level and not by ten.
-     *
-     * <p>The first value is the exception. {@code line_flag} is false until
-     * one value has been written, and a break for a flagged first value needs
-     * either that flag or a bracket to write it against. So a block breaks
-     * before its first value and MOLD/ONLY, which writes no brackets, does
-     * not: {@code mold/only load "[1^/2]"} is {@code 1^/2} with nothing in
-     * front of the one.
-     *
-     * <p>The closing bracket goes on its own line exactly when the indent
-     * went up, which is to say when the first value began a line. A newline
-     * before the bracket in the source does not put one there:
-     * {@code mold load "[1 2^/]"} is {@code [1 2]}, because the scanner drops
-     * a line feed that has no value after it.
-     */
     private static String renderLined(BlockValue block, boolean forReading,
             boolean betweenBrackets) {
         boolean mayBreakLines = !WRITING_ON_ONE_LINE.get();
@@ -1284,13 +841,6 @@ public final class Molder {
         return out.append(closesWith(block.datatype())).toString();
     }
 
-    /**
-     * The three shapes that write their items between brackets, and so have
-     * somewhere to put a line break.
-     *
-     * <p>A path writes its items between slashes and a line break has nowhere
-     * to go, which is why a path carrying one still molds on a single line.
-     */
     private static boolean moldsInBrackets(Datatype shape) {
         return shape == Datatype.BLOCK || shape == Datatype.PAREN
                 || shape == Datatype.HASH;
@@ -1329,40 +879,6 @@ public final class Molder {
         };
     }
 
-    /**
-     * A path molded with slashes, or as a construct when it would not read
-     * back as one.
-     *
-     * <p>Two conditions send it to the construct, and the C states both in one
-     * line: {@code if (VAL_TAIL <= 1 || !IS_WORD(VAL_BLK_DATA(value)))}.
-     *
-     * <p>A path of one item cannot be written with slashes at all, because a
-     * slash needs something either side of it, so {@code a} on its own is
-     * {@code #(path! [a])} even though it is the very word a path may start
-     * with.
-     *
-     * <p>The first item must be a *plain* word, and the strictness is the
-     * whole point. A set-word, a get-word, a lit-word, a refinement and an
-     * issue are all any-word! and none of them may open a path: {@code a:/b}
-     * would read back as a set-path, {@code /a/b} as a refinement, and
-     * {@code #a/b} as an issue. {@code IS_WORD} is one datatype, not the
-     * typeset, and reading it as the typeset put five kinds of path into a
-     * form that does not read back.
-     *
-     * <p>What comes after the first item may be anything: {@code a/1} and
-     * {@code a/b/c} both write themselves plainly.
-     *
-     * <p>An empty path writes nothing at all -- not even the colon a set-path
-     * would carry -- which is the line above the two in the C:
-     * {@code if (!MOLD_ALL && VAL_TAIL == VAL_INDEX) return;}. So
-     * {@code make set-path! 4} is a path with room for four things and molds
-     * as the empty string, where writing the colon alone would read back as
-     * something else entirely.
-     *
-     * <p>Under MOLD/ALL that line does not fire, and an empty path falls to
-     * the construct instead: {@code #(path! [])}, which is the only writing
-     * of it LOAD reads back. Nothing is not a path.
-     */
     private static String joinPath(BlockValue path, String prefix, String suffix) {
         List<Value> segments = path.remaining();
         if (segments.isEmpty() && !WRITING_EVERYTHING_OUT.get()) {
@@ -1379,29 +895,12 @@ public final class Molder {
                 .collect(Collectors.joining("/")) + suffix;
     }
 
-    /**
-     * The two conditions, and each one asks about a different thing.
-     *
-     * <p>The length is the whole series {@code VAL_TAIL} and not what is left
-     * from here, while the first item is {@code VAL_BLK_DATA}, which is the
-     * one at the index. Asking the remaining count for both made
-     * {@code mold next 'a/b} a construct where it is the plain {@code "b"}: a
-     * path standing at its second of two is not a path of one.
-     */
     private static boolean wouldNotReadBackAsAPath(BlockValue path, List<Value> segments) {
         return segments.isEmpty()
                 || path.storageLength() <= 1
                 || segments.getFirst().datatype() != Datatype.WORD;
     }
 
-    /**
-     * An event as the fields that answer something.
-     *
-     * <p>`Pre_Mold`, then each field of a fixed list that is not none, then a
-     * bracket. A word gets a quote in front of it -- `if (IS_WORD(&val))
-     * Append_Byte(mold->series, '\'')` -- so the mold reads back as the event it
-     * molded, which is not true of every datatype here.
-     */
     private static String renderEvent(EventValue event, boolean forReading) {
         boolean onSeparateLines = !WRITING_ON_ONE_LINE.get();
         List<Value> spec = event.moldingSpec();
@@ -1427,24 +926,6 @@ public final class Molder {
                 + "]" + closedAfterATypeName();
     }
 
-    /**
-     * A function as the spec and body that would build it again.
-     *
-     * <p>{@code Mold_Function} writes both blocks inside one pair of
-     * brackets, so {@code func [a][print a]} molds as
-     * {@code make function! [[a][print a]]} and reads back as the same
-     * function. FORM gives the same thing: there is no shorter way to say
-     * what a function is, so there is nothing for the two to differ about.
-     *
-     * <p>A closure names itself, because the two are separate datatypes to
-     * the reader even though JEBOL holds them in one record.
-     *
-     * <p>Both blocks are *molded* whichever way the function is being
-     * written, because {@code Mold_Block_Series} always writes its brackets.
-     * Forming them instead dropped the brackets and left
-     * {@code make function! [a print a]}, which is a spec of three words and
-     * no body at all.
-     */
     private static String renderFunction(FunctionValue function, boolean forReading) {
         Datatype names = function.closure() ? Datatype.CLOSURE : Datatype.FUNCTION;
         return openedFor(names) + "["
@@ -1453,15 +934,6 @@ public final class Molder {
                 + "]" + closedAfterATypeName();
     }
 
-    /**
-     * A gob as the spec block that would remake it.
-     *
-     * <p>{@code Pre_Mold}, {@code Gob_To_Block}, {@code End_Mold} -- so a gob
-     * molds as {@code make gob! [offset: 0x0 size: 100x100]} and reads back
-     * as a gob. Which fields appear is not "the ones that were set": offset
-     * and size always, the alpha only when the gob is see-through, and the
-     * one content field it has.
-     */
     private static String renderGob(GobValue gob, boolean forReading) {
         StringBuilder built = new StringBuilder(openedFor(Datatype.GOB)).append('[');
         List<Value> spec = gob.storage().moldingSpec();
@@ -1474,26 +946,9 @@ public final class Molder {
         return built.append(']').append(closedAfterATypeName()).toString();
     }
 
-    /**
-     * The objects being rendered further up this call, so a cycle stops.
-     *
-     * <p>SELF is not the only way an object reaches itself. SYSTEM holds
-     * SYSTEM/CONTEXTS/LIB, which is the context SYSTEM is defined in, so
-     * molding SYSTEM walks into SYSTEM again. That ends in a
-     * StackOverflowError rather than in an error a script could catch,
-     * which is the one failure the evaluator promises never to produce.
-     */
     private static final ThreadLocal<Set<Context>> BEING_RENDERED =
             ThreadLocal.withInitial(LinkedHashSet::new);
 
-    /**
-     * A field's value as it must be written inside an object body.
-     *
-     * <p>A word is quoted, because the body is read back as a spec and a
-     * bare word there would be evaluated. Without this, an object holding
-     * the word NONE molds as {@code b: none} and reads back holding the
-     * none value, which is a different object.
-     */
     private static String renderField(Value value, boolean forReading) {
         return value instanceof WordValue word && word.datatype() == Datatype.WORD
                 && !WRITING_EVERYTHING_OUT.get()
@@ -1501,20 +956,6 @@ public final class Molder {
                 : render(value, forReading);
     }
 
-    /**
-     * An object as the MAKE that would build it again.
-     *
-     * <p>{@code self} is left out. It refers to the object being molded, so
-     * printing it would recurse for ever, and REBOL leaves it out for the
-     * same reason. It is still a word inside the object; it is just not a
-     * field worth writing down.
-     *
-     * <p>A port and a module are written the same way and name themselves
-     * rather than saying object, because {@code Mold_Object} writes
-     * {@code VAL_TYPE(value)} and not a fixed word. JEBOL wrote
-     * {@code make object!} for all three, so a molded port did not read back
-     * as a port.
-     */
     private static String renderObject(
             ObjectValue object, Datatype naming, boolean forReading) {
 
@@ -1537,15 +978,6 @@ public final class Molder {
         }
     }
 
-    /**
-     * The datatype name a construct or a MAKE puts in front of its body.
-     *
-     * <p>{@code Pre_Mold} writes {@code #(type! } under MOLD/ALL and
-     * {@code make type! } without it, and {@code End_Mold} closes the bracket
-     * only in the first case. The pair is what makes {@code mold/all} of an
-     * object something LOAD reads back as an object, where the MAKE form
-     * needs evaluating.
-     */
     private static String openedFor(Datatype datatype) {
         return (WRITING_EVERYTHING_OUT.get() ? "#(" : "make ")
                 + datatype.literalSpelling() + " ";
@@ -1555,15 +987,6 @@ public final class Molder {
         return WRITING_EVERYTHING_OUT.get() ? ")" : "";
     }
 
-    /**
-     * An error molded, which is an error written out as the object it is.
-     *
-     * <p>{@code Mold_Error} hands straight over to {@code Mold_Object} when
-     * it is molding rather than forming, so {@code mold} of an error is its
-     * eight fields and not the one-line summary a person reads. The summary
-     * is what FORM gives, and the two are different jobs: one is for reading
-     * back and one is for reading.
-     */
     private static String renderError(ErrorValue error, boolean forReading) {
         if (!forReading) {
             return error.toString();
@@ -1576,13 +999,6 @@ public final class Molder {
                 + closedAfterATypeName();
     }
 
-    /**
-     * A typeset formed: the names of what it holds, and nothing around them.
-     *
-     * <p>{@code Mold_Typeset} writes the brackets and the {@code #(typeset!}
-     * only when it is molding. Formed, it emits each name followed by a space
-     * and trims the last one off, so an empty typeset forms as nothing at all.
-     */
     private static String namesInTheTypeset(TypesetValue typeset) {
         return typeset.members().stream()
                 .sorted()
@@ -1590,14 +1006,6 @@ public final class Molder {
                 .collect(Collectors.joining(" "));
     }
 
-    /**
-     * The fields between the brackets, one to a line and a line before the
-     * bracket that closes them.
-     *
-     * <p>{@code Mold_Object} writes {@code New_Indented_Line} before every
-     * field and once more at the end, so an object with no fields at all is
-     * still two lines. MOLD/FLAT writes them with spaces and nothing else.
-     */
     private static String moldedFields(Map<String, Value> fields) {
         boolean onSeparateLines = !WRITING_ON_ONE_LINE.get();
         String written = oneLevelIn(() -> {
@@ -1616,18 +1024,6 @@ public final class Molder {
         return written + (onSeparateLines ? aLineIndentedAsDeepAsWeAre() : "");
     }
 
-    /**
-     * An object formed: one field to a line, and nothing around them.
-     *
-     * <p>{@code Form_Object} emits {@code "N: V\n"} for each field and then
-     * takes the last newline off again, so there is no {@code make object!}
-     * and no brackets -- {@code form make object! [a: 1 b: 2]} is the two
-     * lines and nothing else.
-     *
-     * <p>The value is *molded* even though the object is being formed, which
-     * is the part that cannot be guessed: {@code form make object! [a: "x"]}
-     * keeps the quotes around the x.
-     */
     private static String formedFields(ObjectValue object) {
         return fieldsOutsideSelf(object)
                 .map(slot -> slot.spelling() + ": " + renderField(slot.value(), true))
@@ -1637,6 +1033,7 @@ public final class Molder {
     private static Stream<ContextSlot> fieldsOutsideSelf(
             ObjectValue object) {
         return object.context().slots().stream()
-                .filter(slot -> !slot.canonical().equals(SELF));
+                .filter(slot -> !slot.canonical()
+                        .equals(THE_WORD_EVERY_OBJECT_HOLDS_FOR_ITSELF));
     }
 }

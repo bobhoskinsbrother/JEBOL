@@ -5,44 +5,10 @@ import org.jebol.domain.value.*;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-/**
- * Evaluation tracing, read out of {@code c-do.c}.
- *
- * <p>TRACE turns the evaluator's walk into output. Three hooks do it, and the C
- * puts each one exactly where the thing it reports happens:
- * {@code Trace_Line} before a value is evaluated, {@code Trace_Func} as a call
- * is made, {@code Trace_Return} as one answers. So what a trace shows is what
- * the evaluator is about to do rather than what it did.
- *
- * <p>The output format is Rebol's own, from the {@code trace} block of
- * {@code boot/strings.reb}:
- *
- * <pre>
- * "%-02d: %50r"    the position and the value
- * " : %50r"        what a word holds
- * " : %s %50m"     what a word holds, when it is a function
- * " : %s"          anything else a word holds
- * "--> %s"         a call being made
- * "&lt;-- %s =="       a call answering
- * </pre>
- *
- * <p>Two things about the depth are not guessable. The level is a *limit* and
- * not a switch: `trace 3` shows three levels of nesting and nothing deeper, and
- * `trace on` is the level 100000 rather than a flag of its own. And the
- * indentation stops growing at ten -- {@code if (depth > 10) depth = 10;} --
- * while the cutoff keeps counting, so deep output stays readable without
- * pretending to be shallow.
- *
- * <p>/BACK keeps the lines instead of printing them, so a script can run and
- * then be asked what happened. {@code trace/back 5} prints the last five and
- * turns tracing off: {@code Trace_Flags = 0; Display_Backtrace(Int32(arg));}.
- */
 final class Trace {
 
-    /** `Trace_Level = IS_TRUE(arg) ? 100000 : 0;` for a logic. */
     static final int EVERYTHING = 100_000;
 
-    /** `if (depth > 10) depth = 10;` -- the indentation stops, the count does not. */
     private static final int DEEPEST_INDENT = 10;
 
     private static final int MOLD_LIMIT = 50;
@@ -54,7 +20,6 @@ final class Trace {
     private boolean keepingRatherThanPrinting;
     private int depthWhenTraceBegan;
 
-    /** How many lines /BACK keeps. Rebol's buffer is a ring of this size. */
     private static final int KEPT_LINES = 100;
 
     private OutputPort output;
@@ -67,24 +32,19 @@ final class Trace {
         return level > 0;
     }
 
-    /**
-     * Sets the level, as the C does from a logic or a number.
-     *
-     * <p>{@code Trace_Depth = Eval_Depth() - 1;} is taken at the same moment:
-     * the depth TRACE was called at becomes the zero the indentation counts
-     * from, minus one for TRACE's own frame. Without that every line would be
-     * indented by however deep the caller happened to be.
-     */
     void level(int wanted, boolean functionsOnly) {
         this.level = Math.max(0, wanted);
         this.callsOnly = level > 0 && functionsOnly;
-        this.depthWhenTraceBegan = depthNow;
+        this.depthWhenTraceBegan = theZeroTheIndentationCountsFrom();
         if (level == 0) {
             keepingRatherThanPrinting = false;
         }
     }
 
-    /** `Enable_Backtrace(IS_TRUE(arg))` -- keep the lines rather than print them. */
+    private int theZeroTheIndentationCountsFrom() {
+        return depthNow;
+    }
+
     void keepRatherThanPrint(boolean keeping) {
         this.keepingRatherThanPrinting = keeping;
         if (!keeping) {
@@ -92,14 +52,7 @@ final class Trace {
         }
     }
 
-    /**
-     * `Display_Backtrace(lines)` -- the last N kept lines, and tracing stops.
-     *
-     * <p>The C sets `Trace_Flags = 0` before displaying, so asking for the
-     * backtrace is also how tracing is turned off. A caller that wanted both
-     * has to ask for the level again afterwards.
-     */
-    void showTheLast(int lines) {
+    void showTheLastAndStopTracing(int lines) {
         level = 0;
         callsOnly = false;
         if (output == null) {
@@ -114,19 +67,11 @@ final class Trace {
         }
     }
 
-    /**
-     * One value, about to be evaluated.
-     *
-     * <p>`if (GET_FLAG(Trace_Flags, 1)) return; // function` and
-     * `if (ANY_FUNC(value)) return;` -- so /FUNCTION silences this hook
-     * entirely, and a function value is never reported here because the call
-     * hook reports it instead.
-     */
     void line(int position, Value value, Context context) {
         if (callsOnly || value.datatype().isAnyFunction()) {
             return;
         }
-        int depth = indentFor(0);
+        int depth = indentFor(AT_THIS_DEPTH);
         if (depth < 0) {
             return;
         }
@@ -142,9 +87,8 @@ final class Trace {
         emit(written.toString());
     }
 
-    /** `Trace_Func`: a call being made, by the name it was made through. */
     void call(String name, Value callee, java.util.List<Value> arguments) {
-        int depth = indentFor(0);
+        int depth = indentFor(AT_THIS_DEPTH);
         if (depth < 0) {
             return;
         }
@@ -158,31 +102,28 @@ final class Trace {
         emit(written.toString());
     }
 
-    /** `Trace_Return`: a call answering. The depth is one further out. */
     void answered(String name, Value produced) {
-        int depth = indentFor(1);
+        int depth = indentFor(ONE_FURTHER_OUT);
         if (depth < 0) {
             return;
         }
         emit(" ".repeat(3 * depth) + "<-- " + name + " == " + molded(produced));
     }
 
-    /**
-     * The indentation for this depth, or -1 when it is past the level.
-     *
-     * <p>{@code Init_Depth}: `depth = Eval_Depth() - Trace_Depth + plus; if
-     * (depth < 0 || depth >= Trace_Level) return -1; if (depth > 10) depth =
-     * 10;`. The nesting comes from the evaluator, so this asks it.
-     */
+    private static final int AT_THIS_DEPTH = 0;
+
+    private static final int ONE_FURTHER_OUT = 1;
+
+    private static final int PAST_THE_LEVEL = -1;
+
     private int indentFor(int plus) {
         int depth = depthNow - depthWhenTraceBegan + plus;
         if (depth < 0 || depth >= level) {
-            return -1;
+            return PAST_THE_LEVEL;
         }
         return Math.min(depth, DEEPEST_INDENT);
     }
 
-    /** How deep the evaluator is, told to this rather than asked for. */
     private int depthNow;
 
     void nowAtDepth(int depth) {

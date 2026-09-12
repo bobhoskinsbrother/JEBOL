@@ -6,20 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * DO of an error value raises it.
- *
- * <p>Specified in {@code spec/natives.allium}. Rebol's own CAUSE-ERROR, in
- * {@code src/mezz/mezz-control.reb}, is written as
- * {@code do make error! [...]} and nothing else, thus every call to it
- * depends on this.
- *
- * <p>Answering the error as a value instead makes CAUSE-ERROR do nothing.
- * Worse, it looks right: TRY of the call gives back an error value, so
- * {@code error? try [...]} still holds. The failure only shows when
- * anything follows the call, because then the value is dropped and the
- * script carries on as though nothing went wrong.
- */
 class DoOfAnErrorTest {
 
     private static String answerTo(String source) {
@@ -28,7 +14,6 @@ class DoOfAnErrorTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** What a snippet did: the error id it raised, or the value it gave. */
     private static String outcomeOf(String source) {
         return answerTo("r: try [" + source + "] "
                 + "either error? r [join \"raised \" r/id] [join \"answered \" mold r]");

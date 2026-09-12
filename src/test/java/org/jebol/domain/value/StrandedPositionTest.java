@@ -8,16 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A series value left standing past the end of its own storage.
- *
- * <p>Specified in {@code spec/values.allium}, confirmed against a real R3.
- *
- * <p>Two values can share storage at different positions, so shortening it
- * through one strands the other. That is an ordinary state -- PAST? exists
- * to ask about it -- and every operation has to cope. JEBOL threw a Java
- * exception straight out of the interpreter instead.
- */
 class StrandedPositionTest {
 
     private static final String STRANDED =

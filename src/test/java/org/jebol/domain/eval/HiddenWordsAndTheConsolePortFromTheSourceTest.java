@@ -7,24 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Two things a module needs before it can be built, neither of them about
- * modules.
- *
- * <p>{@code protect/hide/words} over a block hides each word the block holds,
- * bindings and all. That is how a module hides the fields its body marked
- * HIDDEN: {@code if block? hidden [protect/hide/words hidden]} in
- * {@code sys-base.reb}, where the block is the words gathered while the body
- * was read. JEBOL took a bare word and refused a block, so every module with a
- * HIDDEN in it failed to build.
- *
- * <p>{@code system/ports/output} is the console port, and it was none. Nothing
- * writes through it here -- the output port does that -- but REBOL code asks
- * it how wide the terminal is, and HELP asks on its first line. So calling
- * HELP answered "query does not allow none!" instead of helping, which is what
- * stopped the module test file on its third step, three lines above the first
- * assertion.
- */
 class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
     private static String answerTo(String source) {

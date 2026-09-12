@@ -91,14 +91,6 @@ public record TupleValue(int[] segments) implements Value {
         return Datatype.TUPLE;
     }
 
-    /**
-     * Equal when the octets agree out to twelve, whatever the lengths.
-     *
-     * <p>{@code Cmp_Tuple} compares over the longer of the two lengths and
-     * the octets behind each are zeros, so this is the same question as
-     * comparing both padded to twelve. The length is asked about only by
-     * {@code ==} and by SAME?, which is {@code CT_Tuple} mode 2 and above.
-     */
     @Override
     public boolean equals(Object other) {
         return other instanceof TupleValue tuple
@@ -110,13 +102,6 @@ public record TupleValue(int[] segments) implements Value {
         return Arrays.hashCode(octetsToTwelve());
     }
 
-    /**
-     * The octets with dots between them, padded out to three.
-     *
-     * <p>{@code Emit_Tuple} writes each kept octet and then keeps writing
-     * "0." until it has written three, so a tuple keeping one octet shows
-     * as 1.0.0 and one keeping none shows as 0.0.0.
-     */
     @Override
     public String toString() {
         return IntStream.rangeClosed(1, shownCount())

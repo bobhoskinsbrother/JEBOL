@@ -6,14 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * ENBASE of a whole number, which encodes the fewest bytes that hold it.
- *
- * <p>{@code enbase 0 16} is {@code "00"} and {@code enbase 256 16} is
- * {@code "0100"}: the leading nought bytes come off and one byte is always
- * left. Encoding all eight bytes of a long would bury a small number in
- * noughts.
- */
 class EnbaseOfANumberFromTheSourceTest {
 
     private static String answerTo(String source) {

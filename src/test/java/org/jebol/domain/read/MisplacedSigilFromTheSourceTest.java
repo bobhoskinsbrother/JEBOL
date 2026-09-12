@@ -7,24 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What may follow a sigil, from the three {@code Scan_Token} cases that decide it:
- * {@code LEX_SPECIAL_TICK}, {@code LEX_SPECIAL_COLON} and
- * {@code LEX_DELIMIT_SLASH}.
- *
- * <p>A sigil names a word. Each refusal below asks for a word that cannot exist --
- * one starting with a digit, one that is itself a sigil, one that is the none
- * literal, one already carrying a sigil at the other end -- and the C answers a
- * <em>negative</em> token for each, which is its way of saying syntax error. Every
- * one carries a comment in the source saying which spelling it is turning away:
- * {@code // no '2nd}, {@code // no ':X}, {@code // no ''foo},
- * {@code // no :'foo ::foo}.
- *
- * <p>JEBOL read all nine as perfectly good lit-words and get-words, and refused one
- * shape the C allows on purpose. Both directions matter: a reader that accepts too
- * much turns a typo into a definition, and one that accepts too little cannot read
- * what MOLD wrote.
- */
 class MisplacedSigilFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -33,7 +15,6 @@ class MisplacedSigilFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id LOAD gives up for a source it will not read. */
     private static String errorIdFromLoading(String source) {
         return answerTo("e: try [load " + source + "] "
                 + "either error? e [e/id] ['no-error]");

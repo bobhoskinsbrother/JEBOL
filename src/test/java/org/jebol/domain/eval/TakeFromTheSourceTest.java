@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TAKE, tested against the {@code A_TAKE} case in Rebol's
- * {@code src/core/t-block.c}.
- *
- * <p>One test per branch that case takes. The C's shape is: work out how
- * many to take, move the index if /LAST, then answer one value or a
- * series depending on whether /PART was asked for.
- *
- * <p>That last rule is the one to keep in mind. Without /PART the answer
- * is the value itself; with /PART it is always a series, even when the
- * count is one and even when it is zero.
- */
 class TakeFromTheSourceTest {
 
     private static String answerTo(String source) {

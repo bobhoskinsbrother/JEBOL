@@ -7,28 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * AS-COLOR and the colour functions of {@code n-image.c}.
- *
- * <p>A colour is a tuple and an image is a series of them, so most of these have
- * two arms over one formula: given a tuple they answer or change that tuple, and
- * given an image they do the same to every pixel from the position on. The
- * formulas are the C's arithmetic exactly, because a colour that is one off is a
- * colour that fails a comparison and nothing else.
- *
- * <p>"(modified)" in each doc string means two different things, and where the
- * bytes live is what decides which. An image is a series: {@code VAL_IMAGE_DATA}
- * points into shared storage, so tinting one changes the image every other value
- * of it can see. A tuple is inline in the REBVAL, so what the native writes
- * through {@code D_ARG(1)} is the copy on the data stack, and {@code return
- * R_ARG1} hands that copy back -- the caller's own word keeps the colour it had.
- * So `c: tint c ...` is how a script keeps the result of tinting a colour, and
- * `tint img ...` needs no such thing.
- *
- * <p>And HSV lives in the same three bytes as RGB, so a hue is a byte rather than
- * a degree: {@code h / (255.0 / 6)}, with the C's own comment saying "255 because
- * we have just one byte! Else it should be 360!".
- */
 class ColourFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -164,13 +142,6 @@ class ColourFromTheSourceTest {
             assertThat(answerTo("c: 255.0.0 rgb-to-hsv c c")).isEqualTo("255.0.0");
         }
 
-        /**
-         * {@code return R_ARG1} writes through the first three bytes of the
-         * caller's own tuple and answers it, so the fourth byte and everything
-         * after it is not touched. Which is what makes the pair usable on a
-         * pixel: an alpha is not part of the colour and has no business being
-         * read as a hue.
-         */
         @Test
         @DisplayName("the fourth part is an alpha, and both conversions hand it back")
         void theAlphaIsHandedBack() {
@@ -189,12 +160,6 @@ class ColourFromTheSourceTest {
                     .isEqualTo("148.170.3.4.5.6.7.8.9.10.11.12");
         }
 
-        /**
-         * A tuple keeps how many parts were written down even where it shows
-         * three, and the conversions keep that count. So a tuple of one part
-         * has only its first byte written back and the two the mold pads it
-         * out with stay at nought, however bright the colour was.
-         */
         @Test
         @DisplayName("a tuple shorter than three keeps its length, so the rest reads as nought")
         void aShortTupleKeepsItsLength() {

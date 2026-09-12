@@ -40,21 +40,15 @@ public final class VectorMath {
             return elementByElement(first, second, operation);
         }
         if (left instanceof VectorValue only) {
-            return everyElementAgainst(only, right, operation);
+            return everyElementAgainstTheNumberReducedToTheVectorsKind(
+                    only, right, operation);
         }
-        return everyElementAgainst((VectorValue) right, left, operation);
+        return everyElementAgainstTheNumberReducedToTheVectorsKind(
+                (VectorValue) right, left, operation);
     }
 
-    /**
-     * One number applied to every element from the vector's position on.
-     *
-     * <p>The number is reduced to the vector's own kind first, which is why
-     * multiplying an {@code int8!} vector by 2.4 doubles it: the C truncates
-     * the decimal to an integer before the loop starts, so the four tenths are
-     * gone before any element sees them.
-     */
-    private static Value everyElementAgainst(VectorValue vector, Value number,
-            Operation operation) {
+    private static Value everyElementAgainstTheNumberReducedToTheVectorsKind(
+            VectorValue vector, Value number, Operation operation) {
 
         VectorKind kind = vector.kind();
         refuseBitwiseOnDecimals(kind, operation);
@@ -74,13 +68,6 @@ public final class VectorMath {
         return new VectorValue(answer, 1);
     }
 
-    /**
-     * Two vectors of the same kind, element by element.
-     *
-     * <p>The same kind is not the same as the same size: the C compares the
-     * whole four-bit encoding, so an {@code int8!} and a {@code uint8!} vector
-     * are as incompatible as an {@code int8!} and a {@code float64!} one.
-     */
     private static Value elementByElement(VectorValue left, VectorValue right,
             Operation operation) {
 
@@ -117,14 +104,6 @@ public final class VectorMath {
         }
     }
 
-    /**
-     * The same refusal between two vectors, where every element is its own
-     * divisor.
-     *
-     * <p>{@code VEC_OP_LOOP_NO_ZERO} tests each element of the divisor at its
-     * own type, so a measuring vector is guarded here where a plain zero
-     * divisor is not: the loop is written once and used for every kind.
-     */
     private static void refuseElementByZero(Operation operation, boolean isZero) {
         boolean guarded = operation == Operation.DIVIDE
                 || operation == Operation.REMAINDER;
@@ -133,15 +112,6 @@ public final class VectorMath {
         }
     }
 
-    /**
-     * The two guards, which differ, and the difference is deliberate in the C.
-     *
-     * <p>Dividing tests {@code i == 0 && bits <= VTUI64}, so a measuring vector
-     * divided by zero is left to the machine and answers infinity. The
-     * remainder tests {@code i == 0} alone and refuses whatever the vector
-     * holds. Both read the divisor already truncated to a whole number, which
-     * is why dividing by a half is dividing by zero.
-     */
     private static void refuseDivisionByZero(VectorKind kind, Operation operation,
             long truncatedDivisor) {
 

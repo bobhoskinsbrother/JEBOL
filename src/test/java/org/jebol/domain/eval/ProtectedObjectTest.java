@@ -8,20 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Refusing to change a protected object, as a REBOL error rather than a
- * Java exception.
- *
- * <p>Specified in {@code spec/natives.allium} and confirmed against a real
- * R3. Three routes to the same refusal give two different errors, because
- * the error names the route: assigning through a name is {@code
- * locked-word}, changing the object as a container is {@code protected}.
- *
- * <p>All three threw {@code IllegalStateException} straight out of JEBOL,
- * which {@code spec/embed.allium} promises cannot happen. A host cannot
- * tell a script being refused from JEBOL having a bug if both arrive as a
- * throwable.
- */
 class ProtectedObjectTest {
 
     private static final String PROTECTED = "p: make object! [a: 1] protect p ";

@@ -1,29 +1,5 @@
 package org.jebol.domain.eval;
 
-/**
- * Where LZMA looks for a repeat of what it is about to write.
- *
- * <p>{@code LzFind.c} of the LZMA SDK, dated 2017-06-10, as Rebol vendors it in
- * {@code u-lzma.c}. Two of its four finders are reachable from Rebol, because
- * {@code LzmaEnc_SetProps} pins the hash to four bytes and the level decides
- * only whether a binary tree or a hash chain holds the earlier positions:
- * levels below five use the chain and the rest use the tree.
- *
- * <p>Three hash tables sit one after another in a single array -- two bytes,
- * three bytes and four bytes wide -- and each position updates all three. The
- * two narrow ones answer at once with a match of exactly two or three bytes;
- * the wide one is the head of the chain or the root of the tree that the long
- * matches are found down.
- *
- * <p>Rebol always compresses a whole buffer it already holds, which the SDK
- * calls direct input. So there is no window to slide and no block to re-read:
- * the source array is the window, and a position in it is a position in the
- * window plus a fixed offset. The stream-reading half of the original is not
- * ported, and the fields it would have moved are not here.
- *
- * <p>Matches are reported as pairs pushed into a caller's array, each pair a
- * length and then a distance less one, in increasing order of length.
- */
 final class LzmaMatchFinder {
 
     private static final int EMPTY_HASH_VALUE = 0;
@@ -85,32 +61,10 @@ final class LzmaMatchFinder {
         setLimits();
     }
 
-    /**
-     * How far back the cyclic buffer can be asked to reach.
-     *
-     * <p>The C sizes it at the dictionary and nothing else, so the default
-     * level asks for sixteen megabytes of positions to compress fourteen bytes
-     * and level nine asks for sixty-four. Nothing is ever written past the end
-     * of the data, so a buffer longer than the data cannot change an answer:
-     * every distance a real match has is at most how far into the data this
-     * position is, and every empty hash slot is cut by the same test either
-     * way. Sizing it at whichever is smaller keeps the answers and drops the
-     * half-gigabyte.
-     */
     private static int asMuchHistoryAsThereCanBe(int historySize, byte[] source) {
         return Math.min(historySize, source.length) + 1;
     }
 
-    /**
-     * How wide the four-byte table is, which is the history size rounded up to
-     * one less than a power of two and never below 65535.
-     *
-     * <p>The comment in the C on the last step is "don't change it! It's
-     * required for Deflate", and the size the caller asked for is cut down to
-     * the size of the data when the data is smaller, which is what
-     * {@code LzmaEnc_SetDataSize} is for and why compressing fourteen bytes
-     * does not build a sixty-four megabyte table.
-     */
     private static int hashMaskFor(int historySize, int expectedDataSize) {
         int wide = Math.min(historySize, expectedDataSize);
         if (wide != 0) {
@@ -129,7 +83,6 @@ final class LzmaMatchFinder {
         return streamPosition - position;
     }
 
-    /** The index in the source of the byte this finder is looking at. */
     int currentPosition() {
         return here;
     }
@@ -149,13 +102,6 @@ final class LzmaMatchFinder {
         setLimits();
     }
 
-    /**
-     * Fills {@code distances} with every match worth writing, longest last.
-     *
-     * <p>The answer is how many entries were written, always even. The two
-     * short hashes go first because they are certain and cheap, then the wide
-     * one walks the tree or the chain for anything longer.
-     */
     int matches(int[] distances) {
         if (lenLimit < 4) {
             step();
@@ -226,7 +172,6 @@ final class LzmaMatchFinder {
         return len;
     }
 
-    /** Walks {@code num} positions on without reporting what is at them. */
     void skip(int num) {
         for (int each = 0; each < num; each++) {
             if (lenLimit < 4) {
@@ -292,14 +237,6 @@ final class LzmaMatchFinder {
         }
     }
 
-    /**
-     * The binary tree walk, which splits the chain by what sorts before and
-     * after the bytes at this position and rebuilds both halves as it goes.
-     *
-     * <p>{@code ptr0} and {@code ptr1} are where the two halves are being
-     * written back, and the loop leaves the tree in order for the next
-     * position to walk.
-     */
     private int matchesDownTheTree(
             int chainHead, int[] distances, int written, int longestSoFar) {
 

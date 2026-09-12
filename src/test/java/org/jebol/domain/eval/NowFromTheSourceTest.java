@@ -9,33 +9,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * NOW, and the ten questions it answers.
- *
- * <p>Read out of {@code REBNATIVE(now)} in {@code n-io.c}, and checked against
- * the R3 binary. Nothing here asserts on a clock reading, because the clock
- * moves; what is asserted is the shape and the relations between the answers,
- * which hold whenever the call is made.
- *
- * <p>Three of these are not guessable. The seconds are whole unless /PRECISE is
- * asked for, so a caller timing something and not saying so measures nothing.
- * Two questions at once are refused rather than combined -- {@code now/year
- * /month} is an error, not a pair -- and /PRECISE is the one refinement that
- * does not count against that limit. And Monday is day one.
- *
- * <p>Specified in {@code spec/natives.allium} under "NOW, and the ten questions
- * it answers".
- */
 class NowFromTheSourceTest {
 
-    /**
-     * An interpreter that may read the clock.
-     *
-     * <p>NOW is a host service, so an interpreter granted nothing answers
-     * no-service and never reaches the part being tested. That refusal has its
-     * own test elsewhere; here the clock is granted so the ten refinements are
-     * what is being measured.
-     */
     private static String answerTo(String source) {
         Interpreter interpreter =
                 Interpreter.withBounds(Bounds.standard().granting(HostService.CLOCK));

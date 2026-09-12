@@ -11,14 +11,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Series positions, at and either side of their boundaries.
- *
- * <p>Positions are 1-based and run from the head to one past the last element.
- * That last position is the tail: legal to hold, illegal to read from. Getting
- * either end wrong by one is the classic series bug, so both ends are tested
- * on the boundary, one inside it and one outside it.
- */
 class SeriesPositionTest {
 
     private static BlockValue threeItems() {

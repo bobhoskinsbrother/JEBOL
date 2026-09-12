@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * REMAINDER and MODULO are different functions, and % is the first one.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3
- * at every combination of signs.
- *
- * <p>They agree whenever both operands are positive, which is most code,
- * so the boundaries that matter are the sign combinations: a negative
- * dividend, a negative divisor, and both. REMAINDER takes its sign from
- * the dividend; MODULO is never negative at all.
- */
 class RemainderAndModuloTest {
 
     private static String answerTo(String source) {

@@ -6,21 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TAKE from a position the series no longer reaches.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>{@code s: next [1 2] clear head s} leaves s pointing at the second
- * item of a series that now has none. Every series in REBOL is a position
- * into shared storage, so anything holding one can be stranded by a change
- * made through another.
- *
- * <p>These escaped as Java exceptions rather than as REBOL errors, which
- * {@code spec/embed.allium} says cannot happen: a host has to be able to
- * tell a script's failure from a bug in the interpreter.
- */
 class TakeFromAStrandedPositionTest {
 
     private static String answerTo(String source) {

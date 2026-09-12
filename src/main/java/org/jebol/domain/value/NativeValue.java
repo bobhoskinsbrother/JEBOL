@@ -65,13 +65,6 @@ public record NativeValue(
         return (int) (base + forRefinements);
     }
 
-    /**
-     * ACTION for the sixty Rebol declares as actions, NATIVE for the rest.
-     *
-     * <p>Read from the name, because the name is the only thing that carries
-     * it: an action and a native are both host-language functions here and
-     * look identical from every other angle. See {@link ActionNames}.
-     */
     @Override
     public Datatype datatype() {
         return ActionNames.holds(nativeName) ? Datatype.ACTION : Datatype.NATIVE;

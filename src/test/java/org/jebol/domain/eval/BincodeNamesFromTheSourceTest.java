@@ -6,28 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Whose word a name in the binary dialect means.
- *
- * <p>{@code u-bincode.c} reaches a get-word with {@code if (IS_GET_WORD(next))
- * next = Get_Var(next);}, and {@code Get_Var} follows the binding the word
- * already carries. There is no context to pass it and no second chance to get
- * the name wrong.
- *
- * <p>Binding the block again on the way in is the mistake, and it hides
- * completely until a caller picks a name the borrowed library also uses.
- * Rebol's own ZIP encoder does: it keeps the central directory it is building
- * in a word called DIR and writes it with {@code BYTES :dir/buffer}, and DIR is
- * also {@code mezz-files.reb}'s directory-listing function. Rebound, the name
- * found that function, handed it to a code expecting bytes, and refused -- so
- * ENCODE 'ZIP could not write a single archive, whatever it was given.
- *
- * <p>Which is why the names in these tests are HEAD and DIR rather than
- * anything tidier. A test using a name of its own passes either way and proves
- * nothing.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written.
- */
 class BincodeNamesFromTheSourceTest {
 
     private static String answerTo(String source) {

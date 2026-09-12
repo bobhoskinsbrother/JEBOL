@@ -7,14 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * DO routes a string and a binary through sys/do*, which loads and then runs
- * {@code do/next body mark}. Three things follow: a string steps like a block, a
- * top-level RETURN lands on that function's frame rather than escaping, and a
- * binary is read as the script it is -- header, {@code length:} bound and
- * {@code needs:} check included. Anything unsteppable answers itself and sets the
- * word to none, {@code Set_Var(D_ARG(5), NONE_VALUE)}.
- */
 class DoScriptPipelineFromTheSourceTest {
 
     private static String answerTo(String source) {

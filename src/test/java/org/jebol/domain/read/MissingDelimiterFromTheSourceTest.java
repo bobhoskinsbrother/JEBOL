@@ -7,12 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * An unbalanced delimiter is one id with two arguments: the first names the kind
- * of token the reader ran out of -- the C's three spellings end-of-script,
- * end-of-block and end-of-paren -- and the second is the delimiter that would
- * have settled it. Rebol's own tests read the second argument directly.
- */
 class MissingDelimiterFromTheSourceTest {
 
     private static String answerTo(String source) {

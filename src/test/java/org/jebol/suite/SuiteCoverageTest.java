@@ -20,30 +20,8 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * How much of Rebol's own suite JEBOL can even read.
- *
- * <p>Separate from running it, because the two failures mean different
- * things. An assertion that fails is a difference in behaviour; a file that
- * will not read at all is the reader refusing REBOL that a real REBOL
- * accepts, and it hides every assertion behind it. The second is worth
- * knowing about on its own, and counting silently as zero is how it would
- * stay hidden.
- */
 class SuiteCoverageTest {
 
-    /**
-     * One interpreter, booted before anything reads.
-     *
-     * <p>The reader does not build a function or a construction on its own:
-     * the evaluator hands it a builder at boot, because MAKE and spec parsing
-     * belong to the evaluator and the reader must not reach upward for them.
-     * So a reader asked a question before any interpreter has existed answers
-     * for a reader that has not been finished being built, and it refuses
-     * constructs it can perfectly well read. That made every one of these
-     * counts too low, and made a fix to construction syntax look like no fix
-     * at all.
-     */
     @BeforeAll
     static void bootOneInterpreterFirst() {
         Interpreter.create();
@@ -73,25 +51,6 @@ class SuiteCoverageTest {
         return found;
     }
 
-    /**
-     * How many assertions a file actually writes.
-     *
-     * <p>Counting lines that begin with {@code --assert} was wrong in both
-     * directions and wrong in seventeen of the sixty-seven files: it missed
-     * every assertion indented inside a block, so compare-test.r3 was read as
-     * having 158 when it has 269, and where the reach exceeded that undercount
-     * the difference went negative and the file could not fail this gate at
-     * all.
-     *
-     * <p>Counting every occurrence instead was wrong the other way, because
-     * a commented-out assertion is not an assertion, and neither is one
-     * written inside a string. Rebol's own files carry 125 of the first --
-     * 28 in csv-test.r3, 24 in vector-test.r3 -- and conditional-test.r3
-     * carries the second, a whole test parked inside {@code comment { ... }}
-     * against the day SWITCH/ALL exists. Counting either made a file look
-     * permanently short of a target that was never there. So comments and
-     * the insides of strings are dropped, and what is left is counted.
-     */
     private static long assertionsWrittenIn(String source) {
         return Pattern.compile("--assert(?![A-Za-z0-9?!*+<>=~-])")
                 .matcher(withoutCommentsOrStrings(source))
@@ -99,15 +58,6 @@ class SuiteCoverageTest {
                 .count();
     }
 
-    /**
-     * The source with its comments and the insides of its strings removed.
-     *
-     * <p>A semicolon only opens a comment outside a string, so this walks the
-     * text rather than cutting at the first one: {@code "a;b"} is four
-     * characters of string and not the start of a comment. Braces nest and
-     * quotes do not, which is the whole difference between REBOL's two string
-     * forms and is why they are tracked differently here.
-     */
     private static String withoutCommentsOrStrings(String source) {
         StringBuilder kept = new StringBuilder(source.length());
         boolean inQuotes = false;
@@ -145,23 +95,6 @@ class SuiteCoverageTest {
         return kept.toString();
     }
 
-    /**
-     * One file's reach, and never an exception out of this method.
-     *
-     * <p>The reader is meant to answer a REBOL error for source it cannot
-     * take in. When it throws a Java exception instead, that exception comes
-     * out here during test collection, and JUnit reports it as three
-     * initialisation errors with no file named -- so the one thing worth
-     * knowing, which file did it, is the one thing missing. An ISO date
-     * literal did exactly that: {@code 2000-01-01} reaches
-     * {@code DateValue.of} as a day of 2000 and throws
-     * {@code IllegalArgumentException}, and the whole run died before a
-     * single assertion ran.
-     *
-     * <p>Caught and turned into a reading that fails for this file alone. It
-     * still fails -- a file that cannot be read is never a pass -- but it
-     * fails saying where.
-     */
     private static Coverage coverageOf(Path path, int written, String source) {
         String name = path.getFileName().toString();
         try {
@@ -175,15 +108,6 @@ class SuiteCoverageTest {
         }
     }
 
-    /**
-     * Where in a file the reader stops being able to cope.
-     *
-     * <p>Takes the longest run of leading lines that still reads, and points
-     * at the one after it. Trying lines individually does not work, because
-     * a line inside a multi-line construct fails on its own for a reason
-     * that is not the real one. A prefix has to be balanced to read at all,
-     * so the last one that succeeds is a genuine boundary.
-     */
     private static String firstLineThatWillNotRead(String source) {
         List<String> lines = source.lines().toList();
         int lastGood = 0;

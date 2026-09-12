@@ -7,21 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A block molds back the shape its author laid it out in.
- *
- * <p>The scanner marks every value that follows a line feed and MOLD writes a
- * break before each marked one, so source that ran over five lines comes back
- * over five lines. JEBOL recorded none of it: every loaded block molded on one
- * line, which is a different program every time anybody saved one.
- *
- * <p>Three rules decide where the breaks go, and none of them is the obvious
- * one. The break comes *before* the value, so the mark means "this begins a
- * line". The indent goes up once and only for a mark on the first value, so a
- * block laid out over ten lines is indented by one level rather than ten. And
- * a line feed with nothing after it is forgotten -- the C sets the flag on the
- * last value it read and then copies the block without it.
- */
 class BlockLineShapeFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -182,19 +167,6 @@ class BlockLineShapeFromTheSourceTest {
         }
     }
 
-    /**
-     * The mark belongs to the value rather than to the position it sits in.
-     * {@code OPTS_LINE} is a bit in the value's own header -- "Line break
-     * occurs before this value" -- so every copy of the value copies it.
-     *
-     * <p>Which is why a long list of operations all keep it without any of
-     * them knowing about lines: they copy the value. JEBOL keeps the marks in
-     * a set of positions on the storage instead, which is the right shape for
-     * a language whose values are shared, and it means each of those
-     * operations has to carry the marks itself. None of them did, so a block
-     * laid out over five lines came back on one the moment anything copied it
-     * -- and every block a script builds is copied.
-     */
     @Nested
     @DisplayName("what the mark survives, which is every copy")
     class WhatTheMarkSurvives {
@@ -246,11 +218,6 @@ class BlockLineShapeFromTheSourceTest {
                     .isEqualTo(ONLY_THE_LAST_TWO);
         }
 
-        /**
-         * The marks move with the items they precede rather than staying
-         * where they were, because they are not where they were: they are on
-         * the values.
-         */
         @Test
         @DisplayName("REVERSE turns them round with the items and SORT sorts them")
         void thereorderingTwoMoveThem() {
@@ -262,12 +229,6 @@ class BlockLineShapeFromTheSourceTest {
             assertThat(marksOf("sort copy src")).isEqualTo(ONLY_THE_LAST_TWO);
         }
 
-        /**
-         * The same rule read the other way. REDUCE pushes a literal as it
-         * stands and keeps its mark; where the expression was a word or a
-         * call, what it pushes is the answer, and the answer has no mark of
-         * its own.
-         */
         @Test
         @DisplayName("but a value REDUCE worked out arrives without one")
         void acomputedValueArrivesBare() {
@@ -282,13 +243,6 @@ class BlockLineShapeFromTheSourceTest {
                     .isEqualTo("[#(false) #(true) #(false) #(false)]");
         }
 
-        /**
-         * A literal of any datatype keeps it and every form that evaluates to
-         * something else loses it, which is one rule and not a list. A
-         * refinement and a datatype value both evaluate to themselves and both
-         * keep theirs; a lit-word evaluates to a word, which is a different
-         * value, and does not.
-         */
         @Test
         @DisplayName("and which forms count as literals is the same question")
         void whichFormsCountAsLiterals() {
@@ -303,20 +257,10 @@ class BlockLineShapeFromTheSourceTest {
             }
         }
 
-        /**
-         * Real line feeds rather than {@code ^/}, because a caret outside a
-         * string is not an escape: {@code reduce [0^/1^/]} is not three lines
-         * and does not read at all.
-         */
         private static String secondItemOfAReduceOver(String written) {
             return "x: 5 new-line? next reduce [0\n" + written + "\n]";
         }
 
-        /**
-         * The whole reason the marks have to survive a copy: Rebol's own
-         * vector test molds a REDUCE of a block written over three lines and
-         * compares the bytes.
-         */
         @Test
         @DisplayName("which is what makes a molded REDUCE keep its author's shape")
         void amoldedReduceKeepsItsShape() {

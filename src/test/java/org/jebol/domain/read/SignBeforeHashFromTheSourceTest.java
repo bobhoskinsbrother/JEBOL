@@ -7,33 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A sign directly against a hash form is the sign alone, from the plus and minus
- * case of {@code Scan_Token}.
- *
- * <pre>
- * cp++;
- * if (IS_LEX_AT_LEAST_NUMBER(*cp)) goto num;
- * if (IS_LEX_SPECIAL(*cp)) {
- *     if (*cp == '#') {
- *         scan_state-&gt;end = cp;
- *         return TOKEN_WORD;
- *     }
- * </pre>
- *
- * <p>{@code scan_state->end = cp} sets the token's end <em>at</em> the hash, so the
- * token is the one character before it. The sign is a word and the hash form is read
- * afresh as a value of its own.
- *
- * <p>Which matters for what it unblocks rather than for its own sake. Rebol logs
- * this as issue #2319, and the case that made somebody file it is
- * {@code charset [#"a"-#"z"]} -- a character range written without spaces, which has
- * to mean the same as {@code charset [#"a" - #"z"]}. Read the other way it was the
- * word {@code -#} followed by a string, which is not a range and not anything.
- *
- * <p>A digit after the sign still binds to it, which is the line above:
- * {@code -1} is one value and always was.
- */
 class SignBeforeHashFromTheSourceTest {
 
     private static String answerTo(String source) {

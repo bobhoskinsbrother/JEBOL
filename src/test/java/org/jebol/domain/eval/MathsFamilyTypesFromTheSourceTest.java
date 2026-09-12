@@ -8,13 +8,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The trigonometric and logarithmic family declares {@code number!} in the
- * C - integer!, decimal! and percent! - and nothing else; {@code absolute}
- * declares {@code number! pair! money! time!}. JEBOL accepted six datatypes
- * more, which is the quiet half of a surface gap: calls that should fail
- * and do not.
- */
 class MathsFamilyTypesFromTheSourceTest {
 
     private static final List<String> TAKES_ONLY_NUMBERS = List.of(

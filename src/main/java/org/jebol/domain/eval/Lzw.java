@@ -2,33 +2,6 @@ package org.jebol.domain.eval;
 
 import java.util.Arrays;
 
-/**
- * LZW, in the variant {@code u-lzw.c} carries: David Bryant's, with a
- * recycling dictionary and adjusted-binary codes.
- *
- * <p>Two things make it unlike the textbook algorithm, and both change the
- * bytes.
- *
- * <p>The codes are written in adjusted binary. A dictionary holding 257
- * strings would normally spend nine bits on every code; here the codes below
- * a threshold spend eight and only the ones above it spend nine, the
- * threshold moving as the dictionary grows. So the width of a code depends on
- * how many strings exist when it is written, and a decoder that counted
- * differently would read the whole stream wrong from that point on.
- *
- * <p>The dictionary is never simply cleared when it fills. Entries that
- * nothing longer is built on are recycled one at a time, and the encoder
- * keeps a count of how many remain; it starts over only when too few are left
- * or when a decaying average of the compression ratio says it has stopped
- * paying. That average is the reason for the two counters seeded at 65536 and
- * shaved by a two-hundred-and-fifty-sixth each round.
- *
- * <p>The first byte of the stream is the maximum symbol width less nine, so
- * the decoder can size its own tables. COMPRESS/LEVEL picks that width: level
- * one to seven give nine to fifteen bits, and anything else gives sixteen --
- * so level zero is the narrowest and level eight and above the widest, which
- * reads backwards until you notice level zero is spelled as "less than one".
- */
 final class Lzw {
 
     private Lzw() {
@@ -39,14 +12,12 @@ final class Lzw {
     private static final int FIRST_STRING = 257;
     private static final int NO_RESULT = -1;
 
-    /** The counters the compression-ratio average is measured in. */
     private static final int COUNTER_SEED = 65536;
 
     private static int codeBits(int number) {
         return 31 - Integer.numberOfLeadingZeros(number);
     }
 
-    /** A run of bytes being written, growing as it goes. */
     private static final class Written {
 
         private byte[] held = new byte[64];
@@ -64,19 +35,7 @@ final class Lzw {
         }
     }
 
-    /**
-     * How wide the symbols may get, from the level a caller asked for.
-     *
-     * <p>{@code if (level >= 1 && level <= 7) maxbits = 8 + level; else if
-     * (level < 1) maxbits = 9;} and sixteen otherwise -- where the level is
-     * an unsigned number. That last word is the whole of it: COMPRESS with no
-     * /LEVEL passes {@code UNKNOWN}, which is minus one written into an
-     * unsigned, so the comparison sees four thousand million and the answer is
-     * sixteen. Reading the level as signed made the default the narrowest
-     * width instead of the widest, and every byte after the first came out
-     * differently.
-     */
-    static int widestSymbolFor(int level) {
+    static int widestSymbolForTheLevelReadUnsigned(int level) {
         long asked = Integer.toUnsignedLong(level);
         if (asked >= 1 && asked <= 7) {
             return 8 + (int) asked;
@@ -84,7 +43,6 @@ final class Lzw {
         return asked < 1 ? 9 : 16;
     }
 
-    /** One string in the encoder's dictionary, and the chain it sits in. */
     private static final class Encoding {
         private int firstReference;
         private int nextReference;
@@ -99,14 +57,13 @@ final class Lzw {
         }
     }
 
-    /** The bit shifter both directions push codes through, low bits first. */
-    private static final class Shifter {
+    private static final class ShifterLowBitsFirst {
         private int held;
         private int bits;
     }
 
     static byte[] compressed(byte[] source, int level) {
-        int widest = widestSymbolFor(level);
+        int widest = widestSymbolForTheLevelReadUnsigned(level);
         int totalCodes = 1 << widest;
         int mostEntriesAvailable = totalCodes - FIRST_STRING - 1;
         int highestCode = totalCodes - 2;
@@ -117,7 +74,7 @@ final class Lzw {
         }
 
         Written into = new Written();
-        Shifter shifter = new Shifter();
+        ShifterLowBitsFirst shifter = new ShifterLowBitsFirst();
         into.write(widest - 9);
 
         int highestSoFar = FIRST_STRING;
@@ -166,7 +123,8 @@ final class Lzw {
                 continue;
             }
 
-            outputBytes = writeCode(into, shifter, prefix, highestSoFar, outputBytes);
+            outputBytes = writeOneCodeInAdjustedBinary(
+                    into, shifter, prefix, highestSoFar, outputBytes);
             dictionary[nextString].terminator = octet;
             prefix = octet;
 
@@ -191,7 +149,7 @@ final class Lzw {
                 }
                 if (entriesAvailable < 16
                         || entriesAvailable * 100 < mostEntriesAvailable) {
-                    outputBytes = writeCode(
+                    outputBytes = writeOneCodeInAdjustedBinary(
                             into, shifter, CLEAR_CODE, highestSoFar, outputBytes);
                     clearTheFirstTwoHundredAndFiftySix(dictionary);
                     entriesAvailable = mostEntriesAvailable;
@@ -204,7 +162,7 @@ final class Lzw {
             }
 
             if (outputBytes > inputBytes + (inputBytes >> 4)) {
-                outputBytes = writeCode(
+                outputBytes = writeOneCodeInAdjustedBinary(
                         into, shifter, CLEAR_CODE, highestSoFar, outputBytes);
                 clearTheFirstTwoHundredAndFiftySix(dictionary);
                 entriesAvailable = mostEntriesAvailable;
@@ -220,12 +178,14 @@ final class Lzw {
         }
 
         if (prefix != NULL_CODE) {
-            outputBytes = writeCode(into, shifter, prefix, highestSoFar, outputBytes);
+            outputBytes = writeOneCodeInAdjustedBinary(
+                    into, shifter, prefix, highestSoFar, outputBytes);
             if (!dictionaryFull) {
                 highestSoFar++;
             }
         }
-        writeCode(into, shifter, highestSoFar, highestSoFar, outputBytes);
+        writeOneCodeInAdjustedBinary(
+                into, shifter, highestSoFar, highestSoFar, outputBytes);
         if (shifter.bits != 0) {
             into.write(shifter.held);
         }
@@ -253,16 +213,9 @@ final class Lzw {
         }
     }
 
-    /**
-     * One code in adjusted binary, and the bytes it completes.
-     *
-     * <p>{@code extras} is how many codes fit in the narrower width; below it
-     * a code goes out in {@code codeBits} bits and at or above it in one more,
-     * the extra bit written after the rest so a reader can take the narrow
-     * form first and widen only when it has to.
-     */
-    private static int writeCode(
-            Written into, Shifter shifter, int code, int highest, int outputBytes) {
+    private static int writeOneCodeInAdjustedBinary(
+            Written into, ShifterLowBitsFirst shifter, int code, int highest,
+            int outputBytes) {
 
         int width = codeBits(highest);
         int extras = (2 << width) - highest - 1;
@@ -284,7 +237,6 @@ final class Lzw {
         return written;
     }
 
-    /** One string in the decoder's dictionary. */
     private static final class Decoding {
         private int terminator;
         private int extraReferences;
@@ -310,7 +262,7 @@ final class Lzw {
         int[] reversed = new int[totalCodes - 256];
 
         Written into = new Written();
-        Shifter shifter = new Shifter();
+        ShifterLowBitsFirst shifter = new ShifterLowBitsFirst();
         int reading = 1;
         int highestSoFar = FIRST_STRING;
         int nextString = FIRST_STRING - 1;

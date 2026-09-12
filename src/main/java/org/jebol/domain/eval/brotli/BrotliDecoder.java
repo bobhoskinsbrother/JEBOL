@@ -2,29 +2,6 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * Brotli, the reading half: RFC 7932 in full.
- *
- * <p>{@code decode.c} of the reference library, as Rebol vendors it under
- * {@code src/core/brotli/}. A stream is a window size and then a run of
- * meta-blocks. Each meta-block is either stored bytes, metadata to skip, or a
- * set of prefix codes followed by commands; a command inserts some literals
- * and then copies a run from somewhere behind, or from the static dictionary
- * when the distance points past the start.
- *
- * <p>Three things make it more than LZ77 with Huffman codes, and all three are
- * here. Literals are conditioned on the two bytes before them, by one of four
- * rules chosen per block. A meta-block may switch between several prefix codes
- * part way through, on a schedule of its own. And a distance beyond what has
- * been decoded so far names one of thirteen thousand words in a dictionary
- * every decoder carries, optionally transformed.
- *
- * <p>Two departures from the C, neither of which changes an answer. The
- * multi-level lookup tables the C builds for speed are not here: a prefix code
- * is decoded one bit at a time down a canonical table, which is the same code
- * read the same way. And the ring buffer is not here either, because the whole
- * answer is held anyway and a back-reference can index it directly.
- */
 final class BrotliDecoder {
 
     private BrotliDecoder() {
@@ -51,7 +28,6 @@ final class BrotliDecoder {
     private static final int[] CODE_LENGTH_PREFIX_VALUE =
             {0, 4, 3, 2, 0, 4, 3, 1, 0, 4, 3, 2, 0, 4, 3, 5};
 
-    /** Where each block-length code starts, and how many extra bits it takes. */
     private static final int[] BLOCK_LENGTH_OFFSET = {
             1, 5, 9, 13, 17, 25, 33, 41, 49, 65, 81, 97, 113,
             145, 177, 209, 241, 305, 369, 497, 753, 1265, 2289, 4337, 8433, 16625,
@@ -79,15 +55,6 @@ final class BrotliDecoder {
         return offsets;
     }
 
-    /**
-     * What a command symbol says, worked out once for all 704 of them.
-     *
-     * <p>{@code BrotliDecoderInitCmdLut}. A command symbol packs an insert
-     * length bracket and a copy length bracket together, and whether the
-     * distance is written at all or is implicitly the last one used. The
-     * unpacking is arithmetic on the symbol rather than a table in the source,
-     * so it is arithmetic here too.
-     */
     private record Command(
             int insertExtraBits,
             int copyExtraBits,
@@ -118,25 +85,16 @@ final class BrotliDecoder {
         return table;
     }
 
-    /**
-     * Reads the stream, stopping once the answer is longer than
-     * {@code limit} when one was given.
-     *
-     * <p>{@code DecompressBrotli} breaks out of its loop as soon as the answer
-     * passes the limit and cuts it there, which means a stream damaged beyond
-     * that point is never looked at. That is the behaviour, not an oversight
-     * to correct: DECOMPRESS/SIZE asks for the front of something.
-     */
-    static byte[] decoded(byte[] input, int limit) {
+    static byte[] decodedStoppingOnceTheAnswerPassesTheLimit(
+            byte[] input, int limit) {
         return new Stream(input, limit).run();
     }
 
-    /** No limit, spelled as a number no answer can reach. */
     static final int NO_LIMIT = -1;
 
     private static final class Stream {
 
-        private final Bits bits;
+        private final BitsLeastSignificantOfEachByteFirst bits;
         private final int limit;
         private byte[] out = new byte[1 << 12];
         private int outAt;
@@ -148,14 +106,14 @@ final class BrotliDecoder {
         private int recentDistanceAt = 0;
 
         private Stream(byte[] input, int limit) {
-            this.bits = new Bits(input);
+            this.bits = new BitsLeastSignificantOfEachByteFirst(input);
             this.limit = limit;
         }
 
         private byte[] run() {
-            readWindowBits();
+            readWindowBitsRefusingALargeWindowAsRebolDoes();
             maxBackwardDistance = (1 << windowBits) - WINDOW_GAP;
-            while (readOneMetaBlock()) {
+            while (readOneMetaBlockAnsweringWhetherAnotherFollows()) {
                 if (enoughHasBeenMade()) {
                     break;
                 }
@@ -167,15 +125,7 @@ final class BrotliDecoder {
             return limit != NO_LIMIT && outAt >= limit;
         }
 
-        /**
-         * The window size, in one, four or eight bits.
-         *
-         * <p>{@code DecodeWindowBits}. Large-window mode is refused, as it is
-         * in Rebol: the decoder is created without
-         * {@code BROTLI_DECODER_PARAM_LARGE_WINDOW}, so a stream that asks for
-         * it is a stream this build will not read.
-         */
-        private void readWindowBits() {
+        private void readWindowBitsRefusingALargeWindowAsRebolDoes() {
             if (bits.take(1) == 0) {
                 windowBits = 16;
                 return;
@@ -201,15 +151,14 @@ final class BrotliDecoder {
             out = Arrays.copyOf(out, wanted);
         }
 
-        /** Answers whether another meta-block follows this one. */
-        private boolean readOneMetaBlock() {
+        private boolean readOneMetaBlockAnsweringWhetherAnotherFollows() {
             boolean isLast = bits.take(1) != 0;
             if (isLast && bits.take(1) != 0) {
                 return false;
             }
             int nibbles = bits.take(2) + 4;
             if (nibbles == 7) {
-                skipMetadata();
+                skipMetadataReadingItsLengthBeforeJumpingToAByteBoundary();
                 return !isLast;
             }
             int remaining = 0;
@@ -234,15 +183,7 @@ final class BrotliDecoder {
             return !isLast;
         }
 
-        /**
-         * A meta-block that carries no data, only bytes for whoever is
-         * watching the stream go past.
-         *
-         * <p>The length is read before the jump to a byte boundary, not after:
-         * {@code DecodeMetaBlockLength} reads the reserved bit, the byte count
-         * and the count itself, and only then does its caller pad.
-         */
-        private void skipMetadata() {
+        private void skipMetadataReadingItsLengthBeforeJumpingToAByteBoundary() {
             if (bits.take(1) != 0) {
                 throw new IllegalArgumentException(
                         "Brotli metadata sets a reserved bit");
@@ -341,7 +282,7 @@ final class BrotliDecoder {
 
                 int distance;
                 if (!command.distanceIsWritten()) {
-                    distanceRollBack = 1;
+                    howFarTheRecentDistanceCursorWasRolledBack = 1;
                     recentDistanceAt--;
                     distance = recentDistances[recentDistanceAt & 3];
                 } else {
@@ -353,7 +294,7 @@ final class BrotliDecoder {
                     Huffman code = distanceCodes[distanceMap.at(
                             distanceContextBase + command.distanceContext())];
                     int symbol = code.read(bits);
-                    distanceRollBack = 0;
+                    howFarTheRecentDistanceCursorWasRolledBack = 0;
                     if (symbol < DISTANCE_SHORT_CODES) {
                         distance = distanceFromTheRecentOnes(symbol);
                     } else {
@@ -368,7 +309,7 @@ final class BrotliDecoder {
                         throw new IllegalArgumentException(
                                 "Brotli distance is larger than any distance can be");
                     }
-                    remaining -= copyFromTheDictionary(
+                    remaining -= copyFromTheDictionaryAnsweringHowManyBytesItCameTo(
                             distance - reachable - 1, copyLength, distance);
                 } else {
                     recentDistances[recentDistanceAt & 3] = distance;
@@ -383,30 +324,13 @@ final class BrotliDecoder {
             }
         }
 
-        /**
-         * How far the recent-distance cursor was rolled back by the distance
-         * just read, so a dictionary reference can roll it forward again.
-         *
-         * <p>The two short codes that reuse the most recent distance move the
-         * cursor back so that the copy's own write puts it where it was. A
-         * dictionary reference does not write, so it has to undo the roll
-         * itself -- {@code s->dist_rb_idx += s->distance_context} in the C.
-         */
-        private int distanceRollBack;
+        private int howFarTheRecentDistanceCursorWasRolledBack;
 
-        /**
-         * One of the sixteen short distance codes, which name a distance
-         * already used rather than a new one.
-         *
-         * <p>{@code TakeDistanceFromRingBuffer}. The first four are the four
-         * most recent distances; the other twelve are one of those plus or
-         * minus a small number, packed six to a hexadecimal constant in the C.
-         */
         private int distanceFromTheRecentOnes(int code) {
             if (code <= 3) {
                 int distance = recentDistances[(recentDistanceAt - (code - 3)) & 3];
-                distanceRollBack = 1 >> code;
-                recentDistanceAt -= distanceRollBack;
+                howFarTheRecentDistanceCursorWasRolledBack = 1 >> code;
+                recentDistanceAt -= howFarTheRecentDistanceCursorWasRolledBack;
                 return distance;
             }
             int step = 3;
@@ -421,8 +345,8 @@ final class BrotliDecoder {
             return distance <= 0 ? Integer.MAX_VALUE : distance;
         }
 
-        /** Answers how many bytes the transformed word came to. */
-        private int copyFromTheDictionary(int address, int wordLength, int distance) {
+        private int copyFromTheDictionaryAnsweringHowManyBytesItCameTo(
+                int address, int wordLength, int distance) {
             if (wordLength < BrotliDictionary.MIN_WORD_LENGTH
                     || wordLength > BrotliDictionary.LONGEST_LENGTH_WITH_A_SLOT) {
                 throw new IllegalArgumentException(
@@ -439,7 +363,7 @@ final class BrotliDecoder {
                 throw new IllegalArgumentException(
                         "Brotli names a transform that is not there");
             }
-            recentDistanceAt += distanceRollBack;
+            recentDistanceAt += howFarTheRecentDistanceCursorWasRolledBack;
             int wordAt = BrotliDictionary.offsetFor(wordLength) + wordIndex * wordLength;
             room(LONGEST_TRANSFORMED_WORD);
             int written = BrotliDictionary.writeTransformedWord(
@@ -452,15 +376,11 @@ final class BrotliDecoder {
             return written;
         }
 
-        /**
-         * How much room one transformed word can need.
-         *
-         * <p>The C reserves "255 prefix + 32 base + 255 suffix" for the same
-         * reason, and takes the widest a prefix or suffix could be rather than
-         * the widest any of the built-in ones is, because the length of a
-         * piece is written in a byte.
-         */
-        private static final int LONGEST_TRANSFORMED_WORD = 255 + 32 + 255;
+        private static final int WIDEST_A_PREFIX_OR_SUFFIX_MAY_BE = 255;
+        private static final int WIDEST_A_DICTIONARY_WORD_MAY_BE = 32;
+        private static final int LONGEST_TRANSFORMED_WORD =
+                WIDEST_A_PREFIX_OR_SUFFIX_MAY_BE + WIDEST_A_DICTIONARY_WORD_MAY_BE
+                        + WIDEST_A_PREFIX_OR_SUFFIX_MAY_BE;
 
         private BlockSwitcher readBlockSwitcher() {
             int typeCount = readVariableLengthCount() + 1;
@@ -474,13 +394,6 @@ final class BrotliDecoder {
             return switcher;
         }
 
-        /**
-         * A count of block types, prefix codes or the like, in one to eleven
-         * bits.
-         *
-         * <p>{@code DecodeVarLenUint8}. Zero is one bit; one is four; anything
-         * else says how many bits follow and then sends them.
-         */
         private int readVariableLengthCount() {
             if (bits.take(1) == 0) {
                 return 0;
@@ -522,14 +435,6 @@ final class BrotliDecoder {
                 remaining--;
             }
 
-            /**
-             * Moves to the next block type.
-             *
-             * <p>Symbol zero repeats the type before last and symbol one is
-             * one past the last, which is what makes a run of types cheap to
-             * write; anything else names a type outright, two lower than the
-             * symbol.
-             */
             void next() {
                 int symbol = types.read(bits);
                 int chosen;
@@ -562,14 +467,6 @@ final class BrotliDecoder {
             }
         }
 
-        /**
-         * Which prefix code each context uses.
-         *
-         * <p>{@code DecodeContextMap}. The map is itself compressed: runs of
-         * zero may be written as a length, and the whole map may then be
-         * move-to-front encoded, which is what turns a map that mostly repeats
-         * a few values into one that mostly repeats zero.
-         */
         private ContextMap readContextMap(int size) {
             int treeCount = readVariableLengthCount() + 1;
             byte[] entries = new byte[size];
@@ -627,15 +524,6 @@ final class BrotliDecoder {
             return group;
         }
 
-        /**
-         * One prefix code, either named symbol by symbol or given as code
-         * lengths that are themselves prefix-coded.
-         *
-         * <p>{@code ReadHuffmanCode}. The short form covers one to four
-         * symbols and fixes their lengths by how many there are; the long form
-         * reads eighteen code lengths for a small code, then reads the real
-         * code lengths with it.
-         */
         private Huffman readHuffmanCode(int alphabetSize) {
             int kind = bits.take(2);
             if (kind == 1) {
@@ -695,20 +583,6 @@ final class BrotliDecoder {
             return Huffman.ofLengths(lengths);
         }
 
-        /**
-         * The one code length that was given a code, when only one was.
-         *
-         * <p>A code with a single symbol is not a prefix code and cannot be
-         * read bit by bit: there is nothing to tell apart, so the symbol is the
-         * answer whatever comes next and no bits are spent asking. The C says
-         * the same thing by filling every entry of its table with that symbol
-         * at a width of zero.
-         *
-         * <p>It arises for real. A meta-block whose code lengths are all the
-         * same -- which is what a long stretch of evenly used symbols gives --
-         * names one code length and repeats it, and then the code over code
-         * lengths has one symbol in it.
-         */
         private static int theOnlyOneNamed(int[] codeLengthLengths) {
             for (int each = 0; each < codeLengthLengths.length; each++) {
                 if (codeLengthLengths[each] != 0) {
@@ -724,7 +598,7 @@ final class BrotliDecoder {
             int space = 32;
             int named = 0;
             for (int each = skip; each < CODE_LENGTH_CODES; each++) {
-                int peeked = bits.peekFour();
+                int peeked = bits.peekFourPaddingWithZerosPastTheEndOfTheData();
                 int width = CODE_LENGTH_PREFIX_LENGTH[peeked];
                 bits.drop(width);
                 int value = CODE_LENGTH_PREFIX_VALUE[peeked];
@@ -796,14 +670,6 @@ final class BrotliDecoder {
             return Huffman.ofLengths(lengths);
         }
 
-        /**
-         * What every distance symbol above the short codes means.
-         *
-         * <p>{@code CalculateDistanceLut}. After the sixteen short codes come
-         * the direct ones, which are simply the distances one to NDIRECT, and
-         * then pairs of ranges that double in width, each split into
-         * {@code 1 << NPOSTFIX} interleaved slices.
-         */
         private void fillDistanceTable(int[] extraBits, int[] offset,
                 int postfixBits, int directCodes) {
 
@@ -829,14 +695,6 @@ final class BrotliDecoder {
         }
     }
 
-    /**
-     * A prefix code, read one bit at a time.
-     *
-     * <p>Brotli's codes are canonical: sorted by length and then by symbol,
-     * with the first bit read being the first bit of the code. That is exactly
-     * what this walk needs, and it needs no table beyond the symbols in that
-     * order and how many there are of each length.
-     */
     private static final class Huffman {
 
         private final int[] countPerLength;
@@ -879,7 +737,7 @@ final class BrotliDecoder {
             return new Huffman(counts, symbols, -1);
         }
 
-        int read(Bits bits) {
+        int read(BitsLeastSignificantOfEachByteFirst bits) {
             if (onlySymbol >= 0) {
                 return onlySymbol;
             }
@@ -900,8 +758,7 @@ final class BrotliDecoder {
         }
     }
 
-    /** The stream, read least significant bit of each byte first. */
-    private static final class Bits {
+    private static final class BitsLeastSignificantOfEachByteFirst {
 
         private final byte[] data;
         private final int end;
@@ -909,7 +766,7 @@ final class BrotliDecoder {
         private long window;
         private int held;
 
-        private Bits(byte[] data) {
+        private BitsLeastSignificantOfEachByteFirst(byte[] data) {
             this.data = data;
             this.end = data.length;
         }
@@ -935,15 +792,7 @@ final class BrotliDecoder {
             return taken;
         }
 
-        /**
-         * The next four bits without spending them, padded with zeros at the
-         * end of the data.
-         *
-         * <p>The code-length prefix code is one to four bits long and is read
-         * by looking four bits ahead, so at the very end of a stream there may
-         * be fewer than four left and the ones that are not there are zero.
-         */
-        int peekFour() {
+        int peekFourPaddingWithZerosPastTheEndOfTheData() {
             while (held < 4 && at < end) {
                 window |= (long) (data[at++] & 0xFF) << held;
                 held += 8;

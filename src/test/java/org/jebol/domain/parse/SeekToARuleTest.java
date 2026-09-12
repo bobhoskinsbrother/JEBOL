@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * PARSE's TO and THRU take a whole rule, not only a value.
- *
- * <p>Specified in {@code spec/parse.allium}, confirmed against a real R3.
- *
- * <p>Reading the target as text makes every such rule fail, because a
- * block has no text form that appears in the input -- and it fails the way
- * a rule that simply did not match fails, which is why it can sit
- * unnoticed.
- */
 class SeekToARuleTest {
 
     private static final String SETS = "x: charset \"x\" y: charset \"y\" ";

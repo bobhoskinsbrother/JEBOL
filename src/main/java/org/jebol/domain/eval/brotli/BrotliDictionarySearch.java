@@ -1,25 +1,5 @@
 package org.jebol.domain.eval.brotli;
 
-/**
- * Looking for the text about to be written among the dictionary's words.
- *
- * <p>{@code SearchInStaticDictionary} and {@code TestStaticDictionaryItem} in
- * {@code hash.h}. A dictionary word is referred to by a distance beyond the end
- * of everything written so far, so a match here costs nothing to store and
- * saves whatever the word is long.
- *
- * <p>Only a prefix of the word need match. Cutting the last few characters off
- * is one of the transforms, so a word that agrees for all but its last three
- * letters is still usable, with the transform saying which letters to drop. Ten
- * is as many as may be cut, and which transform does the cutting for each amount
- * is packed six bits at a time into one number.
- *
- * <p>The search gives up on itself. It counts how often it has looked and how
- * often that found something, and once fewer than one lookup in a hundred and
- * twenty eight is paying off it stops looking at all for the rest of the input.
- * That is why this holds state rather than being a static call: text that is not
- * English stops paying the dictionary's cost early.
- */
 final class BrotliDictionarySearch {
 
     private static final long CUTTING_TRANSFORM_FOR_EACH_AMOUNT = 0x071B520ADA2D3200L;

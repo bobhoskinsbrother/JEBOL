@@ -7,15 +7,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Splitting source into its top-level expressions, as written.
- *
- * <p>Reading source into values and molding them back is lossy, in JEBOL
- * and in R3 alike: {@code 1.7976931348623157e308} molds to fifteen digits
- * and reads back as infinity. Anything that needs one expression's source
- * therefore has to take the text rather than rebuild it, which is what
- * this is for.
- */
 class TopLevelSpansTest {
 
     private static List<String> textsOf(String source) {

@@ -7,30 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A word a function body wrote belongs to the function, not to one of its calls.
- *
- * <p>Rebol binds a body once, when the function is made, and writes the
- * function itself into every word there rather than any call's frame. Two
- * things follow, and JEBOL had neither because it binds the body afresh for
- * each call.
- *
- * <p>The first is identity. {@code CT_Word} at {@code mode >= 2} compares the
- * symbol, the index and the frame, so one word written in a body is the same
- * word every time the body runs, however many calls are alive at once.
- *
- * <p>The second is what the word reads. {@code Get_Var} says it outright: "a
- * negative index indicates that the value is in a frame on the data stack, so
- * now we must find it by walking back the stack looking for the function that
- * the word is bound to". It walks out from the innermost call and stops at the
- * first frame of that function, so the word means the innermost call's copy at
- * the moment it is read, not the copy belonging to the call that wrote it down.
- *
- * <p>Rebol's ARRAY is built on both. It hands itself the word {@code 'tag} as a
- * token saying the call came from inside, and it hands each level down a list
- * of index expressions holding the word {@code block}, which only comes out
- * right if every level's copy of that word reads the level that is running.
- */
 class WordsBoundToAFunctionFromTheSourceTest {
 
     private static String answerTo(String source) {

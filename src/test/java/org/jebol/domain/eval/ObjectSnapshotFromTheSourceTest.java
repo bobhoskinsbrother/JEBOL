@@ -7,14 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * COPY of an object answers a duplicate holding its own slots, which is what
- * Rebol's own DELTA-PROFILE depends on: it copies the standing statistics as a
- * snapshot and subtracts. Sharing the slots made every counter come back as
- * minus the raw value. {@code TS_DEEP_COPIED} names the series datatypes, the map
- * and the function and not the object, so a nested object survives a deep copy
- * untouched and TAKE/DEEP hands one straight through.
- */
 class ObjectSnapshotFromTheSourceTest {
 
     private static String answerTo(String source) {

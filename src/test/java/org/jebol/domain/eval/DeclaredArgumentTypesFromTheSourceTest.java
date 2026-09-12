@@ -9,23 +9,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Seven arguments whose declared datatypes were wider here than in R3.
- *
- * <p>A declaration is behaviour: a datatype the spec block does not list is
- * turned away as {@code expect-arg} before the function's body ever runs, so
- * an argument declared too widely accepts a value a real Rebol refuses, and
- * then answers something rather than failing. Every refusal below was checked
- * against the 3.22.1 binary before it was written down, and the binary agreed
- * with the C in all seven.
- *
- * <p>Two of the seven read their declaration out of a comment in the C rather
- * than out of {@code boot/natives.reb}: {@code to-degrees} and {@code
- * to-radians} in {@code n-math.c}. Three more do the same and were reported
- * as differences only because the collector attached a {@code return:} block
- * to the argument in front of it, which is why {@code factorial} and {@code
- * grayscale} are not in this class.
- */
 class DeclaredArgumentTypesFromTheSourceTest {
 
     private static final String REFUSED = "expect-arg";

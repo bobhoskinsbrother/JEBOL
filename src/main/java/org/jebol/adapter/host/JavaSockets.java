@@ -9,32 +9,11 @@ import java.net.*;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * The network as the JDK already provides it.
- *
- * <p>{@code java.net} rather than anything written here. Name resolution,
- * connecting, reading and writing are all long solved, and a socket layer of
- * JEBOL's own would be a worse copy that still had to sit behind this same
- * interface.
- *
- * <p>Nothing is cached. A name looked up twice is looked up twice, because the
- * answer can change between the two and a script that asked again wanted to
- * know.
- */
+/** The network as the JDK already provides it, with nothing cached. */
 public final class JavaSockets implements NetworkPort {
 
-    /**
-     * How long to wait for a connection, and for bytes once connected.
-     *
-     * <p>A bounded wait rather than none, because a script blocking for ever
-     * on a host that will never answer cannot be stopped by the interpreter's
-     * own cancellation: it is inside a system call. Thirty seconds is longer
-     * than any reasonable connection takes and short enough that a mistake
-     * ends within a person's patience.
-     */
-    private static final int WAITING_MILLISECONDS = 30_000;
+    private static final int LONGEST_WAIT_BEFORE_GIVING_UP_MILLISECONDS = 30_000;
 
-    /** What one read takes at most, so a huge response arrives in pieces. */
     private static final int MOST_BYTES_AT_ONCE = 65_536;
 
     @Override
@@ -53,8 +32,8 @@ public final class JavaSockets implements NetworkPort {
         Socket socket = new Socket();
         try {
             socket.connect(new InetSocketAddress(hostName, portNumber),
-                    WAITING_MILLISECONDS);
-            socket.setSoTimeout(WAITING_MILLISECONDS);
+                    LONGEST_WAIT_BEFORE_GIVING_UP_MILLISECONDS);
+            socket.setSoTimeout(LONGEST_WAIT_BEFORE_GIVING_UP_MILLISECONDS);
             return new SocketConnection(socket);
         } catch (UnknownHostException noSuchHost) {
             closeQuietly(socket);
@@ -76,19 +55,10 @@ public final class JavaSockets implements NetworkPort {
     private static void closeQuietly(Socket socket) {
         try {
             socket.close();
-        } catch (IOException alreadyGone) {
-            // Nothing useful to do: the caller is already being told why the
-            // connection could not be made, and this is the tidying up.
+        } catch (IOException theTidyingUpFailedAndTheCallerIsAlreadyBeingToldWhy) {
         }
     }
 
-    /**
-     * One open socket, read and written as bytes.
-     *
-     * <p>The streams are held rather than fetched per call, because asking a
-     * closed socket for its stream throws where reading a closed one answers
-     * the end of input, and the second is the behaviour a script can act on.
-     */
     private static final class SocketConnection implements Connection {
 
         private final Socket socket;

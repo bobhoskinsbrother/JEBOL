@@ -63,20 +63,6 @@ public record WordValue(String spelling, String canonical, Context binding, Data
         return canonical.equals(other.canonical);
     }
 
-    /**
-     * REBOL's {@code ==}: same shape, same spelling, case sensitive.
-     * <strong>Binding is not part of it.</strong>
-     *
-     * <p>From the REBOL bindology reference: two words are the <em>same</em>
-     * if and only if they have strict equal spelling and equal binding, while
-     * equal words need not have equal binding. So equality asks what a word
-     * says and {@link #isSameAs} asks which word it is.
-     *
-     * <p>This matters beyond pedantry. MOLD does not print bindings, because
-     * a binding is not syntax. If equality counted binding then no bound block
-     * could survive a round trip through MOLD, and blocks are bound the moment
-     * they are about to be evaluated.
-     */
     @Override
     public boolean equals(Object other) {
         return other instanceof WordValue word

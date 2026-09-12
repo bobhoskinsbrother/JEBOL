@@ -3,17 +3,8 @@ package org.jebol.domain.render;
 import org.jebol.domain.value.ImageValue;
 
 /**
- * One thing to paint, with everywhere it goes already worked out.
- *
- * <p>A renderer executes these and decides nothing. That is what keeps a
- * desktop window, a phone and a browser showing the same picture: they are
- * not three walks over a gob tree that happen to agree, they are three
- * executions of one list.
- *
- * <p>Three kinds today, for the four gob contents that can be painted -- a
- * colour, a string, a rich-text block and an image. The DRAW dialect adds
- * kinds here rather than adding a walk to each renderer, which is thirty
- * commands written once instead of three times.
+ * One thing to paint, with everywhere it goes already worked out. A renderer
+ * executes these and decides nothing.
  *
  * <p>Specified in {@code spec/screen.allium}.
  */
@@ -43,13 +34,7 @@ public sealed interface PaintInstruction {
         }
     }
 
-    /**
-     * An image, pixel for pixel.
-     *
-     * <p>The one instruction that carries a REBOL value rather than numbers,
-     * because a picture is what it holds. A renderer that has to send this
-     * somewhere turns the pixels into whatever its transport carries.
-     */
+    /** An image, pixel for pixel. */
     record Picture(Placement where, ImageValue pixels) implements PaintInstruction {
 
         @Override
@@ -59,17 +44,9 @@ public sealed interface PaintInstruction {
     }
 
     /**
-     * A path, painted with a stroke or a fill or both.
-     *
-     * <p>What the whole DRAW dialect comes to. Thirty commands and ten
-     * sub-commands are read once into these, and a renderer executes them
-     * without knowing a dialect exists: a box, a circle, a polygon and a
-     * hand-written path all arrive here as the same thing.
-     *
-     * <p>Either paint may be absent and both may be. A shape with neither is
-     * not a mistake -- {@code pen off fill-pen off} says exactly that -- and it
-     * is dropped before it reaches a renderer rather than being drawn
-     * invisibly.
+     * A path, painted with a stroke or a fill or both. Either may be absent; a
+     * shape with neither is dropped before it reaches a renderer rather than
+     * being drawn invisibly.
      */
     record Drawn(
             Placement where,

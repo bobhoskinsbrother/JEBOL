@@ -9,26 +9,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A string longer than the reader's own buffer, saved and read back.
- *
- * <p>Rebol's own lexer test calls this "NULLs inside loaded string", and its
- * comment says what the shape is for: "using CALL as it could be reproduced
- * only when the internal buffer is being extended during load". The C scans
- * into a fixed buffer and grows it when a token runs past the end, and the
- * defect it is guarding against left the grown half full of zero bytes -- so
- * a forty thousand character string came back the right length and wrong from
- * the middle onwards.
- *
- * <p>It shells out to a second interpreter because Rebol's buffer is global
- * and one that had already grown would not show the fault. JEBOL's reader
- * holds no such buffer, so a fresh interpreter here is enough, and the
- * assertions are the ones the shelled-out script makes: no NUL anywhere in
- * what came back, and the text the same as what went out.
- *
- * <p>Forty thousand is Rebol's own figure and is the boundary: it is well past
- * the buffer's starting size, so the growth happens at least once.
- */
 class ALongStringThroughTheReaderFromTheSourceTest {
 
     private static String answerTo(Path directory, String source) {
@@ -61,11 +41,6 @@ class ALongStringThroughTheReaderFromTheSourceTest {
                 .isEqualTo("[2 1 #(true) 40000 #(true) #(true)]");
     }
 
-    /**
-     * The end is where a buffer that grew and did not copy shows: the front of
-     * the string is right whatever happened, and the last characters are the
-     * ones that came out of the new half.
-     */
     @Test
     @DisplayName("and its last four characters are the ones that went in")
     void itsendIsIntact(@TempDir Path directory) {

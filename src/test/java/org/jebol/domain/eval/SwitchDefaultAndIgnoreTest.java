@@ -6,12 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * SWITCH/DEFAULT and COLLECT-WORDS/IGNORE.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- * Both were declared and never read.
- */
 class SwitchDefaultAndIgnoreTest {
 
     private static String answerTo(String source) {

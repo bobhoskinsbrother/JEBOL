@@ -7,13 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Every series action begins by bringing a stranded position home --
- * {@code if (index > tail) VAL_INDEX(value) = index = tail;} -- so a CHANGE or an
- * INSERT through a view that another view has shortened lands at the end. The
- * negative /part span is Partial1: the position moves back by the count and the
- * count turns positive, so the span always runs forwards from where it lands.
- */
 class PastTailClampingFromTheSourceTest {
 
     private static String answerTo(String source) {

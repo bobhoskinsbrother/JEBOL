@@ -6,29 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * APPLY hands a built-in its refinements, not just its arguments.
- *
- * <p>The block APPLY takes is read against the function's words in order: a
- * word takes the next value as its argument, and a refinement takes the next
- * value as a logic saying whether it is used. {@code words-of :copy} is
- * {@code [value /part range /deep /types kinds]}, so
- * {@code apply :copy [[1 2 3 4 5] true 3]} is COPY/PART of three.
- *
- * <p>JEBOL took the first N values positionally, where N was the arity with no
- * refinements asked for, and dropped the rest. The refinement was never passed
- * and the call ran without it, so {@code apply :copy [[1 2 3 4 5] true 3]}
- * answered the whole series -- a wrong answer with no error, which is the worst
- * shape a defect can have. User-defined functions were unaffected, because a
- * refinement is an ordinary parameter to one of those.
- *
- * <p>Rebol's own suite uses APPLY thirteen times and not once on a built-in
- * with a refinement, so none of this was reachable from the suite. It was found
- * by asking two running interpreters -- `scripts/runtime-parity.py` -- and this
- * fix depends on the one before it: the walk needs WORDS-OF to answer.
- *
- * <p>Every expectation here was read off `./r3-head` first.
- */
 class ApplyPassesRefinementsFromTheSourceTest {
 
     private static String answerTo(String source) {

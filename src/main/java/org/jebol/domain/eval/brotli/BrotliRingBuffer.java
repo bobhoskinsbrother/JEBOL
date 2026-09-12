@@ -2,21 +2,6 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * The window of input the encoder can still refer back to.
- *
- * <p>{@code ringbuffer.h}. Writing past the end wraps to the beginning, and a
- * copy of the first block is kept after the end so that a match found near the
- * wrap can be read straight through without the reader minding the join.
- *
- * <p>Seven spare bytes past everything, kept at zero, because the hash of a
- * position reads eight bytes and the last few positions have fewer than eight
- * left. Without them the answer would depend on whatever happened to be in
- * memory.
- *
- * <p>The C also keeps a copy of the last two bytes just before the start. It is
- * written and never read, so it is not here.
- */
 final class BrotliRingBuffer {
 
     private static final int SLACK_FOR_HASHING_PAST_THE_END = 7;
@@ -67,7 +52,8 @@ final class BrotliRingBuffer {
             data[size] = (byte) 241;
         }
         int writingAt = at & mask;
-        copyIntoTheTail(source, from, howMany, writingAt);
+        copyIntoTheTailSoAWrappedMatchReadsAsOneRun(
+                source, from, howMany, writingAt);
         if (writingAt + howMany <= size) {
             System.arraycopy(source, from, data, writingAt, howMany);
         } else {
@@ -79,11 +65,7 @@ final class BrotliRingBuffer {
         at += howMany;
     }
 
-    /**
-     * Keeps the copy of the beginning that sits after the end up to date, so a
-     * match that runs over the wrap reads as one run of bytes.
-     */
-    private void copyIntoTheTail(byte[] source, int from, int howMany,
+    private void copyIntoTheTailSoAWrappedMatchReadsAsOneRun(byte[] source, int from, int howMany,
             int writingAt) {
 
         if (writingAt >= tailSize) {
@@ -93,16 +75,14 @@ final class BrotliRingBuffer {
                 Math.min(howMany, tailSize - writingAt));
     }
 
-    /**
-     * Zeroes the bytes just past what was written, but only on the first lap.
-     *
-     * <p>After that the tail already holds a copy of real data there, and
-     * clearing it would destroy what a wrapped match reads.
-     */
     void clearWhatTheHashesWouldReadPastTheEnd() {
-        if (at > mask) {
+        if (theFirstLapIsOverAndTheTailHoldsRealData()) {
             return;
         }
         Arrays.fill(data, at, at + SLACK_FOR_HASHING_PAST_THE_END, (byte) 0);
+    }
+
+    private boolean theFirstLapIsOverAndTheTailHoldsRealData() {
+        return at > mask;
     }
 }

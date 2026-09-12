@@ -143,15 +143,6 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         }
     }
 
-    /**
-     * How a number reaches a field, which is not how it reaches a vector.
-     *
-     * <p>{@code assign_scalar} converts through both {@code i} and {@code d}
-     * and then picks: an integer written to a float field goes in as the
-     * number, and a decimal written to an integer field is truncated towards
-     * zero. A vector's {@code storedForm} does the same, which is why it is
-     * borrowed rather than rewritten.
-     */
     private static long narrowedFor(VectorKind kind, Value written) {
         return kind.storedForm(written);
     }
@@ -206,14 +197,6 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         }
     }
 
-    /**
-     * A whole array field written from a vector, which is a copy of bytes.
-     *
-     * <p>{@code Set_Struct_Var} takes this path only when the vector's element
-     * width matches the field's and there are exactly as many, and then copies
-     * the vector's storage straight in. A vector of the right length but the
-     * wrong width is refused rather than converted.
-     */
     private void writeWholeArrayFrom(StructField field, VectorValue given) {
         if (!(field.type() instanceof StructFieldType.Numeric number)
                 || given.lengthFromHere() != field.dimension()

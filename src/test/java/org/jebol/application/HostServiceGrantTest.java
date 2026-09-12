@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A host grants each kind of service on its own, and nothing by default.
- *
- * <p>Specified in {@code spec/embed.allium}.
- *
- * <p>A script that asks for a service it has not been granted gets an
- * error that names the service. Silence is the failure this prevents: a
- * READ that quietly answers none reads as an empty file, and a script
- * cannot tell the two apart.
- */
 class HostServiceGrantTest {
 
     private static String answerTo(Bounds bounds, String source) {
@@ -24,7 +14,6 @@ class HostServiceGrantTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(Bounds bounds, String source) {
         return answerTo(bounds, "e: try [" + source + "] "
                 + "either error? e [e/id] ['no-error]");

@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The binary dialect's codes for things that are not whole numbers: floats,
- * runs of bits, the clock MS-DOS packed into sixteen of them, and CROP.
- *
- * <p>{@code u-bincode.c}. Between them they are what lets a format like SWF or
- * ZIP be read at all -- a scale stored as a fixed-point run of nineteen bits,
- * a timestamp stored as five bits of hour and a seconds field that only counts
- * in twos.
- */
 class BincodeWiderCodesFromTheSourceTest {
 
     private static String answerTo(String source) {

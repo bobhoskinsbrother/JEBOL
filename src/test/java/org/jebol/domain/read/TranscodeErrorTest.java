@@ -8,15 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TRANSCODE/ERROR, which hands back what went wrong instead of raising it.
- *
- * <p>Specified in {@code spec/load.allium}, confirmed against a real R3.
- *
- * <p>TRY built into the reader, for a caller reading text they did not
- * write who wants to look at the failure rather than catch it. Without the
- * refinement the same source raises, which is what makes it worth having.
- */
 class TranscodeErrorTest {
 
     private static String answerTo(String source) {

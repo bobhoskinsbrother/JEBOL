@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * SORT's refinements, and what each of them leaves alone.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>The boundaries for /PART are the counts: nothing, one, all of it, and
- * more than there is. A part that reaches past the end must sort what is
- * there rather than failing, and a part of nothing must move nothing.
- */
 class SortRefinementsTest {
 
     private static String answerTo(String source) {

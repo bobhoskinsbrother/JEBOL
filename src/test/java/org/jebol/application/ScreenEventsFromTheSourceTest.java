@@ -11,27 +11,6 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What the screen tells a script, and which thread it tells it on.
- *
- * <p>The rule this file exists to pin is the threading one, and it is forced
- * rather than chosen. An interpreter is owned by one thread, and that is what
- * lets series share mutable storage with nothing synchronising them. A widget
- * toolkit calls a listener on its own thread. So the screen queues an event
- * and returns, and the interpreter's own thread takes it later inside WAIT.
- *
- * <p>Getting that wrong would not fail loudly. Two threads appending to one
- * block corrupt it without either of them raising, so the damage would show up
- * somewhere else entirely, long afterwards.
- *
- * <p>The other rule here is what ends a wait. REBOL's own words, from
- * {@code init-view-system}: the event port's AWAKE ends with
- * {@code tail? system/view/screen-gob}, which is true exactly when the screen
- * has no children left. That is what makes a script ending in VIEW a program
- * rather than a statement.
- *
- * <p>Specified in {@code spec/screen.allium}.
- */
 class ScreenEventsFromTheSourceTest {
 
     private static final String TRUE = "#(true)";
@@ -83,14 +62,6 @@ class ScreenEventsFromTheSourceTest {
         }
     }
 
-    /**
-     * A window on the screen, with a watcher noting every event it sees.
-     *
-     * <p>The watcher answers the event rather than none, which is how
-     * {@code init-view-system} says to carry on: "Handlers should return event
-     * in order to continue." A watcher that swallowed events would stop the
-     * default handler ever seeing a close, and nothing would shut the window.
-     */
     private static final String A_WINDOW_AND_A_WATCHER = """
             view/no-wait make gob! [size: 100x100]
             seen: copy []
@@ -208,10 +179,6 @@ class ScreenEventsFromTheSourceTest {
                 screen.theOperatorDoes(ScreenEventKind.CLOSE, window);
                 interpreter.run("do-events");
 
-                // A close is the one kind that ends the wait, because the
-                // default handler unviews on it and the screen goes empty. So
-                // the second close is never reached, and the trailing close
-                // that every other kind needs is that kind's own event.
                 String expected = kind == ScreenEventKind.CLOSE
                         ? "\"[close]\""
                         : "\"[" + kind.spelling() + " close]\"";

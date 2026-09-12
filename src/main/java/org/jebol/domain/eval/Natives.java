@@ -39,48 +39,12 @@ public final class Natives {
     private final Map<String, NativeValue> definitions = new LinkedHashMap<>();
     private final Map<String, String> operatorTwins = new LinkedHashMap<>();
 
-    /**
-     * What just happened, readable through {@code system/state}.
-     *
-     * <p>Held here because the natives that write it -- TRY, CATCH and
-     * QUIT -- are defined long before the system object is assembled, and
-     * a handler written as a block has no other way to reach the value it
-     * is handling.
-     */
     private final Context runState = Context.root();
 
-    /**
-     * The library's own private helpers, reachable as
-     * {@code system/contexts/sys}.
-     *
-     * <p>Built when the system object is assembled and handed to the
-     * interpreter, which loads the sys files into it. A child of the library
-     * context, so a helper defined here still sees every standard function.
-     */
     private Context systemInternals = Context.root();
 
-    /**
-     * The map REGISTER files struct layouts in, held here as well as in the
-     * SYSTEM object.
-     *
-     * <p>Both halves need it and only one of them has an evaluator. MAKE is
-     * called with one and can walk {@code system/catalog/structs}; the reader
-     * is handed a maker with no evaluator at all, and a field written
-     * {@code [struct! pair8!]} inside a construction has to resolve just the
-     * same. Keeping the map itself is what lets both ask the same question.
-     */
     private final MapValue registeredStructLayouts = MapValue.empty();
 
-    /**
-     * What each datatype says about itself, as {@code reflect} answers it.
-     *
-     * <p>Title and category, taken verbatim from a real R3 rather than
-     * written out here: the wording is data a script can compare against,
-     * and inventing it would make every such comparison wrong. The
-     * category is R3's own grouping -- scalar, series, block, word,
-     * function, object and the rest -- and it is not derivable from the
-     * datatypes JEBOL has, because it names families JEBOL has not built.
-     */
     private static final Map<String, String[]> DATATYPE_SPECS = datatypeSpecs();
 
     private static Map<String, String[]> datatypeSpecs() {
@@ -213,23 +177,8 @@ public final class Natives {
         defineOperator("|", "or~");
     }
 
-    /**
-     * Which kinds of host service the script may ask for.
-     *
-     * <p>Empty unless a host said otherwise. A native that reaches
-     * outside the interpreter asks this first, and raises rather than
-     * answering when the answer is no: a READ that quietly gives none
-     * reads as an empty file, and a script cannot tell the two apart.
-     */
     private Set<HostService> grantedServices = Set.of();
 
-    /**
-     * What this machine puts between the parts of a path.
-     *
-     * <p>A slash unless the host says otherwise. The domain cannot ask
-     * the machine itself, thus the application tells it: a separator is a
-     * fact about where the code runs and not about the language.
-     */
     private char localFileSeparator = '/';
 
     /** Tells the natives what this machine puts between path parts. */
@@ -237,14 +186,6 @@ public final class Natives {
         this.localFileSeparator = separator;
     }
 
-    /**
-     * What {@code system/options/boot} names: something that starts this
-     * very interpreter.
-     *
-     * <p>The C's boot is the running executable. JEBOL's is a JVM plus a
-     * classpath, and only the application knows how to package those into
-     * one path, so it tells the domain rather than the domain finding out.
-     */
     private String bootLauncher = "";
 
     /** Tells the natives what starts this interpreter from a shell. */
@@ -252,35 +193,12 @@ public final class Natives {
         this.bootLauncher = launcherPath;
     }
 
-    /**
-     * What {@code system/platform} answers, which is the operating system and
-     * not the runtime.
-     *
-     * <p>Six files in the borrowed library branch on that word and every
-     * branch is about the local conventions: which character separates the
-     * entries of PATH, how a shell argument is quoted, whether a filename
-     * comparison minds case, where an application keeps its own files. A JVM
-     * on Windows has Windows conventions, so the answer has to be Windows --
-     * and a word true of no operating system sends all six down the arm meant
-     * for something else.
-     *
-     * <p>The application says which, because only it may ask the machine. Its
-     * default is the C's own name for a build that knows nothing about where
-     * it is.
-     */
     private String operatingSystemName = "JVM";
 
     public void useOperatingSystemNamed(String named) {
         this.operatingSystemName = named;
     }
 
-    /**
-     * The text of errors.reb, handed in by whoever can read files.
-     *
-     * <p>The catalogue is data the domain interprets, not a file the
-     * domain reads: transcoding it is language work and fetching it is
-     * not.
-     */
     private String errorCatalogueSource = "";
 
     /** Tells the natives what the vendored errors.reb says. */
@@ -288,24 +206,6 @@ public final class Natives {
         this.errorCatalogueSource = source;
     }
 
-    /**
-     * The text of Rebol's own function declarations, handed in the same way.
-     *
-     * <p>A declaration <em>is</em> a spec: the docstring, the parameters with
-     * their types and their own docstrings, and the refinements in the order
-     * they were written with their arguments after them. SPEC-OF and WORDS-OF
-     * answer out of these rather than rebuilding something from the registry,
-     * because the registry knows the types and not the order, not the
-     * documentation, and not which refinements take no argument at all.
-     *
-     * <p>Three files, because Rebol keeps them in three places.
-     * {@code actions.reb} declares the sixty actions and {@code natives.reb}
-     * the hand-written natives; the rest are written as comments beside the C
-     * that implements them, and Rebol's build collects those into
-     * {@code generated/gen-natives.reb}. Missing that third file left 45
-     * functions -- {@code gcd}, {@code access-os}, {@code compress} and the
-     * like -- still answering a rebuilt spec with no refinements in it.
-     */
     private String functionDeclarationSource = "";
 
     /** Tells the natives what Rebol's own declaration files say. */
@@ -343,13 +243,6 @@ public final class Natives {
         this.grantedServices = Set.copyOf(granted);
     }
 
-    /**
-     * Refuses a host service the script may not have.
-     *
-     * <p>The error names the service and says which of three things
-     * happened, because the first two can change between one run and the
-     * next and the third never does.
-     */
     private void requireService(HostService service) {
         if (grantedServices.contains(service)) {
             return;
@@ -360,13 +253,6 @@ public final class Natives {
                                 .toLowerCase(java.util.Locale.ROOT).replace('_', ' '));
     }
 
-    /**
-     * Refuses a native that exists to call code written in C.
-     *
-     * <p>No grant turns these on, thus the grant is not even looked at. A
-     * JVM can be made to call a shared library and the result stops being
-     * portable, which is the one thing JEBOL is for.
-     */
     private static final java.util.Set<String> FIELDS_THE_OPERATING_SYSTEM_ANSWERS =
             java.util.Set.of("uid", "euid", "gid", "egid", "pid");
 
@@ -429,44 +315,23 @@ public final class Natives {
         return new Natives();
     }
 
-    /**
-     * The SYSTEM object: what the interpreter knows about itself.
-     *
-     * <p>Its catalogue lists the datatypes in the order they are numbered,
-     * which is how a script asks what exists rather than being told.
-     */
     private static BlockValue typeNames(String... spellings) {
         return BlockValue.block(Arrays.stream(spellings)
                 .map(spelling -> (Value) WordValue.of(spelling + "!"))
                 .toList());
     }
 
-    /**
-     * The sixty names actions.reb declares, in the order it declares them.
-     *
-     * <p>Held in {@link ActionNames} beside the value model, because a value
-     * has to answer {@code type?} without asking the evaluator anything. This
-     * is the same list, for the catalogue.
-     */
     private static final List<String> ACTION_NAMES = ActionNames.inDeclarationOrder();
 
-    /** A block of plain words, where typeNames would add a datatype suffix. */
     private static BlockValue typeNamesWithoutSuffix(String... spellings) {
         return BlockValue.block(Arrays.stream(spellings)
                 .<Value>map(WordValue::of).toList());
     }
 
-    /** A set holding exactly the characters of a string. */
     private static BitsetValue charactersIn(String characters) {
         return BitsetValue.ofCharacters(characters.chars().toArray());
     }
 
-    /**
-     * The octets a quoted-printable body may carry as they stand.
-     *
-     * <p>sysobj.reb writes it as sixteen bytes of mostly-ones. Read back, it
-     * is every octet except the three the encoding must escape.
-     */
     private static BitsetValue quotedPrintableOctets() {
         StringBuilder allowed = new StringBuilder();
         for (int character = 0; character <= LAST_ASCII_CHARACTER; character++) {
@@ -477,17 +342,6 @@ public final class Natives {
         return charactersIn(allowed.toString());
     }
 
-    /**
-     * Where every unescaped set in the catalogue stops.
-     *
-     * <p>{@code sysobj.reb} writes each of them as a bitset literal of sixteen
-     * bytes, which is a hundred and twenty-eight bits and no more, and that
-     * bound is what makes percent encoding do its job: a byte the set cannot
-     * hold is a byte that gets escaped. The quoted-printable set built to 255
-     * instead, so every accented letter went into the output as a raw byte --
-     * exactly what the encoding exists to prevent -- and it also refused a
-     * colon and a full stop, which Rebol allows.
-     */
     private static final int LAST_ASCII_CHARACTER = 127;
 
     private static BitsetValue rangeOfCharacters(int from, int to) {
@@ -520,12 +374,6 @@ public final class Natives {
                         .map(datatype -> (Value) DatatypeValue.of(datatype))
                         .toList()));
 
-        // The lists sysobj.reb declares, less vector! wherever it appears,
-        // because there is no such datatype here to name. base-defs.reb
-        // generates SPEC-OF, BODY-OF and the rest straight from this, so a
-        // datatype left out is a datatype the generated function refuses --
-        // which is how WORDS-OF came to turn away the handle whose only
-        // readable field is its type.
         catalog.set("reflectors", BlockValue.block(List.of(
                 WordValue.of("spec"),
                 typeNames("any-function", "any-object", "vector", "datatype", "struct"),
@@ -558,17 +406,8 @@ public final class Natives {
         bitsets.set("quoted-printable", quotedPrintableOctets());
         catalog.set("bitsets", new ObjectValue(bitsets));
 
-        // Filled by REGISTER rather than at boot: sysobj.reb declares it
-        // `make map! []` with the comment "filled using `register` native
-        // function", so an empty map here is the finished state and not a
-        // gap.
         catalog.set("structs", registeredStructLayouts);
 
-        // The two halves of the function set this interpreter carries in its
-        // host language. The split is Rebol's declaration rather than a fact
-        // about the code here -- JEBOL answers native! for both where a real
-        // R3 answers action! for the sixty -- so actions.reb is the authority
-        // for which name is which.
         catalog.set("actions", BlockValue.block(ACTION_NAMES.stream()
                 .filter(definitions::containsKey)
                 .<Value>map(WordValue::of).toList()));
@@ -578,33 +417,19 @@ public final class Natives {
                 .sorted()
                 .<Value>map(WordValue::of).toList()));
 
-        // What a boot flag may be, rather than what was passed. sysobj.reb
-        // says so on the line above it: "Official list of
-        // system/options/flags that can appear".
         catalog.set("boot-flags", typeNamesWithoutSuffix(
                 "script", "args", "do", "import", "version", "debug", "secure",
                 "help", "vers", "quiet", "verbose", "secure-min", "secure-max",
                 "trace", "halt", "cgi", "boot-level", "no-window", "no-color",
                 "legacy-repl"));
 
-        // Fourteen of the forty-two a real 3.22.1 lists: the ones the JVM
-        // carries. Camellia, ARIA and counter-with-CBC-MAC are the rest and no
-        // provider has them, so they are left out rather than named. A name
-        // here is a promise a script reads before it chooses, and a catalogue
-        // that lies about what asking for one does is worse than a short one.
         catalog.set("ciphers", BlockValue.block(CryptPort.catalogue()));
 
-        // How RESIZE may be asked to sample, which the C declares in
-        // u-image-resize.c and base-collected.reb appends here. Which one runs
-        // changes how a shrunken photograph looks and does not change what
-        // RESIZE is, so naming all fifteen is honest even where the sampling
-        // is the same -- what is not honest is accepting a name that means
-        // nothing, and a catalogue is how a caller checks before asking.
         catalog.set("filters", BlockValue.block(
                 THE_FILTERS.stream().<Value>map(WordValue::of).toList()));
 
         catalog.set("elliptic-curves", BlockValue.block(
-                EllipticCurveKey.curveNames().stream()
+                EllipticCurveKey.curveNamesInTheCataloguesOrder().stream()
                         .<Value>map(WordValue::of).toList()));
 
         catalog.set("handles", BlockValue.block(List.of(
@@ -742,9 +567,6 @@ public final class Natives {
                 "language", "language*", "locale", "locale*"}) {
             locale.set(field, NoneValue.none());
         }
-        // The words a date needs when it is written for a person to read.
-        // sysobj.reb holds both lists and the week begins at Monday there,
-        // which is what DATE's WEEKDAY counts from.
         locale.set("months", BlockValue.block(java.util.stream.Stream.of(
                         "January", "February", "March", "April", "May", "June",
                         "July", "August", "September", "October", "November",
@@ -762,9 +584,6 @@ public final class Natives {
                     "codec", CODEC_HANDLE_IDENTITY + at, WordValue.of(named)));
         }
         system.set("codecs", new ObjectValue(codecs));
-        // What the console is doing: the line being edited and the ones
-        // already entered. Both stay as they are until a console adapter
-        // fills them, which is the state a program with no console is in.
         Context console = Context.root();
         console.set("history", BlockValue.block(List.of()));
         console.set("current", NoneValue.none());
@@ -776,10 +595,6 @@ public final class Natives {
         Context contexts = Context.root();
         contexts.set("lib", new ObjectValue(systemContext));
         contexts.set("sys", new ObjectValue(internals));
-        // Declared and none, which is what a real 3.22.1 answers. Worth
-        // having as a field rather than absent: code walking the contexts
-        // finds three names, one of them holding nothing, instead of a path
-        // that fails.
         contexts.set("root", NoneValue.none());
         system.set("contexts", new ObjectValue(contexts));
         this.systemInternals = internals;
@@ -841,13 +656,6 @@ public final class Natives {
                         behaviour.call(arguments, evaluator, context));
     }
 
-    /**
-     * A native that takes refinements, told which of them arrived.
-     *
-     * <p>The refinements are declared once here rather than a registration
-     * per combination. FIND takes nine, and one entry per combination would
-     * be five hundred entries for one native.
-     */
     private void define(String name, List<Parameter> parameters,
             Set<String> refinements, RefinedCallable behaviour) {
         definitions.put(name, new NativeValue(name, parameters, refinements, Set.of()));
@@ -862,13 +670,6 @@ public final class Natives {
         operatorTwins.put(spelling, prefixTwin);
     }
 
-    /**
-     * The datatypes AND, OR and XOR accept, taken from actions.reb.
-     *
-     * <p>Every one of them is a run of bits or a truth. A decimal is not
-     * on the list and neither is a string, so both are refused before the
-     * operation is reached.
-     */
     private static List<Parameter> takesCombinable(String... names) {
         Set<Datatype> combinable = Set.of(Datatype.LOGIC, Datatype.INTEGER, Datatype.CHAR,
                 Datatype.TUPLE, Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET,
@@ -888,11 +689,6 @@ public final class Natives {
         return parameters;
     }
 
-    /**
-     * What {@code [any-type!]} declares: every datatype, unset included. A
-     * bare parameter refuses unset, so the natives whose C spec says
-     * any-type! carry this set instead.
-     */
     private static final Set<Datatype> ANYTHING = Typeset.ANY_TYPE.members();
 
     private static List<Parameter> takesAnything(String... names) {
@@ -903,7 +699,6 @@ public final class Natives {
         return parameters;
     }
 
-    /** The same parameters, with bitset! allowed for the first one. */
     private static List<Parameter> withBitsets(List<Parameter> parameters) {
         List<Parameter> widened = new ArrayList<>(parameters);
         Parameter first = widened.getFirst();
@@ -913,7 +708,6 @@ public final class Natives {
         return widened;
     }
 
-    /** {@code number!} and nothing else: integer!, decimal! and percent!. */
     private static List<Parameter> takesOnlyNumbers(String... names) {
         Set<Datatype> numbers = Set.of(
                 Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT);
@@ -924,7 +718,6 @@ public final class Natives {
         return parameters;
     }
 
-    /** {@code [integer! decimal!]}, which is {@code number!} without percent. */
     private static List<Parameter> takesWholeNumbersAndDecimals(String... names) {
         Set<Datatype> numbers = Set.of(Datatype.INTEGER, Datatype.DECIMAL);
         List<Parameter> parameters = new ArrayList<>();
@@ -989,7 +782,7 @@ public final class Natives {
                     Value last = NoneValue.none();
                     try {
                         while (true) {
-                            last = oneRound(evaluator, body, context);
+                            last = oneRoundCatchingContinue(evaluator,body, context);
                         }
                     } catch (LoopSignal stopped) {
                         return stopped.answer();
@@ -1014,7 +807,8 @@ public final class Natives {
                     tracing.writeTo(evaluator.output());
                     if (refinements.contains("back")) {
                         if (mode instanceof IntegerValue lines) {
-                            tracing.showTheLast((int) lines.magnitude());
+                            tracing.showTheLastAndStopTracing(
+                                    (int) lines.magnitude());
                             return UnsetValue.unset();
                         }
                         tracing.keepRatherThanPrint(mode.isTruthy());
@@ -1136,8 +930,9 @@ public final class Natives {
                                                 block.remaining().size()));
                         case BlockValue block -> shuffled(block);
                         case StringValue text when refinements.contains("only") ->
-                                oneCharacterPickedAtRandom(text);
-                        case StringValue text -> shuffledText(text);
+                                oneCharacterPickedAtRandomByByteNotByCharacter(
+                                        text);
+                        case StringValue text -> shuffledTextInPlace(text);
                         case BinaryValue bytes when refinements.contains("only") ->
                                 oneOctetPickedAtRandom(bytes);
                         case BinaryValue bytes -> shuffledBytes(bytes);
@@ -1286,7 +1081,8 @@ public final class Natives {
                         Parameter.required("dividend", DIVISIBLE),
                         Parameter.required("divisor", DIVISIBLE)),
                 (arguments, evaluator, context) -> remainderOf(
-                        arguments.get(0), arguments.get(1), Division.TRUNCATED));
+                        arguments.get(0), arguments.get(1),
+                        Division.SIGN_FOLLOWS_THE_DIVIDEND));
 
         define("modulo", List.of(
                         Parameter.required("dividend", DIVISIBLE),
@@ -1294,7 +1090,9 @@ public final class Natives {
                 Set.of("floor"),
                 (arguments, evaluator, context, refinements) -> remainderOf(
                         arguments.get(0), arguments.get(1),
-                        refinements.contains("floor") ? Division.FLOORED : Division.EUCLIDEAN));
+                        refinements.contains("floor")
+                                ? Division.SIGN_FOLLOWS_THE_DIVISOR
+                                : Division.NEVER_NEGATIVE));
 
         define("shift-left", List.of(
                         Parameter.required("value", Set.of(Datatype.INTEGER)),
@@ -1311,13 +1109,6 @@ public final class Natives {
 
     private enum Bitwise { AND, OR, XOR }
 
-    /**
-     * One of the short trigonometric names: radians in, decimals only.
-     *
-     * <p>The long-named twin takes degrees and accepts a whole number.
-     * Neither is defined in terms of the other, because they are not the
-     * same function.
-     */
     private void defineRadianFunction(String name, java.util.function.DoubleUnaryOperator work) {
         define(name, List.of(Parameter.required("value", Set.of(Datatype.DECIMAL))),
                 (arguments, evaluator, context) -> DecimalValue.of(
@@ -1355,23 +1146,14 @@ public final class Natives {
         return true;
     }
 
-    /** What ABS measures: everything with a magnitude and a sign. */
     private static final Set<Datatype> MEASURABLE = Set.of(
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
             Datatype.MONEY, Datatype.TIME, Datatype.PAIR);
 
-    /** What MOD divides: numbers, and the three things measured like them. */
     private static final Set<Datatype> DIVISIBLE = Set.of(
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
             Datatype.MONEY, Datatype.CHAR, Datatype.TIME);
 
-    /**
-     * A value's magnitude as a number, for the types MOD measures.
-     *
-     * <p>A character counts as its code point and a time as its
-     * nanoseconds, which is what makes `#"a" %% 3` and `10:0 %% 3:0`
-     * mean anything at all.
-     */
     private static double asMagnitude(Value value) {
         return switch (value) {
             case CharacterValue character -> character.codepoint();
@@ -1380,39 +1162,15 @@ public final class Natives {
         };
     }
 
-    /**
-     * The angle in radians, whichever way the caller wrote it.
-     *
-     * <p>{@code Trig_Value} converts by hand rather than calling the library,
-     * and the range reduction it does first has no effect on the answer for an
-     * ordinary angle. What matters is the constant: the C uses its own
-     * {@code pi1} rather than the platform's.
-     */
     private static double inRadians(Value angle, Set<String> refinements) {
         double given = Comparison.asDouble(angle);
         return refinements.contains("radians") ? given : Math.toRadians(given);
     }
 
-    /**
-     * A sine or cosine with the noise near zero taken out.
-     *
-     * <p>{@code if (fabs(dval) < DBL_EPSILON) dval = 0.0;} in both natives.
-     * One step of the representation at 1.0, which is the smallest difference
-     * a double can tell from nothing, so anything below it is nothing.
-     */
     private static double withoutTheNoiseNearZero(double answer) {
         return Math.abs(answer) < Math.ulp(1.0) ? 0.0 : answer;
     }
 
-    /**
-     * A tangent, infinite at a right angle.
-     *
-     * <p>{@code if (Eq_Decimal(fabs(dval), pi1 / 2.0))} answers the infinity,
-     * and {@code Eq_Decimal} allows ten steps of the representation. So "at a
-     * right angle" is a question with an allowance rather than an exact test,
-     * which is why {@code tangent 89.99999999999987} is 1.#INF and not the
-     * very large finite number the hardware computes.
-     */
     private static double tangentOf(double radians) {
         if (nearlyTheSame(Math.abs(radians), Math.PI / 2.0)) {
             return radians < 0 ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
@@ -1420,41 +1178,21 @@ public final class Natives {
         return Math.tan(radians);
     }
 
-    /**
-     * Which of the three definitions of division a remainder follows.
-     *
-     * <p>Four names and three answers. REMAINDER, {@code %} and MOD are all
-     * {@link #TRUNCATED}; MODULO and {@code %%} are {@link #EUCLIDEAN};
-     * MODULO/FLOOR is {@link #FLOORED}. All four agree on every pair of
-     * positive numbers, so a wrong pairing passes every test written without a
-     * negative in it.
-     */
     private enum Division {
-        /** Sign follows the dividend, so {@code -7 % 3} is -1. */
-        TRUNCATED,
-        /** Never negative, so {@code -7 %% 3} is 2 and {@code -7 %% -3} is 2. */
-        EUCLIDEAN,
-        /** Sign follows the divisor, so {@code modulo/floor -7 -3} is -1. */
-        FLOORED
+        SIGN_FOLLOWS_THE_DIVIDEND,
+        NEVER_NEGATIVE,
+        SIGN_FOLLOWS_THE_DIVISOR
     }
 
-    /**
-     * A remainder under one of the three definitions, ported from
-     * {@code modulus} in {@code n-math.c}.
-     *
-     * <p>Two whole numbers stay whole all the way through, which matters at
-     * the ends of the range where a double could not tell neighbouring whole
-     * numbers apart. Everything else goes through a double, as the C does.
-     */
     private static Value remainderOf(Value dividend, Value divisor, Division definition) {
         if (dividend instanceof IntegerValue whole && divisor instanceof IntegerValue by) {
             long dividedBy = by.magnitude();
             requireNonZero(dividedBy);
             long rest = whole.magnitude() % dividedBy;
             return IntegerValue.of(switch (definition) {
-                case TRUNCATED -> rest;
-                case EUCLIDEAN -> rest < 0 ? rest + Math.abs(dividedBy) : rest;
-                case FLOORED -> rest != 0 && (rest < 0) != (dividedBy < 0)
+                case SIGN_FOLLOWS_THE_DIVIDEND -> rest;
+                case NEVER_NEGATIVE -> rest < 0 ? rest + Math.abs(dividedBy) : rest;
+                case SIGN_FOLLOWS_THE_DIVISOR -> rest != 0 && (rest < 0) != (dividedBy < 0)
                         ? rest + dividedBy
                         : rest;
             });
@@ -1462,35 +1200,17 @@ public final class Natives {
         double first = asMagnitude(dividend);
         double second = asMagnitude(divisor);
         requireNonZero(second);
-        if (definition == Division.TRUNCATED) {
+        if (definition == Division.SIGN_FOLLOWS_THE_DIVIDEND) {
             return likeTheDividend(dividend, first % second);
         }
-        double by = definition == Division.EUCLIDEAN ? Math.abs(second) : second;
+        double by = definition == Division.NEVER_NEGATIVE
+                ? Math.abs(second) : second;
         double rest = ((first % by) + by) % by;
         return likeTheDividend(dividend, negligibleAgainstItsOperands(rest, first, by)
                 ? 0.0
                 : rest);
     }
 
-    /**
-     * Whether a remainder is too small to make any difference to the numbers
-     * it came from, in which case both non-truncated definitions call it zero.
-     *
-     * <p>{@code if (almost_equal(a, a - m, 10) || almost_equal(b, b + m, 10))
-     * m = 0.0;} -- the question is not whether the answer is small but
-     * whether it is visible at the scale of its own operands. So
-     * {@code modulo 562949953421311.25 1} is 0.0 even though the answer 0.25
-     * is not small in absolute terms: it makes no difference to a dividend
-     * that large.
-     *
-     * <p>MOD does not ask this, which is how the two are told apart:
-     * {@code mod 562949953421311.25 1} is 0.25.
-     *
-     * <p>Ten steps rather than the twenty-one EQUAL? allows. The C passes the
-     * number by hand here rather than going through {@code Eq_Decimal}'s
-     * default, so the two allowances are separate numbers that happen to have
-     * been the same once.
-     */
     private static boolean negligibleAgainstItsOperands(
             double rest, double dividend, double divisor) {
 
@@ -1516,14 +1236,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A value's magnitude, keeping its datatype.
-     *
-     * <p>Negative zero comes back as itself: the sign of a zero is not
-     * part of its magnitude, and R3 leaves it alone. And the most
-     * negative whole number has no positive counterpart, so it overflows
-     * rather than wrapping to itself.
-     */
     private static Value magnitudeOf(Value value) {
         return switch (value) {
             case IntegerValue whole -> {
@@ -1544,20 +1256,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * SHIFT without /LOGICAL: keeps the sign and loses no bit off the top.
-     *
-     * <p>Four cases, and the C spells each of them out. Shifting left, a count
-     * of sixty-four or more raises unless the value is already zero; below
-     * sixty-four, it raises when the magnitude would not fit. Shifting right, a
-     * count of sixty-four or more repeats the sign bit -- so -1 for a negative
-     * value and 0 for anything else, not zero for both; below sixty-four it is
-     * an ordinary signed shift.
-     *
-     * <p>The one exception in the overflow check is the most negative whole
-     * number, which is reachable: it is the only value with no positive
-     * counterpart, so it is the only value the exception can be about.
-     */
     private static long shiftedKeepingTheSign(long value, long places) {
         if (places < 0) {
             long rightwards = -places;
@@ -1582,13 +1280,6 @@ public final class Natives {
         return value << places;
     }
 
-    /**
-     * SHIFT/LOGICAL: moves the bits and refuses nothing.
-     *
-     * <p>Every case the plain form raises on, this answers, which is why the
-     * two refinements of one native need separate code. A count of sixty-four
-     * or more answers zero from either end, because the bits have all gone.
-     */
     private static long bitsShifted(long value, long places) {
         if (Math.abs(places) >= Long.SIZE) {
             return 0;
@@ -1613,11 +1304,6 @@ public final class Natives {
         return parameters;
     }
 
-    /**
-     * The larger or smaller of two values, half by half when they are
-     * pairs. Two pairs are compared on each axis separately, so the answer
-     * may be a pair that neither argument was.
-     */
     private static Value extreme(Value left, Value right, boolean wantingLarger) {
         if (left instanceof PairValue leftPair && right instanceof PairValue rightPair) {
             return PairValue.of(
@@ -1671,16 +1357,6 @@ public final class Natives {
                 wholeNumberOf(left, "and"), wholeNumberOf(right, "and"), operation));
     }
 
-    /**
-     * Two binaries combined octet by octet, as long as the longer of them.
-     *
-     * <p>{@code Xandor_Binary} walks the longer and wraps its index into the
-     * shorter -- {@code if (i == mt) i = 0} -- so one octet against four is
-     * that octet four times rather than one octet and three zeros. Which side
-     * was written first makes no difference: the C picks the longer as the one
-     * it walks before it looks at anything else, so all three operations come
-     * out the same either way round.
-     */
     private static Value combinedOctets(
             BinaryValue left, BinaryValue right, Bitwise operation) {
 
@@ -1704,16 +1380,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * Arithmetic with a character on the left, as {@code REBTYPE(Char)} does it.
-     *
-     * <p>The right operand becomes a plain number first -- a character gives its
-     * codepoint, a whole number itself, a decimal its truncation, and anything
-     * else is refused -- and then the operation runs on codepoints. The answer
-     * is a character, so it has to be one: {@code if (IS_INVALID_CHAR(chr))
-     * Trap1(RE_INVALID_CHAR, ...)} refuses a result past the last codepoint or
-     * inside the surrogate range rather than wrapping it.
-     */
     private static Value characterArithmetic(
             CharacterValue letter, Value right, Operation operation) {
 
@@ -1755,13 +1421,6 @@ public final class Natives {
         return codepoint % other;
     }
 
-    /**
-     * A codepoint between one and the limit that a character can hold.
-     *
-     * <p>`do { chr = 1 + (Random_Int(secure) % chr); } while
-     * (IS_INVALID_CHAR(chr));` -- the loop is there because the surrogate range
-     * is inside the span being picked from and no character may hold one.
-     */
     private int aValidCodepointUpTo(int limit) {
         while (true) {
             int picked = 1 + randomness.below(limit);
@@ -1772,27 +1431,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Where a seed comes from, which is a different answer for every datatype.
-     *
-     * <p>Each {@code A_RANDOM} arm that accepts {@code /seed} decides for
-     * itself what sixty-four bits to hand {@code Set_Random}, and no two of
-     * them agree. A number seeds with itself. A decimal seeds with its IEEE
-     * bit pattern rather than its value, so {@code random/seed 1.5} and
-     * {@code random/seed 1} start different sequences. A string, a binary and
-     * a tuple seed with a twenty-four bit checksum of their bytes. A time
-     * seeds with its nanoseconds, and a date packs its year, its day of the
-     * year and its time into one number. A pair seeds with the raw bits of
-     * its two single-precision halves side by side, which is what the C's
-     * union makes {@code VAL_INT64} read.
-     *
-     * <p>Logic is the odd one: true seeds from the clock and false seeds with
-     * one, so {@code random/seed true} is the way a script asks for a sequence
-     * nobody can predict.
-     *
-     * <p>A block and a vector have no arm for it at all and answer
-     * {@code bad-refines}, which is the C declining rather than failing.
-     */
     private Value seededBy(Value chosen) {
         randomness.seed(switch (chosen) {
             case IntegerValue whole -> whole.magnitude();
@@ -1853,20 +1491,7 @@ public final class Natives {
                 "random/only does not pick one element out of a vector");
     }
 
-    /**
-     * One character out of a string, the way {@code /only} picks it.
-     *
-     * <p>{@code index += Random_Int(secure) % (tail - index)} followed by a
-     * step back to a character boundary, and both halves are byte offsets
-     * into the UTF-8 the string is stored as. That makes the pick uneven on
-     * purpose or by accident: every byte is equally likely to be landed on,
-     * so a character written in three bytes comes up three times as often as
-     * one written in a single byte. Measured on a real Rebol before this was
-     * written -- six thousand picks out of {@code "aéb"} gave the two
-     * one-byte letters about fifteen hundred each and the two-byte letter
-     * about three thousand.
-     */
-    private Value oneCharacterPickedAtRandom(StringValue text) {
+    private Value oneCharacterPickedAtRandomByByteNotByCharacter(StringValue text) {
         byte[] octets = text.text().getBytes(StandardCharsets.UTF_8);
         if (octets.length == 0) {
             return NoneValue.none();
@@ -1877,15 +1502,6 @@ public final class Natives {
                         .codePointAt(0));
     }
 
-    /**
-     * One octet out of a binary, which shares the string's arm and its quirk.
-     *
-     * <p>The step back to a character boundary is in the same {@code case}
-     * label, with nothing to say a binary is not text, so an octet between
-     * {@code 80} and {@code BF} is never the answer whenever an octet below
-     * it could be stepped back to. {@code random/only #{4180}} on a real
-     * Rebol answers 65 six thousand times out of six thousand.
-     */
     private Value oneOctetPickedAtRandom(BinaryValue bytes) {
         byte[] octets = bytes.octetsFromHere();
         if (octets.length == 0) {
@@ -1903,27 +1519,6 @@ public final class Natives {
         return at;
     }
 
-    /**
-     * A whole number between one and the limit, keeping its sign.
-     *
-     * <p>{@code Random_Range} in {@code f-random.c}, and the two lines that
-     * are easy to leave out are the two that Rebol's own test measures.
-     *
-     * <p>The first is the rejection loop. Taking the remainder of a number
-     * drawn from nought up to two to the sixty-second gives a distribution
-     * that leans towards the low end whenever the limit does not divide that
-     * range evenly, and the lean is large: over a limit two thirds of the
-     * range, the bottom half of the answers come up twice as often as the top
-     * half. So the C throws away every draw above the last exact multiple of
-     * the limit and draws again. Rebol's test asks for ten thousand numbers
-     * under such a limit and asserts that half of them land in the top half,
-     * which is a statement that the rejection is there.
-     *
-     * <p>The second is the refusal. A limit past two to the sixty-second is
-     * larger than the generator's whole range, so no rejection limit exists
-     * for it, and the C answers {@code overflow} rather than a number it
-     * cannot draw evenly.
-     */
     private long randomLongUpTo(long limit) {
         if (limit == 0) {
             return 0;
@@ -1944,41 +1539,12 @@ public final class Natives {
         return limit < 0 ? -picked : picked;
     }
 
-    /**
-     * A fraction between zero and one.
-     *
-     * <p>{@code Random_Dec} divides one of the same numbers by the modulus, so
-     * a seeded decimal follows the same sequence as everything else.
-     */
     private double randomFraction() {
         return (double) randomness.next() / (double) GENERATOR_RANGE;
     }
 
-    /** {@code #define MM ((REBI64)1<<62)}, the modulus the generator counts to. */
     private static final long GENERATOR_RANGE = 1L << 62;
 
-    /**
-     * A date with every part randomised, and only the year drawn against the
-     * date it was asked about.
-     *
-     * <p>{@code year = Random_Range(year, num); month = Random_Range(12, num);
-     * day = Random_Range(31, num);} -- so the month and the day are drawn over
-     * their whole ranges and the date being randomised has no say in either.
-     * Drawing them against its own month and day instead meant an August date
-     * could never come back in September, and a real Rebol answers February
-     * for one readily.
-     *
-     * <p>The C then falls into {@code Normalize_Date}, which carries a day
-     * past the end of its month into the next one, and the month and day it
-     * carries are counted from zero where the drawn numbers start at one. So
-     * the first of January plus that many months and that many days is the
-     * same walk, and it can only land on a date that exists.
-     *
-     * <p>Without the carry, a February drawn together with a thirtieth threw
-     * an {@code IllegalArgumentException} out of the value class and stopped
-     * the interpreter. Rebol's own suite asks for a hundred random dates in a
-     * row and this went unnoticed until the day of the month made it likely.
-     */
     private Value randomisedDate(DateValue when) {
         java.time.LocalDate drawn = java.time.LocalDate
                 .of((int) randomLongUpTo(when.year()), 1, 1)
@@ -1996,13 +1562,6 @@ public final class Natives {
     private static final int MONTHS_A_YEAR = 12;
     private static final int LONGEST_MONTH = 31;
 
-    /**
-     * A number as a codepoint, refusing one no character can hold.
-     *
-     * <p>The number itself is what the failure names -- {@code err/arg1 =
-     * 55349} -- rather than a sentence about it. A script catching this
-     * compares against the number it passed, which a sentence will never equal.
-     */
     private static int requireACodepoint(long wanted) {
         boolean surrogate = wanted >= 0xD800 && wanted <= 0xDFFF;
         if (wanted < 0 || wanted > MAXIMUM_CODEPOINT || surrogate) {
@@ -2011,16 +1570,6 @@ public final class Natives {
         return (int) wanted;
     }
 
-    /**
-     * Arithmetic where one side is a vector, and the refusal where it is on
-     * the wrong side.
-     *
-     * <p>A number on the left only reaches the vector for ADD and MULTIPLY.
-     * The other operations never get there, because a number's own arm is what
-     * dispatches and it forwards only the two whose answer does not depend on
-     * which side is which. {@code 10 - v} is therefore not "v subtracted from
-     * ten" but no operation at all.
-     */
     private static Value vectorArithmetic(Value left, Value right, Operation operation) {
         VectorMath.Operation asked = switch (operation) {
             case ADD -> VectorMath.Operation.ADD;
@@ -2049,11 +1598,6 @@ public final class Natives {
                 WordValue.of(right.datatype().literalSpelling()));
     }
 
-    /**
-     * Integer arithmetic raises on overflow rather than wrapping. The JVM
-     * wraps silently, which is the worst available behaviour: a wrong answer
-     * that looks like a right one.
-     */
     private static Value arithmetic(List<Value> arguments, Operation operation) {
         Value left = arguments.get(0);
         Value right = arguments.get(1);
@@ -2153,13 +1697,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * Each half is worked out on its own. Where one side is a single
-     * number rather than a pair, that number applies to both halves, so
-     * {@code 1x2 + 1} is {@code 2x3}. This is the only place in the
-     * language where an operand is spread across a value rather than
-     * widened to meet it.
-     */
     private static Value pairArithmetic(Value left, Value right, Operation operation) {
         requireAPairOrAPlainNumber(left);
         requireAPairOrAPlainNumber(right);
@@ -2173,15 +1710,6 @@ public final class Natives {
                 halfArithmetic(secondHalfOf(left), secondHalfOf(right), operation));
     }
 
-    /**
-     * Arithmetic on a pair takes a pair or a plain number and nothing else.
-     *
-     * <p>{@code REBTYPE(Pair)} names three datatypes for the other side --
-     * pair, integer, and decimal or percent -- and calls
-     * {@code Trap_Math_Args} for anything else. A money and a time are the
-     * two that look like they ought to work: both are numbers elsewhere in
-     * the language, and neither is a number here.
-     */
     private static void requireAPairOrAPlainNumber(Value side) {
         if (side instanceof PairValue
                 || side instanceof IntegerValue
@@ -2204,26 +1732,6 @@ public final class Natives {
         return value instanceof PairValue pair ? pair.y() : Comparison.asDouble(value);
     }
 
-    /**
-     * Arithmetic on a tuple is arithmetic on each octet, and every octet
-     * clamps to a byte.
-     *
-     * <p>Clamping rather than wrapping is the part worth knowing:
-     * {@code 255.255.255 + 1} is unchanged, not {@code 0.0.0}. An
-     * implementation that wraps is right for every value except the ones
-     * at the edge, which are exactly the ones a colour or a version
-     * number reaches. Nothing here ever raises for range.
-     *
-     * <p>A single number applies to every octet, as it does for a pair.
-     * Where the other side is a tuple, the longer of the two lengths wins
-     * and the shorter one contributes zeros.
-     *
-     * <p>The loop is {@code REBTYPE(Tuple)} in {@code t-tuple.c}. Two
-     * guards in it are not obvious. A zero octet is left alone by a
-     * multiplication whatever the factor, and a factor above 255
-     * saturates before being multiplied out rather than after, so no
-     * intermediate ever leaves the range of a machine integer.
-     */
     private static Value tupleArithmetic(Value left, Value right, Operation operation) {
         return octetByOctet(left, right, (octet, against, fractional) ->
                 switch (operation) {
@@ -2255,32 +1763,17 @@ public final class Natives {
                 });
     }
 
-    /** AND, OR and XOR over a tuple, which run on the whole integer. */
     private static Value tupleCombined(Value left, Value right, Bitwise operation) {
         return octetByOctet(left, right, (octet, against, fractional) ->
                 combinedBits(octet, (long) against, operation));
     }
 
-    /** One octet against one number, before the clamp every branch shares. */
     @FunctionalInterface
     private interface OctetWork {
         long against(long octet, double amount, boolean fractional);
     }
 
-    /**
-     * The loop every tuple operation shares: octet by octet, then clamped.
-     *
-     * <p>Where the right side is a tuple each octet meets its opposite
-     * number and the longer of the two lengths wins. Where it is a single
-     * number, that number meets every octet.
-     */
     private static Value octetByOctet(Value left, Value right, OctetWork work) {
-        // A tuple takes a tuple or a plain number and nothing else, and what it
-        // refuses it refuses by naming the two that do not go together --
-        // `Trap_Math_Args` is the same call every datatype makes for the same
-        // reason. A time on either side is the one that looks as though it
-        // ought to work: a duration is a number everywhere else in the
-        // language and is not one here.
         refuseATimeBesideATuple(left, right);
         if (!(left instanceof TupleValue ours)) {
             return raiseCannotUse(left, "tuple arithmetic");
@@ -2313,24 +1806,10 @@ public final class Natives {
         }
     }
 
-    /** Half away from zero, which is what {@code Round_Dec} does by default. */
     private static double roundedHalfAwayFromZero(double amount) {
         return amount < 0 ? -Math.round(-amount) : Math.round(amount);
     }
 
-    /**
-     * A value a fraction of the way from one to another.
-     *
-     * <p>The fraction is clamped to nought and one, so LERP never walks
-     * past either end however far the fraction reaches. Both ends must be
-     * the same kind of thing: a number with a number, a tuple with a
-     * tuple, a pair with a pair, and nothing else. A tuple against a pair
-     * is a type mismatch rather than something to widen.
-     *
-     * <p>Not built out of the ordinary arithmetic, which would round each
-     * octet of a tuple and clamp it. {@code REBNATIVE(lerp)} casts each
-     * octet to a byte instead, so a walk that lands on 83.5 gives 83.
-     */
     private static Value interpolated(Value from, Value to, Value fraction) {
         double walked = Math.max(0, Math.min(1, Comparison.asDouble(fraction)));
         if (Comparison.isNumeric(from) && !(from instanceof TupleValue) && !(from instanceof PairValue)) {
@@ -2364,14 +1843,6 @@ public final class Natives {
         return from + (to - from) * fraction;
     }
 
-    /**
-     * The first few octets turned round, leaving the rest where they were.
-     *
-     * <p>A plain REVERSE turns round every kept octet, so a tuple made
-     * from the string "1" keeps 1.0.0 and reverses to 0.0.1. The zeros
-     * behind the kept ones take no part, which is what stops a short
-     * tuple from growing when it is reversed.
-     */
     private static Value reversedOctets(TupleValue tuple, int howMany) {
         if (howMany < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Integer.toString(howMany));
@@ -2386,7 +1857,6 @@ public final class Natives {
         return TupleValue.of(octets);
     }
 
-    /** Every kept octet flipped, which is what COMPLEMENT does to a tuple. */
     private static Value newImageEachChannelFlipped(ImageValue image) {
         ImageStorage flipped = ImageStorage.of(
                 image.storage().wide(), image.storage().high());
@@ -2415,7 +1885,6 @@ public final class Natives {
         return TupleValue.of(octets);
     }
 
-    /** Each octet replaced by one no greater than itself. */
     private Value randomisedOctets(TupleValue tuple) {
         int[] octets = tuple.segments();
         for (int at = 0; at < octets.length; at++) {
@@ -2426,17 +1895,6 @@ public final class Natives {
         return TupleValue.of(octets);
     }
 
-    /**
-     * Each half randomised on its own, between one and that half.
-     *
-     * <p>{@code A_RANDOM} calls {@code Random_Range((REBINT)x1, ...)} on each
-     * half, so the half is read as a machine integer before anything else
-     * happens. An infinite half becomes a number that way rather than
-     * refusing, which is the only reason
-     * {@code random as-pair 1e300 -1e300} can be a pair at all -- and it is
-     * why Rebol's own assertion about it asks only that the answer is
-     * finite.
-     */
     private Value randomisedHalves(PairValue point) {
         return PairValue.of(randomisedHalf(point.x()), randomisedHalf(point.y()));
     }
@@ -2449,18 +1907,6 @@ public final class Natives {
         return randomLongUpTo(bound);
     }
 
-    /**
-     * Arithmetic on a time, in nanoseconds throughout.
-     *
-     * <p>A bare number is seconds -- not minutes and not hours, which is
-     * the guess to get wrong. Scaling by a number is the exception:
-     * {@code 1:00 * 2} doubles the duration rather than adding two
-     * seconds, because there is nothing else multiplying by a count
-     * could mean.
-     *
-     * <p>A time may be negative. It is a duration rather than a clock
-     * reading, so there is no floor at midnight.
-     */
     private static Value timeArithmetic(Value left, Value right, Operation operation) {
         if (!(left instanceof TimeValue) && right instanceof TimeValue) {
             return aNumberAgainstATime(left, (TimeValue) right, operation);
@@ -2486,20 +1932,6 @@ public final class Natives {
         return addedInWholeNanoseconds(left, right, operation);
     }
 
-    /**
-     * Adding and subtracting durations, counted in whole nanoseconds.
-     *
-     * <p>A time is a sixty-four bit count of nanoseconds and the C adds two of
-     * them as integers. Going through a double loses the low digits of any
-     * duration past about a hundred days, because a double holds fifteen or so
-     * significant figures and a duration that long needs nineteen -- so
-     * {@code -1.0 + -596523:14:07.999999999} came back rounded to the second
-     * with the nine nines gone.
-     *
-     * <p>The other side is turned into nanoseconds before the sum rather than
-     * after, which is the C's own order: {@code (i64)(dec * SEC_SEC)} first,
-     * then an integer add. A number meeting a time is seconds.
-     */
     private static Value addedInWholeNanoseconds(
             Value left, Value right, Operation operation) {
 
@@ -2517,22 +1949,6 @@ public final class Natives {
         }));
     }
 
-    /**
-     * Refuses a duration longer than one can be, rather than bringing it down
-     * to the longest.
-     *
-     * <p>{@code Add_Max} traps for a time -- {@code if (type)
-     * Trap1(RE_TYPE_LIMIT, ...)} -- and only clamps where the caller passed no
-     * type to name. So adding a tenth of a second to the longest duration
-     * there is says so, where JEBOL quietly answered the longest duration
-     * again and a loop that added in a circle never noticed.
-     *
-     * <p>The limit here is not the one TO TIME! uses. That one is a count of
-     * whole seconds, this one is whole hours -- {@code MAX_HOUR * HR_SEC},
-     * which rounds down to two million five hundred and sixty-two thousand
-     * and forty-seven hours -- so a duration can be made that arithmetic will
-     * not then add to.
-     */
     private static long withinWhatADurationHolds(long nanoseconds) {
         if (nanoseconds < -LONGEST_DURATION || nanoseconds > LONGEST_DURATION) {
             throw Raised.of(EvaluationFailure.TYPE_LIMIT,
@@ -2541,7 +1957,6 @@ public final class Natives {
         return nanoseconds;
     }
 
-    /** {@code MAX_TIME}: whole hours, so a little short of the whole range. */
     private static final long LONGEST_DURATION =
             (9_223_372_036L / 3600L) * 3600L * 1_000_000_000L;
 
@@ -2555,28 +1970,6 @@ public final class Natives {
         return Math.round(Comparison.asDouble(value) * NANOSECONDS_A_SECOND);
     }
 
-    /**
-     * A count of seconds as a duration, which TO TIME! and MAKE TIME! both
-     * want.
-     *
-     * <p>A whole number multiplies exactly. Nine thousand million seconds is
-     * nine thousand million thousand million nanoseconds, which is a
-     * nineteen-digit number and fits a sixty-four bit integer with room to
-     * spare -- but not a double, which runs out of significant figures five
-     * digits earlier and had been answering two and a half thousand hours plus
-     * half a microsecond nobody asked for.
-     *
-     * <p>A fractional number is rounded rather than truncated, which is what
-     * the block form of MAKE TIME! already did: a tenth of a second and a bit
-     * more is the nanosecond above, not the one below.
-     *
-     * <p>A count of seconds past what a duration can hold is refused rather
-     * than brought down to the largest one. Clamping answered the biggest time
-     * there is for every number above it, so a calculation that had gone wrong
-     * by a factor of a thousand came back looking like an answer -- and for a
-     * negative one it came back as {@code --2562047:-47:-16}, which is not a
-     * time at all.
-     */
     private static Value aDurationOfSeconds(Value value) {
         double seconds = Comparison.asDouble(value);
         if (seconds < -MOST_SECONDS_A_DURATION_HOLDS
@@ -2586,23 +1979,8 @@ public final class Natives {
         return TimeValue.ofNanoseconds(wholeNanosecondsOf(value));
     }
 
-    /**
-     * {@code MAX_SECONDS}, which is two to the sixty-third over a thousand
-     * million: as many whole seconds as a count of nanoseconds can hold.
-     */
     private static final double MOST_SECONDS_A_DURATION_HOLDS = 9_223_372_036.0;
 
-    /**
-     * A number on the left and a duration on the right, which is a narrower
-     * set of sums than the other way round.
-     *
-     * <p>The C dispatches on the left, so this is the integer and decimal
-     * handlers rather than the time one, and they agree on less than they
-     * look as though they would. Adding works either way and so does
-     * multiplying. Subtracting works from a whole number and not from a
-     * fraction. Dividing works from neither -- there is no reading of "two
-     * divided by ten hours" that answers a duration.
-     */
     private static Value aNumberAgainstATime(
             Value left, TimeValue right, Operation operation) {
 
@@ -2620,15 +1998,6 @@ public final class Natives {
         return timeArithmetic(right, left, operation);
     }
 
-    /**
-     * A time against another time, where dividing changes the datatype.
-     *
-     * <p>Adding and subtracting two durations gives a duration, and so does
-     * the remainder. Dividing one by the other does not: it answers how many
-     * times the second goes into the first, which is a plain number and is
-     * what the C sets explicitly -- {@code VAL_SET(DS_RETURN, REB_DECIMAL)}.
-     * Multiplying two durations means nothing and is refused.
-     */
     private static Value aTimeAgainstATime(
             Value left, TimeValue right, Operation operation) {
 
@@ -2643,17 +2012,6 @@ public final class Natives {
         return addedInWholeNanoseconds(left, right, operation);
     }
 
-    /**
-     * A time against a money, which answers money and only for two of the
-     * five operations.
-     *
-     * <p>An hourly rate, which is what the pair is for. The time counts as
-     * hours -- {@code secs * NANO / 3600.0} -- so an hour and a half at five
-     * pounds an hour is seven pounds fifty, and a hundred pounds over four
-     * hours is twenty-five an hour. Adding a duration to an amount of money
-     * means nothing, and the C refuses it rather than widening one to the
-     * other.
-     */
     private static Value aTimeAgainstAMoney(
             Value left, MoneyValue rate, Operation operation) {
 
@@ -2666,14 +2024,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A time against a percentage, which scales it and nothing else.
-     *
-     * <p>Only multiplication, and the C says why in a comment of its own:
-     * "support for actions like A_ADD does not make sense, so only MULTIPLY is
-     * supported". Half of ten hours is five hours; ten hours plus fifty per
-     * cent of nothing in particular is not a question with an answer.
-     */
     private static Value aTimeAgainstAProportion(
             Value left, DecimalValue portion, Operation operation) {
 
@@ -2693,7 +2043,6 @@ public final class Natives {
     private static final long NANOSECONDS_A_SECOND = 1_000_000_000L;
     private static final long NANOSECONDS_A_DAY = 86_400L * NANOSECONDS_A_SECOND;
 
-    /** A number counts as seconds when it meets a time. */
     private static double nanosecondsOf(Value value) {
         return value instanceof TimeValue time
                 ? time.nanoseconds()
@@ -2706,28 +2055,6 @@ public final class Natives {
                 : value;
     }
 
-    /**
-     * Arithmetic on a date, where three kinds of right-hand side mean three
-     * different units.
-     *
-     * <p>A whole number is days and moves the calendar alone, so the clock and
-     * the zone come through untouched. A time is a duration and moves the
-     * clock, carrying into the day when it runs past midnight. A decimal is a
-     * fraction of a day and moves the clock as well, which is why
-     * {@code 20-Sep-2021/12:00 + 1.9} lands two days later at 9:36 rather than
-     * one day later at noon.
-     *
-     * <p>The C reaches each of those through a separate {@code type ==} arm and
-     * ends every one of them at {@code Normalize_Date(day, month, year, tz)},
-     * with the {@code tz} it read off the original. Losing the time and the
-     * zone here turned {@code + 1} into a bare day, and reading a time as a
-     * count of days put {@code 20-Sep-2021 + 1:00} five years out.
-     *
-     * <p>Subtracting two dates is the odd one out and answers a whole number,
-     * because the difference of two moments is a span. {@code Diff_Date} counts
-     * days and never looks at the clock, so two dates two hours apart differ by
-     * nothing at all.
-     */
     private static Value dateArithmetic(Value left, Value right, Operation operation) {
         if (left instanceof DateValue from && right instanceof DateValue to) {
             if (operation != Operation.SUBTRACT) {
@@ -2743,20 +2070,12 @@ public final class Natives {
                 : dateMovedByClock(moment, sign * clockShiftOf(span));
     }
 
-    /**
-     * How far a span moves a date's clock, in nanoseconds.
-     *
-     * <p>A time is itself. Anything else is a fraction of a day, which is the
-     * one place a bare number beside a date is not a count of days:
-     * {@code + 0.5} is twelve hours on.
-     */
     private static long clockShiftOf(Value span) {
         return span instanceof TimeValue duration
                 ? duration.nanoseconds()
                 : (long) (Comparison.asDouble(span) * NANOSECONDS_A_DAY);
     }
 
-    /** The same moment on a different day, clock and zone carried across. */
     private static DateValue dateMovedByDays(DateValue moment, long days) {
         java.time.LocalDate shifted =
                 java.time.LocalDate.ofEpochDay(dayNumberOf(moment) + days);
@@ -2764,14 +2083,6 @@ public final class Natives {
                 shifted.getDayOfMonth(), moment.timeOfDay(), moment.zoneMinutes());
     }
 
-    /**
-     * A date moved along its own clock, carrying into the day either way.
-     *
-     * <p>A date with no time counts as its midnight and comes back carrying
-     * one, which is {@code if (secs == NO_TIME) secs = 0} in the C: adding an
-     * hour to a bare day gives {@code 20-Sep-2021/1:00} rather than the day
-     * back unchanged.
-     */
     private static DateValue dateMovedByClock(DateValue moment, long nanoseconds) {
         long shifted = moment.timeOfDay().map(TimeValue::nanoseconds).orElse(0L)
                 + nanoseconds;
@@ -2783,14 +2094,6 @@ public final class Natives {
                 moment.zoneMinutes());
     }
 
-    /**
-     * DIFFERENCE between two dates, which is a span of time rather than a set.
-     *
-     * <p>The one pairing in the set operations that is not about membership at
-     * all. It reads the other way round from subtraction -- {@code difference
-     * 1-Jan 2-Jan} is minus a day where {@code 2-Jan - 1-Jan} is one -- and it
-     * answers a time! rather than a count of days.
-     */
     private static Value timeBetween(DateValue from, DateValue to) {
         long days = dayNumberOf(from) - dayNumberOf(to);
         return TimeValue.ofNanoseconds(days * 24L * 60L * 60L * 1_000_000_000L);
@@ -2800,33 +2103,11 @@ public final class Natives {
         return java.time.LocalDate.of(date.year(), date.month(), date.day()).toEpochDay();
     }
 
-    /**
-     * Arithmetic on a money, with whatever the other side turns out to be.
-     *
-     * <p>{@code REBTYPE(Money)} widens the right side and then does the sum
-     * in {@code deci}, so the answer is always a money -- there is no branch
-     * out of the switch that changes the datatype. {@code $4 / $4} is $1 and
-     * not the plain 1 the division suggests.
-     */
     private static Value moneyArithmetic(MoneyValue amount, Value other, Operation operation) {
         return withinTheDeciRange((MoneyValue) moneyArithmetic(
                 amount.amount(), widenedToMeetMoney(other, operation), operation));
     }
 
-    /**
-     * The other side of a money sum, as a decimal amount.
-     *
-     * <p>Four datatypes widen and one is a special case. An integer, a
-     * decimal, a percent and a money all become the amount they name. A time
-     * becomes its count of hours, and only for a multiplication: the C's test
-     * is {@code IS_TIME(arg) && action == A_MULTIPLY}, so the same argument
-     * is taken by one operation and refused by the other four.
-     *
-     * <p>Hours rather than seconds. {@code VAL_TIME(arg) * NANO / 3600.0}
-     * turns nanoseconds into seconds and then into hours, so 1:30:0 is 1.5
-     * and {@code $5 * 1:30:0} is $7.5. Reading it as seconds gives $27000 --
-     * a wage calculation wrong by a factor of 3600, and wrong quietly.
-     */
     private static BigDecimal widenedToMeetMoney(Value other, Operation operation) {
         if (other instanceof TimeValue span) {
             if (operation != Operation.MULTIPLY) {
@@ -2898,11 +2179,6 @@ public final class Natives {
         asksAbout("same?", Comparison.Strictness.SAME, true);
     }
 
-    /**
-     * One equality native: the strictness it asks about, and whether it
-     * reports the answer or its opposite. Equality takes any value, unset
-     * included, where an ordering refuses unset at the argument check.
-     */
     private void asksAbout(String name, Comparison.Strictness strictness, boolean asAsked) {
         define(name, takesAnything("value1", "value2"),
                 (arguments, evaluator, context) -> LogicValue.of(asAsked
@@ -3206,11 +2482,6 @@ public final class Natives {
                 });
     }
 
-    /**
-     * Natives that evaluate a block do so in the context that block already
-     * carries, because binding happened when the block was made rather than
-     * when it is run.
-     */
 
     private void defineNonLocalExit() {
         define("return", takesAnything("value"),
@@ -3335,21 +2606,6 @@ public final class Natives {
                 context));
     }
 
-    /**
-     * A function whose body has been bound to the words its spec declares.
-     *
-     * <p>Once, here, rather than at every call. The binding names the function
-     * and a call lends it a frame, so the same bound word reads that call's
-     * value and the innermost call's inside a recursion -- and a word put into
-     * the body afterwards was never bound and reads the global of its name.
-     *
-     * <p>In the body itself rather than in a copy, which is what makes a body
-     * shared between two functions belong to whichever was made last.
-     *
-     * <p>A closure is left alone. Its frame outlives the call that made it, so
-     * its body is still copied and bound per call: one context lent and handed
-     * back could not keep a closure's names alive after it returned.
-     */
     static FunctionValue withItsBodyBound(FunctionValue made) {
         made.declaredWords().markAsCallFrameOf(made);
         Set<String> declared = theNamesDeclaredBy(made);
@@ -3367,16 +2623,6 @@ public final class Natives {
         return declared;
     }
 
-    /**
-     * MAKE, and the half of TO that is the same code.
-     *
-     * <p>{@code case A_MAKE: case A_TO:} with nothing between the two labels
-     * is how {@code t-object.c} and {@code t-function.c} are written, so an
-     * object, an error, a module, a function and a closure are built the same
-     * way whichever word asked. Keeping one body means the two cannot answer
-     * differently, which they did: {@code to error! [type: 'Math id:
-     * 'overflow]} refused where MAKE of the same block built the error.
-     */
     private Value madeFrom(
             Value prototype, Value body, Evaluator evaluator, Context context) {
 
@@ -3737,15 +2983,6 @@ public final class Natives {
                 });
     }
 
-    /**
-     * Builds an object: a context of its own, hanging beneath where it was
-     * written so a word it does not define still means what it meant there.
-     *
-     * <p>Its fields are the set-words in its body, defined before the body
-     * runs so that a function in it can see a field declared after it. The
-     * body is rebound to the new context and then evaluated, which is why a
-     * later field can be computed from an earlier one.
-     */
     private static Value makeObject(
             Evaluator evaluator,
             Context enclosing,
@@ -3769,41 +3006,12 @@ public final class Natives {
         return built;
     }
 
-    /**
-     * The words an object's body is bound to, which are its own and no others.
-     *
-     * <p>{@code Do_Bind_Block(obj, arg)} is {@code Bind_Block(frame, block,
-     * BIND_DEEP)}, and without {@code BIND_ALL} that means "only bind words
-     * found in the frame". The frame is the object's own word list. Every
-     * other word in the spec keeps whatever binding it arrived with.
-     *
-     * <p>Binding the lot instead reached up the enclosing chain, and that
-     * chain runs through call frames. A codec whose body said
-     * {@code object compose/only [...]} had its OBJECT rebound to the
-     * {@code /with object} parameter of the FUNCTION that built it -- a slot
-     * holding none. So OBJECT was not called at all, the composed block fell
-     * through as the answer, and every WAV, PNG and JPEG the suite loads came
-     * back a block instead of an object.
-     */
     private static Set<String> itsOwnFieldNames(Context fields) {
         return fields.slots().stream()
                 .map(ContextSlot::canonical)
                 .collect(Collectors.toSet());
     }
 
-    /**
-     * One object holding the prototype's fields with another's written
-     * over them, and that other's extra fields added.
-     *
-     * <p>Every method is rehomed to the result, so it reads the merged
-     * values rather than the ones it was written against. A method left
-     * closed over its original would answer from the wrong object and,
-     * worse, write into it when called on this one.
-     *
-     * <p>The order matters only in that both objects' fields are in place
-     * before any method is asked anything: a method the second object
-     * brought may need a field the prototype has never heard of.
-     */
     private static Value mergedObject(
             ObjectValue prototype, ObjectValue other, Context enclosing) {
 
@@ -3826,18 +3034,6 @@ public final class Natives {
         return merged;
     }
 
-    /**
-     * A value cloned into a new object, with every word bound to the old
-     * object rebound to the new one -- and only those words.
-     *
-     * <p>{@code Copy_Deep_Values} with {@code TS_CLONE}, then
-     * {@code Rebind_Block} whose condition is {@code VAL_WORD_FRAME(data) ==
-     * src_frame}: series and maps are copied so the clone shares no storage,
-     * and a word bound anywhere else -- the library, an enclosing function --
-     * keeps the binding it was written with. Rebinding by name instead
-     * captured globals whose names an object happened to share, so a cloned
-     * method read the object's field where its author wrote the library's.
-     */
     private static Value clonedAndRebound(Value value, Set<Context> from, Context into) {
         return switch (value) {
             case WordValue word -> word.isBound() && from.contains(word.binding())
@@ -3867,7 +3063,6 @@ public final class Natives {
         };
     }
 
-    /** The set-words in a body, which are the fields the object will have. */
     private static List<String> declaredFieldsIn(BlockValue body) {
         return body.remaining().stream()
                 .filter(WordValue.class::isInstance)
@@ -3887,7 +3082,7 @@ public final class Natives {
                     Value last = NoneValue.none();
                     try {
                         for (long pass = 0; pass < passes; pass++) {
-                            last = oneRound(evaluator, body, evaluator.systemContext());
+                            last = oneRoundCatchingContinue(evaluator,body, evaluator.systemContext());
                         }
                     } catch (LoopSignal stopped) {
                         return stopped.answer();
@@ -3895,11 +3090,6 @@ public final class Natives {
                     return last;
                 });
 
-        // `value [number! series! pair! none!]`. A number is how many times, a
-        // series is what to walk, and the counter is set to the series at each
-        // position rather than to what is there -- so the body reads `x/1` for
-        // the value and `index? x` for where it is, exactly as FORSKIP does.
-        // None runs nothing at all.
         define("repeat", List.of(
                         Parameter.softQuoted("counter"),
                         Parameter.required("count", WHAT_REPEAT_COUNTS_BY),
@@ -3934,7 +3124,7 @@ public final class Natives {
                     try {
                         while (evaluator.evaluateOrRaise(
                                 condition, evaluator.systemContext()).isTruthy()) {
-                            last = oneRound(evaluator, body, evaluator.systemContext());
+                            last = oneRoundCatchingContinue(evaluator,body, evaluator.systemContext());
                         }
                     } catch (LoopSignal stopped) {
                         return stopped.answer();
@@ -3948,7 +3138,7 @@ public final class Natives {
                     Value last;
                     try {
                         do {
-                            last = oneRound(evaluator, body, evaluator.systemContext());
+                            last = oneRoundCatchingContinue(evaluator,body, evaluator.systemContext());
                         } while (!last.isTruthy());
                     } catch (LoopSignal stopped) {
                         return stopped.answer();
@@ -3996,7 +3186,7 @@ public final class Natives {
                     }
                     if (arguments.get(1) instanceof SeriesValue other
                             && !(other instanceof BlockValue)) {
-                        return removedEachFrom(
+                        return removedEachFromDecidingForwardsThenRewriting(
                                 other, arguments, refinements, evaluator, context);
                     }
                     BlockValue series = (BlockValue) arguments.get(1);
@@ -4010,7 +3200,8 @@ public final class Natives {
                     int at = 0;
                     Value stoppedWith = null;
                     while (at < items.size()) {
-                        int reached = setLoopNames(locals, names, items, at, series);
+                        int reached = setLoopNamesFillingWithNonePastTheEnd(
+                                locals, names, items, at, series);
                         int through = Math.min(reached, items.size());
                         boolean drop;
                         try {
@@ -4056,7 +3247,7 @@ public final class Natives {
                     List<Value> gathered = new ArrayList<>();
                     int at = 0;
                     while (at < items.size()) {
-                        at = setLoopNames(
+                        at = setLoopNamesFillingWithNonePastTheEnd(
                                 locals, names, items, at, arguments.get(1));
                         Value made = evaluator.evaluateOrRaise(bound, locals);
                         if (!(made instanceof UnsetValue)) {
@@ -4100,7 +3291,6 @@ public final class Natives {
                 });
     }
 
-    /** REPEAT and FOREACH: bind a word, run the body, repeat. */
     private static Value countedLoop(
             Evaluator evaluator,
             Context within,
@@ -4116,7 +3306,7 @@ public final class Natives {
         try {
             for (long pass = 0; pass < passes; pass++) {
                 locals.set(counter.spelling(), valueAt.apply(pass));
-                last = oneRound(evaluator, bound, locals);
+                last = oneRoundCatchingContinue(evaluator,bound, locals);
             }
         } catch (LoopSignal stopped) {
             return stopped.answer();
@@ -4138,7 +3328,7 @@ public final class Natives {
             for (long onDown = 1; onDown <= down; onDown++) {
                 for (long onAcross = 1; onAcross <= across; onAcross++) {
                     locals.set(counter.spelling(), PairValue.of(onAcross, onDown));
-                    last = oneRound(evaluator, bound, locals);
+                    last = oneRoundCatchingContinue(evaluator,bound, locals);
                 }
             }
         } catch (LoopSignal stopped) {
@@ -4190,7 +3380,7 @@ public final class Natives {
             long at = from;
             while (stepBy > 0 ? at <= to : at >= to) {
                 locals.set(counter.spelling(), IntegerValue.of(at));
-                last = oneRound(evaluator, body, locals);
+                last = oneRoundCatchingContinue(evaluator,body, locals);
                 at = steppedOrOverflowed(at, stepBy);
             }
         } catch (LoopSignal stopped) {
@@ -4216,7 +3406,7 @@ public final class Natives {
         try {
             for (double at = from; stepBy > 0 ? at <= to : at >= to; at += stepBy) {
                 locals.set(counter.spelling(), DecimalValue.of(at));
-                last = oneRound(evaluator, body, locals);
+                last = oneRoundCatchingContinue(evaluator,body, locals);
             }
         } catch (LoopSignal stopped) {
             return stopped.answer();
@@ -4239,7 +3429,7 @@ public final class Natives {
             int at = series.index();
             while (stepBy > 0 ? at <= endIndex : at >= endIndex) {
                 locals.set(counter.spelling(), series.atIndex(at));
-                last = oneRound(evaluator, body, locals);
+                last = oneRoundCatchingContinue(evaluator,body, locals);
                 int landedAt = locals.slotFor(counter.canonical()).value()
                         instanceof SeriesValue moved ? moved.index() : at;
                 at = (int) (landedAt + stepBy);
@@ -4258,18 +3448,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * FOREACH.
-     *
-     * <p>{@code while (index < (tail = SERIES_TAIL(series)))} in
-     * {@code Loop_Each}: the assignment is inside the condition, so the walk
-     * asks the series how long it is at the top of every round rather than
-     * once at the start. Anything the body appends is therefore walked too,
-     * and Rebol's own test asserts it -- a map gains a key in the middle of a
-     * walk over it and the sum the walk answers includes that key's value.
-     * The same is true of a block, which was checked before this was written:
-     * {@code foreach x b [append b 9]} keeps going until something breaks it.
-     */
     private static Value forEachLoop(
             Evaluator evaluator, Context within,
             Value target, Value series, BlockValue body) {
@@ -4289,8 +3467,9 @@ public final class Natives {
             int at = 0;
             List<Value> items = itemsAsTheyStandNow.get();
             while (at < items.size()) {
-                at = setLoopNames(locals, names, items, at, series);
-                last = oneRound(evaluator, bound, locals);
+                at = setLoopNamesFillingWithNonePastTheEnd(
+                        locals, names, items, at, series);
+                last = oneRoundCatchingContinue(evaluator,bound, locals);
                 items = itemsAsTheyStandNow.get();
             }
         } catch (LoopSignal stopped) {
@@ -4299,15 +3478,6 @@ public final class Natives {
         return last;
     }
 
-    /**
-     * A walk over pairs takes one name or two, and refuses a third.
-     *
-     * <p>{@code else Trap_Arg(words);} on the third name, reached only for an
-     * object or a map. A pair has two halves and there is nothing for a third
-     * name to be set to; setting it to none would make a malformed loop look
-     * like a working one. A block has no such limit, because a block is
-     * whatever width the caller says it is.
-     */
     private static void refuseMoreNamesThanAPairHas(
             Value series, List<WordValue> names) {
 
@@ -4319,18 +3489,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * The words a walk sets each round, whichever way they were written.
-     *
-     * <p>One name or a block of them: {@code 'word [word! block!]} in every one
-     * of the four walks, because {@code Init_Loop} reads the list before
-     * {@code Loop_Each} looks at which walk is running. So MAP-EACH takes a
-     * block for the same reason FOREACH does, and refusing one here threw a
-     * Java exception out of the interpreter rather than answering anything.
-     *
-     * <p>Anything that is not a word in the block is refused where the C
-     * refuses it, {@code else Trap_Arg(words);}, rather than being skipped.
-     */
     private static List<WordValue> loopNamesIn(Value target, String nativeName) {
         if (!(target instanceof BlockValue block)) {
             if (target instanceof WordValue single) {
@@ -4355,16 +3513,7 @@ public final class Natives {
         return List.copyOf(names);
     }
 
-    /**
-     * Setting the walk's words for one round, filling with none past the end.
-     *
-     * <p>{@code else SET_NONE(vars);} where the walk has passed the tail. So a
-     * three-item block walked two names at a time runs twice rather than once,
-     * and the second round's second name holds none. Dropping the short round
-     * is the convenient reading and it is not what the C does: REMOVE-EACH over
-     * `[1 2 3]` with two names reaches the 3.
-     */
-    private static int setLoopNames(
+    private static int setLoopNamesFillingWithNonePastTheEnd(
             Context locals, List<WordValue> names, List<Value> items,
             int at, Value walked) {
 
@@ -4381,15 +3530,6 @@ public final class Natives {
         return reached == at ? at + 1 : reached;
     }
 
-    /**
-     * Where a walk has got to, as the thing a set-word is handed.
-     *
-     * <p>The series itself standing at the current item, which is what makes
-     * {@code insert here handler} work: it shares storage with what is being
-     * walked. An object or a map is handed over whole instead, because neither
-     * is walked by index -- {@code if (ANY_OBJECT(value) || IS_MAP(value))
-     * *vars = *value;}.
-     */
     private static Value positionWithin(Value walked, int reached) {
         if (!(walked instanceof SeriesValue series)) {
             return walked;
@@ -4398,27 +3538,12 @@ public final class Natives {
                 series.index() + reached, series.storageLength() + 1));
     }
 
-    /**
-     * The names that take a value out of the series, which is not all of them.
-     *
-     * <p>A set-word takes none, so it does not count towards how wide a round
-     * is. Counting it would make {@code foreach [p: v] [a b c]} step two at a
-     * time and walk half the block.
-     */
     private static List<WordValue> namesThatTakeAValue(List<WordValue> names) {
         return names.stream()
                 .filter(name -> name.datatype() != Datatype.SET_WORD)
                 .toList();
     }
 
-    /**
-     * What a walk steps over, given how many names it walks with.
-     *
-     * <p>One name over an object or a map walks the keys alone. For a map that
-     * is the index mask -- {@code *vars = *BLK_SKIP(series, index & ~1)} keeps
-     * reading the key while the walk steps two slots at a time -- and for an
-     * object it is the same shape by hand.
-     */
     private static List<Value> keysOnly(Value series, int howManyNames) {
         if (howManyNames != 1) {
             return itemsOf(series);
@@ -4433,31 +3558,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * Walking a word that holds a series, a step at a time.
-     *
-     * <p>{@code Loop_All} in {@code n-loop.c}, which serves FORALL with a step
-     * of one and FORSKIP with the step it was given. What it does with the word
-     * is the part worth reading twice.
-     *
-     * <p>A word holding none answers none. A word holding anything that is not a
-     * series is refused. A negative step starting at the tail walks backwards
-     * from the last item rather than doing nothing. And the word goes back where
-     * it started on the way out -- unless BREAK left the loop, which returns
-     * before the line that restores it.
-     *
-     * <p>The word is read again every round, and the step is applied to
-     * whatever it holds after the body has run. So a body may move the walk
-     * along, or hand it a different series entirely: REBOL's own test walks one
-     * string while swapping the word to another at each step, and reads a
-     * character from each in turn. The C says so in a comment of its own --
-     * "Evaluation may swap the var series" -- and checks only that the
-     * datatype has not changed.
-     *
-     * <p>Keeping a cursor of its own instead made the body's assignment
-     * invisible, so the loop walked the series it started with and stopped at
-     * that one's length.
-     */
     private static Value walkBySteps(
             Evaluator evaluator, WordValue word, int step, BlockValue body) {
 
@@ -4480,7 +3580,7 @@ public final class Natives {
         try {
             while (slot.value() instanceof SeriesValue here
                     && here.index() >= 1 && here.index() <= here.storageLength()) {
-                last = oneRound(evaluator, body, evaluator.systemContext());
+                last = oneRoundCatchingContinue(evaluator,body, evaluator.systemContext());
                 if (!(slot.value() instanceof SeriesValue moved)
                         || moved.datatype() != walkingA) {
                     return raiseCannotUse(slot.value(), "forall");
@@ -4496,20 +3596,6 @@ public final class Natives {
         return last;
     }
 
-    /**
-     * Moves the walked word one step, and says whether there is anywhere left
-     * to go.
-     *
-     * <p>The C adds the step to the index without checking and lets the top of
-     * the loop decide, which it can because an index there is a plain number.
-     * Here a position is checked when it is made, so the same decision is made
-     * one line earlier.
-     *
-     * <p>A negative step that runs off the end comes back round to the last
-     * item, which is how walking backwards from the tail works at all: the
-     * body may move the word past the end, and the step then measures from the
-     * end rather than stopping.
-     */
     private static boolean steppedOnwards(
             ContextSlot slot, SeriesValue moved, int step) {
 
@@ -4524,14 +3610,6 @@ public final class Natives {
         return true;
     }
 
-    /**
-     * A context walked as FOREACH walks one: each name, then its value.
-     *
-     * <p>SELF is left out, being the thing itself rather than a field of it. A
-     * port and a module are frames like an object and are walked the same way,
-     * which is what lets HELP print one -- {@code dump-obj} is a FOREACH, and
-     * refusing to walk a port meant HELP of a port said so instead of helping.
-     */
     private static List<Value> fieldsAndValuesOf(Context fields) {
         return fields.slots().stream()
                 .filter(slot -> !slot.canonical().equals("self"))
@@ -4542,7 +3620,6 @@ public final class Natives {
                 .toList();
     }
 
-    /** A series as a list of its values, whatever kind of series it is. */
     private static List<Value> itemsOf(Value series) {
         return switch (series) {
             case BlockValue block -> block.remaining();
@@ -4578,13 +3655,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * Source text read into values.
-     *
-     * <p>A syntax failure comes back as an ordinary error! that the script
-     * can catch, rather than as a host exception, because the reader's
-     * failures are values in this language like any other.
-     */
     private static Value loaded(Value source, boolean unwrapSingle) {
         if (source instanceof BlockValue sources && sources.datatype() == Datatype.BLOCK) {
             List<Value> answers = new ArrayList<>();
@@ -4601,14 +3671,6 @@ public final class Natives {
                 : values;
     }
 
-    /**
-     * The source text LOAD was given, whatever it arrived as.
-     *
-     * <p>A binary is bytes of UTF-8. A byte order mark at the front is
-     * dropped rather than read, because it marks the encoding rather than
-     * being part of the text, and leaving it in makes the first value a
-     * string nothing can match.
-     */
     private static String textToLoad(Value source) {
         if (source instanceof StringValue text) {
             return text.text();
@@ -4622,7 +3684,6 @@ public final class Natives {
         return text.startsWith("\uFEFF") ? text.substring(1) : text;
     }
 
-    /** Bytes as UTF-8, refusing any that do not decode -- R3's invalid-chars. */
     private static String strictlyUtf8(byte[] bytes) {
         try {
             return StandardCharsets.UTF_8.newDecoder()
@@ -4883,22 +3944,19 @@ public final class Natives {
                         Parameter.belongingTo("stream", "data", Set.of(Datatype.BINARY))),
                 Set.of("key", "stream"),
                 (arguments, evaluator, context, refinements) -> {
-                    // No required arguments, so the list holds exactly the
-                    // asked-for refinements' arguments in declaration order:
-                    // crypt-key first when /KEY was named, then ctx and data
-                    // when /STREAM was.
                     int streamBeginsAt = refinements.contains("key") ? 1 : 0;
                     if (refinements.contains("stream")) {
-                        return encipheredThroughTheStream(
+                        return encipheredThroughTheStreamInPlace(
                                 (HandleValue) arguments.get(streamBeginsAt),
                                 (BinaryValue) arguments.get(streamBeginsAt + 1));
                     }
                     if (refinements.contains("key")) {
                         return HandleValue.context(RC4_HANDLE_TYPE,
                                 nextCipherIdentity(),
-                                JavaObjectValue.of(StreamCipher.keyedWith(
-                                        ((BinaryValue) arguments.getFirst())
-                                                .octetsFromHere())));
+                                JavaObjectValue.of(
+                                        StreamCipher.keyedWithAnEmptyKeyAcceptedAsAny(
+                                                ((BinaryValue) arguments.getFirst())
+                                                        .octetsFromHere())));
                     }
                     return UnsetValue.unset();
                 });
@@ -5018,7 +4076,6 @@ public final class Natives {
     private static final Set<Datatype> PATH_SHAPED = Set.of(
             Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH);
 
-    /** SET of a path walks object fields and writes the last one. */
     private static Value writtenThroughPath(BlockValue path, Value supplied) {
         List<Value> segments = path.remaining();
         if (segments.size() < 2 || !(segments.getFirst() instanceof WordValue head)) {
@@ -5085,7 +4142,7 @@ public final class Natives {
                     if (target instanceof ObjectValue into
                             && supplied instanceof ObjectValue from
                             && !refinements.contains("only")) {
-                        setFieldsFromObject(into, from, refinements);
+                        setFieldsFromObjectMatchedByName(into, from, refinements);
                         return supplied;
                     }
                     List<Value> values = !refinements.contains("only")
@@ -5215,7 +4272,8 @@ public final class Natives {
                         return arguments.get(2);
                     }
                     if (arguments.get(0) instanceof GobValue gob) {
-                        GobPath.poke(gob, (int) positionPokedAt(arguments.get(1)),
+                        GobPath.pokeWhichInsertsRatherThanReplaces(
+                                gob, (int) positionPokedAt(arguments.get(1)),
                                 arguments.get(2));
                         return arguments.get(2);
                     }
@@ -5308,12 +4366,6 @@ public final class Natives {
                             && arguments.get(1) instanceof DateValue to) {
                         return timeBetween(from, to);
                     }
-                    // Through the same code the other three use, because
-                    // /SKIP means the same thing for all four: the members are
-                    // records of that width rather than single items. This had
-                    // its own walk that compared item by item, so
-                    // `difference/skip "ač" "čbš" 2` answered the difference of
-                    // six characters instead of three records.
                     Value width = argumentFor("skip", List.of("skip"), arguments,
                             refinements, 2);
                     int stride = width instanceof IntegerValue wanted
@@ -5386,9 +4438,6 @@ public final class Natives {
                             default -> NoneValue.none();
                         };
                     }
-                    // A handle publishes its type and nothing else, so that is
-                    // the whole of what WORDS-OF and VALUES-OF find on one.
-                    // `PD_Handle` serves the same single field through a path.
                     if (arguments.get(0) instanceof HandleValue held) {
                         return switch (field) {
                             case "words" -> BlockValue.block(
@@ -5429,13 +4478,6 @@ public final class Natives {
                             default -> NoneValue.none();
                         };
                     }
-                    // An operator made at runtime wraps an ordinary function,
-                    // and every reflector asks that function rather than the
-                    // wrapper. `type = VAL_GET_EXT(value); goto of_type;` --
-                    // the C reads the datatype the operator was made from and
-                    // starts the same switch again, so an operator made from
-                    // an action answers none for its body and one made from a
-                    // function answers the block it was written with.
                     if (arguments.get(0) instanceof OperatorValue operator
                             && operator.underlying() instanceof FunctionValue behind) {
                         return switch (field) {
@@ -5612,7 +4654,6 @@ public final class Natives {
                 });
     }
 
-    /** The names a CATCH was told to expect, empty when it was told none. */
     private static Set<String> expectedNames(
             List<Value> arguments, Set<String> refinements) {
 
@@ -5630,24 +4671,12 @@ public final class Natives {
         };
     }
 
-    /**
-     * Whether a CATCH expecting these names may take this throw.
-     *
-     * <p>Strict both ways: an unnamed CATCH takes only an unnamed throw,
-     * and a named one takes only a throw of a name it listed.
-     */
     private static boolean answersTo(ThrownSignal thrown, Set<String> expected) {
         return thrown.name()
                 .map(expected::contains)
                 .orElseGet(expected::isEmpty);
     }
 
-    /**
-     * ++ or --, which change a word in place and answer its old value.
-     *
-     * <p>An integer moves by the step; a series moves that many positions.
-     * Both are the same idea, because a position is an ordinary value.
-     */
     private void defineStepper(String spelling, int step) {
         define(spelling, List.of(Parameter.hardQuoted("word")),
                 (arguments, evaluator, context) -> {
@@ -5665,13 +4694,6 @@ public final class Natives {
                 });
     }
 
-    /**
-     * The value a word names when it is one of the three constants, and
-     * the word itself otherwise.
-     *
-     * <p>CONSTRUCT reads NONE, TRUE and FALSE this way although it
-     * evaluates nothing else, which is what /ONLY exists to switch off.
-     */
     private static Value namedConstant(Value value) {
         if (!(value instanceof WordValue word) || word.datatype() != Datatype.WORD) {
             return value;
@@ -5684,19 +4706,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * Fills a context from a block of set-words and values, evaluating
-     * nothing.
-     *
-     * <p>{@code Do_Construct} in {@code c-do.c}. Set-words are held back
-     * until a value arrives and then all of them take it, which is what
-     * makes {@code a: b: 1} give both fields the same value. A value with
-     * no set-word waiting for it is dropped, and a set-word with nothing
-     * after it is left holding nothing.
-     *
-     * <p>{@code /only} is {@code Do_Min_Construct}, which is the same walk
-     * without the seven named words being turned into values.
-     */
     private static void constructInto(Context built, List<Value> items, boolean asWritten) {
         List<WordValue> waiting = new ArrayList<>();
         for (Value item : items) {
@@ -5724,19 +4733,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * An internet-style header read as set-word and text pairs.
-     *
-     * <p>{@code Scan_Net_Header} in {@code l-types.c}. A field name runs
-     * up to a colon and the rest of the line is its value, so
-     * {@code "a: 1 b: yes"} is one field and not two: only a newline
-     * starts another.
-     *
-     * <p>A line beginning with whitespace continues the one before it,
-     * joined by a single space however far it is indented. That is what a
-     * header means by folding a long line, and it is why the value has to
-     * be rebuilt rather than taken as a span of the source.
-     */
     private static List<Value> headerFieldsIn(String header) {
         List<Value> fields = new ArrayList<>();
         String[] lines = header.split("\n", -1);
@@ -5762,7 +4758,6 @@ public final class Natives {
         return fields;
     }
 
-    /** Where a field's colon is, or -1 when the line names no field. */
     private static int colonAfterAName(String line) {
         String name = line.stripLeading();
         if (name.isEmpty() || !Character.isLetter(name.charAt(0))) {
@@ -5783,7 +4778,6 @@ public final class Natives {
         return !line.isEmpty() && (line.charAt(0) == ' ' || line.charAt(0) == '\t');
     }
 
-    /** A binary read as the UTF-8 text it holds. */
     private static String textOfBytes(BinaryValue bytes) {
         byte[] held = new byte[bytes.lengthFromHere()];
         for (int at = 0; at < held.length; at++) {
@@ -5792,13 +4786,6 @@ public final class Natives {
         return new String(held, java.nio.charset.StandardCharsets.UTF_8);
     }
 
-    /**
-     * Refuses a search of a binary for a number no byte could hold.
-     *
-     * <p>Nothing to do for any other kind of series, or for a needle that
-     * is not a whole number: a binary can be searched for a binary or a
-     * character too, and neither has this problem.
-     */
     private static void refuseUnbyteableNeedle(
             Value haystack, Value needle, String nativeName) {
 
@@ -5811,18 +4798,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * The error a MAKE ERROR! spec asks for.
-     *
-     * <p>A block names a type and an id from the catalogue. A `code:`
-     * field in it is ignored, because the code follows from the type and
-     * letting a caller set it would let an error claim a category its own
-     * code contradicts.
-     *
-     * <p>Anything else is a User error carrying the value as its first
-     * argument, which is how a script raises something of its own without
-     * needing a catalogue entry at all.
-     */
     private static Value errorFromSpec(Value spec, Evaluator evaluator, Context context) {
         Value theSpecAsWritten = spec;
         boolean fromAnObject = spec instanceof ObjectValue;
@@ -5889,26 +4864,6 @@ public final class Natives {
                 Optional.empty(), Optional.empty(), new java.util.LinkedHashMap<>());
     }
 
-    /**
-     * The catalogue is what makes an error spec valid, and it says no twice.
-     *
-     * <p>{@code Find_Error_Info} looks the type up and then the id inside it,
-     * and each miss is its own {@code Trap1(RE_INVALID_ARG, ...)} naming the
-     * word that was not found. So {@code make error! [type: 'math id: 'foo]}
-     * complains about FOO and {@code [type: 'foo id: 'overflow]} about FOO
-     * again, but as the type.
-     *
-     * <p>Then a third refusal, and this one names the whole spec:
-     * {@code if (VAL_INT64(&error->code) < 100) Trap_Arg(arg)}. The Throw
-     * category numbers from nothing, so its seven ids are all below a hundred
-     * and none of them can be built by hand -- a script may not manufacture a
-     * BREAK or a HALT and throw it as though the interpreter had.
-     *
-     * <p>That third one is inside the block branch and not the object branch,
-     * which returns three lines earlier. So an error rebuilt from an object
-     * keeps whatever code it had, however low, and TO-ERROR of an object made
-     * from an error gets the error back.
-     */
     private static void refuseAnErrorTheCatalogueHasNot(
             ErrorCategory category, String errorId, Value asWritten, Value spec,
             boolean fromAnObject) {
@@ -5922,16 +4877,8 @@ public final class Natives {
         }
     }
 
-    /**
-     * One turn of a loop, with CONTINUE caught.
-     *
-     * <p>Caught here and not around the whole loop: a CONTINUE that
-     * reached the outer catch would end the loop, which is what BREAK is
-     * for. A round that was cut short answers none, so a loop whose last
-     * round continued answers none rather than whatever the round before
-     * it happened to leave.
-     */
-    private static Value oneRound(Evaluator evaluator, BlockValue body, Context where) {
+    private static Value oneRoundCatchingContinue(
+            Evaluator evaluator, BlockValue body, Context where) {
         try {
             return evaluator.evaluateOrRaise(body, where);
         } catch (ContinueSignal skipped) {
@@ -5939,14 +4886,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Where a script header starts in some text, or -1.
-     *
-     * <p>The word REBOL, in any case, then spaces, then an open bracket.
-     * It has to begin a line: anything but spaces before it on the same
-     * line means it is not a header. A byte order mark counts as a space,
-     * because it marks the encoding and is not part of the text.
-     */
     private static int headerStartsIn(String text) {
         String lowered = text.toLowerCase(java.util.Locale.ROOT);
         for (int at = lowered.indexOf("rebol"); at >= 0;
@@ -5959,7 +4898,6 @@ public final class Natives {
         return -1;
     }
 
-    /** Whether the line up to here holds nothing but spaces. */
     private static boolean onlySpacesBefore(String text, int at) {
         for (int back = at - 1; back >= 0; back--) {
             char letter = text.charAt(back);
@@ -5973,7 +4911,6 @@ public final class Natives {
         return true;
     }
 
-    /** Whether spaces and then an open bracket follow. */
     private static boolean bracketFollows(String text, int at) {
         int forward = at;
         while (forward < text.length() && Character.isWhitespace(text.charAt(forward))) {
@@ -5982,29 +4919,12 @@ public final class Natives {
         return forward < text.length() && text.charAt(forward) == '[';
     }
 
-    /**
-     * The shapes SET will take, from {@code natives.reb}: a word, a lit-word,
-     * any path, a block or an object.
-     *
-     * <p>An issue and a refinement are word datatypes and so pass this check;
-     * {@link #refuseUnassignableName} turns them away afterwards. Two guards
-     * for one question, because the datatype does not tell them apart.
-     */
     private static final Set<Datatype> NAME_SHAPED = Set.of(
             Datatype.WORD, Datatype.LIT_WORD, Datatype.SET_WORD, Datatype.GET_WORD,
             Datatype.ISSUE, Datatype.REFINEMENT,
             Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
             Datatype.BLOCK, Datatype.OBJECT);
 
-    /**
-     * Refuses a name SET cannot assign to.
-     *
-     * <p>An issue and a refinement are both {@link WordValue} underneath,
-     * so nothing about the shape of the value stops them being assigned;
-     * only the datatype says so. The caller chooses the failure, because
-     * a wrong argument to SET and a wrong item inside a block SET was
-     * given are two different mistakes and R3 gives them two ids.
-     */
     private static void refuseUnassignableName(Value name, EvaluationFailure failure) {
         if (name.datatype() == Datatype.ISSUE || name.datatype() == Datatype.REFINEMENT) {
             throw Raised.of(failure,
@@ -6012,17 +4932,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Refuses a TRIM whose refinements ask for two different things.
-     *
-     * <p>Two quarrels, and both are bad-refines. /HEAD and /TAIL say which
-     * end to work on while /ALL and /WITH say to work everywhere, so one
-     * of each leaves nothing coherent to do. And /WITH, /AUTO and /LINES
-     * are about text, so a binary or a block refuses all three.
-     *
-     * <p>/AUTO is not in the first quarrel: `trim/auto/tail` is an
-     * ordinary call.
-     */
     private static void refuseContradictoryTrim(Value series, Set<String> refinements) {
         boolean oneEnd = refinements.contains("head") || refinements.contains("tail");
         boolean everywhere = refinements.contains("all") || refinements.contains("with");
@@ -6040,7 +4949,6 @@ public final class Natives {
         }
     }
 
-    /** A block with its nones dropped, from whichever end was asked for. */
     private static Value trimmedBlock(BlockValue block, Set<String> refinements) {
         List<Value> items = new ArrayList<>(block.remaining());
         if (refinements.contains("all")) {
@@ -6064,17 +4972,6 @@ public final class Natives {
         return block;
     }
 
-    /**
-     * An object with its empty fields dropped, as a new object.
-     *
-     * <p>{@code Trim_Object} builds a fresh frame holding the fields whose value
-     * is past none -- `if (VAL_TYPE(val) > REB_NONE && !VAL_GET_OPT(word,
-     * OPTS_HIDE))` -- so a field holding none or unset goes, and so does a
-     * hidden one. The original is left alone, which is the opposite of TRIM on a
-     * series and is why this answers a value rather than the argument.
-     *
-     * <p>A module and an error trim the same way, being objects underneath.
-     */
     private static Value trimmedObject(Value subject) {
         Context fields = subject instanceof ErrorValue raised
                 ? errorAsAContext(raised)
@@ -6091,14 +4988,6 @@ public final class Natives {
         return new ObjectValue(kept);
     }
 
-    /**
-     * The characters TRIM/WITH takes out, by datatype rather than by mold.
-     *
-     * <p>An integer is one code point, so `trim/with s 97` removes the
-     * letter a and not the digits 9 and 7 -- molding the integer gave its
-     * decimal spelling. A char is its own code point, a string each of its
-     * characters, and a none nothing.
-     */
     private static Set<Integer> unwantedCodePoints(Value characters) {
         return switch (characters) {
             case CharacterValue character -> Set.of(character.codepoint());
@@ -6116,7 +5005,6 @@ public final class Natives {
         };
     }
 
-    /** An error's fields as a context, so the object arms can read one. */
     private static Context errorAsAContext(ErrorValue raised) {
         Context fields = Context.root();
         for (String name : ErrorValue.FIELDS) {
@@ -6125,7 +5013,6 @@ public final class Natives {
         return fields;
     }
 
-    /** A binary with its zero bytes dropped, from whichever end was asked for. */
     private static Value trimmedBinary(BinaryValue bytes, Set<String> refinements) {
         List<Integer> kept = new ArrayList<>();
         for (int at = 0; at < bytes.lengthFromHere(); at++) {
@@ -6154,29 +5041,12 @@ public final class Natives {
         return bytes;
     }
 
-    /**
-     * What UPPERCASE and LOWERCASE take: {@code string [any-string! char!]}.
-     *
-     * <p>Every kind of string and not only a quoted one, so a file, a url, a
-     * tag and an email all change case and come back as themselves. Rebol's
-     * own module loader depends on it -- it names a downloaded extension with
-     * {@code lowercase second split-path source}, and SPLIT-PATH of a url
-     * answers a file.
-     */
     private static Set<Datatype> anyStringOrCharacter() {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_STRING.members());
         accepted.add(Datatype.CHAR);
         return Set.copyOf(accepted);
     }
 
-    /**
-     * UPPERCASE or LOWERCASE, which differ only in which way they go.
-     *
-     * <p>/PART changes the first few characters from where the series is
-     * and leaves the rest, counting from the position rather than from
-     * the head. The whole series comes back either way, positioned where
-     * it was, because these change it in place.
-     */
     private void defineCaseChange(
             String name, java.util.function.UnaryOperator<String> change) {
 
@@ -6190,7 +5060,7 @@ public final class Natives {
                     }
                     StringValue text = (StringValue) arguments.getFirst();
                     if (!refinements.contains("part")) {
-                        return rewritten(text, change);
+                        return rewrittenInPlace(text, change);
                     }
                     Value limit = argumentFor("part", List.of("part"), arguments, refinements, 1);
                     long wanted = limit instanceof IntegerValue asked
@@ -6200,7 +5070,7 @@ public final class Natives {
                             (StringValue) theRunReachingBackIfNegative(text, wanted);
                     int changing = (int) Math.max(0, Math.min(Math.abs(wanted),
                             changingFrom.lengthFromHere()));
-                    rewritten(changingFrom, whole -> {
+                    rewrittenInPlace(changingFrom, whole -> {
                         String front = theFirstCodePointsOf(whole, changing);
                         return change.apply(front) + whole.substring(front.length());
                     });
@@ -6208,18 +5078,6 @@ public final class Natives {
                 });
     }
 
-    /**
-     * One character with its case changed, which is what UPPERCASE and
-     * LOWERCASE do to a char.
-     *
-     * <p>They take one as readily as a string -- {@code uppercase #"š"} is
-     * {@code #"Š"} -- and JEBOL took only a string, so the char form was an
-     * expect-arg where REBOL has an answer.
-     *
-     * <p>Through the same conversion the string form uses, so a character
-     * whose case changes width or which has no other case behaves the same
-     * either way. A character that is not a letter comes back as itself.
-     */
     private Value theOneCharacterChanged(
             CharacterValue letter, java.util.function.UnaryOperator<String> change) {
 
@@ -6230,15 +5088,7 @@ public final class Natives {
                 : letter;
     }
 
-    /**
-     * A string rewritten in place, and answered.
-     *
-     * <p>UPPERCASE, LOWERCASE and TRIM change the string they were given
-     * rather than building a new one, so a caller holding it sees the
-     * change. Going through the storage is also what makes them refuse a
-     * protected string without a check of their own.
-     */
-    private static Value rewritten(
+    private static Value rewrittenInPlace(
             StringValue text, java.util.function.UnaryOperator<String> change) {
 
         int[] replacement = change.apply(text.text()).codePoints().toArray();
@@ -6848,7 +5698,7 @@ public final class Natives {
                             && arguments.getFirst() instanceof SeriesValue series) {
                         Value limit = argumentFor(
                                 "part", List.of("part"), arguments, refinements, 1);
-                        return reversedFront(series, limit);
+                        return reversedFrontInPlace(series, limit);
                     }
                     if (arguments.get(0) instanceof TupleValue tuple) {
                         Value limit = refinements.contains("part")
@@ -6865,13 +5715,13 @@ public final class Natives {
                         return gob;
                     }
                     if (arguments.get(0) instanceof StringValue text) {
-                        return reversedText(text);
+                        return reversedTextACharacterAtATime(text);
                     }
                     if (arguments.get(0) instanceof BinaryValue bytes) {
                         return reversedBytes(bytes);
                     }
                     if (arguments.get(0) instanceof VectorValue vector) {
-                        return reversedFront(vector, IntegerValue.of(
+                        return reversedFrontInPlace(vector, IntegerValue.of(
                                 vector.lengthFromHere()));
                     }
                     if (!(arguments.get(0) instanceof BlockValue block)) {
@@ -6921,7 +5771,8 @@ public final class Natives {
                     }
                     if (arguments.get(0) instanceof GobValue gob) {
                         refuseUnfinishedRefinements(refinements, "change");
-                        GobPath.poke(gob, gob.index(), arguments.get(1));
+                        GobPath.pokeWhichInsertsRatherThanReplaces(
+                                gob, gob.index(), arguments.get(1));
                         return gob.atIndex(gob.index() + 1);
                     }
                     Value replacing = duplicated(
@@ -7233,10 +6084,6 @@ public final class Natives {
                     Value step = arguments.get(arguments.size() - 1);
                     double multiple = Comparison.asDouble(step);
                     if (multiple == 0) {
-                        // A whole-number scale of nothing is a division by it,
-                        // where a decimal one is a scale too small to move
-                        // anything: R3 raises for `round/to 1 0` and answers 1
-                        // for `round/to 1.5 0`. Both were answering here.
                         if (step.datatype() == Datatype.INTEGER
                                 && arguments.get(0).datatype() == Datatype.INTEGER) {
                             throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
@@ -7249,22 +6096,6 @@ public final class Natives {
 
     }
 
-    /**
-     * ROUND on a time, where the scale decides what comes back.
-     *
-     * <p>A time is nanoseconds and the scale is read in the same units, so
-     * {@code round/to 12:34:56 0:1:1} lands on a multiple of sixty-one
-     * seconds. What that multiple is written as depends on what the scale was
-     * written as -- {@code VAL_SET(arg, REB_INTEGER)} and its decimal twin sit
-     * in the C's own branch and answer a count of seconds, where a time scale
-     * answers a time.
-     *
-     * <p>With no scale at all a time rounds to whole seconds, and does so to
-     * the nearest whichever way the refinements point:
-     * {@code Get_Round_Flags(ds) | 1} sets the to-nearest bit over whatever
-     * was asked. An integer scale is the same story written down twice, the C
-     * passing a bare 1 where every other branch passes the flags.
-     */
     private static Value roundedTime(
             TimeValue time, Value scale, Set<String> refinements) {
 
@@ -7289,15 +6120,6 @@ public final class Natives {
                 : DecimalValue.of(rounded);
     }
 
-    /**
-     * A rounded number, keeping the datatype of the number that was rounded.
-     *
-     * <p>Plain ROUND with no scale keeps the subject's datatype, so
-     * {@code round $1.5} is a money and {@code round 50.5%} is a percent. Each
-     * datatype's {@code A_ROUND} ends at its own {@code setDec} or its own
-     * {@code SET_TYPE}, which is what makes this the rule rather than the
-     * exception.
-     */
     private static Value roundedKeepingTheDatatype(Value subject, double rounded) {
         return switch (subject) {
             case MoneyValue amount -> amount.amounting(BigDecimal.valueOf(rounded));
@@ -7308,21 +6130,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A rounded number, taking the datatype of the scale rather than of the
-     * subject.
-     *
-     * <p>This is the surprising half of ROUND and it is the same in all three
-     * of {@code t-money.c}, {@code t-decimal.c} and {@code t-integer.c}: with
-     * a scale, the answer is the scale's datatype. So
-     * {@code round/to $1.333 .01} is the decimal 1.33 rather than a money, and
-     * {@code round/to $0.5 1} is the integer 1. A money scale pulls the answer
-     * the other way, so {@code round/to 0.5 $1} is a money.
-     *
-     * <p>Reading it as "keep the subject's datatype and let the scale say how
-     * far to round" is the natural guess, and it disagrees on every mixed
-     * call.
-     */
     private static Value roundedToTheScalesDatatype(Value scale, double rounded) {
         return switch (scale) {
             case MoneyValue amount -> amount.amounting(BigDecimal.valueOf(rounded));
@@ -7333,25 +6140,10 @@ public final class Natives {
         };
     }
 
-    /**
-     * A rounded answer trimmed back to the fifteen digits MOLD would show.
-     *
-     * <p>Dividing by the scale and multiplying back puts noise in the low
-     * bits, so `round/to $1.333 .01` computes 1.3299999999999999 and has to
-     * be brought back to 1.33 before anything compares it.
-     */
     private static double toFifteenDigits(double rounded) {
         return new BigDecimal(rounded).round(new java.math.MathContext(15)).doubleValue();
     }
 
-    /**
-     * A block with its parens evaluated and everything else as written.
-     *
-     * <p>A paren that produces a block has its contents spliced in rather
-     * than the block itself, which is what makes COMPOSE useful for
-     * building a block out of pieces and not only for filling in single
-     * values. {@code /only} turns that off and keeps the block whole.
-     */
     private static BlockValue composed(
             BlockValue template, Evaluator evaluator, Context context,
             boolean keepingBlocksWhole, boolean goingDeep) {
@@ -7394,32 +6186,12 @@ public final class Natives {
         return new BlockValue(built, 1, Datatype.BLOCK);
     }
 
-    /**
-     * A block-shaped value /DEEP copies rather than descends into.
-     *
-     * <p>{@code else { DS_PUSH(value); if (ANY_BLOCK(value)) // Include PATHS
-     * VAL_SERIES(DS_TOP) = Copy_Block(VAL_SERIES(value), 0); }}. A block and a
-     * map are rebuilt because that is what descending into them means; a path
-     * and the rest of the family are copied, so two composes of one template
-     * share nothing.
-     *
-     * <p>Sharing shows only once something binds one of the answers, and then
-     * it reaches into the other. Two functions made from one template through
-     * `compose/deep [print a/1 (c)]` shared the path, so binding the second
-     * one's body unbound the first one's argument.
-     */
     private static Value aBlockShapeCopiedWhole(Value item) {
         return item instanceof BlockValue shaped
                 ? new BlockValue(new BlockStorage(shaped.remaining()), 1, shaped.datatype())
                 : item;
     }
 
-    /**
-     * A map composed: keys stay as written, a paren value is evaluated with
-     * splicing always suppressed, and /DEEP reaches blocks and maps stored
-     * inside. {@code Compose_Block} pushes keys raw and recurses on
-     * {@code IS_BLOCK(value) || IS_MAP(value)}.
-     */
     private static MapValue composedMap(
             MapValue template, Evaluator evaluator, Context context,
             boolean keepingBlocksWhole, boolean goingDeep) {
@@ -7445,12 +6217,6 @@ public final class Natives {
         return MapValue.of(pairs);
     }
 
-    /**
-     * Source text read into values, with no binding.
-     *
-     * <p>Takes a string or a binary, because a script that has read a file
-     * has a binary and a script that built the text has a string.
-     */
     private static String textOfSource(Value source) {
         return switch (source) {
             case StringValue given -> given.text();
@@ -7614,20 +6380,12 @@ public final class Natives {
         return read.values().orElseThrow(() -> new Raised(read.error().orElseThrow()));
     }
 
-    /**
-     * The rest of {@code whole} after the first {@code howMany} code points.
-     *
-     * <p>Not {@code substring}, which counts UTF-16 units. The two part company at
-     * the first character above the Basic Multilingual Plane, which mold-test.r3 has
-     * and which cost sixty-six assertions when {@code topLevelSpans} got it wrong.
-     */
     private static String skippingCodePoints(String whole, int howMany) {
         int[] codepoints = whole.codePoints().toArray();
         int taken = Math.min(howMany, codepoints.length);
         return new String(codepoints, taken, codepoints.length - taken);
     }
 
-    /** What is left unread, as the kind of series that was handed in. */
     private static Value remainderOf(String left, boolean asBytes) {
         if (!asBytes) {
             return StringValue.of(left);
@@ -7640,16 +6398,8 @@ public final class Natives {
         return BinaryValue.of(asNumbers);
     }
 
-    /** The order FIND and SELECT declare their three arguments in. */
     private static final List<String> SEARCH_ARGUMENTS = List.of("part", "with", "skip");
 
-    /**
-     * Where a needle sits, for FIND and SELECT alike.
-     *
-     * <p>{@code case A_FIND: case A_SELECT:} is one arm in {@code t-block.c}
-     * and again in {@code t-string.c}, so the whole of the search is shared
-     * and the two part company only in what they do with the answer.
-     */
     private static int positionSearched(
             SeriesValue series, Value wanted, Set<String> refinements,
             int limit, long stride, Wildcards wildcards) {
@@ -7661,7 +6411,6 @@ public final class Natives {
                         series, wanted, refinements, (int) stride, limit, wildcards);
     }
 
-    /** How far along /PART asked the search to look, or as far as it goes. */
     private static int searchLimit(
             SeriesValue series, List<Value> arguments, Set<String> refinements) {
         if (!refinements.contains("part")) {
@@ -7671,7 +6420,6 @@ public final class Natives {
                 "part", SEARCH_ARGUMENTS, arguments, refinements, 2));
     }
 
-    /** The record width /SKIP asked for, or one item at a time. */
     private static long searchStride(List<Value> arguments, Set<String> refinements) {
         if (!refinements.contains("skip")) {
             return 1;
@@ -7680,35 +6428,12 @@ public final class Natives {
                 "skip", SEARCH_ARGUMENTS, arguments, refinements, 2)).magnitude();
     }
 
-    /**
-     * Where a search stops: the tail, or the /PART limit if it is nearer.
-     *
-     * <p>{@code tail = index + Partial1(value, range)} in the C. The limit
-     * is counted from the position rather than from the head, so the same
-     * range asks for less of a series that has already been walked into.
-     */
     private static int searchEnd(SeriesValue series, List<Value> items, int limit) {
         return limit < 0
                 ? items.size()
                 : (int) Math.min(items.size(), (long) series.index() - 1 + limit);
     }
 
-    /**
-     * Where a needle sits in a series, as a one-based index, or -1.
-     *
-     * <p>Copied from {@code Find_Block} in Rebol's {@code t-block.c} and
-     * {@code find_string} in {@code t-string.c}. The structure follows
-     * the C: a start, an end, a step, and one loop per kind of needle.
-     *
-     * <p>The C sets the walk this way. /REVERSE and /LAST both make the
-     * step negative. /LAST starts at {@code end - len} and walks back to
-     * the position. /REVERSE starts one before the position and walks
-     * back to the head, thus it is the only search that may answer a
-     * place the series has already passed.
-     *
-     * <p>/MATCH breaks out of the loop after the first item, thus it asks
-     * whether the needle is here rather than anywhere ahead.
-     */
     private static int positionOfMatch(
             SeriesValue series, Value wanted, Set<String> refinements, int limit,
             Wildcards wildcards) {
@@ -7745,13 +6470,6 @@ public final class Natives {
         return -1;
     }
 
-    /**
-     * How many items a needle takes up.
-     *
-     * <p>The C computes this before the search, because /LAST starts at
-     * {@code end - len} and a run of three cannot start in the last two
-     * places. /ONLY makes any needle one item.
-     */
     private static int widthOfNeedle(
             SeriesValue series, Value wanted, Set<String> refinements) {
 
@@ -7772,12 +6490,6 @@ public final class Natives {
         return itemsOfNeedle(series, wanted).size();
     }
 
-    /**
-     * Whether the needle matches starting at this item.
-     *
-     * <p>A shape when /ANY asked for one, the same values when /SAME did,
-     * and an ordinary run otherwise.
-     */
     private static boolean matchesHere(
             SeriesValue series, List<Value> items, int at, Value wanted,
             Set<String> refinements, Wildcards wildcards, int end) {
@@ -7815,13 +6527,6 @@ public final class Natives {
         return matches(items.get(at), wanted, refinements.contains("case"));
     }
 
-    /**
-     * Whether a needle's text sits here, character for character.
-     *
-     * <p>A string and a binary both hold items that a needle can be
-     * turned into: a character or a byte. A bitset asks about one item
-     * and matches whatever it holds.
-     */
     private static boolean textRunMatchesAt(
             SeriesValue series, List<Value> items, int at, Value wanted,
             Set<String> refinements) {
@@ -7843,22 +6548,6 @@ public final class Natives {
         return true;
     }
 
-    /**
-     * The bytes that spell a char or some text, for searching inside a binary.
-     *
-     * <p>A binary holds bytes and no characters, so looking for text in one
-     * means looking for the bytes that spell it. Taking the code point
-     * straight -- or the UTF-16 units of a string -- works for ASCII and for
-     * nothing else, which is why {@code find (to binary! "ačb") #"b"} worked
-     * and {@code find (to binary! "ačb") #"č"} found nothing at all.
-     *
-     * <p>A char up to 255 is that one byte, not its encoding. So
-     * {@code find #\{00FF} #"^^(ff)"} finds the byte FF and does not go looking
-     * for the two bytes UTF-8 would spell it with -- a binary of arbitrary
-     * bytes is the commoner thing to search, and a caller writing a char that
-     * fits in a byte means the byte. Only above 255, where no single byte will
-     * do, does the encoding come into it.
-     */
     private static List<Value> theBytesThatSpell(Value wanted) {
         if (wanted instanceof CharacterValue letter
                 && letter.codepoint() <= 0xFF) {
@@ -7874,7 +6563,6 @@ public final class Natives {
         return octets;
     }
 
-    /** A needle as the items the series it is searched in holds. */
     private static List<Value> itemsOfNeedle(SeriesValue series, Value wanted) {
         if (series instanceof BinaryValue && wanted instanceof BinaryValue bytes) {
             return itemsOf(bytes);
@@ -7896,7 +6584,6 @@ public final class Natives {
                 .toList();
     }
 
-    /** Whether a run of values sits here, one for one. */
     private static boolean runMatchesAt(
             List<Value> items, int at, List<Value> run, boolean mindingIdentity) {
 
@@ -7914,15 +6601,6 @@ public final class Natives {
         return true;
     }
 
-    /**
-     * Whether the very same values sit here, one for one.
-     *
-     * <p>`Compare_Values(value, val, 3)` in the C, and 3 is "same
-     * (identical bits)" by its own comment. That is identity and not
-     * equality: two objects holding the same fields are equal and are not
-     * the same object, thus /SAME finds the one that was handed in and
-     * not the copy beside it.
-     */
     private static boolean sameRunAt(List<Value> items, int at, Value wanted) {
         List<Value> run = wanted instanceof BlockValue block
                 && block.datatype() == Datatype.BLOCK
@@ -7939,12 +6617,6 @@ public final class Natives {
         return true;
     }
 
-    /**
-     * Where a match starts, looking only at the first item of each record.
-     *
-     * <p>A negative width walks backwards from the position toward the
-     * head, which is how a caller searches what it has already passed.
-     */
     private static int positionOfMatchInRecords(
             SeriesValue series, Value wanted, Set<String> refinements, int stride,
             int limit, Wildcards wildcards) {
@@ -7963,13 +6635,6 @@ public final class Natives {
         return -1;
     }
 
-    /**
-     * Whether the needle matches starting at this record.
-     *
-     * <p>A run when the needle is a run, so a three-character needle can
-     * match records of two -- but only where the run begins exactly where
-     * a record does. A match that starts mid-record is passed over.
-     */
     private static boolean matchesAtRecord(
             SeriesValue series, List<Value> items, int at, Value wanted,
             Set<String> refinements, Wildcards wildcards, int end) {
@@ -8005,34 +6670,14 @@ public final class Natives {
         return matches(items.get(at), wanted, refinements.contains("case"));
     }
 
-    /** Everything from the head up to the position, for a reverse search. */
     private static List<Value> itemsBeforeHere(SeriesValue series) {
         return itemsOf(series.head()).subList(0, series.index() - 1);
     }
 
-    /**
-     * The two characters a needle may use to stand for others.
-     *
-     * <p>{@code c_some} and {@code c_one} in {@code Find_Str_Str_Any}. The
-     * first stands for any run of characters including none, the second for
-     * exactly one, and /ANY is what turns them on at all.
-     *
-     * <p>/WITH names them itself. That is the only way to search for a
-     * needle holding a star of its own, because renaming the run character
-     * leaves the star an ordinary letter again.
-     */
     private record Wildcards(char anyRun, char oneCharacter) {
 
         private static final Wildcards STARS_AND_QUESTION_MARKS = new Wildcards('*', '?');
 
-        /**
-         * What /WITH named, keeping the default for whatever it left out.
-         *
-         * <p>The C reads the first character as the run one and the second
-         * as the single one, each behind its own bounds check. So a
-         * one-character /WITH renames the star and leaves the question mark
-         * standing, and an empty one changes nothing.
-         */
         static Wildcards named(Value given) {
             if (!(given instanceof StringValue chosen)) {
                 return STARS_AND_QUESTION_MARKS;
@@ -8044,21 +6689,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Where a wildcard match ends, or -1 if it does not match.
-     *
-     * <p>Needed as well as whether it matched, because how much a wildcard
-     * took varies: /tail cannot land a fixed distance along the way it can
-     * for a plain needle. A star tries its shortest length first, so the
-     * end reported is the earliest one that works.
-     *
-     * <p>{@code upTo} is where the search stops, which /PART may bring in
-     * from the tail. A wildcard match may not run past it -- {@code while (n
-     * < len && pos < tail)} in the C -- and a star at the end of the pattern
-     * takes exactly as far as it: {@code pos = (skip > 0) ? tail : start;}.
-     * A plain needle is bounded by its own length instead, so that one may
-     * run past the range and still match.
-     */
     private static int patternEnd(
             String within, int from, int upTo, String pattern, boolean mindingCase,
             Wildcards wildcards) {
@@ -8100,16 +6730,6 @@ public final class Natives {
         return matchesRun(haystack, at, needle, false);
     }
 
-    /**
-     * Whether a run of values matches, element by element.
-     *
-     * <p>/SAME asks each element to be the same value rather than an
-     * equal one, and the two part company on numbers of different
-     * datatypes: 1.0 equals 1 and is not the same as it. In
-     * `[1.0 3 1 3 1.0 2.0 1 2]` a loose search for [1 2] finds the
-     * decimals at position five and a same search finds the integers at
-     * seven.
-     */
     private static boolean matchesRun(
             List<Value> haystack, int at, List<Value> needle, boolean identically) {
 
@@ -8133,7 +6753,6 @@ public final class Natives {
         return mindingCase ? Comparison.identicallyEqual(item, wanted) : Comparison.looselyEqual(item, wanted);
     }
 
-    /** How far past the match /tail lands, which a substring makes more than one. */
     private static int matchLength(
             SeriesValue series, Value wanted, Set<String> refinements, int found,
             Wildcards wildcards, int end) {
@@ -8160,10 +6779,6 @@ public final class Natives {
                 && !refinements.contains("only")) {
             return run.remaining().size();
         }
-        // Counted in characters and not in the units Java stores them as. A
-        // string's position is a character index, so a needle holding anything
-        // outside the basic plane -- an emoji, most of them -- made /TAIL land
-        // one place too far for every such character in it.
         return series instanceof StringValue && !refinements.contains("only")
                 ? theCharactersIn(Molder.form(wanted))
                 : 1;
@@ -8173,27 +6788,12 @@ public final class Natives {
         return text.codePointCount(0, text.length());
     }
 
-    /**
-     * The argument belonging to a refinement, or null when it was not
-     * asked for.
-     *
-     * <p>Only asked-for refinements contribute arguments, so a position in
-     * the list depends on which of the earlier ones were named.
-     */
     private static Value argumentFor(
             String refinement, List<String> declaredOrder,
             List<Value> arguments, Set<String> asked) {
         return argumentFor(refinement, declaredOrder, arguments, asked, 1);
     }
 
-    /**
-     * As above, but told where the refinement arguments begin.
-     *
-     * <p>They follow the required ones, so a native taking two required
-     * arguments has its first refinement argument at index two. Assuming
-     * index one made APPEND/DUP read the value it was appending as the
-     * count.
-     */
     private static Value argumentFor(
             String refinement, List<String> declaredOrder,
             List<Value> arguments, Set<String> asked, int firstRefinementArgument) {
@@ -8213,13 +6813,6 @@ public final class Natives {
         return null;
     }
 
-    /**
-     * A series sorted in place, in records of {@code stride} items.
-     *
-     * <p>Stable, so equal keys keep the order they arrived in. A record is
-     * compared by its first item, which is what keeps a flat block of pairs
-     * paired.
-     */
     private static Value sorted(SeriesValue series, int stride, Value comparator,
             boolean mindingCase, boolean reversed, boolean wholeRecord,
             int howMany, Evaluator evaluator, boolean unstably) {
@@ -8243,7 +6836,8 @@ public final class Natives {
         if (unstably) {
             SymmetryPartitionSort.sort(records, ordering);
         } else {
-            records = mergeSorted(records, ordering);
+            records = mergeSortedTakingFromTheLeftUnlessOutOfOrder(
+                    records, ordering);
         }
 
         if (series instanceof BlockValue block) {
@@ -8263,16 +6857,6 @@ public final class Natives {
         return series;
     }
 
-    /**
-     * The sorted records written back, each value taking its line-break mark
-     * along with it.
-     *
-     * <p>A mark belongs to the value it precedes, so a sorted block is laid
-     * out the way its values were rather than the way its positions were.
-     * Which record came from where is read off the list objects themselves --
-     * sorting reorders them and does not replace them -- because two equal
-     * records hold equal values and cannot be told apart by what they hold.
-     */
     private static void putTheRecordsBackWithTheirMarks(
             BlockValue block, List<List<Value>> records,
             Map<List<Value>, Integer> whereEachRecordBegan, int step) {
@@ -8293,14 +6877,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * How two records order, by whatever /compare was given.
-     *
-     * <p>An integer names a column of each record rather than being a
-     * function, and a block names several to try in turn. Without /skip
-     * there are no records, so a column number means nothing and saying so
-     * beats picking one.
-     */
     private static int compareRecords(List<Value> left, List<Value> right,
             Value comparator, boolean mindingCase, boolean wholeRecord,
             SeriesValue series, Evaluator evaluator) {
@@ -8315,19 +6891,13 @@ public final class Natives {
             return Comparison.compareForSorting(left.getFirst(), right.getFirst(), mindingCase);
         }
         return wholeRecord
-                ? askComparator(comparator,
+                ? askComparatorTheOtherWayRound(comparator,
                         lentRecordOf(series, left), lentRecordOf(series, right), evaluator)
-                : askComparator(comparator,
+                : askComparatorTheOtherWayRound(comparator,
                         lentElementOf(series, left.getFirst()),
                         lentElementOf(series, right.getFirst()), evaluator);
     }
 
-    /**
-     * A whole record handed to a /compare function, in the shape the C hands
-     * it: a binary series lends a binary, a string a string, anything else a
-     * block. So a comparator asking {@code binary? x} of a sorted binary sees
-     * a binary rather than a block of byte numbers.
-     */
     private static Value lentRecordOf(SeriesValue series, List<Value> record) {
         if (series instanceof BinaryValue) {
             int[] octets = new int[record.size()];
@@ -8346,42 +6916,21 @@ public final class Natives {
         return lentRecord(record);
     }
 
-    /**
-     * A single element handed to a /compare function without /ALL: a byte of a
-     * binary is lent as the character of that code point, the way the C hands
-     * a char rather than the byte's number.
-     */
     private static Value lentElementOf(SeriesValue series, Value element) {
         return series instanceof BinaryValue && element instanceof IntegerValue octet
                 ? CharacterValue.of((int) octet.magnitude())
                 : element;
     }
 
-    /**
-     * A merge sort that takes from the left whenever the two are not out
-     * of order.
-     *
-     * <p>{@code stable_sort} in {@code f-stablemerge-sort.c}, and it has
-     * to be written out rather than handed to the JVM's sort. The JVM's
-     * is stable for a comparator that behaves like one, and a REBOL
-     * comparator need not: a plain predicate such as {@code [a &lt; b]}
-     * answers "left first" for a pair either way round, which is a
-     * contradiction as far as a sort is concerned. The C's merge takes
-     * from the left run whenever the comparison is at or below zero, so a
-     * contradiction of that shape leaves the order alone. TimSort reads
-     * the same contradiction as a descending run and turns it round.
-     *
-     * <p>The whole of the difference shows up as records with equal keys
-     * coming back shuffled, which is not obviously a defect until
-     * something sorts twice to order by two keys.
-     */
-    private static <T> List<T> mergeSorted(List<T> items, Comparator<T> order) {
+    private static <T> List<T> mergeSortedTakingFromTheLeftUnlessOutOfOrder(
+            List<T> items, Comparator<T> order) {
         if (items.size() < 2) {
             return items;
         }
         int half = items.size() / 2;
-        List<T> front = mergeSorted(new ArrayList<>(items.subList(0, half)), order);
-        List<T> back = mergeSorted(
+        List<T> front = mergeSortedTakingFromTheLeftUnlessOutOfOrder(
+                new ArrayList<>(items.subList(0, half)), order);
+        List<T> back = mergeSortedTakingFromTheLeftUnlessOutOfOrder(
                 new ArrayList<>(items.subList(half, items.size())), order);
         List<T> merged = new ArrayList<>(items.size());
         int here = 0;
@@ -8400,29 +6949,12 @@ public final class Natives {
         return merged;
     }
 
-    /**
-     * A record handed to a comparator, which may read it and not change it.
-     *
-     * <p>The C lends the same two blocks to every comparison and locks
-     * them, because a comparator that grew one would corrupt the next
-     * call. JEBOL builds a fresh block each time and still locks it, so
-     * that a comparator written against a real R3 fails here in the same
-     * way rather than quietly working.
-     */
     private static BlockValue lentRecord(List<Value> record) {
         BlockValue lent = BlockValue.block(record);
         lent.storage().protectFromChange(true);
         return lent;
     }
 
-    /**
-     * Two records compared element by element, which is what /ALL asks
-     * for.
-     *
-     * <p>Without it a record is ordered by its first element alone, so
-     * `sort/skip [4 3 4 1] 2` leaves both records where they were --
-     * their first elements are equal and the sort is stable.
-     */
     private static int compareWholeRecords(
             List<Value> left, List<Value> right, boolean mindingCase) {
 
@@ -8456,24 +6988,7 @@ public final class Natives {
         return 0;
     }
 
-    /**
-     * What a /compare function says about two values.
-     *
-     * <p>Two things here are what {@code Compare_Call} does and neither
-     * is guessable.
-     *
-     * <p>The two values go in the other way round. The comparator asking
-     * about the pair (first, second) is handed (second, first), so a
-     * comparator written {@code [a > b]} counts down.
-     *
-     * <p>The answer starts at -1 and stays there unless the comparator
-     * gave a true logic or a number at or above zero. So false means
-     * "the one on the left comes first" rather than "these two are
-     * equal", and only a numeric zero is a tie. That is what makes a
-     * plain strict predicate stable: two equal items answer false, which
-     * says leave the pair as it is.
-     */
-    private static int askComparator(
+    private static int askComparatorTheOtherWayRound(
             Value comparator, Value left, Value right, Evaluator evaluator) {
         Value answer = evaluator.applyFunction(comparator, List.of(right, left));
         if (answer instanceof LogicValue truth) {
@@ -8486,7 +7001,6 @@ public final class Natives {
         return -1;
     }
 
-    /** The first item, removed. NONE when there is none. */
     private static Value takeOne(SeriesValue series) {
         if (series.lengthFromHere() == 0) {
             return NoneValue.none();
@@ -8496,12 +7010,6 @@ public final class Natives {
         return taken;
     }
 
-    /**
-     * Several items, removed, as a series of the same kind.
-     *
-     * <p>A negative count takes backwards from the position toward the
-     * head, so at the head it takes nothing at all.
-     */
     private static Value deepenedIfAsked(Value taken, Set<String> refinements) {
         return refinements.contains("deep") && !(taken instanceof ObjectValue)
                 ? copied(taken, taken instanceof BlockValue)
@@ -8532,14 +7040,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * The numbers a value adds to a vector, whatever shape it arrived in.
-     *
-     * <p>{@code Modify_Vector} takes four: another vector contributes its
-     * elements from where it points, a block its values, a binary the elements
-     * its bytes spell at the target's own width, and anything else is one
-     * number.
-     */
     private static List<Value> numbersContributedTo(VectorKind kind, Value value) {
         if (value instanceof VectorValue source) {
             return source.remaining();
@@ -8548,28 +7048,13 @@ public final class Natives {
             return block.remaining();
         }
         if (value instanceof BinaryValue bytes) {
-            return numbersSpeltBy(kind, bytes, bytes.lengthFromHere());
+            return numbersSpeltByWithTheOddBytesDropped(
+                    kind, bytes, bytes.lengthFromHere());
         }
         return List.of(value);
     }
 
-    /**
-     * The numbers a run of bytes spells at the vector's own width, with
-     * anything left over at the end thrown away.
-     *
-     * <p>Two lines of {@code Modify_Vector} decide all of it:
-     * {@code src_len /= bpv; if (src_len == 0) Trap1(RE_INVALID_DATA,
-     * src_val);}. The source length becomes a count of whole numbers and the
-     * remainder goes with it, so three bytes offered to a vector of sixteen
-     * bit numbers give one number and drop the odd byte -- no failure and no
-     * warning. Only a run too short to spell a single number is refused.
-     *
-     * <p>"The binary must divide evenly" is the reading a careful
-     * implementation arrives at and it is not what the C does. The failure
-     * hands back the binary itself so a caller catching it can look at what
-     * was offered.
-     */
-    private static List<Value> numbersSpeltBy(
+    private static List<Value> numbersSpeltByWithTheOddBytesDropped(
             VectorKind kind, BinaryValue bytes, int taking) {
 
         int wholeNumbers = Math.max(0, taking) / kind.bytes();
@@ -8584,16 +7069,6 @@ public final class Natives {
         return numbers;
     }
 
-    /**
-     * The numbers one of the three modifying actions adds, /PART and /DUP
-     * applied.
-     *
-     * <p>/PART counts what the source offers, and for a binary it counts bytes
-     * rather than elements: {@code append/part v #{0304} 1} takes one byte,
-     * which is one number in an {@code int8!} vector and not enough for one in
-     * an {@code int16!}. CHANGE does not come through here with a limit at
-     * all, because its /PART counts what to remove from the target instead.
-     */
     private static List<Value> numbersAddedBy(VectorKind kind, List<Value> arguments,
             Set<String> refinements, boolean limitingTheSource) {
 
@@ -8612,7 +7087,6 @@ public final class Natives {
         return added;
     }
 
-    /** The first few numbers put in order, in place, from the position. */
     private static VectorValue sortedElements(VectorValue vector, int howMany,
             boolean backwards) {
 
@@ -8629,7 +7103,6 @@ public final class Natives {
         return vector;
     }
 
-    /** The numbers shuffled where they are, which is what RANDOM does to a series. */
     private VectorValue shuffledElements(VectorValue vector) {
         for (int remaining = vector.lengthFromHere(); remaining > 1; remaining--) {
             int chosen = vector.index() + randomness.below(remaining);
@@ -8641,15 +7114,6 @@ public final class Natives {
         return vector;
     }
 
-    /**
-     * CHANGE on a vector: as many taken out as are put in, unless /PART said
-     * otherwise.
-     *
-     * <p>/PART counts what to remove from the vector rather than what to take
-     * from the source, which is the one place the three modifying actions read
-     * the refinement differently. The C makes the same distinction in a single
-     * line: {@code Partial1((action == A_CHANGE) ? value : arg, ...)}.
-     */
     private static Value changedElements(VectorValue vector, List<Value> arguments,
             Set<String> refinements) {
 
@@ -8668,17 +7132,6 @@ public final class Natives {
         return vector.atIndex(vector.index() + numbers.size());
     }
 
-    /**
-     * What a source offers once /PART has said how much of it to read.
-     *
-     * <p>A count that is not a series takes no limit at all -- the C's last
-     * branch writes one value and never looks at the length -- so
-     * {@code append/part v 3 0} still adds the 3.
-     *
-     * <p>A negative count reaches back from where the source stands rather
-     * than forward from it, which is what /PART means everywhere, and the
-     * refusal below then names the binary at the position it was moved to.
-     */
     private static List<Value> numbersOfferedTo(VectorKind kind, Value value, int limit) {
         if (!(value instanceof SeriesValue source)) {
             return numbersContributedTo(kind, value);
@@ -8686,27 +7139,19 @@ public final class Natives {
         SeriesValue run = theRunReachingBackIfNegative(source, limit);
         long wanted = limit >= 0 ? limit : source.index() - run.index();
         if (run instanceof BinaryValue bytes) {
-            return numbersSpeltBy(kind, bytes,
+            return numbersSpeltByWithTheOddBytesDropped(kind, bytes,
                     (int) Math.min(wanted, bytes.lengthFromHere()));
         }
         List<Value> offered = numbersContributedTo(kind, run);
         return offered.subList(0, (int) Math.min(wanted, offered.size()));
     }
 
-    /** A fresh vector of one kind holding numbers taken from another. */
     private static VectorValue vectorHolding(VectorKind kind, List<Value> numbers) {
         VectorStorage made = new VectorStorage(kind, 0);
         numbers.forEach(number -> made.append(VectorPath.storedFormOf(kind, number)));
         return new VectorValue(made, 1);
     }
 
-    /**
-     * The pixels TAKE removed, as an image of their own.
-     *
-     * <p>A row rather than a rectangle: `Reset_Height` derives the height from
-     * the count and the width, and what was taken has no width of its own until
-     * something gives it one.
-     */
     private static ImageValue takenPixels(ImageValue image, List<Value> taken) {
         ImageValue made = ImageValue.of(taken.size(), taken.isEmpty() ? 0 : 1);
         for (int at = 1; at <= taken.size(); at++) {
@@ -8728,32 +7173,12 @@ public final class Natives {
         }
     }
 
-    /** Half away from zero, which is what REBOL rounds and a JVM does not. */
     private static double roundedHalfAway(double value) {
         return java.math.BigDecimal.valueOf(value)
                 .setScale(0, java.math.RoundingMode.HALF_UP)
                 .doubleValue();
     }
 
-    /**
-     * Whether a value is the zero of its own datatype.
-     *
-     * <p>{@code if (type >= REB_INTEGER && type <= REB_TIME)} is a range over
-     * the datatype table, so it takes in the char, the pair and the tuple as
-     * well as the four numbers: a zero pair and a zero tuple are zero, and so
-     * is the null character.
-     *
-     * <p>A bitset is the one that is not a comparison at all.
-     * {@code Is_Zero_Bitset} asks whether every byte is what an empty set
-     * would hold -- nought, or {@code 0xFF} where the set is written as a
-     * complement -- so {@code complement make bitset! #{FF}} is zero because
-     * it holds nothing, while a complemented charset is not.
-     *
-     * <p>Everything else answers no rather than being refused, which is why
-     * the declared argument is a bare {@code value} and a string simply says
-     * false. Taking numbers only made ZERO? raise on the datatype the question
-     * was written for.
-     */
     private static boolean isTheZeroOfItsDatatype(Value value) {
         if (value instanceof BitsetValue members) {
             byte held = (byte) (members.isComplemented() ? 0xFF : 0);
@@ -8782,24 +7207,6 @@ public final class Natives {
         return Comparison.isNumeric(value) && Comparison.asDouble(value) == 0.0;
     }
 
-    /**
-     * The bits a value names when it is handed to a set that already exists,
-     * which is what APPEND, INSERT, REMOVE and CLEAR each ask for.
-     *
-     * <p>One arm differs from the set MAKE builds, and only one. A number
-     * given to {@code make bitset!} asks for room -- {@code make bitset! 8} is
-     * eight bits of nothing -- while the same number given to {@code append}
-     * names the bit to turn on. {@code Make_Bitset} sizes and stops; the C
-     * says so in as many words, "nothing more to do". {@code Set_Bits} reaches
-     * {@code Set_Bit(bset, n, set)}.
-     *
-     * <p>Reading both through one helper made {@code alter bs 1} report that
-     * it had added a bit and leave the set exactly as it was, because the
-     * number had been read as a request for one bit of room.
-     *
-     * <p>Every other shape means the same thing to both, so they share the
-     * rest.
-     */
     private static Value bitsMeantBy(Value source) {
         if (source instanceof IntegerValue point) {
             return BitsetValue.of(withBitSet(new byte[0], bitAsked(point.magnitude())));
@@ -8811,7 +7218,6 @@ public final class Natives {
         return bitsetOf(source);
     }
 
-    /** A bitset holding every character code in what it is given. */
     private static Value bitsetOf(Value source) {
         return switch (source) {
             case StringValue text -> BitsetValue.ofCharacters(text.text().codePoints().toArray());
@@ -8827,29 +7233,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A bitset from a block, which may open with the word NOT.
-     *
-     * <p>Two things the block form can do that a bare string or binary
-     * cannot. The word NOT at the head complements the set:
-     *
-     * <pre>
-     * val = VAL_BLK_DATA(val);
-     * if (IS_SAME_WORD(val, SYM_NOT)) {
-     *     BITS_NOT(bset) = TRUE;
-     *     val++;
-     * }
-     * </pre>
-     *
-     * <p>And a binary inside it supplies the octets whole rather than naming
-     * code points one at a time, which is how a large set is written without
-     * listing it. Rebol's own JSON codec writes both at once:
-     * {@code to bitset! [not #{FFFFFFFF2000000000000008}]} is every character
-     * except the control codes, the double quote and the backslash.
-     *
-     * <p>Both were dropped here, so that set came out empty and every
-     * character of a string was escaped as a code point.
-     */
     private static Value bitsetFromBlock(BlockValue members) {
         List<Value> items = members.remaining();
         boolean complemented = !items.isEmpty()
@@ -8861,24 +7244,6 @@ public final class Natives {
         return complemented ? set.complemented() : set;
     }
 
-    /**
-     * The octets a block of bitset specs names, laid one over another.
-     *
-     * <p>{@code Set_Bits} walks the block and turns bits on as it goes, so
-     * every spec adds to what came before rather than replacing it:
-     * {@code [1 - 3 #{80}]} is the range and the byte together. Reading only a
-     * lone binary meant two of them cancelled to nothing.
-     *
-     * <p>Five shapes are understood. A char or a number names one bit, and a
-     * dash between two of them names the run. A string names one bit per
-     * character. A binary supplies the octets whole, which is how a large set
-     * is written without listing it. And the word {@code bits} in front of a
-     * binary is the same thing said out loud.
-     *
-     * <p>A spec that is none of those is an invalid argument, which is what
-     * makes a trailing {@code not} an error: the word only means the
-     * complement at the head of the block, and anywhere else it names nothing.
-     */
     private static byte[] octetsNamedBy(List<Value> specs, BlockValue whole) {
         byte[] octets = new byte[0];
         for (int at = 0; at < specs.size(); at++) {
@@ -8918,17 +7283,6 @@ public final class Natives {
         return octets;
     }
 
-    /**
-     * The value closing a run, which has to be the same kind as the one that
-     * opened it.
-     *
-     * <p>The C asks the question twice and each time about one type: a char
-     * opening a run reaches {@code if (IS_CHAR(val))} and an integer reaches
-     * {@code if (IS_INTEGER(val))}, and either failing is {@code Trap_Arg}. So
-     * {@code [#"a" - 5]} is an invalid argument rather than the run from
-     * {@code a} to five, and a dash with nothing after it is the same error
-     * against the end of the block.
-     */
     private static Value farEndOfTheRun(Value opening, List<Value> specs, int at) {
         Value closing = at < specs.size() ? specs.get(at) : UnsetValue.unset();
         if (opening.datatype() != closing.datatype()) {
@@ -8937,7 +7291,6 @@ public final class Natives {
         return closing;
     }
 
-    /** The octets with one more bit turned on, grown if they do not reach it. */
     private static byte[] withBitSet(byte[] octets, int point) {
         int reaching = point / 8 + 1;
         byte[] grown = octets.length >= reaching
@@ -8947,7 +7300,6 @@ public final class Natives {
         return grown;
     }
 
-    /** The octets with another set's laid over them, grown to fit. */
     private static byte[] withOctetsSet(byte[] octets, byte[] more) {
         byte[] grown = octets.length >= more.length
                 ? octets
@@ -8958,15 +7310,6 @@ public final class Natives {
         return grown;
     }
 
-    /**
-     * The code points a block of bitset members names.
-     *
-     * <p>Three ways to name one: a character, a number naming it by code
-     * point, and a dash between two characters meaning everything
-     * between. The range is the one that matters -- it is the only way
-     * to write a large set at all, and dropping it silently gave a set
-     * holding just the two ends.
-     */
     private static int[] codePointsIn(BlockValue members) {
         List<Value> items = members.remaining();
         List<Integer> points = new ArrayList<>();
@@ -8998,30 +7341,6 @@ public final class Natives {
                 : (int) Comparison.asDouble(value);
     }
 
-    /**
-     * Whether a bitset holds what it is being asked about, which is
-     * {@code Check_Bits} and is the one arm PICK and FIND share:
-     * {@code case A_PICK: case A_FIND:}.
-     *
-     * <p>Five things may be asked and only one of them was answered. A char
-     * and an integer each name one code point -- the integer being a code
-     * point is why {@code pick charset "a" 97} is true. A string or a binary
-     * asks about every character in it. A block asks about every one it names,
-     * ranges included, which is the same grammar that builds a set in the
-     * first place and so is read by the same walk.
-     *
-     * <p>Every one of them has to be held, unless {@code /any} was asked for
-     * and then one will do. Answering only a char left every other form
-     * quietly false, which reads as "the set does not hold it" rather than as
-     * a question that was never asked.
-     *
-     * <p>A char FIND asks about matches either case unless {@code /case} was
-     * given, and a number naming the same code point never does. The C spells
-     * out all three conditions at once --
-     * {@code IS_CHAR(arg) && action == A_FIND && !D_REF(ARG_FIND_CASE)} -- so
-     * {@code find charset [#"A"] #"a"} is true and
-     * {@code find charset [#"A"] 97} is false.
-     */
     private static boolean bitsetHolds(
             BitsetValue members, Value asked, boolean anyWillDo, boolean eitherCaseWillDo) {
         if (asked instanceof CharacterValue letter) {
@@ -9039,17 +7358,6 @@ public final class Natives {
         return bitsetHolds(members, asked, anyWillDo, false);
     }
 
-    /**
-     * A bit a caller named, or {@code out-of-range} where no bit has that
-     * number.
-     *
-     * <p>{@code Int32s(val, 0)} is the C asking for a whole number no smaller
-     * than nought and raising rather than returning one. Below zero indexes
-     * before the first byte, so leaving it to the array made a negative escape
-     * as a Java exception where a script should have caught an error --
-     * Rebol's own suite asks exactly that of the most negative number there
-     * is, and notes that Red answers differently.
-     */
     private static int bitAsked(long codepoint) {
         if (codepoint < 0 || codepoint > Integer.MAX_VALUE) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
@@ -9058,14 +7366,6 @@ public final class Natives {
         return (int) codepoint;
     }
 
-    /**
-     * What a path through a bitset answers, which is the question PICK asks.
-     *
-     * <p>{@code bs/3} and {@code pick bs 3} are one thing, because the C sends
-     * a path selection to {@code Pick_Path} and a bitset's PICK arm is what
-     * answers it. Raising {@code invalid-path} instead made a path the one way
-     * of asking a bitset something that did not work.
-     */
     static Value bitsetHoldsForAPath(BitsetValue members, Value selector) {
         return LogicValue.of(bitsetHolds(members, selector, false));
     }
@@ -9101,15 +7401,6 @@ public final class Natives {
         return !anyWillDo;
     }
 
-    /**
-     * A shuffle done Rebol's way rather than the JVM's.
-     *
-     * <p>Both are Fisher-Yates and they are not the same shuffle. Rebol walks
-     * down from the end taking {@code Random_Int % n} each time, and Java's
-     * {@code Collections.shuffle} draws differently and consumes a different
-     * number of values. With the generator now matching, this is the other
-     * half of making {@code random/seed 1} reproduce Rebol's own answers.
-     */
     private <T> void shuffleTheWayTheCDoes(List<T> items) {
         for (int remaining = items.size(); remaining > 1;) {
             int chosen = randomness.below(remaining);
@@ -9129,14 +7420,7 @@ public final class Natives {
         return block;
     }
 
-    /**
-     * A string shuffled in place, the way a block is.
-     *
-     * <p>Building a new string instead leaves the caller's own string
-     * untouched, which is the whole point of shuffling one, and skips the
-     * refusal a protected string is owed.
-     */
-    private Value shuffledText(StringValue text) {
+    private Value shuffledTextInPlace(StringValue text) {
         List<Integer> letters = new ArrayList<>();
         for (int at = text.index(); at <= text.storageLength(); at++) {
             letters.add(text.storage().at(at));
@@ -9148,7 +7432,6 @@ public final class Natives {
         return text;
     }
 
-    /** A binary shuffled in place, exactly as a string is. */
     private Value shuffledBytes(BinaryValue bytes) {
         List<Integer> octets = new ArrayList<>();
         for (int at = bytes.index(); at <= bytes.storageLength(); at++) {
@@ -9161,13 +7444,6 @@ public final class Natives {
         return bytes;
     }
 
-    /**
-     * A question about whether every character fits a range.
-     *
-     * <p>Empty answers true rather than false, which is the useful way
-     * round: a guard asking "is this safe to write as ASCII" wants yes
-     * for nothing at all.
-     */
     private void defineCodepointRange(String name, int highest) {
         define(name, List.of(Parameter.required("value")),
                 (arguments, evaluator, context) -> switch (arguments.get(0)) {
@@ -9180,7 +7456,6 @@ public final class Natives {
                 });
     }
 
-    /** How many arguments a callable consumes, refinements aside. */
     private static long arityOf(Value callee) {
         return switch (callee) {
             case NativeValue built -> built.parameters().stream()
@@ -9193,7 +7468,6 @@ public final class Natives {
         };
     }
 
-    /** Spaces to tabs, or tabs to spaces, at a stop of the given width. */
     private void defineTabbing(String name, boolean toTabs) {
         define(name, List.of(
                         Parameter.required("text", anyStringOr(Datatype.BINARY)),
@@ -9216,14 +7490,12 @@ public final class Natives {
                 });
     }
 
-    /** Gives the context a slot for every word the block uses. */
     private static void defineFreshWordsOf(BlockValue block, Context target, boolean settersOnly) {
         List<Value> words = new ArrayList<>();
         gatherWords(block, true, settersOnly, words);
         words.forEach(word -> target.define(((WordValue) word).canonical()));
     }
 
-    /** Every word a block uses, unique and in the order first seen. */
     private static void gatherWords(
             BlockValue block, boolean deeply, boolean settersOnly, List<Value> found) {
         for (Value item : block.remaining()) {
@@ -9239,10 +7511,6 @@ public final class Natives {
             if (settersOnly && word.datatype() != Datatype.SET_WORD) {
                 continue;
             }
-            // A REBOL word is case-insensitive, so Domain and domain are one
-            // word and one slot. Comparing the spelling collected both, which
-            // gave the borrowed SET-COOKIES three locals R3 does not list.
-            // The first spelling seen is the one kept.
             WordValue plain = WordValue.of(word.spelling());
             if (found.stream().noneMatch(seen -> seen instanceof WordValue already
                     && already.canonical().equals(plain.canonical()))) {
@@ -9251,11 +7519,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * The error catalogue as errors.reb declares it: category set-words each
-     * holding a block of id set-words and their message templates. Read from
-     * the source {@link #useErrorCatalogue} handed in, past its own header.
-     */
     private List<Value> catalogueEntries() {
         try {
             TranscodeResult read = Transcoder.transcode(errorCatalogueSource);
@@ -9266,18 +7529,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Every C function's spec, read out of the two declaration files.
-     *
-     * <p>Each entry is written {@code name: native [...]} or
-     * {@code name: action [...]}, so the walk is a set-word, the word saying
-     * which kind, and the block -- and the block is the spec exactly as Rebol
-     * wrote it. Anything that does not match that shape is skipped rather than
-     * guessed at: a file that changes shape should lose entries loudly, by the
-     * specs going missing, not quietly by being half read.
-     *
-     * <p>Built once per Natives and thrown away when the source changes.
-     */
     private Map<String, BlockValue> declaredSpecs;
 
     private Map<String, BlockValue> declaredSpecs() {
@@ -9306,30 +7557,6 @@ public final class Natives {
         return declaredSpecs;
     }
 
-    /**
-     * APPLY of a built-in that has refinements.
-     *
-     * <p>The block is read against the function's own words in order, which is
-     * what makes the refinements reachable: a word takes the next value as its
-     * argument, and a refinement takes the next value as a logic saying whether
-     * it is used. A refinement's arguments are read whether or not it was asked
-     * for, so nothing after them shifts -- {@code apply :copy [[1 2 3] false 3]}
-     * reads the 3 into /part's slot and ignores it.
-     *
-     * <p>Values run out rather than being an error: what is left is none, and a
-     * refinement nobody mentioned is not asked for.
-     *
-     * <p>The values are matched to parameters by position rather than by name.
-     * Rebol's declared parameter names and JEBOL's registered ones are not
-     * always the same word -- UPPERCASE takes {@code string} there and
-     * {@code text} here -- and matching on the name silently handed every one
-     * of those a none.
-     *
-     * <p>Taking the first N positionally instead, as this did, dropped every
-     * refinement and ran the call without it, so
-     * {@code apply :copy [[1 2 3 4 5] true 3]} answered the whole series with
-     * no error at all.
-     */
     private Value applyWithRefinements(
             NativeValue named, List<Value> supplied, Evaluator evaluator) {
 
@@ -9378,22 +7605,12 @@ public final class Natives {
         return evaluator.applyFunction(refined, arguments);
     }
 
-    /** A built-in's words, in the order APPLY reads its block against. */
     private List<Value> wordsOfBuiltIn(NativeValue named) {
         return wordsNamedIn(specOf(named)) instanceof BlockValue words
                 ? words.remaining()
                 : List.of();
     }
 
-    /**
-     * A built-in's spec: Rebol's own declaration where there is one.
-     *
-     * <p>Falls back to the block rebuilt from the registry for anything the
-     * declaration files do not name -- JEBOL's own additions, and the handful
-     * of names R3 declares somewhere other than these two files. The rebuild
-     * carries the parameters and their types and nothing else, which is what
-     * every built-in answered before.
-     */
     private Value specOf(NativeValue built) {
         BlockValue declared = declaredSpecs().get(built.nativeName());
         if (declared != null) {
@@ -9405,33 +7622,12 @@ public final class Natives {
         return specBlockOf(built.parameters());
     }
 
-    /**
-     * What R3 gives for {@code block?}, {@code integer?} and all their kin.
-     *
-     * <p>Generated rather than declared, one per datatype, so they appear in
-     * none of the declaration files and read identically in all of them:
-     * {@code ["Returns TRUE if it is this type." value [any-type!]]}.
-     */
     private static final BlockValue THE_SPEC_EVERY_DATATYPE_TEST_HAS =
             BlockValue.block(List.of(
                     StringValue.of("Returns TRUE if it is this type."),
                     WordValue.of("value"),
                     BlockValue.block(List.of(WordValue.of("any-type!")))));
 
-    /**
-     * The words a spec block names: its parameters and its refinements.
-     *
-     * <p>A spec is words, refinements, docstrings and blocks of accepted
-     * types, and WORDS-OF keeps the words in the order they appear. That order
-     * is the whole reason the spec is read rather than rebuilt --
-     * {@code /part range /only /dup count} cannot be recovered from a set of
-     * refinement names and a list of parameters.
-     *
-     * <p>A parameter keeps the sigil it was declared with, because the sigil
-     * is how it takes its argument and WORDS-OF is where a caller finds that
-     * out: {@code words-of :++} is {@code ['word]}, and a plain {@code word}
-     * there would say the argument is evaluated when it is not.
-     */
     private static Value wordsNamedIn(Value spec) {
         if (!(spec instanceof BlockValue written)) {
             return NoneValue.none();
@@ -9445,11 +7641,6 @@ public final class Natives {
     private static final Set<Datatype> NAMES_A_PARAMETER = Set.of(
             Datatype.WORD, Datatype.REFINEMENT, Datatype.LIT_WORD, Datatype.GET_WORD);
 
-    /**
-     * DO of a binary, run as the script it is: the header is read by
-     * sys/load-header, its length bounds the body, an unmet needs refuses,
-     * and a top-level RETURN unwinds to the DO.
-     */
     private static Value doneAsAScript(
             BinaryValue bytes, Evaluator evaluator, Context context) {
         Value loadHeader = systemInternalFunction(
@@ -9480,40 +7671,17 @@ public final class Natives {
         }
     }
 
-    /**
-     * DO of a file or a URL, which Rebol does not write in C either.
-     *
-     * <p>{@code n-control.c} sends {@code REB_FILE}, {@code REB_URL},
-     * {@code REB_STRING} and {@code REB_BINARY} to
-     * {@code Do_Sys_Func(SYS_CTX_DO_P, ...)}, and that is {@code sys/do*} in
-     * the borrowed {@code sys-base.reb}. It loads the file with its header,
-     * runs its NEEDS, interns it, and evaluates it with the working directory
-     * moved to the file's own and put back afterwards. None of that is worth
-     * writing again in Java when the file that does it is already loaded.
-     *
-     * <p>Only the two name-like types come here. A string and a binary keep the
-     * routes they had: a string is source rather than a script, and reaching
-     * {@code do*} with one would give it a header and a NEEDS pass it has never
-     * had here.
-     *
-     * <p>Without this a file matched the {@code StringValue} case, since a file
-     * is one, and the file's own name was evaluated as source --
-     * {@code do %units/files/unset.r3} raised {@code no-value} on the word
-     * {@code units}.
-     */
     private static Value runAsAScript(StringValue named, Evaluator evaluator) {
         Value doStar = systemInternalFunction(evaluator.systemContext(), "do*");
         return evaluator.applyFunction(doStar, List.of(named));
     }
 
-    /** Whether this interpreter's version reaches what needs: asks for. */
     private static boolean interpreterMeets(TupleValue wanted, Evaluator evaluator) {
         Value version = pathInto(evaluator.systemContext(), "system", "version");
         return version instanceof TupleValue own
                 && !Comparison.holds(wanted, own, Comparison.Strictness.GREATER);
     }
 
-    /** The bytes between a position and an end index in the same binary. */
     private static byte[] spanOfOctets(BinaryValue from, int endIndex) {
         int howMany = Math.max(0, endIndex - from.index());
         byte[] span = new byte[howMany];
@@ -9523,7 +7691,6 @@ public final class Natives {
         return span;
     }
 
-    /** A string DO/NEXT steps through, loaded and bound the way DO loads it. */
     private static BlockValue loadedForStepping(String source, Context context) {
         TranscodeResult read = Transcoder.transcode(source);
         if (!read.succeeded()) {
@@ -9532,18 +7699,11 @@ public final class Natives {
         return Binder.bindAndDefine(read.values().orElseThrow(), context);
     }
 
-    /**
-     * A position stranded past the tail, brought back to the tail. The C's
-     * common action setup does it for every series action -- {@code if
-     * (index > tail) VAL_INDEX(value) = index = tail;} -- so a change or an
-     * insert at such a position appends instead of failing.
-     */
     private static SeriesValue clampedToTail(SeriesValue series) {
         int tail = series.storageLength() + 1;
         return series.index() > tail ? series.atIndex(tail) : series;
     }
 
-    /** Putting a value in at the position, whichever kind of series. */
     private static Value insertInto(SeriesValue stranded, Value value) {
         SeriesValue series = clampedToTail(stranded);
         switch (series) {
@@ -9579,19 +7739,6 @@ public final class Natives {
         return series.head();
     }
 
-    /**
-     * How much of the source a /PART limit asks for, as a count, or -1 for all
-     * of it.
-     *
-     * <p>INSERT and APPEND both declare it in the same place, so the two read
-     * it the same way rather than each working out where it sits.
-     *
-     * <p>A limit may be a number or a position, and a position means "up to
-     * here". Reading only the number turned {@code insert/part output a b}
-     * into an insert of everything from {@code a} onwards, which is how REWORD
-     * over a binary came to answer its whole template with the substitutions
-     * appended to it.
-     */
     private static int partCountFor(List<Value> arguments, Set<String> refinements) {
         Value limit = argumentFor(
                 "part", List.of("part", "dup"), arguments, refinements, 2);
@@ -9606,7 +7753,6 @@ public final class Natives {
         return -1;
     }
 
-    /** Removing one item, whichever kind of series holds it. */
     private static void removeOneAt(SeriesValue series, int index) {
         switch (series) {
             case BlockValue block -> block.storage().removeAt(index);
@@ -9618,15 +7764,7 @@ public final class Natives {
         }
     }
 
-    /**
-     * The text turned round, a character at a time.
-     *
-     * <p>Characters, not Java's sixteen-bit units: reversing by those splits
-     * anything above the basic plane into its two halves and puts them back
-     * the wrong way round, which is not a character at all. JEBOL's storage
-     * holds code points, so walking it any other way is walking something else.
-     */
-    private static Value reversedText(StringValue text) {
+    private static Value reversedTextACharacterAtATime(StringValue text) {
         int[] forwards = text.text().codePoints().toArray();
         for (int at = 0; at < forwards.length; at++) {
             text.storage().set(text.index() + at, forwards[forwards.length - 1 - at]);
@@ -9645,25 +7783,7 @@ public final class Natives {
         return bytes;
     }
 
-    /**
-     * REMOVE-EACH over a series that is not a block.
-     *
-     * <p>A binary yields its bytes and a string its characters, and each is
-     * removed where the body answers true. Going through the storage is also
-     * what makes a protected series refuse.
-     *
-     * <p>Forwards, and the order matters more than it looks. This walked
-     * backwards so that removing an item could not disturb the indexes still
-     * to come -- which works for the removing and is wrong for everything
-     * else, because the body runs in that order too. REBOL's own test appends
-     * each character to a string as it goes and then checks what it collected:
-     * the answer came back reversed, and nothing about REMOVE-EACH said it
-     * would.
-     *
-     * <p>Deciding first and rewriting afterwards keeps the walk forwards and
-     * the indexes still, which is what the block path already did.
-     */
-    private static Value removedEachFrom(
+    private static Value removedEachFromDecidingForwardsThenRewriting(
             SeriesValue series, List<Value> arguments, Set<String> refinements,
             Evaluator evaluator, Context within) {
 
@@ -9696,10 +7816,6 @@ public final class Natives {
         return refinements.contains("count") ? IntegerValue.of(taken) : series;
     }
 
-    /**
-     * One value put back into a series that is not a block, which each kind
-     * stores its own way.
-     */
     private static void insertOneInto(SeriesValue series, int at, Value item) {
         switch (series) {
             case BinaryValue bytes ->
@@ -9712,17 +7828,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * REMOVE-EACH over a map: pairs out, and pairs counted.
-     *
-     * <p>The count is halved -- {@code SET_INTEGER(DS_RETURN, IS_MAP(value) ?
-     * index / 2 : index);} -- for the same reason APPEND/PART is halved. A
-     * caller counting values would be told it removed twice what it removed.
-     *
-     * <p>The keys are gathered before any are taken out. Removing while walking
-     * would be reading a map that is changing underneath, and the result would
-     * depend on where in its storage each key happened to sit.
-     */
     private static Value removedEachPairFrom(
             MapValue map, List<Value> arguments, Set<String> refinements,
             Evaluator evaluator, Context within) {
@@ -9736,7 +7841,7 @@ public final class Natives {
         List<Value> pairs = map.walkable();
         List<Value> takeOut = new ArrayList<>();
         for (int at = 0; at < pairs.size(); at += 2) {
-            setLoopNames(locals, names, pairs, at, map);
+            setLoopNamesFillingWithNonePastTheEnd(locals, names, pairs, at, map);
             if (evaluator.evaluateOrRaise(body, locals).isTruthy()) {
                 takeOut.add(pairs.get(at));
             }
@@ -9747,7 +7852,6 @@ public final class Natives {
                 : map;
     }
 
-    /** Refuses a change to a protected series before attempting it. */
     private static void refuseIfProtected(SeriesValue series) {
         boolean guarded = switch (series) {
             case BlockValue block -> block.storage().isProtected();
@@ -9762,14 +7866,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * The text a modifying action is adding, /PART and /DUP applied.
-     *
-     * <p>APPEND worked this out and INSERT did not, so {@code insert/dup} put
-     * one copy in however many were asked for. PAD is four lines of REBOL with
-     * this call in the middle of it, which is how a missing refinement showed
-     * up as a string one character short.
-     */
     private static String textContributedBy(
             List<Value> arguments, Set<String> refinements) {
 
@@ -9778,21 +7874,11 @@ public final class Natives {
                 && added.datatype() == Datatype.BLOCK
                 ? runTogether(added)
                 : Molder.form(adding);
-        // Counted in characters. Cutting by Java's own string length takes half
-        // of anything outside the basic plane, so `insert/part s "🙂" 1` put in
-        // a lone surrogate that reads back as a question mark.
         return howManyWanted(arguments.get(1), arguments, refinements, 2)
                 .map(count -> theFirstCodePointsOf(written, count.intValue()))
                 .orElse(written);
     }
 
-    /**
-     * What is being added, repeated as many times as /DUP asked.
-     *
-     * <p>A block being spliced repeats as a whole, so
-     * `append/dup [1] [2 3] 2` adds 2 3 2 3. A count of zero adds
-     * nothing, which is what makes /DUP usable with a computed number.
-     */
     private static Value duplicated(
             Value value, List<Value> arguments, Set<String> refinements) {
 
@@ -9815,7 +7901,6 @@ public final class Natives {
         return new BlockValue(repeated, 1, Datatype.BLOCK);
     }
 
-    /** What {@code Int32} makes of a count: whole, truncated, or refused. */
     private static long wholeCountOf(Value times) {
         return switch (times) {
             case IntegerValue count -> count.magnitude();
@@ -9826,13 +7911,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * Every line with the first line's indentation taken off the front.
-     *
-     * <p>What TRIM/AUTO means: the shallowest indentation becomes none
-     * and anything deeper keeps the difference, so a block of code pasted
-     * into a string comes back with its shape intact.
-     */
     private static String withoutCommonIndent(String text) {
         String[] lines = text.split("\n", -1);
         int firstContentLine = 0;
@@ -9855,12 +7933,6 @@ public final class Natives {
         return trimmed.toString();
     }
 
-    /**
-     * The true default TRIM: the whole string's leading and trailing
-     * whitespace goes, then each line loses its own leading indentation and
-     * trailing whitespace, and one line feed survives at the end if the
-     * trimmed tail held one. {@code trim_head_tail} with neither flag.
-     */
     private static String trimmedEachLine(String text) {
         String afterLead = text.stripLeading();
         String core = afterLead.stripTrailing();
@@ -9880,7 +7952,6 @@ public final class Natives {
         return joined.toString();
     }
 
-    /** The words a block or an object names, for COLLECT-WORDS/IGNORE. */
     private static Set<String> namesIn(Value source) {
         return switch (source) {
             case BlockValue words -> words.remaining().stream()
@@ -9895,17 +7966,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * What TAIL? admits: `series [series! gob! port! bitset! typeset!
-     * map!]`, actions.reb line 143.
-     *
-     * <p>Written out rather than taken as "every series", because the
-     * list is what decides whether `tail? none` refuses. NONE and OBJECT
-     * are deliberately absent: EMPTY? is the same action under a spec
-     * that adds them -- mezz-series.reb writes `make :tail? [...]` with
-     * the wider list -- so the body below answers for an object while
-     * this list turns one away at the word TAIL? itself.
-     */
     private static final Set<Datatype> SERIES_LIKE = EnumSet.of(
             Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL,
             Datatype.TAG, Datatype.REF, Datatype.BINARY,
@@ -9915,22 +7975,6 @@ public final class Natives {
             Datatype.TYPESET, Datatype.MAP, Datatype.GOB, Datatype.IMAGE,
             Datatype.VECTOR);
 
-    /**
-     * Rebol's {@code series!} typeset, which is what PARSE takes.
-     *
-     * <p>Narrower than {@link #SERIES_LIKE} and written out rather than reused
-     * from it: a map, a bitset and a typeset all carry contents and hold a
-     * position, and none of them is parseable. Read off a real 3.22.5, which
-     * answers {@code make typeset! [binary! string! file! email! ref! url!
-     * tag! image! vector! block! paren! path! set-path! get-path! lit-path!
-     * hash!]}.
-     *
-     * <p>PARSE declared its input with no typeset at all, so
-     * {@code parse 1 [end]} ran and answered false. A rule that never matched
-     * and a value that could not be matched are different facts, and a caller
-     * reading the first when it should have seen the second has a defect the
-     * interpreter agreed to.
-     */
     private static final Set<Datatype> PARSEABLE = EnumSet.of(
             Datatype.BINARY, Datatype.STRING, Datatype.FILE, Datatype.EMAIL,
             Datatype.REF, Datatype.URL, Datatype.TAG, Datatype.IMAGE,
@@ -9938,13 +7982,6 @@ public final class Natives {
             Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
             Datatype.HASH);
 
-    /**
-     * UNION, INTERSECT or EXCLUDE, which differ only in what they keep.
-     *
-     * <p>/CASE stops the case folding and /SKIP reads both series as
-     * records of a fixed width, comparing whole records rather than
-     * single items.
-     */
     private void defineSetOperation(String name, Combination how) {
         define(name, List.of(
                         Parameter.required("first", setOperandOr(Datatype.BLOCK)),
@@ -9958,16 +7995,6 @@ public final class Natives {
                 });
     }
 
-    /**
-     * What a series holds, as values, whether it is a block or text.
-     *
-     * <p>DIFFERENCE is the one set operation that has to walk both operands
-     * itself, because it is the symmetric one: everything in the first that is
-     * not in the second, and then everything in the second that is not in the
-     * first. The others can be expressed as a single pass and share a helper
-     * that already knew about text; this one did not, and cast a string to a
-     * block and threw a Java exception out of the interpreter.
-     */
     private static List<Value> theMembersOf(Value series) {
         if (series instanceof StringValue text) {
             return text.text().codePoints()
@@ -9977,7 +8004,6 @@ public final class Natives {
         return ((BlockValue) series).remaining();
     }
 
-    /** The members put back into the shape the first operand had. */
     private static Value shapedLike(Value original, List<Value> members) {
         if (!(original instanceof StringValue text)) {
             return BlockValue.block(members);
@@ -9988,14 +8014,6 @@ public final class Natives {
         return StringValue.of(written.toString(), text.datatype());
     }
 
-    /**
-     * A /SKIP record width, refusing one that is not a width at all.
-     *
-     * <p>Clamping to one turned {@code union/skip [2 1] [2 1] -2} into a
-     * perfectly ordinary call over single items, so a caller who worked the
-     * number out wrongly was told nothing. A record cannot be shorter than one
-     * item and the C says so with {@code out-of-range}.
-     */
     private static int recordWidthOf(Value width) {
         if (!(width instanceof IntegerValue wanted)) {
             return 1;
@@ -10006,29 +8024,13 @@ public final class Natives {
         return (int) wanted.magnitude();
     }
 
-    /**
-     * A series copied, and what it holds copied too when asked.
-     *
-     * <p>Anything that is not a series comes back as it was, because a
-     * number has nothing to copy and refusing it would make COPY unusable
-     * on a block holding one.
-     */
     private static Value copied(Value original, boolean deeply) {
         return copied(original, deeply, DEEP_COPIED);
     }
 
-    /** One of a block's slots: the value, and whether a line starts before it. */
     private record MarkedItem(Value value, boolean breaksLine) {
     }
 
-    /**
-     * A run of a block's slots, read out so that reordering them reorders the
-     * line-break marks with the values they belong to.
-     *
-     * <p>Writing the values back and leaving the marks where they were keeps
-     * the shape of the old order over the new items, which is how a sorted
-     * block came back laid out as the unsorted one had been.
-     */
     private static List<MarkedItem> theMarkedItemsOf(BlockValue block, int howMany) {
         List<MarkedItem> slots = new ArrayList<>(howMany);
         for (int at = 0; at < howMany; at++) {
@@ -10047,30 +8049,11 @@ public final class Natives {
         }
     }
 
-    /**
-     * A block built from another one, keeping the line-break marks and the
-     * datatype of the one it came from.
-     *
-     * <p>The marks belong to the values rather than to the positions, so a
-     * copy that leaves them behind is a copy that has lost something. Every
-     * operation that builds a block out of a block goes through here, which is
-     * how one line covers COPY, TO BLOCK! and the rest rather than each of
-     * them remembering.
-     */
     static BlockValue laidOutLike(BlockValue source, BlockStorage built) {
         built.takeLineBreaksFrom(source.storage(), source.index());
         return new BlockValue(built, 1, source.datatype());
     }
 
-    /**
-     * Which datatypes COPY duplicates rather than shares.
-     *
-     * <p>`TS_DEEP_COPIED` is the standard set -- every series and a map, less
-     * the four the C names as not copied: `TS_NOT_COPIED (TYPESET(REB_IMAGE) |
-     * TYPESET(REB_VECTOR) | TYPESET(REB_TASK) | TYPESET(REB_PORT))`. An image is
-     * shared because copying one is expensive, and a port because two ports on
-     * one connection would be two ways to close it.
-     */
     private static final Set<Datatype> DEEP_COPIED = EnumSet.of(
             Datatype.BLOCK, Datatype.PAREN, Datatype.PATH, Datatype.SET_PATH,
             Datatype.GET_PATH, Datatype.LIT_PATH, Datatype.HASH,
@@ -10078,14 +8061,6 @@ public final class Natives {
             Datatype.TAG, Datatype.REF, Datatype.BINARY, Datatype.BITSET,
             Datatype.MAP, Datatype.FUNCTION);
 
-    /**
-     * The datatypes /TYPES named, or the standard set when it was not asked.
-     *
-     * <p>`types |= CP_DEEP | (D_REF(ARG_COPY_TYPES) ? 0 : TS_DEEP_COPIED);` --
-     * so naming any set replaces the standard one rather than adding to it, and
-     * that is the whole point of the refinement: `copy/deep/types b string!`
-     * reaches every level and copies only the strings it finds.
-     */
     private static Set<Datatype> whichDatatypesToCopy(
             List<Value> arguments, Set<String> refinements) {
 
@@ -10116,7 +8091,8 @@ public final class Natives {
             case BinaryValue binary -> copiedBytes(binary, binary.lengthFromHere());
             case VectorValue vector -> copiedElements(vector, vector.lengthFromHere());
             case BitsetValue members -> members.duplicate();
-            case ImageValue picture -> copiedPixels(picture, picture.lengthFromHere());
+            case ImageValue picture ->
+                    copiedPixelsAsWholeRows(picture, picture.lengthFromHere());
             case MapValue pairs -> {
                 List<Value> flattened = pairs.flattened();
                 List<Value> copiedPairs = new ArrayList<>(flattened.size());
@@ -10142,25 +8118,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * What a container puts back in place of one of the things it held.
-     *
-     * <p>Two refinements and two questions, and they are not the same one.
-     * {@code /types} says which datatypes are duplicated rather than shared,
-     * and {@code /deep} says whether to go on doing it inside whatever was
-     * duplicated. The C keeps them apart in one line --
-     * {@code if (deep) types |= CP_DEEP | (types_given ? types :
-     * TS_DEEP_COPIED);} -- so asking for types alone reaches one level down
-     * and no further.
-     *
-     * <p>That is why {@code copy/types m string!} gives a map whose strings
-     * are its own and whose nested map is still shared, and why every string
-     * inside that nested map is untouched: the map was not copied, so there
-     * was nothing to go into.
-     *
-     * <p>A plain COPY names no datatypes at all, which is how it stays
-     * shallow without a separate branch saying so.
-     */
     private static Value memberCopiedFrom(Value member, boolean deeply, Set<Datatype> kinds) {
         if (!kinds.contains(member.datatype())) {
             return member;
@@ -10168,37 +8125,13 @@ public final class Natives {
         return copied(member, deeply, deeply ? kinds : NOTHING_INSIDE);
     }
 
-    /**
-     * What a shallow copy duplicates inside whatever it just duplicated, which
-     * is nothing.
-     *
-     * <p>{@code if ((types & CP_DEEP) != 0)} guards the recursion, so without
-     * {@code /deep} a copied member is copied and its own contents are shared.
-     * That is the difference between {@code copy/types m object!}, where the
-     * object comes back new and the object inside it is the original, and
-     * {@code copy/deep/types m object!}, where both are new.
-     */
     private static final Set<Datatype> NOTHING_INSIDE = EnumSet.noneOf(Datatype.class);
 
-    /**
-     * The first so many characters of some text, counted as REBOL counts them.
-     *
-     * <p>A character above the basic plane is one character to REBOL and two
-     * to Java, so {@code substring} cuts {@code 🙂} in half and leaves a lone
-     * surrogate where a character should be. {@code length?} of that string is
-     * one, so the two disagreed: the count said one character and the copy
-     * took half of it.
-     *
-     * <p>{@code offsetByCodePoints} asks Java where the character actually
-     * ends, which is the only way to slice text that does not assume every
-     * character fits in sixteen bits.
-     */
     private static String theFirstCodePointsOf(String text, int wanted) {
         int taking = Math.min(wanted, text.codePointCount(0, text.length()));
         return text.substring(0, text.offsetByCodePoints(0, taking));
     }
 
-    /** The first few of a series, copied, and deeply when asked. */
     private static Value copiedFront(
             SeriesValue series, Value limit, boolean deeply, Set<Datatype> kinds) {
         long wanted = countUpTo(series, limit);
@@ -10222,7 +8155,7 @@ public final class Natives {
             case StringValue text -> StringValue.of(
                     theFirstCodePointsOf(text.text(), taking), text.datatype());
             case BinaryValue bytes -> copiedBytes(bytes, taking);
-            case ImageValue image -> copiedPixels(image, taking);
+            case ImageValue image -> copiedPixelsAsWholeRows(image, taking);
             case GobValue gob -> raiseCannotUse(gob, "copy");
             case VectorValue vector -> copiedElements(vector, taking);
         };
@@ -10244,17 +8177,6 @@ public final class Natives {
         return new BinaryValue(copiedStorage, 1);
     }
 
-    /**
-     * A branch taken: run when it is a block, handed back when it is anything
-     * else.
-     *
-     * <p>{@code if (IS_BLOCK(D_ARG(2)) && !D_REF(3)) { DO_BLK(...); } else
-     * return R_ARG2;} -- so IF, UNLESS and EITHER take any value as a branch
-     * and only a block means "do this". That is what lets
-     * {@code if false "text"} stand where a value is wanted, and it is why
-     * {@code reduce [{abc} if false {def} {ghi}]} is three items rather than
-     * an error about a string where a block was expected.
-     */
     private static Value branchTaken(
             Value branch, Evaluator evaluator, Context context, Set<String> refinements) {
 
@@ -10265,14 +8187,7 @@ public final class Natives {
                 : branch;
     }
 
-    /**
-     * The first few of a series turned round, in place.
-     *
-     * <p>Built by copying out the front, reversing that, and putting it
-     * back one at a time, because the series has to end up the same
-     * series: a caller holding it must see the change.
-     */
-    private static Value reversedFront(SeriesValue series, Value limit) {
+    private static Value reversedFrontInPlace(SeriesValue series, Value limit) {
         int howMany = limit instanceof IntegerValue wanted
                 ? (int) Math.max(0, Math.min(wanted.magnitude(), series.lengthFromHere()))
                 : series.lengthFromHere();
@@ -10303,7 +8218,7 @@ public final class Natives {
                 }
                 yield image;
             }
-            case StringValue text -> rewritten(text, whole ->
+            case StringValue text -> rewrittenInPlace(text, whole ->
                     new StringBuilder(whole.substring(0, howMany)).reverse()
                             + whole.substring(howMany));
             case BinaryValue bytes -> {
@@ -10319,16 +8234,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * Takes a key and its value out of a block read as pairs.
-     *
-     * <p>Only an odd place holds a key, so `remove/key [a b b c] 'c` finds
-     * nothing: the c there is a value. `'b` finds the pair at the third
-     * place and leaves [a b].
-     *
-     * <p>The key is matched exactly. A word folds case everywhere else in
-     * REBOL and not here, so `'B` does not find `b`.
-     */
     private static void removeKeyedPair(BlockValue pairs, Value key) {
         List<Value> items = pairs.remaining();
         for (int at = 0; at + 1 < items.size(); at += 2) {
@@ -10340,14 +8245,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Refuses adding a field the object is keeping to itself.
-     *
-     * <p>A hidden field is invisible from outside, so nothing outside may
-     * write over it either. Left unchecked, an APPEND naming one would
-     * quietly replace what the object was hiding -- and the object's own
-     * code, which can still see it, would find something else there.
-     */
     private static void refuseHiddenField(ObjectValue object, Value named) {
         List<Value> names = named instanceof BlockValue pairs
                 ? pairs.remaining()
@@ -10362,17 +8259,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * A block with only its words and paths worked out.
-     *
-     * <p>{@code Reduce_Only} in the C. Every other value is copied as it
-     * stands, thus a block of data keeps its shape and only the names in
-     * it are looked up.
-     *
-     * <p>A word named in the list is left alone as well, which is how a
-     * caller keeps one name out of the reduction. None as the list means
-     * no exceptions.
-     */
     private static List<Value> reducedOnlyWords(
             BlockValue block, Evaluator evaluator, Value exceptions) {
 
@@ -10398,14 +8284,6 @@ public final class Natives {
         return results;
     }
 
-    /**
-     * A block reduced with its set-words left where they stand.
-     *
-     * <p>REDUCE/NO-SET keeps the set-word or set-path and reduces only
-     * what follows it, assigning nothing, so `[x: 1 + 2]` becomes
-     * `[x: 3]`. Plain REDUCE performs the assignment and drops the
-     * set-word, leaving `[3]`.
-     */
     private static List<Value> reducedLeavingSetWords(BlockValue block, Evaluator evaluator) {
         List<Value> results = new ArrayList<>();
         BlockValue at = block;
@@ -10425,16 +8303,6 @@ public final class Natives {
         return results;
     }
 
-    /**
-     * PROTECT/HIDE/WORDS over a block: hides each word the block holds.
-     *
-     * <p>The words carry their own bindings, so the block says which context
-     * as well as which names. That is how a module hides the fields its body
-     * marked HIDDEN -- {@code if block? hidden [protect/hide/words hidden]} in
-     * {@code sys-base.reb}, the block being the words gathered while the body
-     * was read. Refusing anything but a bare word made every module with a
-     * HIDDEN in it fail to build.
-     */
     private static void hideEachWordIn(BlockValue names) {
         names.remaining().stream()
                 .filter(WordValue.class::isInstance)
@@ -10442,16 +8310,6 @@ public final class Natives {
                 .forEach(word -> slotOf(word).hide(true));
     }
 
-    /**
-     * The four numbers a console port answers to QUERY.
-     *
-     * <p>Only the first has ever been anything but nothing: a terminal that
-     * cannot say how wide it is reports eighty, and the other three report
-     * none of themselves at all. HELP asks for the width on its first line
-     * and lays its output out to suit, so a console that refuses the question
-     * takes HELP down with it -- which is what stopped the module file on the
-     * {@code ? modules-dir} at the top.
-     */
     private static final List<String> CONSOLE_MEASUREMENTS =
             List.of("window-cols", "window-rows", "buffer-cols", "buffer-rows");
 
@@ -10463,20 +8321,10 @@ public final class Natives {
                 : 0;
     }
 
-    /** Whether a port is one of the two the filesystem serves. */
     private static boolean isAFilePort(PortValue port) {
         return port.schemeName().equals("file") || port.schemeName().equals("dir");
     }
 
-    /**
-     * The five questions a file port answers as a series would.
-     *
-     * <p>A file port has a position, so LENGTH? counts what is left rather
-     * than what there is, SIZE? counts the whole file whatever the position,
-     * INDEX? is one more than the position, and EMPTY? and TAIL? both ask
-     * whether there is nothing left. It is why {@code write p "a"} leaves
-     * {@code length? p} at nothing and {@code size? p} at one.
-     */
     private Value lengthLeftInTheFile(PortValue port, Evaluator evaluator) {
         refuseAClosedPosition(port);
         requireService(HostService.FILES);
@@ -10484,15 +8332,6 @@ public final class Natives {
                 SeekableFilePort.lengthLeft(evaluator.files(), port));
     }
 
-    /**
-     * Refuses the questions that are about the position, on a closed port.
-     *
-     * <p>A closed file port has no position, so INDEX?, LENGTH?, TAIL? and
-     * every move raise not-open. SIZE? does not, being about the file rather
-     * than the port, and neither do READ and WRITE, which open it again for
-     * the one call. The C draws the line in the same place and it reads oddly
-     * until you see which side each one is on.
-     */
     private static void refuseAClosedPosition(PortValue port) {
         if (!port.isOpen()) {
             throw Raised.of(EvaluationFailure.NOT_OPEN,
@@ -10512,15 +8351,6 @@ public final class Natives {
                 SeekableFilePort.atTail(evaluator.files(), port)))).truth();
     }
 
-    /**
-     * Moves a file port's position and answers the port, not a copy of it.
-     *
-     * <p>A series answers a new value at the new position and leaves the old
-     * one where it was; a port has one position and moving it moves the port.
-     * So {@code skip p 2} and {@code p} are the same port afterwards, which is
-     * what {@code index? head p} being one and {@code index? skip p 2} being
-     * three in the same breath depends on.
-     */
 
     private Value movedWithinTheFile(PortValue port, Evaluator evaluator, long to) {
         refuseAClosedPosition(port);
@@ -10530,14 +8360,6 @@ public final class Natives {
         return port;
     }
 
-    /**
-     * CLEAR on a file port, which cuts the file off at the position.
-     *
-     * <p>Not "empty the file": {@code clear} on any series throws away what is
-     * from the position onwards and keeps what is before it, and a file port
-     * is a series. So clearing at the head empties it and clearing at the tail
-     * does nothing at all.
-     */
     private Value truncatedAtThePosition(PortValue port, Evaluator evaluator) {
         refuseAClosedPosition(port);
         refuseAPortOpenedOnlyToRead(port, EvaluationFailure.WRITE_ERROR);
@@ -10551,19 +8373,6 @@ public final class Natives {
         });
     }
 
-    /**
-     * READ through a file port, which moves the port's own position.
-     *
-     * <p>A directory port answers its names and stays where it is; a file port
-     * answers bytes and ends past them. /SEEK moves first and /PART says how
-     * many -- a negative count reads backwards from where the position stands,
-     * which is what makes {@code read/part tail p -2} the last two bytes.
-     *
-     * <p>Reading a port that was closed opens it, reads it and closes it
-     * again. That is the C's {@code if (!IS_OPEN(port)) ...} in
-     * {@code File_Actor}, and it is why the suite can read the same closed
-     * port three times and get the whole file each time.
-     */
     private Value readFromTheFileBehind(
             PortValue port, Evaluator evaluator,
             List<Value> arguments, Set<String> refinements) {
@@ -10601,13 +8410,6 @@ public final class Natives {
         return asTextWhereAskedFor(read, refinements);
     }
 
-    /**
-     * The same decoding a READ of the file itself does, because the C runs the
-     * same two lines on both: {@code if (args & (AM_READ_STRING |
-     * AM_READ_LINES)) ser = Decode_UTF_String(..., TRUE, NULL);} in
-     * {@code Read_File_Port}, and /LINES then splits what /STRING would have
-     * answered.
-     */
     private static Value asTextWhereAskedFor(Value read, Set<String> refinements) {
         if (!(read instanceof BinaryValue bytes)
                 || !(refinements.contains("string") || refinements.contains("lines"))) {
@@ -10618,18 +8420,11 @@ public final class Natives {
             return read;
         }
         return refinements.contains("lines")
-                ? BlockValue.block(linesOf(text.orElseThrow()))
+                ? BlockValue.block(linesOfDroppingExactlyOneTrailingEmptyLine(
+                        text.orElseThrow()))
                 : StringValue.of(text.orElseThrow());
     }
 
-    /**
-     * Starts a file port at the head, making the file when /NEW says to.
-     *
-     * <p>{@code open/new} is the one that creates: it truncates whatever was
-     * there and leaves an empty file, which is why the suite can open a name
-     * it has just deleted. Without it the file has to be there already, and a
-     * name that is not is {@code cannot-open}.
-     */
     private void openTheFileBehind(
             PortValue port, Evaluator evaluator, Set<String> refinements) {
 
@@ -10659,30 +8454,6 @@ public final class Natives {
         SeekableFilePort.openedAt(port, 0, mayWrite(refinements));
     }
 
-    /**
-     * Writes PWD with the directory the interpreter has just moved to.
-     *
-     * <p>{@code OS_Set_Current_Dir} does both in three lines, and the comment
-     * beside it names the issue it was written for: {@code // directory
-     * changed... update PWD}. So `pwd = to-rebol-file get-env "PWD"` holds
-     * before a move and after one, which is what Rebol's own port test asserts
-     * on both sides of a `change-dir %../`.
-     *
-     * <p>Over the host's value rather than instead of it, which is the one
-     * sense a JVM can write an environment at all -- and enough, because what a
-     * caller means by PWD is where this interpreter is standing. A value read
-     * straight from the host names a directory a confined script cannot reach.
-     *
-     * <p>After the move rather than before, so a refused CHANGE-DIR leaves both
-     * where they were rather than PWD lying about it.
-     *
-     * <p>And only where the host granted an environment to write to. Moving
-     * does not depend on the writing: a script that may not read the
-     * environment cannot tell whether the name was written, and one that may
-     * walk the filesystem is entitled to walk it either way. Refusing here
-     * would make the two grants a pair when the host was offered them one at a
-     * time, which is the whole point of naming a service.
-     */
     private void sayWhereTheInterpreterIsStanding(Evaluator evaluator) {
         if (!thereIsAnEnvironmentToWriteTo()) {
             return;
@@ -10695,16 +8466,6 @@ public final class Natives {
         return grantedServices.contains(HostService.ENVIRONMENT);
     }
 
-    /**
-     * Whether a directory port names something that is there.
-     *
-     * <p>A pattern names what matches it, so it is there when at least one name
-     * does. The C reads the directory as it opens and raises when that fails --
-     * {@code if (result < 0) Trap_Port(RE_CANNOT_OPEN, port, dir->error);} --
-     * where READ of the same pattern answers an empty block and never raises.
-     * Opening asks for a thing and reading asks a question: no matches is an
-     * answer to the second and not to the first.
-     */
     private static boolean somethingIsThereFor(String path, FilePort files) {
         if (!FileReading.holdsAWildcard(path)) {
             return files.exists(path);
@@ -10724,26 +8485,10 @@ public final class Natives {
         }
     }
 
-    /**
-     * Whether this open may write, which is what makes the file.
-     *
-     * <p>The device carries {@code O_CREAT} for anything that may write, so
-     * only {@code open/read} is left unable to make a file.
-     */
     private static boolean mayWrite(Set<String> refinements) {
         return refinements.contains("write") || namesNeitherWay(refinements);
     }
 
-    /**
-     * Whether this open may read.
-     *
-     * <p>Both are filled in when the caller names neither: {@code if (!(args &
-     * (AM_OPEN_READ | AM_OPEN_WRITE))) args |= (AM_OPEN_READ | AM_OPEN_WRITE);}
-     * is the first line of the C's A_OPEN. Which is why the truncation below
-     * has to ask this rather than ask what the caller wrote -- a bare OPEN
-     * reads, so it does not empty the file, and only the filled-in modes say
-     * so.
-     */
     private static boolean mayRead(Set<String> refinements) {
         return refinements.contains("read") || namesNeitherWay(refinements);
     }
@@ -10752,28 +8497,17 @@ public final class Natives {
         return !refinements.contains("read") && !refinements.contains("write");
     }
 
-    /**
-     * Whether this open empties a file that is already there.
-     *
-     * <p>{@code modes |= O_TRUNC} when /NEW was asked for, or when the open
-     * neither reads nor seeks. So {@code open/write %f} empties it and
-     * {@code open %f} does not, which is the difference between opening a file
-     * to rewrite it and opening one to work in. A caller that wanted the second
-     * and got the first has lost the file, so the default keeps it.
-     */
     private static boolean emptiesWhatIsThere(Set<String> refinements) {
         return refinements.contains("new")
                 || !(mayRead(refinements) || refinements.contains("seek"));
     }
 
-    /** Whether protection means anything for this kind of value. */
     private static boolean carriesProtection(Value value) {
         return value instanceof SeriesValue
                 || value instanceof ObjectValue
                 || value instanceof MapValue;
     }
 
-    /** Whether a block is one of the path shapes rather than a plain block. */
     private static boolean isAPath(BlockValue block) {
         return block.datatype() == Datatype.PATH
                 || block.datatype() == Datatype.LIT_PATH
@@ -10781,21 +8515,6 @@ public final class Natives {
                 || block.datatype() == Datatype.SET_PATH;
     }
 
-    /**
-     * Protects the field a path names, and answers whether it was a path.
-     *
-     * <p>A path is a block whose items are words, so leaving it to the
-     * block handling protects whatever each segment is bound to where it
-     * was written -- the enclosing word rather than the field inside the
-     * object. `protect/words/deep 'o/o` then makes every later
-     * `o: something` raise locked-word, and the tests after it run
-     * against an object nobody meant to keep.
-     *
-     * <p>A path that names nothing protects nothing and raises nothing:
-     * a missing field, or a segment that is a number and so cannot be
-     * walked into, both leave the state alone. Confirmed against a real
-     * R3, which answers the path either way.
-     */
     private static boolean protectFieldNamedBy(
             Value target, boolean protectedNow, Set<String> refinements) {
 
@@ -10824,13 +8543,6 @@ public final class Natives {
         return true;
     }
 
-    /**
-     * The slot a path's segments lead to, or null if they lead nowhere.
-     *
-     * <p>Null rather than an empty slot, because there is no such thing
-     * as a slot that holds nothing safely -- a caller has to decide what
-     * an unreachable path means, and here it means do nothing at all.
-     */
     private static ContextSlot fieldNamedBy(List<Value> segments) {
         if (segments.size() < 2 || !(segments.getFirst() instanceof WordValue start)
                 || !start.isBound() || !start.binding().knows(start.canonical())) {
@@ -10853,18 +8565,6 @@ public final class Natives {
         return holder.context().ownSlotFor(last.canonical());
     }
 
-    /**
-     * PROTECT/VALUES and PROTECT/WORDS, which take a block of words.
-     *
-     * <p>The two are complements and neither does the other's job.
-     * /VALUES protects what each word holds, so changing the series
-     * raises `protected` and reassigning the word is fine. /WORDS
-     * protects the slots, so reassigning raises `locked-word` and
-     * changing the series is fine.
-     *
-     * <p>Answers whether it did anything, so the caller can fall through
-     * to protecting the block itself when neither refinement was asked.
-     */
     private static boolean protectNamed(
             Value target, boolean protectedNow, Set<String> refinements) {
 
@@ -10907,30 +8607,6 @@ public final class Natives {
         return true;
     }
 
-    /**
-     * The slot one entry of a /WORDS or /VALUES block names.
-     *
-     * <p>{@code natives.reb} says {@code /words "Process list as words (and
-     * path words)"}, and the parenthetical is the part that matters: an entry
-     * may be {@code o/a} as well as {@code a}. A path is resolved to the field
-     * it names rather than to the word holding the object, so
-     * {@code protect/words [o/a]} refuses {@code o/a: 11} and still allows
-     * {@code o: 12}.
-     *
-     * <p>Null for anything that names no slot -- not a word or a path, unbound,
-     * or a path through a field that is not there. Rebol raises nothing for any
-     * of those and neither does this.
-     *
-     * <p>Skipping paths here was silent, because the call answers the block it
-     * was given whatever it did with it. Rebol's own {@code protect-system}
-     * protects every word of SYSTEM and then hands back the few a script must
-     * write with {@code unprotect/words [system/script]}; with that ignored,
-     * {@code sys/do*} could not record the script it was running and DO of a
-     * file raised {@code locked-word}.
-     *
-     * <p>A path is treated exactly as a word once resolved, /DEEP included,
-     * which is what R3 does.
-     */
     private static ContextSlot slotNamedInAList(Value item) {
         if (item instanceof BlockValue path && isAPath(path)) {
             return fieldNamedBy(path.remaining());
@@ -10942,15 +8618,6 @@ public final class Natives {
         return null;
     }
 
-    /**
-     * Protects or unprotects a value, and its contents when asked.
-     *
-     * <p>Three separate things carry protection: a word's slot, an
-     * object's fields and a series' storage. Protecting the word that
-     * holds a block does not protect the block, which is what makes
-     * `protect b` and `protect 'b` different requests.
-     *
-     */
     private static void setProtection(Value target, boolean protectedNow, boolean deeply) {
         setProtection(target, protectedNow, deeply, false);
     }
@@ -11003,7 +8670,6 @@ public final class Natives {
         }
     }
 
-    /** Refuses a change to a series that was protected from changing. */
     private static void requireChangeable(Value series) {
         boolean refused = switch (series) {
             case BlockValue block -> block.storage().isProtected();
@@ -11019,19 +8685,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * How much /part asked for, given a count or a position.
-     *
-     * <p>A position means "as far as there", and the two positions may
-     * be in either order: the span is between them, taken from whichever
-     * comes first. So `take/part s skip s 1` and `take/part skip s 1 s`
-     * are the same request, and the same position twice is a span of
-     * nothing.
-     *
-     * <p>The from-whichever-comes-first part is what makes this a span
-     * rather than a direction, and it is why the count can never be
-     * negative here even when the argument is behind the series.
-     */
     private static long countUpTo(SeriesValue series, Value howMuch) {
         if (howMuch instanceof IntegerValue count) {
             if (count.magnitude() < Integer.MIN_VALUE
@@ -11051,32 +8704,14 @@ public final class Natives {
         return Math.abs(upTo.index() - series.index());
     }
 
-    /**
-     * Whichever of two positions comes first.
-     *
-     * <p>A span runs from the earlier position, so the two may be given
-     * either way round and mean the same thing.
-     */
     private static SeriesValue earlierOf(SeriesValue series, SeriesValue other) {
         return other.index() < series.index() ? other : series;
     }
 
-    /** A position clamped to the series, which is what ATZ and SKIP do. */
     private static int clampedPosition(SeriesValue series, long wanted) {
         return (int) Math.max(1, Math.min(wanted, series.storageLength() + 1));
     }
 
-    /**
-     * What PICK answers, which is not always about a position.
-     *
-     * <p>Four datatypes read PICK as a question about a field rather than an
-     * index, and each says so in its own dispatcher. A bitset asks whether it
-     * holds the value: `case A_PICK: case A_FIND:` share one arm. A map asks
-     * what a key holds, and the C comments the case with "same as SELECT for
-     * MAP! datatype". A date and a time send it to `Pick_Path`, which is the
-     * same field selection a path does -- so `pick 1-Jan-2000 'year` and
-     * `1-Jan-2000/year` are one question.
-     */
     private static Value pickFrom(Value target, Value selector) {
         return switch (target) {
             case BitsetValue members -> LogicValue.of(bitsetHolds(members, selector, false));
@@ -11090,13 +8725,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A time's part, by name or by position, as a path reads one.
-     *
-     * <p>{@code case A_PICK: Pick_Path(val, arg, 0)} -- PICK on a time is the
-     * path handler and not a reading of its own, so the seconds turn decimal
-     * once there is a fraction here as well.
-     */
     private static Value pickTimePart(TimeValue time, Value selector) {
         long seconds = Math.abs(time.nanoseconds()) / NANOSECONDS_A_SECOND;
         long fraction = Math.abs(time.nanoseconds()) % NANOSECONDS_A_SECOND;
@@ -11114,7 +8742,6 @@ public final class Natives {
         };
     }
 
-    /** A time answers to positions as well as names: 1 is the hour. */
     private static String positionAsTimePartName(Value selector) {
         if (!(selector instanceof IntegerValue position)) {
             return "";
@@ -11160,13 +8787,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A number a position was given as, refusing anything else.
-     *
-     * <p>{@code Get_Num_Arg} in the C: an integer, a decimal it truncates, or a
-     * none it reads as zero. Anything else is {@code Trap_Arg}, which is
-     * {@code invalid-arg} -- the error a caller gets for `poke gob 'offset 1x1`.
-     */
     private static long positionPokedAt(Value given) {
         return switch (given) {
             case IntegerValue whole -> whole.magnitude();
@@ -11178,20 +8798,10 @@ public final class Natives {
         };
     }
 
-    /** The same reading, for PICK, whose arm refuses the same way. */
     private static long positionPickedFrom(Value given) {
         return positionPokedAt(given);
     }
 
-    /**
-     * Refuses the three refinements a gob's arms will not carry out.
-     *
-     * <p>{@code if (DS_REF(AN_PART) || DS_REF(AN_ONLY) || DS_REF(AN_DUP))
-     * Trap0(RE_NOT_DONE);} on APPEND, INSERT and CHANGE. Rebol's own
-     * {@code not-done} is "reserved for future use (or not yet implemented)", so
-     * this is the C saying it never got round to them rather than that they mean
-     * nothing here.
-     */
     private static void refuseUnfinishedRefinements(Set<String> refinements, String what) {
         for (String unfinished : List.of("part", "only", "dup")) {
             if (refinements.contains(unfinished)) {
@@ -11201,14 +8811,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Puts one child or a block of them into a pane.
-     *
-     * <p>{@code if (IS_GOB(arg)) len = 1; else if (IS_BLOCK(arg)) { len =
-     * VAL_BLK_LEN(arg); ... } else goto is_arg_error;} -- and the error is
-     * {@code Trap_Types(RE_EXPECT_VAL, REB_GOB, VAL_TYPE(arg))}, which names the
-     * datatype the pane wanted rather than the argument position.
-     */
     private static Value insertChildren(GobValue gob, int at, Value value) {
         List<Value> children = switch (value) {
             case GobValue only -> List.<Value>of(only);
@@ -11230,16 +8832,6 @@ public final class Natives {
         return gob;
     }
 
-    /**
-     * MAKE GOB!, in its three forms.
-     *
-     * <p>A block is a spec of set-word and value pairs. A gob is cloned without
-     * its pane or its parent. A pair is a size and nothing else. Everything else
-     * is {@code Trap_Make(REB_GOB, arg)}.
-     *
-     * <p>The fields start where {@code Make_Gob} leaves them, which is a hundred
-     * square and opaque rather than empty.
-     */
     private static Value madeGob(Value from, Evaluator evaluator, Context context) {
         if (from instanceof GobValue cloned) {
             return new GobValue(cloned.storage().copyWithoutPane(), 1);
@@ -11258,15 +8850,6 @@ public final class Natives {
                         + from.datatype().literalSpelling());
     }
 
-    /**
-     * The spec block a gob is made from: {@code Set_GOB_Vars}.
-     *
-     * <p>Walked in pairs, and each pair is checked twice before it is used. The
-     * name must be a set-word -- {@code Trap2(RE_EXPECT_VAL, Get_Type
-     * (REB_SET_WORD), Of_Type(var))} -- and the value must be there and must not
-     * be another set-word, which is what catches `[data: size: 10x10]`: a spec
-     * that reads as two fields is one field with no value.
-     */
     private static void fillGobFromSpec(
             GobValue gob, List<Value> spec, Evaluator evaluator, Context context) {
         for (int at = 0; at < spec.size(); at += 2) {
@@ -11291,30 +8874,8 @@ public final class Natives {
         }
     }
 
-    /**
-     * How deep a gob tree is walked before the walk gives up.
-     *
-     * <p>{@code REBINT max_depth = 1000; // avoid infinite loops} in both
-     * directions. A gob tree can hold itself -- nothing stops a script appending
-     * a gob to its own descendant -- so the count is the only thing between
-     * MAP-GOB-OFFSET and a hang.
-     */
     private static final int DEEPEST_GOB_WALK = 1000;
 
-    /**
-     * The deepest gob holding a point, and the point in that gob's coordinates.
-     *
-     * <p>{@code Map_Gob_Inner}. Two details decide what it answers, and both are
-     * in the loop rather than in the name.
-     *
-     * <p>The pane is searched <em>backwards</em>: {@code gop = GOB_HEAD(gob) + len
-     * - 1} and then {@code gop--}. So where two children overlap, the one added
-     * last wins -- which is what "topmost" means on a screen.
-     *
-     * <p>And the rectangle is half-open: {@code xo >= x + GOB_X} together with
-     * {@code xo < x + GOB_X + GOB_W}. A point on a gob's left edge is inside it
-     * and a point on its right edge belongs to whatever is next along.
-     */
     private static Value mappedInwards(GobValue from, PairValue point) {
         GobValue reached = from;
         double takenX = 0;
@@ -11345,17 +8906,6 @@ public final class Natives {
                 PairValue.of(point.x() - takenX, point.y() - takenY));
     }
 
-    /**
-     * The outermost gob, and the point seen from there.
-     *
-     * <p>The /REVERSE arm, which is a plain climb: {@code xo += GOB_X(gob); gob =
-     * GOB_PARENT(gob);} until there is no parent left.
-     *
-     * <p>It also stops at a gob flagged as a window, and nothing here can set that
-     * flag: {@code GOBF_WINDOW} is not one of the nine words {@code Gob_Flag_Words}
-     * accepts, so only the host's own windowing code raises it. Until a host does,
-     * the climb always reaches the root.
-     */
     private static Value mappedOutwards(GobValue from, PairValue point) {
         GobValue reached = from;
         double addedX = point.x();
@@ -11369,22 +8919,6 @@ public final class Natives {
         return gobAndPoint(reached, PairValue.of(addedX, addedY));
     }
 
-    /**
-     * An event rewritten to name the deepest gob under its point.
-     *
-     * <p>Two conditions have to hold before anything happens: {@code if (gob &&
-     * GET_FLAG(VAL_EVENT_FLAGS(val), EVF_HAS_XY))}. So an event with no gob and a
-     * key event with no offset both go straight through, which is what lets a
-     * caller run every event through this without asking what kind it is.
-     *
-     * <p>{@code ROUND_TO_INT} is what puts the walk's floating result back into an
-     * event's two shorts, and a gob's offset is a float pair -- so a child at
-     * 1.6x1.6 moves the point by 2 and not by 1.
-     *
-     * <p>The HAS_DATA branch reaches for {@code OS_Get_Gob_Root()} under
-     * {@code #ifdef REB_VIEW}, so in a build with no window system it leaves the
-     * gob null and this does nothing. Which is what a console build does too.
-     */
     private static Value mappedEvent(EventValue event) {
         if (!(event.attached() instanceof GobValue gob)
                 || !event.has(EventValue.Flag.HAS_XY)) {
@@ -11401,21 +8935,6 @@ public final class Natives {
                         EventValue.Flag.HAS_XY);
     }
 
-    /**
-     * Whether a port is finished waiting, having been told about an event.
-     *
-     * <p>Two steps. The port's UPDATE action runs first, and only when its actor is
-     * a native: `if (IS_NATIVE(val)) Do_Port_Action(D_ARG(1), A_UPDATE);`, whose
-     * comment says why -- "makes the port object fully consistent with internal
-     * native structures (e.g. the actual length of data read)". Every actor a
-     * scheme here installs is REBOL rather than C, so nothing takes that step, and
-     * replicating the condition rather than the body is the faithful thing.
-     *
-     * <p>Then the AWAKE function, if there is one, is called with the event. The
-     * answer has to be a logic <em>and</em> be true: `if (!(IS_LOGIC(val) &&
-     * VAL_LOGIC(val))) return R_FALSE;`. A truthy non-logic does not count, which a
-     * reading of "if the awake function says so" would get wrong.
-     */
     private static Value wokenPort(PortValue port, Value event, Evaluator evaluator) {
         if (!port.context().holds("awake")) {
             return LogicValue.yes();
@@ -11428,13 +8947,6 @@ public final class Natives {
         return LogicValue.of(said instanceof LogicValue answered && answered.truth());
     }
 
-    /**
-     * The timeout among the things waited on, which is the first number.
-     *
-     * <p>`wait [connection timeout]` mixes the two kinds in one block, and the
-     * C picks the timeout out by datatype -- {@code if (IS_INTEGER(val) ||
-     * IS_DECIMAL(val) || IS_TIME(val)) break;}. Nothing says it comes last.
-     */
     private static Value howLongToWaitAmong(List<Value> waitedOn) {
         return waitedOn.stream()
                 .filter(each -> each instanceof IntegerValue
@@ -11444,29 +8956,6 @@ public final class Natives {
                 .orElse(NoneValue.none());
     }
 
-    /**
-     * The port that woke, having run Rebol's own event loop until one did.
-     *
-     * <p>{@code Wait_Ports} is a loop over {@code Awake_System}, and
-     * {@code Awake_System} is one call into REBOL: the system port's own AWAKE,
-     * written in {@code sys-ports.reb} and copied into this build by
-     * {@code Interpreter}. It takes each event off the queue, calls WAKE-UP on
-     * the port the event names, collects the ports that said they were finished,
-     * and answers true when one of those is a port the caller named.
-     *
-     * <p>So the loop here is `if ((result = Awake_System(ports, only)) > 0)
-     * return TRUE;` and nothing else. Doing the dispatch in Java instead meant a
-     * second copy of a decision REBOL already states once, and one that could
-     * only reach the ports an event arrived on: TLS waits on a port whose events
-     * come from the TCP port underneath it, and moves itself along by putting an
-     * event of its own on this queue.
-     *
-     * <p>A round that handled nothing ends it. The C would go on polling the
-     * operating system until the timeout, and there is nothing here to poll -- a
-     * connection is read on the thread that asked for it, so an empty queue
-     * cannot fill while this loop spins. Sleeping the timeout out would be a
-     * delay rather than a wait.
-     */
     private static Value whicheverPortWoke(
             List<Value> waitedOn, Evaluator evaluator) {
 
@@ -11479,7 +8968,7 @@ public final class Natives {
             Value said = evaluator.applyFunction(
                     queue.fieldNamed("awake"), List.of(queue, ports));
             if (said instanceof LogicValue answered && answered.truth()) {
-                return theFirstWokenAmong(waitedOn, queue);
+                return theFirstWokenAmongEmptyingTheWakeList(waitedOn, queue);
             }
             if (!(said instanceof LogicValue)) {
                 theWakeListOf(queue).ifPresent(Natives::emptied);
@@ -11488,15 +8977,8 @@ public final class Natives {
         }
     }
 
-    /**
-     * The first port the caller named that woke, and the wake list emptied.
-     *
-     * <p>{@code Sieve_Ports} does both at once: it strikes out of the waited-on
-     * block every port not on the wake list, empties the list, and WAIT answers
-     * the head of what is left. Emptying matters as much as answering -- a port
-     * left on it would end the next wait before anything had happened.
-     */
-    private static Value theFirstWokenAmong(List<Value> waitedOn, PortValue queue) {
+    private static Value theFirstWokenAmongEmptyingTheWakeList(
+            List<Value> waitedOn, PortValue queue) {
         List<Value> woken = theWakeListOf(queue)
                 .map(BlockValue::remaining)
                 .orElse(List.of());
@@ -11520,14 +9002,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Puts an event for a port on the one queue everything goes on.
-     *
-     * <p>Which port the event names is what matters and is not always the port
-     * the caller is waiting on: a TLS port's events all arrive on the TCP port
-     * beneath it, and the protocol reads those and queues one of its own when it
-     * has a whole record.
-     */
     private static void queueWhatHappenedTo(
             PortValue port, String happened, Evaluator evaluator) {
 
@@ -11540,26 +9014,6 @@ public final class Natives {
                         Set.of(), EventValue.Model.PORT, 0, port)));
     }
 
-    /**
-     * WAIT on the event port: where the screen's queue becomes handler calls.
-     *
-     * <p>This is the one place a script's own thread takes what the screen's
-     * thread put down, and it is why the queue exists at all. An interpreter
-     * is owned by one thread, and that is what lets series share mutable
-     * storage with nothing synchronising them, so a toolkit's listener must
-     * never run a handler where it stands.
-     *
-     * <p>It returns when the port's AWAKE says so. REBOL's own AWAKE, written
-     * in {@code init-view-system}, ends with {@code tail?
-     * system/view/screen-gob} -- true exactly when the last window has closed.
-     * That is what makes a script ending in VIEW a program rather than a
-     * statement.
-     *
-     * <p>A screen with nothing open does not wait at all, and a run under a
-     * deadline is ended by it: the pause between drains goes through the same
-     * interruptible sleep every long-running native uses, so a granted screen
-     * is not a way past the bounds a host set.
-     */
     private static Value waitedOnTheScreen(PortValue port, Evaluator evaluator) {
         while (theScreenStillHasSomethingToSay(evaluator)) {
             for (ScreenEvent reported : evaluator.screen().takeQueuedEvents()) {
@@ -11576,20 +9030,14 @@ public final class Natives {
         return NoneValue.none();
     }
 
-    /**
-     * Whether there is any point waiting: a screen with no window open has
-     * nothing left to report and nobody left to close.
-     */
     private static boolean theScreenStillHasSomethingToSay(Evaluator evaluator) {
         Value root = pathInto(
                 evaluator.systemContext(), "system", "view", "screen-gob");
         return root instanceof GobValue gob && gob.storage().length() > 0;
     }
 
-    /** How long to pause between drains of the screen's queue. */
     private static final long SCREEN_POLL_MILLISECONDS = 10;
 
-    /** One reported event as the {@code event!} a handler reads. */
     private static EventValue guiEventFor(ScreenEvent reported) {
         return EventValue.fresh()
                 .withType(EventCatalogue.typeIndexOf(reported.kind().spelling())
@@ -11600,28 +9048,8 @@ public final class Natives {
                                 : reported.window());
     }
 
-    /**
-     * Where the codec handles' identities start.
-     *
-     * <p>A function handle's identity is its pointer in the C, which is what
-     * {@code same?} compares and what {@code Cmp_Handle} sorts on. Any distinct
-     * numbers do the same job, and starting them away from zero keeps them from
-     * colliding with a context handle's index when one exists.
-     */
     private static final int CODEC_HANDLE_IDENTITY = 1000;
 
-    /**
-     * DO-CODEC: one codec, one action, one piece of data.
-     *
-     * <p>The action word is checked before the data is, and each of the three wants
-     * something different. IDENTIFY and DECODE both want a binary --
-     * `if (!IS_BINARY(val)) Trap1(RE_INVALID_ARG, val);`, which the two share by
-     * falling through. ENCODE wants an image and nothing else.
-     *
-     * <p>So a string is on the declared list and is refused by every arm, which is
-     * the declaration and the arm disagreeing on purpose: the spec was widened for
-     * a codec that could take one and none of them does.
-     */
     private static Value ranCodec(HandleValue handle, WordValue action, Value data) {
         if (!handle.typeName().equals("codec")) {
             throw Raised.of(EvaluationFailure.INVALID_HANDLE,
@@ -11654,25 +9082,15 @@ public final class Natives {
         return answered.value();
     }
 
-    /** The two-item block both walks answer: `Return_Gob_Pair`. */
     private static Value gobAndPoint(GobValue reached, PairValue point) {
         return BlockValue.block(List.of(reached, point));
     }
 
-    /** Writes a pixel given as red, green, blue, alpha. */
     private static void writePixel(ImageValue image, int pixel, int[] channels) {
         image.storage().setColourAt(pixel, channels[0], channels[1], channels[2]);
         image.storage().setAlphaAt(pixel, channels[3]);
     }
 
-    /**
-     * Puts pixels into an image at its position.
-     *
-     * <p>What `Modify_Image` does for INSERT and APPEND, in the one shape a
-     * script can reach without the /part and /dup rectangle arithmetic: a tuple
-     * is one pixel and an image contributes its own, and the height follows the
-     * new count.
-     */
     private static Value insertPixels(ImageValue image, Value value) {
         List<int[]> pixels = new ArrayList<>();
         if (value instanceof ImageValue added) {
@@ -11699,20 +9117,7 @@ public final class Natives {
         return image.atIndex(image.index() + pixels.size());
     }
 
-    /**
-     * The pixels from where an image stands, as a picture of whole rows.
-     *
-     * <p>Whole rows, which is the part worth saying: a copy that would come to
-     * three rows and a spare comes to three rows, and the spare pixels are
-     * dropped rather than left hanging off the bottom. {@code h = len / w} and
-     * then {@code memcpy(..., w * h * 4)} -- the height is worked out first
-     * and only that many pixels are taken.
-     *
-     * <p>Fewer pixels than the picture is wide makes a single row of exactly
-     * that many, so copying three pixels out of a picture four wide is a
-     * three-wide picture rather than a four-wide one with a gap.
-     */
-    private static ImageValue copiedPixels(ImageValue image, int howMany) {
+    private static ImageValue copiedPixelsAsWholeRows(ImageValue image, int howMany) {
         int taking = Math.max(0, Math.min(howMany, image.lengthFromHere()));
         int wideEnoughForARow = Math.max(1, image.storage().wide());
         int wide = taking <= wideEnoughForARow ? taking : wideEnoughForARow;
@@ -11729,15 +9134,6 @@ public final class Natives {
 
     private enum Combination { INTERSECT, UNION, EXCLUDE, DIFFERENCE }
 
-    /**
-     * A set operation over the characters of a string.
-     *
-     * <p>The same rules the block path uses, over codepoints instead of values,
-     * and the answer keeps the datatype of the first argument: a set operation
-     * on two files answers a file. The characters are compared without regard to
-     * case unless /CASE was asked for, which is what {@code Find_Str_Char} does
-     * with the flag.
-     */
     private static Value combinedText(
             Value left, Value right, Combination how, boolean mindingCase, int stride) {
 
@@ -11776,7 +9172,6 @@ public final class Natives {
         return StringValue.of(kept.toString(), datatype);
     }
 
-    /** A string as a list of its characters, and anything else as itself. */
     private static List<Value> charactersOf(Value value) {
         if (!(value instanceof StringValue text)) {
             return value instanceof BlockValue block ? block.remaining() : List.of(value);
@@ -11786,12 +9181,6 @@ public final class Natives {
                 .toList();
     }
 
-    /**
-     * A set operation over two maps, which the C reads as their keys.
-     *
-     * <p>`set1 [block! string! bitset! typeset! map!]`, and a map's members are
-     * its keys: the pairs come back with the keys the operation kept.
-     */
     private static Value combinedMaps(
             Value left, Value right, Combination how, boolean mindingCase) {
 
@@ -11805,13 +9194,7 @@ public final class Natives {
                 case UNION -> true;
                 case EXCLUDE, DIFFERENCE -> !inTheirs;
             };
-            // A key already kept is left as it was rather than written over,
-            // which is what decides whose value survives. Without /CASE a map
-            // holding both `a` and `A` answers the first of them for either
-            // spelling, so the pair collapses to one and keeps the earlier
-            // value -- and `union m1 m2` keeps the left's value for every key
-            // the two share, because the left went in first.
-            if (wanted && !kept.holds(key, mindingCase)) {
+            if (wanted && aKeyAlreadyKeptIsLeftAsItWas(kept, key, mindingCase)) {
                 kept.put(key, ours.select(key, mindingCase), mindingCase);
             }
         }
@@ -11827,15 +9210,6 @@ public final class Natives {
         return kept;
     }
 
-    /**
-     * Two typesets combined, as the four operators in n-sets.c combine them.
-     *
-     * <p>DIFFERENCE is the one worth naming: it is a symmetric difference,
-     * `^=`, so it keeps what is in one set or the other but not both. EXCLUDE
-     * is the asymmetric one, `&= ~`. The two agree whenever the second set is
-     * contained in the first, which is why a test written with either passes
-     * and the distinction stays hidden.
-     */
     private static Value combinedTypesets(
             TypesetValue ours, TypesetValue theirs, Combination how) {
 
@@ -11858,25 +9232,20 @@ public final class Natives {
         return TypesetValue.of(Set.copyOf(result));
     }
 
-    /**
-     * What COMPLEMENT accepts besides a logic and a number.
-     *
-     * <p>`complement | value<logic! integer! tuple! binary! bitset! typeset!>`.
-     */
     private static Set<Datatype> complementableDatatypes() {
         return Set.of(Datatype.LOGIC, Datatype.INTEGER, Datatype.TUPLE,
                 Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET);
     }
 
-    /**
-     * What the set operations take: {@code [block! string! bitset! typeset!
-     * map!]}, and a date for DIFFERENCE alone.
-     *
-     * <p>A binary is not among them. Leaving it in let one through to a body
-     * that casts to a block, so {@code difference #{01} #{02}} came out of the
-     * interpreter as a Java class-cast rather than as an error a script can
-     * catch. The declaration is what decides that, not the body.
-     */
+    private static boolean aKeyAlreadyKeptIsLeftAsItWas(
+            MapValue kept, Value key, boolean mindingCase) {
+        return !kept.holds(key, mindingCase);
+    }
+
+    private static boolean theSecondSetContributesAsWell(Combination how) {
+        return how == Combination.UNION || how == Combination.DIFFERENCE;
+    }
+
     private static Set<Datatype> setOperandOr(Datatype... alsoAccepted) {
         Set<Datatype> accepted = EnumSet.of(
                 Datatype.BITSET, Datatype.TYPESET, Datatype.STRING, Datatype.MAP);
@@ -11884,14 +9253,6 @@ public final class Natives {
         return Set.copyOf(accepted);
     }
 
-    /**
-     * Every datatype a typeset does not hold.
-     *
-     * <p>`VAL_TYPESET(val) = ~VAL_TYPESET(val)` -- one line, and it covers
-     * every datatype the build knows rather than only the ones mentioned so
-     * far. So the complement of a typeset holding one datatype holds all the
-     * others, and `find complement make typeset! [block!] integer!` is true.
-     */
     private static TypesetValue complementOfTypeset(TypesetValue members) {
         Set<Datatype> rest = EnumSet.allOf(Datatype.class);
         rest.removeAll(members.members());
@@ -11925,10 +9286,6 @@ public final class Natives {
         return BitsetValue.of(both);
     }
 
-    /**
-     * The set operations, which keep the order they found things in rather
-     * than sorting, because a block is ordered and the answer should be too.
-     */
     private static Value combined(List<Value> arguments, Combination how) {
         return combined(arguments, how, false, 1);
     }
@@ -11972,12 +9329,7 @@ public final class Natives {
                 result.add(candidate);
             }
         }
-        // DIFFERENCE is symmetric -- what is in one or the other and not in
-        // both -- so the second block contributes as well. EXCLUDE is the
-        // asymmetric one and stops above. The two agree whenever the second
-        // set is contained in the first, which is how a block DIFFERENCE that
-        // only ever looked at the first block went unnoticed.
-        if (how == Combination.UNION || how == Combination.DIFFERENCE) {
+        if (theSecondSetContributesAsWell(how)) {
             for (List<Value> candidate : second) {
                 boolean inFirst = first.stream()
                         .anyMatch(other -> sameRecord(other, candidate, mindingCase));
@@ -11990,14 +9342,6 @@ public final class Natives {
         return BlockValue.block(result.stream().flatMap(List::stream).toList());
     }
 
-    /**
-     * A flat list read as records of a fixed width.
-     *
-     * <p>A width of one gives one record per item, which is what makes the
-     * plain call and the /SKIP call one piece of code. A short record at
-     * the end is kept rather than dropped, because dropping it would lose
-     * data the caller can see is there.
-     */
     private static List<List<Value>> inRecords(List<Value> items, int stride) {
         List<List<Value>> records = new ArrayList<>();
         for (int at = 0; at < items.size(); at += stride) {
@@ -12006,15 +9350,6 @@ public final class Natives {
         return records;
     }
 
-    /**
-     * Whether two records count as the same one.
-     *
-     * <p>The first field decides and the rest are carried along, so
-     * `union/skip [1 2 1 3] [1 2] 2` is [1 2]: the record [1 3] has the
-     * same key as one already kept and goes. Comparing whole records
-     * instead keeps both, which is the answer for a plain UNION and not
-     * for this one.
-     */
     private static boolean sameRecord(
             List<Value> ours, List<Value> theirs, boolean mindingCase) {
 
@@ -12026,17 +9361,6 @@ public final class Natives {
                 : Comparison.looselyEqual(ours.getFirst(), theirs.getFirst());
     }
 
-    /**
-     * A number rounded the way the refinements asked.
-     *
-     * <p>Six modes, each measured against a real R3 rather than reasoned
-     * about, because they disagree in more places than the names suggest.
-     * /DOWN and /FLOOR agree on positives and part company on negatives;
-     * /HALF-DOWN and /HALF-CEILING agree everywhere except on a half.
-     *
-     * <p>The default is half away from zero, which is what REBOL does and
-     * what a JVM does not.
-     */
     private static double roundedBy(double value, Set<String> refinements) {
         if (refinements.contains("down")) {
             return value < 0 ? Math.ceil(value) : Math.floor(value);
@@ -12060,7 +9384,6 @@ public final class Natives {
         return roundedHalfAway(value);
     }
 
-    /** Keeps a computed position inside the series it belongs to. */
     private static int clampToSeries(SeriesValue series, long wanted) {
         return (int) Math.max(1, Math.min(wanted, series.storageLength() + 1L));
     }
@@ -12074,14 +9397,6 @@ public final class Natives {
                 DatatypeValue.of(value.datatype())));
     }
 
-    /**
-     * Turning bytes into text and back: ENHEX, DEHEX, ENBASE, DEBASE,
-     * CHECKSUM, COMPRESS, DECOMPRESS and SWAP-ENDIAN.
-     *
-     * <p>Every spec here is the one declared in the C, verbatim. The work is
-     * in {@link Encodings}, which knows nothing about REBOL values; these are
-     * the thinnest wrapper that reaches it.
-     */
     private void defineEncodings() {
         define("enhex", List.of(
                         Parameter.required("value", anyStringOr(Datatype.BINARY)),
@@ -12341,13 +9656,6 @@ public final class Natives {
                 });
     }
 
-    /**
-     * ENCLOAK and DECLOAK, which are one function and a direction.
-     *
-     * <p>Defined together because the C defines them together: both call
-     * `Cloak` and differ in its first argument. Writing them apart would
-     * invite the two to drift.
-     */
     private void defineCloak(String name, boolean decode) {
         define(name, List.of(
                         Parameter.required("data", Set.of(Datatype.BINARY)),
@@ -12370,14 +9678,6 @@ public final class Natives {
                 });
     }
 
-    /**
-     * The key bytes CLOAK actually scrambles against.
-     *
-     * <p>An integer is spelled out in decimal and then always hashed, whatever
-     * /WITH said. The C overrides the refinement rather than honouring it --
-     * `INT_TO_STR(VAL_INT64(val), dst); ... as_is = FALSE;` -- because the
-     * digits are not bytes a caller chose.
-     */
     private static byte[] keyBytesFor(Value key, boolean asItStands) {
         if (key instanceof IntegerValue whole) {
             return Encodings.hashedKey(Long.toString(whole.magnitude())
@@ -12389,18 +9689,10 @@ public final class Natives {
         return asItStands ? bytes : Encodings.hashedKey(bytes);
     }
 
-    /** What names a character set: a word, a string, a tag or a number. */
     private static Set<Datatype> characterSetNames() {
         return Set.of(Datatype.WORD, Datatype.INTEGER, Datatype.TAG, Datatype.STRING);
     }
 
-    /**
-     * The character set a value names, refusing one the host has not got.
-     *
-     * <p>A tag's own text, not its molded form: `<utf8>` names utf8, and the
-     * angle brackets are how it was written rather than part of the name.
-     * Going through FORM kept them and refused every tag.
-     */
     private static java.nio.charset.Charset characterSetFor(Value named) {
         String spelling = switch (named) {
             case WordValue word -> word.canonical();
@@ -12414,31 +9706,7 @@ public final class Natives {
         return found;
     }
 
-    /**
-     * SET with an object on both sides: matched by name, not by position.
-     *
-     * <p>The only shape of SET where position plays no part. Each word of the
-     * target takes the value the source holds for that same word; a word the
-     * source has not got is left as it was, and a word only the source has is
-     * ignored. The C walks the target's words and looks each one up:
-     *
-     * <pre>
-     * tmp = Find_Word_Value(VAL_OBJ_FRAME(val), VAL_WORD_SYM(word));
-     * if (tmp) {
-     *     if (IS_UNSET(tmp) &amp;&amp; not_any) goto next_obj_val;
-     *     if (ref_some &amp;&amp; VAL_TYPE(obj_val) &gt; REB_NONE
-     *             &amp;&amp; VAL_TYPE(tmp) &lt;= REB_NONE) goto next_obj_val;
-     *     *obj_val = *tmp;
-     * }
-     * </pre>
-     *
-     * <p>Two skips, and each is a refinement's whole meaning. Without /ANY an
-     * unset in the source is passed over rather than copied, so the target
-     * keeps a real value instead of losing it to nothing. With /SOME a source
-     * value of none is passed over when the target already holds something
-     * more than none, which is what makes /SOME "fill in the gaps".
-     */
-    private static void setFieldsFromObject(
+    private static void setFieldsFromObjectMatchedByName(
             ObjectValue into, ObjectValue from, Set<String> refinements) {
 
         boolean anyValue = refinements.contains("any");
@@ -12471,13 +9739,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Which of the five PNG filters a value names.
-     *
-     * <p>A word or its number, and nothing else. An unknown one is refused
-     * rather than treated as "none", because a filter read wrongly corrupts
-     * every line after it and answers no error.
-     */
     private static int pngFilterNamedBy(Value named) {
         if (named instanceof IntegerValue whole) {
             int which = (int) whole.magnitude();
@@ -12494,7 +9755,6 @@ public final class Natives {
         return found;
     }
 
-    /** /SKIP names the bytes per pixel, and one is the default. */
     private static int bytesPerPixelIn(
             List<Value> arguments, Set<String> refinements, int where) {
 
@@ -12505,14 +9765,6 @@ public final class Natives {
         return asked instanceof IntegerValue given ? (int) given.magnitude() : 1;
     }
 
-    /**
-     * The geometry check both filters do before touching a byte.
-     *
-     * <pre>
-     * if ((REBINT)width &lt;= 1 || width &gt; bytes) Trap1(RE_INVALID_ARG, val_width);
-     * if (bpp &lt; 1 || bpp &gt; width) Trap1(RE_INVALID_ARG, val_bpp);
-     * </pre>
-     */
     private static void requirePngGeometry(int width, int bytesPerPixel, int length) {
         if (width <= 1 || width > length) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, "width " + width);
@@ -12523,7 +9775,6 @@ public final class Natives {
         }
     }
 
-    /** ENBASE and DEBASE know five bases and refuse the rest. */
     private static void requireAKnownBase(int base) {
         if (!Encodings.BASES.contains(base)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
@@ -12531,15 +9782,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * The compression method named, or the refusal that fits.
-     *
-     * <p>Two refusals, because they are two different answers. A name nobody
-     * has heard of is an invalid argument. A method REBOL really has and this
-     * build was not compiled with is {@code feature-na}, which is what the
-     * error is for and what tells a caller to look for another build rather
-     * than for a typo.
-     */
     private static String requireAKnownCompression(Value method) {
         String named = ((WordValue) method).canonical();
         if (Encodings.COMPRESSIONS_ELSEWHERE.contains(named)) {
@@ -12551,7 +9793,6 @@ public final class Natives {
         return named;
     }
 
-    /** The escape character, which is a percent sign unless /ESCAPE says. */
     private static char escapeCharacterIn(
             List<Value> arguments, Set<String> refinements) {
         Value asked = refinements.contains("escape")
@@ -12563,13 +9804,6 @@ public final class Natives {
                 : '%';
     }
 
-    /**
-     * Which bytes ENHEX leaves alone.
-     *
-     * <p>/EXCEPT names the set outright. Without it the set follows the
-     * datatype, which the C states in the spec itself: "By default it is URI
-     * bitset when value is file or url, else URI-Component".
-     */
     private static java.util.function.IntPredicate unescapedSetFor(
             Value value, List<Value> arguments, Set<String> refinements) {
 
@@ -12585,16 +9819,6 @@ public final class Natives {
                 : Encodings::uriComponentKeeps;
     }
 
-    /**
-     * The bytes of a value: a binary as they stand, text as UTF-8.
-     *
-     * <p>A string of any kind gives the characters it holds and not the way it
-     * would be written down. {@code VAL_BIN_DATA} reaches the series, and a
-     * tag's angle brackets and a file's percent sign are punctuation the
-     * molder adds rather than content the series has -- so
-     * {@code enbase <ab> 16} is {@code "6162"} and not the four bytes of
-     * {@code <ab>}.
-     */
     private static byte[] octetsOf(Value value) {
         return switch (value) {
             case BinaryValue bytes -> bytes.octetsFromHere();
@@ -12605,22 +9829,12 @@ public final class Natives {
         };
     }
 
-    /**
-     * The name an environment variable was asked for by.
-     *
-     * <p>Written either way, because a caller has a string or a word in hand
-     * and neither is more correct: {@code get-env "HOME"} and
-     * {@code get-env 'HOME} are the same question. A word keeps the spelling
-     * it was written with rather than its canonical form, since the
-     * environment minds the case and REBOL words do not.
-     */
     private static String environmentNameIn(Value asked) {
         return asked instanceof WordValue word
                 ? word.spelling()
                 : ((StringValue) asked).text();
     }
 
-    /** The text of a value: a string as it stands, a binary read as UTF-8. */
     private static String textOf(Value value) {
         return switch (value) {
             case BinaryValue bytes ->
@@ -12630,17 +9844,10 @@ public final class Natives {
         };
     }
 
-    /** The datatype the answer keeps, so a url stays a url. */
     private static Datatype textDatatypeOf(Value value) {
         return value.datatype().isAnyString() ? value.datatype() : Datatype.STRING;
     }
 
-    /**
-     * /PART, applied to the bytes rather than to the value. The source is
-     * what a series-valued limit is measured against, so
-     * {@code checksum/part mark 'sha1 remaining} reads the span between the
-     * two positions -- which is how sys-load verifies a script checksum.
-     */
     private static byte[] partOfOctets(
             Value source, byte[] octets, List<Value> arguments,
             Set<String> refinements, int where) {
@@ -12653,21 +9860,6 @@ public final class Natives {
                 .orElse(octets);
     }
 
-    /**
-     * The run of bytes ending at the position, for a /PART that counted down.
-     *
-     * <p>{@code Partial1} turns a negative count round rather than refusing it
-     * or reading it as nothing: the position moves back by that many and the
-     * count becomes positive, so the span always runs forwards from wherever
-     * it lands, clamped to what is really behind. At the head nothing is
-     * behind and the answer is empty.
-     *
-     * <p>The count is in whatever the series holds, which for a string is
-     * characters and not bytes. Measuring the span as the difference between
-     * two byte lengths from the same storage keeps that right without
-     * encoding anything twice over: what is behind is what the earlier
-     * position holds, less what this one does.
-     */
     private static byte[] theOctetsBehind(Value source, byte[] octets, long count) {
         if (!(source instanceof SeriesValue positioned)) {
             return new byte[0];
@@ -12677,23 +9869,8 @@ public final class Natives {
         return Arrays.copyOf(fromThere, fromThere.length - octets.length);
     }
 
-    /** The one CHECKSUM method that is not a checksum but a table index. */
     private static final String HASH_INTO_A_TABLE = "hash";
 
-    /**
-     * {@code checksum/with value 'hash size}, which answers
-     * {@code Hash_Value(value) % size} rather than a digest of the bytes.
-     *
-     * <p>It is the only method /WITH is required for, and the only one whose
-     * spec must be a number, because that number is the size of the table the
-     * answer indexes into. A size below one is read as one, so the answer is
-     * always a slot that exists.
-     *
-     * <p>The size is counted in thirty-two bits, so a bigger number wraps
-     * before it divides and a table of four thousand million and ninety-six
-     * slots is a table of none -- which leaves the hash whole rather than
-     * dividing by nothing.
-     */
     private static long hashedIntoATable(Value value, Value size) {
         if (size == null) {
             throw Raised.of(EvaluationFailure.MISSING_ARG);
@@ -12706,14 +9883,6 @@ public final class Natives {
         return slots == 0 ? hash : hash % slots;
     }
 
-    /**
-     * The mixing {@code Hash_Value} does, which differs by datatype.
-     *
-     * <p>A binary is mixed four bytes at a time and case sensitively; a string
-     * is mixed one byte at a time with each byte's case folded, and then
-     * carries its own datatype into the answer so that the same letters as a
-     * file and as a url land in different slots.
-     */
     private static int hashOfValue(Value value) {
         return value instanceof BinaryValue bytes
                 ? Encodings.murmurOf(bytes.octetsFromHere())
@@ -12721,19 +9890,6 @@ public final class Natives {
                         ^ value.datatype().ordinal();
     }
 
-    /**
-     * Where a position in a picture sits, as a column and a row.
-     *
-     * <p>{@code index % VAL_IMAGE_WIDE(value)} across and
-     * {@code index / VAL_IMAGE_WIDE(value)} down, both counted from the
-     * zero-based index, and then INDEX? adds one to each where INDEXZ? does
-     * not. So the tail of a picture two across and three down is
-     * {@code 1x4} -- the first column of a row that is not there -- which is
-     * the same arithmetic as any other tail rather than a special case.
-     *
-     * <p>{@code /xy} means nothing to any other series, and R3 ignores it
-     * there rather than refusing.
-     */
     private static Value whereItStandsInThePicture(ImageValue picture, int countingFrom) {
         int across = picture.storage().wide();
         if (across <= 0) {
@@ -12743,24 +9899,12 @@ public final class Natives {
         return PairValue.of(stepsIn % across + countingFrom, stepsIn / across + countingFrom);
     }
 
-    /** The any-string datatypes, plus whatever else a spec names beside them. */
     private static Set<Datatype> anyStringOr(Datatype... alsoAccepted) {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_STRING.members());
         accepted.addAll(List.of(alsoAccepted));
         return Set.copyOf(accepted);
     }
 
-    /**
-     * The functions that ask the interpreter about itself.
-     *
-     * <p>VERSION, POKEZ, TO-REAL-FILE, RECYCLE, STATS, HALT and STACK. Each
-     * spec is the one declared in the C, verbatim.
-     *
-     * <p>STACK is the interesting one. It is answerable at all only because
-     * evaluation state lives in frames on the heap rather than in JVM stack
-     * frames -- see decision 1 -- so an implementation built on the host's own
-     * stack could not offer it.
-     */
     private void defineInterpreterState() {
         define("version", List.of(), Set.of("data"),
                 (arguments, evaluator, context, refinements) ->
@@ -12937,9 +10081,9 @@ public final class Natives {
                         Parameter.required("g", Typeset.NUMBER.members()),
                         Parameter.required("b", Typeset.NUMBER.members())),
                 (arguments, evaluator, context) -> TupleValue.of(
-                        colourByteOf(arguments.get(0)),
-                        colourByteOf(arguments.get(1)),
-                        colourByteOf(arguments.get(2))));
+                        colourByteOfRoundingNotTruncating(arguments.get(0)),
+                        colourByteOfRoundingNotTruncating(arguments.get(1)),
+                        colourByteOfRoundingNotTruncating(arguments.get(2))));
 
         define("grayscale", List.of(Parameter.required("target",
                         Set.of(Datatype.TUPLE, Datatype.IMAGE))),
@@ -12958,9 +10102,10 @@ public final class Natives {
                     boolean luma = refinements.contains("luma");
                     return overEveryColour(arguments.getFirst(),
                             parts -> IntegerValue.of(
-                                    Colours.luminosity(parts[0], parts[1], parts[2], luma)),
+                                    Colours.luminosityTruncatedRatherThanRounded(
+                                            parts[0], parts[1], parts[2], luma)),
                             parts -> {
-                                int grey = Colours.luminosity(
+                                int grey = Colours.luminosityTruncatedRatherThanRounded(
                                         parts[0], parts[1], parts[2], luma);
                                 return new int[] {grey, grey, grey};
                             });
@@ -12978,7 +10123,7 @@ public final class Natives {
         define("color-distance", List.of(
                         Parameter.required("a", Set.of(Datatype.TUPLE)),
                         Parameter.required("b", Set.of(Datatype.TUPLE))),
-                (arguments, evaluator, context) -> DecimalValue.of(Colours.distance(
+                (arguments, evaluator, context) -> DecimalValue.of(Colours.perceptionDistance(
                         threeParts((TupleValue) arguments.get(0)),
                         threeParts((TupleValue) arguments.get(1)))));
 
@@ -13031,7 +10176,8 @@ public final class Natives {
                             ? several.remaining()
                             : List.of(arguments.getFirst());
                     for (int at = 0; at < chants.size(); at++) {
-                        at += obey(chants.get(at), evaluator);
+                        at += obeyAnsweringHowManyValuesItTook(
+                                chants.get(at), evaluator);
                     }
                     return UnsetValue.unset();
                 });
@@ -13075,41 +10221,14 @@ public final class Natives {
                 });
     }
 
-    /** `"^/STACK[%d] %s[%d] %s"` in the `stack` block of boot/strings.reb. */
     private static final String FRAME_LINE = "%nSTACK[%d] %s[%d] %s";
 
-    /** `"\t%s: %72r"` -- a tab, the slot's name, and its value molded. */
     private static final String SLOT_LINE = "\t%s: %s";
 
-    /** The width `%72r` allows a molded value in a stack dump. */
     private static final int SLOT_MOLD_LIMIT = 72;
 
-    /** What the C prints where a call was made through no word at all. */
     private static final String NO_NAME = "?";
 
-    /**
-     * Prints the frame stack, innermost frame first, as {@code Dump_Stack} does.
-     *
-     * <p>One line per open frame and one per slot under it. The C recurses into
-     * {@code PRIOR_DSF(dsf)} after printing the frame it is on, so the order is
-     * the order a caller reads a backtrace in.
-     *
-     * <p>The number in brackets is the C's data stack pointer at that frame: how
-     * many value slots are in use up to and including it, so it falls as the
-     * walk goes outwards. Measured here the way STACK/SIZE measures the same
-     * stack, because both read DSP in the C and two natives disagreeing about
-     * one stack would be worse than either being rough.
-     *
-     * <p>The first line is DS's own call. {@code Dump_Stack(0, 0)} starts at
-     * DSF, the frame of the call being made, and prints before it tests
-     * {@code if (dsf > 0)} -- so a real 3.22.1 opens with {@code ds[0]
-     * native!} whether or not anything else is open. A native opens no frame
-     * here, so the line is composed rather than walked, which is the same
-     * compensation STACK makes when it answers 'stack at offset zero. The two
-     * disagreed until now: STACK named itself and this printed a nameless
-     * placeholder, so the frames answered and the frames printed described
-     * different stacks.
-     */
     private void printTheFrameStack(Evaluator evaluator) {
         List<Evaluator.OpenCall> open = evaluator.callsInProgress();
         int slotsInUse = (open.size() + 1) * FRAME_VALUE_UNITS;
@@ -13132,10 +10251,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * {@code value [number! series! pair! none!]}, which is everything REPEAT
-     * will count by.
-     */
     private static final Set<Datatype> WHAT_REPEAT_COUNTS_BY = whatRepeatCountsBy();
 
     private static Set<Datatype> whatRepeatCountsBy() {
@@ -13146,37 +10261,11 @@ public final class Natives {
         return Set.copyOf(accepted);
     }
 
-    /**
-     * The schemes this build has an actor for.
-     *
-     * <p>A scheme is a doorway to something outside the interpreter, and
-     * registering one that leads nowhere is worse than leaving it out: a
-     * script reads {@code system/schemes} to find what it can open, and a
-     * name there is a promise. So this lists what JEBOL really serves and
-     * grows only when an actor does.
-     */
     private static final Set<String> SCHEMES_THIS_BUILD_SERVES =
             Set.of("console", "tcp", "dns", "event", "checksum", "file", "dir",
                     "crypt");
 
-    /**
-     * Builds the cipher a crypt port was opened for, and empties the
-     * specification of what it was told.
-     *
-     * <p>{@code Crypt_Open} copies the key and the starting vector into its
-     * own context and then blanks both fields, with a comment saying why: "as
-     * we have a copy, make it invisible from the spec". A specification is an
-     * ordinary object a script can read, mold or pass on, so a key that stayed
-     * in it would travel everywhere the port did.
-     *
-     * <p>The algorithm is checked here as well as in the scheme's INIT, and
-     * the C checks it twice for the same reason: INIT runs when the port is
-     * made and a specification is an ordinary object a script can write to
-     * afterwards, so what INIT approved is not what OPEN necessarily gets.
-     * Without the second look the port opens with no cipher behind it and the
-     * next write reaches for one that is not there.
-     */
-    private static void startTheCipherBehind(PortValue port) {
+    private static void startTheCipherBehindBlankingTheKeyInTheSpec(PortValue port) {
         if (CryptPort.isWorking(port)) {
             throw Raised.of(EvaluationFailure.ALREADY_OPEN,
                     port.fieldNamed("spec") instanceof ObjectValue spec
@@ -13215,14 +10304,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * Refuses every action on a closed cipher port, asking whether it is open
-     * included.
-     *
-     * <p>Which reads as wrong until you see where the check sits in the C: the
-     * actor looks for its cipher above the switch on what was asked, so a
-     * closed port has nothing left to answer the question with.
-     */
     private static void refuseAClosedCipherPort(PortValue port) {
         if (CryptPort.isWorking(port)) {
             return;
@@ -13234,7 +10315,6 @@ public final class Natives {
     }
 
 
-    /** The types a cipher context publishes. */
     private static final String RC4_HANDLE_TYPE = "rc4";
 
     private static final String RSA_HANDLE_TYPE = "rsa";
@@ -13243,41 +10323,9 @@ public final class Natives {
 
     private static final String ECDH_HANDLE_TYPE = "ecdh";
 
-    /** The four things ECDH does, exactly one of which a caller may name. */
     private static final List<String> ECDH_ACTIONS =
             List.of("init", "curve", "public", "secret");
 
-    /**
-     * The binary dialect: lay numbers into bytes, or read them back.
-     *
-     * <p>A protocol is a sequence of fields of stated widths, and writing one
-     * by hand means shifting and masking at every field. The dialect says the
-     * widths instead, which is why {@code prot-tls.reb} is built on it.
-     *
-     * <p>The context can be an object made earlier, a binary to work on
-     * directly, or a number of bytes to make room for. All three end up as
-     * bytes and a position.
-     *
-     * <p>The context is a thing rather than a value, and every refinement
-     * changes the one it was handed rather than answering a new one. That is
-     * what makes the dialect usable at all: a protocol writes a header, works
-     * out a length, writes that, and reads the reply, all through the same
-     * {@code b}. Answering a fresh context each time meant every step after
-     * the first was written into something nobody was holding, so
-     * {@code b/buffer} stayed empty however much was written to it.
-     *
-     * <p>Two cursors over one series, because reading and writing move
-     * independently. {@code buffer} is where the next read starts and
-     * {@code buffer-write} is where the next write lands, so a context can be
-     * filled and then read from the beginning without either cursor disturbing
-     * the other.
-     *
-     * <p>A write pokes rather than appends. {@code binary #{01020304}} leaves
-     * the write cursor at the head, so writing a byte to it replaces the first
-     * one; the series only grows where the cursor has reached the end. That is
-     * what makes a header writable twice, once with a placeholder length and
-     * once with the real one.
-     */
     private static Value theBinaryDialect(List<Value> arguments,
             Set<String> refinements, Evaluator evaluator, Context context) {
         ObjectValue held = theDialectContextOf(arguments.getFirst());
@@ -13289,7 +10337,8 @@ public final class Natives {
             requireChangeable(arguments.getFirst());
             writeThroughTheDialect(held,
                     dialectBlockIn(arguments, refinements, "write"),
-                    item -> valueLookedUp(item, evaluator, context));
+                    item -> valueLookedUpThroughItsOwnBinding(
+                            item, evaluator, context));
             if (arguments.getFirst() instanceof BinaryValue given) {
                 laidBackInto(given, cursorNamed(held, "buffer").head());
             }
@@ -13297,7 +10346,8 @@ public final class Natives {
         if (refinements.contains("read")) {
             return readThroughTheDialect(held,
                     dialectCodeIn(arguments, refinements),
-                    item -> valueLookedUp(item, evaluator, context),
+                    item -> valueLookedUpThroughItsOwnBinding(
+                            item, evaluator, context),
                     theCountGivenWith(arguments, refinements),
                     argumentFor("into", DIALECT_OPTIONAL_ARGUMENTS,
                             arguments, refinements));
@@ -13305,19 +10355,6 @@ public final class Natives {
         return held;
     }
 
-    /**
-     * Where /INTO puts what a read produced, and what the call answers.
-     *
-     * <p>{@code Insert_Series(blk, VAL_INDEX(val_into), temp, 1);
-     * VAL_INDEX(val_into)++;} once per value, and then
-     * {@code if (ref_into) *ret = *val_into;}. So the values land at the
-     * position given, in order, and the answer is the caller's block standing
-     * after them rather than the values themselves.
-     *
-     * <p>That is what makes {@code binary/read/into bin [BYTES :size] tail
-     * data} the way a decoder appends: no intermediate block, and the next
-     * call carries on where this one left off.
-     */
     private static Value laidInto(Value target, List<Value> read) {
         if (!(target instanceof BlockValue into)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(target));
@@ -13333,13 +10370,6 @@ public final class Natives {
     private static final List<String> DIALECT_OPTIONAL_ARGUMENTS =
             List.of("init", "write", "read", "into", "with");
 
-    /**
-     * The context to work through: the one given, or a new one around it.
-     *
-     * <p>BINARY takes either. A context comes back as itself so the caller
-     * keeps writing to what they are holding; a binary or a number is what a
-     * context is made from, and a made one is new by definition.
-     */
     private static ObjectValue theDialectContextOf(Value given) {
         if (given instanceof ObjectValue existing
                 && existing.context().knows("buffer")
@@ -13350,7 +10380,6 @@ public final class Natives {
                 bufferOfTheDialectContext(given));
     }
 
-    /** Empties the context and puts both cursors back to the head. */
     private static void restartedWith(ObjectValue held, Value replacement) {
         BinaryValue fresh = replacement instanceof BinaryValue given
                 ? BinaryValue.of(bytesAsOctetValues(given.octetsFromHere()))
@@ -13367,15 +10396,6 @@ public final class Natives {
         return widened;
     }
 
-    /**
-     * Writes the dialect's bytes back into the binary it was handed.
-     *
-     * <p>A binary given straight to BINARY/WRITE is written into, not read
-     * from: {@code binary/write b: #\{} [UI8 255 PAD 4 UI8 255]} leaves
-     * {@code b} holding all five bytes. So the caller's own series has to end
-     * up with them, which means changing its storage rather than answering a
-     * new one -- the context around it is scaffolding the caller never sees.
-     */
     private static void laidBackInto(BinaryValue given, BinaryValue written) {
         BinaryStorage storage = given.storage();
         byte[] octets = written.octetsFromHere();
@@ -13398,32 +10418,7 @@ public final class Natives {
                 : BinaryValue.of();
     }
 
-    /**
-     * A get-word or a get-path in the dialect, looked up; anything else as
-     * written.
-     *
-     * <p>The block arrives unevaluated, which is what lets a code be named
-     * rather than computed. But a caller writing a protocol has values in
-     * hand -- a length worked out a line earlier, a constant from a table --
-     * and the get sigil is how they reach the dialect: {@code [UI16 :length]}
-     * writes the number LENGTH holds, where {@code [UI16 length]} would be an
-     * error because LENGTH is not a code.
-     *
-     * <p>Handed to the dialect to call rather than run over the block first,
-     * because when a word is looked up decides what it holds. A block that
-     * names a length on one code and spends it on the next needs the lookup to
-     * happen at the second code, after the first has run.
-     *
-     * <p>And through the binding the word already carries. Binding it again
-     * here is what the C has no way to do -- {@code Get_Var} takes the word and
-     * follows it -- and rebinding finds a word of the same name wherever this
-     * happens to be looking instead. It shows only when a caller picks a name
-     * the borrowed library also uses, so it hid until Rebol's own ZIP encoder,
-     * which keeps the directory it is building in a word called DIR and writes
-     * it with {@code BYTES :dir/buffer}. Rebound, that found the library's
-     * directory-listing function and no archive could be written at all.
-     */
-    private static Value valueLookedUp(
+    private static Value valueLookedUpThroughItsOwnBinding(
             Value item, Evaluator evaluator, Context context) {
         boolean fetches = item instanceof WordValue word
                         && word.datatype() == Datatype.GET_WORD
@@ -13435,7 +10430,6 @@ public final class Natives {
         return evaluator.evaluateOrRaise(BlockValue.block(List.of(item)), context);
     }
 
-    /** Where a dialect context keeps its bytes. */
     private static BinaryValue bufferOfTheDialectContext(Value given) {
         if (given instanceof BinaryValue bytes) {
             return bytes;
@@ -13449,10 +10443,6 @@ public final class Natives {
         return BinaryValue.of();
     }
 
-    /**
-     * A context object shaped like {@code system/standard/bincode}, so what
-     * BINARY answers can be handed back to it.
-     */
     private static Value theDialectContextFor(BinaryValue buffer) {
         Context made = Context.root();
         made.set("type", WordValue.of("bincode"));
@@ -13475,14 +10465,6 @@ public final class Natives {
                 : List.of(given);
     }
 
-    /**
-     * Lays the dialect into the context at its write cursor.
-     *
-     * <p>A caller writing a protocol writes field after field through the same
-     * context, so the bytes go back into the series both cursors share: a read
-     * that has not caught up sees what was just written, and the write cursor
-     * is left where the writing stopped.
-     */
     private static void writeThroughTheDialect(ObjectValue held,
             List<Value> dialect, UnaryOperator<Value> lookedUp) {
 
@@ -13498,18 +10480,6 @@ public final class Natives {
         held.context().set("buffer-write", written.atIndex(cursor.at() + 1));
     }
 
-    /**
-     * A number where a code was expected, which is a count of bytes.
-     *
-     * <p>{@code if (IS_INTEGER(val_read)) { ... return R_RET; }} is the first
-     * thing {@code Do_Bincode}'s read does, before the dialect loop it never
-     * enters. So {@code binary/read b 2} is two bytes and {@code binary/read
-     * b [2]} is a bad spec, which reads as a contradiction until you see that
-     * the number never reaches the dialect at all.
-     *
-     * <p>/INTO is refused rather than ignored: {@code Trap0(RE_FEATURE_NA)},
-     * because there is no list of values for it to insert.
-     */
     private static Value theseManyBytesRead(ObjectValue held, BinaryValue reading,
             Bincode.Cursor cursor, IntegerValue howMany, Value into) {
 
@@ -13525,20 +10495,6 @@ public final class Natives {
         return read.getFirst();
     }
 
-    /**
-     * Reads through the dialect, answering the shape the asking had.
-     *
-     * <p>A block of codes answers a block; a single word answers that one
-     * value. The shape follows the asking because that is what makes the
-     * dialect bearable to write against -- {@code binary/read ctx 'UI16} is a
-     * caller saying "one number, please", and prot-tls.reb reads a field that
-     * way inside a loop and appends the answer straight into a list, where a
-     * block of one would quietly nest.
-     *
-     * <p>Answers the values rather than the context, which is the one
-     * refinement that does, and leaves the read cursor past what it took so
-     * the next call carries on from there.
-     */
     private static Value readThroughTheDialect(ObjectValue held, Value asked,
             UnaryOperator<Value> lookedUp, Value count, Value into) {
 
@@ -13567,15 +10523,6 @@ public final class Natives {
                 : laidInto(into, read);
     }
 
-    /**
-     * Puts both cursors back after CROP has taken bytes off the front.
-     *
-     * <p>The bytes that went were in front of both, so the read cursor lands
-     * at the head and the write cursor moves back by however many left --
-     * never past the head, which is what {@code MAX(0, ...)} says in the C.
-     * Leaving the write cursor where it was would have it pointing at bytes
-     * that had shuffled along under it.
-     */
     private static void shortenedFromTheFront(
             ObjectValue held, Bincode.Cursor cursor) {
         int writingWas = cursorNamed(held, "buffer-write").index();
@@ -13586,16 +10533,6 @@ public final class Natives {
                 shortened.atIndex(Math.max(1, writingWas - cursor.cropped())));
     }
 
-    /**
-     * Where in the current byte the last read stopped.
-     *
-     * <p>Kept on the context between calls, because the bit codes are meant to
-     * be used one at a time: {@code binary/read bin 'BIT} twice running has to
-     * give two different bits, and a SB in one call has to leave the next call
-     * where it finished. The C keeps a mask in the same field for the same
-     * reason, which is what {@code r-mask} in
-     * {@code system/standard/bincode} is for.
-     */
     private static int bitsAlreadyTakenIn(ObjectValue held) {
         return held.context().knows("r-mask")
                 && held.context().slotFor("r-mask").value() instanceof IntegerValue taken
@@ -13603,17 +10540,6 @@ public final class Natives {
                 : 0;
     }
 
-    /**
-     * Puts a value a read produced into the word that asked for it.
-     *
-     * <p>{@code Set_Var(DS_TOP, temp)}, which is the whole of what a set-word
-     * in the dialect does. It goes through the word's own binding, so a
-     * protocol reading into a word declared in its function reaches that word
-     * rather than a global of the same name.
-     *
-     * <p>A word the caller never defined is not defined by this, the same as
-     * anywhere else a set-word appears.
-     */
     private static void nameTheValueRead(WordValue named, Value read) {
         if (!named.isBound() || !named.binding().knows(named.canonical())) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, named.spelling());
@@ -13625,31 +10551,10 @@ public final class Natives {
         slot.setValue(read);
     }
 
-    /**
-     * The clock, for the one dialect code that asks the host what time it is.
-     *
-     * <p>Handed in rather than read where it is used, so the dialect itself
-     * stays arithmetic on bytes and only a block actually naming
-     * UNIXTIME-NOW reaches outside. Every other code answers the same thing
-     * every time it is run.
-     */
     private static long secondsSinceTheEpoch() {
         return Instant.now().getEpochSecond();
     }
 
-    /**
-     * A number as the fewest bytes that hold it, big-endian.
-     *
-     * <p>What ENBASE makes of an integer: {@code enbase 0 16} is {@code "00"}
-     * and {@code enbase 256 16} is {@code "0100"}, so the leading nought bytes
-     * come off and one byte is always left. A caller encoding a small number
-     * wants the small answer, and encoding all eight bytes of a long would
-     * bury it in noughts.
-     *
-     * <p>A negative keeps all eight, because two's complement has no leading
-     * noughts to drop -- every byte of {@code -1} is meaningful, and cutting
-     * any of them would change the number.
-     */
     private static byte[] asFewBytesAsHoldIt(long number) {
         byte[] whole = new byte[Long.BYTES];
         for (int at = 0; at < Long.BYTES; at++) {
@@ -13665,7 +10570,6 @@ public final class Natives {
         return Arrays.copyOfRange(whole, from, Long.BYTES);
     }
 
-    /** The buffer's bytes as the dialect works on them: unsigned, and growable. */
     private static List<Integer> octetsOfTheBuffer(BinaryValue buffer) {
         List<Integer> octets = new ArrayList<>();
         for (byte octet : buffer.octetsFromHere()) {
@@ -13674,19 +10578,10 @@ public final class Natives {
         return octets;
     }
 
-    /** A block of codes as written, or the one code that was. */
     private static List<Value> codesWrittenIn(Value asked) {
         return asked instanceof BlockValue block ? block.remaining() : List.of(asked);
     }
 
-    /**
-     * The answer shaped the way the asking was.
-     *
-     * <p>A block of codes answers a block; a single word answers that one
-     * value. Which is what makes the dialect bearable to write against --
-     * prot-tls.reb reads one field inside a loop and appends the answer
-     * straight into a list, where a block of one would quietly nest.
-     */
     private static Value shapedLikeTheAsking(Value asked, List<Value> values) {
         if (asked instanceof BlockValue) {
             return BlockValue.block(values);
@@ -13694,20 +10589,6 @@ public final class Natives {
         return values.isEmpty() ? NoneValue.none() : values.getFirst();
     }
 
-    /**
-     * The number /WITH gave a lone code, or nothing where it gave none.
-     *
-     * <p>{@code binary/read/with bin 'UB 4} and {@code binary/read bin [UB 4]}
-     * read the same four bits. The refinement exists because the bit codes are
-     * used one at a time -- a caller pulling a twelve-bit field, then two
-     * bits, then a four-bit one writes three calls, and naming a block of two
-     * each time reads worse than saying the count.
-     *
-     * <p>Kept apart from the code rather than folded in with it, because the
-     * shape of the answer follows the shape of the asking: a lone word answers
-     * one value, and wrapping it into a block to carry the count would have
-     * made {@code binary/read/with bin 'SB 12} answer {@code [1080]}.
-     */
     private static Value theCountGivenWith(
             List<Value> arguments, Set<String> refinements) {
         return refinements.contains("with")
@@ -13725,25 +10606,6 @@ public final class Natives {
         return arguments.get(at);
     }
 
-    /**
-     * REGISTER: a struct's layout filed in the catalogue under a name.
-     *
-     * <p>A layout describes how bytes are arranged, and code laying that
-     * description over a binary wants the description rather than an instance
-     * of it. So the catalogue is a map from names to layouts, and this is how
-     * one gets in.
-     *
-     * <p>The same layout under the same name again does nothing, so a file
-     * loaded twice does not fail on its second pass. A different layout under
-     * a name already taken is refused, because a name here is how other code
-     * finds a layout and replacing one quietly would change what that code
-     * reads without it knowing.
-     *
-     * <p>The name is quoted, and a set-word is set here rather than by the
-     * evaluator: {@code register pair8!: make struct! [...]} both files the
-     * layout and leaves {@code pair8!} holding the struct, which is what makes
-     * the name usable as a prototype afterwards.
-     */
     private Value structLayoutFiledUnder(List<Value> arguments) {
         if (!(arguments.getFirst() instanceof WordValue name)) {
             return raiseWrongArgument(arguments.getFirst(), "register", "name");
@@ -13772,14 +10634,6 @@ public final class Natives {
                 : MapValue.empty();
     }
 
-    /**
-     * RESIZE's new size, from a pair, a percentage or a width.
-     *
-     * <p>An integer is a width and the height follows from it, keeping the
-     * shape: the declaration says so -- "integer value is used as width" --
-     * and a resize that squashed a photograph because only one number was
-     * given would be a surprise nobody wants.
-     */
     private static Value resizedImage(
             List<Value> arguments, Set<String> refinements) {
 
@@ -13817,33 +10671,10 @@ public final class Natives {
         return ImageOperations.resized(image, wide, high);
     }
 
-    /**
-     * The side that was not given, worked out from the shape.
-     *
-     * <p>Which is what a whole number means -- "integer value is used as
-     * width", says the declaration, and the height follows so a photograph is
-     * not squashed -- and what a pair with one side left at nought means too.
-     * The two spellings ask the same question and one of them says which side
-     * is being given.
-     *
-     * <p>Not brought up to one. A width so small that the height works out at
-     * nothing is a tenth of a row, and there is no such picture: the caller
-     * hears about it rather than getting a single row nobody asked for.
-     */
     private static int scaledFrom(int given, int toKeep, int against) {
         return against == 0 ? 0 : (given * toKeep) / against;
     }
 
-    /**
-     * /FILTER names how the pixels are sampled, and a name the catalogue has
-     * not got is refused.
-     *
-     * <p>Which filter runs changes how a shrunken photograph looks and does
-     * not change what RESIZE is, so a build that samples one way for all
-     * fifteen is still RESIZE. Accepting a name that means nothing is a
-     * different matter: a caller who mistypes one should hear about it rather
-     * than quietly getting the default.
-     */
     private static void refuseAFilterTheCatalogueHasNot(
             List<Value> arguments, Set<String> refinements) {
 
@@ -13859,31 +10690,11 @@ public final class Natives {
         }
     }
 
-    /**
-     * The fifteen filters {@code system/catalog/filters} names, in the order
-     * {@code u-image-resize.c} declares them.
-     */
     static final List<String> THE_FILTERS = List.of(
             "Point", "Box", "Triangle", "Hermite", "Hanning", "Hamming",
             "Blackman", "Gaussian", "Quadratic", "Cubic", "Catrom",
             "Mitchell", "Lanczos", "Bessel", "Sinc");
 
-    /**
-     * IMAGE reaches the platform's own image codec, through the port the host
-     * filled.
-     *
-     * <p>Asked for nothing it answers unset, because the C's branches are all
-     * on refinements and it falls out of the bottom. An interpreter given no
-     * codec refuses with {@code feature-na}, which is what the C answers where
-     * {@code INCLUDE_IMAGE_OS_CODEC} is undefined.
-     *
-     * <p>This used to refuse always, on the reading that a portable codec
-     * belongs in {@code system/codecs} rather than here. What that missed is
-     * that Rebol's own {@code codec-image.reb} writes every entry of
-     * {@code system/codecs} for png, jpeg, gif and bmp as a call to this
-     * native, so refusing here does not leave the codec family to supply one
-     * -- it leaves four codecs in the catalogue that cannot do anything.
-     */
     private static Value theHostsImageCodec(List<Value> arguments,
             Evaluator evaluator, Set<String> refinements) {
 
@@ -13896,15 +10707,6 @@ public final class Natives {
         return UnsetValue.unset();
     }
 
-    /**
-     * How many arguments each of IMAGE's refinements brings, in declared
-     * order.
-     *
-     * <p>/SAVE brings two -- where the bytes go, and which image -- so the
-     * usual counting of one apiece puts every argument after it one place
-     * early. IMAGE has no required arguments at all, so the first refinement's
-     * argument is the first there is.
-     */
     private static final List<String> IMAGE_REFINEMENTS =
             List.of("load", "save", "frame", "as");
     private static final List<Integer> IMAGE_ARGUMENT_COUNTS = List.of(1, 2, 1, 1);
@@ -13927,24 +10729,6 @@ public final class Natives {
         return null;
     }
 
-    /**
-     * The codec word /AS named, asked of the codec before anything else
-     * happens.
-     *
-     * <p>Before anything else because the C's whole native is missing where
-     * there is no codec -- {@code Trap0(RE_FEATURE_NA)} is the first thing it
-     * does -- so an interpreter given no port has to refuse for that reason
-     * rather than for whatever it would have tripped over first. Asking the
-     * port here is what makes it: reading a file that is not there, or being
-     * handed something that is not an image, would otherwise report those
-     * instead and hide the real answer.
-     *
-     * <p>A word the codec has not got is {@code Trap1(RE_BAD_FUNC_ARG,
-     * val_type)}, which is a different failure from bytes it cannot make sense
-     * of: one is the caller naming a format that does not exist, the other is
-     * the data. With no /AS the bytes are asked what they are, and the empty
-     * name no codec knows is not a refusal.
-     */
     private static String imageCodecNamed(List<Value> arguments,
             Evaluator evaluator, Set<String> refinements) {
 
@@ -13976,16 +10760,6 @@ public final class Natives {
         return imageOf(read);
     }
 
-    /**
-     * The pixels, or nothing where either the reading or the decoding failed.
-     *
-     * <p>Both count as the same answer, because both mean "this name did not
-     * give me a picture" and the caller reports them the same way. A file that
-     * is not there refused inside the filesystem port, and that refusal is the
-     * host's own kind rather than a REBOL error -- so it escaped as a Java
-     * throwable, which {@code spec/embed.allium} says nothing a script does may
-     * ever do.
-     */
     private static ImagePort.Pixels whatTheCodecMadeOf(
             Value source, String type, int frame, Evaluator evaluator) {
 
@@ -14012,14 +10786,6 @@ public final class Natives {
         return image;
     }
 
-    /**
-     * Where SAVE puts the bytes, and what the call then answers.
-     *
-     * <p>A file destination is written and answered back, so a caller can go
-     * on using the name. NONE means "make me a binary", which is what
-     * {@code codec-image.reb} asks for when it encodes: {@code
-     * lib/image/save/as none data 'PNG}.
-     */
     private static Value imageSaved(List<Value> arguments,
             Evaluator evaluator, Set<String> refinements) {
 
@@ -14044,22 +10810,6 @@ public final class Natives {
         return binaryOfBytes(written);
     }
 
-    /**
-     * A binary handed in as the destination is written into, and it is that
-     * very binary that comes back.
-     *
-     * <p>Which is what makes it a destination at all. A caller passing one has
-     * a hold on it and means to read the bytes from there afterwards; handing
-     * back a fresh binary and leaving theirs empty looks as though it worked
-     * and quietly does nothing. A file destination behaves the same way, and
-     * this is the same promise in the other shape.
-     *
-     * <p>From the position, and everything after it goes. Writing a picture
-     * into a binary is not adding to what is there -- the bytes are one whole
-     * file and half of a previous one behind them would not be. So a binary
-     * standing at its third byte keeps the two in front and loses the rest,
-     * exactly as writing to a file from an offset would.
-     */
     private static Value filledWithTheEncodedBytes(
             BinaryValue destination, byte[] written) {
 
@@ -14078,38 +10828,13 @@ public final class Natives {
                 everyPixelOf(image.head()));
     }
 
-    /**
-     * What GENERATE answers: a single zero byte, whatever curve was named.
-     *
-     * <p>Copied rather than finished, and the C shows why on its own lines.
-     * {@code mbedtls_ecdsa_genkey} is commented out, the group is loaded as
-     * SECP192R1 whichever curve was asked for, and the point written out is
-     * one nobody set -- so a real 3.22.1 answers the point at infinity for
-     * every curve in the catalogue.
-     *
-     * <p>The declaration is why finishing it here would be wrong rather than
-     * generous. The answer is one binary with nowhere in it for a private
-     * key, so a GENERATE that really made a pair would hand back the public
-     * half and discard the private half, which is an answer nothing can use.
-     * ECDH/INIT already makes a usable elliptic-curve key.
-     *
-     * <p>The curve name is still checked, which is the part of it that works.
-     */
     private static Value theKeyGenerateWouldHaveMade(WordValue curveNamed) {
-        if (!EllipticCurveKey.curveNames().contains(curveNamed.canonical())) {
+        if (!EllipticCurveKey.curveNamesInTheCataloguesOrder().contains(curveNamed.canonical())) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, curveNamed.spelling());
         }
         return BinaryValue.of(0);
     }
 
-    /**
-     * Diffie-Hellman over a modular group: publish, or agree.
-     *
-     * <p>Neither refinement answers none. The C reaches {@code return R_RET}
-     * having never written the return slot, so a real 3.22.1 hands back
-     * whatever that memory held -- a binary of nothing in particular, and a
-     * crash when two contexts were built in one expression.
-     */
     private static Value modularExchange(List<Value> arguments, Set<String> refinements) {
         if (refinements.contains("public") && refinements.contains("secret")) {
             throw Raised.of(EvaluationFailure.BAD_REFINES,
@@ -14120,7 +10845,8 @@ public final class Natives {
             return NoneValue.none();
         }
         if (refinements.contains("public")) {
-            return BinaryValue.of(unsignedOctets(key.published()));
+            return BinaryValue.of(unsignedOctets(
+                    key.publishedPaddedToTheWidthOfThePrime()));
         }
         if (refinements.contains("secret")) {
             return secretAgreedBetween(key,
@@ -14135,14 +10861,6 @@ public final class Natives {
                 .orElseGet(NoneValue::none);
     }
 
-    /**
-     * The modular key a handle carries, or null when it carries something
-     * else.
-     *
-     * <p>Null rather than a refusal, because the C declines rather than
-     * raising here and doubts itself in the same line: {@code return R_NONE;
-     * //or? Trap0(RE_INVALID_HANDLE);}
-     */
     private static DiffieHellmanKey modularKeyHeldBy(Value given) {
         return given instanceof HandleValue held
                 && DHM_HANDLE_TYPE.equals(held.typeName())
@@ -14152,7 +10870,6 @@ public final class Natives {
                 : null;
     }
 
-    /** An RSA context from raw numbers, or none when they do not form a key. */
     private static Value rsaKeyBuiltFrom(List<Value> arguments, Set<String> refinements) {
         byte[] modulus = ((BinaryValue) arguments.get(0)).octetsFromHere();
         byte[] publicExponent = ((BinaryValue) arguments.get(1)).octetsFromHere();
@@ -14167,13 +10884,6 @@ public final class Natives {
                 .orElseGet(NoneValue::none);
     }
 
-    /**
-     * ECDH: whichever one thing the call named.
-     *
-     * <p>Exactly one, which is why the count is taken before anything else is
-     * looked at. /INIT is apart from the other three because it is the only
-     * one that makes a context rather than using one.
-     */
     private static Value ellipticExchange(List<Value> arguments, Set<String> refinements) {
         refuseUnlessExactlyOneOf(ECDH_ACTIONS, refinements, "ecdh");
         if (refinements.contains("init")) {
@@ -14195,7 +10905,6 @@ public final class Natives {
         return UnsetValue.unset();
     }
 
-    /** A fresh context on a named curve, or none where there is no such curve. */
     private static Value curveKeyMadeOn(String curveName) {
         return EllipticCurveKey.onCurve(curveName)
                 .<Value>map(key -> HandleValue.context(ECDH_HANDLE_TYPE,
@@ -14209,27 +10918,12 @@ public final class Natives {
                 .orElseGet(NoneValue::none);
     }
 
-    /**
-     * Where the peer's point sits in the argument list.
-     *
-     * <p>After the key, and after /INIT's curve name when that was asked for
-     * as well. It cannot be in practice, because naming two actions is
-     * refused, but the position is worked out rather than assumed: reading
-     * index two unconditionally cost four tests that had a perfectly good
-     * secret to agree on.
-     */
     private static byte[] peersPointGivenTo(
             List<Value> arguments, Set<String> refinements) {
         int at = refinements.contains("init") ? 2 : 1;
         return ((BinaryValue) arguments.get(at)).octetsFromHere();
     }
 
-    /**
-     * ECDSA: a signature over a hash, or whether one holds.
-     *
-     * <p>Signing is what a call with neither refinement does, which is what a
-     * real 3.22.1 does rather than a choice made here.
-     */
     private static Value ellipticSignature(
             List<Value> arguments, Set<String> refinements) {
         EllipticCurveKey key = curveKeyHeldBy(arguments.getFirst());
@@ -14238,20 +10932,12 @@ public final class Natives {
         }
         byte[] hash = ((BinaryValue) arguments.get(1)).octetsFromHere();
         return refinements.contains("verify")
-                ? whetherTheSignatureHolds(key, hash,
+                ? trueOrNoneWhetherTheSignatureHolds(key, hash,
                         ((BinaryValue) arguments.get(2)).octetsFromHere())
                 : signatureOver(key, hash);
     }
 
-    /**
-     * TRUE or NONE, not TRUE or FALSE.
-     *
-     * <p>The declaration says "returns true or false" and a real 3.22.1
-     * answers none for a signature that does not hold. It matters because
-     * {@code if ecdsa/verify ...} reads the same either way and a comparison
-     * against FALSE does not.
-     */
-    private static Value whetherTheSignatureHolds(
+    private static Value trueOrNoneWhetherTheSignatureHolds(
             EllipticCurveKey key, byte[] hash, byte[] signature) {
         return key.verifies(hash, signature) ? LogicValue.yes() : NoneValue.none();
     }
@@ -14262,7 +10948,6 @@ public final class Natives {
                 .orElseGet(NoneValue::none);
     }
 
-    /** Refuses a call that named two of a set of actions meant to be exclusive. */
     private static void refuseUnlessExactlyOneOf(
             List<String> actions, Set<String> refinements, String nativeName) {
         if (actions.stream().filter(refinements::contains).count() > 1) {
@@ -14271,12 +10956,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * The curve key a handle carries, or null when it carries something else.
-     *
-     * <p>Null rather than a refusal because both natives that ask answer none
-     * for a handle they cannot use, as the C does.
-     */
     private static EllipticCurveKey curveKeyHeldBy(Value given) {
         return given instanceof HandleValue held
                 && ECDH_HANDLE_TYPE.equals(held.typeName())
@@ -14286,21 +10965,9 @@ public final class Natives {
                 : null;
     }
 
-    /** The four things RSA does, exactly one of which a caller must name. */
     private static final List<String> RSA_ACTIONS =
             List.of("encrypt", "decrypt", "sign", "verify");
 
-    /**
-     * One RSA operation, or nothing when the context cannot perform it.
-     *
-     * <p>The refusals divide in a way worth keeping straight. Naming two
-     * actions, or a padding refinement with no action, is {@code
-     * Trap0(RE_BAD_REFINES)} and raises before anything is looked at. A
-     * handle of another type raises too. But a public-only context asked to
-     * decrypt or sign answers none, as RSA-INIT answers none for numbers that
-     * are not a key -- so a caller has to test the answer rather than trust
-     * that no error meant success.
-     */
     private static Value rsaOperation(List<Value> arguments, Set<String> refinements) {
         List<String> named = RSA_ACTIONS.stream().filter(refinements::contains).toList();
         boolean padded = refinements.contains("oaep") || refinements.contains("pss");
@@ -14343,7 +11010,6 @@ public final class Natives {
         }
     }
 
-    /** The digest /HASH named, or the SHA-256 the C falls back to. */
     private static String digestNamedIn(List<Value> arguments, Set<String> refinements) {
         if (!refinements.contains("hash")) {
             return "sha256";
@@ -14366,14 +11032,6 @@ public final class Natives {
         return widened;
     }
 
-    /**
-     * Identities for cipher contexts, kept apart from the codecs' block.
-     *
-     * <p>Two handles are the same handle when they share an identity, so
-     * every context made needs one of its own: a caller holding two ciphers
-     * has to be able to tell them apart even though EQUAL? compares only
-     * their type.
-     */
     private static final int CIPHER_HANDLE_IDENTITY = 2000;
 
     private static final java.util.concurrent.atomic.AtomicInteger CIPHER_IDENTITIES =
@@ -14383,17 +11041,8 @@ public final class Natives {
         return CIPHER_IDENTITIES.incrementAndGet();
     }
 
-    /**
-     * Enciphers a binary where it stands and answers that same binary.
-     *
-     * <p>{@code RC4_crypt(ctx, data, data, len)} reads and writes one buffer
-     * and {@code DS_RET_VALUE(val_data)} hands back the argument, so a caller
-     * holding the binary sees it change and there is no copy to compare
-     * against. A handle registered under another type is refused by name
-     * rather than read as a permutation, which would encipher something and
-     * give an answer nobody could trace.
-     */
-    private static Value encipheredThroughTheStream(HandleValue held, BinaryValue data) {
+    private static Value encipheredThroughTheStreamInPlace(
+            HandleValue held, BinaryValue data) {
         if (!RC4_HANDLE_TYPE.equals(held.typeName())
                 || !(held.payload() instanceof JavaObjectValue carried)
                 || !(carried.held().orElse(null) instanceof StreamCipher cipher)) {
@@ -14401,46 +11050,18 @@ public final class Natives {
         }
         requireChangeable(data);
         for (int at = data.index(); at <= data.storageLength(); at++) {
-            data.storage().set(at, data.storage().at(at) ^ cipher.nextKeystreamByte());
+            data.storage().set(at, data.storage().at(at)
+                    ^ cipher.nextKeystreamByteAdvancingThePermutation());
         }
         return data;
     }
 
-    /**
-     * How many arcs the first byte of an object identifier carries, and what
-     * it is divided by to find them.
-     *
-     * <p>{@code oid[0] / 40} and {@code oid[0] % 40} in {@code n-oid.c}. It
-     * is why every identifier a script meets begins 0, 1 or 2: a first arc of
-     * 3 would need a byte of 120 or more, and 2 is as far as one byte reaches
-     * before the division carries past what the registry allots.
-     */
     private static final int ARCS_PACKED_INTO_THE_FIRST_BYTE = 40;
 
-    /** The seven bits of a base-128 group, and the bit that says more follow. */
     private static final int GROUP_BITS = 7;
     private static final int GROUP_MASK = 0x7F;
     private static final int MORE_GROUPS_FOLLOW = 0x80;
 
-    /**
-     * An object identifier written the way people write one: its arcs
-     * separated by full stops.
-     *
-     * <p>{@code n-oid.c}. Two rules make the encoding. The first byte holds
-     * two arcs rather than one, and every byte after is base 128, seven bits
-     * at a time, with the high bit set on all but the last of its group.
-     *
-     * <p>A group whose last byte never arrives contributes nothing: the
-     * accumulator is written out only when a byte turns up with its high bit
-     * clear, so a truncated identifier reads as a shorter whole one rather
-     * than refusing.
-     *
-     * <p>A long accumulates where the C uses a 32-bit unsigned and guards
-     * against wrapping. The guard cannot fire before the accumulator has
-     * taken more bytes than any real identifier carries, and answering the
-     * argument unchanged as the C does there would hand back a binary where
-     * every other path answers a string.
-     */
     private static String objectIdentifierWritten(byte[] encoded) {
         if (encoded.length == 0) {
             return "";
@@ -14462,31 +11083,15 @@ public final class Natives {
         return written.toString();
     }
 
-    /** A value molded and cut to a width, the way the C's `%72r` does. */
     private static String moldedWithin(Value value, int width) {
         String written = Molder.mold(value);
         return written.length() <= width ? written : written.substring(0, width);
     }
 
-    /**
-     * The chants EVOKE has and this build cannot perform.
-     *
-     * <p>All six are inside {@code #ifdef DEBUG}, and the {@code #else} gives
-     * them one line between them: {@code Trap0(RE_FEATURE_NA)}. So a released
-     * 3.22.1 refuses these too, and refuses them by name rather than pretending
-     * to have done something.
-     */
     private static final Set<String> DEBUG_ONLY_CHANTS = Set.of(
             "crash-dump", "watch-recycle", "watch-alloc",
             "watch-obj-copy", "watch-expand", "crash");
 
-    /**
-     * The list of chants, printed for anything the dialect does not know.
-     *
-     * <p>Assembled by the preprocessor in the C, so a release build lists
-     * `stack-size` and the two numbered checks and not the watch chants: those
-     * sit inside the same {@code #ifdef DEBUG} that refuses them.
-     */
     private static final String EVOKE_HELP = """
             Evoke values:
             [stack-size n]
@@ -14495,22 +11100,7 @@ public final class Natives {
             2: check bind table
             """;
 
-    /**
-     * Does what one chant asks, or says why it cannot, and answers how many
-     * values after it the chant took as its own.
-     *
-     * <p>Three answers and no more. A debug-only chant raises `feature-na`.
-     * A chant naming something this interpreter does by itself -- `stack-size`,
-     * which grows a buffer the C also grows unasked, and the numbered checks
-     * over pools that cannot be wrong here -- is accepted and needs nothing
-     * done. Anything else prints the list, which is the C's own default.
-     *
-     * <p>`stack-size` takes the value after it. The C steps over it without
-     * counting it, and then reads one value past the end of the block; the
-     * stepping is the behaviour and the overrun is not, so the count comes back
-     * here and the walk stays inside the block.
-     */
-    private int obey(Value chant, Evaluator evaluator) {
+    private int obeyAnsweringHowManyValuesItTook(Value chant, Evaluator evaluator) {
         if (chant instanceof WordValue named) {
             if (DEBUG_ONLY_CHANTS.contains(named.canonical())) {
                 throw Raised.of(EvaluationFailure.FEATURE_NA, named.spelling());
@@ -14531,22 +11121,6 @@ public final class Natives {
         return 0;
     }
 
-    /**
-     * system/standard/stats, refreshed in place and answered.
-     *
-     * <p>Four of the thirteen fields are real measurements here: the timer,
-     * the count of values walked, and the counts of native and function calls.
-     * The other nine name Rebol's own series pool -- series-made, series-freed,
-     * series-expanded, series-bytes, series-recycled, made-blocks,
-     * made-objects, recycles, collisions -- and JEBOL has no such pool. Those
-     * are left at zero.
-     *
-     * <p>Zero is not a claim that nothing was allocated. It is the absence of
-     * a figure, and it reads the same as one, which is worth knowing before
-     * trusting a profile taken here. What the JVM allocates is the JVM's
-     * business and is not countable per REBOL value without instrumenting
-     * every constructor.
-     */
     private Value filledInProfile(Evaluator evaluator) {
         Value standing = pathInto(evaluator.systemContext(), "system", "standard", "stats");
         if (!(standing instanceof ObjectValue profile)) {
@@ -14561,14 +11135,12 @@ public final class Natives {
         return profile;
     }
 
-    /** Writes a field only when the object has it, so a short prototype is safe. */
     private static void setIfPresent(Context fields, String name, Value written) {
         if (fields.holds(name)) {
             fields.set(name, written);
         }
     }
 
-    /** What WAIT accepts: `value [number! time! port! block! none!]`. */
     private static Set<Datatype> waitableDatatypes() {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.NUMBER.members());
         accepted.addAll(List.of(Datatype.TIME, Datatype.PORT,
@@ -14576,15 +11148,6 @@ public final class Natives {
         return Set.copyOf(accepted);
     }
 
-    /**
-     * Sleeps, in slices, asking between each whether the script should stop.
-     *
-     * <p>One long sleep would outlive the bounds the host set: the evaluator
-     * checks the deadline between steps, and a sleeping thread takes no steps.
-     * A script that waited an hour under a one-second limit would run for the
-     * hour, which breaks the promise that running too long arrives as an
-     * outcome rather than as a hung thread.
-     */
     private static void sleepInterruptibly(long milliseconds, Evaluator evaluator) {
         long slice = 50;
         long remaining = milliseconds;
@@ -14602,32 +11165,13 @@ public final class Natives {
         }
     }
 
-    /**
-     * Roughly how many values a frame occupies, for STACK/SIZE and for DS.
-     *
-     * <p>Both, because the C reads the same DSP for both and a caller who asks
-     * one and then the other has to be told the same thing.
-     */
     private static final int FRAME_VALUE_UNITS = 8;
 
-    /** When this interpreter started, for STATS/TIMER. */
     private final long startedAt = System.nanoTime();
 
-    /**
-     * The REBOL version JEBOL implements, as text and as the tuple /DATA
-     * answers.
-     *
-     * <p>Not a version number of JEBOL's own. A script reads
-     * {@code system/version} to decide which of the language's features it may
-     * use, and {@code struct-test.r3} wraps all 188 of its assertions in
-     * {@code if system/version >= 3.19.1}. Answering a number below every
-     * guard in the suite made those blocks skip, which reads as a passing
-     * file that ran nothing.
-     */
     private static final String VERSION_TEXT = "3.22.5";
     private static final int[] VERSION_PARTS = {3, 22, 5};
 
-    /** What POKE and POKEZ will write into. */
     private static Set<Datatype> pokeableDatatypes() {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
         accepted.add(Datatype.BITSET);
@@ -14687,7 +11231,8 @@ public final class Natives {
                     }
                     boolean oneEndOnly =
                             refinements.contains("head") != refinements.contains("tail");
-                    return rewritten((StringValue) arguments.getFirst(), text -> {
+                    return rewrittenInPlace(
+                            (StringValue) arguments.getFirst(), text -> {
                         if (refinements.contains("with") && arguments.size() > 1) {
                             Set<Integer> unwanted = unwantedCodePoints(arguments.get(1));
                             StringBuilder kept = new StringBuilder();
@@ -14718,30 +11263,9 @@ public final class Natives {
                 });
     }
 
-    /**
-     * The datatypes whose TO is the same code as their MAKE.
-     *
-     * <p>{@code case A_MAKE: case A_TO:} with nothing between the two labels,
-     * in {@code t-object.c} and {@code t-function.c}. So {@code to error!
-     * [type: 'Math id: 'overflow]} builds the error rather than refusing, and
-     * {@code to object!} of something an object cannot be built from says
-     * bad-make-arg for the same reason MAKE does.
-     */
     private static final Set<Datatype> SHARES_ITS_BRANCH_WITH_MAKE = Set.of(
             Datatype.ERROR, Datatype.FUNCTION, Datatype.CLOSURE, Datatype.STRUCT);
 
-    /**
-     * TO OBJECT!, which is not MAKE OBJECT! and takes only an error.
-     *
-     * <p>An error is an object with eight fields, and this is how a script
-     * reaches them without the error being an error any more. Everything else
-     * is bad-make-arg -- {@code Trap_Make(type, arg)} is the line the branch
-     * falls to, and there is nothing above it but the error case.
-     *
-     * <p>An error whose code is below a hundred is refused by argument rather
-     * than by make, because those are the codes with no catalogue entry
-     * behind them.
-     */
     private static Value objectConvertedFrom(Value value) {
         if (!(value instanceof ErrorValue raised)) {
             return raiseBadMakeArg(value, "object!");
@@ -14759,16 +11283,6 @@ public final class Natives {
 
     private static final int LOWEST_CODE_AN_ERROR_CATALOGUE_ENTRY_HAS = 100;
 
-    /**
-     * TO MODULE!, which reads a block of exactly a spec object and a body
-     * object and joins the two.
-     *
-     * <p>Neither of them is evaluated, unlike MAKE MODULE!, which is why the
-     * block is written with REDUCE at the call site. A block that is empty or
-     * is not a block at all is bad-make-arg; a block whose first two values
-     * are not both objects is invalid-arg, because {@code Trap_Arg(val)} is
-     * what the C says for each of them in turn.
-     */
     private static Value moduleConvertedFrom(Value value) {
         if (!(value instanceof BlockValue parts)
                 || parts.datatype() != Datatype.BLOCK
@@ -14842,9 +11356,12 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     StringValue text = (StringValue) arguments.getFirst();
                     if (refinements.contains("lines")) {
-                        return BlockValue.block(linesOf(text.text()));
+                        return BlockValue.block(
+                                linesOfDroppingExactlyOneTrailingEmptyLine(
+                                        text.text()));
                     }
-                    return rewritten(text, Natives::withOneLineFeedPerEnding);
+                    return rewrittenInPlace(
+                            text, Natives::withOneLineFeedPerEnding);
                 });
         define("enline", List.of(Parameter.required("text",
                         Set.of(Datatype.STRING, Datatype.BLOCK))),
@@ -14853,7 +11370,7 @@ public final class Natives {
                         throw Raised.of(EvaluationFailure.NOT_DONE,
                                 "joining a block of lines is not written yet");
                     }
-                    return rewritten((StringValue) arguments.getFirst(),
+                    return rewrittenInPlace((StringValue) arguments.getFirst(),
                             Natives::withOneLineFeedPerEnding);
                 });
 
@@ -14881,13 +11398,6 @@ public final class Natives {
 
     }
 
-    /**
-     * A function from one block holding a spec block and a body block.
-     *
-     * <p>Anything else is refused rather than guessed at: a spec with no
-     * body would give a function that answers unset, which is a thing
-     * somebody meant to write and not a thing to infer.
-     */
     private Value functionFrom(Value given, Context context) {
         if (!(given instanceof BlockValue parts)) {
             return raiseBadMakeArg(given, "function!");
@@ -14901,24 +11411,6 @@ public final class Natives {
         return makeFunction(spec, body, context);
     }
 
-    /**
-     * An infix operator, from a spec and a body or from a function that
-     * already exists.
-     *
-     * <p>{@code Make_Function} with {@code type == REB_OP}. Two ways in and
-     * they meet immediately: a block is read as a function would be, and a
-     * function or an action is taken as it stands, sharing its spec, its body
-     * and its arguments rather than being copied. Either way what comes out
-     * dispatches to a function; the only thing the operator adds is where its
-     * first argument comes from.
-     *
-     * <p>Exactly two arguments, counted up to the first refinement -- so a
-     * function of two taking refinements after them can be made into one, and
-     * {@code (abs a - b) <= (abs a * 0.01)} with a {@code /p} nobody uses is a
-     * fair operator. One argument or three is refused, because an operator
-     * takes the value on its left and the value on its right and there is
-     * nowhere for a third to come from.
-     */
     private Value operatorFrom(Value given, Context context) {
         Value dispatching = given instanceof BlockValue parts
                 ? functionFrom(parts, context)
@@ -14930,15 +11422,6 @@ public final class Natives {
         return new OperatorValue(AN_OPERATOR_NOBODY_HAS_NAMED, dispatching);
     }
 
-    /**
-     * The arguments a function takes before its first refinement, which is
-     * what decides whether it can be an operator.
-     *
-     * <p>Counted up to the refinement rather than over the whole list, which
-     * is the C's own loop: {@code if (IS_REFINEMENT(args)) break;}. What
-     * follows a refinement is only ever supplied by a call that named it, and
-     * an operator has no way to name one.
-     */
     private static int howManyArgumentsBeforeAnyRefinement(Value dispatching) {
         List<Parameter> declared = switch (dispatching) {
             case FunctionValue function -> function.parameters();
@@ -14959,39 +11442,8 @@ public final class Natives {
         return counted;
     }
 
-    /**
-     * What an operator made by MAKE is called until a word is set to it.
-     *
-     * <p>An operator's name is for showing and for nothing else -- the
-     * evaluator finds one by looking up the word in front of it and seeing
-     * what the word holds, so a name it never had does not stop it working.
-     */
     private static final String AN_OPERATOR_NOBODY_HAS_NAMED = "?";
 
-    /**
-     * A function built from another one, with either half replaced.
-     *
-     * <p>{@code Copy_Function}, which reads the block it was given as up to
-     * two things: a specification and a body, each of which may be left out.
-     * So there are four shapes and they are all one rule -- take what was
-     * given, keep what was not.
-     *
-     * <ul>
-     *   <li>{@code make :f []} is a copy, both halves kept.
-     *   <li>{@code make :f [[x]]} is a new interface over the same body.
-     *   <li>{@code make :f [[x] [y]]} is a new function that happens to have
-     *       been written beside an old one.
-     *   <li>{@code make :f [* [y]]} is a new body under the same interface,
-     *       and the star is what says "this half stays".
-     * </ul>
-     *
-     * <p>The body is bound to whichever arguments the new specification
-     * declares, which is what the third shape is for. A word that was an
-     * argument and no longer is falls back to what it meant outside: REBOL's
-     * own test makes a function whose body reads {@code a}, gives it a
-     * specification without one, and reads the {@code a} that was already
-     * there.
-     */
     private static Value derivedFunction(Value original, BlockValue given) {
         List<Value> parts = given.remaining();
         if (parts.isEmpty()) {
@@ -15023,44 +11475,23 @@ public final class Natives {
                 FunctionSpec.localNamesIn(spec), written.closedOver()));
     }
 
-    /** A function's own spec and body are always blocks; this says so once. */
     private static BlockValue asABlock(Value half) {
         return half instanceof BlockValue block
                 ? block
                 : BlockValue.block(List.of());
     }
 
-    /**
-     * The {@code *} that stands where a specification would go and means "keep
-     * the one it already has".
-     *
-     * <p>{@code IS_STAR}. It is the multiplication operator's own word used as
-     * a placeholder, which reads oddly and is unambiguous: nothing else could
-     * be meant by a bare star where a block of arguments belongs.
-     */
     private static boolean isTheStarThatMeansKeepIt(Value first) {
         return first instanceof WordValue star && star.canonical().equals("*");
     }
 
-    /**
-     * MAKE IMAGE!, in the four forms `t-image.c` accepts.
-     *
-     * <p>An image is copied. A pair is a size, and the image it makes is opaque
-     * white -- `CLEAR_IMAGE` is a memset of 0xFF and the comment beside it says
-     * so. A block is a size followed by its contents, which `Create_Image` reads
-     * in a fixed order: a binary of RGB triples, then a binary of alpha bytes,
-     * then a starting index; or a tuple to fill with, then an alpha to fill with;
-     * or a block of tuples, one a pixel.
-     *
-     * <p>Anything else is `malconstruct`, which is the fall-through of every
-     * branch: `Trap1(RE_MALCONSTRUCT, arg)`.
-     */
     private static Value madeImage(Value from) {
         if (from instanceof ImageValue original) {
             return new ImageValue(original.storage().copy(), 1);
         }
         if (from instanceof PairValue size) {
-            return ImageValue.of(sideOf(size.x()), sideOf(size.y()));
+            return ImageValue.of(sideOfClampedBelowAndRefusedAbove(size.x()),
+                    sideOfClampedBelowAndRefusedAbove(size.y()));
         }
         if (from instanceof BlockValue parts && !parts.remaining().isEmpty()) {
             return imageFromParts(parts);
@@ -15068,15 +11499,7 @@ public final class Natives {
         return raiseMalconstruct(from);
     }
 
-    /**
-     * A side of a new image, clamped below and refused above.
-     *
-     * <p>`w = MAX(w, 0)` for a negative one, and `if (w > 0xFFFF || h > 0xFFFF)
-     * Trap1(RE_SIZE_LIMIT, ...)` for one too big. The two go different ways on
-     * purpose: a negative size is a mistake with an obvious reading and an
-     * oversized one is not.
-     */
-    private static int sideOf(double given) {
+    private static int sideOfClampedBelowAndRefusedAbove(double given) {
         int side = (int) given;
         if (side > ImageStorage.LONGEST_SIDE) {
             throw Raised.of(EvaluationFailure.SIZE_LIMIT,
@@ -15085,21 +11508,6 @@ public final class Natives {
         return Math.max(side, 0);
     }
 
-    /**
-     * `Create_Image`: a size, and then whichever contents follow it.
-     *
-     * <p>It reads the parts in one fixed order and refuses the whole
-     * specification the moment a part it cannot read is left over -- which is
-     * also how a block of colours comes to be refused. The branch that reads
-     * one never steps past it, so the leftover check below fires on the very
-     * block it has just used and the branch is unreachable. That leaves bytes
-     * as the only way to give a picture a list of colours, and it is what a
-     * real 3.22.5 does.
-     *
-     * <p>Whatever was wrong, the value named in the failure is the whole
-     * specification rather than the part that could not be read: the caller
-     * is handed nothing but a no, and raises with the block it was given.
-     */
     private static Value imageFromParts(BlockValue specification) {
         List<Value> parts = specification.remaining();
         if (!(parts.getFirst() instanceof PairValue size)) {
@@ -15133,23 +11541,6 @@ public final class Natives {
         return at == parts.size() ? made : raiseMalconstruct(specification);
     }
 
-    /**
-     * A side written down as part of a specification, which unlike a side
-     * asked for on its own cannot be negative.
-     *
-     * <p>{@code if (w < 0 || h < 0) return 0;} and the caller turns that into
-     * malconstruct. The two readings differ on purpose and the difference is
-     * visible: `make image! -1x-1` gives an empty picture where
-     * `make image! [-1x-1]` is refused, because a bare pair goes through the
-     * code that makes a blank picture of a size and brings an impossible one
-     * down to the nearest possible, while a specification is a thing somebody
-     * wrote out and got wrong.
-     *
-     * <p>A side too wide goes the same way and for the same reason. On its own
-     * it is a size out of range, because the number is the thing that is
-     * wrong; here the maker is handed nothing but a no and refuses the whole
-     * block, so the same size two ways gives two different errors.
-     */
     private static int sideThatCanExist(double given, BlockValue specification) {
         if (given < 0 || given > ImageStorage.LONGEST_SIDE) {
             throw Raised.of(EvaluationFailure.MALCONSTRUCT,
@@ -15158,16 +11549,6 @@ public final class Natives {
         return (int) given;
     }
 
-    /**
-     * The position a specification ends with, which is counted from one like
-     * every other position in the language.
-     *
-     * <p>{@code Int32s(block, 1)} is "a whole number of at least one", so
-     * nought and anything below it is out of range rather than a malformed
-     * construct: the shape of the specification was right and the number in it
-     * was not. Past the end is not refused at all -- the picture is still
-     * there and taking its head gives it back.
-     */
     private static int aPositionOfAtLeastOne(IntegerValue start) {
         if (start.magnitude() < 1) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, start);
@@ -15175,11 +11556,6 @@ public final class Natives {
         return (int) Math.min(start.magnitude(), Integer.MAX_VALUE);
     }
 
-    /**
-     * The widths TO IMAGE! lays a binary out at: as many pixels as there are
-     * up to a hundred, a hundred to a row up to ten thousand, five hundred
-     * beyond that.
-     */
     private static final int WIDEST_ROW_OF_ITS_OWN_LENGTH = 100;
 
     private static final int WIDEST_HUNDRED_WIDE_PICTURE = 10000;
@@ -15188,19 +11564,6 @@ public final class Natives {
 
     private static final int BYTES_A_PIXEL = 4;
 
-    /**
-     * TO IMAGE! of a binary, which is four bytes a pixel and a width the C
-     * picks rather than the caller.
-     *
-     * <p>{@code Trap_Make} when there is not one whole pixel there, so
-     * {@code to image! #{000000}} is bad-make-arg rather than an empty
-     * picture. The last row can be short, and the pixels nobody supplied stay
-     * the opaque white {@code CLEAR_IMAGE} left.
-     *
-     * <p>Anything that is not a binary, an image or a gob is refused by type
-     * rather than by argument -- {@code Trap_Type(arg)} is the last line of
-     * the branch.
-     */
     private static Value imageConvertedFrom(Value value) {
         if (value instanceof ImageValue already) {
             return new ImageValue(already.storage().copy(), 1);
@@ -15233,7 +11596,6 @@ public final class Natives {
         return made;
     }
 
-    /** `Bin_To_RGB`: three bytes a pixel, and the alpha already there is kept. */
     private static void fillColoursFrom(ImageValue made, BinaryValue colours) {
         int pixels = Math.min(made.storageLength(), colours.lengthFromHere() / 3);
         for (int pixel = 1; pixel <= pixels; pixel++) {
@@ -15245,7 +11607,6 @@ public final class Natives {
         }
     }
 
-    /** `Bin_To_Channel(..., SYM_ALPHA)`: one byte a pixel. */
     private static void fillAlphasFrom(ImageValue made, BinaryValue alphas) {
         int pixels = Math.min(made.storageLength(), alphas.lengthFromHere());
         for (int pixel = 1; pixel <= pixels; pixel++) {
@@ -15254,13 +11615,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * `Fill_Rect` with the tuple, keeping the alpha when the tuple had none.
-     *
-     * <p>The last argument of `Fill_Rect` is `VAL_TUPLE_LEN(block) == 3`, which
-     * is how a three-part tuple leaves the alpha alone and a four-part one
-     * writes it.
-     */
     private static void fillWith(ImageValue made, TupleValue colour) {
         int[] parts = colour.segments();
         for (int pixel = 1; pixel <= made.storageLength(); pixel++) {
@@ -15274,13 +11628,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * IMAGE-DIFF over all of both pictures, or over the rectangle /PART names.
-     *
-     * <p>The C takes one branch for both the rectangle and a pair of different
-     * sizes, and a simpler one only where the sizes match and no rectangle was
-     * asked for -- which is the same answer by a shorter route.
-     */
     private static double theDifferenceBetweenImages(
             List<Value> arguments, Set<String> refinements) {
 
@@ -15300,14 +11647,6 @@ public final class Natives {
                 Molder.mold(from));
     }
 
-    /**
-     * How far along a navigation action was asked to go.
-     *
-     * <p>An integer, a decimal or a logic is the offset itself, and every series
-     * reads them the same way. A pair is a coordinate and only an image can read
-     * one: {@code diff = ((y - 1) * wide + x)} for AT, and without the 1 for SKIP
-     * and ATZ, because one counts from one and the others from zero.
-     */
     private static long positionAskedFor(SeriesValue series, Value given, boolean fromOne) {
         if (given instanceof PairValue coordinate) {
             if (!(series instanceof ImageValue image)) {
@@ -15326,14 +11665,7 @@ public final class Natives {
         };
     }
 
-    /**
-     * A colour part as a byte, the three ways `arg_to_byte` reads one.
-     *
-     * <p>An integer as itself, a decimal rounded -- and rounding is the surprise,
-     * because every other decimal-to-integer conversion in the C truncates -- and
-     * a percent as a fraction of 255. Then clamped at both ends.
-     */
-    private static int colourByteOf(Value given) {
+    private static int colourByteOfRoundingNotTruncating(Value given) {
         double number = switch (given) {
             case IntegerValue whole -> whole.magnitude();
             case DecimalValue fraction -> fraction.datatype() == Datatype.PERCENT
@@ -15344,7 +11676,6 @@ public final class Natives {
         return Math.max(0, Math.min(255, (int) number));
     }
 
-    /** The first three parts of a tuple, which is what a colour is. */
     private static int[] threeParts(TupleValue colour) {
         int[] parts = colour.segments();
         return new int[] {
@@ -15353,22 +11684,6 @@ public final class Natives {
                 parts.length > 2 ? parts[2] : 0};
     }
 
-    /**
-     * The tuple, recoloured in place and answered.
-     *
-     * <p>`return R_ARG1` after writing through `(REBCLR*)VAL_TUPLE(...)`. A tuple
-     * here is immutable, so the answer is a new one with the same identity as far
-     * as a script can tell -- except that the C's caller keeps its own copy
-     * changed, which a script sees only if it held the tuple in a word. Pinned in
-     * the tests either way.
-     *
-     * <p>Writing through a colour pointer reaches the first three octets and
-     * stops, so the tuple keeps its length and everything past the third octet
-     * is handed back untouched. Which is what makes these usable on a pixel: a
-     * fourth octet is an alpha, and an alpha has no business being read as a
-     * hue. A tuple of fewer than three keeps its length too, so the octets the
-     * mold pads it out with stay at nought however bright the colour was.
-     */
     private static Value recolouredTuple(
             TupleValue colour, java.util.function.UnaryOperator<int[]> formula) {
         int[] made = colour.segments().clone();
@@ -15379,14 +11694,6 @@ public final class Natives {
         return TupleValue.of(made);
     }
 
-    /**
-     * One formula over a colour or over every pixel of an image.
-     *
-     * <p>The two arms of each of these natives: `if (IS_TUPLE(value))` answers
-     * something about the colour, and the else walks the image from its position
-     * -- `len = VAL_IMAGE_LEN(value)`, `rgba = VAL_IMAGE_DATA(value)` -- writing
-     * each pixel and answering the image itself.
-     */
     private static Value overEveryColour(
             Value target,
             Function<int[], Value> ofAColour,
@@ -15405,22 +11712,6 @@ public final class Natives {
         return image;
     }
 
-    /**
-     * A spec block's value, with a word or a path resolved first.
-     *
-     * <p>{@code Get_Simple_Value}: "Does easy lookup, else just returns the value
-     * as is." A word or a get-word becomes what it holds and a path becomes what
-     * it reads; everything else is left alone.
-     *
-     * <p>Both spec walkers that build a datatype from set-word pairs call it --
-     * {@code Set_GOB_Vars} and {@code Set_Event_Vars} -- and without it a spec can
-     * only carry values the source spelled out. Rebol's own gob test relies on it:
-     * `g2: make gob! [size: g1/size]` under "simple paths inside GOB".
-     *
-     * <p>Easy is the operative word. A function is answered rather than called and
-     * a paren is left as a paren, so a spec block is data with names in it rather
-     * than code.
-     */
     private static Value simpleValueOf(Value given, Evaluator evaluator, Context context) {
         if (given instanceof WordValue named
                 && (named.datatype() == Datatype.WORD
@@ -15435,14 +11726,6 @@ public final class Natives {
         return given;
     }
 
-    /**
-     * MAKE VECTOR!, from a count, a spec block or a binary.
-     *
-     * <p>A count is a length of signed 32-bit zeros and a negative one is out
-     * of range rather than a bad argument, which is the C's {@code Int32s(arg,
-     * 0)} refusing before {@code Make_Vector} is reached. Everything else that
-     * will not read is a bad argument.
-     */
     private static Value madeVector(Value from, Evaluator evaluator, Context context) {
         if (from instanceof IntegerValue counted || from instanceof DecimalValue) {
             long howMany = from instanceof IntegerValue whole
@@ -15469,15 +11752,6 @@ public final class Natives {
     }
 
 
-    /**
-     * Marks a block so that each pair molds on a line of its own.
-     *
-     * <p>A block carries a line break per item and MOLD honours it, which is
-     * why {@code to block!} of a map reads as a list of pairs where the same
-     * block written out by hand reads as one line. Without the marks a map of
-     * fifty keys molded as a hundred values in a row, which is the shape a
-     * block has and not the shape a map has.
-     */
     private static BlockValue aPairToALine(BlockValue pairs) {
         for (int at = 1; at <= pairs.storageLength(); at += 2) {
             pairs.storage().setLineBreakAt(at, true);
@@ -15485,13 +11759,6 @@ public final class Natives {
         return pairs;
     }
 
-    /**
-     * A date read out of a string, which is the lexer's job rather than a
-     * conversion of its own.
-     *
-     * <p>{@code Scan_Date} is what the C reaches for here, and it is the same
-     * scanner a date literal in source goes through.
-     */
     private static Value dateReadFrom(StringValue written) {
         return Transcoder.transcode(written.text()).values()
                 .map(BlockValue::remaining)
@@ -15500,28 +11767,6 @@ public final class Natives {
                 .orElseGet(() -> raiseBadMakeArg(written, "date!"));
     }
 
-    /**
-     * The block shapes built either way, which is the whole of
-     * {@code Make_Block_Type} including the {@code make} flag it is handed.
-     *
-     * <p>MAKE and TO differ here and JEBOL had them the same. TO wraps
-     * whatever it is given, so {@code to block! #"a"} is {@code [#"a"]} and
-     * {@code to block! "1 2"} is the one-item block holding that string.
-     * MAKE takes a list of shapes and refuses the rest, so
-     * {@code make block! #"a"} is an error, {@code make block! 4.0} is an
-     * empty block because a number is room rather than a value, and
-     * {@code make block! "1 2"} reads the text as source and answers
-     * {@code [1 2]}.
-     *
-     * <p>Four shapes answer the same to both, because a block is what they
-     * already are underneath: another block, a map, an object and a vector.
-     *
-     * <p>Only TO reaches the typeset arm, and only for a block or a paren.
-     * Only MAKE reaches the room, source-text and pair arms, because TO has
-     * answered by then -- except for a hash, which is a block shape in the
-     * typeset sense and not in the range {@code ANY_BLOCK_TYPE} tests, so
-     * {@code to hash! 4} falls through the lot of them and is refused.
-     */
     private static Value blockTypeBuilt(Conversion asking, Datatype wanted, Value from) {
         if (from instanceof BlockValue given) {
             return laidOutLike(given, new BlockStorage(given.remaining())).as(wanted);
@@ -15548,10 +11793,11 @@ public final class Natives {
                     : BlockValue.block(from).as(wanted);
         }
         if (from.datatype() == Datatype.STRING && from instanceof StringValue text) {
-            return sourceReadFrom(text.text(), wanted);
+            return sourceReadFromStoppingAtANoughtByte(text.text(), wanted);
         }
         if (from instanceof BinaryValue octets) {
-            return sourceReadFrom(textDecodedFrom(octets), wanted);
+            return sourceReadFromStoppingAtANoughtByte(
+                    textDecodedFrom(octets), wanted);
         }
         if (from.datatype() == Datatype.PAIR) {
             return BlockValue.block(List.of()).as(wanted);
@@ -15559,26 +11805,10 @@ public final class Natives {
         throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(from));
     }
 
-    /**
-     * Whether TO puts a lone value inside this shape rather than refusing it.
-     *
-     * <p>{@code ANY_BLOCK_TYPE} is a range test over the datatype table --
-     * block to lit-path -- and hash sits one past the end of it. So hash is
-     * an any-block! for the typeset and is not one here, and that single row
-     * of the table is the whole of the difference.
-     */
     private static boolean wrapsIntoWhatTheCallerAskedFor(Datatype wanted) {
         return wanted == Datatype.BLOCK || wanted == Datatype.PAREN || wanted.isAnyPath();
     }
 
-    /**
-     * An object's fields as {@code name: value} pairs, which is
-     * {@code Make_Object_Block} in the mode that asks for both.
-     *
-     * <p>SELF is slot zero and the C starts counting at one, so it is left
-     * out of every place this is asked for: BODY-OF, the block a conversion
-     * answers, and the spec an error is built from.
-     */
     private static List<Value> setWordsAndValuesOf(Context fields) {
         return fields.slots().stream()
                 .filter(slot -> !slot.canonical().equals("self"))
@@ -15588,17 +11818,6 @@ public final class Natives {
                 .toList();
     }
 
-    /**
-     * The same pairs as a block, each one on a line of its own.
-     *
-     * <p>{@code Make_Object_Block} sets the line flag on every set-word it
-     * writes -- {@code VAL_SET_LINE(value)} on the line after it makes one --
-     * so the block molds a field to a line rather than all of them in a row.
-     * That is a property of the block and not of how it is later printed,
-     * which is why building it without the flags made
-     * {@code to block! make object! [a: 1]} mold on one line where a real
-     * Rebol takes three.
-     */
     private static BlockValue blockOfFieldsAndValues(Context fields) {
         BlockValue block = BlockValue.block(setWordsAndValuesOf(fields));
         for (int at = 1; at <= block.storageLength(); at += 2) {
@@ -15607,19 +11826,8 @@ public final class Natives {
         return block;
     }
 
-    /**
-     * Source text read into values, stopping where the source stops.
-     *
-     * <p>{@code Scan_Source} is handed bytes and a nought byte ends them,
-     * which is the C's own convention for where a string finishes rather than
-     * anything about the reader. So {@code make block! #{31 00 32}} is
-     * {@code [1]} and not {@code [1 2]}, and it holds for text as much as for
-     * bytes because both reach the scanner the same way.
-     *
-     * <p>Reading past it made the nought a character in its own right, so an
-     * empty source came back as a block holding one of them.
-     */
-    private static Value sourceReadFrom(String source, Datatype wanted) {
+    private static Value sourceReadFromStoppingAtANoughtByte(
+            String source, Datatype wanted) {
         int endsAt = source.indexOf('\0');
         TranscodeResult read = Transcoder.transcode(
                 endsAt < 0 ? source : source.substring(0, endsAt));
@@ -15632,21 +11840,6 @@ public final class Natives {
     private static final long MICROSECONDS_A_SECOND = 1_000_000L;
     private static final long MICROSECONDS_A_DAY = 86_400L * MICROSECONDS_A_SECOND;
 
-    /**
-     * The date a Unix timestamp names, counted in microseconds.
-     *
-     * <p>{@code Timestamp_To_Date} and {@code Timestamp_Decimal_To_Date} are
-     * the same walk at two precisions, so this is the second one and the
-     * whole-second form multiplies up to reach it.
-     *
-     * <p>Microseconds rather than nanoseconds is the C's own choice, and its
-     * comment says why: a decimal count of seconds multiplied out to
-     * nanoseconds does not land where it should. The remainder is then scaled
-     * back up, so the time is exact to a microsecond and zero below that.
-     *
-     * <p>The zone is zero. A timestamp names an instant and not a place, so
-     * there is nothing to offset it by.
-     */
     private static Value dateAtTheTimestamp(long microseconds) {
         long dayNumber = Math.floorDiv(microseconds, MICROSECONDS_A_DAY);
         long withinTheDay = Math.floorMod(microseconds, MICROSECONDS_A_DAY);
@@ -15655,17 +11848,6 @@ public final class Natives {
                 TimeValue.ofNanoseconds(withinTheDay * 1_000L));
     }
 
-    /**
-     * A date from a block of parts, which is what MAKE and the construction
-     * syntax both come through.
-     *
-     * <p>{@code MT_Date}. Day, month, then year -- except that the first
-     * number is read as the year when it is over ninety-nine, so
-     * {@code make date! [2000 1 1]} and {@code make date! [1 1 2000]} are
-     * the same day and neither is ambiguous. A time may follow as three more
-     * numbers, and the month, the day and February in a common year are all
-     * checked, so a bad block is refused rather than rounded.
-     */
     private static Value dateFromParts(List<Value> parts) {
         if (parts.isEmpty()) {
             return raiseBadMakeArg(BlockValue.block(parts), "date!");
@@ -15689,13 +11871,6 @@ public final class Natives {
                 zoneAfterTheClock(after.subList(clockTakes, after.size()), parts));
     }
 
-    /**
-     * The calendar day three numbers name.
-     *
-     * <p>Day, month, year -- except that a first number over ninety-nine is
-     * the year instead, so {@code [2000 1 1]} and {@code [1 1 2000]} are the
-     * same day and neither is ambiguous.
-     */
     private static DateValue calendarDayIn(List<Value> parts) {
         if (parts.get(0) instanceof IntegerValue first
                 && parts.get(1) instanceof IntegerValue monthPart
@@ -15715,13 +11890,6 @@ public final class Natives {
         return (DateValue) raiseBadMakeArg(BlockValue.block(parts), "date!");
     }
 
-    /**
-     * How many of the parts after the calendar day the clock accounts for.
-     *
-     * <p>One where it is written as a time and three where it is written as
-     * hours, minutes and seconds. Anything else leaves the clock unread, and
-     * whatever is there has to answer to the zone or be refused.
-     */
     private static int howManyPartsTheClockTakes(List<Value> after) {
         if (after.isEmpty()) {
             return 0;
@@ -15732,17 +11900,6 @@ public final class Natives {
         return after.getFirst() instanceof IntegerValue ? 3 : 0;
     }
 
-    /**
-     * The clock, with each part held to its own bound.
-     *
-     * <p>{@code if (hour > 23 || minute >= 60 || second >= 60.0) return
-     * FALSE;} -- so a date will not take the twenty-fourth hour even though a
-     * time! will. That is the whole difference between
-     * {@code make time! [24 0 0]}, which is a day's worth of hours, and
-     * {@code make date! [2000 2 1 24 0 0]}, which is no date at all.
-     *
-     * <p>The seconds may be written with a fraction and the other two may not.
-     */
     private static TimeValue clockIn(List<Value> written, List<Value> whole) {
         if (written.size() == 1 && written.getFirst() instanceof TimeValue already) {
             return already;
@@ -15768,14 +11925,6 @@ public final class Natives {
     private static final long SECONDS_A_MINUTE = 60L;
     private static final long SECONDS_AN_HOUR = 3600L;
 
-    /**
-     * The zone, which is one more time after the clock.
-     *
-     * <p>That a block may hold two times and the second is not another clock
-     * is the part worth saying. Anything left after it is a refusal:
-     * {@code if (!IS_END(arg)) return FALSE;} -- a part the grammar cannot
-     * account for is not something to step over.
-     */
     private static Optional<Integer> zoneAfterTheClock(
             List<Value> left, List<Value> whole) {
         if (left.isEmpty()) {
@@ -15793,16 +11942,8 @@ public final class Natives {
         return Optional.of((int) minutes);
     }
 
-    /** {@code MAX_ZONE} is sixty quarter-hours, which is fifteen of them. */
     private static final long FURTHEST_ZONE_MINUTES = 15 * 60L;
 
-    /**
-     * A time from a block of parts: hours, then minutes, then seconds.
-     *
-     * <p>{@code Make_Time}'s block branch. The hours carry the sign for the
-     * whole span and the seconds may be fractional, so {@code [-1 30 0]} is
-     * minus an hour and a half rather than an hour less thirty minutes.
-     */
     private static Value timeFromParts(List<Value> parts) {
         if (parts.isEmpty() || parts.size() > 3
                 || !(parts.get(0) instanceof IntegerValue hours)) {
@@ -15837,19 +11978,6 @@ public final class Natives {
         return TimeValue.ofNanoseconds(negative ? -total : total);
     }
 
-    /**
-     * CHANGE on a struct: fields from a block, or bytes from a binary.
-     *
-     * <p>The two are not the same operation. A block names or lists fields and
-     * goes through the same initialiser MAKE uses, so it can write a word or a
-     * decimal into a field of the right kind. A binary is copied over the
-     * bytes as far as the shorter of the two reaches, which is why changing a
-     * two-byte struct with three bytes writes two and drops the third.
-     *
-     * <p>A struct carrying a live REBOL value refuses the binary form
-     * outright: the C keeps such a value in the bytes themselves and will not
-     * let arbitrary data land on top of one.
-     */
     private static Value structChangedBy(StructValue struct, Value given) {
         if (given instanceof BlockValue written) {
             startedWith(struct, written);
@@ -15866,14 +11994,6 @@ public final class Natives {
         return struct;
     }
 
-    /**
-     * The four things a struct answers about itself.
-     *
-     * <p>{@code A_REFLECT} in {@code REBTYPE(Struct)} takes WORDS, VALUES,
-     * BODY and SPEC and refuses everything else, so KEYS-OF reaches this as
-     * WORDS and there is no fifth question to ask. The spec is the layout
-     * block and the other three are read out of the bytes.
-     */
     private static Value whatAStructReflects(
             StructValue struct, String asked, Value written) {
         return switch (asked) {
@@ -15885,14 +12005,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * Where a field written {@code [struct! some-name]} finds its layout.
-     *
-     * <p>REGISTER files a layout block in {@code system/catalog/structs} under
-     * a name, and this is the other half of that. It is handed to the value
-     * layer as a lookup rather than as the catalogue itself, because a struct
-     * must not know that the SYSTEM object exists.
-     */
     private StructSpec.LayoutRegistry structLayoutsKnown() {
         return name -> registeredStructLayouts.select(WordValue.of(name))
                 instanceof BlockValue layout
@@ -15900,15 +12012,6 @@ public final class Natives {
                 : Optional.empty();
     }
 
-    /**
-     * MAKE STRUCT!, which is {@code MT_Struct}.
-     *
-     * <p>One block is a layout on its own. Two blocks are a layout and the
-     * values to start it with, which is the shape construction syntax reads:
-     * {@code #(struct! [a [uint8!]] [a: 1])}. A layout can never itself be two
-     * blocks, because after its optional attributes it must be a word and then
-     * a block, so the two shapes cannot be confused.
-     */
     private Value structMadeFrom(Value from) {
         if (!(from instanceof BlockValue given)) {
             return raiseBadMakeArg(from, "struct!");
@@ -15939,14 +12042,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * MAKE on a struct rather than on the datatype: the prototype's bytes,
-     * copied, with whatever the block says written over them.
-     *
-     * <p>The block is reduced with its set-words left standing, which is what
-     * {@code Reduce_Block_No_Set} does, so {@code make proto! [3 * 10 4 * 10]}
-     * writes thirty and forty while {@code [b: 3 * 10]} still names a field.
-     */
     private static Value structLikeThePrototype(StructValue prototype, Value given,
             Evaluator evaluator) {
         StructValue made = prototype.separateCopy();
@@ -15966,16 +12061,6 @@ public final class Natives {
         return made;
     }
 
-    /**
-     * The initial values a block gives, written into a struct as they stand.
-     *
-     * <p>Nothing is evaluated here, which is the whole of what
-     * {@code MT_Struct} does with its second block. Only MAKE on an existing
-     * struct reduces first, and it reduces before calling this. That is why
-     * {@code #(struct! [a [uint8!]] [random 10])} is a malconstruct rather
-     * than a struct holding a random number: RANDOM arrives as a word, and a
-     * word cannot go in a {@code uint8!} field.
-     */
     private static void startedWith(StructValue made, Value given) {
         if (given instanceof BinaryValue octets) {
             made.changeFrom(bytesFromHere(octets));
@@ -15989,18 +12074,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * A construct built the way the reader builds one, which is
-     * {@code Make_Dispatch} rather than MAKE.
-     *
-     * <p>The two are the same arm for nearly every datatype, and the table is
-     * what says so, which is why the reader hands everything here instead of
-     * keeping a list of its own. A date is where they part. {@code MT_Date}
-     * reads a date or a block of parts and nothing else, while the count of
-     * seconds since 1970 is in the MAKE arm one level above it. So
-     * {@code make date! 1} is the first second of 1970 and {@code #(date! 1)}
-     * does not read at all.
-     */
     private Value constructionOf(Datatype datatype, Value specification) {
         if (datatype == Datatype.DATE
                 && !(specification instanceof BlockValue
@@ -16011,24 +12084,6 @@ public final class Natives {
                 null, Context.root());
     }
 
-    /**
-     * The six spellings of a port specification, all read by one borrowed
-     * function.
-     *
-     * <p>{@code MT_Port} in {@code t-port.c} does nothing itself either: it
-     * hands the specification to {@code sys/make-port*}, which is REBOL rather
-     * than C. That function reads a file, a url, a block of set-words, an
-     * object, a word naming a scheme, or another port, and the six differ only
-     * in where the scheme's name is found -- so nothing here needs to know
-     * about any of them.
-     *
-     * <p>What is not one of the six is refused before the call rather than
-     * after it, because the borrowed function answers none for anything else
-     * and none is not a port. The two refusals say different things: a number
-     * is no specification at all, while a block naming a scheme nothing serves
-     * is a good specification about a doorway that is not there, and the
-     * borrowed function raises that one itself.
-     */
     private Value portMadeFrom(Value from, Evaluator evaluator, Context context) {
         if (!CAN_NAME_A_SCHEME.contains(from.datatype())) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, from);
@@ -16041,10 +12096,6 @@ public final class Natives {
         return port;
     }
 
-    /**
-     * The datatypes that could be naming a scheme, which is what separates the
-     * two refusals.
-     */
     private static final Set<Datatype> CAN_NAME_A_SCHEME = Set.of(
             Datatype.FILE, Datatype.URL, Datatype.BLOCK,
             Datatype.OBJECT, Datatype.WORD, Datatype.PORT);
@@ -16097,15 +12148,7 @@ public final class Natives {
         return converted(Conversion.MAKE, wanted, from);
     }
 
-    /**
-     * A binary read as the eight bytes of a double, right-aligned.
-     *
-     * <p>Shorter than eight is padded at the front, so #{01} is the
-     * smallest subnormal rather than the number one. Longer than eight
-     * keeps the last eight, which is the same rule seen from the other
-     * end.
-     */
-    private static long bitsOf(BinaryValue binary) {
+    private static long bitsOfRightAligned(BinaryValue binary) {
         int howMany = binary.lengthFromHere();
         long bits = 0;
         for (int at = Math.max(0, howMany - Long.BYTES); at < howMany; at++) {
@@ -16114,7 +12157,6 @@ public final class Natives {
         return bits;
     }
 
-    /** A binary's bytes from its current position, as the JVM counts them. */
     private static byte[] bytesFromHere(BinaryValue binary) {
         int howMany = binary.lengthFromHere();
         byte[] bytes = new byte[howMany];
@@ -16124,7 +12166,6 @@ public final class Natives {
         return bytes;
     }
 
-    /** Signed JVM bytes as a binary value, which counts them unsigned. */
     private static Value binaryOfBytes(byte[] bytes) {
         int[] octets = new int[bytes.length];
         for (int at = 0; at < bytes.length; at++) {
@@ -16133,26 +12174,6 @@ public final class Natives {
         return BinaryValue.of(octets);
     }
 
-    /**
-     * Every line ending written as one line feed, whatever it arrived as.
-     *
-     * <p>Not a replacement of CRLF with LF, which is the obvious reading and
-     * is wrong in three places. Rebol's own comment says what it is --
-     * "converts any combination of CR and LF line endings to the internal
-     * REBOL line ending" -- and {@code Replace_CRLF_to_LF_Bytes} is six lines:
-     *
-     * <pre>
-     * if ((c = *cp++) == LF) { if (*cp == CR) cp++; }
-     * else if (c == CR)      { c = LF; if (*cp == LF) cp++; }
-     * *tp++ = c;
-     * </pre>
-     *
-     * <p>So a lone carriage return converts; a line feed followed by a return
-     * is one ending rather than two; and a return, a return and a line feed
-     * are two endings rather than one, because the first return stands alone
-     * and the second takes the line feed with it. Rebol's own port test
-     * asserts all three.
-     */
     private static String withOneLineFeedPerEnding(String text) {
         StringBuilder standardised = new StringBuilder(text.length());
         int at = 0;
@@ -16173,17 +12194,7 @@ public final class Natives {
         return one == '\n' ? '\r' : '\n';
     }
 
-    /**
-     * Text as its lines, with a line ending reading as an ending rather than
-     * as the start of an empty line.
-     *
-     * <p>Java's own split does one of two wrong things: with no limit it drops
-     * every trailing empty line, so two blank lines come back as none, and
-     * with a limit of -1 it keeps the one after the last ending, so a file
-     * that ends properly gains a line it has not got. Dropping exactly one is
-     * the rule, and nothing at all is no lines rather than one empty one.
-     */
-    private static List<Value> linesOf(String text) {
+    private static List<Value> linesOfDroppingExactlyOneTrailingEmptyLine(String text) {
         if (text.isEmpty()) {
             return List.of();
         }
@@ -16198,14 +12209,6 @@ public final class Natives {
         return lines;
     }
 
-    /**
-     * An address built from a block: a user, then a host in dotted parts.
-     *
-     * <p>{@code make email! [aaa bbb cc]} is {@code aaa@bbb.cc}. The first
-     * item is the whole of the user and everything after it is a label of the
-     * host, which is why two items give no dot and three give one. One item is
-     * a user with no host at all, and an empty block names nobody.
-     */
     private static Value addressBuiltFrom(BlockValue parts) {
         List<Value> written = parts.remaining();
         if (written.isEmpty()) {
@@ -16221,14 +12224,6 @@ public final class Natives {
         return StringValue.of(user + "@" + host, Datatype.EMAIL);
     }
 
-    /**
-     * A url built from a block: a scheme, then the path it names.
-     *
-     * <p>{@code make url! [http]} is {@code http://} and {@code make url!
-     * [http www.rebol.com %reboldoc.html]} is the whole address. The scheme
-     * takes the two slashes whether or not anything follows it, and every item
-     * after it is one segment of the path.
-     */
     private static Value urlBuiltFrom(BlockValue parts) {
         List<Value> written = parts.remaining();
         if (written.isEmpty()) {
@@ -16241,7 +12236,6 @@ public final class Natives {
         return StringValue.of(scheme + "://" + rest, Datatype.URL);
     }
 
-    /** A block of whole numbers as one byte each, refusing anything else. */
     private static Value bytesOfEach(BlockValue block) {
         List<Value> items = block.remaining();
         int[] octets = new int[items.size()];
@@ -16254,19 +12248,6 @@ public final class Natives {
         return BinaryValue.of(octets);
     }
 
-    /**
-     * Which of MAKE and TO is asking, because the two are not one operation
-     * and a handful of datatypes tell them apart.
-     *
-     * <p>MAKE builds, so it reads a number as room for values and a logic as
-     * one or zero. TO converts, so it wraps whatever it is given and refuses
-     * a logic outright. {@code T_Integer} says why in as many words: no
-     * integer is uniquely representative of true.
-     *
-     * <p>The C carries the same distinction as the {@code make} flag it hands
-     * {@code Make_Block_Type} and as the {@code action != A_MAKE} it tests in
-     * the scalar arms.
-     */
     private enum Conversion {
         MAKE, TO;
 
@@ -16275,20 +12256,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Nothing is not an empty something.
-     *
-     * <p>{@code make string! none} is an error where {@code make string! 0}
-     * is an empty string, and Rebol's own suite asserts that for all
-     * fifty-seven datatypes in one go. Three of them answer rather than
-     * refuse: UNSET and NONE answer their own single value, and LOGIC reads
-     * none as false.
-     *
-     * <p>The block shapes are left out because they answer for themselves.
-     * MAKE refuses none there as an invalid argument rather than a bad make
-     * argument, and TO does not refuse it at all -- {@code to block! none} is
-     * {@code [#(none)]}.
-     */
     private static void refuseToBuildSomethingOutOfNothing(Datatype wanted, Value from) {
         if (from.datatype() != Datatype.NONE
                 || wanted == Datatype.UNSET
@@ -16300,14 +12267,6 @@ public final class Natives {
         raiseBadMakeArg(from, wanted.literalSpelling());
     }
 
-    /**
-     * A series cannot be made with room for less than nothing.
-     *
-     * <p>The size was clamped with {@code Math.max(0, ...)}, so
-     * {@code make block! -1} answered an empty block and the caller never
-     * learned it had asked for something impossible. R3 raises
-     * {@code out-of-range}.
-     */
     private static void refuseRoomForLessThanNothing(Datatype wanted, Value from) {
         if (!wanted.isSeries()
                 || from.datatype() != Datatype.INTEGER
@@ -16319,18 +12278,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * A value converted to whatever datatype was named, or to the datatype of
-     * whatever was shown.
-     *
-     * <p>{@code type [any-type!] "The datatype or example value"} is the whole
-     * of the first argument's spec, and MAKE says the same. So {@code to ""
-     * #{6162}} is {@code to string!} and {@code to 1x1 [2 3]} is
-     * {@code to pair!} -- the example is read for its type and then thrown
-     * away. Rebol's own quoted-printable codec ends on {@code to data output},
-     * where DATA is whatever the caller passed in, and that is the whole point
-     * of the form: it hands back the kind of thing it was given.
-     */
     private static Value converted(Conversion asking, Value type, Value value) {
         DatatypeValue wanted = type instanceof DatatypeValue named
                 ? named
@@ -16397,9 +12344,6 @@ public final class Natives {
                     : raiseBadMakeArg(value, "port!");
             case MODULE -> moduleFromHeaderAndWords(value);
             case BITSET -> bitsetOf(value);
-            // A typeset made from a typeset is that typeset. Every other
-            // datatype answers itself for its own MAKE and this one refused,
-            // so a typeset was the one value TYPESET! would not take.
             case TYPESET -> switch (value) {
                 case TypesetValue already -> already;
                 case BlockValue named when named.datatype() == Datatype.BLOCK ->
@@ -16417,22 +12361,10 @@ public final class Natives {
         };
     }
 
-    /**
-     * Whether a value counts as true, which MAKE and TO answer differently
-     * for a number that is nothing.
-     *
-     * <p>The C leaves a note where it decides, and it is the clearest
-     * statement anywhere of what separates the two. TO falls in line with the
-     * rest of the interpreter, where everything that is not none and not
-     * false is true, so {@code to logic! 0} is true. MAKE takes more liberties
-     * with the meaning of its argument and lets a zero be false, so
-     * {@code make logic! 0} is false.
-     */
     private static boolean countsAsTrue(Conversion asking, Value value) {
         return value.isTruthy() && !(asking.builds() && isNothingAtAll(value));
     }
 
-    /** Zero, in each of the four datatypes that MAKE LOGIC! reads as false. */
     private static boolean isNothingAtAll(Value value) {
         return switch (value) {
             case IntegerValue whole -> whole.magnitude() == 0;
@@ -16442,26 +12374,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A binary from whatever was offered, which is {@code make_binary} and is
-     * a list of datatypes rather than a rule.
-     *
-     * <p>Reading it as a rule is what went wrong here. Anything with bytes
-     * underneath looks convertible, and four datatypes that have bytes are not
-     * on the list: a percent, a paren, a path and an issue are all refused
-     * where the decimal, block, string and word they resemble are taken. The C
-     * says so by naming its cases and giving everything else {@code ser = 0},
-     * which becomes {@code Trap_Arg} and an invalid argument.
-     *
-     * <p>MAKE and TO part company on one line. A number is room for bytes to
-     * MAKE and the eight bytes of a big-endian whole number to TO, and that
-     * split is handled before this is reached.
-     *
-     * <p>A tuple keeps its own length rather than the three it shows, so
-     * {@code to binary! 1.1.1} is three bytes and {@code 1.2.3.4.5} is five.
-     * A bitset that was written as a complement answers the complement of its
-     * bytes. An image answers four bytes a pixel, red green blue and alpha.
-     */
     private static Value binaryBuiltFrom(Value value) {
         return switch (value) {
             case BinaryValue already -> already;
@@ -16491,15 +12403,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * Every byte inverted, which is {@code Complement_Binary}.
-     *
-     * <p>A complemented bitset keeps the bytes of what it leaves out and a
-     * flag saying to read them the other way round, so asking it for its
-     * octets gives the same answer either way. The turning has to happen
-     * here, and not doing it made {@code to binary! complement charset "a"}
-     * answer the set it is the complement of.
-     */
     private static byte[] eachByteTurnedOver(byte[] octets) {
         byte[] turned = new byte[octets.length];
         for (int at = 0; at < octets.length; at++) {
@@ -16508,7 +12411,6 @@ public final class Natives {
         return turned;
     }
 
-    /** A tuple's own octets, however many of them it is keeping. */
     private static byte[] octetsOf(TupleValue segments) {
         byte[] octets = new byte[segments.segmentCount()];
         for (int at = 0; at < octets.length; at++) {
@@ -16517,7 +12419,6 @@ public final class Natives {
         return octets;
     }
 
-    /** An image as four bytes a pixel, which is {@code Image_To_RGBA}. */
     private static byte[] everyPixelOf(ImageValue picture) {
         byte[] octets = new byte[picture.storageLength() * PIXEL_PARTS];
         for (int pixel = 0; pixel < picture.storageLength(); pixel++) {
@@ -16535,23 +12436,6 @@ public final class Natives {
         throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(value));
     }
 
-    /**
-     * A decimal or a percent from whatever was offered, which is one switch in
-     * {@code T_Decimal} serving both.
-     *
-     * <p>The two part company only at the end, and only for some of the
-     * sources. A number-like one reaches {@code setDec} and is taken as the
-     * value itself, so {@code to percent! 4} is 400%. The rest fall through
-     * {@code if (type == REB_PERCENT) d1 /= 100.0} and are taken as a count of
-     * hundredths, so ten hours is 36,000 seconds and 36000% rather than a
-     * hundred times that. Which group a source belongs to is not guessable and
-     * is read off the {@code goto} it ends on.
-     *
-     * <p>A logic is MAKE's alone. Only a plain string is read as text -- a
-     * file, a tag or a url is refused, which is the difference between
-     * {@code case REB_STRING} and {@code ANY_STR}, and JEBOL holds all of them
-     * in the same class so the datatype has to be asked.
-     */
     private static Value decimalBuiltFrom(
             Conversion asking, Datatype wanted, Value value) {
         return switch (value) {
@@ -16566,7 +12450,7 @@ public final class Natives {
                     (double) clock.nanoseconds() / NANOSECONDS_A_SECOND);
             case DateValue moment -> asHundredths(wanted, secondsSinceTheEpoch(moment));
             case BinaryValue bits -> asHundredths(wanted,
-                    Double.longBitsToDouble(bitsOf(bits)));
+                    Double.longBitsToDouble(bitsOfRightAligned(bits)));
             case StringValue text when text.datatype() == Datatype.STRING ->
                     asHundredths(wanted, decimalReadFrom(text, wanted));
             case BlockValue parts -> asHundredths(wanted, mantissaTimesTenTo(parts, wanted));
@@ -16574,18 +12458,12 @@ public final class Natives {
         };
     }
 
-    /** A number taken as the value itself, which is {@code goto setDec}. */
     private static Value asItStands(Datatype wanted, double quantity) {
         return wanted == Datatype.PERCENT
                 ? DecimalValue.percent(quantity)
                 : DecimalValue.of(quantity);
     }
 
-    /**
-     * A number taken as a count of hundredths when a percent was asked for,
-     * which is the {@code break} that falls into the division by a hundred.
-     * For a decimal the two are the same thing.
-     */
     private static Value asHundredths(Datatype wanted, double quantity) {
         return wanted == Datatype.PERCENT
                 ? DecimalValue.percent(quantity / 100.0)
@@ -16601,17 +12479,6 @@ public final class Natives {
                                 + " out of \"" + text.text() + "\""));
     }
 
-    /**
-     * A block of exactly two read as a mantissa and an exponent, so
-     * {@code make decimal! [1 2]} is a hundred and {@code [1 -2]} is a
-     * hundredth.
-     *
-     * <p>The C multiplies and divides by ten in a loop rather than raising a
-     * power, and its own comment calls that funky. It is kept because the two
-     * do not agree in the last bits, and because the loop stops while the
-     * exponent is still between minus one and one -- which quietly truncates a
-     * fractional exponent toward zero.
-     */
     private static double mantissaTimesTenTo(BlockValue parts, Datatype wanted) {
         List<Value> both = parts.remaining();
         if (both.size() != 2) {
@@ -16641,26 +12508,6 @@ public final class Natives {
         return 0;
     }
 
-    /**
-     * A whole number made from whatever was offered.
-     *
-     * <p>Each source counts as a number in its own way. A time is its
-     * seconds and a date is its instant, both from the start of 1970. A
-     * binary is one big-endian whole number, so {@code #{01}} is 1 --
-     * the opposite of TO DECIMAL!, which reads the same bytes as the raw
-     * bits of a double.
-     *
-     * <p>Anything with no number in it fails as bad-make-arg rather than
-     * expect-arg. The distinction is not cosmetic: expect-arg says the
-     * caller passed the wrong kind of thing to a function, and a script
-     * catching it would be catching a different mistake from the one
-     * made here.
-     *
-     * <p>A logic is the one source only MAKE will read, and the C leaves a
-     * note where it refuses TO: no integer is uniquely representative of
-     * true, so converting one is a question with no answer, where building
-     * one from true is a choice that can be made and is -- one and zero.
-     */
     private static Value wholeNumberFrom(Conversion asking, Value value) {
         return switch (value) {
             case IntegerValue whole -> whole;
@@ -16671,7 +12518,7 @@ public final class Natives {
                     hexNumberIn(named);
             case StringValue text -> parseInteger(text.text());
             case CharacterValue character -> IntegerValue.of(character.codepoint());
-            case BinaryValue bytes -> IntegerValue.of(bitsOf(bytes));
+            case BinaryValue bytes -> IntegerValue.of(bitsOfRightAligned(bytes));
             case DateValue moment -> IntegerValue.of(instantOf(moment));
             case DecimalValue number -> wholeNumberWithinRange(number.quantity());
             case MoneyValue amount -> IntegerValue.of(amount.amount().longValue());
@@ -16680,20 +12527,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A decimal as a whole number, or an overflow where it names none.
-     *
-     * <p>{@code if (VAL_DECIMAL(val) < MIN_D64 || VAL_DECIMAL(val) >= MAX_D64
-     * || isnan(VAL_DECIMAL(val))) Trap0(RE_OVERFLOW);} -- so a not-a-number
-     * overflows as surely as an endless one does, and all three are refused
-     * before the cast rather than after it. Casting first saturates in
-     * silence, which turned an infinity into the largest whole number there
-     * is and a not-a-number into nothing at all.
-     *
-     * <p>The two bounds are not a mirror image and the C's own comparisons say
-     * why: below the floor is out and *at* the ceiling is out, so the most
-     * negative whole number converts and the most positive does not.
-     */
     private static Value wholeNumberWithinRange(double quantity) {
         if (Double.isNaN(quantity)
                 || quantity < -TOO_LARGE_FOR_A_WHOLE_NUMBER
@@ -16704,25 +12537,8 @@ public final class Natives {
         return IntegerValue.of((long) quantity);
     }
 
-    /**
-     * The longest run of hex digits a whole number holds, which is
-     * {@code MAX_HEX_LEN}.
-     */
     private static final int MOST_HEX_DIGITS = 16;
 
-    /**
-     * An issue read as a hexadecimal number, which is what makes
-     * {@code to integer! #FF} 255 rather than a refusal.
-     *
-     * <p>{@code Scan_Hex} says the rule in its own header: it scans while the
-     * characters are valid and fails if there are more of them than will fit.
-     * So seventeen digits is an error rather than the first sixteen of them,
-     * and a character that is not a digit is an error wherever it appears --
-     * {@code #-1} fails on the minus before it reaches the one.
-     *
-     * <p>Sixteen digits fill the number and run past the top of it:
-     * {@code #FFFFFFFFFFFFFFFF} is minus one, not an overflow.
-     */
     private static Value hexNumberIn(WordValue issue) {
         String digits = issue.spelling();
         if (digits.isEmpty() || digits.length() > MOST_HEX_DIGITS) {
@@ -16735,40 +12551,16 @@ public final class Natives {
         }
     }
 
-    /**
-     * A date counted in whole seconds from the start of 1970.
-     *
-     * <p>A date without a time of day counts as its midnight, which is
-     * what makes {@code to integer! 1-Jan-2000} a round number of days.
-     *
-     * <p>A fraction of a second rounds rather than truncating, so
-     * {@code 12:46:41.7} is the second after {@code 12:46:41} and not the
-     * same one.
-     */
     private static long instantOf(DateValue moment) {
         return Math.round(secondsSinceTheEpoch(moment));
     }
 
-    /**
-     * The instant a date names, counted in seconds from the start of 1970.
-     *
-     * <p>The date works out where it sits on the line and this only reads it
-     * off in the unit a timestamp is written in.
-     */
     private static double secondsSinceTheEpoch(DateValue when) {
         DateValue.Moment moment = when.moment();
         return (double) moment.dayNumber() * (NANOSECONDS_A_DAY / NANOSECONDS_A_SECOND)
                 + (double) moment.nanosecondsIntoTheDay() / NANOSECONDS_A_SECOND;
     }
 
-    /**
-     * A word of the given spelling, refusing an empty one.
-     *
-     * <p>A word has to be called something. Building one from empty text
-     * used to reach {@link WordValue} and fail there as a Java exception,
-     * which is the one thing {@code spec/embed.allium} says a script
-     * cannot cause. A real R3 answers too-short.
-     */
     private static Value wordNamed(String spelling, Datatype kind) {
         if (spelling.isEmpty()) {
             throw Raised.of(EvaluationFailure.TOO_SHORT,
@@ -16777,18 +12569,6 @@ public final class Natives {
         return WordValue.of(spelling, kind);
     }
 
-    /**
-     * A word of the wanted kind, from whatever was handed over.
-     *
-     * <p>{@code A_TO} in {@code t-word.c}. A word of another kind is
-     * simply retyped and keeps its spelling, which is how code builds an
-     * assignment it did not spell out. Everything else has to be read.
-     *
-     * <p>Text is run past the reader and refused unless the whole of it
-     * comes back as a single word. Without that check {@code to word! "a
-     * b"} builds a word no reader can load again, and the mistake shows
-     * up somewhere else entirely: in a file that will not read back.
-     */
     private static Value wordFrom(Value value, Datatype kind) {
         if (value instanceof WordValue word) {
             return WordValue.of(word.spelling(), kind);
@@ -16808,35 +12588,6 @@ public final class Natives {
         return WordValue.of(spellingReadAs(spelling, kind), kind);
     }
 
-    /**
-     * The spelling a piece of text gives, or a failure.
-     *
-     * <p>{@code Qualify_String} in three steps: skip the leading blanks, take
-     * the word up to the next blank, and require everything after it to be
-     * blank as well. Nothing taken is too-short -- there was no name in it, as
-     * opposed to a bad one -- and anything but a blank afterwards means the
-     * text was more than one thing.
-     *
-     * <p><b>What counts as a blank differs between the two ends, and that is
-     * the whole of the asymmetry.</b> Skipping uses the lexer's own test, which
-     * a control character passes -- its default class is written
-     * {@code LEX_DEFAULT (LEX_DELIMIT|LEX_DELIMIT_SPACE)} with the comment
-     * "control chars = spaces". The trailing check uses {@code IS_SPACE},
-     * which only a space and a tab pass. So {@code make issue! "^^(01)a"} is
-     * {@code #a} and {@code make issue! "a^^(01)"} is refused, from the same
-     * two characters in the other order.
-     *
-     * <p>A line feed and a carriage return are blanks at neither end: they have
-     * a lexer entry of their own where the other control characters have none.
-     *
-     * <p>Neither refusal carries the text back. {@code Trap0} takes no
-     * argument, and a caller handed the string would print a control character
-     * into whatever it logged with.
-     *
-     * <p>An issue takes a laxer rule for what it may then hold --
-     * {@code Scan_Issue} rather than {@code Scan_Word} -- which is what lets
-     * one carry a version number or a reference with dots and pluses in it.
-     */
     private static String spellingReadAs(String text, Datatype kind) {
         int from = 0;
         while (from < text.length() && isLexicalSpace(text.charAt(from))) {
@@ -16873,19 +12624,6 @@ public final class Natives {
         return word.spelling();
     }
 
-    /**
-     * A tuple from one of the five things one can be made of.
-     *
-     * <p>Five sources and no sixth, taken from {@code A_TO} in
-     * {@code t-tuple.c}: another tuple, a string, a block, an issue and a
-     * binary. A number is not one of them, which surprises callers more
-     * than anything else here.
-     *
-     * <p>No two of the five agree on length. A string is padded up to
-     * three, a block keeps exactly what it holds, a binary longer than
-     * twelve is cut short, and an issue longer than twelve raises. The
-     * last two sit next to each other in the C and still disagree.
-     */
     private static Value tupleFrom(Value value) {
         return switch (value) {
             case TupleValue already -> already;
@@ -16898,18 +12636,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A tuple from a block of numbers, keeping exactly what the block held.
-     *
-     * <p>{@code MT_Tuple}. Each item must be a whole octet already: a
-     * number outside 0 to 255 is refused rather than clamped, which is
-     * the opposite of what writing through a path does. A decimal rounds
-     * half away from zero, so {@code [0.5]} gives 1.
-     *
-     * <p>Nothing is padded, so {@code [1]} gives a tuple keeping one
-     * octet. It shows as 1.0.0 and is not strictly equal to a written
-     * 1.0.0, because that one keeps three.
-     */
     private static Value tupleOfSegments(BlockValue segments) {
         List<Value> items = segments.remaining();
         if (items.size() > TupleValue.MAXIMUM_SEGMENTS) {
@@ -16922,7 +12648,6 @@ public final class Natives {
         return TupleValue.of(octets);
     }
 
-    /** One octet of a block being made into a tuple, or a failure. */
     private static int octetOf(Value item, Value whole) {
         long number = switch (item) {
             case IntegerValue whole64 -> whole64.magnitude();
@@ -16940,12 +12665,6 @@ public final class Natives {
         return (int) number;
     }
 
-    /**
-     * A tuple from a binary, one octet per byte and never more than twelve.
-     *
-     * <p>The only over-long source that does not raise: the C clamps the
-     * length and reads that many bytes.
-     */
     private static Value tupleOfOctets(BinaryValue octets) {
         int width = Math.min(octets.lengthFromHere(), TupleValue.MAXIMUM_SEGMENTS);
         int[] kept = new int[width];
@@ -16955,13 +12674,6 @@ public final class Natives {
         return TupleValue.of(kept);
     }
 
-    /**
-     * A tuple from an issue, read as pairs of hexadecimal digits.
-     *
-     * <p>{@code #010203} is 1.2.3. An odd count of digits has a pair with
-     * nothing to go in it and raises, and more than twelve pairs raises
-     * rather than being cut short.
-     */
     private static Value tupleOfHexPairs(String digits, Value original) {
         if (digits.length() % 2 != 0 || digits.length() / 2 > TupleValue.MAXIMUM_SEGMENTS) {
             return raiseBadMakeArg(original, "tuple!");
@@ -16977,14 +12689,6 @@ public final class Natives {
         return TupleValue.of(octets);
     }
 
-    /**
-     * A tuple from a string, which is the one source with a floor of three.
-     *
-     * <p>{@code Scan_Tuple} counts the dots to decide the length, then
-     * raises that length to three whatever it counted. So {@code "1"}
-     * gives a tuple keeping three octets and {@code [1]} gives one
-     * keeping one, and the two are equal without being the same.
-     */
     private static Value tupleScannedFrom(String text, Value original) {
         String[] parts = text.split("\\.", -1);
         if (text.isEmpty() || parts.length > TupleValue.MAXIMUM_SEGMENTS) {
@@ -17010,12 +12714,6 @@ public final class Natives {
         return TupleValue.of(octets);
     }
 
-    /**
-     * The datatype a word names, or a failure if it names none.
-     *
-     * <p>The word carries its exclamation mark, so {@code 'integer!} is
-     * what arrives here and {@code 'integer} is not a datatype.
-     */
     private static Value datatypeNamed(WordValue named, Value original) {
         for (Datatype candidate : Datatype.values()) {
             if (candidate.literalSpelling().equalsIgnoreCase(named.spelling())) {
@@ -17025,14 +12723,6 @@ public final class Natives {
         return raiseBadMakeArg(original, "datatype!");
     }
 
-    /**
-     * A character made from whatever was offered.
-     *
-     * <p>A string gives its first character rather than being refused
-     * for having more than one, and a decimal truncates. A code point
-     * outside what Unicode defines fails as an ACCESS error rather than
-     * a script one, which is not where you would look for it.
-     */
     private static Value asCharacter(Value value) {
         if (value instanceof CharacterValue already) {
             return already;
@@ -17055,20 +12745,6 @@ public final class Natives {
         return characterAt(Comparison.asDouble(value));
     }
 
-    /**
-     * The character a number names, or {@code invalid-char} where it names
-     * none.
-     *
-     * <p>Two ranges name nothing. Below zero and above the last code point is
-     * the obvious one. The surrogates are not: {@code D800} to {@code DFFF}
-     * are reserved for writing a large code point as a pair and are not
-     * characters on their own, so a real Rebol refuses all 2,048 of them.
-     *
-     * <p>The value class already knew that and said so by throwing, which
-     * escaped the interpreter as a Java exception and stopped it dead where a
-     * script should have caught an error. Asking before building is what makes
-     * it a REBOL error instead.
-     */
     private static Value characterAt(double codepoint) {
         long asked = (long) codepoint;
         if (asked < 0 || asked > CharacterValue.MAXIMUM_CODEPOINT
@@ -17078,28 +12754,10 @@ public final class Natives {
         return CharacterValue.of((int) asked);
     }
 
-    /**
-     * Whether a number is one of the 2,048 reserved for writing a large code
-     * point as a pair.
-     *
-     * <p>The range test comes first because narrowing to a char truncates:
-     * {@code 0x1D800} would keep only its low half and look like a surrogate
-     * when it is an ordinary character well past them.
-     */
     private static boolean isaLoneSurrogate(long asked) {
         return asked <= Character.MAX_VALUE && Character.isSurrogate((char) asked);
     }
 
-    /**
-     * The character a binary opens with, decoded as UTF-8 where it has to be.
-     *
-     * <p>{@code t-char.c} tests {@code *bp > 0x80} rather than
-     * {@code >= 0x80}, so a lone {@code #{80}} is code point 128 and a lone
-     * {@code #{81}} is refused for being a continuation byte with nothing in
-     * front of it. Bytes after the first sequence are ignored, which is why
-     * this decodes the leading sequence itself instead of handing the whole
-     * array to a decoder.
-     */
     private static Value characterLeadingThe(BinaryValue octets) {
         byte[] bytes = bytesFromHere(octets);
         if (bytes.length == 0) {
@@ -17140,14 +12798,6 @@ public final class Natives {
         return 0;
     }
 
-    /**
-     * The character an issue spells in hexadecimal, as {@code #61} spells
-     * {@code #"a"}.
-     *
-     * <p>The C scans the whole spelling and refuses anything that is not
-     * hexadecimal throughout, so {@code #zz} is a bad make argument rather
-     * than a character built from the digits it happened to hold.
-     */
     private static Value characterSpeltInHexBy(WordValue issue) {
         String spelling = issue.spelling();
         if (spelling.isEmpty() || spelling.length() > MOST_HEX_DIGITS_SCANNED) {
@@ -17165,17 +12815,8 @@ public final class Natives {
         return CharacterValue.of((int) codepoint);
     }
 
-    /** {@code MAX_HEX_LEN} in {@code reb-c.h}. */
     private static final int MOST_HEX_DIGITS_SCANNED = 16;
 
-    /**
-     * The datatypes a block names.
-     *
-     * <p>A block literal holds the words `integer!` and `string!`, not
-     * datatype values -- the reader gives words and only evaluation turns
-     * them into datatypes. Filtering for datatype values instead found
-     * none and built a typeset of nothing that looked like a typeset.
-     */
     private static Set<Datatype> datatypesNamedIn(BlockValue named) {
         Set<Datatype> found = EnumSet.noneOf(Datatype.class);
         for (Value item : named.remaining()) {
@@ -17186,19 +12827,6 @@ public final class Natives {
         return found;
     }
 
-    /**
-     * Whether an item named any datatype at all, adding whatever it named.
-     *
-     * <p>An item that names none is an invalid argument, not something to step
-     * over. Stepping over it is what made {@code make typeset! [1 2]} into a
-     * typeset of nothing that still answered {@code typeset?} -- the emptiness
-     * was the only sign anything had gone wrong, and an empty typeset is a
-     * thing a caller can legitimately ask for.
-     *
-     * <p>A word that names nothing counts the same way, which is why the two
-     * lookups are asked whether they found something rather than told to add
-     * it if they did.
-     */
     private static boolean namedTypesAddedFrom(Value item, Set<Datatype> found) {
         if (item instanceof DatatypeValue datatype) {
             found.add(datatype.represents());
@@ -17221,22 +12849,6 @@ public final class Natives {
         return one.isPresent() || family.isPresent();
     }
 
-    /**
-     * A pair made from whatever was offered.
-     *
-     * <p>A single number fills both halves, so {@code to pair! 5} is
-     * {@code 5x5}. A block must hold exactly two numbers: one is refused
-     * rather than filled in, and three is refused rather than trimmed. A
-     * string goes through the reader, so the text {@code "1x2"} becomes
-     * the pair it spells.
-     *
-     * <p>A percentage is not a number here, though it is one nearly
-     * everywhere else. Four per cent is a proportion of something, and a
-     * coordinate is not a proportion of anything -- so {@code make pair! 4%}
-     * is refused where {@code make pair! 4.0} is four by four. The same goes
-     * for a paren, which is a block by shape and a piece of unevaluated code
-     * by meaning.
-     */
     private static Value asPair(Value value) {
         return switch (value) {
             case PairValue pair -> pair;
@@ -17250,26 +12862,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A money made from whatever was offered.
-     *
-     * <p>Seven datatypes and no more. A money is handed straight back. An
-     * integer, a decimal and a percent become the amount they name, and a
-     * percent names its fraction rather than its printed number, so
-     * {@code make money! 100%} is $1. A string goes through the reader. A
-     * binary is the twelve byte {@code deci} form. A logic is $1 or $0.
-     *
-     * <p>An issue is refused, and the refusal is a decision rather than a
-     * gap: {@code t-money.c} carries the case label commented out with the
-     * issue number that removed it. Writing a money in hexadecimal reads like
-     * the obvious use for an issue, and Rebol decided against it.
-     *
-     * <p>A logic is MAKE's alone, which makes money the fourth datatype to
-     * draw the line there after integer, decimal and percent. The reason is
-     * the same one {@code T_Integer} writes down: no amount is uniquely
-     * representative of true, so converting one is a question with no answer,
-     * where building a pound from true is a choice that can be made.
-     */
     private static Value asMoney(Conversion asking, Value value) {
         return withinTheDeciRange(switch (value) {
             case MoneyValue already -> already;
@@ -17285,13 +12877,6 @@ public final class Natives {
         });
     }
 
-    /**
-     * The amount, or an overflow if it is one a {@code deci} cannot hold.
-     *
-     * <p>Twenty-six significant digits and a power of ten inside a signed
-     * byte. Checked here rather than on construction so that the failure is a
-     * REBOL error a script can catch, which is what the C raises.
-     */
     private static MoneyValue withinTheDeciRange(MoneyValue amount) {
         if (!amount.isWithinTheDeciRange()) {
             throw Raised.of(EvaluationFailure.OVERFLOW,
@@ -17300,18 +12885,6 @@ public final class Natives {
         return amount;
     }
 
-    /**
-     * A money read out of text, which is {@code Scan_Money}: one currency mark
-     * is allowed and stripped, and what is left has to be a number.
-     *
-     * <p>The mark may follow a sign and may not precede one, so {@code "-$1"}
-     * reads and {@code "$-1"} does not. Putting a mark on unconditionally made
-     * {@code to money! "$1"} into {@code "$$1"}, which lexes as nothing at all.
-     *
-     * <p>The text is qualified first, the same way a decimal's is, which is
-     * what makes the two accept exactly the same characters. Rebol's own suite
-     * measures that set for both and gets the same answer twice.
-     */
     private static MoneyValue readMoney(String text) {
         String written = qualifiedNumberIn(text, "a money", MOST_FRACTION_CHARACTERS);
         return amountWithoutTheCurrencyMark(written)
@@ -17321,15 +12894,6 @@ public final class Natives {
                         raiseBadMakeArg(StringValue.of(text), "money!"));
     }
 
-    /**
-     * The amount with its one allowed currency mark taken off, or nothing
-     * where the mark is not somewhere a mark may be.
-     *
-     * <p>A sign comes before the mark and never after it, so {@code "-$1"} is
-     * minus a pound and {@code "$-1"} is not a money at all. That is the only
-     * asymmetry, and it is why this moves the sign across rather than looking
-     * for a mark wherever it happens to sit.
-     */
     private static Optional<String> amountWithoutTheCurrencyMark(String written) {
         if (written.startsWith("$")) {
             String amount = written.substring(1);
@@ -17362,19 +12926,6 @@ public final class Natives {
         return pair;
     }
 
-    /**
-     * What the clock says, in the part NOW was asked for.
-     *
-     * <p>One reading answers all ten questions, which is why only one of them
-     * may be asked: {@code Assert_Max_Refines(ds, D_REF(9) ? 2 : 1); // prevent
-     * too many refines like: now/year/month}. /PRECISE is exempt because it
-     * says how to read the clock rather than which part to answer.
-     *
-     * <p>The parts are read from the local date rather than from the instant
-     * underneath -- {@code Adjust_Date_Zone(ret, FALSE)} for every part
-     * refinement -- so within an hour of midnight the day this answers is the
-     * local day and not the UTC one.
-     */
     private static Value whatTheClockSays(Set<String> refinements) {
         boolean precise = refinements.contains("precise");
         long asked = refinements.size() - (precise ? 1 : 0);
@@ -17420,7 +12971,6 @@ public final class Natives {
         return dateWithZone(here, offsetMinutes);
     }
 
-    /** A moment as a date carrying the time of day and an offset in minutes. */
     private static DateValue dateWithZone(java.time.ZonedDateTime moment, int offsetMinutes) {
         return new DateValue(moment.getYear(), moment.getMonthValue(),
                 moment.getDayOfMonth(),
@@ -17429,26 +12979,14 @@ public final class Natives {
                 java.util.Optional.of(offsetMinutes));
     }
 
-    /**
-     * A map made from whatever MAKE MAP! was given.
-     *
-     * <p>Five things and no others. A block, a paren or another map hold pairs
-     * already: {@code if (!(IS_BLOCK(data) || IS_MAP(data) || IS_PAREN(data)))
-     * return FALSE;}. An object is turned into a block of its fields first --
-     * {@code Set_Block(arg, Make_Object_Block(...)); goto map_from_block;} --
-     * and a number is room rather than content.
-     *
-     * <p>Everything else is {@code Trap_Make}, which matters: a string walked
-     * one character at a time would make {@code make map! "ab"} into a map of
-     * a to b, and a caller who passed the wrong thing would never find out.
-     */
-    private static Value mapMadeFrom(Value given) {
-        // A percentage is not room for anything. It is a number everywhere
-        // else and is a proportion here, and a map cannot be four per cent
-        // large -- so it is refused where the plain number beside it is taken.
-        if (given instanceof IntegerValue
+    private static boolean isANumberButNotAPercentageWhichIsNoRoomAtAll(Value given) {
+        return given instanceof IntegerValue
                 || (given instanceof DecimalValue
-                    && given.datatype() != Datatype.PERCENT)) {
+                        && given.datatype() != Datatype.PERCENT);
+    }
+
+    private static Value mapMadeFrom(Value given) {
+        if (isANumberButNotAPercentageWhichIsNoRoomAtAll(given)) {
             if (Comparison.asDouble(given) < 0) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                         "a map cannot have room for " + Molder.form(given) + " pairs");
@@ -17479,26 +13017,11 @@ public final class Natives {
         return MapValue.of(pairs);
     }
 
-    /**
-     * Refuses a set-word or a set-path handed to DO on its own.
-     *
-     * <p>`case REB_SET_WORD: case REB_SET_PATH: Trap_Arg(value);` -- there is
-     * nothing after it to assign, so the caller has handed over half an
-     * expression rather than something to evaluate.
-     */
     private static Value raiseHalfAnExpression(Value assigning) {
         throw Raised.of(EvaluationFailure.INVALID_ARG,
                 Molder.mold(assigning) + " assigns, and there is nothing here to assign");
     }
 
-    /**
-     * A number as a byte, refusing one that will not fit.
-     *
-     * <p>`if (VAL_INT64(arg) < 0 || VAL_INT64(arg) > 255) Trap_Range(arg);`
-     * wherever a number reaches a binary. Truncating instead is the silent
-     * kind of wrong: writing 300 stored 44 and answered 300, so the caller was
-     * told the write had happened as asked.
-     */
     private static int asAnOctet(IntegerValue number) {
         long wanted = number.magnitude();
         if (wanted < 0) {
@@ -17512,18 +13035,8 @@ public final class Natives {
         return (int) wanted;
     }
 
-    /** The largest codepoint a character can hold, as MAX_CHAR does. */
     private static final long MAXIMUM_CODEPOINT = 0x10FFFF;
 
-    /**
-     * FIND over an image, which needs its own arm because a pixel is not
-     * compared the way an element of a block is.
-     *
-     * <p>A tuple of three names a colour whatever its alpha; a tuple of four
-     * matches the alpha too, and a whole number matches nothing but the alpha.
-     * /ONLY drops the alpha from the comparison, which is the same idea it
-     * carries everywhere else: look at the thing and not into it.
-     */
     private static Value thePixelFoundIn(
             ImageValue picture, Value wanted, Set<String> refinements) {
 
@@ -17538,15 +13051,6 @@ public final class Natives {
         return picture.atIndex(refinements.contains("tail") ? at + 1 : at);
     }
 
-    /**
-     * How big /PART says the rectangle is when one image is written into
-     * another, and nothing when it was not asked for.
-     *
-     * <p>A shape rather than a count, because a count cannot say which pixels
-     * of a rectangle it meant. What a caller gives instead of a shape is not
-     * refused -- it writes nothing, which is what the C does and is the one
-     * thing here nobody would have guessed.
-     */
     private static Value theShapeOfTheRectangle(
             List<Value> arguments, Set<String> refinements) {
 
@@ -17555,10 +13059,6 @@ public final class Natives {
                 : NoneValue.none();
     }
 
-    /**
-     * How many times over /DUP asks for what was written, which is once where
-     * it was not asked for at all.
-     */
     private static long howManyTimesOver(
             List<Value> arguments, Set<String> refinements) {
 
@@ -17569,16 +13069,6 @@ public final class Natives {
                 : 1;
     }
 
-    /**
-     * Refuses a value nothing can be made from, naming both the type and the
-     * value.
-     *
-     * <p>{@code bad-make-arg} takes two: {@code arg1} is the type that was
-     * asked for and {@code arg2} is what was offered. Rebol's own suite reads
-     * the second -- {@code e/arg2 = #\{C5}} after {@code to char! #\{C5}} --
-     * so a caller can see the bytes rather than only being told they were
-     * wrong. One message with both facts run together left arg2 empty.
-     */
     private static Value raiseBadMakeArg(Value value, String wanted) {
         throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
                 WordValue.of(wanted), value);
@@ -17590,21 +13080,10 @@ public final class Natives {
                         + value.datatype().literalSpelling());
     }
 
-    /** Whether a question about a pair is true of both its halves. */
     private static boolean bothHalves(PairValue pair, DoublePredicate asked) {
         return asked.test(pair.x()) && asked.test(pair.y());
     }
 
-    /**
-     * A pair half as the whole number the bit operations and the parity
-     * questions read it as.
-     *
-     * <p>{@code ROUND_TO_INT} is {@code (REBINT)(floor(d + 0.5))}, so it
-     * rounds to the nearest and sends a half upwards rather than away from
-     * zero: 2.5 becomes 3 and -2.5 becomes -2. Everything that reads a pair
-     * half as an integer goes through it -- AND, OR, XOR, EVEN? and ODD? --
-     * so there is one rule here and not five.
-     */
     private static long roundedHalfUp(double half) {
         return (long) Math.floor(half + 0.5);
     }
@@ -17613,21 +13092,6 @@ public final class Natives {
         return (whole & 1L) != 0L;
     }
 
-    /**
-     * Text made ready for a number scanner, which is {@code Qualify_String}.
-     *
-     * <p>One run of characters is taken and everything after it must be
-     * space or tab, which is how {@code "1 2"} is two values rather than a
-     * number that failed to read. What may come before the run is a wider set
-     * than what may come after it, and the two tests have different names in
-     * the C for that reason.
-     *
-     * <p>Nothing at all is {@code too-short} rather than a scan that failed,
-     * more than twenty-four characters is {@code too-long} before anything
-     * tries to read them, and a letter that needs more than one byte is
-     * {@code invalid-chars}. Four outcomes a script can tell apart, decided by
-     * the text rather than by the caller, and in this order.
-     */
     private static String qualifiedNumberIn(String text, String reading, int mostCharacters) {
         int start = 0;
         while (start < text.length() && isLexicalSpace(text.charAt(start))) {
@@ -17658,82 +13122,26 @@ public final class Natives {
         return text.substring(start, past);
     }
 
-    /** Above this, a letter takes more than one byte and no number may hold it. */
     private static final char MOST_LETTERS_ARE_ONE_BYTE = 127;
 
-    /**
-     * Whitespace as the lexer counts it, which is what a number may be
-     * preceded by.
-     *
-     * <p>{@code IS_LEX_SPACE} asks whether the character has no entry in the
-     * lexer's map at all, and the control characters have none. A line feed
-     * and a carriage return do have one, so they are the two below space that
-     * a number may not sit behind.
-     */
     private static boolean isLexicalSpace(char letter) {
         return (letter <= ' ' || letter == MOST_LETTERS_ARE_ONE_BYTE)
                 && letter != '\n' && letter != '\r';
     }
 
-    /**
-     * Whitespace as {@code IS_SPACE} counts it, which is what may follow a
-     * number and is only these two.
-     *
-     * <p>{@code White_Chars} gives every character below thirty-three the low
-     * bit and gives the second bit to space and tab alone, and this is the
-     * test that asks for the second. So a number may have a line feed in front
-     * of it and not behind it, and Rebol's own suite measures exactly that
-     * difference by building every one-character suffix that will go on the
-     * end of a "1".
-     */
     private static boolean isSpaceOrTab(char letter) {
         return letter == ' ' || letter == '\t';
     }
 
-    /**
-     * How long a written number may be, which is one character longer for a
-     * whole number than for a fraction.
-     *
-     * <p>{@code MAX_INT_LEN} is 25 and the decimal arm passes a literal 24, so
-     * the two are not the same limit and cannot share a constant. The odd one
-     * out matters: {@code "9'223'372'036'854'775'807"} is twenty-five
-     * characters with its separators, and reading it as a decimal's limit made
-     * the largest whole number there is too long to write down.
-     */
     private static final int MOST_WHOLE_NUMBER_CHARACTERS = 25;
 
     private static final int MOST_FRACTION_CHARACTERS = 24;
 
-    /**
-     * {@code Scan_Decimal}'s grammar, once the digit separators are gone.
-     *
-     * <p>Not the one {@code Double.parseDouble} accepts, which is why the text
-     * is matched against this before it is handed over. An exponent may carry
-     * no digits at all -- {@code "1e"} is one, because the C copies the E into
-     * its buffer and lets {@code strtod} stop there.
-     */
     private static final Pattern WRITTEN_DECIMAL = Pattern.compile(
             "[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)(?:[eE][+-]?[0-9]*)?");
 
-    /** An exponent with nothing after it, which reads as no exponent at all. */
     private static final Pattern EMPTY_EXPONENT = Pattern.compile("[eE][+-]?$");
 
-    /**
-     * A decimal read out of text, which is {@code Scan_Decimal} and not the
-     * JVM's own parser.
-     *
-     * <p>Three differences earn the port. A comma is a decimal point, so
-     * {@code "1,5"} is 1.5. An apostrophe is a digit separator and is dropped,
-     * so {@code "1'000"} is a thousand. And a trailing percent sign is allowed
-     * only when a percent is being read: that is the {@code dec_only} flag,
-     * and it is the whole of why {@code to decimal! "50%"} is refused while
-     * {@code to percent! "50%"} is fifty percent.
-     *
-     * <p>Rebol's own suite pins the accepted characters exactly. It builds
-     * every one-character suffix {@code to-decimal} will take and asserts the
-     * set is tab, space, apostrophe, comma, full stop, the ten digits and the
-     * two spellings of E.
-     */
     private static OptionalDouble decimalScannedFrom(String written, boolean percentAllowed) {
         String body = written;
         if (body.endsWith("%")) {
@@ -17751,19 +13159,6 @@ public final class Natives {
                 .orElseGet(OptionalDouble::empty);
     }
 
-    /**
-     * The same number written the way the JVM's parsers expect it, or nothing
-     * where {@code Scan_Decimal}'s grammar does not accept it at all.
-     *
-     * <p>Two of Rebol's spellings have to be translated rather than merely
-     * allowed. An apostrophe separates digits and is dropped. A comma stands
-     * in for the decimal point and becomes one, and only the first does --
-     * a second comma is then a second point, which the grammar refuses.
-     *
-     * <p>Shared with money so that the two accept the same characters, which
-     * is a thing Rebol's own suite measures separately for each and gets the
-     * same answer for twice.
-     */
     private static Optional<String> numberRewrittenForTheJvm(String written) {
         String body = written.replace("'", "").replaceFirst(",", ".");
         return WRITTEN_DECIMAL.matcher(body).matches()
@@ -17771,15 +13166,6 @@ public final class Natives {
                 : Optional.empty();
     }
 
-    /**
-     * The written forms of an endless number and of one that is not a number,
-     * which the scanner looks for in the middle of reading digits.
-     *
-     * <p>Whatever came before the hash is thrown away, which is why
-     * {@code "1#INF"} is infinity rather than a failure: the C has already
-     * copied those digits into its buffer and abandons them where it meets the
-     * hash. Only the sign of the very first character survives.
-     */
     private static OptionalDouble endlessNumberIn(String body) {
         int hash = body.indexOf('#');
         if (hash < 0) {
@@ -17797,12 +13183,6 @@ public final class Natives {
                 : OptionalDouble.empty();
     }
 
-    /**
-     * Reading an integer out of text, failing in the three ways R3 does.
-     *
-     * <p>A quote is a digit separator, so {@code "1'000"} is 1000, and a
-     * decimal point truncates toward zero rather than being refused.
-     */
     private static Value parseInteger(String text) {
         String withoutSeparators = qualifiedNumberIn(
                 text, "an integer", MOST_WHOLE_NUMBER_CHARACTERS).replace("'", "");
@@ -17813,21 +13193,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Text with a decimal point in it, read as a whole number by throwing the
-     * fraction away, and refused otherwise.
-     *
-     * <p>The point has to be there. {@code Scan_Integer} fails on a whole
-     * number too large for a machine word and the decimal scan that follows
-     * needs a point, so {@code to integer! "1e5"} is refused while
-     * {@code to integer! "1.5e3"} is 1500. Odd, and it is the rule.
-     *
-     * <p>Refusing a number outside the range rather than saturating at the
-     * largest one is the point of the check. Saturating gives a result that is
-     * a number, is in range, and is not the number the text said -- which is
-     * how {@code to integer! "11111111111111111111111"} used to answer the
-     * largest whole number instead of raising.
-     */
     private static Value truncatedDecimal(String candidate, String original) {
         if (candidate.indexOf('.') < 0) {
             throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
@@ -17846,28 +13211,8 @@ public final class Natives {
         }
     }
 
-    /**
-     * Where a double stops fitting in a signed machine word.
-     *
-     * <p>Written as a double so the comparison is one a double can answer:
-     * casting the other way saturates silently, which is the behaviour being
-     * guarded against.
-     */
     private static final double TOO_LARGE_FOR_A_WHOLE_NUMBER = 9.223372036854776E18;
 
-    /**
-     * The whole number EVEN? and ODD? are really being asked about.
-     *
-     * <p>A decimal rounds half away from zero, the same rule ROUND uses,
-     * so 1.5 is even and 2.5 is odd. Truncating instead agrees on every
-     * whole decimal and disagrees on every half, which makes it the
-     * dangerous wrong answer rather than the obvious one.
-     *
-     * <p>A money truncates rather than rounding, because {@code A_EVENQ} in
-     * {@code t-money.c} reads it through {@code deci_to_int} and that throws
-     * the fraction away. So the two datatypes disagree on a half, and each
-     * follows its own C.
-     */
     private static long roundedWholeOf(Value value, String nativeName) {
         if (value instanceof MoneyValue amount) {
             return amount.amount().longValue();
@@ -17902,30 +13247,11 @@ public final class Natives {
                         + value.datatype().literalSpelling());
     }
 
-    /**
-     * How many items a /part count asked for, if it asked.
-     *
-     * <p>The count sits at a different place in each native's argument
-     * list, so the caller says where rather than this guessing: APPEND
-     * takes a value before it and REMOVE does not.
-     */
     private static Optional<Long> howManyWanted(
             List<Value> arguments, Set<String> refinements, int where) {
         return howManyWanted(NoneValue.none(), arguments, refinements, where);
     }
 
-    /**
-     * Where a run starts when /PART was given a negative count.
-     *
-     * <p>A negative count reaches back from the position rather than forward
-     * from it, so {@code remove/part tail s -2} takes the last two characters
-     * and {@code uppercase/part tail s -2} raises them. The count is still how
-     * many; only the direction changed, and the run is clipped at the head
-     * because there is nothing before it.
-     *
-     * <p>A count that is not negative names the series where it already
-     * stands, so every caller can ask this without deciding first.
-     */
     private static SeriesValue theRunReachingBackIfNegative(
             SeriesValue series, long wanted) {
 
@@ -17936,29 +13262,6 @@ public final class Natives {
         return series.atIndex(series.index() - reaching);
     }
 
-    /**
-     * How much /PART asked for, counted from the value being read.
-     *
-     * <p>/PART takes a position as readily as a count, and then means "up to
-     * here". {@code Partial1} decides it in three lines, and the last one is
-     * the reason the source has to be passed in:
-     *
-     * <pre>
-     * if (is_ser &amp;&amp; VAL_TYPE(sval) == VAL_TYPE(lval) &amp;&amp; VAL_SERIES(sval) == VAL_SERIES(lval))
-     *     len = (REBINT)VAL_INDEX(lval) - (REBINT)VAL_INDEX(sval);
-     * else
-     *     Trap1(RE_INVALID_PART, lval);
-     * </pre>
-     *
-     * <p>The position must be into the same series, so the difference of the
-     * two indexes is a length. A position into some other series names no
-     * length at all and is refused rather than guessed at.
-     *
-     * <p>Rebol's own JSON codec copies a matched run this way:
-     * {@code mark1: some normal-chars mark2: (append/part output mark1 mark2)}.
-     * Refusing a string where a count was declared stopped TO-JSON on every
-     * string it was given.
-     */
     private static Optional<Long> howManyWanted(
             Value source, List<Value> arguments, Set<String> refinements, int where) {
         Value count = argumentFor(
@@ -17988,15 +13291,6 @@ public final class Natives {
         return Optional.empty();
     }
 
-    /**
-     * How much of a block /PART asked for, counting either way.
-     *
-     * <p>A positive count takes that many from the position forward. A
-     * negative one takes that many from the position backward, which is
-     * how `append/part obj tail [a 1 b 2] -2` reads the last pair: from
-     * the tail there is nothing ahead, so counting forward answers
-     * nothing at all.
-     */
     private static List<Value> partOf(
             BlockValue block, List<Value> arguments, Set<String> refinements) {
 
@@ -18014,15 +13308,6 @@ public final class Natives {
                 .orElseGet(block::remaining);
     }
 
-    /**
-     * Putting key and value pairs into a map, which is what APPEND and INSERT
-     * both do to one.
-     *
-     * <p>The checks run in the order the C runs them, and the C says why on
-     * the line above the first: "Check must be in this order (to avoid
-     * checking a non-series value)". So a protected map refuses a call before
-     * anyone looks at what the call was trying to add.
-     */
     private static Value addPairsToMap(
             MapValue map, List<Value> arguments,
             Set<String> refinements, String nativeName) {
@@ -18046,18 +13331,6 @@ public final class Natives {
         return map;
     }
 
-    /**
-     * Which of a block's values a map is being asked to take.
-     *
-     * <p>/PART counts pairs rather than values, and the halving is one line:
-     * {@code len >>= 1; // part must be number of key/value pairs}. So a /PART
-     * of one asks for half a pair and gets nothing, and a /PART of three adds
-     * as much as a /PART of two.
-     *
-     * <p>An odd count loses its last value for the same reason the loop drops
-     * a trailing key: {@code NOT_END(val) && NOT_END(val+1)} needs both halves
-     * of a pair before it will take a step.
-     */
     private static List<Value> pairsWantedBy(
             BlockValue pairs, List<Value> arguments, Set<String> refinements) {
 
@@ -18077,39 +13350,12 @@ public final class Natives {
         return whole.subList(from, from + count);
     }
 
-    /**
-     * The sizes TO-HEX/SIZE will not write, refused before the subject is even
-     * looked at.
-     *
-     * <p>{@code if (VAL_INT64(D_ARG(3)) <= 0 || VAL_UNT64(D_ARG(3)) > MAX_U32)
-     * Trap_Arg(D_ARG(3));} -- the first line of the native, before the branch
-     * on what is being converted, which is why a char and a tuple are refused
-     * the same way a number is.
-     *
-     * <p>Nought is the one that has to be named rather than assumed. A width of
-     * nought leaves an issue with no spelling, and there is no such value: it
-     * reached the host as {@code IllegalArgumentException: a word needs a
-     * spelling}, which {@code spec/embed.allium} forbids outright.
-     */
     private static void refuseASizeItCannotWrite(long width) {
         if (width <= 0 || width > 0xFFFFFFFFL) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, IntegerValue.of(width));
         }
     }
 
-    /**
-     * A tuple in hex, cut from the right to the size asked for.
-     *
-     * <p>The other way about from a number. A tuple is a run of bytes in the
-     * order they were written, so the size says how many digits to keep from
-     * the left; a number is right aligned and keeps its low digits.
-     *
-     * <p>The ceiling is twice the tuple's own length rather than sixteen, and
-     * the tuple decides it: {@code if (len > 2 * MAX_TUPLE || len > 2 *
-     * VAL_TUPLE_LEN(arg)) len = 2 * VAL_TUPLE_LEN(arg);}. So a size wider than
-     * the tuple does not pad it out -- there is nothing to pad with that would
-     * not be a different colour.
-     */
     private static String hexOfEachSegment(TupleValue tuple, OptionalLong width) {
         StringBuilder hex = new StringBuilder();
         for (int segment : tuple.segments()) {
@@ -18142,14 +13388,6 @@ public final class Natives {
                 : trimmedToWidth(hex, atMostSixteen(width.getAsLong()));
     }
 
-    /**
-     * Sixteen digits is the widest a number is written, whatever was asked for:
-     * {@code if (len == NO_LIMIT || len > MAX_HEX_LEN) len = MAX_HEX_LEN;}.
-     *
-     * <p>Which is also what keeps the largest size the C accepts from arriving
-     * here as a Java {@code int} that has already wrapped -- {@code
-     * to-hex/size 255 4294967295} crashed for that reason and is a valid call.
-     */
     private static int atMostSixteen(long width) {
         return (int) Math.min(width, 16L);
     }
@@ -18166,19 +13404,6 @@ public final class Natives {
                 .orElse(octets);
     }
 
-    /**
-     * The bytes of as much of a series as /PART asked for, counted in the
-     * series' own units.
-     *
-     * <p>{@code Partial1} answers a length in whatever the series is made of,
-     * so a string is bounded in characters and the UTF-8 encoding happens
-     * afterwards. Bounding the bytes instead takes too little wherever a
-     * character needs more than one -- eight characters of Czech are ten bytes
-     * -- and a count landing mid-character encodes a lead byte with nothing
-     * following it. Rebol's own MIME header encoder cuts its input into runs
-     * of seventeen characters for the line limit and lost the last letter of
-     * every accented subject line.
-     */
     private static byte[] theUnitsAskedFor(
             Value value, List<Value> arguments, Set<String> refinements) {
 
@@ -18287,24 +13512,6 @@ public final class Natives {
                 .orElse(items);
     }
 
-    /**
-     * A value as text with nothing between its parts, which is what
-     * TO-STRING means and FORM does not.
-     *
-     * <p>The two agree on every value that is not a series, which is how
-     * they came to be conflated here: {@code to-string [1 2 3]} is "123"
-     * and {@code form [1 2 3]} is "1 2 3". Nesting makes no difference to
-     * the running together, so {@code to-string [1 [2 3]]} is also "123".
-     *
-     * <p>A path keeps its slashes, because it is a block underneath and the
-     * block arm would otherwise run its segments together: {@code a/b} is
-     * {@code "a/b"} and not {@code "ab"}.
-     *
-     * <p>A tag keeps its brackets here. This is FORM, and AJOIN and COMBINE
-     * both come through it -- Rebol's own suite asserts
-     * {@code ajoin [<a> "b" 3]} is {@code "<a>b3"}. Only TO STRING! takes the
-     * brackets off, and it does that in its own arm rather than here.
-     */
     private static String runTogether(Value value) {
         if (value.datatype().isAnyPath() && value instanceof BlockValue path) {
             return path.remaining().stream()
@@ -18319,16 +13526,6 @@ public final class Natives {
         return Molder.form(value);
     }
 
-    /**
-     * The text {@code make_string} takes from a value, which is not quite what
-     * FORM gives.
-     *
-     * <p>{@code ANY_STR(arg)} is copied as it stands, and that one arm is the
-     * whole of the difference: {@code to string! <tag>} is {@code "tag"} where
-     * {@code form <tag>} keeps the brackets. Everything else falls through to
-     * {@code Form_Value} with the TIGHT option, which is what runs a block's
-     * items together.
-     */
     private static String textForAString(Value value) {
         return value instanceof StringValue already
                 ? already.text()
@@ -18674,10 +13871,11 @@ public final class Natives {
                         connectTheTcpPort(port, evaluator);
                     }
                     if (port.schemeName().equals("crypt")) {
-                        startTheCipherBehind(port);
+                        startTheCipherBehindBlankingTheKeyInTheSpec(port);
                     }
                     if (port.schemeName().equals("checksum")) {
-                        ChecksumPort.start(port, ChecksumPort.methodOf(port));
+                        ChecksumPort.startEvenOnAnAlreadyOpenPort(
+                                port, ChecksumPort.methodOf(port));
                     }
                     if (isAFilePort(port)) {
                         openTheFileBehind(port, evaluator, refinements);
@@ -18696,7 +13894,7 @@ public final class Natives {
                     }
                     PortValue port = (PortValue) arguments.getFirst();
                     if (port.schemeName().equals("checksum")) {
-                        ChecksumPort.digestSoFar(port);
+                        ChecksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
                         return port;
                     }
                     if (port.schemeName().equals("crypt")) {
@@ -18929,34 +14127,6 @@ public final class Natives {
                 });
     }
 
-    /**
-     * QUERY's answer, in the shape the question was asked.
-     *
-     * <p>Four shapes of question, and the one that reads as wrong is the one
-     * the suite asks three times. A word asks for one fact and gets it bare. A
-     * block asks for several and gets a block. {@code object!} asks for
-     * everything and gets an object. None asks <em>what may be asked</em> and
-     * gets the names rather than the facts.
-     *
-     * <p>The C splits the last two before {@code Ret_Query_File} is reached:
-     * {@code if (IS_NONE(D_ARG(ARG_QUERY_FIELD))) { Ret_File_Modes(port,
-     * D_RET); return R_RET; }} in both the file arm and the directory arm.
-     * Anything else falls through to the three branches of
-     * {@code Ret_Query_File} itself.
-     *
-     * <p>Whether a fact is labelled in the block form depends on how its word
-     * was written, per word rather than per block: a plain word puts itself in
-     * the answer as a set-word before its value, a get-word contributes the
-     * value alone. So {@code query %a [type size]} is {@code [type: file
-     * size: 5]} and {@code query %a [:type :size]} is {@code [file 5]}.
-     * Rebol's own LIST-DIR asks the second form and reads the answer by
-     * position, so reading the block as a plain list of field names breaks it.
-     *
-     * <p>A path with nothing at it answers none for every shape but the names,
-     * because "there is nothing there" is an answer a script acts on. The
-     * names are a fact about the port rather than about the file, so they come
-     * back either way.
-     */
     private static Value queryAnswerFor(
             java.util.Optional<FileInformation> found, Value field,
             Evaluator evaluator) {
@@ -18986,7 +14156,6 @@ public final class Natives {
         return everythingKnownAbout(about);
     }
 
-    /** The seven field names {@code Set_File_Mode_Value} answers, and no others. */
     private static Value queryFieldOf(FileInformation about, WordValue named) {
         return switch (named.canonical()) {
             case "size" -> about.size().<Value>map(IntegerValue::of).orElseGet(NoneValue::none);
@@ -19000,18 +14169,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * The names a file may be asked about, which is what a field of none
-     * answers.
-     *
-     * <p>Read off {@code system/standard/file-info} at the moment of asking,
-     * which is what {@code Ret_File_Modes} does in its one line:
-     * {@code Set_Block(ret, Get_Object_Words(In_Object(port,
-     * STD_PORT_SCHEME, STD_SCHEME_INFO, 0)))}. A list written out here could
-     * drift from the object a script compares the answer against, and
-     * comparing them is exactly what Rebol's own suite does -- three times,
-     * for a directory, a file and an open file port.
-     */
     private Value theNamesThatPortMayBeAskedFor(
             Value target, Evaluator evaluator, Context context) {
 
@@ -19031,11 +14188,6 @@ public final class Natives {
                 .toList());
     }
 
-    /**
-     * All six facts as an object, which is what a field of {@code object!}
-     * asks for. Written in {@code sysobj.reb}'s order, so the object matches
-     * the prototype a caller built their own from.
-     */
     private static Value everythingKnownAbout(FileInformation about) {
         Context fields = Context.root();
         fields.set("name", StringValue.of(about.name(), Datatype.FILE));
@@ -19048,7 +14200,6 @@ public final class Natives {
         return new ObjectValue(fields);
     }
 
-    /** A moment as a date, or none where the host could not say. */
     private static Value asDateValue(java.util.Optional<java.time.Instant> moment) {
         return moment.<Value>map(when -> {
             java.time.LocalDateTime local = java.time.LocalDateTime.ofInstant(
@@ -19170,20 +14321,6 @@ public final class Natives {
                     whereTheChildStarts(evaluator));
         }
 
-        /**
-         * Where on the machine the child starts, which is where the script is
-         * standing.
-         *
-         * <p>A script that changes directory and then calls a program means
-         * the two to agree, and a confined script would otherwise reach
-         * outside its own directory through the one door confinement cannot
-         * close: the JVM's working directory is the embedding application's,
-         * and nothing about the grant says a script may write there.
-         *
-         * <p>Nothing where no filesystem was granted, because then the script
-         * is standing nowhere and the host's own directory is the only answer
-         * there is.
-         */
         private static Optional<String> whereTheChildStarts(Evaluator evaluator) {
             try {
                 return Optional.of(evaluator.files()
@@ -19193,15 +14330,6 @@ public final class Natives {
             }
         }
 
-        /**
-         * The environment to start the child with, which is this
-         * interpreter's own view of one.
-         *
-         * <p>So a name SET-ENV laid over the host's reaches the child, which
-         * is the half of SET-ENV a program other than this one can observe.
-         * A script that was never granted an environment hands over none, and
-         * the child then gets the host's unchanged.
-         */
         private static java.util.Map<String, String> whatTheChildInherits(
                 Evaluator evaluator) {
 
@@ -19293,16 +14421,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * READ on a port, sent to the port's actor.
-     *
-     * <p>Only the console actor exists. It answers one line, which is what
-     * {@code Console_Actor}'s {@code A_READ} does once the read-line mode is
-     * set, and INPUT sets that mode with MODIFY before it reads.
-     *
-     * <p>A line that is not there answers none, as the C does, and a script
-     * must be able to tell that from an empty line.
-     */
     private Value readFromPort(PortValue port, Evaluator evaluator,
             List<Value> arguments, Set<String> refinements) {
 
@@ -19316,7 +14434,8 @@ public final class Natives {
             case "bundled" -> theSourceOfABundledModule(port, evaluator);
             case "tcp" -> bytesReadFromTheConnection(port, evaluator);
             case "dns" -> addressesOfTheNameThePortNames(port, evaluator);
-            case "checksum" -> ChecksumPort.digestSoFar(port);
+            case "checksum" ->
+                    ChecksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
             case "crypt" -> {
                 refuseAClosedCipherPort(port);
                 yield CryptPort.read(port);
@@ -19334,20 +14453,6 @@ public final class Natives {
         });
     }
 
-    /**
-     * The source of a module bundled with this build, out of the build.
-     *
-     * <p>The name is the spec's HOST and nothing else: `bundled://github.reb`
-     * decodes to {@code [scheme: 'bundled host: "github.reb"]}, where a name
-     * with a slash in it decodes to a host, a path and a target. So a spec
-     * holding either of those is asking for something inside a directory, and
-     * this scheme has no directories -- one flat set of modules, named by the
-     * build. Refusing them is what stops a name climbing out of it.
-     *
-     * <p>Refused the way a missing file is rather than answered empty, because
-     * a caller that cannot tell "no such module" from "an empty module" writes
-     * the second to disk. DOWNLOAD-EXTENSION is exactly that caller.
-     */
     private Value theSourceOfABundledModule(PortValue port, Evaluator evaluator) {
         return theNameABundledUrlAsksFor(port)
                 .flatMap(name -> evaluator.bundledModules().sourceOf(name))
@@ -19368,12 +14473,6 @@ public final class Natives {
         return named.text().isEmpty() ? Optional.empty() : Optional.of(named.text());
     }
 
-    /**
-     * The bytes that have arrived on a connection.
-     *
-     * <p>An empty binary means the other end has finished and closed, which
-     * is how a reader knows to stop rather than waiting for ever.
-     */
     private Value bytesReadFromTheConnection(PortValue port, Evaluator evaluator) {
         requireService(HostService.NETWORK);
         NetworkPort.Connection connection = connectionBehind(port);
@@ -19386,14 +14485,6 @@ public final class Natives {
         });
     }
 
-    /**
-     * Puts bytes that arrived in the port's DATA, after what is there already.
-     *
-     * <p>A protocol reads a header and then a body out of the same buffer and
-     * decides for itself when it has enough, so a read must add to what the
-     * last one left rather than replace it. Answering the bytes as well costs
-     * nothing and is what a script reading a socket by hand expects.
-     */
     private static void addToThePortsData(PortValue port, BinaryValue arrived) {
         if (!(port.fieldNamed("data") instanceof BinaryValue held)) {
             port.setField("data", arrived);
@@ -19404,14 +14495,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * The addresses a name stands for, or none.
-     *
-     * <p>None rather than a failure, because "there is no such host" is a
-     * true answer a script has to act on and one it will meet often. The
-     * refusal is for the service not being granted, and it has already
-     * happened by here.
-     */
     private Value addressesOfTheNameThePortNames(PortValue port, Evaluator evaluator) {
         requireService(HostService.NETWORK);
         String hostName = hostNamedBy(port);
@@ -19424,14 +14507,6 @@ public final class Natives {
         });
     }
 
-    /**
-     * The context behind a value IN will look a word up in.
-     *
-     * <p>An object, an error and a port are all a context underneath, which is
-     * why the C reads {@code IS_ERROR(val) ? VAL_ERR_OBJECT(val) :
-     * VAL_OBJ_FRAME(val)} and why its comment on the argument says "object,
-     * error, port, block".
-     */
     private static Context contextOf(Value value) {
         return switch (value) {
             case ObjectValue object -> object.context();
@@ -19444,12 +14519,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * An error as a context, so that IN can look a field up in one.
-     *
-     * <p>An error is read like an object and is not built as one, thus its
-     * fields are gathered here rather than held in a context of their own.
-     */
     private static Context contextOfError(ErrorValue raised) {
         Context fields = Context.root();
         for (String name : ErrorValue.FIELDS) {
@@ -19458,14 +14527,6 @@ public final class Natives {
         return fields;
     }
 
-    /**
-     * The first object in a block that holds the wanted word, as that word
-     * bound to it, or none.
-     *
-     * <p>The C reads each item through {@code Get_Simple_Value}, thus a word
-     * naming an object counts as the object. This is how code asks a list of
-     * objects which of them owns a field.
-     */
     private static Value firstHolderIn(
             BlockValue searched, Value wanted, Evaluator evaluator, Context context) {
 
@@ -19484,19 +14545,6 @@ public final class Natives {
         return NoneValue.none();
     }
 
-    /**
-     * ASSERT/TYPE: word and datatype in pairs, each word's value checked.
-     *
-     * <p>A different function under the same name. Plain ASSERT evaluates the
-     * block and refuses a false result; /TYPE reads the block as pairs and
-     * never evaluates it as code. The C splits on the refinement before it
-     * looks at the block at all.
-     *
-     * <p>The refinement was declared and ignored, so `assert/type [x string!]`
-     * evaluated `x string!`, saw a datatype at the end and passed. Every
-     * caller of it was unguarded, MAKE-MODULE*'s header check among them:
-     * that is eight fields it is supposed to reject and did not.
-     */
     private static Value assertedTypes(
             BlockValue pairs, Evaluator evaluator, Context context) {
 
@@ -19524,20 +14572,6 @@ public final class Natives {
         return LogicValue.of(true);
     }
 
-    /**
-     * ASSERT with no refinement, which checks every expression and not just
-     * the last one.
-     *
-     * <p>{@code while (index < SERIES_TAIL(block)) { index = Do_Next(...); if
-     * (IS_FALSE(ds)) ... }} -- so {@code assert [true 1 + 3 = 2 true]} fails
-     * on the middle expression where evaluating the whole block and reading
-     * its value passes on the last.
-     *
-     * <p>What it complains with is the block itself and not a sentence about
-     * it: {@code Set_Block(ds, Copy_Block(...)); Trap1(RE_ASSERT_FAILED, ds)}.
-     * A copy from the position it started at, so a script can read back what
-     * it was that did not hold.
-     */
     private static Value everyConditionHeld(
             BlockValue conditions, Evaluator evaluator, Context context) {
 
@@ -19553,14 +14587,6 @@ public final class Natives {
         return LogicValue.of(true);
     }
 
-    /**
-     * Whether a value is of a type, named as a datatype, a word, a block of
-     * either, or a typeset.
-     *
-     * <p>{@code Is_Of_Type} in the C, and the four spellings are what
-     * ASSERT/TYPE's block may hold:
-     * {@code if (IS_BLOCK(type) || IS_WORD(type) || IS_TYPESET(type) || IS_DATATYPE(type))}.
-     */
     private static boolean isOfType(Value held, Value type, Context context) {
         return switch (type) {
             case DatatypeValue named -> held.datatype() == named.represents();
@@ -19583,7 +14609,6 @@ public final class Natives {
                         + type.datatype().literalSpelling());
     }
 
-    /** What a refinement's own slot can hold: none unasked, a logic asked. */
     private static final Set<Datatype> A_REFINEMENTS_SLOT =
             EnumSet.of(Datatype.NONE, Datatype.LOGIC);
 
@@ -19611,16 +14636,6 @@ public final class Natives {
         return BlockValue.block(types);
     }
 
-    /**
-     * A spec block built from a parameter list, as SPEC-OF answers it.
-     *
-     * <p>The shape R3 writes: a word per argument, a block of datatype words
-     * after one that is narrowed, and a refinement written as a refinement
-     * with its own argument following. No doc strings, because a native's
-     * documentation lives in its Java comment rather than in the spec, and
-     * inventing one here would make `first spec-of` answer a string that
-     * says nothing.
-     */
     private static Value specBlockOf(List<Parameter> parameters) {
         List<Value> spec = new ArrayList<>();
         for (Parameter parameter : parameters) {
@@ -19646,26 +14661,10 @@ public final class Natives {
         return BlockValue.block(spec);
     }
 
-    /** Where a bound word lives, or null when it is unbound. */
     private static Context boundContextOf(WordValue named) {
         return named.isBound() ? named.binding() : null;
     }
 
-    /**
-     * The same bytes with any separately-encoded surrogate pair joined into
-     * the one character it stands for.
-     *
-     * <p>{@code #\{EDA0B4EDB4A2}} is U+D834 and U+DD22 written as two
-     * three-byte sequences, which is how a good many systems encode a
-     * character above the basic plane and is what Rebol reads back as
-     * {@code 𝄢}. Strict UTF-8 refuses it -- a surrogate is not a character --
-     * so the pair is joined here and the strictness is kept for everything
-     * else, a lone surrogate included.
-     *
-     * <p>Joining rather than decoding loosely, because the two are not the
-     * same: {@code #\{EDA0B4}} on its own is still an error, and it would stop
-     * being one if the decoder simply allowed surrogates through.
-     */
     private static byte[] withSurrogatePairsJoined(byte[] bytes) {
         byte[] joined = new byte[bytes.length];
         int written = 0;
@@ -19686,13 +14685,6 @@ public final class Natives {
         return Arrays.copyOf(joined, written);
     }
 
-    /**
-     * The surrogate encoded at a position, or -1 where there is not one.
-     *
-     * <p>{@code ED} then a byte in the half of the range the caller names --
-     * {@code A0} upwards for a high surrogate, {@code B0} for a low one --
-     * then any continuation byte.
-     */
     private static int surrogateAt(byte[] bytes, int at, int leadingHalf) {
         if (at + 2 >= bytes.length || (bytes[at] & 0xFF) != 0xED) {
             return -1;
@@ -19706,7 +14698,6 @@ public final class Natives {
         return 0xD000 | (second & 0x3F) << 6 | third & 0x3F;
     }
 
-    /** The four bytes a character above the basic plane takes, and where next. */
     private static int fourBytesOf(byte[] joined, int written, int codepoint) {
         joined[written] = (byte) (0xF0 | codepoint >> 18);
         joined[written + 1] = (byte) (0x80 | codepoint >> 12 & 0x3F);
@@ -19715,22 +14706,6 @@ public final class Natives {
         return written + 4;
     }
 
-    /**
-     * A binary read as UTF-8 text, refusing bytes that are not valid.
-     *
-     * <p>`Decode_UTF_String` in the C, and the refusal matters as much as the
-     * decoding: `if (!ser) Trap1(RE_INVALID_UTF, arg)`. Bytes that are not
-     * text have no text form, and answering the replacement character instead
-     * would make a round trip through a binary lossy without saying so.
-     *
-     * <p>The refusal names what is left from where the decoding stopped, and
-     * not the bad bytes alone. {@code VAL_INDEX(arg) = err} moves the original
-     * binary to the offset and hands that to the error, so
-     * {@code to string! #\{C5A1C500}} says {@code #\{C500}} -- the lead byte
-     * and everything after it, rather than the one byte that could not be
-     * read. That needs the decoder driven a buffer at a time, because the
-     * one-shot form throws away where it stopped.
-     */
     private static String textDecodedFrom(BinaryValue octets) {
         byte[] bytes = octets.octetsFromHere();
         int marked = byteOrderMarkOf(bytes);
@@ -19753,20 +14728,6 @@ public final class Natives {
         return written.flip().toString();
     }
 
-    /**
-     * Bytes read as whatever their byte order mark says, with the mark
-     * dropped.
-     *
-     * <p>Text that arrives from a file or a wire is as likely to be UTF-16 as
-     * UTF-8, and the mark is what says which. Reading it as UTF-8 regardless
-     * turned every such file into a refusal, which is what
-     * {@code issue-2186} in Rebol's own tests is about.
-     *
-     * <p>The four-byte marks have to be tested before the two-byte ones they
-     * begin with: {@code FF FE 00 00} is UTF-32 little-endian and its first
-     * two bytes are the UTF-16 little-endian mark, so the wrong order reads a
-     * UTF-32 file as UTF-16 and finds a null after every character.
-     */
     private static String textBehindTheMark(byte[] bytes, int marked) {
         java.nio.charset.Charset named = switch (marked) {
             case 8 -> StandardCharsets.UTF_8;
@@ -19787,12 +14748,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Which encoding a byte order mark names, negative for little-endian.
-     *
-     * <p>{@code What_UTF} in s-unicode.c. Zero for no mark, which is the
-     * ordinary answer: a mark is optional and UTF-8 rarely carries one.
-     */
     private static int byteOrderMarkOf(byte[] octets) {
         if (startsWith(octets, 0xEF, 0xBB, 0xBF)) {
             return 8;
@@ -19821,76 +14776,39 @@ public final class Natives {
         return true;
     }
 
-    /** The word datatypes, which is the range /AS on COLLECT-WORDS allows. */
     private static final Set<Datatype> ANY_WORD_DATATYPES = Typeset.ANY_WORD.members();
 
-    /**
-     * The any-object datatypes, plus whatever else a spec names beside them.
-     *
-     * <p>`any-object!` in a spec is five datatypes, and writing them out at
-     * each site is how one gets left off. `collect-words/ignore` takes
-     * `[any-object! block! none!]`.
-     */
     private static Set<Datatype> anyObjectOr(Datatype... alsoAccepted) {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_OBJECT.members());
         accepted.addAll(List.of(alsoAccepted));
         return Set.copyOf(accepted);
     }
 
-    /**
-     * What /PART accepts: a count, or a position to read up to.
-     *
-     * <p>{@code Partial1} takes an integer, a decimal or a series position,
-     * and the position form is the one Rebol's own code leans on. Declaring
-     * the argument as an integer refused a string before the body ever saw
-     * it, so the position form could not be reached at all.
-     */
     private static final Set<Datatype> PART_LIMIT = java.util.stream.Stream.concat(
             java.util.stream.Stream.of(Datatype.INTEGER, Datatype.DECIMAL,
                     Datatype.PERCENT, Datatype.PAIR),
             Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
-    /**
-     * {@code [number! series!]}, which is {@link #PART_LIMIT} without a pair.
-     *
-     * <p>DECOMPRESS and SWAP-ENDIAN declare their limit this way and the
-     * functions that share a limit with REMOVE declare a pair alongside it.
-     * The difference is a whole datatype's worth of arguments a real Rebol
-     * turns away before the body runs.
-     */
     private static final Set<Datatype> COUNT_OR_POSITION = PART_LIMIT.stream()
             .filter(accepted -> accepted != Datatype.PAIR)
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
-    /** CHECKSUM's declared data: {@code [binary! string! file!]}. */
     private static final Set<Datatype> CHECKSUMMABLE =
             Set.of(Datatype.BINARY, Datatype.STRING, Datatype.FILE);
 
-    /** COMPRESS's declared data, which has no file among it. */
     private static final Set<Datatype> COMPRESSIBLE =
             Set.of(Datatype.BINARY, Datatype.STRING);
 
-    /** REMOVE's declared range: {@code [number! series! pair! char!]}. */
     private static final Set<Datatype> REMOVE_RANGE = java.util.stream.Stream.concat(
             PART_LIMIT.stream(), java.util.stream.Stream.of(Datatype.CHAR))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
-    /** The declared /dup count: {@code [number! pair!]}. */
     private static final Set<Datatype> DUP_COUNT = Set.of(
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT, Datatype.PAIR);
 
-    /** The three modes a console port has, from Console_Actor's A_MODIFY. */
     private static final Set<String> CONSOLE_MODES = Set.of("echo", "line", "error");
 
-    /**
-     * A function the loaded library defines, by name.
-     *
-     * <p>The seam where Java calls Rebol's own REBOL. Rebol's C has the same
-     * seam and uses it in four places: MAKE PORT!, MAKE MODULE!, DO of a file,
-     * and the boot. Building a port needs the scheme registry and the URL
-     * parser, and both of those are REBOL, thus OPEN cannot do its own work.
-     */
     private static Value libraryFunction(Context context, String name) {
         if (!context.knows(name)) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
@@ -19898,30 +14816,10 @@ public final class Natives {
         return context.slotFor(name).value();
     }
 
-    /**
-     * Whether the value is an object underneath: an object, a module, a port
-     * or an error.
-     *
-     * <p>All four are one frame of words and values in R3, which is why one
-     * arm of {@code t-object.c} answers for all of them. An error is the odd
-     * one here only because JEBOL holds its fields in a record rather than in
-     * a context.
-     */
     private static boolean isAnyObject(Value value) {
         return value instanceof ErrorValue || fieldsOf(value) != null;
     }
 
-    /**
-     * Whether an object has a field of this name for FIND and SELECT to
-     * report, which is narrower than whether the name can be read through it.
-     *
-     * <p>Three things make it narrower, each a line of the C rather than a
-     * choice made here. Only a plain word asks -- {@code if (IS_WORD(arg))} --
-     * so a set-word or a lit-word spelled the same finds nothing. A hidden
-     * field is not there: {@code return (!always && VAL_GET_OPT(word,
-     * OPTS_HIDE)) ? 0 : n;}. And SELF is not there either, because the search
-     * starts one slot past it: {@code word = FRM_WORDS(frame) + 1;}.
-     */
     private static boolean objectHasFieldToFind(Value subject, Value wanted) {
         if (!(wanted instanceof WordValue named) || named.datatype() != Datatype.WORD) {
             return false;
@@ -19936,13 +14834,6 @@ public final class Natives {
         return fieldsOf(subject).holds(field);
     }
 
-    /**
-     * The fields of anything that is an object underneath, or null.
-     *
-     * <p>An object, an error, a port and a module all are. {@code types.reb}
-     * puts every one of them in the {@code object} typeset, which is what
-     * makes SELECT, FIND and IN work the same way on all four.
-     */
     private static Context fieldsOf(Value value) {
         return switch (value) {
             case ObjectValue object -> object.context();
@@ -19959,16 +14850,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A helper the library keeps to itself, reached through
-     * {@code system/contexts/sys}.
-     *
-     * <p>MAKE-MODULE* and MAKE-PORT* are not standard functions and a script
-     * has no business calling either by a bare name. R3 reaches them as
-     * {@code sys/make-module*}, which is what loading the sys files into
-     * their own context means, so this reads them the same way rather than
-     * hoping the library context happens to hold them.
-     */
     private static Value systemInternalFunction(Context context, String name) {
         if (!(pathInto(context, "system", "contexts", "sys")
                 instanceof ObjectValue internals)) {
@@ -19980,13 +14861,6 @@ public final class Natives {
         return internals.context().slotFor(name).value();
     }
 
-    /**
-     * Puts what /ARGS carried where a script reads it.
-     *
-     * <p>`system/script/args`, which is where the vendored `sys/do*` writes it
-     * and the only place a script looks: `system/script: make
-     * system/standard/script compose [... args: :arg]`.
-     */
     private static void recordTheScriptArguments(Evaluator evaluator, Value given) {
         if (pathInto(evaluator.systemContext(), "system", "script")
                 instanceof ObjectValue script) {
@@ -19994,31 +14868,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Where the first byte sequence that is not UTF-8 begins, or -1.
-     *
-     * <p>{@code UTF8_Check} in {@code s-unicode.c}, which answers {@code acc +
-     * 1}: one past the last whole character it accepted. So the position is the
-     * START of the sequence that failed rather than the byte that gave it away,
-     * and a two-byte sequence with a bad second byte is reported at its lead.
-     *
-     * <p>An unfinished sequence at the end counts as a failure. The C's loop
-     * ends with the decoder part way through a character and the line after it
-     * answers the position regardless: `if (state == UTF8_ACCEPT) return 0;`
-     * and then `return acc + 1;`.
-     *
-     * <p>The one thing accepted that well-formed UTF-8 does not allow is a
-     * surrogate pair written as two three-byte sequences. The C rejects the
-     * first half in the decoder and then gives it a second chance:
-     * {@code Decode_Surrogate_Pair} reads all six bytes and lets them through
-     * when they are a high half followed by a low one. The C reads those six
-     * bytes without checking that they are there; this asks first, because
-     * reading past the end is not behaviour worth keeping.
-     *
-     * <p>Answered as a one-based index into the whole binary, because that is
-     * what the caller gets: `VAL_INDEX(arg) = bp - VAL_BIN_HEAD(arg)` measures
-     * from the head while the walk began at the position.
-     */
     private static int firstMalformedUtf8(BinaryValue bytes) {
         int end = bytes.storageLength() + 1;
         int at = bytes.index();
@@ -20040,15 +14889,6 @@ public final class Natives {
         return -1;
     }
 
-    /**
-     * How many bytes a sequence with this lead byte takes, or 0 for a byte that
-     * cannot lead one.
-     *
-     * <p>The ranges the C's table refuses outright: a continuation byte with
-     * nothing in front of it, C0 and C1 -- which could only ever be an overlong
-     * spelling of an ASCII character -- and F5 upwards, which would decode
-     * above the last codepoint Unicode has.
-     */
     private static int utf8SequenceWidth(int lead) {
         if (lead < 0x80) {
             return 1;
@@ -20062,15 +14902,6 @@ public final class Natives {
         return lead < 0xF0 ? 3 : 4;
     }
 
-    /**
-     * Whether the bytes after the lead one are continuations, and the sequence
-     * spells a codepoint that is allowed to be spelled that way.
-     *
-     * <p>The three exclusions the state machine makes beyond counting
-     * continuation bytes: an overlong three-byte or four-byte form, a surrogate
-     * (which is refused here and reconsidered as half of a pair), and anything
-     * above the top of Unicode.
-     */
     private static boolean continuesCorrectly(BinaryValue bytes, int at, int width) {
         int lead = bytes.storage().at(at) & 0xFF;
         if (width == 1) {
@@ -20095,7 +14926,6 @@ public final class Natives {
         return lead != 0xF4 || second <= 0x8F;
     }
 
-    /** Whether a three-byte sequence spelling a surrogate begins here. */
     private static boolean isSurrogateHalfAt(BinaryValue bytes, int at, int end) {
         if (at + 3 > end || (bytes.storage().at(at) & 0xFF) != 0xED) {
             return false;
@@ -20105,31 +14935,10 @@ public final class Natives {
         return second >= 0xA0 && second <= 0xBF && third >= 0x80 && third <= 0xBF;
     }
 
-    /**
-     * Whether the surrogate beginning here is a low half, which pairs second.
-     *
-     * <p>{@code c1 >= 0xD800 && c1 <= 0xDBFF && c2 >= 0xDC00 && c2 <= 0xDFFF}:
-     * the high half first and the low one after it. Two of the same kind are
-     * not a pair, so the order is part of the test.
-     */
     private static boolean isLowSurrogateAt(BinaryValue bytes, int at) {
         return (bytes.storage().at(at + 1) & 0xFF) >= 0xB0;
     }
 
-    /**
-     * A local path as REBOL writes one, from {@code To_REBOL_Path}.
-     *
-     * <p>Both characters are separators and neither test is guarded on the
-     * platform: {@code if (c == '\\' || c == '/')}. So a Windows path converts
-     * on a machine that has never seen Windows, which is the point of having
-     * the function -- the path came from somewhere else. Replacing only the
-     * separator this machine uses is the plausible implementation and it is
-     * wrong everywhere but Windows, where it happens to agree.
-     *
-     * <p>And a second separator in a row is dropped: {@code if (slash > 0)
-     * continue;}. That is what turns the two leading backslashes of a Windows
-     * share name into the one leading slash that means "from the root".
-     */
     private static String oneSlashPerRunOfSeparators(String path) {
         StringBuilder built = new StringBuilder(path.length());
         boolean afterASeparator = false;
@@ -20146,23 +14955,6 @@ public final class Natives {
         return built.toString();
     }
 
-    /**
-     * A REBOL path as the local system writes one, from {@code To_Local_Path}.
-     *
-     * <p>Two things happen whatever is asked for: the separator changes to the
-     * one this system uses, and a run of slashes becomes a single one --
-     * {@code if (n == 0 || out[n-1] != OS_DIR_SEP) out[n++] = OS_DIR_SEP;}.
-     *
-     * <p>The dots are read only when /FULL asked for them. A single dot, alone
-     * or with a slash after it, is dropped. A double dot backs out of the
-     * directory built so far and leaves a separator behind it, so the answer
-     * ends with one.
-     *
-     * <p>One divergence, and it is the C that is wrong. A segment such as
-     * {@code ..x} falls through the double-dot branch into a line that writes
-     * the character it looked ahead at and then copies the segment anyway, so
-     * the C answers {@code x..x}. Here it is copied as it stands.
-     */
     private static String localPathOf(String path, boolean resolvingDots, char separator) {
         StringBuilder built = new StringBuilder();
         int at = 0;
@@ -20186,12 +14978,6 @@ public final class Natives {
         return built.toString();
     }
 
-    /**
-     * Past a leading {@code .} or {@code ..} segment, having acted on it.
-     *
-     * <p>Answers where the segment that follows begins, which is the same
-     * place it was given for anything that is not one of those two.
-     */
     private static int pastAnyDots(
             String path, int at, StringBuilder built, char separator) {
         if (at >= path.length() || path.charAt(at) != '.') {
@@ -20209,14 +14995,6 @@ public final class Natives {
         return after;
     }
 
-    /**
-     * Drops the last directory from what has been built, leaving a separator.
-     *
-     * <p>{@code n -= (n > 2) ? 2 : n;} and then a walk back to the separator
-     * before it. The two characters are the trailing separator and the last
-     * character of the name, so the walk cannot stop on the separator it
-     * started from.
-     */
     private static void backOutOneDirectory(StringBuilder built, char separator) {
         int length = built.length() > 2 ? built.length() - 2 : 0;
         while (length > 0 && built.charAt(length) != separator) {
@@ -20226,17 +15004,8 @@ public final class Natives {
         built.append(separator);
     }
 
-    /**
-     * Which of the target's words RESOLVE may write, and where its walk starts.
-     *
-     * <p>The C keeps this in a bind table both contexts share, and a mark of -1
-     * means "named, and the source has not got it". Both shapes of /ONLY are
-     * marks, which is why one rule covers them both: a marked word the source
-     * lacks is unset in the target, where an unmarked one is left as it was.
-     */
     private record WordsToResolve(int startAt, Set<String> named, boolean limited) {
 
-        /** No /ONLY: every word the source has, from the first onwards. */
         static WordsToResolve everything() {
             return new WordsToResolve(1, Set.of(), false);
         }
@@ -20246,17 +15015,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * What /ONLY asked for, in either of its two shapes.
-     *
-     * <p>A block names the words outright. An integer is a position in the
-     * target -- "an index to tail" -- and marks its words from there on, which
-     * is how the C resolves the words a binding has just added: it records the
-     * context's length, binds, and resolves from that length.
-     *
-     * <p>{@code if (i == 0) i = 1;} and a position past the end is nothing to
-     * do rather than a failure.
-     */
     private static WordsToResolve wordsToResolve(
             Context into, List<ContextSlot> targetSlots,
             Set<String> refinements, Value onlyThese) {
@@ -20287,21 +15045,6 @@ public final class Natives {
         return WordsToResolve.everything();
     }
 
-    /**
-     * Copies one context's values into another, as {@code Resolve_Context}.
-     *
-     * <p>The C walks the TARGET and asks the bind table where each of its words
-     * sits in the source, which is why a word the source has not got is
-     * ordinarily left as it was: nothing marked it.
-     *
-     * <p>A protected slot is skipped without complaint --
-     * {@code if (!VAL_PROTECTED(words) && ...)} -- and a hidden source word is
-     * not a source of anything: {@code && !VAL_HIDDEN(words)}.
-     *
-     * <p>/EXTEND then adds the source words the target has not got at all,
-     * limited the same way: a word /ONLY did not name was never marked, so the
-     * expand loop does not see it either.
-     */
     private static Value resolvedFrom(
             Context into, Context from, Value target,
             Set<String> refinements, Value onlyThese) {
@@ -20342,15 +15085,6 @@ public final class Natives {
         return target;
     }
 
-    /**
-     * QUERY on a vector, in the four shapes the field argument can take.
-     *
-     * <p>Written out rather than sent through {@link #questionedByField},
-     * because a vector answers to three names its object does not list --
-     * {@code min}, {@code max} and {@code average} -- and because an unknown
-     * word inside a block is an invalid argument here where the shared helper
-     * calls it something else. Both differences come straight from the C.
-     */
     private Value queriedVector(VectorValue vector, Value field, Evaluator evaluator) {
         if (field instanceof NoneValue) {
             return BlockValue.block(
@@ -20437,19 +15171,6 @@ public final class Natives {
                 || source instanceof WordValue;
     }
 
-    /**
-     * A port opened from whatever named a scheme, so a verb can reach it.
-     *
-     * <p>{@code write checksum:md5 data} is a port opened, written and left,
-     * and the C gets there because WRITE is an action: a URL reaches
-     * {@code Make_Port} on its way to the actor rather than being refused
-     * before it starts. Refusing it here meant a URL could never be written
-     * at all, and the error said no service where the real answer was about
-     * the data.
-     *
-     * <p>The scheme still has to be one this build serves, which
-     * {@code make-port*} and the service check between them decide.
-     */
     private PortValue portOpenedFor(Value named, Evaluator evaluator, Context context) {
         Value built = evaluator.applyFunction(
                 systemInternalFunction(context, "make-port*"), List.of(named));
@@ -20462,23 +15183,12 @@ public final class Natives {
         requireServiceForScheme(port.schemeName());
         port.markOpen(true);
         if (port.schemeName().equals("checksum")) {
-            ChecksumPort.start(port, ChecksumPort.methodOf(port));
+            ChecksumPort.startEvenOnAnAlreadyOpenPort(
+                    port, ChecksumPort.methodOf(port));
         }
         return port;
     }
 
-    /**
-     * The file a target names, whether it was written as a path or as a url
-     * routed to the file scheme.
-     *
-     * <p>{@code file://a.txt} and {@code %a.txt} are the same file, and the
-     * scheme's own INIT is what says so: it works the path out of the url and
-     * leaves it in the port's spec. Opening the port is how the path is
-     * reached, because the rule lives in the scheme rather than here.
-     *
-     * <p>Empty for anything that routes somewhere else, so a caller can go on
-     * refusing what it was already refusing.
-     */
     private Optional<String> theFileNamedByAUrl(
             Value target, Evaluator evaluator, Context context) {
 
@@ -20506,14 +15216,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * Feeds a run of bytes to a cipher port and answers the port, so writes
-     * chain.
-     *
-     * <p>Bytes and nothing else. A string is not bytes until somebody says
-     * which encoding, and the port will not guess -- so the refusal is
-     * feature-na, a thing this port cannot do, rather than a wrong argument.
-     */
     private Value encipheredIntoThePort(PortValue port, Value data) {
         refuseAClosedCipherPort(port);
         if (!(data instanceof BinaryValue octets)) {
@@ -20544,15 +15246,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * WRITE through a file port, which moves the port's own position.
-     *
-     * <p>/SEEK moves first and /PART cuts what is written. The answer is the
-     * file rather than the port, which reads oddly until you see the C: WRITE
-     * on a file port ends with the port's own {@code spec/ref}, so
-     * {@code write %f "a"} and {@code write port "a"} answer the same kind of
-     * thing.
-     */
     private static void refuseAPortOpenedOnlyToRead(
             PortValue port, EvaluationFailure failure) {
 
@@ -20609,17 +15302,6 @@ public final class Natives {
         });
     }
 
-    /**
-     * Adds what is written to the port's running sum, and answers the port.
-     *
-     * <p>Only a binary or a string carries bytes to sum, and anything else is
-     * an invalid argument -- {@code if (!ANY_BINSTR(arg)) Trap_Arg(arg)},
-     * which is what makes {@code write checksum:md5 1} an error rather than
-     * a sum of the digit.
-     *
-     * <p>The port is opened first where it was not open already, so a write
-     * to a freshly made port starts a sum instead of quietly doing nothing.
-     */
     private Value summedIntoThePort(PortValue port, Value data,
             List<Value> arguments, Set<String> refinements) {
         if (!(data instanceof BinaryValue || data instanceof StringValue)) {
@@ -20627,7 +15309,8 @@ public final class Natives {
         }
         if (!port.isOpen()) {
             port.markOpen(true);
-            ChecksumPort.start(port, ChecksumPort.methodOf(port));
+            ChecksumPort.startEvenOnAnAlreadyOpenPort(
+                    port, ChecksumPort.methodOf(port));
         }
         SeriesValue written = (SeriesValue) data;
         ChecksumPort.add(port,
@@ -20641,7 +15324,6 @@ public final class Natives {
     private static final List<String> WRITE_OPTIONAL_ARGUMENTS =
             List.of("part", "seek", "allow");
 
-    /** One of WRITE's counted refinements, or null where it was not given. */
     private static Long wholeNumberAsked(
             String refinement, List<Value> arguments, Set<String> refinements) {
         if (!refinements.contains(refinement)) {
@@ -20661,7 +15343,6 @@ public final class Natives {
         return port;
     }
 
-    /** Sends bytes and answers the port, so writes chain as a caller expects. */
     private Value sentDownTheConnection(
             PortValue port, Value data, Evaluator evaluator) {
 
@@ -20681,16 +15362,6 @@ public final class Natives {
         return Set.copyOf(accepted);
     }
 
-    /**
-     * What COPY will duplicate: the eight datatypes its spec names.
-     *
-     * <p>{@code value [series! port! map! object! bitset! any-function! error!
-     * struct!]}. Declared rather than left open, because the list is what decides
-     * the error: a gob is not on it, so `copy make gob! []` is the wrong argument
-     * rather than an operation a gob does not support. STRUCT is absent here for
-     * the reason it is absent everywhere -- the datatype belongs to a build with
-     * the FFI in it.
-     */
     private static Set<Datatype> copyable() {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
         accepted.addAll(Typeset.ANY_FUNCTION.members());
@@ -20704,20 +15375,6 @@ public final class Natives {
         return Set.copyOf(accepted);
     }
 
-    /**
-     * What INDEX? and INDEXZ? accept: `series! gob! port! none!`.
-     *
-     * <p>Declaring it matters, because the declaration and the arm refuse
-     * differently and a script can tell them apart. An integer is not on the
-     * list at all, so it never reaches an arm: `indexz? 5` is `expect-arg`,
-     * which the corpus confirms against 3.22.1. NONE is on the list, so it does
-     * reach one -- and the none arm answers for INDEX? and falls through to
-     * `Trap_Action` for INDEXZ?, which is `cannot-use`.
-     *
-     * <p>GOB is here now that the datatype is, and it has to be named rather than
-     * arrive with the series: `boot/types.reb` gives a gob no typeset, so
-     * `series? make gob! []` is false while `index?` still answers.
-     */
     private static Set<Datatype> positionable() {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
         accepted.add(Datatype.PORT);
@@ -20726,7 +15383,6 @@ public final class Natives {
         return Set.copyOf(accepted);
     }
 
-    /** Walks a path of field names, answering none where any of them is absent. */
     private static Value pathInto(Context context, String... names) {
         Value reached = context.knows(names[0])
                 ? context.slotFor(names[0]).value()
@@ -20741,15 +15397,6 @@ public final class Natives {
         return reached;
     }
 
-    /**
-     * MAKE MODULE!, which asks the library to do the work.
-     *
-     * <p>MAKE-MODULE* answers none for a header it will not accept, and none
-     * is not a module. Answering it would hand the caller a value of the
-     * wrong datatype and no reason why, so this raises invalid-spec about the
-     * spec, which is what {@code Make_Module} does:
-     * {@code if (IS_NONE(value)) Trap1(RE_INVALID_SPEC, spec);}
-     */
     private static Value moduleFromSpec(
             Value spec, Evaluator evaluator, Context context) {
         if (!(spec instanceof BlockValue given)) {
@@ -20763,7 +15410,6 @@ public final class Natives {
         return module;
     }
 
-    /** TO MODULE!, which joins a header object and a words object. */
     private static Value moduleFromHeaderAndWords(Value value) {
         if (!(value instanceof BlockValue parts)) {
             return raiseBadMakeArg(value, "module!");
@@ -20777,38 +15423,12 @@ public final class Natives {
         return new ModuleValue(words.context(), header);
     }
 
-    /**
-     * The actor of a port, when it is one written in REBOL rather than a word
-     * naming something built in.
-     *
-     * <p>{@code Do_Port_Action} sorts the three cases and this is the middle
-     * one. None means the port does nothing at all; a word means a built-in
-     * actor, which is a way out of the interpreter and needs its service
-     * granted first; an object of functions is a scheme somebody wrote in
-     * REBOL, and it is no way out of anything -- whatever it reaches for, it
-     * reaches for by calling ordinary words, and each of those asks the host
-     * for itself.
-     */
     private static Optional<ObjectValue> theActorWrittenInRebol(PortValue port) {
         return port.fieldNamed("actor") instanceof ObjectValue actor
                 ? Optional.of(actor)
                 : Optional.empty();
     }
 
-    /**
-     * Sends one action to an actor written in REBOL, and answers what the
-     * actor answered.
-     *
-     * <p>{@code Redo_Func} hands the actor's function the same arguments the
-     * action was called with, so PICK's key and POKE's value arrive as they
-     * were written.
-     *
-     * <p>An action the actor has no function for is refused by name rather
-     * than ignored, so a caller learns which verb this port does not do. The
-     * name goes back as a set-word because that is how the action table spells
-     * it -- `read:` rather than `read` -- and a script catching the error
-     * compares against what it was given.
-     */
     private Value askTheActor(PortValue port, ObjectValue actor, String action,
             List<Value> arguments, Set<String> refinements, Evaluator evaluator) {
 
@@ -20823,31 +15443,6 @@ public final class Natives {
                 laidOutAsTheActorDeclaresThem(able, arguments, refinements));
     }
 
-    /**
-     * The action's arguments, laid out the way this actor's function declares
-     * them rather than the way the native does.
-     *
-     * <p>The two differ in one respect and it matters for REMOVE: a native
-     * hands over its refinement arguments as ordinary positions and says
-     * separately which refinements were asked for, while a function written in
-     * REBOL has the refinement itself as a parameter with its arguments after
-     * it. So {@code remove/key store 'greeting} arrives here as three values
-     * and one name, and has to leave as five.
-     *
-     * <p>Walking the actor's own parameters is what keeps the two in step
-     * without a table mapping one to the other. It works because an actor
-     * implements an action and takes the refinements that action declares, in
-     * the order it declares them -- so the refinement arguments line up by
-     * construction, and a parameter the actor does not declare is simply never
-     * asked for.
-     *
-     * <p>A refinement nobody asked for brings no argument with it, which is
-     * the part that has to be counted rather than assumed. The native hands
-     * over one value per refinement that <em>was</em> asked for and nothing at
-     * all for the others, so {@code remove/key store 'greeting} arrives as two
-     * values and the key is the second of them -- not the fourth, which is
-     * where it would sit if every refinement kept a place in the queue.
-     */
     private static List<Value> laidOutAsTheActorDeclaresThem(
             FunctionValue able, List<Value> arguments, Set<String> refinements) {
 
@@ -20873,14 +15468,6 @@ public final class Natives {
         return laidOut;
     }
 
-    /**
-     * The action's arguments with the port standing where its source did.
-     *
-     * <p>A url reaches an action by routing to a scheme and opening a port on
-     * the way, so what the caller wrote in the first position is a url and what
-     * the actor declares there is a port. Everything after it -- what PART was
-     * given, where SEEK points -- is the caller's and goes through untouched.
-     */
     private static List<Value> withThePortInFront(
             PortValue port, List<Value> arguments) {
 
@@ -20889,13 +15476,6 @@ public final class Natives {
         return asTheActorTakesThem;
     }
 
-    /**
-     * Whether this port's work is done in REBOL, and if so the answer it gave.
-     *
-     * <p>One shape for every port action: ask, and if the port is served that
-     * way the action is over. A port with a built-in actor answers nothing
-     * here and the native carries on to the code that serves it.
-     */
     private Optional<Value> theRebolActorsAnswer(String action,
             List<Value> arguments, Set<String> refinements, Evaluator evaluator) {
 
@@ -20907,10 +15487,6 @@ public final class Natives {
                 askTheActor(port, actor, action, arguments, refinements, evaluator));
     }
 
-    /**
-     * An actor that is neither a word nor an object is a scheme built wrongly
-     * rather than a port used wrongly, and says so before anything else does.
-     */
     private static void refuseAnActorThatIsNeitherAWordNorAnObject(PortValue port) {
         Value actor = port.fieldNamed("actor");
         if (actor instanceof ObjectValue || actor instanceof WordValue
@@ -20920,16 +15496,6 @@ public final class Natives {
         throw Raised.of(EvaluationFailure.INVALID_ACTOR);
     }
 
-    /**
-     * Refuses a scheme whose service the host did not grant.
-     *
-     * <p>A port is a way out of the interpreter, thus opening one asks the
-     * same question every other host call asks. The scheme names which
-     * service: console for a console port, files for a file port.
-     *
-     * <p>A port whose actor is written in REBOL never reaches here, because it
-     * is not a way out and has no service to ask for.
-     */
     private void requireServiceForScheme(String scheme) {
         switch (scheme) {
             case "console" -> theSchemeReachesNothingOutside();
@@ -20947,29 +15513,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * Grants a scheme that is a calculation rather than a way out.
-     *
-     * <p>A checksum port opens no file, no socket and no console: it sums
-     * bytes the script is already holding. There is no service to ask a host
-     * for, and refusing it for want of one would refuse arithmetic. A cipher
-     * port is the same shape -- it transforms bytes the script already has,
-     * and reaches nothing.
-     *
-     * <p>A console port is the other one, and for a narrower reason. Opening
-     * it reaches nothing and carries nothing: all it will answer is how wide a
-     * terminal is, and it answers eighty whether or not there is a terminal
-     * there. Reading and writing through it still ask for the grant, in the
-     * READ and WRITE natives where the data actually moves. Refusing to open
-     * it refused HELP, which asks the width on its first line, to every
-     * interpreter that had not been handed a console.
-     *
-     * <p>The system and callback ports are the third shape. They are queues of
-     * events inside this interpreter -- a block in a field -- and what put an
-     * event on one already asked the host for whatever it was doing. Refusing
-     * the system port for want of a service would refuse WAIT itself, since
-     * everything that happens passes through it.
-     */
     private static void theSchemeReachesNothingOutside() {
     }
 
@@ -21035,22 +15578,6 @@ public final class Natives {
                     .toList());
         }
 
-        /**
-         * The names in one directory that a pattern matches, as a listing of
-         * that directory rather than a set of paths.
-         *
-         * <p>{@code Read_Pattern} in {@code dev-file.c} is {@code glob}, and
-         * it cuts the answer back to the last part -- {@code dir->clen = end +
-         * 1}, "so only files are returned and not complete paths". Rebol's own
-         * ZIP encoder relies on the shape: it takes the directory off the
-         * pattern itself and joins each name back on.
-         *
-         * <p>Matching nothing is an empty block and so is a directory that is
-         * not there, because {@code p-dir.c} will not raise on a failure to
-         * open when the path held a wildcard. A caller asking for a file by
-         * name and not finding it has made a mistake; a caller asking which
-         * files match has asked a question, and none of them is an answer.
-         */
         private Value namesMatchingThePattern(FilePort files) {
             int lastSeparator = path.lastIndexOf('/');
             String directory = path.substring(0, lastSeparator + 1);
@@ -21070,11 +15597,6 @@ public final class Natives {
                     .toList());
         }
 
-        /**
-         * A directory arrives from a listing wearing a trailing slash, and the
-         * pattern is written against the name without one. Glob marks the
-         * answer after it has matched, which is the same order.
-         */
         private static String withoutItsSlash(String name) {
             return name.endsWith("/") ? name.substring(0, name.length() - 1) : name;
         }
@@ -21084,13 +15606,6 @@ public final class Natives {
                     Wildcards.STARS_AND_QUESTION_MARKS) == name.length();
         }
 
-        /**
-         * Whether a path names several files rather than one.
-         *
-         * <p>The two characters are the whole of it, and WILDCARD? in
-         * {@code n-io.c} says which: a star for any run and a question mark
-         * for one.
-         */
         private static boolean holdsAWildcard(String path) {
             return path.indexOf('*') >= 0 || path.indexOf('?') >= 0;
         }
@@ -21302,23 +15817,8 @@ public final class Natives {
         }
     }
 
-    /**
-     * The reason code a failed open reports as the error's second argument:
-     * {@code RFE_OPEN_FAIL} is 3, and {@code Trap_Port} pushes it, so the
-     * catalogue's {@code "reason:" :arg2} reduces to the number 3.
-     */
     private static final int OPEN_FAILED = 3;
 
-    /**
-     * Makes the connection a TCP port stands for, and keeps it in the port.
-     *
-     * <p>In STATE, which sysobj.reb calls "internal state values (private)" --
-     * exactly what a socket is. EXTRA is the other one, "user-defined storage
-     * of local data", and belongs to whoever wrote the script: Rebol's own TLS
-     * keeps its entire protocol context there and would overwrite a socket
-     * hidden in it. The port reads and writes through STATE, and CLOSE gives it
-     * back.
-     */
     private void connectTheTcpPort(PortValue port, Evaluator evaluator) {
         String host = hostNamedBy(port);
         int number = portNumberOf(port);
@@ -21330,13 +15830,6 @@ public final class Natives {
         });
     }
 
-    /**
-     * Which numbered port a spec names, or the one its scheme is known by.
-     *
-     * <p>A URL need not say: {@code tcp://example.com} is a whole address to
-     * a person and half of one to a socket, and the well-known number is what
-     * fills the gap.
-     */
     private static int portNumberOf(PortValue port) {
         if (port.fieldNamed("spec") instanceof ObjectValue spec
                 && spec.context().holds("port")
@@ -21347,13 +15840,6 @@ public final class Natives {
         return NetworkPort.wellKnownPortFor(port.schemeName()).orElse(0);
     }
 
-    /**
-     * Turns a network refusal into an ordinary error a script can catch.
-     *
-     * <p>The same shape {@link #throughPort} gives a filesystem refusal: the
-     * adapter throws its own kind and nothing of the host's escapes into a
-     * script.
-     */
     private static Value throughNetwork(Supplier<Value> operation) {
         try {
             return operation.get();
@@ -21365,29 +15851,9 @@ public final class Natives {
         }
     }
 
-    /**
-     * The three schemes whose port is a queue of events.
-     *
-     * <p>{@code Init_Event_Scheme} registers one actor for all of them:
-     * {@code Register_Scheme(SYM_SYSTEM, 0, Event_Actor)} and the same for
-     * EVENT and CALLBACK. What they hold and what may be done to them is the
-     * same thing three times over.
-     */
     private static final Set<String> THE_SCHEMES_THAT_ARE_QUEUES =
             Set.of("system", "event", "callback");
 
-    /**
-     * The queue a port of that family keeps in STATE, if it is one of them.
-     *
-     * <p>{@code Event_Actor} serves the block actions by pointing them at that
-     * field and running them there -- {@code *D_ARG(1) = *state; result =
-     * T_Block(ds, action);} -- so INSERT on the system port is INSERT on its
-     * queue. The port comes back as the answer rather than the block, because
-     * the C saves it first and puts it back before returning.
-     *
-     * <p>Made on demand, as the C does: {@code if (!IS_BLOCK(state))
-     * Set_Block(state, Make_Block(EVENTS_CHUNK - 1));}.
-     */
     private static Optional<BlockValue> theEventQueueOf(Value value) {
         if (!(value instanceof PortValue port)
                 || !THE_SCHEMES_THAT_ARE_QUEUES.contains(port.schemeName())) {
@@ -21401,12 +15867,6 @@ public final class Natives {
         return Optional.of(queue);
     }
 
-    /**
-     * Puts an event on that queue, refusing anything that is not one.
-     *
-     * <p>{@code if (!IS_EVENT(arg)) Trap_Arg(arg);} guards INSERT and APPEND
-     * both, so a protocol cannot leave a note to itself among the events.
-     */
     private static Value queuedOnThePort(
             PortValue port, BlockValue queue, Value happening, boolean atTheEnd) {
 
@@ -21418,31 +15878,12 @@ public final class Natives {
         return port;
     }
 
-    /**
-     * Leaves a plain mark in STATE for a scheme that keeps nothing there.
-     *
-     * <p>The actor's own storage is what says a port is open -- a socket, a
-     * cipher, a position in a file, a queue of events -- so a scheme that has
-     * none of those needs something, and a scheme that has one must not have
-     * it written over.
-     *
-     * <p>The console and checksum ports are the two that reach here. A
-     * directory port looks as though it should and does not: opening one
-     * writes its position into the field literally named STATE, so there is
-     * already something there by the time this is asked.
-     */
     private static void markOpenWhateverTheActorLeftInState(PortValue port) {
         if (!port.isOpen()) {
             port.markOpen(true);
         }
     }
 
-    /**
-     * Closes the socket a port was holding, if it was holding one.
-     *
-     * <p>CLOSE takes the actor's storage away, and a socket that is only
-     * forgotten stays open at the far end until the process ends.
-     */
     private static void handBackTheConnectionBehind(PortValue port) {
         if (port.fieldNamed("state") instanceof JavaObjectValue carried
                 && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
@@ -21450,13 +15891,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * The connection a TCP port is holding, or a refusal saying it has none.
-     *
-     * <p>A port that was never opened, or has been closed, has nothing to
-     * read from -- and saying so is better than answering no bytes, which a
-     * caller cannot tell from a quiet connection.
-     */
     private static NetworkPort.Connection connectionBehind(PortValue port) {
         if (port.fieldNamed("state") instanceof JavaObjectValue carried
                 && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
@@ -21465,13 +15899,6 @@ public final class Natives {
         throw Raised.of(EvaluationFailure.NOT_OPEN, port.schemeName());
     }
 
-    /**
-     * The host a port's spec names.
-     *
-     * <p>From the spec's HOST field where there is one, and from its REF
-     * otherwise -- a DNS port is usually opened as {@code dns://name} and the
-     * name is all of it.
-     */
     private static String hostNamedBy(PortValue port) {
         if (port.fieldNamed("spec") instanceof ObjectValue spec) {
             if (spec.context().holds("host")
@@ -21490,7 +15917,6 @@ public final class Natives {
         return "";
     }
 
-    /** Turns a port's refusal into an error the script can catch. */
     private static Value throughPort(Supplier<Value> operation) {
         try {
             return operation.get();
@@ -21505,14 +15931,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * The same, for a window port.
-     *
-     * <p>A separate wrapper because the two refusals mean different things and
-     * carry different ids. A window port refuses because the host granted the
-     * service and supplied no screen, which is {@code not_present}; a file port
-     * refuses for reasons of its own about the path.
-     */
     private static Value throughWindow(Supplier<Value> operation) {
         try {
             return operation.get();
@@ -21521,16 +15939,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * A host service that is there to grant and has nothing behind it.
-     *
-     * <p>The reason goes into ARG1 and not only into the message, for the same
-     * reason {@link Raised#of(EvaluationFailure, String)} says: a script that
-     * has to read the reason back out of prose cannot tell the three refusals
-     * apart, and telling them apart is the whole point of having three. A host
-     * that granted the screen and supplied none can be fixed by supplying one;
-     * a host that granted nothing cannot.
-     */
     private static Raised refusedByTheHost(String errorId, String because) {
         String reason = because + ", which is "
                 + ServiceRefusal.NOT_PRESENT.name()
@@ -21539,15 +15947,6 @@ public final class Natives {
                 ErrorCategory.ACCESS, errorId, reason, StringValue.of(reason)));
     }
 
-    /**
-     * A refinement's string argument, or empty when the refinement was not
-     * asked for.
-     *
-     * <p>The dialogs take several optional arguments between them and every
-     * one of them is "use the host's own default if I say nothing", so an
-     * absent refinement has to arrive as an absence rather than as an empty
-     * string.
-     */
     private static Optional<String> textOfArgument(
             List<Value> arguments, Set<String> refinements,
             List<String> declaredOrder, String refinement) {
@@ -21600,25 +15999,10 @@ public final class Natives {
                         arguments.get(0), arguments.get(1)));
     }
 
-    /** What CLAMP will hold: {@code [number! tuple! pair! money!]}. */
     private static final Set<Datatype> CLAMPABLE = Set.of(
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
             Datatype.TUPLE, Datatype.PAIR, Datatype.MONEY);
 
-    /**
-     * CLAMP: a value held inside a range.
-     *
-     * <p>The bounds must be the same datatype as the value and are not
-     * converted -- {@code Trap2(RE_TYPE_MISMATCH, val, vmin)} before anything
-     * else happens. So {@code clamp 5 1.0 3} is refused rather than quietly
-     * treating 1.0 as 1, which is the choice worth having: a caller who mixed
-     * them almost certainly meant one type throughout.
-     *
-     * <p>Bounds written the wrong way round answer the lower one, and that is
-     * not a check anybody wrote. It falls out of the order the two are applied
-     * in: the inner minimum pulls the value down to the maximum and the outer
-     * maximum pushes it back up to the minimum.
-     */
     private static Value heldInsideTheRange(Value value, Value lowest, Value highest) {
         if (value.datatype() != lowest.datatype()
                 || value.datatype() != highest.datatype()) {
@@ -21648,14 +16032,6 @@ public final class Natives {
         };
     }
 
-    /**
-     * A tuple clamped octet by octet, with a missing bound reading as zero.
-     *
-     * <p>Surprising and it is what the C does: {@code REBYTE lo = i <
-     * VAL_TUPLE_LEN(vmin) ? b1[i] : 0}. So a maximum shorter than the value
-     * clamps the rest of it to zero rather than leaving it alone, which is a
-     * trap for anybody writing {@code clamp 200.100.50 0.0.0 128.128}.
-     */
     private static Value clampedTuple(
             TupleValue value, TupleValue lowest, TupleValue highest) {
 
@@ -21669,10 +16045,6 @@ public final class Natives {
         return TupleValue.of(held);
     }
 
-    /**
-     * Money compared rather than clipped, because a money is a decimal with a
-     * scale and clipping it through a double would lose the scale.
-     */
     private static Value clampedMoney(
             MoneyValue value, MoneyValue lowest, MoneyValue highest) {
 
@@ -21689,14 +16061,6 @@ public final class Natives {
         return Math.max(lowest, Math.min(highest, value));
     }
 
-    /**
-     * DISTANCE: how far apart two points are.
-     *
-     * <p>As the crow flies by default and by the streets with /taxicab, which
-     * is the sum of the two absolute differences. Always a decimal, even when
-     * the answer is whole, because a distance is a measurement rather than a
-     * count.
-     */
     private static Value betweenTwoPoints(
             PairValue from, PairValue to, boolean alongTheStreets) {
 
@@ -21707,18 +16071,9 @@ public final class Natives {
                 : Math.hypot(across, down));
     }
 
-    /** The largest factorial that fits a whole number, and the largest at all. */
     private static final int LARGEST_EXACT_FACTORIAL = 20;
     private static final int LARGEST_FACTORIAL_AT_ALL = 170;
 
-    /**
-     * FACTORIAL: exact while it fits, then approximate, then refused.
-     *
-     * <p>Three ranges and the C draws both lines deliberately. Up to twenty it
-     * fits a whole number. Up to a hundred and seventy it fits a double. The
-     * next one is over a double's largest and would silently be infinity, so
-     * it is refused until there is a bignum rather than answered wrongly.
-     */
     private static Value theFactorialOf(long value) {
         if (value < 0 || value > LARGEST_FACTORIAL_AT_ALL) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
@@ -21739,14 +16094,6 @@ public final class Natives {
         return IntegerValue.of(exact);
     }
 
-    /**
-     * Splitting a string on delimiters, which is what PARSE does when its
-     * rule is not a block.
-     *
-     * <p>Splits on any of the characters in the delimiter string. Empty
-     * input gives no pieces at all, while two delimiters in a row give an
-     * empty piece between them, so emptiness is counted at both ends.
-     */
     private static Value splitOn(Value input, Value rule) {
         if (!(input instanceof StringValue text)) {
             throw Raised.of(EvaluationFailure.EXPECT_ARG,
@@ -21775,30 +16122,10 @@ public final class Natives {
         return BlockValue.block(pieces);
     }
 
-    /**
-     * LAYOUT is not defined, and that is the whole of this method.
-     *
-     * <p>There was a native here that answered its own argument, so a VID
-     * program ran, reported success and drew nothing. Worse than a fork,
-     * because there is nothing to fork: {@code layout} is defined nowhere in
-     * {@code src/mezz} or {@code src/boot}, so a real 3.22.1 has no such
-     * function either and {@code view-funcs.reb:117} calls it anyway.
-     *
-     * <p>So a block handed to VIEW fails here exactly as it fails there, on a
-     * word with no value, until VID is written -- in REBOL, because a dialect
-     * is REBOL. A stub that says yes is worse than the failure it hides.
-     */
+    /** Deliberately empty: a real 3.22.1 has no LAYOUT either. Do not stub it. */
     private void defineLayout() {
     }
 
-    /**
-     * The three commands a windowing host must answer, from
-     * {@code boot/window.reb}.
-     *
-     * <p>VIEW, UNVIEW, DO-EVENTS and the handler list are not here. Those are
-     * REBOL's own, in {@code view-funcs.reb}, and they are borrowed and loaded
-     * rather than rewritten. These three are what that file calls out to.
-     */
     private void defineScreen() {
         define("init-top-window",
                 List.of(Parameter.required("gob", Set.of(Datatype.GOB))),
@@ -21828,17 +16155,6 @@ public final class Natives {
                 });
     }
 
-    /**
-     * INIT-TOP-WINDOW: the gob every window hangs under.
-     *
-     * <p>Three things, and the C does them in three lines. The gob is
-     * remembered, its parent is cut loose because a root has none, and the
-     * screen's size is written onto it.
-     *
-     * <p>The size is the one that matters downstream. VIEW centres a window
-     * with {@code screen/size - window/size / 2}, so a root of the wrong size
-     * puts every centred window in the wrong place.
-     */
     private static Value theRootGobTakenBy(ScreenPort screen, Value given) {
         if (!(given instanceof GobValue root)) {
             throw Raised.of(EvaluationFailure.EXPECT_ARG,
@@ -21849,13 +16165,6 @@ public final class Natives {
         return NoneValue.none();
     }
 
-    /**
-     * GUI-METRIC: one measurement of the screen.
-     *
-     * <p>Eleven of the twelve keywords measure and answer a pair. SCREENS
-     * counts and answers an integer, which is why the C writes it into the
-     * frame and returns before reaching the code that makes a pair.
-     */
     private static Value measurementOf(
             ScreenPort screen, ScreenMetric metric, int display) {
 
@@ -21876,17 +16185,6 @@ public final class Natives {
         return display >= 0 && display < screen.displayCount();
     }
 
-    /**
-     * A word no host serves is refused rather than answered with none.
-     *
-     * <p>Because a metric is a number the caller is about to compute with. A
-     * none reaching {@code screen/size - window/size / 2} fails somewhere
-     * else entirely, and blames the subtraction rather than the misspelling.
-     *
-     * <p>{@code virtual-screen-size} is the case that proves this is not
-     * hypothetical. It is in the word list {@code boot/window.reb} hands the
-     * host, so it reads as supported, and neither host has a branch for it.
-     */
     private static ScreenMetric metricNamedBy(Value asked) {
         if (!(asked instanceof WordValue word)
                 || word.datatype() != Datatype.WORD) {
@@ -21899,7 +16197,6 @@ public final class Natives {
                         "no host serves the metric " + word.canonical()));
     }
 
-    /** Which display was asked about. The first, unless /display said. */
     private static int displayAskedFor(List<Value> arguments, Set<String> refinements) {
         if (!refinements.contains("display")) {
             return 0;
@@ -21913,15 +16210,6 @@ public final class Natives {
         return (int) index.magnitude();
     }
 
-    /**
-     * SHOW: makes the screen's windows match the gob tree, and answers what it
-     * was given.
-     *
-     * <p>Answering the argument is the C returning {@code RXR_VALUE} without
-     * touching the frame slot, and VIEW depends on it. Showing a none does
-     * nothing and answers none, which UNVIEW depends on under a comment
-     * reading "none ok".
-     */
     private static Value whatWasShown(ScreenPort screen, Value given) {
         if (given instanceof GobValue gob) {
             throughScreen(() -> {
@@ -21940,14 +16228,6 @@ public final class Natives {
         }
     }
 
-    /**
-     * What PRINT writes for a value.
-     *
-     * <p>A block is reduced first and its results joined with spaces, which is
-     * why {@code print ["count:" count]} shows the number rather than the
-     * word. Printing a block without reducing it would make the commonest
-     * thing anyone writes with PRINT print the wrong thing.
-     */
     private static String forOutput(Value value, Evaluator evaluator) {
         if (!(value instanceof BlockValue block)) {
             return Molder.form(value);
@@ -21957,13 +16237,6 @@ public final class Natives {
                 .collect(Collectors.joining(" "));
     }
 
-    /**
-     * The base {@code system/options/binary-base} currently names, or sixteen.
-     *
-     * <p>{@code Get_System_Int(SYS_OPTIONS, OPTIONS_BINARY_BASE, 16)} takes a
-     * default for the same reason this does: a script is free to set the field
-     * to anything at all, and a binary still has to mold.
-     */
     private static int binaryBaseNamedBy(Evaluator evaluator) {
         return evaluator.systemContext().slotFor("system").value()
                         instanceof ObjectValue system

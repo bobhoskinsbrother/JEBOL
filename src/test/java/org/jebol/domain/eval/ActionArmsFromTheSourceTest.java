@@ -7,12 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Specified in {@code spec/natives.allium} under "Reading and writing the
- * bits of a set" and "Adding to a map, and asking an object whether", read
- * from {@code s-ops.c}, {@code t-bitset.c}, {@code t-object.c} and
- * {@code series-test.r3}.
- */
 class ActionArmsFromTheSourceTest {
 
     private static String answerTo(String source) {

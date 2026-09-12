@@ -7,21 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The integer datatype and the bit operations over it, read out of
- * {@code src/core/t-integer.c} and {@code REBNATIVE(shift)} in
- * {@code src/core/n-math.c}.
- *
- * <p>Written from the C and not from the Java beside it. Each group names the
- * function it was taken from, so a disagreement can be settled by reading that
- * function rather than by arguing about what a shift ought to answer.
- *
- * <p>The idea underneath SHIFT: it keeps the sign and refuses to lose a bit off
- * the top. That makes it fussier than any shift in Java or C, and it is why
- * {@code shift 1 63} raises rather than answering the most negative whole
- * number. /LOGICAL drops the fussiness and shifts the bits, so the two
- * refinements of one native disagree on almost every boundary.
- */
 class IntegerMathFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -34,7 +19,6 @@ class IntegerMathFromTheSourceTest {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
-    /** The most negative whole number, written the way Rebol's suite writes it. */
     private static final String MOST_NEGATIVE = "m: to-integer #{8000000000000000} ";
 
     private static final String TRUE = "#(true)";

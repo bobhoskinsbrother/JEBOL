@@ -6,14 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Functions ported from a real R3 because they were missing, not because
- * anything failed.
- *
- * <p>Found by comparing JEBOL's whole library against the binary's, and
- * their definitions read out of the binary with BODY-OF. Specified in
- * {@code spec/natives.allium} and measured against R3 3.22.1.
- */
 class PortedLibraryFunctionsTest {
 
     private static String answerTo(String source) {

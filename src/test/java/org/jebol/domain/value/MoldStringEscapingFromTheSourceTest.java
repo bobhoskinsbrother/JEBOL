@@ -6,12 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * MOLD escapes a control character inside the braced form, read from
- * {@code mold-test.r3} "mold string with null char": a string holding a
- * quote molds with braces, and a null inside those braces is still {@code ^@}
- * rather than a raw byte.
- */
 class MoldStringEscapingFromTheSourceTest {
 
     private static String answerTo(String source) {

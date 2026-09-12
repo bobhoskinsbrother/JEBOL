@@ -7,22 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What DO does with each kind of value, out of {@code REBNATIVE(do)} in
- * {@code n-control.c}.
- *
- * <p>The arm that matters is the word: {@code *D_RET = *Get_Var(value); if
- * (ANY_FUNC(D_RET)) VAL_SET_OPT(D_RET, OPTS_REVAL);}. So {@code do 'a} runs what
- * A holds -- calling it when A holds a function -- and that is how a script runs
- * a name it was handed rather than one it wrote.
- *
- * <p>{@code OPTS_REVAL} is set on four arms and no others: a function value, a
- * path, a word and a get-word. So {@code do [f]} and {@code do 'f} are different
- * questions, and only the second calls F.
- *
- * <p>Specified in {@code spec/natives.allium} under "What DO does with each kind
- * of value".
- */
 class DoEachKindFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -7,30 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The four shapes of a time literal, from {@code Scan_Time} in
- * {@code rebol3-source/src/core/t-time.c}, which lists them in a comment:
- *
- * <pre>
- * //    HH:MM       as part1:part2
- * //    HH:MM:SS    as part1:part2:part3
- * //    HH:MM:SS.DD as part1:part2:part3.part4
- * //    MM:SS.DD    as part1:part2.part4
- * </pre>
- *
- * <p><b>The last shape changes what the first two numbers mean.</b> {@code 12:34} is
- * twelve hours and thirty-four minutes; {@code 12:34.5} is twelve <em>minutes</em>
- * and 34.5 seconds. A fraction on the second component is the whole of the
- * difference, and the code says so:
- * {@code if (part3 >= 0 || part4 < 0) ... HOUR_TIME(part1) + MIN_TIME(part2)} against
- * {@code else ... MIN_TIME(part1) + SEC_TIME(part2)}.
- *
- * <p>JEBOL had no MM:SS shape, so a two-part time with a fraction was not a time at
- * all -- it fell through every pattern and became a <em>word</em>, silently. Which is
- * how it went unnoticed: nothing failed, a word simply appeared where a time was
- * meant, and `mezz-debug.reb` line 114 is the one place in Rebol's own library that
- * writes one: {@code round/to time 0:0.001}.
- */
 class TimeLiteralFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -9,26 +9,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * GUI-METRIC: what a script can ask about the screen it is drawing on.
- *
- * <p>Declared in {@code boot/window.reb} as a command of the {@code window}
- * host extension, and served by {@code src/os/posix/host-window.c} and
- * {@code src/os/win32/host-window.c}. Both hosts answer exactly twelve
- * keywords. Eleven measure and answer a pair; {@code screens} counts and
- * answers an integer, which is why the C writes it into the frame and returns
- * before reaching the code that makes a pair.
- *
- * <p>Two things here are load-bearing rather than decorative, and both are
- * pinned below. A title bar's pair has a width of zero, because VIEW writes
- * the whole pair into a window's offset and a width there would push every
- * window sideways. And a word no host serves is refused rather than answered
- * with none, because a metric is a number a caller is about to compute with:
- * a none reaching {@code screen/size - window/size / 2} fails somewhere else
- * entirely and blames the subtraction.
- *
- * <p>Specified in {@code spec/screen.allium}.
- */
 class ScreenMetricsFromTheSourceTest {
 
     private static final String ROOM = "1024x768";
@@ -155,8 +135,6 @@ class ScreenMetricsFromTheSourceTest {
         @Test
         @DisplayName("so the first number of the pair is zero")
         void itsWidthIsZero() {
-            // A pair's halves come out as decimals, which the binary agrees
-            // with: `first 0x22` is 0.0 and its type is decimal!.
             assertThat(answerTo("gui-metric 'title-size")).isEqualTo("0x22");
             assertThat(answerTo("first gui-metric 'title-size")).isEqualTo("0.0");
         }
@@ -284,10 +262,6 @@ class ScreenMetricsFromTheSourceTest {
         @Test
         @DisplayName("but a machine with no displays answers zero whichever is named")
         void noDisplaysStillAnswersZero() {
-            // Not a refusal, because the split is about the screen and not
-            // about the index: a screen that is not there answers zeros for
-            // everything, and the out-of-range check only has a range to
-            // check against when there is a display.
             assertThat(answerFrom(RecordingScreen.absent(),
                     "gui-metric/display 'screen-size 0")).isEqualTo("0x0");
             assertThat(answerFrom(RecordingScreen.absent(),

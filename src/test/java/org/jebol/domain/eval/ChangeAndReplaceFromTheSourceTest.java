@@ -6,12 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CHANGE and REPLACE on strings, from {@code series-test.r3}. CHANGE returns the
- * position just past what it wrote, grows the string when the replacement runs
- * past the tail, and REPLACE copies a replacement that aliases the target before
- * the destructive write.
- */
 class ChangeAndReplaceFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -8,10 +8,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The corpus is test data, so it needs testing too. A malformed entry that
- * silently asserts nothing would look like a passing test for ever.
- */
 class CorpusIntegrityTest {
 
     private static final List<CorpusEntry> ENTRIES = CorpusReader.allEntries();

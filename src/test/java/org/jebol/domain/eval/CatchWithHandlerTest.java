@@ -6,25 +6,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CATCH/WITH, whose handler is a function that may RETURN.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>A function reached by CATCH rather than by name returns the same way
- * as any other. Without that, a RETURN inside the handler escaped the
- * interpreter as a Java exception, which {@code spec/embed.allium} says
- * cannot happen: a host must be able to tell a script's failure from a bug
- * in the interpreter.
- *
- * <p>The handler is given two things, the value and the name the throw
- * carried, and an unnamed throw gives none rather than nothing so the
- * handler can ask.
- */
 class CatchWithHandlerTest {
 
-    /** A handler that returns early, which is what used to escape. */
     private static final String HANDLER =
             "on-catch: func [value [any-type!] name] ["
                     + "  if :name = 'foo [return join \"b\" :value] "

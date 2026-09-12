@@ -6,12 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CATCH corners from {@code evaluation-test.r3}: a bare CATCH/QUIT catches only
- * quit and halt, never a throw; a CATCH/WITH function handler is type-checked
- * and its surplus parameters default to none; and a set-path whose last segment
- * is a paren evaluates it, firing any throw inside.
- */
 class CatchHandlerAndPathFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -7,28 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * RANDOM: the range it draws from, the element {@code /only} picks, and the
- * seed each datatype makes.
- *
- * <p>{@code Random_Range} in {@code f-random.c} throws a draw away and takes
- * another whenever the draw is above the last exact multiple of the limit. Skip
- * that and the answers lean low, badly: over a limit two thirds of the
- * generator's range, the bottom half of the answers arrive twice as often as
- * the top half. It also refuses a limit larger than that range rather than
- * drawing unevenly from it.
- *
- * <p>{@code /only} on a string picks a byte offset into the UTF-8 and steps
- * back to a character boundary, so a character written in more bytes is picked
- * more often. A binary shares that arm and therefore that step, which is why an
- * octet between {@code 80} and {@code BF} can be unreachable. Both were
- * measured on a real Rebol before being written down here.
- *
- * <p>Every {@code A_RANDOM} arm decides its own seed and no two agree: a
- * decimal seeds with its bit pattern rather than its value, a string and a
- * tuple with a checksum of their bytes, a date with its year and day packed
- * together, and a block or a vector has no arm for seeding at all.
- */
 class RandomRangeAndSeedFromTheSourceTest {
 
     private static String answerTo(String source) {

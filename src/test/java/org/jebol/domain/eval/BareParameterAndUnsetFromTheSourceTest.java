@@ -7,13 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A parameter written with no datatypes beside it gets {@code TS_VALUE} in the C,
- * which is every datatype but unset; {@code any-type!} is the wider set that
- * includes it. The equality natives declare the wider one and the ordering
- * natives declare the bare one, so {@code equal? () ()} answers and
- * {@code greater? () 1} is refused at the argument check.
- */
 class BareParameterAndUnsetFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -154,15 +147,6 @@ class BareParameterAndUnsetFromTheSourceTest {
         }
     }
 
-    /**
-     * This said SET writes the absence and the word ends up holding nothing.
-     * It does not: {@code if (not_any && !IS_SET(val)) Trap1(RE_NEED_VALUE,
-     * word);} is the native's first line, so writing an absence takes /ANY and
-     * the plain call refuses. JEBOL wrote it, which is how the test passed.
-     *
-     * <p>The refusal is what makes {@code set 'x get/any 'y} a probe rather
-     * than a silent copy, and CD in the borrowed library depends on it.
-     */
     @Test
     @DisplayName("SET refuses an absence, and /ANY threads it through into the word")
     void setRefusesAnAbsenceUnlessAnyWasAsked() {

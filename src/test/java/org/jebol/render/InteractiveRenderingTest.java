@@ -7,19 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A layout that responds to events.
- *
- * <p>Written before it exists. REBOL's own event model was built for a local
- * window with no round trip in it, so the question this milestone answers is
- * what an action block means when the thing that triggers it is somewhere
- * else entirely.
- *
- * <p>The answer taken here is the same shape as Phoenix LiveView or Hotwire:
- * the view lives on the server, an event arrives naming which face was
- * touched, the action block runs, and the view is rendered again. Nothing is
- * sent to the browser but markup, so a script never runs anywhere but here.
- */
 class InteractiveRenderingTest {
 
     private static View viewOf(String source) {

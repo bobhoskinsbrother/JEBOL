@@ -7,27 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The pair datatype, read out of {@code src/core/t-pair.c}.
- *
- * <p>Written from the C and not from the Java beside it. Each group names the
- * function it was taken from, so a disagreement can be settled by reading that
- * function rather than by arguing about what a pair ought to do.
- *
- * <p>The one fact underneath nearly all of it: a pair's halves are
- * {@code REBD32}, which {@code reb-c.h} declares as a C {@code float}. Single
- * precision, about seven significant digits. That is why a large whole number
- * loses its low digits, why a half above 3.4e38 becomes infinite instead of
- * staying large, and why taking a half out of {@code 0.1x0.2} gives
- * 0.100000001490116. Nothing about the spelling {@code 40x40} suggests any of
- * it.
- *
- * <p>The second fact, which the first hides: the bit operations and the parity
- * questions round each half to a whole number, halves going up, because
- * {@code ROUND_TO_INT} is {@code (REBINT)(floor(d + 0.5))}. Truncating instead
- * agrees on every whole half and disagrees on every fraction, so it is the
- * wrong answer that looks right.
- */
 class PairFromTheSourceTest {
 
     private static String answerTo(String source) {

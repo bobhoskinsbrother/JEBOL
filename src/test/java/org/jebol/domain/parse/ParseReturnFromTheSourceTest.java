@@ -7,21 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * PARSE's RETURN, which says what the whole PARSE answers instead of true or
- * false.
- *
- * <p>It is a prefix on the rule after it, like COPY with no word to put the
- * slice in: the rule has to match, and the span it matched becomes the answer.
- * Given a paren instead it answers whatever the paren evaluates to. Either way
- * it is a throw and not a result -- {@code Throw_Return_Series} in
- * {@code u-parse.c} -- so nothing after the rule runs and the value goes past
- * every enclosing block to the PARSE that started it.
- *
- * <p>JEBOL had it for a block and not for a string, and the two are separate
- * parsers. That stopped Rebol's own CSV codec at its first line and took the
- * whole of the csv file with it.
- */
 class ParseReturnFromTheSourceTest {
 
     private static String answerTo(String source) {

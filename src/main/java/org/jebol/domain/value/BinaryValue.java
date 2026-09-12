@@ -75,7 +75,6 @@ public record BinaryValue(BinaryStorage storage, int index) implements SeriesVal
         return other instanceof BinaryValue binary && binary.storage == storage;
     }
 
-    /** REBOL's {@code ==}: the same remaining octets, compared in turn. */
     @Override
     public boolean equals(Object other) {
         if (!(other instanceof BinaryValue binary)) {

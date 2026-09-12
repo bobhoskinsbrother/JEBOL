@@ -3,16 +3,8 @@ package org.jebol.domain.render;
 /**
  * One piece of a path, in coordinates measured from the surface.
  *
- * <p>Six kinds, and both a desktop toolkit and a browser canvas execute all
- * six directly rather than approximating any of them. That is the test a kind
- * has to pass to be here: anything one renderer would have to approximate is a
- * place the two could differ.
- *
- * <p>An ellipse is a step rather than four Bézier curves for exactly that
- * reason. Both draw one exactly; four curves would be two different
- * approximations of a circle, which shows up as a soft edge in one renderer
- * and a hard one in the other and looks like a bug in whichever somebody
- * happened to be looking at.
+ * <p>A kind belongs here only where every renderer executes it directly:
+ * anything one would have to approximate is a place two could differ.
  *
  * <p>Specified in {@code spec/draw.allium}.
  */

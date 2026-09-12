@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * AJOIN takes its datatype from the first value.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Answering a string for everything is right for most inputs and wrong
- * for the three that matter, and nothing about the text gives it away --
- * {@code %ab} and {@code "ab"} differ only in what they are.
- */
 class AjoinKeepsTheFirstDatatypeTest {
 
     private static String answerTo(String source) {

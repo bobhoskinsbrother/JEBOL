@@ -7,27 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@code codecs/png/size?} and its four siblings, which read a picture's
- * dimensions out of the first few bytes without decoding the picture.
- *
- * <p>They are Rebol's own code, in {@code codec-image-ext.reb}, and JEBOL had
- * the file all along. It never did anything, because every one of its blocks
- * opens with {@code if find codecs 'png} and the load order put it before
- * {@code codec-image.reb} -- the file that registers png, jpeg, gif, bmp, dds
- * and tiff. So each guard was false, each {@code put} was skipped, and nothing
- * said a word.
- *
- * <p>That is the failure mode worth remembering: a borrowed file that loads
- * cleanly and does nothing looks exactly like a borrowed file that works.
- * {@code borrowedLoadFailures} was empty and the codecs simply had no
- * {@code size?}.
- *
- * <p>The bytes below are headers built by hand rather than real pictures, so
- * the test needs no files and no filesystem grant; each was checked against a
- * running 3.22.5 first, including the two answers that are plainly wrong and
- * are what Rebol says anyway.
- */
 class ImageCodecSizeFromTheSourceTest {
 
     private static String answerTo(String source) {

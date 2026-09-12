@@ -6,13 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * DIFFERENCE over text, and a path index that counts backwards.
- *
- * <p>Two unrelated defects that a sweep of the unicode suite turned up
- * together, and both of the same shape: a form that worked for one datatype
- * and was never wired for the other.
- */
 class DifferenceAndNegativePathFromTheSourceTest {
 
     private static String answerTo(String source) {

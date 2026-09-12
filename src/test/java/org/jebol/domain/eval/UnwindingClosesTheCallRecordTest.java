@@ -7,43 +7,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A call that unwinds is no longer being run, however it left.
- *
- * <p>The evaluator keeps two things when it enters a function body: a frame
- * on a deque local to the walk, and an entry in the record of which calls are
- * open. The deque goes when the walk returns, whatever way it returns. The
- * record is a field, and it was closed only where a frame completes normally
- * -- so an error unwinding past the loop left every call it passed through
- * still recorded.
- *
- * <p>What that looked like: {@code stack/depth} climbing by one for every
- * error a script caught and never coming back down. A fresh interpreter
- * answered 2, five caught errors made it 7, five caught throws 12, and five
- * six-deep recursions 52. DS printed all of them. A long-lived interpreter
- * that catches errors -- which is every server -- accumulated phantom frames
- * without limit.
- *
- * <p>Each test below was run against the unfixed evaluator and failed. The
- * numbers in the comments are what it answered, because a regression test
- * that has never been red is a guess.
- *
- * <p>The property under all of them is the one worth stating on its own:
- * <em>an interpreter that has finished doing something is in the state it was
- * in before it started.</em> A test for one caught error would pass on code
- * that leaks, as long as it leaks consistently; the accumulation is what
- * names the defect, so every case here runs its subject repeatedly and
- * compares against the depth before.
- */
 class UnwindingClosesTheCallRecordTest {
 
-    /**
-     * The depth of a fresh interpreter at the top level.
-     *
-     * <p>One, not zero: {@code Stack_Depth()} walks every DSF frame including
-     * the frame of the STACK call doing the asking, so the question opens the
-     * frame that answers it.
-     */
     private static final String AT_REST = "1";
 
     private static Interpreter fresh() {
@@ -55,7 +20,6 @@ class UnwindingClosesTheCallRecordTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** What a piece of source wrote, rather than what it answered. */
     private static String printedBy(String source) {
         StringBuilder captured = new StringBuilder();
         Interpreter interpreter = Interpreter.writingTo(captured::append);
@@ -64,12 +28,10 @@ class UnwindingClosesTheCallRecordTest {
         return captured.toString();
     }
 
-    /** How many frame headings DS wrote while the source ran. */
     private static int framesPrintedBy(String source) {
         return printedBy(source).split("STACK\\[", -1).length - 1;
     }
 
-    /** The depth after running a piece of source in a fresh interpreter. */
     private static String depthAfter(String source) {
         Interpreter interpreter = fresh();
         answerTo(interpreter, source);
@@ -212,9 +174,6 @@ class UnwindingClosesTheCallRecordTest {
         @Test
         @DisplayName("DS prints the same frames after twenty caught errors as after none")
         void theStackDumpDoesNotGrow() {
-            // DS prints its own frame, which a real 3.22.1 does too --
-            // `STACK[33] ds[0] native!` at its top level. So the property is
-            // that the print does not grow, not that it is empty.
             assertThat(framesPrintedBy("f: func [] [1 / 0]  loop 20 [try [f]]  ds"))
                     .as("caught errors must not add frames to what DS prints")
                     .isEqualTo(framesPrintedBy("ds"));
@@ -223,10 +182,6 @@ class UnwindingClosesTheCallRecordTest {
         @Test
         @DisplayName("and still names the call that really is open")
         void theStackDumpStillShowsARealFrame() {
-            // Not a count: JEBOL's DS prints the innermost frame where a real
-            // 3.22.1 prints the whole chain down through DO -- a divergence
-            // of its own and nothing to do with this defect. What matters
-            // here is that a live call is still named after twenty dead ones.
             assertThat(printedBy("f: func [] [1 / 0]  loop 20 [try [f]]  g: func [] [ds]  g"))
                     .contains("g[0]");
         }

@@ -7,32 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The rest of the SYSTEM object: the catalogues, the locale, the console and
- * the root context.
- *
- * <p>{@code boot/sysobj.reb}. A catalogue says what this interpreter has, so a
- * script can ask rather than guess -- which is what decides their contents. A
- * catalogue naming something this build cannot do is worse than an empty one,
- * because a script reads it precisely so it need not guess, and a list of
- * ciphers nobody can use sends it down a path that fails later and further
- * away.
- *
- * <p>CIPHERS grew from nothing to all forty-two as the cipher port did, and
- * it still holds what the port really serves rather than what REBOL happens
- * to list -- the two agree now because the port caught up, not because the
- * number was copied. FILTERS is still empty for the same reason it always
- * was: RESIZE samples one way with no choice of filter, so all fifteen names
- * would be a lie.
- *
- * <p>ACTIONS and NATIVES are the two halves of the function set carried in the
- * host language, and the split is Rebol's declaration rather than a fact about
- * the code here -- JEBOL answers {@code native!} for both where R3 answers
- * {@code action!} for the sixty. {@code actions.reb} is the authority for
- * which is which.
- *
- * <p>Specified in {@code spec/natives.allium} under the catalogues.
- */
 class SystemCataloguesFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -91,10 +65,6 @@ class SystemCataloguesFromTheSourceTest {
         @Test
         @DisplayName("a catalogued action reaches its function once it is bound")
         void everyActionIsReachableOnceBound() {
-            // Through BIND, because the words in a catalogue are unbound --
-            // in a real 3.22.1 as well, where `value? first
-            // system/catalog/actions` is also false. A catalogue is a list of
-            // names, not of the things they name.
             assertThat(answerTo("""
                     empty? remove-each n copy system/catalog/actions [
                         value? bind n system/contexts/lib
@@ -104,11 +74,6 @@ class SystemCataloguesFromTheSourceTest {
         @Test
         @DisplayName("and so does every native but the one the boot takes away")
         void everyNativeButTheOneTheBootRemoves() {
-            // LIMIT-USAGE is catalogued and unreachable, in a real 3.22.1
-            // too. The catalogue says what the build carries; mezz-secure.reb
-            // then runs `unset in lib 'limit-usage` and takes the word off
-            // the shelf. Both statements are true at once and the catalogue
-            // is not the one that changed.
             assertThat(answerTo("""
                     (mold remove-each n copy system/catalog/natives [
                         value? bind n system/contexts/lib
@@ -137,16 +102,6 @@ class SystemCataloguesFromTheSourceTest {
                     .isEqualTo(TRUE);
         }
 
-        /**
-         * This used to assert the block was empty, and that was right while
-         * there was no cipher port. There is one now and it serves every
-         * cipher a real 3.22.5 names, so the two catalogues match in length
-         * and in order.
-         *
-         * <p>The rule the list grew under has not changed: it names what the
-         * port really serves. It reached forty-two because the port did, not
-         * because the number was copied across.
-         */
         @Test
         @DisplayName("CIPHERS names what the cipher port serves, which is now all of them")
         void theCiphersAreTheOnesTheCipherPortServes() {
@@ -163,19 +118,6 @@ class SystemCataloguesFromTheSourceTest {
                     .isEqualTo(FALSE);
         }
 
-        /**
-         * This asserted the catalogue was empty, on the reasoning that RESIZE
-         * samples one way and naming all fifteen would be a lie. The reasoning
-         * was wrong, and the cipher catalogue above is what shows why: a
-         * catalogue names what may be <em>asked for</em>, so a caller can check
-         * before asking. Which filter runs changes how a shrunken photograph
-         * looks; it does not change what RESIZE is.
-         *
-         * <p>The lie was the empty one. It said no filter could be named, and
-         * meanwhile a mistyped name was accepted in silence -- so a caller
-         * asking for one that means nothing got the default and no word about
-         * it. Naming the fifteen and refusing the sixteenth is the honest pair.
-         */
         @Test
         @DisplayName("and FILTERS names the fifteen RESIZE can be asked for")
         void theFiltersAreTheOnesResizeCanBeAskedFor() {
@@ -254,10 +196,6 @@ class SystemCataloguesFromTheSourceTest {
         @Test
         @DisplayName("no field of a scheme has leaked in beside the schemes")
         void noSchemeFieldsLeakedIn() {
-            // system/schemes/title answered "MIDI": a scheme registration was
-            // writing its own spec fields into the schemes object as though
-            // each were a scheme. A script walking the schemes to see what it
-            // can open found five things it cannot.
             assertThat(answerTo("""
                     empty? remove-each w [title name spec init find] [
                         none? find words-of system/schemes w

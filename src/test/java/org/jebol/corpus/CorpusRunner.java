@@ -8,19 +8,11 @@ import org.jebol.domain.value.ErrorValue;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Runs one corpus entry and says what it did.
- *
- * <p>Shared so that the strict test and the coverage report agree on what
- * passing means. Two implementations of that would drift, and the one that
- * drifted would be the flattering one.
- */
 final class CorpusRunner {
 
     private CorpusRunner() {
     }
 
-    /** What running an entry produced, in the terms the corpus asserts on. */
     record Result(
             boolean completed,
             String displayed,
@@ -28,12 +20,10 @@ final class CorpusRunner {
             Optional<String> errorCategory,
             Optional<String> errorId) {
 
-        /** Whether this matches everything the entry asserted. */
         boolean matches(CorpusEntry entry) {
             return mismatch(entry).isEmpty();
         }
 
-        /** What did not match, or empty if everything did. */
         Optional<String> mismatch(CorpusEntry entry) {
             if (entry.expectedError().isPresent()) {
                 List<String> wanted = List.of(entry.expectedError().orElseThrow().split("\\s+"));
@@ -68,7 +58,6 @@ final class CorpusRunner {
         }
     }
 
-    /** Collects everything the script printed, so `prints` can be asserted. */
     private static final class Captured implements OutputPort {
 
         private final StringBuilder written = new StringBuilder();

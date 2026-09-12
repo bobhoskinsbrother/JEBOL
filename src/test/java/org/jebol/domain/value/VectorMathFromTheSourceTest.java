@@ -10,19 +10,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Arithmetic on a whole vector at once.
- *
- * <p>Two shapes, and {@code REBTYPE(Vector)} sends them to two functions. A
- * vector against a number applies the number to every element and answers a
- * new vector; a vector against another vector works element by element, as far
- * as the shorter of the two goes.
- *
- * <p>Neither ever complains about a number that will not fit. The point of
- * asking for an {@code int8!} vector is that it holds bytes, so 200 added to
- * 4 is -52 and that is the answer, not an error. Rebol's own test file says
- * so in as many words: "the values are truncated on overflow".
- */
 class VectorMathFromTheSourceTest {
 
     private static final String TRUE = "#(true)";

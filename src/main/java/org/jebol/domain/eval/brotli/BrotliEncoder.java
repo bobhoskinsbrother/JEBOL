@@ -4,28 +4,6 @@ import org.jebol.domain.eval.*;
 
 import java.util.Arrays;
 
-/**
- * Brotli, the writing half, at the fastest of its twelve settings.
- *
- * <p>{@code compress_fragment.c}, which is what {@code BrotliEncoderCompress}
- * runs at quality zero: one pass over the input, emitting each match as it is
- * found rather than gathering statistics first. The literal prefix code is
- * built from the bytes before any matching is done, which the file itself
- * calls an approximation; the command and distance codes start from a baked-in
- * guess and are re-derived per meta-block after the first.
- *
- * <p>It is byte for byte what a real 3.22.5 writes at level zero, which is
- * what the two exact-byte assertions in Rebol's own suite ask for and what a
- * round trip on its own would never establish.
- *
- * <p>Levels above zero are not here. The eleven other settings are eleven
- * other encoders -- block splitting, histogram clustering, context modelling
- * and a near-optimal parse -- and porting them is a far larger job than
- * reading any of them. What this build writes at every level is what a real
- * one writes at level zero: valid Brotli that any decoder reads, and smaller
- * than the input, but not the bytes a real one would write above level zero.
- * {@link BrotliDecoder} has no such limit and reads all twelve.
- */
 final class BrotliEncoder {
 
     private BrotliEncoder() {
@@ -70,7 +48,6 @@ final class BrotliEncoder {
             0, 0, 0, 0,
     };
 
-    /** The command and distance codes for the first meta-block, already coded. */
     private static final int[] DEFAULT_COMMAND_CODE = {
             0xff, 0x77, 0xd5, 0xbf, 0xe7, 0xde, 0xea, 0x9e, 0x51, 0x5d, 0xde, 0xc6,
             0x70, 0x57, 0xbc, 0x58, 0x58, 0x58, 0xd8, 0xd8, 0x58, 0xd5, 0xcb, 0x8c,
@@ -89,12 +66,6 @@ final class BrotliEncoder {
             1, 1, 1, 1, 0, 0, 0, 0,
     };
 
-    /**
-     * The quality this build has an encoder for, which is now all twelve.
-     *
-     * <p>{@code MAX(0, MIN(11, level))} in the C, then what the level nobody
-     * asked for means: six.
-     */
     private static int qualityFor(int level) {
         int asked = level == NOBODY_ASKED ? DEFAULT_QUALITY : level;
         return Integer.compareUnsigned(asked, HIGHEST_QUALITY) > 0
@@ -119,11 +90,6 @@ final class BrotliEncoder {
         return BrotliGenericEncoder.encoded(source, quality);
     }
 
-    /**
-     * The same stream framing as quality zero, over the other fragment
-     * encoder: a window size, the input in blocks of one window, then an empty
-     * last meta-block.
-     */
     private static byte[] twoPass(byte[] source) {
         BrotliBits writer = new BrotliBits(2 * source.length + 512);
         writer.write(4, ((WINDOW_BITS - 17) << 1) | 1);
@@ -188,11 +154,6 @@ final class BrotliEncoder {
             return writer.written();
         }
 
-        /**
-         * {@code BrotliCompressFragmentFast}: one window's worth of input,
-         * with the whole thing rewritten as stored bytes if what came out was
-         * longer than that would have been.
-         */
         private void compressOneFragment(int at, int size, boolean isLast) {
             int openedAt = writer.at();
             if (size == 0) {
@@ -201,7 +162,7 @@ final class BrotliEncoder {
                 writer.jumpToByteBoundary();
                 return;
             }
-            prepareTable(size);
+            prepareTableRoundingAnEvenWidthUpBecauseOnlyOddOnesWork(size);
             compress(at, size);
             if (writer.at() - openedAt > 31 + ((long) size << 3)) {
                 storeUncompressed(at, at + size, openedAt);
@@ -213,14 +174,8 @@ final class BrotliEncoder {
             }
         }
 
-        /**
-         * How wide the match table is.
-         *
-         * <p>{@code HashTableSize}, then the one-pass encoder's own
-         * requirement that only odd widths are supported, which rounds an even
-         * one up rather than down.
-         */
-        private void prepareTable(int size) {
+        private void prepareTableRoundingAnEvenWidthUpBecauseOnlyOddOnesWork(
+                int size) {
             int wide = 256;
             while (wide < MAX_TABLE_SIZE && wide < size) {
                 wide <<= 1;
@@ -245,39 +200,33 @@ final class BrotliEncoder {
 
             storeMetaBlockHeader(blockSize, false);
             writer.write(13, 0);
-            literalRatio = buildAndStoreLiteralPrefixCode(from, blockSize);
+            literalRatio = buildAndStoreLiteralPrefixCodeAnsweringMillibitsPerByte(
+                        from, blockSize);
             for (int each = 0; each + 7 < DEFAULT_COMMAND_CODE_BITS; each += 8) {
                 writer.write(8, DEFAULT_COMMAND_CODE[each >> 3]);
             }
             writer.write(DEFAULT_COMMAND_CODE_BITS & 7,
                     DEFAULT_COMMAND_CODE[DEFAULT_COMMAND_CODE_BITS >> 3]);
 
-            while (emitCommands()) {
+            while (emitCommandsAnsweringWhetherThereIsMoreInput()) {
                 metaBlockStart = from;
                 blockSize = Math.min(fragmentEnd - from, FIRST_BLOCK_SIZE);
                 totalBlockSize = blockSize;
                 mlenAt = writer.at() + 3;
                 storeMetaBlockHeader(blockSize, false);
                 writer.write(13, 0);
-                literalRatio = buildAndStoreLiteralPrefixCode(from, blockSize);
+                literalRatio = buildAndStoreLiteralPrefixCodeAnsweringMillibitsPerByte(
+                        from, blockSize);
                 buildAndStoreCommandPrefixCode();
             }
         }
 
-        /**
-         * One pass of matching over the current block, and the tail of
-         * literals after it.
-         *
-         * <p>Answers whether there is more input, in which case the caller
-         * writes a fresh meta-block header and calls again. The block may also
-         * be abandoned part way through and stored plainly, which is the same
-         * answer.
-         */
-        private boolean emitCommands() {
+        private boolean emitCommandsAnsweringWhetherThereIsMoreInput() {
             while (true) {
                 System.arraycopy(COMMAND_HISTOGRAM_SEED, 0, commandHistogram, 0, 128);
                 int end = from + blockSize;
-                Match found = scanForMatches(end);
+                Match found =
+                        scanForMatchesWideningTheStrideTheLongerNothingIsFound(end);
                 if (found == Match.ABANDONED) {
                     return from < fragmentEnd;
                 }
@@ -311,16 +260,8 @@ final class BrotliEncoder {
 
         private enum Match { RAN_OUT, ABANDONED }
 
-        /**
-         * The matching loop.
-         *
-         * <p>If thirty-two bytes go by without a match, start looking at every
-         * other byte; after thirty-two more, every third, and so on. A match
-         * resets the stride. The C explains this as costing about a tenth of a
-         * per cent of density on data that compresses, and being a large win
-         * on data that does not, because the encoder gives up looking quickly.
-         */
-        private Match scanForMatches(int end) {
+        private Match scanForMatchesWideningTheStrideTheLongerNothingIsFound(
+                int end) {
             if (blockSize < INPUT_MARGIN_BYTES) {
                 return Match.RAN_OUT;
             }
@@ -410,15 +351,6 @@ final class BrotliEncoder {
             }
         }
 
-        /**
-         * Puts the four positions just before {@code at} into the table, and
-         * answers the candidate for {@code at} itself.
-         *
-         * <p>The C could start matching at {@code at} straight away and
-         * explains that it fills these in first "to improve compression":
-         * positions inside a copy are never scanned by the outer loop, so
-         * without this they would never be candidates for anything later.
-         */
         private int rehashAroundTheCopy(int at) {
             long window = loadEight(at - 3);
             table[hashOfShifted(window, 0)] = at - 3;
@@ -490,15 +422,6 @@ final class BrotliEncoder {
             writer.writeBytes(input, begin, end - begin);
         }
 
-        /**
-         * Whether an insert this long is better left uncompressed.
-         *
-         * <p>{@code ShouldUseUncompressedMode}. If what has been written so
-         * far is more than one fiftieth of what is about to be inserted as
-         * literals, the matching is paying for itself; otherwise it is not,
-         * and if the literals were costing more than eight bits each anyway
-         * the whole block goes down as stored bytes.
-         */
         private boolean shouldStoreInstead(int insertLength) {
             int compressed = nextEmit - metaBlockStart;
             if (compressed * 50 > insertLength) {
@@ -580,10 +503,6 @@ final class BrotliEncoder {
             }
         }
 
-        /**
-         * The same length, written in the part of the alphabet that says "and
-         * the distance is the one before".
-         */
         private void emitCopyLengthWithLastDistance(int copyLength) {
             if (copyLength < 12) {
                 writer.write(commandDepth[copyLength - 4],
@@ -634,21 +553,8 @@ final class BrotliEncoder {
             commandHistogram[code]++;
         }
 
-        /**
-         * The literal code, built from the input before any matching.
-         *
-         * <p>The first eleven appearances of each byte count triple, which the
-         * C explains as accounting for the balancing effect of the matching
-         * phase: bytes that turn out to sit inside matches are never written as
-         * literals at all, so a flatter histogram is closer to the truth than
-         * the raw one. Above thirty-two kilobytes only every twenty-ninth byte
-         * is counted, and then every byte gets one added so that none of them
-         * ends up with no code at all.
-         *
-         * <p>Answers the estimated cost in millibits per byte, which is what
-         * decides later whether to abandon the block and store it plainly.
-         */
-        private int buildAndStoreLiteralPrefixCode(int at, int size) {
+        private int buildAndStoreLiteralPrefixCodeAnsweringMillibitsPerByte(
+                int at, int size) {
             Arrays.fill(histogram, 0);
             long total;
             if (size < (1 << 15)) {
@@ -684,15 +590,6 @@ final class BrotliEncoder {
             return (int) ((ratio * 125) / total);
         }
 
-        /**
-         * Whether the next block is enough like this one to keep going inside
-         * the same meta-block rather than starting another.
-         *
-         * <p>{@code ShouldMergeBlock}: sample one byte in forty-three and
-         * compare what those bytes would cost under this block's literal code
-         * against what a fresh code would cost plus two hundred bits of
-         * header.
-         */
         private boolean shouldMergeBlock(int at, int size) {
             Arrays.fill(histogram, 0);
             int sampleRate = 43;
@@ -707,22 +604,14 @@ final class BrotliEncoder {
             return room >= 0.0;
         }
 
-        /**
-         * The command and distance codes for a meta-block after the first.
-         *
-         * <p>The sixty-four command symbols this encoder uses are not
-         * contiguous in the full alphabet of seven hundred and four, so the
-         * depths are shuffled into place before the code is stored and the
-         * bits are shuffled back afterwards. The C says it does this "because
-         * having the symbols in this order in the command bits saves a few
-         * branches in the Emit* functions".
-         */
         private void buildAndStoreCommandPrefixCode() {
             int[] spreadDepth = new int[COMMAND_SYMBOLS];
             int[] spreadBits = new int[64];
 
-            tree.build(commandHistogram, 0, 64, 15, commandDepth, 0);
-            tree.build(commandHistogram, 64, 64, 14, commandDepth, 64);
+            tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+                    commandHistogram, 0, 64, 15, commandDepth, 0);
+            tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+                    commandHistogram, 64, 64, 14, commandDepth, 64);
 
             System.arraycopy(commandDepth, 0, spreadDepth, 0, 24);
             System.arraycopy(commandDepth, 40, spreadDepth, 24, 8);

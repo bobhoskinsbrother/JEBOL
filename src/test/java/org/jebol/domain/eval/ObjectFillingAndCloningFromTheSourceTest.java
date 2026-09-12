@@ -7,14 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Filling one object from another is {@code Copy_Deep_Values(obj, 1, tail,
- * TS_CLONE)} followed by {@code Rebind_Block}: the target shares no series with
- * the source, and only words bound to the source frame are rehomed. Rebol's own
- * tests pin the shapes -- issue-1874 for the cloned series, issue-2045 for a
- * function and a block that came from outside, issue-2049 and issue-2050 for what
- * is rehomed and what is not, and issue-2118 for CONSTRUCT's floor.
- */
 class ObjectFillingAndCloningFromTheSourceTest {
 
     private static String answerTo(String source) {

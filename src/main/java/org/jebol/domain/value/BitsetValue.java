@@ -19,21 +19,8 @@ public final class BitsetValue implements Value {
 
     private byte[] octets;
 
-    /**
-     * Whether the set means everything except what its bits name.
-     *
-     * <p>A flag rather than every bit flipped. Flipping them gives a set
-     * that answers the same questions and molds as a wall of FF, and it
-     * loses the fact that a caller asked for a complement -- which
-     * COMPLEMENT? has to answer and MOLD has to print.
-     */
     private boolean complemented;
 
-    /**
-     * Whether PROTECT locked this set. A bitset is protected the way a
-     * series is -- {@code IS_BITSET(value)} sits in the same line of
-     * {@code Protect_Value} as the series -- and every mutation asks first.
-     */
     private boolean protectedFromChange;
 
     private BitsetValue(byte[] octets) {
@@ -224,7 +211,6 @@ public final class BitsetValue implements Value {
         }
     }
 
-    /** Whether the bits themselves name this character. */
     private boolean namesDirectly(int code) {
         int octet = code / BITS_PER_OCTET;
         return octet < octets.length
@@ -247,20 +233,6 @@ public final class BitsetValue implements Value {
         return octets.clone();
     }
 
-    /**
-     * Two sets are equal when they name the same bits the same way round.
-     *
-     * <p>The flag counts as much as the octets do. A set and its complement
-     * share every byte and mean opposite things, so comparing the octets alone
-     * made {@code b} equal {@code complement b} -- which Rebol's own suite
-     * asks about four ways over, by EQUIV?, EQUAL?, STRICT-EQUAL? and SAME?,
-     * and expects false from all four.
-     *
-     * <p>Length counts too, and is already carried by the byte comparison:
-     * {@code make bitset! 1} and {@code make bitset! 9} hold no bits between
-     * them and are still not equal, because one has room for eight and the
-     * other for sixteen.
-     */
     @Override
     public boolean equals(Object other) {
         return other instanceof BitsetValue bitset

@@ -40,13 +40,11 @@ public final class Interpreter {
     private final Evaluator evaluator;
     private final Bounds bounds;
 
-    /** What each borrowed file stopped on, in the order they were tried. */
     private final Map<String, String> borrowedLoadFailures = new LinkedHashMap<>();
 
     private final AtomicBoolean cancellationRequested = new AtomicBoolean();
     private volatile long deadlineNanos = Long.MAX_VALUE;
 
-    /** Where the sys files define their words: {@code system/contexts/sys}. */
     private final Context systemInternals;
 
     private Interpreter(OutputPort output, Bounds bounds) {
@@ -89,88 +87,12 @@ public final class Interpreter {
     }
 
 
-    /**
-     * Fills {@code system/modules} with the addresses Rebol publishes.
-     *
-     * <p>The names are {@code sysobj.reb}'s and the addresses are not. IMPORT
-     * looks in three places in order -- what is already loaded, a file in the
-     * modules directory, and then {@code select system/modules source}, which
-     * it reads and saves -- and the third is the only one that can find a
-     * module nobody has installed.
-     *
-     * <p>Rebol sends that third step to {@code src.rebol.tech} and evaluates
-     * what comes back, with no signature, no checksum and no pinned version
-     * between the wire and the evaluator: a proxy in between, or an upstream
-     * that changes, is evaluated as it arrives. Here each address names the
-     * BUNDLED scheme instead, so the module is read out of this build and
-     * cannot change under a running system. DOWNLOAD-EXTENSION does {@code
-     * content: read source} either way and never learns the difference.
-     *
-     * <p>Before the library, because a module that loads replaces its address
-     * in the same object: {@code repend system/modules [name module]} is the
-     * last thing LOAD-MODULE does. So the table is both the list of what may be
-     * fetched and the record of what has been, and putting it down afterwards
-     * would write the addresses back over the modules.
-     *
-     * <p>Only the thirteen this build has no other way to reach are here.
-     * Rebol's table has two other kinds and neither belongs: fourteen compiled
-     * shared libraries, which nothing here can load and which name things JEBOL
-     * has anyway -- BROTLI is the {@code br} compression method -- and nineteen
-     * modules this build already vendors and loads. An address for one of those
-     * nineteen is replaced during the boot and so never fetches anything, which
-     * makes it a live address one load-order change away from being reachable,
-     * for code that is already in the jar.
-     */
     private void putTheAddressesOfTheModulesRebolPublishes() {
         runTheBootStep("modules.reb");
     }
 
 
 
-    /**
-     * Registers the schemes JEBOL has an actor for.
-     *
-     * <p>Rebol does this in {@code init-schemes}, which registers every scheme
-     * its host can reach. JEBOL registers the one it can serve, through the
-     * same REBOL function Rebol uses: MAKE-SCHEME in {@code sys-ports.reb}
-     * builds the scheme and calls SET-SCHEME, and SET-SCHEME is the native
-     * that attaches an actor.
-     *
-     * <p>After the borrowed library, because MAKE-SCHEME comes from it. This
-     * is the seam the other way about: Java calls REBOL, exactly as Rebol's C
-     * calls {@code make-port*}.
-     *
-     * <p>Six files, and five of them are copied from {@code init-schemes} as
-     * they stand, because in each case it is the scheme's own INIT that has to
-     * be exact rather than its title:
-     *
-     * <ul>
-     * <li>{@code schemes.reb} -- the five that need nothing but a name, and the
-     *     line that points DECODE-URL at the parser.
-     * <li>{@code scheme-system.reb} -- its AWAKE is the whole of the event
-     *     loop. It takes each event off the queue, calls WAKE-UP on the port
-     *     the event names, keeps a list of the ports that said they were
-     *     finished, and answers true when one the caller named is on it.
-     *     Eight events at a time, and Rebol's comment says why.
-     * <li>{@code scheme-file.reb} -- its INIT is what makes a url another way
-     *     of writing a path, and the parse rule is not the {@code ://} it
-     *     looks like: up to the first colon, then at most two slashes, and the
-     *     rest is the file. So {@code file:a.txt}, {@code file:/a.txt} and
-     *     {@code file://a.txt} name the same relative file.
-     * <li>{@code scheme-dir.reb} -- the file scheme under another name.
-     * <li>{@code scheme-checksum.reb} -- its INIT is what makes
-     *     {@code checksum:sha1}, {@code checksum://sha1} and a spec block name
-     *     the same method, by looking in the three places a url can leave one
-     *     and falling back to MD5.
-     * <li>{@code scheme-crypt.reb} -- its INIT is what makes
-     *     {@code crypt:chacha20}, {@code crypt://AES-128-CBC#decrypt} and a
-     *     spec block name the same port, and where an algorithm outside
-     *     {@code system/catalog/ciphers} is refused.
-     * </ul>
-     *
-     * <p>Writing any of those in Java would be a second implementation of a
-     * rule REBOL already states once.
-     */
     private boolean theSchemesAreRegistered;
 
     private void registerTheSchemesJebolCanServe() {
@@ -189,31 +111,11 @@ public final class Interpreter {
         }
     }
 
-    /**
-     * One of JEBOL's own boot steps, read from the build and run.
-     *
-     * <p>These are REBOL and they live in {@code /org/jebol/boot/} as REBOL,
-     * rather than in Java text blocks: a scheme's INIT is a function and a
-     * table of addresses is a block, and neither reads as either when it is
-     * quoted inside another language. They are read through the same classpath
-     * reader as the prelude and Rebol's own library, and differ from those in
-     * where the words they define end up rather than in how they are found.
-     *
-     * <p>A missing one is a broken build rather than something a script did,
-     * so it stops the interpreter being half-made.
-     */
     private void runTheBootStep(String name) {
         run(bootStepNamed(name));
     }
 
-    /**
-     * One boot step as it was written, for the caller that has to fill it in.
-     *
-     * <p>A step naming the script a run was given cannot be a finished piece of
-     * REBOL, because the paths are not known until there is one. It is still
-     * REBOL and still belongs in a file with the rest: what comes back is a
-     * template the caller formats.
-     */
+    /** One boot step as it was written, for a caller that has to fill it in. */
     public static String bootStepNamed(String name) {
         String source = resourceText(BOOT + name);
         if (source == null) {
@@ -222,24 +124,8 @@ public final class Interpreter {
         return source;
     }
 
-    /** Where JEBOL's own boot steps live, as against Rebol's in {@code mezz/}. */
     private static final String BOOT = "/org/jebol/boot/";
 
-
-
-    /**
-     * Opens {@code system/ports/event}, which the view system needs to exist.
-     *
-     * <p>{@code init-schemes} in {@code sys-ports.reb} ends with a run of these
-     * and JEBOL serves one of them. It has to be open before the borrowed
-     * library runs, because INIT-VIEW-SYSTEM reads
-     * {@code system/ports/event/extra} on its ninth line and none has no
-     * extra.
-     *
-     * <p>Opened even when no host has supplied a screen, and a real 3.22.1
-     * does the same: the console build has a whole event port with a default
-     * AWAKE that prints, and no graphics behind it at all.
-     */
     private void openTheEventPort() {
         if (!systemInternals.knows("make-scheme")) {
             return;
@@ -247,67 +133,22 @@ public final class Interpreter {
         runTheBootStep("ports.reb");
     }
 
-    /**
-     * Opens {@code system/ports/system}, the one queue everything that happens
-     * goes on.
-     *
-     * <p>Its STATE is the events waiting to be dealt with and its DATA is the
-     * ports that have woken, and WAIT is nothing but a loop over its AWAKE.
-     * Without it a protocol has nowhere to put an event for a port other than
-     * the one an event arrived on -- which is exactly what TLS needs, because
-     * its caller waits on the TLS port while the events come from the TCP port
-     * underneath.
-     */
     private void openTheSystemPort() {
         run("unless port? system/ports/system "
                 + "[system/ports/system: lib/open [scheme: 'system]]");
     }
 
-    /**
-     * The console port everything printed goes through, which R3 opens at
-     * boot and JEBOL left as none.
-     *
-     * <p>Nothing writes through it here -- the output port does that -- but
-     * REBOL code asks it how wide the terminal is, and HELP asks on its first
-     * line. So a script calling HELP got `query does not allow none!` instead
-     * of help, which is what stopped the module test file on its third step.
-     */
     private void openTheOutputPort() {
         run("unless port? system/ports/output "
                 + "[system/ports/output: lib/open [scheme: 'console]]");
     }
 
-    /**
-     * The borrowed file that brings the view system up, and the reason the
-     * schemes are registered partway through the load rather than after it.
-     *
-     * <p>It ends by calling INIT-VIEW-SYSTEM, which reads
-     * {@code system/ports/event/extra} on its ninth line. So the event port
-     * has to be open by the time this file runs, and MAKE-SCHEME -- which
-     * opening it needs -- comes from {@code sys-ports.reb}, loaded earlier in
-     * the same walk. Registering afterwards would be too late for exactly one
-     * file, and this is it.
-     */
-    private static final String THE_FILE_THAT_STARTS_THE_VIEW_SYSTEM =
+    private static final String
+            THE_BORROWED_FILE_THAT_FORCES_THE_SCHEMES_TO_BE_REGISTERED_MIDWAY =
             "view-funcs.reb";
 
-
-    /** Where the REBOL half of the standard library lives. */
     private static final String PRELUDE = "/org/jebol/prelude.reb";
 
-    /**
-     * Evaluates the prelude into the context the natives are in.
-     *
-     * <p>The standard function set is two layers: natives written in Java
-     * because they reach something the language cannot, and this, written
-     * in REBOL because it can be. Loading it here rather than lazily means
-     * its functions see the natives and each other, and that nothing can
-     * observe an interpreter without it.
-     *
-     * <p>A failure here is a defect in JEBOL rather than something a
-     * script did, so it is raised as one rather than leaving an
-     * interpreter half-built.
-     */
     private void loadPrelude() {
         String source = resourceText(PRELUDE);
         if (source == null) {
@@ -326,44 +167,14 @@ public final class Interpreter {
         }
     }
 
-    /** Where the files borrowed from Rebol's own library live. */
     private static final String MEZZANINE = "/org/jebol/mezz/";
 
-    /**
-     * Loads the files of Rebol's own library that JEBOL can run.
-     *
-     * <p>These are Rebol's, not JEBOL's, and they are loaded rather than
-     * rewritten because that is what the two-layer design is for. An
-     * implementation that can only be extended in its host language
-     * cannot borrow, and there are twenty-five thousand lines here worth
-     * borrowing from.
-     *
-     * <p>Always, now. This was behind a switch while the borrowed versions were
-     * worse than the natives they replaced -- forty-six corpus entries and a
-     * hundred suite assertions worse, at the last count -- and each difference
-     * named a native that did not do what Rebol's own code expected of it. That
-     * list emptied and the switch came off.
-     *
-     * <p>The measurement went with it. Comparing an interpreter with the library
-     * against one without needs two different interpreters, and there is only one
-     * kind now. When it is worth having again it should be a comparison against a
-     * real 3.22.1 rather than against JEBOL's own smaller self.
-     *
-     * <p>A file that fails here is skipped rather than fatal, unlike the
-     * prelude. The prelude is JEBOL's and its failure is a defect; these
-     * are borrowed, and one that stops working leaves an interpreter
-     * that is smaller rather than broken.
-     *
-     * <p>What each failure was is kept, because a file that stops halfway
-     * defines nothing below the line it stopped on and says so nowhere
-     * else. Swallowing that hid base-defs.reb generating its six reflector
-     * functions into a scope that was thrown away straight afterwards.
-     */
     private void loadRebolsOwnLibrary() {
         declareEverySystemWordBeforeBindingAny();
         for (String entry : borrowedFileNames()) {
             String name = fileNameIn(entry);
-            if (name.equals(THE_FILE_THAT_STARTS_THE_VIEW_SYSTEM)) {
+            if (name.equals(
+                    THE_BORROWED_FILE_THAT_FORCES_THE_SCHEMES_TO_BE_REGISTERED_MIDWAY)) {
                 registerTheSchemesJebolCanServe();
                 openTheEventPort();
             }
@@ -383,7 +194,8 @@ public final class Interpreter {
                     : LibraryFileHeader.none();
             BlockValue body = hasHeader ? values.atIndex(3) : values;
 
-            Outcome outcome = header.declaresAModule() || isAProtocol(name)
+            Outcome outcome = header.declaresAModule()
+                    || isAProtocolAndSoAModuleWhateverItsHeaderSays(name)
                     ? loadAsAModule(body, header)
                     : entry.endsWith(INTO_SYS)
                             ? loadAsASystemFile(body)
@@ -395,78 +207,16 @@ public final class Interpreter {
         describeTheQoiCodec();
     }
 
-    /**
-     * What {@code u-qoi.c}'s own base-code block does, once there is an object
-     * to do it to.
-     *
-     * <pre>
-     * if find system/codecs 'qoi [
-     *     system/codecs/qoi/title: "Quite OK Image"
-     *     system/codecs/qoi/type: 'image
-     *     system/codecs/qoi/suffixes: [%.qoi]
-     * ]
-     * </pre>
-     *
-     * <p>base-defs.reb builds the object from a switch that names the codecs
-     * the C had when it was written, so QOI comes out of it with no type and
-     * no suffixes. The suffix is what SAVE and LOAD find the codec by, so
-     * without this a {@code %.qoi} file is read as text.
-     *
-     * <p>After the whole library rather than after that one file, which is
-     * where the C runs its base-code and is also the only place it is safe:
-     * evaluating anything in the middle of the walk left the library's own
-     * {@code codecs} word holding unset, and took two hundred and fourteen
-     * suite assertions with it.
-     */
     private void describeTheQoiCodec() {
         runTheBootStep("qoi-codec.reb");
     }
 
-    /**
-     * Loads a sys file: its own set-words go to sys, everything else to lib.
-     *
-     * <p>R3 runs these with rebind 2, which is two binds in this order:
-     *
-     * <pre>
-     * Bind_Block(Sys_Context, BLK_HEAD(block), BIND_SET);   // new set-words to sys
-     * Bind_Block(Lib_Context, BLK_HEAD(block), BIND_DEEP);  // the rest to lib
-     * </pre>
-     *
-     * <p>Two binds rather than one, because a sys file can use the same
-     * spelling for both. base-defs.reb declares {@code decode-url: none} with
-     * the note "set in sys init", and sys-ports.reb sets it with
-     * {@code set 'decode-url} from inside a nested block. That lit-word has to
-     * reach the library, while the top-level {@code decode-url: none} on the
-     * line after has to reach sys. One bind cannot do both.
-     *
-     * <p>Loading these into the library instead is what made DECODE-URL none:
-     * the two lines became the same word and the none, being last, won.
-     */
     private Outcome loadAsASystemFile(BlockValue body) {
         declareTheSetWordsOf(body);
         return evaluator.evaluate(
                 Binder.bind(body, systemInternals), systemInternals);
     }
 
-    /**
-     * Every sys file's own words, declared before any of them is bound.
-     *
-     * <p>Binding is what makes this necessary rather than tidy. A file is bound
-     * as it is loaded, and a word with nothing to bind to stays unbound for
-     * good, so a sys file calling a helper defined in a later sys file gets a
-     * word that never resolves. That is not a load failure and says so nowhere:
-     * the file loads, the function is defined, and it raises the first time
-     * anybody calls it.
-     *
-     * <p>Which is what DO of a file did. {@code sys/do*} in sys-base.reb calls
-     * {@code do-needs}, defined in sys-load.reb three files later, so every
-     * script run through it stopped on {@code do-needs has no value}.
-     *
-     * <p>R3 has no such ordering because the sys context is built from a boot
-     * list before a line of it runs. This is the same thing done in two passes,
-     * and it is cheap: five files, and {@code LibrarySource} reads each once
-     * for the whole process.
-     */
     private void declareEverySystemWordBeforeBindingAny() {
         for (String entry : borrowedFileNames()) {
             if (!entry.endsWith(INTO_SYS)) {
@@ -505,25 +255,11 @@ public final class Interpreter {
                 && items.get(1) instanceof BlockValue;
     }
 
-    /** Defines a body's assigned words in a context, then runs it there. */
     private Outcome loadInto(BlockValue body, Context target) {
         defineAssignedWordsIn(body, target);
         return evaluator.evaluate(Binder.bind(body, target), target);
     }
 
-    /**
-     * Loads a file whose header says {@code Type: module}.
-     *
-     * <p>The body runs in a context of its own, a child of the library so
-     * that it still sees every standard function, and then only the words the
-     * header exports are copied out. Everything else stays where it was put.
-     *
-     * <p>This is the whole point of the datatype. Rebol's JSON codec declares
-     * {@code Type: module} and defines a parse rule named {@code exp} and
-     * another named {@code stack}. Loaded into the library, those two replace
-     * the library functions of the same spelling, and nothing reports it: the
-     * word still answers, it just answers a block.
-     */
     private Outcome loadAsAModule(BlockValue body, LibraryFileHeader header) {
         Context own = Context.childOf(systemContext);
         for (String exported : header.exportedNames()) {
@@ -551,21 +287,6 @@ public final class Interpreter {
         return outcome;
     }
 
-    /**
-     * Puts a loaded module in {@code system/modules} under its own name.
-     *
-     * <p>What LOAD-MODULE does when it has finished: {@code repend
-     * system/modules [name module]}. In this fork that object starts out
-     * holding a URL per external extension, and REPEND on an object writes
-     * fields, so a loaded module takes the place of the address it would have
-     * been fetched from.
-     *
-     * <p>IMPORT reads it back with {@code select system/modules name} and
-     * answers the module it finds rather than loading anything, which is how
-     * importing the same module twice costs nothing. Without this every IMPORT
-     * of an already-booted module went looking for a file: {@code import
-     * 'quoted-printable} in codec-mime-field.reb is the first one to try.
-     */
     private void registerTheModule(LibraryFileHeader header, Context own) {
         String name = header.moduleName();
         if (name.isEmpty()
@@ -580,7 +301,6 @@ public final class Interpreter {
         modules.context().set(name, new ModuleValue(own, new ObjectValue(spec)));
     }
 
-    /** A value read out of the system object by a path of field names. */
     private Value pathInto(String... names) {
         Value here = systemContext.knows(names[0])
                 ? systemContext.slotFor(names[0]).value()
@@ -595,12 +315,6 @@ public final class Interpreter {
         return here;
     }
 
-    /**
-     * Publishes the user context as {@code system/contexts/user}.
-     *
-     * <p>{@code sysobj.reb} names four contexts and JEBOL published two of
-     * them. INTERN, MODULE and IMPORT all reach for this one.
-     */
     private void publishTheUserContext() {
         if (systemContext.knows("system")
                 && systemContext.slotFor("system").value()
@@ -613,34 +327,17 @@ public final class Interpreter {
     }
 
     /**
-     * Which borrowed files stopped partway, and on what.
-     *
-     * <p>Keyed by file name, in the order ORDER.txt lists them.
+     * Which borrowed files stopped partway, and on what, keyed by file name in
+     * the order ORDER.txt lists them.
      */
     public Map<String, String> borrowedLoadFailures() {
         return Map.copyOf(borrowedLoadFailures);
     }
 
-    /** Where a file's new words go, as ORDER.txt says. */
     private static final String INTO_SYS = "-> sys";
 
-    /**
-     * Whether a file is one of the protocols, which are modules whatever
-     * their headers say.
-     *
-     * <p>{@code sys-start.reb} line 187 is the whole reason: {@code foreach
-     * [spec body] boot-prot [module spec body]}. R3 forces module semantics
-     * on that group rather than reading each header, and its own files show
-     * why -- {@code prot-tls.reb} declares {@code Yype: 'module}, a typo in
-     * Rebol's own source, so header-based detection could never have worked.
-     *
-     * <p>Without this the group's words go to the library, and the damage is
-     * not theoretical: {@code prot-tls.reb} ends with {@code log-error:
-     * log-info: log-more: log-debug: log-----: none}, which is fine inside a
-     * module of its own and wipes five working functions out of the library
-     * from anywhere else.
-     */
-    private static boolean isAProtocol(String fileName) {
+    private static boolean isAProtocolAndSoAModuleWhateverItsHeaderSays(
+            String fileName) {
         return fileName.startsWith("prot-");
     }
 
@@ -655,29 +352,11 @@ public final class Interpreter {
                 .toList();
     }
 
-    /** The file name, without the target ORDER.txt may have written after it. */
     private static String fileNameIn(String entry) {
         int marker = entry.indexOf("->");
         return marker < 0 ? entry : entry.substring(0, marker).strip();
     }
 
-    /**
-     * The operating system, under the name Rebol's own library compares
-     * against: {@code Windows}, {@code macOS} or {@code Linux}.
-     *
-     * <p>The names are not free to choose. {@code mezz-control.reb} asks
-     * {@code system/platform = 'Windows} to decide how to quote a shell
-     * argument, {@code sys-start.reb} to decide what separates the entries of
-     * PATH and where the application data directory goes,
-     * {@code mezz-secure.reb} and {@code repl-completion.reb} to decide
-     * whether a filename comparison minds case. A different spelling is a
-     * branch that never fires.
-     *
-     * <p>Anything else names itself rather than falling back to a word that is
-     * true of no operating system. A script testing for the three it knows
-     * behaves the same either way, and one printing what it found says
-     * something useful.
-     */
     private static String whatRebolCallsThisOperatingSystem() {
         String reported = System.getProperty("os.name", "");
         if (reported.startsWith("Windows")) {
@@ -692,20 +371,7 @@ public final class Interpreter {
         return reported.isEmpty() ? "JVM" : reported;
     }
 
-    /**
-     * This process's classpath with every entry made absolute.
-     *
-     * <p>A launcher that works only from one directory is not a launcher. The
-     * entries arrive as they were typed, which for a build run out of its own
-     * tree means relative ones, and the script is started from wherever the
-     * script that called it was standing rather than from here.
-     *
-     * <p>It cost a suite assertion to notice: the child reported "Could not
-     * find or load main class" from the moment CALL started its children in
-     * the caller's directory instead of the JVM's, and before that it had
-     * worked by the accident of the two being the same.
-     */
-    private static String aClasspathThatWorksFromAnywhere() {
+    private static String aClasspathMadeAbsoluteSoItWorksFromAnyDirectory() {
         return java.util.Arrays.stream(
                         System.getProperty("java.class.path", "")
                                 .split(java.io.File.pathSeparator))
@@ -715,18 +381,6 @@ public final class Interpreter {
                         java.io.File.pathSeparator));
     }
 
-    /**
-     * A launcher script that starts this very interpreter, written once
-     * per run and told to the natives as {@code system/options/boot}.
-     *
-     * <p>The C's boot is the running executable. JEBOL's executable is a
-     * JVM plus a classpath, so the equivalent is one small script that
-     * carries both. Written only for a host that granted the process
-     * service, because CALL is the one thing that runs the field: without
-     * that grant the script would be an unusable file in a shared
-     * temporary directory. When it cannot be written, the field stays
-     * none, which is the state Rebol's own boot files guard for.
-     */
     private static String writtenBootLauncher() {
         return writtenBootLauncher("/");
     }
@@ -738,7 +392,7 @@ public final class Interpreter {
             java.nio.file.Path launcher =
                     java.nio.file.Files.createTempFile("jebol-boot", ".sh");
             java.nio.file.Files.writeString(launcher, "#!/bin/sh\nexec \"" + jvm
-                    + "\" -cp \"" + aClasspathThatWorksFromAnywhere()
+                    + "\" -cp \"" + aClasspathMadeAbsoluteSoItWorksFromAnyDirectory()
                     + "\" org.jebol.adapter.cli.Repl --root \"" + hostRoot
                     + "\" \"$@\"\n");
             if (!launcher.toFile().setExecutable(true)) {
@@ -751,69 +405,30 @@ public final class Interpreter {
         }
     }
 
-    /**
-     * One of Rebol's declaration files, or nothing if it is not in the jar.
-     *
-     * <p>Nothing rather than a failure, because a missing declaration costs
-     * SPEC-OF its documentation and nothing else: the function still runs. The
-     * measure that would notice is `scripts/runtime-parity.py`.
-     */
     private static String declarationsIn(String path) {
         String source = resourceText(path);
         return source == null ? "" : source;
     }
 
-    /**
-     * One module out of the build, or nothing when none is bundled as that.
-     *
-     * <p>The name is taken as written and joined to one directory -- a name
-     * with a separator in it never reaches here, being refused where the url is
-     * read -- so there is nowhere else for it to land.
-     */
     private static Optional<byte[]> theModuleBundledAs(String name) {
         return resourceBytes(MODULES + name);
     }
 
-    /** Where the modules bundled with this build live. */
     private static final String MODULES = "/org/jebol/modules/";
 
-    /**
-     * One file this build carries, off the classpath, read once per process.
-     *
-     * <p>Everything REBOL that ships here is read through this: the prelude,
-     * Rebol's own library, JEBOL's own boot steps, the three declaration files,
-     * and a bundled module. They differ in what happens next and not in how
-     * they are found -- the first four are evaluated into the shared contexts
-     * while the interpreter is being built, because nothing works until they
-     * are, and a module is read only when something imports it, into a
-     * namespace of its own.
-     *
-     * <p>Cached because a new interpreter costs 44ms and the corpus builds one
-     * per entry, so a thousand entries read every one of these a thousand
-     * times for the same answer. That is the lesson {@link LibrarySource}
-     * already carries one layer up: it caches what the library <em>reads as</em>
-     * and this caches the bytes underneath, and between them nothing is done
-     * twice that cannot change.
-     *
-     * <p>A copy on the way out, because the cached array is shared and a caller
-     * given the original could write into every later interpreter's copy. The
-     * same hazard LibrarySource names about series, one level down.
-     *
-     * <p>What a missing file means is the caller's to say, which is the only
-     * reason the wrappers exist: the prelude or a boot step missing is a broken
-     * build, a declaration file missing costs documentation, and a module
-     * missing is a module this build does not bundle.
-     */
     private static Optional<byte[]> resourceBytes(String path) {
         byte[] held = RESOURCES.computeIfAbsent(path, Interpreter::readingTheResource);
         return held.length == 0 && !RESOURCES_THAT_ARE_THERE.contains(path)
                 ? Optional.empty()
-                : Optional.of(held.clone());
+                : Optional.of(aCopySoNoCallerCanWriteIntoTheCache(held));
+    }
+
+    private static byte[] aCopySoNoCallerCanWriteIntoTheCache(byte[] held) {
+        return held.clone();
     }
 
     private static final Map<String, byte[]> RESOURCES = new ConcurrentHashMap<>();
 
-    /** Which paths were found, so an empty file is told from a missing one. */
     private static final Set<String> RESOURCES_THAT_ARE_THERE =
             ConcurrentHashMap.newKeySet();
 
@@ -986,11 +601,6 @@ public final class Interpreter {
         };
     }
 
-    /**
-     * Whether the running script should stop. Consulted by the evaluator
-     * every so often; the deadline is checked before cancellation because a
-     * script past its time is stopped whether or not anyone asked.
-     */
     private Optional<String> reasonToStop() {
         if (System.nanoTime() >= deadlineNanos) {
             return Optional.of("the script ran longer than "
@@ -1026,7 +636,6 @@ public final class Interpreter {
         read.values().ifPresent(this::defineWordsIn);
     }
 
-    /** The words a block assigns to, rather than every word it mentions. */
     private void defineAssignedWordsIn(BlockValue block, Context into) {
         for (Value item : block.remaining()) {
             if (item instanceof WordValue word && word.datatype() == Datatype.SET_WORD
@@ -1092,10 +701,6 @@ public final class Interpreter {
                 runHostFunction(name, function, arguments));
     }
 
-    /**
-     * Runs a host function, refusing if the bounds do not allow calling out
-     * and turning whatever it throws into an ordinary error.
-     */
     private Value runHostFunction(
             String name, HostFunction function, List<Value> arguments) {
 
@@ -1124,34 +729,20 @@ public final class Interpreter {
         evaluator.useProcesses(port);
     }
 
-    /**
-     * Gives the script a console to read a line from.
-     *
-     * <p>Writing goes elsewhere. A host almost always wants to see what a
-     * script printed and almost never wants it to stop and wait.
-     */
+    /** Gives the script a console to read a line from. Writing goes elsewhere. */
     public void useConsole(ConsolePort port) {
         evaluator.useConsole(port);
     }
 
-    /**
-     * Gives the script a screen to put a window on.
-     *
-     * <p>One grant for all five dialogs. A host that will show one will show
-     * any of them, so a grant per dialog would say which verb and not which
-     * screen.
-     */
+    /** Gives the script a screen to put a window on: one grant for all five dialogs. */
     public void useWindows(WindowPort port) {
         evaluator.useWindows(port);
     }
 
     /**
-     * Gives the script a screen to draw a gob tree on.
-     *
-     * <p>Behind the same grant as the five dialogs, and a separate port
-     * because it is a different conversation: a dialog asks the operator one
-     * question and answers it, while this holds windows open and sends events
-     * back for as long as the script wants them.
+     * Gives the script a screen to draw a gob tree on. Behind the same grant as
+     * the five dialogs, and a separate port because it holds windows open and
+     * sends events back rather than asking one question.
      */
     public void useScreen(ScreenPort port) {
         evaluator.useScreen(port);
@@ -1159,15 +750,6 @@ public final class Interpreter {
         handOverTheDrawDialectTo(port);
     }
 
-    /**
-     * Tells a screen how to read a gob's draw block.
-     *
-     * <p>{@code system/dialects/draw}, which {@code dial-draw.reb} builds
-     * while the library loads. Handed over rather than reached, because
-     * flattening a gob tree has no way to a system object and should not learn
-     * one, and per screen rather than anywhere shared, because a host runs
-     * many interpreters and each has its own.
-     */
     private void handOverTheDrawDialectTo(ScreenPort port) {
         Value declared = pathInto("system", "dialects", "draw");
         if (!(declared instanceof UnsetValue)) {
@@ -1175,47 +757,21 @@ public final class Interpreter {
         }
     }
 
-    /**
-     * Tells a newly arrived screen which gob is the root, and sizes it.
-     *
-     * <p>Needed because of when {@code view-funcs.reb} runs its own last line
-     * and what that line does. INIT-VIEW-SYSTEM makes the root gob and hands
-     * it to INIT-TOP-WINDOW while the library is still loading, which is
-     * before any host can have supplied a screen, and then it spends the
-     * command: {@code init-top-window: init-view-system: 'done}. A real 3.22.1
-     * can do that safely because its graphics host was registered before the
-     * library loaded. Here the screen arrives afterwards, by which time the
-     * word holds {@code 'done} and calling it would quietly do nothing.
-     *
-     * <p>So this goes through the port rather than through the word, and the
-     * work itself lives in {@code ScreenPort.takeAsTheRoot} where the native
-     * reaches it too. Without it, a host that supplies a screen gets a root
-     * still sized at nothing, and every window VIEW centres lands in the same
-     * place with nothing saying why.
-     */
     private void handOverTheRootGobTo(ScreenPort port) {
         if (pathInto("system", "view", "screen-gob") instanceof GobValue root) {
             ScreenPort.takeAsTheRoot(port, root);
         }
     }
 
-    /**
-     * Gives the script the host's environment to read.
-     *
-     * <p>Reading only. A JVM cannot change the environment of its own
-     * process, thus SET-ENV has nothing to call and refuses.
-     */
+    /** Gives the script the host's environment. */
     public void useEnvironment(EnvironmentPort port) {
         evaluator.useEnvironment(port);
     }
 
     /**
-     * Gives the script the host's image codec.
-     *
-     * <p>Until this is called, IMAGE/LOAD and IMAGE/SAVE refuse with the name
-     * the C uses on a platform that has no codec -- and so do the png, jpeg,
-     * gif and bmp entries in {@code system/codecs}, because Rebol's own
-     * codec-image.reb writes every one of them as a call to this native.
+     * Gives the script the host's image codec. Until this is called, IMAGE/LOAD
+     * and IMAGE/SAVE refuse, and so do the png, jpeg, gif and bmp entries in
+     * {@code system/codecs}.
      */
     public void useImages(ImagePort port) {
         evaluator.useImages(port);
@@ -1235,46 +791,13 @@ public final class Interpreter {
     }
 
     /**
-     * Says where an imported module is kept, and makes the directory.
-     *
-     * <p>{@code sys-start.reb} writes it in one line -- {@code modules: attempt
-     * [make-dir/deep join data %modules/]} -- and nothing else decides it. The
-     * ATTEMPT is the whole of the failure handling: a host that will not let
-     * the directory be made leaves the field none, and IMPORT then has nowhere
-     * to look rather than a path it cannot use.
-     *
-     * <p>Here rather than at construction, because there is no filesystem to
-     * make a directory in until one is installed. Public as well as called
-     * from there, because it follows the data directory: a host that moves
-     * {@code system/options/data} -- a confined filesystem must, the operator's
-     * own hidden folder being outside it -- calls this again to move the
-     * modules with it.
-     *
-     * <p>And it waits for that directory to exist. The line above this one in
-     * {@code sys-start.reb} makes the data directory; JEBOL does not, because
-     * the path it defaults to is the operator's own and a confined filesystem
-     * reads that path as somewhere else entirely -- so making it eagerly puts
-     * a folder named after the operator's home inside every sandbox, which
-     * three tests of what a fresh directory contains noticed at once.
+     * Says where an imported module is kept, and makes the directory. Call it
+     * again after moving {@code system/options/data}, which the modules follow.
      */
     public void putTheModulesDirectoryBesideTheData() {
         runTheBootStep("modules-directory.reb");
     }
 
-    /**
-     * Rewrites the boot launcher so an interpreter this one starts is confined
-     * the way this one is.
-     *
-     * <p>{@code system/options/boot} is a launcher written for this run, and a
-     * script that was given one directory could otherwise start a copy of
-     * itself that had the whole machine -- and write anywhere through it.
-     * Confinement a script can step out of by running its own name is not
-     * confinement.
-     *
-     * <p>It happens here rather than at construction because the root is not
-     * known until a filesystem is installed, and the launcher has to carry it.
-     * A run rooted at the machine writes the same command it always did.
-     */
     private void confineAnyInterpreterThisOneStarts(FilePort port) {
         if (!bounds.grantedServices().contains(HostService.PROCESSES)) {
             return;

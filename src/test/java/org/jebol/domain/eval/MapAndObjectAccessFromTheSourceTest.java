@@ -7,23 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Adding pairs to a map, reaching into one through a path, and asking an object
- * whether it has a field.
- *
- * <p>Read out of {@code t-map.c} ({@code PD_Map}, {@code Append_Map},
- * {@code Find_Entry}) and {@code t-object.c} (the arm FIND and SELECT share),
- * and every case checked against the R3 binary rather than against the port.
- *
- * <p>Four of these are easy to get defensibly wrong. APPEND on a map answers
- * the map and not a position. /PART counts pairs, so a /PART of one adds
- * nothing at all. FIND on an object answers TRUE where SELECT answers the
- * value. And SELF, the one name every object answers to, is the one name FIND
- * says it has not got.
- *
- * <p>Specified in {@code spec/natives.allium} under "Adding to a map, and
- * asking an object whether" and "Reaching into a map through a path".
- */
 class MapAndObjectAccessFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * How a map answers about its keys, which is not how a Java map would.
- *
- * <p>{@code Find_Entry} takes a {@code cased} flag and its callers do not
- * agree about it: SELECT, FIND, PUT and a path read pass false, while MAKE and
- * REMOVE/KEY pass true. So the two ends of a map behave differently on
- * purpose -- building one keeps {@code "k"} and {@code "K"} apart, and looking
- * one up does not.
- *
- * <p>And an uncased lookup answers whichever key was stored first, not the one
- * that matches exactly. That is the part that reads as wrong and is right.
- */
 class MapKeysFromTheSourceTest {
 
     private static String answerTo(String source) {

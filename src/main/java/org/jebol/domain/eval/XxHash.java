@@ -1,24 +1,5 @@
 package org.jebol.domain.eval;
 
-/**
- * xxHash, the thirty-two and sixty-four bit forms, written out because the JVM
- * has not got them.
- *
- * <p>{@code system/catalog/checksums} lists them beside the cryptographic
- * digests, and they are not one: xxHash is built to be fast over a lot of
- * bytes and makes no claim to be hard to reverse. A caller reaches for it to
- * tell whether two blocks differ, not to keep a secret.
- *
- * <p>Both forms are the same shape. A run of accumulators, four of them, each
- * taking every fourth word of the input; then the accumulators folded into one;
- * then the length added and the tail eaten a word and a byte at a time; then a
- * final scramble of shifts and multiplies to spread the bits. Only the
- * constants, the word width and the rotations differ.
- *
- * <p>Little-endian throughout, and the answer is written big-endian, which is
- * what makes {@code checksum "" 'xxh32} the four bytes {@code 02CC5D05} rather
- * than their reverse.
- */
 final class XxHash {
 
     private XxHash() {
@@ -36,13 +17,11 @@ final class XxHash {
     private static final long P64_4 = 0x85EBCA77C2B2AE63L;
     private static final long P64_5 = 0x27D4EB2F165667C5L;
 
-    /** The four-byte hash, most significant byte first. */
-    static byte[] of32(byte[] message) {
+    static byte[] of32MostSignificantByteFirst(byte[] message) {
         return asBigEndian(hash32(message) & 0xFFFFFFFFL, 4);
     }
 
-    /** The eight-byte hash, most significant byte first. */
-    static byte[] of64(byte[] message) {
+    static byte[] of64MostSignificantByteFirst(byte[] message) {
         return asBigEndian(hash64(message), 8);
     }
 
@@ -83,14 +62,6 @@ final class XxHash {
         return Integer.rotateLeft(accumulator + word * P32_2, 13) * P32_1;
     }
 
-    /**
-     * The last shuffle, which is what makes a one-bit change to the input
-     * change roughly half the answer.
-     *
-     * <p>Without it the accumulators leave their high bits barely mixed, and
-     * two inputs differing only near the end come out close together -- which
-     * is exactly what a hash is for avoiding.
-     */
     private static int scrambled32(int running) {
         int mixed = running ^ running >>> 15;
         mixed *= P32_2;
@@ -116,10 +87,10 @@ final class XxHash {
             }
             running = Long.rotateLeft(first, 1) + Long.rotateLeft(second, 7)
                     + Long.rotateLeft(third, 12) + Long.rotateLeft(fourth, 18);
-            running = foldedIn(running, first);
-            running = foldedIn(running, second);
-            running = foldedIn(running, third);
-            running = foldedIn(running, fourth);
+            running = foldedInAfterOneMoreStir(running, first);
+            running = foldedInAfterOneMoreStir(running, second);
+            running = foldedInAfterOneMoreStir(running, third);
+            running = foldedInAfterOneMoreStir(running, fourth);
         } else {
             running = P64_5;
         }
@@ -146,14 +117,7 @@ final class XxHash {
         return Long.rotateLeft(accumulator + word * P64_2, 31) * P64_1;
     }
 
-    /**
-     * One accumulator folded into the running value.
-     *
-     * <p>Each is stirred once more before it goes in, so that a lane which
-     * happened to end near nought does not simply leave the running value
-     * alone.
-     */
-    private static long foldedIn(long running, long accumulator) {
+    private static long foldedInAfterOneMoreStir(long running, long accumulator) {
         return (running ^ stirred64(0, accumulator)) * P64_1 + P64_4;
     }
 

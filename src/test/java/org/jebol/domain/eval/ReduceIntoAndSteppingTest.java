@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * REDUCE/INTO, stepping a character, and rounding to nothing.
- *
- * <p>Each specified in {@code spec/natives.allium} and confirmed against a
- * real R3.
- *
- * <p>Zero is the interesting boundary for ROUND/TO: it is the one scale
- * that cannot mean "a multiple of this", and it means the nearest whole
- * number rather than a division by zero.
- */
 class ReduceIntoAndSteppingTest {
 
     private static String answerTo(String source) {

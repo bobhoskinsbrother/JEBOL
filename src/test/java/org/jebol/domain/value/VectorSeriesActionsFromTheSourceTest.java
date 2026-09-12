@@ -10,19 +10,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A vector under the actions every series answers to.
- *
- * <p>Most of them come free: {@code REBTYPE(Vector)} calls
- * {@code Do_Series_Action} first and only handles what that does not, so HEAD,
- * TAIL, NEXT, SKIP, AT, INDEX? and LENGTH? behave as they do on a block. What
- * the vector's own arm adds is the handful that have to know the element width
- * -- COPY, TAKE, CLEAR, REVERSE, SORT, and the three that modify.
- *
- * <p>Nearly every expectation here is quoted from Rebol's own
- * {@code vector-test.r3}, which covers this ground far better than a reading
- * of the C would.
- */
 class VectorSeriesActionsFromTheSourceTest {
 
     private static final String TRUE = "#(true)";
@@ -293,19 +280,6 @@ class VectorSeriesActionsFromTheSourceTest {
                     .isEqualTo(TRUE);
         }
 
-        /**
-         * The C works the source length out in whole elements and then asks
-         * one question about it: {@code src_len /= bpv; if (src_len == 0)
-         * Trap1(RE_INVALID_DATA, src_val);}. So the division throws the
-         * remainder away and only a length that leaves nothing at all is
-         * refused.
-         *
-         * <p>This test asserted the opposite -- that a binary has to divide
-         * evenly -- which is the reading a careful implementation arrives at
-         * and is not what a real 3.22.5 does. Three bytes appended to a
-         * vector of sixteen-bit numbers append one number and drop the odd
-         * byte, with no failure and no warning.
-         */
         @Test
         @DisplayName("a stray byte past the last whole number is dropped without a word")
         void thePartialElementIsDropped() {
@@ -336,12 +310,6 @@ class VectorSeriesActionsFromTheSourceTest {
                     .isEqualTo("accepted");
         }
 
-        /**
-         * {@code Trap1} is handed the value, so a caller catching the failure
-         * gets the binary back and can look at it. JEBOL handed it the text
-         * the binary molds to, which arrived as a word spelt "#{03}" -- it
-         * printed the same and compared equal to nothing.
-         */
         @Test
         @DisplayName("the failure hands back the binary itself, not a rendering of it")
         void theFailureNamesTheBinary() {
@@ -357,12 +325,6 @@ class VectorSeriesActionsFromTheSourceTest {
                     .isEqualTo(TRUE);
         }
 
-        /**
-         * /PART means two different things here. APPEND and INSERT read it as
-         * a count of bytes to take out of the binary, applied before the
-         * division into elements; CHANGE reads it as how much of the vector
-         * to replace and leaves the source alone.
-         */
         @Test
         @DisplayName("/PART caps the bytes read for APPEND and INSERT and not for CHANGE")
         void partCapsTheBytesRead() {
@@ -390,12 +352,6 @@ class VectorSeriesActionsFromTheSourceTest {
                     .isEqualTo(TRUE);
         }
 
-        /**
-         * A negative /PART reaches back from where the source stands, which is
-         * what it means everywhere else, and {@code Partial1} moves the
-         * source's own position back as it counts. So the refusal names the
-         * binary where it was moved to rather than where it was handed in.
-         */
         @Test
         @DisplayName("a negative /PART counts back from where the source stands")
         void anegativePartCountsBackwards() {
@@ -413,11 +369,6 @@ class VectorSeriesActionsFromTheSourceTest {
                     .isEqualTo(TRUE);
         }
 
-        /**
-         * The C's last branch writes one number into its buffer and never
-         * reads the length, so a limit that would take nothing takes the
-         * number anyway.
-         */
         @Test
         @DisplayName("and /PART does not reach a bare number at all")
         void partDoesNotReachABareNumber() {

@@ -17,12 +17,6 @@ import java.util.List;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The dependency rule points inward: adapters may know about the application,
- * the application may know about the domain, and the domain knows about
- * neither. Enforced here rather than by convention, so that swapping an
- * adapter cannot quietly reach into the middle.
- */
 class DependencyRuleTest {
 
     private static JavaClasses production;
@@ -45,11 +39,7 @@ class DependencyRuleTest {
                 .importPaths(importedPaths);
     }
 
-    /**
-     * An architecture rule that matches nothing passes for the wrong reason.
-     * This fails loudly if the importer stops finding production classes, so
-     * the rules below cannot quietly become decoration.
-     */
+
     @Test
     @DisplayName("the importer actually found the production classes")
     void importerFoundProductionClasses() {

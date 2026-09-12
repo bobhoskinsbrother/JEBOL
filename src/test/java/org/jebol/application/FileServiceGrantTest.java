@@ -10,15 +10,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Reading and writing files needs the FILES grant and a real adapter.
- *
- * <p>Specified in {@code spec/embed.allium}.
- *
- * <p>Two separate things must both hold: the host must grant the kind, and
- * the host must supply somewhere for the reading to go. A grant with no
- * adapter reaches nothing, and an adapter with no grant is not asked.
- */
 class FileServiceGrantTest {
 
     private static String errorIdOf(Interpreter interpreter, String source) {
@@ -27,7 +18,6 @@ class FileServiceGrantTest {
         return interpreter.display(interpreter.run(wrapped));
     }
 
-    /** An interpreter that reads and writes inside one directory. */
     private static Interpreter readingUnder(Bounds bounds, Path directory) {
         Interpreter interpreter = Interpreter.withBounds(bounds);
         interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
@@ -75,18 +65,6 @@ class FileServiceGrantTest {
         assertThat(Files.readString(directory.resolve("c.txt"))).isEqualTo("there");
     }
 
-    /**
-     * The dots are worked out and a {@code ..} with nothing above it is
-     * dropped, so the path names {@code secret.txt} inside the root and finds
-     * nothing there. That is confinement, not a weakening of it: there is no
-     * outside to reach, and the answer is the same one {@code %/secret.txt}
-     * gets.
-     *
-     * <p>The refusal was changed to a clamp because refusing tells a confined
-     * script it is somewhere other than the top of what it can see, and a real
-     * filesystem does not -- {@code change-dir %../} at {@code /} answers
-     * {@code %/} and moves nothing.
-     */
     @Test
     @DisplayName("a path climbing out of the directory reaches nothing inside it")
     void theAdapterKeepsTheScriptInside(@TempDir Path directory) throws Exception {

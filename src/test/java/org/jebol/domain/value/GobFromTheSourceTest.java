@@ -7,32 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The gob datatype, read out of {@code t-gob.c}.
- *
- * <p>A graphical object: somewhere to be, one piece of content, and children.
- * Three things about it are not what its shape suggests, and all three come out
- * of {@code Make_Gob}, {@code Set_GOB_Var} and {@code REBTYPE(Gob)}.
- *
- * <p><b>A fresh one is not empty.</b> {@code Make_Gob} clears the struct and then
- * writes three fields: {@code GOB_W(gob) = 100; GOB_H(gob) = 100; GOB_ALPHA(gob)
- * = 255;}. So {@code make gob! []} is a hundred by a hundred and opaque, and only
- * the offset starts at nothing.
- *
- * <p><b>The content is a union.</b> {@code image}, {@code draw}, {@code text},
- * {@code effect} and {@code color} all write {@code GOB_CONTENT} and set one type
- * tag beside it, so giving a gob an image takes away the draw block it had.
- * Reading the field it has not got answers none.
- *
- * <p><b>The pane is the series.</b> All 24 of the gob's arms work on its list of
- * children, not on the gob: {@code length? gob} counts children, {@code append
- * gob child} adds one, {@code pick gob 1} is the first. Which is why the gob's own
- * fields are reached through a path and never through a position.
- *
- * <p>Rebol's own {@code gob-test.r3} settles several of these, and it is quoted
- * where it does. Specified in {@code spec/values.allium} as {@code GobStorage}
- * and {@code GobValue}.
- */
 class GobFromTheSourceTest {
 
     private static String answerTo(String source) {

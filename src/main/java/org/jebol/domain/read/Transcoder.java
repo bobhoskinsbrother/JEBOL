@@ -40,12 +40,6 @@ public final class Transcoder {
     private int position;
     private int line = 1;
 
-    /**
-     * Where each top-level expression begins and ends in the source.
-     *
-     * <p>Only the outermost level is recorded. A block's contents are part
-     * of the block's own span, so nesting adds nothing here.
-     */
     private final List<Integer> topLevelStarts = new ArrayList<>();
     private final List<Integer> topLevelEnds = new ArrayList<>();
     private int column = 1;
@@ -188,16 +182,6 @@ public final class Transcoder {
                 .orElseGet(() -> new TranscodeResult.Success(reading.asABlock()));
     }
 
-    /**
-     * Reads values until the input ends, keeping open blocks on a stack of its
-     * own rather than recursing.
-     *
-     * <p>Nesting comes from the source, so it is as deep as whoever wrote the
-     * source made it. Recursing here would turn deeply nested input into a
-     * {@code StackOverflowError}, which is not something a script could catch
-     * and not something the reader promises. The evaluator keeps its state on
-     * the heap for the same reason; so does this.
-     */
     private List<Value> readSequence(int terminator) {
         Deque<OpenLevel> enclosing = new ArrayDeque<>();
         List<Value> values = new ArrayList<>();
@@ -314,68 +298,20 @@ public final class Transcoder {
         return values;
     }
 
-    /**
-     * Whether to stop as soon as one whole top-level value has been read.
-     *
-     * <p>What {@code Scan_Token} gives the C for free and this had no way to be
-     * asked: read one value and stop, without looking at a character past it. Set
-     * for the whole life of a reader rather than passed down, because the walk
-     * hands its own state around a stack and one more parameter would have to be
-     * threaded through every level to be ignored by all of them.
-     */
     private boolean stopAfterOneValue;
 
     private boolean stopAtEveryDepth;
 
     private final List<Value> valuesTakenAtTheTopLevel = new ArrayList<>();
 
-    /** A block left open while its contents are read. */
     private record OpenLevel(List<Value> values, int closing, Datatype collecting,
             Set<Integer> lineStarts) {
     }
 
-    /**
-     * Whether a line feed has been passed since the last value was read.
-     *
-     * <p>{@code case TOKEN_LINE: line = TRUE;} in {@code Scan_Block}, and the
-     * next value read carries the flag. It is what makes MOLD write a block
-     * back the shape its author wrote it, and without it every loaded block
-     * molded on one line however it had been laid out.
-     *
-     * <p>A line feed with no value after it is forgotten. The C sets the flag
-     * on the last value it emitted and then copies the block without it --
-     * {@code //!!!! if (value) VAL_OPTS(BLK_TAIL(block)) = VAL_OPTS(value);
-     * // save NEWLINE marker}, commented out and left there. So
-     * {@code mold load "[1 2^/]"} is {@code [1 2]}, and the newline before
-     * the bracket that a block does write comes from its first value having
-     * started a line rather than from its last one ending one.
-     */
     private boolean crossedALine;
 
-    /**
-     * The positions in the level being read that begin a line, one-based.
-     *
-     * <p>The flag belongs to the value and the value's position is where it
-     * can be kept, because a block holds values that are copies. Each open
-     * level keeps its own set, since a line feed inside a nested block says
-     * nothing about the block it is nested in.
-     */
     private Set<Integer> lineStarts = new LinkedHashSet<>();
 
-    /**
-     * A nested sequence read without disturbing the line marks of the level
-     * around it.
-     *
-     * <p>A construct and a map literal read their contents through the loop an
-     * enclosing block uses, and that loop keeps the pending line feed and the
-     * marks so far in fields rather than on a stack. Sharing them costs twice
-     * over: the line feed before {@code #(none)} is spent on the first thing
-     * inside the construct, so the value it becomes never begins a line, and
-     * that same first thing marks position one of the block around it.
-     *
-     * <p>A block or a paren inside the construct is not affected either way,
-     * because those push a level of their own.
-     */
     private List<Value> theContentsOfANestedForm(int closing) {
         boolean aLineFeedWasWaiting = crossedALine;
         Set<Integer> theMarksAroundIt = lineStarts;
@@ -416,15 +352,6 @@ public final class Transcoder {
         };
     }
 
-    /**
-     * Whether what follows cannot be part of a filename.
-     *
-     * <p>Not the same question as "does the word end here". A percent
-     * word may be followed by a colon, making it a set-word, or by a
-     * slash, making it a path segment -- `o/%%` and `%%: 1` are both
-     * legal. Reading those as the end of the input cost lexer-test.r3
-     * three hundred and forty of its assertions.
-     */
     private boolean beginsNoFilename(int following) {
         return following == END_OF_INPUT
                 || Character.isWhitespace(following)
@@ -432,30 +359,6 @@ public final class Transcoder {
                 || following == ':';
     }
 
-    /**
-     * A file, or one of the two words spelled out of percent signs.
-     *
-     * <p>{@code %} is the file sigil, so a filename has to follow it.
-     * With nothing after it there is no filename and it is the word the
-     * modulo operator is bound to. Reading that as an empty file made
-     * {@code 7 % 0} answer 0 rather than dividing by zero, because the
-     * operator never got a chance to be one.
-     *
-     * <p>A second percent is the same story one character along:
-     * {@code %%} is the word Euclidean modulo is bound to, and reading it
-     * as a file named "%" made {@code -7 %% 3} answer 3 -- the operator
-     * dropped out and the last value in the expression stood.
-     *
-     * <p>Past that the two part company. A name after a lone percent is a
-     * file, and a name after two is neither: R3 refuses {@code %%a} as a
-     * malformed file rather than reading a word.
-     *
-     * <p>Unless the two characters after are hex, because then the second
-     * percent opens an escape rather than a second sign: {@code %%40b} is the
-     * file {@code @b}. Refusing it cost url-test.r3 twenty-eight assertions.
-     * A slash does not get the same allowance -- {@code %%/x} is invalid on a
-     * real Rebol, and was being read here as the operator.
-     */
     private static boolean isHexDigit(int letter) {
         return (letter >= '0' && letter <= '9')
                 || (letter >= 'a' && letter <= 'f')
@@ -488,22 +391,6 @@ public final class Transcoder {
         return readFile();
     }
 
-    /**
-     * A raw string, written {@code %{...}%} or with a longer run of percents.
-     *
-     * <p>{@code Scan_Raw_String}, whose summary is the whole point: "Scan a raw
-     * string (without any modifications). Eliminates need of double escaping and
-     * allowes unmatched braces." So a caret is a caret, a lone brace is a brace,
-     * and a line ending is whatever the source had -- where a braced string
-     * would have read every one of those as an instruction.
-     *
-     * <p>The run of percent signs is what closes it, which is what lets a raw
-     * string hold the closing sequence of a shorter one: {@code %%{ %{^}% }%%}
-     * is one string holding another. A closing brace followed by a longer run
-     * than the one that opened is a mistake rather than content --
-     * {@code if (n > num) return 0;} -- so the reader refuses it rather than
-     * reading to the end of the file looking for its own terminator.
-     */
     private Value readRawString(int percents) {
         for (int skipped = 0; skipped <= percents; skipped++) {
             advance();
@@ -531,7 +418,6 @@ public final class Transcoder {
         throw failure(SyntaxFailure.UNTERMINATED_STRING, null);
     }
 
-    /** The word, or the set-word when a colon follows it. */
     private Value percentWord(String spelling) {
         if (peek() == ':') {
             advance();
@@ -540,15 +426,6 @@ public final class Transcoder {
         return WordValue.of(spelling);
     }
 
-    /**
-     * A ref!, written {@code @bob}.
-     *
-     * <p>A datatype Rebol 3.x added, string-like as file! and email! are.
-     * JEBOL read {@code @bob} as a word, which is the quiet kind of reader
-     * bug: it parses into the wrong thing rather than failing, so nothing
-     * notices until something compares a ref against a word. An {@code @}
-     * on its own is an empty ref rather than an error.
-     */
     private StringValue readRef() {
         advance();
         boolean hasName = peek() != END_OF_INPUT
@@ -606,11 +483,6 @@ public final class Transcoder {
         }
     }
 
-    /**
-     * An escape whose code point no string may hold is a syntax failure,
-     * not a host exception: {@code if (IS_INVALID_CHAR(chr)) return 0;} in
-     * {@code Scan_Quote}, the same range {@code readCharacter} refuses.
-     */
     private int readEscapeRefusingInvalidCodePoints() {
         int codepoint = readEscape();
         if (codepoint > LAST_UNICODE_CODEPOINT || isSurrogate(codepoint)) {
@@ -619,7 +491,6 @@ public final class Transcoder {
         return codepoint;
     }
 
-    /** Braced strings nest and may span lines, which is what they are for. */
     private StringValue readBracedString() {
         advance();
         StringBuilder text = new StringBuilder();
@@ -725,26 +596,6 @@ public final class Transcoder {
         return WordValue.of(lexeme.substring(1), Datatype.ISSUE);
     }
 
-    /**
-     * Construction syntax: {@code #(none)}, {@code #(true)}, {@code #(unset)},
-     * {@code #(integer!)}, {@code #(decimal! 1)}.
-     *
-     * <p>The forms MOLD produces for values with no literal spelling of their
-     * own, which is what makes those values round-trip. Three shapes: a word
-     * naming a value, a datatype on its own producing the datatype value, and
-     * a datatype followed by contents to build from.
-     *
-     * <p>R3-Alpha wrote all of this with square brackets, as {@code #[none]}.
-     * Rebol 3.x replaced the form rather than adding to it and now refuses
-     * the bracket spelling, so this reads only parentheses. Reading both
-     * would accept source a real Rebol rejects, and the bracket form was the
-     * reason seventeen of the twenty-two vendored test files would not parse.
-     *
-     * <p>Only self-contained values can be read back. Something that refers
-     * to a live thing, such as a native or a host object, cannot be
-     * reconstructed by a reader with no context to resolve it against, and
-     * having no context is deliberate.
-     */
     private Value readConstruct() {
         advance();
         advance();
@@ -791,12 +642,6 @@ public final class Transcoder {
         return builtFrom(built.represents(), contents.subList(1, contents.size()));
     }
 
-    /**
-     * A map literal, {@code #[key: value ...]}.
-     *
-     * <p>R3-Alpha spelled construction syntax this way. The brackets were
-     * reused rather than freed up when constructs moved to parentheses.
-     */
     private Value readMap() {
         advance();
         advance();
@@ -807,18 +652,6 @@ public final class Transcoder {
         return MapValue.of(pairs);
     }
 
-    /**
-     * Whether a construct's first word starts a vector.
-     *
-     * <p>{@code #(int32! ...)} names a kind of element rather than a datatype,
-     * so nothing that looks the word up in the datatype table can read one, and
-     * a kind name alone is an empty vector of that kind.
-     *
-     * <p>{@code vector!} is different in both halves. It is a real datatype
-     * name, so {@code #(vector!)} alone stays the datatype value the way
-     * {@code #(integer!)} does, and it only starts a vector when a kind name
-     * follows it.
-     */
     private static boolean namesAVector(WordValue named, int howManyParts) {
         if ("vector!".equals(named.canonical())) {
             return howManyParts > 1;
@@ -833,50 +666,21 @@ public final class Transcoder {
         return readDatatype(word.spelling().substring(0, word.spelling().length() - 1));
     }
 
-    /**
-     * The datatypes that cannot be written as a construction at all.
-     *
-     * <p>Straight off the Make column of {@code types.reb}, whose own header
-     * says what it is for: "Make -- It can be made with #(datatype) method".
-     * Fifteen rows carry a dash, and handing those to MAKE instead would read
-     * things Rebol refuses -- {@code #(char! 97)}, {@code #(money! 1)} and
-     * {@code #(integer! 5)} all became values here while a real Rebol answered
-     * malconstruct.
-     */
     private static final java.util.Set<Datatype> HAVE_NO_MAKER = java.util.Set.of(
             Datatype.INTEGER, Datatype.MONEY, Datatype.CHAR, Datatype.WORD,
             Datatype.SET_WORD, Datatype.GET_WORD, Datatype.LIT_WORD,
             Datatype.REFINEMENT, Datatype.ISSUE, Datatype.FRAME, Datatype.PORT,
             Datatype.HANDLE, Datatype.LIBRARY, Datatype.UTYPE);
 
-    /**
-     * The datatypes {@code ANY_BINSTR} covers, which are the ones
-     * {@code MT_String} builds.
-     */
     private static final java.util.Set<Datatype> READ_AS_TEXT_OR_BYTES =
             java.util.Set.of(Datatype.STRING, Datatype.FILE, Datatype.URL,
                     Datatype.EMAIL, Datatype.TAG, Datatype.REF, Datatype.BINARY);
 
-    /** The datatypes {@code MT_Block} builds. */
     private static final java.util.Set<Datatype> READ_AS_A_BLOCK =
             java.util.Set.of(Datatype.BLOCK, Datatype.PAREN, Datatype.PATH,
                     Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
                     Datatype.HASH);
 
-    /**
-     * A text or bytes construct, which takes the value and at most a position
-     * and refuses everything else.
-     *
-     * <p>{@code MT_String} says so in one condition before it builds anything:
-     * {@code if (!(ANY_BINSTR(data) && (IS_END(data+1) || (IS_INTEGER(data+1)
-     * && IS_END(data+2))))) return FALSE;}. A third item, or a second one that
-     * is not a whole number, is a malconstruct.
-     *
-     * <p>Reading what it can instead is quiet and plausible and wrong. MAKE
-     * STRING! of a block joins what it is given, so {@code #(string! "ab" 2 x)}
-     * came back here as the string "ab2x" and a mistyped construct became a
-     * value nobody wrote.
-     */
     private Value textOrBytesStandingWhereItWasTold(
             Datatype datatype, List<Value> contents) {
 
@@ -891,20 +695,6 @@ public final class Transcoder {
                 : standingWhereItWasTold(whole, contents.get(1));
     }
 
-    /**
-     * A series moved to the position a construct named, clipped at both ends.
-     *
-     * <p>The bottom end is the surprising one. The C subtracts one and then
-     * compares the result as a count rather than as a signed number --
-     * {@code REBCNT i = Int32(data) - 1; if (i > VAL_TAIL(out)) i =
-     * VAL_TAIL(out);} -- so nought becomes minus one, wraps round to something
-     * enormous, and is clipped to the tail exactly as a number past the end
-     * is. Clamping at the head instead makes {@code #(string! "ab" 0)} the
-     * whole string where a real Rebol gives the empty tail.
-     *
-     * <p>A second item that is not a whole number names no position at all and
-     * leaves the series at its head, which is the block family's reading of it.
-     */
     private Value standingWhereItWasTold(Value whole, Value position) {
         if (!(whole instanceof SeriesValue series)) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
@@ -918,14 +708,6 @@ public final class Transcoder {
                 (int) (counted < 0 || counted > tail - 1 ? tail : counted + 1));
     }
 
-    /**
-     * A construct that carries contents, such as {@code #(decimal! 1)}.
-     *
-     * <p>What the reader can build itself is below; everything else goes to
-     * MAKE, which is what {@code Construct_Value} does with
-     * {@code Make_Dispatch}. The list of what it must not try is the one
-     * thing kept here, and it is copied from the table rather than judged.
-     */
     private Value builtFrom(Datatype datatype, List<Value> contents) {
         if (HAVE_NO_MAKER.contains(datatype)) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
@@ -992,21 +774,6 @@ public final class Transcoder {
         };
     }
 
-    /**
-     * Everything the reader does not build itself, handed to MAKE.
-     *
-     * <p>Rebol keeps no list of which datatypes have construction syntax.
-     * {@code Construct_Value} skips the datatype word and calls
-     * {@code Make_Dispatch[type]} on what is left, so a type has the syntax
-     * exactly when it has a maker. The switch above was a list, and its
-     * {@code default} refused fourteen types a real Rebol reads -- which
-     * stopped ten of Rebol's own test files dead, make-test.r3 at 216 of its
-     * 1,029 assertions.
-     *
-     * <p>The maker arrives the same way the function builder does, because
-     * MAKE belongs to the evaluator and the reader must not reach upward for
-     * it. Until one is handed over, the answer is what it was.
-     */
     private Value madeByTheEvaluator(Datatype datatype, List<Value> contents) {
         if (maker == null) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
@@ -1027,50 +794,14 @@ public final class Transcoder {
         return made;
     }
 
-    /**
-     * A datatype whose maker reads the first value where the others read the
-     * whole block.
-     *
-     * <p>The C hands a maker a pointer into the block and lets it decide how
-     * far to read, so a difference like this one does not need saying there.
-     * {@code Make_Time} takes a bare integer as a count of seconds and only
-     * reads hours, minutes and seconds when it is handed a block, which makes
-     * {@code #(time! 1 2 3)} one second where {@code make time! [1 2 3]} is
-     * an hour, two minutes and three seconds. Both were checked against a
-     * real Rebol.
-     */
     private static boolean readsOneLooseValue(Datatype datatype) {
         return datatype == Datatype.TIME;
     }
 
-    /**
-     * A datatype whose maker has to see a block even where the construct holds
-     * a single value.
-     *
-     * <p>An image is the one. {@code MT_Image} calls {@code Create_Image} and
-     * nothing else, so a written image is always read as a specification --
-     * and a specification refuses a size that cannot exist. Handing the maker
-     * a bare pair instead reaches the code that makes a blank picture of a
-     * size, which brings an impossible size down to the nearest possible, so
-     * {@code #(image! 1x-1)} quietly read as a picture one wide and none tall
-     * where a real Rebol refuses it.
-     *
-     * <p>It has to hold off the generic "a series and where it stands" branch
-     * as well, which is the other way a written image slipped past the maker.
-     * That branch reads {@code #(block! [a b] 2)} as a block standing at its
-     * second item and would read {@code #(image! 2x2 3)} the same way, so a
-     * picture with a position quietly appeared where a real Rebol refuses the
-     * whole construct. An image is a series and is not one of the series that
-     * branch knows.
-     */
     private static boolean alwaysReadsABlock(Datatype datatype) {
         return datatype == Datatype.IMAGE;
     }
 
-    /**
-     * How a construct is made, for every datatype the reader does not build
-     * itself. {@code Make_Dispatch} in the C.
-     */
     private static volatile
             java.util.function.BiFunction<Datatype, Value, Value> maker;
 
@@ -1079,11 +810,6 @@ public final class Transcoder {
         maker = builder;
     }
 
-    /**
-     * How a function construct is built. The evaluator owns spec parsing,
-     * so it hands the reader a builder at boot rather than the reader
-     * reaching upward for one.
-     */
     private static volatile
             java.util.function.BiFunction<BlockValue, BlockValue, Value> functionBuilder;
 
@@ -1092,14 +818,6 @@ public final class Transcoder {
         functionBuilder = builder;
     }
 
-    /**
-     * An object built from a block of set-words and values.
-     *
-     * <p>The block is taken exactly as written and never evaluated,
-     * because the reader has no context to evaluate in. That is what lets
-     * an object round-trip through MOLD, and it is the construct Rebol's
-     * own series-test.r3 and object-test.r3 both stop at.
-     */
     private static byte[] bytesOf(BinaryValue binary) {
         byte[] octets = new byte[binary.storageLength() - binary.index() + 1];
         for (int at = 0; at < octets.length; at++) {
@@ -1154,12 +872,10 @@ public final class Transcoder {
 
     private static final int LAST_UNICODE_CODEPOINT = 0x10FFFF;
 
-    /** The UTF-16 range no character may hold: `IS_SURROGATE` in the C. */
     private static boolean isSurrogate(int codepoint) {
         return codepoint >= 0xD800 && codepoint <= 0xDFFF;
     }
 
-    /** The only three bases a binary may be written in. */
     private static final int BITS = 2;
     private static final int HEXADECIMAL = 16;
     private static final int BASE_64 = 64;
@@ -1168,17 +884,6 @@ public final class Transcoder {
         return readBinary(HEXADECIMAL);
     }
 
-    /**
-     * The body of a binary literal, in whichever base was named.
-     *
-     * <p>Whitespace is ignored wherever it falls and a semicolon starts a
-     * comment to the end of the line, so a long binary can be broken
-     * across lines with a note beside it.
-     *
-     * <p>A body that does not fill its last byte is padded rather than
-     * refused: the digits gathered so far are shifted up to the width of
-     * a byte, which makes `2#{000}` and `16#{0}` both one zero byte.
-     */
     private BinaryValue readBinary(int base) {
         advance();
         StringBuilder body = new StringBuilder();
@@ -1206,12 +911,10 @@ public final class Transcoder {
         }
     }
 
-    /** A carriage return ends a comment as a line feed does: NOT_NEWLINE. */
     private static boolean endsAComment(int codepoint) {
         return codepoint == '\n' || codepoint == '\r';
     }
 
-    /** Digits of the given base packed into bytes, the last one padded. */
     private BinaryValue gatheredDigits(String body, int base) {
         int digitsAByte = base == BITS ? 8 : 2;
         List<Integer> octets = new ArrayList<>();
@@ -1238,7 +941,6 @@ public final class Transcoder {
         return BinaryValue.of(octets.stream().mapToInt(Integer::intValue).toArray());
     }
 
-    /** A base 64 body decoded, or a failure if it is not one. */
     private BinaryValue decodedBase64(String body) {
         try {
             byte[] decoded = java.util.Base64.getDecoder().decode(body);
@@ -1252,15 +954,6 @@ public final class Transcoder {
         }
     }
 
-    /**
-     * A binary written in a named base.
-     *
-     * <p>Only 2, 16 and 64 exist, and the base has to be written plainly:
-     * a sign or a leading zero is refused. A real R3 complains about the
-     * integer rather than about the binary for all of these, which is the
-     * clue that it reads the base as a number before it looks at the
-     * braces at all.
-     */
     private Value readBasedBinary(String spelling) {
         if (!spelling.matches("[1-9][0-9]*")) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "integer", spelling);
@@ -1272,22 +965,8 @@ public final class Transcoder {
         return readBinary(base);
     }
 
-    /** The characters a word may be built from without any letters. */
     private static final String SYMBOL_CHARACTERS = "<>=+-|~&*";
 
-    /**
-     * A tag, or one of the words that look like one.
-     *
-     * <p>A run starting with {@code <} that holds nothing but symbol
-     * characters is a word however it ends, so {@code <>}, {@code <=} and
-     * {@code <-->} are all words. Anything else that closes with {@code >}
-     * is a tag.
-     *
-     * <p>Closing with {@code >} is not the test, which is what this used,
-     * and it made {@code <-->} a tag. Rebol's own lexer-test.r3 asserts
-     * that case on line 338, and getting it wrong cost the 444 assertions
-     * in that file.
-     */
     private Value readAngled() {
         int scout = position;
         while (scout < codepoints.length
@@ -1328,38 +1007,10 @@ public final class Transcoder {
         return StringValue.of(text.toString(), Datatype.TAG);
     }
 
-    /**
-     * What an unquoted file may not hold. {@code Scan_File}'s first line.
-     *
-     * <p>{@code const REBYTE *invalid = cb_cast(":;()[]\"^");} -- eight
-     * characters, and the caret is the surprising one, because it is an escape
-     * everywhere else in the language.
-     */
     private static final String REFUSED_IN_A_FILE = ":;()[]\"^";
 
-    /**
-     * And what a quoted one may not. {@code invalid = cb_cast(":;\"");}
-     *
-     * <p>Five of the eight come off the list, which is the point of the form: a
-     * name holding a space or a bracket has to be spellable somehow. The caret
-     * comes off with them and becomes an escape again.
-     */
     private static final String REFUSED_IN_A_QUOTED_FILE = ":;\"";
 
-    /**
-     * A file literal, checked character by character.
-     *
-     * <p>{@code Scan_File} chooses the refused set and hands the rest to
-     * {@code Scan_Item}, which is where every rule lives: a control character is
-     * refused, a backslash quietly becomes a forward slash, a percent sign wants
-     * two hex digits after it, and anything in the refused set ends the read with
-     * a failure rather than with a file.
-     *
-     * <p>This used to take everything up to the next space. Which read
-     * {@code %a^b} and {@code %a%2h} as files and let a typo become a filename --
-     * five of Rebol's own lexer assertions, and the reader is the wrong place to
-     * be generous.
-     */
     private StringValue readFile() {
         advance();
         boolean quoted = peek() == '"';
@@ -1385,13 +1036,6 @@ public final class Transcoder {
         return StringValue.of(text.toString(), Datatype.FILE);
     }
 
-    /**
-     * One character of a file name, with the escapes read and the rest checked.
-     *
-     * <p>In the C's order, because the order decides the answer: the control
-     * check comes first and catches a raw tab before the refused set is consulted,
-     * and the backslash is rewritten before the escapes are looked for.
-     */
     private int nextFileCharacter(String refused, boolean quoted) {
         int character = peek();
         if (character < ' ') {
@@ -1418,12 +1062,6 @@ public final class Transcoder {
         return character;
     }
 
-    /**
-     * The byte two hex digits name, which is how a file name holds a space.
-     *
-     * <p>{@code Scan_Hex2} wants exactly two, and anything else is a failure
-     * rather than a literal percent sign. So {@code %a%2h} is not a file.
-     */
     private int escapedByPercent() {
         int high = hexDigitValue(peekAt(1));
         int low = hexDigitValue(peekAt(2));
@@ -1436,7 +1074,6 @@ public final class Transcoder {
         return high * 16 + low;
     }
 
-    /** A hex digit's value, or -1 for anything that is not one. */
     private static int hexDigitValue(int character) {
         if (character >= '0' && character <= '9') {
             return character - '0';
@@ -1450,13 +1087,6 @@ public final class Transcoder {
         return -1;
     }
 
-    /**
-     * A lexeme, unless it is a signed money literal.
-     *
-     * <p>{@code -$1} is one value rather than the word {@code -} followed
-     * by money, and the sign has to be noticed before the lexeme reader
-     * runs, because the dollar sign ends a lexeme.
-     */
     private Value readSignedOrLexeme() {
         if ((peek() == '-' || peek() == '+') && peekAt(1) == '$') {
             boolean negative = peek() == '-';
@@ -1478,21 +1108,10 @@ public final class Transcoder {
         return moneyOf(digits, false, lexeme);
     }
 
-    /** The digits after the dollar sign, with the sign applied. */
     private MoneyValue moneyOf(String digits, boolean negative) {
         return moneyOf(digits, negative, (negative ? "-$" : "$") + digits);
     }
 
-    /**
-     * The same, told what the whole token was so the failure can report it.
-     *
-     * <p>{@code Scan_Error} names the token kind in ARG1 and its text in ARG2, and
-     * Rebol's money group compares the second: `e/arg2 = "$1*$2"`. An amount that is
-     * not a number is the whole of what can go wrong here, and the four spellings it
-     * asserts are all a money literal run into an operator with no space --
-     * {@code $1*$2}, {@code $1+$2}, {@code $1-$2}, {@code $1/$2}. Each is one token
-     * as far as the reader is concerned, and none of them is a number.
-     */
     private MoneyValue moneyOf(String digits, boolean negative, String token) {
         if (digits.indexOf('/') >= 0) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "money",
@@ -1533,15 +1152,6 @@ public final class Transcoder {
         return lexeme.toString();
     }
 
-    /**
-     * Copies a {@code #"c"} into the lexeme.
-     *
-     * <p>A quote ends a lexeme everywhere else, so a character literal used
-     * as a path segment was cut in two: {@code b/#"a"} read as the path
-     * {@code b/#} and a string beside it, where Rebol reads one path. Same
-     * number of assertions either way, which is why counting them could
-     * never have found it.
-     */
     private void takeCharacterLiteral(StringBuilder lexeme) {
         lexeme.appendCodePoint(peek());
         advance();
@@ -1565,19 +1175,6 @@ public final class Transcoder {
         throw failure(SyntaxFailure.MISSING_CLOSE, OpenDelimiter.QUOTE);
     }
 
-    /**
-     * Copies a {@code %"name"} into the lexeme.
-     *
-     * <p>The same problem the character literal beside this one has, and the
-     * same answer. A quote ends a lexeme everywhere else, so a quoted file
-     * used as a path segment was cut in three: {@code a/%"b"/c} read as the
-     * path {@code a/%}, a string, and a second path {@code /c}.
-     *
-     * <p>Quoting is what puts a file in the middle of a path at all. An
-     * unquoted one runs to the end, because a slash is an ordinary character
-     * in a file name -- so {@code a/%b/c} is a path of two and the quotes are
-     * the only way to say otherwise.
-     */
     private void takeQuotedFile(StringBuilder lexeme) {
         lexeme.appendCodePoint(peek());
         advance();
@@ -1601,13 +1198,6 @@ public final class Transcoder {
         throw failure(SyntaxFailure.MISSING_CLOSE, OpenDelimiter.QUOTE);
     }
 
-    /**
-     * Copies a balanced {@code (...)} into the lexeme.
-     *
-     * <p>Counts depth rather than stopping at the first close, because a
-     * segment may hold a paren of its own. Anything inside is copied
-     * verbatim and read later, when the segment is turned into a value.
-     */
     private void takeParenthesisedGroup(StringBuilder lexeme) {
         int depth = 0;
         do {
@@ -1641,79 +1231,22 @@ public final class Transcoder {
             Pattern.compile("\\d{1,4}/[A-Za-z0-9]+/\\d{1,4}");
     private static final Pattern HYPHENATED_DATE =
             Pattern.compile("(\\d{1,4})-([A-Za-z]{3,}|\\d{1,2})-(\\d{1,4})");
-    /**
-     * A date carrying a time, and perhaps an offset:
-     * {@code 1-Jan-2000/12:30:15+2:00}.
-     *
-     * <p>One value rather than three, and it has to be matched before the path
-     * reader gets a look at it: the separator between the day and the time is a
-     * slash, so {@code 1-Jan-2000/12:00} otherwise reads as a path of a date
-     * and a time. That path molds identically to the date, which is how it went
-     * unnoticed -- the answer looked right and was of the wrong datatype, so
-     * every date field read off it was none.
-     *
-     * <p>The offset needs its colon. A real R3 reads {@code +2} and {@code Z} as
-     * no offset at all rather than as two hours or as Zulu, so both fall into
-     * the group and are read as zero.
-     *
-     * <p>ISO 8601 is the same thing spelled differently, and it is a date
-     * literal here rather than a string a codec parses: a T stands where the
-     * slash does, so {@code 2000-01-01T10:00+02:00} is the value
-     * {@code 1-Jan-2000/10:00+2:00} is. Its offset has no colon and does
-     * count, because four digits are an hour and a minute run together --
-     * only the two-digit {@code +01} means nothing.
-     */
     private static final Pattern DATE_WITH_TIME = Pattern.compile(
             "(\\d{1,4}[-/](?:[A-Za-z]{3,}|\\d{1,2})[-/]\\d{1,4})"
                     + "(?:[/Tt](-?\\d{1,2}:\\d{1,2}(?::\\d{1,2}(?:\\.\\d+)?)?))?"
                     + "([-+]\\d{1,2}:\\d{1,2}|[-+]\\d{1,4}|[Zz])?");
 
-    /**
-     * A date whose year is written with a minus in front of it.
-     *
-     * <p>Matched only to be refused. No date has a negative year, and without
-     * this the lexeme falls through to the path reader and comes back as
-     * {@code 1/11/0} -- a path of three numbers that looks like the date the
-     * writer meant and is not one.
-     */
     private static final Pattern DATE_WITH_A_NEGATIVE_YEAR = Pattern.compile(
             "\\d{1,4}[-/](?:[A-Za-z]{3,}|\\d{1,2})[-/]-\\d{1,4}.*");
     private static final Pattern PAIR = Pattern.compile(
             "([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)"
                     + "[xX]([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)");
-    /**
-     * The four shapes {@code Scan_Time} lists, and the fraction that changes the
-     * meaning of the first two.
-     *
-     * <pre>
-     * //    HH:MM       as part1:part2
-     * //    HH:MM:SS    as part1:part2:part3
-     * //    HH:MM:SS.DD as part1:part2:part3.part4
-     * //    MM:SS.DD    as part1:part2.part4
-     * </pre>
-     *
-     * <p>A two-part time with a fraction is the last of those: {@code 12:34.5} is
-     * twelve <em>minutes</em> and 34.5 seconds, where {@code 12:34} is twelve hours
-     * and thirty-four minutes. Which is why the pattern has to allow a fraction on
-     * the second component and {@link #readTime} has to look for it.
-     */
     private static final Pattern TIME = Pattern.compile(
             "([-+]?\\d+):(\\d{1,2}(?:\\.\\d+)?)(?::(\\d{1,2}(?:\\.\\d+)?))?");
     private static final Pattern TUPLE = Pattern.compile("\\d+(?:\\.\\d+){2,}");
     private static final Pattern INTEGER = Pattern.compile("[-+]?\\d+(?:'\\d+)*");
     private static final Pattern DECIMAL =
             Pattern.compile("[-+]?(?:\\d+\\.\\d*|\\.\\d+|\\d+)(?:[eE][-+]?\\d+)?");
-    /**
-     * A percent, which is a decimal with a {@code %} after it -- exponent
-     * included.
-     *
-     * <p>Rebol scans the number and then looks at what follows, so anything
-     * that reads as a decimal reads as a percent with a {@code %} on the end.
-     * Spelling the number out here instead left the exponent off, and
-     * {@code 1e18%} was refused while {@code 1e18} and {@code 50%} were both
-     * fine. It is line 18 of Rebol's own percent-test.r3 and it hid the other
-     * thirty-four assertions in the file.
-     */
     private static final Pattern PERCENT = Pattern.compile(
             "([-+]?(?:\\d+\\.\\d*|\\.\\d+|\\d+)(?:[eE][-+]?\\d+)?)%");
     private static final Pattern DATATYPE = Pattern.compile("([a-zA-Z][a-zA-Z0-9-]*)!");
@@ -1722,19 +1255,8 @@ public final class Transcoder {
         "jul", "aug", "sep", "oct", "nov", "dec"
     };
 
-    /**
-     * Characters a word may not contain, however it is spelled.
-     *
-     * <p>A real R3 also refuses % # $ \ and a comma inside a word, and
-     * those are deliberately left out here. A hash is how a based number
-     * and a based binary are written -- `2#01`, `64#{...}` -- so a rule
-     * that refuses one in a word has to run after those forms have been
-     * recognised, not before. Refusing it here turned `64#{` into the
-     * integer 64 and broke a source file that reads perfectly well.
-     */
     private static final String NOT_IN_A_WORD = "<>%#$\\";
 
-    /** Where the first angle bracket falls, or -1 if there is none. */
     private static int firstAngleBracket(String lexeme) {
         int depth = 0;
         for (int at = 0; at < lexeme.length(); at++) {
@@ -1750,18 +1272,10 @@ public final class Transcoder {
         return -1;
     }
 
-    /** Whether every character is one a symbol-only word may be made of. */
     private static boolean allSymbols(String lexeme) {
         return !lexeme.isEmpty() && lexeme.chars().noneMatch(Character::isLetterOrDigit);
     }
 
-    /**
-     * The two shapes that open a based number, held rather than written out.
-     *
-     * <p>{@code String.matches} compiles its pattern afresh on every call, and
-     * these two are asked about every lexeme in every source. Compiling them
-     * was a quarter of the time it took to read Rebol's own library.
-     */
     private static final Pattern SIGNED_DIGITS_MAYBE_HASHED =
             Pattern.compile("[+-][0-9]+#?");
 
@@ -1833,37 +1347,6 @@ public final class Transcoder {
         throw failure(SyntaxFailure.INVALID_LEXEME, null);
     }
 
-    /**
-     * Whether the value ends here, or the angle bracket has spoiled it.
-     *
-     * <p>Two rules meet, and which applies depends on what the reader had before
-     * the bracket.
-     *
-     * <p><b>A number simply ends.</b> A path is assembled from separate tokens, so
-     * the last segment of {@code a/3<} is scanned as a number and a number stops at
-     * any character that is not a digit. The word rule is never consulted, which is
-     * why {@code a/3<} loads as {@code [a/3 <]}. The same is true without a path:
-     * {@code 1<}, {@code 1.0<a>} and {@code 1.#INF<} all end at the bracket.
-     *
-     * <p><b>A word obeys {@code scanword}</b>, whose comment states it outright:
-     * "Allow word&lt;tag&gt; and word&lt;/tag&gt; but not word&lt; word&lt;=
-     * word&lt;&gt; etc."
-     *
-     * <pre>
-     * if (cp[1] == '&lt;' || cp[1] == '&gt;' || cp[1] == '=' ||
-     *     IS_LEX_SPACE(cp[1]) || (cp[1] != '/' &amp;&amp; IS_LEX_DELIMIT(cp[1])))
-     *     return -type;
-     * </pre>
-     *
-     * <p>So the character after the bracket decides. A name or a slash means a tag
-     * or an arrow word is beginning and the word is finished. Another bracket, an
-     * equals, a space or the end of input means somebody wrote an operator hard
-     * against a name, and that is a mistake rather than two values.
-     *
-     * <p>Which is what separates {@code a/3<} from {@code a/b<}: the same path
-     * shape, the same bracket, and the last segment is the whole difference. Rebol's
-     * own lexer test asserts the pair side by side.
-     */
     private boolean splitsHereRatherThanFailing(String before, String after) {
         String lastSegment = before.substring(before.lastIndexOf('/') + 1);
         if (!lastSegment.isEmpty() && !(classifyPlain(lastSegment) instanceof WordValue)) {
@@ -1880,17 +1363,6 @@ public final class Transcoder {
                 && !isDelimiterOrSpace(following);
     }
 
-    /**
-     * Where the first character a word may not hold sits, or -1.
-     *
-     * <p>Skips whatever is inside a parenthesised group, because a path may
-     * carry one and its contents are a value in their own right rather than
-     * part of the word. Judging them by the word's rules truncated the lexeme
-     * at the offending character and re-read from there, so {@code m/(<A>)}
-     * became the path {@code m/(}, then a tag, then a stray close bracket.
-     * A char literal in a path went the same way: {@code b/#"a"} was read as
-     * {@code b/#} and a separate string.
-     */
     private static int firstOffendingCharacter(String lexeme) {
         int depth = 0;
         for (int at = 0; at < lexeme.length(); at++) {
@@ -1975,25 +1447,6 @@ public final class Transcoder {
         return classifyScalarOrWord(lexeme);
     }
 
-    /**
-     * An email's text, with its escapes read and its at-signs counted.
-     *
-     * <p>{@code Scan_Email} writes out the percent rule rather than sharing
-     * {@code Scan_Item}, and adds one of its own: exactly one at-sign.
-     * {@code if (*cp == '@') { if (at) return 0; at = TRUE; }} on the way through
-     * and {@code if (!at) return 0;} at the end, so two is as wrong as none.
-     *
-     * <p>Nothing else is refused. An email is not a file and shares none of the
-     * eight characters a file turns away, which is why this is a second function
-     * rather than another call to the first.
-     *
-     * <p>The escapes are *bytes*. {@code Scan_Email} writes each one into a
-     * byte buffer beside the unescaped text and reads the whole buffer back
-     * as UTF-8 at the end, so {@code a@%C5%A1} is two bytes that spell one
-     * letter. Reading each escape as a character of its own gave
-     * {@code a@Å¡}, which is that letter's two halves each shown as though it
-     * were a letter.
-     */
     private String emailBodyOf(String lexeme) {
         byte[] source = lexeme.getBytes(UTF_8);
         byte[] octets = new byte[source.length];
@@ -2027,35 +1480,6 @@ public final class Transcoder {
         return new String(octets, 0, written, UTF_8);
     }
 
-    /**
-     * A sigil with something after it that cannot follow one.
-     *
-     * <p>{@code Scan_Token} answers a *negative* token for each of these, and a
-     * negative token is a syntax failure. Nine cases across three sigils, and each
-     * carries the C's own comment:
-     *
-     * <pre>
-     * case LEX_SPECIAL_TICK:
-     *     if (IS_LEX_NUMBER(cp[1])) return -TOKEN_LIT;   // no '2nd
-     *     if (cp[1] == ':') return -TOKEN_LIT;           // no ':X
-     *     if (cp[1] == '_' && IS_LEX_DELIMIT(cp[2])) return -TOKEN_LIT;   // no '_
-     *     ...
-     *     if ((*cp == '-' || *cp == '+') && IS_LEX_NUMBER(cp[1])) return -TOKEN_WORD;
-     *     if (*cp == '\'') return -TOKEN_LIT;            // no ''foo
-     *
-     * case LEX_SPECIAL_COLON:
-     *     if (cp[1] == '_' &amp;&amp; IS_LEX_DELIMIT(cp[2])) return -TOKEN_GET;   // no :_
-     *     if (cp[1] == '\'' || cp[1] == ':') return -TOKEN_WORD; // no :'foo ::foo
-     *
-     * case LEX_DELIMIT_SLASH:
-     *     if (*(scan_state->end - 1) == ':') return -type;   // no /a:
-     * </pre>
-     *
-     * <p>None of them is arbitrary. A sigil names a word and each of these asks
-     * for a word that cannot exist: one starting with a digit, one that is itself
-     * a sigil, one that is the none literal, one already carrying a sigil at the
-     * other end. JEBOL read every one as a perfectly good lit-word or get-word.
-     */
     private void refuseAMisplacedSigil(String lexeme) {
         if (lexeme.length() < 2) {
             return;
@@ -2087,25 +1511,9 @@ public final class Transcoder {
         }
     }
 
-    /** {@code 2#01} and {@code 16#FF}: digits, a hash, then the number. */
     private static final Pattern BASED_INTEGER =
             Pattern.compile("(\\d{1,2})#([0-9A-Za-z]+)");
 
-    /**
-     * Whether a lexeme could be a number, a date, a time, a pair or a tuple.
-     *
-     * <p>Every one of those shapes needs a digit somewhere, {@code 1.#INF}
-     * and {@code 1.#NaN} included, so a lexeme with no digit in it is a word
-     * and there is nothing to try.
-     *
-     * <p>Worth the line because almost every lexeme in a REBOL source is a
-     * word, and each one was being run through ten regular expressions before
-     * arriving at that. Reading Rebol's own library took sixty-three
-     * milliseconds and this is most of it. {@link Character#isDigit} rather
-     * than the ASCII range on purpose: it accepts more than {@code \d} does,
-     * so anything the patterns below could still match takes the long way
-     * round and answers exactly as it did.
-     */
     private static boolean couldSpellANumber(String lexeme) {
         for (int at = 0; at < lexeme.length(); at++) {
             if (Character.isDigit(lexeme.charAt(at))) {
@@ -2115,37 +1523,15 @@ public final class Transcoder {
         return false;
     }
 
-    /**
-     * Whether a colon stands somewhere a scheme name could end.
-     *
-     * <p>The url pattern is {@code [a-zA-Z][a-zA-Z0-9+.-]*:.+}, so it needs a
-     * colon with at least one character either side of it. Every word in
-     * every source was being run through that pattern to find out it had no
-     * colon at all.
-     */
     private static boolean couldOpenAScheme(String lexeme) {
         int colon = lexeme.indexOf(':');
         return colon > 0 && colon < lexeme.length() - 1;
     }
 
-    /**
-     * Whether the lexeme opens with one of the ten digits.
-     *
-     * <p>All three date patterns open with {@code \d{1,4\}}, so a lexeme that
-     * does not open with a digit is none of them and there is nothing to try.
-     */
     private static boolean opensWithAPlainDigit(String lexeme) {
         return !lexeme.isEmpty() && lexeme.charAt(0) >= '0' && lexeme.charAt(0) <= '9';
     }
 
-    /**
-     * Whether one of the ten digits appears, which is what {@code \d} asks.
-     *
-     * <p>The decimal pattern accepts a lone point and a lone sign, so
-     * {@code .} and {@code -.} match it and are words. This is the test that
-     * turns them away, and it has to be the narrow one: an Arabic-Indic digit
-     * is a digit to Java and not to the pattern.
-     */
     private static boolean holdsAPlainDigit(String lexeme) {
         for (int at = 0; at < lexeme.length(); at++) {
             if (lexeme.charAt(at) >= '0' && lexeme.charAt(at) <= '9') {
@@ -2202,7 +1588,6 @@ public final class Transcoder {
         return WordValue.of(lexeme);
     }
 
-    /** 1.#INF, -1.#INF or 1.#NaN, or null when the lexeme is none of them. */
     private static Value specialDecimal(String lexeme) {
         return switch (lexeme.toUpperCase(java.util.Locale.ROOT)) {
             case "1.#INF", "+1.#INF" -> DecimalValue.of(Double.POSITIVE_INFINITY);
@@ -2212,15 +1597,6 @@ public final class Transcoder {
         };
     }
 
-    /**
-     * A number written in another base, such as {@code 2#01} or
-     * {@code 16#FF}.
-     *
-     * <p>Read unsigned and then taken as signed, so sixty-four ones in
-     * base two is minus one rather than an overflow. Past that width there
-     * is nowhere to put it, and a digit the base does not have is refused
-     * rather than quietly ending the number early.
-     */
     private Value basedInteger(int written, String digits) {
         int base = written == 0 ? 16 : written;
         if (base < 2 || base > 16) {
@@ -2250,12 +1626,6 @@ public final class Transcoder {
         return IntegerValue.of(value);
     }
 
-    /**
-     * The value a datatype name stands for, used by construction syntax.
-     *
-     * <p>Only reached from {@code #(integer!)}. A bare {@code integer!} in
-     * source is a word, and what it names is decided when it is evaluated.
-     */
     private Value readDatatype(String name) {
         for (Datatype candidate : Datatype.values()) {
             if (candidate.spelling().equalsIgnoreCase(name)) {
@@ -2290,21 +1660,6 @@ public final class Transcoder {
         return BlockValue.path(segments, pathType);
     }
 
-    /**
-     * Splits a path on the slashes that separate its segments, which is not
-     * every slash in it.
-     *
-     * <p>A paren holds its own, and so does a file. A slash is a perfectly
-     * ordinary character inside a file name -- it is what a directory is made
-     * of -- so {@code a/%b/c} is two segments and the second is the file
-     * {@code %b/c}, not three segments with a file called {@code b}. Once a
-     * segment begins with a percent sign the rest of the path belongs to it.
-     *
-     * <p>Unless the file is written in quotes, which is what the quotes are
-     * for: {@code %"b"} ends where the closing quote is and whatever follows
-     * is a segment of its own again. That is the only way to put a file in the
-     * middle of a path rather than at the end of one.
-     */
     private static List<String> splitOutsideParens(String body) {
         List<String> parts = new ArrayList<>();
         StringBuilder part = new StringBuilder();
@@ -2334,23 +1689,6 @@ public final class Transcoder {
         return parts;
     }
 
-    /**
-     * Whether a percent sign at this point begins a file or is the word.
-     *
-     * <p>A percent sign on its own is an ordinary word -- it is what REBOL
-     * calls the remainder operator -- so {@code a/%} is a path whose second
-     * segment is that word, and {@code a/%/b} is three segments with the word
-     * in the middle. It begins a file only when a name follows it.
-     *
-     * <p>A run of them is a word too -- {@code %%} is one REBOL defines -- so
-     * the question is what follows the run rather than what follows the first
-     * sign.
-     *
-     * <p>Getting this wrong in the generous direction is the dangerous one: it
-     * turns {@code '%/} from the malformed path it is into a file called
-     * {@code %/}, and a malformed path that quietly reads is worse than one
-     * that is refused.
-     */
     private static boolean startsAFileRatherThanTheWord(String body, int at) {
         int past = at;
         while (past < body.length() && body.charAt(past) == '%') {
@@ -2359,10 +1697,6 @@ public final class Transcoder {
         return past < body.length() && body.charAt(past) != '/';
     }
 
-    /**
-     * Where a file segment of a path stops: after the closing quote where it
-     * has one, and at the end of the path where it has not.
-     */
     private static int whereAFileSegmentEnds(String body, int startsAt) {
         if (startsAt + 1 >= body.length() || body.charAt(startsAt + 1) != '"') {
             return body.length();
@@ -2403,21 +1737,6 @@ public final class Transcoder {
         return WordValue.of(segment);
     }
 
-    /**
-     * Refuses a path segment that reads as nothing and cannot be a word
-     * either.
-     *
-     * <p>Falling back to a word is right for a name and wrong for anything
-     * starting with a digit, because no word may: {@code 2013/11/08T17:01Z0100}
-     * was becoming the path {@code [2013 11 08T17:01Z0100]} with a word on the
-     * end, where a real 3.22.1 refuses the whole lexeme. The same text with
-     * hyphens was already refused, and only the slash sent it down this road.
-     *
-     * <p>Only where the segment reads as nothing at all. A segment that reads
-     * as several values is a different thing entirely -- {@code a/3<} is the
-     * path {@code a/3} and then a word, and the lexer sorts that out further
-     * up rather than here.
-     */
     private void refuseASegmentThatCannotBeAWord(String segment) {
         if (!segment.isEmpty() && Character.isDigit(segment.charAt(0))) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "path", segment);
@@ -2452,19 +1771,6 @@ public final class Transcoder {
         return timeOf(negative ? "-0" : "0", minutes, second);
     }
 
-    /**
-     * Whether a two-part time means minutes and seconds rather than hours and
-     * minutes.
-     *
-     * <p>{@code if (part3 >= 0 || part4 < 0)} chooses HH:MM mode and the else is
-     * MM:SS, so it takes both an absent third part and a fraction on the second.
-     * {@code 12:34.5} is twelve minutes; {@code 12:34} and {@code 12:34:56.7} are
-     * twelve hours.
-     *
-     * <p>A fraction of zero does not count, because {@code Grab_Int_Scale} is
-     * followed by {@code if (part4 == 0) part4 = -1;} -- so {@code 12:34.0} is
-     * twelve hours and thirty-four minutes.
-     */
     private static boolean isMinutesAndSeconds(String second, String third) {
         if (third != null || !second.contains(".")) {
             return false;
@@ -2487,24 +1793,6 @@ public final class Transcoder {
         return negative ? TimeValue.ofNanoseconds(-positive.nanoseconds()) : positive;
     }
 
-    /**
-     * A date, in either of the two orders {@code Scan_Date} accepts.
-     *
-     * <p>The order is decided by how many digits the first part has, not by
-     * what the numbers could plausibly mean: {@code if (size >= 4) year = num;
-     * else if (size) day = num;}. So {@code 2000-01-01} is the first of
-     * January and {@code 1-1-2000} is as well, and reading the first as a day
-     * of 2000 threw an {@code IllegalArgumentException} out of the reader --
-     * which took a whole test run with it, because make-test.r3 has one on
-     * line 30.
-     *
-     * <p>The last part is read by digit count too. Three or more digits is
-     * the year as written, which is what makes {@code 1-Feb-0003} the year
-     * three rather than 2003. Two digits or fewer is a shorthand the C
-     * resolves against the year it is running in, keeping inside fifty years
-     * either way, so the century a bare {@code 96} means is not a constant
-     * and cannot be written as one.
-     */
     private Value readDate(String lexeme, String separator) {
         String[] parts = lexeme.split(Pattern.quote(separator));
         boolean yearIsFirst = parts[0].length() >= 4;
@@ -2533,15 +1821,6 @@ public final class Transcoder {
         return year - thisYear < -50 ? year + 100 : year;
     }
 
-    /**
-     * A date with a time of day and perhaps an offset.
-     *
-     * <p>An offset written without a time gives a time of 0:00 and an offset of
-     * zero, which is what a real R3 answers: {@code 1-Jan-2000+2:00} molds as
-     * {@code 1-Jan-2000/0:00} and reads its zone as 0:00. The offset is
-     * consumed and not kept, because there is nothing yet to offset when it
-     * arrives.
-     */
     private Value readDateWithTime(String day, String time, String offset) {
         DateValue date = (DateValue) readDate(day, day.indexOf('-') >= 0 ? "-" : "/");
         TimeValue timeOfDay = time == null
@@ -2552,15 +1831,6 @@ public final class Transcoder {
                 Optional.of(time == null ? 0 : offsetMinutesFrom(offset)));
     }
 
-    /**
-     * A time that can be a time of day, which is not every time.
-     *
-     * <p>A time on its own may be any length -- {@code 30:00} is thirty hours
-     * and a perfectly good duration. A time inside a date is a reading of a
-     * clock, so it cannot be thirty o'clock and cannot be before midnight:
-     * {@code 3-Jan-2010/30:00} and {@code 3-Jan-2010/-10:00} are invalid
-     * lexemes rather than dates with strange clocks on them.
-     */
     private TimeValue aClockOfTheDay(TimeValue written) {
         if (written.nanoseconds() < 0 || written.nanoseconds() >= NANOSECONDS_IN_A_DAY) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "date");
@@ -2570,7 +1840,6 @@ public final class Transcoder {
 
     private static final long NANOSECONDS_IN_A_DAY = 24L * 60L * 60L * 1_000_000_000L;
 
-    /** {@code 12:30:15.25} as a time, the same three fields the lexer reads. */
     private TimeValue timeFromText(String written) {
         var parts = TIME.matcher(written);
         if (!parts.matches()) {
@@ -2579,46 +1848,20 @@ public final class Transcoder {
         return (TimeValue) readTime(parts.group(1), parts.group(2), parts.group(3));
     }
 
-    /**
-     * An offset in minutes, or zero where none was written.
-     *
-     * <p>Zero for {@code Z} and for a bare {@code +2} as well, because that is
-     * what a real R3 makes of both: an offset written the REBOL way needs its
-     * colon to count.
-     *
-     * <p>The ISO spelling has no colon and does count. Four digits are an hour
-     * and a minute run together, so {@code +0100} is the hour that
-     * {@code +1:00} is, and it is only the two-digit {@code +01} that means
-     * nothing.
-     */
     private int offsetMinutesFrom(String written) {
         if (written == null || written.length() == 1) {
             return 0;
         }
         int colon = written.indexOf(':');
         int size = colon < 0
-                ? quarterHoursIn(Integer.parseInt(written.substring(1)))
+                ? quarterHoursRoundedDownIn(
+                        Integer.parseInt(written.substring(1)))
                 : exactQuarterIn(Integer.parseInt(written.substring(1, colon)),
                         Integer.parseInt(written.substring(colon + 1)));
         return written.charAt(0) == '-' ? -size : size;
     }
 
-    /**
-     * An offset written with no colon, which is an hour and a minute run
-     * together and is rounded down to a quarter of an hour.
-     *
-     * <p>A zone is stored in quarters, so a minute that is not one is not
-     * refused but lost: {@code +20} is twenty minutes past the hour and comes
-     * back as {@code 0:15}, and {@code +5} comes back as nothing at all. That
-     * is the same reading whether the digits arrived as {@code +5},
-     * {@code +200} or ISO's {@code +0100}.
-     *
-     * <p>The ceiling is on the digits rather than on the offset they mean:
-     * anything above 1500 is refused, so {@code +1545} is an invalid lexeme
-     * although {@code +15:45} written with its colon is a real zone. Two
-     * spellings, two limits, and this is the one a real 3.22.1 has.
-     */
-    private int quarterHoursIn(int written) {
+    private int quarterHoursRoundedDownIn(int written) {
         if (written > MOST_A_COLONLESS_ZONE_MAY_SAY) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "date");
         }
@@ -2633,14 +1876,6 @@ public final class Transcoder {
 
     private static final int MINUTES_IN_A_QUARTER = 15;
 
-    /**
-     * An offset written with its colon, which has to name a quarter exactly.
-     *
-     * <p>Where the colonless form rounds, this refuses: {@code +5:50} is an
-     * invalid lexeme rather than five and three quarters, because a caller who
-     * wrote the minutes out meant them. The furthest either way is 15:45,
-     * which is what seven signed bits of quarter-hours reach.
-     */
     private int exactQuarterIn(int hours, int minutes) {
         int size = hours * 60 + minutes;
         if (minutes % MINUTES_IN_A_QUARTER != 0 || size > MOST_A_ZONE_MAY_BE) {
@@ -2651,15 +1886,6 @@ public final class Transcoder {
 
     private static final int MOST_A_ZONE_MAY_BE = 15 * 60 + 45;
 
-    /**
-     * Refuses a lone underscore where a name belongs.
-     *
-     * <p>{@code _} is how none is written, so it is not a word and cannot take
-     * a sigil: {@code \'_}, {@code :_} and {@code _:} are each a mistake rather
-     * than a quoted, read or assigned none. A real R3 reports them as invalid
-     * and names which of the three was being read, which is what a script
-     * catching the error looks at.
-     */
     private void refuseTheNoneWordAsAName(String named, String tokenKind, String lexeme) {
         if (named.equals("_")) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, tokenKind);
@@ -2705,19 +1931,6 @@ public final class Transcoder {
         position++;
     }
 
-    /**
-     * Whether the character here is the one that ends a line.
-     *
-     * <p>Three spellings and two of them share a character. A line feed ends a line, a
-     * carriage return ends a line, and a carriage return followed by a line feed ends
-     * one line rather than two -- so the return of such a pair is not the character
-     * that ends it, the line feed after it is. From {@code LEX_DELIMIT_RETURN} in
-     * {@code Scan_Token}, which steps over the line feed with {@code if (cp[1] == LF)
-     * cp++} before letting the count rise once.
-     *
-     * <p>The order matters and only one way round: a line feed followed by a carriage
-     * return is two lines, because only the return looks ahead for a partner.
-     */
     private boolean endsALine(int at) {
         int here = codepoints[at];
         if (here == '\n') {
@@ -2747,14 +1960,6 @@ public final class Transcoder {
                 Optional.of(theLineBeingRead()));
     }
 
-    /**
-     * The source line the reader is on, as R3 puts in a syntax error's NEAR.
-     *
-     * <p>The whole line rather than the offending token, because that is what a
-     * person reading the error needs: `(line 2) 1d` says where to look, and the
-     * token on its own would not. Written as R3 writes it, so a script comparing
-     * the two agrees.
-     */
     private String theLineBeingRead() {
         int from = Math.min(position, codepoints.length);
         while (from > 0 && codepoints[from - 1] != '\n') {
@@ -2767,11 +1972,6 @@ public final class Transcoder {
         return new String(codepoints, from, to - from).trim();
     }
 
-    /**
-     * A sign and a colon make a token a time, so this is a malformed one rather than
-     * the word it looks like. {@code Scan_Time} calls it a hole in its own comment:
-     * {@code if (*cp == '-' || *cp == '+') return 0; // small hole: --1:23}
-     */
     private static boolean isDoublySignedTime(String lexeme) {
         if (!isSign(lexeme.charAt(0)) || !isSign(lexeme.charAt(1))) {
             return false;
@@ -2784,28 +1984,10 @@ public final class Transcoder {
         return character == '-' || character == '+';
     }
 
-    /**
-     * The same failure, naming the token the reader was building and the text
-     * it was reading.
-     *
-     * <p>R3 reports both: ARG1 is the kind -- "word-lit", "tag",
-     * "end-of-script" -- and NEAR is the line and the fragment. A script
-     * catching a syntax error reads those rather than the message, and Rebol's
-     * own suite asserts on them.
-     */
     private MalformedSource failureReading(SyntaxFailure failure, String tokenKind) {
         return failureReading(failure, tokenKind, null);
     }
 
-    /**
-     * The same, naming the text that offended as well as the token kind.
-     *
-     * <p>{@code Scan_Error} fills three fields from three places, and a script reads
-     * each for something different: ARG1 is the kind, ARG2 is the token's own text,
-     * and NEAR is the line it sat on. Rebol's money group compares ARG2 --
-     * {@code e/arg2 = "$1*$2"} -- so the token has to be carried here rather than
-     * recovered from the line.
-     */
     private MalformedSource failureReading(
             SyntaxFailure failure, String tokenKind, String offendingText) {
 
@@ -2818,7 +2000,6 @@ public final class Transcoder {
                 Optional.ofNullable(offendingText));
     }
 
-    /** Internal control flow. Never escapes {@link #transcode(String)}. */
     private static final class MalformedSource extends RuntimeException {
 
         private static final long serialVersionUID = 1L;

@@ -6,11 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A function definition is validated, read from {@code func-test.r3}: a
- * {@code return:} annotation must carry a type block, and no variable may
- * be named twice.
- */
 class FunctionSpecValidationFromTheSourceTest {
 
     private static String answerTo(String source) {

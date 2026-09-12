@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A binary literal that says which base it is written in.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>Three bases and no others: bits, hexadecimal and base 64. Whitespace
- * and comments inside the braces are ignored, which is what lets a long
- * binary be broken across lines with a note beside it.
- */
 class BasedBinaryTest {
 
     private static String answerTo(String source) {
@@ -24,7 +14,6 @@ class BasedBinaryTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

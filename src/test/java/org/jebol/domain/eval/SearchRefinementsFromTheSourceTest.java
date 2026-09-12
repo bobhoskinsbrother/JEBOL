@@ -7,23 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The refinements FIND and SELECT share, read out of the C they share.
- *
- * <p>One arm serves both: {@code case A_FIND: case A_SELECT:} in
- * {@code t-block.c} and again in {@code t-string.c}. Both call the same
- * search, and one line parts them afterwards -- {@code ret += len} -- so
- * SELECT answers the item after the match where FIND answers the match.
- *
- * <p>That is why SELECT has /PART, /LAST, /REVERSE and /ONLY at all: it did
- * not gain them one at a time, it gets whatever the search takes. JEBOL had
- * written SELECT as its own loop over a block, which honoured /SKIP, /CASE
- * and /SAME and quietly ignored the other four.
- *
- * <p>Both take /ANY for the two wildcards and /WITH to rename them. /WITH
- * alone does nothing at all: {@code find_string} reaches the wildcard search
- * only under {@code AM_FIND_ANY}, so the pair is asked for together.
- */
 class SearchRefinementsFromTheSourceTest {
 
     private static String answerTo(String source) {

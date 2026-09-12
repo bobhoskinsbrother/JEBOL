@@ -12,30 +12,6 @@ import java.nio.file.StandardCopyOption;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Rebol's WAV codec, and why nobody has noticed its test is wrong.
- *
- * <p>{@code codec-wav.reb}, which JEBOL loads rather than rewrites. The codec
- * reads the RIFF chunks, takes the {@code data} chunk as a vector of samples
- * of whatever width the {@code fmt } chunk declared, and writes one back.
- *
- * <p>REBOL's own {@code codecs-test.r3} asks for two CRC-24 checksums of that
- * sample data and both are stale. The codec is a delayed module, so
- * {@code find codecs 'wav} is false at boot and the whole {@code if} block
- * guarding those assertions is skipped -- which is why nothing has had to
- * update them since version 0.2.0 stopped storing the sound as a raw binary
- * and started storing it as a vector. Import the module by hand and a real
- * 3.22.5 answers 14119576 and 5445824 where the file asks for 3097828 and
- * 4283614.
- *
- * <p>So this is the record of what the codec really does, and the two suite
- * lines are on {@code fails-on-rebol-too.txt} with the session that settles
- * it. Every figure here was read off {@code ./r3-head} first.
- *
- * <p>The checksum alone would not be enough: two different decodings of the
- * same file can share a length, so the sample count, the first samples, the
- * last samples and the declared format are all pinned beside it.
- */
 class WavCodecFromTheSourceTest {
 
     private static final Path VENDORED =
@@ -79,10 +55,6 @@ class WavCodecFromTheSourceTest {
                 ]""")).isEqualTo("[wave 44100 1 16 42158]");
     }
 
-    /**
-     * The checksum the suite gets wrong, and enough beside it that a decoding
-     * of the right length and the wrong contents cannot slip through.
-     */
     @Test
     @DisplayName("and its samples are these, whatever REBOL's own test asks for")
     void theSamplesAreTheseWhateverTheSuiteAsksFor(@TempDir Path directory)
@@ -118,13 +90,6 @@ class WavCodecFromTheSourceTest {
                         + " #(int16! [-148 -3 -115 -320 -359 -176])]");
     }
 
-    /**
-     * Nine samples go in and sixty-two bytes come out: forty-four of header
-     * and eighteen of sound. The whole thing is pinned rather than its length,
-     * because the header is where a reader on the other end finds the rate and
-     * the width, and a wrong byte in it is silent until something tries to
-     * play the file.
-     */
     @Test
     @DisplayName("ENCODE writes a forty-four byte header and the samples after it")
     void encodeWritesAHeaderAndTheSamples(@TempDir Path directory) {
@@ -147,12 +112,6 @@ class WavCodecFromTheSourceTest {
                 ]""")).isEqualTo("[wave 44100 1 16 #(true)]");
     }
 
-    /**
-     * Nothing, four bytes that are not a RIFF header, and the four letters
-     * without the length that has to follow them. All three run off the end of
-     * the binary dialect rather than being recognised and refused, which is
-     * what the codec does: it reads the chunks and lets the reader complain.
-     */
     @Test
     @DisplayName("decoding what is not a WAV runs off the end of the bytes")
     void decodingWhatIsNotAWavRunsOffTheEnd(@TempDir Path directory) {
@@ -177,11 +136,6 @@ class WavCodecFromTheSourceTest {
                 ]""")).isEqualTo("[#(true) #(false) #(false)]");
     }
 
-    /**
-     * ENCODE declares its argument a vector, so a block of the same numbers
-     * and a string of the same bytes are both refused at the call rather than
-     * inside the codec.
-     */
     @Test
     @DisplayName("ENCODE refuses anything that is not a vector of samples")
     void encodeRefusesWhatIsNotAVector(@TempDir Path directory) {

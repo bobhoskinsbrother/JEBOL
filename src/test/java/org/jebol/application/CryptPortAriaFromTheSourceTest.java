@@ -5,29 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * ARIA, the last cipher REBOL's catalogue names.
- *
- * <p>RFC 5794, and {@code aria.c}. South Korea's national block cipher,
- * standardised as KS X 1213 and mandated for government use there. Same block
- * and same three key widths as AES, and the same substitution-permutation
- * shape -- unlike Camellia, which is a Feistel design.
- *
- * <p>Twelve rounds for the shortest key and sixteen for the longest, each an
- * exclusive-or against a round key, a pass through four substitution tables,
- * and a diffusion step that mixes every byte into every other. The odd and
- * even rounds use the same four tables in a different order, which is the
- * whole of the difference between them.
- *
- * <p>Nothing asks for it. It appears in no codec, no protocol and no fallback
- * in REBOL's own library, and no assertion in REBOL's own suite touches it.
- * It is here because the catalogue names it and a name in a catalogue is a
- * promise -- and because it is the last twelve entries between this build's
- * thirty and REBOL's forty-two.
- *
- * <p>Every expectation was read off a real 3.22.5 first, and the three
- * codebook vectors are RFC 5794's own.
- */
 class CryptPortAriaFromTheSourceTest {
 
     private static final String KEY_128 = "#{000102030405060708090A0B0C0D0E0F}";
@@ -58,7 +35,6 @@ class CryptPortAriaFromTheSourceTest {
                 .formatted(algorithm, key, vector, COUNTING_BLOCK));
     }
 
-    /** RFC 5794 appendix A, one vector per key width. */
     @Test
     @DisplayName("the RFC 5794 vectors, at all three key widths")
     void theRfc5794Vectors() {
@@ -81,11 +57,6 @@ class CryptPortAriaFromTheSourceTest {
                 .isEqualTo("\"08186E7986B43C2C7B93C7C95373C4D8\"");
     }
 
-    /**
-     * The authenticated modes take it without a line written for them, which
-     * is the third time that has been true and the point of a mode knowing
-     * nothing about the cipher it drives.
-     */
     @Test
     @DisplayName("and in both authenticated modes, which were written for AES")
     void andInBothAuthenticatedModes() {
@@ -115,12 +86,6 @@ class CryptPortAriaFromTheSourceTest {
                 .isEqualTo("\"00112233445566778899AABBCCDDEEFF\"");
     }
 
-    /**
-     * A thousand rounds, the same walk Camellia gets, and for the same reason:
-     * a key schedule can be wrong in a way one block never shows. ARIA's is
-     * the more fiddly of the two -- four derived words rotated by four
-     * different amounts across a hundred and twenty-eight bits.
-     */
     @Test
     @DisplayName("a thousand rounds, which a single block would not catch")
     void aThousandRounds() {

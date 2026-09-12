@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * DIRIZE, UNDIRIZE, SUFFIX? and DIR?, ported off the porting backlog.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1, whose own definitions were read out of the binary.
- *
- * <p>Each of the first two answers a copy. None of them changes the path
- * that the caller holds.
- */
 class FilePathFamilyTest {
 
     private static String answerTo(String source) {

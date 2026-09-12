@@ -2,23 +2,6 @@ package org.jebol.domain.eval.brotli;
 
 import java.util.Arrays;
 
-/**
- * Building a prefix code and writing it down, which every Brotli quality does
- * and none of them does differently.
- *
- * <p>{@code entropy_encode.c} and the code-storing half of
- * {@code brotli_bit_stream.c}. A code is built from a histogram by merging the
- * two cheapest nodes until one is left, then read off as a depth per symbol;
- * it is written down either as up to four symbols named outright or as the
- * depths themselves, run-length coded under a second, fixed code.
- *
- * <p>Two builders, and the difference between them is one line. The one the
- * literal codes use breaks no tie between two symbols of equal count; the one
- * the command and distance codes use puts the later symbol first. Each file in
- * the C has a static comparator of its own, and using the wrong one gives a
- * code of the same shape with two of its symbols swapped -- valid, decodes
- * perfectly, and not the bytes a real 3.22.5 writes.
- */
 final class BrotliCodes {
 
     private BrotliCodes() {
@@ -31,10 +14,9 @@ final class BrotliCodes {
     private static final int INITIAL_REPEATED_CODE_LENGTH = 8;
     private static final int MAX_HUFFMAN_BITS = 16;
 
-    /** The fixed code the code lengths are themselves written under. */
-    private static final int[] CODE_LENGTH_DEPTH =
+    private static final int[] FIXED_CODE_LENGTH_DEPTH =
             {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 0, 4, 4};
-    private static final int[] CODE_LENGTH_BITS =
+    private static final int[] FIXED_CODE_LENGTH_BITS =
             {0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 15, 31, 0, 11, 7};
 
     private static final int[] CODE_LENGTH_STORAGE_ORDER =
@@ -44,18 +26,10 @@ final class BrotliCodes {
 
     private static final int[] SHELL_GAPS = {132, 57, 23, 10, 4, 1};
 
-    /** The forty bits that say "the code lengths use the fixed code". */
-    private static final long STATIC_CODE_LENGTH_CODE = 0x000000FF55555554L;
+    private static final int BITS_SAYING_THE_CODE_LENGTHS_USE_THE_FIXED_CODE = 40;
+    private static final long THE_CODE_LENGTHS_USE_THE_FIXED_CODE =
+            0x000000FF55555554L;
 
-    /**
-     * How long a run of code lengths costs, and what it is.
-     *
-     * <p>The C ships two pairs of generated tables, seven hundred and four
-     * numbers each. They are the same thing worked out here: a run of zeros is
-     * symbol seventeen with three bits of count, a run of anything else is
-     * symbol sixteen with two, and both come out most significant piece first
-     * because the writer builds them backwards and reverses.
-     */
     private static final int[] ZERO_RUN_WIDTH = new int[COMMAND_SYMBOLS];
     private static final long[] ZERO_RUN_BITS = new long[COMMAND_SYMBOLS];
     private static final int[] OTHER_RUN_WIDTH = new int[COMMAND_SYMBOLS];
@@ -106,7 +80,6 @@ final class BrotliCodes {
         }
     }
 
-    /** One run of code-length symbols, each with its extra bits. */
     private static final class Run {
 
         private final int[] symbols = new int[64];
@@ -138,7 +111,7 @@ final class BrotliCodes {
         int totalWidth() {
             int total = 0;
             for (int each = 0; each < count; each++) {
-                total += CODE_LENGTH_DEPTH[symbols[each]] + extraWidth[each];
+                total += FIXED_CODE_LENGTH_DEPTH[symbols[each]] + extraWidth[each];
             }
             return total;
         }
@@ -147,8 +120,8 @@ final class BrotliCodes {
             long value = 0;
             int at = 0;
             for (int each = 0; each < count; each++) {
-                value |= (long) CODE_LENGTH_BITS[symbols[each]] << at;
-                at += CODE_LENGTH_DEPTH[symbols[each]];
+                value |= (long) FIXED_CODE_LENGTH_BITS[symbols[each]] << at;
+                at += FIXED_CODE_LENGTH_DEPTH[symbols[each]];
                 value |= (long) extra[each] << at;
                 at += extraWidth[each];
             }
@@ -156,24 +129,8 @@ final class BrotliCodes {
         }
     }
 
-    /**
-     * Base two logarithms of the first 256 whole numbers, at the precision the
-     * C actually holds them.
-     *
-     * <p>Which is not double precision, despite the C's table being an array of
-     * double. Every one of its two hundred and fifty six literals is written
-     * with an {@code f} on the end, so the compiler rounds each to float first
-     * and only then widens it to double. Two hundred and forty seven of them
-     * therefore differ from {@code log2} of the same number, not by a last bit
-     * but by about one part in ten million.
-     *
-     * <p>Written here as the doubles those floats widen to. Computing them
-     * instead -- which is what this file did at first -- makes every cost the
-     * encoder works out slightly different from the C's, and at the two levels
-     * that choose between matches by comparing costs that is enough to pick a
-     * different match and write different bytes.
-     */
-    private static final double[] LOG_2 = {
+    /** Computing these instead of copying them changes the bytes. */
+    private static final double[] LOG_2_AS_THE_CS_FLOAT_LITERALS_WIDEN = {
             0.0, 0.0, 1.0, 1.5849624872207642,
             2.0, 2.321928024291992, 2.5849626064300537, 2.8073549270629883,
             3.0, 3.1699249744415283, 3.321928024291992, 3.4594316482543945,
@@ -240,31 +197,14 @@ final class BrotliCodes {
             7.977280139923096, 7.9829936027526855, 7.98868465423584, 7.994353294372559,
     };
 
-    /**
-     * {@code log2}, whose defining property here is that log2 of nought is
-     * nought.
-     *
-     * <p>Small values come from the table the C prints out, which is not quite
-     * the computed logarithm -- the printed values are one digit short of
-     * round-tripping, so a hundred of the two hundred and fifty six differ from
-     * {@code log2} by a bit. Larger values are computed, and computed carefully:
-     * see {@link BrotliLog2} for why the obvious way is not close enough.
-     */
     static double fastLog2(long value) {
-        if (value < LOG_2.length) {
-            return LOG_2[(int) value];
+        if (value < LOG_2_AS_THE_CS_FLOAT_LITERALS_WIDEN.length) {
+            return LOG_2_AS_THE_CS_FLOAT_LITERALS_WIDEN[(int) value];
         }
         return BrotliLog2.of(value);
     }
 
-    /**
-     * How many bits the symbols would take if each cost exactly its own
-     * surprise, floored at one bit each.
-     *
-     * <p>{@code BrotliBitsEntropy}. The floor is the C's, and its comment says
-     * why: "at least one bit per literal is needed".
-     */
-    static double bitsEntropy(int[] population, int size) {
+    static double bitsEntropyFlooredAtOneBitPerLiteral(int[] population, int size) {
         long sum = 0;
         double answer = 0;
         for (int each = 0; each < size; each++) {
@@ -282,23 +222,6 @@ final class BrotliCodes {
         return 31 - Integer.numberOfLeadingZeros(value);
     }
 
-    /**
-     * Nudges near-equal counts to be exactly equal, so the code lengths they
-     * produce can be written as a run rather than one by one.
-     *
-     * <p>{@code BrotliOptimizeHuffmanCountsForRle}. A prefix code is stored as a
-     * list of lengths with runs of equal lengths abbreviated, so a stretch of
-     * symbols whose counts are close enough to share a length costs almost
-     * nothing to declare. Rounding a run of similar counts to their average
-     * makes that happen, at the cost of a slightly worse code for the symbols
-     * themselves. The C's own comment calls the arithmetic below fixed point
-     * with eight fractional bits, which is where every multiplication by two
-     * hundred and fifty six comes from.
-     *
-     * <p>It gives up early three times over: on fewer than sixteen used symbols,
-     * on fewer than five once the trailing zeros are dropped, and on fewer than
-     * twenty eight. A small alphabet is modelled well enough as it stands.
-     */
     static void smoothCountsIntoRuns(int size, int[] counts) {
         int used = 0;
         for (int each = 0; each < size; each++) {
@@ -319,7 +242,8 @@ final class BrotliCodes {
         if (!worthSmoothing(counts, length)) {
             return;
         }
-        boolean[] alreadyARun = runsWorthKeeping(counts, length);
+        boolean[] alreadyARun =
+                runsAlreadyCheapEnoughToLeaveUndisturbed(counts, length);
         flattenTheRestIntoRuns(counts, length, alreadyARun);
     }
 
@@ -336,13 +260,13 @@ final class BrotliCodes {
             return false;
         }
         if (smallest < 4 && length - used < 6) {
-            fillSingleGaps(counts, length);
+            raiseALoneZeroBetweenTwoUsedSymbolsToOne(counts, length);
         }
         return used >= 28;
     }
 
-    /** A lone zero between two used symbols costs more as a gap than as a one. */
-    private static void fillSingleGaps(int[] counts, int length) {
+    private static void raiseALoneZeroBetweenTwoUsedSymbolsToOne(
+            int[] counts, int length) {
         for (int each = 1; each < length - 1; each++) {
             if (counts[each - 1] != 0 && counts[each] == 0
                     && counts[each + 1] != 0) {
@@ -351,8 +275,8 @@ final class BrotliCodes {
         }
     }
 
-    /** Runs already long enough to code cheaply, which must not be disturbed. */
-    private static boolean[] runsWorthKeeping(int[] counts, int length) {
+    private static boolean[] runsAlreadyCheapEnoughToLeaveUndisturbed(
+            int[] counts, int length) {
         boolean[] worthKeeping = new boolean[length];
         int value = counts[0];
         int run = 0;
@@ -374,17 +298,8 @@ final class BrotliCodes {
         return worthKeeping;
     }
 
-    /**
-     * Whether a count differs from the running average by enough to end a
-     * streak, in either direction.
-     *
-     * <p>The C writes this as one comparison of unsigned numbers, which reads
-     * as a test for "too far above" and is also a test for "too far below":
-     * subtracting a larger limit wraps the difference round to an enormous
-     * positive number, and that clears the threshold too. Written with signed
-     * numbers here, both halves have to be said.
-     */
-    private static boolean straysTooFarFrom(long limit, int count) {
+    private static boolean straysTooFarFromInEitherDirection(
+            long limit, int count) {
         long difference = 256L * count - limit;
         return difference >= HOW_FAR_A_COUNT_MAY_STRAY
                 || difference < -HOW_FAR_A_COUNT_MAY_STRAY;
@@ -402,7 +317,7 @@ final class BrotliCodes {
             boolean streakEnds = each == length
                     || alreadyARun[each]
                     || (each != 0 && alreadyARun[each - 1])
-                    || straysTooFarFrom(limit, counts[each]);
+                    || straysTooFarFromInEitherDirection(limit, counts[each]);
             if (streakEnds) {
                 if (run >= 4 || (run >= 3 && sum == 0)) {
                     long flattened = sum == 0 ? 0 : Math.max(1, (sum + run / 2) / run);
@@ -464,11 +379,6 @@ final class BrotliCodes {
     return reversed;
     }
 
-    /**
-     * The Huffman builder the C uses: merge the leaves into a tree, and if it
-     * comes out deeper than the limit allows, raise the floor under the rare
-     * symbols and start again.
-     */
     static final class Tree {
 
     private static final int ROOM = 2 * COMMAND_SYMBOLS + 4;
@@ -484,11 +394,8 @@ final class BrotliCodes {
         valueIndex[at] = value;
     }
 
-    /**
-     * {@code BrotliCreateHuffmanTree}, whose sort breaks a tie in the
-     * counts by putting the later symbol first.
-     */
-    void build(int[] counts, int countsAt, int length, int limit,
+    void buildBreakingTiesByPuttingTheLaterSymbolFirst(
+            int[] counts, int countsAt, int length, int limit,
             int[] depth, int depthAt) {
 
         for (long floor = 1; ; floor *= 2) {
@@ -510,20 +417,8 @@ final class BrotliCodes {
         }
     }
 
-    /**
-     * {@code BrotliBuildAndStoreHuffmanTreeFast}, whose sort does not.
-     *
-     * <p>The two are one line apart and the line matters. Each file has a
-     * static {@code SortHuffmanTree} of its own, and the one in
-     * brotli_bit_stream.c is the whole of
-     * {@code v0->total_count_ < v1->total_count_} -- no tie-break -- so
-     * two symbols of equal count keep whatever order the shell sort leaves
-     * them in. Using the other file's comparator here gives a code of
-     * exactly the same shape with two of its symbols swapped, which is
-     * valid Brotli, decodes correctly, and is not the bytes a real 3.22.5
-     * writes.
-     */
-    void buildFast(int[] counts, int length, int limit, int[] depth) {
+    /** Swapping the two tie-breaks gives valid Brotli that is the wrong bytes. */
+    void buildBreakingNoTies(int[] counts, int length, int limit, int[] depth) {
         for (long floor = 1; ; floor *= 2) {
             int leaves = 0;
             for (int each = length; each != 0; ) {
@@ -539,14 +434,6 @@ final class BrotliCodes {
         }
     }
 
-    /**
-     * Merges the leaves and reads the depths off the tree.
-     *
-     * <p>The leaves are sorted, a sentinel is placed after them, and new
-     * parents are appended, which keeps the parents in ascending order and
-     * lets the merge take its next-cheapest node from whichever of the two
-     * runs has it without ever sorting again.
-     */
     private boolean assemble(int leaves, int[] depth, int depthAt, int limit,
             boolean breakTiesBySymbol) {
         sort(leaves, breakTiesBySymbol);
@@ -568,7 +455,6 @@ final class BrotliCodes {
         return setDepth(2 * leaves - 1, depth, depthAt, limit);
     }
 
-    /** Cheapest first, and among equals whatever the caller asks for. */
     private boolean sortsBefore(long count, int value, int other,
             boolean breakTiesBySymbol) {
         if (count != totalCount[other]) {
@@ -649,14 +535,6 @@ final class BrotliCodes {
     }
     }
 
-    /**
-     * A prefix code from a histogram, written out as it is built.
-     *
-     * <p>{@code BrotliBuildAndStoreHuffmanTreeFast}. Four or fewer symbols are
-     * named outright, which the format has a short form for; more than that
-     * goes out as code lengths under the fixed code-length code, with runs of
-     * equal lengths coded.
-     */
     static void buildAndStoreHuffmanTreeFast(Tree tree, int[] counts,
             long total, int maxBits, int[] depth, int[] bits, BrotliBits into) {
 
@@ -684,7 +562,7 @@ final class BrotliCodes {
         }
 
         Arrays.fill(depth, 0, length, 0);
-        tree.buildFast(counts, length, 14, depth);
+        tree.buildBreakingNoTies(counts, length, 14, depth);
         convertBitDepthsToSymbols(depth, 0, length, bits, 0);
 
         if (count <= 4) {
@@ -708,7 +586,8 @@ final class BrotliCodes {
             return;
         }
 
-        into.write(40, STATIC_CODE_LENGTH_CODE);
+        into.write(BITS_SAYING_THE_CODE_LENGTHS_USE_THE_FIXED_CODE,
+                THE_CODE_LENGTHS_USE_THE_FIXED_CODE);
         int previousValue = INITIAL_REPEATED_CODE_LENGTH;
         int at = 0;
         while (at < length) {
@@ -723,13 +602,13 @@ final class BrotliCodes {
                 continue;
             }
             if (previousValue != value) {
-                into.write(CODE_LENGTH_DEPTH[value], CODE_LENGTH_BITS[value]);
+                into.write(FIXED_CODE_LENGTH_DEPTH[value], FIXED_CODE_LENGTH_BITS[value]);
                 reps--;
             }
             if (reps < 3) {
                 while (reps != 0) {
                     reps--;
-                    into.write(CODE_LENGTH_DEPTH[value], CODE_LENGTH_BITS[value]);
+                    into.write(FIXED_CODE_LENGTH_DEPTH[value], FIXED_CODE_LENGTH_BITS[value]);
                 }
             } else {
                 reps -= 3;
@@ -739,10 +618,6 @@ final class BrotliCodes {
         }
     }
 
-    /**
-     * A prefix code written out the long way: as code lengths, run-length
-     * coded, under a second prefix code over the lengths.
-     */
     static void storeHuffmanTree(Tree tree, int[] depths, int at, int length,
             BrotliBits into) {
 
@@ -769,7 +644,8 @@ final class BrotliCodes {
         }
 
         int[] lengthDepth = new int[CODE_LENGTH_CODES];
-        tree.build(counts, 0, CODE_LENGTH_CODES, 5, lengthDepth, 0);
+        tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+                counts, 0, CODE_LENGTH_CODES, 5, lengthDepth, 0);
         int[] lengthBits = new int[CODE_LENGTH_CODES];
         convertBitDepthsToSymbols(lengthDepth, 0, CODE_LENGTH_CODES, lengthBits, 0);
 
@@ -810,14 +686,6 @@ final class BrotliCodes {
         }
     }
 
-    /**
-     * The code lengths of a prefix code, run-length coded.
-     *
-     * <p>Trailing zeros are dropped, and whether runs are coded at all is
-     * decided by counting them first: for a short code the run markers cost
-     * more than the lengths they save, so a code of fifty symbols or fewer
-     * never uses them.
-     */
     private static int writeTreeAsCodeLengths(int[] depth, int at, int length,
         int[] symbols, int[] extra) {
 

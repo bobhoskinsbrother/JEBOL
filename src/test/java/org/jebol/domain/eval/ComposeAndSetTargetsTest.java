@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * COMPOSE/INTO with a source that is not a block, and what SET will assign to.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>Both are cases where the value looks like something it is not. A
- * string composes to itself and so looks like nothing to insert; an issue
- * and a refinement are words underneath and so look like names to assign.
- */
 class ComposeAndSetTargetsTest {
 
     private static String answerTo(String source) {
@@ -24,7 +14,6 @@ class ComposeAndSetTargetsTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

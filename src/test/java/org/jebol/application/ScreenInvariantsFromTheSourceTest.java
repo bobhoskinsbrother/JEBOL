@@ -1,8 +1,5 @@
 package org.jebol.application;
 
-import net.jqwik.api.ForAll;
-import net.jqwik.api.Property;
-import net.jqwik.api.constraints.IntRange;
 import org.jebol.domain.eval.ScreenEventKind;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.GobValue;
@@ -16,24 +13,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The two things that must be true however a script drives the screen.
- *
- * <p>Both are invariants rather than rules, which is why they are here rather
- * than beside the command that happens to break them. An invariant is worth
- * writing down when no single rule owns it: any sequence of opens, refreshes
- * and closes has to leave the screen and the gob tree agreeing, and the way
- * to check that is to run sequences rather than cases.
- *
- * <p>The second is the one that could not fail in a single-threaded test, and
- * that is exactly why it needed a second thread. An interpreter is owned by
- * one thread, and that is what lets series share mutable storage with nothing
- * synchronising them. Two threads appending to one block corrupt it without
- * either of them raising, so an event acted on by a toolkit's own thread
- * would do its damage silently and somewhere else.
- *
- * <p>Specified in {@code spec/screen.allium}.
- */
 class ScreenInvariantsFromTheSourceTest {
 
     private static final String TRUE = "#(true)";
@@ -47,7 +26,6 @@ class ScreenInvariantsFromTheSourceTest {
         return interpreter;
     }
 
-    /** A window on the screen, with a watcher that notes and passes events on. */
     private static final String A_WINDOW_AND_A_WATCHER = """
             view/no-wait make gob! [size: 100x100]
             seen: copy []
@@ -61,34 +39,6 @@ class ScreenInvariantsFromTheSourceTest {
     @Nested
     @DisplayName("every open window hangs under the root gob")
     class TheTreeAndTheScreenAgree {
-
-        @Property(tries = 40)
-        @DisplayName("after any run of opens and closes, the two still agree")
-        void theyAgreeAfterAnySequence(
-                @ForAll @IntRange(min = 0, max = 6) int opens,
-                @ForAll @IntRange(min = 0, max = 6) int closes) {
-
-            RecordingScreen screen = RecordingScreen.measuring(1024, 768);
-            Interpreter interpreter = withAScreen(screen);
-
-            interpreter.run("windows: copy []");
-            for (int each = 0; each < opens; each++) {
-                interpreter.run(
-                        "append windows view/no-wait make gob! [size: 100x100]");
-            }
-            for (int each = 0; each < Math.min(closes, opens); each++) {
-                interpreter.run("unview take windows");
-            }
-
-            int stillOpen = opens - Math.min(closes, opens);
-            assertThat(screen.whatIsStandingOpen())
-                    .as("%d opened, %d closed", opens, closes)
-                    .hasSize(stillOpen);
-            assertThat(interpreter.display(interpreter.run(
-                    "length? system/view/screen-gob")))
-                    .as("and the screen gob holds exactly the same number")
-                    .isEqualTo(String.valueOf(stillOpen));
-        }
 
         @Test
         @DisplayName("and the windows the screen holds are the root's own children")

@@ -7,26 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@code checksum/with value 'hash size}, the one CHECKSUM method that is not
- * a checksum.
- *
- * <p>It answers {@code Hash_Value(value) % size}: a slot in a table of that
- * many slots, rather than a digest. R3 keeps it out of
- * {@code system/catalog/checksums} because it is not one, and its own docs say
- * the number may change between versions -- but the number this Rebol answers
- * is the number JEBOL has to answer, so every figure below was read off a
- * running 3.22.5 first.
- *
- * <p>The mixing is MurmurHash3, and which unit it mixes depends on the
- * datatype. A binary goes four bytes at a time, little endian, case
- * sensitively. A string goes one byte of its UTF-8 at a time, and each byte is
- * lowered on its own -- so only the letters that encode to a single byte fold
- * their case at all. That is the surprise: a real Rebol hashes {@code "é"} and
- * {@code "É"} to different slots while hashing {@code "a"} and {@code "A"} to
- * the same one, because the two bytes of {@code é} are lowered as though each
- * were a whole character.
- */
 class ChecksumHashFromTheSourceTest {
 
     private static String answerTo(String source) {

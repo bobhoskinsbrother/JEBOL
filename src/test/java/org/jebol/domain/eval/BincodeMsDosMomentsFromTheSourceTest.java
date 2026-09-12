@@ -6,28 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The date and clock MS-DOS packed into sixteen bits each, and what an offset
- * does to them.
- *
- * <p>{@code u-bincode.c}. Neither field has room for an offset -- five bits of
- * hour, six of minute, five of half-seconds, seven of year, four of month,
- * five of day -- so a date carrying one has to be resolved before it is
- * written, and what gets written is the instant rather than the wall time
- * somebody read off a clock beside it.
- *
- * <p>REBOL does that resolving without a line of code in the dialect, because
- * it stores a date already in UTC and remembers the offset only to put it back
- * on for display: {@code Adjust_Date_Zone}, whose own comment says "the result
- * should be used for output, not stored". JEBOL keeps the time as it was
- * written, so the conversion is explicit here instead.
- *
- * <p>Which makes a ZIP written in Berlin and a ZIP written in London at the
- * same moment carry the same two bytes, and that is the only reading under
- * which the format's times can be compared at all.
- *
- * <p>Every byte string here was read off a real 3.22.5 before it was written.
- */
 class BincodeMsDosMomentsFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -59,11 +37,6 @@ class BincodeMsDosMomentsFromTheSourceTest {
                 .isEqualTo("\"2984\"");
     }
 
-    /**
-     * The two degenerate cases either side of the rule: an offset of nothing,
-     * and no offset at all. Both leave the clock as it was written, and both
-     * write the same two bytes as the bare time does.
-     */
     @Test
     @DisplayName("an offset of nothing leaves the clock alone")
     void anOffsetOfNothingLeavesTheClockAlone() {
@@ -74,7 +47,6 @@ class BincodeMsDosMomentsFromTheSourceTest {
         assertThat(bytesWritten("msdos-time 15:33:18")).isEqualTo("\"297C\"");
     }
 
-    /** Fifteen hours is as far ahead as REBOL will read an offset. */
     @Test
     @DisplayName("the widest offset still moves the clock")
     void theWidestOffsetStillMovesTheClock() {
@@ -82,11 +54,6 @@ class BincodeMsDosMomentsFromTheSourceTest {
                 .isEqualTo("\"2904\"");
     }
 
-    /**
-     * Half past midnight an hour ahead is half past eleven the evening before,
-     * so the day the date field carries is the previous one. The other
-     * direction crosses the same boundary the other way.
-     */
     @Test
     @DisplayName("the day moves when the offset carries the clock past midnight")
     void theDayMovesWhenTheOffsetCrossesMidnight() {
@@ -96,10 +63,6 @@ class BincodeMsDosMomentsFromTheSourceTest {
                 .isEqualTo("\"6F4E\"");
     }
 
-    /**
-     * The smallest offset REBOL can express is a quarter of an hour, and at
-     * midnight exactly that is still enough to land on the day before.
-     */
     @Test
     @DisplayName("a quarter of an hour at midnight exactly is enough")
     void aQuarterOfAnHourAtMidnightIsEnough() {
@@ -114,11 +77,6 @@ class BincodeMsDosMomentsFromTheSourceTest {
                 .isEqualTo("\"6E4E\"");
     }
 
-    /**
-     * A date with no clock has nothing for the offset to act on, which is what
-     * {@code Adjust_Date_Zone} means by returning early when the time is
-     * absent. So the day written is the day given.
-     */
     @Test
     @DisplayName("a date carrying no clock keeps its day")
     void aDateWithNoClockKeepsItsDay() {
@@ -143,7 +101,6 @@ class BincodeMsDosMomentsFromTheSourceTest {
                 binary/read b 'MSDOS-DATETIME""")).isEqualTo("13-Mar-2019/23:33:18");
     }
 
-    /** The turn of a year is the same boundary one step larger. */
     @Test
     @DisplayName("an offset can carry the date into the year before")
     void anOffsetCanCarryTheDateIntoTheYearBefore() {
@@ -151,14 +108,6 @@ class BincodeMsDosMomentsFromTheSourceTest {
                 .isEqualTo("\"C0BB9F4F\"");
     }
 
-    /**
-     * The year field counts from 1980 in seven bits, which reaches 2107 and no
-     * further. Both ends wrap rather than raising, because the field is seven
-     * bits and that is all there is to it: 1979 is 127 and 2108 is nought.
-     *
-     * <p>Which the offset can reach on its own -- half past midnight on the
-     * first day of 1980, an hour ahead, is the last evening of 1979.
-     */
     @Test
     @DisplayName("the seven-bit year wraps at both ends rather than raising")
     void theSevenBitYearWrapsAtBothEnds() {
@@ -175,11 +124,6 @@ class BincodeMsDosMomentsFromTheSourceTest {
                 .isEqualTo("\"C0BB9FFF\"");
     }
 
-    /**
-     * MSDOS-DATE needs a date, since a time has no day in it to write. The
-     * wrong value is a fault in the dialect rather than in an argument, which
-     * is where the C puts it: {@code if (!IS_DATE(next)) goto error}.
-     */
     @Test
     @DisplayName("MSDOS-DATE refuses a time, and every code refuses a number or text")
     void theCodesRefuseWhatHasNoMomentInIt() {
@@ -191,14 +135,6 @@ class BincodeMsDosMomentsFromTheSourceTest {
         assertThat(errorIdFrom("msdos-datetime 5")).isEqualTo("dialect");
     }
 
-    /**
-     * MSDOS-DATETIME given a bare time is where JEBOL parts company with the C
-     * on purpose. The C lets it through -- {@code if (IS_DATE(next) ||
-     * IS_TIME(next))} -- and then reads the year, month and day out of a
-     * struct that holds a time, so what it writes is whatever those bits
-     * happened to be. There is nothing there to copy, and nothing in REBOL's
-     * own suite that asks for it.
-     */
     @Test
     @DisplayName("and a bare time has no date half, so the whole code is refused")
     void aBareTimeHasNoDateHalf() {

@@ -6,23 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * An image used as what it is: a run of pixels with a width beside it.
- *
- * <p>{@code t-image.c}. {@code QUAD_SKIP} turns a pixel index into a byte
- * offset and nothing else about navigating one is special, so APPEND, INSERT,
- * CHANGE, FIND and REPEAT mean on an image what they mean on a block. JEBOL
- * refused all five, which made an image a series that could not be used as
- * one.
- *
- * <p>The part worth reading carefully is the height. It is not stored: it is
- * how many whole rows the pixels make. So three pixels in an image two wide
- * are one row and a spare, the size says two by one, and the length says
- * three. The spare is really there -- it reads back, it can be changed, and
- * the next pixel appended completes the row and the size grows.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written.
- */
 class ImageAsASeriesFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -40,11 +23,6 @@ class ImageAsASeriesFromTheSourceTest {
                 reduce [img/1 img/2]""")).isEqualTo("[1.2.3.1 1.2.3.2]");
     }
 
-    /**
-     * A tuple of three names a colour whatever its alpha; a whole number on
-     * its own names an alpha, which is the spelling that lets a caller find a
-     * transparent pixel without saying what colour it is.
-     */
     @Test
     @DisplayName("FIND answers where a pixel is, by colour or by alpha")
     void findAnswersWhereAPixelIs() {
@@ -87,11 +65,6 @@ class ImageAsASeriesFromTheSourceTest {
                 none? find img 66.66.66""")).isEqualTo("#(true)");
     }
 
-    /**
-     * The height is how many whole rows there are, so it does not move until a
-     * row is finished. Three pixels in an image two wide are a row and a
-     * spare: the size says two by one, the length says three.
-     */
     @Test
     @DisplayName("APPEND adds a pixel, and the height follows the whole rows")
     void appendAddsAPixelAndTheHeightFollowsTheWholeRows() {
@@ -117,12 +90,6 @@ class ImageAsASeriesFromTheSourceTest {
                 .isEqualTo("\"AAAAAABBBBBB010101020202\"");
     }
 
-    /**
-     * A partial row at three different fillings of an image three wide, so the
-     * boundary is walked rather than sampled: one pixel and two leave the
-     * height at nought, the third lifts it to one, and a fourth leaves it
-     * there.
-     */
     @Test
     @DisplayName("the height moves only when a row is finished")
     void theHeightMovesOnlyWhenARowIsFinished() {
@@ -167,11 +134,6 @@ class ImageAsASeriesFromTheSourceTest {
                         [2x2 "010101090909010101010101010101"]""");
     }
 
-    /**
-     * Inserting at the tail answers a position at the tail, so the image read
-     * from there is empty even though the pixel went in. Taking the head back
-     * shows it.
-     */
     @Test
     @DisplayName("inserting at the tail leaves the position at the tail")
     void insertingAtTheTailLeavesThePositionAtTheTail() {
@@ -199,11 +161,6 @@ class ImageAsASeriesFromTheSourceTest {
                 .isEqualTo("[0 #(true) 0]");
     }
 
-    /**
-     * Refused by its type rather than by the action: what is wrong is the
-     * value, not the asking. JEBOL said cannot-use, which reads as "an image
-     * cannot be appended to" and is the opposite of true.
-     */
     @Test
     @DisplayName("and the refusal names the type, not the verb")
     void theRefusalNamesTheType() {
@@ -214,12 +171,6 @@ class ImageAsASeriesFromTheSourceTest {
                         [invalid-type "#(string!)"]""");
     }
 
-    /**
-     * Four bytes to a pixel, which is the other way round from building an
-     * image: {@code make image! [1x1 #{FFFFFF}]} reads three at a time because
-     * the alpha arrives in a run of its own, and there is nowhere else for an
-     * appended binary's alpha to come from.
-     */
     @Test
     @DisplayName("a run of bytes is four to a pixel")
     void aRunOfBytesIsFourToAPixel() {
@@ -237,12 +188,6 @@ class ImageAsASeriesFromTheSourceTest {
                         [2 "255.0.0.0" "0.255.0.128"]""");
     }
 
-    /**
-     * The one write that reaches part of a pixel rather than all of it.
-     * {@code Fill_Channel_Line} writes the alpha byte and steps over the other
-     * three, so a pixel changed this way keeps the colour it had. JEBOL read
-     * the number as a whole pixel and blacked the colour out.
-     */
     @Test
     @DisplayName("a whole number writes the alpha and leaves the colour alone")
     void aWholeNumberWritesTheAlphaAndLeavesTheColourAlone() {
@@ -253,10 +198,6 @@ class ImageAsASeriesFromTheSourceTest {
                         "01010107010101FF010101FF010101FF\"""");
     }
 
-    /**
-     * Appending one keeps the colour the new pixel started with, which is the
-     * white every fresh pixel is: the image is grown first and filled after.
-     */
     @Test
     @DisplayName("and appending one adds a white pixel wearing that alpha")
     void appendingOneAddsAWhitePixelWearingThatAlpha() {
@@ -268,12 +209,6 @@ class ImageAsASeriesFromTheSourceTest {
                         [5 "255.255.255.7"]""");
     }
 
-    /**
-     * The same "look at the thing, not into it" that /ONLY means everywhere,
-     * and the same reading FIND gives it. Without it a colour of three parts
-     * writes an alpha anyway and writes it wholly opaque, so changing a
-     * half-transparent pixel makes it solid.
-     */
     @Test
     @DisplayName("CHANGE/ONLY keeps the alpha that was there")
     void changeOnlyKeepsTheAlphaThatWasThere() {
@@ -289,11 +224,6 @@ class ImageAsASeriesFromTheSourceTest {
                 mold img/1""")).isEqualTo("\"1.2.3.255\"");
     }
 
-    /**
-     * /PART says how big the rectangle is rather than how many pixels to
-     * write, which is the only reading that makes sense of a shape: two
-     * across and two down is four pixels, and "four" would not say which four.
-     */
     @Test
     @DisplayName("CHANGE/PART with a pair is the size of the rectangle")
     void changePartWithAPairIsTheSizeOfTheRectangle() {
@@ -307,12 +237,6 @@ class ImageAsASeriesFromTheSourceTest {
                         010101010101010101010101}""");
     }
 
-    /**
-     * A count where a shape belongs writes nothing at all. The C reads it into
-     * the variable holding how many things were given and leaves the
-     * rectangle's width and height at nought, and the copy returns before
-     * writing a pixel.
-     */
     @Test
     @DisplayName("and a count where a shape belongs writes nothing")
     void aCountWhereAShapeBelongsWritesNothing() {
@@ -326,11 +250,6 @@ class ImageAsASeriesFromTheSourceTest {
                         010101010101010101010101}""");
     }
 
-    /**
-     * CHANGE writes over what is there and does not lengthen the image, so
-     * more pixels than there is room for are dropped. The width is fixed and a
-     * longer image would be a different shape.
-     */
     @Test
     @DisplayName("CHANGE writes over the pixels that are there")
     void changeWritesOverThePixelsThatAreThere() {
@@ -366,12 +285,6 @@ class ImageAsASeriesFromTheSourceTest {
                         [2x1 "AAAAAA010101"]""");
     }
 
-    /**
-     * {@code Copy_Rect_Data}, which is what CHANGE reaches for when the thing
-     * being written is itself an image. Everything else CHANGE accepts is a
-     * run of pixels laid down one after another and wrapping at the end of a
-     * row; an image goes in as a block, because an image has a shape.
-     */
     @Test
     @DisplayName("but an image written into an image goes in as a rectangle")
     void anImageWrittenIntoAnImageGoesInAsARectangle() {
@@ -385,11 +298,6 @@ class ImageAsASeriesFromTheSourceTest {
                         FFFFFFFFFFFFFFFFFFFFFFFF}""");
     }
 
-    /**
-     * A pair position names a column and a row, so the rectangle's top-left
-     * corner goes where the position points and each row of the source lands
-     * on one row of the target.
-     */
     @Test
     @DisplayName("and the position says which column and which row it starts at")
     void thePositionSaysWhichColumnAndWhichRow() {
@@ -401,11 +309,6 @@ class ImageAsASeriesFromTheSourceTest {
                         010101090909090909010101\"""");
     }
 
-    /**
-     * Dropped rather than wrapped, which is the whole difference between a
-     * rectangle and a run: a run too long for the row spills onto the next
-     * one, and a rectangle too wide loses its right-hand columns.
-     */
     @Test
     @DisplayName("what will not fit on the row is dropped, not wrapped onto the next")
     void whatWillNotFitOnTheRowIsDropped() {
@@ -426,12 +329,6 @@ class ImageAsASeriesFromTheSourceTest {
                         "010101010101090909090909\"""");
     }
 
-    /**
-     * CHANGE respects the target's position and ignores the source's, which
-     * is the one property a rectangle shares with the five whole-image
-     * operations: the picture being copied is read from its head whatever it
-     * stands at.
-     */
     @Test
     @DisplayName("the source is read from its head whatever position it stands at")
     void theSourceIsReadFromItsHead() {
@@ -442,12 +339,6 @@ class ImageAsASeriesFromTheSourceTest {
                         "090909090909010101\"""");
     }
 
-    /**
-     * The step CHANGE takes is the count of things it was given, and one
-     * image is one thing however many pixels it carries. So the answer lands
-     * one pixel along with a whole rectangle written behind it, which reads
-     * as a mistake and is what a real 3.22.5 does.
-     */
     @Test
     @DisplayName("and the answer steps one pixel, not the size of the rectangle")
     void theAnswerStepsOnePixel() {
@@ -459,10 +350,6 @@ class ImageAsASeriesFromTheSourceTest {
                 .isEqualTo("7");
     }
 
-    /**
-     * Which /dup makes plainer. It multiplies that step and nothing else, so
-     * the rectangle is written once however many times it was asked for.
-     */
     @Test
     @DisplayName("/DUP moves the answer along and leaves the picture alone")
     void duplicatingMovesOnlyTheAnswer() {
@@ -487,12 +374,6 @@ class ImageAsASeriesFromTheSourceTest {
                         [1 "010101010101"]""");
     }
 
-    /**
-     * Three ways of having nothing to write, all of which still take the
-     * one-pixel step -- except a target with no width, which is refused
-     * before the step is taken because there is no row to count a column
-     * against.
-     */
     @Test
     @DisplayName("a rectangle with nowhere to go writes nothing")
     void aRectangleWithNowhereToGoWritesNothing() {
@@ -515,24 +396,11 @@ class ImageAsASeriesFromTheSourceTest {
                 .isEqualTo("1");
     }
 
-    /**
-     * A counted-out picture whose every pixel says where it is: the first is
-     * 1.1.1 and the sixteenth 16.16.16. So a rectangle taken out of it names
-     * itself, and a copy that came from the wrong corner is obvious rather
-     * than plausible.
-     */
     private static final String A_COUNTED_PICTURE = """
             img: make image! 4x4
             repeat n 16 [poke img n to tuple! reduce [n n n]]
             """;
 
-    /**
-     * COPY of an image answered the very same image, sharing its pixels, so
-     * blurring the copy blurred the original. Nothing caught it: every test
-     * that copied a picture went on to read the copy, and REBOL's own suite
-     * only notices three assertions later, when a checksum taken before the
-     * copy no longer matches.
-     */
     @Test
     @DisplayName("COPY answers a separate picture, not the same one again")
     void copyAnswersASeparatePicture() {
@@ -556,11 +424,6 @@ class ImageAsASeriesFromTheSourceTest {
                         ["4x3" 12 "2.2.2.255"]""");
     }
 
-    /**
-     * COPY/PART with a pair takes a rectangle rather than a run, for the same
-     * reason CHANGE writes one: the corner is where the picture stands and the
-     * pair is a shape.
-     */
     @Test
     @DisplayName("COPY/PART with a pair takes a rectangle from where it stands")
     void copyPartWithAPairTakesARectangle() {

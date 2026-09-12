@@ -7,19 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * BYTES, and the count that follows it.
- *
- * <p>{@code next = ++value; if (IS_END(next)) { n = tail - index; value--; }
- * else { if (!IS_INTEGER(next)) Trap1(RE_INVALID_SPEC); n = VAL_INT32(next);
- * \}} -- so BYTES takes an optional count, and anything after it that is not
- * a number is a bad spec rather than the next code.
- *
- * <p>JEBOL had BYTES always take everything left, so {@code BYTES 2} read the
- * whole buffer and then tried to read the two as a code. The out-of-range
- * that followed stopped the block it stood in, and that block was the rest of
- * codecs-test.r3: one misread argument in front of 187 assertions.
- */
 class BincodeByteRunsFromTheSourceTest {
 
     private static String answerTo(String source) {

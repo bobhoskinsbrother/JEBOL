@@ -10,24 +10,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TO-LOCAL-FILE, from {@code REBNATIVE(to_local_file)} and
- * {@code To_Local_Path}.
- *
- * <p>Two things happen whatever is asked for. The separator becomes the one
- * this system writes, and a run of slashes becomes a single one.
- *
- * <p>/FULL does two more, and the second is the surprise: it puts the current
- * directory in front of a relative path, and it is also what turns the dots on.
- * The loop that reads {@code .} and {@code ..} sits inside {@code if (full)},
- * so without the refinement a dot is an ordinary character in a name. That is
- * why {@code to-local-file %a/../b} keeps the dots and
- * {@code to-local-file/full %/a/../b} does not.
- *
- * <p>The answer is always a string, never a file: {@code Set_Series(REB_STRING,
- * D_RET, ser)}. A local path is not a REBOL path, and molding one as a file
- * would put a percent sign in front of it.
- */
 class ToLocalFileFromTheSourceTest {
 
     private static Interpreter reaching(Path directory, HostService... granted) {

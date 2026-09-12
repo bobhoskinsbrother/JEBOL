@@ -21,12 +21,7 @@ public final class Context {
     private final Context parent;
     private final boolean unbound;
 
-    /**
-     * Whether this is a loop's own frame. The C marks one as an internal
-     * series -- {@code INT_SERIES(frame)} -- so it is not reachable as an
-     * object: {@code foreach x [1] [context? 'x]} answers none.
-     */
-    private boolean loopFrame;
+    private boolean loopFrameWhichContextQuestionCannotReach;
 
     private Context(Context parent, boolean unbound) {
         this.parent = parent;
@@ -71,26 +66,16 @@ public final class Context {
     /** A loop's own frame, hidden from CONTEXT?. */
     public static Context loopFrameOf(Context parent) {
         Context frame = childOf(parent);
-        frame.loopFrame = true;
+        frame.loopFrameWhichContextQuestionCannotReach = true;
         return frame;
     }
 
     public boolean isALoopFrame() {
-        return loopFrame;
+        return loopFrameWhichContextQuestionCannotReach;
     }
 
-    /**
-     * The function whose call this frame belongs to, or null. CONTEXT? of a
-     * word bound into a call frame answers the function itself, which is
-     * what lets a body reach its own SPEC-OF.
-     */
     private Value ownedByFunction;
 
-    /**
-     * Whether the call this frame belonged to has returned. The C reuses a
-     * returned function's stack frame, so a word still bound into one
-     * answers whatever call took the frame over -- under DO, that is DO.
-     */
     private boolean callEnded;
 
     public void markAsCallFrameOf(Value function) {
@@ -111,33 +96,6 @@ public final class Context {
                 : ownedByFunction;
     }
 
-    /**
-     * The frame that has taken this one over: a newer call of the same
-     * function, still running while this one waits for it.
-     *
-     * <p>Rebol binds a function's body once and stamps the function itself
-     * into every word there, never a call. So a word in a body has no frame
-     * of its own, and {@code Get_Var} finds one at the moment it is read:
-     * "a negative index indicates that the value is in a frame on the data
-     * stack, so now we must find it by walking back the stack looking for the
-     * function that the word is bound to". It walks from the innermost call
-     * outwards and stops at the first frame of that function, so a word a
-     * function wrote always means the innermost call's copy.
-     *
-     * <p>Here a body is bound to the frame of the call running it, which is a
-     * different object each time and almost always the innermost one anyway.
-     * The exception is a word that escapes: a function hands a value holding
-     * one of its own words to a call of itself, and that word is read while
-     * the inner call is the one running. Rebol reads the inner call's value
-     * and this would read the outer call's. So an outer frame points at the
-     * call that has taken it over, and points back at nothing again when that
-     * call ends.
-     *
-     * <p>Rebol's ARRAY is built on it. Each level of a multi-dimensional
-     * array puts the word {@code block} into a list of index expressions and
-     * passes the list down, and every level's copy of that word has to read
-     * the level that is running when the innermost one finally evaluates it.
-     */
     private Context supersededBy;
 
     public void supersededBy(Context newer) {
@@ -183,21 +141,6 @@ public final class Context {
         return unbound;
     }
 
-    /**
-     * Whether new names may be added.
-     *
-     * <p>The third thing protection covers on an object, and separate
-     * from the other two. PROTECT/DEEP guards the object itself, the
-     * words already in it, and the values those words hold, and the
-     * UNPROTECT refinements release different subsets: plain releases the
-     * object and its words but not their values, /WORDS releases only the
-     * words, /DEEP releases all three, /WORDS/DEEP releases the words and
-     * their values but not the object.
-     *
-     * <p>Without this as its own flag, "can a word be added" and "can a
-     * word be reassigned" are the same question, and no combination of
-     * refinements can tell them apart.
-     */
     private boolean closedToNewNames;
 
     /** Whether a new name may be added to this context. */
@@ -238,10 +181,6 @@ public final class Context {
         return slot != null && !slot.isHidden();
     }
 
-    /**
-     * Whether this is a function's declared words with none of its calls
-     * running, which is a context that holds nothing at all.
-     */
     private boolean noCallIsLendingItAFrame() {
         return onlyThroughACallThatIsRunning && supersededBy == null;
     }

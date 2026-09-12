@@ -7,32 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A path read on a file joins rather than selects, from {@code PD_File}.
- *
- * <p>Every other member of the string family reads a path the way
- * {@code PD_String} does: a number picks a character, and LENGTH, SIZE,
- * WIDTH, USER and HOST answer something about the text. A file and a URL do
- * not. {@code boot/types.reb} gives both of them their own handler in the
- * Path column -- {@code file} rather than {@code *} -- and that handler builds
- * a longer path:
- *
- * <pre>
- *   if (n == 0 || c != '/') Append_Byte(ser, '/');
- *   ...
- *   n += (c == '/' || c == '\\') ? 1 : 0;
- *   Append_String(ser, arg, n, arg->tail-n);
- * </pre>
- *
- * <p>So {@code %a/length} is a file named length inside a directory named a,
- * and not the number one. There is no way to ask a file how long it is with a
- * path, which is why the C gives it a handler of its own rather than a case in
- * the string one.
- *
- * <p>This is not a curiosity either. Rebol's own MAKE-DIR builds each level
- * with {@code path: either empty? path [dir][path/:dir]}, so {@code
- * make-dir/deep %a/b/c/} cannot work at all without it.
- */
 class FilePathReadFromTheSourceTest {
 
     private static String answerTo(String source) {

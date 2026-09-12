@@ -11,30 +11,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A name that ends in a slash says the thing is a directory, and the claim is
- * checked.
- *
- * <p>The slash is a hint in one direction and a claim in the other, and the
- * asymmetry is the whole of it. {@code %somewhere} says nothing about what is
- * there, so it works on a file and on a directory alike. {@code %somewhere/}
- * says it is a directory, and a name that says so about a file finds nothing.
- *
- * <p>That is the operating system's rule rather than a decision Rebol made.
- * POSIX requires a path ending in a slash to name a directory, so
- * {@code stat("f.txt/")} fails with ENOTDIR, and the C hands the path straight
- * through -- {@code Query_File} is {@code Get_File_Info} is {@code stat}. Every
- * verb inherits it.
- *
- * <p>A JVM does not. {@code Files.exists} trims a trailing slash before it
- * looks, so the claim went unchecked here and {@code exists? %f.txt/} answered
- * {@code file}. What that cost was an error id two levels up: Rebol's own
- * MAKE-DIR asks EXISTS? first and refuses with cannot-open when it sees a file,
- * and in a real R3 it never sees one -- it falls through to CREATE, whose
- * {@code mkdir} gives the no-create that names what actually went wrong.
- *
- * <p>Every expectation was read off {@code ./r3-head} first.
- */
 class ATrailingSlashClaimsADirectoryFromTheSourceTest {
 
     private static Path root;
@@ -77,7 +53,6 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
                     .isEqualTo("_");
         }
 
-        /** The other way round, the slash is a hint and the filesystem decides. */
         @Test
         @DisplayName("but a directory answers to both, because the slash is not needed")
         void aDirectoryAnswersToBoth() {
@@ -98,10 +73,6 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
                     .isEqualTo("#(true)");
         }
 
-        /**
-         * And none rather than a raise, which is what lets MAKE-DIR walk past
-         * it. The question "what is at this name" has "nothing" as an answer.
-         */
         @Test
         @DisplayName("and none rather than a raise")
         void noneRatherThanARaise() {
@@ -123,14 +94,12 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
                     .isEqualTo("[cannot-open %f.txt/]");
         }
 
-        /** Where reading a directory without one lists it, the slash being a hint. */
         @Test
         @DisplayName("where reading a directory without one still lists it")
         void readingADirectoryWithoutOneStillListsIt() {
             assertThat(answerTo(A_FILE_AND_A_DIRECTORY + "mold read %d")).isEqualTo("\"[]\"");
         }
 
-        /** {@code rmdir} on a file, which fails. */
         @Test
         @DisplayName("deleting a file through a slash is no-delete")
         void deletingAFileThroughASlashIsNoDelete() {
@@ -145,11 +114,6 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
     @DisplayName("making a directory where a file already is")
     class MakingADirectoryWhereAFileAlreadyIs {
 
-        /**
-         * The id a caller acts on. cannot-open says the path could not be
-         * reached; no-create says it was reached and the directory could not be
-         * made there.
-         */
         @Test
         @DisplayName("is no-create, not cannot-open")
         void isNoCreateNotCannotOpen() {
@@ -157,7 +121,6 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
                     .isEqualTo("[no-create %f.txt/]");
         }
 
-        /** And with or without the slash, because MAKE-DIR dirizes first. */
         @Test
         @DisplayName("whether or not the caller wrote the slash")
         void whetherOrNotTheCallerWroteTheSlash() {
@@ -172,7 +135,6 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
                     .isEqualTo("[no-create %f.txt/]");
         }
 
-        /** The file is left exactly as it was. */
         @Test
         @DisplayName("and the file is left alone")
         void theFileIsLeftAlone() {
@@ -182,17 +144,12 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
                     .isEqualTo("[file \"test\"]");
         }
 
-        /**
-         * A directory that is already there is not an error at all, which is
-         * what MAKE-DIR's own docstring promises: "No error if already exists".
-         */
         @Test
         @DisplayName("but a directory already there answers the path")
         void aDirectoryAlreadyThereAnswersThePath() {
             assertThat(answerTo(A_FILE_AND_A_DIRECTORY + "make-dir %d/")).isEqualTo("%d/");
         }
 
-        /** And /DEEP through a file cannot get past it either. */
         @Test
         @DisplayName("and reaching through a file with /DEEP is refused")
         void reachingThroughAFileWithDeepIsRefused() {

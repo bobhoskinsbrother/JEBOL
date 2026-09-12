@@ -265,3 +265,26 @@ Each of these cost time once.
   library load, just before `view-funcs.reb`, because that file calls
   INIT-VIEW-SYSTEM on its own last line and needs `system/ports/event` to
   exist by then.
+
+## jqwik properties must live in a class of their own
+
+**A class holding both jqwik's `@Property` and Jupiter's `@Test` is claimed by the
+Jupiter engine, and the properties are reported as skipped without executing.**
+Gradle counts them, names them, says "2 skipped" beside a SUCCESSFUL build, and
+that is the only sign.
+
+It happened here: the two properties in `ReaderNeverThrowsProperties` once lived in
+`ReaderNeverThrowsTest` beside its `@Test` and `@ParameterizedTest` methods, and
+never ran. It was proved by putting `assertThat(false)` inside one - the build
+stayed green. A property in a class of its own runs perfectly well, which is the
+whole of the fix.
+
+**So no Jupiter annotation belongs in a properties file.** Adding a single `@Test`
+to `ReaderNeverThrowsProperties` would silently switch both properties off again,
+and nothing would fail to tell you.
+
+Those properties generate punctuation rather than letters, because that is where a
+reader breaks. The range `!` to `/` is fifteen characters and holds most of what the
+scanner treats specially: the quote, the hash, the dollar, the percent, the
+apostrophe, both parentheses, the comma, the full stop and the slash. Random letters
+rarely find anything; random punctuation finds the places two rules meet.

@@ -60,12 +60,6 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
         return fields.holds(name) ? fields.ownSlotFor(name).value() : NoneValue.none();
     }
 
-    /**
-     * Two modules are equal when their words and their headers are.
-     *
-     * <p>The record default compares each context by identity, which would
-     * make no two modules equal even when one was built from the other.
-     */
     @Override
     public boolean equals(Object other) {
         return other instanceof ModuleValue module

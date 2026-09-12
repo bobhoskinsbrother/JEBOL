@@ -6,19 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * How a bitset is built, which is {@code Make_Bitset} and {@code Set_Bits} in
- * {@code t-bitset.c} and is two rules rather than one.
- *
- * <p>{@code make bitset! 8} asks for room for eight bits and turns none of them
- * on. {@code append bs 8} names the bit. Reading both through one rule made
- * {@code alter} report that it had added a bit and change nothing, which is the
- * shape Rebol's own suite catches at {@code modify / alter}.
- *
- * <p>Inside a block every spec adds to what came before, so two binaries fall
- * together rather than the second replacing the first, and a spec the walk does
- * not recognise is an error instead of being passed over in silence.
- */
 class BitsetConstructionFromTheSourceTest {
 
     private static String answerTo(String source) {

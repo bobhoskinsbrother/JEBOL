@@ -8,24 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What the series natives do at the edges of an index.
- *
- * <p>Specified by {@code WritingAnElementOutsideTheSeriesRaises},
- * {@code ReadingAnElementOutsideTheSeriesGivesNone},
- * {@code NonPositiveStepSizeRaises} and
- * {@code TakingEverythingFromAnEmptySeriesGivesAnEmptyOne} in
- * {@code spec/natives.allium}, each confirmed against a real R3.
- *
- * <p>Every case here currently escapes as a Java exception rather than as
- * a REBOL error, which {@code spec/embed.allium} promises cannot happen: a
- * host has to be able to tell a script failing from JEBOL having a bug, and
- * it cannot if both arrive as a throwable.
- *
- * <p>The boundaries are the index against a three-element series -- one
- * below the bottom, the bottom, the middle, the top, one past the top --
- * and then the degenerate series that has no valid index at all.
- */
 class SeriesIndexBoundsTest {
 
     private static ScriptOutcome ran(String source) {

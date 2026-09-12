@@ -7,34 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The eight Brotli levels that search the input properly, and the bytes they
- * write.
- *
- * <p>Levels zero and one read the input in fixed pieces and take whatever
- * matches they trip over. Two and up keep a window of everything seen so far,
- * look one byte ahead before committing to a match, consult the hundred and
- * twenty thousand bytes of dictionary every decoder carries, and then divide
- * the result into stretches with a prefix code apiece. Each of the eight makes
- * different trades inside that, so each writes different bytes, and every
- * expectation below was measured on {@code ./r3-head} rather than on this
- * build.
- *
- * <p>Round-tripping proves almost nothing here and the assertions are on bytes
- * for that reason. Any number of encoders read back correctly; the property
- * worth having is that a blob written here matches one written by a real
- * 3.22.5, which is what a checksum over a compressed file or a fixture checked
- * into a repository actually depends on.
- *
- * <p>The lengths tested are not arbitrary. The encoder reads the input in
- * blocks -- sixteen kilobytes at levels two and three, sixty four at four to
- * eight, two hundred and fifty six at nine -- and the first defect found in
- * this port only appeared in the second block, because the table of where runs
- * were last seen was being cleared at every block instead of once. A megabyte
- * is the other boundary: above it the encoder swaps to a wider hash and offers
- * itself a thirteen-way division of literals by what came before them, so the
- * two sides of that line take different paths through the code.
- */
 class BrotliLevelsTwoToNineFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -43,24 +15,6 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /**
-     * Two shapes of test data and a short checksum, so that a megabyte of
-     * output can be asserted on in one line.
-     *
-     * <p>MIXTURE alternates twenty bytes of hash with a phrase, which gives
-     * data that has matches in it worth finding and no pattern beyond them --
-     * the shape that makes the search do work. REPEATING is one short phrase
-     * over and over, where every position matches and the copies are as long as
-     * the encoder will let them be.
-     *
-     * <p>Both build their bytes twenty or more at a time rather than one at a
-     * time, which is not only for speed. A first attempt built each byte with
-     * {@code to char!}, and every value above a hundred and twenty seven went
-     * in as two bytes of UTF-8 rather than one: a request for sixteen thousand
-     * bytes gave forty-eight thousand, so the lengths the tests named were not
-     * the lengths they used and the block boundary they meant to sit on was
-     * nowhere near.
-     */
     private static final String THE_DATA_AND_HOW_TO_MEASURE_IT = """
             mixture: func [n [integer!] /local b h][
                 b: make binary! n
@@ -88,10 +42,6 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
     @DisplayName("each of the eight levels, byte for byte")
     class EachLevel {
 
-        /**
-         * The whole point of eight levels rather than one, on a sentence short
-         * enough to write the answers out in full.
-         */
         @Test
         @DisplayName("a sentence at levels two, three and four")
         void aSentenceAtTheLowerLevels() {
@@ -113,11 +63,6 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
                     ]""")).isEqualTo("[#(true) #(true) #(true)]");
         }
 
-        /**
-         * Five to nine agree on a sentence this short, because what separates
-         * them is how far back through the candidate matches they walk and a
-         * sentence gives them all the same few.
-         */
         @Test
         @DisplayName("and at five to nine, which agree on input this short")
         void aSentenceAtTheHigherLevels() {
@@ -133,11 +78,6 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
                     ]""")).isEqualTo("[#(true) #(true) #(true) #(true) #(true)]");
         }
 
-        /**
-         * A paragraph is long enough to tell all eight apart but three ways,
-         * which is what stops the assertions above passing for an encoder that
-         * quietly does the same thing at every level.
-         */
         @Test
         @DisplayName("a paragraph, where the eight settle on three answers")
         void aParagraphTellsTheLevelsApart() {
@@ -171,11 +111,6 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
     @DisplayName("lengths at the bottom of the range")
     class TheShortestInputs {
 
-        /**
-         * Under three bytes there is nothing a prefix code could pay for, so
-         * they are stored as they stand. Three is the first length the encoder
-         * will consider compressing, and on data this short it still declines.
-         */
         @Test
         @DisplayName("nothing, one, two, three, four and five bytes")
         void theShortestLengths() {
@@ -194,15 +129,6 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
     @DisplayName("lengths either side of one block of input")
     class AroundABlockBoundary {
 
-        /**
-         * One byte under, exactly one block, and one byte over, at a level that
-         * reads sixteen kilobyte blocks and a level that reads sixty four. The
-         * one-over cases are the ones that were wrong: a hash table cleared
-         * again at the start of the second block loses every position the first
-         * block put in it, and the encoder then fails to find matches it should
-         * have found. Everything up to the end of the first block was already
-         * exact when that defect was present.
-         */
         @Test
         @DisplayName("sixteen kilobytes, at levels two and six")
         void aroundSixteenKilobytes() {
@@ -235,13 +161,6 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
                     "xUCq/4zWejZySBC0K+OhPRVy478=" "ptPjBij5AioSLU2Da6EykXjd2L0="]""");
         }
 
-        /**
-         * The same boundaries on data that is one short phrase over and over,
-         * where every position matches and the copies run the length of the
-         * block. That exercises the other half of the block join: a copy that
-         * reaches the end of one block and carries on into the next is grown
-         * rather than started again.
-         */
         @Test
         @DisplayName("and on data that repeats, where copies cross the join")
         void aroundABlockOnRepeatingData() {
@@ -276,14 +195,6 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
     @DisplayName("either side of the megabyte where the search changes")
     class AroundAMegabyte {
 
-        /**
-         * A byte under a megabyte and exactly a megabyte. Above the line the
-         * encoder is told how much input is coming and takes a different route
-         * for it: level four swaps its table of recent positions for one eight
-         * times larger that no longer consults the dictionary, and five to nine
-         * swap theirs for one that hashes five bytes rather than four and
-         * refuses a candidate outright unless its first four bytes match.
-         */
         @Test
         @DisplayName("a byte under, at levels four, six and nine")
         void justUnderAMegabyte() {
@@ -315,18 +226,6 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
     @DisplayName("data the encoder gives up on")
     class WhereCompressingDoesNotPay {
 
-        /**
-         * Sixty bytes of ordinary words, found by comparing against a real
-         * 3.22.5 on random inputs. Level two builds a code for it, the code
-         * comes out five bytes longer than the words themselves, and the whole
-         * attempt is thrown away and the bytes written as they stand.
-         *
-         * <p>Four bytes longer would have been kept. The encoder weighs the
-         * input against the whole bytes of a buffer that starts part way
-         * through a byte, so the leftover bits of the previous meta-block count
-         * toward this one's size, and reading that as the length of the
-         * compressed form alone gets the boundary wrong by one.
-         */
         @Test
         @DisplayName("sixty bytes whose compressed form is longer than they are")
         void whereCompressingMakesItBigger() {
@@ -343,19 +242,6 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
                     ]""")).isEqualTo("[60 64 #(true)]");
         }
 
-        /**
-         * Fifty kilobytes with no pattern in them at all, made by hashing a
-         * seed over and over so the same bytes can be built anywhere. Every
-         * meta-block is stored rather than coded, all eight levels give the
-         * same four bytes of overhead, and those are the bytes a real 3.22.5
-         * writes.
-         *
-         * <p>The data has to be genuinely incompressible for this to be worth
-         * anything. A first attempt used a linear congruential generator, whose
-         * low byte repeats after a few hundred values -- fifty thousand of them
-         * compressed to thirteen bytes, and the test would have passed while
-         * measuring nothing.
-         */
         @Test
         @DisplayName("fifty kilobytes of noise are stored, at every level")
         void noiseIsStored() {
@@ -390,12 +276,6 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
     @DisplayName("reading back what it wrote")
     class ReadingItBack {
 
-        /**
-         * The weaker property, kept because it catches a different mistake: a
-         * stream that matches a real 3.22.5 byte for byte and yet cannot be
-         * read by the decoder in this same build would mean the two halves have
-         * drifted apart.
-         */
         @Test
         @DisplayName("every level, on four shapes of data")
         void everyLevelOnFourShapes() {

@@ -1,23 +1,10 @@
 package org.jebol.domain.cipher;
 
 /**
- * ARIA, written out because no JVM provider carries it.
+ * ARIA, RFC 5794, written out because no JVM provider carries it.
  *
- * <p>RFC 5794, and {@code aria.c}. South Korea's national block cipher,
- * standardised as KS X 1213. The same block and the same three key widths as
- * AES, and the same substitution-permutation shape -- unlike Camellia beside
- * it, which is a Feistel design and undoes itself by reversing its subkeys.
- * ARIA has to undo its substitution tables instead.
- *
- * <p>Twelve rounds for the shortest key and sixteen for the longest. Each is
- * an exclusive-or against a round key, a pass through four substitution
- * tables, and a diffusion step that mixes every byte into every other. The odd
- * and even rounds use the same four tables in a different order, and that is
- * the whole of the difference between them.
- *
- * <p>Nothing asks for it: no codec, no protocol, no fallback, and no assertion
- * in REBOL's own suite. It is here because REBOL's catalogue names it, and a
- * name in a catalogue is a promise.
+ * <p>Here because REBOL's catalogue names it, and a name in a catalogue is a
+ * promise: nothing else asks for it.
  */
 public final class Aria {
 
@@ -29,13 +16,7 @@ public final class Aria {
 
     private static final int WORDS = 4;
 
-    /**
-     * A cipher ready to transform blocks under one key, in one direction.
-     *
-     * <p>Deciphering reverses the round keys and then puts the middle ones
-     * through the diffusion step, because that step is its own inverse and
-     * running it on the keys undoes running it on the state.
-     */
+    /** A cipher ready to transform blocks under one key, in one direction. */
     public static OneBlock under(byte[] key, boolean deciphering) {
         int rounds = 12 + 2 * ((key.length * Byte.SIZE - 128) >> 6);
         int[][] forwards = forEnciphering(key);
@@ -45,10 +26,6 @@ public final class Aria {
         return block -> transformed(block, roundKeys, rounds);
     }
 
-    /**
-     * The substitution layer: every byte of every word replaced, with the four
-     * tables taken in whichever order this round wants.
-     */
     private static void substitute(int[] state, int[][] tables) {
         for (int at = 0; at < WORDS; at++) {
             int word = state[at];
@@ -59,7 +36,6 @@ public final class Aria {
         }
     }
 
-    /** The first of the two forward tables, which is AES's own. */
     private static final int[] FIRST_FORWARD = {
         0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B,
         0xFE, 0xD7, 0xAB, 0x76, 0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0,
@@ -85,7 +61,6 @@ public final class Aria {
         0xB0, 0x54, 0xBB, 0x16
     };
 
-    /** The second forward table, built on a different field. */
     private static final int[] SECOND_FORWARD = {
         0xE2, 0x4E, 0x54, 0xFC, 0x94, 0xC2, 0x4A, 0xCC, 0x62, 0x0D, 0x6A, 0x46,
         0x3C, 0x4D, 0x8B, 0xD1, 0x5E, 0xFA, 0x64, 0xCB, 0xB4, 0x97, 0xBE, 0x2B,
@@ -111,7 +86,6 @@ public final class Aria {
         0xAF, 0xBA, 0xB5, 0x81
     };
 
-    /** The first table undone, which the even rounds start from. */
     private static final int[] FIRST_BACKWARD = {
         0x52, 0x09, 0x6A, 0xD5, 0x30, 0x36, 0xA5, 0x38, 0xBF, 0x40, 0xA3, 0x9E,
         0x81, 0xF3, 0xD7, 0xFB, 0x7C, 0xE3, 0x39, 0x82, 0x9B, 0x2F, 0xFF, 0x87,
@@ -137,7 +111,6 @@ public final class Aria {
         0x55, 0x21, 0x0C, 0x7D
     };
 
-    /** The second table undone. */
     private static final int[] SECOND_BACKWARD = {
         0x30, 0x68, 0x99, 0x1B, 0x87, 0xB9, 0x21, 0x78, 0x50, 0x39, 0xDB, 0xE1,
         0x72, 0x09, 0x62, 0x3C, 0x3E, 0x7E, 0x5E, 0x8E, 0xF1, 0xA0, 0xCC, 0xA3,
@@ -171,31 +144,19 @@ public final class Aria {
         FIRST_BACKWARD, SECOND_BACKWARD, FIRST_FORWARD, SECOND_FORWARD
     };
 
-    /** Swaps the two halves of every byte pair, which is one of three shuffles. */
     private static int swapWithinPairs(int word) {
         return (word >>> 8 & 0x00FF00FF) ^ ((word & 0x00FF00FF) << 8);
     }
 
-    /** Swaps the two halves of the word. */
     private static int swapHalves(int word) {
         return word >>> 16 ^ word << 16;
     }
 
-    /** Reverses the four bytes, which is the byte order changing. */
     private static int reversed(int word) {
         return Integer.reverseBytes(word);
     }
 
-    /**
-     * The diffusion step, which mixes every byte of the block into every
-     * other one.
-     *
-     * <p>Its own inverse, which is why deciphering can run it over the round
-     * keys rather than needing an undone version of it. Transcribed from the C
-     * shuffle for shuffle: it is sixteen exclusive-ors written as seven, and
-     * reading it as anything other than that is a mistake.
-     */
-    private static void diffuse(int[] state) {
+    private static void diffuseWhichIsItsOwnInverse(int[] state) {
         int carried = state[1];
         state[1] = state[0];
         state[0] = swapHalves(carried);
@@ -225,13 +186,13 @@ public final class Aria {
         while (true) {
             addTheRoundKey(state, roundKeys[round++]);
             substitute(state, ODD_ROUND_TABLES);
-            diffuse(state);
+            diffuseWhichIsItsOwnInverse(state);
             addTheRoundKey(state, roundKeys[round++]);
             substitute(state, EVEN_ROUND_TABLES);
             if (round >= rounds) {
                 break;
             }
-            diffuse(state);
+            diffuseWhichIsItsOwnInverse(state);
         }
         addTheRoundKey(state, roundKeys[round]);
         byte[] out = new byte[BLOCK];
@@ -247,14 +208,6 @@ public final class Aria {
         }
     }
 
-    /**
-     * The key schedule: four derived words, each rotated by four different
-     * amounts across a hundred and twenty-eight bits.
-     *
-     * <p>The first three derived words come from putting the key through the
-     * cipher's own round function against three fixed constants -- which is
-     * why the schedule and the cipher share everything below this line.
-     */
     private static int[][] forEnciphering(byte[] key) {
         int width = (key.length * Byte.SIZE - 128) >> 6;
         int[][] derived = new int[4][WORDS];
@@ -266,34 +219,29 @@ public final class Aria {
         }
 
         int which = width;
-        theRoundFunction(derived[1], derived[0], CONSTANTS[which],
+        theRoundFunction(derived[1], derived[0], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
                 derived[1].clone(), ODD_ROUND_TABLES);
         which = which < 2 ? which + 1 : 0;
-        theRoundFunction(derived[2], derived[1], CONSTANTS[which],
+        theRoundFunction(derived[2], derived[1], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
                 derived[0], EVEN_ROUND_TABLES);
         which = which < 2 ? which + 1 : 0;
-        theRoundFunction(derived[3], derived[2], CONSTANTS[which],
+        theRoundFunction(derived[3], derived[2], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
                 derived[1], ODD_ROUND_TABLES);
 
-        int[][] roundKeys = new int[HOW_MANY_ROUND_KEYS][WORDS];
+        int[][] roundKeys = new int[HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS][WORDS];
         for (int at = 0; at < 4; at++) {
             int[] next = derived[(at + 1) & 3];
-            rotatedInto(roundKeys[at], derived[at], next, 128 - 19);
-            rotatedInto(roundKeys[at + 4], derived[at], next, 128 - 31);
-            rotatedInto(roundKeys[at + 8], derived[at], next, 61);
-            rotatedInto(roundKeys[at + 12], derived[at], next, 31);
+            rotatedIntoTakenInTheOtherByteOrder(roundKeys[at], derived[at], next, 128 - 19);
+            rotatedIntoTakenInTheOtherByteOrder(roundKeys[at + 4], derived[at], next, 128 - 31);
+            rotatedIntoTakenInTheOtherByteOrder(roundKeys[at + 8], derived[at], next, 61);
+            rotatedIntoTakenInTheOtherByteOrder(roundKeys[at + 12], derived[at], next, 31);
         }
-        rotatedInto(roundKeys[16], derived[0], derived[1], 19);
+        rotatedIntoTakenInTheOtherByteOrder(roundKeys[16], derived[0], derived[1], 19);
         return roundKeys;
     }
 
-    /** Enough for the longest schedule; the shorter ones do not fill it. */
-    private static final int HOW_MANY_ROUND_KEYS = 17;
+    private static final int HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS = 17;
 
-    /**
-     * One round of the cipher, used by the key schedule against a constant
-     * rather than a round key.
-     */
     private static void theRoundFunction(int[] into, int[] from,
             int[] constant, int[] addedAfter, int[][] tables) {
 
@@ -302,22 +250,14 @@ public final class Aria {
             working[at] = from[at] ^ constant[at];
         }
         substitute(working, tables);
-        diffuse(working);
+        diffuseWhichIsItsOwnInverse(working);
         for (int at = 0; at < WORDS; at++) {
             into[at] = working[at] ^ addedAfter[at];
         }
     }
 
-    /**
-     * A rotation of all hundred and twenty-eight bits at once, taken in the
-     * other byte order.
-     *
-     * <p>The words are held least significant byte first and the rotation is
-     * defined most significant byte first, so every word is turned round going
-     * in and coming out. That is the C's own note, and the only reason this is
-     * more than four shifts.
-     */
-    private static void rotatedInto(int[] into, int[] left, int[] right, int places) {
+    private static void rotatedIntoTakenInTheOtherByteOrder(
+            int[] into, int[] left, int[] right, int places) {
         int within = places % 32;
         int back = within != 0 ? 32 - within : 0;
         int from = places / 32 % 4;
@@ -334,13 +274,9 @@ public final class Aria {
         }
     }
 
-    /**
-     * Reverses the round keys and mixes the middle ones, which is how a
-     * substitution-permutation cipher runs backwards.
-     */
     private static int[][] reversedForDeciphering(int[][] forwards, int rounds) {
-        int[][] backwards = new int[HOW_MANY_ROUND_KEYS][WORDS];
-        for (int at = 0; at < HOW_MANY_ROUND_KEYS; at++) {
+        int[][] backwards = new int[HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS][WORDS];
+        for (int at = 0; at < HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS; at++) {
             backwards[at] = forwards[at].clone();
         }
         for (int front = 0, back = rounds; front < back; front++, back--) {
@@ -349,7 +285,7 @@ public final class Aria {
             backwards[back] = swapped;
         }
         for (int at = 1; at < rounds; at++) {
-            diffuse(backwards[at]);
+            diffuseWhichIsItsOwnInverse(backwards[at]);
         }
         return backwards;
     }
@@ -366,8 +302,7 @@ public final class Aria {
         octets[at + 3] = (byte) (word >>> 24);
     }
 
-    /** The three fixed constants the key schedule folds the key against. */
-    private static final int[][] CONSTANTS = {
+    private static final int[][] CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST = {
         {0xB7C17C51, 0x940A2227, 0xE8AB13FE, 0xE06E9AFA},
         {0xCC4AB16D, 0x20C8219E, 0xD5B128FF, 0xB0E25DEF},
         {0x1D3792DB, 0x70E92621, 0x75972403, 0x0EC9E804}

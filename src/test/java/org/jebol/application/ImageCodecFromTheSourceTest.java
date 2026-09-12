@@ -13,28 +13,6 @@ import java.nio.file.StandardCopyOption;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * IMAGE reaching the platform's own codec, which on a JVM is always there.
- *
- * <p>{@code n-image.c} compiles the whole native only where
- * {@code INCLUDE_IMAGE_OS_CODEC} is defined -- "only on Windows and macOS so
- * far" -- and refuses with feature-na elsewhere. A JVM carries a codec
- * wherever it runs, so this is one of the platforms that has one, and the
- * refusal belongs to an interpreter given no port rather than to every
- * interpreter.
- *
- * <p>It is worth more than one native. Rebol's own {@code codec-image.reb}
- * writes every png, jpeg, gif and bmp entry of {@code system/codecs} as a call
- * to this, so refusing here does not leave the codec family to supply a
- * portable one -- it lists four codecs in the catalogue that cannot do
- * anything.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written,
- * the three GIF frame checksums included. Two of them corrected a guess:
- * {@code animation.gif} is eleven by twenty-nine and not the size of the other
- * pictures beside it, and a frame at either end of the range fails with
- * cannot-open rather than answering the nearest one.
- */
 class ImageCodecFromTheSourceTest {
 
     private static final Path VENDORED =
@@ -112,11 +90,6 @@ class ImageCodecFromTheSourceTest {
                 .isEqualTo("[#(binary!) #{FFFFFF} #{FFFFFF} #{FFFFFF} #{FFFFFF}]");
     }
 
-    /**
-     * JPEG has nowhere to put an alpha channel, so a transparent pixel comes
-     * back opaque rather than the write failing. A real 3.22.5 answers 255 for
-     * that pixel's fourth channel, and so does this.
-     */
     @Test
     @DisplayName("an image with alpha, saved to a format that has none")
     void anImageWithAlphaSavedToAFormatWithoutIt(@TempDir Path directory)
@@ -132,18 +105,6 @@ class ImageCodecFromTheSourceTest {
                 .isEqualTo("[2x2 255]");
     }
 
-    /**
-     * A BMP does have somewhere to put an alpha channel, and a real 3.22.5
-     * uses it: thirty-two bits a pixel under the fifth version of the header,
-     * which is the one that names a mask per channel.
-     *
-     * <p>JEBOL wrote twenty-four bits and threw the alpha away, because the
-     * runtime's own BMP writer refuses a picture that still has one -- "Image
-     * can not be encoded with compression type BI_RGB and 32 bits per pixel",
-     * and it says the same of every compression type it offers. So a
-     * see-through picture came back opaque, which was written down as what a
-     * BMP can do and is not.
-     */
     @Test
     @DisplayName("a BMP keeps its alpha, which the runtime's own writer will not")
     void aBmpKeepsItsAlpha(@TempDir Path directory) throws IOException {
@@ -156,13 +117,6 @@ class ImageCodecFromTheSourceTest {
                 .isEqualTo("[2x2 #{FF00000AFF00000AFF00000AFF00000A}]");
     }
 
-    /**
-     * The bytes of that two-by-two, which are the bytes a real 3.22.5 writes:
-     * a fourteen-byte file header, a hundred and twenty-four bytes of the
-     * fifth header version, and sixteen of pixels. Blue first and alpha last
-     * in each, and the rows written top down -- which the header says by
-     * giving the height as a negative number.
-     */
     @Test
     @DisplayName("and it writes the same bytes a real Rebol writes")
     void itWritesTheSameBytesARealRebolWrites(@TempDir Path directory)
@@ -182,10 +136,6 @@ class ImageCodecFromTheSourceTest {
                         0000000000000000FF0A0000FF0A0000FF0A0000FF0A}]""");
     }
 
-    /**
-     * Three rows of two, so a picture written bottom up rather than top down
-     * comes back upside down and says so.
-     */
     @Test
     @DisplayName("and the rows come back in the order they went in")
     void theRowsComeBackInTheOrderTheyWentIn(@TempDir Path directory)
@@ -202,21 +152,6 @@ class ImageCodecFromTheSourceTest {
                         [2x3 "010101020202030303040404050505060606"]""");
     }
 
-    /**
-     * A binary handed in as the destination is written into, and it is that
-     * very binary that comes back rather than a copy. Which is what makes it a
-     * destination at all: a caller passing one has a hold on it and expects to
-     * read the bytes from there afterwards.
-     *
-     * <p>JEBOL ignored it and answered a fresh binary, so the caller's own was
-     * still empty and the call looked as though it had worked.
-     *
-     * <p>How many bytes a PNG of four white pixels takes is the runtime's
-     * business and not REBOL's -- a real 3.22.5 writes a hundred and fifty-six
-     * where this writes seventy-one, and both are PNGs of the same picture. So
-     * what is checked is that the bytes are there, that they are the ones the
-     * call would otherwise have answered, and that they read back.
-     */
     @Test
     @DisplayName("saving into a binary fills the one it was given")
     void savingIntoABinaryFillsTheOneItWasGiven(@TempDir Path directory)
@@ -236,11 +171,6 @@ class ImageCodecFromTheSourceTest {
                 .isEqualTo("[#(true) #(true) 2x2]");
     }
 
-    /**
-     * From the position, and everything after it goes. The bytes are one whole
-     * file and half of a previous one behind them would not be, so a binary
-     * standing at its third byte keeps the two in front and loses the rest.
-     */
     @Test
     @DisplayName("and it writes from the position, dropping whatever followed")
     void itWritesFromThePositionDroppingWhateverFollowed(@TempDir Path directory)
@@ -279,11 +209,6 @@ class ImageCodecFromTheSourceTest {
                 "image/load/as read %r3.png 'NOPE")).isEqualTo("bad-func-arg");
     }
 
-    /**
-     * Bytes and files fail differently because the caller looks in different
-     * places, and neither may reach the host as a throwable -- which a missing
-     * file did, straight out of the filesystem port.
-     */
     @Test
     @DisplayName("bytes that are not an image and a file that is not there fail apart")
     void badBytesAndABadFileFailApart(@TempDir Path directory) throws IOException {
@@ -299,12 +224,6 @@ class ImageCodecFromTheSourceTest {
                 .isEqualTo("cannot-open");
     }
 
-    /**
-     * A GIF frame after the first is a patch rather than a picture -- a small
-     * rectangle at an offset, covering only what changed -- so reading one
-     * alone gives that patch. What a viewer shows, and what these checksums
-     * are of, is every frame up to it drawn over the canvas in turn.
-     */
     @Test
     @DisplayName("/FRAME picks one image out of a file holding several")
     void frameChoosesOneOfSeveral(@TempDir Path directory) throws IOException {
@@ -380,14 +299,6 @@ class ImageCodecFromTheSourceTest {
                 "image/save/as none \"not an image\" 'PNG")).isEqualTo("expect-arg");
     }
 
-    /**
-     * GIF stores an index into a palette of two hundred and fifty-six, so a
-     * picture with no more colours than that has an entry apiece and comes
-     * back exactly. This is where JEBOL is deliberately better than the
-     * canonical reference: a real 3.22.5 on macOS quantises even two dark reds that sit one
-     * step apart into a single colour, and matching that would mean
-     * reproducing a particular platform's quantiser.
-     */
     @Test
     @DisplayName("a palette holds every colour the picture has")
     void aPaletteHoldsEveryColourThePictureHas(@TempDir Path directory)
@@ -426,11 +337,6 @@ class ImageCodecFromTheSourceTest {
                 .isEqualTo("[256x1 #(true)]");
     }
 
-    /**
-     * One colour past what the palette holds, so something has to go. Which
-     * colour is the platform's choice and is not pinned; that the picture
-     * still comes back the right size and readable is.
-     */
     @Test
     @DisplayName("one colour too many still reads back, at the right size")
     void oneTooManyColoursStillReadsBack(@TempDir Path directory)

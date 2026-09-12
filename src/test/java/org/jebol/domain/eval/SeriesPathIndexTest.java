@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Reaching into a series by number through a path.
- *
- * <p>Specified by the path-evaluation rules in {@code spec/eval.allium},
- * confirmed against a real R3.
- *
- * <p>A valid index into a string or binary was reaching the bounds check,
- * passing it, and then falling straight through to the failure that was
- * meant for a selector of the wrong kind. So every in-range index raised
- * and every out-of-range one answered none, which is exactly backwards.
- */
 class SeriesPathIndexTest {
 
     private static String answerTo(String source) {

@@ -3,16 +3,12 @@ package org.jebol.domain.render;
 /**
  * An affine transform, as the six numbers both toolkits take.
  *
- * <p>Carried on an instruction rather than baked into its coordinates, which
- * is a decision worth defending because baking would keep the "renderers
- * decide nothing" rule more absolutely. It would also be wrong: a stroke is
- * not a stroke of a transformed path. Under a non-uniform scale a baked path
- * draws a line of even width where the toolkit would draw one that thickens,
- * and DRAW has a {@code line-width fixed} mode precisely because the
- * difference is meant to be visible.
+ * <p>Carried on an instruction rather than baked into its coordinates, because
+ * a stroke is not a stroke of a transformed path: under a non-uniform scale a
+ * baked path draws a line of even width where the toolkit draws one that
+ * thickens.
  *
- * <p>Six numbers applied identically by both is faithful and still decides
- * nothing: {@code AffineTransform} and a canvas {@code setTransform} take them
+ * <p>{@code AffineTransform} and a canvas {@code setTransform} take them
  * in the same order and mean the same thing by them.
  *
  * <p>Specified in {@code spec/draw.allium}.

@@ -6,12 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A batch of evaluation behaviors from {@code evaluation-test.r3}, each read
- * from the C: UNBIND loosens a word, COMPOSE evaluates its parens in the
- * caller's context, and CATCH/WITH with a function handler leaves the caught
- * value in last-result.
- */
 class EvaluationClusterFromTheSourceTest {
 
     private static String answerTo(String source) {

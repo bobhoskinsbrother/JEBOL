@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TRANSCODE/NEXT, and what /PART bounds.
- *
- * <p>Specified in {@code spec/load.allium} and measured against a real R3
- * 3.22.1.
- *
- * <p>/NEXT answers the first value and whatever is left, so a caller can
- * walk a source a value at a time without counting characters. Getting
- * "whatever is left" right is the whole of it: a value has to be taken as
- * far as it goes, the whitespace after it belongs to what follows, and a
- * bound on how much may be read is not a bound on what is left over.
- */
 class TranscodeNextTest {
 
     private static String answerTo(String source) {
@@ -26,7 +14,6 @@ class TranscodeNextTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

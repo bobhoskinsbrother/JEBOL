@@ -23,7 +23,6 @@ public final class TerminalWidth {
     private TerminalWidth() {
     }
 
-    /** Below this the answer is one column, which is the common case. */
     private static final int FIRST_PRINTABLE = 0x20;
 
     private static final int FIRST_DELETE = 0x7F;
@@ -161,7 +160,6 @@ public final class TerminalWidth {
         return columns;
     }
 
-    /** Whether a code point falls in one of the ranges, found by halving. */
     private static boolean within(int[] ranges, int codepoint) {
         int low = 0;
         int high = ranges.length / 2 - 1;

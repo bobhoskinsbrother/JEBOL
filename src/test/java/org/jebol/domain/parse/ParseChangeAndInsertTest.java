@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * PARSE's CHANGE and INSERT, which alter the input as they go.
- *
- * <p>Specified in {@code spec/parse.allium}, confirmed against a real R3.
- *
- * <p>The interesting part of CHANGE is when the replacement is worked out.
- * A paren is evaluated at the moment the change happens, not when the rule
- * was written, which is what makes it useful with SET: the paren can read
- * a word the very match it is replacing has just set.
- */
 class ParseChangeAndInsertTest {
 
     private static String answerTo(String source) {

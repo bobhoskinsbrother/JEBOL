@@ -33,7 +33,6 @@ public final class Evaluator {
     private final OutputPort output;
     private final Context systemContext;
 
-    /** Where run-time source puts its words. The library, until told. */
     private Context runtimeContext;
     private final int maximumDepth;
     private final Interruption interruption;
@@ -41,48 +40,23 @@ public final class Evaluator {
 
     private FilePort files = FilePort.none();
 
-    /** The names the host was started with. None, by default. */
     private EnvironmentPort environment = EnvironmentPort.none();
 
-    /** The host's image codec. None, by default. */
     private ImagePort images = ImagePort.none();
 
-    /** Where a script reads a line from the operator. Nowhere, by default. */
     private ConsolePort console = ConsolePort.none();
 
-    /** Where a script puts a window on a screen. Nowhere, by default. */
     private WindowPort windows = WindowPort.none();
     private ScreenPort screen = ScreenPort.none();
 
-    /** How a script starts another program. Not at all, by default. */
     private ProcessPort processes = ProcessPort.none();
 
-    /**
-     * Where a script's network reaches. Nothing until a host says otherwise,
-     * for the same reason the filesystem is nothing until then.
-     */
     private NetworkPort network = NetworkPort.none();
     private BundledModules bundledModules = BundledModules.none();
     private int stepsSinceLastCheck;
 
-    /**
-     * How many frames are open right now, and how many values have been
-     * walked since this interpreter started.
-     *
-     * <p>Both are what STACK/DEPTH and STATS/EVALS answer. They are readable
-     * at all only because evaluation state lives in frames on the heap rather
-     * than in JVM stack frames -- see decision 1. An implementation using the
-     * host's own stack could not answer either question.
-     */
     private int framesOpen;
 
-    /**
-     * Evaluation tracing, off until TRACE turns it on.
-     *
-     * <p>Held here because the three hooks the C places -- before a value, at a
-     * call, at a return -- are all inside this walk, and because the level is a
-     * property of the run rather than of the native that set it.
-     */
     private final Trace trace = new Trace();
 
     /** The tracer, for TRACE to set the level on. */
@@ -91,7 +65,6 @@ public final class Evaluator {
     }
     private long valuesWalked;
 
-    /** How many native and user-function calls have been made. */
     private long nativesCalled;
     private long functionsCalled;
 
@@ -103,28 +76,8 @@ public final class Evaluator {
         return functionsCalled;
     }
 
-    /**
-     * A call whose body is running: the word it was made through, the function
-     * itself, and the context holding what it was called with.
-     *
-     * <p>The name is empty for a call no word made -- a function value standing
-     * in a block -- and that is a fact about the call rather than a value that
-     * went missing.
-     *
-     * <p>The function and its locals are kept because DS prints them: one line
-     * naming the word, the argument count and the datatype, then a line per
-     * argument with its value. A stack of names alone could answer the first
-     * field and nothing else.
-     */
     record OpenCall(String name, FunctionValue function, Context locals) {
 
-        /**
-         * Every name the frame holds a value for, in declaration order.
-         *
-         * <p>What the C walks: {@code args = BLK_HEAD(VAL_FUNC_ARGS(...))} and
-         * then every word from the first to the tail, so refinements and locals
-         * are printed beside the ordinary arguments rather than left out.
-         */
         List<String> slotNames() {
             List<String> names = new ArrayList<>();
             function.parameters().forEach(parameter -> names.add(parameter.name()));
@@ -133,27 +86,10 @@ public final class Evaluator {
         }
     }
 
-    /** The calls being run, innermost first. What STACK/WORD and DS read. */
     private final Deque<OpenCall> functionsBeingRun = new ArrayDeque<>();
 
-    /**
-     * The name of the call whose body is about to be pushed.
-     *
-     * <p>Set by the caller of push immediately before it, because push takes
-     * the body rather than the call and the name is not recoverable from a
-     * block. Empty when a body is being run for something with no name, such
-     * as a block handed to DO.
-     */
     private String nameOfTheCallBeingMade = "";
 
-    /**
-     * The last word a call was started through.
-     *
-     * <p>Held between the word being looked up and the function's body being
-     * pushed, because those are two steps and only the first knows the name.
-     * Cleared as it is taken, so a call made on a value rather than through a
-     * word does not inherit the previous call's name.
-     */
     private String lastWordCalledThrough = "";
 
     /**
@@ -178,15 +114,6 @@ public final class Evaluator {
         return valuesWalked;
     }
 
-    /**
-     * What LIMIT-USAGE recorded, per limit, and once each.
-     *
-     * <p>`Eval_Limit` and `PG_Mem_Limit` in the C, and set-once for the same
-     * reason: `if (Eval_Limit == 0) Eval_Limit = ...` writes only into a zero.
-     *
-     * <p>Nothing reads it yet and nothing can, which is Rebol's arrangement
-     * rather than an unfinished one. See the native.
-     */
     private final Map<UsageLimit, Long> limitsRecorded =
             new java.util.EnumMap<>(UsageLimit.class);
 
@@ -194,7 +121,6 @@ public final class Evaluator {
         return java.util.Optional.ofNullable(limitsRecorded.get(limit));
     }
 
-    /** Records a limit the first time it is asked for, and never after. */
     void recordLimitAskedFor(UsageLimit limit, long value) {
         limitsRecorded.putIfAbsent(limit, value);
     }
@@ -212,12 +138,6 @@ public final class Evaluator {
                 : java.util.Optional.of(open.get(offsetOutwards).name());
     }
 
-    /**
-     * Every call whose body is running, innermost first.
-     *
-     * <p>What DS prints. A native reaches the frames this way rather than being
-     * handed the walk's own deque, which belongs to the walk.
-     */
     List<OpenCall> callsInProgress() {
         return List.copyOf(functionsBeingRun);
     }
@@ -255,12 +175,6 @@ public final class Evaluator {
                 behaviour.call(arguments, evaluator, context));
     }
 
-    /**
-     * Where a copy of everything written also goes, when ECHO asked for one.
-     *
-     * <p>Null when nothing is echoing, which is the ordinary case, so the
-     * common path stays one field read rather than a call through a wrapper.
-     */
     private OutputPort alsoWritingTo;
 
     /** Where print and prin send their text. */
@@ -490,27 +404,6 @@ public final class Evaluator {
         }
     }
 
-    /**
-     * Runs the outermost walk, turning a control-flow signal that nothing
-     * caught into the error the C reports for it.
-     *
-     * <p>BREAK, CONTINUE, RETURN and THROW travel as Java exceptions here,
-     * which is how a loop catches one without every native in between having to
-     * hand it back. When there is no loop and no function, the signal arrives
-     * at the top -- and the C has an error for each: `break: {no loop to
-     * break}`, `continue:`, `return:` and `throw:`, the whole of the Throw
-     * category in {@code boot/errors.reb}.
-     *
-     * <p>So this is where they stop being signals. {@code spec/embed.allium}
-     * says nothing a script does may reach the host as a throwable, and
-     * `do reduce [p 7]` with a BREAK path in P threw {@code LoopSignal} out of
-     * the interpreter.
-     *
-     * <p>TRY does not do this itself, and that is deliberate: the C's TRY
-     * traps errors and lets a thrown value past, so `try [break]` still ends
-     * the script. Only TRY/ALL disarms one, and it makes the same four errors
-     * this does.
-     */
     private static Value unsignalled(java.util.function.Supplier<Value> walking) {
         try {
             return walking.get();
@@ -583,10 +476,6 @@ public final class Evaluator {
         return new BlockValue(built, 1, Datatype.BLOCK);
     }
 
-    /**
-     * Whether an expression was one item that evaluated to itself, which is
-     * what {@code Do_Next} pushing the block's own value amounts to.
-     */
     private static boolean theItemAsWritten(
             BlockValue code, int startedAt, int stoppedBefore) {
 
@@ -597,15 +486,6 @@ public final class Evaluator {
                         code.storage().at(startedAt).datatype());
     }
 
-    /**
-     * The datatypes an expression of one item does not answer with itself.
-     *
-     * <p>A word or a path is looked up, a lit-word answers a plain word, a
-     * paren is a block to walk, and a function value is called. Everything
-     * else -- a number, a string, a block, a refinement, a datatype, a none --
-     * is its own answer, which is what {@code Do_Next} pushing the block's own
-     * value amounts to.
-     */
     private static final Set<Datatype> WORKS_SOMETHING_OUT = EnumSet.of(
             Datatype.WORD, Datatype.SET_WORD, Datatype.GET_WORD, Datatype.LIT_WORD,
             Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
@@ -672,17 +552,10 @@ public final class Evaluator {
         return new Step(produced, frame.position);
     }
 
-    /** The value of a block: its last expression's value, or unset if empty. */
     private Value walk(BlockValue code, Context context, int depth) {
         return walk(code, context, depth, null);
     }
 
-    /**
-     * Asks whether the script should stop, every so often rather than every
-     * step. Checking a clock a million times a second costs more than the
-     * bound is worth; a thousand steps is close enough to a deadline that
-     * nobody notices the difference.
-     */
     private void stopIfAsked() {
         stepsSinceLastCheck++;
         valuesWalked++;
@@ -695,11 +568,6 @@ public final class Evaluator {
         });
     }
 
-    /**
-     * Pops frames until the nearest function body, and hands it the returned
-     * value. Rethrows if there is none here, because the function being
-     * returned from is then one this walk was started inside.
-     */
     private void unwindToFunction(Deque<Frame> frames, ReturnSignal returning) {
         while (!frames.isEmpty() && !frames.peek().functionBody) {
             frames.pop();
@@ -712,40 +580,11 @@ public final class Evaluator {
         body.stopped = true;
     }
 
-    /**
-     * Watches each top-level result; returning false stops the walk.
-     *
-     * <p>It is told where the expression began as well as what it produced,
-     * because REDUCE has to know which source item each result came from. A
-     * block's line-break marks belong to the values rather than to the
-     * positions, so a result that is the item as written keeps the mark and a
-     * result that was worked out does not, and neither can be decided from
-     * the value alone.
-     */
     @FunctionalInterface
     private interface ResultSink {
         boolean accept(Value produced, int startedAt, int stoppedBefore);
     }
 
-    /**
-     * Walks a block and everything it nests into, keeping frames on a stack of
-     * its own.
-     *
-     * <p>A paren and a function body push a frame rather than calling back
-     * into this method, so a script that recurses a thousand deep costs a
-     * thousand small objects on the heap instead of a thousand JVM frames.
-     * That is what lets the depth limit be a promise rather than a hope, and
-     * it is why {@code forever: func [n] [forever n]} reports an error instead
-     * of killing the process.
-     *
-     * <p>The frames themselves are local and go when this returns, however it
-     * returns. The record of which calls are open is not: it is a field, so a
-     * raise that unwinds past the loop leaves every call it passed through
-     * still recorded. That made STACK/DEPTH climb by one for every error a
-     * script caught and never come back down, and the same entries were what
-     * DS printed. Closing the record here rather than where a frame is popped
-     * covers the exceptional way out as well as the ordinary one.
-     */
     private Value walk(BlockValue code, Context context, int depth, ResultSink sink) {
         Deque<Frame> frames = new ArrayDeque<>();
         Frame root = new Frame(code, context, depth);
@@ -815,38 +654,13 @@ public final class Evaluator {
         }
     }
 
-    /**
-     * Fills in an error's NEAR and WHERE on the way out, once.
-     *
-     * <p>The fields exist because a script reads them, and they were none on
-     * every error the evaluator raised: only the reader ever set NEAR, for a
-     * syntax error. They cannot be filled in where the failure happens -- a
-     * native raising {@code zero-divide} has no idea what block it is in --
-     * so they are attached here, at the one place that has the frames.
-     *
-     * <p>NEAR is the fragment from where the innermost call began, which is why
-     * {@code PendingCall} records that: by now the block has moved past it.
-     * WHERE is the chain of names those calls were reached through, innermost
-     * first.
-     *
-     * <p>Once, and only if nothing has said already, because this catch sits in
-     * a loop that every enclosing frame also runs: the innermost answer is the
-     * true one and the outer passes must leave it alone.
-     *
-     * <p>It is not R3's answer exactly and cannot be. R3 fills both from its
-     * own data stack, so WHERE runs on down into the console's frames --
-     * {@code [/ try do either either if -apply-]} -- and NEAR points at the
-     * caller's block whenever a failure happens before the callee gets a frame,
-     * which is where its argument checking runs. What matches is the part that
-     * is about the script rather than about the interpreter.
-     */
     private Raised sayingWhereItCameFrom(Raised raised, Deque<Frame> frames) {
         List<Value> chain = new ArrayList<>();
         Value nearest = null;
         for (Frame open : frames) {
             List<PendingCall> deepestFirst = new ArrayList<>();
-            if (open.invoking != null) {
-                deepestFirst.add(open.invoking);
+            if (open.theCallNearAndWhereAreAbout != null) {
+                deepestFirst.add(open.theCallNearAndWhereAreAbout);
             }
             deepestFirst.addAll(open.pendingCalls);
             for (PendingCall waiting : deepestFirst) {
@@ -874,18 +688,10 @@ public final class Evaluator {
         return said == raised.error() ? raised : new Raised(said);
     }
 
-    /** Pushes a nested block, refusing if that would nest too deep. */
     private void push(Deque<Frame> frames, BlockValue code, Context context) {
         push(frames, code, context, null);
     }
 
-    /**
-     * Pushes a block, and records the call when the block is a function's body.
-     *
-     * <p>{@code being} is the function whose body this is, or absent for an
-     * ordinary nested block: a paren, a loop body, anything DO was handed. Only
-     * a function's body opens a frame that STACK and DS can be asked about.
-     */
     private void push(
             Deque<Frame> frames, BlockValue code, Context context, FunctionValue being) {
         Frame parent = frames.peek();
@@ -905,15 +711,6 @@ public final class Evaluator {
         }
     }
 
-    /**
-     * The innermost frame of a function that is still running, if there is one.
-     *
-     * <p>{@code while (frame != VAL_WORD_FRAME(DSF_WORD(dsf))) dsf =
-     * PRIOR_DSF(dsf);} in {@code Get_Var}, which walks out from the innermost
-     * call. Here it is asked at the two moments the answer changes -- a call
-     * of the same function beginning, and one ending -- so the frames can
-     * point at each other and the walk itself never has to be repeated.
-     */
     private java.util.Optional<Context> openFrameOf(FunctionValue function) {
         return functionsBeingRun.stream()
                 .filter(call -> call.function() == function)
@@ -926,29 +723,10 @@ public final class Evaluator {
         theFrameThisCallTakesOverFrom(ending.function()).supersededBy(null);
     }
 
-    /**
-     * What a call of this function lends its frame to: the innermost call of
-     * the same function already running, or the function's own declared words
-     * when this is the outermost.
-     *
-     * <p>The body's words are bound to those declared words once, when the
-     * function is made, so the outermost call is what turns them from naming
-     * nothing into naming a slot. An inner call points the frame above it at
-     * its own, which is how a recursion reads the innermost values without
-     * anything walking the chain at each word.
-     */
     private Context theFrameThisCallTakesOverFrom(FunctionValue function) {
         return openFrameOf(function).orElseGet(function::declaredWords);
     }
 
-    /**
-     * The block a call runs: the function's own body, already bound when the
-     * function was made, or a freshly bound copy for a closure.
-     *
-     * <p>A closure's frame outlives the call that made it, so its words cannot
-     * be bound to a context that is lent and handed back. Copying per call is
-     * what keeps the names of a call alive after it.
-     */
     private static BlockValue theBodyThisCallRuns(
             FunctionValue function, Context locals) {
 
@@ -958,17 +736,13 @@ public final class Evaluator {
                 : function.body();
     }
 
-    /**
-     * Takes the value at the current position and turns it into a result,
-     * advancing past whatever it consumed.
-     */
     private StepOutcome takeOneStep(Frame frame, Deque<Frame> frames) {
         Value input = frame.current();
         if (trace.isOn()) {
             trace.line(frame.position, input, frame.context);
         }
         frame.startedThisValueAt = frame.position;
-        frame.invoking = null;
+        frame.theCallNearAndWhereAreAbout = null;
         frame.advance();
 
         return switch (input.datatype()) {
@@ -993,11 +767,6 @@ public final class Evaluator {
         };
     }
 
-    /**
-     * Hands a produced value to whatever was waiting for it, then keeps going.
-     * An operator immediately after the value takes it as a first argument,
-     * which is the whole of infix.
-     */
     private void deliver(Frame frame, Value produced, Deque<Frame> frames) {
         Value carrying = produced;
         while (true) {
@@ -1031,23 +800,21 @@ public final class Evaluator {
                 return;
             }
             frame.pendingCalls.pop();
-            // Kept while it runs, because the pop above means a call that
-            // raises is no longer on the stack that NEAR and WHERE are read
-            // from -- and the call that raises is the one they are about.
-            frame.invoking = waiting;
+            frame.theCallNearAndWhereAreAbout = waiting;
             StepOutcome outcome = invoke(frame, waiting, frames);
-            if (!(outcome instanceof StepOutcome.Produced invoked)) {
-                // Still running: it pushed a body, and the frame it pushed is
-                // where anything will raise from. Clearing here would take the
-                // call out of WHERE before its body had a chance to fail.
+            if (itIsStillRunningHavingPushedABody(outcome)) {
                 return;
             }
-            frame.invoking = null;
+            StepOutcome.Produced invoked = (StepOutcome.Produced) outcome;
+            frame.theCallNearAndWhereAreAbout = null;
             carrying = invoked.value();
         }
     }
 
-    /** The operator at the current position, if the next value is one. */
+    private static boolean itIsStillRunningHavingPushedABody(StepOutcome outcome) {
+        return !(outcome instanceof StepOutcome.Produced);
+    }
+
     private Optional<OperatorValue> operatorAt(Frame frame) {
         if (frame.atEnd()) {
             return Optional.empty();
@@ -1064,13 +831,6 @@ public final class Evaluator {
                 : Optional.empty();
     }
 
-    /**
-     * Calls a function value that no word named.
-     *
-     * <p>The name is cleared first, because there is not one: `if (!word) word =
-     * ROOT_NONAME;` in the C, and STACK/WORD answers none for such a frame. Left
-     * as it was, the frame would report whichever word was called before it.
-     */
     private StepOutcome calledWithoutAName(
             Frame frame, Deque<Frame> frames, Value callee) {
         lastWordCalledThrough = "";
@@ -1121,18 +881,6 @@ public final class Evaluator {
         return StepOutcome.waiting();
     }
 
-    /**
-     * Whether DO of this argument asks for what it finds to be re-evaluated.
-     *
-     * <p>{@code VAL_SET_OPT(value, OPTS_REVAL)} is set on four of DO's arms and
-     * not on the rest: a function value handed over directly, a path, a word,
-     * and a get-word. So {@code do 'f} calls F, taking its arguments from after
-     * the DO, while {@code do [f]} evaluates the block and answers whatever came
-     * out -- even when that is a function value.
-     *
-     * <p>The difference is the whole of `do 'a` where A is a function of no
-     * arguments: R3 answers "OK" and not the function.
-     */
     private static boolean asksForReEvaluation(Value argument) {
         return switch (argument) {
             case WordValue named -> named.datatype() == Datatype.WORD
@@ -1171,10 +919,6 @@ public final class Evaluator {
         return word.binding().slotFor(word.canonical());
     }
 
-    /**
-     * Begins a call. If it needs no arguments it happens now; otherwise it
-     * waits for the values that follow.
-     */
     private StepOutcome startCall(
             Frame frame, Deque<Frame> frames, Value callee, List<String> refinements) {
         return startCall(frame, frames, callee, refinements, refinements);
@@ -1186,15 +930,11 @@ public final class Evaluator {
         PendingCall call = PendingCall.prefix(callee, refinements, named);
         call.startedAt(frame.startedThisValueAt,
                 nameWrittenAt(frame, frame.startedThisValueAt));
-        if (call.isSatisfied()) {
-            // A call needing nothing never reaches the pending stack, so it
-            // has to be recorded here or it is missing from WHERE -- which is
-            // every zero-argument function, and they are the ones whose bodies
-            // most often raise.
-            frame.invoking = call;
+        if (aCallNeedingNothingNeverReachesThePendingStack(call)) {
+            frame.theCallNearAndWhereAreAbout = call;
             StepOutcome outcome = invoke(frame, call, frames);
             if (outcome instanceof StepOutcome.Produced) {
-                frame.invoking = null;
+                frame.theCallNearAndWhereAreAbout = null;
             }
             return outcome;
         }
@@ -1202,14 +942,20 @@ public final class Evaluator {
         return StepOutcome.waiting();
     }
 
-    /**
-     * The word a call was written as, for an error's WHERE.
-     *
-     * <p>Read back out of the block rather than threaded through the call,
-     * because the name is a fact about the call site and not about the
-     * function: the same function reached through two words is two names, and
-     * an anonymous one has none.
-     */
+    private static boolean aCallNeedingNothingNeverReachesThePendingStack(
+            PendingCall call) {
+        return call.isSatisfied();
+    }
+
+    private static void refuseSelfAsAnInvalidPathRatherThanAGuardedSlot(
+            Value lastSegment) {
+        if (lastSegment instanceof WordValue named
+                && named.canonical().equals("self")) {
+            throw Raised.of(EvaluationFailure.INVALID_PATH,
+                    "self is what a context calls itself and cannot be assigned");
+        }
+    }
+
     private static String nameWrittenAt(Frame frame, int position) {
         if (position < frame.code.index() || position > frame.code.storageLength()) {
             return null;
@@ -1232,57 +978,47 @@ public final class Evaluator {
             }
             if (call.destination() != null) {
                 try {
-                    call.destination().accept(call.arguments().get(0));
+                    call.destination().accept(call.argumentsInDeclaredOrder().get(0));
                 } catch (ProtectedFromChange refused) {
                     throw Raised.of(EvaluationFailure.PROTECTED,
                             "the value is protected");
                 }
-                return StepOutcome.of(call.arguments().get(0));
+                return StepOutcome.of(call.argumentsInDeclaredOrder().get(0));
             }
-            call.slot().setValue(call.arguments().get(0));
-            return StepOutcome.of(call.arguments().get(0));
+            call.slot().setValue(call.argumentsInDeclaredOrder().get(0));
+            return StepOutcome.of(call.argumentsInDeclaredOrder().get(0));
         }
         return switch (call.callee()) {
             case NativeValue built -> {
                 if (trace.isOn()) {
-                    trace.call(built.nativeName(), built, call.arguments());
+                    trace.call(built.nativeName(), built, call.argumentsInDeclaredOrder());
                 }
-                Value produced = runNative(built, call.arguments(), frame.context);
+                Value produced = runNative(built, call.argumentsInDeclaredOrder(), frame.context);
                 if (trace.isOn()) {
                     trace.answered(built.nativeName(), produced);
                 }
                 yield built.nativeName().equals("do")
                         && produced.datatype().isAnyFunction()
-                        && !call.arguments().isEmpty()
-                        && asksForReEvaluation(call.arguments().get(0))
+                        && !call.argumentsInDeclaredOrder().isEmpty()
+                        && asksForReEvaluation(call.argumentsInDeclaredOrder().get(0))
                         ? startCall(frame, frames, produced, List.of())
                         : StepOutcome.of(produced);
             }
             case OperatorValue operator -> StepOutcome.of(
-                    invokeUnderlying(operator, call.arguments(), frame.context));
+                    invokeUnderlying(operator, call.argumentsInDeclaredOrder(), frame.context));
             case FunctionValue function -> {
                 nameOfTheCallBeingMade = lastWordCalledThrough;
                 if (trace.isOn()) {
                     trace.call(nameOfTheCallBeingMade == null
-                            ? "?" : nameOfTheCallBeingMade, function, call.arguments());
+                            ? "?" : nameOfTheCallBeingMade, function, call.argumentsInDeclaredOrder());
                 }
-                yield runFunction(frames, function, call.arguments(), call.refinements());
+                yield runFunction(frames, function, call.argumentsInDeclaredOrder(), call.refinements());
             }
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
                     call.callee().datatype().literalSpelling() + " is not callable");
         };
     }
 
-    /**
-     * Runs whatever an operator dispatches to.
-     *
-     * <p>Every operator this build starts with wraps a native, which is why
-     * this once handled nothing else. MAKE OP! wraps whatever it was given, so
-     * an operator made at runtime dispatches to an ordinary function written
-     * in REBOL -- and the only difference between the two is where the first
-     * argument came from, which has already been decided by the time this
-     * runs.
-     */
     private Value invokeUnderlying(
             OperatorValue operator, List<Value> arguments, Context context) {
         return switch (operator.underlying()) {
@@ -1317,14 +1053,6 @@ public final class Evaluator {
         return produced;
     }
 
-    /**
-     * Runs a user function in a context of its own.
-     *
-     * <p>The locals context is a child of the one the function was defined in,
-     * so a word the function does not name falls through to where it was
-     * written rather than to where it was called. That is what makes a
-     * function mean the same thing wherever it is passed.
-     */
     private StepOutcome runFunction(
             Deque<Frame> frames,
             FunctionValue function,
@@ -1414,27 +1142,6 @@ public final class Evaluator {
                 selection.refinements(), selection.named());
     }
 
-    /**
-     * A native with refinements is a different native.
-     *
-     * <p>{@code copy/part} takes two arguments where {@code copy} takes one,
-     * so the refined form is registered under its own name and looked up
-     * here. A function written in REBOL needs none of that: its refinements
-     * are parameters and its arity already accounts for them.
-     *
-     * <p>A refinement no native has raises rather than being dropped. This
-     * fell back to the plain native until pinning that {@code parse/all}
-     * must raise, which meant every misspelled refinement in every script
-     * ran quietly as though it had been left off, and code written against
-     * an older REBOL went on looking like it worked.
-     *
-     * <p>It said the same of a REBOL-defined function and drew the wrong
-     * conclusion: needing no <em>lookup</em> is not needing no <em>check</em>.
-     * A refinement that is not one of its parameters is not a parameter it can
-     * fill, and every one of those ran quietly -- {@code f/nope 1} answering 1,
-     * {@code pad/left "ab" 5} padding on the right. That is every function in
-     * the borrowed library and every function a script writes.
-     */
     private Value refined(Value callee, List<String> refinements) {
         if (refinements.isEmpty()) {
             return callee;
@@ -1464,7 +1171,6 @@ public final class Evaluator {
         return built.askedFor(Set.copyOf(refinements));
     }
 
-    /** Whether a REBOL-defined function takes this refinement. */
     private static boolean declaresRefinement(FunctionValue written, String refinement) {
         return written.parameters().stream()
                 .anyMatch(parameter -> parameter.kind() == ParameterKind.REFINEMENT
@@ -1481,20 +1187,6 @@ public final class Evaluator {
         return StepOutcome.waiting();
     }
 
-    /**
-     * {@code s/field/2: other} where the field is an array of structs.
-     *
-     * <p>Reading such a field gives a block, because no vector holds structs,
-     * and writing one of its slots would ordinarily replace the slot. It must
-     * copy bytes instead: the structs in that block point into the parent's
-     * own bytes, and replacing a slot would leave the parent unchanged while
-     * appearing to have worked.
-     *
-     * <p>{@code PD_Struct} does this in its {@code STRUCT_TYPE_STRUCT} arm,
-     * where it can see both that the block came from a struct field and that a
-     * struct is being written. The walk here loses the first of those, so the
-     * path is resolved one segment shorter to ask again.
-     */
     private void writeIntoOneStructOfAnArray(
             BlockValue elements, IntegerValue which, StructValue given) {
         List<Value> each = elements.remaining();
@@ -1521,15 +1213,7 @@ public final class Evaluator {
         Value lastSegment = segments.get(segments.size() - 1);
         refuseAPathIntoSomethingWithNoParts(path, target);
 
-        // SELF is the context looking at itself and is not a field to write
-        // over. R3 answers invalid-path, which says the path is the thing
-        // that was wrong rather than the slot being guarded, and JEBOL let
-        // `o/self: 2` through and replaced it.
-        if (lastSegment instanceof WordValue named
-                && named.canonical().equals("self")) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH,
-                    "self is what a context calls itself and cannot be assigned");
-        }
+        refuseSelfAsAnInvalidPathRatherThanAGuardedSlot(lastSegment);
 
         if (segments.size() == 3 && lastSegment instanceof IntegerValue channel
                 && select(BlockValue.path(segments.subList(0, 1), Datatype.PATH),
@@ -1586,7 +1270,7 @@ public final class Evaluator {
         }
         if (target instanceof BlockValue block) {
             Value selector = selectorFor(lastSegment, frame.context);
-            if (BlockPath.isNowhereAtAll(selector)) {
+            if (BlockPath.isNowhereAtAllSoAWriteQuietlyDoesNothing(selector)) {
                 return;
             }
             int at = BlockPath.positionOf(block, selector)
@@ -1665,10 +1349,6 @@ public final class Evaluator {
             return;
         }
         if (target instanceof ErrorValue raised && lastSegment instanceof WordValue field) {
-            // An error is an object -- boot/types.reb gives error! the object
-            // path handler -- so a field write is ordinary rather than a
-            // special case anybody had to allow. A field the frame has not got
-            // is PE_BAD_SELECT, which reads as invalid-path.
             if (!ErrorValue.FIELDS.contains(field.canonical())) {
                 throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
             }
@@ -1686,19 +1366,6 @@ public final class Evaluator {
                 "cannot assign through " + target.datatype().literalSpelling());
     }
 
-    /**
-     * Storing a value under a key, where a key of none stores nothing.
-     *
-     * <p>Two lines of the C make it so, one in each layer. {@code if
-     * (IS_NONE(pvs->select)) return PE_NONE;} in the path handler, and {@code
-     * if (IS_NONE(key)) return NOT_FOUND;} in the lookup underneath it, which
-     * is the line that also stops a none key from being created.
-     *
-     * <p>The caller is not told. {@code PE_NONE} is what a read of a missing
-     * key answers too, and nothing downstream of it looks at whether the write
-     * happened, so the only evidence is that the map is the length it was.
-     * Raising here instead would be our invention.
-     */
     private static void storeUnderKey(MapValue map, Value key, Value written) {
         if (key instanceof NoneValue) {
             return;
@@ -1706,18 +1373,6 @@ public final class Evaluator {
         map.put(key, written);
     }
 
-    /**
-     * A pair with one half replaced, as {@code PD_Pair} writes it.
-     *
-     * <p>Two refusals, both {@code PE_BAD_SET} and so both {@code
-     * bad-path-set}. The segment has to be a half rather than the derived
-     * AREA, which has nothing to write to. And the value has to be an
-     * integer or a decimal: {@code PD_Pair} tests for those two and refuses
-     * everything else, so a pair cannot be written into a pair's half.
-     *
-     * <p>{@code bad-path-set} rather than {@code invalid-path}, because the
-     * path is fine and the write is not.
-     */
     private static PairValue withHalfWritten(PairValue pair, Value segment, Value written) {
         double replacement = switch (written) {
             case IntegerValue whole -> whole.magnitude();
@@ -1737,23 +1392,10 @@ public final class Evaluator {
         };
     }
 
-    /**
-     * A path index as PICK counts one, which reaches behind the position.
-     *
-     * <p>A series carries a position, and a negative index counts back from
-     * it: {@code s: tail "ab"} makes {@code s/-1} the last character and
-     * {@code s/-2} the one before. There is no nought, so counting runs
-     * ...-2, -1, 1, 2... and the negative side is one shorter than it looks.
-     *
-     * <p>PICK already did this and a path did not, so {@code pick s -2} and
-     * {@code s/-2} disagreed about the same series -- and a path is the form
-     * a caller reaches for first.
-     */
     private static long countedFromTheSeriesPosition(long index) {
         return index < 0 ? index + 1 : index;
     }
 
-    /** Walks the segments, gathering refinements once a function is reached. */
     private Selection select(BlockValue path, Context context) {
         List<Value> segments = path.remaining();
         if (segments.isEmpty()) {
@@ -1785,21 +1427,6 @@ public final class Evaluator {
         return new Selection(current, List.copyOf(refinements), List.copyOf(named));
     }
 
-    /**
-     * Refuses a path into a datatype that has no parts to select from.
-     *
-     * <p>Two failures live one line apart in the C and they say different
-     * things. A value whose datatype can be selected from at all, asked for a
-     * part it has not got, is an {@code invalid-path}: the path was a fair
-     * question and the answer is no. A value whose datatype has no parts --
-     * a number, a word, a logic -- is a {@code bad-path-type}, because the
-     * question could never have had an answer.
-     *
-     * <p>Which datatypes those are is the Path column of {@code types.reb},
-     * where a dash means no handler at all. JEBOL answered invalid-path for
-     * both, so {@code 1/1} reported a missing part of an integer rather than
-     * that an integer has no parts.
-     */
     private static void refuseAPathIntoSomethingWithNoParts(
             BlockValue path, Value current) {
 
@@ -1809,11 +1436,6 @@ public final class Evaluator {
         }
     }
 
-    /**
-     * The datatypes {@code types.reb} gives no path handler, written out
-     * rather than derived because the table is the authority and a guess from
-     * behaviour would miss the ones nothing has asked about yet.
-     */
     private static final java.util.Set<Datatype> HAVE_NO_PARTS_TO_SELECT =
             java.util.Set.of(
                     Datatype.UNSET, Datatype.NONE, Datatype.LOGIC,
@@ -1852,15 +1474,6 @@ public final class Evaluator {
                 "a refinement must be a word, not " + segment.datatype().literalSpelling());
     }
 
-    /**
-     * One selection step. Past the end of a series gives none; a name an
-     * object does not have raises, because an object either has that field or
-     * the code is wrong.
-     *
-     * <p>A map goes the series way rather than the object way: a key it has
-     * not got gives none. A map is asked about keys it may not have, which is
-     * the whole difference between the two.
-     */
     private Value selectWith(Value target, Value selector) {
         if (selector instanceof DecimalValue fractional) {
             selector = IntegerValue.of((long) fractional.quantity());
@@ -1997,14 +1610,6 @@ public final class Evaluator {
                         + " from " + target.datatype().literalSpelling());
     }
 
-    /**
-     * The slots behind a value, for the four datatypes that have them.
-     *
-     * <p>{@code boot/types.reb} gives an object, a module, an error and a port the
-     * same {@code object} path handler, so all four read and write their fields the
-     * same way. Three of them are here: an error's fields are a record rather than a
-     * context, which is why it is missing and why writing one is still a gap.
-     */
     private static Context contextBehind(Value target) {
         return switch (target) {
             case ObjectValue object -> object.context();
@@ -2041,19 +1646,6 @@ public final class Evaluator {
         return ports.context().ownSlotFor(named).value();
     }
 
-    /**
-     * A part of a time, named or numbered.
-     *
-     * <p>{@code PD_Time} takes the two kinds of selector down different roads
-     * and they end differently. A word that is not one of the three parts is
-     * {@code PE_BAD_SELECT}, which reads as invalid-path; a number outside the
-     * three is {@code PE_NONE}, which reads as none. So {@code t/100} is
-     * nothing and {@code t/hours} is a mistake.
-     *
-     * <p>The seconds are a whole number only while they are whole. Once there
-     * is a fraction the answer is a decimal --
-     * {@code if (tf.n == 0) SET_INTEGER(...) else SET_DECIMAL(...)}.
-     */
     private static Value partOfATime(TimeValue time, Value selector) {
         long seconds = Math.abs(time.nanoseconds()) / NANOSECONDS_IN_A_SECOND;
         long fraction = Math.abs(time.nanoseconds()) % NANOSECONDS_IN_A_SECOND;
@@ -2090,21 +1682,13 @@ public final class Evaluator {
                             : Molder.form(value).codePointAt(0));
             case BinaryValue bytes -> bytes.storage().set(at, octetFrom(value));
             case ImageValue image -> ImagePath.write(image, at, value);
-            case GobValue gob -> GobPath.poke(gob, at, value);
+            case GobValue gob ->
+                    GobPath.pokeWhichInsertsRatherThanReplaces(gob, at, value);
             case VectorValue vector -> vector.storage().set(at,
                     VectorPath.storedFormOf(vector.kind(), value));
         }
     }
 
-    /**
-     * A value as a byte, refusing a number that will not fit in one.
-     *
-     * <p>Two different refusals, and the C makes the distinction on purpose.
-     * A number too big for a byte is out of range: `if (c > 0xff)
-     * Trap_Range(val);`. A negative one never reaches that line, because it
-     * fails the check above it and comes back as `PE_BAD_SET` -- the value is
-     * the wrong thing for the place rather than a byte that is too large.
-     */
     private static int octetFrom(Value value) {
         if (!(value instanceof IntegerValue number)) {
             return 0;
@@ -2121,24 +1705,6 @@ public final class Evaluator {
         return (int) wanted;
     }
 
-    /**
-     * A tuple with one octet written, which may lengthen or shorten it.
-     *
-     * <p>The set branch of {@code PD_Tuple} in {@code t-tuple.c}. Three
-     * rules, none of them shared with anything else that writes:
-     *
-     * <p>A number is clamped rather than refused, so writing 300 stores
-     * 255 and writing -10 stores 0. Every way of building a tuple refuses
-     * the same numbers, which makes this the one place a value out of
-     * range gets in.
-     *
-     * <p>Writing past the end lengthens the tuple, and the octets skipped
-     * over were already zeros, so setting the fifth octet of 1.2.3 gives
-     * 1.2.3.0.5.
-     *
-     * <p>Writing NONE cuts the tuple short at that position and zeros
-     * what followed. It is the only way to shorten one.
-     */
     private static Value withOctetWritten(TupleValue tuple, int position, Value written) {
         if (position < 1 || position > TupleValue.MAXIMUM_SEGMENTS) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, Integer.toString(position));
@@ -2166,7 +1732,6 @@ public final class Evaluator {
             Value value, List<String> refinements, List<String> named) {
     }
 
-    /** One block being walked, and whatever is waiting for a value in it. */
     private static final class Frame {
 
         private final BlockValue code;
@@ -2180,10 +1745,6 @@ public final class Evaluator {
         private boolean stopped;
         private boolean functionBody;
 
-        /**
-         * Where the expression now being worked out began, or -1 between two
-         * of them. Only a frame with a sink has any use for it.
-         */
         private int expressionStartedAt = -1;
 
         Frame(BlockValue code, Context context, int depth) {
@@ -2205,45 +1766,15 @@ public final class Evaluator {
             position++;
         }
 
-        /**
-         * Where the value now being evaluated started.
-         *
-         * <p>Kept because {@code position} has already moved past it by the
-         * time anything raises, and NEAR is the fragment from where the call
-         * began: {@code 1 / 0} answers {@code [/ 0]}, which is index 1 of a
-         * block whose position is 3 when the division refuses.
-         */
         private int startedThisValueAt;
 
-        /** The call running right now, which the pending stack no longer holds. */
-        private PendingCall invoking;
+        private PendingCall theCallNearAndWhereAreAbout;
     }
 
-    /**
-     * Whether a path segment lengthens this value rather than reading into it.
-     *
-     * <p>The Path column of {@code boot/types.reb} names a handler of their
-     * own for exactly two datatypes: {@code file} for a file and for a URL,
-     * and {@code *} -- the string typeclass -- for a string, an email and a
-     * tag.
-     */
     private static boolean joinsItsPathSegments(StringValue text) {
         return text.datatype() == Datatype.FILE || text.datatype() == Datatype.URL;
     }
 
-    /**
-     * A file or URL with one more segment on the end, from {@code PD_File}.
-     *
-     * <p>A slash goes in between unless the left side already ends with one,
-     * and an empty left side gets one too -- so joining onto nothing gives a
-     * rooted path. One leading slash or backslash on the segment is dropped,
-     * which is what keeps a double slash out of the middle. The answer takes
-     * its datatype from the left, thus a URL stays a URL.
-     *
-     * <p>A segment that is not text is molded, so a number joins as its digits
-     * and a word as its spelling. That is why {@code %a/length} is a file
-     * named length: a file has no path form that asks about its own text.
-     */
     private static Value joinedOntoPath(StringValue path, Value segment) {
         StringBuilder built = new StringBuilder(path.text());
         if (built.isEmpty() || built.charAt(built.length() - 1) != '/') {
@@ -2258,26 +1789,10 @@ public final class Evaluator {
         return StringValue.of(built.toString(), path.datatype());
     }
 
-    /**
-     * How many terminal columns a string occupies.
-     *
-     * <p>{@code Length_As_Terminal_Width} in the C. Not the same as the
-     * codepoint count: an East Asian wide character takes two columns and a
-     * combining mark takes none, which is what makes a padded field line up
-     * when the text is not Latin.
-     */
     private static int terminalWidthOf(String text) {
         return TerminalWidth.of(text.codePoints().toArray());
     }
 
-    /**
-     * The user or host half of an email, split at the at-sign.
-     *
-     * <p>Only an email answers these, which the C checks first:
-     * {@code if (!IS_EMAIL(pvs->value)) return PE_BAD_SELECT;}. A host half
-     * that is not there answers none, and a user half that is not there is
-     * the whole string.
-     */
     private static Value emailPartOf(StringValue text, String half) {
         if (text.datatype() != Datatype.EMAIL) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, half);
@@ -2292,15 +1807,6 @@ public final class Evaluator {
         return StringValue.of(at < 0 ? whole : whole.substring(0, at));
     }
 
-    /**
-     * Writing half an address back, which rewrites the storage in place.
-     *
-     * <p>{@code Modify_String(A_CHANGE, ...)} over the half being replaced, so
-     * every other name for the same address sees the new one. Setting the host
-     * of an address that has no {@code @} adds one: the C appends the
-     * character and then appends the value behind it, which is how
-     * {@code e/host: %rebol.tech} turns a bare word into an address.
-     */
     private static void writeEmailPart(StringValue text, String half, Value written) {
         if (text.datatype() != Datatype.EMAIL) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET, half);
@@ -2319,36 +1825,6 @@ public final class Evaluator {
         rebuilt.codePoints().forEach(storage::append);
     }
 
-    /**
-     * Fills a frame from a positional argument list, as APPLY supplies one.
-     *
-     * <p>{@code Apply_Block}'s validation loop, which does three things a
-     * plain assignment does not:
-     *
-     * <pre>
-     * if (IS_REFINEMENT(args)) {
-     *     if (IS_FALSE(val)) {
-     *         SET_NONE(val);
-     *         while (TRUE) {          // and none out the args that follow
-     *             val++; args++;
-     *             if (IS_END(args) || IS_REFINEMENT(args)) break;
-     *             SET_NONE(val);
-     *         }
-     *         continue;
-     *     }
-     *     SET_TRUE(val);
-     * }
-     * </pre>
-     *
-     * <p>A refinement holds logic true or none, never the value that was
-     * passed for it, and a refinement that is off makes its own arguments
-     * none. An ordinary argument nobody supplied holds unset, which is a
-     * value the body can test.
-     *
-     * <p>Giving an unsupplied refinement unset instead is what stopped
-     * Rebol's IMPORT: LOAD opens with `assert/type [local none!]`, and the
-     * `/local` refinement read unset.
-     */
     private static void bindArgumentsPositionally(
             Context frame, List<Parameter> parameters, List<Value> arguments) {
 
@@ -2375,12 +1851,6 @@ public final class Evaluator {
         }
     }
 
-    /**
-     * The names a function owns: its arguments, its refinements and its locals.
-     *
-     * <p>What a call rebinds, and nothing else. Every other word in the body
-     * keeps the binding it was written with.
-     */
     private static java.util.Set<String> namesOwnedBy(FunctionValue function) {
         java.util.Set<String> owned = new java.util.HashSet<>();
         function.parameters().forEach(

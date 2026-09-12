@@ -8,17 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Searching a binary for a number no byte could hold.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- * A byte holds 0 to 255, so asking for anything outside that is a mistake
- * in the caller rather than a search that happened to miss, and answering
- * none would hide it.
- *
- * <p>The boundaries are the ends of a byte: one below, the bottom, the top,
- * and one above.
- */
 class BinarySearchBoundsTest {
 
     private static String errorIdOf(String source) {

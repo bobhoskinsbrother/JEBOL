@@ -8,15 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * SET given several words at once, and what it spreads across them.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>The boundaries are the lengths: more values than words, fewer, exactly
- * as many, and none at all. A short value block pads rather than failing,
- * so the interesting case is what the padding is made of.
- */
 class SetSpreadingTest {
 
     private static String answerTo(String source) {
@@ -105,18 +96,6 @@ class SetSpreadingTest {
         assertThat(answerTo("set/any 'j () value? 'j")).isEqualTo("#(false)");
     }
 
-    /**
-     * {@code if (not_any && !IS_SET(val)) Trap1(RE_NEED_VALUE, word);} is the
-     * first line of the native, before it looks at what shape the target is,
-     * and {@code word} is the target as it was handed in.
-     *
-     * <p>JEBOL wrote the absence for a single word and said nothing, and where
-     * it did refuse it named SET rather than the target. Both matter to the
-     * library: CD reads a bare word by trying to fetch its value and catching
-     * this refusal, so {@code cd ..} worked only because the fetch of an
-     * unbound {@code ..} raises. Without it the TRY succeeds, the next line
-     * reads an unset {@code val}, and CD fails on every bare word.
-     */
     @Test
     @DisplayName("and without it an absence is refused, whatever the target's shape")
     void anabsenceIsRefusedWithoutAny() {
@@ -137,11 +116,6 @@ class SetSpreadingTest {
                 .isEqualTo("\"o/f\"");
     }
 
-    /**
-     * CD reads a bare word by fetching its value and falling back to the word
-     * itself when the fetch refuses, which is how {@code cd ..} and
-     * {@code cd /} name directories rather than variables.
-     */
     @Test
     @DisplayName("which is what lets CD read a bare word as a directory name")
     void whichIsWhatLetsCdReadABareWord() {

@@ -18,31 +18,10 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A browser as a third screen, not a second dialect.
- *
- * <p>What was here before read a layout block straight into markup and never
- * made a gob at all. It worked, and it was a second implementation of the
- * dialect rather than a third renderer of one, so the two would drift and only
- * one of them was what REBOL's own library talks to.
- *
- * <p>So a browser implements the same port a desktop window does. VIEW,
- * UNVIEW, DO-EVENTS and the handler list are the same borrowed REBOL either
- * way, and the only difference is which adapter executes the paint list.
- *
- * <p>Nothing here mentions HTTP, and that is the design rather than an
- * omission. The port hands over a paint list and takes events back; whether
- * that travels as server-sent events, over a socket, or through a host's own
- * web framework is the host's business, and JEBOL exists to run inside a host
- * that already has one.
- *
- * <p>Specified in {@code spec/screen.allium}.
- */
 class BrowserScreenFromTheSourceTest {
 
     private static final String TRUE = "#(true)";
 
-    /** A browser that records what it was told to paint. */
     private static final class SomebodyLooking implements BrowserScreen.Viewer {
 
         private final List<PaintList> painted = new ArrayList<>();
@@ -77,13 +56,6 @@ class BrowserScreenFromTheSourceTest {
         }
     }
 
-    /**
-     * A browser that has attached and said how big it is.
-     *
-     * <p>Saying so is part of attaching, not an extra step. A page that has
-     * not reported its viewport is a screen of no size, and everything on it
-     * clips away to nothing.
-     */
     private static Interpreter withABrowser(BrowserScreen screen) {
         return withABrowser(screen, 800, 600);
     }
@@ -100,7 +72,6 @@ class BrowserScreenFromTheSourceTest {
         return interpreter;
     }
 
-    /** A page that has attached and never said how big it is. */
     private static Interpreter withASilentBrowser(BrowserScreen screen) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().granting(HostService.WINDOWS));
@@ -137,11 +108,6 @@ class BrowserScreenFromTheSourceTest {
         @DisplayName("and it is instruction for instruction what a desktop window gets")
         @Timeout(20)
         void thelistIsTheSameOneADesktopGets() {
-            // The whole claim, in one assertion, and it is a comparison
-            // between the two renderers rather than either against itself.
-            // The browser paints the page; a desktop paints the window. For
-            // the same window they are handed the same instructions, because
-            // neither of them worked any of it out.
             SomebodyLooking viewer = new SomebodyLooking();
             Interpreter interpreter = withABrowser(BrowserScreen.seenBy(viewer));
             String describing = """

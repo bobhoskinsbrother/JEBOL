@@ -7,34 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * DS, DUMP, CHECK and EVOKE: the four natives that look into the interpreter.
- *
- * <p>Read out of {@code n-system.c}, {@code n-data.c} and {@code d-dump.c}, and
- * the thing to know about all four is that the source and the shipped build
- * disagree. Two of them have bodies inside {@code #ifdef DEBUG}, so a released
- * 3.22.1 runs the last line and nothing else.
- *
- * <p>What each really does:
- *
- * <ul>
- *   <li>DS prints the frame stack -- the calling word, the argument count, the
- *   function's datatype, then a line per argument. Not a C memory structure,
- *   and compiled into every build. It is what STACK answers here, printed.
- *   <li>DUMP answers its argument and prints nothing, because the walk it would
- *   print is debug-only: {@code return R_ARG1;} is all a release build reaches.
- *   <li>CHECK walks a series looking for a terminator in the wrong place. That
- *   is the C's own invariant and a JEBOL series has none, so the check holds
- *   for every series and it answers the value.
- *   <li>EVOKE is a dialect of guru switches, and most of them are debug-only.
- *   A release build raises {@code feature-na} for those -- Rebol's own error
- *   for a build that cannot do what was asked.
- * </ul>
- *
- * <p>So only one of the four refuses anything, and the error is Rebol's rather
- * than one invented here. Specified in {@code spec/natives.allium} under "The
- * four diagnostics, read again".
- */
 class DiagnosticsFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -47,7 +19,6 @@ class DiagnosticsFromTheSourceTest {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
-    /** What a script printed, which for DS and EVOKE's help is the behaviour. */
     private static String outputOf(String source) {
         StringBuilder captured = new StringBuilder();
         Interpreter interpreter = Interpreter.writingTo(captured::append);
@@ -78,11 +49,6 @@ class DiagnosticsFromTheSourceTest {
         @Test
         @DisplayName("the count in brackets falls as the walk goes outwards")
         void theSlotCountFallsOutwards() {
-            // Three lines, not two: DS's own frame leads, then INNER, then
-            // OUTER. This test expected two while DS was omitting its own
-            // line, so it was wrong rather than the code -- the property it
-            // was written for, that the count falls, held either way and
-            // still does.
             String printed = outputOf(
                     "inner: func [y] [ds] outer: func [x] [inner 2] outer 1");
             java.util.List<Integer> counts = java.util.regex.Pattern
@@ -115,11 +81,6 @@ class DiagnosticsFromTheSourceTest {
         @Test
         @DisplayName("the innermost line is DS's own call, named and typed as a native")
         void theInnermostLineIsDsItself() {
-            // `Dump_Stack(0, 0)` starts at DSF, the frame of the call being
-            // made, so a real 3.22.1 opens with `ds[0] native!` before any
-            // frame belonging to the code that asked. Checked against the
-            // binary, which prints `STACK[33] ds[0] native!` at its top
-            // level.
             assertThat(outputOf("ds")).contains("ds[0]").contains("native!");
         }
 
@@ -135,10 +96,6 @@ class DiagnosticsFromTheSourceTest {
         @Test
         @DisplayName("which is what STACK already says, so the two agree")
         void dsAndStackDescribeTheSameStack() {
-            // STACK counts its own call -- `stack/word 0` answers 'stack,
-            // which Rebol's own evaluation test pins twice. DS printed a
-            // nameless placeholder where STACK named itself, so the frames
-            // answered and the frames printed described different stacks.
             assertThat(answerTo("'stack = stack/word 0")).isEqualTo(TRUE);
             assertThat(outputOf("ds")).doesNotContain("?[0]");
         }
@@ -253,16 +210,6 @@ class DiagnosticsFromTheSourceTest {
         }
     }
 
-    /**
-     * EVOKE's chants, one by one.
-     *
-     * <p>One thing the C does that is not tested here: it opens with
-     * {@code Check_Security(SYM_DEBUG, POL_READ, 0)}, so a script under
-     * {@code secure [debug none]} cannot evoke anything. JEBOL has no SECURE
-     * policy model, only the host's grants, and inventing a debug policy to hold
-     * one native would be inventing the model rather than porting it. When
-     * SECURE arrives this belongs behind it.
-     */
     @Nested
     @DisplayName("EVOKE, whose chants are mostly unavailable")
     class TheGuruMeditations {

@@ -7,25 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * REGISTER files a struct's layout in a catalogue; XTEST exercises structures
- * this build has not got.
- *
- * <p>{@code n-system.c}. A struct's layout describes how bytes are arranged,
- * and code laying that description over a binary wants the description rather
- * than an instance of it. {@code system/catalog/structs} is a map from names
- * to layouts and REGISTER is how one gets in -- which is why {@code
- * sysobj.reb} declares that field as {@code make map! []} with the comment
- * "filled using `register` native function". An empty map at boot is the
- * finished state, not a gap.
- *
- * <p>XTEST prints a coloured self-test of building a handle and reading its
- * data, length and identity. Those are the C's own structures rather than the
- * language's, so there is nothing here to exercise -- the position EVOKE's
- * debug chants are in, and it gets the same answer by the same name.
- *
- * <p>Specified in {@code spec/natives.allium} under REGISTER and XTEST.
- */
 class RegisterAndXtestFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -78,7 +59,6 @@ class RegisterAndXtestFromTheSourceTest {
         @Test
         @DisplayName("registering the same layout again is allowed and changes nothing")
         void theSameLayoutAgainIsAllowed() {
-            // So a file loaded twice does not fail on its second pass.
             assertThat(answerTo("""
                     s: #(struct! [a [uint8!]])
                     register twice s

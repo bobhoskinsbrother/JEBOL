@@ -7,20 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The VID dialect rendered to markup.
- *
- * <p>Written before the renderer exists. The target is HTML, not a window:
- * a layout is a block describing what should be on the page, and rendering
- * one to markup is more natural than rendering it to a desktop toolkit,
- * because the dialect is already a description rather than a sequence of
- * draw calls.
- *
- * <p>VID-shaped rather than faithful, which is the open fork in
- * {@code docs/milestones.md} taken on the recommendation there. Existing
- * layouts mostly work and pixel-exact ones do not; chasing a 2001 desktop
- * toolkit's box model would produce markup nobody wants to style.
- */
 class MarkupRenderingTest {
 
     private static String render(String source) {

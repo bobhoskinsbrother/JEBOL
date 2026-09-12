@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * BODY-OF an object, and APPEND/PART and /DUP onto one.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>BODY-OF gives the object written out as source: each field as a
- * set-word with its value after it, which is what MAKE OBJECT! would take
- * to build the same object again. JEBOL answered none, so every assertion
- * that checked what an APPEND had done to an object was reading nothing.
- */
 class ObjectBodyAndAppendPartTest {
 
     private static String answerTo(String source) {

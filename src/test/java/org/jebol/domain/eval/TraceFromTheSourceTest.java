@@ -7,32 +7,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * TRACE, read out of {@code REBNATIVE(trace)} and the three hooks around it in
- * {@code c-do.c}.
- *
- * <p>The hooks are where the C puts them, and where matters:
- * {@code Trace_Line} fires before a value is evaluated, {@code Trace_Func} as a
- * call is made, {@code Trace_Return} as one answers. So a trace shows what the
- * evaluator is about to do rather than what it did.
- *
- * <p>Three things here are not guessable from the name.
- *
- * <p>The argument is a <em>limit</em> and not a switch. {@code Trace_Level =
- * IS_TRUE(arg) ? 100000 : 0;} for a logic, and the number itself for an integer,
- * so {@code trace 1} shows the block it was called in and nothing nested inside.
- *
- * <p>A function value is never reported by the line hook -- {@code if
- * (ANY_FUNC(value)) return;} -- because the call hook reports it instead. That
- * is why tracing {@code 1 + 2} shows positions 1 and 3 and skips 2.
- *
- * <p>And /FUNCTION is the shorter output that shows <em>more</em> about each
- * call: it silences the line hook entirely and adds the argument values to the
- * call line, which is the opposite of what the name suggests.
- */
 class TraceFromTheSourceTest {
 
-    /** What a script printed, which for TRACE is the whole of its behaviour. */
     private static String outputOf(String source) {
         StringBuilder captured = new StringBuilder();
         Interpreter interpreter = Interpreter.writingTo(captured::append);

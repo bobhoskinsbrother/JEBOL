@@ -7,23 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Comparison, read out of {@code Compare_Values} in {@code src/core/n-math.c}
- * and the {@code CT_} function of each datatype it dispatches to.
- *
- * <p>Written from the C and not from the Java beside it. Each group names the
- * function it was taken from, so a disagreement is settled by reading that
- * function rather than by arguing about what a comparison ought to answer.
- *
- * <p>The one idea underneath all of it: there is a single comparison, and
- * every comparison native is a call to it with a number saying how strict to
- * be. Nought is EQUAL?, one is EQUIV?, two is {@code ==}, three is SAME?, and
- * the two negative ones are the ordering questions. That number decides three
- * separate things at once -- whether two different datatypes may be brought
- * together at all, how far two decimals may drift apart, and whether a
- * mismatch answers false or refuses to answer -- which is why writing an
- * answer per native rather than per strictness makes the natives disagree.
- */
 class ComparisonFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -521,27 +504,6 @@ class ComparisonFromTheSourceTest {
         }
     }
 
-    /**
-     * How far two decimals may drift apart inside a block, which is a third
-     * answer and not either of the two the comparison natives give.
-     *
-     * <p>{@code Cmp_Value} in {@code f-series.c} is told one thing about the
-     * caller -- whether to mind case -- and its decimal branch does not read
-     * even that. Both decimals go to {@code Eq_Decimal}, which is
-     * {@code almost_equal(a, b, 10)}, on every path through the function. So
-     * the allowance is ten steps of the floating point representation for
-     * EQUAL?, EQUIV? and {@code ==} alike, where those three allow
-     * twenty-one, none and none when asked about two decimals directly.
-     *
-     * <p>That makes the nested answer disagree with the plain one in both
-     * directions, which is why neither can be derived from the other:
-     * {@code ==} is looser inside a block than outside it, and EQUAL? is
-     * tighter.
-     *
-     * <p>Every figure below was read off {@code ./r3-head} 3.22.5 first. The
-     * decimals are the exact tenth and eleventh successors of the value they
-     * are compared against, computed from the bit pattern rather than typed.
-     */
     @Nested
     @DisplayName("Cmp_Value's own decimal allowance, f-series.c")
     class TheAllowanceInsideABlock {
@@ -589,11 +551,6 @@ class ComparisonFromTheSourceTest {
             assertThat(answerTo("equiv? " + ONE + " 1.0000000000000002")).isEqualTo(FALSE);
         }
 
-        /**
-         * Counted in steps of the representation and not as a fixed amount,
-         * so the allowance grows with the size of the number and holds at
-         * the bottom of the range where the steps are smallest there is.
-         */
         @Test
         @DisplayName("the ten steps follow the size of the number, sign and all")
         void theStepsFollowTheNumber() {
@@ -608,11 +565,6 @@ class ComparisonFromTheSourceTest {
             assertThat(answerTo("[0.0] == [5.4e-323]")).isEqualTo(FALSE);
         }
 
-        /**
-         * {@code almost_equal} folds a negative zero onto the same ordinal as
-         * a positive one, so the two are no steps apart. Outside a block
-         * {@code ==} compares the raw bits instead and they are two values.
-         */
         @Test
         @DisplayName("the two zeroes are one number inside a block and two outside")
         void theTwoZeroes() {
@@ -648,12 +600,6 @@ class ComparisonFromTheSourceTest {
                     .isEqualTo(FALSE);
         }
 
-        /**
-         * The series functions reach {@code Cmp_Value} with no container
-         * around the decimal at all, so the allowance that applies is the
-         * nested one although nothing is nested. FIND looking for a decimal
-         * that EQUAL? calls the same number finds nothing.
-         */
         @Test
         @DisplayName("FIND, SELECT, UNIQUE and SWITCH get the ten steps, not the twenty-one")
         void theSeriesFunctionsGetTheSameAllowance() {
@@ -682,13 +628,6 @@ class ComparisonFromTheSourceTest {
                     .isEqualTo(TRUE);
         }
 
-        /**
-         * {@code almost_equal} answers {@code max_diff > 0} for two NaNs
-         * before it looks at either of them, and the allowance here is ten,
-         * so every strictness that reaches the items calls them equal. SAME?
-         * is the one that never gets here: it asks whether the two blocks are
-         * one block and never opens either.
-         */
         @Test
         @DisplayName("two NaNs inside a block are equal however strictly they are asked about")
         void twoNotANumbersNestedAreAlwaysEqual() {

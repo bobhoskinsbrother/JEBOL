@@ -210,15 +210,6 @@ public record EventValue(
         return words;
     }
 
-    /**
-     * Two events are equal when their model, type and data agree.
-     *
-     * <p>{@code Cmp_Event} compares exactly those three. Not the flags and not the
-     * thing in the slot, so two events holding different ports are equal as long
-     * as both hold one -- which is the C's decision rather than an omission: an
-     * event is identified by what happened and where, and the port is who is being
-     * told.
-     */
     @Override
     public boolean equals(Object other) {
         return other instanceof EventValue event

@@ -54,13 +54,6 @@ public record GobValue(GobStorage storage, int index) implements SeriesValue {
         return other instanceof GobValue gob && gob.storage == storage;
     }
 
-    /**
-     * Two gobs are the same gob or they are not equal.
-     *
-     * <p>Identity rather than contents, because a gob is a thing on a screen with
-     * a parent and a pane: two gobs with the same fields are two objects, and
-     * comparing their panes would recurse through a tree that can hold itself.
-     */
     @Override
     public boolean equals(Object other) {
         return other instanceof GobValue gob

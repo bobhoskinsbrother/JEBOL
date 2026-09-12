@@ -7,23 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Writing a part of a date, and reading a part of a time by number.
- *
- * <p>Only the two offset fields could be written; the other twelve raised
- * bad-field-set. What that hid is the rule that makes the rest work: a date
- * carrying no time gets one, starting at midnight, the moment a clock part is
- * written to it -- {@code if (secs == NO_TIME && ...) { time.h = 0; ... }} in
- * {@code PD_Date}. So {@code d/hour: 2} on a bare date is two in the morning
- * rather than an error.
- *
- * <p>Reading a part of a time has two selectors that behave differently on
- * purpose. A word that is not one of the three parts is a mistake and reads as
- * invalid-path; a number outside the three is simply nothing and reads as
- * none. And the seconds are a whole number only while they are whole, turning
- * decimal the moment there is a fraction -- which PICK got wrong where the
- * path got it right, the two having been written twice.
- */
 class DateAndTimePartsWrittenFromTheSourceTest {
 
     private static String answerTo(String source) {

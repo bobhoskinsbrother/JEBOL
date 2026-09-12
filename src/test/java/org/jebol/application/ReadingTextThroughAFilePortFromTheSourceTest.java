@@ -10,22 +10,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * /STRING and /LINES work through an open port, not only on a path.
- *
- * <p>The C runs the same two lines on both, inside {@code Read_File_Port}:
- * {@code if (args & (AM_READ_STRING | AM_READ_LINES)) ser =
- * Decode_UTF_String(BIN_HEAD(ser), file->actual, -1, TRUE, NULL);}, and /LINES
- * then splits what /STRING would have answered. The {@code TRUE} is the line
- * ending standardisation, so a port read gets that too.
- *
- * <p>It had been ignored here, so {@code read/string port} answered the binary
- * a plain read gives. Nothing raised and the bytes were right, which is why it
- * survived: the answer only goes wrong when something compares it against a
- * string, as Rebol's own CLEAR test does on its first line.
- *
- * <p>Every expectation was read off {@code ./r3-head} first.
- */
 class ReadingTextThroughAFilePortFromTheSourceTest {
 
     private static Path root;
@@ -59,7 +43,6 @@ class ReadingTextThroughAFilePortFromTheSourceTest {
                 reduce [string? answer  answer]""")).isEqualTo("[#(true) \"a^/b^/c\"]");
     }
 
-    /** Which is the comparison Rebol's own CLEAR test makes on its first line. */
     @Test
     @DisplayName("so it compares equal to the string a script wrote")
     void itComparesEqualToWhatWasWritten() {
@@ -71,7 +54,6 @@ class ReadingTextThroughAFilePortFromTheSourceTest {
                 answer""")).isEqualTo("#(true)");
     }
 
-    /** The endings are standardised on the way, as they are on a path read. */
     @Test
     @DisplayName("and the line endings are standardised on the way")
     void theLineEndingsAreStandardised() {
@@ -104,7 +86,6 @@ class ReadingTextThroughAFilePortFromTheSourceTest {
                 .isEqualTo("[#(true) #{610D0A620A63}]");
     }
 
-    /** Together with the other refinements, which act first. */
     @Test
     @DisplayName("and it combines with /seek and /part, which cut the bytes first")
     void itCombinesWithSeekAndPart() {

@@ -7,15 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@code if (ANY_SERIES(value) || IS_MAP(value) || IS_BITSET(value))
- * Protect_Series(value, flags);} puts a bitset under the same lock as a series.
- * The refinements then tell three questions apart: /DEEP on a word reaches what
- * the word holds, /WORDS locks the fields and leaves the object open to new
- * names, /VALUES given a path protects the path's own segments, and /HIDE is
- * refused outright for anything that is not a name --
- * {@code if (GET_FLAG(flags, PROT_HIDE)) Trap0(RE_BAD_REFINES);}.
- */
 class ProtectionRefinementsFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -50,15 +50,6 @@ public record TimeValue(long nanoseconds) implements Value {
         return Datatype.TIME;
     }
 
-    /**
-     * The written form, with the seconds only where there are any.
-     *
-     * <p>A fraction is written to as many digits as it has and no more, which is
-     * what a real R3 does: a tenth is {@code 0:00:00.1} and a nanosecond is
-     * {@code 0:00:00.000000001}. Dropping the fraction, which this used to do,
-     * made a time that had one mold as a time that had not -- and a molded value
-     * that does not read back as itself is a value that cannot be saved.
-     */
     @Override
     public String toString() {
         String written = (isNegative() ? "-" : "")

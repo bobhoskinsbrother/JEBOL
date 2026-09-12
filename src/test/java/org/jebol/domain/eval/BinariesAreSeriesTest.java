@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A binary is a series like the others.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>APPEND, INSERT, SWAP and REMOVE-EACH were each written for blocks and
- * strings and left binaries out. That refused ordinary calls, and where
- * the binary was protected it reported a type error in place of the
- * refusal -- which reads as though the protection was never reached.
- */
 class BinariesAreSeriesTest {
 
     private static String answerTo(String source) {

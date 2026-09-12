@@ -13,13 +13,7 @@ import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Embedding JEBOL in a host application, which is what the project is for.
- *
- * <p>Written before the API exists. What a host needs is not "run this" but
- * "run this, and stop if it takes too long or nests too deep, and tell me
- * which of those happened without making me catch a throwable".
- */
+
 class EmbeddingTest {
 
     @Nested

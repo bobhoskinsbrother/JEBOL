@@ -6,24 +6,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A refinement written as a get-word and turned down, read out of
- * {@code Do_Args} in {@code src/core/c-do.c}.
- *
- * <p>{@code f/:flag} applies the refinement when FLAG is true and leaves
- * it off otherwise, which is how a function passes its own refinements on
- * without writing the call twice.
- *
- * <p>The part that is not guessable: a refinement turned down still takes
- * its arguments out of the block, and drops them. The C says so in one
- * line -- {@code if (useArgs) DS_Base[ds] = *DS_POP; else DS_DROP} -- and
- * it has to be that way, because the values after the call are already
- * written down and something has to consume them. What follows the call in
- * the block would otherwise be read as more expressions.
- */
 class DeclinedRefinementFromTheSourceTest {
 
-    /** The suite's own function: one required argument and two refinements. */
     private static final String FUNCTION =
             "fce: func [a [string!] /ref1 b [integer!] /ref2 :c 'd] "
                     + "[reduce [a ref1 b ref2 c d]] ";

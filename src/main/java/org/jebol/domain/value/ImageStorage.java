@@ -37,8 +37,7 @@ public final class ImageStorage {
     /** How many bytes one pixel takes. {@code sizeof(u32)}. */
     public static final int BYTES_A_PIXEL = 4;
 
-    /** {@code CLEAR_IMAGE} is a memset of this: white, and opaque with it. */
-    private static final byte FRESH = (byte) 0xFF;
+    private static final byte FRESH_MEANING_WHITE_AND_OPAQUE = (byte) 0xFF;
 
     private byte[] pixels;
     private int length;
@@ -62,7 +61,7 @@ public final class ImageStorage {
      */
     public static ImageStorage of(int wide, int high) {
         byte[] pixels = new byte[wide * high * BYTES_A_PIXEL];
-        java.util.Arrays.fill(pixels, FRESH);
+        java.util.Arrays.fill(pixels, FRESH_MEANING_WHITE_AND_OPAQUE);
         return new ImageStorage(pixels, wide, high, wide * high);
     }
 
@@ -106,14 +105,7 @@ public final class ImageStorage {
         return high;
     }
 
-    /**
-     * `Reset_Height`, run after anything that changes the pixel count.
-     *
-     * <p>`VAL_IMAGE_HIGH(value) = w ? (VAL_TAIL(value) / w) : 0`. Only after a
-     * change: a zero-width image made as `-2x2` keeps the height it was given,
-     * because nothing has recomputed it.
-     */
-    private void resetHeight() {
+    private void resetHeightOnlyAfterSomethingChangedThePixelCount() {
         high = wide == 0 ? 0 : length / wide;
     }
 
@@ -133,7 +125,7 @@ public final class ImageStorage {
         int to = (oneBasedIndex - 1) * BYTES_A_PIXEL;
         System.arraycopy(pixels, from, pixels, to, length * BYTES_A_PIXEL - from);
         length -= dropped;
-        resetHeight();
+        resetHeightOnlyAfterSomethingChangedThePixelCount();
     }
 
     /** Drops everything from a position on, which is what CLEAR does to an image. */
@@ -141,7 +133,7 @@ public final class ImageStorage {
         refuseIfProtected();
         if (oneBasedIndex <= length) {
             length = oneBasedIndex - 1;
-            resetHeight();
+            resetHeightOnlyAfterSomethingChangedThePixelCount();
         }
     }
 
@@ -160,7 +152,7 @@ public final class ImageStorage {
         pixels[at + 2] = (byte) blue;
         pixels[at + 3] = (byte) alpha;
         length++;
-        resetHeight();
+        resetHeightOnlyAfterSomethingChangedThePixelCount();
     }
 
     public boolean isProtected() {

@@ -17,26 +17,10 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * A browser reached over the JDK's own HTTP server.
- *
- * <p>One implementation of {@link BrowserScreen.Viewer} and not the only one
- * anybody should write. A host that already serves pages implements that
- * interface over what it has; this exists so that a host which has not got one
- * can still open a page, and so that the browser renderer can be run and
- * looked at.
- *
- * <p>{@code com.sun.net.httpserver} is in the JDK, which is why it is this and
- * not a web framework. The project has no runtime dependencies and a renderer
- * is a poor reason to acquire the first one.
- *
- * <p>Two directions and both are plain HTTP. The picture goes down a
- * server-sent event stream, which is a long-lived GET and needs nothing on
- * either side that a browser has not had for a decade. Events come back as
- * ordinary posts. No socket upgrade, no library.
- *
- * <p>Nothing about any of that reaches {@link BrowserScreen}, which is the
- * point: the port hands over a paint list and takes events back, and how they
- * travel is this file's business alone.
+ * A browser reached over the JDK's own HTTP server: one implementation of
+ * {@link BrowserScreen.Viewer}, for a host that has not got a web stack of its
+ * own. The picture goes down a server-sent event stream and events come back as
+ * ordinary posts.
  */
 public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseable {
 
@@ -51,23 +35,21 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         this.server = server;
     }
 
-    /**
-     * Starts serving on a port, or on any free one when given zero.
-     *
-     * <p>On the loopback address only. The page is for whoever is sitting at
-     * this machine -- it is a window, drawn somewhere else -- and a window
-     * does not need to be reachable from the network. Binding every address
-     * offered one anyway.
-     */
+    /** Starts serving on a port, or on any free one when given zero. */
     public static WebScreenServer on(int port) throws IOException {
         HttpServer listening = HttpServer.create(
-                new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
+                new InetSocketAddress(onlyReachableFromThisMachine(), port), 0);
         WebScreenServer serving = new WebScreenServer(listening);
         listening.createContext("/", serving::servePage);
-        listening.createContext("/paint", serving::openThePaintStream);
+        listening.createContext("/paint",
+                serving::openThePaintStreamWhichOnlyTheBrowserEverCloses);
         listening.createContext("/event", serving::takeAnEvent);
         listening.start();
         return serving;
+    }
+
+    private static InetAddress onlyReachableFromThisMachine() {
+        return InetAddress.getLoopbackAddress();
     }
 
     /** Which port it ended up on, which matters when it was asked for any. */
@@ -75,13 +57,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         return server.getAddress().getPort();
     }
 
-    /**
-     * Where to reach it, written as the address it actually bound.
-     *
-     * <p>Not as the name {@code localhost}, which resolves to two addresses on
-     * a dual-stack machine and leaves the caller to pick. Naming the one that
-     * was bound means the answer cannot depend on which one gets picked.
-     */
+    /** Where to reach it, written as the address it actually bound. */
     public String address() {
         return "http://" + server.getAddress().getAddress().getHostAddress()
                 + ":" + port() + "/";
@@ -118,15 +94,8 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         }
     }
 
-    /**
-     * A stream the page keeps open, down which every picture goes.
-     *
-     * <p>It never closes from this end. A browser that goes away closes it,
-     * the next write fails, and that is how {@link #isConnected} learns there
-     * is nobody looking -- which is what makes an empty page a screen that is
-     * not there.
-     */
-    private void openThePaintStream(HttpExchange exchange) throws IOException {
+    private void openThePaintStreamWhichOnlyTheBrowserEverCloses(HttpExchange exchange)
+            throws IOException {
         exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
         exchange.getResponseHeaders().add("Cache-Control", "no-cache");
         exchange.sendResponseHeaders(200, 0);
@@ -149,13 +118,6 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         }
     }
 
-    /**
-     * Something the person looking at the page did.
-     *
-     * <p>It is put on the screen's queue and nothing else happens here. The
-     * interpreter's own thread takes it inside WAIT, which is what keeps a
-     * handler block running where every other block runs.
-     */
     private void takeAnEvent(HttpExchange exchange) throws IOException {
         Map<String, String> said = FieldsOfAPostedEvent.read(
                 new String(exchange.getRequestBody().readAllBytes(),
@@ -175,8 +137,8 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
             screen.theBrowserMeasures(wide, high);
             return;
         }
-        kindNamed(said.get("kind")).ifPresent(kind ->
-                screen.theBrowserReports(kind, whichWindow()));
+        kindNamed(said.get("kind")).ifPresent(kind -> screen.theBrowserReports(kind,
+                theFirstWindowShowingBecauseAPageCannotSayWhichOneWasClicked()));
     }
 
     private static int wholeNumberIn(Map<String, String> said, String field) {
@@ -199,16 +161,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         return java.util.Optional.empty();
     }
 
-    /**
-     * Which window an event belongs to.
-     *
-     * <p>The first one showing, and that is a gap rather than a decision. A
-     * page paints every window onto one surface, so a browser reporting a
-     * click cannot say which window it was in without being told where the
-     * windows are. Naming the gap here rather than guessing quietly: with one
-     * window open this is right, and with two it is a coin toss.
-     */
-    private GobValue whichWindow() {
+    private GobValue theFirstWindowShowingBecauseAPageCannotSayWhichOneWasClicked() {
         List<GobValue> showing = screen.whatIsShowing();
         return showing.isEmpty() ? null : showing.getFirst();
     }

@@ -10,43 +10,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What MAKE and TO accept, and where the two of them differ.
- *
- * <p>JEBOL had them as one operation, which is why {@code make block! #"a"}
- * answered {@code [#"a"]} where a real Rebol refuses it. They are not the
- * same: TO converts, so it wraps whatever it is given; MAKE builds, so it
- * takes a list of shapes and reads a number as room rather than as a value.
- * {@code Make_Block_Type} carries its {@code make} flag through for exactly
- * that reason.
- *
- * <p>The other half is dates, and it grew twice. A Unix timestamp converts
- * both ways and neither direction existed. Reaching for the comparison that
- * would have proved it turned up something worse: two dates were ordered by
- * their written form, so {@code 9-Jan-2000} came after {@code 10-Jan-2000} and
- * {@code 1-Jan-2000} came before {@code 2-Feb-1999}. A date fell through every
- * arm of the ordering to the one that compares molded text. They are ordered
- * by the instant they name now, zone taken off, which is what Rebol compares
- * from the other end -- it stores the instant and adds the zone back only to
- * write the date out. {@code docs/rebol-findings.md} entry 21 has that.
- *
- * <p>Then running every date expression through both implementations side by
- * side found the third: adding to a date dropped its clock and its zone, read
- * a time as a count of days, and truncated a fraction of a day to none. Entry
- * 22 has that one, and {@link MovingADate} pins it.
- *
- * <p>Every expectation here was run against a real Rebol before it was written
- * down, and against both of the ones in the repo root -- the 3.22.1 download
- * and the 3.22.5 built by {@code scripts/build-r3.sh}. The two agree on all of
- * it, which is not something to assume: the porting guide records four wrong
- * readings traced to asking the older one.
- */
 class MakeAndToFromTheSourceTest {
 
-    /**
-     * What JEBOL answers, with the quotes MOLD's own result arrives in taken
-     * off. Displaying a string molds it a second time.
-     */
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn(source);

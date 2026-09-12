@@ -10,25 +10,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What a vector will tell you about itself.
- *
- * <p>Four ways in and one answer behind them: a path, REFLECT, QUERY and the
- * mezzanine words built on QUERY all end at {@code Query_Vector_Field}. The
- * fields divide in two. Four describe the vector -- whether it is signed, what
- * its elements are, how wide they are, how many there are -- and the rest are
- * statistics of the numbers it holds.
- *
- * <p>All of them read the whole storage rather than what is left from where
- * the value points, because the C's loops start at {@code SERIES_DATA} and run
- * to {@code SERIES_TAIL}. LENGTH? is the exception and disagrees with
- * {@code v/length} for exactly that reason: LENGTH? never reaches the vector's
- * own arm.
- *
- * <p>An empty vector answers none to every statistic. The 3.22.1 binary
- * answers zero, and the vendored source and its tests both say none; the C
- * wins, and this is the one place in the vector work where they differ.
- */
 class VectorQueryFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -45,13 +26,6 @@ class VectorQueryFromTheSourceTest {
         return answerTo("either error? e: try [" + source + "] [e/id] ['accepted]");
     }
 
-    /**
-     * One field of a vector, read through a path.
-     *
-     * <p>The vector is given a name first because a path written straight onto
-     * a construction literal does not read as a path: {@code #(u8! [1])/size}
-     * lexes as two values, the vector and the refinement {@code /size}.
-     */
     private static String fieldOf(String vector, String field) {
         return answerTo("v: " + vector + " v/" + field);
     }

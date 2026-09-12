@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Refinements found by comparing the whole library against Rebol's own
- * declarations rather than by a failing assertion.
- *
- * <p>{@code boot/actions.reb} and {@code boot/natives.reb} declare all 224 C
- * functions with every refinement, so the complete list of what JEBOL is
- * missing can be taken in one pass. {@code copy/deep} had never worked and no
- * test had ever asked it to.
- *
- * <p>{@code scripts/c-parity.py} is that pass, and the surface goal in goals.md is what it
- * still reports.
- */
 class AuditedRefinementsTest {
 
     private static String answerTo(String source) {

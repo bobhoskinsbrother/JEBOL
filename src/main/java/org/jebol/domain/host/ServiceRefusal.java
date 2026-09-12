@@ -17,13 +17,6 @@ public enum ServiceRefusal {
     /** The host itself has no such service to grant. */
     NOT_PRESENT,
 
-    /**
-     * Nothing can offer it, thus JEBOL never will.
-     *
-     * <p>Four of R3's natives exist to call code written in C:
-     * LOAD-EXTENSION, DO-CALLBACK, DO-COMMANDS and ACCESS-OS. A JVM can
-     * be made to do this and the result stops being portable, which is
-     * the one thing JEBOL is for.
-     */
+    /** Nothing can offer it, thus JEBOL never will. */
     NEVER_PORTABLE
 }

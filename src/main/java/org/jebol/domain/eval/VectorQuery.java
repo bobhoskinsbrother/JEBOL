@@ -74,8 +74,8 @@ public final class VectorQuery {
         for (int at = 2; at <= held; at++) {
             long candidate = vector.storage().at(at);
             boolean better = wantingTheLeast
-                    ? ordersBefore(kind, candidate, best)
-                    : ordersBefore(kind, best, candidate);
+                    ? ordersBeforeReadingTheWidestKindAsUnsigned(kind, candidate, best)
+                    : ordersBeforeReadingTheWidestKindAsUnsigned(kind, best, candidate);
             if (better) {
                 best = candidate;
             }
@@ -83,15 +83,8 @@ public final class VectorQuery {
         return kind.read(best);
     }
 
-    /**
-     * Whether one stored element sorts before another.
-     *
-     * <p>The widest unsigned kind is compared as unsigned here, which is what
-     * the C's minimum and maximum do and what its statistics do not: they read
-     * every integer kind as signed. The difference only shows on a
-     * {@code uint64!} holding more than a signed long can.
-     */
-    static boolean ordersBefore(VectorKind kind, long left, long right) {
+    static boolean ordersBeforeReadingTheWidestKindAsUnsigned(
+            VectorKind kind, long left, long right) {
         if (kind.measures()) {
             return kind.asDecimal(left) < kind.asDecimal(right);
         }
@@ -127,14 +120,6 @@ public final class VectorQuery {
         });
     }
 
-    /**
-     * A total or a spread given back in the vector's own terms.
-     *
-     * <p>The C computes every statistic as a double and then, at its
-     * {@code return_number} label, turns the answer back into an integer when
-     * the vector counts. Only the sum and the range take that path; a mean is
-     * a decimal whatever the vector holds.
-     */
     private static Value asTheVectorCounts(VectorKind kind, double answer) {
         return kind.measures() ? DecimalValue.of(answer) : IntegerValue.of((long) answer);
     }
@@ -155,23 +140,17 @@ public final class VectorQuery {
     public static void sortAscending(VectorKind kind, long[] elements) {
         Long[] boxed = Arrays.stream(elements).boxed().toArray(Long[]::new);
         Arrays.sort(boxed, (left, right) -> {
-            if (ordersBefore(kind, left, right)) {
+            if (ordersBeforeReadingTheWidestKindAsUnsigned(kind, left, right)) {
                 return -1;
             }
-            return ordersBefore(kind, right, left) ? 1 : 0;
+            return ordersBeforeReadingTheWidestKindAsUnsigned(kind, right, left)
+                    ? 1 : 0;
         });
         for (int at = 0; at < elements.length; at++) {
             elements[at] = boxed[at];
         }
     }
 
-    /**
-     * What one pass over a vector learns about the spread of its numbers.
-     *
-     * <p>Welford's method, which the C uses to get a mean and a variance in
-     * one pass without the sum of squares growing until it loses the small
-     * differences it is supposed to be measuring.
-     */
     private record Spread(int count, double smallest, double largest, double sum,
             double mean, double sumOfSquaredDeviations) {
 

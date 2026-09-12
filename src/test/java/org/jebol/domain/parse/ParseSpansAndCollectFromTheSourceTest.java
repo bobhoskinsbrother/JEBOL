@@ -7,17 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A word holding a position in the series being parsed names a span to REMOVE or
- * CHANGE, between that mark and wherever the parse has reached. A word holding
- * anything else falls through and is read as an ordinary rule. KEEP COPY keeps
- * the span as a series of the input's own kind where plain KEEP keeps the value,
- * and KEEP PICK spreads what it matched except a paren, which has nothing to
- * spread. FAIL never matches, so the walk takes the next alternative; a rule item
- * that is an unset or a function is no rule at all,
- * {@code if (VAL_TYPE(item) &lt;= REB_UNSET || VAL_TYPE(item) &gt;= REB_NATIVE) goto
- * bad_rule;}.
- */
 class ParseSpansAndCollectFromTheSourceTest {
 
     private static String answerTo(String source) {

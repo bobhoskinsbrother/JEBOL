@@ -7,28 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A sigil cannot go in front of an at-sign, from the first line of
- * {@code LEX_CLASS_SPECIAL} in {@code Scan_Token}.
- *
- * <pre>
- * if (HAS_LEX_FLAG(flags, LEX_SPECIAL_AT) &amp;&amp; *cp != '&lt;' &amp;&amp; *cp != '%') {
- *     if (*cp == '\'' || *cp == ':') return -TOKEN_WORD; // no '@foo abd :@foo
- * </pre>
- *
- * <p>It is the first thing the special class checks, before any of the per-character
- * cases. An at-sign makes a ref or an email -- datatypes of their own -- and a sigil
- * names a <em>word</em>, so there is nothing for it to name.
- *
- * <p>The test is on the flag rather than on the character after the sigil, so the
- * at-sign anywhere in the lexeme is enough: {@code 'a@b} is refused as readily as
- * {@code '@foo}.
- *
- * <p>And the two exceptions in that condition are the reason it has to be a flag
- * test rather than a plain scan. A tag may hold an at-sign -- {@code <a@b>} -- and so
- * may a file whose percent escape happens to decode to one, which the C's own comment
- * names: "for case like: %61@b which is actually: a@b".
- */
 class SigilBeforeRefFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What TO and THRU will seek to.
- *
- * <p>Specified in {@code spec/parse.allium} and measured against a real R3
- * 3.22.1.
- *
- * <p>Three kinds of target and they behave quite differently. Something to
- * look for is searched forward from where the parse is. A whole number is
- * a place rather than a thing, counted from the head, so it can move the
- * parse backwards. And a rule that repeats is neither, so it is refused.
- */
 class SeekingRulesTest {
 
     private static String answerTo(String source) {
@@ -25,7 +14,6 @@ class SeekingRulesTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

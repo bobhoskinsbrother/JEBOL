@@ -7,15 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * An address has two halves, and both can be read and written through a path.
- *
- * <p>{@code t-string.c} gives {@code email!} the string path handler and then
- * adds two words to it that no other string answers, guarded by
- * {@code if (!IS_EMAIL(pvs->value)) return PE_BAD_SELECT}. Everything about
- * them turns on where the first {@code @} is, including what happens when
- * there is not one.
- */
 class EmailHalvesFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * RANDOM shuffling in place, and INSERT taking a binary.
- *
- * <p>Specified in {@code spec/natives.allium}, confirmed against a real R3.
- *
- * <p>Shuffling a copy agrees on the datatype and disagrees on both things
- * that matter: the caller's own series is left untouched, and a protected
- * one is shuffled rather than refusing.
- */
 class BinariesAndShufflingTest {
 
     private static String answerTo(String source) {

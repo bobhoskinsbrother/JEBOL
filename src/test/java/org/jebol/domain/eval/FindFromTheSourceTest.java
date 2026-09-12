@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * FIND, tested against what Rebol's C says rather than what JEBOL does.
- *
- * <p>Every test here comes from reading {@code Find_Block} in
- * {@code src/core/t-block.c} and {@code find_string} in
- * {@code t-string.c}, one test per branch those functions take. Tests
- * written by reading the port only prove the port agrees with itself.
- *
- * <p>The C has four needle branches for a block: a word, a block, a
- * datatype or typeset, and everything else. Each has its own comparison,
- * and /SAME, /CASE and /ONLY change which one is used.
- */
 class FindFromTheSourceTest {
 
     private static String answerTo(String source) {

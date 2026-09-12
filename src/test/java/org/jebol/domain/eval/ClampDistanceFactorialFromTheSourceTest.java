@@ -9,23 +9,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CLAMP, DISTANCE and FACTORIAL, the last three natives R3 has and JEBOL had
- * not.
- *
- * <p>All three are in {@code n-math.c} and none of them is in the 3.22.1
- * binary, so the C is the only authority here: the vendored source is ahead of
- * the build we can run. Every expectation below was read out of the C rather
- * than checked against a running Rebol, which is worth knowing when one of
- * them turns out to be wrong.
- *
- * <p>They were invisible until the surface collector was widened. Their specs
- * live in comments above the C functions rather than in {@code
- * boot/natives.reb}, so nothing that read the boot files alone could name
- * them, and the parity report said MISSING: 0 while all three were absent.
- *
- * <p>Specified in {@code spec/natives.allium}.
- */
 class ClampDistanceFactorialFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -78,13 +61,6 @@ class ClampDistanceFactorialFromTheSourceTest {
         @Test
         @DisplayName("and an octet the bounds do not reach is clamped to nothing")
         void ashortBoundClampsToNothing() {
-            // Surprising and it is what the C does: a missing octet in either
-            // bound reads as zero, so a value longer than its bounds has the
-            // rest of it clamped to zero rather than left alone.
-            //
-            // Written with a fourth octet because a tuple starts at three:
-            // `128.128` is a decimal, not a two-part tuple, so the short bound
-            // has to be short at the other end.
             assertThat(answerTo("clamp 200.100.50.40 0.0.0 128.128.128"))
                     .isEqualTo("128.100.50.0");
         }
@@ -100,10 +76,6 @@ class ClampDistanceFactorialFromTheSourceTest {
         @Test
         @DisplayName("bounds written the wrong way round answer the lower one")
         void reversedBoundsAnswerTheMinimum() {
-            // `MAX(mini, MIN(maxi, val))` with the two swapped: the inner MIN
-            // pulls the value down to the maximum, and the outer MAX pushes it
-            // back up to the minimum. Not an error, and not a check anybody
-            // wrote -- it falls out of the order the two are applied in.
             assertThat(answerTo("clamp 5 3 1")).isEqualTo("3");
         }
 
@@ -118,11 +90,6 @@ class ClampDistanceFactorialFromTheSourceTest {
         @Test
         @DisplayName("and a whole number beyond thirty-two bits is still clamped")
         void alargeNumberIsNotTruncated() {
-            // Where the C is plainly wrong rather than surprising. Its
-            // `Clip_Int` takes a 32-bit int and CLAMP hands it a 64-bit one, so
-            // a large value is truncated on the way in and comes back as
-            // nonsense. Clamping is obviously meant to work across the integer
-            // range, so this is what it means rather than what it does.
             assertThat(answerTo("clamp 9000000000 0 8000000000"))
                     .isEqualTo("8000000000");
             assertThat(answerTo("clamp 5000000000 0 8000000000"))
@@ -211,8 +178,6 @@ class ClampDistanceFactorialFromTheSourceTest {
         @Test
         @DisplayName("and a hundred and seventy-one is refused rather than infinity")
         void ahundredAndSeventyOneIsRefused() {
-            // 170! is under a double's largest and 171! is over it, so the next
-            // one would silently be infinity. Refused until there is a bignum.
             assertThat(answerTo("error? try [factorial 171]")).isEqualTo("#(true)");
         }
 

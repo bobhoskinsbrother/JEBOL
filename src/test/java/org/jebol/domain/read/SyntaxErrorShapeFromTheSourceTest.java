@@ -7,24 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What a syntax error carries, and the three names a lone underscore cannot
- * take.
- *
- * <p>A script catching a syntax error reads its fields rather than its message:
- * ARG1 names the kind of token the reader was building, and NEAR is the line
- * number and the source line, written as R3 writes it -- {@code (line 2) 1d}.
- * Rebol's own suite asserts on both, and every case here is checked against the
- * R3 binary.
- *
- * <p>The underscore cases are the reason the fields matter. {@code _} is how
- * none is written, so it is not a word and cannot take a sigil: {@code '_},
- * {@code :_} and {@code _:} are each a mistake, and the error says which of the
- * three was being read.
- *
- * <p>Specified in {@code spec/load.allium} as LibraryFileLoad and in
- * {@code spec/natives.allium} under TRANSCODE.
- */
 class SyntaxErrorShapeFromTheSourceTest {
 
     private static String answerTo(String source) {

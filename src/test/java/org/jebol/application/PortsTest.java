@@ -12,27 +12,8 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Reading and writing through ports.
- *
- * <p>Written before they exist. In a web production environment this is the
- * most dangerous thing a script can do, so the shape matters more than the
- * feature: a script reaches the filesystem through a port the host supplied,
- * and a host that supplied none has a script that cannot read anything.
- *
- * <p>Deny by default, in other words, for the same reason {@code HostAccess}
- * defaults to nothing. A host that has not thought about what a script may
- * read has not decided that it may read everything.
- */
 class PortsTest {
 
-    /**
-     * An interpreter that may ask for files but has been given no port.
-     *
-     * <p>The grant and the port are two separate things. This file is
-     * about the port, thus the grant is given everywhere and the tests
-     * below say what happens with and without somewhere to read.
-     */
     private static Interpreter grantedFiles() {
         return Interpreter.withBounds(
                 Bounds.standard().granting(org.jebol.domain.host.HostService.FILES));
@@ -126,17 +107,6 @@ class PortsTest {
     @DisplayName("the port is a boundary, not a suggestion")
     class TheBoundaryHolds {
 
-        /**
-         * The dots are worked out and a {@code ..} with nothing above it is
-         * dropped, so the path names {@code /etc/passwd} within the root --
-         * the same thing {@code %/etc/passwd} names, and nothing is there.
-         *
-         * <p>Clamping rather than refusing, because a refusal tells a confined
-         * script it is somewhere other than the top of what it can see, and a
-         * real filesystem does not: {@code change-dir %../} at {@code /}
-         * answers {@code %/} and moves nothing. The confinement is unchanged --
-         * there is no outside to reach.
-         */
         @Test
         @DisplayName("a script climbing out reaches inside the root instead")
         void escapingTheRootIsRefused(@TempDir Path directory) throws IOException {
@@ -152,7 +122,6 @@ class PortsTest {
             assertThat(outcome.errorId()).contains("cannot-open");
         }
 
-        /** And what it clamps to really is inside, which has to be checked. */
         @Test
         @DisplayName("and a climbing write lands under the root, not above it")
         void aClimbingWriteLandsUnderTheRoot(@TempDir Path directory) {

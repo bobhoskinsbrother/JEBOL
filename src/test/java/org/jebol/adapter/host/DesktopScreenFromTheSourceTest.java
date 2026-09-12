@@ -16,22 +16,6 @@ import java.awt.image.BufferedImage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * The native renderer: Swing for the windows, Java2D for the painting.
- *
- * <p>The suite runs with {@code java.awt.headless=true}, so on every machine
- * this ever runs on the adapter has no display. That would leave the whole
- * class untested except for its refusals, and it does not, because the
- * painting and the windowing are separate things. Java2D draws onto a
- * {@link BufferedImage} with no display at all, so what a gob paints can be
- * asserted pixel by pixel here; only opening a real window cannot be.
- *
- * <p>What that leaves untested in the gate is named rather than hidden: no
- * test here opens a window, packs a frame or reads a real screen's size.
- * Those need a display and are exercised by hand.
- *
- * <p>Specified in {@code spec/screen.allium}.
- */
 class DesktopScreenFromTheSourceTest {
 
     private static GobValue gobFrom(String source) {
@@ -41,7 +25,6 @@ class DesktopScreenFromTheSourceTest {
         return (GobValue) interpreter.run(source).value();
     }
 
-    /** What a gob paints, read back as pixels. */
     private static BufferedImage painted(GobValue gob, int wide, int high) {
         BufferedImage surface =
                 new BufferedImage(wide, high, BufferedImage.TYPE_INT_ARGB);
@@ -98,10 +81,6 @@ class DesktopScreenFromTheSourceTest {
         @Test
         @DisplayName("the fourth octet is opacity, running the same way Java's alpha does")
         void theFourthOctetIsOpacity() {
-            // Worth pinning because the guess goes the other way. The C
-            // settles it where it decides whether a gob can be painted over:
-            // `if (VAL_TUPLE_LEN(val) < 4 || VAL_TUPLE(val)[3] == 255)
-            // SET_GOB_OPAQUE(gob);`.
             BufferedImage opaque = painted(
                     gobFrom("make gob! [size: 10x10 color: 255.0.0.255]"), 10, 10);
             BufferedImage invisible = painted(
@@ -169,10 +148,6 @@ class DesktopScreenFromTheSourceTest {
         @Test
         @DisplayName("a draw block paints nothing yet, and that is a named gap")
         void adrawBlockPaintsNothing() {
-            // Not an oversight. The DRAW dialect is thirty commands from
-            // boot/draw.reb and a separate piece of work; spec/screen.allium
-            // says so and asks whether it should refuse instead of showing a
-            // blank window.
             BufferedImage surface = painted(
                     gobFrom("make gob! [size: 20x20 draw: [pen red line 0x0 20x20]]"),
                     20, 20);

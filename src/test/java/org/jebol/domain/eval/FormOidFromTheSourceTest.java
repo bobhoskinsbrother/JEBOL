@@ -7,27 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * FORM-OID writes an object identifier the way people write one.
- *
- * <p>{@code n-oid.c}, whose whole job is turning the ASN.1 encoding of an
- * object identifier into numbers separated by full stops. An identifier names
- * a thing in a registry that every certificate and key format leans on:
- * {@code 1.2.840.113549.1.1.1} is RSA encryption, and recognising it is how a
- * script knows what a certificate holds.
- *
- * <p>Two rules make the encoding. The first byte carries <em>two</em> numbers,
- * {@code oid[0] / 40} and {@code oid[0] % 40} -- which is why every identifier
- * anyone writes begins 0, 1 or 2, since the first arc cannot pass 2 without
- * the division carrying. Every byte after is base 128, seven bits at a time,
- * high bit set on all but the last of its group.
- *
- * <p>Every expectation below was run on a real 3.22.1 before being written
- * down. One case deliberately disagrees with it and says so, because the
- * binary is wrong there -- see {@link TheCsOwnBufferBug}.
- *
- * <p>Specified in {@code spec/natives.allium} under FORM-OID.
- */
 class FormOidFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -175,11 +154,6 @@ class FormOidFromTheSourceTest {
         @Test
         @DisplayName("a two-byte OID whose second arc needs three digits")
         void theThreeDigitSecondArc() {
-            // The binary answers "1.2.10" followed by a NUL byte here, and
-            // "1.2.12" and a NUL for #{2A7F}. The output is sized at three
-            // bytes per input byte, one short for this exact shape, and the
-            // retry after the truncated write does not take. A string with a
-            // NUL in the middle of a number is not a rule anybody meant.
             assertThat(oidOf("#{2A64}")).isEqualTo("\"1.2.100\"");
             assertThat(oidOf("#{2A7F}")).isEqualTo("\"1.2.127\"");
         }

@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CONTINUE stops this round of a loop and starts the next.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1. Ported off the porting backlog; JEBOL had BREAK and not this.
- *
- * <p>The two are caught in different places, and that is the whole of the
- * difference: a break around the whole walk, a continue around each turn
- * of it. A CONTINUE that reached the outer catch would end the loop, which
- * is what BREAK is for.
- */
 class ContinueTest {
 
     private static String answerTo(String source) {

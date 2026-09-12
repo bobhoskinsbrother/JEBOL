@@ -7,21 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Turning bytes into text and back: ENHEX, DEHEX, ENBASE, DEBASE, CHECKSUM,
- * COMPRESS and DECOMPRESS.
- *
- * <p>Read out of {@code n-strings.c} and {@code u-compress.c}. Each spec is
- * the one declared there, verbatim.
- *
- * <p>These are here rather than deferred with the rest of the codecs because
- * DECODE-URL cannot run without ENHEX: Rebol's own url-parser opens with
- * {@code url: to binary! enhex/except url enhex-bits}, so every caller of
- * DECODE-URL raised not-defined until this existed.
- *
- * <p>Specified in {@code spec/natives.allium} under "Encoding bytes as text,
- * and back".
- */
 class EncodingFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -101,19 +86,6 @@ class EncodingFromTheSourceTest {
             assertThat(answerTo("dehex/uri \"a+b\"")).isEqualTo("\"a b\"");
         }
 
-        /**
-         * This asked for a string and a real 3.22.5 answers a binary, which
-         * makes the expectation wrong rather than the answer. The C's last
-         * line is {@code Set_Series(VAL_TYPE(arg), D_RET, ser)}, so bytes in
-         * gives bytes out, and Rebol's own quoted-printable encoder depends on
-         * it: it enhexes a binary and then PARSEs the answer to fold long
-         * lines.
-         *
-         * <pre>
-         * &gt;&gt; mold reduce [enhex #{4142} enhex #{00FF}]
-         * == "[#{4142} #{253030254646}]"    ; r3-head 3.22.5
-         * </pre>
-         */
         @Test
         @DisplayName("a binary is encoded byte by byte, and answers a binary")
         void aBinaryIsEncodedByteByByte() {

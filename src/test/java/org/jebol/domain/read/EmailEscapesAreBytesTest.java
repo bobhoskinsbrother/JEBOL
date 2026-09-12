@@ -6,19 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The percent escapes in an email literal, which are bytes and not
- * characters.
- *
- * <p>{@code Scan_Email} writes each escape into a byte buffer beside the
- * unescaped text and reads the whole buffer back as UTF-8 at the end. So
- * {@code a@%C5%A1} is two bytes that together spell one letter, and reading
- * each escape as a character of its own gave {@code a@Å¡} -- that letter's two
- * halves, each shown as though it were a letter.
- *
- * <p>Only the lexer decodes them. {@code to email! "a@%C5%A1"} keeps the text
- * as it was given, because converting a string is not reading source.
- */
 class EmailEscapesAreBytesTest {
 
     private static String answerTo(String source) {

@@ -9,19 +9,6 @@ import org.jebol.domain.value.PairValue;
 
 import java.util.*;
 
-/**
- * A screen a test can measure, and a record of what was drawn on it.
- *
- * <p>The gate runs with {@code java.awt.headless=true}, so the real adapter
- * refuses on every machine the suite ever runs on. That is deliberate and it
- * leaves this as the only way to drive the screen through REBOL and then
- * assert on what happened: a test says what the display measures, runs a
- * script, and reads back which windows opened and closed.
- *
- * <p>Setup reaches behind the interface -- a test pushes an event as though
- * the operator had closed a window -- and no test body does. What a script
- * cannot do, a test does not do either.
- */
 final class RecordingScreen implements ScreenPort {
 
     private final boolean present;
@@ -42,7 +29,6 @@ final class RecordingScreen implements ScreenPort {
         this.present = present;
     }
 
-    /** A display of the size given, with plausible furniture around it. */
     static RecordingScreen measuring(int across, int down) {
         RecordingScreen screen = new RecordingScreen(true);
         screen.measurements.put(ScreenMetric.SCREEN_SIZE, PairValue.of(across, down));
@@ -59,7 +45,6 @@ final class RecordingScreen implements ScreenPort {
         return screen;
     }
 
-    /** A machine with no display, which is what the build server is. */
     static RecordingScreen absent() {
         return new RecordingScreen(false);
     }
@@ -69,14 +54,6 @@ final class RecordingScreen implements ScreenPort {
         return this;
     }
 
-    /**
-     * An operator who closes every window the moment it appears.
-     *
-     * <p>What a person does at the end of a session, done immediately, which
-     * is the only way a test can drive a script that ends in VIEW: DO-EVENTS
-     * returns when the last window closes, so without someone closing them it
-     * never returns at all.
-     */
     RecordingScreen whereTheOperatorClosesWhateverOpens() {
         this.operatorClosesWhateverOpens = true;
         return this;
@@ -127,14 +104,6 @@ final class RecordingScreen implements ScreenPort {
         }
     }
 
-    /**
-     * What SHOW does when it is handed the root: close what left the pane,
-     * then open what arrived in it.
-     *
-     * <p>Closing first, which is the order the C walks and is not arbitrary. A
-     * host with a fixed number of window slots that opened first could run out
-     * while still holding slots for windows already dismissed.
-     */
     private void reconcileAgainstTheRoot() {
         for (GobValue standing : List.copyOf(withWindows)) {
             if (!isInTheRootsPane(standing)) {
@@ -188,7 +157,6 @@ final class RecordingScreen implements ScreenPort {
         return taken;
     }
 
-    /** As though the operator had done something to a window. */
     synchronized void theOperatorDoes(ScreenEventKind kind, GobValue window) {
         queued.add(new ScreenEvent(kind, window));
     }
@@ -209,12 +177,10 @@ final class RecordingScreen implements ScreenPort {
         return List.copyOf(refreshed);
     }
 
-    /** The windows standing open right now, which is the projection to check. */
     List<GobValue> whatIsStandingOpen() {
         return List.copyOf(withWindows);
     }
 
-    /** As though the toolkit's own thread had reported something. */
     void reportFromAnotherThread(ScreenEventKind kind, GobValue window)
             throws InterruptedException {
         Thread toolkit = new Thread(() -> theOperatorDoes(kind, window), "toolkit");

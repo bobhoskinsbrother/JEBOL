@@ -6,26 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The one queue everything that happens goes on, which is itself a port.
- *
- * <p>{@code system/ports/system}. Its STATE is the events that have happened
- * and not yet been dealt with, and its DATA is the ports that have woken since
- * the wait began. {@code Event_Actor} in {@code p-event.c} serves it, and what
- * it serves are the block actions, pointed at STATE: INSERT and APPEND put an
- * event on and answer the port, LENGTH? counts, CLEAR empties, PICK reads.
- *
- * <p>One queue rather than one per connection, and that is the part worth
- * knowing. An event's port is not always the port somebody is waiting on:
- * {@code read https://} waits on the TLS port and the events come from the TCP
- * port underneath it. The TLS protocol reads those and, when it has a whole
- * record, puts an event of its own on the queue naming the port its caller is
- * actually waiting for -- {@code insert system/ports/system make event! [type:
- * 'close port: parent]} is one of them, written in {@code prot-tls.reb}. With a
- * list per connection there is nowhere for a protocol to put that.
- *
- * <p>Every expectation was run against a real 3.22.5 first.
- */
 class TheSystemPortFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -91,7 +71,6 @@ class TheSystemPortFromTheSourceTest {
                 .isEqualTo("[#(true) 0]");
     }
 
-    /** Only events go on it, so a protocol cannot leave anything else there. */
     @Test
     @DisplayName("and anything that is not an event is refused")
     void anythingThatIsNotAnEventIsRefused() {
@@ -103,11 +82,6 @@ class TheSystemPortFromTheSourceTest {
                 .isEqualTo("invalid-arg");
     }
 
-    /**
-     * REMOVE is not one of the actions {@code Event_Actor} names, so it falls
-     * to the default and is refused by name. The queue is emptied with CLEAR
-     * or drained by waiting, and nothing takes one event off it by hand.
-     */
     @Test
     @DisplayName("REMOVE is not one of its actions")
     void removeIsNotOneOfItsActions() {

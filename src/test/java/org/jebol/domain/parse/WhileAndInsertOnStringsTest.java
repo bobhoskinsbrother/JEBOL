@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * WHILE, and INSERT when the input is a string.
- *
- * <p>Specified in {@code spec/parse.allium}, confirmed against a real R3.
- *
- * <p>INSERT had been built for the block parser alone, so a rule that
- * worked on a block silently failed on a string -- the two halves of one
- * dialect drifting apart, which is where several of these have been.
- */
 class WhileAndInsertOnStringsTest {
 
     private static final String RULE = "r: [while [remove #\"y\" | #\"x\"]] ";

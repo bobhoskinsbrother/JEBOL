@@ -136,7 +136,6 @@ public record VectorValue(VectorStorage storage, int index) implements SeriesVal
                 : Long.compareUnsigned(mine, theirs);
     }
 
-    /** REBOL's {@code =}: the same remaining numbers, whatever the widths. */
     @Override
     public boolean equals(Object other) {
         if (!(other instanceof VectorValue vector)) {

@@ -15,40 +15,8 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@code system/standard} carries what {@code boot/sysobj.reb} declares: the
- * twenty-nine templates a script builds its own values from.
- *
- * <p>The object belongs to the C. {@code sysobj.reb} sits in {@code src/boot/}
- * and the build compiles it into the boot block, so declaring every field is
- * Java's work here. Three fields get their contents from elsewhere and are
- * asserted as the boot leaves them rather than as the declaration writes them:
- * {@code enum} is replaced by {@code mezz-func.reb:110}, and {@code font} and
- * {@code para} by {@code view-funcs.reb:18} and {@code :28} -- borrowed REBOL
- * files, which is the layer rule working as designed, Java declaring the slot
- * and REBOL filling it. {@code bincode} is the C's, set by the base-code block
- * at {@code u-bincode.c:178}, and arrives with the bincode dialect.
- *
- * <p>Written because nothing tested this and seventeen of the twenty-nine were
- * missing. Rebol's own 3721 assertions never ask the SYSTEM object anything,
- * and JEBOL's only coverage was {@code header}, asserted in passing by a test
- * about something else. The single signal was {@code view-funcs.reb} stopping
- * on the word {@code font}, which got recorded as a dialect it was waiting
- * for.
- *
- * <p>So this is one list-driven test rather than twenty-nine hand-written
- * ones. A hand-written set repeats the mistake: the thirtieth field Rebol adds
- * still has nobody watching it.
- */
 class SystemStandardFromTheSourceTest {
 
-    /**
-     * A template {@code sysobj.reb} declares, and the words it holds.
-     *
-     * <p>An empty word list means the declaration is {@code none} rather than
-     * an object, which is a different assertion and not an object with no
-     * fields.
-     */
     private record Template(String name, List<String> words) {
 
         boolean isNone() {
@@ -64,12 +32,6 @@ class SystemStandardFromTheSourceTest {
         return new Template(name, List.of(words));
     }
 
-    /**
-     * What every {@code make port-spec-head [...]} template starts with.
-     *
-     * <p>{@code port-spec-head} is the prototype the other seven derive from,
-     * so each carries these three before its own.
-     */
     private static final List<String> PORT_SPEC_HEAD = List.of("title", "scheme", "ref");
 
     private static Template portSpec(String name, String... ownWords) {
@@ -78,10 +40,6 @@ class SystemStandardFromTheSourceTest {
                 Stream.of(ownWords).filter(word -> !PORT_SPEC_HEAD.contains(word))).toList());
     }
 
-    /**
-     * The twenty-nine templates, in the order {@code sysobj.reb} declares
-     * them.
-     */
     private static final List<Template> DECLARED = List.of(
             holding("codec",
                     "name", "type", "title", "suffixes", "decode", "encode", "identify"),
@@ -137,22 +95,6 @@ class SystemStandardFromTheSourceTest {
                     "origin", "margin", "indent", "tabs", "wrap?", "scroll", "align",
                     "valign"));
 
-    /**
-     * The templates a borrowed REBOL file fills after the declaration, and the
-     * file that fills each.
-     *
-     * <p>Their presence is Java's obligation and their contents are the
-     * borrowed file's, so a failure here is read differently: the slot is
-     * missing, or the file that writes it stopped before reaching the line.
-     *
-     * <p>{@code font} and {@code para} are a fork rather than a match.
-     * {@code make/pre-make.r3} puts {@code view-funcs.reb} in
-     * {@code vid-files} and includes it only when {@code include-vid} is set,
-     * so a stock 3.22.1 answers none for both -- checked against the binary,
-     * which has no VIEW at all. JEBOL loads the file unconditionally and so
-     * gets the objects. Asserted as JEBOL has them, with the divergence
-     * recorded here rather than hidden.
-     */
     private static final Map<String, String> FILLED_BY_A_BORROWED_FILE = Map.of(
             "enum", "mezz-func.reb:110",
             "font", "view-funcs.reb:18",

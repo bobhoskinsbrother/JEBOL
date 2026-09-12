@@ -5,19 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * QUIT ends the run and nothing else.
- *
- * <p>Specified by {@code QuitEndsTheRunWithoutEndingTheHost} in
- * {@code spec/embed.allium}. In a real REBOL, QUIT ends the process as well,
- * because there the script is the process. Here a script is a guest: the
- * host decides whether anything exits, and a guest that could take the host
- * down with it is not embeddable.
- *
- * <p>The boundaries are the value QUIT carries (absent, and then each kind
- * of value that is easy to confuse with absent), and how deeply nested the
- * call is when it happens.
- */
 class QuitEndsTheRunTest {
 
     private static ScriptOutcome quitting(String source) {

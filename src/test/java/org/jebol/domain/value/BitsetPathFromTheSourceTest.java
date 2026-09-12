@@ -7,20 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Reading and writing one bit of a set through a path, read out of
- * {@code PD_Bitset} in {@code src/core/t-bitset.c}.
- *
- * <p>Nine lines of C and two rules in them. Reading answers a logic and never
- * none. Writing minds the complement flag, and the flag inverts what true
- * means, which changes nothing for an ordinary set and everything for a
- * complemented one.
- *
- * <p>Rebol's own url-parser needs the write. It copies the URI character set
- * and then adds the percent sign, so that a URL which is already encoded is
- * left alone. Without the write, {@code sys-ports.reb} stops on that line and
- * takes MAKE-PORT* and the whole scheme registry with it.
- */
 class BitsetPathFromTheSourceTest {
 
     private static String answerTo(String source) {

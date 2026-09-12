@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A set-word marks where a block parse has reached; a get-word goes back.
- *
- * <p>Specified in {@code spec/parse.allium} and measured against a real R3
- * 3.22.1.
- *
- * <p>The string walker had both and this one had neither, so {@code p:} in
- * a block rule was taken as a value to match and failed against whatever
- * happened to be there. Everything after it in the rule then failed too,
- * which made the mark look like it broke the rule rather than being
- * unimplemented.
- */
 class BlockMarksTest {
 
     private static String answerTo(String source) {

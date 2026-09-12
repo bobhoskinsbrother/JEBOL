@@ -9,29 +9,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What the failing assertions are failing on, grouped.
- *
- * <p>Three and a half thousand failures is not a work list. This counts
- * them by the word they trip over, so the next thing to build is the top
- * line rather than whatever was noticed last.
- *
- * <p>Reports rather than asserts, for the same reason the coverage backlog
- * does: a test that stays red for weeks stops being read.
- */
 class SuiteFailureReportTest {
 
-    /**
-     * The short reason an assertion did not hold, as recorded when it ran.
-     *
-     * <p>This used to run the assertion again in a fresh interpreter to
-     * find out. A test file is a script, so an assertion run on its own
-     * has lost whatever the lines above it set up, and the reason that
-     * came back was about the missing setup rather than about the gap.
-     * That put words called a, s, b and v at the top of the work list,
-     * roughly three hundred and thirty entries of pure noise, and every
-     * one of them was already passing or failing for some other reason.
-     */
     private static String reasonFor(SuiteFile.Assertion assertion) {
         return RebolSuiteTest.verdictFor(assertion).reason();
     }

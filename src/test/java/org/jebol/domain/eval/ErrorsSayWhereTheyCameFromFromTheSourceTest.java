@@ -6,31 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A raised error says what it was near and what it was raised through.
- *
- * <p>Both fields existed and both were none on every error the evaluator
- * raised: only the reader ever set NEAR, and only for a syntax error. A script
- * that caught one was told what went wrong and nothing about where.
- *
- * <p>Neither can be filled in where the failure happens -- a native raising
- * {@code zero-divide} has no idea what block it is in -- so they are attached
- * as the error passes back out through the evaluator, which is the one place
- * that has the frames. NEAR is the fragment from where the innermost call
- * began, and WHERE is the chain of names those calls were reached through,
- * innermost first.
- *
- * <p><b>WHERE is not R3's answer in full, and cannot be.</b> R3 builds it from
- * its own data stack, so the chain runs on down into the console's frames:
- * {@code [/ f try all print do either either if -apply-]} where this answers
- * {@code [/ f]}. The part that is about the script matches exactly; the tail is
- * the interpreter talking about itself, and JEBOL's interpreter is a different
- * one. Asserting the whole list would be asserting the shape of the C's
- * evaluator.
- *
- * <p>Every expectation here was read off `./r3-head` and only the matching part
- * is asserted.
- */
 class ErrorsSayWhereTheyCameFromFromTheSourceTest {
 
     private static String answerTo(String source) {

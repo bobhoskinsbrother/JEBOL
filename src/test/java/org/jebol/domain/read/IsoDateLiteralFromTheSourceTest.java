@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * ISO 8601 as a date literal, which is a thing the lexer reads rather than a
- * string a codec parses.
- *
- * <p>{@code 2000-01-01T10:00+02:00} and {@code 1-Jan-2000/10:00+2:00} are the
- * same value written two ways: a T stands where the slash does, and the offset
- * may run its hour and minute together with no colon between them.
- *
- * <p>Which is why it belongs here. A date written that way can sit in source,
- * in a block, and in a path, and be equal to the same date written the REBOL
- * way -- {@code b/2013-11-08T17:01} selects from a block keyed by a date.
- */
 class IsoDateLiteralFromTheSourceTest {
 
     private static String answerTo(String source) {

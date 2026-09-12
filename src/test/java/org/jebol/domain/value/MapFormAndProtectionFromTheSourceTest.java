@@ -7,25 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * FORM of a map, and PROTECT on one.
- *
- * <p>{@code Mold_Map} is one function serving both words, and the branches it
- * takes on {@code molded} are what tell them apart: molding writes the
- * brackets and an indented line before each pair, forming writes neither and
- * puts a bare newline between pairs instead. So an empty map forms as nothing
- * at all, and a map of one pair forms as that pair with no punctuation round
- * it. JEBOL formed a map by molding it.
- *
- * <p>What does not change between them is the pairs themselves:
- * {@code Emit(mold, "V V", val, val+1)} is the same line in both branches, so
- * a key and a value are molded whichever way round the map is being written --
- * a text key keeps the quotes that FORM of that same string would drop.
- *
- * <p>PROTECT on a map set a flag nothing read. Every writing branch of the C's
- * map opens with {@code TRAP_PROTECT}, so a write to a protected map is the
- * error `protected`, and JEBOL let all of them through.
- */
 class MapFormAndProtectionFromTheSourceTest {
 
     private static String answerTo(String source) {

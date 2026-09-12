@@ -6,11 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Two string-parse behaviours from {@code parse-test.r3}: a get-word naming a
- * different series switches the parse input to it, and THEN consumes nothing
- * and succeeds so the rule after it runs straight on.
- */
 class ParseInputSwitchAndThenFromTheSourceTest {
 
     private static String answerTo(String source) {

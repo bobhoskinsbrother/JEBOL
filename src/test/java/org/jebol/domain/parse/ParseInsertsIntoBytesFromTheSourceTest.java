@@ -6,24 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What PARSE's INSERT and CHANGE put in, which the series decides.
- *
- * <p>Both reach the C's own INSERT through {@code Modify_String} and
- * {@code Modify_Block}, so they follow the rule INSERT follows everywhere
- * else: a value laid into a binary contributes bytes, and the same value laid
- * into a string contributes the text it FORMs to. {@code #{FFFF}} is two bytes
- * in one and four letters in the other, and both answers are right for their
- * series.
- *
- * <p>Formed into text either way -- which is what this did -- a binary went in
- * as the letters of its hex. Rebol's own quoted-printable encoder folds long
- * lines with {@code insert #{3D0D0A}} inside a PARSE over a binary, and every
- * wrapped line came out reading {@code abc3D0D0Ade} instead of carrying a soft
- * line break.
- *
- * <p>Every expectation here was read off a real 3.22.5 before it was written.
- */
 class ParseInsertsIntoBytesFromTheSourceTest {
 
     private static String answerTo(String source) {

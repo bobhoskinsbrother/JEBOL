@@ -6,39 +6,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Binding a block moves the words the target holds and leaves the rest alone.
- *
- * <p>{@code Bind_Block(frame, BLK_HEAD(body), BIND_DEEP)} walks the block
- * looking each word up in one frame. A word it does not find keeps whatever
- * binding it was written with -- the C has nowhere else to look, because an
- * object's frame has no parent to walk.
- *
- * <p>Which is what makes binding composable. A block written inside a module
- * and then bound into a small object goes on reading the module's words; only
- * the object's own fields move. Rebinding the rest as well is the difference
- * between "read these fields here" and "re-resolve this code somewhere else",
- * and the second is never what a caller asked for.
- *
- * <p>The damage is invisible until a name exists in two places, which is why
- * it survived so long here. Rebol's own TLS opens with {@code log-error:
- * log-info: log-more: log-debug: log-----: none} so that its debug lines cost
- * nothing, and every one of those lines sits inside {@code with ctx [...]}.
- * Binding the whole block found the library's LOG-DEBUG instead, which takes a
- * lit-word first, so {@code read https://} stopped on a log line rather than
- * on anything to do with TLS.
- *
- * <p>The blocks below are written <em>inside</em> the module on purpose. A
- * block written at the top level and passed in as an argument carries the
- * library's binding already, so both behaviours agree on it and it proves
- * nothing. Every expectation was run against a real 3.22.5 first.
- */
 class BindingLeavesOtherWordsAloneFromTheSourceTest {
 
-    /**
-     * A module with a word of its own that the library also has, which is the
-     * only arrangement in which the two behaviours differ.
-     */
     private static final String A_MODULE_SHADOWING_THE_LIBRARY = """
             sheltered: module [title: "Sheltered"] [
                 log-debug: none
@@ -77,11 +46,6 @@ class BindingLeavesOtherWordsAloneFromTheSourceTest {
         assertThat(answerTo("sheltered/plain")).isEqualTo(THE_MODULES_OWN);
     }
 
-    /**
-     * The object does not hold LOG-DEBUG. An ancestor of it does -- everything
-     * here hangs beneath the library -- and that is exactly the reach the C
-     * does not have.
-     */
     @Test
     @DisplayName("and a word the target does not hold keeps that binding through BIND")
     void aWordTheTargetDoesNotHoldKeepsThatBindingThroughBind() {
@@ -114,12 +78,6 @@ class BindingLeavesOtherWordsAloneFromTheSourceTest {
                 ["the object's own" "the module's own"]""");
     }
 
-    /**
-     * A word with no binding stays unbound, so evaluating it says it is in no
-     * context. The target's ancestors are not searched for it either -- the
-     * rule is about the target alone, not about which words already had a
-     * home.
-     */
     @Test
     @DisplayName("a word nothing bound stays unbound, however reachable the name is")
     void aWordNothingBoundStaysUnbound() {
@@ -132,16 +90,6 @@ class BindingLeavesOtherWordsAloneFromTheSourceTest {
                 .isEqualTo("#(true)");
     }
 
-    /**
-     * WITH binds into the target and then evaluates where the caller stands:
-     * {@code Bind_Block(frame, ...)} and then {@code DO_BLK(D_ARG(2))}, which
-     * runs the block wherever WITH was called from.
-     *
-     * <p>So a word the block sets and the target did not have is a new word of
-     * the caller's, not a new field of the object. Running the body inside the
-     * target instead would make WITH a way of adding fields to an object,
-     * which is what MAKE and APPEND are for.
-     */
     @Test
     @DisplayName("WITH evaluates where the caller stands, not inside the target")
     void withEvaluatesWhereTheCallerStands() {

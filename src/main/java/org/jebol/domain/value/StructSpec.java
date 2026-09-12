@@ -74,7 +74,8 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
             StructField field = fieldNamed(name.spelling(), declared, offset, registry);
             fields.add(field);
             settled.add(name);
-            settled.add(withTheTypeNameSettled(declared, field));
+            settled.add(withTheTypeNameSettledButAnInnerStructLeftAsWritten(
+                    declared, field));
             offset += field.width();
             at += 2;
             while (at < written.size() && written.get(at) instanceof StringValue) {
@@ -88,20 +89,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
         return new StructSpec(BlockValue.block(settled), List.copyOf(fields), offset);
     }
 
-    /**
-     * One field's declaration with its type word written the settled way.
-     *
-     * <p>The C rewrites the word in the spec block itself --
-     * {@code VAL_WORD_SYM(val) = Normalize_Vector_Type_Symbol(...)} -- so a
-     * struct declared with {@code float!} reports {@code float32!} ever after,
-     * and {@code spec-of} shows the settled spelling rather than the one that
-     * was typed.
-     *
-     * <p>An inner struct is left exactly as written, which is why a field
-     * declared {@code [struct! pair8!]} still names {@code pair8!} in the
-     * spec while the value that field answers molds its whole layout.
-     */
-    private static BlockValue withTheTypeNameSettled(
+    private static BlockValue withTheTypeNameSettledButAnInnerStructLeftAsWritten(
             BlockValue declared, StructField field) {
         if (field.type() instanceof StructFieldType.Nested) {
             return declared;

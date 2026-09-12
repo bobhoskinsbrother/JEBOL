@@ -7,23 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Three things a PARSE rule may be that JEBOL only accepted written out in
- * full.
- *
- * <p>The C resolves a word to its value before it decides what kind of rule it
- * is holding -- {@code Get_Parse_Value} -- so a word standing where a number,
- * a paren or a none could stand behaves as that thing does. JEBOL looked at
- * what was written instead, so a rule assembled at run time did not work while
- * the same rule typed out by hand did.
- *
- * <p>That is the shape of every mezzanine function that builds its own rule,
- * which is most of the interesting ones. SPLIT counts {@code 1 size skip} with
- * the size in a word; REWORD holds each half of its output rule in a word and
- * writes {@code [escape | none]} for the case where no keyword follows the
- * delimiter. Between them they account for forty-six of Rebol's own
- * assertions.
- */
 class RulesBehindWordsFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -32,13 +15,6 @@ class RulesBehindWordsFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /**
-     * A molded answer without the delimiters that molding a string adds.
-     *
-     * <p>Which pair those are depends on the text: one holding a quote is
-     * molded inside braces instead, and a molded block of strings holds
-     * plenty of quotes.
-     */
     private static String moldOf(String source) {
         String molded = answerTo("mold " + source);
         return molded.startsWith("{") && molded.endsWith("}")

@@ -6,11 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A map literal {@code #[...]} whose keys and values do not pair up is
- * refused with {@code invalid-arg}, read from {@code lexer-test.r3}
- * "Invalid MAP" -- not the construction failure a malformed datatype gives.
- */
 class MapLiteralFromTheSourceTest {
 
     private static String answerTo(String source) {

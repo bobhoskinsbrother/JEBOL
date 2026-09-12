@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * How CHANGE puts its replacement in.
- *
- * <p>Specified in {@code spec/parse.allium} and measured against a real R3
- * 3.22.1.
- *
- * <p>A block replacement is spread by default and put in whole only when
- * ONLY says so. JEBOL put every block in whole, so a rule meant to swap
- * two words for two others left one block holding them instead, and
- * nothing said anything.
- */
 class ChangeReplacementTest {
 
     private static String answerTo(String source) {
@@ -25,7 +14,6 @@ class ChangeReplacementTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

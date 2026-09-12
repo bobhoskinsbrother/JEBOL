@@ -6,20 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The binary dialect's context, which is one series read and written through
- * two cursors.
- *
- * <p>{@code u-bincode.c}. BINARY answers a context and every refinement
- * changes the one it was handed, so a protocol writes a header, works out a
- * length, writes that, and reads the reply, all through the same context.
- * Answering a fresh one each time meant every step after the first was written
- * into something nobody was holding.
- *
- * <p>{@code buffer} is where the next read starts and {@code buffer-write} is
- * where the next write lands. They move independently, which is what lets a
- * context be filled and then read from the beginning.
- */
 class BincodeCursorsFromTheSourceTest {
 
     private static String answerTo(String source) {

@@ -5,27 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Camellia, the last cipher the JVM has not got.
- *
- * <p>RFC 3713, and {@code camellia.c}. A Feistel design with the same block
- * and the same three key widths as AES, standardised in ISO/IEC 18033-3 and on
- * Japan's CRYPTREC list. No JVM provider offers it, so
- * {@code Camellia.java} is the algorithm itself: a key schedule that folds the
- * key through the same round function the cipher uses, and eighteen or
- * twenty-four rounds of that function with a pair of mixing steps every six.
- *
- * <p>It arrives as twelve catalogue entries rather than one. A mode knows
- * nothing about its cipher beyond asking it to transform a block, so codebook,
- * chaining, counting with Galois and counter with CBC-MAC all take Camellia as
- * soon as Camellia exists -- three key widths across four modes.
- *
- * <p>The vectors below are RFC 3713's own, and the rest were read off a real
- * 3.22.5. The one that matters most is the thousand-round walk: a key schedule
- * can be wrong in a way a single block never shows, and REBOL's own test
- * re-enciphers its answer a hundred times and then a thousand for exactly that
- * reason.
- */
+
 class CryptPortCamelliaFromTheSourceTest {
 
     private static final String KEY_128 = "#{2B7E151628AED2A6ABF7158809CF4F3C}";
@@ -58,7 +38,6 @@ class CryptPortCamelliaFromTheSourceTest {
                 .formatted(algorithm, key, vector, data));
     }
 
-    /** RFC 3713 section 5, one vector per key width. */
     @Test
     @DisplayName("the RFC 3713 vectors, at all three key widths")
     void theRfc3713Vectors() {
@@ -97,10 +76,6 @@ class CryptPortCamelliaFromTheSourceTest {
                 .isEqualTo("\"E6CFA35FC02B134A4D2C0B6737AC3EDA\"");
     }
 
-    /**
-     * The two authenticated modes take Camellia without a line written for
-     * them, which is the point of a mode knowing nothing about its cipher.
-     */
     @Test
     @DisplayName("and in both authenticated modes, which were written for AES")
     void andInBothAuthenticatedModes() {
@@ -130,11 +105,6 @@ class CryptPortCamelliaFromTheSourceTest {
                 .isEqualTo("\"6BC1BEE22E409F96E93D7E117393172A\"");
     }
 
-    /**
-     * The walk REBOL's own test does, and the one that catches a key schedule
-     * that is subtly wrong. A single block can come out right from a schedule
-     * with one rotation misplaced; a thousand rounds cannot.
-     */
     @Test
     @DisplayName("a thousand rounds, which a single block would not catch")
     void aThousandRounds() {

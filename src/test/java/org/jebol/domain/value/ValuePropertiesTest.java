@@ -11,14 +11,6 @@ import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The laws from {@code spec/values.allium} and {@code spec/load.allium} as
- * properties over generated values, rather than as examples.
- *
- * <p>An invariant asserted against three hand-picked cases is three examples
- * wearing a law's clothes. These generate the cases instead, which is how the
- * awkward ones get found.
- */
 class ValuePropertiesTest {
 
     @Property
@@ -150,10 +142,6 @@ class ValuePropertiesTest {
                 contents.stream().map(number -> (Value) IntegerValue.of(number)).toList()));
     }
 
-    /**
-     * The round trip that keeps code-as-data honest: whatever MOLD prints,
-     * the reader reads back as an equal value.
-     */
     private static void assertReadsBackEqual(Value original) {
         String molded = Molder.mold(original);
         TranscodeResult result = Transcoder.transcode(molded);

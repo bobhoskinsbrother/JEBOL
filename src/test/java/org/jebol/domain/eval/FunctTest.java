@@ -6,15 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * FUNCT makes every set-word in a body a local name.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1, whose own definition was read out of the binary.
- *
- * <p>A function written this way cannot change a word outside itself by
- * accident. FUNC can, and that is the difference between the two.
- */
 class FunctTest {
 
     private static String answerTo(String source) {

@@ -5,16 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Running a script one expression at a time.
- *
- * <p>"The value of this source" and "the value of its first expression" are
- * different questions, and only {@link Interpreter#run} answered either. A
- * console answers the first for a line; anything reading a script written as
- * {@code assert-this that  and: then} needs the second, because the first
- * expression is the interesting one and the rest is ordinary code that still
- * has to run.
- */
 class StepwiseRunTest {
 
     @Test

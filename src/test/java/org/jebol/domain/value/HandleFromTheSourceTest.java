@@ -7,34 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The handle datatype, and the two functions it unblocked: DO-CODEC and RELEASE.
- *
- * <p>Read out of {@code t-handle.c}, {@code c-handle.c}, {@code b-init.c}'s
- * {@code Init_Codecs}, and the two natives in {@code n-system.c}.
- *
- * <p>A handle is an opaque thing the runtime owns and a script can only pass
- * around. {@code make handle!} cannot build one -- the Make column of
- * {@code boot/types.reb} is a dash -- so the only handles that exist are the ones
- * the runtime hands out, and in a build with no crypto family and no extension API
- * there are exactly two: {@code system/codecs/text/entry} and
- * {@code system/codecs/markup/entry}, put there by {@code Register_Codec} at boot.
- *
- * <p>There are two kinds and nearly everything depends on which. A <b>function</b>
- * handle wraps something callable; a <b>context</b> handle owns a resource with a
- * lifetime. A codec is the first kind, and the first kind publishes nothing about
- * itself and cannot be released.
- *
- * <p>Which makes two of the comparisons read like bugs. {@code equal?} needs both
- * sides to be context handles, so a codec is equal to nothing at all, including
- * itself. And a path on a function handle answers none for every name, because
- * {@code PD_Handle} ends "for the data handles, return NONE on get".
- *
- * <p>Rebol's own {@code handle-test.r3} exercises the other kind, through
- * {@code rc4/key} and {@code aes/key}, and guards the whole file with
- * {@code if not error? try [...]} so a build without those natives runs none of
- * it. It is quoted below for the rules it settles, not for its cases.
- */
 class HandleFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -78,10 +50,6 @@ class HandleFromTheSourceTest {
         @Test
         @DisplayName("and the kinds of handle are a catalogue, as an event's types are")
         void theKindsAreACatalogue() {
-            // Named rather than counted, so a kind arriving is progress
-            // instead of a failure. This asserted "[codec]" exactly, written
-            // when codecs were the only kind here; RC4 registers its cipher
-            // context beside them and a real 3.22.1 lists six.
             assertThat(answerTo("true? find system/catalog/handles 'codec"))
                     .isEqualTo("#(true)");
             assertThat(answerTo("true? find system/catalog/handles 'rc4"))

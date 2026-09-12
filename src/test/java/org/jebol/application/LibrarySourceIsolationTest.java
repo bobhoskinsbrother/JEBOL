@@ -8,21 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Whether one interpreter can change what the next one reads.
- *
- * <p>{@link LibrarySource} reads each library file once for the whole process
- * and hands out copies, which is what took the gate from twenty-two minutes to
- * five. The whole risk of that is here: a block loaded from source is the block
- * a function's body <em>is</em>, and a script that appends to a literal inside
- * one has changed that literal for good. That is REBOL behaving correctly
- * within one interpreter and cross-contamination across two.
- *
- * <p>So this does not assert that the copying is careful. It tries to break
- * through it -- mutating a block, a nested block and a string in one reading,
- * and mutating the library's own state from a running script -- and checks the
- * next reader gets what the file says.
- */
 class LibrarySourceIsolationTest {
 
     private static String answerTo(Interpreter interpreter, String source) {
@@ -122,15 +107,6 @@ class LibrarySourceIsolationTest {
         }
     }
 
-    /**
-     * Belt and braces: nothing in today's library is exposed either.
-     *
-     * <p>These pass with the copying taken out as well, because binding
-     * deep-copies every block on its way into an interpreter and the library
-     * happens to keep no string or binary literal a script can reach. That
-     * makes them a check on the library rather than on the copying -- worth
-     * having, and not what holds the line. The tests above are what holds it.
-     */
     @Nested
     @DisplayName("and nothing in today's library is reachable either")
     class TheRunningScript {

@@ -9,32 +9,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * QOI, the one image format the interpreter carries itself.
- *
- * <p>{@code u-qoi.c} registers it at boot through an {@code Init_QOI_Codec}
- * beside {@code Init_Codecs}, so it exists before any library file is read,
- * and the base-code block in that file's own header gives it its title, its
- * type and its suffix once base-defs.reb has turned the boot handle into an
- * object.
- *
- * <p>It is carried rather than left to the host's codec because no host has
- * it: the format is younger than every image library, and a catalogue naming
- * what this build cannot do is the one thing the catalogues must not be.
- *
- * <p>The channel order is the uncomfortable part and it is deliberate. The C
- * hands the image's bytes to the encoder untouched, and those bytes are blue,
- * green, red, alpha -- so what lands in the file under the heading "red" is
- * the blue channel. Its decoder reads them back the same way round, so nothing
- * inside Rebol notices. Writing the format as published would make JEBOL's
- * files correct by the specification and unreadable by the interpreter this is
- * a port of, which is the worse of the two.
- *
- * <p>Every byte string here was read off a real 3.22.5 before it was written.
- * Two of them corrected a guess: a header claiming more pixels than the chunks
- * fill is not refused but padded, and the run at its longest is sixty-two
- * rather than sixty-three.
- */
 class QoiCodecFromTheSourceTest {
 
     private static String answerTo(String source) {
@@ -92,12 +66,6 @@ class QoiCodecFromTheSourceTest {
                 .isEqualTo("\"716F69660000000400000001040055C20000000000000001\"");
     }
 
-    /**
-     * A run counts to sixty-two and no further: sixty-three and sixty-four
-     * would collide with the two eight-bit tags, so a longer stretch breaks
-     * into a second chunk. Sixty-three pixels is one difference and a run of
-     * sixty-two; sixty-four is that and a run of one.
-     */
     @Test
     @DisplayName("a run stops at sixty-two and starts another")
     void aRunAtItsLongest() {
@@ -120,11 +88,6 @@ class QoiCodecFromTheSourceTest {
                         + "0000000000000001}");
     }
 
-    /**
-     * The three sizes of step, each with its own chunk. One apiece: a step of
-     * one fits the two-bit differences, five needs the six-and-four-bit luma
-     * form, and a colour further off than that is written whole.
-     */
     @Test
     @DisplayName("a step of one, of five, and one too far for either")
     void theThreeSizesOfStep() {
@@ -154,11 +117,6 @@ class QoiCodecFromTheSourceTest {
                         + "0000000000000001}");
     }
 
-    /**
-     * A pure red pixel writes bytes whose third position -- the one the format
-     * calls blue -- holds the red, and the other way about. Both encode to a
-     * difference chunk, and the two differ in which channel moved.
-     */
     @Test
     @DisplayName("the channels go in in REBOL's order, not the format's")
     void theChannelsGoInInRebolsOrder() {
@@ -195,12 +153,6 @@ class QoiCodecFromTheSourceTest {
                 .isEqualTo("[#(true) #(true) #(true) #(true) #(true) #(true)]");
     }
 
-    /**
-     * A header claiming more pixels than the chunks fill is not refused. The
-     * decoder stops when the bytes run out and the rest of the picture keeps
-     * whatever the buffer was made with, which is opaque white -- measured,
-     * not assumed, and the opposite of what this test first expected.
-     */
     @Test
     @DisplayName("bytes that are not a QOI image are refused, but a short one is not")
     void bytesThatAreNotAQoiImageAreRefused() {

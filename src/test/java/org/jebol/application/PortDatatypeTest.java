@@ -8,24 +8,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The port datatype, far enough for Rebol's own INPUT and ASK to run.
- *
- * <p>A port is an object whose datatype sends an action to its actor. Reading a
- * console port and reading a file port are the same call to READ and two
- * different actors, which is how one verb reaches every kind of thing a script
- * can open.
- *
- * <p>The work is split the way Rebol splits it, and the split is the point.
- * MAKE-PORT* and MAKE-SCHEME are REBOL, in {@code sys-ports.reb}, and JEBOL
- * loads them. OPEN, SET-SCHEME, the actor and the datatype are the host's, in
- * Java. So OPEN calls back into the loaded library to build the port, exactly
- * as Rebol's C does: {@code Make_Port} is four lines and one of them is
- * {@code Do_Sys_Func(SYS_CTX_MAKE_PORT_P, spec, 0)}.
- */
 class PortDatatypeTest {
 
-    /** A console that answers the lines a test gives it. */
     private static final class Lines implements ConsolePort {
 
         private final java.util.Iterator<String> waiting;
@@ -134,16 +118,6 @@ class PortDatatypeTest {
                     .isNotEqualTo("no-error");
         }
 
-        /**
-         * Opening one carries nothing and so asks for nothing.
-         *
-         * <p>All an unopened console will answer is how wide a terminal is,
-         * and it answers eighty whether or not there is a terminal there. The
-         * grant guards the two things that move data, and those are the two
-         * checked below. Refusing to open it refused HELP, which asks the
-         * width on its first line, to every interpreter that had not been
-         * handed a console -- and R3 has this port open from boot.
-         */
         @Test
         @DisplayName("a console port opens without the grant, carrying nothing")
         void withoutTheGrantOpeningIsAllowed() {

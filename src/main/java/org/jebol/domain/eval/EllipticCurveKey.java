@@ -20,53 +20,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * A key pair on a named elliptic curve, for the exchange and for signing.
- *
- * <p>Elliptic-curve Diffie-Hellman is the same idea as the modular kind with
- * different arithmetic: instead of raising a generator to a private power in a
- * field of integers, each side multiplies a point on a curve by a private
- * number. The published value is a point and the secret is one coordinate of
- * the point both sides reach.
- *
- * <p>Everything else follows from that. A curve has to be named, a context
- * remembers which one, the secret is one coordinate wide, and two contexts on
- * different curves cannot agree on anything.
- *
- * <p>Two families, because two of the curves are built for the exchange and
- * for nothing else. Their arithmetic never needs a point's second coordinate,
- * so they publish the first on its own and cannot sign at all -- see
- * {@link HowThePointIsPublished}.
- */
 final class EllipticCurveKey {
 
-    /**
-     * Which of the two shapes a curve's published value takes.
-     *
-     * <p>Not a detail of the encoding. Rebol's own TLS asks for curve25519
-     * first -- the scheme's {@code supported-groups} begins with it and the
-     * client hello does {@code curve: first supported-groups} -- so a build
-     * that serves only the older family cannot write a hello at all, and
-     * {@code read https://} stops before a byte leaves.
-     */
     private enum HowThePointIsPublished {
 
-        /** A lead byte saying the point is uncompressed, then both coordinates. */
         BOTH_COORDINATES_AFTER_A_LEAD_BYTE,
 
-        /** One coordinate, little-endian, with nothing in front of it. */
-        ONE_COORDINATE_ON_ITS_OWN
+        ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
     }
 
-    /**
-     * The curves this build serves, mapped to what the JDK calls them.
-     *
-     * <p>The catalogue names all thirteen a real Rebol lists, and the JDK's
-     * default provider has fewer: the Brainpool family is absent, and the
-     * narrower NIST and Koblitz curves were withdrawn from it. Asking for one
-     * of those answers none, which is the shape the C already uses for a curve
-     * a build has not got.
-     */
     private static final Map<String, String> CURVES_THIS_BUILD_HAS = Map.of(
             "secp256r1", "secp256r1",
             "secp384r1", "secp384r1",
@@ -95,7 +57,6 @@ final class EllipticCurveKey {
         return curveName;
     }
 
-    /** A fresh key pair on a named curve, or nothing when there is no such curve. */
     static Optional<EllipticCurveKey> onCurve(String named) {
         String known = CURVES_THIS_BUILD_HAS.get(named);
         if (known == null) {
@@ -130,7 +91,7 @@ final class EllipticCurveKey {
             return Optional.of(new EllipticCurveKey(
                     generating.generateKeyPair(), named,
                     WIDTH_OF_THE_EXCHANGE_ONLY_CURVES.get(named),
-                    HowThePointIsPublished.ONE_COORDINATE_ON_ITS_OWN));
+                    HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN));
         } catch (GeneralSecurityException | RuntimeException noSuchCurve) {
             return Optional.empty();
         }
@@ -140,13 +101,10 @@ final class EllipticCurveKey {
         return ((ECPublicKey) pair.getPublic()).getParams();
     }
 
-    /**
-     * The value to send: both coordinates behind a lead byte, or the first on
-     * its own where that is all the curve's arithmetic uses.
-     */
     byte[] publishedPoint() {
-        return published == HowThePointIsPublished.ONE_COORDINATE_ON_ITS_OWN
-                ? littleEndian(((XECPublicKey) pair.getPublic()).getU())
+        return published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
+                ? littleEndianAsRfc7748WritesACoordinate(
+                        ((XECPublicKey) pair.getPublic()).getU())
                 : bothCoordinatesAfterALeadByte();
     }
 
@@ -166,15 +124,7 @@ final class EllipticCurveKey {
         System.arraycopy(raw, from, into, at + coordinateWidth - taking, taking);
     }
 
-    /**
-     * A coordinate written the way RFC 7748 writes one: least significant byte
-     * first, padded to the curve's width.
-     *
-     * <p>The JDK hands it over as a plain number and the wire wants bytes in
-     * the other order, so the two disagree on a value neither of them is
-     * wrong about.
-     */
-    private byte[] littleEndian(BigInteger coordinate) {
+    private byte[] littleEndianAsRfc7748WritesACoordinate(BigInteger coordinate) {
         byte[] written = new byte[coordinateWidth];
         byte[] biggestFirst = coordinate.toByteArray();
         int taking = Math.min(biggestFirst.length, coordinateWidth);
@@ -192,17 +142,9 @@ final class EllipticCurveKey {
         return new BigInteger(1, biggestFirst);
     }
 
-    /**
-     * The secret both sides reach, or nothing when the peer's value is not one
-     * this curve can use.
-     *
-     * <p>One coordinate wide either way: the exchange agrees on a point and
-     * only its first coordinate is used, which is why the secret is half the
-     * published value's width less the lead byte on the curves that send both.
-     */
     Optional<byte[]> agreedWith(byte[] peersPoint) {
         try {
-            return published == HowThePointIsPublished.ONE_COORDINATE_ON_ITS_OWN
+            return published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
                     ? agreedOnOneCoordinateWith(peersPoint)
                     : agreedOnBothCoordinatesWith(peersPoint);
         } catch (GeneralSecurityException | RuntimeException cannotAgree) {
@@ -242,19 +184,8 @@ final class EllipticCurveKey {
         return Optional.of(agreeing.generateSecret());
     }
 
-    /**
-     * A signature over a hash, ASN.1 encoded.
-     *
-     * <p>{@code NONEwithECDSA} because the caller has already hashed: the
-     * argument is named `hash` in the declaration and the C signs it as it
-     * stands. Signing here draws a fresh random number each time, so two
-     * signatures over one hash differ and both hold.
-     *
-     * <p>A curve made for the exchange alone signs nothing, because a key on
-     * one is a number to multiply a point by and not a signing key.
-     */
     Optional<byte[]> signed(byte[] hash) {
-        if (published == HowThePointIsPublished.ONE_COORDINATE_ON_ITS_OWN) {
+        if (published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN) {
             return Optional.empty();
         }
         try {
@@ -267,9 +198,8 @@ final class EllipticCurveKey {
         }
     }
 
-    /** Whether a signature holds over a hash. */
     boolean verifies(byte[] hash, byte[] signature) {
-        if (published == HowThePointIsPublished.ONE_COORDINATE_ON_ITS_OWN) {
+        if (published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN) {
             return false;
         }
         try {
@@ -282,8 +212,7 @@ final class EllipticCurveKey {
         }
     }
 
-    /** The curve names a script can ask for, in the catalogue's order. */
-    static List<String> curveNames() {
+    static List<String> curveNamesInTheCataloguesOrder() {
         return List.of("secp192r1", "secp224r1", "secp256r1",
                 "secp384r1", "secp521r1", "secp192k1", "secp224k1", "secp256k1",
                 "bp256r1", "bp384r1", "bp512r1", "curve25519", "curve448");

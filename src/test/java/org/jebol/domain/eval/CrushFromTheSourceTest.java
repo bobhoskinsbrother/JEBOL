@@ -7,22 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CRUSH, which is Rebol's own compressor rather than a standard one.
- *
- * <p>{@code u-crush.c}, ported from Ilya Muravyov's public-domain original:
- * LZ77 with a bit code of its own, a length in one of six brackets and a
- * distance in one of sixteen slots, packed least significant bit first. The
- * first four bytes are the uncompressed length, little endian, which is how
- * DECOMPRESS knows how much to make before it starts.
- *
- * <p>The bytes are asserted and not just the round trip, because a compressor
- * that reads its own output back is not thereby the same compressor. Rebol
- * builds this one with the constants Red uses rather than the ones the
- * original shipped with -- a smaller window and smaller hash tables -- and a
- * port that took the originals would round-trip perfectly and share not one
- * byte with a real 3.22.5.
- */
 class CrushFromTheSourceTest {
 
     private static String answerTo(String source) {

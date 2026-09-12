@@ -9,26 +9,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * GET-ENV and LIST-ENV, and why SET-ENV cannot exist.
- *
- * <p>Specified in {@code spec/embed.allium}.
- *
- * <p>The environment is read only. A JVM cannot change the environment of
- * its own process, thus SET-ENV has nothing to call. It says that no host
- * can offer it rather than that this host did not grant it, because the
- * first can change between runs and the second never does.
- */
 class EnvironmentNativesTest {
 
-    /**
-     * A stand-in environment, so the test does not depend on the machine.
-     *
-     * <p>One per interpreter rather than one for the class. Shared, a name a
-     * test set leaked into the next one and GET-ENV answered what its
-     * neighbour had written -- which is the same reason the real port keeps
-     * its overlay to itself instead of in a static.
-     */
     private static EnvironmentPort madeUp() {
         return new EnvironmentPort() {
 
@@ -105,17 +87,6 @@ class EnvironmentNativesTest {
         assertThat(errorIdOf(reaching(false), "list-env")).isEqualTo("no-service");
     }
 
-    /**
-     * These two asked for SET-ENV to be refused whatever the host, on the
-     * ground that a JVM cannot change its own environment. That is true of
-     * the process and beside the point: what a script means by setting a
-     * variable is that GET-ENV answers it afterwards and a child sees it,
-     * both of which a JVM can do and a real 3.22.5 does.
-     *
-     * <p>So the refusal is now about the grant, like every other reach
-     * outside, and what SET-ENV does when granted is covered by
-     * {@code EnvironmentWritingFromTheSourceTest}.
-     */
     @Test
     @DisplayName("SET-ENV needs the grant, like the other two")
     void settingNeedsTheGrant() {

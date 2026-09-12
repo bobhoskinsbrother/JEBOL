@@ -7,25 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * RETURN, BREAK and THROW raised inside an ALL, an ANY or a CASE.
- *
- * <p>Those three natives walk their block an expression at a time rather than
- * handing it to DO, because each has to look at every value the expression
- * produced before deciding whether to go on. JEBOL disarmed the signals at
- * that step: a RETURN became the error "a return outside a function" even
- * though the function it belonged to was still running.
- *
- * <p>What that broke was not a corner. Rebol's own ENCODE opens with
- * {@code unless all [cod: select system/codecs type data: either ...]}, and
- * the TEXT codec returns from inside it, so {@code encode 'text [1 2]} raised
- * instead of answering -- and every assertion after it in the codecs file was
- * never reached.
- *
- * <p>The signals still have to stop somewhere: nothing a script does may reach
- * the host as a throwable. That somewhere is the end of the run, where a
- * stray one becomes the error it should be.
- */
 class SignalsThroughAllAndAnyFromTheSourceTest {
 
     private static String answerTo(String source) {

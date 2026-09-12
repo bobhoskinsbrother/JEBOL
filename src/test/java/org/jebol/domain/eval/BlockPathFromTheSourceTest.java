@@ -7,26 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Reaching into a block through a path, read out of {@code PD_Block} in
- * {@code t-block.c} and checked against the R3 binary.
- *
- * <p>The thing to know first: a word selector does not answer the word, it
- * answers the item <em>after</em> the word. {@code [a 1 b 2]/a} is 1. That is
- * what makes a plain block a lookup table, and Rebol's own code reads settings
- * out of blocks that way constantly -- a path that refused it stopped
- * {@code prot-mysql.reb} and Rebol's own URL parser.
- *
- * <p>Two more that are not guessable. There is no position zero, and a negative
- * position counts back from where the block is and may reach behind it. And a
- * selector that finds nothing answers none for a read but refuses a write, which
- * is the only place the two part company: the C keeps the open question written
- * beside the function -- "a/not-found: 10 error or append?" -- and answers it by
- * refusing.
- *
- * <p>Specified in {@code spec/natives.allium} under "Reaching into a block
- * through a path".
- */
 class BlockPathFromTheSourceTest {
 
     private static String answerTo(String source) {

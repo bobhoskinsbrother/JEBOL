@@ -4,51 +4,22 @@ import org.jebol.domain.value.ImageStorage;
 import org.jebol.domain.value.ImageValue;
 import org.jebol.domain.value.PairValue;
 
-/**
- * The four things {@code n-image.c} does to a whole image.
- *
- * <p>Whole rather than from a position, which is the one thing all four share
- * and the C flags in a comment of its own: "All pixels are modified even when
- * the input image is not at its head!" So an image standing at its third pixel
- * is still blurred, premultiplied and compared from its first.
- *
- * <p>Three of the four change the image they were given and answer it back, so
- * a caller holding the value sees the change. RESIZE is the exception: it
- * makes a new image because the old one is the wrong size to hold the answer.
- */
 final class ImageOperations {
 
     private ImageOperations() {
     }
 
-    /** What a fully opaque pixel has, and the divisor the C scales by. */
     private static final int OPAQUE = 0xFF;
 
-    /**
-     * How many pixels these four reach, which is width times height and not
-     * how many the image holds.
-     *
-     * <p>An image whose last row is partly filled has pixels past its final
-     * whole row -- three in a picture two wide is a row and a spare -- and the
-     * spare is a real pixel that reads back and can be changed. None of the
-     * four reach it, because each walks the rectangle rather than the run.
-     */
-    private static int theWholePicture(ImageStorage storage) {
+    private static int everyPixelOfTheRectangleAndNotTheSpareRow(ImageStorage storage) {
         return storage.wide() * storage.high();
     }
 
-    /**
-     * Scales each colour by the pixel's own alpha, in place.
-     *
-     * <p>What a renderer wants before it composites: a half-transparent red
-     * stored as a full red plus an alpha has to become a half red, or
-     * blending it over a background counts the red twice. A fully opaque
-     * pixel is skipped rather than multiplied by one, which is the C's own
-     * shortcut and gives the same answer.
-     */
     static void premultiply(ImageValue image) {
         ImageStorage storage = image.storage();
-        for (int pixel = 1; pixel <= theWholePicture(storage); pixel++) {
+        for (int pixel = 1;
+                pixel <= everyPixelOfTheRectangleAndNotTheSpareRow(storage);
+                pixel++) {
             int[] rgba = storage.pixelAt(pixel);
             int alpha = rgba[3];
             if (alpha == OPAQUE) {
@@ -61,23 +32,6 @@ final class ImageOperations {
         }
     }
 
-    /**
-     * Blurs an image in place, by a radius in pixels.
-     *
-     * <p>A radius of zero or less does nothing at all -- {@code if (radius >
-     * 0) BlurImage(...)} -- so a caller passing a computed radius that came
-     * out negative gets its image back untouched rather than an error. A
-     * radius wider than the picture is brought down to half its shorter side,
-     * so no radius is ever too large to ask for: a hundred thousand gives the
-     * most blurred the picture can be.
-     *
-     * <p>{@code u-image-blur.c}, which is Ivan Kuckir's three-box
-     * approximation. A box blur replaces each pixel by the plain average of
-     * its neighbours in a line, which is cheap and looks wrong; three of them
-     * in a row look almost exactly like a Gaussian and cost the same. That is
-     * the whole trick, and it is why the cost stays proportional to the radius
-     * where a real Gaussian kernel costs its square.
-     */
     static void blur(ImageValue image, int radius) {
         ImageStorage storage = image.storage();
         if (radius <= 0 || storage.wide() == 0 || storage.high() == 0) {
@@ -85,7 +39,7 @@ final class ImageOperations {
         }
         int wide = storage.wide();
         int high = storage.high();
-        int spread = Math.min(radius, Math.min(wide / 2, high / 2));
+        int spread = noWiderThanHalfTheShorterSide(radius, wide, high);
         byte[] picture = channelsOf(storage, wide, high);
         byte[] working = new byte[picture.length];
         for (int boxWidth : boxWidthsMatching(spread)) {
@@ -94,15 +48,10 @@ final class ImageOperations {
         writeChannelsBack(storage, picture, wide, high);
     }
 
-    /**
-     * The three box widths whose combined spread matches the Gaussian that was
-     * asked for.
-     *
-     * <p>They are not all the same, and which of the three is the odd one out
-     * depends on the radius: the ideal width is rarely a whole odd number, so
-     * some of the boxes take the odd number below it and the rest the one
-     * above.
-     */
+    private static int noWiderThanHalfTheShorterSide(int radius, int wide, int high) {
+        return Math.min(radius, Math.min(wide / 2, high / 2));
+    }
+
     private static int[] boxWidthsMatching(double spread) {
         int narrower = (int) Math.floor(Math.sqrt((12 * spread * spread / 3) + 1));
         if (narrower % 2 == 0) {
@@ -121,11 +70,6 @@ final class ImageOperations {
         return widths;
     }
 
-    /**
-     * One box blur, which is a pass along the rows and then a pass down the
-     * columns. Doing the two separately is what makes a box cost the same as a
-     * line.
-     */
     private static void boxBlur(byte[] picture, byte[] working,
             int wide, int high, int spread) {
 
@@ -135,14 +79,6 @@ final class ImageOperations {
         System.arraycopy(working, 0, picture, 0, wide * high * CHANNELS);
     }
 
-    /**
-     * A running total slid along each row, one channel at a time.
-     *
-     * <p>Adding the pixel arriving and taking away the one leaving is what
-     * makes the cost independent of how wide the box is. Beyond each end of
-     * the row the edge pixel is treated as repeated, because averaging only
-     * the neighbours that exist would make the border lighter than the rest.
-     */
     private static void alongTheRows(byte[] from, byte[] into,
             int wide, int high, int spread) {
 
@@ -180,7 +116,6 @@ final class ImageOperations {
         }
     }
 
-    /** The same running total slid down each column instead of along each row. */
     private static void downTheColumns(byte[] from, byte[] into,
             int wide, int high, int spread) {
 
@@ -219,27 +154,13 @@ final class ImageOperations {
         }
     }
 
-    /**
-     * Room past the last pixel, reading as nothing and written to harmlessly.
-     *
-     * <p>The C runs off the end of every row it blurs at the widest radius it
-     * allows: it writes one pixel more per row than the row holds, because the
-     * radius is brought down to half the width rather than to half of one less
-     * than the width. On a picture with an even width that is one pixel too
-     * many, and on the last row it is past the picture altogether.
-     *
-     * <p>So the room is part of the answer rather than a safety margin. What
-     * the C reads there is whatever the allocator left, which on a picture of
-     * any size is zeros -- and the blurred pixels near the bottom right are
-     * darker for it. This keeps the reads in bounds and reading nothing, which
-     * is the same answer and is an answer rather than an accident.
-     */
-    private static int roomPastTheEnd(int wide) {
+    private static int roomTheBlurRunsIntoReadingZerosAsTheCDoes(int wide) {
         return (wide * CHANNELS) + CHANNELS;
     }
 
     private static byte[] channelsOf(ImageStorage storage, int wide, int high) {
-        byte[] channels = new byte[(wide * high * CHANNELS) + roomPastTheEnd(wide)];
+        byte[] channels = new byte[(wide * high * CHANNELS)
+                + roomTheBlurRunsIntoReadingZerosAsTheCDoes(wide)];
         for (int pixel = 1; pixel <= wide * high; pixel++) {
             int[] rgba = storage.pixelAt(pixel);
             for (int channel = 0; channel < CHANNELS; channel++) {
@@ -268,26 +189,14 @@ final class ImageOperations {
         channels[at] = (byte) value;
     }
 
-    /** Red, green, blue and alpha, all four blurred the same way. */
     private static final int CHANNELS = 4;
 
-    /**
-     * A new image at a new size, sampled from the old one.
-     *
-     * <p>Nearest neighbour where the C offers a choice of filters and
-     * defaults to Lanczos. The filters are named in
-     * {@code system/catalog/filters} and choosing between them changes how a
-     * shrunken photograph looks; it does not change what RESIZE is, and
-     * nothing here can yet ask for one.
-     */
     static ImageValue resized(ImageValue image, int wide, int high) {
         ImageStorage from = image.storage();
         ImageStorage into = ImageStorage.of(wide, high);
         for (int row = 0; row < high; row++) {
             for (int column = 0; column < wide; column++) {
-                int[] sampled = from.pixelAt(
-                        ((row * from.high() / high) * from.wide())
-                                + (column * from.wide() / wide) + 1);
+                int[] sampled = theNearestPixelOf(from, row, column, wide, high);
                 int pixel = (row * wide) + column + 1;
                 into.setColourAt(pixel, sampled[0], sampled[1], sampled[2]);
                 into.setAlphaAt(pixel, sampled[3]);
@@ -296,38 +205,24 @@ final class ImageOperations {
         return new ImageValue(into, 1);
     }
 
-    /**
-     * How far apart two images are, from nothing to everything.
-     *
-     * <p>Weighted because the eye is not equally sensitive to the three
-     * colours: green carries most of what is seen as brightness and blue
-     * least, so an equal-weighted distance calls two images different in a
-     * way nobody looking at them would.
-     *
-     * <p>Only the overlap is compared when the sizes differ, which the
-     * declaration says in its own argument comments: "If sizes of the input
-     * images are not same... then only the smaller part is compared!"
-     */
+    private static int[] theNearestPixelOf(
+            ImageStorage from, int row, int column, int wide, int high) {
+        return from.pixelAt(((row * from.high() / high) * from.wide())
+                + (column * from.wide() / wide) + 1);
+    }
+
     static double differenceBetween(ImageValue first, ImageValue second) {
         ImageStorage left = first.storage();
         ImageStorage right = second.storage();
-        int wide = Math.min(left.wide(), right.wide());
-        int high = Math.min(left.high(), right.high());
+        int wide = onlyTheOverlapIsCompared(left.wide(), right.wide());
+        int high = onlyTheOverlapIsCompared(left.high(), right.high());
         return howFarApart(left, right, 0, 0, wide, high);
     }
 
-    /**
-     * The same measure over a rectangle of the pair rather than all of it.
-     *
-     * <p>The corner is counted from nought -- "Zero based top-left corner",
-     * says the declaration -- because this is a coordinate into a picture
-     * rather than a position in a series.
-     *
-     * <p>A negative size reaches back from the corner, which is how a caller
-     * names a region by its far corner: the corner moves by the negative
-     * amount and the size becomes positive. A corner before the picture starts
-     * is brought up to nought and takes that much off the size with it.
-     */
+    private static int onlyTheOverlapIsCompared(int ours, int theirs) {
+        return Math.min(ours, theirs);
+    }
+
     static double differenceOverTheRectangle(ImageValue first, ImageValue second,
             int cornerX, int cornerY, int rectangleWide, int rectangleHigh) {
 
@@ -373,25 +268,6 @@ final class ImageOperations {
         return howFarApart(left, right, fromX, fromY, wide, high);
     }
 
-    /**
-     * How far apart a rectangle of two pictures is, walked the way the C walks
-     * it: along each row of the rectangle, then over the pixels the rectangle
-     * left out on the right before starting the next.
-     *
-     * <p>A rectangle reaching past the right or bottom edge arrives here with
-     * a negative width or height rather than a clipped one, because the C
-     * subtracts the size a second time where clipping would subtract only the
-     * corner. Nothing is then compared and the answer is nought per cent,
-     * which says two pictures are identical when the pixels it was pointed at
-     * differ. REBOL's own test asserts that nought twice, so it is behaviour
-     * rather than an accident to be tidied away.
-     *
-     * <p>A rectangle of no pixels at all is a different thing and gets a
-     * different answer: dividing nothing by nothing is not a number, and that
-     * is what comes back. Nought per cent would be the tidier answer and would
-     * be a lie -- it claims two pictures were compared and found identical
-     * when none of them was looked at.
-     */
     private static double howFarApart(ImageStorage left, ImageStorage right,
             int fromX, int fromY, int wide, int high) {
 
@@ -402,7 +278,7 @@ final class ImageOperations {
             leftCursor += fromX;
             rightCursor += fromX;
             for (int column = 0; column < wide; column++) {
-                apart += redmeanDistance(
+                apart += redmeanDistanceIgnoringAlpha(
                         left.pixelAt((int) leftCursor + 1),
                         right.pixelAt((int) rightCursor + 1));
                 leftCursor++;
@@ -413,44 +289,19 @@ final class ImageOperations {
         }
         long counted = (long) wide * high;
         if (counted == 0) {
-            return Double.NaN;
+            return NOTHING_WAS_LOOKED_AT;
         }
         return Math.round((apart / counted) * PICOUNITS)
                 / WIDEST_DISTANCE_IN_PICOUNITS;
     }
 
-    /**
-     * The mean distance is rounded to a whole number of these before it is
-     * divided, which is the whole reason black against white reads as exactly
-     * a hundred per cent.
-     *
-     * <p>The C says so in a comment above the line -- "used rounding to have
-     * nice 100% when completely different" -- and without it the answer comes
-     * out as 99.9999999999999%, which is true and reads as a mistake.
-     */
+    private static final double NOTHING_WAS_LOOKED_AT = Double.NaN;
+
     private static final double PICOUNITS = 1_000_000_000_000.0;
 
     private static final double WIDEST_DISTANCE_IN_PICOUNITS = 764_833_315_173_967.0;
 
-    /**
-     * How far apart two colours look, by the redmean approximation.
-     *
-     * <p>Not a plain distance in red, green and blue: equal steps in those
-     * numbers do not look equal. Green carries most of what the eye reads as
-     * brightness, and how much red and blue matter depends on how red the
-     * pair already is -- so the red and blue weights slide with the mean of
-     * the two reds while green's stays at four.
-     *
-     * <p>{@code https://www.compuphase.com/cmetric.htm}, which the C cites,
-     * and its shifts are kept rather than turned into division: {@code
-     * ((512+rmean)*r*r)>>8} truncates where a divide by 256 would, and the
-     * percentages come out a fraction different if it does not.
-     *
-     * <p>Alpha takes no part. Two images differing only in transparency are
-     * nought per cent apart, which is checked against a real 3.22.1 and is
-     * not what a reader of "weighted RGB distance" would assume.
-     */
-    private static double redmeanDistance(int[] left, int[] right) {
+    private static double redmeanDistanceIgnoringAlpha(int[] left, int[] right) {
         long red = left[0] - right[0];
         long green = left[1] - right[1];
         long blue = left[2] - right[2];

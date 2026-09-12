@@ -6,20 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Where words that arrive at run time get their slots, read out of
- * {@code Do_String} in {@code src/core/c-do.c}.
- *
- * <p>Source that reaches the interpreter while a script is running -- from
- * a string, a file, or anything LOAD produced -- is bound with
- * {@code BIND_ALL}, which gives every word in it a slot whether or not
- * anything knew that word before.
- *
- * <p>Without it nothing loaded at run time can name anything new, and
- * {@code do "total: 1"} fails on TOTAL. It is the difference between a
- * language that can read its own source and one that can only run the text
- * it was started with.
- */
 class RuntimeBindingFromTheSourceTest {
 
     private static String answerTo(String source) {

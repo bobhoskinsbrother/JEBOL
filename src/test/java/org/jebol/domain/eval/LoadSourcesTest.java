@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * What LOAD will read: a string, a binary, or a block of either.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>A block is a block of sources rather than something to load, which is
- * the part that reads backwards at first. Each item is loaded on its own
- * and its answer added as a single item, so a source holding two values
- * arrives nested and a source holding one does not.
- */
 class LoadSourcesTest {
 
     private static String answerTo(String source) {
@@ -25,7 +14,6 @@ class LoadSourcesTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

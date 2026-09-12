@@ -6,16 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CAUSE-ERROR, FUNCO and MAP, ported off the backlog.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1, whose own definitions were read out of the binary.
- *
- * <p>Porting CAUSE-ERROR found that MAKE ERROR! was reading its spec as
- * written rather than evaluating it, so every error it raised was called
- * err-id whatever it was asked for.
- */
 class CauseErrorTest {
 
     private static String answerTo(String source) {
@@ -24,7 +14,6 @@ class CauseErrorTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }

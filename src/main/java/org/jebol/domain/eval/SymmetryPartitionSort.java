@@ -3,13 +3,6 @@ package org.jebol.domain.eval;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * Jingchao Chen's Adaptive Symmetry Partition Sort, ported index for index
- * from {@code f-adp-symmetry-psort.c} -- the {@code unstable_sort} behind
- * SORT/UNSTABLE. The exact permutation it leaves equal keys in is what
- * Rebol's own suite pins, so a faithful port is the only implementation
- * that answers it.
- */
 final class SymmetryPartitionSort {
 
     private static final int P = 16;

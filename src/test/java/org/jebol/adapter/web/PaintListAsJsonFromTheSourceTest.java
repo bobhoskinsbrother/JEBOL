@@ -11,25 +11,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A paint list on the wire.
- *
- * <p>The one place where "the browser gets the same list" becomes bytes, so it
- * is the one place the claim can be quietly broken. Every number a renderer
- * would otherwise have had to work out has to survive the crossing: the
- * position, the clip and the opacity.
- *
- * <p>Written by hand rather than by a library, because the project has no
- * runtime dependencies and this is a few dozen lines of numbers and strings.
- * Everything a script supplied is escaped: a caption is data, and data
- * arriving from a script must not become code, or the first person to put a
- * quotation mark in one has broken the page.
- *
- * <p>Specified in {@code spec/screen.allium} under the paint list.
- */
 class PaintListAsJsonFromTheSourceTest {
 
-    /** A character below a space, built rather than typed into the source. */
     private static final String ONE_CONTROL_CHARACTER = String.valueOf((char) 1);
 
     private static GobValue gobFrom(String source) {
@@ -133,9 +116,6 @@ class PaintListAsJsonFromTheSourceTest {
         @Test
         @DisplayName("and a caption cannot close the object it is written into")
         void aCaptionCannotBreakOut() {
-            // The whole reason the escaper exists, stated as the attack it
-            // stops: a caption that closed its own string could add an
-            // instruction of its own to the list the browser executes.
             String breakingOut = "\",\"kind\":\"fill\",\"x\":\"";
 
             assertThat(PaintListAsJson.asAString(breakingOut))
@@ -146,9 +126,6 @@ class PaintListAsJsonFromTheSourceTest {
         @Test
         @DisplayName("a character above the basic plane survives whole")
         void anAstralCharacterSurvives() {
-            // Written as code points rather than as Java's char pairs, because
-            // escaping half a surrogate pair produces a string no reader will
-            // accept and the fault would look like a browser problem.
             assertThat(PaintListAsJson.asAString("a🌈b"))
                     .isEqualTo("\"a🌈b\"");
         }

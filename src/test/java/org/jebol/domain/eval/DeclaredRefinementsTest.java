@@ -6,17 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Seven refinements JEBOL had not got, and the constant PI.
- *
- * <p>Specified in {@code spec/natives.allium} and measured against a real
- * R3 3.22.1.
- *
- * <p>Each test here pairs the refined call with the plain one. A
- * refinement that is accepted and then changes nothing passes any test
- * that only looks at the refined side, and that is the shape this ends up
- * in if the pair is not written down.
- */
 class DeclaredRefinementsTest {
 
     private static String answerTo(String source) {
@@ -25,7 +14,6 @@ class DeclaredRefinementsTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    /** The id of the error a snippet raises, or "no-error" if it raises none. */
     private static String errorIdOf(String source) {
         return answerTo(
                 "e: try [" + source + "] either error? e [e/id] ['no-error]");
