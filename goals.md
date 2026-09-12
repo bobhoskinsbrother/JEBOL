@@ -565,8 +565,10 @@ whether the change worked.
 
 **The suite is the measure, and it is not the whole surface.** Running all 930
 combinations of MAKE and TO against fifteen target types and thirty-one source
-values, through JEBOL and through `./r3` side by side, found 140 answers that
-differ. Rebol's own suite asserts most of those families and names them in
+values, through JEBOL and through a real Rebol side by side, found 140 answers
+that differ. That sweep was run against `./r3`, a downloaded 3.22.1 that is no
+longer in the repo; `./r3-head` is the binary now, and it is the vendored
+source compiled by `scripts/build-r3.sh`. Rebol's own suite asserts most of those families and names them in
 `known-gaps.txt`, so they were already counted. Some it never asks at all, and
 those had no name until the sweep: `to integer! #FF` answered a refusal where a
 real Rebol reads the digits as hex and says 255.
