@@ -203,24 +203,55 @@ version to compare against. And a production system carrying this table is
 exposed to whatever the upstream serves on the day, in real time, with no step
 in between where anybody looks.
 
-**So the table should only ever name what this build has not got.** Nineteen of
-the thirty-three addresses left are modules JEBOL already vendors and loads --
-`css csv json ico pdb pdf plist srt swf xml bbcode mime-field mime-types
-quoted-printable html-entities mysql rdap daytime mail`. Their addresses are
-replaced during boot by the loaded module, so they never fetch anything today;
-they are a live address one load-order change away from being reachable, for
-code that is already in the jar. Take them out.
+**Both cuts were made on 12 September 2026 and the table names nothing remote
+at all now.** The fourteen compiled extensions went because nothing here can
+load a shared library, so each was a round trip to github ending in failure and
+several named things this build has anyway -- BROTLI is the `br` compression
+method. The nineteen that named modules JEBOL already vendors went because an
+address for code that is in the jar is one load-order change away from being
+reachable for no gain. The thirteen left are bundled with the build and read
+through the `bundled:` scheme, so nothing crosses the wire.
 
-The fourteen compiled extensions were taken out on 12 September for a related
-reason: nothing here can load a shared library, so each was a round trip to
-github ending in failure, and several named things this build has anyway
-(BROTLI is the `br` compression method). What remains after both cuts is the
-handful nothing here implements, which is the only part an address can honestly
-serve.
+### A checksum is required before any fetched module is evaluated
 
-Worth deciding at the same time: whether a fetched module should be checked
-against something before it is evaluated, and whether a host should be able to
-refuse the fetch outright the way it refuses the filesystem.
+That is the state today and it is not the rule. The moment an address points
+outward again -- a host adds one, a module this build does not carry is wanted,
+an extension becomes loadable -- the fetch has to be verified, and **a checksum
+must be implemented on that path before it is used.**
+
+What is already there, and what is not:
+
+- **`import/check hash`** exists and is the right mechanism. `load-module`
+  declares `hash [binary!]` and takes it from the caller, so the expected
+  digest comes from outside the thing being checked.
+- **A script's own `checksum:` header field is verified** by `load-header`,
+  which answers `bad-checksum` on a mismatch. **That is not the same thing and
+  must not be mistaken for it.** The file asserts its own hash, so a file that
+  was tampered with carries a tampered hash and passes. It catches corruption
+  in transit and nothing else.
+- **`download-extension` verifies nothing.** It is `content: read source` then
+  `write file content`, with no digest between them. That is the hole.
+
+So the requirement, when the path is next used:
+
+1. `system/modules` carries an expected digest beside each remote address, not
+   only the address.
+2. The fetch verifies the bytes against it **before** they are written to the
+   modules directory and **before** anything is evaluated. Writing an unverified
+   module to disk is most of the damage already done, because the next run finds
+   it as a local file and never fetches again.
+3. A mismatch fails the import. It is not a warning and not a log line.
+4. No digest recorded for an address means the address is not usable. An
+   address without one is the state this note is about.
+
+A bundled module is a different and much weaker case: it cannot change under a
+running system, so a digest there guards a corrupted build rather than an
+attacker. Worth having, not urgent.
+
+Still to decide: whether a host should be able to refuse the fetch outright,
+the way it refuses the filesystem and the network. A checksum says "this is the
+code I expected"; a refusal says "this interpreter does not fetch code at all",
+and a host serving untrusted scripts wants the second.
 
 ## A standing note: the gate reaching the internet is temporary
 
