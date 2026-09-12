@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * missing can be taken in one pass. {@code copy/deep} had never worked and no
  * test had ever asked it to.
  *
- * <p>{@code scripts/c-parity.py} is that pass, and Goal 3 in TODO.md is what it
+ * <p>{@code scripts/c-parity.py} is that pass, and the surface goal in goals.md is what it
  * still reports.
  */
 class AuditedRefinementsTest {

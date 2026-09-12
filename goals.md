@@ -1,45 +1,49 @@
 # Goals
 
-Rebol's own test suite is the measure of this port. What still fails is listed
-one per line in `src/test/resources/rebol-suite/known-gaps.txt`, and this file
-breaks that remaining work into goals that can be taken one at a time.
+Everything that is left to do on this port, in one file and in one order.
 
-The sizes below are the only per-goal figures anywhere; the totals live in
-`TODO.md` and are not repeated here. Both are snapshots, so check them rather
-than believe them:
-
-    wc -l < src/test/resources/rebol-suite/known-gaps.txt          # roughly
-    grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt  # exactly
+Rebol's own test suite is the measure: what still fails is listed one per line
+in `src/test/resources/rebol-suite/known-gaps.txt`. It is not the whole
+measure, and the goals below that own no entries are the ones it cannot see.
 
 Take one, finish it, commit it, stop.
 
-**Goals 16 to 21 come first.** They are not porting work; they correct faults in
-the measure itself, found by an audit on 5 September 2026 that ran three
-independent adversarial passes over this target. Until they are done, work
-against `known-gaps.txt` can make JEBOL worse and be rewarded for it. Each
-carries the command that reproduces the fault.
+**A finished goal is deleted rather than kept with DONE beside it.** Many have
+been; what each said is in the git history under the commit that finished it. A
+list of things nobody has to do any more is a list nobody reads.
 
-**16 to 20 are done, and 21 is down to three known differences that are all
-the same deliberate decision.** `runtime-parity.py` reports 3 of 582 functions
-differing, and they are `request-color`, `request-dir` and `request-file` in
-every column. Two larger things are left inside 21 and named there with the
-reason each was left: `near`/`where` on errors, and `compress` bytes.
+**The counts live here and nowhere else.** `README.md`,
+`docs/porting-guide.md` and `using-jebol.md` describe what each measure asks and
+point here for what it answered, on purpose: the same figures were once written
+into four files and drifted until two of them disagreed about how many error ids
+can be raised, with nothing to say which was right. A count belongs in one place
+or in none. Every number below was checked on 2026-09-12 by running it.
 
-The porting goals are **mostly, not entirely, independent**, and the couplings
-are named in the goals themselves. Two that this file used to claim turned out
-not to exist: goal 5 and goal 9 were both said to wait on goal 8, and neither
-does — that came from a measuring tool inventing environment stops, and goal 20
-has the story. The real ones now are goal 15 double-counting the eight crypt-port entries
-that belonged to 4a and 4b. The rest are discharged: goal 3 is done, and so
-are 4a and 4b, so goal 1's wait on them is over.
+---
 
-Goals 1, 6 and 14 are also one question asked three times: what the capability
-catalogues claim is present. `system/codecs` is longer here than in a real
-3.22.5, so JEBOL enters blocks a real Rebol skips and then raises inside them.
-`system/catalog/ciphers` was the same fault seen from the other side — empty
-where a real one holds forty-two — and goals 4a and 4b settled it: it now names
-the thirty the port really serves, which is the shape the others should end up
-in too.
+
+## Where the port stands
+
+| Measure | Reads |
+| --- | --- |
+| `scripts/c-parity.py` | 279 of 279 C functions match R3's surface -- a comparison of two *declaration files*, and read as broader than it is |
+| `scripts/runtime-parity.py` | the same question asked of two *running* interpreters. Of 582 functions, **0 absent and 3 differ**, the same 3 in every column: `request-color`, `request-dir` and `request-file`, which JEBOL serves through its own port rather than shelling out to `osascript`. It began at 1 absent, 123, 581 and 430 |
+| `PortingBacklogTest` | 0 of R3's 404 functions missing |
+| `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
+| `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
+| `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
+| `known-gaps.txt` | **182 fail**, and they are goals 1 to 8 below |
+| `fails-on-rebol-too.txt` | 146 a real 3.22.5 also fails or never runs |
+| `scripts/error-parity.py` | **81 of Rebol's 142 error ids can be raised. 61 cannot** |
+
+`./gradlew check` is 17,750 tests, 0 failed, 0 skipped. An unread suite file
+fails the build outright -- no list, no exception. `./gradlew browserCheck` is
+the second gate and is not optional; it renders the same paint list in Java2D
+and in a real Chrome and compares them pixel for pixel.
+
+The 182 are broken into the first eight goals below. The rest own no entries:
+they are equivalence the suite cannot see, the two security goals, and the
+engineering and tooling work.
 
 ---
 
@@ -98,7 +102,7 @@ all of them.)
 
 Both tools build their interpreter through `SuiteHost`, which is the one the
 gate uses. They did not always, and both reported blockers the gate never sees;
-goal 20 has what that cost.
+the commit that fixed the measuring tools has what that cost.
 
 For a one-off comparison, `org.jebol.suite.SweepRunner <script.r3>` runs a
 script through JEBOL with everything granted, which is what the harness gives
@@ -135,7 +139,9 @@ by running it.** Know them before trusting a green gate to mean progress.
    `theGapListHasNoPassingEntries` reads `knownGaps()` and nothing else. Moving a
    genuine gap into that file drops the published backlog by one and leaves the
    build green. That was proved by mutation, not by reading.
-3. **It rewards two changes that are wrong.** See goal 16.
+3. **It used to reward two changes that are wrong.** `--red--` is a harness
+   word now and `noRedOnlyAssertionIsAGap` fails if a red-marked assertion ever
+   appears on the gap list again.
 
 Do not `rm -rf build/test-results` to force a re-run; it makes Gradle fail on
 its own binary results directory. `./gradlew cleanTest` instead.
@@ -189,77 +195,15 @@ gate green.
 
 ---
 
-## A standing note: IMPORT fetches and evaluates code over the network
+---
 
-`system/modules` is a table of addresses, and IMPORT's last resort is to
-download what it finds there and evaluate it. That is Rebol's design and this
-port now follows it, which means an interpreter here will fetch REBOL source
-from `src.rebol.tech` and run it, on the strength of a name in a script.
-
-**Two ways that goes wrong, and neither needs a mistake upstream.** A proxy
-between the machine and the address serves whatever it likes, and the
-interpreter evaluates it -- there is no signature, no checksum and no pinned
-version to compare against. And a production system carrying this table is
-exposed to whatever the upstream serves on the day, in real time, with no step
-in between where anybody looks.
-
-**Both cuts were made on 12 September 2026 and the table names nothing remote
-at all now.** The fourteen compiled extensions went because nothing here can
-load a shared library, so each was a round trip to github ending in failure and
-several named things this build has anyway -- BROTLI is the `br` compression
-method. The nineteen that named modules JEBOL already vendors went because an
-address for code that is in the jar is one load-order change away from being
-reachable for no gain. The thirteen left are bundled with the build and read
-through the `bundled:` scheme, so nothing crosses the wire.
-
-### A checksum is required before any fetched module is evaluated
-
-That is the state today and it is not the rule. The moment an address points
-outward again -- a host adds one, a module this build does not carry is wanted,
-an extension becomes loadable -- the fetch has to be verified, and **a checksum
-must be implemented on that path before it is used.**
-
-What is already there, and what is not:
-
-- **`import/check hash`** exists and is the right mechanism. `load-module`
-  declares `hash [binary!]` and takes it from the caller, so the expected
-  digest comes from outside the thing being checked.
-- **A script's own `checksum:` header field is verified** by `load-header`,
-  which answers `bad-checksum` on a mismatch. **That is not the same thing and
-  must not be mistaken for it.** The file asserts its own hash, so a file that
-  was tampered with carries a tampered hash and passes. It catches corruption
-  in transit and nothing else.
-- **`download-extension` verifies nothing.** It is `content: read source` then
-  `write file content`, with no digest between them. That is the hole.
-
-So the requirement, when the path is next used:
-
-1. `system/modules` carries an expected digest beside each remote address, not
-   only the address.
-2. The fetch verifies the bytes against it **before** they are written to the
-   modules directory and **before** anything is evaluated. Writing an unverified
-   module to disk is most of the damage already done, because the next run finds
-   it as a local file and never fetches again.
-3. A mismatch fails the import. It is not a warning and not a log line.
-4. No digest recorded for an address means the address is not usable. An
-   address without one is the state this note is about.
-
-A bundled module is a different and much weaker case: it cannot change under a
-running system, so a digest there guards a corrupted build rather than an
-attacker. Worth having, not urgent.
-
-Still to decide: whether a host should be able to refuse the fetch outright,
-the way it refuses the filesystem and the network. A checksum says "this is the
-code I expected"; a refusal says "this interpreter does not fetch code at all",
-and a host serving untrusted scripts wants the second.
-
-## A standing note: the gate reaching the internet is temporary
+## A note that is still true: the gate reaches the internet
 
 `thru-cache-test.r3`'s assertions read `raw.githubusercontent.com` and
 `httpbin.org` by name, so grading them makes `./gradlew check` depend on two
 third-party services. That is accepted for now because the alternative is ten
 assertions that never run, and a file whose guard is false measures nothing at
-all -- goal 11 has what that costs.
+all.
 
 **It is not the end state.** Once the differences between the C and this port
 are dealt with and the suite is the ratchet it is meant to be, come back and
@@ -272,35 +216,22 @@ Until then, a failure in that file that names a host rather than a behaviour is
 the network and not the port, and it still counts as a failure -- a flake is a
 fail, and this one has a cause anybody can point at.
 
+---
+
 ## The goals
 
-Sizes are the number of `known-gaps.txt` entries the goal is worth, and every
-entry belongs to exactly one goal. **Re-derived from the list on 11 September
-2026** and again on 12 September, because the old figures had drifted: goal 11
-was the worst at 135 against a real 132, and goal 15 claimed 40 where the files
-it owns hold 31. Goals 1 and 2 have since gone to nought and the total with
-them, and goal 11 has gone from 132 to nought. Goal 5 lost three on 12 September
-to the DELETE fix goal 11's work turned up, and goal 9 lost three to the module
-directory it needed.
-Do not trust a size here that has not been re-derived since work landed —
-`grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt` is the live
-total and the table below is how it divides.
+**Ordered by importance, not by size, and the first rule is that agreeing with
+the C comes before improving on it.** This is a port. A place where JEBOL
+answers something a real 3.22.5 does not is a defect; a place where both are
+weak is a decision, and it waits. So the suite backlog leads, then the
+equivalence the suite cannot see, then the two security goals -- which are
+divergences from the C rather than gaps against it, because Rebol does not
+authenticate a server or check a fetched module either -- and the engineering
+and tooling last.
 
-    182   the whole list, on 12 September 2026
-    ---
-     34    6. the checksum port
-     33    5. the file ports
-     31   15. the scattered singles and pairs
-     29    7. enbase and debase
-     27   10. the elliptic curves
-     12    9. modules and import
-      9   14. the pdf codec
-      7   12. Java exceptions escaping to the top
-
-Goals 1, 2, 3, 4a, 4b, 8, 11, 13 and 16 to 21 are done and own nothing. To re-derive the
-table, count the list by file and read each goal for which files it names:
-
-    sed 's| /.*||' src/test/resources/rebol-suite/known-gaps.txt | sort | uniq -c | sort -rn
+Several goals own no `known-gaps.txt` entries, which is not the same as being
+small: no assertion in Rebol's suite asks whether an error id can be raised or
+whether a certificate was checked.
 
 **Whether a size is a floor or a ceiling is unsettled, and it matters.** This
 file used to say floor, reasoning that fixing a stop frees the assertions
@@ -308,208 +239,249 @@ standing behind it. Two independent audit passes disagreed with each other: one
 confirmed the reasoning, the other found that the harness already scores an
 unreached assertion as a failure, which would make the size a ceiling and mean
 the count can only fall. Nobody has settled it. Until someone does, treat a size
-as an estimate and expect surprises in both directions — and if you fix a stop
+as an estimate and expect surprises in both directions -- and if you fix a stop
 and the count goes up, that is the answer, so write it down here.
 
-### 16. Stop the ratchet rewarding wrong answers — DONE
+---
 
-`--red--` is a harness word now, the mark reaches the assertion beside it, and
-`assertionsExpectedToPass` honours it. `noRedOnlyAssertionIsAGap` fails if a
-red-marked assertion ever appears on the gap list again. The eight
-`power-test.r3` entries came off; the three that were plain misfilings moved to
-`fails-on-rebol-too.txt` with the `r3-head` session that settles each.
+### 1. Two Java exceptions escaping to the top -- 7
 
-What follows is why, kept because the reasoning is the part worth having.
+`issue-test.r3`. These are not wrong answers but crashes, and a Java exception
+reaching the interpreter's edge is a defect of a different kind:
 
-**Eleven lines of `known-gaps.txt` name assertions where JEBOL already answers
-exactly what `./r3-head` answers.** Working them means moving JEBOL away from
-Rebol, and the ratchet will turn green when you do. This is the one goal that
-gets worse the longer it is left, because anybody picking up goal 11 walks into
-it.
+    to-hex/size 1  0   -> java.lang.IllegalArgumentException: a word needs a spelling
+    to-hex/size 1 -1   -> java.lang.StringIndexOutOfBoundsException: Range [17, 16)
 
-Eight are `power-test.r3 #11`-`#18`, and they come off with one line:
+`spec/embed.allium` says nothing a script does may reach the host as a
+throwable. Both should be REBOL errors; ask `./r3-head` which.
 
-    --test-- "power-integer-1"  --red-- --assert integer? power 2 16
+---
 
-`power 2 16` is `65536.0` in Rebol, so that assertion is false there too.
-`--red--` is Rebol's own marker: in `rebol3-source/src/tests/quick-test-module.r3`
-it binds to `as-red-only`, which sets `qt-red-only`, and a failing assertion under
-that flag is counted as "not like Red" rather than as a failure. JEBOL's prelude
-binds it to `does []` and grades the assertion anyway.
+### 2. What is left of the file ports -- 33
 
-`RebolSuiteTest.java` around line 344 documents the choice and gets it backwards:
-it argues that judging strictly "can only ever name a gap that is really there".
-It cannot, because the strict reading demands behaviour Rebol has not got. Bind
-`--red--` the way Rebol does, and the eight lines go.
+`port-test.r3`. The file and directory schemes work now
+(`SeekableFilePort.java`); these are the remainder.
 
-The other three are ordinary misfilings, checked one at a time against the
-canonical reference:
+**Two stops, re-derived with the fixed `SuiteStops`.** This goal has
+now said three different things about them, so here is the measured answer:
 
-    make-test.r3 #498, #533   error? try [make map! quote (1 2)]  -> #(false) both sides
-    module-test.r3 #18        both sides answer _
+    pwd = to-rebol-file get-env "PWD"   -> ../ is outside what this port allows
+    open %issue-2447                    -> a port that could not be opened
 
-Reproduce any of them:
+The first is not an environment problem, which is what it looked like while the
+tool had no environment installed. `get-env "PWD"` answers; the working
+directory it names sits outside the temporary root the harness confines the run
+to, and the sandbox refuses to walk up to it. Decide what a rooted interpreter
+should say its working directory is — that is the question, and it is not goal
+8's.
 
-    printf 'Rebol []\nprint mold power 2 16\nprint mold error? try [make map! quote (1 2)]\n' > /tmp/p.r3
-    ./r3-head /tmp/p.r3
+The rest are wrong answers, so sweep the file: `scripts/sweep.py port-test.r3`.
+23 are in "file port" and 14 in "directory port".
 
-More are suspected in `port-test.r3` and `codecs-test.r3` and could not be
-confirmed, for a structural reason worth knowing: in a file where the canonical
-reference performs fewer assertions than the file writes, the ordinals cannot be
-lined up, so there is no way to say which listed entry corresponds to which of
-its failures.
-Five separate counts of "how many are misfiled" came back as 8, 10, 13, 14 and
-17 for exactly this reason. **Eleven is the confirmed floor, not the answer.**
+---
 
-### 17. Give the second list a ratchet — DONE
+### 3. The checksum port -- 34
 
-`theFindingsListHasNoPassingEntries` mirrors the gap-list ratchet onto
-`fails-on-rebol-too.txt`. It cost nothing to run: those assertions were already
-being executed, just filtered out of the expected-to-pass set, so the verdicts
-were there unused. Both lists are now held the same way.
+`checksum-test.r3` has one stop, and it is environment-dependent:
+`file-checksum system/options/boot` — the boot path is outside the sandbox
+root, so opening it fails. Decide what a sandboxed interpreter should say
+about its own boot file; the honest answer may be that this assertion belongs
+in `fails-on-rebol-too.txt` reasoning, or that `system/options/boot` should
+name something inside the root.
 
-What follows is why.
+**The other 28 are not "the Checksum port failing on its merits", which is what
+this goal used to say.** They are the `xxh3` and `xxh128` blocks, which JEBOL
+never enters because it has not got those algorithms — the same shape the
+compression work had, and subject to the same correction: declaring them absent
+retires nothing,
+because an unreached assertion is scored as a failure.
 
-`fails-on-rebol-too.txt` has none. `theGapListHasNoPassingEntries` reads
-`knownGaps()` only, `theTwoListsDoNotOverlap` catches a copy but not a move, and
-`theGapListNamesRealAssertions` never asks whether an entry has started passing.
+**Do not settle a checksum-port question on a single `./r3-head` run.** The
+canonical reference is not deterministic on this file. Running `checksum-test.r3` through
+Rebol's own runner fails 13 assertions in roughly one run in eight, reproduced
+from cold in two unrelated directories with byte-identical inputs; the failing
+one is `--assert not open? close port`, so a real Rebol sometimes reports a
+closed checksum port as still open. Nothing on `known-gaps.txt` depends on it
+today, but two audit passes disagreed with each other because one hit a bad run.
+Run it three times.
 
-Demonstrated rather than reasoned: moving `bitset-test.r3 #139` — which a real
-Rebol passes and JEBOL fails — out of `known-gaps.txt` and into
-`fails-on-rebol-too.txt` drops the published backlog by one and leaves the build
-green.
+---
 
-Mirror the existing test onto the second list. Both files are then held the same
-way, and the only route left for the number to fall without work is closed.
+### 4. ENBASE, DEBASE and their parts -- 29
 
-### 18. Re-run the exclusion ledger and empty it — DONE
+`enbase-test.r3`. One stop — `load` of bytes that are not valid UTF-8,
+`#{B7D3}` — and then wrong answers.
 
-All 33 assertions are back in the files Rebol wrote them in, and **every one of
-the 67 vendored files is now byte-identical to `rebol3-source`**. The ledger
-directory is gone.
+One is already isolated and small: **`enbase/url` must not pad.**
 
-How they landed, each checked against `./r3-head` one at a time:
+    enbase/url "a" 64     ; r3 "YQ"    JEBOL "YQ=="
+    enbase/url "ab" 64    ; r3 "YWI"   JEBOL "YWI="
 
-    24  pass here and cost nothing         distance 9, as-color 5, factorial 6,
-                                           compare 2, object 1, load 1
-     5  fail on a real 3.22.5 too          -> fails-on-rebol-too.txt with the session
-     4  are real gaps                      -> known-gaps.txt
+The URL-safe alphabet leaves the padding off; the plain one keeps it. The
+decoder already knows this (see `octetsOfBase64` in `Encodings.java`, which
+lets a URL-safe group end short); the encoder does not.
 
-Every reason in the ledger had gone stale, which is the part worth remembering.
-`distance`, `as-color` and `factorial` were excluded as "not in this build of R3
-at all" and all three are present in 3.22.5. Three more needed files under
-`units/` that had "never been vendored" and have been since. The verdicts were
-right when written against 3.22.1 and nothing re-asked them.
+"debase/part" is 21 of the 29 and is worth a look as one piece.
 
-Restoring shifted the ordinals of everything below each insertion, which broke
-ten gap-list entries: `evaluation-test` "do needs" moved by 3, and nine
-`parse-test` entries by 3. The ratchet caught both halves of that on its own —
-three entries suddenly "passing" and three failures with no entry — which is
-what it is for.
+---
 
-Two guards now hold it, in `SuiteSelectionTest`:
+### 5. The elliptic curves -- 27
 
-- `everyVendoredFileIsUnchanged` compares each file with upstream byte for byte.
-  It needs the `rebol3-source` symlink, so it cannot be the only one.
-- `noTestHasLostItsAssertions` reads the vendored text alone and fails on a
-  `--test--` with the next dialect word straight after it, which is exactly what
-  a cut assertion leaves behind. Six tests are empty upstream too, with Rebol's
-  own note saying why, and they are named in the test rather than pattern-matched.
+`dh-test.r3` stops at
 
-### 19. `do %anyfile` is broken — DONE
+    foreach ecurve system/catalog/elliptic-curves [...]
 
-`DO` of a file, a URL, a string or a binary is not written in C: `n-control.c`
-sends all four to `Do_Sys_Func(SYS_CTX_DO_P, ...)`, which is `sys/do*` in the
-borrowed `sys-base.reb`. JEBOL matched a file against the Java `StringValue`
-case, because a file is one, and evaluated the file's own name as source. File
-and URL now go to `do*`; string and binary keep their routes, because a string
-is source rather than a script.
+with "ecdh does not allow none! for its public-key argument". The catalogue is
+not the problem — JEBOL lists all thirteen curves a real Rebol does, secp192r1
+through curve448 — so `ecdh/init` is not answering a key for at least one of
+them. `EllipticCurveKey.java` is the JEBOL side; the C is `n-crypt.c`.
 
-Routing them there took three defects with it, each found by the next one
-failing:
+**Two of the thirteen were added on 12 September 2026** because the TLS work
+needed them: curve25519 and curve448, which are the first two entries of
+the TLS scheme's `supported-groups` and so the ones a client hello reaches for.
+They are a different shape from the rest and that is the part worth knowing —
+they publish one coordinate on its own, 32 bytes and 56, with no lead byte
+saying the point is uncompressed, because their arithmetic never needs the
+second coordinate and there is no other way to write it. The JDK serves them
+through `XDH` rather than `EC`, and the wire wants the coordinate
+least-significant byte first where the JDK hands over a plain number.
 
-1. **`unprotect/words` ignored paths.** `natives.reb` says
-   `/words "Process list as words (and path words)"`, and the parenthetical was
-   the whole of it: an entry that was not a bare word was skipped, silently,
-   because the call answers the block it was given either way. Rebol's
-   `protect-system` protects every word of SYSTEM and then hands back the few a
-   script must write, with `unprotect/words [system/script]`. With that ignored,
-   `do*` could not record the script it was about to run.
-2. **A sys file could not call a helper defined in a later sys file.** Each was
-   bound as it loaded, so `do-needs` in sys-load.reb did not exist when
-   sys-base.reb was bound and the word never resolved. R3 has no such ordering
-   because its sys context is built from a boot list first. JEBOL now declares
-   every sys file's set-words before binding any of them.
-3. **`prot-mysql.reb` loaded after the system object was sealed.** Once
-   `protect/words` worked, `protect/words/deep [system/catalog]` really did
-   protect it, and the file's closing `put system/catalog/errors 'MySQL ...`
-   stopped. Rebol never meets this: it imports that file on demand long after
-   boot. It now loads before `mezz-tail.reb` rather than after.
+Five are served now and eight are not. Measured against `./r3-head`, which
+answers for all thirteen:
 
-Six gap entries came off, including all three `evaluation-test` ones. The
-fourth assertion in that group — `error? try [do %units/files/error.r3]` — was
-green because the feature was broken, wanting an error and getting the wrong
-one; it now passes for the right reason, raising `zero-divide` from inside the
-script.
+| served | not served |
+| --- | --- |
+| secp256r1, secp384r1, secp521r1, curve25519, curve448 | secp192r1, secp224r1, secp192k1, secp224k1, secp256k1, bp256r1, bp384r1, bp512r1 |
 
-`lexer-test.r3 / Special tests / NULLs inside loaded string #452` is still a
-gap. It is in the same file-and-process corner but a different defect: it loads
-a 40,000-character string through a subprocess and checks the buffer survives
-being extended.
+The Brainpool three were never in the JDK's default provider. The narrower NIST
+and Koblitz curves were withdrawn from it — a JDK 16 change, not something
+JEBOL chose — so serving them means carrying the curve parameters and the
+arithmetic, or none of them answering, which is what the C already does for a
+build without a curve.
 
-### 20. Fix the measuring tools before trusting them — DONE
+---
 
-`SuiteStops` and `SweepRunner` each granted every `HostService` and installed
-only a filesystem, where the gate also installs `useEnvironment` and
-`useProcesses`. Granting a service is not providing one, so both reported stops
-the gate never sees, every one reading "given no environment to read" or "given
-no way to start a program". `SweepRunner`'s own comment claimed it "grants what
-the harness grants".
+### 6. Modules and IMPORT -- 12
 
-There is now one definition of the interpreter a suite file runs in,
-`SuiteHost`, and the gate and both tools call it. Copying it a fourth time is
-the mistake that made this, so the arrangement matters more than the two lines:
-a capability added there reaches all three at once. `SuiteHostTest` asks the
-three things granting alone does not give, and it is not decoration — removing
-those two lines again turns three of its five red.
+`module-test.r3` stopped nine times, and every one came back to
+`system/options/modules` being none.
 
-**What the fixed tool then said**, which is not what the old one said and not
-what this file said either:
+**Both halves of that are fixed, on 12 September 2026, because the last of the
+sweepable files needed them.** IMPORT looks in three places in order -- what is already loaded, a file
+in the modules directory, and the address in `system/modules`, which it
+downloads and saves -- and two of the three were unreachable here:
 
-    port-test.r3         2 stops, not three and not none
-    module-test.r3       9 stops, none of them the environment or CALL
-    os-test.r3           7 stops, all real
-    evaluation-test.r3   none at all
+- **`system/options/modules` was none.** `sys-start.reb` writes it in one line,
+  `modules: attempt [make-dir/deep join data %modules/]`, and nothing else
+  decides it. It is set when a host installs a filesystem *and* the data
+  directory is there. The second condition is JEBOL's own: the line above it in
+  `sys-start.reb` makes the data directory, and JEBOL does not, because the path
+  it defaults to is the operator's own and a confined filesystem reads that path
+  as somewhere else entirely -- making it eagerly put a folder named after the
+  operator's home inside every sandbox, which three tests of what a fresh
+  directory contains noticed at once.
+- **`system/modules` started empty.** `sysobj.reb` builds it as a table of
+  addresses, and a module that loads replaces its own -- `repend system/modules
+  [name module]` is the last thing LOAD-MODULE does, so the table is both the
+  list of what may be fetched and the record of what has been. The table is put
+  down before the library loads, for that reason.
 
-Goals 5, 8, 9 and 15 are corrected in place from that, and the corrections are
-measurements rather than readings. Goal 5 had said three stops, then none; it is
-two, and the first is the sandbox refusing to walk up to a working directory
-outside its root rather than anything about the environment.
+Three of `module-test.r3`'s entries came off with it, and `import 'thru-cache`
+now downloads, saves and imports.
 
-**`scripts/c-parity.py` could not fail on the defects that matter, and now
-there is a measure that can.** It compares two *files*, so a clean report from
-it is true and narrow — and it was read as broad. `scripts/runtime-parity.py`
-asks two running interpreters the questions a declaration cannot answer:
+**Two things were left out of the table on purpose**, and the reasoning is in
+"A standing note: IMPORT fetches and evaluates code over the network" above.
+The fourteen compiled extensions are gone because nothing here can load a
+shared library -- each was a round trip to github ending in failure, and several
+named things this build has anyway. The nineteen addresses for modules JEBOL
+already vendors should go the same way and have not yet; that is the next piece
+of this goal.
 
-    ./gradlew compileTestJava
-    python3 scripts/runtime-parity.py          # summary
-    python3 scripts/runtime-parity.py --all    # every differing function
+#### What is left
 
-The function list comes from `./r3-head`, so it is Rebol's list rather than
-JEBOL's and a missing function shows as ABSENT instead of dropping out of both
-sides. What it says today is goal 21, with numbers rather than examples:
+Twelve entries in `module-test.r3`, and they are about IMPORT itself rather than
+about where a module comes from. Read them with `SuiteStops` before planning:
+the nine stops this goal was written around are gone, so the list is a different
+list now and has not been re-derived.
 
-    582 functions asked
-      1 absent from JEBOL                         `|`
-    123 report a different datatype               120 action! -> native!,
-                                                  3 function! -> native!
-    581 answer words-of differently               JEBOL gives none for all but one
-    430 answer a different spec-of length
+Two more defects turned up on the way and are fixed, both found by an IMPORT
+that got further than before:
 
-`c-parity.py` now says in its own header what it cannot see, and points here.
-Quote the two together or neither.
+- **UPPERCASE and LOWERCASE took only a quoted string**, where the declaration
+  says `string [any-string! char!]`. The module loader names a downloaded file
+  with `lowercase second split-path source`, and SPLIT-PATH of a url answers a
+  file.
+- **TO-REAL-FILE dropped the trailing slash from a directory.** `OS_Real_Path`
+  stats what it resolved and appends one -- the comment beside the line is the
+  rule. Rebol's cache module opens with `join to-real-file any [get-env "TEMP"
+  so/data] %thru-cache/`, and without the slash its whole cache went to a
+  directory named by running two names together.
 
-### 21. What reaching zero would not prove — mostly DONE
+---
+
+### 7. The PDF codec times out -- 9
+
+`codecs-test-pdf.r3` runs past the harness's 5000ms limit on its first step.
+Either the PDF codec is doing something quadratic or it is looping. Worth
+finding out which before deciding what to do about it.
+
+---
+
+### 8. The scattered singles and pairs -- 31 across fourteen files
+
+What is left when the others above are taken out:
+
+    6  date-test.r3          3  mold-test.r3         1  bbcode-test.r3
+    4  task-test.r3          2  bitset-test.r3       1  copy-test.r3
+    3  error-test.r3         2  gob-test.r3          1  csv-test.r3
+    3  struct-test.r3        2  percent-test.r3      1  datatype-test.r3
+                                                     1  evaluation-test.r3
+                                                     1  series-test.r3
+
+Thirteen of the fourteen have no stop at all, so every entry is a wrong answer
+and `scripts/sweep.py` will put the two answers side by side. That makes this
+the cheapest goal per assertion on the list and a reasonable place to start
+cold, because each one is small enough to hold in your head whole.
+
+**The one stop**, re-derived with the fixed `SuiteStops`:
+
+    task-test.r3   to task! [...]   -> cannot use to task! on block!
+
+`task!` is a datatype word here without a datatype behind it, which is recorded
+in goal 18 below and is a larger decision than four assertions warrant on its own.
+
+---
+
+### 9. The error catalogue: 61 ids cannot be raised
+
+`too-long` is one of Rebol's error ids and JEBOL simply did not have it. That
+was found by needing it, which is no way to find things, so the whole catalogue
+was compared: **`src/boot/errors.reb` names 142 ids and JEBOL can raise 81.**
+
+```
+Access    25   ports, files, network, security -- areas JEBOL reaches through
+               the host-grant system instead, so most of these have no arm
+Script    16   the interesting column: behaviour JEBOL does implement and
+               reports under a different id or not at all
+Internal   8   memory and stack limits the JVM does not let us ask about
+Syntax     4   bad-char, bad-checksum, bad-header, no-header
+the rest   8   Note 3, Command 2, Throw 2, Math 1
+```
+
+The Script and Syntax columns are twenty ids naming behaviour that is already
+here. `parse-series` is the one already known to matter: a get-word in a string
+parse whose value is not a series should raise it, and JEBOL answers no-match.
+`expect-type`, `bad-refine`, `no-return`, `type-limit` and `self-protected` are
+the others worth reading the C for.
+
+An id JEBOL cannot raise is not automatically a gap -- some of these are
+raised nowhere in R3 either -- but the count is a measure that did not exist
+before. `scripts/error-parity.py` prints it, so it is run rather than
+remembered.
+
+---
+
+### 10. What reaching zero would not prove
 
 None of this is on `known-gaps.txt` and none of it can be, because the suite
 tests what functions **return** and these are all about what functions **say
@@ -574,7 +546,8 @@ whether the change worked.
    answer there is a consequence of when it pushes a frame, not of the
    language.
 2. **The deflate family does not produce Rebol's bytes.** Narrower than it was:
-   goal 3 made the headers agree, because a level nobody asked for is now the
+   the compression work made the headers agree, because a level nobody asked
+   for is now the
    slowest here as it is there, and gzip's extra-flags and operating-system
    bytes are written the way `gzip_compress.c` writes them. What is left is the
    body. 3.22.5 compresses with **libdeflate**, not zlib, and chooses a stored
@@ -594,822 +567,417 @@ whether the change worked.
 
 ---
 
-### 1. The remaining codecs — 109 — DONE
-
-`codecs-test.r3` has no line on `known-gaps.txt`. It was the largest single
-file and it was not one problem but about twelve, each an
-`if find codecs 'name [...]` block that raised and took its whole group with
-it.
-
-Almost none of them turned out to be codecs to port. The DER, CRT, PLIST, ZIP
-and MIME blocks were all interpreter defects surfacing inside Rebol's own
-borrowed REBOL codec files: the binary dialect resolving a get-word too early,
-a get-path rebinding what it read, ENHEX answering the wrong datatype, PARSE's
-insert, and `enbase/part` counting bytes where it should count characters. The
-image blocks needed a port rather than a codec, and QOI needed writing. The SWF
-block fell out of the binary dialect's `VINT`, which was goal 13.
-
-The WAV block turned out not to be work at all. Its two checksums are stale and
-a real 3.22.5 answers exactly what JEBOL answers, so they are on
-`fails-on-rebol-too.txt` with the session that settles it and
-`WavCodecFromTheSourceTest` carries the real numbers. Finding 24 in
-`docs/rebol-findings.md` explains why nobody noticed: the WAV codec is a
-delayed module and the block's `if find codecs 'wav` guard has been false since
-the sound data stopped being a raw binary.
-
-**The last ten were the SAFE block, and they were one thing rather than ten.**
-The SAFE codec and the SAFE scheme are both written in REBOL and JEBOL already
-vendors the file. The codec worked throughout: a value molded, compressed,
-checksummed and run through a cipher port, and the whole trip back. What could
-not happen was opening a port on a scheme whose actor is written in REBOL.
-
-Every port action goes to the port's actor, and an actor is one of two things:
-a word naming something built in, or an object of functions. JEBOL served only
-the first. `sys/make-scheme` accepted the scheme, put it in `system/schemes`
-with its actor intact, and then `open` refused it because the scheme's name was
-not on a hard-coded list of eight — so a scheme written in REBOL could be
-registered and never used.
-
-The distinction that decides it is which of the two needs the host's
-permission. A built-in actor is the way out of the interpreter and has to have
-its service granted first. An actor written in REBOL is not a way out of
-anything: whatever it reaches for, it reaches for by calling ordinary words,
-and each of those asks the host for itself. So it opens without asking for
-anything, and `ASchemeWrittenInRebolFromTheSourceTest` needs no host at all.
-
-Three defects surfaced doing it, each confirmed against `./r3-head` first.
-
-*Refinements were not reaching the actor.* A refinement nobody asked for brings
-no argument with it, so `remove/key store 'greeting` arrives as two values and
-the key is the second — not the fourth, where it would sit if every refinement
-kept a place in the queue. `remove/key` on such a port was deleting nothing.
-
-*A quoted parameter at the end of a block raised instead of binding unset.*
-Which is how `try [su]` releases the user: SU's name is quoted and accepts
-`unset!`, so a block with nothing after it means "no name". JEBOL now matches
-on both halves — unset where the parameter accepts it, and `expect-arg` rather
-than `no-arg` where it does not.
-
-*The measuring harness reported a home it had forbidden.* `SuiteHost` confines
-the filesystem to a directory made for the run and `system/options/home` is
-read off the machine, so `set-user` tried to write a user's storage file to the
-real home and every assertion after it was lost. A sandbox whose home lies
-outside the sandbox is an incoherent host rather than a strict one, so the
-harness now says home is the directory it made. The question underneath —
-whether the interpreter should ask the filesystem where home is rather than be
-told — is an open question in `spec/natives.allium`, because any host that
-confines files gets the same wrong answer unless it remembers to say otherwise.
-
-Note that the group names in `known-gaps.txt` were wrong for this file — the
-slicer takes the last top-level `===start-group===`, and this file nests its
-groups inside the `if` blocks, so every entry claimed to be in "TEXT codec".
-They were not, and the two lines left on `fails-on-rebol-too.txt` still say so.
-
-### 2. Image, read and written — 51 — DONE
-
-`image-test.r3` has no line on `known-gaps.txt` at all. Every one of the
-fifty-one was a wrong answer rather than a refusal, which is why the file ran
-to the end throughout and `scripts/sweep.py image-test.r3` showed them in
-pairs.
-
-**"Image as a series" was the first thirty-one.** APPEND, INSERT, CHANGE, FIND
-and REPEAT all refused an image, which made it a series that could not be used
-as one. `ImageSeries.java` is the one place that knows what counts as a pixel;
-the natives gained an arm each.
-
-The part worth carrying forward is the height. It is not stored: it is how
-many whole rows the pixels make, so three pixels in an image two wide are a
-row and a spare, the size says 2x1 and the length says 3. The spare is really
-there and the next pixel appended lifts the height. `ImageStorage` already
-worked that way; nothing above it did.
-
-Two things the canonical reference settled that reading would not have.
-FIND's /ONLY drops the alpha from the comparison, so a four-part tuple matches
-a pixel whose alpha differs — the same "look at the thing, not into it" that
-/ONLY means everywhere. And CHANGE does not lengthen an image: pixels past the
-end are dropped, because the width is fixed and a longer image would be a
-different shape.
-
-**The remaining twenty came apart into six defects, two of which nothing on
-the list was pointing at.**
-
-*An image written into an image is a rectangle, not a run.* Everything else
-CHANGE accepts is pixels laid down one after another, wrapping at the end of a
-row. An image goes in as a block: its corner at the position, each of its rows
-on one row of the target, and what will not fit dropped at both edges rather
-than spilled onto the next row. The position answered back still steps one
-pixel, because one image is one thing however many pixels it carries.
-
-*COPY of an image was not a copy.* It answered the same image, sharing its
-pixels, so blurring a copy blurred the original. Nothing caught it because
-every test that copied a picture went on to read the copy — REBOL's own suite
-only notices three assertions later, when a checksum taken before the copy no
-longer matches. COPY/PART with a pair takes a rectangle too, and a plain COPY
-takes whole rows: three rows and a spare come back as three rows.
-
-*BLUR was an approximation where the C is an algorithm.* It is Ivan Kuckir's
-three box blurs, whose widths are chosen so their combined spread matches the
-Gaussian asked for, each run along the rows and then down the columns. Alpha
-goes through with the colour. The radius comes down to half the shorter side,
-which on a picture of even width is one pixel wider than the row — so the C
-runs off the end of every row it blurs at that radius, and reads what the
-allocator left. On a picture of any size that is zeros, and the port reads
-zeros too: all three of REBOL's own checksums on a 256×256 photograph match,
-the widest radius included.
-
-*IMAGE-DIFF ignored its `/part` refinement entirely* — the arguments were
-declared and dropped. The clamping is the C's, verbatim, including the line
-that subtracts the size a second time where clipping would subtract only the
-corner: a rectangle one column too wide comes out with a negative width, and
-the answer is nought per cent for a pair that differs. REBOL's own test asserts
-that nought twice.
-
-*The two colour conversions threw away everything past the third part.* They
-write through the first three octets of the caller's own tuple and stop, so an
-alpha passes through untouched and a tuple of one keeps its length.
-
-*A specification that could not be built was quietly built anyway.* A negative
-dimension, a position of nought, a block of colours and anything left over are
-all refused now, and the construct form goes through the same code as MAKE
-from a block rather than handing the maker a bare pair.
-
-Two of the three BLUR assertions fail on a real 3.22.5 as well and are recorded
-in `fails-on-rebol-too.txt`: they ask for negative checksums from a CHECKSUM
-that stopped answering signed numbers, and the file was never updated.
-
-One thing outside `image-test.r3` came out of this. The runtime's own BMP
-writer refuses every thirty-two-bit picture it is offered, so JEBOL wrote
-twenty-four bits and lost the transparency. A real 3.22.5 writes the fifth
-header version with a mask per channel, and `JavaImages` now writes those same
-hundred and fifty-four bytes by hand.
-
-The C is `rebol3-source/src/core/t-image.c`, `n-image.c` and
-`u-image-blur.c`. JEBOL's side is `ImageSeries.java`, `ImageOperations.java`,
-`ImagePath.java`, the image branches of `Natives.java`, and `JavaImages.java`
-for the codec.
-
-### 3. LZMA and Brotli — 45 — DONE
-
-`compress-test.r3` no longer has a single line on `known-gaps.txt`. Both
-algorithms are ported, and the port is byte-exact against `./r3-head` rather
-than merely round-tripping with itself.
-
-**What was actually needed, against what this file predicted.** It said the
-honest size was 38 assertions that could not be cleared any other way, and that
-the other seven were incidental. Both halves were right, and the seven turned
-out to be two faults rather than seven:
-
-- A negative `/part` was clamped to zero instead of reading the span behind the
-  position. `Partial1` turns the count round; five of the seven asked for
-  `compress/part tail data 'zlib -4`, once per algorithm group.
-- GZIP threw the level away and always compressed at the default, so the two
-  assertions that quote level-zero bytes could not hold. The header's ninth and
-  tenth bytes were wrong too, which nothing asserted.
-
-**LZMA is byte-exact at every level.** `u-lzma.c` is the LZMA SDK of 2017-06-10,
-and the parts Rebol can reach are ported whole: the binary-tree and hash-chain
-match finders, the priced parse used from level five, the greedy one used below
-it, and the range coder. Verified on ten inputs from nothing to eighty-six
-kilobytes across all eleven levels, comparing the compressed bytes and the
-decompressed content with a real 3.22.5 in both directions. The dictionary is
-sized at whichever is smaller of the level's window and the data, which the C
-does not do and which changes no answer -- without it, compressing fourteen
-bytes at the default level allocates a hundred and thirty-four megabytes.
-
-**Brotli is complete: all twelve levels, byte-exact.** The decoder is RFC 7932
-in full. The encoder is every level from zero to eleven, verified against a real
-3.22.5 on Brotli's own test corpus -- twenty-four files including a twelve
-megabyte one -- plus a four megabyte source tree, three megabytes of noise, and
-about three thousand generated inputs across eight data shapes.
-
-Levels two to nine are the generic path: four hash tables, the look-ahead that
-puts off a match when the next byte offers a better one, the dictionary search
-on the encoder side, the greedy block splitter over three alphabets, the choice
-between one, two, three and thirteen literal contexts, and the meta-block writer
-in its three forms.
-
-Levels ten and eleven are a different algorithm again. They keep every match at
-every position rather than the best one, price each in bits, and choose the
-cheapest run of commands through the whole block; eleven then does it a second
-time with prices measured from what the first pass wrote. They also choose how
-distances are split between code and extra bits per meta-block, divide each
-alphabet by pricing rather than greedily, and give every literal block type
-sixty-four histograms which are then merged back down.
-
-Three test files cover it, one per group of levels.
-
-**Three surprises, all recorded because the sizes in this file are estimates.**
-
-1. **The count fell by more than 45.** Three assertions in `codecs-test.r3` came
-   off with LZMA: `load %units/files/test2-lzma.swf` and the two that compare it
-   with the deflate SWF beside it. Nothing predicted that; the SWF codec is
-   Rebol's own mezz and it simply started working.
-2. **Two more assertions moved to `fails-on-rebol-too.txt`, and they are the
-   trap this file warned about in the other direction.** `SAVE/compress` quotes
-   a zlib stream opening `78 9C`; a real 3.22.5 answers `78 DA`, because
-   libdeflate given no level reads that as its highest. Fixing JEBOL's default
-   to the slowest -- which is right, and makes the header match -- broke two
-   assertions that had been passing for the wrong reason. Item 2 of goal 21 is
-   narrower than it was: the header bytes now agree and only the deflate body
-   differs.
-3. **Both `feature-na` guards fired, exactly as predicted.** `#62` for Brotli
-   and `#83` for LZMA are the "this build has not got it" assertions, and a
-   build that has got it never runs them. Both are in
-   `fails-on-rebol-too.txt` with the `./r3-head` output that settles it.
-
-**Two faults a round trip would never have found**, both caught by comparing
-bytes with the canonical reference and worth repeating wherever the next compressor is
-ported:
-
-- LZMA's reversed bit trees are walked one way in the decoder and another in
-  the encoder if you transcribe the optimised macro literally. The two agree
-  for the first two bits and part company on the third, so short data round
-  trips perfectly and anything longer comes back subtly wrong.
-- Brotli's two prefix-code builders live in different files and each has a
-  `static SortHuffmanTree` of its own. They differ by one line: the one that
-  sorts a literal code does not break a tie between equal counts, the one that
-  sorts a command code does. Using the wrong one gives a code of the same shape
-  with two symbols swapped -- valid Brotli, decodes perfectly, wrong bytes.
-
-**And one the decoder had been carrying all along.** A prefix code over code
-lengths may have a single symbol in it, and such a code is read by spending no
-bits at all -- there is nothing to tell apart. Read as an ordinary prefix code
-it spends a bit, and everything after it is then read at the wrong offset. The
-decoder had been reported as checked against 132 real streams at all twelve
-levels; every one of them was short, and the first stream that needs the special
-case is about fifty kilobytes. Writing levels two to nine produced such a stream
-within an hour and the round-trip test caught it. Counting samples is not
-coverage, and the rule that came out of it is in `CLAUDE.md`.
-
-**Two more the arithmetic was carrying.** Both were found by the top two levels
-and both had been quietly wrong for every level above three.
-
-The C's table of logarithms for the first 256 whole numbers is an array of
-double whose every literal is written with an `f` on the end, so the compiler
-rounds each to float and only then widens it. Two hundred and forty-seven of the
-two hundred and fifty-six therefore differ from the true logarithm by about one
-part in ten million. This port had computed them instead. Nothing below level
-ten noticed, because the numbers those feed are compared against thresholds
-hundreds of bits wide; levels ten and eleven compare costs that differ in their
-last bit, and were wrong on any input over about forty kilobytes.
-
-Java has no `log2`, and `log(v) / log(2)` disagrees with the C on twenty-three
-of every hundred whole numbers. `BrotliLog2` computes it in pairs of doubles
-instead. It agrees with the C on all but a hundred and sixty values in three
-million -- and on those hundred and sixty the C is the one that is wrong, being
-a last bit away from the correctly rounded answer. Which means byte-exactness
-with "a real 3.22.5" is, in principle, platform-dependent on values whose
-logarithm falls within a hair of halfway between two doubles. It has never come
-up in practice and there is nothing to be done about it if it does.
-
-**And a lesson about whose test data to use.** Levels ten and eleven passed
-every input this project could invent -- text, noise, repetition, mixtures,
-three thousand fuzz cases -- with a constant wrong that makes level eleven
-divide its blocks three times where the C divides them ten. Three files in
-Brotli's own corpus catch it. Thirty kilobytes of one of them is now in
-`src/test/resources/brotli/`, because nothing generated here does the job. The
-twelve megabyte file in the same corpus then caught two more: an array sized to
-the C's starting capacity rather than what it grows to, and a distance setting
-that must not carry from one meta-block to the next.
-
-### 4a. The crypt port, on the ciphers the JVM already has — 16 — DONE, and it was 28
-
-`crypt-port-test.r3`, `crypt-port-gcm-test.r3` and four lines of `codecs-test.r3`
-have come off the list: 435 entries down to 407. Twelve more than the estimate,
-because the file's own chunked-input tests sit outside the `foreach` that the
-catalogue guards and ran as soon as the port existed.
-
-**Three things were built, not one.** `make port!` now hands its specification
-to `sys/make-port*` like `MT_Port` does, so a block, a url, a word, a file, an
-object and a port all make one; what is no specification at all answers
-`invalid-spec` and a specification whose scheme nobody serves answers
-`no-scheme`. `system/catalog/ciphers` holds the seventeen the JVM can be made to carry.
-`CryptPort.java` is the port, and `Interpreter.THE_CRYPT_SCHEME` quotes the
-scheme's INIT out of `init-schemes` so the three ways of naming an algorithm
-stay REBOL's.
-
-**Two tests were asserting something a real Rebol refuses.**
-`make port! system/standard/port` used to answer a port here because MAKE
-wrapped an object; a real 3.22.5 raises `no-scheme`, because the object names
-none. Both now say `to port!`, which is the spelling that wraps.
-
-**Weeding the spec afterwards found three defects fifty passing tests had
-missed**, and they are the reason to run it rather than treat it as a
-formality. Opening never re-checked the algorithm, so a port closed, given an
-unserved algorithm in its specification and reopened would open with no cipher
-behind it and take a NullPointerException to the top of the interpreter on the
-next write. Galois counter mode put the tag in place of the cipher text instead
-of after it, so a TAKE with no READ before it lost the message — invisible
-because REBOL's own test always reads first. And a second write to a Galois
-port re-enciphered everything gathered so far, handing the first bytes back
-twice. All three are fixed, tested, and were confirmed against `./r3-head`
-before and after. Two more gap entries came off with them.
-
-**The SAFE block did not clear the way this goal predicted.** The crypt port
-unblocked its encryption and four of the thirteen pass, but the ninth assertion
-onwards needs SET-USER, `system/user/data` and a user's storage file, which is
-neither 4a nor 4b. `codecs-test.r3` owes ten entries and they are a user-account
-goal nobody has written down yet. One of them, #222, answers false inside the
-suite while the same round trip is byte-identical to `./r3-head` when run on its
-own — worth a look before assuming it belongs with the other nine.
-
-### 4a as it was scoped, kept because 4b still leans on it
-
-`crypt-port-test.r3` used to stop at its first line:
-
-    port: open make port! [scheme: 'crypt algorithm: 'AES-128-CBC key: #{...}]
-
-`make port!` of a block was refused, and there was no `crypt` scheme.
-Everything after that was `port is unset`. That one blocker stood in front of
-all forty assertions in the file, and in front of the eight in the three files
-beside it, which is why building the port was the whole of this goal and 4b is
-only about the algorithms underneath it.
-
-**Which 16.** The AES vectors, which is everything in the two files that is not
-Camellia and not CCM:
-
-    11  crypt-port-test.r3   FIPS-197 test vectors
-     2  crypt-port-test.r3   NIST test vectors (ECB)
-     1  crypt-port-test.r3   NIST test vectors (CBC)
-     2  crypt-port-gcm-test.r3
-
-**And thirteen more in goal 1 behind it.** `codec-safe.reb` opens a crypt port
-by hand to encrypt what it saves, which is why the thirteen SAFE entries left
-in goal 1 all stop at `no-scheme: crypt`. It picks its cipher by preference and
-asks for `chacha20` first, which the JVM has, so they clear with this half
-rather than with 4b. Nothing else in the suite is waiting on either. *(Four of
-the thirteen cleared. See the note above: the rest want SET-USER.)*
-
-**`system/catalog/ciphers` was empty here and holds 42 entries in a real
-Rebol** — AES, Camellia and ARIA each in ECB, CBC, CCM and GCM at three key
-widths, then ChaCha20, ChaCha20-Poly1305 and four DES spellings. Filling it was
-part of this goal and it is what makes the split legible: a cipher in the
-catalogue that the port cannot serve is the failure mode to avoid, so it names
-only what is served and lets the rest say so. **4b's job is to move names
-across that line.**
-
-**What the JVM gives you, measured rather than assumed.** AES in ECB, CBC and
-GCM, ChaCha20, ChaCha20-Poly1305, DES and 3DES are all one
-`Cipher.getInstance` away. That is 18 of the 42, and fourteen of them went in
-the catalogue: ChaCha20-Poly1305 is left out because REBOL drives it through a
-two-step protocol of its own that does not map to a JVM AEAD, and it has no
-assertion behind it here. The three AES-CCM entries came later, from 4b, and
-are built rather than found — so the catalogue is seventeen.
-
-**Galois counter mode needed a trick worth knowing.** The port hands the
-computed tag back for the caller to compare; the JVM compares it itself while
-decrypting and throws when it disagrees, so it will not hand one back. Counter
-mode is its own inverse, so enciphering the cipher text recovers the plain
-text, and enciphering *that* produces the tag the caller is owed. Two passes,
-no hand-written cryptography. Tags are always computed at sixteen bytes and cut
-down, because the JVM's parameter object refuses anything under twelve and
-REBOL's own tests ask for four.
-
-The pattern followed is `ChecksumPort.java` and the checksum scheme in
-`Interpreter.java`: a scheme registered through the borrowed `sys/make-scheme`,
-an actor name in `SCHEMES_THIS_BUILD_SERVES`, and open/read/write/update/close
-branches in `Natives.java`.
-
-### 4b. The ciphers the JVM has not got — 32 — DONE
-
-Every crypt-port file is off the list. `crypt-port-test.r3`,
-`crypt-port-camelia-test.r3`, `crypt-port-ccm-test.r3` and
-`crypt-port-gcm-test.r3` owe nothing between them, and
-`system/catalog/ciphers` names all forty-two a real 3.22.5 does, in the same
-order.
-
-**Four things were written out, because no JVM provider has them.** Counter
-with CBC-MAC is a mode over a block cipher, so it came first and cheapest.
-Camellia and ARIA are whole block ciphers and each arrived as twelve catalogue
-entries at once. ChaCha20 with Poly1305 is none of those — an authenticator
-built on arithmetic modulo a prime, joined to a stream cipher — and it was the
-only one with a consumer: `prot-tls.reb` names it first when it builds its
-cipher suites.
-
-**Counting with Galois moved off the JVM along the way.** The JVM checks the
-tag itself while deciphering and will not hand one back, where this port hands
-it to the caller to compare, so AES-GCM had been deciphering twice over.
-`CounterWithGalois` does it in one pass and serves Camellia too.
-
-**ARIA is done too, and it closed the catalogue.** Twelve more entries with no
-assertion anywhere behind them -- it was the cheapest cipher left and the least
-useful, and it went in because a catalogue that names forty-two and serves
-thirty is the same fault this project keeps finding elsewhere.
-`system/catalog/ciphers` now matches a real 3.22.5 in length and in order.
-
-It was the third cipher through the same seam, and it needed no mode written
-for it: `Aria.java` is the algorithm and the twelve pairings arrived together.
-Its key schedule is the fiddlier of the two written out here -- four derived
-words rotated by four different amounts across a hundred and twenty-eight
-bits, in the opposite byte order from the one they are stored in -- so the
-thousand-round walk earns its keep more here than anywhere.
+### 11. What the suite does not ask
+
+**The suite is the measure, and it is not the whole surface.** Running all 930
+combinations of MAKE and TO against fifteen target types and thirty-one source
+values, through JEBOL and through `./r3` side by side, found 140 answers that
+differ. Rebol's own suite asserts most of those families and names them in
+`known-gaps.txt`, so they were already counted. Some it never asks at all, and
+those had no name until the sweep: `to integer! #FF` answered a refusal where a
+real Rebol reads the digits as hex and says 255.
+
+**A hundred and thirty-nine of the hundred and forty are fixed.** What is left
+is one answer, and it is a quirk rather than a rule:
+
+```
+to paren!  1   a typeset converted to a paren comes back a *block*, because
+               the C's `Set_Block` writes REB_BLOCK whatever type was asked
+               for. JEBOL returns the paren that was asked for, which is
+               arguably the better answer, and no assertion covers it
+```
+
+The decimal, percent and binary columns went by porting the make-and-to switch
+of `T_Decimal`, of `make_binary` and `Scan_Decimal` with them. The path column
+went by fixing molding rules rather than any conversion. The string column went
+by porting `make_string`, which turned out to be about FORM: an any-string is
+copied as it stands so a tag loses the brackets FORM keeps, a path keeps its
+slashes, and `Form_Object` writes one field to a line with no `make object!`
+around them -- while *molding* each field's value, which is the part of it that
+cannot be guessed. And the last seven went with one line: **a nought byte ends
+the source**, so `make block! #{31 00 32}` is `[1]` and an empty one is `[]`
+rather than a block holding a nought.
+
+**Both ported columns turned out to be a list and not a rule**, and reading
+them as a rule is what had gone wrong. Anything with bytes underneath looks
+convertible to a binary, and a percent, a paren, a path and an issue all have
+bytes and are all refused, where the decimal, block, string and word they
+resemble are taken.
+
+**The path column was not a conversion problem at all.** Thirty-nine of the
+forty-six were one molding rule read too loosely -- `isAnyWord()` where the C
+says `IS_WORD` -- which wrote `a:/b`, `/a/b` and `#a/b` in a form that does not
+read back. Worth remembering when a column of the sweep looks large: count the
+causes, not the cases.
+
+**A question never asked reads as a wrong answer.** Twice more, and both in
+bitsets. `pick` on one accepted a char and returned false for everything else,
+so `pick charset "a" 97` said the set does not hold `a` -- where the C shares
+one arm between `A_PICK` and `A_FIND` and `Check_Bits` takes a char, an
+integer, a string, a binary or a block of ranges. And `zero?` refused a bitset
+outright although the C declares its argument as a bare `value`: for a bitset
+it is not a comparison but `Is_Zero_Bitset`, which asks whether every byte is
+what an empty set would hold -- nought, or `0xFF` where the set is written as a
+complement. Reading that arm also turned up a range test over the datatype
+table, so a zero pair and a zero tuple are zero too.
+
+**COPY of a map returned the same map.** Not a suite gap -- a data-corruption
+bug: `c: copy m` then `c/a: 99` changed `m/a` too, because the `copied` switch
+had a case for every container except a map and a map fell to
+`default -> original`. The same shape as the bitset COPY bug already recorded in
+`BitsetValue.duplicate`, where a shallow copy let the url parser scribble on the
+catalogue's own charset.
+
+Chasing it turned up two more. **`same?` compared maps and bitsets by content**,
+so a map was the same value as its own copy -- everything holding its contents
+somewhere answers by *where*, which is the whole of the C's mode three. And
+**`/types` and `/deep` were one question when they are two**: `/types` says
+which datatypes are duplicated rather than shared, `/deep` says whether to keep
+doing it inside what was duplicated. Without `/deep` a copied member is copied
+and its own contents stay shared, which is what
+`if ((types & CP_DEEP) != 0)` guards. Sixty-three of `copy-test.r3`'s
+sixty-four assertions came off together, and it is now down to one.
+
+**MOLD/ALL is a flag every value reads, not a choice made once.** The last
+eight went with it. `MOPT_MOLD_ALL` sits on the C's mold state, so a date below
+it writes ISO and a typeset writes its construct form, and a path that has to
+fall back to a construct sets the flag for its own contents whether or not the
+caller asked for it. JEBOL had no molder object to hang a field on, so the flag
+is a thread-local beside the two the file already keeps for nesting depth and
+recursion.
+
+**The datatype enum was not in `types.reb` order and now is.** Forty-three of
+the fifty-eight sat somewhere else, which is invisible until a typeset molds
+itself: a typeset writes its members by walking the table, so
+`mold any-string!` was `[string! file! url! email! tag! ref!]` where a real
+Rebol writes `[string! file! email! ref! url! tag!]`. Reordering the enum fixed
+every typeset at once and moved nothing else -- the gate was clean and
+`system/catalog/datatypes` still reads in order. The enum's own doc now says
+the order is not free to change, and why.
+
+**Twice now, one JEBOL helper stood for two different C functions.** MAKE and
+TO were one `convertedTo`; FORM and the arm TO STRING! uses were one
+`runTogether`. Both looked like tidy sharing and both gave wrong answers,
+because the C has two functions for a reason and the difference is exactly what
+gets lost. The second one was worse: taking a tag's brackets off in the shared
+helper broke AJOIN, AJOIN/with and COMBINE in the same commit that fixed
+TO STRING!. When the C has two entry points, JEBOL wants two as well, even when
+they agree on nearly everything.
+
+**And the sweep does not replace the suite.** A sweep builds values and asks
+about them, so every value in it stands at its head. `mold next 'a/b` is a path
+standing at its second of two, and that is what caught the same rule reading
+the remaining count where the C reads the whole series length. All 930 cases
+agreed and mold-test.r3 still said no.
+
+The sweep itself is worth repeating on other datatypes. It is cheap, and it
+found two things that four separate readings of the C had not. See
+`docs/rebol-findings.md` entries 21 and 22, both of which came out of one run.
 
 ---
 
-#### The package, which is the part worth keeping
+### 12. The 32 prelude forks
 
-`org.jebol.domain.cipher` holds the idea that made twelve entries arrive for
-one cipher. `OneBlock` is a block cipher and nothing else, sixteen bytes in and
-sixteen out; `BlockModes`, `CounterWithCbcMac` and `CounterWithGalois` take one
-and cannot tell whether it came from the JVM or from `Camellia`. `Camellia` and `Aria` are the two block ciphers
-written out; `Poly1305` and `ChaChaWithPoly1305` sit beside them because that
-pairing is not a block cipher at all.
+`prelude.reb` defines 36 words and Rebol defines 32 of them in `src/mezz` too:
 
-`CryptPort` stays in `eval` because it is a port rather than a cipher. The one
-place the families differ is `theBlockCipherBehind`, and the one place a
-protocol differs is the header: two modes read it from the front of a write
-told apart by a length, and ChaCha20-Poly1305 takes a whole write and derives
-its nonce from it.
+```
+all-of  any-of  body-of  cause-error  clean-path  clos  closure  collect
+default  dirize  does  empty?  enum  funco  has  join  keys-of  map  max  min
+rejoin  script?  spec-of  split-path  suffix?  title-of  to-word  types-of
+undirize  values-of  words-of  wrap
+```
 
-### 5. What is left of the file ports — 36
+Audit by identity rather than by datatype: for each one, is JEBOL's version
+the same function, and if not, why was it forked?
 
-`port-test.r3`. The file and directory schemes work now
-(`SeekableFilePort.java`); these are the remainder.
+---
 
-**Two stops, re-derived with the fixed `SuiteStops` (goal 20).** This goal has
-now said three different things about them, so here is the measured answer:
+### 13. Loose ends
 
-    pwd = to-rebol-file get-env "PWD"   -> ../ is outside what this port allows
-    open %issue-2447                    -> a port that could not be opened
+**`task!` is a datatype word and not yet a datatype.** `task!` answers
+`#(datatype!)` on both, but `make task! [1 + 1]` gives `#(task!)` on a real
+Rebol and `cannot-use` here. It is the last one that is not really there.
 
-The first is not an environment problem, which is what it looked like while the
-tool had no environment installed. `get-env "PWD"` answers; the working
-directory it names sits outside the temporary root the harness confines the run
-to, and the sandbox refuses to walk up to it. Decide what a rooted interpreter
-should say its working directory is — that is the question, and it is not goal
-8's.
+**Five scheme names R3 registers and JEBOL does not.**
 
-The rest are wrong answers, so sweep the file: `scripts/sweep.py port-test.r3`.
-23 are in "file port" and 14 in "directory port".
+```
+callback  clipboard  midi  serial  udp
+```
 
-### 6. The checksum port — 34
+`file`, `dir`, `checksum`, `crypt`, `system` and `bundled` are served now.
+`callback`, `clipboard`, `midi`, `serial` and `udp` are the ones left.
 
-`checksum-test.r3` has one stop, and it is environment-dependent:
-`file-checksum system/options/boot` — the boot path is outside the sandbox
-root, so opening it fails. Decide what a sandboxed interpreter should say
-about its own boot file; the honest answer may be that this assertion belongs
-in `fails-on-rebol-too.txt` reasoning, or that `system/options/boot` should
-name something inside the root.
+Still unsettled, and older than the schemes: the command-line REPL grants only
+WINDOWS, so `read %README.md` answers `no-service` there. Whether that is the
+design or a gap in the CLI has never been decided.
 
-**The other 28 are not "the Checksum port failing on its merits", which is what
-this goal used to say.** They are the `xxh3` and `xxh128` blocks, which JEBOL
-never enters because it has not got those algorithms — the same shape as goal 3,
-and subject to the same correction: declaring them absent retires nothing,
-because an unreached assertion is scored as a failure.
+**Four fields of `access-os` answer `not-here`** -- `uid`, `euid`, `gid`,
+`egid` -- where a real Rebol answers a number. The JVM has no portable way to
+ask. `pid` works.
 
-**Do not settle a checksum-port question on a single `./r3-head` run.** The
-canonical reference is not deterministic on this file. Running `checksum-test.r3` through
-Rebol's own runner fails 13 assertions in roughly one run in eight, reproduced
-from cold in two unrelated directories with byte-identical inputs; the failing
-one is `--assert not open? close port`, so a real Rebol sometimes reports a
-closed checksum port as still open. Nothing on `known-gaps.txt` depends on it
-today, but two audit passes disagreed with each other because one hit a bad run.
-Run it three times.
+**55 open questions across nine spec files**, the heaviest being
+`natives.allium` with 19.
 
-### 7. ENBASE, DEBASE and their parts — 29
+---
 
-`enbase-test.r3`. One stop — `load` of bytes that are not valid UTF-8,
-`#{B7D3}` — and then wrong answers.
+### 14. Graphics -- fourteen DRAW commands
 
-One is already isolated and small: **`enbase/url` must not pad.**
+**DRAW renders 22 of R3's 36 commands.** The fourteen it does not:
 
-    enbase/url "a" 64     ; r3 "YQ"    JEBOL "YQ=="
-    enbase/url "ab" 64    ; r3 "YWI"   JEBOL "YWI="
+```
+arrow  clip  gamma  grad-pen  image  image-filter  image-options
+image-pattern  invert-matrix  line-pattern  spline  text  transform  triangle
+```
 
-The URL-safe alphabet leaves the padding off; the plain one keeps it. The
-decoder already knows this (see `octetsOfBase64` in `Encodings.java`, which
-lets a URL-safe group end short); the encoder does not.
+`image` and `text` are the two that make pages look wrong rather than plain.
 
-"debase/part" is 21 of the 29 and is worth a look as one piece.
+Also here: the stroked-curve comparison problem, the 522 lines of old markup
+path, VID, Android, and the events-name-the-wrong-window one.
 
-### 8. The environment — 9 — DONE
+---
 
-`os-test.r3` has no line left on `known-gaps.txt`. The "unblocks others" in the
-old title was wrong — it came from `SuiteStops` reporting stops in
-`port-test.r3` and `module-test.r3` that do not happen under the real gate. See
-goal 20.
+### 15. Code from outside is not authenticated -- the TLS client
 
-Both causes were real and both are fixed. The three environment natives take a
-`word!` as well as a `string!`, like a real Rebol. And SET-ENV exists: the old
-refusal said "a JVM cannot change its own environment", which is true of the
-process and beside the point — what a script means by setting a variable is
-that GET-ENV answers it afterwards and a child process sees it, and a JVM can
-do both. `ProcessEnvironment` keeps a per-port overlay over the host's names,
-and `JavaProcesses` hands the whole view to a child rather than letting it
-inherit, so a name the script took away is missing from the child too.
+**Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
+failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
+suite asks whether a certificate was checked.
 
-### 9. Modules and IMPORT — 12
+`read https://` works here now, and `import` fetches over it. What that
+transport gives is confidentiality against somebody listening and **nothing
+against somebody in the middle.** Three holes, each read off the source:
 
-`module-test.r3` stopped nine times, and every one came back to
-`system/options/modules` being none.
+1. **The chain is never checked.** `decode-certificates` reads the list, takes
+   the first certificate's public key, and stops. No issuer, no chain building,
+   no expiry, no hostname match.
+2. **There is no trust anchor to check it against.** No trust store anywhere in
+   the source. mbedTLS is vendored but only the primitives -- `oid.c`,
+   `ecp.c`, `md.c`, `asn1parse.c`. `x509.c` is not among them; the handshake is
+   written in REBOL.
+3. **The one signature check there is does not stop anything.**
+   `decode-certificate-verify` acts only for signature type 2052 and ends:
 
-**Both halves of that are fixed, on 12 September 2026, because goal 11 needed
-them.** IMPORT looks in three places in order -- what is already loaded, a file
-in the modules directory, and the address in `system/modules`, which it
-downloads and saves -- and two of the three were unreachable here:
+        unless rsa/verify/pss :key :to-sign :signature [
+            log-error "Certificate validation failed!"
+        ]
 
-- **`system/options/modules` was none.** `sys-start.reb` writes it in one line,
-  `modules: attempt [make-dir/deep join data %modules/]`, and nothing else
-  decides it. It is set when a host installs a filesystem *and* the data
-  directory is there. The second condition is JEBOL's own: the line above it in
-  `sys-start.reb` makes the data directory, and JEBOL does not, because the path
-  it defaults to is the operator's own and a confined filesystem reads that path
-  as somewhere else entirely -- making it eagerly put a folder named after the
-  operator's home inside every sandbox, which three tests of what a fresh
-  directory contains noticed at once.
-- **`system/modules` started empty.** `sysobj.reb` builds it as a table of
-  addresses, and a module that loads replaces its own -- `repend system/modules
-  [name module]` is the last thing LOAD-MODULE does, so the table is both the
-  list of what may be fetched and the record of what has been. The table is put
-  down before the library loads, for that reason.
+   `log-error` is `sys/log/error`, which prints. A failed verification is a log
+   line and the handshake carries on. And it verifies against the key from the
+   certificate the server itself sent, so even aborting would prove only that
+   the server holds its own private key -- not who it is.
 
-Three of `module-test.r3`'s entries came off with it, and `import 'thru-cache`
-now downloads, saves and imports.
+So a proxy presenting a certificate of its own is accepted, and a module
+fetched through one is evaluated. That is the other half of the note on IMPORT
+above: a checksum answers "is this the code I expected", and this answers "am I
+even talking to who I think" -- and neither is being asked.
 
-**Two things were left out of the table on purpose**, and the reasoning is in
-"A standing note: IMPORT fetches and evaluates code over the network" above.
-The fourteen compiled extensions are gone because nothing here can load a
-shared library -- each was a round trip to github ending in failure, and several
-named things this build has anyway. The nineteen addresses for modules JEBOL
-already vendors should go the same way and have not yet; that is the next piece
-of this goal.
+#### The decision this needs first
 
-### What is left
+**JEBOL's rule is to be faithful to the C, and here faithfulness reproduces the
+hole.** `prot-tls.reb` is Rebol's file, loaded rather than rewritten, and that
+rule has earned its keep everywhere else. It cannot hold here: a port that
+silently accepts any certificate is not a faithful port of a security decision,
+because Rebol did not decide this -- hand-rolled TLS is hard and this is what it
+looks like when it is not finished.
 
-Twelve entries in `module-test.r3`, and they are about IMPORT itself rather than
-about where a module comes from. Read them with `SuiteStops` before planning:
-the nine stops this goal was written around are gone, so the list is a different
-list now and has not been re-derived.
+Which leaves where the divergence goes, and that is the design question:
 
-Two more defects turned up on the way and are fixed, both found by an IMPORT
-that got further than before:
+- **A host port, like `FilePort` and `NetworkPort`.** Validation is a host
+  concern -- the trust anchors belong to the machine, and the JDK already has
+  them in `cacerts`. A `CertificateAuthority` port the domain owns and the
+  adapter implements would fit the architecture exactly, and a host that
+  installs none gets the refusal rather than the hole.
+- **Where the protocol would call it.** Not by editing the vendored file. The
+  candidates are the `CRT` codec, which JEBOL could serve as a native that
+  validates as it decodes, or the crypto natives `rsa/verify` and
+  `ecdsa/verify` that the protocol already calls -- though neither is given the
+  hostname, which is half of what has to be checked.
+- **What a failure does.** Refusing the connection is the only answer that
+  helps. Anything that logs and continues is what is there now.
 
-- **UPPERCASE and LOWERCASE took only a quoted string**, where the declaration
-  says `string [any-string! char!]`. The module loader names a downloaded file
-  with `lowercase second split-path source`, and SPLIT-PATH of a url answers a
-  file.
-- **TO-REAL-FILE dropped the trailing slash from a directory.** `OS_Real_Path`
-  stats what it resolved and appends one -- the comment beside the line is the
-  rule. Rebol's cache module opens with `join to-real-file any [get-env "TEMP"
-  so/data] %thru-cache/`, and without the slash its whole cache went to a
-  directory named by running two names together.
+What is already built to work with: the `CRT` codec parses `issuer`,
+`valid-from`, `valid-to`, `subject`, `public-key` and `signature` out of a
+certificate, so the fields are in hand; `rsa/verify` and `ecdsa/verify` work;
+and `Check_Security(SYM_NET, POL_EXEC, ...)` in `p-net.c` means a host can
+already refuse the socket outright, which is the blunt mitigation until this is
+done.
 
-### 10. The elliptic curves — 27
+**Until it is done, say so where it matters.** `read https://` reads as a
+secure operation and is not one. A host embedding this and reaching anything it
+does not control should know that before it does.
 
-`dh-test.r3` stops at
+---
 
-    foreach ecurve system/catalog/elliptic-curves [...]
+### 16. Code from outside is not verified -- no checksum on a fetched module
 
-with "ecdh does not allow none! for its public-key argument". The catalogue is
-not the problem — JEBOL lists all thirteen curves a real Rebol does, secp192r1
-through curve448 — so `ecdh/init` is not answering a key for at least one of
-them. `EllipticCurveKey.java` is the JEBOL side; the C is `n-crypt.c`.
+**Nothing crosses the wire today**, which is why this is a goal rather than a
+live hole: the thirteen modules this build has no other way to reach are bundled
+with it and read through the `bundled:` scheme, and `system/modules` names
+nothing remote. The moment an address points outward again -- a host adds one, a
+module this build does not carry is wanted, an extension becomes loadable -- the
+fetch has to be verified, and **a checksum must be implemented on that path
+before it is used.**
 
-**Two of the thirteen were added on 12 September 2026** because goal 11's TLS
-work needed them: curve25519 and curve448, which are the first two entries of
-the TLS scheme's `supported-groups` and so the ones a client hello reaches for.
-They are a different shape from the rest and that is the part worth knowing —
-they publish one coordinate on its own, 32 bytes and 56, with no lead byte
-saying the point is uncompressed, because their arithmetic never needs the
-second coordinate and there is no other way to write it. The JDK serves them
-through `XDH` rather than `EC`, and the wire wants the coordinate
-least-significant byte first where the JDK hands over a plain number.
+What is already there, and what is not:
 
-Five are served now and eight are not. Measured against `./r3-head`, which
-answers for all thirteen:
+- **`import/check hash`** exists and is the right mechanism. `load-module`
+  declares `hash [binary!]` and takes it from the caller, so the expected digest
+  comes from outside the thing being checked.
+- **A script's own `checksum:` header field is verified** by `load-header`,
+  which answers `bad-checksum` on a mismatch. **That is not the same thing and
+  must not be mistaken for it.** The file asserts its own hash, so a file that
+  was tampered with carries a tampered hash and passes. It catches corruption in
+  transit and nothing else.
+- **`download-extension` verifies nothing.** It is `content: read source` then
+  `write file content`, with no digest between them. That is the hole.
 
-| served | not served |
+So the requirement, when the path is next used:
+
+1. `system/modules` carries an expected digest beside each remote address, not
+   only the address.
+2. The fetch verifies the bytes against it **before** they are written to the
+   modules directory and **before** anything is evaluated. Writing an unverified
+   module to disk is most of the damage already done, because the next run finds
+   it as a local file and never fetches again.
+3. A mismatch fails the import. It is not a warning and not a log line.
+4. No digest recorded for an address means the address is not usable.
+
+A bundled module is a different and much weaker case: it cannot change under a
+running system, so a digest there guards a corrupted build rather than an
+attacker. Worth having, not urgent.
+
+**Goal 1 is the other half of this.** A checksum answers "is this the code I
+expected"; authenticating the server answers "am I even talking to who I think".
+Neither is being asked, and a fetch wants both.
+
+Still to decide: whether a host should be able to refuse the fetch outright, the
+way it refuses the filesystem and the network. A host serving untrusted scripts
+wants that more than it wants either check.
+
+---
+
+### 17. The type-major refactor
+
+**The original complaint, and much the largest piece left.** One `t-*.c` per
+increment, bitset as the pilot.
+
+The graphics work left a hint about the shape: `PaintInstruction` is sealed, so
+adding a kind broke every renderer's switch at compile time. `VectorValue`
+proved it again -- adding it to `SeriesValue permits` made the compiler
+enumerate every arm that needed work. That is what the action seam wants.
+
+---
+
+### 18. The boot -- 343ms cold, 72ms warm
+
+**343ms for the first interpreter, 72ms once the JVM has settled.** A
+7900-test run pays the 72ms per class, and that is the floor rather than the
+machine.
+
+Pool first, then library caching. The series byte accounting behind STATS is
+already in that allocation path, and it costs about 2ms of the 72.
+
+---
+
+### 19. LLM-friendly MCP tools
+
+**The reader will only ever be an LLM, and that decides the design.** A model
+does not misunderstand, it infers confidently from training data that is mostly
+REBOL 2. It has no faculty for caution, so a warning it is asked to heed is a
+warning that gets ignored under task pressure. **Every warning has to become a
+mechanism or it is not there.** And it reads exactly one channel without being
+asked to: the text of the error it just caused.
+
+#### Before any of the tooling
+
+Nothing below pays until a dialect can be written, run, and diagnosed in one
+command. All of this is hours.
+
+- **A dialect that fails loudly.** A rule that does not match answers false, and
+  the natural shape of the calling code drops it. `parse [add 200 grams of flour
+  wibble]` against a four-command grammar returns `[200 grams flour]` with no
+  error. A person notices the answer looks short. A model accepts it, and there
+  is no second line of defence.
+- **One worked dialect, thirty lines, with a test.** DELECT matches by type and
+  ignores order; PARSE matches by position. Nothing states that choice anywhere,
+  so the first move is a guess, and the guess is PARSE because that is what the
+  training data talks about.
+- **Ship `using-jebol.md` inside the jar, printed by `--manual`.** Written to
+  standard output, exit 0. The distribution now carries the file, `LICENSE` and
+  `NOTICE`; the flag does not exist yet.
+
+#### The dialect schema, generated
+
+A DELECT command is not a production rule. It is a record with typed optional
+slots that arrive in any order, so what falls out of `system/dialects` is a
+schema rather than a grammar -- and a schema is the shape a model has seen ten
+thousand times in tool definitions.
+
+Generate it by walking a booted interpreter, never by parsing `dial-*.reb` out
+of the mezz. That is the trap `c-surface.py` fell into: it read only the boot
+files, could not see the 54 natives declared in C comments, and reported
+MISSING: 0 while `binary` was absent.
+
+Make it a test rather than a script, in the shape of `SurfaceReportTest`, so a
+change to the table fails the build instead of shipping a binary that describes
+a dialect it no longer has. The types come from R3's table and stay faithful.
+The descriptions -- which R3's objects do not carry, and without which a model
+produces acceptable nonsense -- live in a file beside it, and the same test
+fails when a command has none.
+
+Its first customer is the error message, not the server: with the schema, a
+failure can name the acceptable set at the position it stopped.
+
+Two things to read before writing it: what a command's value looks like inside
+a `system/dialects` object, and whether the table marks a slot that is itself a
+sub-dialect. `ShapeSubDialect` says DRAW nests. `Delect.read` and
+`u-dialect.c` say whether the table knows.
+
+#### Three tools
+
+| Tool | Answers |
 | --- | --- |
-| secp256r1, secp384r1, secp521r1, curve25519, curve448 | secp192r1, secp224r1, secp192k1, secp224k1, secp256k1, bp256r1, bp384r1, bp512r1 |
+| `run` | evaluate under a declared fixture -- conclusion, value or error, services asked for, port calls made |
+| `match` | this block against this grammar: matched, or where it stopped and what was acceptable there |
+| `word` | what this word takes, what it does, whether it is reliable in this build |
 
-The Brainpool three were never in the JDK's default provider. The narrower NIST
-and Koblitz curves were withdrawn from it — a JDK 16 change, not something
-JEBOL chose — so serving them means carrying the curve parameters and the
-arithmetic, or none of them answering, which is what the C already does for a
-build without a curve.
+`run` replaces a validator returning a boolean, which is the trap: a model reads
+"valid" as "correct" and stops. Validation is not separable from execution here
+-- a word means nothing until it is looked up, PARSE rules live in words, and
+blocks are built by `compose` at runtime -- but it does not need to be. It is
+execution with the effects removed, and the ports are already that seam. The
+fixture defaults to nothing existing and nothing granted, so the laziest
+possible call still answers "it asked for FILES and you granted none".
 
-### 11. Sweepable files that run clean — 132 between them — DONE
+A run covers a path, not a program, because a stub has to answer and the answer
+picks the branch. Say so in the result rather than implying otherwise. Forking
+both branches is not viable: `if` is a function here, so are `either`, `case`
+and any user word that wraps them, and finding the branch points is the problem
+being solved.
 
-Worked on 11 and 12 September 2026. All 132 are gone and all ten files are
-empty.
+**The descriptions carry the doctrine, because they are the one text a model
+cannot skip.** `run`'s carries the capability model and the six conclusions.
+`match`'s carries DELECT against PARSE in one sentence. `word`'s carries the
+warning that a clean run is not a correctness proof.
 
-| file | started | left |
-| --- | --- | --- |
-| `func-test.r3` | 29 | 0 |
-| `unicode-test.r3` | 21 | 0 |
-| `time-test.r3` | 15 | 0 |
-| `map-test.r3` | 12 | 0 |
-| `make-test.r3` | 10 | 0 |
-| `file-test.r3` | 9 | 0 |
-| `thru-cache-test.r3` | 10 | 0 |
-| `parse-test.r3` | 9 | 0 |
-| `vector-test.r3` | 9 | 0 |
-| `lexer-test.r3` | 8 | 0 |
+**The results carry more than the descriptions.** "Asked for FILES, not
+granted" and "used a word with failing assertions in this build" arrive unbidden
+at the moment they matter. The description sets the frame once; the results
+correct the model every call.
 
-**The opening sentence of this goal was wrong about three of the files, and the
-wrongness is the kind worth recording.** "None of these stops, so every entry
-is a wrong answer" was read off a sweep, and a sweep only shows what runs.
-Nine of `parse-test.r3`'s entries were behind a guard a real 3.22.5 fails too,
-and two of `file-test.r3`'s were the Windows arm of a platform switch on a Mac;
-all eleven are in `fails-on-rebol-too.txt` with the `./r3-head` session that
-settles them. The ten in `thru-cache-test.r3` were behind a guard that was false
-here, so none of them had ever run.
+No embed API in any of it. A caller reaching an MCP server is writing REBOL, not
+Java, and sections 3 and 6 of `using-jebol.md` would be context spent on the
+wrong reader.
 
-### What the last ten cost, and what they bought
+#### What drops, given the audience
 
-`thru-cache-test.r3` was ten assertions behind one line:
+`help` inside the console, the banner, and most of the manual's prose. `help
+parse` is a thing a person types mid-session. The banner tells someone stuck in
+a REPL how to leave. And anything a model would infer correctly is wasted
+tokens -- what earns space is only what contradicts the prior: `if 0` is true,
+`none` and a Java null stay apart, there are six conclusions rather than two.
 
-    if module? try [import 'thru-cache][ ... ]
-
-Making that guard true needed HTTP, then TLS, then IMPORT, and the goal priced
-the first of those as "a subsystem -- connection, TLS, redirects, chunked
-bodies -- rather than a fix". **That was wrong, and being wrong about it is the
-most useful thing here.** `prot-http.reb` and `prot-tls.reb` were already
-vendored and loaded with their actor objects intact. Not one line about HTTP or
-TLS was written. What was missing was eleven defects underneath them, and five
-of the eleven have nothing to do with either:
-
-- **WAIT came back after one event**, where `Wait_Ports` loops until an AWAKE
-  answers true. HTTP's own answers false for `connect` and false for `wrote`.
-- **WAIT kept its own event list in Java** instead of `system/ports/system`,
-  which is the one queue everything goes on. A list per connection cannot
-  express what TLS needs: its caller waits on the TLS port while the events
-  arrive on the TCP port underneath, and `insert system/ports/system make
-  event! [type: 'close port: parent]` had nowhere to go.
-- **COPY, LENGTH? and QUERY never reached a REBOL actor.** `T_Port` sends every
-  action to `Do_Port_Action` bar three, and `sync-op` ends with `body: copy
-  port` meaning the response body.
-- **READ dropped its refinements** on the way to the actor, so one function that
-  answers a string, the raw bytes or a three-part block could only ever give the
-  first.
-- **BIND and WITH rebound words the target does not hold.** TLS writes
-  `log-debug: none` at the top of its file and calls it inside `with ctx [...]`.
-- **A socket lived in the port's EXTRA**, which TLS overwrites with its own
-  context; and CLOSE never closed one.
-- **ECDH served three curves** and TLS asks for curve25519 first.
-- **UPPERCASE and LOWERCASE took only a quoted string**, where the module loader
-  passes a file.
-- **DELETE answered the file** rather than the port it opened, and two more
-  answers in the same switch with it.
-- **TO-REAL-FILE dropped a directory's trailing slash.**
-- **`system/options/modules` and `system/modules` were both empty**, which is
-  goal 9's and is now done.
-
-`read http://example.com` answers the same 559-byte string a real 3.22.5 does,
-`read https://raw.githubusercontent.com/...` the same 93 bytes gzip and all, and
-all ten assertions pass in the gate.
-
-### The gate now reaches the internet, and that is temporary
-
-The assertions name `raw.githubusercontent.com` and `httpbin.org` in the
-vendored text, and a vendored file is a copy of Rebol's and nothing else. The
-module itself is not named by any assertion, so it is vendored under
-`src/test/resources/rebol-modules/` and put where IMPORT looks -- that removes
-`src.rebol.tech` from the run, and a test holds the copy to Rebol's own byte for
-byte. The two the assertions name cannot be removed without rewriting the file.
-
-**One run of the gate got one of the ten and the next got all ten**, which is
-the flake this buys and it is worth writing down plainly. See "A standing note:
-the gate reaching the internet is temporary" above for what has to replace it.
-
-### What the goal turned up that was not on it
-
-Nine defects and a flake, each found by making a test run that had never run
-here. None of them was on any list:
-
-- CALL started its children in the JVM's working directory, so a script
-  confined to a temporary directory wrote outside it. Running the suite left a
-  file called `a:0:0` in this repository.
-- An interpreter could start an unconfined copy of itself through
-  `system/options/boot`, which made the confinement a fiction.
-- SET wrote an absence without being asked, and where it did refuse it named
-  SET rather than the target. CD depends on that refusal, so `cd ..` failed.
-- CHANGE did not spread a block into a block.
-- `Context.set` did not follow the frame a call had lent, so PARSE's
-  `copy word` wrote into the template rather than the call.
-- APPLY and the natives reached a function by a second path that kept its own
-  books on which frames were open.
-- COMPOSE/DEEP shared a nested path between two answers where the C copies it.
-- The reader read a construct's contents through the enclosing block's own
-  loop, so the line feed before `#(none)` was spent inside the construct.
-- A script named on the command line was dropped without a word, and the
-  console opened instead.
-- And the two slowest Brotli levels had a five-second script deadline that
-  measured the build's load rather than the encoder.
-
-Seven more came out of the HTTP work on 12 September, and they are the seven
-listed under "An HTTP client" above. Five of the seven have nothing to do with
-HTTP:
-BIND rebinding words it should have left alone is a defect in the binding
-model, COPY of a port not reaching its actor is one in the action dispatch, a
-socket in EXTRA is one in the port layout, a socket CLOSE never closed is a
-leak, and three of the thirteen curves missing is arithmetic. HTTP is simply
-the first thing that used all of them at once.
-
-`power-test.r3` used to be a row here with eight entries, and working it would
-have made JEBOL disagree with the canonical reference. Goal 16 took them off: they are
-`--red--` assertions that a real Rebol fails too. Two `make-test.r3` entries
-went the same way.
-
-### 12. Two Java exceptions escaping to the top — 7
-
-`issue-test.r3`. These are not wrong answers but crashes, and a Java exception
-reaching the interpreter's edge is a defect of a different kind:
-
-    to-hex/size 1  0   -> java.lang.IllegalArgumentException: a word needs a spelling
-    to-hex/size 1 -1   -> java.lang.StringIndexOutOfBoundsException: Range [17, 16)
-
-`spec/embed.allium` says nothing a script does may reach the host as a
-throwable. Both should be REBOL errors; ask `./r3-head` which.
-
-### 13. The binary dialect's missing keywords — 8 — DONE
-
-`bincode-test.r3` has no line left on `known-gaps.txt`. `EncodedU32`,
-`EncodedU64`, `VINT` and `SKIPBITS` are ported; `MSDOS-DATETIME` was already
-there and failed for a different reason than the other four.
-
-That reason is worth keeping. Rebol stores a date in UTC and puts the offset
-back on only to mold it or to answer a path, so `u-bincode.c` reading the year,
-month, day and clock straight out of the struct gets the instant for free.
-JEBOL keeps the time as it was written, so a date carrying an offset went in as
-the wall time and every MS-DOS field came out an hour wrong. `DateValue`
-answers `asStoredInUtc` now and `DateParts` uses the same one for `/utc`.
-Written up as finding 21 in `docs/rebol-findings.md`.
-
-Boundary work around the four new keywords found five more divergences that no
-suite assertion covers, all now fixed and tested: the narrower variable-length
-code takes a negative down to -4294967295 and writes its lowest thirty-two bits
-rather than refusing; `SKIPBITS` reads its count unsigned, so a negative one
-runs off the end instead of doing nothing, and names the count in the error;
-and the seven-bit MS-DOS year wraps at both ends rather than raising. One
-knowing divergence is left: `MSDOS-DATETIME` given a bare time reads a date out
-of a struct holding a time, and JEBOL refuses where the C writes whatever those
-bits happened to be.
-
-### 14. The PDF codec times out — 9
-
-`codecs-test-pdf.r3` runs past the harness's 5000ms limit on its first step.
-Either the PDF codec is doing something quadratic or it is looping. Worth
-finding out which before deciding what to do about it.
-
-### 15. The scattered singles and pairs — 31 across fourteen files
-
-What is left when the others above are taken out. Fourteen files:
-
-    6  date-test.r3          3  mold-test.r3         1  copy-test.r3
-    4  task-test.r3          2  bitset-test.r3       1  csv-test.r3
-    3  error-test.r3         2  gob-test.r3          1  datatype-test.r3
-    3  struct-test.r3        2  percent-test.r3      1  evaluation-test.r3
-                                                     1  bbcode-test.r3
-                                                     1  series-test.r3
-
-The sum closes exactly
-against the gap list as it stood when this was written, which is the point of
-the goal: 109 + 55 + 45 + 40 + 38 + 34 + 29 + 9 + 17 + 27 + 135 + 7 + 8 + 9
-= 562, leaving 40. If that no longer matches what
-`grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt` says, the
-difference is work someone has done and a size above is stale — re-derive per
-file rather than trusting the table.
-
-The sum still balances because those are entry counts, but **at least eleven of
-the entries inside it are goal 16's and are not work at all**: eight in
-`power-test.r3`, two in `make-test.r3`, one in `module-test.r3`. Real remaining
-work is 604 or fewer, and nobody has established the ceiling.
-
-    6  date-test.r3
-    4  crypt-port-camelia-test.r3      goal 4b's work, not their own
-    2  crypt-port-ccm-test.r3          goal 4b's work, not their own
-    2  crypt-port-gcm-test.r3          goal 4a's work, not its own
-    4  task-test.r3
-    3  error-test.r3
-    3  mold-test.r3
-    3  struct-test.r3
-    2  bitset-test.r3
-    2  gob-test.r3
-    2  percent-test.r3
-    1  each of bbcode, copy, crypt, csv, datatype, evaluation and series
-
-Sixteen of the eighteen have no stop at all, so every entry is a wrong answer
-and `scripts/sweep.py` will put the two answers side by side. That makes this
-the cheapest goal per assertion on the list and a reasonable place to start
-cold, because each one is small enough to hold in your head whole.
-
-**One stop, not two.** Re-derived with the fixed `SuiteStops` (goal 20):
-
-    task-test.r3   to task! [...]   -> cannot use to task! on block!
-
-`task!` is a datatype word here without a datatype behind it, which is recorded
-in `TODO.md` and is a larger decision than four assertions warrant on its own.
-
-The `evaluation-test.r3` stop this goal used to name — `call/shell/wait` giving
-"no way to start a program" — was the tool's own answer and never the gate's,
-and the line about CALL being "the same missing capability as three of goal 9's
-stops" described a coupling that does not exist. `evaluation-test.r3` now stops
-nowhere and owes one entry.
-
-The eight crypt-port entries are listed here for the arithmetic only. Two are
-goal 4a's and six are goal 4b's; on their own they are algorithms with nowhere
-to run.
+One thing to price before starting: error text becomes an interface. Reword it
+later and whatever was built on the old wording breaks.
 
 ---
 

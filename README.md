@@ -115,7 +115,7 @@ declaration does not say. `scripts/runtime-parity.py` asks two *running*
 interpreters instead — what datatype each function reports itself as, what
 `words-of` gives back, how much of its own specification it can produce — and
 when it was first written most of Rebol's library answered differently here.
-`TODO.md` records what both last said, and they should be read together or not
+`goals.md` records what both last said, and they should be read together or not
 at all.
 
 **The declarations are copied too, for the same reason the library is.**
@@ -134,7 +134,7 @@ run. What still fails is named line by line in
 shrinks: the build fails if a listed assertion starts passing, so nothing comes
 off it quietly and nothing goes on it without being seen.
 
-**The counts live in `TODO.md` and nowhere else**, so there is one place to
+**The counts live in `goals.md` and nowhere else**, so there is one place to
 correct when they move rather than four that drift apart.
 
 Beside it, and outliving it:
@@ -159,7 +159,7 @@ accounted for by name** — either in `known-gaps.txt`, which is what still fail
 or in `fails-on-rebol-too.txt`, which is assertions the Rebol this is measured
 against does not run either. Those are usually one arm of an `either error? try
 [...]` whose other arm is the one taken, and each line carries the `r3-head`
-session that settled it. For the figures, see `TODO.md`.
+session that settled it. For the figures, see `goals.md`.
 
 The useful split is not by feature but by whether they ran at all. A suite file
 is a script, so an assertion that raises takes the rest of its block with it,
@@ -179,14 +179,13 @@ Rebol. **The sizes live there and are not repeated here.** It also carries the
 working method: one authority and one canonical reference, the measuring tools, the ratchet,
 and a rule for the assertions a real Rebol does not run either.
 
-Six of those goals are not porting at all. They correct faults in the measure,
-found by an audit that ran three independent adversarial passes over it — a
-handful of listed assertions that a real Rebol also fails, so that fixing them
-would move JEBOL *away* from Rebol; an allowlist with no ratchet behind it; a
-measuring tool that reports blockers the gate never sees; and a file the
-canonical reference itself answers differently on consecutive runs. Those come
-first, because until
-they are done a falling backlog does not reliably mean progress.
+**The order there has one rule above the rest: agreeing with the C comes before
+improving on it.** This is a port. A place where JEBOL answers something a real
+3.22.5 does not is a defect; a place where both are weak is a decision, and it
+waits. So the suite backlog leads, then the equivalence the suite cannot see,
+then two security goals — the TLS client does not authenticate the server, and
+a fetched module is not checked — which are divergences from the C rather than
+gaps against it, because Rebol does neither either.
 
 Bigger things that are known rather than counted:
 
@@ -214,7 +213,7 @@ Bigger things that are known rather than counted:
   `checksum` are served now; `crypt` is the next that matters.
 - **`task!` is a datatype word and not yet a datatype.**
 
-`TODO.md` carries the rest with the numbers, and every number in it was
+`goals.md` carries the rest with the numbers, and every number in it was
 checked by running it rather than by remembering it.
 
 ## Embedding
@@ -272,7 +271,7 @@ scripts/         the measures, which are run rather than remembered:
                  interpreters), error-parity, and sweep.py for diffing one
                  suite file against a real Rebol assertion by assertion
 docs/            decisions, the porting guide, findings about Rebol itself
-goals.md         the remaining suite failures, broken into pieces of work
+goals.md         everything left to do, ordered by importance, and the method
 ```
 
 The dependency rule points inward and is enforced by `DependencyRuleTest`
@@ -282,12 +281,13 @@ adapters, and nothing in the domain touches `java.io`, `java.nio.file` or
 
 ## Building
 
-Java 25, Gradle, no runtime dependencies. The shipped jar is about 1,163 KB,
-of which 860 KB is Rebol's borrowed library and 65 KB its function and error
-declarations, which SPEC-OF and the error catalogue are read out of.
+Java 25, Gradle, no runtime dependencies. The shipped jar is about 1,696 KB, of
+which Rebol's borrowed library, its function and error declarations and the
+thirteen modules bundled with the build are most of it — SPEC-OF, the error
+catalogue and IMPORT are read out of those.
 
 ```
-./gradlew check          # the whole suite, about four minutes
+./gradlew check          # the whole suite, about four and a half minutes
 ./gradlew browserCheck   # the second gate: a real browser, pixel for pixel
 ```
 
@@ -304,10 +304,8 @@ time it fetches a driver, and the ordinary gate should need neither.
 
 ## Reading further
 
-- `goals.md` — the remaining suite failures as fifteen pieces of work, and
-  the method for doing any of them: start here to pick something up
-- `TODO.md` — what is left beyond the suite, with the numbers, each one
-  checked by running it
+- `goals.md` — everything left to do, ordered by importance, with the numbers
+  and the method for doing any of it: start here to pick something up
 - `docs/decisions.md` — what has been decided, why, and what it rules out
 - `docs/porting-guide.md` — how to port a function, and what the authorities are
 - `docs/rebol-findings.md` — what reading Rebol's source turned up about Rebol

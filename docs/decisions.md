@@ -339,10 +339,9 @@ which reads directly as a specification of what those functions do.
 
 The fork also ships `src/tests/units/`: 77 files, 3,290 named tests and
 11,899 assertions, written by the people who maintain the implementation.
-That is a far better source of cases than boundaries we invent. Twenty of
-those files are now imported under `src/test/resources/rebol-suite/` and
-run on every build as `RebolSuiteTest`: 3,721 assertions, none of them
-skipped.
+That is a far better source of cases than boundaries we invent. Sixty-seven of
+those files are now imported under `src/test/resources/rebol-suite/` and run on
+every build as `RebolSuiteTest`: 10,133 assertions, none of them skipped.
 
 The C is a reference, not a thing to translate. Its `REBVAL` is a tagged
 union, its series are pointer arithmetic, its errors are `setjmp` and its
@@ -456,7 +455,7 @@ Rebol writes in REBOL -- `empty?`, `does`, `rejoin`, `also`, `unique`,
 `forever`, `comment`, `join`, `collect`, `split-path`, `funct`, `clos`, the
 `-of` family and the `to-x` family among them. Each is a fork by the rule
 above. Replacing them with the R3 files that define them is outstanding work,
-and it is listed in TODO.md rather than done here, because each replacement
+and it is listed in `goals.md` rather than done here, because each replacement
 needs the natives underneath it to be right first.
 
 ## 14. A module's private words never reach the library
@@ -490,7 +489,7 @@ files on their first line.
 ### What it cost to find out
 
 Nine natives were wrong and had to be fixed before a module would build. They
-are listed in TODO.md, and two patterns account for most of them: a
+are listed in `goals.md`, and two patterns account for most of them: a
 refinement declared in a native's spec and then never read in its body
 (`assert/type`, `switch/all`, `construct/with`, `protect/lock`), and a rule
 walked in pairs where the C walks one value at a time (`switch`).
@@ -610,7 +609,7 @@ to notice. A REBOL interpreter that needs a jar fetched from a repository to
 read a PNG or hash a string is not portable, and the whole point of putting it
 on the JVM was that it would run wherever the JVM does.
 
-What that has meant in practice, all of it in `domain/eval/Encodings.java`:
+What that has meant in practice, all of it in `Encodings.java`:
 
 - **Bundled and used**: `java.util.zip` for deflate and the CRC-32,
   `java.security.MessageDigest` and `javax.crypto.Mac` for the digests and

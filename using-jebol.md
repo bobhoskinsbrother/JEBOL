@@ -2,7 +2,7 @@
 
 This document is for a person or an agent that wants to execute REBOL scripts
 with JEBOL. It is not about how JEBOL is built. For that, read
-`docs/porting-guide.md` and `TODO.md`.
+`docs/porting-guide.md` and `goals.md`.
 
 Two sections at the end are not written yet. They are named, and what each one
 must hold is stated, because a gap that is named is safer than a gap that is
@@ -275,7 +275,7 @@ rather than plain. VID is absent.
 **The console.** There is no argument that takes the name of a script file,
 and a path given on the command line is ignored without a message.
 
-Every count here comes from `TODO.md` and changes with the work. Take the
+Every count here comes from `goals.md` and changes with the work. Take the
 current numbers from a run of `./gradlew check` rather than from this page.
 
 ---

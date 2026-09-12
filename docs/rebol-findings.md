@@ -14,7 +14,7 @@ than R3-Alpha itself. The commands are left in place so a claim can be traced,
 not so it can be rerun.
 
 **A new finding is read out of the C.** `~/Code/personal/rebol3-source` is the
-authority, and TODO.md says where in it to look. A claim traced to a line of C
+authority, and `docs/porting-guide.md` says where in it to look. A claim traced to a line of C
 explains itself as well as settling the question, which no probe does.
 
 An entry earns its place by being *unobvious*: something a careful reader of

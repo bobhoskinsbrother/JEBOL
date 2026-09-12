@@ -1,7 +1,7 @@
 # Porting guide
 
 How this port is done, what decides an argument, and what must not move. None
-of it is work to be finished, which is why it is here rather than in `TODO.md`.
+of it is work to be finished, which is why it is here rather than in `goals.md`.
 
 ## The goal
 
@@ -102,7 +102,7 @@ All of these stay where they are. A change that moves one is wrong.
   every line in it runs on every build and the test fails if a listed assertion
   starts passing. `fails-on-rebol-too.txt` holds the ones that are not run at
   all, each carrying the `r3-head` session showing a real Rebol does not run it
-  either. **For the counts see `TODO.md`, which is the only file that carries
+  either. **For the counts see `goals.md`, which is the only file that carries
   them.**
 
   **It fails two different ways and they mean opposite things.** A
@@ -140,10 +140,10 @@ All of these stay where they are. A change that moves one is wrong.
   columns first, because those name behaviour JEBOL already has and reports
   under the wrong id or not at all.
 
-**Every figure these produce is written down in `TODO.md` and nowhere else.**
+**Every figure these produce is written down in `goals.md` and nowhere else.**
 This section deliberately names what each measure asks rather than what it last
 answered: this file carried a count of raisable error ids that was both stale
-and the wrong way round, against a `TODO.md` that was right, and a reader had
+and the wrong way round, against a count file that was right, and a reader had
 no way to tell which to believe.
 
 `./gradlew check` is the gate before a commit: 0 failed, 0 skipped, and five to
@@ -221,7 +221,7 @@ Each of these cost time once.
   not there contributes nothing either.** `series-test.r3` sat inside a green
   3721 for as long as vector literals would not lex, and 54 of Rebol's 76 unit
   files were never vendored at all. `SuiteCoverageTest` now fails on the first
-  and `TODO.md` Goal 0 counts the second, but the habit is the point: before
+  and the measures in `goals.md` count the second, but the habit is the point: before
   trusting a count, ask what it is counting and what it silently is not.
 - **A borrowed file that loads is not a borrowed file that works.** REWORD,
   SPLIT, PAD and SUM are Rebol's own REBOL and all four were loaded and all

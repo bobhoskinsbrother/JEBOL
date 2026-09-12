@@ -94,7 +94,7 @@ catching up its assertions are what to obey: if it says `e/arg1 = "path"`, that 
 the answer, and a disagreement means JEBOL is wrong until the C says otherwise.
 
 **It is scaffolding, though.** It is vendored somebody else's test code, it is one
-class of 3721 assertions so a failure names a group rather than a behaviour, and it
+class of 10,133 assertions so a failure names a group rather than a behaviour, and it
 will be deleted when it goes green. Coverage that lives only there does not survive
 that.
 
@@ -170,7 +170,7 @@ nothing else in the build will ever notice.
 
 ## Running the suite
 
-`./gradlew check` is the gate. It takes about five minutes for 15,900 tests,
+`./gradlew check` is the gate. It takes about five minutes for 17,750 tests,
 and the floor is `Interpreter.create()` at 44ms: the corpus builds one per
 entry, so a thousand entries is a minute whatever else changes. It used to be
 86ms and twenty-two minutes, and where that went is worth knowing before

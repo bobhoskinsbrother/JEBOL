@@ -61,7 +61,7 @@ been deleted: it answered what one build of one fork did on one machine, and it
 was a fork rather than R3-Alpha itself, so every answer was evidence rather
 than proof. The C says what the language is and explains itself as well.
 
-Where to look is in TODO.md under "The C is the authority". For a rule in a
+Where to look is in `docs/porting-guide.md` under "The C is the authority". For a rule in a
 spec, the trace is to a line of `~/Code/personal/rebol3-source/src/core/*.c` or
 to a declaration in `src/boot/`. A rule that cannot be traced there is a guess
 wearing a spec's clothing, and four of ours were -- RECYCLE, STATS, STACK and
