@@ -181,6 +181,41 @@ class SuiteSelectionTest {
                 .isEmpty();
     }
 
+    /**
+     * The modules the run puts on disk are Rebol's own, byte for byte.
+     *
+     * <p>IMPORT would otherwise fetch each from {@code src.rebol.tech}, which
+     * is one more host a run can fail on. Copying it in removes that, and this
+     * is what stops the copy quietly becoming something Rebol does not publish
+     * -- the same rule the vendored test files are held to, for the same
+     * reason.
+     */
+    @Test
+    @EnabledIf("rebolsOwnSourceIsHere")
+    @DisplayName("and every vendored module is Rebol's own module")
+    void everyVendoredModuleIsUnchanged() {
+        Path upstream = Path.of("rebol3-source", "src", "modules");
+        List<String> altered;
+        try (Stream<Path> here = Files.list(VENDORED_MODULES)) {
+            altered = here
+                    .filter(one -> Files.exists(upstream.resolve(one.getFileName())))
+                    .filter(one -> !sameBytes(one, upstream.resolve(one.getFileName())))
+                    .map(one -> one.getFileName().toString())
+                    .toList();
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException(unreadable);
+        }
+
+        assertThat(altered)
+                .as("these differ from Rebol's own copy, so a run importing one "
+                        + "would not be running what Rebol publishes:%n  %s",
+                        String.join("\n  ", altered))
+                .isEmpty();
+    }
+
+    private static final Path VENDORED_MODULES =
+            Path.of("src", "test", "resources", "rebol-modules");
+
     private static boolean sameBytes(Path here, Path upstream) {
         try {
             return Files.mismatch(here, upstream) == -1;

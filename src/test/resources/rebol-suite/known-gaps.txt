@@ -158,9 +158,6 @@ module-test.r3 / make module / inlined module #14
 module-test.r3 / make module / inlined module #15
 module-test.r3 / make module / inlined module #16
 module-test.r3 / make module / module body modified on export #17
-module-test.r3 / module import / import #25
-module-test.r3 / module import / import #26
-module-test.r3 / module import / import #27
 module-test.r3 / module import / import block #30
 module-test.r3 / module import / import needs url! #47
 module-test.r3 / module import / import needs url! #48
@@ -214,13 +211,3 @@ task-test.r3 / task / (no test) #1
 task-test.r3 / task / (no test) #2
 task-test.r3 / task / (no test) #3
 task-test.r3 / task / (no test) #4
-thru-cache-test.r3 / (no group) / (no test) #1
-thru-cache-test.r3 / (no group) / (no test) #10
-thru-cache-test.r3 / (no group) / (no test) #2
-thru-cache-test.r3 / (no group) / (no test) #3
-thru-cache-test.r3 / (no group) / (no test) #4
-thru-cache-test.r3 / (no group) / (no test) #5
-thru-cache-test.r3 / (no group) / (no test) #6
-thru-cache-test.r3 / (no group) / (no test) #7
-thru-cache-test.r3 / (no group) / (no test) #8
-thru-cache-test.r3 / (no group) / (no test) #9

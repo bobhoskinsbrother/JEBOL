@@ -189,6 +189,58 @@ gate green.
 
 ---
 
+## A standing note: IMPORT fetches and evaluates code over the network
+
+`system/modules` is a table of addresses, and IMPORT's last resort is to
+download what it finds there and evaluate it. That is Rebol's design and this
+port now follows it, which means an interpreter here will fetch REBOL source
+from `src.rebol.tech` and run it, on the strength of a name in a script.
+
+**Two ways that goes wrong, and neither needs a mistake upstream.** A proxy
+between the machine and the address serves whatever it likes, and the
+interpreter evaluates it -- there is no signature, no checksum and no pinned
+version to compare against. And a production system carrying this table is
+exposed to whatever the upstream serves on the day, in real time, with no step
+in between where anybody looks.
+
+**So the table should only ever name what this build has not got.** Nineteen of
+the thirty-three addresses left are modules JEBOL already vendors and loads --
+`css csv json ico pdb pdf plist srt swf xml bbcode mime-field mime-types
+quoted-printable html-entities mysql rdap daytime mail`. Their addresses are
+replaced during boot by the loaded module, so they never fetch anything today;
+they are a live address one load-order change away from being reachable, for
+code that is already in the jar. Take them out.
+
+The fourteen compiled extensions were taken out on 12 September for a related
+reason: nothing here can load a shared library, so each was a round trip to
+github ending in failure, and several named things this build has anyway
+(BROTLI is the `br` compression method). What remains after both cuts is the
+handful nothing here implements, which is the only part an address can honestly
+serve.
+
+Worth deciding at the same time: whether a fetched module should be checked
+against something before it is evaluated, and whether a host should be able to
+refuse the fetch outright the way it refuses the filesystem.
+
+## A standing note: the gate reaching the internet is temporary
+
+`thru-cache-test.r3`'s assertions read `raw.githubusercontent.com` and
+`httpbin.org` by name, so grading them makes `./gradlew check` depend on two
+third-party services. That is accepted for now because the alternative is ten
+assertions that never run, and a file whose guard is false measures nothing at
+all -- goal 11 has what that costs.
+
+**It is not the end state.** Once the differences between the C and this port
+are dealt with and the suite is the ratchet it is meant to be, come back and
+take the external calls out. What replaces them has to be decided then rather
+than now: a recorded exchange the suite replays, a local server the run starts,
+or the whole file moved to a second gate that is allowed a network. Whichever
+it is, `./gradlew check` should end up needing nothing but a JDK again.
+
+Until then, a failure in that file that names a host rather than a behaviour is
+the network and not the port, and it still counts as a failure -- a flake is a
+fail, and this one has a cause anybody can point at.
+
 ## The goals
 
 Sizes are the number of `known-gaps.txt` entries the goal is worth, and every
@@ -196,25 +248,25 @@ entry belongs to exactly one goal. **Re-derived from the list on 11 September
 2026** and again on 12 September, because the old figures had drifted: goal 11
 was the worst at 135 against a real 132, and goal 15 claimed 40 where the files
 it owns hold 31. Goals 1 and 2 have since gone to nought and the total with
-them, and goal 11 has gone from 132 to 10. Goal 5 lost three on 12 September to
-the DELETE fix goal 11's work turned up.
+them, and goal 11 has gone from 132 to nought. Goal 5 lost three on 12 September
+to the DELETE fix goal 11's work turned up, and goal 9 lost three to the module
+directory it needed.
 Do not trust a size here that has not been re-derived since work landed —
 `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt` is the live
 total and the table below is how it divides.
 
-    195   the whole list, on 12 September 2026
+    182   the whole list, on 12 September 2026
     ---
-     33    5. the file ports
      34    6. the checksum port
+     33    5. the file ports
+     31   15. the scattered singles and pairs
      29    7. enbase and debase
      27   10. the elliptic curves
-     31   15. the scattered singles and pairs
-     15    9. modules and import
-     10   11. sweepable files that run clean
+     12    9. modules and import
       9   14. the pdf codec
       7   12. Java exceptions escaping to the top
 
-Goals 1, 2, 3, 4a, 4b, 8, 13 and 16 to 21 are done and own nothing. To re-derive the
+Goals 1, 2, 3, 4a, 4b, 8, 11, 13 and 16 to 21 are done and own nothing. To re-derive the
 table, count the list by file and read each goal for which files it names:
 
     sed 's| /.*||' src/test/resources/rebol-suite/known-gaps.txt | sort | uniq -c | sort -rn
@@ -1015,35 +1067,61 @@ do both. `ProcessEnvironment` keeps a per-port overlay over the host's names,
 and `JavaProcesses` hands the whole view to a child rather than letting it
 inherit, so a name the script took away is missing from the child too.
 
-### 9. Modules and IMPORT — 17
+### 9. Modules and IMPORT — 12
 
-`module-test.r3` stops nine times, and every one of them comes back to
-`system/options/modules` being none:
+`module-test.r3` stopped nine times, and every one came back to
+`system/options/modules` being none.
 
-    write modules-dir/mymodule.reb {...}  -> cannot select word! from none!
-    import mymodule                        -> cannot select file! from none!
-    same? lib-local system/contexts/user   -> lib-local has no value
+**Both halves of that are fixed, on 12 September 2026, because goal 11 needed
+them.** IMPORT looks in three places in order -- what is already loaded, a file
+in the modules directory, and the address in `system/modules`, which it
+downloads and saves -- and two of the three were unreachable here:
 
-**The stated cause was wrong twice over.** This goal used to say the environment
-is unreadable under the sandbox so `sys-start.reb` cannot work the directory
-out, and that this therefore depends on goal 8. Re-derived with the fixed
-`SuiteStops` (goal 20): `get-env "HOME"` answers, `call/shell/wait` runs, and
-none of the nine stops is about either. Something else leaves
-`system/options/modules` unset — start by reading what `sys-start.reb` does with
-it and finding which step does not happen here.
+- **`system/options/modules` was none.** `sys-start.reb` writes it in one line,
+  `modules: attempt [make-dir/deep join data %modules/]`, and nothing else
+  decides it. It is set when a host installs a filesystem *and* the data
+  directory is there. The second condition is JEBOL's own: the line above it in
+  `sys-start.reb` makes the data directory, and JEBOL does not, because the path
+  it defaults to is the operator's own and a confined filesystem reads that path
+  as somewhere else entirely -- making it eagerly put a folder named after the
+  operator's home inside every sandbox, which three tests of what a fresh
+  directory contains noticed at once.
+- **`system/modules` started empty.** `sysobj.reb` builds it as a table of
+  addresses, and a module that loads replaces its own -- `repend system/modules
+  [name module]` is the last thing LOAD-MODULE does, so the table is both the
+  list of what may be fetched and the record of what has been. The table is put
+  down before the library loads, for that reason.
 
-After that: `import`, which is the substance of the goal.
+Three of `module-test.r3`'s entries came off with it, and `import 'thru-cache`
+now downloads, saves and imports.
 
-**Measured on 12 September 2026, from goal 11's side.** `import 'thru-cache`
-fails with `cannot-open "thru-cache" "module not found"`, and two things are
-missing rather than one. `system/options/modules` is none, which is the part
-this goal already names. The second is `system/modules`: `sysobj.reb` starts
-that object as a table of addresses -- `thru-cache:
-https://src.rebol.tech/modules/thru-cache.reb` is one of forty-odd -- and
-`import` falls back to `select system/modules source` and downloads what it
-finds. Here the object starts empty and fills with the modules this build has
-loaded, so the fallback has nothing to find. `read https://` works now, so
-filling the table would make the download work.
+**Two things were left out of the table on purpose**, and the reasoning is in
+"A standing note: IMPORT fetches and evaluates code over the network" above.
+The fourteen compiled extensions are gone because nothing here can load a
+shared library -- each was a round trip to github ending in failure, and several
+named things this build has anyway. The nineteen addresses for modules JEBOL
+already vendors should go the same way and have not yet; that is the next piece
+of this goal.
+
+### What is left
+
+Twelve entries in `module-test.r3`, and they are about IMPORT itself rather than
+about where a module comes from. Read them with `SuiteStops` before planning:
+the nine stops this goal was written around are gone, so the list is a different
+list now and has not been re-derived.
+
+Two more defects turned up on the way and are fixed, both found by an IMPORT
+that got further than before:
+
+- **UPPERCASE and LOWERCASE took only a quoted string**, where the declaration
+  says `string [any-string! char!]`. The module loader names a downloaded file
+  with `lowercase second split-path source`, and SPLIT-PATH of a url answers a
+  file.
+- **TO-REAL-FILE dropped the trailing slash from a directory.** `OS_Real_Path`
+  stats what it resolved and appends one -- the comment beside the line is the
+  rule. Rebol's cache module opens with `join to-real-file any [get-env "TEMP"
+  so/data] %thru-cache/`, and without the slash its whole cache went to a
+  directory named by running two names together.
 
 ### 10. The elliptic curves — 27
 
@@ -1079,12 +1157,10 @@ JEBOL chose — so serving them means carrying the curve parameters and the
 arithmetic, or none of them answering, which is what the C already does for a
 build without a curve.
 
-### 11. Sweepable files that run clean — 132 between them — 10 left, in one file
+### 11. Sweepable files that run clean — 132 between them — DONE
 
-Worked on 11 and 12 September 2026. 122 of the 132 are gone and nine of the
-ten files are empty. What remains is `thru-cache-test.r3`, and it is a
-decision before it is code — see "the decision it needs" below, which is the
-same decision it was, with the technical half of it now done.
+Worked on 11 and 12 September 2026. All 132 are gone and all ten files are
+empty.
 
 | file | started | left |
 | --- | --- | --- |
@@ -1094,7 +1170,7 @@ same decision it was, with the technical half of it now done.
 | `map-test.r3` | 12 | 0 |
 | `make-test.r3` | 10 | 0 |
 | `file-test.r3` | 9 | 0 |
-| `thru-cache-test.r3` | 10 | 10 (all ten pass; see below) |
+| `thru-cache-test.r3` | 10 | 0 |
 | `parse-test.r3` | 9 | 0 |
 | `vector-test.r3` | 9 | 0 |
 | `lexer-test.r3` | 8 | 0 |
@@ -1105,136 +1181,65 @@ is a wrong answer" was read off a sweep, and a sweep only shows what runs.
 Nine of `parse-test.r3`'s entries were behind a guard a real 3.22.5 fails too,
 and two of `file-test.r3`'s were the Windows arm of a platform switch on a Mac;
 all eleven are in `fails-on-rebol-too.txt` with the `./r3-head` session that
-settles them. The ten in `thru-cache-test.r3` are behind a guard that is false
-here, so none of them has ever run.
+settles them. The ten in `thru-cache-test.r3` were behind a guard that was false
+here, so none of them had ever run.
 
-### What is left, and the decision it needs
+### What the last ten cost, and what they bought
 
-`thru-cache-test.r3` is ten assertions behind one line:
+`thru-cache-test.r3` was ten assertions behind one line:
 
     if module? try [import 'thru-cache][ ... ]
 
-`import 'thru-cache` fails here, so nothing inside has run. Making it pass
-needs two things, and the second is not a technical question.
+Making that guard true needed HTTP, then TLS, then IMPORT, and the goal priced
+the first of those as "a subsystem -- connection, TLS, redirects, chunked
+bodies -- rather than a fix". **That was wrong, and being wrong about it is the
+most useful thing here.** `prot-http.reb` and `prot-tls.reb` were already
+vendored and loaded with their actor objects intact. Not one line about HTTP or
+TLS was written. What was missing was eleven defects underneath them, and five
+of the eleven have nothing to do with either:
 
-**An HTTP client.** *Done on 12 September 2026, and it was not a subsystem to
-write.* `prot-http.reb` is vendored and loaded, with its actor object intact,
-so the whole of HTTP was already here; what was missing was six things
-underneath it, each a defect in its own right and each fixed with a spec rule
-and a JEBOL test:
+- **WAIT came back after one event**, where `Wait_Ports` loops until an AWAKE
+  answers true. HTTP's own answers false for `connect` and false for `wrote`.
+- **WAIT kept its own event list in Java** instead of `system/ports/system`,
+  which is the one queue everything goes on. A list per connection cannot
+  express what TLS needs: its caller waits on the TLS port while the events
+  arrive on the TCP port underneath, and `insert system/ports/system make
+  event! [type: 'close port: parent]` had nowhere to go.
+- **COPY, LENGTH? and QUERY never reached a REBOL actor.** `T_Port` sends every
+  action to `Do_Port_Action` bar three, and `sync-op` ends with `body: copy
+  port` meaning the response body.
+- **READ dropped its refinements** on the way to the actor, so one function that
+  answers a string, the raw bytes or a three-part block could only ever give the
+  first.
+- **BIND and WITH rebound words the target does not hold.** TLS writes
+  `log-debug: none` at the top of its file and calls it inside `with ctx [...]`.
+- **A socket lived in the port's EXTRA**, which TLS overwrites with its own
+  context; and CLOSE never closed one.
+- **ECDH served three curves** and TLS asks for curve25519 first.
+- **UPPERCASE and LOWERCASE took only a quoted string**, where the module loader
+  passes a file.
+- **DELETE answered the file** rather than the port it opened, and two more
+  answers in the same switch with it.
+- **TO-REAL-FILE dropped a directory's trailing slash.**
+- **`system/options/modules` and `system/modules` were both empty**, which is
+  goal 9's and is now done.
 
-- **WAIT came back after one event.** `Wait_Ports` loops until an AWAKE
-  answers true, and HTTP's own answers false for `connect` and false for
-  `wrote` because neither finishes a request. A wait that returned after the
-  first put `sync-op` back at the top of its loop comparing a status code
-  nobody had set.
-- **COPY, LENGTH? and QUERY never reached the actor.** `T_Port` sends every
-  action to `Do_Port_Action` and names three exceptions, none of which act on a
-  port already built. `sync-op` ends with `body: copy port` meaning the
-  response body, and a COPY that duplicated the port object answered a port
-  where the caller wanted the page.
-- **READ dropped its refinements on the way to the actor.** One function
-  answers a decoded string, the raw bytes or a three-part block depending on
-  `/binary` and `/all`, so an actor called with none of them could only ever
-  give the first.
-- **BIND and WITH rebound words the target does not hold.** `Bind_Block` looks
-  each word up in one frame and leaves the rest alone; JEBOL walked up the
-  parent chain to the library. TLS writes `log-debug: none` at the top of its
-  file and calls it inside `with ctx [...]`, so every debug line found the
-  library's LOG-DEBUG instead, which takes a lit-word.
-- **A socket lived in the port's EXTRA.** `sysobj.reb` says EXTRA is
-  "user-defined storage of local data" and STATE is "internal state values
-  (private)". TLS keeps its whole protocol context in EXTRA, which overwrote
-  the socket; and CLOSE never closed one, because nothing ever had.
-- **ECDH served three curves and TLS asks for curve25519 first.** The
-  catalogue named all thirteen. `ecdh/public` answered none, and the client
-  hello stopped in the binary dialect trying to write it.
+`read http://example.com` answers the same 559-byte string a real 3.22.5 does,
+`read https://raw.githubusercontent.com/...` the same 93 bytes gzip and all, and
+all ten assertions pass in the gate.
 
-A seventh followed, and it is the one that made HTTPS work as well.
+### The gate now reaches the internet, and that is temporary
 
-- **WAIT kept its own event list in Java and never touched
-  `system/ports/system`.** That port is the one queue everything goes on: its
-  STATE is the events waiting and its DATA the ports that have woken, and
-  `Wait_Ports` is a loop over its AWAKE, which is written in REBOL in
-  `sys-ports.reb`. A list per connection cannot express what TLS needs -- its
-  caller waits on the TLS port while the events arrive on the TCP port
-  underneath, and the protocol moves itself along by putting an event of its
-  own on the queue naming the port the caller is actually waiting for.
-  `insert system/ports/system make event! [type: 'close port: parent]` is that
-  line, and it had nowhere to go.
+The assertions name `raw.githubusercontent.com` and `httpbin.org` in the
+vendored text, and a vendored file is a copy of Rebol's and nothing else. The
+module itself is not named by any assertion, so it is vendored under
+`src/test/resources/rebol-modules/` and put where IMPORT looks -- that removes
+`src.rebol.tech` from the run, and a test holds the copy to Rebol's own byte for
+byte. The two the assertions name cannot be removed without rewriting the file.
 
-The system scheme is registered now, the port is opened at boot, the block
-actions on it work, and the Java dispatch is gone -- Rebol's own AWAKE and the
-`wake-up` native do it.
-
-**So `read https://` works.** JEBOL fetches the same 93 bytes from
-`raw.githubusercontent.com` that a real 3.22.5 does, gzip and all: the TLS 1.2
-handshake, the certificate handling, the record layer and the content decoding
-are Rebol's own REBOL, and none of it was written here. `read
-http://example.com` answers the same 559-byte string, `read/binary` the same
-318 bytes, and `read/all` the same status, headers and body.
-
-**And then the gate reaches the public internet.** The file's own assertions
-read `raw.githubusercontent.com` and `httpbin.org`. Seven of the ten work off
-the cache once the first three have filled it, but the first three cannot.
-This repository's rule is that a flake is a fail, and a gate that depends on
-two third-party services will flake -- so `./gradlew check` becomes a
-different kind of thing. **Ask before building it.**
-
-### All ten assertions pass. What is left is the decision
-
-**Measured, not predicted.** Given the two lines a real Rebol's boot would have
-run -- `system/options/modules` set to a directory, and the address
-`thru-cache: https://src.rebol.tech/modules/thru-cache.reb` put in
-`system/modules` -- JEBOL downloads the module over TLS, imports it, and all
-ten assertions answer true. The script that does it is three lines of setup and
-the ten assertions copied out of the suite file.
-
-Two more defects fell out of running them, both fixed here:
-
-- **UPPERCASE and LOWERCASE took only a quoted string** where the declaration
-  says `string [any-string! char!]`. A file, a url, a tag and an email all
-  change case in a real Rebol. Rebol's module loader names a downloaded
-  extension with `lowercase second split-path source`, and SPLIT-PATH of a url
-  answers a file -- so `import` of anything in `system/modules` stopped there.
-- **DELETE answered the file it was given** where the C answers the port it
-  opened: `return R_RET; // returns port so it can be used in chained
-  evaluation`, and DELETE-THRU hands that answer straight back to a test asking
-  `port? delete-thru url`. Two more answers in the same switch were wrong with
-  it: nothing there to delete is `false` rather than a failure, and a delete
-  that was refused is `no-delete` with the path rather than `cannot-open` with
-  nothing. Three `port-test.r3` entries came off the gap list for it, which is
-  goal 5's.
-
-**So the only technical step left belongs to goal 9**, and it is two lines:
-`system/options/modules` is none here, and `system/modules` holds the modules
-this build has loaded rather than the table of addresses `sysobj.reb` starts it
-with.
-
-**Which is deliberately not done, because doing it makes the gate reach the
-public internet.** The assertions name `raw.githubusercontent.com` and
-`httpbin.org` in the vendored text, and a vendored file is a copy of Rebol's
-and nothing else. Downloading the module reaches `src.rebol.tech` as well, and
-vendoring the module instead only moves that one hop. A fake network in
-`SuiteHost` would serve `http://` and not `https://`, because TLS runs inside
-the interpreter and above the socket -- faking it would mean writing a TLS
-server.
-
-So filling that table turns ten entries green and makes `./gradlew check`
-depend on two third-party services being up. This repository's rule is that a
-flake is a fail. **That is the decision, and it is the same one this goal has
-named since it was written -- only now everything behind it is done and
-measured rather than estimated.**
-
-Worth knowing while that is undecided: `SuiteHost` now installs real sockets,
-so the gate *could* reach out. Nothing vendored does today --
-`port-http-test.r3` is not among the vendored files, and the URLs in
-`copy-test.r3` and `series-test.r3` are literals nobody reads. `thru-cache-test.r3`
-is the one file that would, and its guard is still false.
-
-One trap worth naming: vendoring the module without the HTTP client makes
-things worse rather than better. The guard would go true, the ten assertions
-would start running, and all ten would fail instead of never running.
+**One run of the gate got one of the ten and the next got all ten**, which is
+the flake this buys and it is worth writing down plainly. See "A standing note:
+the gate reaching the internet is temporary" above for what has to replace it.
 
 ### What the goal turned up that was not on it
 

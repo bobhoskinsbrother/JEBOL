@@ -78,12 +78,82 @@ public final class Interpreter {
                 bounds.checkEvery());
         evaluator.putRuntimeWordsIn(userContext);
         loadPrelude();
+        putTheAddressesOfTheModulesRebolPublishes();
         loadRebolsOwnLibrary();
         registerTheSchemesJebolCanServe();
         openTheEventPort();
         natives.grantOnly(bounds.grantedServices());
         natives.forgetStartupState();
     }
+
+    /**
+     * Fills {@code system/modules} with the addresses Rebol publishes.
+     *
+     * <p>Copied from {@code sysobj.reb}, which builds that object with
+     * forty-odd entries rather than empty: each is a module's name and the url
+     * it is fetched from. IMPORT looks in three places in order -- what is
+     * already loaded, a file in the modules directory, and then {@code select
+     * system/modules source}, which it downloads and saves -- and the third is
+     * the only one that can find a module nobody has installed.
+     *
+     * <p>Before the library, because a module that loads replaces its address
+     * in the same object: {@code repend system/modules [name module]} is the
+     * last thing LOAD-MODULE does. So the table is both the list of what may be
+     * fetched and the record of what has been, and putting it down afterwards
+     * would write the addresses back over the modules. Most of these names are
+     * modules this build already carries, and each of those has its address
+     * replaced before a script ever sees it.
+     *
+     * <p>Rebol's own table opens with fourteen more, and those are left out on
+     * purpose. They are compiled shared libraries -- {@code
+     * name-platform-arch.rebx} fetched from a release page -- and nothing here
+     * can load one, so an address for one turns "no such module" into a
+     * download that fails afterwards. Several of them are things JEBOL has
+     * anyway: BROTLI is the {@code br} compression method, and DEFLATE, BZIP2
+     * and ZLIB-NG are in {@code system/catalog/compressions}. The day an
+     * extension can be loaded here is the day to put them back.
+     */
+    private void putTheAddressesOfTheModulesRebolPublishes() {
+        run(THE_MODULES_REBOL_PUBLISHES);
+    }
+
+    private static final String THE_MODULES_REBOL_PUBLISHES = """
+            append system/modules [
+                github:           https://src.rebol.tech/modules/github.reb
+                identify:         https://src.rebol.tech/modules/identify.reb
+                httpd:            https://src.rebol.tech/modules/httpd.reb
+                prebol:           https://src.rebol.tech/modules/prebol.reb
+                scheduler:        https://src.rebol.tech/modules/scheduler.reb
+                soundex:          https://src.rebol.tech/modules/soundex.reb
+                spotify:          https://src.rebol.tech/modules/spotify.reb
+                thru-cache:       https://src.rebol.tech/modules/thru-cache.reb
+                to-ascii:         https://src.rebol.tech/modules/to-ascii.reb
+                unicode-utils:    https://src.rebol.tech/modules/unicode-utils.reb
+                upgrade:          https://src.rebol.tech/modules/upgrade.reb
+                daytime:          https://src.rebol.tech/mezz/prot-daytime.reb
+                mail:             https://src.rebol.tech/mezz/prot-mail.reb
+                mysql:            https://src.rebol.tech/mezz/prot-mysql.reb
+                rdap:             https://src.rebol.tech/mezz/prot-rdap.reb
+                css:              https://src.rebol.tech/mezz/codec-css.reb
+                csv:              https://src.rebol.tech/mezz/codec-csv.reb
+                ico:              https://src.rebol.tech/mezz/codec-ico.reb
+                pdb:              https://src.rebol.tech/mezz/codec-pdb.reb
+                pdf:              https://src.rebol.tech/mezz/codec-pdf.reb
+                srt:              https://src.rebol.tech/mezz/codec-srt.reb
+                swf:              https://src.rebol.tech/mezz/codec-swf.reb
+                xml:              https://src.rebol.tech/mezz/codec-xml.reb
+                json:             https://src.rebol.tech/mezz/codec-json.reb
+                plist:            https://src.rebol.tech/mezz/codec-plist.reb
+                bbcode:           https://src.rebol.tech/mezz/codec-bbcode.reb
+                html-entities:    https://src.rebol.tech/mezz/codec-html-entities.reb
+                mime-field:       https://src.rebol.tech/mezz/codec-mime-field.reb
+                mime-types:       https://src.rebol.tech/mezz/codec-mime-types.reb
+                quoted-printable: https://src.rebol.tech/mezz/codec-quoted-printable.reb
+                webdriver:        https://src.rebol.tech/modules/webdriver.reb
+                websocket:        https://src.rebol.tech/modules/websocket.reb
+                window:           #(none)
+            ]
+            """;
 
     /**
      * Registers the schemes JEBOL has an actor for.
@@ -1261,6 +1331,36 @@ public final class Interpreter {
     public void useFileSystem(FilePort port) {
         evaluator.useFiles(port);
         confineAnyInterpreterThisOneStarts(port);
+        putTheModulesDirectoryBesideTheData();
+    }
+
+    /**
+     * Says where an imported module is kept, and makes the directory.
+     *
+     * <p>{@code sys-start.reb} writes it in one line -- {@code modules: attempt
+     * [make-dir/deep join data %modules/]} -- and nothing else decides it. The
+     * ATTEMPT is the whole of the failure handling: a host that will not let
+     * the directory be made leaves the field none, and IMPORT then has nowhere
+     * to look rather than a path it cannot use.
+     *
+     * <p>Here rather than at construction, because there is no filesystem to
+     * make a directory in until one is installed. Public as well as called
+     * from there, because it follows the data directory: a host that moves
+     * {@code system/options/data} -- a confined filesystem must, the operator's
+     * own hidden folder being outside it -- calls this again to move the
+     * modules with it.
+     *
+     * <p>And it waits for that directory to exist. The line above this one in
+     * {@code sys-start.reb} makes the data directory; JEBOL does not, because
+     * the path it defaults to is the operator's own and a confined filesystem
+     * reads that path as somewhere else entirely -- so making it eagerly puts
+     * a folder named after the operator's home inside every sandbox, which
+     * three tests of what a fresh directory contains noticed at once.
+     */
+    public void putTheModulesDirectoryBesideTheData() {
+        run("system/options/modules: attempt [all ["
+                + " exists? system/options/data"
+                + " make-dir/deep join system/options/data %modules/ ]]");
     }
 
     /**

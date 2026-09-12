@@ -7584,11 +7584,104 @@ rule ToRealFileAnswersNoneForAFileThatIsNotThere {
     ensures: CallResult(value: none)
 }
 
+-- And a directory comes back with a trailing slash whether or not it was asked
+-- for with one, because that is what makes the answer usable as a directory.
+-- `OS_Real_Path` stats what it resolved and the comment beside the line is the
+-- whole rule: "Append the trailing slash if it is a directory".
+--
+-- So the answer is about what is there rather than about how the question was
+-- spelled: `to-real-file %somewhere` and `to-real-file %somewhere/` both end in
+-- a slash when SOMEWHERE is a directory, and `to-real-file %a-file/` does not
+-- when A-FILE is a file.
+--
+-- Which matters wherever the answer is joined to something. Rebol's own cache
+-- module opens with `join to-real-file any [get-env "TEMP" so/data]
+-- %thru-cache/`, and a missing slash there put its whole cache in a directory
+-- named by running two names together.
+rule ToRealFileEndsADirectoryWithASlash {
+    when: EvaluateCall(to_real_file, path)
+    requires: exists(path)
+
+    ensures: ends_with_a_slash(result) = is_a_directory(what_path_names)
+}
+
+-- An empty path names nothing and answers none, rather than resolving to
+-- wherever the interpreter happens to be standing.
+rule ToRealFileOfAnEmptyPathAnswersNone {
+    when: EvaluateCall(to_real_file, path)
+    requires: is_empty(path)
+    ensures: CallResult(value: none)
+}
+
 -- It is a host call, so it needs the files service like every other one.
 rule ToRealFileNeedsTheFilesService {
     when: EvaluateCall(to_real_file, path)
     requires: not service_granted(files)
     ensures: CallFails(error: no_service, about: files)
+}
+
+-- === Where a module comes from ============================
+
+-- `system/options/modules` names the directory an imported module is kept in,
+-- and it sits beside the application data directory: `sys-start.reb` writes
+-- `modules: attempt [make-dir/deep join data %modules/]` and nothing else
+-- decides it. The ATTEMPT is the whole of the failure handling -- a host that
+-- will not let the directory be made leaves the field none, and IMPORT then
+-- has nowhere to look rather than a path it cannot use.
+--
+-- So it follows the data directory wherever that goes. A host that moves
+-- `system/options/data` -- a confined filesystem must, because the operator's
+-- own hidden folder is outside it -- moves this with it, or IMPORT writes
+-- where the interpreter is not allowed to.
+--
+-- And it waits for that directory to be there. `sys-start.reb` makes the data
+-- directory on the line above and this one beside it; JEBOL does not make the
+-- data directory, because the path it defaults to is the operator's own and a
+-- confined filesystem reads that path as somewhere else entirely -- so making
+-- it eagerly puts a folder named after the operator's home inside every
+-- sandbox. Waiting says the same thing the ATTEMPT says: a host that has not
+-- set up its data directory has not asked for a modules directory either.
+rule TheModulesDirectorySitsBesideTheData {
+    when: ReadSystemOption(modules)
+    requires: the_host_gave_a_filesystem()
+    requires: the_data_directory_is_there()
+
+    ensures: OptionValue(value: join(the_data_directory(), "modules/"))
+    ensures: the_directory_was_made()
+}
+
+rule WithNoDataDirectoryThereIsNoModulesDirectory {
+    when: ReadSystemOption(modules)
+    requires: not (the_host_gave_a_filesystem()
+        and the_data_directory_is_there())
+
+    ensures: OptionValue(value: none)
+}
+
+-- `system/modules` is where IMPORT looks last, and it starts out as a table of
+-- addresses rather than empty. `sysobj.reb` builds it with forty-odd entries,
+-- each a name and the url the module is fetched from --
+-- `thru-cache: https://src.rebol.tech/modules/thru-cache.reb` is one.
+--
+-- IMPORT walks three places in order: what is already loaded, a file in the
+-- modules directory, and then `select system/modules source`, which it
+-- downloads and saves. A module that has been loaded replaces its address in
+-- the same object -- `repend system/modules [name module]` -- so the table is
+-- both the list of what may be fetched and the record of what has been.
+--
+-- Starting it empty makes the third step unreachable, and the third step is
+-- the only one that can find a module nobody has installed.
+rule TheModuleTableStartsAsAddresses {
+    when: ReadSystemField(modules)
+
+    ensures: for name in the_modules_rebol_publishes():
+        the_field_named(name) = the_url_it_is_fetched_from(name)
+}
+
+rule ALoadedModuleTakesThePlaceOfItsAddress {
+    when: a_module_finishes_loading(name)
+
+    ensures: the_field_named(name) = the_module_that_loaded()
 }
 
 -- `system/options/boot` is a FILE naming what this interpreter was started

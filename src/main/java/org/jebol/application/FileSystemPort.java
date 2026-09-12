@@ -165,14 +165,30 @@ public final class FileSystemPort implements FilePort {
      */
     @Override
     public String canonicalPathOf(String path) {
+        if (path.isEmpty()) {
+            return null;
+        }
         try {
             java.nio.file.Path real = within(path).toRealPath();
             java.nio.file.Path relative = root.toRealPath().relativize(real);
-            return "/" + relative.toString().replace(
+            String written = "/" + relative.toString().replace(
                     File.separatorChar, '/');
+            return Files.isDirectory(real) ? dirized(written) : written;
         } catch (java.io.IOException | Denied cannotBeResolved) {
             return null;
         }
+    }
+
+    /**
+     * A directory's path with the trailing slash that makes it one.
+     *
+     * <p>{@code OS_Real_Path} stats what it resolved and the comment beside
+     * the line is the whole of it: "Append the trailing slash if it is a
+     * directory". So the answer is about what is there rather than about how
+     * the question was spelled, and a caller may join a name onto it.
+     */
+    private static String dirized(String written) {
+        return written.endsWith("/") ? written : written + "/";
     }
 
     /**

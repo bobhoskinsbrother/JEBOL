@@ -63,10 +63,11 @@ final class SuiteHost {
      * is a wrong answer rather than a safe one.
      */
     static Interpreter installOn(Interpreter interpreter) {
+        Path theRootOfThisRun;
         try {
-            Path root = Files.createTempDirectory("jebol-suite");
-            layOutTheFilesTheSuiteReads(root);
-            interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+            theRootOfThisRun = Files.createTempDirectory("jebol-suite");
+            layOutTheFilesTheSuiteReads(theRootOfThisRun);
+            interpreter.useFileSystem(FileSystemPort.rootedAt(theRootOfThisRun));
         } catch (IOException noDirectory) {
             throw new UncheckedIOException(noDirectory);
         }
@@ -76,6 +77,11 @@ final class SuiteHost {
         interpreter.useNetwork(new JavaSockets());
         putHomeInsideTheDirectoryTheRunCanReach(interpreter);
         putTheApplicationDataDirectoryThereToo(interpreter);
+        try {
+            putTheModulesTheSuiteImportsWhereImportLooks(theRootOfThisRun);
+        } catch (IOException noModules) {
+            throw new UncheckedIOException(noModules);
+        }
         return interpreter;
     }
 
@@ -125,6 +131,40 @@ final class SuiteHost {
                 set '~ system/options/data""";
         interpreter.defineFreshWordsIn(sayingSo);
         interpreter.run(sayingSo);
+        interpreter.putTheModulesDirectoryBesideTheData();
+    }
+
+    /**
+     * Puts the modules a suite file imports on disk, so no run has to fetch
+     * one.
+     *
+     * <p>IMPORT looks in three places -- what is loaded, a file in the modules
+     * directory, and the address in {@code system/modules}, which it downloads
+     * and saves. The third works here, and a gate that used it would reach
+     * {@code src.rebol.tech} once per file that imports anything.
+     *
+     * <p>Which is one host too many. {@code thru-cache-test.r3} names
+     * {@code raw.githubusercontent.com} and {@code httpbin.org} in its own
+     * assertions and nothing can take those out short of rewriting a vendored
+     * file; the module itself is not named by any assertion, so putting it
+     * where IMPORT looks costs the run nothing and removes a way for it to
+     * fail. The copy is byte for byte Rebol's own, and a test holds it to
+     * that.
+     */
+    private static void putTheModulesTheSuiteImportsWhereImportLooks(Path root)
+            throws IOException {
+
+        Path from = Path.of("src", "test", "resources", "rebol-modules");
+        Path into = root.resolve("data").resolve("modules");
+        if (!Files.isDirectory(from) || !Files.isDirectory(into)) {
+            return;
+        }
+        try (Stream<Path> modules = Files.list(from)) {
+            for (Path one : modules.toList()) {
+                Files.copy(one, into.resolve(one.getFileName().toString()),
+                        StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
     }
 
     /**
