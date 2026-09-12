@@ -74,14 +74,12 @@ a thousand more assertions.
 cd rebol3-source/src/tests && ../../../r3-head run-tests.r3
 ```
 
-**`r3-head` builds its own replacement, and there is no second binary.** A
-downloaded 3.22.1 sat beside it for a while and is what the four wrong readings
-above were traced to, so it was deleted rather than kept for the one job it
-had. That job was real, though: Rebol's pre-make step is itself a Rebol script,
-so building a Rebol needs a working Rebol. `scripts/build-r3.sh` bootstraps
-from `r3-head` itself and compiles to `r3-head.part`, moving it into place only
-if clang succeeds, because a half-written binary there would leave nothing able
-to build the next one.
+**`r3-head` builds its own replacement, and there is no second binary.**
+Rebol's pre-make step is itself a Rebol script, so building a Rebol needs a
+working Rebol. `scripts/build-r3.sh` bootstraps from `r3-head` itself and
+compiles to `r3-head.part`, moving it into place only if clang succeeds,
+because a half-written binary there would leave nothing able to build the next
+one.
 
 Rebol's own build tool, Siskin, is a separate download and is not needed --
 `scripts/resolve-nest.r3` reads `make/rebol3.nest` far enough to answer the one

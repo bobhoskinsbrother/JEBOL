@@ -5263,11 +5263,6 @@ not a suspicion anybody had; it was four lines that did not match. A sweep of
 one datatype's whole surface is cheap and finds what reading the C for a
 particular question does not.
 
-Both binaries in the repo root were asked, the 3.22.1 download and the 3.22.5
-built from the checkout, and they agree on every line of it. Worth saying
-because they do not always: the porting guide records four wrong readings
-traced to asking the older one.
-
 An entry with neither should be read as a recollection, not a finding.
 
 ## 183. Rebol's checksum port computes xxh32 and xxh64 from an uninitialised context

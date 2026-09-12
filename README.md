@@ -145,12 +145,11 @@ Beside it, and outliving it:
 - **Standalone tests** for every behaviour fixed because of a suite assertion,
   which build an interpreter and read no `.r3` file. The suite is scaffolding
   and will be deleted when it goes green; these are what lasts.
-- **`./r3-head`, a real Rebol 3.22.5 built from the checkout beside it**, used
-  as the canonical reference. Where the suite and the C disagree, the C wins; where reasoning
-  and the binary disagree, the binary wins. It is the only Rebol consulted: an
-  older 3.22.1 download sat beside it for a while and cost four wrong readings
-  before it was deleted, so a binary that is not built from the source it is
-  being read against is worse than no binary at all.
+- **`./r3-head`, a real Rebol 3.22.5 compiled from the checkout beside it**,
+  used as the canonical reference. Where the suite and the C disagree, the C
+  wins; where reasoning and the binary disagree, the binary wins. The C and the
+  binary are one authority rather than two, because the binary is that C
+  compiled.
 
 ## Where it has got to, and what is left
 
