@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -87,6 +88,7 @@ public final class Interpreter {
         natives.forgetStartupState();
     }
 
+
     /**
      * Fills {@code system/modules} with the addresses Rebol publishes.
      *
@@ -120,26 +122,10 @@ public final class Interpreter {
      * for code that is already in the jar.
      */
     private void putTheAddressesOfTheModulesRebolPublishes() {
-        run(THE_MODULES_REBOL_PUBLISHES);
+        runTheBootStep("modules.reb");
     }
 
-    private static final String THE_MODULES_REBOL_PUBLISHES = """
-            append system/modules [
-                github:          bundled://github.reb
-                identify:        bundled://identify.reb
-                httpd:           bundled://httpd.reb
-                prebol:          bundled://prebol.reb
-                scheduler:       bundled://scheduler.reb
-                soundex:         bundled://soundex.reb
-                spotify:         bundled://spotify.reb
-                thru-cache:      bundled://thru-cache.reb
-                to-ascii:        bundled://to-ascii.reb
-                unicode-utils:   bundled://unicode-utils.reb
-                upgrade:         bundled://upgrade.reb
-                webdriver:       bundled://webdriver.reb
-                websocket:       bundled://websocket.reb
-            ]
-            """;
+
 
     /**
      * Registers the schemes JEBOL has an actor for.
@@ -153,6 +139,37 @@ public final class Interpreter {
      * <p>After the borrowed library, because MAKE-SCHEME comes from it. This
      * is the seam the other way about: Java calls REBOL, exactly as Rebol's C
      * calls {@code make-port*}.
+     *
+     * <p>Six files, and five of them are copied from {@code init-schemes} as
+     * they stand, because in each case it is the scheme's own INIT that has to
+     * be exact rather than its title:
+     *
+     * <ul>
+     * <li>{@code schemes.reb} -- the five that need nothing but a name, and the
+     *     line that points DECODE-URL at the parser.
+     * <li>{@code scheme-system.reb} -- its AWAKE is the whole of the event
+     *     loop. It takes each event off the queue, calls WAKE-UP on the port
+     *     the event names, keeps a list of the ports that said they were
+     *     finished, and answers true when one the caller named is on it.
+     *     Eight events at a time, and Rebol's comment says why.
+     * <li>{@code scheme-file.reb} -- its INIT is what makes a url another way
+     *     of writing a path, and the parse rule is not the {@code ://} it
+     *     looks like: up to the first colon, then at most two slashes, and the
+     *     rest is the file. So {@code file:a.txt}, {@code file:/a.txt} and
+     *     {@code file://a.txt} name the same relative file.
+     * <li>{@code scheme-dir.reb} -- the file scheme under another name.
+     * <li>{@code scheme-checksum.reb} -- its INIT is what makes
+     *     {@code checksum:sha1}, {@code checksum://sha1} and a spec block name
+     *     the same method, by looking in the three places a url can leave one
+     *     and falling back to MD5.
+     * <li>{@code scheme-crypt.reb} -- its INIT is what makes
+     *     {@code crypt:chacha20}, {@code crypt://AES-128-CBC#decrypt} and a
+     *     spec block name the same port, and where an algorithm outside
+     *     {@code system/catalog/ciphers} is refused.
+     * </ul>
+     *
+     * <p>Writing any of those in Java would be a second implementation of a
+     * rule REBOL already states once.
      */
     private boolean theSchemesAreRegistered;
 
@@ -161,205 +178,54 @@ public final class Interpreter {
             return;
         }
         theSchemesAreRegistered = true;
-        run("sys/decode-url: lib/decode-url: :sys/url-parser/parse-url");
-        run("sys/make-scheme [title: \"Console Access\" name: 'console]");
-        run("sys/make-scheme [title: \"TCP Networking\" name: 'tcp]");
-        run("sys/make-scheme [title: \"DNS Lookup\" name: 'dns]");
-        run("sys/make-scheme [title: \"GUI Events\" name: 'event]");
-        run("sys/make-scheme [title: \"Modules bundled with this build\" name: 'bundled]");
-        run(THE_SYSTEM_SCHEME);
-        run(THE_FILE_SCHEME);
-        run(THE_DIRECTORY_SCHEME);
-        run(THE_CHECKSUM_SCHEME);
-        run(THE_CRYPT_SCHEME);
+        for (String scheme : new String[] {
+                "schemes.reb",
+                "scheme-system.reb",
+                "scheme-file.reb",
+                "scheme-dir.reb",
+                "scheme-checksum.reb",
+                "scheme-crypt.reb"}) {
+            runTheBootStep(scheme);
+        }
     }
 
     /**
-     * The system port's scheme, copied from {@code init-schemes} as it stands.
+     * One of JEBOL's own boot steps, read from the build and run.
      *
-     * <p>Its AWAKE is the whole of the event loop and has to be exact, which is
-     * why it is copied rather than written again: it takes each event off the
-     * queue, calls WAKE-UP on the port the event names, keeps a list of the
-     * ports that said they were finished, and answers true when one of the
-     * ports the caller named is on it. Eight events at a time, and the comment
-     * saying why is Rebol's.
+     * <p>These are REBOL and they live in {@code /org/jebol/boot/} as REBOL,
+     * rather than in Java text blocks: a scheme's INIT is a function and a
+     * table of addresses is a block, and neither reads as either when it is
+     * quoted inside another language. They are read through the same classpath
+     * reader as the prelude and Rebol's own library, and differ from those in
+     * where the words they define end up rather than in how they are found.
      *
-     * <p>Taking an event off before waking its port is the subtle part, and the
-     * comment beside it says what it costs: waking a port can call WAIT again,
-     * and an event still on the queue would then be dealt with twice.
+     * <p>A missing one is a broken build rather than something a script did,
+     * so it stops the interpreter being half-made.
      */
-    private static final String THE_SYSTEM_SCHEME = """
-            sys/make-scheme [
-                title: "System Port"
-                name: 'system
-                awake: func [
-                    sport "System port (State block holds events)"
-                    ports "Port list (Copy of block passed to WAIT)"
-                    /only
-                    /local event event-list n-event port waked
-                ][
-                    waked: sport/data ; The wake list (pending awakes)
-
-                    if only [
-                        unless block? ports [return none] ;short cut for a pause
-                    ]
-
-                    ; Process all events (even if no awake ports).
-                    n-event: 0
-                    event-list: sport/state
-                    while [not empty? event-list][
-                        if n-event > 8 [break] ; Do only 8 events at a time (to prevent polling lockout).
-                        event: first event-list
-                        port: event/port
-                        either any [
-                            none? only
-                            find ports port
-                        ][
-                            remove event-list ;avoid event overflow caused by wake-up recursively calling into wait
-                            if wake-up port event [
-                                ; Add port to wake list:
-                                unless find waked port [append waked port]
-                            ]
-                            ++ n-event
-                        ][
-                            event-list: next event-list
-                        ]
-                    ]
-
-                    ; No wake ports (just a timer), return now.
-                    unless block? ports [return none]
-
-                    ; Are any of the requested ports awake?
-                    forall ports [
-                        if find waked first ports [return true]
-                    ]
-
-                    either zero? n-event [
-                        none ;events are ignored
-                    ][
-                        false ; keep waiting
-                    ]
-                ]
-                init: func [port] [
-                    port/data: copy [] ; The port wake list
-                ]
-            ]
-            """;
+    private void runTheBootStep(String name) {
+        run(bootStepNamed(name));
+    }
 
     /**
-     * The checksum scheme, copied from {@code init-schemes} as it stands.
+     * One boot step as it was written, for the caller that has to fill it in.
      *
-     * <p>Its INIT is the part that has to be exact rather than the title: it
-     * is what makes {@code checksum:sha1}, {@code checksum://sha1} and a spec
-     * block all name the same method, by looking in the three places a URL can
-     * leave one and falling back to MD5. Writing that in Java would be a
-     * second implementation of a rule REBOL already states once.
+     * <p>A step naming the script a run was given cannot be a finished piece of
+     * REBOL, because the paths are not known until there is one. It is still
+     * REBOL and still belongs in a file with the rest: what comes back is a
+     * template the caller formats.
      */
-    private static final String THE_CHECKSUM_SCHEME = """
-            sys/make-scheme [
-                title: {Checksum port}
-                info: {Possible methods are in `system/catalog/checksums`}
-                spec: system/standard/port-spec-checksum
-                name: 'checksum
-                init: function [port [port!]][
-                    spec: port/spec
-                    method: any [
-                        select spec 'method
-                        select spec 'target
-                        select spec 'host
-                        'md5
-                    ]
-                    if any [
-                        error? try [spec/method: to word! method]
-                        not find system/catalog/checksums spec/method
-                    ][
-                        cause-error 'access 'invalid-spec method
-                    ]
-                    set port/spec: copy system/standard/port-spec-checksum spec
-                ]
-            ]""";
+    public static String bootStepNamed(String name) {
+        String source = resourceText(BOOT + name);
+        if (source == null) {
+            throw new IllegalStateException(name + " is missing from the build");
+        }
+        return source;
+    }
 
-    /**
-     * The file scheme, copied from {@code init-schemes} as it stands.
-     *
-     * <p>Its INIT is what makes a url another way of writing a path. The parse
-     * rule is where the path begins, and it is not the {@code ://} it looks
-     * like: up to the first colon, then at most two slashes, and the rest is
-     * the file. So {@code file:a.txt}, {@code file:/a.txt} and
-     * {@code file://a.txt} all name the same relative file, and a third slash
-     * is the start of an absolute path rather than part of the notation.
-     *
-     * <p>This used to be the title and the name and nothing else, so a port
-     * opened from a url had no path and every read of one said the file scheme
-     * was not served -- which was untrue, and said so about the one scheme
-     * this host has always served.
-     */
-    private static final String THE_FILE_SCHEME = """
-            sys/make-scheme [
-                title: {File Access}
-                name: 'file
-                info: system/standard/file-info
-                init: func [port /local path] [
-                    if url? port/spec/ref [
-                        parse port/spec/ref [thru #":" 0 2 slash path:]
-                        append port/spec compose [path: (to file! path)]
-                    ]
-                ]
-            ]""";
+    /** Where JEBOL's own boot steps live, as against Rebol's in {@code mezz/}. */
+    private static final String BOOT = "/org/jebol/boot/";
 
-    /** The directory scheme, which is the file scheme under another name. */
-    private static final String THE_DIRECTORY_SCHEME = """
-            sys/make-scheme/with [
-                title: {File Directory Access}
-                name: 'dir
-            ] 'file""";
 
-    /**
-     * The crypt scheme, copied from {@code init-schemes} as it stands.
-     *
-     * <p>Its INIT is what makes {@code crypt:chacha20},
-     * {@code crypt://AES-128-CBC#decrypt} and a spec block all name the same
-     * port: the algorithm can arrive as a field, as a url's target or as its
-     * host, and the direction as the url's fragment or as a field. It is also
-     * where an algorithm outside {@code system/catalog/ciphers} is refused, so
-     * the catalogue is the one place that decides what this build serves.
-     */
-    private static final String THE_CRYPT_SCHEME = """
-            sys/make-scheme [
-                title: {Crypt}
-                spec: system/standard/port-spec-crypt
-                name: 'crypt
-                init: function [port [port!]][
-                    spec: port/spec
-                    algorithm: any [
-                        select spec 'algorithm
-                        select spec 'target
-                        select spec 'host
-                    ]
-                    direction: any [
-                        select spec 'fragment
-                        select spec 'direction
-                    ]
-                    if any [
-                        error? try [spec/algorithm: to word! :algorithm]
-                        not find system/catalog/ciphers spec/algorithm
-                    ][
-                        cause-error 'access 'invalid-spec :algorithm
-                    ]
-                    if any [
-                        error? try [spec/direction: to word! :direction]
-                        not find [encrypt decrypt] spec/direction
-                    ][
-                        cause-error 'access 'invalid-spec :direction
-                    ]
-                    set port/spec: copy system/standard/port-spec-crypt spec
-                    if block? port/spec/ref [
-                        port/spec/ref: as url! ajoin [
-                            {crypt://} :algorithm #"#" :direction
-                        ]
-                    ]
-                ]
-            ]""";
 
     /**
      * Opens {@code system/ports/event}, which the view system needs to exist.
@@ -378,10 +244,7 @@ public final class Interpreter {
         if (!systemInternals.knows("make-scheme")) {
             return;
         }
-        run("unless port? system/ports/event "
-                + "[system/ports/event: lib/open [scheme: 'event]]");
-        openTheSystemPort();
-        openTheOutputPort();
+        runTheBootStep("ports.reb");
     }
 
     /**
@@ -556,12 +419,7 @@ public final class Interpreter {
      * suite assertions with it.
      */
     private void describeTheQoiCodec() {
-        run("""
-                if find system/codecs 'qoi [
-                    system/codecs/qoi/title: "Quite OK Image"
-                    system/codecs/qoi/type: 'image
-                    system/codecs/qoi/suffixes: [%.qoi]
-                ]""");
+        runTheBootStep("qoi-codec.reb");
     }
 
     /**
@@ -920,27 +778,54 @@ public final class Interpreter {
     private static final String MODULES = "/org/jebol/modules/";
 
     /**
-     * One file this build carries, off the classpath.
+     * One file this build carries, off the classpath, read once per process.
      *
      * <p>Everything REBOL that ships here is read through this: the prelude,
-     * Rebol's own library, the three declaration files, and a bundled module.
-     * They differ in what happens next and not in how they are found -- the
-     * first four are evaluated into the shared contexts while the interpreter
-     * is being built, because nothing works until they are, and a module is
-     * read only when something imports it, into a namespace of its own.
+     * Rebol's own library, JEBOL's own boot steps, the three declaration files,
+     * and a bundled module. They differ in what happens next and not in how
+     * they are found -- the first four are evaluated into the shared contexts
+     * while the interpreter is being built, because nothing works until they
+     * are, and a module is read only when something imports it, into a
+     * namespace of its own.
+     *
+     * <p>Cached because a new interpreter costs 44ms and the corpus builds one
+     * per entry, so a thousand entries read every one of these a thousand
+     * times for the same answer. That is the lesson {@link LibrarySource}
+     * already carries one layer up: it caches what the library <em>reads as</em>
+     * and this caches the bytes underneath, and between them nothing is done
+     * twice that cannot change.
+     *
+     * <p>A copy on the way out, because the cached array is shared and a caller
+     * given the original could write into every later interpreter's copy. The
+     * same hazard LibrarySource names about series, one level down.
      *
      * <p>What a missing file means is the caller's to say, which is the only
-     * reason the three wrappers below exist: the prelude missing is a broken
+     * reason the wrappers exist: the prelude or a boot step missing is a broken
      * build, a declaration file missing costs documentation, and a module
      * missing is a module this build does not bundle.
      */
     private static Optional<byte[]> resourceBytes(String path) {
+        byte[] held = RESOURCES.computeIfAbsent(path, Interpreter::readingTheResource);
+        return held.length == 0 && !RESOURCES_THAT_ARE_THERE.contains(path)
+                ? Optional.empty()
+                : Optional.of(held.clone());
+    }
+
+    private static final Map<String, byte[]> RESOURCES = new ConcurrentHashMap<>();
+
+    /** Which paths were found, so an empty file is told from a missing one. */
+    private static final Set<String> RESOURCES_THAT_ARE_THERE =
+            ConcurrentHashMap.newKeySet();
+
+    private static byte[] readingTheResource(String path) {
         try (InputStream reading = Interpreter.class.getResourceAsStream(path)) {
-            return reading == null
-                    ? Optional.empty()
-                    : Optional.of(reading.readAllBytes());
+            if (reading == null) {
+                return new byte[0];
+            }
+            RESOURCES_THAT_ARE_THERE.add(path);
+            return reading.readAllBytes();
         } catch (IOException unreadable) {
-            return Optional.empty();
+            return new byte[0];
         }
     }
 
@@ -1215,7 +1100,7 @@ public final class Interpreter {
             String name, HostFunction function, List<Value> arguments) {
 
         if (!bounds.hostAccess().allowsCalling()) {
-            throw new org.jebol.domain.eval.Raised(ErrorValue.of(
+            throw new Raised(ErrorValue.of(
                     ErrorCategory.ACCESS, "host-access",
                     "this interpreter may not call out to " + name));
         }
@@ -1223,14 +1108,14 @@ public final class Interpreter {
         try {
             return HostValues.fromHost(function.call(supplied));
         } catch (RuntimeException | Error thrown) {
-            throw new org.jebol.domain.eval.Raised(ErrorValue.of(
+            throw new Raised(ErrorValue.of(
                     ErrorCategory.USER, "host-error",
                     name + " failed: " + thrown.getMessage()));
         }
     }
 
     /** Tells this interpreter where its script's network may reach. */
-    public void useNetwork(org.jebol.domain.eval.NetworkPort port) {
+    public void useNetwork(NetworkPort port) {
         evaluator.useNetwork(port);
     }
 
@@ -1245,7 +1130,7 @@ public final class Interpreter {
      * <p>Writing goes elsewhere. A host almost always wants to see what a
      * script printed and almost never wants it to stop and wait.
      */
-    public void useConsole(org.jebol.domain.eval.ConsolePort port) {
+    public void useConsole(ConsolePort port) {
         evaluator.useConsole(port);
     }
 
@@ -1256,7 +1141,7 @@ public final class Interpreter {
      * any of them, so a grant per dialog would say which verb and not which
      * screen.
      */
-    public void useWindows(org.jebol.domain.eval.WindowPort port) {
+    public void useWindows(WindowPort port) {
         evaluator.useWindows(port);
     }
 
@@ -1268,7 +1153,7 @@ public final class Interpreter {
      * question and answers it, while this holds windows open and sends events
      * back for as long as the script wants them.
      */
-    public void useScreen(org.jebol.domain.eval.ScreenPort port) {
+    public void useScreen(ScreenPort port) {
         evaluator.useScreen(port);
         handOverTheRootGobTo(port);
         handOverTheDrawDialectTo(port);
@@ -1283,10 +1168,10 @@ public final class Interpreter {
      * one, and per screen rather than anywhere shared, because a host runs
      * many interpreters and each has its own.
      */
-    private void handOverTheDrawDialectTo(org.jebol.domain.eval.ScreenPort port) {
-        ScriptOutcome declared = run("system/dialects/draw");
-        if (declared.conclusion() == Conclusion.PRODUCED_A_VALUE) {
-            port.useDrawDialect(declared.value());
+    private void handOverTheDrawDialectTo(ScreenPort port) {
+        Value declared = pathInto("system", "dialects", "draw");
+        if (!(declared instanceof UnsetValue)) {
+            port.useDrawDialect(declared);
         }
     }
 
@@ -1308,11 +1193,9 @@ public final class Interpreter {
      * still sized at nothing, and every window VIEW centres lands in the same
      * place with nothing saying why.
      */
-    private void handOverTheRootGobTo(org.jebol.domain.eval.ScreenPort port) {
-        ScriptOutcome standing = run("system/view/screen-gob");
-        if (standing.conclusion() == Conclusion.PRODUCED_A_VALUE
-                && standing.value() instanceof org.jebol.domain.value.GobValue root) {
-            org.jebol.domain.eval.ScreenPort.takeAsTheRoot(port, root);
+    private void handOverTheRootGobTo(ScreenPort port) {
+        if (pathInto("system", "view", "screen-gob") instanceof GobValue root) {
+            ScreenPort.takeAsTheRoot(port, root);
         }
     }
 
@@ -1375,9 +1258,7 @@ public final class Interpreter {
      * three tests of what a fresh directory contains noticed at once.
      */
     public void putTheModulesDirectoryBesideTheData() {
-        run("system/options/modules: attempt [all ["
-                + " exists? system/options/data"
-                + " make-dir/deep join system/options/data %modules/ ]]");
+        runTheBootStep("modules-directory.reb");
     }
 
     /**

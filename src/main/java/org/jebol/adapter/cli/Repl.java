@@ -224,11 +224,7 @@ public final class Repl {
          * where they were in {@code system/options/path} and has to say so.
          */
         private void tellItWhereItIs(Interpreter interpreter, Path script) {
-            String saying = """
-                    system/options/script: %%%s
-                    system/options/path: %%%s
-                    system/options/args: %s
-                    change-dir %%%s""".formatted(
+            String saying = Interpreter.bootStepNamed("script-position.reb").formatted(
                     asTheScriptSeesIt(script),
                     dirized(asTheScriptSeesIt(Path.of(startedIn))),
                     theArgumentsAfterTheScript(),
