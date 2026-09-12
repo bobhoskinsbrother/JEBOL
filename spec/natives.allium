@@ -7622,6 +7622,54 @@ rule ToRealFileNeedsTheFilesService {
 
 -- === Where a module comes from ============================
 
+-- A module this build carries is read from the build rather than fetched, and
+-- the BUNDLED scheme is how. `read bundled://github.reb` answers the source of
+-- that module out of the jar; there is no host to ask and nothing leaves the
+-- process.
+--
+-- It exists because of what IMPORT does with an address. The last place IMPORT
+-- looks is `select system/modules name`, and what it does with what it finds is
+-- `content: read source` followed by `write file content` -- an ordinary READ
+-- of whatever the url names. So a scheme served from the build turns the fetch
+-- into a read of the build, and neither IMPORT nor DOWNLOAD-EXTENSION has to
+-- know the difference.
+--
+-- Which is the whole point. Rebol's table sends IMPORT to `src.rebol.tech` and
+-- evaluates what comes back, with no signature, no checksum and no pinned
+-- version between the wire and the evaluator. A module that ships in the build
+-- has been looked at once, by whoever put it there, and cannot change under a
+-- running system.
+rule ReadingABundledModuleAnswersTheSourceTheBuildHolds {
+    when: EvaluateCall(read, target)
+    requires: names_the_bundled_scheme(target)
+    requires: this_build_bundles(the_name_in(target))
+
+    ensures: CallResult(datatype: binary)
+    ensures: CallResult(value: the_source_of(the_name_in(target)))
+}
+
+-- A name the build does not carry is refused the way a missing file is, rather
+-- than answering nothing: a caller that cannot tell "no such module" from "an
+-- empty module" writes the second to disk.
+rule ReadingABundledModuleTheBuildHasNotIsRefused {
+    when: EvaluateCall(read, target)
+    requires: names_the_bundled_scheme(target)
+    requires: not this_build_bundles(the_name_in(target))
+
+    ensures: CallFails(error: cannot_open, about: target)
+}
+
+-- And it asks for no service, because it reaches nothing. The bytes are in the
+-- build already, and a host that granted no filesystem and no network has not
+-- refused anything by refusing neither.
+rule TheBundledSchemeNeedsNoService {
+    when: EvaluateCall(read, target)
+    requires: names_the_bundled_scheme(target)
+
+    ensures: not CallFails(error: no_service)
+}
+
+
 -- `system/options/modules` names the directory an imported module is kept in,
 -- and it sits beside the application data directory: `sys-start.reb` writes
 -- `modules: attempt [make-dir/deep join data %modules/]` and nothing else
@@ -7662,6 +7710,17 @@ rule WithNoDataDirectoryThereIsNoModulesDirectory {
 -- addresses rather than empty. `sysobj.reb` builds it with forty-odd entries,
 -- each a name and the url the module is fetched from --
 -- `thru-cache: https://src.rebol.tech/modules/thru-cache.reb` is one.
+--
+-- Here every one of those addresses names the BUNDLED scheme instead, so the
+-- module is read out of the build: `thru-cache: bundled://thru-cache.reb`. The
+-- names and the modules behind them are Rebol's, and where they are read from
+-- is not.
+--
+-- Nothing in the mechanism changes -- IMPORT reads the address and writes what
+-- it read into the modules directory either way -- and what changes is that a
+-- running system cannot be handed different code than the one that was built.
+-- An address over the wire has no signature, no checksum and no pinned version,
+-- so a proxy in between or a compromised upstream is evaluated as it arrives.
 --
 -- IMPORT walks three places in order: what is already loaded, a file in the
 -- modules directory, and then `select system/modules source`, which it

@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,16 +27,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * goes stale quietly: a version number in a release url changes upstream and
  * nothing here would ever notice.
  *
- * <p>So this reads the block out of Rebol's own source and holds the copy to
- * it, the same way the vendored suite files are held to theirs. A name whose
- * value is a module rather than a url is one this build loaded -- LOAD-MODULE
- * ends with {@code repend system/modules [name module]} and the address is
- * replaced -- and that is checked as the replacement it is rather than skipped.
- *
- * <p>Rebol's table opens with fourteen compiled extensions and those are left
- * out here, which the third test holds to. Nothing in this build can load a
- * shared library, so an address for one only turns "no such module" into a
+ * <p>So this reads the block out of Rebol's own source and holds what this
+ * build offers to it: every name offered must be one Rebol publishes, and no
+ * compiled extension may be offered at all, because nothing here can load a
+ * shared library and an address for one only turns "no such module" into a
  * download that fails afterwards.
+ *
+ * <p>What it does not hold is the addresses themselves, which differ on
+ * purpose. Rebol's send IMPORT to {@code src.rebol.tech}; these name the
+ * BUNDLED scheme, so the module is read out of this build and cannot change
+ * under a running system.
  */
 class TheModuleTableIsRebolsFromTheSourceTest {
 
@@ -91,89 +92,57 @@ class TheModuleTableIsRebolsFromTheSourceTest {
                 .containsKey("brotli");
     }
 
+    /**
+     * Every name this build offers is one Rebol publishes, and every address is
+     * the BUNDLED scheme rather than an address on the wire.
+     *
+     * <p>The names have to be Rebol's because IMPORT is asked for them by name
+     * and a name nobody else uses reaches nothing. The addresses have to be
+     * local because an address on the wire is evaluated as it arrives, with no
+     * signature, no checksum and no pinned version between it and the
+     * evaluator.
+     */
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
-    @DisplayName("and every address in it is the address this build holds")
-    void everyAddressIsTheAddressThisBuildHolds() {
+    @DisplayName("and every name offered is Rebol's, read out of this build")
+    void everyNameOfferedIsRebolsReadOutOfThisBuild() {
+        Map<String, String> published = whatRebolPublishes();
         Map<String, String> wrong = new LinkedHashMap<>();
-        whatRebolPublishes().forEach((name, address) -> {
-            if (isACompiledExtension(address)) {
-                return;
-            }
+        for (String name : whatThisBuildOffers()) {
             String held = whatJebolHolds(name);
-            boolean rightOrReplaced = held.equals("\"" + address + "\"")
-                    || isAModule(held);
-            if (!rightOrReplaced) {
+            if (!published.containsKey(name)) {
+                wrong.put(name, "not a name Rebol publishes");
+            } else if (!held.equals("\"bundled://" + name + ".reb\"")) {
                 wrong.put(name, held);
             }
-        });
+        }
 
         assertThat(wrong)
-                .as("these names do not hold the address Rebol publishes, and "
-                        + "are not modules this build loaded either. A copy of "
-                        + "somebody else's table goes stale without a word:%n  %s",
-                        wrong)
+                .as("each of these should be bundled://<name>.reb and read out "
+                        + "of this build, and each name should be one Rebol "
+                        + "publishes:%n  %s", wrong)
                 .isEmpty();
     }
 
     /**
-     * The compiled extensions are left out, and this is what says so.
-     *
-     * <p>Each is a shared library -- {@code name-platform-arch.rebx} fetched
-     * from a release page -- and nothing here can load one. An address for one
-     * turns "no such module" into a download that fails after a round trip to
-     * github, which is slower, more confusing, and one more way for a run to
-     * fail. Several are things JEBOL has anyway: BROTLI is the {@code br}
-     * compression method, and DEFLATE, BZIP2 and ZLIB-NG are in
-     * {@code system/catalog/compressions}.
+     * And what is offered is what is bundled. An address for a module the build
+     * has not got answers cannot-open when IMPORT reads it, which is a worse
+     * failure than never offering it.
      */
     @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
-    @DisplayName("but no compiled extension is offered, because none can be loaded")
-    void noCompiledExtensionIsOffered() {
-        Map<String, String> offered = new LinkedHashMap<>();
-        whatRebolPublishes().forEach((name, address) -> {
-            if (isACompiledExtension(address) && whatJebolHolds(name).contains("://")) {
-                offered.put(name, address);
-            }
-        });
-
-        assertThat(offered)
-                .as("an address here sends IMPORT to fetch a shared library "
-                        + "this build cannot load, after a round trip:%n  %s",
-                        offered)
-                .isEmpty();
+    @DisplayName("and every one of them is a module this build can read")
+    void everyOneOfThemIsAModuleThisBuildCanRead() {
+        Interpreter interpreter = Interpreter.create();
+        for (String name : whatThisBuildOffers()) {
+            String asking = "binary? read bundled://" + name + ".reb";
+            interpreter.defineFreshWordsIn(asking);
+            assertThat(interpreter.display(interpreter.run(asking)))
+                    .as("bundled://%s.reb", name)
+                    .isEqualTo("#(true)");
+        }
     }
 
-    /**
-     * A release page rather than a file: the module loader tells the two apart
-     * with {@code either dir? source}, and builds a platform-specific
-     * {@code .rebx} name for the first.
-     */
-    private static boolean isACompiledExtension(String address) {
-        return address.endsWith("/");
-    }
-
-    /**
-     * Whether what came back is a molded module, in either delimiter.
-     *
-     * <p>REBOL molds a string of more than fifty characters in braces and a
-     * shorter one in quotes, and a module with nothing exported is short --
-     * {@code "make module! [^/]"}. Accepting only braces read five of these as
-     * the wrong address when they were modules this build had loaded.
-     */
-    private static boolean isAModule(String held) {
-        return held.startsWith("{make module!") || held.startsWith("\"make module!");
-    }
-
-    /**
-     * And nothing extra. A name here that Rebol does not publish would send
-     * IMPORT somewhere Rebol never would.
-     */
-    @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
-    @DisplayName("and no address is here that Rebol does not publish")
-    void noAddressIsHereThatRebolDoesNotPublish() {
+    private static List<String> whatThisBuildOffers() {
         Interpreter interpreter = Interpreter.create();
         String asking = """
                 collect [
@@ -183,9 +152,30 @@ class TheModuleTableIsRebolsFromTheSourceTest {
                 ]""";
         interpreter.defineFreshWordsIn(asking);
         String held = interpreter.display(interpreter.run(asking));
+        return List.of(held.substring(1, held.length() - 1).trim().split("\\s+"));
+    }
 
-        assertThat(held.substring(1, held.length() - 1).split("\\s+"))
-                .allMatch(name -> whatRebolPublishes().containsKey(name),
-                        "published by Rebol");
+    /**
+     * No compiled extension is offered, and none can be. Each is a shared
+     * library -- {@code name-platform-arch.rebx} from a release page -- and
+     * nothing here can load one, so an address for one only turns "no such
+     * module" into a download that fails afterwards. Several name things JEBOL
+     * has anyway: BROTLI is the {@code br} compression method.
+     */
+    @Test
+    @EnabledIf("rebolsOwnSourceIsHere")
+    @DisplayName("and no compiled extension is offered, because none can be loaded")
+    void noCompiledExtensionIsOffered() {
+        List<String> offered = whatThisBuildOffers();
+        List<String> shouldNotBe = whatRebolPublishes().entrySet().stream()
+                .filter(one -> one.getValue().endsWith("/"))
+                .map(Map.Entry::getKey)
+                .filter(offered::contains)
+                .toList();
+
+        assertThat(shouldNotBe)
+                .as("an address here sends IMPORT to fetch a shared library "
+                        + "this build cannot load:%n  %s", shouldNotBe)
+                .isEmpty();
     }
 }

@@ -77,6 +77,7 @@ public final class Interpreter {
                 this::reasonToStop,
                 bounds.checkEvery());
         evaluator.putRuntimeWordsIn(userContext);
+        evaluator.useBundledModules(Interpreter::theModuleBundledAs);
         loadPrelude();
         putTheAddressesOfTheModulesRebolPublishes();
         loadRebolsOwnLibrary();
@@ -89,29 +90,34 @@ public final class Interpreter {
     /**
      * Fills {@code system/modules} with the addresses Rebol publishes.
      *
-     * <p>Copied from {@code sysobj.reb}, which builds that object with
-     * forty-odd entries rather than empty: each is a module's name and the url
-     * it is fetched from. IMPORT looks in three places in order -- what is
-     * already loaded, a file in the modules directory, and then {@code select
-     * system/modules source}, which it downloads and saves -- and the third is
-     * the only one that can find a module nobody has installed.
+     * <p>The names are {@code sysobj.reb}'s and the addresses are not. IMPORT
+     * looks in three places in order -- what is already loaded, a file in the
+     * modules directory, and then {@code select system/modules source}, which
+     * it reads and saves -- and the third is the only one that can find a
+     * module nobody has installed.
+     *
+     * <p>Rebol sends that third step to {@code src.rebol.tech} and evaluates
+     * what comes back, with no signature, no checksum and no pinned version
+     * between the wire and the evaluator: a proxy in between, or an upstream
+     * that changes, is evaluated as it arrives. Here each address names the
+     * BUNDLED scheme instead, so the module is read out of this build and
+     * cannot change under a running system. DOWNLOAD-EXTENSION does {@code
+     * content: read source} either way and never learns the difference.
      *
      * <p>Before the library, because a module that loads replaces its address
      * in the same object: {@code repend system/modules [name module]} is the
      * last thing LOAD-MODULE does. So the table is both the list of what may be
      * fetched and the record of what has been, and putting it down afterwards
-     * would write the addresses back over the modules. Most of these names are
-     * modules this build already carries, and each of those has its address
-     * replaced before a script ever sees it.
+     * would write the addresses back over the modules.
      *
-     * <p>Rebol's own table opens with fourteen more, and those are left out on
-     * purpose. They are compiled shared libraries -- {@code
-     * name-platform-arch.rebx} fetched from a release page -- and nothing here
-     * can load one, so an address for one turns "no such module" into a
-     * download that fails afterwards. Several of them are things JEBOL has
-     * anyway: BROTLI is the {@code br} compression method, and DEFLATE, BZIP2
-     * and ZLIB-NG are in {@code system/catalog/compressions}. The day an
-     * extension can be loaded here is the day to put them back.
+     * <p>Only the thirteen this build has no other way to reach are here.
+     * Rebol's table has two other kinds and neither belongs: fourteen compiled
+     * shared libraries, which nothing here can load and which name things JEBOL
+     * has anyway -- BROTLI is the {@code br} compression method -- and nineteen
+     * modules this build already vendors and loads. An address for one of those
+     * nineteen is replaced during the boot and so never fetches anything, which
+     * makes it a live address one load-order change away from being reachable,
+     * for code that is already in the jar.
      */
     private void putTheAddressesOfTheModulesRebolPublishes() {
         run(THE_MODULES_REBOL_PUBLISHES);
@@ -119,39 +125,19 @@ public final class Interpreter {
 
     private static final String THE_MODULES_REBOL_PUBLISHES = """
             append system/modules [
-                github:           https://src.rebol.tech/modules/github.reb
-                identify:         https://src.rebol.tech/modules/identify.reb
-                httpd:            https://src.rebol.tech/modules/httpd.reb
-                prebol:           https://src.rebol.tech/modules/prebol.reb
-                scheduler:        https://src.rebol.tech/modules/scheduler.reb
-                soundex:          https://src.rebol.tech/modules/soundex.reb
-                spotify:          https://src.rebol.tech/modules/spotify.reb
-                thru-cache:       https://src.rebol.tech/modules/thru-cache.reb
-                to-ascii:         https://src.rebol.tech/modules/to-ascii.reb
-                unicode-utils:    https://src.rebol.tech/modules/unicode-utils.reb
-                upgrade:          https://src.rebol.tech/modules/upgrade.reb
-                daytime:          https://src.rebol.tech/mezz/prot-daytime.reb
-                mail:             https://src.rebol.tech/mezz/prot-mail.reb
-                mysql:            https://src.rebol.tech/mezz/prot-mysql.reb
-                rdap:             https://src.rebol.tech/mezz/prot-rdap.reb
-                css:              https://src.rebol.tech/mezz/codec-css.reb
-                csv:              https://src.rebol.tech/mezz/codec-csv.reb
-                ico:              https://src.rebol.tech/mezz/codec-ico.reb
-                pdb:              https://src.rebol.tech/mezz/codec-pdb.reb
-                pdf:              https://src.rebol.tech/mezz/codec-pdf.reb
-                srt:              https://src.rebol.tech/mezz/codec-srt.reb
-                swf:              https://src.rebol.tech/mezz/codec-swf.reb
-                xml:              https://src.rebol.tech/mezz/codec-xml.reb
-                json:             https://src.rebol.tech/mezz/codec-json.reb
-                plist:            https://src.rebol.tech/mezz/codec-plist.reb
-                bbcode:           https://src.rebol.tech/mezz/codec-bbcode.reb
-                html-entities:    https://src.rebol.tech/mezz/codec-html-entities.reb
-                mime-field:       https://src.rebol.tech/mezz/codec-mime-field.reb
-                mime-types:       https://src.rebol.tech/mezz/codec-mime-types.reb
-                quoted-printable: https://src.rebol.tech/mezz/codec-quoted-printable.reb
-                webdriver:        https://src.rebol.tech/modules/webdriver.reb
-                websocket:        https://src.rebol.tech/modules/websocket.reb
-                window:           #(none)
+                github:          bundled://github.reb
+                identify:        bundled://identify.reb
+                httpd:           bundled://httpd.reb
+                prebol:          bundled://prebol.reb
+                scheduler:       bundled://scheduler.reb
+                soundex:         bundled://soundex.reb
+                spotify:         bundled://spotify.reb
+                thru-cache:      bundled://thru-cache.reb
+                to-ascii:        bundled://to-ascii.reb
+                unicode-utils:   bundled://unicode-utils.reb
+                upgrade:         bundled://upgrade.reb
+                webdriver:       bundled://webdriver.reb
+                websocket:       bundled://websocket.reb
             ]
             """;
 
@@ -180,6 +166,7 @@ public final class Interpreter {
         run("sys/make-scheme [title: \"TCP Networking\" name: 'tcp]");
         run("sys/make-scheme [title: \"DNS Lookup\" name: 'dns]");
         run("sys/make-scheme [title: \"GUI Events\" name: 'event]");
+        run("sys/make-scheme [title: \"Modules bundled with this build\" name: 'bundled]");
         run(THE_SYSTEM_SCHEME);
         run(THE_FILE_SCHEME);
         run(THE_DIRECTORY_SCHEME);
@@ -459,14 +446,9 @@ public final class Interpreter {
      * interpreter half-built.
      */
     private void loadPrelude() {
-        String source;
-        try (InputStream reading = Interpreter.class.getResourceAsStream(PRELUDE)) {
-            if (reading == null) {
-                throw new IllegalStateException("the prelude is missing from the build");
-            }
-            source = new String(reading.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException unreadable) {
-            throw new IllegalStateException("the prelude could not be read", unreadable);
+        String source = resourceText(PRELUDE);
+        if (source == null) {
+            throw new IllegalStateException("the prelude is missing from the build");
         }
         TranscodeResult read = LibrarySource.reading(PRELUDE, source);
         BlockValue values = read.values().orElseThrow(() -> new IllegalStateException(
@@ -923,14 +905,49 @@ public final class Interpreter {
         return source == null ? "" : source;
     }
 
-    private static String resourceText(String path) {
+    /**
+     * One module out of the build, or nothing when none is bundled as that.
+     *
+     * <p>The name is taken as written and joined to one directory -- a name
+     * with a separator in it never reaches here, being refused where the url is
+     * read -- so there is nowhere else for it to land.
+     */
+    private static Optional<byte[]> theModuleBundledAs(String name) {
+        return resourceBytes(MODULES + name);
+    }
+
+    /** Where the modules bundled with this build live. */
+    private static final String MODULES = "/org/jebol/modules/";
+
+    /**
+     * One file this build carries, off the classpath.
+     *
+     * <p>Everything REBOL that ships here is read through this: the prelude,
+     * Rebol's own library, the three declaration files, and a bundled module.
+     * They differ in what happens next and not in how they are found -- the
+     * first four are evaluated into the shared contexts while the interpreter
+     * is being built, because nothing works until they are, and a module is
+     * read only when something imports it, into a namespace of its own.
+     *
+     * <p>What a missing file means is the caller's to say, which is the only
+     * reason the three wrappers below exist: the prelude missing is a broken
+     * build, a declaration file missing costs documentation, and a module
+     * missing is a module this build does not bundle.
+     */
+    private static Optional<byte[]> resourceBytes(String path) {
         try (InputStream reading = Interpreter.class.getResourceAsStream(path)) {
             return reading == null
-                    ? null
-                    : new String(reading.readAllBytes(), StandardCharsets.UTF_8);
+                    ? Optional.empty()
+                    : Optional.of(reading.readAllBytes());
         } catch (IOException unreadable) {
-            return null;
+            return Optional.empty();
         }
+    }
+
+    private static String resourceText(String path) {
+        return resourceBytes(path)
+                .map(bytes -> new String(bytes, StandardCharsets.UTF_8))
+                .orElse(null);
     }
 
     /** An interpreter with the standard bounds, whose output goes nowhere. */

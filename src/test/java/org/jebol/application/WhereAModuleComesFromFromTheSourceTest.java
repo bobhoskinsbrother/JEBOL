@@ -112,28 +112,35 @@ class WhereAModuleComesFromFromTheSourceTest {
                 "system/options/modules"))).isEqualTo("%/elsewhere/modules/");
     }
 
+    /**
+     * The names are Rebol's and the addresses are not: each names the BUNDLED
+     * scheme, so the module is read out of this build rather than fetched from
+     * {@code src.rebol.tech} and evaluated as it arrives.
+     */
     @Test
-    @DisplayName("the module table starts as the addresses Rebol publishes")
-    void theModuleTableStartsAsAddresses(@TempDir Path root) {
+    @DisplayName("the module table starts as the modules this build bundles")
+    void theModuleTableStartsAsWhatIsBundled(@TempDir Path root) {
         assertThat(answerTo(root, "select system/modules 'thru-cache"))
-                .isEqualTo("https://src.rebol.tech/modules/thru-cache.reb");
+                .isEqualTo("bundled://thru-cache.reb");
         assertThat(answerTo(root, "select system/modules 'httpd"))
-                .isEqualTo("https://src.rebol.tech/modules/httpd.reb");
+                .isEqualTo("bundled://httpd.reb");
     }
 
     /**
-     * Except the compiled extensions, which are left out. Each is a shared
-     * library fetched from a release page and nothing here can load one, so an
-     * address for one only turns "no such module" into a download that fails
-     * after a round trip. Several are things this build has anyway: BROTLI is
-     * the {@code br} compression method.
+     * Nothing this build cannot serve is offered. A compiled extension is a
+     * shared library and nothing here can load one; a module this build already
+     * vendors and loads needs no address at all, and a live address for code
+     * that is in the jar is one load-order change away from being reachable.
      */
     @Test
-    @DisplayName("but a compiled extension is not offered, and fails at once")
-    void aCompiledExtensionIsNotOffered(@TempDir Path root) {
+    @DisplayName("but nothing this build cannot serve is offered")
+    void nothingThisBuildCannotServeIsOffered(@TempDir Path root) {
         assertThat(answerTo(root, "select system/modules 'sqlite")).isEqualTo("_");
         assertThat(answerTo(root, "select system/modules 'blend2d")).isEqualTo("_");
         assertThat(answerTo(root, "error? try [import 'brotli]")).isEqualTo("#(true)");
+        assertThat(answerTo(root, "type? select system/modules 'json"))
+                .as("already vendored and loaded, so it is a module and not an address")
+                .isEqualTo("#(module!)");
     }
 
     @Test

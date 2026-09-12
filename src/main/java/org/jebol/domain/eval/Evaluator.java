@@ -62,6 +62,7 @@ public final class Evaluator {
      * for the same reason the filesystem is nothing until then.
      */
     private NetworkPort network = NetworkPort.none();
+    private BundledModules bundledModules = BundledModules.none();
     private int stepsSinceLastCheck;
 
     /**
@@ -301,6 +302,20 @@ public final class Evaluator {
 
     public void useNetwork(NetworkPort port) {
         this.network = port;
+    }
+
+    /**
+     * The modules bundled with this build, which BUNDLED reads through.
+     *
+     * <p>No grant guards it, unlike the filesystem and the network: nothing is
+     * reached, and a build cannot be asked for something it does not bundle.
+     */
+    public BundledModules bundledModules() {
+        return bundledModules;
+    }
+
+    public void useBundledModules(BundledModules bundled) {
+        this.bundledModules = bundled;
     }
 
     /** Gives the script a way to start another program. */

@@ -184,16 +184,15 @@ class SuiteSelectionTest {
     /**
      * The modules the run puts on disk are Rebol's own, byte for byte.
      *
-     * <p>IMPORT would otherwise fetch each from {@code src.rebol.tech}, which
-     * is one more host a run can fail on. Copying it in removes that, and this
-     * is what stops the copy quietly becoming something Rebol does not publish
-     * -- the same rule the vendored test files are held to, for the same
-     * reason.
+     * <p>IMPORT would otherwise fetch each from {@code src.rebol.tech} and
+     * evaluate what came back. Bundling them removes that, and this is what
+     * stops a copy quietly becoming something Rebol does not publish -- the
+     * same rule the vendored test files are held to, for the same reason.
      */
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
-    @DisplayName("and every vendored module is Rebol's own module")
-    void everyVendoredModuleIsUnchanged() {
+    @DisplayName("and every bundled module is Rebol's own module")
+    void everyBundledModuleIsUnchanged() {
         Path upstream = Path.of("rebol3-source", "src", "modules");
         List<String> altered;
         try (Stream<Path> here = Files.list(VENDORED_MODULES)) {
@@ -214,7 +213,7 @@ class SuiteSelectionTest {
     }
 
     private static final Path VENDORED_MODULES =
-            Path.of("src", "test", "resources", "rebol-modules");
+            Path.of("src", "main", "resources", "org", "jebol", "modules");
 
     private static boolean sameBytes(Path here, Path upstream) {
         try {

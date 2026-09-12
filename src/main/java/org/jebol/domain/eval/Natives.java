@@ -19015,6 +19015,7 @@ public final class Natives {
         }
         return switch (port.schemeName()) {
             case "console" -> lineReadFromTheConsole(evaluator);
+            case "bundled" -> theSourceOfABundledModule(port, evaluator);
             case "tcp" -> bytesReadFromTheConnection(port, evaluator);
             case "dns" -> addressesOfTheNameThePortNames(port, evaluator);
             case "checksum" -> ChecksumPort.digestSoFar(port);
@@ -19033,6 +19034,40 @@ public final class Natives {
             String line = evaluator.console().readLine();
             return line == null ? NoneValue.none() : StringValue.of(line);
         });
+    }
+
+    /**
+     * The source of a module bundled with this build, out of the build.
+     *
+     * <p>The name is the spec's HOST and nothing else: `bundled://github.reb`
+     * decodes to {@code [scheme: 'bundled host: "github.reb"]}, where a name
+     * with a slash in it decodes to a host, a path and a target. So a spec
+     * holding either of those is asking for something inside a directory, and
+     * this scheme has no directories -- one flat set of modules, named by the
+     * build. Refusing them is what stops a name climbing out of it.
+     *
+     * <p>Refused the way a missing file is rather than answered empty, because
+     * a caller that cannot tell "no such module" from "an empty module" writes
+     * the second to disk. DOWNLOAD-EXTENSION is exactly that caller.
+     */
+    private Value theSourceOfABundledModule(PortValue port, Evaluator evaluator) {
+        return theNameABundledUrlAsksFor(port)
+                .flatMap(name -> evaluator.bundledModules().sourceOf(name))
+                .map(source -> (Value) BinaryValue.of(unsignedOctets(source)))
+                .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_OPEN,
+                        port.fieldNamed("spec") instanceof ObjectValue spec
+                                ? valueInSpec(spec, "ref")
+                                : NoneValue.none()));
+    }
+
+    private static Optional<String> theNameABundledUrlAsksFor(PortValue port) {
+        if (!(port.fieldNamed("spec") instanceof ObjectValue spec)
+                || !(valueInSpec(spec, "host") instanceof StringValue named)
+                || !(valueInSpec(spec, "path") instanceof NoneValue)
+                || !(valueInSpec(spec, "target") instanceof NoneValue)) {
+            return Optional.empty();
+        }
+        return named.text().isEmpty() ? Optional.empty() : Optional.of(named.text());
     }
 
     /**
@@ -20575,7 +20610,7 @@ public final class Natives {
             case "file", "dir" -> requireService(HostService.FILES);
             case "tcp", "dns" -> requireService(HostService.NETWORK);
             case "event" -> requireService(HostService.WINDOWS);
-            case "system", "callback" -> theSchemeReachesNothingOutside();
+            case "system", "callback", "bundled" -> theSchemeReachesNothingOutside();
             case "checksum", "crypt" -> theSchemeReachesNothingOutside();
             default -> {
                 throw Raised.of(EvaluationFailure.NO_SERVICE,
