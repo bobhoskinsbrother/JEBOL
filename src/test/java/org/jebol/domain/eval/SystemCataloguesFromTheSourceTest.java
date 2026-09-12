@@ -103,6 +103,35 @@ class SystemCataloguesFromTheSourceTest {
         }
 
         @Test
+        @DisplayName("CHECKSUMS names the twenty methods in the order Rebol names them")
+        void theChecksumsAreNamedInRebolsOrder() {
+            assertThat(answerTo("""
+                    system/catalog/checksums = [
+                        adler32 crc24 crc32
+                        md4 md5 ripemd160
+                        sha1 sha224 sha256 sha384 sha512
+                        sha3-224 sha3-256 sha3-384 sha3-512
+                        xxh3 xxh32 xxh64 xxh128
+                        tcp
+                    ]""")).isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("and each answers a digest or a number, the way the C splits them")
+        void eachAnswersADigestOrANumber() {
+            assertThat(answerTo("""
+                    digests: copy [] numbers: copy []
+                    foreach method system/catalog/checksums [
+                        unless method = 'tcp [
+                            answer: checksum #{00} method
+                            append either binary? answer [digests] [numbers] method
+                        ]
+                    ]
+                    reduce [numbers 16 = length? digests]"""))
+                    .isEqualTo("[[adler32 crc24 crc32] #(true)]");
+        }
+
+        @Test
         @DisplayName("CIPHERS names what the cipher port serves, which is now all of them")
         void theCiphersAreTheOnesTheCipherPortServes() {
             assertThat(answerTo("block? system/catalog/ciphers")).isEqualTo(TRUE);

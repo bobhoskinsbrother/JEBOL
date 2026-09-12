@@ -33,8 +33,10 @@ final class ChecksumPort {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, method);
         }
         if (Encodings.RIPEMD_160.equals(named)
+                || Encodings.XXH_3.equals(named)
                 || Encodings.XXH_32.equals(named)
                 || Encodings.XXH_64.equals(named)
+                || Encodings.XXH_128.equals(named)
                 || Encodings.MD_4.equals(named)) {
             return keepingTheBytes(method);
         }

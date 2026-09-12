@@ -399,18 +399,28 @@ final class Encodings {
         named.put("sha3-384", "SHA3-384");
         named.put("sha3-512", "SHA3-512");
         named.put("ripemd160", RIPEMD_160);
+        named.put("xxh3", XXH_3);
         named.put("xxh32", XXH_32);
         named.put("xxh64", XXH_64);
+        named.put("xxh128", XXH_128);
         named.put("md4", MD_4);
         return Map.copyOf(named);
     }
 
     static final List<String> CYCLIC = List.of("crc32", "adler32", "crc24", "tcp");
 
+    private static final List<String> CATALOGUE_ORDER = List.of(
+            "adler32", "crc24", "crc32",
+            "md4", "md5", "ripemd160",
+            "sha1", "sha224", "sha256", "sha384", "sha512",
+            "sha3-224", "sha3-256", "sha3-384", "sha3-512",
+            "xxh3", "xxh32", "xxh64", "xxh128",
+            "tcp");
+
     static List<String> checksumMethods() {
-        List<String> every = new ArrayList<>(DIGESTS.keySet());
-        every.addAll(CYCLIC);
-        return List.copyOf(every);
+        List<String> served = new ArrayList<>(DIGESTS.keySet());
+        served.addAll(CYCLIC);
+        return CATALOGUE_ORDER.stream().filter(served::contains).toList();
     }
 
     private static final int MURMUR_MIXING_MULTIPLIER = 0xcc9e2d51;
@@ -464,9 +474,13 @@ final class Encodings {
 
     static final String RIPEMD_160 = "RIPEMD160";
 
+    static final String XXH_3 = "XXH3";
+
     static final String XXH_32 = "XXH32";
 
     static final String XXH_64 = "XXH64";
+
+    static final String XXH_128 = "XXH128";
 
     static final String MD_4 = "MD4";
 
@@ -475,11 +489,17 @@ final class Encodings {
         if (RIPEMD_160.equals(named)) {
             return RipeMd160.of(octets);
         }
+        if (XXH_3.equals(named)) {
+            return XxHash3.of64MostSignificantByteFirst(octets);
+        }
         if (XXH_32.equals(named)) {
             return XxHash.of32MostSignificantByteFirst(octets);
         }
         if (XXH_64.equals(named)) {
             return XxHash.of64MostSignificantByteFirst(octets);
+        }
+        if (XXH_128.equals(named)) {
+            return XxHash3.of128MostSignificantByteFirst(octets);
         }
         if (MD_4.equals(named)) {
             return Md4.of(octets);

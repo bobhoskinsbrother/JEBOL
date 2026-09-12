@@ -9486,6 +9486,10 @@ public final class Natives {
                 Set.of("with", "part"),
                 (arguments, evaluator, context, refinements) -> {
                     String method = ((WordValue) arguments.get(1)).canonical();
+                    if (arguments.getFirst().datatype() == Datatype.FILE) {
+                        return theContentsOfThatFileSummed(
+                                arguments.getFirst(), method, evaluator, refinements);
+                    }
                     byte[] octets = partOfOctets(arguments.getFirst(),
                             octetsOf(arguments.getFirst()), arguments, refinements, 2);
                     Value spec = refinements.contains("with")
@@ -14849,6 +14853,25 @@ public final class Natives {
             default -> null;
         };
     }
+
+    private static Value theContentsOfThatFileSummed(
+            Value file, String method, Evaluator evaluator, Set<String> refinements) {
+
+        if (!Encodings.DIGESTS.containsKey(method)) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA);
+        }
+        if (refinements.contains("part") || refinements.contains("with")) {
+            throw Raised.of(EvaluationFailure.BAD_REFINES);
+        }
+        Context library = evaluator.systemContext();
+        if (!library.knows(FILE_CHECKSUM)) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA);
+        }
+        return evaluator.applyFunction(library.slotFor(FILE_CHECKSUM).value(),
+                List.of(file, WordValue.of(method)));
+    }
+
+    private static final String FILE_CHECKSUM = "file-checksum";
 
     private static Value systemInternalFunction(Context context, String name) {
         if (!(pathInto(context, "system", "contexts", "sys")

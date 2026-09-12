@@ -5269,3 +5269,94 @@ because they do not always: the porting guide records four wrong readings
 traced to asking the older one.
 
 An entry with neither should be read as a recollection, not a finding.
+
+## 183. Rebol's checksum port computes xxh32 and xxh64 from an uninitialised context
+
+**`XXH32_Starts` and `XXH64_Starts` in `u-xxhash.c` never touch the context they
+were given.** Both are written the same way:
+
+```c
+void XXH32_Starts( XXH32_state_t *ctx )
+{
+    ctx = XXH32_createState();   /* overwrites the local parameter */
+    XXH32_reset(ctx, 0);         /* resets the new one, then leaks it */
+}
+```
+
+The assignment rebinds the parameter, so the caller's buffer -- the series
+`p-checksum.c` allocated for the port -- is left exactly as it was found, and
+every `XXH32_Update` after it accumulates into that. The freshly created state
+is leaked once per port opened.
+
+**`XXH3_Starts` and `XXH128_Starts`, four lines away, are written correctly** as
+`XXH3_64bits_reset(ctx)` and `XXH3_128bits_reset(ctx)`. That is the whole of why
+those two agree between a port and a one-shot and the other two do not.
+
+**It is invisible below sixteen bytes, which is why nothing has caught it.** A
+zeroed XXH32 state has the wrong accumulators and the right `total_len` and
+`memsize`, and `XXH32_digest` only reads the accumulators once sixteen bytes have
+arrived; under that it takes the seed path, and the seed field of a zeroed state
+is nought, which is the seed a correct reset would have used. Rebol's own
+`checksum-test.r3` writes two bytes and four bytes to the port, so its assertion
+that the port and the one-shot agree passes on a real 3.22.5. At forty-three
+bytes the same assertion fails there.
+
+    checksum #{0BAD} 'xxh32         == port answer   -- agree, 2 bytes
+    checksum <43 bytes> 'xxh32      #{E85EA4DE}      -- the published vector
+    the same bytes through a port    #{A84939F9}     -- a real 3.22.5
+
+**JEBOL keeps the published answer**, so its port and its one-shot agree at every
+length and both match the xxHash vectors. Copying the other answer would mean
+implementing a hash that is XXH32 with its accumulators zeroed, which is not
+XXH32 and which upstream would call broken -- and the reference contradicts
+itself here, so there is no single C answer to agree with. It reaches a script
+through `file-checksum`, which sums through a port, so `checksum %file 'xxh32`
+is where the two differ.
+
+Pinned by `ChecksumOfAFileFromTheSourceTest`, which asserts a port and a one-shot
+agree for all four xxHash methods at forty-three bytes.
+
+## 184. CHECKSUM hands a file to FILE-CHECKSUM, and only for a digest
+
+**`n-strings.c`'s CHECKSUM has a branch nobody would guess from the name.** Its
+declared data type is `[binary! string! file!]`, and a file is not hashed: it is
+handed to the REBOL function `file-checksum`, which opens the file and sums it
+through a checksum port in 256 kB chunks.
+
+```c
+if (IS_BINARY(data) || IS_STRING(data)) { bin = VAL_BIN_DATA(data); }
+else {
+    REBVAL *func = Find_Word_Value(Lib_Context, SYM_FILE_CHECKSUM);
+    if (func && IS_FUNCTION(func) && sym > SYM_CRC32 && sym <= SYM_SHA3_512) {
+        if (D_REF(ARG_CHECKSUM_WITH) || D_REF(ARG_CHECKSUM_PART))
+            Trap0(RE_BAD_REFINES);
+        /* evaluate [file-checksum data method] */
+    }
+    Trap0(RE_FEATURE_NA);
+}
+```
+
+**`sym > SYM_CRC32 && sym <= SYM_SHA3_512` is a range over the symbol table and
+not over the catalogue**, and the two are ordered differently. Symbols 217 to
+232 are md4, md5, sha1, sha224, sha256, sha384, sha512, ripemd160, xxh3, xxh32,
+xxh64, xxh128, sha3-224, sha3-256, sha3-384, sha3-512 -- sixteen digests, with
+the xxHash family sitting in the middle of the SHA ones. Below the range are
+hash, adler32, crc24 and crc32; above it is everything else including tcp. So
+`checksum %file 'adler32` is `feature-na` although ADLER32 is a catalogue
+method, and `checksum %file 'xxh3` reads the file although the catalogue lists
+xxh3 after sha3-512.
+
+**The refinement check sits inside the range test, so the two refusals cannot be
+reordered.** `checksum/part %file 'md5 1` is `bad-refines`; `checksum/part %file
+'adler32 1` is `feature-na`, though both complaints are true of it.
+
+    checksum %f 'md5        #{6F78...}    -- the file's digest
+    checksum/part %f 'md5 1 bad-refines
+    checksum %f 'adler32    feature-na
+    checksum/part %f 'adler32 1  feature-na
+    checksum %nothing 'md5  cannot-open
+
+**Getting this wrong is silent.** JEBOL hashed the file's *path* as text, so
+every call answered a well-formed digest of the wrong thing, the same width and
+shape as the right one, and a missing file answered a digest rather than
+failing. Pinned by `ChecksumOfAFileFromTheSourceTest`.

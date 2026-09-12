@@ -7787,6 +7787,46 @@ rule AStringIsHashedAsItsUtf8Bytes {
     ensures: CallResult(value: checksum_of(utf8_bytes_of(data), method))
 }
 
+-- A file is not data to hash. It names bytes on disk, so CHECKSUM hands it to
+-- FILE-CHECKSUM instead of hashing the path, and the two answer the same
+-- digest for the same file.
+--
+-- Hashing the path is the failure worth naming, because it is silent: the
+-- answer is a well-formed digest of the wrong thing, the same length and
+-- shape as the right one, and nothing anywhere says a file was never opened.
+--
+-- Only a digest method is dispatched, and "digest" is a narrower set than
+-- `system/catalog/checksums`. Sixteen qualify -- MD4, MD5, RIPEMD-160, the
+-- four SHA-2 sizes, the four SHA-3 sizes, and the four xxHash methods. The
+-- four that are not digests, ADLER32, CRC24, CRC32 and the TCP pseudo-method,
+-- do not, and neither does HASH, which asks for a table slot rather than a
+-- digest.
+rule ChecksumOfAFileIsDispatchedToFileChecksum {
+    when: EvaluateCall(checksum, data, method)
+    requires: is_file(data) and is_a_digest_method(method)
+        and not asked_for_part(call) and not asked_for_with(call)
+    ensures: CallResult(value: file_checksum_of(data, method))
+}
+
+-- /PART and /WITH are refused rather than passed on, because FILE-CHECKSUM
+-- takes neither: it reads the whole file, and it keys nothing.
+rule ChecksumOfAFileTakesNeitherPartNorWith {
+    when: EvaluateCall(checksum, data, method)
+    requires: is_file(data) and is_a_digest_method(method)
+        and (asked_for_part(call) or asked_for_with(call))
+    ensures: CallFails(error: bad_refines)
+}
+
+-- A method that is not a digest is refused before the refinements are looked
+-- at, which is why the two refusals cannot be reordered: `checksum/part` on a
+-- file with ADLER32 answers feature-na and not bad-refines, though both
+-- complaints are true of it.
+rule ChecksumOfAFileRefusesAMethodThatIsNotADigest {
+    when: EvaluateCall(checksum, data, method)
+    requires: is_file(data) and not is_a_digest_method(method)
+    ensures: CallFails(error: feature_na)
+}
+
 -- COMPRESS and DECOMPRESS take a method word for the same reason, and the
 -- same rule applies: the list is the host's, in
 -- `system/catalog/compressions`. Neither belongs in the domain, because both

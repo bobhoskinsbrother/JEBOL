@@ -17,7 +17,7 @@ list of things nobody has to do any more is a list nobody reads.
 point here for what it answered, on purpose: the same figures were once written
 into four files and drifted until two of them disagreed about how many error ids
 can be raised, with nothing to say which was right. A count belongs in one place
-or in none. Every number below was checked on 2026-09-12 by running it.
+or in none. Every number below was checked on 2026-09-13 by running it.
 
 ---
 
@@ -32,24 +32,26 @@ or in none. Every number below was checked on 2026-09-12 by running it.
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
 | `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
-| `known-gaps.txt` | **173 fail**, and they are goals 1 to 6 below |
+| `known-gaps.txt` | **109 fail**, and they are goals 1 to 5 below. The 173 this line used to read was counting the file's comment lines as well as its entries; the entry count was 142 before the checksum port was finished |
 | `fails-on-rebol-too.txt` | 156 a real 3.22.5 also fails or never runs |
 | `scripts/error-parity.py` | **81 of Rebol's 142 error ids can be raised. 61 cannot** |
 
-`./gradlew check` is 17,870 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 17,980 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception. `./gradlew browserCheck` is
 the second gate and is not optional; it renders the same paint list in Java2D
 and in a real Chrome and compares them pixel for pixel.
 
-**`port-test.r3` owns none of the 173.** It had 29 when the file ports were
+**`port-test.r3` owns none of the 109.** It had 29 when the file ports were
 picked up: eighteen were real defects and have been fixed, and eleven turned
 out to be assertions a real 3.22.5 does not pass here either -- nine guarded on
 Windows or on Linux's `/proc`, and two with stale expected checksums. Those
 eleven moved to `fails-on-rebol-too.txt` with the measurement beside each.
 
-The 173 are broken into goals 1 to 6 below. The rest own no entries: they are
-equivalence the suite cannot see, the two security goals, and the engineering
-and tooling work.
+The 109 are broken into goals 1 to 5 below, and one entry that no work will
+retire: `checksum-test.r3` asks for a digest of `system/options/boot`, which
+lies outside whatever root the suite host is given. The reason is written at
+the top of `known-gaps.txt`. The rest own no entries: they are equivalence the
+suite cannot see, the two security goals, and the engineering and tooling work.
 
 ---
 
@@ -251,34 +253,7 @@ and the count goes up, that is the answer, so write it down here.
 
 ---
 
-### 1. The checksum port -- 34
-
-`checksum-test.r3` has one stop, and it is environment-dependent:
-`file-checksum system/options/boot` — the boot path is outside the sandbox
-root, so opening it fails. Decide what a sandboxed interpreter should say
-about its own boot file; the honest answer may be that this assertion belongs
-in `fails-on-rebol-too.txt` reasoning, or that `system/options/boot` should
-name something inside the root.
-
-**The other 28 are not "the Checksum port failing on its merits", which is what
-this goal used to say.** They are the `xxh3` and `xxh128` blocks, which JEBOL
-never enters because it has not got those algorithms — the same shape the
-compression work had, and subject to the same correction: declaring them absent
-retires nothing,
-because an unreached assertion is scored as a failure.
-
-**Do not settle a checksum-port question on a single `./r3-head` run.** The
-canonical reference is not deterministic on this file. Running `checksum-test.r3` through
-Rebol's own runner fails 13 assertions in roughly one run in eight, reproduced
-from cold in two unrelated directories with byte-identical inputs; the failing
-one is `--assert not open? close port`, so a real Rebol sometimes reports a
-closed checksum port as still open. Nothing on `known-gaps.txt` depends on it
-today, but two audit passes disagreed with each other because one hit a bad run.
-Run it three times.
-
----
-
-### 2. ENBASE, DEBASE and their parts -- 29
+### 1. ENBASE, DEBASE and their parts -- 29
 
 `enbase-test.r3`. One stop — `load` of bytes that are not valid UTF-8,
 `#{B7D3}` — and then wrong answers.
@@ -296,7 +271,7 @@ lets a URL-safe group end short); the encoder does not.
 
 ---
 
-### 3. The elliptic curves -- 27
+### 2. The elliptic curves -- 27
 
 `dh-test.r3` stops at
 
@@ -332,7 +307,7 @@ build without a curve.
 
 ---
 
-### 4. Modules and IMPORT -- 12
+### 3. Modules and IMPORT -- 12
 
 `module-test.r3` stopped nine times, and every one came back to
 `system/options/modules` being none.
@@ -390,7 +365,7 @@ that got further than before:
 
 ---
 
-### 5. The PDF encoder hangs where the C takes a millisecond -- 9
+### 4. The PDF encoder hangs where the C takes a millisecond -- 9
 
 **Measured on 12 September 2026, and it is not what this goal said.** PDF *is*
 implemented: `codec-pdf.reb` is Rebol's own REBOL, vendored and loaded like
@@ -443,7 +418,7 @@ does not bring. That stays true. Somebody who wants more than the borrowed
 codec gives adds the library and a bridge to it themselves, and with neither
 present nothing registers and nothing is attempted.
 
-### 6. The scattered singles and pairs -- 31 across fourteen files
+### 5. The scattered singles and pairs -- 31 across fourteen files
 
 What is left when the others above are taken out:
 
@@ -469,7 +444,7 @@ on its own.
 
 ---
 
-### 7. The error catalogue: 61 ids cannot be raised
+### 6. The error catalogue: 61 ids cannot be raised
 
 `too-long` is one of Rebol's error ids and JEBOL simply did not have it. That
 was found by needing it, which is no way to find things, so the whole catalogue
@@ -498,7 +473,7 @@ remembered.
 
 ---
 
-### 8. What reaching zero would not prove
+### 7. What reaching zero would not prove
 
 None of this is on `known-gaps.txt` and none of it can be, because the suite
 tests what functions **return** and these are all about what functions **say
@@ -584,7 +559,7 @@ whether the change worked.
 
 ---
 
-### 9. What the suite does not ask
+### 8. What the suite does not ask
 
 **The suite is the measure, and it is not the whole surface.** Running all 930
 combinations of MAKE and TO against fifteen target types and thirty-one source
@@ -693,7 +668,7 @@ found two things that four separate readings of the C had not. See
 
 ---
 
-### 10. The 32 prelude forks
+### 9. The 32 prelude forks
 
 `prelude.reb` defines 36 words and Rebol defines 32 of them in `src/mezz` too:
 
@@ -709,7 +684,7 @@ the same function, and if not, why was it forked?
 
 ---
 
-### 11. Loose ends
+### 10. Loose ends
 
 **`task!` is a datatype word and not yet a datatype.** `task!` answers
 `#(datatype!)` on both, but `make task! [1 + 1]` gives `#(task!)` on a real
@@ -737,7 +712,7 @@ ask. `pid` works.
 
 ---
 
-### 12. Graphics -- fourteen DRAW commands
+### 11. Graphics -- fourteen DRAW commands
 
 **DRAW renders 22 of R3's 36 commands.** The fourteen it does not:
 
@@ -753,7 +728,7 @@ path, VID, Android, and the events-name-the-wrong-window one.
 
 ---
 
-### 13. Code from outside is not authenticated -- the TLS client
+### 12. Code from outside is not authenticated -- the TLS client
 
 **Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
 failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
@@ -824,7 +799,7 @@ does not control should know that before it does.
 
 ---
 
-### 14. Code from outside is not verified -- no checksum on a fetched module
+### 13. Code from outside is not verified -- no checksum on a fetched module
 
 **Nothing crosses the wire today**, which is why this is a goal rather than a
 live hole: the thirteen modules this build has no other way to reach are bundled
@@ -872,7 +847,7 @@ wants that more than it wants either check.
 
 ---
 
-### 15. The type-major refactor
+### 14. The type-major refactor
 
 **The original complaint, and much the largest piece left.** One `t-*.c` per
 increment, bitset as the pilot.
@@ -884,7 +859,7 @@ enumerate every arm that needed work. That is what the action seam wants.
 
 ---
 
-### 16. The boot -- 343ms cold, 72ms warm
+### 15. The boot -- 343ms cold, 72ms warm
 
 **343ms for the first interpreter, 72ms once the JVM has settled.** A
 7900-test run pays the 72ms per class, and that is the floor rather than the
@@ -895,7 +870,7 @@ already in that allocation path, and it costs about 2ms of the 72.
 
 ---
 
-### 17. LLM-friendly MCP tools
+### 16. LLM-friendly MCP tools
 
 **The reader will only ever be an LLM, and that decides the design.** A model
 does not misunderstand, it infers confidently from training data that is mostly
