@@ -1,21 +1,25 @@
-# The one checksum-test.r3 entry left is not a checksum defect, and it is the
-# only entry here that no work on CHECKSUM will ever retire.
+# The one checksum-test.r3 entry left is not a checksum defect, and no work on
+# CHECKSUM will retire it.
 #
 #   --assert binary? file-checksum system/options/boot 'md5
 #
-# `system/options/boot` names the launcher JEBOL writes so that a script can
-# start another JEBOL, and it is a real file: with `--root /` this assertion
-# passes here exactly as it does on ./r3-head. It fails in the gate because
-# `SuiteHost` roots the interpreter at the suite directory and the launcher is
-# written to the system temp directory, so the sandbox reports it absent --
-# which is the sandbox working, not failing.
+# `system/options/boot` is the launcher JEBOL writes for itself, and its job is
+# to be handed to the host shell rather than read through the sandbox. LAUNCH is
+# `reduce [system/options/boot script]`; Rebol's own call-test.r3 and
+# module-test.r3 re-launch through it a dozen times; and the launcher carries
+# `--root` so a child interpreter inherits the parent's confinement, which is
+# the rule ASecondInterpreterIsConfinedAsThisOneIs in spec/embed.allium. So it
+# has to be a real executable file on the host, outside whatever directory the
+# script can see. `BootProcessFromTheSourceTest` pins all three of those.
 #
-# It stays here rather than in fails-on-rebol-too.txt because that file's rule
-# is that every line in it was run through ./r3-head and failed there; this one
-# passes there. Retiring it would mean either rooting the suite host at `/`,
-# which is the harness giving up the property it exists for, or writing the
-# launcher inside whatever directory the caller happens to be sandboxed to,
-# which would leave a shell script in a user's tree.
+# This assertion asks to *read* it. With `--root /` it passes here exactly as it
+# does on ./r3-head; under the suite host it cannot, because the file is outside
+# the root on purpose. Making the field name something inside the root, or none,
+# would break LAUNCH and confinement propagation to retire one assertion.
+#
+# It stays here rather than in fails-on-rebol-too.txt because that file's rule is
+# that every line in it was run through ./r3-head and failed there. This one
+# passes there.
 #
 # Relative binding was built on 12 September 2026 and the five func-test
 # entries that needed it are gone. What it is, and what it cost:

@@ -48,10 +48,12 @@ Windows or on Linux's `/proc`, and two with stale expected checksums. Those
 eleven moved to `fails-on-rebol-too.txt` with the measurement beside each.
 
 The 109 are broken into goals 1 to 5 below, and one entry that no work will
-retire: `checksum-test.r3` asks for a digest of `system/options/boot`, which
-lies outside whatever root the suite host is given. The reason is written at
-the top of `known-gaps.txt`. The rest own no entries: they are equivalence the
-suite cannot see, the two security goals, and the engineering and tooling work.
+retire: `checksum-test.r3` asks to read `system/options/boot`, which is the
+launcher a script runs to start a confined child interpreter and therefore has
+to sit outside whatever root the script can see. Retiring it would mean giving
+up confinement propagation. The reason is written at the top of
+`known-gaps.txt`. The rest own no entries: they are equivalence the suite
+cannot see, the two security goals, and the engineering and tooling work.
 
 ---
 
