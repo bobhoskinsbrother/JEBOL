@@ -196,14 +196,15 @@ entry belongs to exactly one goal. **Re-derived from the list on 11 September
 2026** and again on 12 September, because the old figures had drifted: goal 11
 was the worst at 135 against a real 132, and goal 15 claimed 40 where the files
 it owns hold 31. Goals 1 and 2 have since gone to nought and the total with
-them, and goal 11 has gone from 132 to 10.
+them, and goal 11 has gone from 132 to 10. Goal 5 lost three on 12 September to
+the DELETE fix goal 11's work turned up.
 Do not trust a size here that has not been re-derived since work landed —
 `grep -c '^[^#]' src/test/resources/rebol-suite/known-gaps.txt` is the live
 total and the table below is how it divides.
 
-    198   the whole list, on 12 September 2026
+    195   the whole list, on 12 September 2026
     ---
-     36    5. the file ports
+     33    5. the file ports
      34    6. the checksum port
      29    7. enbase and debase
      27   10. the elliptic curves
@@ -1093,7 +1094,7 @@ same decision it was, with the technical half of it now done.
 | `map-test.r3` | 12 | 0 |
 | `make-test.r3` | 10 | 0 |
 | `file-test.r3` | 9 | 0 |
-| `thru-cache-test.r3` | 10 | 10 |
+| `thru-cache-test.r3` | 10 | 10 (all ten pass; see below) |
 | `parse-test.r3` | 9 | 0 |
 | `vector-test.r3` | 9 | 0 |
 | `lexer-test.r3` | 8 | 0 |
@@ -1180,22 +1181,50 @@ This repository's rule is that a flake is a fail, and a gate that depends on
 two third-party services will flake -- so `./gradlew check` becomes a
 different kind of thing. **Ask before building it.**
 
-**One technical step is left and it belongs to goal 9.** `import 'thru-cache`
-still fails, with `cannot-open "thru-cache" "module not found"`, and the reason
-is measured rather than guessed: `system/options/modules` is none, and
-`system/modules` here holds the modules this build has loaded rather than the
-table of addresses `sysobj.reb` starts it with. A real Rebol has
-`thru-cache: https://src.rebol.tech/modules/thru-cache.reb` in that table and
-downloads the module on the first import -- which now works here, so filling
-the table would be enough.
+### All ten assertions pass. What is left is the decision
 
-**And then the internet question, which cannot be engineered away.** The
-assertions name `raw.githubusercontent.com` and `httpbin.org` in the vendored
-text, and a vendored file is a copy of Rebol's and nothing else. Downloading
-the module reaches `src.rebol.tech` as well, and vendoring the module instead
-only moves that one hop. A fake network in `SuiteHost` would serve `http://`
-but not `https://`, because TLS runs inside the interpreter and above the
-socket.
+**Measured, not predicted.** Given the two lines a real Rebol's boot would have
+run -- `system/options/modules` set to a directory, and the address
+`thru-cache: https://src.rebol.tech/modules/thru-cache.reb` put in
+`system/modules` -- JEBOL downloads the module over TLS, imports it, and all
+ten assertions answer true. The script that does it is three lines of setup and
+the ten assertions copied out of the suite file.
+
+Two more defects fell out of running them, both fixed here:
+
+- **UPPERCASE and LOWERCASE took only a quoted string** where the declaration
+  says `string [any-string! char!]`. A file, a url, a tag and an email all
+  change case in a real Rebol. Rebol's module loader names a downloaded
+  extension with `lowercase second split-path source`, and SPLIT-PATH of a url
+  answers a file -- so `import` of anything in `system/modules` stopped there.
+- **DELETE answered the file it was given** where the C answers the port it
+  opened: `return R_RET; // returns port so it can be used in chained
+  evaluation`, and DELETE-THRU hands that answer straight back to a test asking
+  `port? delete-thru url`. Two more answers in the same switch were wrong with
+  it: nothing there to delete is `false` rather than a failure, and a delete
+  that was refused is `no-delete` with the path rather than `cannot-open` with
+  nothing. Three `port-test.r3` entries came off the gap list for it, which is
+  goal 5's.
+
+**So the only technical step left belongs to goal 9**, and it is two lines:
+`system/options/modules` is none here, and `system/modules` holds the modules
+this build has loaded rather than the table of addresses `sysobj.reb` starts it
+with.
+
+**Which is deliberately not done, because doing it makes the gate reach the
+public internet.** The assertions name `raw.githubusercontent.com` and
+`httpbin.org` in the vendored text, and a vendored file is a copy of Rebol's
+and nothing else. Downloading the module reaches `src.rebol.tech` as well, and
+vendoring the module instead only moves that one hop. A fake network in
+`SuiteHost` would serve `http://` and not `https://`, because TLS runs inside
+the interpreter and above the socket -- faking it would mean writing a TLS
+server.
+
+So filling that table turns ten entries green and makes `./gradlew check`
+depend on two third-party services being up. This repository's rule is that a
+flake is a fail. **That is the decision, and it is the same one this goal has
+named since it was written -- only now everything behind it is done and
+measured rather than estimated.**
 
 Worth knowing while that is undecided: `SuiteHost` now installs real sockets,
 so the gate *could* reach out. Nothing vendored does today --

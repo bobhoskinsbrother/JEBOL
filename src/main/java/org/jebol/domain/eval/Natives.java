@@ -6155,6 +6155,21 @@ public final class Natives {
     }
 
     /**
+     * What UPPERCASE and LOWERCASE take: {@code string [any-string! char!]}.
+     *
+     * <p>Every kind of string and not only a quoted one, so a file, a url, a
+     * tag and an email all change case and come back as themselves. Rebol's
+     * own module loader depends on it -- it names a downloaded extension with
+     * {@code lowercase second split-path source}, and SPLIT-PATH of a url
+     * answers a file.
+     */
+    private static Set<Datatype> anyStringOrCharacter() {
+        Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_STRING.members());
+        accepted.add(Datatype.CHAR);
+        return Set.copyOf(accepted);
+    }
+
+    /**
      * UPPERCASE or LOWERCASE, which differ only in which way they go.
      *
      * <p>/PART changes the first few characters from where the series is
@@ -6166,8 +6181,7 @@ public final class Natives {
             String name, java.util.function.UnaryOperator<String> change) {
 
         define(name, List.of(
-                        Parameter.required("text",
-                                Set.of(Datatype.STRING, Datatype.CHAR)),
+                        Parameter.required("text", anyStringOrCharacter()),
                         Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER))),
                 Set.of("part"),
                 (arguments, evaluator, context, refinements) -> {
@@ -18305,10 +18319,17 @@ public final class Natives {
                     }
                     requireService(HostService.FILES);
                     String path = named.orElseGet(() -> ((StringValue) target).text());
-                    return throughPort(() -> {
+                    if (!evaluator.files().exists(path)) {
+                        return LogicValue.of(false);
+                    }
+                    Value itsPort = evaluator.applyFunction(
+                            systemInternalFunction(context, "make-port*"), List.of(target));
+                    try {
                         evaluator.files().delete(path);
-                        return target;
-                    });
+                    } catch (FilePort.Denied refused) {
+                        throw Raised.of(EvaluationFailure.NO_DELETE, target);
+                    }
+                    return itsPort;
                 });
 
         define("rename", List.of(

@@ -2139,6 +2139,45 @@ rule AFileUrlNamesTheFileAfterAtMostTwoSlashes {
         the_colon_and_up_to_two_slashes_after_it())
 }
 
+-- === What DELETE answers ==================================
+
+-- DELETE answers the port it opened, not the file it was given. The C says
+-- why beside the line: `return R_RET; // returns port so it can be used in
+-- chained evaluation`. Rebol's own cache module relies on it -- its
+-- DELETE-THRU answers whatever DELETE answered, and its test asks `port?
+-- delete-thru url`.
+rule DeletingAFileAnswersThePortItOpened {
+    when: EvaluateCall(delete, target)
+    requires: was_there(the_file_named_by(target))
+
+    ensures: CallResult(datatype: port)
+    ensures: the_reference_of(result) = target
+}
+
+-- Nothing there to delete is FALSE rather than a failure. The device answers
+-- -2 for that one case and `A_DELETE` turns it straight into false --
+-- `if (result == -2) return R_FALSE;` -- so a caller clearing up after itself
+-- writes `delete %maybe` and reads the answer, without wrapping it.
+--
+-- Which is a different thing from a delete that was refused. A directory with
+-- something in it, or a file the operator may not remove, is `no-delete` with
+-- the path, because the caller asked for something that could have worked and
+-- did not.
+rule DeletingWhatIsNotThereAnswersFalse {
+    when: EvaluateCall(delete, target)
+    requires: not was_there(the_file_named_by(target))
+
+    ensures: CallResult(value: false)
+}
+
+rule ADeleteThatCouldNotBeDoneIsRefusedWithThePath {
+    when: EvaluateCall(delete, target)
+    requires: was_there(the_file_named_by(target))
+    requires: not the_host_could_remove_it()
+
+    ensures: CallFails(error: no_delete, about: target)
+}
+
 -- The console port is the one that works. WRITE to it forms the data and
 -- puts it through the console, which is what makes the console reachable as
 -- a port rather than only through PRINT.
@@ -5625,6 +5664,16 @@ open question "Does /console on CALL differ observably from plain inheritance on
 -- from where the series is, counting from the position rather than from
 -- the head, so `uppercase/part next "abcd" 2` is "BCd".
 --
+-- And both take every kind of string, not only a quoted one. Their
+-- declaration says `string [any-string! char!]`, so a file, a url, a tag and
+-- an email all change case and come back as themselves -- `lowercase
+-- %Thru-Cache.reb` is `%thru-cache.reb`, still a file.
+--
+-- Which is not a corner. Rebol's own module loader works out where to save a
+-- downloaded extension with `lowercase second split-path source`, and
+-- SPLIT-PATH of a url answers a file, so `import` of any module named in
+-- `system/modules` stopped there.
+--
 -- REVERSE/PART turns round only the first few and leaves the rest where
 -- they were, so `reverse/part [1 2 3 4] 2` is [2 1 3 4].
 --
@@ -5639,6 +5688,23 @@ open question "Does /console on CALL differ observably from plain inheritance on
 -- with a slash in it answers the one call it is named for and leaves
 -- every other combination raising no-refine, which is why `copy/part`
 -- worked and `copy/deep` did not.
+
+rule ChangingCaseTakesEveryKindOfString {
+    when: EvaluateCall(verb, subject)
+    requires: verb in {uppercase, lowercase}
+    requires: is_any_string(subject) or is_char(subject)
+
+    ensures: CallResult(datatype: datatype_of(subject))
+    ensures: CallResult(value: the_same_text_with_its_case_changed())
+}
+
+rule ChangingCaseOfAnythingElseIsRefused {
+    when: EvaluateCall(verb, subject)
+    requires: verb in {uppercase, lowercase}
+    requires: not (is_any_string(subject) or is_char(subject))
+
+    ensures: CallFails(error: expect_arg, about: subject)
+}
 
 -- Resolved against a real R3: two characters compare equal without regard
 -- to case, and compare in order with regard to it.

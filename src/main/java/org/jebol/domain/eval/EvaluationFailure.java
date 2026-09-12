@@ -23,6 +23,8 @@ public enum EvaluationFailure {
             "a handle of the wrong kind for what was asked of it"),
     CANNOT_OPEN(ErrorCategory.ACCESS, "cannot-open",
             "a port that could not be opened on what it names"),
+    NO_DELETE(ErrorCategory.ACCESS, "no-delete",
+            "a file the host would not remove"),
     NOT_OPEN(ErrorCategory.ACCESS, "not-open",
             "a port asked to carry something before it was opened"),
     ALREADY_OPEN(ErrorCategory.ACCESS, "already-open",

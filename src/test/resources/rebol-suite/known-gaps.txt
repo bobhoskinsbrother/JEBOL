@@ -178,7 +178,6 @@ port-test.r3 / directory port / CHANGE-DIR #52
 port-test.r3 / directory port / CHANGE-DIR #53
 port-test.r3 / directory port / CHANGE-DIR #54
 port-test.r3 / directory port / CHANGE-DIR #55
-port-test.r3 / directory port / DELETE-DIR #49
 port-test.r3 / directory port / DELETE-DIR #51
 port-test.r3 / directory port / READ wildcard #44
 port-test.r3 / directory port / READ wildcard #45
@@ -195,12 +194,10 @@ port-test.r3 / file port / APPEND file-port #165
 port-test.r3 / file port / APPEND file-port #166
 port-test.r3 / file port / CLEAR file port #150
 port-test.r3 / file port / CLEAR file port #152
-port-test.r3 / file port / DELETE file #154
 port-test.r3 / file port / DELETE file #155
 port-test.r3 / file port / DELETE file #156
 port-test.r3 / file port / DELETE file #157
 port-test.r3 / file port / Query empty file name #168
-port-test.r3 / file port / Reading an empty file #167
 port-test.r3 / file port / WRITE/APPEND file-port #159
 port-test.r3 / file port / query file info #68
 port-test.r3 / file port / query file info (port) #75
