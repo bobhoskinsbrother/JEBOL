@@ -56,7 +56,12 @@ public final class Binder {
     public static BlockValue bindInPlace(BlockValue block, Context context) {
         for (int at = 0; at < block.lengthFromHere(); at++) {
             int where = block.index() + at;
-            block.storage().set(where, bindValue(block.storage().at(where), context));
+            Value bound = bindValue(block.storage().at(where), context);
+            if (bound instanceof WordValue word) {
+                block.storage().rebindAt(where, word);
+            } else {
+                block.storage().set(where, bound);
+            }
         }
         return block;
     }
@@ -99,8 +104,12 @@ public final class Binder {
         for (int at = 0; at < block.lengthFromHere(); at++) {
             int where = block.index() + at;
             Value item = block.storage().at(where);
-            if (deeply || item instanceof WordValue) {
-                block.storage().set(where, boundIfTheTargetHoldsIt(item, target));
+            if (item instanceof WordValue word) {
+                if (target.holds(word.canonical())) {
+                    block.storage().rebindAt(where, word.boundTo(target));
+                }
+            } else if (deeply) {
+                boundIfTheTargetHoldsIt(item, target);
             }
         }
         return block;
@@ -208,7 +217,7 @@ public final class Binder {
         for (int at = block.index(); at <= block.storageLength(); at++) {
             switch (block.storage().at(at)) {
                 case WordValue word when names.contains(word.canonical()) ->
-                        block.storage().set(at, word.boundTo(context));
+                        block.storage().rebindAt(at, word.boundTo(context));
                 case BlockValue nested ->
                         bindEachInPlace(nested, context, names, alreadyWalked);
                 case MapValue map -> {

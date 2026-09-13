@@ -54,9 +54,6 @@ public final class Interpreter {
         Natives natives = Natives.standard(duringTheBoot);
         natives.useFileSeparator(java.io.File.separatorChar);
         natives.useOperatingSystemNamed(whatRebolCallsThisOperatingSystem());
-        if (bounds.grantedServices().contains(HostService.PROCESSES)) {
-            natives.useBootLauncher(writtenBootLauncher());
-        }
         String catalogue = resourceText("/org/jebol/errors.reb");
         natives.useErrorCatalogue(catalogue == null ? "" : catalogue);
         natives.useFunctionDeclarations(
@@ -80,12 +77,26 @@ public final class Interpreter {
         loadPrelude();
         putTheAddressesOfTheModulesRebolPublishes();
         loadRebolsOwnLibrary();
+        nameTheLauncherOnlyOnceTheLibraryHasLoaded();
         registerTheSchemesJebolCanServe();
         openTheEventPort();
         natives.grantOnly(bounds.grantedServices());
         natives.forgetStartupState();
     }
 
+
+    private void nameTheLauncherOnlyOnceTheLibraryHasLoaded() {
+        if (!bounds.grantedServices().contains(HostService.PROCESSES)) {
+            return;
+        }
+        String launcher = writtenBootLauncher();
+        if (launcher.isEmpty()) {
+            return;
+        }
+        String saying = "system/options/boot: %" + launcher;
+        defineFreshWordsIn(saying);
+        run(saying);
+    }
 
     private void putTheAddressesOfTheModulesRebolPublishes() {
         runTheBootStep("modules.reb");

@@ -4400,7 +4400,7 @@ public final class Natives {
                         members.holdAll(
                                 (BitsetValue) bitsMeantBy(arguments.get(1)),
                                 arguments.get(2).isTruthy());
-                        return arguments.get(2);
+                        return members;
                     }
                     if (arguments.get(0) instanceof MapValue map) {
                         map.put(arguments.get(1), arguments.get(2), false);
@@ -5505,10 +5505,14 @@ public final class Natives {
                     default -> raiseCannotUse(arguments.get(0), "append");
                 });
 
-        define("last", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> arguments.get(0) instanceof SeriesValue series
-                        ? pick((Value) series, series.lengthFromHere())
-                        : raiseCannotUse(arguments.get(0), "last"));
+        define("last", List.of(Parameter.required("value", aSeriesATupleOrAGob())),
+                (arguments, evaluator, context) -> switch (arguments.get(0)) {
+                    case TupleValue parts ->
+                            IntegerValue.of(parts.octetAt(parts.segmentCount()));
+                    case SeriesValue series ->
+                            pick((Value) series, series.lengthFromHere());
+                    default -> raiseCannotUse(arguments.get(0), "last");
+                });
 
         define("back", List.of(Parameter.required("series")),
                 (arguments, evaluator, context) -> switch (arguments.getFirst()) {
@@ -8093,6 +8097,13 @@ public final class Natives {
                     .collect(java.util.stream.Collectors.toSet());
             default -> Set.of();
         };
+    }
+
+    private static Set<Datatype> aSeriesATupleOrAGob() {
+        Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
+        accepted.add(Datatype.TUPLE);
+        accepted.add(Datatype.GOB);
+        return Set.copyOf(accepted);
     }
 
     private static final Set<Datatype> SERIES_LIKE = EnumSet.of(

@@ -5705,3 +5705,79 @@ it is annotating the one the raiser still holds.
 many" of an object names nothing. A bitset and a map are not in that group and
 accept /PART without complaint on r3-head, which is worth knowing before
 widening the refusal.
+
+## 198. A percent is written from its own digits, with the point moved twice
+
+`Emit_Decimal` writes both decimals and percents, and the percent flag changes
+exactly two things. The digits come from the stored value and then `e += 2`
+moves where the point goes, which is exact. And a radix point with nothing
+after it is dropped rather than given a zero:
+
+    if (*(cp - 1) == point) { if (trim) cp--; else *cp++ = '0'; }
+
+So `mold 3e34%` is "3e34%" where a decimal of the same size is "3.0e34".
+
+**Multiplying by a hundred first is a rounding step the C does not take**, and
+it moves the last digit either way:
+
+    >> mold/all 12.345%
+    == "12.345%"                 ; r3-head; multiplying gives 12.345000000000001%
+    >> mold/all 1.5%
+    == "1.4999999999999999%"     ; r3-head; multiplying gives the tidier 1.5%
+
+Neither is more correct in the abstract. One of them is what a real Rebol
+writes.
+
+## 199. POKE on a bitset answers the set, and on everything else the value
+
+The arm sets the bits and leaves the switch -- `if (Set_Bits(...)) break;` --
+so the function answers its first argument rather than its third. Every other
+POKE reaches the line that answers the value written.
+
+It reads as an inconsistency and it is the only answer available. A bitset has
+no slot to have written a value into: what went in was a request to turn bits
+on or off, and a character, a string, a block or a range may say so in one
+call. There is no "the value at that position" to hand back.
+
+## 200. PROTECT-SYSTEM never ran here, because CLEAN-PATH stopped mezz-tail two lines earlier
+
+`mezz-tail.reb` is the last file Rebol boots and it ends with three lines:
+
+    if system/options/boot [system/options/boot: clean-path system/options/boot]
+    protect-system
+    unset 'protect-system
+
+JEBOL set `system/options/boot` before the library loaded, so the guard was
+true; CLEAN-PATH consults the working directory even for an absolute path, and
+an interpreter whose filesystem is installed *after* the boot cannot answer
+that. The file stopped on that line, and the two lines it stopped before are
+the ones that seal the system object.
+
+Nothing said so. `borrowedLoadFailures()` was empty, every word mezz-tail
+defines was defined, and the only visible symptom was that
+`system/catalog/errors: none` quietly worked -- three assertions in Rebol's own
+error-test, and no other measure in the build.
+
+**The launcher is now named after the library has loaded**, which is the only
+ordering that works here: nothing in the library reads the field, and
+CLEAN-PATH cannot run before a filesystem exists.
+
+**And BIND had to stop refusing a protected block for it.** Sealing the
+catalogue turned `bind system/catalog/errors/(e/type)/(e/id) e` from an answer
+into a refusal, where a real Rebol binds it happily. Same reasoning as UNBIND
+in finding 188: a word's binding is not part of the series holding it, so
+`protect` on the series does not cover it. APPEND to the same block is refused
+in both.
+
+## 201. LAST takes a series, a tuple or a gob, and the typeset is where the error comes from
+
+`value [series! tuple! gob!]`, so `last 1.2.3` is 3 and `last 1.2.3.0` is the
+nought that was written rather than one of the zeros a shorter tuple is padded
+with.
+
+What the typeset buys is the shape of the refusal. Anything else fails the
+declaration and reports expect-arg naming the function, the *parameter* and the
+datatype; refusing inside the body reports cannot-use, which names the function
+and the value and leaves ARG2 none. A script reading `e/arg2` to find out which
+argument it got wrong gets nothing from the second shape, and Rebol's own
+error-test asks exactly that of `last :some-function`.

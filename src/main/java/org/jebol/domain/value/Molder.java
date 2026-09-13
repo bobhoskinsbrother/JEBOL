@@ -291,8 +291,24 @@ public final class Molder {
     private static String renderDecimal(DecimalValue decimal) {
         double quantity = decimal.quantity();
         return decimal.datatype() == Datatype.PERCENT && hasDigits(quantity)
-                ? trimTrailingZero(renderDouble(quantity * 100.0)) + "%"
+                ? renderPercent(quantity) + "%"
                 : renderDouble(quantity);
+    }
+
+    private static final int A_PERCENT_MOVES_THE_POINT_THIS_FAR = 2;
+
+    private static String renderPercent(double quantity) {
+        int digits = WRITING_EVERYTHING_OUT.get()
+                ? EVERY_DIGIT_A_DOUBLE_HAS
+                : SIGNIFICANT_DIGITS;
+        if (quantity == 0.0) {
+            return 1 / quantity < 0 ? "-0" : "0";
+        }
+        BigDecimal rounded = new BigDecimal(quantity)
+                .round(new MathContext(digits))
+                .stripTrailingZeros()
+                .movePointRight(A_PERCENT_MOVES_THE_POINT_THIS_FAR);
+        return renderRounded(rounded, digits, MINIMAL);
     }
 
     private static boolean hasDigits(double quantity) {
@@ -345,11 +361,15 @@ public final class Molder {
             return minimal ? zero : zero + ".0";
         }
 
-        BigDecimal rounded = new BigDecimal(quantity)
+        return renderRounded(new BigDecimal(quantity)
                 .round(new MathContext(digits))
-                .stripTrailingZeros();
-        int exponent = rounded.precision() - rounded.scale() - 1;
+                .stripTrailingZeros(), digits, minimal);
+    }
 
+    private static String renderRounded(
+            BigDecimal rounded, int digits, boolean minimal) {
+
+        int exponent = rounded.precision() - rounded.scale() - 1;
         return exponent < SMALLEST_PLAIN_EXPONENT || exponent > digits - 1
                 ? withExponent(rounded, exponent, minimal)
                 : pointAsWanted(rounded.toPlainString(), minimal);

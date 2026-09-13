@@ -1093,6 +1093,30 @@ rule TheBodyOfAModuleIsItsFieldsAndValues {
 
 -- === Reading and writing the bits of a set =================
 
+-- POKE on a bitset answers the SET, where POKE on every other series answers
+-- the value that was written.
+--
+-- The arm sets the bits and then leaves the switch -- `if (Set_Bits(...))
+-- break;` -- so the function falls through to answering its first argument
+-- rather than its third. Every other POKE reaches the line that answers the
+-- value.
+--
+-- Which reads as an inconsistency and is the only answer available. A bitset
+-- has no slot to have written a value into: what went in was a request to
+-- turn bits on or off, and a character, a string, a block or a range may say
+-- so in one call. There is no "the value at that position" to hand back, and
+-- the set is the thing that changed.
+--
+-- It is the same set rather than a copy, so `poke charset "a" #"b" true` can
+-- be written as an expression and its answer used.
+rule PokingABitsetAnswersTheSetItChanged {
+    when: EvaluateCall(poke, subject, selector, written)
+    requires: is_bitset(subject)
+
+    ensures: CallResult(value: subject)
+    ensures: the_bits_named_by(selector) = written
+}
+
 -- A path reads one bit of a bitset and answers a logic. A character the set
 -- does not hold answers false and never none, which matters because the two
 -- look alike in a condition and part company under NONE?.
@@ -7265,6 +7289,36 @@ rule ACatchWithFunctionHandlerIsTypeCheckedAndSurplusParametersAreNone {
 
 -- === Writing a value out so it can be read back ==========
 
+-- A percent is written from the double it holds with its exponent moved two
+-- places, and not from that double multiplied by a hundred.
+--
+-- One function writes both -- `Emit_Decimal(buf, VAL_DECIMAL(value),
+-- IS_PERCENT(value) ? DEC_MOLD_PERCENT : 0, ...)` -- and the percent flag
+-- changes two things and nothing else. The digits are taken from the stored
+-- value and then `e += 2` shifts where the point goes, which is exact; and a
+-- radix point with nothing after it is dropped rather than given a zero:
+-- `if (*(cp - 1) == point) { if (trim) cp--; else *cp++ = '0'; }`.
+--
+-- Multiplying first is a rounding step the C does not take, and it moves the
+-- last digit either way. `mold/all 12.345%` is "12.345%" where multiplying
+-- gives "12.345000000000001%", and `mold/all 1.5%` is "1.4999999999999999%"
+-- where multiplying gives the tidier "1.5%" that the stored double is not.
+-- Neither answer is more correct than the other in the abstract; one of them
+-- is what a real Rebol writes, and that is the whole of the requirement.
+--
+-- Dropping the bare point is what makes the exponent forms short:
+-- `mold 3e34%` is "3e34%" where a decimal of the same size is "3.0e34". A
+-- pair's halves are written the same way, by the same flag under a different
+-- name.
+rule APercentIsWrittenFromItsOwnDigitsWithThePointMovedTwice {
+    when: EvaluateMold(subject)
+    requires: is_percent(subject)
+
+    ensures: the_digits_written = the_digits_of(subject.quantity)
+    ensures: the_point_sits(two_places_further_right)
+    ensures: a_radix_point_with_nothing_after_it_is_dropped()
+}
+
 -- MOLD/ALL keeps a series' position where plain MOLD drops it, by writing
 -- the positioned construct form.
 --
@@ -11129,6 +11183,29 @@ rule FirstPlusAtTheTailAnswersNoneAndStaysPut {
 
     ensures: CallResult(value: none)
     ensures: the_word_now_names(where_it_already_was)
+}
+
+-- LAST takes a series, a tuple or a gob, and nothing else: its declaration is
+-- `value [series! tuple! gob!]`. A tuple answers its last written part, so
+-- `last 1.2.3` is 3 and `last 1.2.3.0` is the nought that was written rather
+-- than one of the zeros a shorter tuple is padded with. An empty gob has no
+-- last child and answers none.
+--
+-- What the typeset buys is the error. Anything else is refused by the
+-- declaration, which reports expect-arg naming the function, the parameter and
+-- the datatype that would not do; refusing inside the body instead reports
+-- cannot-use, which names the function and the value and not the parameter. A
+-- script reading `e/arg2 = 'value` to find out which argument it got wrong
+-- gets none from the second shape, and Rebol's own error-test asks exactly
+-- that of `last :some-function`.
+rule LastTakesASeriesATupleOrAGob {
+    when: EvaluateCall(last, subject)
+
+    ensures:
+        if is_series(subject) or is_tuple(subject) or is_gob(subject):
+            CallResult(value: the_last_part_of(subject))
+        else:
+            CallFails(error: expect_arg, about: subject)
 }
 
 -- PICK counts from one, and answers none for a position that is not there.

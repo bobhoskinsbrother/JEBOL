@@ -114,7 +114,7 @@ class ConstructionSyntaxFromTheSourceTest {
 
         @ParameterizedTest(name = "{0} is {1}")
         @CsvSource({
-            "1e18%,   1.0e18%",
+            "1e18%,   1e18%",
             "1.5e2%,  150%",
             "-1e2%,   -100%",
             "1e-2%,   0.01%",

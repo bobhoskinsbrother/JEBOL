@@ -53,8 +53,6 @@
 #     function's body reached into another's.
 #
 bbcode-test.r3 / (no group) / (no test) #1
-bitset-test.r3 / modify / issue-1355 #139
-bitset-test.r3 / modify / issue-1355 #140
 checksum-test.r3 / file-checksum / file-checksum with bigger file #254
 date-test.r3 / Internet date / TO-IDATE (Date to Internet date) #126
 date-test.r3 / Julian date / Julian date setter #159
@@ -62,16 +60,11 @@ date-test.r3 / Julian date / Julian date setter #160
 date-test.r3 / Various date issues / error date set messages #113
 date-test.r3 / Various date issues / issue-276 #77
 date-test.r3 / Various date issues / numerical accessors #116
-error-test.r3 / Error issues / issue-553 #38
-error-test.r3 / Error issues / protected catalog #42
-error-test.r3 / Error issues / protected catalog #43
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
 mold-test.r3 / form error! / form error! #214
 mold-test.r3 / mold file! / mold file escaping #68
 mold-test.r3 / mold url! / mold url escaping #56
-percent-test.r3 / percent issues / large percent #33
-percent-test.r3 / percent issues / large percent #34
 task-test.r3 / task / (no test) #1
 task-test.r3 / task / (no test) #2
 task-test.r3 / task / (no test) #3
