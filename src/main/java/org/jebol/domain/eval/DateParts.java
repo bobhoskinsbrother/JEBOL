@@ -21,14 +21,16 @@ final class DateParts {
     }
 
     static DateValue written(DateValue date, Value selector, Value given) {
-        if (!(selector instanceof WordValue named)
-                || !IN_THE_ORDER_A_NUMBER_COUNTS_THEM.contains(named.canonical())) {
+        String part = thePartNamedBy(selector);
+        if (part == null) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     selector instanceof WordValue word ? word.spelling() : "date");
         }
-        return switch (named.canonical()) {
-            case "zone" -> withTheSameClockIn(startedAtMidnightIfItHadNoClock(date),
-                    offsetAskedFor(given));
+        return switch (part) {
+            case "zone" -> given instanceof NoneValue
+                    ? theSameClockWithNoOffsetAtAll(date)
+                    : withTheSameClockIn(startedAtMidnightIfItHadNoClock(date),
+                            offsetAskedFor(given));
             case "timezone" -> atTheSameInstantIn(startedAtMidnightIfItHadNoClock(date),
                     offsetAskedFor(given));
             case "year" -> onTheDay(date, wholeNumberIn(given), date.month(), date.day());
@@ -40,11 +42,26 @@ final class DateParts {
             case "second" -> atTheTime(date, withTheSecond(clockOf(date), given));
             case "time" -> atTheTimeGiven(date, given);
             case "date" -> theDayOfAnotherDateKeepingThisClock(given, date);
-            case "utc" -> theWholeDateWithItsZoneCalledNothing(given);
+            case "utc" -> theInstantThatDateNamesWithNoOffset(given);
+            case "julian" -> theGregorianDayOf(given);
             case "yearday" -> theYearAndDayOf(date, wholeNumberIn(given));
-            default -> throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
-                    named.spelling());
+            default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET, part);
         };
+    }
+
+    private static String thePartNamedBy(Value selector) {
+        if (selector instanceof WordValue named) {
+            return IN_THE_ORDER_A_NUMBER_COUNTS_THEM.contains(named.canonical())
+                    ? named.canonical()
+                    : null;
+        }
+        if (!(selector instanceof IntegerValue position)) {
+            return null;
+        }
+        long counted = position.magnitude();
+        return counted >= 1 && counted <= IN_THE_ORDER_A_NUMBER_COUNTS_THEM.size()
+                ? IN_THE_ORDER_A_NUMBER_COUNTS_THEM.get((int) counted - 1)
+                : null;
     }
 
     private static DateValue startedAtMidnightIfItHadNoClock(DateValue date) {
@@ -139,6 +156,13 @@ final class DateParts {
         };
     }
 
+    private static DateValue theSameClockWithNoOffsetAtAll(DateValue was) {
+        return new DateValue(was.year(), was.month(), was.day(),
+                java.util.Optional.of(was.timeOfDay()
+                        .orElseGet(() -> TimeValue.ofNanoseconds(0))),
+                java.util.Optional.empty());
+    }
+
     private static DateValue noneTakesTheZoneWithIt(DateValue was) {
         return DateValue.of(was.year(), was.month(), was.day());
     }
@@ -149,18 +173,79 @@ final class DateParts {
             throw Raised.of(EvaluationFailure.BAD_FIELD_SET, given);
         }
         return new DateValue(other.year(), other.month(), other.day(),
-                was.timeOfDay(), was.zoneMinutes());
+                was.timeOfDay(), other.zoneMinutes());
     }
 
-    private static DateValue theWholeDateWithItsZoneCalledNothing(Value given) {
+    private static DateValue theInstantThatDateNamesWithNoOffset(Value given) {
         if (!(given instanceof DateValue other)) {
             throw Raised.of(EvaluationFailure.BAD_FIELD_SET, given);
         }
-        return new DateValue(other.year(), other.month(), other.day(),
-                other.timeOfDay(),
-                other.timeOfDay().isPresent()
-                        ? java.util.Optional.of(0)
-                        : java.util.Optional.empty());
+        if (other.timeOfDay().isEmpty() || other.zoneMinutes().orElse(0) == 0) {
+            return new DateValue(other.year(), other.month(), other.day(),
+                    other.timeOfDay(), java.util.Optional.empty());
+        }
+        DateValue universal = atTheSameInstantIn(other, 0);
+        return new DateValue(universal.year(), universal.month(), universal.day(),
+                universal.timeOfDay(), java.util.Optional.empty());
+    }
+
+    private static final double NOON = 0.5;
+
+    private static DateValue theGregorianDayOf(Value given) {
+        if (!(given instanceof DecimalValue counted)) {
+            throw Raised.of(EvaluationFailure.BAD_FIELD_SET, given);
+        }
+        double julian = counted.quantity();
+        double fraction = julian - Math.floor(julian);
+        int wholeDays = (int) Math.floor(julian);
+        int leapYearsSince4713bc = (int) ((wholeDays - 1867216.25) / 36524.25);
+        int fourYearCycles = leapYearsSince4713bc / 4;
+        int adjusted = wholeDays + 1 + leapYearsSince4713bc - fourYearCycles + 1524;
+        int estimatedYear = (int) ((adjusted - 122.1) / 365.25);
+        int daysBeforeThisMonth = (int) (365.25 * estimatedYear);
+        int monthNumber = (int) ((adjusted - daysBeforeThisMonth) / 30.6001);
+        int daysBeforeThisDay = (int) (30.6001 * monthNumber);
+        int day = (int) (adjusted - daysBeforeThisDay - daysBeforeThisMonth + fraction);
+        int month = monthNumber < 14 ? monthNumber - 1 : monthNumber - 13;
+        int year = month > 2 ? estimatedYear - 4716 : estimatedYear - 4715;
+        return aDayWithTheClockAFractionNames(year, month, day, fraction);
+    }
+
+    private static DateValue aDayWithTheClockAFractionNames(
+            int year, int month, int day, double fraction) {
+
+        double hoursAndOver = fraction * 24;
+        long hours = (long) hoursAndOver;
+        double minutesAndOver = (hoursAndOver - hours) * 60;
+        long minutes = (long) minutesAndOver;
+        long seconds = Math.round((minutesAndOver - minutes) * 60);
+        long nanoseconds = (hours + 12) * NANOSECONDS_AN_HOUR
+                + minutes * NANOSECONDS_A_MINUTE
+                + seconds * NANOSECONDS_IN_A_SECOND;
+        java.time.LocalDate landedOn = aDayThatMayHaveRolledOver(year, month, day)
+                .plusDays(nanoseconds / NANOSECONDS_A_DAY);
+        return new DateValue(landedOn.getYear(), landedOn.getMonthValue(),
+                landedOn.getDayOfMonth(),
+                java.util.Optional.of(TimeValue.ofNanoseconds(
+                        nanoseconds % NANOSECONDS_A_DAY)),
+                java.util.Optional.of(0));
+    }
+
+    private static final int WIDEST_YEAR_A_DATE_HOLDS = 0x3fff;
+
+    private static java.time.LocalDate aDayThatMayHaveRolledOver(
+            int year, int month, int day) {
+
+        if (year < 0 || year > WIDEST_YEAR_A_DATE_HOLDS) {
+            throw Raised.of(EvaluationFailure.TYPE_LIMIT,
+                    DatatypeValue.of(Datatype.DATE));
+        }
+        try {
+            return aMonthOrDayPastItsRangeRollsOn(year, month, day);
+        } catch (java.time.DateTimeException | ArithmeticException unreachable) {
+            throw Raised.of(EvaluationFailure.TYPE_LIMIT,
+                    DatatypeValue.of(Datatype.DATE));
+        }
     }
 
     private static DateValue theYearAndDayOf(DateValue was, int dayOfYear) {

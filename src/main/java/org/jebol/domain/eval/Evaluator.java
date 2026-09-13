@@ -1338,7 +1338,8 @@ public final class Evaluator {
                 && segments.getFirst() instanceof WordValue holder) {
             ContextSlot slot = resolve(
                     holder.isBound() ? holder : holder.boundTo(frame.context));
-            slot.setValue(DateParts.written(date, lastSegment, written));
+            slot.setValue(DateParts.written(
+                    date, selectorFor(lastSegment, frame.context), written));
             return;
         }
         if (target instanceof MapValue map) {

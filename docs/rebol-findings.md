@@ -5781,3 +5781,48 @@ datatype; refusing inside the body reports cannot-use, which names the function
 and the value and leaves ARG2 none. A script reading `e/arg2` to find out which
 argument it got wrong gets nothing from the second shape, and Rebol's own
 error-test asks exactly that of `last :some-function`.
+
+## 202. A date's parts are written by the same numbers they are read by
+
+`sym = SYM_YEAR + Int32(arg) - 1` runs in `PD_Date` before the read and the
+write arms part company, so `d/1: 2020` is `d/year: 2020` and a number past
+fourteen is invalid-path on both sides. Reading by number worked here and
+writing by number did not, which is the sort of half that nothing notices until
+a caller loops over the parts -- and Rebol's own date-test does exactly that:
+`repeat i 15 [try [d/:i: i]]`, then asserts on the date that comes out.
+
+**Three parts take a value that is not a number, and each takes one kind:**
+
+    d/utc: 27-Nov-2020/18:15:57+1:00   -> 27-Nov-2020/17:15:57
+    d/julian: 2415020.5                -> 1-Jan-1900/0:00
+    d/date: 5-May-2005                 -> the day, and its offset with it
+
+UTC takes a date and leaves the instant it names with no offset at all, which
+is the same moment written the other way. JULIAN takes a decimal and nothing
+else -- `if (!IS_DECIMAL(val)) return PE_BAD_SET_TYPE;` -- and a count outside
+what `Normalize_Date` accepts is type-limit rather than a date in the year
+minus four thousand. DATE assigns the whole packed date field, `date =
+VAL_DATE(val)`, and the offset is *in* that field, so writing a bare day into a
+date that had an offset leaves it with none.
+
+**WEEKDAY can be read and not written, and the refusal has an id of its own.**
+It falls to `default: return PE_BAD_SET;` where the parts that refuse a
+datatype answer PE_BAD_SET_TYPE, so a script can tell "this part is not
+writable" from "this part will not take that".
+
+## 203. Subtracting a date from something that is not a date is refused
+
+    if (action == A_SUBTRACT) {
+        if (!IS_DATE(val)) Trap_Math_Args(VAL_TYPE(val), A_SUBTRACT);
+        num = Diff_Date(date, VAL_DATE(arg));
+    }
+
+The only subtraction a date on the right takes part in is one where the left is
+a date too, and the answer is the number of days between them. A date on the
+*left* is a different question and takes an integer, a decimal, a time or a
+date. So `1-Jan-2000 - 0` is a date and `0 - 1-Jan-2000` is not a number of
+days in the other direction; it is not-related, naming the datatype that was on
+the left.
+
+Subtraction is not symmetric here because the two sides mean different things:
+a date minus a count is a date, and a count minus a date is nothing.

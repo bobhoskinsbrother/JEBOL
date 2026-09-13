@@ -2171,6 +2171,11 @@ public final class Natives {
             }
             return IntegerValue.of(dayNumberOf(from) - dayNumberOf(to));
         }
+        if (operation == Operation.SUBTRACT && !(left instanceof DateValue)) {
+            throw Raised.of(EvaluationFailure.NOT_RELATED,
+                    WordValue.of(operation.name().toLowerCase(Locale.ROOT) + ":"),
+                    DatatypeValue.of(left.datatype()));
+        }
         DateValue moment = left instanceof DateValue date ? date : (DateValue) right;
         Value span = left instanceof DateValue ? right : left;
         int sign = operation == Operation.SUBTRACT ? -1 : 1;

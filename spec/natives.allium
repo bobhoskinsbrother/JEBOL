@@ -9979,6 +9979,89 @@ rule TheJulianDayCountsFromNoon {
     ensures: PathResult(value: a_decimal_counted_from_noon)
 }
 
+-- Subtracting a date from something that is not a date is refused, and the
+-- refusal names the datatype that was on the left.
+--
+-- `if (action == A_SUBTRACT) { if (!IS_DATE(val)) Trap_Math_Args(VAL_TYPE(val),
+-- A_SUBTRACT); num = Diff_Date(...); }` -- the only subtraction a date on the
+-- right takes part in is one where the left is a date too, and the answer is
+-- the number of days between them.
+--
+-- A date on the LEFT is a different question and takes an integer, a decimal,
+-- a time or a date, so `1-Jan-2000 - 0` is a date and `0 - 1-Jan-2000` is not
+-- a number of days in the other direction. Subtraction is not symmetric here
+-- because the two sides mean different things: a date minus a count is a date,
+-- and a count minus a date is nothing.
+rule ADateOnTheRightOfASubtractionNeedsADateOnTheLeft {
+    when: EvaluateArithmetic(request)
+    requires: request.operation = subtract
+    requires: is_date(request.right) and not is_date(request.left)
+
+    ensures: CallFails(error: not_related, about: request.left.datatype)
+}
+
+-- === Writing a date's parts ==========
+
+-- A part is written by the same names and the same numbers it is read by.
+-- `sym = SYM_YEAR + Int32(arg) - 1` runs before the read and the write arms
+-- part company, so `d/1: 2020` is `d/year: 2020` and a number past fourteen is
+-- invalid-path on both sides.
+--
+-- Stated because reading by number worked here and writing by number did not,
+-- which is the sort of half that nothing notices until a caller loops over the
+-- parts. Rebol's own date-test does exactly that: `repeat i 15 [try [d/:i: i]]`
+-- and then asserts on the date that comes out.
+rule ADatePartIsWrittenByNameOrByNumber {
+    when: WriteThroughPath(subject, part, given)
+    requires: is_date(subject)
+    requires: is_integer(part)
+
+    ensures: the_part_written = the_part_that_number_names(part)
+    ensures: CallFails(error: invalid_path) when part > 14 or part < 1
+}
+
+-- Three parts take a value that is not a number, and each takes one kind.
+--
+-- UTC takes a date and answers the instant that date names with no offset at
+-- all: `*data = *val; VAL_ZONE(data) = 0;` over a value whose time is already
+-- universal. So `d/utc: 27-Nov-2020/18:15:57+1:00` leaves d at
+-- `27-Nov-2020/17:15:57`, which is the same moment written the other way.
+--
+-- JULIAN takes a decimal and nothing else -- `if (!IS_DECIMAL(val)) return
+-- PE_BAD_SET_TYPE;` -- converts it to a Gregorian day and clears the offset. A
+-- count outside the range the conversion covers is type-limit rather than a
+-- wrong date.
+--
+-- DATE takes a date and takes its offset with it, because the C assigns the
+-- whole packed date field: `date = VAL_DATE(val)`, and the offset is in it. So
+-- writing a bare day into a date that had an offset leaves it with none.
+rule TheDateShapedPartsTakeADateOrADecimal {
+    when: WriteThroughPath(subject, part, given)
+    requires: is_date(subject)
+    requires: part in {utc, julian, date}
+
+    ensures:
+        if part = utc and is_date(given):
+            the_date_becomes(the_instant_of(given), with_no_offset)
+        else if part = julian and is_decimal(given):
+            the_date_becomes(the_gregorian_day_of(given), with_no_offset)
+        else if part = date and is_date(given):
+            the_date_becomes(the_day_of(given), with_the_offset_of(given))
+        else:
+            CallFails(error: bad_field_set)
+}
+
+-- WEEKDAY can be read and cannot be written, and the refusal has an id of its
+-- own. `default: return PE_BAD_SET;` is the arm it falls to, where the parts
+-- that refuse a datatype answer PE_BAD_SET_TYPE -- so a script can tell "this
+-- part is not writable" from "this part will not take that".
+rule TheWeekdayIsReadOnly {
+    when: WriteThroughPath(subject, weekday, given)
+    requires: is_date(subject)
+
+    ensures: CallFails(error: bad_path_set)
+}
+
 -- === Reaching into a block through a path ==========
 
 -- A number selects a position, counting from where the block is.
