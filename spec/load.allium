@@ -534,6 +534,57 @@ entity LoadRequest {
 
 -- === Reading ===============================================
 
+-- A comma ends nothing. `Lex_Map` gives it LEX_SPECIAL, not LEX_DELIMIT, so it
+-- is part of whatever lexeme it stands in, and what it means there depends on
+-- what that lexeme turns out to be.
+--
+-- In a number it is the other decimal point: `Scan_Decimal` steps over one
+-- point written either way -- `if (*cp == ',' || *cp == '.') cp++;` -- and the
+-- whole lexeme has to be consumed, so there is exactly one of them and it may
+-- not be spelt both ways. So `1,2` is the decimal 1.2, `1,` is 1.0, `,1` is
+-- 0.1, and `1,2,3`, `1.2,3` and `,.5` are each an invalid lexeme rather than
+-- something split in two.
+--
+-- In a file, a url, an email or an issue it is an ordinary character, because
+-- those run to the next delimiter and a comma is not one. And in a word it is
+-- one of the seven characters a word may not contain: LEX_SPECIAL_COMMA is in
+-- `LEX_WORD_FLAGS` beside at, percent, backslash, pound, dollar and colon, so
+-- `a,b` and a comma standing alone are invalid rather than two values.
+rule ACommaEndsNothingAndIsTheOtherDecimalPoint {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+
+    ensures: a_comma_does_not_end_a_lexeme()
+    ensures: for lexeme in the_lexemes_of(request.source_text):
+        if names_a_number(lexeme):
+            exactly_one_point_written_either_way(lexeme)
+        else if names_a_word(lexeme):
+            request.status = failed
+}
+
+-- A lexeme whose colon is followed by a slash is a url, and that is settled
+-- before anything else is asked about it.
+--
+-- `scanword` tests the colon flag first and returns TOKEN_URL from inside that
+-- arm, so the angle brackets, the percent and the rest of the characters a
+-- word may not contain never get a say. The body then runs past the delimiters
+-- that stopped the word: `while (*cp == '/') { cp++; while
+-- (IS_LEX_AT_LEAST_SPECIAL(*cp) || *cp == '/' || *cp == 0x7F) cp++; }`, which
+-- takes every character that is not one of the eleven delimiters, plus the
+-- slashes and the delete character.
+--
+-- Which is why `a:/x<y`, `a:/x,y` and a url with a control character in it are
+-- each one value. Deciding the word first and the url afterwards refuses all
+-- three, and `mold-test.r3` molds every one of the first two hundred and
+-- fifty-six characters into a url and loads it back to say so.
+rule AColonBeforeASlashSettlesTheLexemeAsAUrl {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+
+    ensures: for lexeme in the_lexemes_of(request.source_text):
+        reads_as_a_url(lexeme) when a_colon_is_followed_by_a_slash_in(lexeme)
+}
+
 rule TranscodeBegins {
     when: Transcode(source_text, scope, hands_back_failures, answers_the_value_alone, first_line_number, characters_permitted)
     ensures: TranscodeRequest.created(
@@ -1469,7 +1520,7 @@ surface SourceReading {
 -- `<` is absorbed into a word fails on `1<`. Neither is wrong about the
 -- case it was drawn from.
 
-open question "A real R3 refuses % # $ \\ and a comma inside a word as well as an angle bracket -- `a%b`, `a#b`, `a$b` and `a,b` all raise invalid, measured directly. JEBOL refuses only the angle brackets so far. The hash is the awkward one: it is how a based number and a based binary are written, `2#01` and `64#{...}`, so a rule that refuses it in a word has to run after those forms are recognised rather than on the raw lexeme. Refusing it early turned `64#{` into the integer 64 and broke a source file that reads perfectly well. The comma is awkward for a different reason: the reader treats it as a delimiter, so `a,b` is split before any check sees it."
+open question "A real R3 refuses % # $ \\ inside a word as well as an angle bracket -- `a%b`, `a#b` and `a$b` all raise invalid, measured directly. JEBOL refuses the angle brackets and now the comma, and not the other three. The hash is the awkward one: it is how a based number and a based binary are written, `2#01` and `64#{...}`, so a rule that refuses it in a word has to run after those forms are recognised rather than on the raw lexeme. Refusing it early turned `64#{` into the integer 64 and broke a source file that reads perfectly well. The comma half of this is resolved by ACommaEndsNothingAndIsTheOtherDecimalPoint above, and it was the same shape: the reader treated it as a delimiter, so `a,b` was split before any check saw it."
 
 -- Resolved against a real R3: a construct naming a series may carry its
 -- position as a second value, which is the one exception to a read series

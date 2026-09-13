@@ -452,7 +452,7 @@ public final class Transcoder {
                 }
                 continue;
             }
-            if (Character.isWhitespace(next) || next == ',') {
+            if (Character.isWhitespace(next)) {
                 if (next == '\n') {
                     crossedALine = true;
                 }
@@ -1118,7 +1118,7 @@ public final class Transcoder {
                     token.substring(0, token.indexOf('/') + 1));
         }
         try {
-            BigDecimal amount = new BigDecimal(digits);
+            BigDecimal amount = new BigDecimal(withTheOnePointWrittenAsADot(digits));
             return MoneyValue.of(negative ? amount.negate() : amount);
         } catch (NumberFormatException notANumber) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "money", token);
@@ -1222,11 +1222,11 @@ public final class Transcoder {
                 || codepoint == '"'
                 || codepoint == '{'
                 || codepoint == '}'
-                || codepoint == ';'
-                || codepoint == ',';
+                || codepoint == ';';
     }
 
-    private static final Pattern URL = Pattern.compile("[a-zA-Z][a-zA-Z0-9+.-]*:.+");
+    private static final Pattern URL =
+            Pattern.compile("[a-zA-Z][a-zA-Z0-9+.-]*:.+", Pattern.DOTALL);
     private static final Pattern SLASHED_DATE =
             Pattern.compile("\\d{1,4}/[A-Za-z0-9]+/\\d{1,4}");
     private static final Pattern HYPHENATED_DATE =
@@ -1242,20 +1242,20 @@ public final class Transcoder {
             "([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)"
                     + "[xX]([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)");
     private static final Pattern TIME = Pattern.compile(
-            "([-+]?\\d+):(\\d{1,2}(?:\\.\\d+)?)(?::(\\d{1,2}(?:\\.\\d+)?))?");
+            "([-+]?\\d+):(\\d{1,2}(?:[.,]\\d+)?)(?::(\\d{1,2}(?:[.,]\\d+)?))?");
     private static final Pattern TUPLE = Pattern.compile("\\d+(?:\\.\\d+){2,}");
     private static final Pattern INTEGER = Pattern.compile("[-+]?\\d+(?:'\\d+)*");
     private static final Pattern DECIMAL =
-            Pattern.compile("[-+]?(?:\\d+\\.\\d*|\\.\\d+|\\d+)(?:[eE][-+]?\\d+)?");
+            Pattern.compile("[-+]?(?:\\d+[.,]\\d*|[.,]\\d+|\\d+)(?:[eE][-+]?\\d+)?");
     private static final Pattern PERCENT = Pattern.compile(
-            "([-+]?(?:\\d+\\.\\d*|\\.\\d+|\\d+)(?:[eE][-+]?\\d+)?)%");
+            "([-+]?(?:\\d+[.,]\\d*|[.,]\\d+|\\d+)(?:[eE][-+]?\\d+)?)%");
     private static final Pattern DATATYPE = Pattern.compile("([a-zA-Z][a-zA-Z0-9-]*)!");
     private static final String[] MONTH_NAMES = {
         "jan", "feb", "mar", "apr", "may", "jun",
         "jul", "aug", "sep", "oct", "nov", "dec"
     };
 
-    private static final String NOT_IN_A_WORD = "<>%#$\\";
+    private static final String NOT_IN_A_WORD = "<>%#$\\,";
 
     private static int firstAngleBracket(String lexeme) {
         int depth = 0;
@@ -1314,6 +1314,9 @@ public final class Transcoder {
             }
         }
         Value read = classifyPlain(lexeme);
+        if (read.datatype() == Datatype.URL) {
+            return read;
+        }
         int offending = firstOffendingCharacter(lexeme);
         int bracket = firstAngleBracket(lexeme);
         if (bracket > 0 && (offending < 0 || bracket < offending
@@ -1323,7 +1326,11 @@ public final class Transcoder {
                 offending = bracket;
             }
         }
-        if (offending == 0 && !allSymbols(lexeme)) {
+        if (offending >= 0 && lexeme.charAt(offending) == ','
+                && read instanceof WordValue) {
+            throw failure(SyntaxFailure.INVALID_LEXEME, null);
+        }
+        if (offending == 0 && !allSymbols(lexeme) && read instanceof WordValue) {
             throw failure(SyntaxFailure.INVALID_LEXEME, null);
         }
         boolean angleToSettle = offending > 0 && !allSymbols(lexeme)
@@ -1566,7 +1573,8 @@ public final class Transcoder {
         }
         var percent = PERCENT.matcher(lexeme);
         if (percent.matches()) {
-            return DecimalValue.percent(Double.parseDouble(percent.group(1)) / 100.0);
+            return DecimalValue.percent(Double.parseDouble(
+                    withTheOnePointWrittenAsADot(percent.group(1))) / 100.0);
         }
         if (INTEGER.matcher(lexeme).matches()) {
             try {
@@ -1580,12 +1588,16 @@ public final class Transcoder {
             return special;
         }
         if (DECIMAL.matcher(lexeme).matches() && holdsAPlainDigit(lexeme)) {
-            return DecimalValue.of(Double.parseDouble(lexeme));
+            return DecimalValue.of(Double.parseDouble(withTheOnePointWrittenAsADot(lexeme)));
         }
         if (Character.isDigit(lexeme.charAt(0))) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "integer", lexeme);
         }
         return WordValue.of(lexeme);
+    }
+
+    private static String withTheOnePointWrittenAsADot(String lexeme) {
+        return lexeme.indexOf(',') < 0 ? lexeme : lexeme.replace(',', '.');
     }
 
     private static Value specialDecimal(String lexeme) {
@@ -1760,7 +1772,10 @@ public final class Transcoder {
         return TupleValue.of(segments);
     }
 
-    private Value readTime(String first, String second, String third) {
+    private Value readTime(String written, String secondPart, String thirdPart) {
+        String first = withTheOnePointWrittenAsADot(written);
+        String second = withTheOnePointWrittenAsADot(secondPart);
+        String third = thirdPart == null ? null : withTheOnePointWrittenAsADot(thirdPart);
         if (!isMinutesAndSeconds(second, third)) {
             return timeOf(first, second, third);
         }

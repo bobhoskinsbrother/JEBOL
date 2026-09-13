@@ -5846,3 +5846,54 @@ GET-COL-WIDTH counts the column it is on. The second pass walked the counter
 past the end of the widths, so the second column of a `[csv widths='100 20 *']`
 table came out with no width -- one wrong attribute in one of sixty test cases,
 and the only visible trace of a function being called twice everywhere.
+
+## 205. A comma ends nothing, and is the other decimal point
+
+`Lex_Map` gives `,` LEX_SPECIAL, not LEX_DELIMIT, so it never ends a lexeme.
+What it means depends on what the lexeme turns out to be, and there are three
+answers.
+
+**In a number it is the point.** `Scan_Decimal` steps over one, written either
+way -- `if (*cp == ',' || *cp == '.') cp++;` -- and the whole lexeme has to be
+consumed, so there is exactly one and it may not be spelt both ways:
+
+    1,2   -> 1.2        1,2,3 -> invalid
+    1,    -> 1.0        1.2,3 -> invalid
+    ,1    -> 0.1        ,.5   -> invalid
+    $1,5  -> $1.5       1,5%  -> 1.5%       1:2,5 -> 0:01:02.5
+
+A tuple is dots only, so `1.2.3` is a tuple and `1,2,3` is nothing.
+
+**In a file, url, email or issue it is an ordinary character**, because those
+run to the next delimiter.
+
+**And in a word it is forbidden.** `LEX_SPECIAL_COMMA` is in `LEX_WORD_FLAGS`
+beside at, percent, backslash, pound, dollar and colon, so `a,b`, `a,` and a
+comma standing alone are each invalid rather than two values.
+
+JEBOL treated it as a delimiter in three places at once: `endsLexeme`,
+`skipIgnorable`, and nowhere in the number patterns. Taking it out of the first
+two without the third turns `1,2` into a NumberFormatException from
+`Double.parseDouble`.
+
+## 206. A colon before a slash settles a lexeme as a url before anything else asks
+
+`scanword` tests the colon flag first and returns TOKEN_URL from inside that
+arm, so the characters a word may not contain never get a say. The body then
+runs past the delimiters that stopped the word:
+
+    cp = scan_state->end;
+    while (*cp == '/') {
+        cp++;
+        while (IS_LEX_AT_LEAST_SPECIAL(*cp) || *cp == '/' || *cp == 0x7F) cp++;
+    }
+
+So `a:/x<y`, `a:/x,y` and a url with a control character in it are each one
+value. JEBOL classified the lexeme as a url and then let the angle-bracket
+splitting -- the machinery that makes `word<tag>` two values -- override it.
+
+**And Java's `.` does not match a line terminator.** The url pattern
+`[a-zA-Z][a-zA-Z0-9+.-]*:.+` refused `a:/` followed by U+0085, because NEL is
+one of the five characters Java's regex counts as ending a line. The pattern
+needs DOTALL; nothing else about the character is unusual, and `Lex_Map` makes
+everything from 0x80 up an ordinary word character.
