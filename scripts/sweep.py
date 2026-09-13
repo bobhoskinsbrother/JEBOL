@@ -141,14 +141,17 @@ def main():
     if not name.endswith(".r3"):
         name += "-test.r3"
     script, sources = probe_script(REPO + "/src/test/resources/rebol-suite/" + name)
+    suite = REPO + "/src/test/resources/rebol-suite"
     probe = SCRATCH + "/probe-" + name
-    open(probe, "w").write(script)
+    open(probe, "w").write(script.replace(
+        "Rebol []", "Rebol []\nchange-dir %" + suite + "/", 1))
 
     r3out = SCRATCH + "/probe.r3out"
     jbout = SCRATCH + "/probe.jbout"
     with open(r3out, "w") as writing:
         subprocess.run([REPO + "/r3-head", probe], stdout=writing,
-                       stderr=subprocess.STDOUT, cwd=REPO)
+                       stderr=subprocess.STDOUT,
+                       cwd=REPO + "/src/test/resources/rebol-suite")
     with open(jbout, "w") as writing:
         script_file = os.path.join(SCRATCH, "sweep-script.r3")
         with open(script_file, "w") as handle:

@@ -7629,12 +7629,140 @@ rule PartCountsTheSeriesOwnUnits {
     ensures: the_bytes_encoded = the_utf8_of(the_span_taken)
 }
 
--- The two are inverses over every base, which is the only property of them
--- worth testing exhaustively.
+-- The two are inverses over three of the five bases, and this said all five.
+--
+-- Base 36 is not a byte encoding at all: DEBASE of it always answers eight
+-- bytes, so `debase enbase #{01} 36` is `#{0000000000000001}` and the round
+-- trip fails on every input shorter than eight bytes. Base 85 holds, because
+-- its final partial group records how many bytes were in it.
+--
+-- Stating it over all five is not a harmless overreach. An implementation
+-- written to satisfy it has to make base 36 an arbitrary-precision
+-- conversion that preserves length, which round-trips perfectly and answers
+-- something Rebol never answers -- which is what JEBOL did.
 invariant EnbaseAndDebaseAreInverses {
-    for base in {85, 64, 36, 16, 2}:
+    for base in {85, 64, 16, 2}:
         for octets in AnyBinary:
             debase(enbase(octets, base), base) = octets
+}
+
+-- Base 36 is a codec for one unsigned 64-bit number written in digits, and
+-- everything odd about it follows from that.
+--
+-- DEBASE answers exactly eight bytes, most significant first, whatever the
+-- digits were: `debase "0" 36` is eight zero bytes and `debase "1" 36` is
+-- seven zero bytes and a one. Empty digits are the one exception and answer
+-- an empty binary.
+rule DebaseThirtySixAnswersEightBytes {
+    when: EvaluateCall(debase, digits, 36)
+    requires: not is_empty(digits)
+    ensures: CallResult(value: the_big_endian_eight_bytes_of(
+        the_unsigned_value_of(digits)))
+}
+
+-- Thirteen digits is the longest it will read, because the C indexes a table
+-- of thirteen powers of thirty-six. A fourteenth digit is refused before any
+-- of them is looked at, and a digit outside 0-9 A-Z is refused where it is
+-- found. Letters are read without regard to case.
+rule DebaseThirtySixReadsAtMostThirteenDigits {
+    when: EvaluateCall(debase, digits, 36)
+    requires: length_of(digits) > 13 or has_a_digit_outside(base36_alphabet)
+    ensures: CallFails(error: invalid_data)
+}
+
+-- A value that will not fit in sixty-four bits wraps rather than being
+-- refused, because the C accumulates into an unsigned and then tests whether
+-- the result went negative, which an unsigned never does. Thirteen Z's is
+-- past the bound and answers a number anyway.
+--
+-- ENBASE is bounded from the other end: more than eight bytes is out of
+-- range, because there is no number that wide to write down.
+rule EnbaseThirtySixTakesAtMostEightBytes {
+    when: EvaluateCall(enbase, value, 36)
+    requires: length_in_bytes(value) > 8
+    ensures: CallFails(error: out_of_range)
+}
+
+-- And it writes the fewest digits that carry the number, so nothing is padded
+-- and zero is the single digit `0` rather than nothing. An empty input is the
+-- exception again and answers empty text.
+rule EnbaseThirtySixWritesTheFewestDigits {
+    when: EvaluateCall(enbase, value, 36)
+    requires: not is_empty(value)
+    ensures: CallResult(value: the_shortest_base36_digits_of(
+        the_unsigned_value_of(value)))
+}
+
+-- Base 85 is Ascii85: four bytes become five characters drawn from the
+-- eighty-five beginning at `!`, and a group of four zero bytes is written as
+-- the single letter `z` instead.
+--
+-- A final group of one, two or three bytes becomes that many characters plus
+-- one. The count is what lets the round trip recover the length, and it is
+-- why `z` is only written for a *whole* group: `enbase #{000000} 85` is
+-- `!!!!` and not `z`.
+rule EnbaseEightyFiveWritesAZedForAWholeZeroGroup {
+    when: EvaluateCall(enbase, value, 85)
+    requires: a_whole_group_of_four_zero_bytes
+    ensures: the_group_is_written_as(z)
+}
+
+-- Reading skips whitespace between characters -- space, tab, newline and
+-- carriage return -- so a stream broken across lines reads back. A character
+-- outside the alphabet is refused, a lone trailing character is refused
+-- because a group of one records nothing, and a group whose value will not
+-- fit in thirty-two bits is refused rather than wrapped.
+rule DebaseEightyFiveRefusesWhatItCannotRead {
+    when: EvaluateCall(debase, text, 85)
+    requires: has_a_character_outside(ascii85_alphabet)
+        or ends_with_a_group_of_one
+        or has_a_group_above(0xFFFFFFFF)
+    ensures: CallFails(error: invalid_data)
+}
+
+-- ENBASE breaks its answer into lines of sixty-four characters unless /FLAT
+-- says not to, and the newline goes *before* each line rather than after.
+--
+-- So the answer begins with a newline and ends without one, which is what
+-- makes it sit inside a braced literal in a test file reading as a block of
+-- even columns. Putting the newline after each line instead produces the same
+-- columns, the same length and a string that is equal to nothing the suite
+-- asks for.
+--
+-- The threshold is counted in *input bytes* and differs per base, because
+-- each encoder counts what it is looping over: more than eight bytes for base
+-- 2, thirty-two or more for base 16, fifty-four or more for base 64. A break
+-- also falls after the final group when the input divides exactly, so an
+-- input of exactly thirty-two bytes at base 16 ends with a newline -- with
+-- one exception, base 2 at exactly eight bytes, where the C removes it again
+-- on the line after it was written.
+rule EnbaseBreaksLinesBeforeEachSixtyFourCharacters {
+    when: EvaluateCall(enbase, value, base)
+    requires: not refinement_asked(flat)
+    requires: length_in_bytes(value) >= the_break_threshold_for(base)
+    ensures: the_answer_begins_with(newline)
+    ensures: each_line_after_the_first_is_preceded_by(newline)
+}
+
+-- /FLAT is the whole of the difference and changes nothing else.
+rule EnbaseFlatWritesNoNewlines {
+    when: EvaluateCall(enbase, value, base)
+    requires: refinement_asked(flat)
+    ensures: CallResult(value: the_encoding_with_no_newlines_in_it())
+}
+
+-- /URL is two changes and not one. It swaps the two alphabet characters that
+-- a URL cannot carry, and it leaves the padding off.
+--
+-- The decoder already allowed a short group under /URL, so only the encoder
+-- was wrong, and a caller round-tripping through JEBOL alone would never have
+-- seen it: `debase/url enbase/url x 64 64` is x either way. It shows against
+-- anything else that reads base 64 URL text, which is what the encoding is
+-- for.
+rule EnbaseUrlLeavesThePaddingOff {
+    when: EvaluateCall(enbase, value, 64)
+    requires: refinement_asked(url)
+    ensures: CallResult(value: the_base64_url_text_without(padding))
 }
 
 -- TO-HEX takes a char and a tuple as well as an integer, and answers an

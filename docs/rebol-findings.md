@@ -5355,3 +5355,34 @@ reordered.** `checksum/part %file 'md5 1` is `bad-refines`; `checksum/part %file
 every call answered a well-formed digest of the wrong thing, the same width and
 shape as the right one, and a missing file answered a digest rather than
 failing. Pinned by `ChecksumOfAFileFromTheSourceTest`.
+
+## 185. r3-head stops early or segfaults on a long base36-and-base85 script
+
+**A single script doing a lot of base36 and base85 work does not finish.** The
+first run of one such probe exited 139 -- SIGSEGV -- after printing sixteen
+lines; the second run of the same file exited 0 and stopped silently at the same
+place, having never printed the four lines after it.
+
+Every call in it answers correctly on its own, and short scripts that pair the
+suspicious calls survive:
+
+    debase "BE" 85              #{68}          -- alone, fine
+    debase "u" 85               invalid-data   -- alone, fine
+    debase "z"/"zz"/"!!"/"BE"   all four, one script, fine
+    enbase <9 bytes> 36         out-of-range, then base85 still works
+
+So it is cumulative rather than triggered by one expression, and it is not
+deterministic between runs of the same bytes.
+
+**What this costs a porter:** a long probe script comparing the two
+implementations will appear to show JEBOL producing answers where Rebol produces
+none, for every assertion after the point it quietly stopped. That reads as a
+divergence and is not one.
+
+**Measure base36 and base85 in small invocations, one or a few expressions at a
+time.** It is slower and it is the only way to trust the answers.
+
+This is the third place the canonical reference has been caught being
+unreliable, after `checksum-test.r3` failing thirteen assertions in roughly one
+run in eight, and `open/new` on a missing directory answering differently on
+consecutive runs.

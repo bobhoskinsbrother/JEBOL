@@ -101,35 +101,6 @@ dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #37
 dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #38
 dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #39
 dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #40
-enbase-test.r3 / debase 64 - safe URL variant / debase 64 url 3 #39
-enbase-test.r3 / debase/part / debase/part with series as a length #100
-enbase-test.r3 / debase/part / debase/part with series as a length #101
-enbase-test.r3 / debase/part / debase/part with series as a length #102
-enbase-test.r3 / debase/part / debase/part with series as a length #103
-enbase-test.r3 / debase/part / debase/part with series as a length #104
-enbase-test.r3 / debase/part / debase/part with series as a length #105
-enbase-test.r3 / debase/part / debase/part with series as a length #106
-enbase-test.r3 / debase/part / debase/part with series as a length #107
-enbase-test.r3 / debase/part / debase/part with series as a length #108
-enbase-test.r3 / debase/part / debase/part with series as a length #112
-enbase-test.r3 / debase/part / debase/part with series as a length #113
-enbase-test.r3 / debase/part / debase/part with series as a length #114
-enbase-test.r3 / debase/part / debase/part with series as a length #115
-enbase-test.r3 / debase/part / debase/part with series as a length #116
-enbase-test.r3 / debase/part / debase/part with series as a length #117
-enbase-test.r3 / debase/part / debase/part with series as a length #118
-enbase-test.r3 / debase/part / debase/part with series as a length #119
-enbase-test.r3 / debase/part / debase/part with series as a length #121
-enbase-test.r3 / debase/part / debase/part with series as a length #97
-enbase-test.r3 / debase/part / debase/part with series as a length #98
-enbase-test.r3 / debase/part / debase/part with series as a length #99
-enbase-test.r3 / enbase 64 - safe URL variant / enbase/url #43
-enbase-test.r3 / enbase 64 - safe URL variant / enbase/url #44
-enbase-test.r3 / enbase/flat / enbase/flat 16 #28
-enbase-test.r3 / enbase/flat / enbase/flat 2 #26
-enbase-test.r3 / enbase/flat / enbase/flat 64 #30
-enbase-test.r3 / enbase/part / enbase/part with series as a length #77
-enbase-test.r3 / enbase/part / enbase/part with series as a length #78
 error-test.r3 / Error issues / issue-553 #38
 error-test.r3 / Error issues / protected catalog #42
 error-test.r3 / Error issues / protected catalog #43

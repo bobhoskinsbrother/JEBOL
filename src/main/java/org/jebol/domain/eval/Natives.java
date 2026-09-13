@@ -9449,11 +9449,17 @@ public final class Natives {
                                     arguments, refinements)
                             : theUnitsAskedFor(
                                     arguments.getFirst(), arguments, refinements);
-                    String encoded = Encodings.enbase(
-                            octets, base, refinements.contains("url"));
+                    String encoded;
+                    try {
+                        encoded = Encodings.enbase(
+                                octets, base, refinements.contains("url"));
+                    } catch (ArithmeticException tooWideForANumber) {
+                        throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                                arguments.getFirst());
+                    }
                     return StringValue.of(refinements.contains("flat")
                             ? encoded
-                            : Encodings.brokenIntoLines(encoded));
+                            : Encodings.brokenIntoLines(encoded, base, octets.length));
                 });
 
         define("debase", List.of(
@@ -13411,10 +13417,22 @@ public final class Natives {
     private static byte[] theUnitsAskedFor(
             Value value, List<Value> arguments, Set<String> refinements) {
 
-        int howMany = howManyWanted(value, arguments, refinements, 2)
-                .map(count -> (int) Math.max(0, count))
+        Optional<Long> asked = howManyWanted(value, arguments, refinements, 2);
+        if (asked.isPresent() && asked.get() < 0) {
+            return theUnitsBehind(value, -asked.get());
+        }
+        int howMany = asked.map(count -> (int) Math.max(0, count))
                 .orElse(SeriesContents.EVERY_ONE);
         return toBytes(SeriesContents.octetsContributedBy(value, howMany));
+    }
+
+    private static byte[] theUnitsBehind(Value value, long count) {
+        if (!(value instanceof SeriesValue positioned)) {
+            return new byte[0];
+        }
+        int reachedBack = (int) Math.min(count, positioned.index() - 1);
+        return toBytes(SeriesContents.octetsContributedBy(
+                positioned.atIndex(positioned.index() - reachedBack), reachedBack));
     }
 
     private static byte[] toBytes(int[] octets) {
@@ -13427,10 +13445,23 @@ public final class Natives {
 
     private static String boundedTextByAnyPart(
             String text, List<Value> arguments, Set<String> refinements) {
-        return howManyWanted(arguments.getFirst(), arguments, refinements, 2)
-                .map(count -> text.substring(0,
+        Optional<Long> asked =
+                howManyWanted(arguments.getFirst(), arguments, refinements, 2);
+        if (asked.isPresent() && asked.get() < 0) {
+            return theTextBehind(arguments.getFirst(), -asked.get());
+        }
+        return asked.map(count -> text.substring(0,
                         (int) Math.max(0, Math.min(count, text.length()))))
                 .orElse(text);
+    }
+
+    private static String theTextBehind(Value value, long count) {
+        if (!(value instanceof SeriesValue positioned)) {
+            return "";
+        }
+        int reachedBack = (int) Math.min(count, positioned.index() - 1);
+        String whole = textOf(positioned.atIndex(positioned.index() - reachedBack));
+        return whole.substring(0, Math.min(reachedBack, whole.length()));
     }
 
     private static boolean isExactlyABlock(Value value) {

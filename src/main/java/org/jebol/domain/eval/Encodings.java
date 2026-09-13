@@ -131,17 +131,14 @@ final class Encodings {
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     private static final String BASE36 =
             "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private static final String BASE85 =
-            "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-                    + "!#$%&()*+-;<=>?@^_`{|}~";
 
     static String enbase(byte[] octets, int base, boolean urlSafe) {
         return switch (base) {
             case 16 -> hexOf(octets);
             case 2 -> bitsOf(octets);
             case 64 -> base64Of(octets, urlSafe ? BASE64_URL : BASE64);
-            case 36 -> bigBaseOf(octets, BASE36);
-            case 85 -> bigBaseOf(octets, BASE85);
+            case 36 -> base36Of(octets);
+            case 85 -> ascii85Of(octets);
             default -> throw new IllegalArgumentException("base " + base);
         };
     }
@@ -151,8 +148,8 @@ final class Encodings {
             case 16 -> octetsOfHex(text);
             case 2 -> octetsOfBits(text);
             case 64 -> octetsOfBase64(text, urlSafe ? BASE64_URL : BASE64);
-            case 36 -> octetsOfBigBase(text, BASE36);
-            case 85 -> octetsOfBigBase(text, BASE85);
+            case 36 -> octetsOfBase36(withoutWhitespace(text));
+            case 85 -> octetsOfAscii85(text);
             default -> throw new IllegalArgumentException("base " + base);
         };
     }
@@ -242,10 +239,11 @@ final class Encodings {
                     group |= octets[at + each] & 0xFF;
                 }
             }
+            boolean padded = !BASE64_URL.equals(alphabet);
             for (int each = 0; each < 4; each++) {
                 if (each <= remaining) {
                     text.append(alphabet.charAt((group >> (18 - each * 6)) & 0x3F));
-                } else {
+                } else if (padded) {
                     text.append('=');
                 }
             }
@@ -308,57 +306,135 @@ final class Encodings {
         return decoded.toArray();
     }
 
-    private static String bigBaseOf(byte[] octets, String alphabet) {
-        int leadingZeroes = 0;
-        while (leadingZeroes < octets.length && octets[leadingZeroes] == 0) {
-            leadingZeroes++;
+    private static final int LONGEST_BASE36_NUMBER = 13;
+
+    private static String base36Of(byte[] octets) {
+        if (octets.length == 0) {
+            return "";
         }
-        java.math.BigInteger number = new java.math.BigInteger(1, octets);
-        java.math.BigInteger radix = java.math.BigInteger.valueOf(alphabet.length());
+        if (octets.length > 8) {
+            throw new ArithmeticException("more bytes than a number can hold");
+        }
+        long number = 0;
+        for (byte each : octets) {
+            number = number << 8 | each & 0xFFL;
+        }
+        if (number == 0) {
+            return "0";
+        }
         StringBuilder digits = new StringBuilder();
-        while (number.signum() > 0) {
-            java.math.BigInteger[] split = number.divideAndRemainder(radix);
-            digits.append(alphabet.charAt(split[1].intValue()));
-            number = split[0];
+        while (number != 0) {
+            digits.append(BASE36.charAt((int) Long.remainderUnsigned(number, 36)));
+            number = Long.divideUnsigned(number, 36);
         }
-        return alphabet.charAt(leadingZeroes)
-                + digits.reverse().toString();
+        return digits.reverse().toString();
     }
 
-    private static byte[] octetsOfBigBase(String text, String alphabet) {
-        String digits = withoutWhitespace(text);
-        if (digits.isEmpty()) {
+    private static byte[] octetsOfBase36(String text) {
+        if (text.isEmpty()) {
             return new byte[0];
         }
-        int leadingZeroes = alphabet.indexOf(digits.charAt(0));
-        if (leadingZeroes < 0) {
-            throw new IllegalArgumentException("not a digit of this base");
+        if (text.length() > LONGEST_BASE36_NUMBER) {
+            throw new IllegalArgumentException("more than thirteen base 36 digits");
         }
-        java.math.BigInteger number = java.math.BigInteger.ZERO;
-        java.math.BigInteger radix = java.math.BigInteger.valueOf(alphabet.length());
-        for (int at = 1; at < digits.length(); at++) {
-            int value = alphabet.indexOf(digits.charAt(at));
-            if (value < 0) {
-                throw new IllegalArgumentException("not a digit of this base");
+        long number = 0;
+        for (int at = 0; at < text.length(); at++) {
+            int digit = Character.digit(text.charAt(at), 36);
+            if (digit < 0) {
+                throw new IllegalArgumentException("not a base 36 digit");
             }
-            number = number.multiply(radix).add(java.math.BigInteger.valueOf(value));
+            number += digit * powerOfThirtySix(text.length() - at - 1);
         }
-        byte[] magnitude = number.signum() == 0
-                ? new byte[0]
-                : stripLeadingSignByte(number.toByteArray());
-        byte[] octets = new byte[leadingZeroes + magnitude.length];
-        System.arraycopy(magnitude, 0, octets, leadingZeroes, magnitude.length);
-        return octets;
+        byte[] eight = new byte[8];
+        for (int at = 7; at >= 0; at--) {
+            eight[at] = (byte) number;
+            number >>>= 8;
+        }
+        return eight;
     }
 
-    private static byte[] stripLeadingSignByte(byte[] octets) {
-        if (octets.length > 1 && octets[0] == 0) {
-            byte[] shorter = new byte[octets.length - 1];
-            System.arraycopy(octets, 1, shorter, 0, shorter.length);
-            return shorter;
+    private static long powerOfThirtySix(int exponent) {
+        long power = 1;
+        for (int step = 0; step < exponent; step++) {
+            power *= 36;
         }
-        return octets;
+        return power;
     }
+
+    private static final int ASCII85_FIRST = '!';
+    private static final int ASCII85_LAST = 'u';
+    private static final char ASCII85_ZERO_GROUP = 'z';
+
+    private static String ascii85Of(byte[] octets) {
+        StringBuilder text = new StringBuilder(octets.length * 5 / 4 + 2);
+        for (int at = 0; at < octets.length; at += 4) {
+            int held = Math.min(4, octets.length - at);
+            long group = 0;
+            for (int step = 0; step < 4; step++) {
+                group = group << 8
+                        | (step < held ? octets[at + step] & 0xFFL : 0L);
+            }
+            if (held == 4 && group == 0) {
+                text.append(ASCII85_ZERO_GROUP);
+                continue;
+            }
+            char[] five = new char[5];
+            for (int digit = 4; digit >= 0; digit--) {
+                five[digit] = (char) (ASCII85_FIRST + group % 85);
+                group /= 85;
+            }
+            text.append(five, 0, held + 1);
+        }
+        return text.toString();
+    }
+
+    private static byte[] octetsOfAscii85(String text) {
+        Octets decoded = new Octets();
+        long group = 0;
+        int held = 0;
+        for (int at = 0; at < text.length(); at++) {
+            char letter = text.charAt(at);
+            if (skippedBetweenDigits(letter) || letter == '\t') {
+                continue;
+            }
+            if (letter == ASCII85_ZERO_GROUP && held == 0) {
+                decoded.write(0);
+                decoded.write(0);
+                decoded.write(0);
+                decoded.write(0);
+                continue;
+            }
+            if (letter < ASCII85_FIRST || letter > ASCII85_LAST) {
+                throw new IllegalArgumentException("not an ascii85 character");
+            }
+            group = group * 85 + (letter - ASCII85_FIRST);
+            if (++held == 5) {
+                writeTheTopBytesOf(decoded, group, 4);
+                group = 0;
+                held = 0;
+            }
+        }
+        if (held == 1) {
+            throw new IllegalArgumentException("an ascii85 group of one");
+        }
+        if (held > 1) {
+            for (int padding = held; padding < 5; padding++) {
+                group = group * 85 + 84;
+            }
+            writeTheTopBytesOf(decoded, group, held - 1);
+        }
+        return decoded.toArray();
+    }
+
+    private static void writeTheTopBytesOf(Octets decoded, long group, int wanted) {
+        if (group > 0xFFFFFFFFL) {
+            throw new IllegalArgumentException("an ascii85 group above four bytes");
+        }
+        for (int step = 0; step < wanted; step++) {
+            decoded.write((int) (group >>> (24 - step * 8)) & 0xFF);
+        }
+    }
+
 
     private static String withoutWhitespace(String text) {
         StringBuilder kept = new StringBuilder(text.length());
@@ -372,16 +448,31 @@ final class Encodings {
 
     static final int LINE_WIDTH = 64;
 
-    static String brokenIntoLines(String text) {
-        if (text.length() <= LINE_WIDTH) {
+    static String brokenIntoLines(String text, int base, int byteCount) {
+        return switch (base) {
+            case 2 -> withBreaks(text, byteCount > 8, byteCount > 8 ? byteCount / 8 : 0);
+            case 16 -> withBreaks(text, byteCount >= 32, byteCount / 32);
+            case 64 -> withBreaks(text,
+                    4 * (byteCount / 3 - 1) > LINE_WIDTH, byteCount / 3 / 16);
+            default -> text;
+        };
+    }
+
+    private static String withBreaks(String text, boolean leading, int closedLines) {
+        if (!leading && closedLines == 0) {
             return text;
         }
-        StringBuilder wrapped = new StringBuilder(text.length() + text.length() / LINE_WIDTH);
-        for (int at = 0; at < text.length(); at += LINE_WIDTH) {
-            wrapped.append(text, at, Math.min(text.length(), at + LINE_WIDTH));
-            wrapped.append('\n');
+        StringBuilder broken = new StringBuilder(text.length() + closedLines + 1);
+        if (leading) {
+            broken.append('\n');
         }
-        return wrapped.toString();
+        int at = 0;
+        for (int line = 0; line < closedLines; line++) {
+            int ends = Math.min(text.length(), at + LINE_WIDTH);
+            broken.append(text, at, ends).append('\n');
+            at = ends;
+        }
+        return broken.append(text, at, text.length()).toString();
     }
 
     static final Map<String, String> DIGESTS = digestMethods();
