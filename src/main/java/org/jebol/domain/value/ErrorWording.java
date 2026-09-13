@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,7 +40,7 @@ public final class ErrorWording {
     }
 
     private static String keyFor(String category, String errorId) {
-        return category.toLowerCase(java.util.Locale.ROOT) + "/"
-                + errorId.toLowerCase(java.util.Locale.ROOT);
+        return category.toLowerCase(Locale.ROOT) + "/"
+                + errorId.toLowerCase(Locale.ROOT);
     }
 }

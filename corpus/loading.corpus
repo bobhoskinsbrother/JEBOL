@@ -345,9 +345,13 @@ load {#(char! 65)}
 --- note the brackets as key-value pairs and refuses an odd count as a bad
 --- note argument, and lexer-test.r3 asserts that id for `#[x]`. The reader
 --- note gives that id directly, so a script catches the odd map by id.
+--- note
+--- note And by category too, because invalid-arg is filed under Script in
+--- note the catalogue. The reader raising it does not move it: the category
+--- note decides the code as well as the type word, and a script reads both.
 --- code
 load {#[none]}
---- error syntax invalid-arg
+--- error script invalid-arg
 
 # --- LOAD ---------------------------------------------------
 #

@@ -25,8 +25,20 @@ use "./values.allium" as values
 -- Enumerations
 ------------------------------------------------------------
 
--- What went wrong while evaluating. Each maps to an error! of category
--- script, except the arithmetic failures, which carry category math.
+-- What went wrong while evaluating. Each maps to an error! whose category is
+-- whichever one Rebol's catalogue files that id under, and that is not a
+-- choice an implementation gets to make: the category decides the code, and
+-- a script can read the code and the type word and compare them. Most are
+-- script, the arithmetic failures are math, and a handful that read as
+-- script failures -- a decoder handed rubbish, a spec a datatype cannot be
+-- built from, bytes that are not valid text -- are filed under access.
+-- `scripts/error-parity.py` compares the two and names any that disagree.
+--
+-- An id that is not in the catalogue at all is the worse mistake, because a
+-- script catching by id then meets a name no real Rebol can produce and no
+-- Rebol documentation explains. `too-deep` was one of those: it is spelled
+-- nowhere in `errors.reb`, and where JEBOL raised it a real 3.22.5 raises
+-- `stack-overflow`, which is filed under internal.
 enum EvaluationFailure {
     no_value            -- a word whose slot holds UNSET was evaluated
     | not_defined       -- a word with no binding was evaluated
@@ -40,10 +52,19 @@ enum EvaluationFailure {
     | cannot_use        -- an operation this datatype does not support
     | locked_word       -- an assignment to a slot marked protected
     | no_refine         -- a refinement the function does not have
-    | too_deep          -- nesting past the evaluation depth limit
+    | stack_overflow    -- deeper than this interpreter goes, by recursion or
+                        -- by nesting, and the same id either way
+    | no_return         -- a loop's test answered nothing, so there was no
+                        -- truth in it to go round again on
+    | self_protected    -- an attempt to write or clear an object's own SELF
+    | bad_char          -- a single character that spells no word on its own
     | zero_divide       -- division by zero
     | overflow          -- arithmetic outside the representable range
-    | thrown            -- an error! value reached during evaluation
+    | thrown            -- an error! value reached during evaluation, or one
+                        -- passed back from a nested evaluation. The only
+                        -- member that names no id of its own: the error a
+                        -- script catches is the one that was reached, and
+                        -- `thrown` is how a step says it is carrying it
 }
 
 ------------------------------------------------------------
@@ -312,7 +333,7 @@ rule EvaluationConcludes {
     ensures:
         if evaluation.exceeded_depth:
             evaluation.status = raised
-            evaluation.error = script_error(too_deep)
+            evaluation.error = internal_error(stack_overflow)
         else if evaluation.any_step_raised:
             evaluation.status = raised
             evaluation.error = first_raised_error(evaluation)
@@ -1366,7 +1387,7 @@ surface Evaluating {
         -- Every failure a script can cause arrives as a REBOL error!
         -- value the script could catch. No evaluation failure escapes as
         -- a host-language exception, including running out of stack,
-        -- which is reported as too_deep.
+        -- which is reported as stack_overflow, the id R3 gives it.
 
     @guarantee EvaluationOrderIsLeftToRight
         -- Values are taken from the block in order and arguments are

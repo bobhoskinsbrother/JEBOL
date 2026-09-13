@@ -6,7 +6,9 @@ import org.jebol.domain.eval.Raised;
 import org.jebol.domain.eval.SeriesContents;
 import org.jebol.domain.value.*;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 /**
@@ -32,8 +34,7 @@ public final class StringParser {
 
     private int position;
 
-    private final java.util.Deque<List<Value>> collectionsOpenInnermostLast =
-            new java.util.ArrayDeque<>();
+    private final Deque<List<Value>> collectionsOpenInnermostLast = new ArrayDeque<>();
 
     private List<Value> gathered;
 
@@ -173,7 +174,7 @@ public final class StringParser {
                 || (word.datatype() != Datatype.WORD
                         && word.datatype() != Datatype.GET_WORD)
                 || (word.datatype() == Datatype.WORD
-                        && PARSE_COMMANDS.contains(word.canonical()))) {
+                        && ParseTargets.THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical()))) {
             return null;
         }
         Context holder = word.isBound() ? word.binding() : context;
@@ -292,8 +293,8 @@ public final class StringParser {
         }
         if (rule instanceof WordValue back && back.datatype() == Datatype.GET_WORD) {
             Context holder = back.isBound() ? back.binding() : context;
-            if (holder.knows(back.canonical())
-                    && holder.slotFor(back.canonical()).value() instanceof StringValue marked) {
+            ParseTargets.refuseAnInputThatIsNotASeries(back, whatTheSlotHolds(holder, back));
+            if (holder.slotFor(back.canonical()).value() instanceof StringValue marked) {
                 if (!marked.sharesStorageWith(source)) {
                     adoptInput(marked);
                     return 1;
@@ -359,7 +360,26 @@ public final class StringParser {
                     BlockValue.block(List.of(path)), context);
             return matchValue(resolved) ? 1 : -1;
         }
+        if (rule instanceof BlockValue path && path.datatype() == Datatype.GET_PATH) {
+            return switchTheInputToWhatThisNames(path);
+        }
         return matchValue(rule) ? 1 : -1;
+    }
+
+    private int switchTheInputToWhatThisNames(BlockValue path) {
+        Value named = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
+        ParseTargets.refuseAnInputThatIsNotASeries(path, named);
+        if (named instanceof StringValue marked) {
+            adoptInput(marked);
+            return 1;
+        }
+        return NO_MATCH;
+    }
+
+    private static Value whatTheSlotHolds(Context holder, WordValue named) {
+        return holder.knows(named.canonical())
+                ? holder.slotFor(named.canonical()).value()
+                : NoneValue.none();
     }
 
     private int countedRepeat(
@@ -399,7 +419,8 @@ public final class StringParser {
                     && at + 2 < rules.size()
                     && rules.get(at + 1) instanceof WordValue keyword
                     && keyword.datatype() == Datatype.WORD
-                    && java.util.Set.of("set", "into", "after").contains(keyword.canonical())
+                    && ParseTargets.THE_WORDS_THAT_NAME_WHERE_COLLECT_PUTS_IT
+                            .contains(keyword.canonical())
                     && rules.get(at + 2) instanceof WordValue) {
                 return 3 + ruleSpan(rules, at + 3);
             }
@@ -416,7 +437,9 @@ public final class StringParser {
     }
 
     private int capture(List<Value> rules, int at, boolean wholeSlice) {
-        if (at + 2 >= rules.size() || !(rules.get(at + 1) instanceof WordValue target)) {
+        WordValue target = ParseTargets.refuseAnythingSetAndCopyCannotWriteInto(
+                at + 1 < rules.size() ? rules.get(at + 1) : null);
+        if (at + 2 >= rules.size()) {
             return NO_MATCH;
         }
         int ruleAt = at + 2;
@@ -455,30 +478,32 @@ public final class StringParser {
         WordValue into = null;
         WordValue insertInto = null;
         WordValue appendTo = null;
+        if (at + 1 >= rules.size()) {
+            throw Raised.of(EvaluationFailure.PARSE_END,
+                    "collect has no rule after it to apply to");
+        }
         int ruleAt = at + 1;
-        if (at + 2 < rules.size()
-                && rules.get(at + 1) instanceof WordValue keyword
-                && keyword.datatype() == Datatype.WORD
-                && rules.get(at + 2) instanceof WordValue name) {
+        if (rules.get(at + 1) instanceof WordValue keyword
+                && keyword.datatype() == Datatype.WORD) {
+            Value name = at + 2 < rules.size() ? rules.get(at + 2) : null;
             switch (keyword.canonical()) {
                 case "set" -> {
-                    into = name;
+                    into = ParseTargets.refuseAnythingButAWordOrASetWord(name);
                     ruleAt = at + 3;
                 }
                 case "into" -> {
-                    insertInto = name;
+                    insertInto = ParseTargets.refuseAnythingButAWordOrAGetWord(name);
                     ruleAt = at + 3;
                 }
                 case "after" -> {
-                    appendTo = name;
+                    appendTo = ParseTargets.refuseAnythingButAWordOrAGetWord(name);
                     ruleAt = at + 3;
                 }
                 default -> { }
             }
         }
         if (ruleAt >= rules.size()) {
-            throw Raised.of(EvaluationFailure.PARSE_END,
-                    "collect has no rule after it to apply to");
+            return NO_MATCH;
         }
 
         BlockValue destination = null;
@@ -601,17 +626,13 @@ public final class StringParser {
                 || (kind == Datatype.BINARY && (parsing == null
                         || parsing == Datatype.BINARY));
         if (!suits) {
-            throw Raised.of(EvaluationFailure.PARSE_INTO_TYPE,
-                    "a " + kind.literalSpelling() + " cannot hold what this parse yields");
+            throw Raised.of(EvaluationFailure.PARSE_INTO_TYPE);
         }
     }
 
     private void deliver(WordValue word, List<Value> gathered, boolean past) {
         Context holder = word.isBound() ? word.binding() : context;
-        if (!holder.knows(word.canonical())) {
-            return;
-        }
-        Value target = holder.slotFor(word.canonical()).value();
+        Value target = whatTheSlotHolds(holder, word);
         refuseATargetThatCannotHoldWhatThisParseYields(target);
         switch (target) {
             case BlockValue existing -> {
@@ -792,12 +813,6 @@ public final class StringParser {
         return 1 + ruleSpan(rules, at + 1);
     }
 
-    private static final java.util.Set<String> PARSE_COMMANDS = java.util.Set.of(
-            "skip", "to", "thru", "any", "some", "while", "opt", "and", "ahead",
-            "not", "then", "break", "reject", "accept", "return", "limit",
-            "case", "no-case", "change", "remove", "insert", "if", "set",
-            "copy", "collect", "keep", "into");
-
     private Value whatTheWordHolds(Value wanted) {
         if (!(wanted instanceof WordValue named) || named.datatype() != Datatype.WORD) {
             return wanted;
@@ -828,7 +843,7 @@ public final class StringParser {
                                 || marker.datatype() == Datatype.SET_WORD))
                 || (wanted instanceof WordValue keyword
                         && keyword.datatype() == Datatype.WORD
-                        && PARSE_COMMANDS.contains(keyword.canonical()))) {
+                        && ParseTargets.THE_WORDS_THE_DIALECT_RESERVES.contains(keyword.canonical()))) {
             throw Raised.of(EvaluationFailure.PARSE_RULE,
                     "to and thru take a place or something to look for, not "
                             + Molder.mold(wanted));

@@ -100,8 +100,7 @@ class MissingDelimiterFromTheSourceTest {
         @DisplayName("an unterminated string is not a missing delimiter")
         void anUnterminatedString() {
             assertThat(answerTo("""
-                    e: try [load {"abc}] e/id = 'unterminated-string"""))
-                    .isEqualTo("#(true)");
+                    e: try [load {"abc}] e/id = 'invalid""")).isEqualTo("#(true)");
         }
 
         @Test

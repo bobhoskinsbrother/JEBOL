@@ -278,10 +278,21 @@ public final class Natives {
         return LogicValue.of(endProcess(process, signal));
     }
 
+    private static Value movedOrRefusedByTheName(
+            Evaluator evaluator, List<Value> arguments) {
+        StringValue from = (StringValue) arguments.getFirst();
+        try {
+            evaluator.files().rename(from.text(), ((StringValue) arguments.get(1)).text());
+        } catch (FilePort.Denied refused) {
+            throw Raised.of(EvaluationFailure.NO_RENAME, from);
+        }
+        return arguments.get(1);
+    }
+
     private static boolean endProcess(long process, int signal) {
         java.util.Optional<ProcessHandle> found = ProcessHandle.of(process);
         if (found.isEmpty()) {
-            throw Raised.of(EvaluationFailure.PERMISSION_DENIED, String.valueOf(process));
+            throw Raised.of(EvaluationFailure.PROCESS_NOT_FOUND, IntegerValue.of(process));
         }
         ProcessHandle running = found.get();
         boolean ended = signal == TERMINATE
@@ -3266,8 +3277,8 @@ public final class Natives {
                     BlockValue body = (BlockValue) arguments.get(1);
                     Value last = NoneValue.none();
                     try {
-                        while (evaluator.evaluateOrRaise(
-                                condition, evaluator.systemContext()).isTruthy()) {
+                        while (theTruthInWhatALoopTests(evaluator.evaluateOrRaise(
+                                condition, evaluator.systemContext()))) {
                             last = oneRoundCatchingContinue(evaluator,body, evaluator.systemContext());
                         }
                     } catch (LoopSignal stopped) {
@@ -3283,7 +3294,7 @@ public final class Natives {
                     try {
                         do {
                             last = oneRoundCatchingContinue(evaluator,body, evaluator.systemContext());
-                        } while (!last.isTruthy());
+                        } while (!theTruthInWhatALoopTests(last));
                     } catch (LoopSignal stopped) {
                         return stopped.answer();
                     }
@@ -4148,8 +4159,13 @@ public final class Natives {
                         return nothing;
                     }
                     switch (arguments.get(0)) {
-                        case WordValue named -> slotOf(named).setValue(UnsetValue.unset());
+                        case WordValue named -> {
+                            Evaluator.refuseToWriteTheNameAnObjectAnswersToItselfBy(named);
+                            slotOf(named).setValue(UnsetValue.unset());
+                        }
                         case BlockValue named -> {
+                            named.remaining().forEach(
+                                    Evaluator::refuseToWriteTheNameAnObjectAnswersToItselfBy);
                             for (Value item : named.remaining()) {
                                 if (item instanceof WordValue word) {
                                     slotOf(word).setValue(UnsetValue.unset());
@@ -4254,6 +4270,7 @@ public final class Natives {
                     Value target = arguments.getFirst();
                     Value supplied = arguments.get(1);
                     refuseUnassignableName(target, EvaluationFailure.EXPECT_ARG);
+                    Evaluator.refuseToWriteTheNameAnObjectAnswersToItselfBy(target);
                     if (!refinements.contains("any")
                             && supplied.datatype() == Datatype.UNSET) {
                         throw Raised.of(EvaluationFailure.NEED_VALUE, target);
@@ -4278,6 +4295,8 @@ public final class Natives {
                     if (names != null) {
                         names.forEach(name -> refuseUnassignableName(
                                 name, EvaluationFailure.INVALID_ARG));
+                        names.forEach(
+                                Evaluator::refuseToWriteTheNameAnObjectAnswersToItselfBy);
                     }
                     if (names == null) {
                         return raiseCannotUse(target, "set");
@@ -4972,11 +4991,12 @@ public final class Natives {
                     written.text(), Optional.of(spec),
                     Optional.empty(), Optional.empty(),
                     Optional.empty(), Optional.empty(),
-                    new java.util.LinkedHashMap<>());
+                    new LinkedHashMap<>());
         }
         List<Value> items = fields.remaining();
         ErrorCategory category = ErrorCategory.USER;
         String errorId = "user-error";
+        String typeWordAsSpelled = "";
         boolean namedAType = false;
         boolean namedAnId = false;
         Value unknownId = NoneValue.none();
@@ -4995,6 +5015,9 @@ public final class Natives {
             switch (name.canonical()) {
                 case "type" -> {
                     namedAType = true;
+                    typeWordAsSpelled = asWritten instanceof WordValue spelled
+                            ? spelled.spelling()
+                            : said;
                     category = ErrorCategory.named(said).orElseThrow(() ->
                             Raised.of(EvaluationFailure.INVALID_ARG, asWritten));
                 }
@@ -5015,8 +5038,11 @@ public final class Natives {
         }
         refuseAnErrorTheCatalogueHasNot(
                 category, errorId, unknownId, theSpecAsWritten, fromAnObject);
-        return new ErrorValue(category, errorId, errorId, subject, second, third,
-                Optional.empty(), Optional.empty(), new java.util.LinkedHashMap<>());
+        ErrorValue built = new ErrorValue(category, errorId, errorId, subject,
+                second, third, Optional.empty(), Optional.empty(),
+                new LinkedHashMap<>());
+        built.write("type", WordValue.of(typeWordAsSpelled));
+        return built;
     }
 
     private static void refuseAnErrorTheCatalogueHasNot(
@@ -5030,6 +5056,13 @@ public final class Natives {
                 < LOWEST_CODE_AN_ERROR_CATALOGUE_ENTRY_HAS) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
         }
+    }
+
+    private static boolean theTruthInWhatALoopTests(Value tested) {
+        if (tested instanceof UnsetValue) {
+            throw Raised.of(EvaluationFailure.NO_RETURN);
+        }
+        return tested.isTruthy();
     }
 
     private static Value oneRoundCatchingContinue(
@@ -6506,7 +6539,7 @@ public final class Natives {
         }
 
         private static ErrorValue pastEnd() {
-            return ErrorValue.of(ErrorCategory.SYNTAX,
+            return ErrorValue.of(SyntaxFailure.PAST_END.category(),
                     SyntaxFailure.PAST_END.errorId(),
                     SyntaxFailure.PAST_END.description());
         }
@@ -7833,7 +7866,7 @@ public final class Natives {
                 && header.context().slotFor("needs").value()
                         instanceof TupleValue wanted
                 && !interpreterMeets(wanted, evaluator)) {
-            throw new Raised(ErrorValue.of(ErrorCategory.SYNTAX,
+            throw new Raised(ErrorValue.of(SyntaxFailure.NEEDS.category(),
                     SyntaxFailure.NEEDS.errorId(),
                     SyntaxFailure.NEEDS.description()));
         }
@@ -8643,6 +8676,7 @@ public final class Natives {
             SeekableFilePort.moveTo(port, 0);
             return;
         }
+        refuseANewFileNobodyMayWriteTo(refinements, path);
         boolean alreadyThere = ((LogicValue) throughPort(() ->
                 LogicValue.of(evaluator.files().exists(path)))).truth();
         if (!mayWrite(refinements)) {
@@ -8688,6 +8722,35 @@ public final class Natives {
         } catch (RuntimeException nothingThere) {
             return false;
         }
+    }
+
+    private static void refuseANewFileNobodyMayWriteTo(
+            Set<String> refinements, String path) {
+        if (refinements.contains("new") && !mayWrite(refinements)) {
+            throw Raised.of(EvaluationFailure.BAD_FILE_MODE,
+                    StringValue.of(path, Datatype.FILE));
+        }
+    }
+
+    private static void refuseASeriesCarryingAZero(Value series) {
+        if (theWholeSeriesCarriesAZero(series)) {
+            throw Raised.of(EvaluationFailure.BAD_SERIES);
+        }
+    }
+
+    private static boolean theWholeSeriesCarriesAZero(Value series) {
+        return switch (series) {
+            case StringValue text -> text.head().text().indexOf(0) >= 0;
+            case BinaryValue octets -> {
+                for (byte one : octets.head().octetsFromHere()) {
+                    if (one == 0) {
+                        yield true;
+                    }
+                }
+                yield false;
+            }
+            default -> false;
+        };
     }
 
     private static boolean mayWrite(Set<String> refinements) {
@@ -10389,7 +10452,10 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> arguments.getFirst());
 
         define("check", List.of(Parameter.required("series", Typeset.SERIES.members())),
-                (arguments, evaluator, context) -> arguments.getFirst());
+                (arguments, evaluator, context) -> {
+                    refuseASeriesCarryingAZero(arguments.getFirst());
+                    return arguments.getFirst();
+                });
 
         define("evoke", List.of(Parameter.required("chant",
                         Set.of(Datatype.WORD, Datatype.BLOCK, Datatype.INTEGER))),
@@ -12354,7 +12420,8 @@ public final class Natives {
                     value -> simpleValueOf(value, evaluator, context));
         }
         if (wanted.represents() == Datatype.VECTOR) {
-            return madeVector(from, evaluator, context);
+            refuseMoreRoomThanASeriesCounts(Datatype.VECTOR, from);
+            return whatTheHostHadRoomFor(() -> madeVector(from, evaluator, context));
         }
         if (wanted.represents() == Datatype.PORT) {
             return portMadeFrom(from, evaluator, context);
@@ -12370,18 +12437,22 @@ public final class Natives {
         }
         refuseToBuildSomethingOutOfNothing(wanted.represents(), from);
         refuseRoomForLessThanNothing(wanted.represents(), from);
+        refuseMoreRoomThanASeriesCounts(wanted.represents(), from);
         if (wanted.represents().isAnyBlock()) {
-            return blockTypeBuilt(Conversion.MAKE, wanted.represents(), from);
+            return whatTheHostHadRoomFor(() ->
+                    blockTypeBuilt(Conversion.MAKE, wanted.represents(), from));
         }
         if (wanted.represents().isSeries()
                 && (from.datatype() == Datatype.INTEGER
                         || from.datatype() == Datatype.DECIMAL)) {
             int asked = (int) Math.max(0,
                     Math.min(Integer.MAX_VALUE, (long) Comparison.asDouble(from)));
-            return wanted.represents() == Datatype.BINARY
-                    ? new BinaryValue(new BinaryStorage(asked), 1)
-                    : new StringValue(
-                            StringStorage.withRoomFor(asked), 1, wanted.represents());
+            return whatTheHostHadRoomFor(() ->
+                    wanted.represents() == Datatype.BINARY
+                            ? new BinaryValue(new BinaryStorage(asked), 1)
+                            : new StringValue(
+                                    StringStorage.withRoomFor(asked), 1,
+                                    wanted.represents()));
         }
         return converted(Conversion.MAKE, wanted, from);
     }
@@ -12513,6 +12584,42 @@ public final class Natives {
         }
         if (Comparison.asDouble(from) < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, from.toString());
+        }
+    }
+
+    private static final int BYTES_A_SLOT_TAKES = 32;
+
+    private static void refuseMoreRoomThanASeriesCounts(Datatype wanted, Value from) {
+        if (!wanted.isSeries() && wanted != Datatype.MAP) {
+            return;
+        }
+        if (from.datatype() != Datatype.INTEGER && from.datatype() != Datatype.DECIMAL) {
+            return;
+        }
+        double asked = Comparison.asDouble(from);
+        if (asked > theMostItemsThatFitIn(wanted)) {
+            throw Raised.of(EvaluationFailure.NO_MEMORY);
+        }
+    }
+
+    private static long theMostItemsThatFitIn(Datatype wanted) {
+        return Integer.MAX_VALUE / bytesPerItemOf(wanted) - 1;
+    }
+
+    private static final int BYTES_A_VECTORS_NUMBER_TAKES = 4;
+
+    private static int bytesPerItemOf(Datatype wanted) {
+        if (wanted == Datatype.VECTOR) {
+            return BYTES_A_VECTORS_NUMBER_TAKES;
+        }
+        return wanted.isAnyBlock() || wanted == Datatype.MAP ? BYTES_A_SLOT_TAKES : 1;
+    }
+
+    private static Value whatTheHostHadRoomFor(java.util.function.Supplier<Value> allocating) {
+        try {
+            return allocating.get();
+        } catch (OutOfMemoryError nothingLeftToGive) {
+            throw Raised.of(EvaluationFailure.NO_MEMORY);
         }
     }
 
@@ -12815,8 +12922,10 @@ public final class Natives {
         if (value instanceof LogicValue truth) {
             return WordValue.of(truth.truth() ? "true" : "false", kind);
         }
+        if (value instanceof CharacterValue letter) {
+            return WordValue.of(theWordASingleCharacterSpells(letter), kind);
+        }
         String spelling = switch (value) {
-            case CharacterValue letter -> Character.toString(letter.codepoint());
             case StringValue text -> text.text();
             case DatatypeValue named -> named.represents().literalSpelling();
             default -> null;
@@ -12825,6 +12934,23 @@ public final class Natives {
             return raiseWrongArgument(value, "to " + kind.literalSpelling(), "string");
         }
         return WordValue.of(spellingReadAs(spelling, kind), kind);
+    }
+
+    private static final String THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE = "!%&*+-./<=>?^`|~";
+
+    private static final int THE_FIRST_CODE_POINT_THE_SCANNER_TAKES_FOR_A_LETTER = 128;
+
+    private static String theWordASingleCharacterSpells(CharacterValue letter) {
+        if (!spellsAWordAlone(letter.codepoint())) {
+            throw Raised.of(EvaluationFailure.BAD_CHAR, letter);
+        }
+        return Character.toString(letter.codepoint());
+    }
+
+    private static boolean spellsAWordAlone(int codepoint) {
+        return codepoint >= THE_FIRST_CODE_POINT_THE_SCANNER_TAKES_FOR_A_LETTER
+                || Character.isLetter(codepoint)
+                || THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE.indexOf(codepoint) >= 0;
     }
 
     private static String spellingReadAs(String text, Datatype kind) {
@@ -13230,6 +13356,7 @@ public final class Natives {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                         "a map cannot have room for " + Molder.form(given) + " pairs");
             }
+            refuseMoreRoomThanASeriesCounts(Datatype.MAP, given);
             return MapValue.empty();
         }
         List<Value> pairs = switch (given) {
@@ -13766,6 +13893,7 @@ public final class Natives {
         }
         refuseHiddenField(object, arguments.get(1));
         if (arguments.get(1) instanceof WordValue only) {
+            refuseTheSelfTheObjectAlreadyHas(object, only);
             object.context().set(only.canonical(), UnsetValue.unset());
             return object;
         }
@@ -13773,12 +13901,26 @@ public final class Natives {
                 instanceof BlockValue added
                 ? partOf(added, arguments, refinements)
                 : List.of(arguments.get(1));
+        refuseTheObjectsOwnSelfBeforeAnyFieldIsAdded(object, pairs);
         for (int at = 0; at + 1 < pairs.size(); at += 2) {
             if (pairs.get(at) instanceof WordValue field) {
                 object.context().set(field.canonical(), pairs.get(at + 1));
             }
         }
         return object;
+    }
+
+    private static void refuseTheObjectsOwnSelfBeforeAnyFieldIsAdded(
+            ObjectValue object, List<Value> pairs) {
+        for (int at = 0; at + 1 < pairs.size(); at += 2) {
+            refuseTheSelfTheObjectAlreadyHas(object, pairs.get(at));
+        }
+    }
+
+    private static void refuseTheSelfTheObjectAlreadyHas(ObjectValue object, Value named) {
+        if (object.context().holds("self")) {
+            Evaluator.refuseToWriteTheNameAnObjectAnswersToItselfBy(named);
+        }
     }
 
     private static List<Value> firstFew(
@@ -13822,6 +13964,7 @@ public final class Natives {
                 Set.of("part", "seek", "string", "binary", "lines", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof PortValue port) {
+                        refuseAPortWhoseSpecIsNotAnObject(port);
                         return isAFilePort(port)
                                 ? readFromTheFileBehind(
                                         port, evaluator, arguments, refinements)
@@ -13855,6 +13998,7 @@ public final class Natives {
                 Set.of("part", "seek", "append", "allow", "lines", "binary", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof PortValue port) {
+                        refuseAPortWhoseSpecIsNotAnObject(port);
                         return writeToPort(port, arguments.get(1), evaluator,
                                 arguments, refinements);
                     }
@@ -14064,12 +14208,7 @@ public final class Natives {
                         }
                     }
                     requireService(HostService.FILES);
-                    return throughPort(() -> {
-                        evaluator.files().rename(
-                                ((StringValue) arguments.getFirst()).text(),
-                                ((StringValue) arguments.get(1)).text());
-                        return arguments.get(1);
-                    });
+                    return movedOrRefusedByTheName(evaluator, arguments);
                 });
 
         define("read-dir", List.of(Parameter.required("path", Set.of(Datatype.FILE))),
@@ -15159,9 +15298,14 @@ public final class Natives {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
         }
         if (!internals.context().knows(name)) {
-            throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
+            throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, UnsetValue.unset());
         }
-        return internals.context().slotFor(name).value();
+        Value held = internals.context().slotFor(name).value();
+        if (!(held instanceof FunctionValue || held instanceof NativeValue
+                || held instanceof OperatorValue)) {
+            throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, held);
+        }
+        return held;
     }
 
     private static void recordTheScriptArguments(Evaluator evaluator, Value given) {
@@ -15785,9 +15929,16 @@ public final class Natives {
         if (!(arguments.getFirst() instanceof PortValue port)) {
             return Optional.empty();
         }
+        refuseAPortWhoseSpecIsNotAnObject(port);
         refuseAnActorThatIsNeitherAWordNorAnObject(port);
         return theActorWrittenInRebol(port).map(actor ->
                 askTheActor(port, actor, action, arguments, refinements, evaluator));
+    }
+
+    private static void refuseAPortWhoseSpecIsNotAnObject(PortValue port) {
+        if (!(port.fieldNamed("spec") instanceof ObjectValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_PORT);
+        }
     }
 
     private static void refuseAnActorThatIsNeitherAWordNorAnObject(PortValue port) {

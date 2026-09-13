@@ -412,6 +412,39 @@ rule UntakenBranchIsNotEvaluated {
     ensures: BranchTaken(branch: false_branch)
 }
 
+-- === What a loop tests ======================================
+
+-- A loop whose test answers nothing raises no-return rather than looping
+-- on the nothing.
+--
+-- UNTIL tests its body and WHILE tests its condition, and either one can
+-- come back UNSET: an empty block gives nothing, and so does a paren
+-- holding nothing. There is no truth in nothing, so the loop cannot decide
+-- whether to go round again, and R3 refuses rather than choosing. It says
+-- so under the id `no-return`, whose words are "block did not return a
+-- value".
+--
+-- Worth having because the alternative is an infinite loop, not a wrong
+-- answer: `until []` treating unset as false runs for ever and prints
+-- nothing, and the person who wrote it has no way to find out why.
+--
+-- Only the tested value counts. `while [false] [()]` is fine, because the
+-- body's answer is thrown away, and so is `loop 1 []`, which counts rather
+-- than testing.
+rule ALoopTestThatAnswersNothingRaisesNoReturn {
+    when: EvaluateCall(until, body)
+    requires: is_unset(result_of_evaluating(body))
+
+    ensures: CallFails(error: no_return)
+}
+
+rule AWhileConditionThatAnswersNothingRaisesNoReturn {
+    when: EvaluateCall(while, condition, body)
+    requires: is_unset(result_of_evaluating(condition))
+
+    ensures: CallFails(error: no_return)
+}
+
 -- === Any and all ===========================================
 --
 -- These return values, not logics. That is what makes `any [supplied 100]`
@@ -1039,6 +1072,32 @@ rule MakingAModuleAsksTheLibraryToDoIt {
     when: EvaluateCall(make, module_datatype, spec)
     requires: is_block(spec)
     ensures: CallResult(value: result_of_calling(make_module_star, spec))
+}
+
+-- And a script can take those functions away, so the interpreter checks that
+-- what it is about to call is a function, and says `bad-sys-func` with what
+-- it found when it is not.
+--
+-- `Do_Sys_Func` opens with `if (!ANY_FUNC(value)) Trap1(RE_BAD_SYS_FUNC,
+-- value);` and there are four of them the C calls by name: MAKE-PORT*,
+-- MAKE-MODULE*, DO* and START. They live in `system/contexts/sys`, which is
+-- an ordinary object a script can write to, so `system/contexts/sys/make-port*:
+-- 5` followed by `make port! [...]` reaches that line on a real 3.22.5.
+--
+-- Any value that is not a function does it -- an integer, a string, none, or
+-- the slot unset -- and the error names the value rather than the word,
+-- because the word is not the thing that is wrong. Another function is fine:
+-- the check is that it is callable, not that it is the right one.
+--
+-- Worth having rather than letting the ordinary "that is not callable"
+-- failure stand, because these four are not the script's call. A script that
+-- breaks one gets an error from somewhere it never wrote, and the id is what
+-- says the interpreter was calling its own library.
+rule ASystemFunctionThatIsNotAFunctionIsRefused {
+    when: the_interpreter_calls_one_of(make_port_star, make_module_star, do_star, start)
+    requires: not is_any_function(what_the_slot_holds())
+
+    ensures: CallFails(error: bad_sys_func, about: what_the_slot_holds())
 }
 
 -- A spec the library cannot make a module from raises invalid-spec, and says
@@ -2564,6 +2623,24 @@ rule ADeleteThatCouldNotBeDoneIsRefusedWithThePath {
     ensures: CallFails(error: no_delete, about: target)
 }
 
+-- RENAME is the same shape with one id of its own. Every way a rename can
+-- fail is `no-rename` naming the name it was to be moved from, and a missing
+-- source is one of those ways rather than an answer of false.
+--
+-- The asymmetry with DELETE is deliberate and it is the C's: `delete` asks
+-- the host to remove something and reports what it found, while both of
+-- `rename`'s arms are checked by the host in one move, so there is nothing
+-- to report but whether it worked. The C has one line for all of it --
+-- `if (dir->error) Trap1(RE_NO_RENAME, path)` -- and the same line covers a
+-- source that is not there, a target that cannot be written and a rename
+-- across two devices.
+rule ARenameThatCouldNotBeDoneNamesWhatItWasToMove {
+    when: EvaluateCall(rename, from, to)
+    requires: not the_host_could_move_it(from, to)
+
+    ensures: CallFails(error: no_rename, about: from)
+}
+
 -- The console port is the one that works. WRITE to it forms the data and
 -- puts it through the console, which is what makes the console reachable as
 -- a port rather than only through PRINT.
@@ -2931,6 +3008,29 @@ rule AnActionTheActorHasNoFunctionForIsRefused {
     requires: not the_actor_holds_a_function_called(verb)
 
     ensures: CallFails(error: no_port_action, about: verb)
+}
+
+-- A port whose SPEC is not an object is refused before any of that, as
+-- `invalid-port`.
+--
+-- The spec is where a port keeps what it is about -- the scheme name, the
+-- reference it was opened on, the title -- so every failure a port reports
+-- reads it to say which port failed. A script can write anything it likes
+-- into that field, and the C guards the field rather than the writing:
+-- `Validate_Port_Value` refuses a port whose spec is not an object, and
+-- `Trap_Port` refuses one again on the way to building an error about it.
+--
+-- So `p: open %f  p/spec: 5  close p` raises invalid-port, and the message is
+-- "invalid port object (invalid field values)" rather than anything about
+-- closing. The check is on the port and not on the verb, so read, write,
+-- close and query all answer the same.
+rule APortWhoseSpecIsNotAnObjectIsInvalid {
+    when: EvaluateCall(verb, target)
+    requires: is_port(target)
+    requires: verb in {open, close, read, write, query}
+    requires: not the_spec_is_an_object(target)
+
+    ensures: CallFails(error: invalid_port)
 }
 
 -- And an actor that is neither -- a number, a string, anything that is not a
@@ -4021,6 +4121,39 @@ rule AnythingElseAsACommandRaises {
     requires: not is_block(request.command)
 
     ensures: CallFails(error: expect_arg, about: request.command)
+}
+
+-- === Ending another program ================================
+
+-- ACCESS-OS/SET 'PID ends a process by number, and a number no process has
+-- is `process-not-found` naming it.
+--
+-- The host has three ways to say no and the C keeps them apart: a process
+-- that is not there is ESRCH and becomes process-not-found, a process the
+-- operator may not signal is EPERM and becomes permission-denied, and a
+-- field this machine does not answer at all is ENA and becomes not-here.
+-- Reporting the first as the second is the mistake worth naming, because a
+-- script that meets permission-denied looks at how it is running, and a
+-- script that meets process-not-found looks at where its number came from.
+--
+-- The number may be given alone, which sends the terminate signal, or as a
+-- pair of numbers naming the process and the signal. Both answer the same
+-- way about a process that is not there.
+rule EndingAProcessThatIsNotThereNamesTheNumber {
+    when: EvaluateCall(access_os, pid, number)
+    requires: asked_for(set)
+    requires: no_process_is_running_under(number)
+
+    ensures: CallFails(error: process_not_found, about: number)
+}
+
+rule EndingAProcessTheOperatorMayNotSignalIsRefusedAsPermission {
+    when: EvaluateCall(access_os, pid, number)
+    requires: asked_for(set)
+    requires: a_process_is_running_under(number)
+    requires: not the_host_could_end_it(number)
+
+    ensures: CallFails(error: permission_denied, about: number)
 }
 
 -- A string or a binary on /input is piped to the child, and then its input
@@ -5600,6 +5733,29 @@ rule OnlyAWriteThatNamesNothingElseEmptiesTheFile {
             and not (asked_for(read) or asked_for(seek))))
 }
 
+-- And /NEW with reading named and writing not is refused before any of that
+-- happens, as `bad-file-mode` naming the path.
+--
+-- The three refinements are read in one step and the defaulting comes first,
+-- which is what makes `open/new` fine and `open/new/read` a mistake: naming
+-- reading turns the default off, and a file that is to be made new and never
+-- written to is a contradiction rather than a file. The C says so in a line
+-- of its own -- `if (!(args & AM_OPEN_WRITE)) Trap1(RE_BAD_FILE_MODE, path)`
+-- -- and says it before it has looked at the path at all, so a file that is
+-- not there gets this failure rather than the missing-file one.
+--
+-- It is a file question and not a directory one. A directory port never
+-- reaches the line, so `open/new/read` on one is refused, if at all, for
+-- whatever a directory is refused for.
+rule MakingAFileNewWithoutWritingIsRefused {
+    when: EvaluateCall(open, target)
+    requires: is_file(target)
+    requires: asked_for(new)
+    requires: not opening_it_may_write(the_refinements_asked_for())
+
+    ensures: CallFails(error: bad_file_mode, about: target)
+}
+
 -- A directory is not made by opening one to read or to write. There is no mode
 -- that means "make this directory" -- MAKE-DIR is the verb for that -- so a
 -- directory port names something that has to be there already.
@@ -6746,7 +6902,27 @@ rule CatchTakesOnlyAThrowItWasExpecting {
 -- follows from the type, and letting a caller set it would let an error
 -- claim a category its code contradicts.
 --
-open question "A real R3 keeps whichever spelling of the type word it was given, so an error it raised itself reports Math while one built from a spec saying 'math reports math. The catalogue spells them capitalised -- Throw, Note, Syntax, Script, Math, Access, Command, User, Internal -- so the raised form is the canonical one and the made form is the caller's. Word equality ignores case, so nothing a script can write depends on it, and JEBOL reports the canonical spelling in both cases. Is the difference deliberate, or an artefact of the spec block being copied verbatim?"
+-- Resolved against a real R3: the type word keeps whichever spelling it was
+-- given, and JEBOL keeps it too.
+--
+-- An error R3 raises itself reports the catalogue's capitalised spelling,
+-- Math or Script, because nothing wrote a type word and the catalogue is
+-- where it comes from. One built from a spec saying `type: 'math` reports
+-- math, and so does one raised by REBOL code through `cause-error 'access`,
+-- because the word written there is the word kept.
+--
+-- Word equality ignores case, so no comparison a script writes turns on
+-- this. MOLD does not ignore case, so the printed form of a caught error
+-- does, and that is enough to make it worth matching: an error molded and
+-- read back should come out the way it went in.
+rule TheTypeWordKeepsTheSpellingItWasGiven {
+    when: EvaluateCall(make, error_datatype, spec)
+    requires: is_block(spec)
+    requires: spec_writes_a_type_word(spec)
+
+    ensures: CallResult(value: an_error_whose_type_word_is(
+                    the_type_word_written_in(spec)))
+}
 
 -- Given a string instead, the error is a User one whose id is `message`
 -- and whose first argument is the string. That is the shape a script
@@ -8233,6 +8409,41 @@ rule AnythingButABlankAfterTheWordIsInvalid {
     ensures: CallFails(error: WhyAStringCannotBeAWord.invalid_chars)
 }
 
+-- === Making a word out of a single character ===============
+
+-- A character does not go through any of that. `Make_Word` encodes it as
+-- UTF-8 and hands those bytes straight to `Scan_Word`, so the only question
+-- is whether that one character spells a whole word by itself. When it does
+-- not, the failure is a syntax one, `bad-char`, and it names the character.
+--
+-- Two things follow that a reader of the string rules above would guess
+-- wrongly. Nothing is stepped over, so `to word! #" "` is bad-char where
+-- `to word! " "` is too-short. And a character becoming an issue is scanned
+-- as a word rather than as an issue, so `to issue! #"5"` is refused while
+-- `to issue! "5"` gives `#5`.
+--
+-- The characters that do spell a word alone are the ones the scanner lets a
+-- word both begin and consist of: a letter, and the punctuation the language
+-- uses for words in its own right -- `. ! + - ? ~ < | /` among them. A digit
+-- does not, because a word may not begin with one. Nor do the characters the
+-- reader spends on something else: a colon, an apostrophe, a dollar, a hash,
+-- an underscore, a bracket of any kind, and every control character.
+rule ACharacterThatSpellsNoWordIsBadChar {
+    when: EvaluateCall(to, any_word_datatype, subject)
+    requires: is_character(subject)
+    requires: not spells_a_whole_word_alone(subject)
+
+    ensures: CallFails(error: bad_char, about: subject)
+}
+
+rule ACharacterThatSpellsAWordBecomesThatWord {
+    when: EvaluateCall(to, any_word_datatype, subject)
+    requires: is_character(subject)
+    requires: spells_a_whole_word_alone(subject)
+
+    ensures: CallResult(value: a_word_of(subject, the_datatype_asked_for))
+}
+
 -- CHECKSUM answers a binary, and the method decides how long it is.
 --
 -- A word names the method, and it must be one the build offers:
@@ -8929,20 +9140,54 @@ rule DumpAnswersItsArgumentAndPrintsNothing {
     ensures: CallResult(value: value)
 }
 
--- CHECK answers the series it was given, and cannot fail here.
+-- CHECK answers the series it was given, unless that series carries a zero.
 --
 -- It is not a debug-only function: it walks the series looking for a
 -- terminator in the wrong place and raises `bad-series` when it finds one.
--- That is a check on the C's own invariant -- every REBSER holds a terminating
--- zero past its tail -- and a JEBOL series has no terminator to be wrong.
+-- The C's invariant is that a zero sits past the tail and nowhere before it,
+-- so a text or a binary holding a zero of its own breaks it -- and a script
+-- can write one whenever it likes. `check "a^^(00)b"` raises on a real
+-- 3.22.5, and so does `check #{610062}`.
 --
--- So the check holds for every series, always, and the answer is the value.
--- Raising instead would report a corruption that cannot happen; answering
--- something other than the value would part from the C for no reason.
+-- Three things the walk decides, all measured rather than reasoned:
+--
+--   * **The whole series is walked, not the part after the position.**
+--     `check skip "a^^(00)b" 2` raises, because the zero is behind the
+--     position and the C starts at the head of the series either way.
+--   * **Where the zero sits makes no difference.** Head, middle and last
+--     character all raise.
+--   * **A block never raises.** The block arm looks for an END marker among
+--     the slots, and a script cannot put one there.
+--
+-- An empty text and an empty binary are fine: there is nothing to walk.
 rule CheckAnswersTheSeriesItWasGiven {
     when: EvaluateCall(check, series)
+    requires: not carries_a_zero(the_whole_series_behind(series))
+
     ensures: CallResult(value: series)
 }
+
+rule CheckRaisesOnASeriesCarryingAZero {
+    when: EvaluateCall(check, series)
+    requires: is_text_or_binary(series)
+    requires: carries_a_zero(the_whole_series_behind(series))
+
+    ensures: CallFails(error: bad_series)
+}
+
+-- One arm of the C's walk is not reproduced and the reason is that it is
+-- reading bytes JEBOL does not have. The C walks the series' own storage a
+-- byte at a time whatever the series holds, so a vector of small numbers
+-- raises -- `check make vector! [1 2 3]` raises on a real 3.22.5 because the
+-- second byte of the first number is a zero -- while `check make vector! [1]`
+-- answers, because only the first byte is reached. `check make image! 2x2`
+-- raises for the same reason.
+--
+-- That is a fact about how the C lays a vector out in memory, not about the
+-- language. A JEBOL vector holds numbers rather than bytes, so there is no
+-- corresponding walk, and inventing one would mean modelling the C's
+-- allocator to answer a question no script asks.
+open question "Is a byte-exact CHECK over a vector or an image worth having? It would mean laying JEBOL's vectors out the way the C does, or keeping a byte view of them for one debug native to walk. Nothing in Rebol's own suite asks, and a script that called CHECK on a vector would be asking about memory rather than about its own data. Recorded because the divergence is real and measured, not because it is known to matter."
 
 -- And it takes a series and nothing else: `val [series!]`.
 rule CheckRefusesWhatIsNotASeries {
@@ -9500,6 +9745,102 @@ rule SelfIsNotAFieldToFind {
     ensures: CallResult(value: none)
 }
 
+-- And SELF cannot be written or cleared, however it is reached.
+--
+-- Every object's slot zero is its own SELF, pointing back at the object,
+-- and the whole of `obj/field` depends on that pointer being the object it
+-- was built for. Letting anything write it would let a script make an
+-- object whose SELF is somebody else, so R3 refuses at four doors: SET,
+-- UNSET, an object spec that writes it, and adding a field to an object
+-- that already exists. All four raise self-protected, whose words are
+-- "cannot set/unset self - it is protected".
+--
+-- The fourth door is two natives and two shapes. APPEND and INSERT both add
+-- fields to an object, and the field can be named by a set-word in a block
+-- of pairs or by a bare word on its own, which adds it holding nothing. All
+-- four combinations refuse.
+--
+-- That fourth door refuses only where there is a SELF to overwrite. A
+-- context made by USE or by a function's own frame has no SELF slot, and
+-- `append that 'self` adds an ordinary field of that name -- there was no
+-- pointer there to break. The other three doors refuse wherever they are
+-- written, because an assignment to SELF is refused by the evaluator before
+-- anything asks which context it lands in.
+--
+-- The refusal comes before anything is added, so an object given
+-- `[b: 2 self: 5]` gains neither field. A block of pairs is read as a whole
+-- or not at all, and the alternative would leave the object half-changed
+-- with nothing to say which half.
+--
+-- The slot is not read-only in the way PROTECT makes a word read-only, and
+-- the two mechanisms do not meet: PROTECT and UNPROTECT on the word SELF
+-- both succeed and change nothing anybody can see.
+rule SettingSelfIsRefused {
+    when: EvaluateCall(set, word, value)
+    requires: word = self
+
+    ensures: CallFails(error: self_protected)
+}
+
+rule UnsettingSelfIsRefused {
+    when: EvaluateCall(unset, word)
+    requires: word = self
+
+    ensures: CallFails(error: self_protected)
+}
+
+rule AnObjectSpecThatWritesSelfIsRefused {
+    when: EvaluateCall(make, object_datatype, spec)
+    requires: spec_writes_the_word(spec, self)
+
+    ensures: CallFails(error: self_protected)
+}
+
+rule AppendingASpecThatWritesSelfIsRefused {
+    when: EvaluateCall(append, subject, spec)
+    requires: is_any_object(subject)
+    requires: has_a_self_slot(subject)
+    requires: spec_writes_the_word(spec, self)
+
+    ensures: CallFails(error: self_protected)
+}
+
+rule InsertingASpecThatWritesSelfIsRefused {
+    when: EvaluateCall(insert, subject, spec)
+    requires: is_any_object(subject)
+    requires: has_a_self_slot(subject)
+    requires: spec_writes_the_word(spec, self)
+
+    ensures: CallFails(error: self_protected)
+}
+
+rule AddingTheBareWordSelfToAnObjectIsRefused {
+    when: EvaluateCall(append, subject, word)
+    requires: is_any_object(subject)
+    requires: has_a_self_slot(subject)
+    requires: word = self
+
+    ensures: CallFails(error: self_protected)
+}
+
+rule AContextWithNoSelfSlotGainsAnOrdinaryFieldOfThatName {
+    when: EvaluateCall(append, subject, word)
+    requires: is_any_object(subject)
+    requires: not has_a_self_slot(subject)
+    requires: word = self
+
+    ensures: CallResult(value: subject_with_a_field_named(self))
+}
+
+rule ARefusedAdditionAddsNoFieldAtAll {
+    when: EvaluateCall(append, subject, spec)
+    requires: is_any_object(subject)
+    requires: has_a_self_slot(subject)
+    requires: spec_writes_the_word(spec, self)
+
+    ensures: subject.fields = the_fields_it_had_before
+}
+
 -- === Reaching into a map through a path ==========
 
 -- A path write stores the key, whether or not the map had it.
@@ -9778,6 +10119,55 @@ rule MakingAMapWithLessThanNoRoomIsRefused {
     requires: is_number(room)
     requires: room < 0
     ensures: CallFails(error: out_of_range, about: room)
+}
+
+-- === Room a series cannot have ==============================
+
+-- A count whose bytes will not fit in a signed 32-bit number is refused as
+-- `no-memory`, and the refusal is arithmetic rather than a question about
+-- this machine.
+--
+-- `Make_Series` opens with `if (((REBU64)length * wide) > MAX_I32)
+-- Trap0(RE_NO_MEMORY);` and it is called with one more than the count, for
+-- the terminator. So the boundary is exact, the same on every machine, and
+-- the same whether the host has the memory or not: a series may be asked for
+-- `MAX_I32 / width - 1` items and not one more.
+--
+-- Width is one byte for a text or a binary and thirty-two for anything
+-- holding values -- a block, a paren, a path, a hash, a map -- so the two
+-- boundaries measured on a real 3.22.5 are 2147483646 bytes and 67108862
+-- slots. One above each is refused; `./r3-head` answers `make binary!
+-- 2147483646` and refuses 2147483647, and answers `make block! 67108862`
+-- and refuses 67108863.
+--
+-- Worth porting exactly rather than approximating, because a script can ask
+-- for the boundary deliberately and because the answer must not depend on
+-- what else is running.
+rule RoomThatWillNotFitInThirtyTwoBitsIsRefused {
+    when: EvaluateCall(make, series_datatype, room)
+    requires: is_number(room)
+    requires: (room + 1) * bytes_per_item_of(series_datatype) > largest_signed_32_bit
+
+    ensures: CallFails(error: no_memory)
+}
+
+-- And a count that does fit but that the host cannot serve is the same
+-- failure, because the C checks that too: `node = Make_CMem(length); if
+-- (!node) Trap0(RE_NO_MEMORY);`.
+--
+-- This is the arm that keeps the promise in eval.allium that no failure
+-- leaves as a host exception. A JVM asked for eight gigabytes throws an
+-- error of its own that is not a REBOL value and that a script cannot catch,
+-- and `make string! 2000000000` did exactly that -- a count a real 3.22.5
+-- accepts, because its cap is in bytes and a JVM's is in what the heap can
+-- hold.
+rule RoomTheHostCannotServeIsTheSameRefusal {
+    when: EvaluateCall(make, series_datatype, room)
+    requires: is_number(room)
+    requires: (room + 1) * bytes_per_item_of(series_datatype) <= largest_signed_32_bit
+    requires: not the_host_could_allocate_it(room)
+
+    ensures: CallFails(error: no_memory)
 }
 
 -- And TO MAP! refuses a number on the same line that MAKE reads it:

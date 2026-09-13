@@ -34,7 +34,7 @@ or in none. Every number below was checked on 2026-09-13 by running it.
 | `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
 | `known-gaps.txt` | **1 fails**, and no work will retire it -- goal 1 below |
 | `fails-on-rebol-too.txt` | 162 a real 3.22.5 also fails or never runs |
-| `scripts/error-parity.py` | **81 of Rebol's 142 error ids can be raised. 61 cannot** |
+| `scripts/error-parity.py` | **114 of Rebol's 142 error ids can be raised, and every one of the 28 that cannot has a written reason.** It also reports the 4 ids JEBOL raises that Rebol does not name -- all four are the host-grant system and the browser view, which R3 has no equivalent of -- and that no id is filed under a category the catalogue disagrees with |
 
 `./gradlew check` is 18,438 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception. `./gradlew browserCheck` is
@@ -134,6 +134,34 @@ two is the whole technique:
 
     diff <(./r3-head /tmp/probe-with-header.r3) \
          <(java ... org.jebol.suite.SweepRunner /tmp/probe.r3)
+
+**When the question is "can a script reach this line of C at all", stop
+guessing inputs and watch the line instead.** Copy `rebol3-source/` into the
+scratchpad, add a print where you want to know, build it with the same
+compiler line `scripts/build-r3.sh` uses, and run Rebol's own suite under it.
+Never instrument `rebol3-source/` itself -- it is the authority and it is
+somebody else's checkout.
+
+`Throw_Error` in `c-error.c` is the funnel every `Trap` goes through, so four
+lines there report every error the interpreter raises:
+
+    if (getenv("R3_TRACE_ERRNUM")) {
+        fprintf(stderr, "ERRNUM %d\n", (int)ERR_NUM(err));
+        fflush(stderr);
+    }
+
+`e/code` is the category base plus the id's position within its category in
+`errors.reb` -- Throw 0, Note 100, Syntax 200, Script 300, Math 400, Access
+500, Command 600, User 800, Internal 900 -- so the numbers map straight back to
+ids. Rebol's whole suite run that way raises 67 distinct ids, which is the
+measurement that settled which of the catalogue's 142 are reachable at all.
+
+The other half of the same question is who calls the function the line is in.
+Three of the ids that looked unreachable turned out to be in code the build
+disables -- `c-do.c` holds three definitions of `Do_Path` and only one of them
+is live, the others marked `x*/` and `xx*/` where the live one has `*/`. That
+marker is how Rebol's build tool is told to skip a function, and it is worth
+knowing before spending an afternoon looking for an input.
 
 ### The gate, and the ratchet
 
@@ -303,8 +331,9 @@ suite host it cannot, and making the field name something inside the root would
 give up confinement propagation to retire one assertion.
 
 **So the suite has nothing left to say about JEBOL, and the goals below are the
-ones it could never see.** Read them in order: the error catalogue, then what
-reaching zero would not prove, then what the suite does not ask.
+ones it could never see.** Read them in order: what the error catalogue work
+uncovered, then what reaching zero would not prove, then what the suite does
+not ask.
 
 Two things are worth keeping from the way the last of it was cleared.
 
@@ -324,32 +353,118 @@ had a section for exactly that shape.
 
 ---
 
-### 2. The error catalogue: 61 ids cannot be raised
+### 2. Five divergences the error catalogue work uncovered
 
-`too-long` is one of Rebol's error ids and JEBOL simply did not have it. That
-was found by needing it, which is no way to find things, so the whole catalogue
-was compared: **`src/boot/errors.reb` names 142 ids and JEBOL can raise 81.**
+The catalogue goal that stood here is finished and what it found is not. These
+five were each measured against `./r3-head`, none of them is about which ids
+exist, and all five are still here.
+
+1. **The reader takes a lone `:`, `'` and `\` for words, and reads a control
+   character as one too.** `load ":"` answers a word here and `** Syntax error:
+   invalid` on a real 3.22.5; `load "^(01)"` answers that character as a word
+   where R3 answers an empty block, because the lexer's table calls every
+   control character a space. This is the sharpest of the four: every script
+   that loads a stray colon gets a word instead of an error, quietly.
+
+   `to word! #":"` went the same way until it stopped asking the reader.
+   `Natives.theWordASingleCharacterSpells` now reads the C's lexical table
+   directly, which is why the conversion agrees with `./r3-head` on all 300
+   code points and the reader still does not.
+
+2. **The reader's errors carry no arguments.** R3 names the token it was
+   building and the text that would not read -- `transcode to binary!
+   "1.2.3.4.5.6.7.8.9.10.11.12.13"` gives `arg1` "tuple" and `arg2` the text --
+   and every reader failure here gives none at all. `TranscodeResult` already
+   carries `tokenKind` and `offendingText` and `failureReading` already passes
+   them, so the shape exists; about sixty of the raise sites in `Transcoder`
+   call the plain `failure(...)` instead and lose them. It matters more since
+   the ids were made faithful: an unterminated string and a bad escape both
+   report `invalid` now, as they do in R3, and the arguments are what tells
+   them apart.
+
+3. **WORDS-OF cannot tell a field named SELF from an object's own SELF.**
+   JEBOL marks the pointer by the slot's name, so about twenty places filter on
+   `canonical().equals("self")`; R3 marks it by position, slot zero. A context
+   made by USE has no such slot, so `append that 'self` adds an ordinary field
+   and R3 lists it -- `[x self]` -- where JEBOL adds it and hides it. Making
+   the slot say what it is, rather than the name saying it, is the fix.
+
+4. **A series action on something that is not a series answers the wrong id.**
+   `head 5` is `cannot-use` here and `expect-arg` on a real 3.22.5. Found in
+   passing while looking for `no-such-action`; not chased, and one line of
+   measurement is all there is on it.
+
+5. **A host exception can still escape as a host exception.** `make string!
+   2000000000` threw a `java.lang.OutOfMemoryError` out of the interpreter
+   and killed the process -- a count a real 3.22.5 accepts, because its cap
+   is in bytes and a JVM's is in what the heap holds. That breaks
+   `ErrorsAreValuesNotHostExceptions` in `eval.allium`, which says no failure
+   leaves as a host-language exception.
+
+   MAKE is mended: it refuses a count past the C's own cap without trying,
+   and turns an allocation the heap cannot serve into `no-memory`, which is
+   both of the arms the C has. **Every other way a script can ask for memory
+   is not.** Appending to a series in a loop, reading a large file, joining
+   strings -- none of them has the guard, and the guarantee is only as good
+   as the thinnest of them. Finding the rest means asking where JEBOL
+   allocates on a script's say-so, which is a sweep nobody has done.
+
+**What the catalogue goal ended at**, so that a later reading of this file does
+not have to recover it: `errors.reb` names 142 ids, JEBOL raises 114, and each
+of the 28 it does not is accounted for.
+
+**Twenty-four cannot be raised by a real 3.22.5 either**, and the reason is
+written in the C rather than inferred from probing:
 
 ```
-Access    25   ports, files, network, security -- areas JEBOL reaches through
-               the host-grant system instead, so most of these have no arm
-Script    16   the interesting column: behaviour JEBOL does implement and
-               reports under a different id or not at all
-Internal   8   memory and stack limits the JVM does not let us ask about
-Syntax     4   bad-char, bad-checksum, bad-header, no-header
-the rest   8   Note 3, Command 2, Throw 2, Math 1
+11  in gen-errnums.h and in no .c file at all -- no-buffer, security-level,
+    resv700, globals-full, exited, no-load, bad-decode, block-lines,
+    invalid-op, parse-into-bad, wrong-denom
+ 3  commented out -- limit-hit (the parse depth check in u-parse.c),
+    expect-type (the only caller of Trap_Expect), bad-path (which lives in
+    an `xx*/`-marked duplicate of Do_Path, one of three in c-do.c and not
+    the live one)
+ 6  extensions, which this build has not got -- bad-extension,
+    extension-init, no-extension, command-fail, bad-command, handle-exists
+ 2  compiled out or unexported -- positive is behind #ifdef USE_NO_INFINITY,
+    deprecated belongs to as-binary and as-string which 3.22.5 does not
+    export
+ 2  throw markers rather than errors -- halt and quit go through Halt_Code,
+    never Trap, and `catch/quit [quit]` answers unset
 ```
 
-The Script and Syntax columns are twenty ids naming behaviour that is already
-here. `parse-series` is the one already known to matter: a get-word in a string
-parse whose value is not a series should raise it, and JEBOL answers no-match.
-`expect-type`, `bad-refine`, `no-return`, `type-limit` and `self-protected` are
-the others worth reading the C for.
+**The last four are live C that a script has not been shown to reach**:
+`max-natives` fires only while booting; `cannot-close` needs the operating
+system to fail a socket close; `bad-file-path` needs `To_Local_Path` to return
+null, which happens on a null byte pointer rather than on anything a file value
+carries; and `throw-usage` needs a reflect action to be handed a cell still
+marked thrown, which nine shapes could not arrange because THROW unwinds first.
 
-An id JEBOL cannot raise is not automatically a gap -- some of these are
-raised nowhere in R3 either -- but the count is a measure that did not exist
-before. `scripts/error-parity.py` prints it, so it is run rather than
-remembered.
+**And the whole list was checked by running the reference rather than reading
+it.** `Throw_Error` in `c-error.c` is the one funnel every `Trap` passes
+through, so a copy of the tree with four lines added there prints the number of
+every error raised. Rebol's own full suite under that binary raises **67
+distinct ids and not one of these 28** -- which is also why none of them has a
+suite assertion to port. `scripts/build-r3.sh` builds from a copy in the
+scratchpad; never instrument `rebol3-source/` itself.
+
+**Two ids were on the unreachable list and should not have been, and both were
+found by being pushed on rather than by the probing that put them there.**
+`no-memory` is one line away -- `make block! 500000000` -- and had been written
+off after two probes that hit an argument range check before any allocation.
+`bad-sys-func` needed the C's callers read rather than inputs guessed: it fires
+when one of the four functions the interpreter calls by name is not a function,
+and the four are MAKE-PORT*, MAKE-MODULE*, DO* and START, not the neighbours
+with similar names that four earlier probes had tried. `system/contexts/sys` is
+an ordinary object, so `system/contexts/sys/make-port*: 5` followed by `make
+port! [...]` reaches it.
+
+The lesson is the same both times and it is worth more than the two arms:
+**a probe that fails early has measured the guard in front of the thing, and
+"I could not reach it" is not "it cannot be reached".** Read the callers, or
+instrument the reference and watch. `error-parity.py`
+prints the count, the ids JEBOL raises that Rebol does not name, and whether any
+id is filed under a category the catalogue disagrees with.
 
 ---
 

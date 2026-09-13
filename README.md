@@ -179,28 +179,17 @@ then two security goals — the TLS client does not authenticate the server, and
 a fetched module is not checked — which are divergences from the C rather than
 gaps against it, because Rebol does neither either.
 
-Bigger things that are known rather than counted:
+Things to note:
 
-- **The image codecs are mostly the JDK's already.** PNG, JPEG, GIF, BMP and
-  TIFF all round-trip through `javax.imageio`, which is in `java.desktop` and
-  so costs nothing to reach, and the suite asserts a round trip and the pixels
-  rather than the encoded bytes. Two catches: `ImageIO.write` refuses an
-  image with an alpha channel for JPEG and BMP, so those two have to drop it
-  as Rebol's own codecs do; and a codec would live in an adapter behind a
-  port, because the domain may not touch the JDK's I/O.
 - **PDF belongs in an optional extension**, not in the jar. **SWF is not worth
   writing at all**, and both of those decisions are worth more than the
   assertions they cost.
-- **CRUSH and LZW are written out here**, by hand from `u-crush.c` and
-  `u-lzw.c`, because they are Rebol's own and `java.util.zip` gives Deflate,
-  GZIP and ZIP and stops. Brotli and LZMA are still the choice between writing
-  them and marking them not-in-this-build, which is a branch Rebol's own suite
-  is written to accept.
-- **DRAW does not render every command R3 does.** `image` and `text` are the
+- **DRAW does not yet render every command R3 does.** `image` and `text` are the
   two whose absence makes a page look wrong rather than plain.
 - **TLS loads but does not connect.**
-- **Not every one of Rebol's error ids can be raised**, so a script that
-  catches by id can still meet one JEBOL has no way to produce.
+- **Twenty-eight of Rebol's error ids cannot be raised here**, and every one of
+  them has a written reason — twenty-four are ids a real 3.22.5 cannot raise
+  either.
 - **Seven of R3's scheme names are not registered.** `file`, `dir` and
   `checksum` are served now; `crypt` is the next that matters.
 - **`task!` is a datatype word and not yet a datatype.**

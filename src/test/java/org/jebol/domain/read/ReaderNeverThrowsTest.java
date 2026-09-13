@@ -6,9 +6,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.util.Set;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ReaderNeverThrowsTest {
+
+    private static final Set<String> THE_CATALOGUE_FILES_THESE_UNDER_SCRIPT =
+            Set.of("invalid-arg", "past-end");
 
     @ParameterizedTest(name = "[{0}]")
     @ValueSource(strings = {
@@ -34,7 +39,9 @@ class ReaderNeverThrowsTest {
                     .as("a failure must carry an error! value")
                     .isPresent();
             assertThat(result.error().orElseThrow().category().spelling())
-                    .isEqualTo("syntax");
+                    .isEqualTo(THE_CATALOGUE_FILES_THESE_UNDER_SCRIPT.contains(
+                            result.error().orElseThrow().errorId())
+                            ? "script" : "syntax");
         }
     }
 

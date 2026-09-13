@@ -156,10 +156,14 @@ countdown 100
 --- note Not in the guide. An operator running one bad script must get an
 --- note error rather than a dead process, which is why the depth limit is
 --- note a policy rather than whatever the host stack happens to allow.
+--- note
+--- note The id is the one a real 3.22.5 gives for running out of stack,
+--- note filed under internal. JEBOL used to answer `too-deep`, which is a
+--- note name Rebol's catalogue does not have at all.
 --- code
 forever: func [n] [forever n]
 forever 1
---- error script too-deep
+--- error internal stack-overflow
 
 # --- Functions as values -------------------------------------
 

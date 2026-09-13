@@ -418,10 +418,15 @@ actor ConsoleUser {
 ------------------------------------------------------------
 
 -- Resolved: the reader decides. The console offers the text to TRANSCODE
--- and treats missing-close and unterminated-string as a request for more
--- input, and every other failure as a mistake. Counting delimiters gets a
--- brace inside a braced string wrong, and a braced string is exactly the
+-- and treats an unclosed series and an unterminated string as a request for
+-- more input, and every other failure as a mistake. Counting delimiters gets
+-- a brace inside a braced string wrong, and a braced string is exactly the
 -- thing that spans lines.
+--
+-- It asks the reader which failure it was, not which id the script would
+-- see. Those are different questions now: an unterminated string and a bad
+-- escape both report `invalid` to a script, because that is the id a real
+-- 3.22.5 gives, and only the first of them means another line would help.
 
 -- Resolved: the console prints == before a value, as R3-Alpha does.
 

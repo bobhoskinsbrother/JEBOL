@@ -9,6 +9,8 @@ import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.read.SyntaxFailure;
+import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.value.IntegerValue;
 
 import java.io.*;
@@ -279,15 +281,13 @@ public final class Repl {
         }
     }
 
+    private static final java.util.Set<SyntaxFailure> THE_FAILURES_ANOTHER_LINE_MENDS =
+            java.util.Set.of(
+                    SyntaxFailure.MISSING_CLOSE, SyntaxFailure.UNTERMINATED_STRING);
+
     private boolean theReaderWantsMoreRatherThanHavingFoundAMistake(String source) {
-        var read = interpreter.read(source);
-        if (read.succeeded()) {
-            return false;
-        }
-        return read.error()
-                .map(error -> error.errorId().equals("missing-close")
-                        || error.errorId().equals("unterminated-string"))
-                .orElse(false);
+        return interpreter.read(source) instanceof TranscodeResult.Failure unfinished
+                && THE_FAILURES_ANOTHER_LINE_MENDS.contains(unfinished.failure());
     }
 
     private static boolean isQuit(String line) {

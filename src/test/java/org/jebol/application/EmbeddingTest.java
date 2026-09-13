@@ -112,7 +112,7 @@ class EmbeddingTest {
                     "forever: func [n] [forever n] forever 1");
 
             assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
-            assertThat(outcome.errorId()).contains("too-deep");
+            assertThat(outcome.errorId()).contains("stack-overflow");
         }
 
         @Test

@@ -714,7 +714,7 @@ public final class Evaluator {
             Deque<Frame> frames, BlockValue code, Context context, FunctionValue being) {
         Frame parent = frames.peek();
         if (parent.depth >= maximumDepth) {
-            throw Raised.of(EvaluationFailure.TOO_DEEP);
+            throw Raised.of(EvaluationFailure.STACK_OVERFLOW);
         }
         Frame pushed = new Frame(code, context, parent.depth + 1);
         pushed.functionBody = being != null;
@@ -891,12 +891,22 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.NEED_VALUE,
                     word.spelling() + ": has nothing after it to assign");
         }
+        refuseToWriteTheNameAnObjectAnswersToItselfBy(word);
         ContextSlot slot = word.binding().slotFor(word.canonical());
         if (slot.isProtected()) {
             throw Raised.of(EvaluationFailure.LOCKED_WORD, word.spelling());
         }
         frame.pendingCalls.push(PendingCall.assignment(slot));
         return StepOutcome.waiting();
+    }
+
+    private static final String THE_NAME_AN_OBJECT_ANSWERS_TO_ITSELF_BY = "self";
+
+    static void refuseToWriteTheNameAnObjectAnswersToItselfBy(Value written) {
+        if (written instanceof WordValue named
+                && named.canonical().equals(THE_NAME_AN_OBJECT_ANSWERS_TO_ITSELF_BY)) {
+            throw Raised.of(EvaluationFailure.SELF_PROTECTED);
+        }
     }
 
     private static boolean asksForReEvaluation(Value argument) {

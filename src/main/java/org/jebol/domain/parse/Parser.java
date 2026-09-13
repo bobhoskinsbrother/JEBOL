@@ -132,8 +132,11 @@ public final class Parser {
 
     private int seekToMark(WordValue back) {
         Context holder = back.isBound() ? back.binding() : context;
-        if (!holder.knows(back.canonical())
-                || !(holder.slotFor(back.canonical()).value() instanceof BlockValue marked)) {
+        Value held = holder.knows(back.canonical())
+                ? holder.slotFor(back.canonical()).value()
+                : NoneValue.none();
+        ParseTargets.refuseAnInputThatIsNotASeries(back, held);
+        if (!(held instanceof BlockValue marked)) {
             return NO_MATCH;
         }
         if (source == null || !marked.sharesStorageWith(source)) {
@@ -180,6 +183,11 @@ public final class Parser {
                     BlockValue.block(List.of(path)), context);
             return matchValue(resolved) ? 1 : NO_MATCH;
         }
+        if (rule instanceof BlockValue path && path.datatype() == Datatype.GET_PATH) {
+            ParseTargets.refuseAnInputThatIsNotASeries(path, evaluator.evaluateOrRaise(
+                    BlockValue.block(List.of(path)), context));
+            return NO_MATCH;
+        }
         return matchValue(rule) ? 1 : NO_MATCH;
     }
 
@@ -222,7 +230,8 @@ public final class Parser {
                     && at + 2 < rules.size()
                     && rules.get(at + 1) instanceof WordValue keyword
                     && keyword.datatype() == Datatype.WORD
-                    && java.util.Set.of("set", "into", "after").contains(keyword.canonical())
+                    && ParseTargets.THE_WORDS_THAT_NAME_WHERE_COLLECT_PUTS_IT
+                            .contains(keyword.canonical())
                     && rules.get(at + 2) instanceof WordValue) {
                 return 3 + ruleSpan(rules, at + 3);
             }
@@ -410,19 +419,14 @@ public final class Parser {
         }
     }
 
-    private static final java.util.Set<String> COMMAND_WORDS = java.util.Set.of(
-            "end", "skip", "any", "while", "some", "opt", "to", "thru", "into",
-            "set", "copy", "collect", "keep", "quote", "and", "ahead", "if",
-            "remove", "change", "insert", "return", "case", "no-case", "then",
-            "not", "limit", "reject", "accept", "break", "only");
-
     private Integer sameStorageOffset(Value item) {
         if (source == null
                 || !(item instanceof WordValue word)
                 || (word.datatype() != Datatype.WORD
                         && word.datatype() != Datatype.GET_WORD)
                 || (word.datatype() == Datatype.WORD
-                        && COMMAND_WORDS.contains(word.canonical()))) {
+                        && ParseTargets.THE_WORDS_THE_DIALECT_RESERVES
+                                .contains(word.canonical()))) {
             return null;
         }
         Context holder = word.isBound() ? word.binding() : context;
@@ -484,8 +488,7 @@ public final class Parser {
         boolean holdsWhatWeParse = kind == Datatype.BINARY && parsing == Datatype.BINARY;
         if (!holdsWhatWeParse
                 && kind != Datatype.BLOCK && kind != Datatype.PAREN && kind != Datatype.HASH) {
-            throw Raised.of(EvaluationFailure.PARSE_INTO_TYPE,
-                    "a " + kind.literalSpelling() + " cannot hold what this parse yields");
+            throw Raised.of(EvaluationFailure.PARSE_INTO_TYPE);
         }
     }
 
@@ -496,23 +499,21 @@ public final class Parser {
         WordValue insertInto = null;
         WordValue appendTo = null;
         int ruleAt = at + 1;
-        if (next instanceof WordValue keyword && keyword.datatype() == Datatype.WORD
-                && at + 2 < rules.size()
-                && rules.get(at + 2) instanceof WordValue name) {
+        if (next instanceof WordValue keyword && keyword.datatype() == Datatype.WORD) {
+            Value name = at + 2 < rules.size() ? rules.get(at + 2) : null;
             if (keyword.canonical().equals("set")) {
-                into = name;
+                into = ParseTargets.refuseAnythingButAWordOrASetWord(name);
                 ruleAt = at + 3;
             } else if (keyword.canonical().equals("into")) {
-                insertInto = name;
+                insertInto = ParseTargets.refuseAnythingButAWordOrAGetWord(name);
                 ruleAt = at + 3;
             } else if (keyword.canonical().equals("after")) {
-                appendTo = name;
+                appendTo = ParseTargets.refuseAnythingButAWordOrAGetWord(name);
                 ruleAt = at + 3;
             }
         }
         if (ruleAt >= rules.size()) {
-            throw Raised.of(EvaluationFailure.PARSE_END,
-                    "collect has no rule after it to apply to");
+            return NO_MATCH;
         }
 
         BlockValue destination = null;
@@ -724,15 +725,9 @@ public final class Parser {
     }
 
     private int capture(List<Value> rules, int at, boolean everything) {
-        if (at + 2 >= rules.size() + 1) {
-            throw Raised.of(EvaluationFailure.CANNOT_USE, "set or copy needs a word and a rule");
-        }
-        Value target = following(rules, at, "set or copy");
-        if (!(target instanceof WordValue word)) {
-            throw Raised.of(EvaluationFailure.CANNOT_USE, "set or copy needs a word");
-        }
+        WordValue word = theVariableSetOrCopyWritesInto(rules, at);
         if (at + 2 >= rules.size()) {
-            throw Raised.of(EvaluationFailure.CANNOT_USE, "set or copy needs a rule to apply");
+            return NO_MATCH;
         }
 
         int startedAt = position;
@@ -747,6 +742,11 @@ public final class Parser {
         return 2 + consumed;
     }
 
+    private WordValue theVariableSetOrCopyWritesInto(List<Value> rules, int at) {
+        return ParseTargets.refuseAnythingSetAndCopyCannotWriteInto(
+                at + 1 < rules.size() ? rules.get(at + 1) : null);
+    }
+
     private Value sliceOfTheInputKeepingItsOwnDatatype(List<Value> taken) {
         BlockValue slice = BlockValue.block(taken);
         return source instanceof BlockValue whole
@@ -755,7 +755,7 @@ public final class Parser {
     }
 
     private Value firstOf(List<Value> taken) {
-        return taken.isEmpty() ? org.jebol.domain.value.NoneValue.none() : taken.get(0);
+        return taken.isEmpty() ? NoneValue.none() : taken.getFirst();
     }
 
     private Value valueOf(WordValue word) {

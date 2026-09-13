@@ -77,7 +77,7 @@ class FileLiteralFromTheSourceTest {
         @DisplayName("and inside a quoted name it escapes, even the closing quote")
         void theCaretEscapesInAQuotedName() {
             assertThat(errorIdFromLoading("""
-                    {%"a^^"}""")).isEqualTo("unterminated-string");
+                    {%"a^^"}""")).isEqualTo("invalid");
         }
 
         @Test

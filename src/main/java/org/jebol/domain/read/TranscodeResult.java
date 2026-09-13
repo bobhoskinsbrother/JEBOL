@@ -98,7 +98,7 @@ public sealed interface TranscodeResult {
         @Override
         public Optional<ErrorValue> error() {
             ErrorValue built = ErrorValue.of(
-                    ErrorCategory.SYNTAX,
+                    failure.category(),
                     failure.errorId(),
                     failure.description() + " at " + position);
             if (tokenKind.isPresent()) {
@@ -107,7 +107,7 @@ public sealed interface TranscodeResult {
                 Value whatItWasReadingOrWantedInstead =
                         offendingText.<Value>map(StringValue::of).orElseGet(NoneValue::none);
                 built = ErrorValue.about(
-                        ErrorCategory.SYNTAX,
+                        failure.category(),
                         failure.errorId(),
                         failure.description() + " at " + position,
                         theKindOfTokenTheReaderWasBuilding,

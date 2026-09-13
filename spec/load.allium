@@ -44,6 +44,13 @@ enum SyntaxFailure {
     | missing_close         -- end of input inside an open series
     | extra_close           -- a closing delimiter with no opener
     | mismatched_close      -- a bracket closing a parenthesis, or the reverse
+    -- And the next three are reported under the one id `invalid`, which is
+    -- what a real 3.22.5 answers for all of them. They are kept apart here
+    -- because they are three different mistakes and the reader has to tell
+    -- them apart for its own purposes -- the REPL asks for another line on
+    -- an unterminated string and not on a bad escape -- but a script sees
+    -- one id, and `unterminated-string`, `invalid-escape` and
+    -- `integer-out-of-range` are names Rebol's catalogue does not have.
     | unterminated_string   -- end of input inside a quoted or braced string
     | invalid_escape        -- a caret escape naming no known character
     | integer_out_of_range  -- digits that exceed the 64-bit range
@@ -60,7 +67,12 @@ enum SyntaxFailure {
                             -- the door bounds every later walk over the block
                             -- -- binding, molding, comparing, evaluating --
                             -- rather than each of them keeping a stack of its
-                            -- own, and no real source comes near it
+                            -- own, and no real source comes near it.
+                            -- It reports the id `stack-overflow`, filed under
+                            -- internal, because that is what a real 3.22.5
+                            -- answers for source nested past what it will
+                            -- read, and because `nesting-too-deep` is not a
+                            -- name the catalogue has at all
     | past_end              -- a read asked for a value where the text it was
                             -- allowed to look at holds none left
 }
@@ -1011,7 +1023,23 @@ rule SyntaxFailureIsAnErrorValue {
     when: request: TranscodeRequest.status transitions_to failed
     ensures:
         request.error_value.datatype = error
-        request.error_value.category = syntax
+}
+
+-- The category is whichever one the catalogue files the id under, and that
+-- is not always syntax even when the reader raised it.
+--
+-- `errors.reb` groups the ids, and the group decides both the code and the
+-- word a script reads as TYPE. Two of the reader's own ids sit outside the
+-- syntax group: `invalid-arg`, which the odd map literal borrows from the
+-- id a bad argument gets, and `past-end`, which is filed under script
+-- because asking a series for a value it has not got is the ordinary way to
+-- reach it. Reporting either as syntax makes `e/type` disagree with
+-- `e/code`, and a script can read both.
+rule TheCategoryIsWhicheverOneTheCatalogueFilesTheIdUnder {
+    when: request: TranscodeRequest.status transitions_to failed
+    ensures:
+        request.error_value.category
+            = the_category_the_catalogue_files(request.error_value.error_id)
 }
 
 -- Every unbalanced delimiter is reported under the ONE id `missing`, with the

@@ -44,9 +44,11 @@ class BlockMarksTest {
     }
 
     @Test
-    @DisplayName("a get-word naming no place does not match")
-    void anUnsetMarkIsNoMatch() {
-        assertThat(answerTo("parse [1 2] [:nowhere 2 skip]")).isEqualTo("#(false)");
+    @DisplayName("a get-word naming no place is refused rather than passed over")
+    void anUnsetMarkIsRefused() {
+        assertThat(answerTo("""
+                e: try [parse [1 2] [:nowhere 2 skip]]
+                reduce [e/id e/arg1]""")).isEqualTo("[parse-series :nowhere]");
     }
 
     @Test

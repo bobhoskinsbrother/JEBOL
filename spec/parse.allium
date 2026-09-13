@@ -927,6 +927,60 @@ rule ParseRequiresARuleBlock {
         attempt.failure = expect_arg
 }
 
+-- A get-word in a rule holding something that is not a series raises
+-- parse-series, naming the get-word.
+--
+-- This is the other half of the rule above it: a get-word switches the input
+-- to whatever series it holds, and something that is not a series is not an
+-- input. Passing over it instead is the dangerous shape, because the parse
+-- then goes on matching the series it was already on and answers true --
+-- `x: 1  parse "abc" [:x]` looked like a rule that matched nothing rather than
+-- a rule that could not be obeyed.
+rule AGetWordThatHoldsNoSeriesRaisesParseSeries {
+    when: attempt: ParseAttempt.created
+    requires: holds_something_that_is_not_a_series(a_get_word_in(attempt.rule))
+
+    ensures:
+        attempt.status = raised
+        attempt.failure = parse_series
+        attempt.failure_about = the_get_word_itself
+}
+
+-- SET and COPY write into a word, and COLLECT INTO and COLLECT AFTER read
+-- one. Anything else in that place raises parse-variable, naming it.
+--
+-- `parse "abc" [set 1 skip]` has nowhere to put what it matched, and the same
+-- is true of a string, a paren or a number after INTO. There is no reading
+-- under which the rule means anything, so it is refused rather than passed
+-- over.
+rule ASetOrCopyTargetThatIsNotAWordRaisesParseVariable {
+    when: attempt: ParseAttempt.created
+    requires: not is_a_word(the_target_after(set, copy, collect_into, collect_after))
+
+    ensures:
+        attempt.status = raised
+        attempt.failure = parse_variable
+        attempt.failure_about = the_thing_written_there
+}
+
+-- And a word that is one of the dialect's own commands raises parse-command
+-- instead, because it names a rule rather than a place to put something.
+--
+-- `parse "abc" [set skip skip]` would otherwise read as "match one character
+-- and put it in SKIP", and SKIP is not a variable. The two ids are worth
+-- keeping apart: parse-variable says "that is not a word", and parse-command
+-- says "that is a word and it is spoken for".
+rule ASetOrCopyTargetThatIsACommandRaisesParseCommand {
+    when: attempt: ParseAttempt.created
+    requires: is_a_word(the_target_after(set, copy))
+    requires: names_a_parse_keyword(the_target_after(set, copy))
+
+    ensures:
+        attempt.status = raised
+        attempt.failure = parse_command
+        attempt.failure_about = the_word_written_there
+}
+
 ------------------------------------------------------------
 -- Surfaces
 ------------------------------------------------------------

@@ -143,8 +143,7 @@ public record ErrorValue(
         return switch (name) {
             case "code" ->
                     Optional.of(IntegerValue.of(codeNumberedInHundredsByCategory()));
-            case "type" ->
-                    Optional.of(WordValue.of(categoryWordCapitalisedAsR3WritesIt()));
+            case "type" -> Optional.of(WordValue.of(theTypeWordAsThisErrorReportsIt()));
             case "id" -> Optional.of(WordValue.of(errorId));
             case "arg1" -> Optional.of(subject.orElseGet(NoneValue::none));
             case "arg2" -> Optional.of(secondArgument.orElseGet(NoneValue::none));
@@ -176,7 +175,10 @@ public record ErrorValue(
         };
     }
 
-    private String categoryWordCapitalisedAsR3WritesIt() {
+    private String theTypeWordAsThisErrorReportsIt() {
+        if (writtenFields.get("type") instanceof WordValue written) {
+            return written.spelling();
+        }
         String spelling = category.spelling();
         return Character.toUpperCase(spelling.charAt(0)) + spelling.substring(1);
     }
@@ -194,7 +196,7 @@ public record ErrorValue(
      */
     public String formedAsRebolFormsIt() {
         StringBuilder written = new StringBuilder("\n** ")
-                .append(categoryWordCapitalisedAsR3WritesIt())
+                .append(theTypeWordAsThisErrorReportsIt())
                 .append(" error: ")
                 .append(theMessageTheCatalogueGives())
                 .append('\n');
@@ -206,8 +208,7 @@ public record ErrorValue(
     }
 
     private String theMessageTheCatalogueGives() {
-        Value said = ErrorWording.forTheId(
-                categoryWordCapitalisedAsR3WritesIt(), errorId).orElse(null);
+        Value said = ErrorWording.forTheId(category.spelling(), errorId).orElse(null);
         if (said == null) {
             return ErrorWording.NOTHING_IN_THE_CATALOGUE;
         }

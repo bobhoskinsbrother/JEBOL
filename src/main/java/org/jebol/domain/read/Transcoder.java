@@ -206,7 +206,7 @@ public final class Transcoder {
 
             if (next == '[' || next == '(') {
                 if (enclosing.size() >= MAXIMUM_NESTING) {
-                    throw failure(SyntaxFailure.NESTING_TOO_DEEP, delimiterFor(next));
+                    throw failure(SyntaxFailure.NESTED_PAST_THE_STACK, delimiterFor(next));
                 }
                 advance();
                 if (outermost) {
