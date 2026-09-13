@@ -10061,8 +10061,15 @@ public final class Natives {
                         arguments.get(2)));
 
         define("release", List.of(Parameter.required("handle", Set.of(Datatype.HANDLE))),
-                (arguments, evaluator, context) ->
-                        LogicValue.of(((HandleValue) arguments.get(0)).isContext()));
+                (arguments, evaluator, context) -> {
+                    HandleValue handle = (HandleValue) arguments.get(0);
+                    if (handle.payload() instanceof JavaObjectValue carried
+                            && carried.held().orElse(null)
+                                    instanceof AKeyThatCanBeReleased key) {
+                        key.release();
+                    }
+                    return LogicValue.of(handle.isContext());
+                });
 
         define("map-event", List.of(Parameter.required("event", Set.of(Datatype.EVENT))),
                 (arguments, evaluator, context) -> mappedEvent(
@@ -10851,7 +10858,7 @@ public final class Natives {
                     "dh publishes or agrees, not both");
         }
         DiffieHellmanKey key = modularKeyHeldBy(arguments.getFirst());
-        if (key == null) {
+        if (key == null || key.released()) {
             return NoneValue.none();
         }
         if (refinements.contains("public")) {
@@ -10897,10 +10904,11 @@ public final class Natives {
     private static Value ellipticExchange(List<Value> arguments, Set<String> refinements) {
         refuseUnlessExactlyOneOf(ECDH_ACTIONS, refinements, "ecdh");
         if (refinements.contains("init")) {
-            return curveKeyMadeOn(((WordValue) arguments.get(1)).canonical());
+            return curveKeyMadeOn(arguments.getFirst(),
+                    ((WordValue) arguments.get(1)).canonical());
         }
         EllipticCurveKey key = curveKeyHeldBy(arguments.getFirst());
-        if (key == null) {
+        if (key == null || key.released()) {
             return NoneValue.none();
         }
         if (refinements.contains("curve")) {
@@ -10915,7 +10923,11 @@ public final class Natives {
         return UnsetValue.unset();
     }
 
-    private static Value curveKeyMadeOn(String curveName) {
+    private static Value curveKeyMadeOn(Value given, String curveName) {
+        EllipticCurveKey standing = curveKeyHeldBy(given);
+        if (standing != null) {
+            return standing.startAgainOn(curveName) ? given : NoneValue.none();
+        }
         return EllipticCurveKey.onCurve(curveName)
                 .<Value>map(key -> HandleValue.context(ECDH_HANDLE_TYPE,
                         nextCipherIdentity(), JavaObjectValue.of(key)))
@@ -10936,11 +10948,22 @@ public final class Natives {
 
     private static Value ellipticSignature(
             List<Value> arguments, Set<String> refinements) {
+        byte[] hash = ((BinaryValue) arguments.get(1)).octetsFromHere();
+        if (refinements.contains("curve")
+                && arguments.getFirst() instanceof BinaryValue published) {
+            return EllipticCurveKey.aPublishedPointVerifies(
+                    published.octetsFromHere(),
+                    ((WordValue) argumentFor("curve", List.of("verify", "curve"),
+                            arguments, refinements, 2)).canonical(),
+                    hash,
+                    ((BinaryValue) arguments.get(2)).octetsFromHere())
+                    ? LogicValue.yes()
+                    : NoneValue.none();
+        }
         EllipticCurveKey key = curveKeyHeldBy(arguments.getFirst());
-        if (key == null) {
+        if (key == null || key.released()) {
             return NoneValue.none();
         }
-        byte[] hash = ((BinaryValue) arguments.get(1)).octetsFromHere();
         return refinements.contains("verify")
                 ? trueOrNoneWhetherTheSignatureHolds(key, hash,
                         ((BinaryValue) arguments.get(2)).octetsFromHere())

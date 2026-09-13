@@ -11756,6 +11756,50 @@ rule EcdsaVerifyAnswersTrueOrNone {
             CallResult(value: none)
 }
 
+-- /VERIFY takes a published point and a curve name as well as a key handle,
+-- and the two have to agree, because a signature travels to someone who has
+-- the sender's public point and not the sender's key.
+--
+-- The suite does both in one breath -- Alice checks her own signature with her
+-- handle, then Boban checks it with the point she published -- and the second
+-- form answered none here for every curve, including the five that already
+-- worked. The stop above it in the file meant that assertion had never run.
+rule EcdsaVerifyTakesAPublishedPointAsWellAsAHandle {
+    when: EvaluateCall(ecdsa, key, hash)
+    requires: the_call_asked_for_verify() and the_call_named_a_curve()
+    requires: is_binary(key)
+
+    ensures:
+        if the_signature_holds_for(hash, the_point_that_was_published(key)):
+            CallResult(value: true)
+        else:
+            CallResult(value: none)
+}
+
+-- Eight of the thirteen curves are computed here rather than by the host
+-- runtime, because a JVM stopped serving them.
+--
+-- secp192r1, secp224r1, secp192k1, secp224k1, secp256k1 and the three
+-- Brainpool curves were withdrawn from the JDK's own provider, which refuses
+-- them by name and refuses them again when the parameters are handed over
+-- explicitly. The alternative to carrying the parameters and the arithmetic is
+-- eight of thirteen curves answering none, and a catalogue that names them
+-- anyway.
+--
+-- Nothing about the language changes with who does the multiplying. The point
+-- is published the same way, the secret is the same coordinate, and a
+-- signature is the same DER pair -- which is the property worth testing, and
+-- it is tested by having a real Rebol verify what this build signed and the
+-- other way about.
+rule TheCurvesTheHostDroppedAreComputedHere {
+    when: EvaluateCall(ecdh, key)
+    requires: the_call_asked_for_init()
+    requires: the_named_curve_is_one_the_host_runtime_dropped()
+
+    ensures: CallResult(datatype: handle)
+    ensures: the_published_point_is(uncompressed_with_both_coordinates)
+}
+
 -- GENERATE names a curve and answers a point that is not on it.
 --
 -- This is a stub upstream rather than a defect, and the difference decides

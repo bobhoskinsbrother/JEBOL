@@ -5386,3 +5386,50 @@ This is the third place the canonical reference has been caught being
 unreliable, after `checksum-test.r3` failing thirteen assertions in roughly one
 run in eight, and `open/new` on a missing directory answering differently on
 consecutive runs.
+
+## 186. ECDH/INIT refills the handle it was given rather than making a new one
+
+**`ecdh/init k curve` answers the same handle back**, with fresh key material in
+it. Rebol's own `dh-test.r3` depends on it and never says so:
+
+    --assert true? release k-Alice
+    --assert handle? ecdh/init k-Alice ecurve   ;- the answer is thrown away
+    --assert binary? pub-Alice: ecdh/public k-Alice
+
+Nothing assigns the result of the second line, so the third only works if the
+word `k-Alice` still names a usable key -- which it does because the handle it
+holds was refilled in place. A build that answers a *new* handle leaves
+`k-Alice` released, `ecdh/public` answers none, and the next line raises "ecdh
+does not allow none! for its public-key argument".
+
+**RELEASE has to be real for that to be observable.** In JEBOL it answered true
+and freed nothing, so a released key went on publishing. Both halves were hidden
+behind the same stop: the loop over `system/catalog/elliptic-curves` never
+reached the re-initialisation because it failed on the first curve.
+
+Pinned by `EveryCurveInTheCatalogueFromTheSourceTest`, which asserts
+`same? alice ecdh/init alice 'curve` and that a released key publishes nothing.
+
+## 187. Eight of Rebol's thirteen curves are not in a modern JDK, explicit parameters included
+
+**`secp192r1`, `secp224r1`, `secp192k1`, `secp224k1`, `secp256k1` and the three
+Brainpool curves were withdrawn from the JDK's own provider.** What makes it
+awkward is that the refusal is by *name*, so handing the parameters over
+explicitly does not get round it:
+
+    KeyPairGenerator.getInstance("EC").initialize(explicitSecp192r1Parameters);
+    -> InvalidAlgorithmParameterException:
+       Curve not supported: secp192r1 [NIST P-192,X9.62 prime192v1]
+
+So there are two options and no third: carry the curve parameters and the point
+arithmetic, or answer none for eight of thirteen curves while the catalogue
+names all thirteen. JEBOL carries them, in `WeierstrassCurve`.
+
+**Two checks are worth more than any amount of reading.** The first is that each
+generator is on its own curve and has the order written beside it, which is what
+a mistyped parameter fails and nothing else does. The second is interoperation
+in both directions: a real 3.22.5 verifying an ECDSA signature this build
+produced, and this build verifying one it produced. The second caught a defect
+the first could not -- `bp512r1` signatures were rejected because its DER
+SEQUENCE runs past 127 bytes and needs the long-form length, `30 81 84`, which
+is the only curve of the eight where that happens.

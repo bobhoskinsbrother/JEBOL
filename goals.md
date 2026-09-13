@@ -32,22 +32,22 @@ or in none. Every number below was checked on 2026-09-13 by running it.
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
 | `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
-| `known-gaps.txt` | **80 fail**, and they are goals 1 to 4 below |
+| `known-gaps.txt` | **53 fail**, and they are goals 1 to 3 below |
 | `fails-on-rebol-too.txt` | 156 a real 3.22.5 also fails or never runs |
 | `scripts/error-parity.py` | **81 of Rebol's 142 error ids can be raised. 61 cannot** |
 
-`./gradlew check` is 18,069 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 18,237 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception. `./gradlew browserCheck` is
 the second gate and is not optional; it renders the same paint list in Java2D
 and in a real Chrome and compares them pixel for pixel.
 
-**`port-test.r3` owns none of the 80.** It had 29 when the file ports were
+**`port-test.r3` owns none of the 53.** It had 29 when the file ports were
 picked up: eighteen were real defects and have been fixed, and eleven turned
 out to be assertions a real 3.22.5 does not pass here either -- nine guarded on
 Windows or on Linux's `/proc`, and two with stale expected checksums. Those
 eleven moved to `fails-on-rebol-too.txt` with the measurement beside each.
 
-The 80 are broken into goals 1 to 4 below, and one entry that no work will
+The 53 are broken into goals 1 to 3 below, and one entry that no work will
 retire: `checksum-test.r3` asks to read `system/options/boot`, which is the
 launcher a script runs to start a confined child interpreter and therefore has
 to sit outside whatever root the script can see. Retiring it would mean giving
@@ -268,43 +268,7 @@ and the count goes up, that is the answer, so write it down here.
 
 ---
 
-### 1. The elliptic curves -- 27
-
-`dh-test.r3` stops at
-
-    foreach ecurve system/catalog/elliptic-curves [...]
-
-with "ecdh does not allow none! for its public-key argument". The catalogue is
-not the problem — JEBOL lists all thirteen curves a real Rebol does, secp192r1
-through curve448 — so `ecdh/init` is not answering a key for at least one of
-them. `EllipticCurveKey.java` is the JEBOL side; the C is `n-crypt.c`.
-
-**Two of the thirteen were added on 12 September 2026** because the TLS work
-needed them: curve25519 and curve448, which are the first two entries of
-the TLS scheme's `supported-groups` and so the ones a client hello reaches for.
-They are a different shape from the rest and that is the part worth knowing —
-they publish one coordinate on its own, 32 bytes and 56, with no lead byte
-saying the point is uncompressed, because their arithmetic never needs the
-second coordinate and there is no other way to write it. The JDK serves them
-through `XDH` rather than `EC`, and the wire wants the coordinate
-least-significant byte first where the JDK hands over a plain number.
-
-Five are served now and eight are not. Measured against `./r3-head`, which
-answers for all thirteen:
-
-| served | not served |
-| --- | --- |
-| secp256r1, secp384r1, secp521r1, curve25519, curve448 | secp192r1, secp224r1, secp192k1, secp224k1, secp256k1, bp256r1, bp384r1, bp512r1 |
-
-The Brainpool three were never in the JDK's default provider. The narrower NIST
-and Koblitz curves were withdrawn from it — a JDK 16 change, not something
-JEBOL chose — so serving them means carrying the curve parameters and the
-arithmetic, or none of them answering, which is what the C already does for a
-build without a curve.
-
----
-
-### 2. Modules and IMPORT -- 12
+### 1. Modules and IMPORT -- 12
 
 `module-test.r3` stopped nine times, and every one came back to
 `system/options/modules` being none.
@@ -362,7 +326,7 @@ that got further than before:
 
 ---
 
-### 3. The PDF encoder hangs where the C takes a millisecond -- 9
+### 2. The PDF encoder hangs where the C takes a millisecond -- 9
 
 **Measured on 12 September 2026, and it is not what this goal said.** PDF *is*
 implemented: `codec-pdf.reb` is Rebol's own REBOL, vendored and loaded like
@@ -415,7 +379,7 @@ does not bring. That stays true. Somebody who wants more than the borrowed
 codec gives adds the library and a bridge to it themselves, and with neither
 present nothing registers and nothing is attempted.
 
-### 4. The scattered singles and pairs -- 31 across fourteen files
+### 3. The scattered singles and pairs -- 31 across fourteen files
 
 What is left when the others above are taken out:
 
@@ -441,7 +405,7 @@ on its own.
 
 ---
 
-### 5. The error catalogue: 61 ids cannot be raised
+### 4. The error catalogue: 61 ids cannot be raised
 
 `too-long` is one of Rebol's error ids and JEBOL simply did not have it. That
 was found by needing it, which is no way to find things, so the whole catalogue
@@ -470,7 +434,7 @@ remembered.
 
 ---
 
-### 6. What reaching zero would not prove
+### 5. What reaching zero would not prove
 
 None of this is on `known-gaps.txt` and none of it can be, because the suite
 tests what functions **return** and these are all about what functions **say
@@ -556,7 +520,7 @@ whether the change worked.
 
 ---
 
-### 7. What the suite does not ask
+### 6. What the suite does not ask
 
 **The suite is the measure, and it is not the whole surface.** Running all 930
 combinations of MAKE and TO against fifteen target types and thirty-one source
@@ -665,7 +629,7 @@ found two things that four separate readings of the C had not. See
 
 ---
 
-### 8. The 32 prelude forks
+### 7. The 32 prelude forks
 
 `prelude.reb` defines 36 words and Rebol defines 32 of them in `src/mezz` too:
 
@@ -681,7 +645,7 @@ the same function, and if not, why was it forked?
 
 ---
 
-### 9. Loose ends
+### 8. Loose ends
 
 **`task!` is a datatype word and not yet a datatype.** `task!` answers
 `#(datatype!)` on both, but `make task! [1 + 1]` gives `#(task!)` on a real
@@ -732,7 +696,7 @@ goals above.
 
 ---
 
-### 10. Graphics -- fourteen DRAW commands
+### 9. Graphics -- fourteen DRAW commands
 
 **DRAW renders 22 of R3's 36 commands.** The fourteen it does not:
 
@@ -748,7 +712,7 @@ path, VID, Android, and the events-name-the-wrong-window one.
 
 ---
 
-### 11. Code from outside is not authenticated -- the TLS client
+### 10. Code from outside is not authenticated -- the TLS client
 
 **Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
 failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
@@ -819,7 +783,7 @@ does not control should know that before it does.
 
 ---
 
-### 12. Code from outside is not verified -- no checksum on a fetched module
+### 11. Code from outside is not verified -- no checksum on a fetched module
 
 **Nothing crosses the wire today**, which is why this is a goal rather than a
 live hole: the thirteen modules this build has no other way to reach are bundled
@@ -867,7 +831,7 @@ wants that more than it wants either check.
 
 ---
 
-### 13. The type-major refactor
+### 12. The type-major refactor
 
 **The original complaint, and much the largest piece left.** One `t-*.c` per
 increment, bitset as the pilot.
@@ -879,7 +843,7 @@ enumerate every arm that needed work. That is what the action seam wants.
 
 ---
 
-### 14. The boot -- 343ms cold, 72ms warm
+### 13. The boot -- 343ms cold, 72ms warm
 
 **343ms for the first interpreter, 72ms once the JVM has settled.** A
 7900-test run pays the 72ms per class, and that is the floor rather than the
@@ -890,7 +854,7 @@ already in that allocation path, and it costs about 2ms of the 72.
 
 ---
 
-### 15. LLM-friendly MCP tools
+### 14. LLM-friendly MCP tools
 
 **The reader will only ever be an LLM, and that decides the design.** A model
 does not misunderstand, it infers confidently from training data that is mostly

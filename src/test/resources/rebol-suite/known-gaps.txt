@@ -74,33 +74,6 @@ date-test.r3 / Julian date / Julian date setter #160
 date-test.r3 / Various date issues / error date set messages #113
 date-test.r3 / Various date issues / issue-276 #77
 date-test.r3 / Various date issues / numerical accessors #116
-dh-test.r3 / Diffie-Hellman key exchange / DH keys release #11
-dh-test.r3 / Diffie-Hellman key exchange / DH keys release #15
-dh-test.r3 / Diffie-Hellman key exchange / DH keys release #16
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #17
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #18
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #19
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #20
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #21
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #22
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #23
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #24
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #25
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #26
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #27
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #28
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #29
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #30
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #31
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #32
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #33
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #34
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #35
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #36
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #37
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #38
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #39
-dh-test.r3 / Elliptic-curve Diffie-Hellman key exchange / DH keys release #40
 error-test.r3 / Error issues / issue-553 #38
 error-test.r3 / Error issues / protected catalog #42
 error-test.r3 / Error issues / protected catalog #43

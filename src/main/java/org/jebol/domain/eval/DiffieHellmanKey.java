@@ -8,7 +8,19 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Optional;
 
-final class DiffieHellmanKey {
+final class DiffieHellmanKey implements AKeyThatCanBeReleased {
+
+    private boolean handedBack;
+
+    @Override
+    public void release() {
+        handedBack = true;
+    }
+
+    @Override
+    public boolean released() {
+        return handedBack;
+    }
 
     private static final int NARROWEST_PRIME = 64;
     private static final int WIDEST_PRIME = 512;
@@ -47,6 +59,9 @@ final class DiffieHellmanKey {
     }
 
     Optional<byte[]> agreedWith(byte[] peersPublicValue) {
+        if (handedBack) {
+            return Optional.empty();
+        }
         try {
             BigInteger theirs = new BigInteger(1, peersPublicValue);
             if (theirs.signum() <= 0 || theirs.compareTo(fieldPrime) >= 0) {
