@@ -5525,3 +5525,115 @@ Which is the same fact as the root, one level down. Confinement is not only what
 a script may reach; it is what the paths mean. The launcher therefore carries
 `--data` beside `--root`, and `followTheApplicationDataDirectory()` rewrites it
 whenever the host moves the directory.
+
+## 192. SORT and `<` are one comparison in the C, and a pair or a tuple sorted by its text is a loop that never ends
+
+**`Cmp_Value` is reached from `Compare_Values`, which is what both the sort's
+default comparator and the ordering natives call.** So a datatype cannot be
+ordered one way by `<` and another way by SORT, and a default that compares the
+written form is wrong for every value whose text does not rise with it:
+
+    >> sort [3x0 20x0 100x0]
+    == [3x0 20x0 100x0]        ; r3-head 3.22.5
+    == [100x0 20x0 3x0]        ; JEBOL before, because "100" is below "20"
+
+    >> sort [255.0.0 16.0.0 2.0.0]
+    == [2.0.0 16.0.0 255.0.0]  ; r3-head 3.22.5
+    == [16.0.0 2.0.0 255.0.0]  ; JEBOL before
+
+`Cmp_Pair` settles it on the x halves and looks at the y halves only to break a
+tie. `Cmp_Tuple` walks the parts to `MAX(len1, len2)` over a zero-filled byte
+array, so `1.2.3` is below `1.2.3.4` and equal to `1.2.3.0` -- which is what
+`=` says of them and not what `==` does, because strict equality compares the
+lengths as well.
+
+**What a wrong order costs is not a wrong answer that gets printed.** Rebol's
+own PDF encoder sorts its cross-reference table with `sort/skip xref 2` and
+then walks it in runs of consecutive object numbers:
+
+    while [not tail? xref][
+        i: to integer! xref/1/1
+        n: get-xref-count xref i
+        ...
+        while [i < n] [ ... xref: skip xref 2 ++ i ]
+    ]
+
+With the table out of order, `get-xref-count` answers a count below the index
+the outer loop is standing on, the inner loop never runs, the cursor never
+advances, and the encoder never finishes. Saving a PDF whose object numbers
+have gaps in them hung for ever where a real Rebol takes a millisecond.
+
+## 193. MAKE TIME! from a string is a scanner of its own, and it takes a leading sign
+
+**`Make_Time` hands a string straight to `Scan_Time`**, the same function the
+reader calls for a time written in source, and the C's own comment lists what
+it takes:
+
+    HH:MM       as part1:part2
+    HH:MM:SS    as part1:part2:part3
+    HH:MM:SS.DD as part1:part2:part3.part4
+    MM:SS.DD    as part1:part2.part4
+
+So a two-part time **with a fraction** is minutes and seconds:
+`to time! "12:34.5"` is `0:12:34.5` where `to time! "12:34"` is twelve hours.
+A fraction may be written with a comma. An AM or PM suffix moves the hour, with
+`12:00AM` midnight and `12:00PM` noon, and an hour above twelve with a suffix
+is refused.
+
+**A leading sign is read before any of that, and the plus is accepted rather
+than merely tolerated**: `if (*cp == '-') {cp++; neg = TRUE;} else if (*cp ==
+'+') cp++`. Two signs in a row is a mistake, which the C says in a comment
+beside the line that refuses it -- `// small hole: --1:23`.
+
+That is not a corner. A PDF date carries its offset as `+02'00'`, and Rebol's
+own PDF codec turns it into a zone with `to time! rejoin [z hour ":" minute]`,
+sign still on the front. A MAKE that refuses the plus loses the whole object
+the date was in -- here, the document information dictionary of every PDF whose
+dates live in a compressed object stream.
+
+**The string is qualified before the scanner sees it**, by `Qualify_String`
+with a maximum of thirty characters and no UTF-8 allowed, and its three checks
+each have an error id of their own rather than a general refusal. Space and tab
+are the only whitespace it steps over -- `IS_LEX_SPACE` and `IS_SPACE` are both
+that pair and nothing else -- so a leading newline is not skipped and
+`to time! "^/2:00"` is bad-make-arg, while `to time! "2:00^/x"` is 2:00 because
+the newline never ends the run and the scanner ignores what it has not reached.
+
+    >> to time! "2:00 am"
+    ** Script error: invalid-chars     ; a second run after the content
+    >> to time! "   "
+    ** Script error: too-short
+    >> to time! (30 characters or fewer)   -- fine; thirty-one is too-long
+
+**And nothing guards the arithmetic once the parts are read.** The hour is
+checked against `MAX_HOUR`, which is `MAX_SECONDS / 3600` or 2562047, and the
+minutes and seconds are then added to it in signed sixty-four bit nanoseconds
+with no check at all:
+
+    >> to time! "2562047:00"
+    == 2562047:00
+    >> to time! "2562047:59:59"
+    == -2562047:34:34.709551616
+
+Reproduced rather than corrected, because the same arithmetic in the same width
+gives it for nothing and it is what a script comparing against a real Rebol
+gets.
+
+**The block arm is its own small dialect**: up to three numbers filled from the
+left, only the last of which may be fractional and only the first of which may
+be negative, with every prefix sum checked against the widest time as it is
+built. `to time! [1]` is one hour; `to time! [1 -2 3]` is refused.
+
+## 194. A refused MAKE names the datatype, not a word spelling it
+
+**`Trap_Make` puts the datatype value in ARG1**, so a script reading the error
+gets something it can compare against `time!` and test with `datatype?`:
+
+    >> e: try [make module! 10]  reduce [e/arg1  type? e/arg1]
+    == [#(module!) #(datatype!)]     ; r3-head 3.22.5
+    == [module! #(word!)]            ; JEBOL before
+
+One helper answered all sixty-eight bad-make-arg refusals in JEBOL and all
+sixty-eight carried a word. Nothing in JEBOL's own tests asserted on it -- they
+check the id -- which is how it survived, and Rebol's own `evaluation-test.r3`
+turned out to be measuring it after all.

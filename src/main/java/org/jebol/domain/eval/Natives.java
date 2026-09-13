@@ -1981,6 +1981,109 @@ public final class Natives {
 
     private static final double MOST_SECONDS_A_DURATION_HOLDS = 9_223_372_036.0;
 
+    private static Value aTimeMadeFrom(Value value) {
+        return switch (value) {
+            case TimeValue already -> already;
+            case StringValue written when value.datatype() == Datatype.STRING ->
+                    theTimeScannedFrom(written.text(), written);
+            case BlockValue parts when value.datatype() == Datatype.BLOCK
+                    || value.datatype() == Datatype.PAREN ->
+                    aTimeOfHoursMinutesAndSeconds(parts);
+            case Value number when number.datatype() == Datatype.INTEGER
+                    || number.datatype() == Datatype.DECIMAL ->
+                    aDurationOfSeconds(number);
+            default -> raiseBadMakeArg(value, "time!");
+        };
+    }
+
+    private static final long MOST_SECONDS_A_TIME_HOLDS = 9_223_372_036L;
+
+    private static Value aTimeOfHoursMinutesAndSeconds(BlockValue parts) {
+        List<Value> given = parts.remaining();
+        if (given.isEmpty() || given.size() > 3
+                || !(given.getFirst() instanceof IntegerValue hours)) {
+            return raiseBadMakeArg(parts, "time!");
+        }
+        boolean negated = hours.magnitude() < 0;
+        long seconds = whatFitsInThirtyTwoBits(Math.abs(hours.magnitude()), parts) * 3600L;
+        double fraction = 0.0;
+        for (int at = 1; at < given.size(); at++) {
+            if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
+                return raiseBadMakeArg(parts, "time!");
+            }
+            Value part = given.get(at);
+            if (at == 2 && part.datatype() == Datatype.DECIMAL) {
+                fraction = ((DecimalValue) part).quantity();
+                if (seconds + (long) fraction + 1 > MOST_SECONDS_A_TIME_HOLDS) {
+                    return raiseBadMakeArg(parts, "time!");
+                }
+                break;
+            }
+            if (!(part instanceof IntegerValue whole) || whole.magnitude() < 0) {
+                return raiseBadMakeArg(parts, "time!");
+            }
+            seconds += whatFitsInThirtyTwoBits(whole.magnitude(), parts)
+                    * (at == 1 ? 60L : 1L);
+        }
+        if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
+            return raiseBadMakeArg(parts, "time!");
+        }
+        long nanoseconds = seconds * NANOSECONDS_A_SECOND
+                + Math.round(fraction * NANOSECONDS_A_SECOND);
+        return TimeValue.ofNanoseconds(negated ? -nanoseconds : nanoseconds);
+    }
+
+    private static long whatFitsInThirtyTwoBits(long magnitude, Value about) {
+        if (magnitude > Integer.MAX_VALUE) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, about);
+        }
+        return magnitude;
+    }
+
+    private static final int LONGEST_TIME_A_STRING_MAY_SPELL = 30;
+
+    private static Value theTimeScannedFrom(String text, Value given) {
+        String content = theRunOfCharactersBetweenTheSpacesOf(text);
+        Long nanoseconds = timeScannedFrom(content);
+        if (nanoseconds == null) {
+            return raiseBadMakeArg(given, "time!");
+        }
+        return TimeValue.ofNanoseconds(nanoseconds);
+    }
+
+    private static String theRunOfCharactersBetweenTheSpacesOf(String text) {
+        int from = 0;
+        while (from < text.length() && isSpaceOrTab(text.charAt(from))) {
+            from++;
+        }
+        int to = from;
+        while (to < text.length() && !isSpaceOrTab(text.charAt(to))) {
+            if (text.charAt(to) > ASCII_ENDS_AT) {
+                throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
+            }
+            to++;
+        }
+        if (to == from) {
+            throw Raised.of(EvaluationFailure.TOO_SHORT, text);
+        }
+        if (to - from > LONGEST_TIME_A_STRING_MAY_SPELL) {
+            throw Raised.of(EvaluationFailure.TOO_LONG, text);
+        }
+        for (int after = to; after < text.length(); after++) {
+            if (!isSpaceOrTab(text.charAt(after))) {
+                throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
+            }
+        }
+        return text.substring(from, to);
+    }
+
+    private static final char ASCII_ENDS_AT = 127;
+
+    private static Long timeScannedFrom(String content) {
+        ScanningATime scanning = new ScanningATime(content);
+        return scanning.readsATime() ? scanning.nanoseconds() : null;
+    }
+
     private static Value aNumberAgainstATime(
             Value left, TimeValue right, Operation operation) {
 
@@ -12389,7 +12492,7 @@ public final class Natives {
                         TypesetValue.of(datatypesNamedIn(named));
                 default -> raiseBadMakeArg(value, "typeset!");
             };
-            case TIME -> aDurationOfSeconds(value);
+            case TIME -> aTimeMadeFrom(value);
             case TUPLE -> tupleFrom(value);
             case LOGIC -> LogicValue.of(countsAsTrue(asking, value));
             case DATATYPE -> value instanceof WordValue named
@@ -13110,7 +13213,13 @@ public final class Natives {
 
     private static Value raiseBadMakeArg(Value value, String wanted) {
         throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
-                WordValue.of(wanted), value);
+                theDatatypeItselfRatherThanItsName(wanted), value);
+    }
+
+    private static Value theDatatypeItselfRatherThanItsName(String wanted) {
+        return Datatype.named(wanted)
+                .<Value>map(DatatypeValue::of)
+                .orElseGet(() -> WordValue.of(wanted));
     }
 
     private static Value raiseWrongArgument(Value value, String nativeName, String wanted) {

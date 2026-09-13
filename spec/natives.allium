@@ -608,6 +608,27 @@ rule PairOrderingBreaksTheTieOnTheSecondHalf {
             else: holds(request.strictness, y_of(request.left), y_of(request.right)))
 }
 
+-- A tuple is ordered part by part, and the first part that differs settles
+-- it. `Cmp_Tuple` subtracts the bytes in turn and returns at the first
+-- non-zero difference, so 1.3.1 is below 1.20.1 -- twenty against three, not
+-- the text "20" against the text "3".
+--
+-- Where the two have different lengths the walk runs to the longer of them
+-- and the shorter one's missing parts count as zero: `len = MAX(len1, len2)`
+-- over a byte array the rest of which is zero. So 1.2.3 is below 1.2.3.4 and
+-- equal to 1.2.3.0, which is the same reading `=` gives them and a different
+-- one from `==`, where the lengths must match as well.
+rule TupleOrderingComparesPartByPartToTheLongerOfThem {
+    when: EvaluateComparison(request)
+    requires: request.strictness in {greater_or_equal, greater}
+    requires: is_tuple(request.left) and is_tuple(request.right)
+    ensures: ComparisonHolds(
+        holds: holds(request.strictness,
+            the_first_part_that_differs(request.left, request.right),
+            the_first_part_that_differs(request.right, request.left)))
+    ensures: the_parts_beyond_the_shorter_one_count_as(zero)
+}
+
 -- === CASE walks a block two values at a time ===============
 
 -- CASE reads its block as condition, branch, condition, branch, and the
@@ -9537,6 +9558,148 @@ rule ConvertingANumberToAMapIsRefused {
 
 -- === NOW, and the ten questions it answers ==========
 
+-- === Making a time out of something that is not one ==========
+
+-- `Make_Time` takes five kinds of thing and refuses everything else: a time,
+-- which answers itself; a string, read below; a whole or fractional number,
+-- counted as seconds; and a block of up to three numbers read as hours,
+-- minutes and seconds.
+--
+-- A block shorter than three is filled from the left, so `to time! [1]` is
+-- one hour and `to time! [1 2]` is one hour and two minutes. Only the last
+-- part may be fractional, only the first may be negative -- a minus on the
+-- hours negates the whole time rather than that part -- and every prefix sum
+-- is checked against the widest time as it is built, so a block whose hours
+-- alone overflow is refused before the minutes are looked at.
+rule MakingATimeFromABlockReadsHoursThenMinutesThenSeconds {
+    when: EvaluateCall(make, time_datatype, parts)
+    requires: is_block(parts) and length_of(parts) <= 3
+
+    ensures: CallResult(value: hours(first_of(parts))
+        + minutes(second_of(parts)) + seconds(third_of(parts)))
+    ensures: a_minus_on_the_first_part_negates_the_whole_time()
+}
+
+rule ABlockThatIsNotHoursAndMinutesAndSecondsIsRefused {
+    when: EvaluateCall(make, time_datatype, parts)
+    requires: is_block(parts)
+    requires: length_of(parts) > 3
+        or is_empty(parts)
+        or any_part_but_the_last_is_not_a_whole_number(parts)
+        or any_part_but_the_first_is_negative(parts)
+        or the_running_total_passes(the_widest_time())
+
+    ensures: CallFails(error: bad_make_arg, about: parts)
+}
+
+-- Anything else is refused the same way, naming the datatype asked for and
+-- the value that would not do: `else no_time: return NO_TIME`, and the caller
+-- reports that with Trap_Make. So a binary, a word, a character and a logic
+-- each come back as bad-make-arg rather than as a complaint about arithmetic.
+rule AnythingElseMakesNoTime {
+    when: EvaluateCall(make, time_datatype, given)
+    requires: not (is_time(given) or is_string(given)
+        or is_number(given) or is_block(given))
+
+    ensures: CallFails(error: bad_make_arg, about: given)
+}
+
+-- MAKE TIME! and TO TIME! read a string with the same scanner the reader uses
+-- for a time written in source, and that scanner takes more shapes than a
+-- literal does.
+--
+-- `Make_Time` hands a string straight to `Scan_Time`, the same function
+-- `Scan_Item` calls for a `time` token, and the C's own comment lists the
+-- shapes:
+--
+--     HH:MM       as part1:part2
+--     HH:MM:SS    as part1:part2:part3
+--     HH:MM:SS.DD as part1:part2:part3.part4
+--     MM:SS.DD    as part1:part2.part4
+--
+-- A leading sign is read before any of them, and the minus is the one that
+-- means something: `if (*cp == '-') {cp++; neg = TRUE;} else if (*cp == '+')
+-- cp++`. So `to time! "+02:00"` is 2:00 and `to time! "-02:00"` is -2:00, and
+-- the plus is accepted rather than merely tolerated.
+--
+-- Which is not a corner. A PDF date carries its offset as `+02'00'`, and
+-- Rebol's own PDF codec turns that into a zone with
+-- `to time! rejoin [z hour ":" minute]` -- the sign still on the front. A
+-- MAKE that refuses the plus loses the whole object the date sat in.
+--
+-- A fraction may be written with a comma as well as a full stop, an AM or PM
+-- suffix moves the hour, and surrounding whitespace is allowed because
+-- `Qualify_String` trims before the scan.
+rule MakingATimeFromAStringReadsItTheWayTheReaderWouldWithASignAllowed {
+    when: EvaluateCall(make, time_datatype, written)
+    requires: is_string(written)
+
+    ensures: CallResult(value: the_time_the_reader_would_read(written))
+    ensures: a_leading_minus_makes_it_negative()
+    ensures: a_leading_plus_is_accepted_and_changes_nothing()
+}
+
+-- Two signs in a row is a mistake rather than two negations, and the C says
+-- so in a comment beside the line that refuses it:
+-- `if (*cp == '-' || *cp == '+') return 0; // small hole: --1:23`.
+--
+-- A string the scanner cannot read at all is refused as a bad argument to
+-- MAKE, naming the datatype asked for and the text that would not do. An
+-- empty string is the exception and reports too-short, because
+-- `Qualify_String` rejects it before the scanner ever sees it -- there is no
+-- text to name.
+rule AStringThatIsNotATimeIsRefused {
+    when: EvaluateCall(make, time_datatype, written)
+    requires: is_string(written)
+    requires: not the_reader_can_read_a_time_from(written)
+
+    ensures:
+        if is_empty(written):
+            CallFails(error: too_short)
+        else:
+            CallFails(error: bad_make_arg, about: written)
+}
+
+-- The string is qualified before the scanner sees it, and the three ways that
+-- can fail are the three checks `Qualify_String` makes, each with an error id
+-- of its own rather than a general refusal. Whitespace at either end is
+-- stepped over; a second run of non-whitespace after it is invalid-chars, so
+-- `to time! "2:00 am"` is refused where `to time! "2:00PM"` is read. Anything
+-- outside ASCII is invalid-chars as well, because the scanner is a byte
+-- scanner. A string of nothing but whitespace is too-short, and one whose
+-- content passes thirty characters is too-long.
+rule AStringIsQualifiedBeforeItIsScanned {
+    when: EvaluateCall(make, time_datatype, written)
+    requires: is_string(written)
+
+    ensures:
+        if is_empty(the_content_of(written)):
+            CallFails(error: too_short)
+        else if length_of(the_content_of(written)) > 30:
+            CallFails(error: too_long)
+        else if holds_more_than_whitespace_after_the_content(written)
+                or holds_a_character_outside_ascii(written):
+            CallFails(error: invalid_chars)
+}
+
+-- And nothing guards the arithmetic once the parts are read. `VAL_TIME(value)
+-- = HOUR_TIME(part1) + MIN_TIME(part2) + SEC_TIME(part3)` is signed
+-- sixty-four bit nanoseconds with no overflow check, and the hour is checked
+-- against the widest hour before the minutes and seconds are added to it. So
+-- `to time! "2562047:00"` is the largest whole hour and
+-- `to time! "2562047:59:59"` wraps round to a negative time.
+--
+-- Reproduced rather than corrected. It is what a script comparing its answer
+-- against a real Rebol gets, and the same arithmetic in the same width gives
+-- it for nothing; refusing instead would be a second answer nobody asked for.
+rule TheHourIsBoundedAndTheRestIsNot {
+    when: EvaluateCall(make, time_datatype, written)
+    requires: is_string(written)
+    requires: the_hour_in(written) > the_widest_hour()
+
+    ensures: CallFails(error: bad_make_arg, about: written)
+}
+
 -- NOW answers the local date and time, with the host's offset attached.
 --
 -- @guidance The clock is a host service. A script not granted it cannot ask.
@@ -11141,6 +11304,34 @@ rule UnstableSortingIsOneNamedAlgorithmRatherThanAnyUnstableOne {
         -- Ported index for index from the C rather than reimplemented from
         -- the paper. The paper describes the family; the file decides where
         -- each equal key lands, and it is the file that is being matched.
+}
+
+-- The order a sort with no /COMPARE puts things in is the order the
+-- comparison natives give them. There is one comparison in the C --
+-- `Cmp_Value`, reached from `Compare_Values`, which is what both the sort's
+-- default comparator and `<` call -- so a datatype cannot be ordered one way
+-- by `<` and another way by SORT.
+--
+-- Stated because two datatypes were ordered by their text here, which is a
+-- plausible-looking default and wrong for every value whose written form does
+-- not rise with it. `sort [3x0 20x0 100x0]` came back
+-- [100x0 20x0 3x0] and `sort [255.0.0 16.0.0 2.0.0]` came back
+-- [16.0.0 2.0.0 255.0.0]: both are the right answer to a question nobody
+-- asked, because "100" is below "20" as text and above it as a number.
+--
+-- What that cost is the shape of the damage rather than the size of it.
+-- Rebol's own PDF encoder sorts its cross-reference table with
+-- `sort/skip xref 2` and then walks it in runs of consecutive object numbers,
+-- and a table out of order made the walk ask for a run that ended before it
+-- began -- so the cursor never advanced and the encoder never finished. A
+-- wrong order is not a wrong answer that gets printed; it is a loop that does
+-- not stop.
+rule SortingWithNoComparisonOrdersAsTheComparisonNativesDo {
+    when: EvaluateCall(sort, series)
+    requires: not the_call_gave_a_comparison()
+
+    ensures: for neighbouring_pair in the_records_that_took_part(series):
+        not_greater_than(first_of(neighbouring_pair), second_of(neighbouring_pair))
 }
 
 -- A binary is sorted that way whether or not anyone asked. `(D_REF(11) ||

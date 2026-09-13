@@ -56,15 +56,6 @@ bbcode-test.r3 / (no group) / (no test) #1
 bitset-test.r3 / modify / issue-1355 #139
 bitset-test.r3 / modify / issue-1355 #140
 checksum-test.r3 / file-checksum / file-checksum with bigger file #254
-codecs-test-pdf.r3 / (no group) / (no test) #10
-codecs-test-pdf.r3 / (no group) / (no test) #11
-codecs-test-pdf.r3 / (no group) / (no test) #12
-codecs-test-pdf.r3 / (no group) / (no test) #13
-codecs-test-pdf.r3 / (no group) / (no test) #5
-codecs-test-pdf.r3 / (no group) / (no test) #6
-codecs-test-pdf.r3 / (no group) / (no test) #7
-codecs-test-pdf.r3 / (no group) / (no test) #8
-codecs-test-pdf.r3 / (no group) / (no test) #9
 copy-test.r3 / Simple copy / (no test) #1
 csv-test.r3 / (no group) / (no test) #17
 datatype-test.r3 / datatype! / number? #37
@@ -77,7 +68,6 @@ date-test.r3 / Various date issues / numerical accessors #116
 error-test.r3 / Error issues / issue-553 #38
 error-test.r3 / Error issues / protected catalog #42
 error-test.r3 / Error issues / protected catalog #43
-evaluation-test.r3 / do script / do needs #44
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
 mold-test.r3 / form error! / form error! #214

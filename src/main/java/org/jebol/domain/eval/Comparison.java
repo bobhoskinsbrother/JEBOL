@@ -486,11 +486,10 @@ public final class Comparison {
             return orderingOfVectors(first, second);
         }
         if (left instanceof PairValue leftPair && right instanceof PairValue rightPair) {
-            int theXHalvesDecideItFirst =
-                    signOfTheDifference(leftPair.x(), rightPair.x());
-            return theXHalvesDecideItFirst != 0
-                    ? theXHalvesDecideItFirst
-                    : signOfTheDifference(leftPair.y(), rightPair.y());
+            return orderingOfPairs(leftPair, rightPair);
+        }
+        if (left instanceof TupleValue leftTuple && right instanceof TupleValue rightTuple) {
+            return orderingOfTuples(leftTuple, rightTuple);
         }
         if (left instanceof BlockValue leftBlock && right instanceof BlockValue rightBlock) {
             return orderingOfBlocks(leftBlock, rightBlock);
@@ -548,6 +547,25 @@ public final class Comparison {
         return ordering(left, right);
     }
 
+    private static int orderingOfPairs(PairValue left, PairValue right) {
+        int theXHalvesDecideItFirst = signOfTheDifference(left.x(), right.x());
+        return theXHalvesDecideItFirst != 0
+                ? theXHalvesDecideItFirst
+                : signOfTheDifference(left.y(), right.y());
+    }
+
+    private static int orderingOfTuples(TupleValue left, TupleValue right) {
+        int asFarAsTheLongerOfThem =
+                Math.max(left.segmentCount(), right.segmentCount());
+        for (int at = 1; at <= asFarAsTheLongerOfThem; at++) {
+            int difference = left.octetAt(at) - right.octetAt(at);
+            if (difference != 0) {
+                return difference > 0 ? 1 : -1;
+            }
+        }
+        return 0;
+    }
+
     private static int orderingOfVectors(VectorValue left, VectorValue right) {
         if (left.kind().measures() != right.kind().measures()) {
             throw Raised.of(EvaluationFailure.NOT_SAME_TYPE,
@@ -563,12 +581,22 @@ public final class Comparison {
 
     /**
      * The default order for SORT: numbers by size, dates by the instant they
-     * name, everything else by its text, with case folded unless {@code /case}
-     * was asked for.
+     * name, pairs and tuples by their parts, everything else by its text, with
+     * case folded unless {@code /case} was asked for.
+     *
+     * <p>A pair or a tuple compared by its text is the wrong answer to a
+     * question nobody asked. The C has one comparison for both SORT and the
+     * ordering natives, so the only right default is the one they give.
      */
     public static int compareForSorting(Value left, Value right, boolean mindingCase) {
         if (left instanceof DateValue first && right instanceof DateValue second) {
             return first.moment().compareTo(second.moment());
+        }
+        if (left instanceof PairValue first && right instanceof PairValue second) {
+            return orderingOfPairs(first, second);
+        }
+        if (left instanceof TupleValue first && right instanceof TupleValue second) {
+            return orderingOfTuples(first, second);
         }
         if (isNumeric(left) && isNumeric(right)) {
             boolean leftIsNaN = Double.isNaN(asDouble(left));

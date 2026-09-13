@@ -32,22 +32,22 @@ or in none. Every number below was checked on 2026-09-13 by running it.
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
 | `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
-| `known-gaps.txt` | **41 fail**, and they are goals 1 and 2 below |
+| `known-gaps.txt` | **31 fail**, and all but one are goal 1 below |
 | `fails-on-rebol-too.txt` | 158 a real 3.22.5 also fails or never runs |
 | `scripts/error-parity.py` | **81 of Rebol's 142 error ids can be raised. 61 cannot** |
 
-`./gradlew check` is 18,286 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 18,338 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception. `./gradlew browserCheck` is
 the second gate and is not optional; it renders the same paint list in Java2D
 and in a real Chrome and compares them pixel for pixel.
 
-**`port-test.r3` owns none of the 41.** It had 29 when the file ports were
+**`port-test.r3` owns none of the 31.** It had 29 when the file ports were
 picked up: eighteen were real defects and have been fixed, and eleven turned
 out to be assertions a real 3.22.5 does not pass here either -- nine guarded on
 Windows or on Linux's `/proc`, and two with stale expected checksums. Those
 eleven moved to `fails-on-rebol-too.txt` with the measurement beside each.
 
-The 41 are broken into goals 1 and 2 below, and one entry that no work will
+Thirty of the 31 are goal 1 below, and the last is one no work will
 retire: `checksum-test.r3` asks to read `system/options/boot`, which is the
 launcher a script runs to start a confined child interpreter and therefore has
 to sit outside whatever root the script can see. Retiring it would mean giving
@@ -268,43 +268,12 @@ and the count goes up, that is the answer, so write it down here.
 
 ---
 
-### 1. The PDF encoder hangs where the C takes a millisecond -- 9
-
-**Measured on 12 September 2026, and it is not what this goal said.** PDF *is*
-implemented: `codec-pdf.reb` is Rebol's own REBOL, vendored and loaded like
-every other borrowed file, and it registers `system/codecs/pdf`. Loading works
-here. One encode hangs.
-
-Both interpreters, same six files, same machine:
-
-| | `./r3-head` | JEBOL |
-| --- | --- | --- |
-| load all six | under 10ms total | fast, all six answer an object |
-| save all six | **13ms total** | `hello-1`, `hello-2` fast, then **hangs on `hello-linearized.pdf`** |
-
-That is where the harness's five-second limit goes. The codec's own header
-warns that "the loading is not optimal" and that it is "not designed for real
-life processing of large PDF documents" -- which is true and is not this: the
-reference does the whole set in a twentieth of a second, and the file that hangs
-is 1ms there.
-
-**So this is a defect to find, not a codec to drop.** Something JEBOL does
-differently -- a series operation, a PARSE rule, a loop that never advances --
-makes Rebol's own encoder loop on a linearized PDF. A thousand-fold gap on
-borrowed REBOL nearly always means a primitive is wrong, and a primitive that is
-wrong here is wrong everywhere else it is used; that is the reason to chase it
-rather than the nine entries.
-
-Where to start: `save %tmp.pdf p1` on `%units/files/hello-linearized.pdf`, with
-`system/options/log/pdf: 3` on. A linearized PDF is the one with its
-cross-reference table at the front, so the encoder walks it differently from the
-other five, and whatever it does there is the ground to dig.
-
 ### And no Java PDF implementation, now or later
 
-**Decided.** Fixing the hang is equivalence work and is in scope. Writing a
-Java PDF implementation is not, and will not be, however much of PDF the
-borrowed codec turns out not to do.
+**Decided, and the hang that prompted it is fixed.** Making the borrowed codec
+work is equivalence work and is in scope. Writing a Java PDF implementation is
+not, and will not be, however much of PDF the borrowed codec turns out not to
+do.
 
 The borrowed codec is what Rebol has, so matching it is the whole obligation.
 Its own header is honest about the ceiling -- it decodes the object structure
@@ -321,7 +290,7 @@ does not bring. That stays true. Somebody who wants more than the borrowed
 codec gives adds the library and a bridge to it themselves, and with neither
 present nothing registers and nothing is attempted.
 
-### 2. The scattered singles and pairs -- 31 across fourteen files
+### 1. The scattered singles and pairs -- 30 across thirteen files
 
 What is left when the others above are taken out:
 
@@ -329,10 +298,9 @@ What is left when the others above are taken out:
     4  task-test.r3          2  bitset-test.r3       1  copy-test.r3
     3  error-test.r3         2  gob-test.r3          1  csv-test.r3
     3  struct-test.r3        2  percent-test.r3      1  datatype-test.r3
-                                                     1  evaluation-test.r3
                                                      1  series-test.r3
 
-Thirteen of the fourteen have no stop at all, so every entry is a wrong answer
+Twelve of the thirteen have no stop at all, so every entry is a wrong answer
 and `scripts/sweep.py` will put the two answers side by side. That makes this
 the cheapest goal per assertion on the list and a reasonable place to start
 cold, because each one is small enough to hold in your head whole.
@@ -347,7 +315,7 @@ on its own.
 
 ---
 
-### 3. The error catalogue: 61 ids cannot be raised
+### 2. The error catalogue: 61 ids cannot be raised
 
 `too-long` is one of Rebol's error ids and JEBOL simply did not have it. That
 was found by needing it, which is no way to find things, so the whole catalogue
@@ -376,7 +344,7 @@ remembered.
 
 ---
 
-### 4. What reaching zero would not prove
+### 3. What reaching zero would not prove
 
 None of this is on `known-gaps.txt` and none of it can be, because the suite
 tests what functions **return** and these are all about what functions **say
@@ -462,7 +430,7 @@ whether the change worked.
 
 ---
 
-### 5. What the suite does not ask
+### 4. What the suite does not ask
 
 **The suite is the measure, and it is not the whole surface.** Running all 930
 combinations of MAKE and TO against fifteen target types and thirty-one source
@@ -571,7 +539,7 @@ found two things that four separate readings of the C had not. See
 
 ---
 
-### 6. The 32 prelude forks
+### 5. The 32 prelude forks
 
 `prelude.reb` defines 36 words and Rebol defines 32 of them in `src/mezz` too:
 
@@ -587,7 +555,7 @@ the same function, and if not, why was it forked?
 
 ---
 
-### 7. Loose ends
+### 6. Loose ends
 
 **`task!` is a datatype word and not yet a datatype.** `task!` answers
 `#(datatype!)` on both, but `make task! [1 + 1]` gives `#(task!)` on a real
@@ -638,7 +606,7 @@ goals above.
 
 ---
 
-### 8. Graphics -- fourteen DRAW commands
+### 7. Graphics -- fourteen DRAW commands
 
 **DRAW renders 22 of R3's 36 commands.** The fourteen it does not:
 
@@ -654,7 +622,7 @@ path, VID, Android, and the events-name-the-wrong-window one.
 
 ---
 
-### 9. Code from outside is not authenticated -- the TLS client
+### 8. Code from outside is not authenticated -- the TLS client
 
 **Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
 failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
@@ -725,7 +693,7 @@ does not control should know that before it does.
 
 ---
 
-### 10. Code from outside is not verified -- no checksum on a fetched module
+### 9. Code from outside is not verified -- no checksum on a fetched module
 
 **Nothing crosses the wire today**, which is why this is a goal rather than a
 live hole: the thirteen modules this build has no other way to reach are bundled
@@ -773,7 +741,7 @@ wants that more than it wants either check.
 
 ---
 
-### 11. The type-major refactor
+### 10. The type-major refactor
 
 **The original complaint, and much the largest piece left.** One `t-*.c` per
 increment, bitset as the pilot.
@@ -785,7 +753,7 @@ enumerate every arm that needed work. That is what the action seam wants.
 
 ---
 
-### 12. The boot -- 343ms cold, 72ms warm
+### 11. The boot -- 343ms cold, 72ms warm
 
 **343ms for the first interpreter, 72ms once the JVM has settled.** A
 7900-test run pays the 72ms per class, and that is the floor rather than the
@@ -796,7 +764,7 @@ already in that allocation path, and it costs about 2ms of the 72.
 
 ---
 
-### 13. LLM-friendly MCP tools
+### 12. LLM-friendly MCP tools
 
 **The reader will only ever be an LLM, and that decides the design.** A model
 does not misunderstand, it infers confidently from training data that is mostly
