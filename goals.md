@@ -778,18 +778,9 @@ task. The open question beside `DoOfATaskAnswersTheTask` in spec/natives.allium
 says what it would take, and that a host service the caller has to grant is the
 shape the answer probably wants.
 
-**Five scheme names R3 registers and JEBOL does not.**
-
-```
-callback  clipboard  midi  serial  udp
-```
-
-`file`, `dir`, `checksum`, `crypt`, `system` and `bundled` are served now.
-`callback`, `clipboard`, `midi`, `serial` and `udp` are the ones left.
-
-Still unsettled, and older than the schemes: the command-line REPL grants only
-WINDOWS, so `read %README.md` answers `no-service` there. Whether that is the
-design or a gap in the CLI has never been decided.
+**The command-line REPL grants only WINDOWS**, so `read %README.md` answers
+`no-service` there. Whether that is the design or a gap in the CLI has never
+been decided. It is older than the scheme work above and is not part of it.
 
 **Four fields of `access-os` answer `not-here`** -- `uid`, `euid`, `gid`,
 `egid` -- where a real Rebol answers a number. The JVM has no portable way to
@@ -890,7 +881,7 @@ path, VID, Android, and the events-name-the-wrong-window one.
 
 ---
 
-### 9. Code from outside is not authenticated -- the TLS client
+### 9. Check the certificate -- the TLS client authenticates nobody
 
 **Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
 failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
@@ -946,27 +937,68 @@ silently accepts any certificate is not a faithful port of a security decision,
 because Rebol did not decide this -- hand-rolled TLS is hard and this is what it
 looks like when it is not finished.
 
-Which leaves where the divergence goes, and that is the design question:
+Which leaves where the divergence goes. **Decided: a host port, refusing by
+default, checked in the domain.** The reasoning, and then the work.
 
-- **A host port, like `FilePort` and `NetworkPort`.** Validation is a host
-  concern -- the trust anchors belong to the machine, and the JDK already has
-  them in `cacerts`. A `CertificateAuthority` port the domain owns and the
-  adapter implements would fit the architecture exactly, and a host that
-  installs none gets the refusal rather than the hole.
-- **Where the protocol would call it.** Not by editing the vendored file. The
-  candidates are the `CRT` codec, which JEBOL could serve as a native that
-  validates as it decodes, or the crypto natives `rsa/verify` and
-  `ecdsa/verify` that the protocol already calls -- though neither is given the
-  hostname, which is half of what has to be checked.
-- **What a failure does.** Refusing the connection is the only answer that
-  helps. Anything that logs and continues is what is there now.
+**A port and not a native.** Trust anchors belong to the machine, not to the
+language. The JDK carries them in `cacerts` and `java.security` will build and
+check a chain without a single dependency, which is the same bargain every
+other host service here takes -- the domain owns the port, the adapter uses the
+JDK, and the jar stays dependency-free. It also makes the absence sayable: a
+host that installs no authority gets a refusal, not a hole.
 
-What is already built to work with: the `CRT` codec parses `issuer`,
-`valid-from`, `valid-to`, `subject`, `public-key` and `signature` out of a
-certificate, so the fields are in hand; `rsa/verify` and `ecdsa/verify` work;
-and `Check_Security(SYM_NET, POL_EXEC, ...)` in `p-net.c` means a host can
-already refuse the socket outright, which is the blunt mitigation until this is
-done.
+**Refusing by default, and the grant is what opens it.** The other services
+start closed and this one must too. A host that genuinely wants to reach a box
+with a self-signed certificate says so once, in the bounds, where somebody
+reviewing the deployment can see it -- rather than every `read https://` in
+every script being quietly unauthenticated.
+
+**Not by editing the vendored file.** `prot-tls.reb` is Rebol's and is loaded
+byte for byte; the hook is the `CRT` codec, which the protocol already calls to
+read the chain. JEBOL can serve that codec as a native that validates as it
+decodes, which puts the check on the one path every certificate already takes.
+
+#### What is already in hand
+
+- **The fields are parsed.** `codec-crt.reb` builds `version`,
+  `serial-number`, `fingerprint`, `algorithm`, `issuer`, `valid-from`,
+  `valid-to`, `subject`, `public-key`, `issuer-id`, `subject-id`, `extensions`
+  and `signature` out of a DER certificate, and `decode 'crt` answers on a real
+  one from `raw.githubusercontent.com`.
+- **The signature primitives work.** `rsa/verify` and `ecdsa/verify` are here
+  and the eight elliptic curves a modern JDK dropped are served.
+- **The blunt mitigation exists meanwhile.** A host that grants no NETWORK
+  cannot open the socket at all.
+
+#### The work
+
+1. **A `CertificateAuthority` port**, owned by the domain: given a chain and a
+   hostname, it answers trusted or names why not -- expired, not yet valid,
+   wrong host, no path to an anchor, bad signature. One adapter over
+   `java.security.cert.CertPathValidator` and the JDK's default trust store;
+   one null adapter that refuses everything, which is what an ungranted host
+   gets.
+2. **A grant beside the others**, so `Bounds.standard()` refuses an
+   unauthenticated connection and a host opts out deliberately rather than by
+   default.
+3. **The hostname check**, which is the half nobody gets from a chain
+   validator for free: match the subject alternative names against the host the
+   URL asked for, wildcards included. `wrong.host.badssl.com` is the test that
+   fails until this exists.
+4. **Refuse rather than log.** The failure must end the handshake. Anything
+   that logs and carries on is what is there now.
+5. **A test against badssl.com for each refusal**, plus one good host that must
+   still read, plus the same four put to `./r3-head` so the divergence stays
+   measured rather than assumed. **They reach the network**, so they belong
+   with `thru-cache-test.r3` in whatever the answer to that turns out to be --
+   see the note at the top of this file about the gate reaching the internet.
+
+#### What to check before starting
+
+Rebol's own suite must still pass. Nothing in it reads a bad certificate
+today, but `thru-cache-test.r3` reads two real hosts over HTTPS and those must
+keep working with validation switched on -- which is also the cheapest proof
+that the good path is not broken by the check.
 
 **Until it is done, say so where it matters.** `read https://` reads as a
 secure operation and is not one. A host embedding this and reaching anything it
