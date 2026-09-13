@@ -5434,6 +5434,7 @@ public final class Natives {
                         refuseAClosedPosition(port);
                         yield IntegerValue.of(SeekableFilePort.positionOf(port) + 1);
                     }
+                    case GobValue gob -> IntegerValue.of(gob.positionCountedAsUnsigned());
                     case SeriesValue series -> IntegerValue.of(series.index());
                     default -> raiseCannotUse(arguments.get(0), "index?");
                 });
@@ -5565,7 +5566,9 @@ public final class Natives {
                         return raiseCannotUse(arguments.get(0), "skip");
                     }
                     long by = positionAskedFor(series, arguments.get(1), false);
-                    return series.atIndex(clampToSeries(series, series.index() + by));
+                    return series instanceof GobValue gob
+                            ? gob.atIndex((int) (gob.index() + by))
+                            : series.atIndex(clampToSeries(series, series.index() + by));
                 });
 
         define("at", List.of(
@@ -5756,7 +5759,7 @@ public final class Natives {
                             addPairsToMap(map, arguments, refinements, "insert");
                     case GobValue gob -> {
                         refuseUnfinishedRefinements(refinements, "insert");
-                        insertChildren(gob, gob.index(), arguments.get(1));
+                        insertChildren(gob, gob.positionWithinThePane(), arguments.get(1));
                         yield gob;
                     }
                     case VectorValue strandedVector -> {
@@ -7858,7 +7861,7 @@ public final class Natives {
                 }
             }
             case ImageValue image -> insertPixels(image, value);
-            case GobValue gob -> insertChildren(gob, gob.index(), value);
+            case GobValue gob -> insertChildren(gob, gob.positionWithinThePane(), value);
             case VectorValue vector -> {
                 List<Value> numbers = numbersContributedTo(vector.kind(), value);
                 for (int at = numbers.size(); at > 0; at--) {

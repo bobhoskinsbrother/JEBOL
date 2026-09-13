@@ -11289,6 +11289,46 @@ rule FirstPlusAtTheTailAnswersNoneAndStaysPut {
     ensures: the_word_now_names(where_it_already_was)
 }
 
+-- A gob's position is an unsigned count of its children, and nothing clamps
+-- it. Every other series stops at its head when you step back past it; a gob
+-- wraps round.
+--
+-- `VAL_GOB_INDEX` is a `REBCNT`, and no arm of the C guards the arithmetic, so
+-- stepping back one from the head gives the largest number the field holds.
+-- INDEX? adds one in the same width, which is why the answers read oddly and
+-- consistently:
+--
+--     index? skip g -2   ->  4294967295
+--     index? skip g -1   ->  0
+--     index? g           ->  1
+--     index? skip g 5    ->  6      (on a gob with three children)
+--
+-- The arms that then read or write a child clamp the position to the pane, and
+-- a wrapped position is a huge number rather than a small one, so it clamps to
+-- the TAIL and not to the head. That is the whole of why `move g -1` works: it
+-- is `take/part` and then `insert` at `skip g -1`, so the child taken off the
+-- front goes on the back.
+--
+-- Reproduced rather than corrected. It is arithmetic a script can see, Rebol's
+-- own gob-test asserts the arrangement `move` leaves, and an implementation
+-- that clamped at the head instead would answer a different pane for the same
+-- two lines.
+rule AGobsPositionIsAnUnsignedCountThatWrapsRatherThanClamping {
+    when: EvaluateCall(skip, subject, offset)
+    requires: is_gob(subject)
+
+    ensures: the_position_becomes(subject.position + offset)
+    ensures: not clamped_to(the_head_or_the_tail)
+}
+
+rule AWrappedGobPositionReachesTheTail {
+    when: a_child_is_read_or_written_at(the_position_of(subject))
+    requires: is_gob(subject)
+    requires: the_position_of(subject) > the_number_of_children(subject)
+
+    ensures: the_position_used = one_past_the_last_child(subject)
+}
+
 -- LAST takes a series, a tuple or a gob, and nothing else: its declaration is
 -- `value [series! tuple! gob!]`. A tuple answers its last written part, so
 -- `last 1.2.3` is 3 and `last 1.2.3.0` is the nought that was written rather

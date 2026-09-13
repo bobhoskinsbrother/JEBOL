@@ -5897,3 +5897,30 @@ splitting -- the machinery that makes `word<tag>` two values -- override it.
 one of the five characters Java's regex counts as ending a line. The pattern
 needs DOTALL; nothing else about the character is unusual, and `Lex_Map` makes
 everything from 0x80 up an ordinary word character.
+
+## 207. A gob's position is an unsigned count, and stepping back past the head wraps
+
+Every other series stops at its head. `VAL_GOB_INDEX` is a `REBCNT` and no arm
+of the C guards the arithmetic, so a gob's position runs off both ends:
+
+    >> g: make gob! []  append g make gob! 1x1   ; three children
+    >> index? skip g -2
+    == 4294967295
+    >> index? skip g -1
+    == 0
+    >> index? skip g 5
+    == 6
+
+INDEX? adds one in the same width, which is why stepping back one answers zero
+rather than the largest number: the wrap happens twice.
+
+**The arms that then read or write a child clamp to the pane, and a wrapped
+position is a huge number rather than a small one, so it clamps to the TAIL.**
+That is the whole of why MOVE works backwards. MOVE is `take/part source
+length` and then `insert (skip source offset) part`, so `move g -1` takes the
+child off the front and inserts it at a position that resolves to the back.
+
+Reproduced rather than corrected. Rebol's own gob-test asserts the arrangement
+MOVE leaves, and an implementation that clamped at the head -- which is what a
+series does and what JEBOL did -- answers a different pane for the same two
+lines.
