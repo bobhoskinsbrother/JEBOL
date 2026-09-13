@@ -1084,13 +1084,16 @@ public final class Natives {
 
         define("and~", takesCombinable("value1", "value2"),
                 (arguments, evaluator, context) ->
-                        combined(arguments.get(0), arguments.get(1), Bitwise.AND));
+                        Combining.bitwise(arguments.get(0), arguments.get(1),
+                                Combining.Bitwise.AND));
         define("or~", takesCombinable("value1", "value2"),
                 (arguments, evaluator, context) ->
-                        combined(arguments.get(0), arguments.get(1), Bitwise.OR));
+                        Combining.bitwise(arguments.get(0), arguments.get(1),
+                                Combining.Bitwise.OR));
         define("xor~", takesCombinable("value1", "value2"),
                 (arguments, evaluator, context) ->
-                        combined(arguments.get(0), arguments.get(1), Bitwise.XOR));
+                        Combining.bitwise(arguments.get(0), arguments.get(1),
+                                Combining.Bitwise.XOR));
 
         define("lerp", List.of(Parameter.required("value1"),
                         Parameter.required("value2"), Parameter.required("fraction")),
@@ -1124,8 +1127,6 @@ public final class Natives {
                 (arguments, evaluator, context) -> shifted(arguments, false));
 
     }
-
-    private enum Bitwise { AND, OR, XOR }
 
     private void defineRadianFunction(String name, java.util.function.DoubleUnaryOperator work) {
         define(name, List.of(Parameter.required("value", Set.of(Datatype.DECIMAL))),
@@ -1272,66 +1273,6 @@ public final class Natives {
         return wantingLarger ? Math.max(left, right) : Math.min(left, right);
     }
 
-    private static Value combined(Value left, Value right, Bitwise operation) {
-        if (VectorMath.isVectorArithmetic(left, right)) {
-            if (!(left instanceof VectorValue)) {
-                throw Arithmetic.notRelated(left, right);
-            }
-            return VectorMath.done(left, right, switch (operation) {
-                case AND -> VectorMath.Operation.AND;
-                case OR -> VectorMath.Operation.OR;
-                case XOR -> VectorMath.Operation.XOR;
-            });
-        }
-        if (left instanceof LogicValue leftTruth && right instanceof LogicValue rightTruth) {
-            boolean ours = leftTruth.isTruthy();
-            boolean theirs = rightTruth.isTruthy();
-            return LogicValue.of(switch (operation) {
-                case AND -> ours && theirs;
-                case OR -> ours || theirs;
-                case XOR -> ours ^ theirs;
-            });
-        }
-        if (left instanceof PairValue leftPair) {
-            return PairValue.of(
-                    combinedBits(roundedHalfUp(leftPair.x()),
-                            roundedHalfUp(Arithmetic.firstHalfOf(right)), operation),
-                    combinedBits(roundedHalfUp(leftPair.y()),
-                            roundedHalfUp(Arithmetic.secondHalfOf(right)), operation));
-        }
-        if (left instanceof TupleValue) {
-            return tupleCombined(left, right, operation);
-        }
-        if (left instanceof BinaryValue first && right instanceof BinaryValue second) {
-            return combinedOctets(first, second, operation);
-        }
-        return IntegerValue.of(combinedBits(
-                wholeNumberOf(left, "and"), wholeNumberOf(right, "and"), operation));
-    }
-
-    private static Value combinedOctets(
-            BinaryValue left, BinaryValue right, Bitwise operation) {
-
-        BinaryValue longer = left.lengthFromHere() >= right.lengthFromHere() ? left : right;
-        BinaryValue shorter = longer == left ? right : left;
-        int cycle = shorter.lengthFromHere();
-        int[] combined = new int[longer.lengthFromHere()];
-        for (int at = 0; at < combined.length; at++) {
-            int theirs = cycle == 0 ? 0 : shorter.storage().at(shorter.index() + at % cycle);
-            combined[at] = (int) combinedBits(
-                    longer.storage().at(longer.index() + at), theirs, operation) & 0xFF;
-        }
-        return BinaryValue.of(combined);
-    }
-
-    private static long combinedBits(long left, long right, Bitwise operation) {
-        return switch (operation) {
-            case AND -> left & right;
-            case OR -> left | right;
-            case XOR -> left ^ right;
-        };
-    }
-
     private int aValidCodepointUpTo(int limit) {
         while (true) {
             int picked = 1 + randomness.below(limit);
@@ -1472,11 +1413,6 @@ public final class Natives {
 
     private static final int MONTHS_A_YEAR = 12;
     private static final int LONGEST_MONTH = 31;
-
-    private static Value tupleCombined(Value left, Value right, Bitwise operation) {
-        return Arithmetic.octetByOctet(left, right, (octet, against, fractional) ->
-                combinedBits(octet, (long) against, operation));
-    }
 
     private static Value interpolated(Value from, Value to, Value fraction) {
         double walked = Math.max(0, Math.min(1, Comparison.asDouble(fraction)));
@@ -3929,7 +3865,8 @@ public final class Natives {
                     if (arguments.get(0) instanceof TypesetValue
                             || arguments.get(0) instanceof BitsetValue
                             || arguments.get(0) instanceof MapValue) {
-                        return combined(arguments, Combination.DIFFERENCE,
+                        return Combining.sets(arguments.get(0), arguments.get(1),
+                                Combining.Sets.DIFFERENCE,
                                 refinements.contains("case"), 1);
                     }
                     if (arguments.get(0) instanceof DateValue from
@@ -3941,7 +3878,8 @@ public final class Natives {
                     int stride = width instanceof IntegerValue wanted
                             ? (int) Math.max(1, wanted.magnitude())
                             : 1;
-                    return combined(arguments, Combination.DIFFERENCE,
+                    return Combining.sets(arguments.get(0), arguments.get(1),
+                            Combining.Sets.DIFFERENCE,
                             refinements.contains("case"), stride);
                 });
 
@@ -5573,9 +5511,9 @@ public final class Natives {
                                     || series instanceof BinaryValue);
                 });
 
-        defineSetOperation("intersect", Combination.INTERSECT);
-        defineSetOperation("union", Combination.UNION);
-        defineSetOperation("exclude", Combination.EXCLUDE);
+        defineSetOperation("intersect", Combining.Sets.INTERSECT);
+        defineSetOperation("union", Combining.Sets.UNION);
+        defineSetOperation("exclude", Combining.Sets.EXCLUDE);
         define("unique", List.of(
                         Parameter.required("set1", Set.of(
                                 Datatype.BLOCK, Datatype.STRING, Datatype.BITSET,
@@ -5588,9 +5526,9 @@ public final class Natives {
                     int stride = width instanceof IntegerValue wanted
                             ? (int) Math.max(1, wanted.magnitude())
                             : 1;
-                    return combined(
-                            List.of(arguments.getFirst(), arguments.getFirst()),
-                            Combination.UNION, refinements.contains("case"), stride);
+                    return Combining.sets(
+                            arguments.getFirst(), arguments.getFirst(),
+                            Combining.Sets.UNION, refinements.contains("case"), stride);
                 });
 
         define("fourth", List.of(Parameter.required("series")),
@@ -6285,10 +6223,6 @@ public final class Natives {
             return true;
         }
         return matches(items.get(at), wanted, refinements.contains("case"));
-    }
-
-    private static List<Value> itemsBeforeHere(SeriesValue series) {
-        return itemsOf(series.head()).subList(0, series.index() - 1);
     }
 
     private record Wildcards(char anyRun, char oneCharacter) {
@@ -7611,7 +7545,7 @@ public final class Natives {
             Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
             Datatype.HASH);
 
-    private void defineSetOperation(String name, Combination how) {
+    private void defineSetOperation(String name, Combining.Sets how) {
         define(name, List.of(
                         Parameter.required("first", setOperandOr(Datatype.BLOCK)),
                         Parameter.required("second", setOperandOr(Datatype.BLOCK)),
@@ -7619,28 +7553,9 @@ public final class Natives {
                 Set.of("case", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     Value width = argumentFor("skip", List.of("skip"), arguments, refinements, 2);
-                    return combined(arguments, how, refinements.contains("case"),
-                            recordWidthOf(width));
+                    return Combining.sets(arguments.get(0), arguments.get(1), how,
+                            refinements.contains("case"), recordWidthOf(width));
                 });
-    }
-
-    private static List<Value> theMembersOf(Value series) {
-        if (series instanceof StringValue text) {
-            return text.text().codePoints()
-                    .mapToObj(letter -> (Value) CharacterValue.of(letter))
-                    .toList();
-        }
-        return ((BlockValue) series).remaining();
-    }
-
-    private static Value shapedLike(Value original, List<Value> members) {
-        if (!(original instanceof StringValue text)) {
-            return BlockValue.block(members);
-        }
-        StringBuilder written = new StringBuilder();
-        members.forEach(member -> written.appendCodePoint(
-                ((CharacterValue) member).codepoint()));
-        return StringValue.of(written.toString(), text.datatype());
     }
 
     private static int recordWidthOf(Value width) {
@@ -8811,120 +8726,6 @@ public final class Natives {
         return new ImageValue(into, 1);
     }
 
-    private enum Combination { INTERSECT, UNION, EXCLUDE, DIFFERENCE }
-
-    private static Value combinedText(
-            Value left, Value right, Combination how, boolean mindingCase, int stride) {
-
-        List<Value> ours = charactersOf(left);
-        List<Value> theirs = charactersOf(right);
-        List<List<Value>> first = inRecords(ours, stride);
-        List<List<Value>> second = inRecords(theirs, stride);
-        StringBuilder kept = new StringBuilder();
-        List<List<Value>> keptRecords = new ArrayList<>();
-        for (List<Value> candidate : first) {
-            boolean inSecond = second.stream()
-                    .anyMatch(other -> sameRecord(other, candidate, mindingCase));
-            boolean wanted = how == Combination.UNION || how == Combination.DIFFERENCE
-                    ? !inSecond || how == Combination.UNION
-                    : how == Combination.INTERSECT == inSecond;
-            if (wanted && keptRecords.stream()
-                    .noneMatch(already -> sameRecord(already, candidate, mindingCase))) {
-                keptRecords.add(candidate);
-            }
-        }
-        if (how == Combination.UNION || how == Combination.DIFFERENCE) {
-            for (List<Value> candidate : second) {
-                boolean inFirst = first.stream()
-                        .anyMatch(other -> sameRecord(other, candidate, mindingCase));
-                if ((how == Combination.UNION || !inFirst) && keptRecords.stream()
-                        .noneMatch(already -> sameRecord(already, candidate, mindingCase))) {
-                    keptRecords.add(candidate);
-                }
-            }
-        }
-        keptRecords.stream().flatMap(List::stream).forEach(item ->
-                kept.appendCodePoint(((CharacterValue) item).codepoint()));
-        Datatype datatype = left instanceof StringValue text
-                ? text.datatype()
-                : Datatype.STRING;
-        return StringValue.of(kept.toString(), datatype);
-    }
-
-    private static List<Value> charactersOf(Value value) {
-        if (!(value instanceof StringValue text)) {
-            return value instanceof BlockValue block ? block.remaining() : List.of(value);
-        }
-        return text.text().codePoints()
-                .<Value>mapToObj(CharacterValue::of)
-                .toList();
-    }
-
-    private static Value combinedMaps(
-            Value left, Value right, Combination how, boolean mindingCase) {
-
-        MapValue ours = left instanceof MapValue map ? map : MapValue.empty();
-        MapValue theirs = right instanceof MapValue map ? map : MapValue.empty();
-        MapValue kept = MapValue.empty();
-        for (Value key : ours.keys()) {
-            boolean inTheirs = theirs.holds(key, mindingCase);
-            boolean wanted = switch (how) {
-                case INTERSECT -> inTheirs;
-                case UNION -> true;
-                case EXCLUDE, DIFFERENCE -> !inTheirs;
-            };
-            if (wanted && aKeyAlreadyKeptIsLeftAsItWas(kept, key, mindingCase)) {
-                kept.put(key, ours.select(key, mindingCase), mindingCase);
-            }
-        }
-        if (how == Combination.UNION || how == Combination.DIFFERENCE) {
-            for (Value key : theirs.keys()) {
-                boolean inOurs = ours.holds(key, mindingCase);
-                if ((how == Combination.UNION || !inOurs)
-                        && !kept.holds(key, mindingCase)) {
-                    kept.put(key, theirs.select(key, mindingCase), mindingCase);
-                }
-            }
-        }
-        return kept;
-    }
-
-    private static Value combinedTypesets(
-            TypesetValue ours, TypesetValue theirs, Combination how) {
-
-        Set<Datatype> mine = ours.members();
-        Set<Datatype> yours = theirs.members();
-        Set<Datatype> result = EnumSet.noneOf(Datatype.class);
-        for (Datatype each : Datatype.values()) {
-            boolean inMine = mine.contains(each);
-            boolean inYours = yours.contains(each);
-            boolean kept = switch (how) {
-                case UNION -> inMine || inYours;
-                case INTERSECT -> inMine && inYours;
-                case DIFFERENCE -> inMine ^ inYours;
-                case EXCLUDE -> inMine && !inYours;
-            };
-            if (kept) {
-                result.add(each);
-            }
-        }
-        return TypesetValue.of(Set.copyOf(result));
-    }
-
-    private static Set<Datatype> complementableDatatypes() {
-        return Set.of(Datatype.LOGIC, Datatype.INTEGER, Datatype.TUPLE,
-                Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET);
-    }
-
-    private static boolean aKeyAlreadyKeptIsLeftAsItWas(
-            MapValue kept, Value key, boolean mindingCase) {
-        return !kept.holds(key, mindingCase);
-    }
-
-    private static boolean theSecondSetContributesAsWell(Combination how) {
-        return how == Combination.UNION || how == Combination.DIFFERENCE;
-    }
-
     private static Set<Datatype> setOperandOr(Datatype... alsoAccepted) {
         Set<Datatype> accepted = EnumSet.of(
                 Datatype.BITSET, Datatype.TYPESET, Datatype.STRING, Datatype.MAP);
@@ -8936,108 +8737,6 @@ public final class Natives {
         Set<Datatype> rest = EnumSet.allOf(Datatype.class);
         rest.removeAll(members.members());
         return TypesetValue.of(Set.copyOf(rest));
-    }
-
-    private static BitsetValue complementOf(BitsetValue members) {
-        byte[] held = members.octets();
-        byte[] rest = new byte[Math.max(held.length, 32)];
-        for (int at = 0; at < rest.length; at++) {
-            rest[at] = (byte) ~(at < held.length ? held[at] : 0);
-        }
-        return BitsetValue.of(rest);
-    }
-
-    private static BitsetValue combinedBitsets(
-            BitsetValue ours, BitsetValue theirs, Combination how) {
-        byte[] left = ours.octets();
-        byte[] right = theirs.octets();
-        byte[] both = new byte[Math.max(left.length, right.length)];
-        for (int at = 0; at < both.length; at++) {
-            int mine = at < left.length ? left[at] & 0xFF : 0;
-            int yours = at < right.length ? right[at] & 0xFF : 0;
-            both[at] = (byte) switch (how) {
-                case UNION -> mine | yours;
-                case INTERSECT -> mine & yours;
-                case EXCLUDE -> mine & ~yours;
-                case DIFFERENCE -> mine ^ yours;
-            };
-        }
-        return BitsetValue.of(both);
-    }
-
-    private static Value combined(List<Value> arguments, Combination how) {
-        return combined(arguments, how, false, 1);
-    }
-
-    private static Value combined(
-            List<Value> arguments, Combination how, boolean mindingCase, int stride) {
-        if (arguments.get(0) instanceof BitsetValue ours
-                && arguments.get(1) instanceof BitsetValue theirs) {
-            return combinedBitsets(ours, theirs, how);
-        }
-        if (arguments.get(0) instanceof TypesetValue oursByType
-                && arguments.get(1) instanceof TypesetValue theirsByType) {
-            return combinedTypesets(oursByType, theirsByType, how);
-        }
-        if (arguments.get(0) instanceof StringValue || arguments.get(1) instanceof StringValue) {
-            return combinedText(arguments.get(0), arguments.get(1), how,
-                    mindingCase, stride);
-        }
-        if (arguments.get(0) instanceof MapValue || arguments.get(1) instanceof MapValue) {
-            return combinedMaps(arguments.get(0), arguments.get(1), how, mindingCase);
-        }
-        if (!(arguments.get(0) instanceof BlockValue)
-                || !(arguments.get(1) instanceof BlockValue)) {
-            return raiseCannotUse(arguments.get(0) instanceof BlockValue
-                    ? arguments.get(1) : arguments.get(0), "a set operation");
-        }
-        List<List<Value>> first = inRecords(((BlockValue) arguments.get(0)).remaining(), stride);
-        List<List<Value>> second = inRecords(((BlockValue) arguments.get(1)).remaining(), stride);
-        List<List<Value>> result = new ArrayList<>();
-
-        for (List<Value> candidate : first) {
-            boolean inSecond = second.stream()
-                    .anyMatch(other -> sameRecord(other, candidate, mindingCase));
-            boolean wanted = switch (how) {
-                case INTERSECT -> inSecond;
-                case UNION, EXCLUDE, DIFFERENCE ->
-                        how == Combination.UNION || !inSecond;
-            };
-            if (wanted && result.stream()
-                    .noneMatch(kept -> sameRecord(kept, candidate, mindingCase))) {
-                result.add(candidate);
-            }
-        }
-        if (theSecondSetContributesAsWell(how)) {
-            for (List<Value> candidate : second) {
-                boolean inFirst = first.stream()
-                        .anyMatch(other -> sameRecord(other, candidate, mindingCase));
-                if ((how == Combination.UNION || !inFirst) && result.stream()
-                        .noneMatch(kept -> sameRecord(kept, candidate, mindingCase))) {
-                    result.add(candidate);
-                }
-            }
-        }
-        return BlockValue.block(result.stream().flatMap(List::stream).toList());
-    }
-
-    private static List<List<Value>> inRecords(List<Value> items, int stride) {
-        List<List<Value>> records = new ArrayList<>();
-        for (int at = 0; at < items.size(); at += stride) {
-            records.add(items.subList(at, Math.min(at + stride, items.size())));
-        }
-        return records;
-    }
-
-    private static boolean sameRecord(
-            List<Value> ours, List<Value> theirs, boolean mindingCase) {
-
-        if (ours.isEmpty() || theirs.isEmpty()) {
-            return ours.isEmpty() && theirs.isEmpty();
-        }
-        return mindingCase
-                ? Comparison.identicallyEqual(ours.getFirst(), theirs.getFirst())
-                : Comparison.looselyEqual(ours.getFirst(), theirs.getFirst());
     }
 
     private static double roundedBy(double value, Set<String> refinements) {

@@ -6,28 +6,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Binds the words in a block to a context.
- *
- * <p>Separate from reading, because a word's binding is not a property of how
- * it was written. TRANSCODE hands back unbound words and this decides what
- * they mean, which is what lets a caller build code as data and choose a
- * context afterwards.
- *
- * <p>Words the context does not know are left unbound rather than given a
- * slot holding unset. An unbound word and a word bound to an unset slot report
- * different errors, and the difference is worth keeping.
- *
- * <p>A word is bound to whichever context actually holds its slot, not to the
- * one it was bound through. Binding a block into a short-lived inner scope
- * must not make its outer words look as though they live in that scope.
- */
+
 public final class Binder {
 
     private Binder() {
     }
 
-    /** A copy of the block with its words bound, recursively. */
     public static BlockValue bind(BlockValue block, Context context) {
         List<Value> bound = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
@@ -41,18 +25,6 @@ public final class Binder {
         return new BlockValue(bound, 1, older.datatype());
     }
 
-    /**
-     * The same block, with its own words bound where they stand.
-     *
-     * <p>{@code Bind_Block(frame, VAL_BLK(word), BIND_DEEP)} and then
-     * {@code return R_ARG2}: Rebol binds the caller's block and answers that
-     * block, thus the caller's block is bound afterwards. IN's special form
-     * depends on it, because `b: [a]  in o b  do b` reads the object's field.
-     *
-     * <p>{@link #bind} copies instead, which is right everywhere else: binding
-     * a body the caller still holds would change code the caller wrote. Only
-     * IN asks for the other behavior, and it asks for it on purpose.
-     */
     public static BlockValue bindInPlace(BlockValue block, Context context) {
         for (int at = 0; at < block.lengthFromHere(); at++) {
             int where = block.index() + at;
@@ -66,38 +38,12 @@ public final class Binder {
         return block;
     }
 
-    /**
-     * The block with the target's own words bound, in place, and nothing else
-     * touched.
-     *
-     * <p>What BIND and WITH do. {@code Bind_Block(frame, BLK_HEAD(body),
-     * BIND_DEEP)} looks each word up in one frame, and a word it does not find
-     * keeps the binding it was written with -- the C has nowhere else to look,
-     * because an object's frame has no parent to walk.
-     *
-     * <p>{@link #bind} does have somewhere else to look and is right to use
-     * it: JEBOL hangs every context beneath the library where the C keeps one
-     * flat frame, so resolving freshly read source means walking up. The two
-     * are different operations that happened to share a name, and the
-     * difference only shows when a word exists in two places at once -- a
-     * module that shadows a library function being the case that matters, and
-     * the case Rebol's own TLS is built on.
-     */
     public static BlockValue bindWhatTheTargetHoldsItself(
             BlockValue block, Context target) {
 
         return bindWhatTheTargetHoldsItself(block, target, ALL_THE_WAY_DOWN);
     }
 
-    /**
-     * The same, going only as far down as the caller asked.
-     *
-     * <p>BIND/ONLY is the shallow one. {@code flags = D_REF(4) ? 0 :
-     * BIND_DEEP} is the first line of the C's BIND, so the refinement takes
-     * the deep flag away and the loop's {@code ANY_BLOCK_OR_MAP} arm never
-     * runs: a block or a map standing in the block is stepped over rather
-     * than walked into.
-     */
     public static BlockValue bindWhatTheTargetHoldsItself(
             BlockValue block, Context target, boolean deeply) {
 
@@ -119,22 +65,12 @@ public final class Binder {
 
     public static final boolean THE_TOP_LEVEL_ONLY = false;
 
-    /**
-     * The same, into a copy, which is what BIND/COPY answers.
-     *
-     * <p>{@code Copy_Block_Deep} before the bind in the C, so the block the
-     * caller still holds is untouched all the way down. The copy is deep
-     * whatever the depth of the binding: /COPY says which series the caller
-     * gets back and /ONLY says how far the binding reaches into it, and the C
-     * takes them in that order.
-     */
     public static BlockValue bindACopyOfWhatTheTargetHoldsItself(
             BlockValue block, Context target) {
 
         return bindACopyOfWhatTheTargetHoldsItself(block, target, ALL_THE_WAY_DOWN);
     }
 
-    /** The same again, binding only as far down as the caller asked. */
     public static BlockValue bindACopyOfWhatTheTargetHoldsItself(
             BlockValue block, Context target, boolean deeply) {
 
@@ -165,21 +101,6 @@ public final class Binder {
         };
     }
 
-    /**
-     * Binds only the names given, leaving every other word as it stands.
-     *
-     * <p>{@code Bind_Relative} in the C, and the difference from {@link #bind}
-     * is the whole of REBOL's binding model: a function body is bound to its
-     * own arguments and locals, and every other word keeps the binding it
-     * already had from wherever the body was written.
-     *
-     * <p>Rebinding everything instead is subtly wrong and hard to see. FUNC is
-     * itself a REBOL function, so {@code make function!} runs inside FUNC's
-     * frame; a body rebound through that chain resolves its free words in the
-     * library rather than where they were written. Rebol's own COLLECT is
-     * exactly that shape -- it builds its KEEP function inside itself and
-     * KEEP writes to COLLECT's own OUTPUT -- and OUTPUT came out none.
-     */
     public static BlockValue bindOnly(
             BlockValue block, Context context, Set<String> names) {
 
@@ -190,17 +111,6 @@ public final class Binder {
         return laidOutLike(block, new BlockStorage(bound));
     }
 
-    /**
-     * The same names bound, in the block itself rather than in a copy.
-     *
-     * <p>What {@code make function!} does to a body: the words the spec
-     * declares are given their binding once, where they are, and the block
-     * the caller kept a name for is the block that was bound.
-     *
-     * <p>A block that holds itself is walked once. Binding in place turns
-     * "the caller wrote something odd" into a stack overflow that copying
-     * never reached.
-     */
     public static void bindEachInPlace(
             BlockValue block, Context context, Set<String> names) {
 
@@ -231,20 +141,6 @@ public final class Binder {
         }
     }
 
-    /**
-     * A copy of the block with every word that named the function rebound to
-     * one call's frame.
-     *
-     * <p>What a closure does instead of being lent a frame. Its frame outlives
-     * the call that made it -- that is the whole of the datatype -- so its
-     * words cannot point at a context that is handed back, and each call gets
-     * a body of its own.
-     *
-     * <p>By binding rather than by name, which is the difference that matters.
-     * A word put into the body after the closure was made never named the
-     * function, so it is left alone and reads the global of its name, exactly
-     * as it does in a plain function.
-     */
     public static BlockValue rebindWhatNamedTheFunction(
             BlockValue block, Context from, Context to) {
 
@@ -319,20 +215,6 @@ public final class Binder {
         };
     }
 
-    /**
-     * The same, but a word the context does not know gets a slot rather
-     * than staying unbound.
-     *
-     * <p>{@code BIND_ALL} in the C, and {@code Do_String} uses it for
-     * every piece of source that arrives at run time. Without it nothing
-     * loaded at run time can name anything new: {@code do "total: 1"}
-     * fails on TOTAL, because the word was not in the text the
-     * interpreter was started with and so was never given a slot.
-     *
-     * <p>The new slot holds unset until something assigns to it. That is
-     * what changes a mistyped word from "not defined" to "has no value",
-     * which is the answer a real R3 gives for the same typo.
-     */
     public static BlockValue bindAndDefine(BlockValue block, Context context) {
         for (Value item : block.remaining()) {
             defineWordsIn(item, context);
