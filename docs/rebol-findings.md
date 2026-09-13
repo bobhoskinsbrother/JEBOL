@@ -6025,3 +6025,96 @@ Rebol answers a task, which is both a different behaviour and a worse one. The
 open question beside `DoOfATaskAnswersTheTask` says what a real answer would
 need: a host service the caller grants, the way the filesystem and the
 processes are, so that the absence is sayable rather than silent.
+
+## 211. MAKE on a built-in derives a new specification, and the name is the wrong thing to look one up by
+
+`make :tail? [[{Doc} series [series! none!]]]` is how Rebol's own library
+widens a built-in's declared types without rewriting it, and `mezz-series.reb`
+uses it for exactly that:
+
+    empty?: make :tail? [
+        [
+            {Returns TRUE if empty or NONE, or for series if index is at or beyond its tail.}
+            series [series! object! gob! port! bitset! typeset! map! none!]
+        ]
+    ]
+
+So EMPTY? *is* TAIL?, with `object!` and `none!` added and a docstring of its
+own. The derived value is a different value -- `same?` answers false -- and the
+types are checked as well as documented: a built-in derived with a narrower
+list refuses an argument the original would have taken.
+
+    >> d: make :tail? [[{Doc} series [block!]]]
+    >> d "text"
+    ** expect-arg                 ; where tail? "text" answers false
+
+**Where JEBOL went wrong is worth keeping**, because the shape of the mistake
+will recur. A built-in's declaration is not carried on the value; it is looked
+up by the built-in's name, out of the declarations vendored from Rebol's own
+boot files. A derived built-in carries the *original's* name, so the lookup
+found the original's declaration, and EMPTY? advertised TAIL?'s narrow types
+while enforcing its own wide ones. Reflection and behaviour disagreed about the
+same function.
+
+Anything else that identifies a value by a key into a side table has the same
+hole in it. The fix is that a derived one carries its own specification and is
+asked for that first.
+
+**And the reason it went unnoticed for so long is the better half of the
+lesson.** `scripts/runtime-parity.py` compared the *length* of `spec-of`
+between the two interpreters. Both specifications had the same item count, so a
+widened type list and a rewritten docstring read as agreement. A measure that
+counts instead of comparing will agree with anything; it compares the text now,
+and the total was unmoved, which means the loose form had been hiding exactly
+one thing.
+
+## 212. DRAW is declared twice and implemented nowhere the build can reach
+
+`src/boot/draw.reb` declares 37 command words with their arguments and
+docstrings. `src/mezz/dial-draw.reb` declares the same commands again as the
+table DELECT actually reads. **The two do not agree, and the second is the one
+that decides.**
+
+Three words are documented in the first and absent from the second, so writing
+any of them makes the whole command fail to read -- in a real Rebol as much as
+here:
+
+| Written | What happens |
+| --- | --- |
+| `spline 20 opened ...` | `opened` is in no table; the command is skipped |
+| `image-filter nearest resize 1` | `resize` likewise |
+| `image-options`, `image-pattern` | whole commands with no table entry at all |
+
+`draw.reb` documents "OPENED or CLOSED" for SPLINE and ARC and
+"RESIZE(low, faster) or RESAMPLE(high, slower)" for IMAGE-FILTER. The C only
+ever tests for `DW_CLOSED` and `DW_RESAMPLE`, so the other half of each pair
+was decorative from the start.
+
+**And there is no implementation to port.** `make/rebol3.nest` lists
+`%core/n-draw.c` with the comment `;old source`, and that file does not exist
+in the checkout. `n-graphics.c` does exist, is excluded from the build for the
+same reason, and its `REBNATIVE(draw)` is five lines that call
+`OS_DRAW_IMAGE`. The only dispatcher in the tree is
+`src/os/win32/host-draw.c` -- 693 lines, Windows only, reading each command's
+arguments and calling an AGG that is not vendored.
+
+So `value? 'draw` is **false** on a Rebol built from this checkout, and so is
+`value? 'effect`. A stock 3.22.5 on macOS or Linux draws nothing at all, no
+assertion in the 10,133 mentions the dialect, and there is no picture anywhere
+to compare a port against. The arguments are recoverable from that Windows C;
+the pixels are recoverable from nothing.
+
+## 213. Three definitions of Do_Path, and only one of them is live
+
+`c-do.c` holds three functions called `Do_Path`. Rebol's build tool collects a
+function by the `*/` that closes the comment above it, so:
+
+    */	REBVAL *Do_Path(REBVAL **path_val, REBVAL *val)     <- live
+    x*/	REBVAL *Do_Path(REBVAL **ppath, REBSER *block, ...) <- skipped
+    xx*/	REBVAL *Do_Path(REBVAL **path_val, REBVAL *val)  <- skipped
+
+An `x` before the marker is how the build is told to leave a function out.
+Before spending an afternoon looking for an input that reaches a `Trap` line,
+check which of the three it is in: `bad-path` is raised only in the `xx*/` one
+and therefore never. `expect-type` is the same shape one file over --
+`Trap_Expect` in `c-error.c` has a single caller and it is commented out.

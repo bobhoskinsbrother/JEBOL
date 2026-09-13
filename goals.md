@@ -35,11 +35,15 @@ or in none. Every number below was checked on 2026-09-13 by running it.
 | `known-gaps.txt` | **1 fails**, and no work will retire it -- goal 1 below |
 | `fails-on-rebol-too.txt` | 162 a real 3.22.5 also fails or never runs |
 | `scripts/error-parity.py` | **114 of Rebol's 142 error ids can be raised, and every one of the 28 that cannot has a written reason.** It also reports the 4 ids JEBOL raises that Rebol does not name -- all four are the host-grant system and the browser view, which R3 has no equivalent of -- and that no id is filed under a category the catalogue disagrees with |
+| `corpus/` | 1,166 entries -- published REBOL examples with their published answers, plus fourteen whole programs that must load and survive a round trip through MOLD |
+| `dial-draw.reb` against `DrawDialect` | 34 of the 35 drawing commands the table declares are painted; `effect` is a dialect of its own and is not |
+| the shipped jar | about 1,730 KB and no dependencies |
 
-`./gradlew check` is 18,438 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 18,601 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception. `./gradlew browserCheck` is
 the second gate and is not optional; it renders the same paint list in Java2D
-and in a real Chrome and compares them pixel for pixel.
+and in a real Chrome and compares them -- exactly inside every shape, and to a
+stated allowance on the edges, where two rasterisers disagree by construction.
 
 **`port-test.r3` owns none of it.** It had 29 when the file ports were
 picked up: eighteen were real defects and have been fixed, and eleven turned
@@ -312,7 +316,7 @@ Rebol writes in REBOL.
 
 **Anything beyond it is an optional extension and a dependency the caller
 chooses.** A real PDF capability means a real PDF library, and the shipped jar
-has no dependencies at all -- about 1,700 KB of which the borrowed library and
+has no dependencies at all -- about 1,730 KB of which the borrowed library and
 the bundled modules are most of it, and nothing on the classpath that the JVM
 does not bring. That stays true. Somebody who wants more than the borrowed
 codec gives adds the library and a bridge to it themselves, and with neither
@@ -484,9 +488,17 @@ Rebol's `lib` holds. When it was first written it said:
     581 answer words-of differently
     430 answer a different spec-of length
 
-It now says 0 absent, 3, 4 and 4, and the same handful accounts for all eleven.
-Run it before and after a change here; it is the only thing that will tell you
-whether the change worked.
+It now says 0 absent, 3, 3 and 3, and the same three `request-*` functions
+account for all nine. Run it before and after a change here; it is the only
+thing that will tell you whether the change worked.
+
+**It asked for the wrong thing until 2026-09-14.** The fourth question was the
+*length* of `spec-of` rather than its text, so a built-in derived with a
+widened type list and a rewritten docstring read as identical -- which is
+exactly what `empty?` was, and why it advertised `tail?`'s narrow types for as
+long as it did. It compares the text now and the total did not move, so the
+loose form had been hiding one thing. A measure that counts instead of
+comparing will agree with anything.
 
 **What was wrong, and what it took.** Each of these has a
 `*FromTheSourceTest` beside it and every expectation was read off `./r3-head`:

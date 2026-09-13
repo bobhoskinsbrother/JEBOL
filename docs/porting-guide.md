@@ -40,7 +40,9 @@ two disagreed during the port, the C was right. The sources, in order:
 3. `src/core/*.c` -- the arms themselves. `t-*.c` for datatypes, `n-*.c` for
    natives, `c-do.c` for the evaluator, `l-scan.c` for the reader, `s-mold.c`
    for molding, `boot/errors.reb` for the error catalogue. The host is in
-   `src/os/` and matters for graphics: `host-window.c`, `host-draw.c`.
+   `src/os/` and matters for graphics: `host-window.c`, and `host-draw.c`,
+   which is Windows-only and the only DRAW dispatcher that exists -- the
+   renderer it calls is not vendored and `n-draw.c` is not in the tree at all.
 4. `src/tests/units/*.r3` -- Rebol's own tests, a third authority and the
    cheapest one: read them before writing a line.
 
@@ -48,6 +50,42 @@ two disagreed during the port, the C was right. The sources, in order:
 It settles what the C leaves ambiguous and it has killed a wrong reading every
 time it has been used. It is for *checking an expectation before writing it
 down*, not for deciding what the language is.
+
+**Two things it cannot do, and both have cost time.** It cannot answer for
+code the build leaves out -- it has no `draw` and no `effect` at all, so
+nothing in the DRAW dialect can be checked against it. And it cannot tell you
+that a line of C is unreachable; only reading the callers does that, and a
+function may be disabled outright by an `x` before the `*/` that closes its
+comment.
+
+### When the question is "can a script reach this line of C at all"
+
+Stop guessing inputs and watch the line. Copy `rebol3-source/` into the
+scratchpad, add a print where you want to know, build it with the compiler
+line `scripts/build-r3.sh` already uses, and run Rebol's own suite under it.
+**Never instrument `rebol3-source/` itself** -- it is the authority, and it is
+a symlink to somebody else's checkout.
+
+`Throw_Error` in `c-error.c` is the funnel every `Trap` passes through, so
+four lines there report every error the interpreter raises:
+
+    if (getenv("R3_TRACE_ERRNUM")) {
+        fprintf(stderr, "ERRNUM %d\n", (int)ERR_NUM(err));
+        fflush(stderr);
+    }
+
+An error's code is the category base plus the id's position within its
+category in `errors.reb` -- Throw 0, Note 100, Syntax 200, Script 300, Math
+400, Access 500, Command 600, User 800, Internal 900 -- so the numbers map
+back to ids. Rebol's whole suite run that way raises 67 distinct ids, which is
+the measurement that settled which of the catalogue's 142 are reachable at
+all.
+
+**"I tried several shapes and could not reach it" is not evidence.** Twice,
+an id written off that way turned out to be one line away: `no-memory` is
+`make block! 500000000`, and `bad-sys-func` needed the callers read rather
+than inputs guessed. A probe that fails early has measured the guard in front
+of the thing, not the thing.
 
 **Build it, do not download it, and `scripts/build-r3.sh` does that.**
 

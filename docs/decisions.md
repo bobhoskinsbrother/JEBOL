@@ -1031,3 +1031,61 @@ is half an emoji. Neither property is negotiable for a `string!`.
 **SHAPE is read directly rather than through DELECT**, because its arguments are
 all pairs and numbers in written order - ten commands, each with a relative form
 written as a lit-word. Specified in `spec/draw.allium`.
+
+## 24. Two renderers are held to the paint list exactly, and to each other only where it is physical
+
+**The paint list is the one representation, and it stays that way.** A DRAW
+block is read once into a list of instructions carrying absolute positions;
+Java2D executes it for a window and a canvas executes it for a page. Neither
+decides anything. That is why thirty-four commands cost one reader rather than
+two renderers' worth of dialect.
+
+**No SVG.** A DRAW block is a run of orders with state carried between them --
+set the pen, set the transform, draw, push, pop -- and Canvas 2D and Java2D are
+that same model, near enough one to one. SVG is a document you assemble, so
+`push` and `matrix` would become nested groups with transforms on them: a
+conversion that can be wrong, kept in step with two renderers that do not need
+it. It would also buy nothing for agreement, because a browser rasterises SVG
+with the engine it rasterises canvas with.
+
+**What no toolkit has is worked out in the domain**, and reaches both
+renderers as something they already draw identically. Gouraud shading becomes
+a mesh of flat triangles; a conic gradient becomes a fan of wedges; a diamond
+one becomes rings; a two-colour dash becomes two paths; a keyed image becomes
+a copy with a colour made see-through; a warped or scaled image becomes a
+resampled copy. The alternative -- each renderer approximating separately --
+is two pictures, and no reference anywhere to say which is right.
+
+Scaling is the clearest case. How a rasteriser resizes a picture is its own
+business and the two disagree, so IMAGE-FILTER resamples here and hands both
+the finished pixels.
+
+**The renderers share one primitive beyond the instruction list: clipping to a
+path.** Both toolkits have it natively. It is what makes a conic gradient fill
+a circle rather than the square the circle sits in.
+
+### The comparison is exact inside a shape and tolerant on its edge
+
+The browser gate demanded zero differing pixels, and passed for as long as
+every shape in its picture was an axis-aligned box. A box has no part-covered
+edge, so both engines answer the same thing. The first curve, sloped stroke,
+gradient or letter ends that -- two rasterisers disagree about how much of an
+edge pixel a shape covers, and no care in either port removes it.
+
+So the gate was split rather than loosened:
+
+- a pixel away from any edge must match exactly, because a difference there is
+  one renderer executing the instruction differently;
+- a pixel on an edge may differ by up to 24 of 255, and at most a fortieth of
+  the picture may be edge that uses the allowance.
+
+Both numbers live in `spec/screen.allium`, so widening one is a change to the
+specification rather than a number somebody nudged in a test. "On an edge" is
+decided from the picture and not from the geometry: a pixel is on an edge when
+the eight around it are not all one colour. A deliberate twelve-by-twelve
+patch differing by seven is still caught.
+
+**Text is out of the raster comparison on purpose.** Java2D and a browser
+measure and hint glyphs differently, so the same string at the same size lands
+on different pixels. The words, the place, the size, the weight and the colour
+are decided in the domain; the shapes of the letters are the toolkit's.

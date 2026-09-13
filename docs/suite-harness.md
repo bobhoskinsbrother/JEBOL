@@ -23,9 +23,16 @@ One JUnit case per `--assert`, because that is what the suite is already shaped
 like, and because a case that checks one thing says what broke without needing to
 be read.
 
-Most of it does not pass yet. `known-gaps.txt` lists what fails today, **so a new
-failure is a regression and shows up red** while the backlog stays visible and
-countable rather than being skipped into silence.
+`known-gaps.txt` lists what fails today, **so a new failure is a regression and
+shows up red** while the backlog stays visible and countable rather than being
+skipped into silence.
+
+It is down to one line, and that line is not work: it asks to read the launcher
+a confined child interpreter is started from, which has to sit outside what a
+script can see. So the harness has stopped being a backlog and become a
+ratchet against regression -- which is the job it keeps doing after there is
+nothing left to fix, and the reason it runs on every build rather than being
+retired.
 
 ---
 

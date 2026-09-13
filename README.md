@@ -106,10 +106,16 @@ has all fifty-eight of Rebol's (plus `java-object!`).
 `scripts/c-parity.py` compares two files, so it cannot fail on anything a
 declaration does not say. `scripts/runtime-parity.py` asks two *running*
 interpreters instead — what datatype each function reports itself as, what
-`words-of` gives back, how much of its own specification it can produce — and
-when it was first written most of Rebol's library answered differently here.
-`goals.md` records what both last said, and they should be read together or not
-at all.
+`words-of` gives back, and its specification text for text — and when it was
+first written most of Rebol's library answered differently here. `goals.md`
+records what both last said, and they should be read together or not at all.
+
+That second script compared the *length* of a specification until September
+2026, and a measure that counts instead of comparing will agree with anything:
+a built-in derived with a widened type list and a rewritten docstring read as
+identical, and `empty?` advertised the wrong types for as long as it did.
+Both scripts exist because the one before them was too easily satisfied, and
+neither is finished being wrong.
 
 **The declarations are copied too, for the same reason the library is.**
 `actions.reb`, `natives.reb` and the specs Rebol's build collects out of
@@ -132,9 +138,9 @@ correct when they move rather than four that drift apart.
 
 Beside it, and outliving it:
 
-- **A corpus of 1,140 entries** — published REBOL examples with their published
-  results, plus fourteen complete real programs that must load and survive a
-  round trip through MOLD.
+- **A corpus** — published REBOL examples with their published results, plus
+  fourteen complete real programs that must load and survive a round trip
+  through MOLD. The count is in `goals.md` with the rest of the measures.
 - **Standalone tests** for every behaviour fixed because of a suite assertion,
   which build an interpreter and read no `.r3` file. The suite is scaffolding
   and will be deleted when it goes green; these are what lasts.
@@ -146,24 +152,26 @@ Beside it, and outliving it:
 
 ## Where it has got to, and what is left
 
-**Most of Rebol's own suite passes, and every assertion that does not is
+**Rebol's own suite passes, and the handful of assertions that do not are
 accounted for by name** — either in `known-gaps.txt`, which is what still fails,
 or in `fails-on-rebol-too.txt`, which is assertions the Rebol this is measured
 against does not run either. Those are usually one arm of an `either error? try
 [...]` whose other arm is the one taken, and each line carries the `r3-head`
 session that settled it. For the figures, see `goals.md`.
 
-The useful split is not by feature but by whether they ran at all. A suite file
-is a script, so an assertion that raises takes the rest of its block with it,
-and a good share of the backlog is assertions standing behind an earlier
-failure rather than failures in their own right. Fixing one thing routinely
-moves dozens, and the count moves in steps rather than one at a time — the file
-and directory schemes took thirty-six with them in a single commit.
+**`known-gaps.txt` is down to a single line, and no work will retire it.** It
+asks to read `system/options/boot`, which is the launcher a script runs to
+start a confined child interpreter and therefore has to sit outside whatever
+root the script can see. Passing it would mean giving up confinement
+propagation to win one assertion.
 
-Roughly, what is left is the codecs, `image!` as a series, the compression
-algorithms with no JDK equivalent, four of the port schemes, ENBASE and DEBASE,
-the elliptic curves, and a long tail across unicode, time, map, make, module
-and parse.
+**So the suite has nothing left to say, and what remains is what it could never
+see.** No assertion in it asks whether an error id can be raised, whether a
+certificate was checked, or what a function says about itself — and each of
+those turned out to hold real defects once something else went looking. The
+work now comes from measures the suite does not provide: two running
+interpreters asked the same question, the C read for a line nobody has
+reached, and the reference instrumented and watched.
 
 **`goals.md` breaks all of it into pieces of work**, each with its size, what
 blocks it, which C file to read and how to check the answer against a real
@@ -189,13 +197,25 @@ Things to note:
   two-colour dashes, keyed and warped images — because those are worked out in
   the domain and handed to both renderers as plain shapes and pixels. There is
   no Rebol to check the pictures against: a stock 3.22.5 has no `draw` at all.
-- **TLS loads but does not connect.**
+- **`read https://` works, and the TLS client does not authenticate the
+  server.** No chain is built, no trust anchor exists to build one against, and
+  the one signature check there is does not refuse. That is confidentiality
+  against somebody listening and nothing against somebody in the middle. It is
+  a divergence from the C rather than a gap against it, because Rebol does not
+  check either.
 - **Twenty-eight of Rebol's error ids cannot be raised here**, and every one of
   them has a written reason — twenty-four are ids a real 3.22.5 cannot raise
   either.
-- **Seven of R3's scheme names are not registered.** `file`, `dir` and
-  `checksum` are served now; `crypt` is the next that matters.
-- **`task!` is a datatype word and not yet a datatype.**
+- **Five of R3's scheme names are not registered**: `callback`, `clipboard`,
+  `midi`, `serial` and `udp`. JEBOL registers seven R3 has not, most of them
+  protocols out of the borrowed library.
+- **A `task!` is made, read, molded and answered by DO, and never runs on a
+  thread.** Its body is bound to contexts none of which is safe to touch from
+  two threads, so running it on the calling thread would be worse than not
+  running it.
+- **No failure leaves as a host exception — in MAKE.** Every other path that
+  allocates on a script's say-so can still throw an `OutOfMemoryError` out of
+  the interpreter, and the guarantee is only as good as its thinnest path.
 
 `goals.md` carries the rest with the numbers, and every number in it was
 checked by running it rather than by remembering it.

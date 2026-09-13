@@ -259,18 +259,37 @@ the absence of a value. REBOL's `none` is a value that means nothing. Use
 Read this section before you build on JEBOL. Some of what is here is absent,
 and some of it answers incorrectly, which is worse.
 
-**Words that answer incorrectly.** Rebol's own suite runs 4337 assertions here
-and 2 fail, and neither of those two is a port defect. Take the current number
-from a run rather than from this page, because it is the number that moves.
+**Words that answer incorrectly.** Rebol's own suite runs every assertion in
+its sixty-seven files here, and one fails — an assertion that asks to read the
+launcher a confined child interpreter is started from, which has to sit outside
+what a script can see. Take the current number from a run rather than from this
+page, because it is the number that moves.
 
-**Words and types that are absent.** `task!` is the one datatype that R3 has
-and JEBOL does not. Four fields of `access-os` (`uid`, `euid`, `gid`, `egid`)
-answer `not-here`, because the JVM cannot ask a portable question. Some schemes
-that the JDK could serve are not written. TLS loads but does not connect.
+**Words and types that are absent.** Every datatype R3 has is here, `task!`
+included — though a task is made, read and answered by DO without ever running
+on a thread. Four fields of `access-os` (`uid`, `euid`, `gid`, `egid`) answer
+`not-here`, because the JVM cannot ask a portable question. Five scheme names
+are not registered: `callback`, `clipboard`, `midi`, `serial` and `udp`.
 
-**Graphics.** DRAW renders 22 of R3's 36 commands. The fourteen that are absent
-include `image` and `text`, which are the two that make a page look wrong
-rather than plain. VID is absent.
+**Transport.** `read https://` works and `import` fetches over it. The TLS
+client does not authenticate the server: no chain is built and no trust anchor
+exists to build one against, so a listener is kept out and somebody in the
+middle is not. A fetched module is not checksummed either. Both are
+divergences from a real Rebol rather than gaps against it, because Rebol does
+neither, and both are things to weigh before fetching code over a network you
+do not control.
+
+**Memory.** A script that asks for more than the heap can give is refused as
+`no-memory` where it asks MAKE for it, and can still take the host down with a
+`java.lang.OutOfMemoryError` on any other path that allocates — appending in a
+loop, reading a large file, joining strings. Bound the heap of a process that
+runs untrusted scripts.
+
+**Graphics.** DRAW paints every command its dialect table declares except
+`effect`. VID is absent. There is no Rebol to compare a picture against — a
+stock 3.22.5 has no `draw` at all — so the check is that Java2D and a real
+browser draw the same paint list the same way, which `./gradlew browserCheck`
+does on every run.
 
 **The console.** There is no argument that takes the name of a script file,
 and a path given on the command line is ignored without a message.
