@@ -56,9 +56,6 @@ bbcode-test.r3 / (no group) / (no test) #1
 bitset-test.r3 / modify / issue-1355 #139
 bitset-test.r3 / modify / issue-1355 #140
 checksum-test.r3 / file-checksum / file-checksum with bigger file #254
-copy-test.r3 / Simple copy / (no test) #1
-csv-test.r3 / (no group) / (no test) #17
-datatype-test.r3 / datatype! / number? #37
 date-test.r3 / Internet date / TO-IDATE (Date to Internet date) #126
 date-test.r3 / Julian date / Julian date setter #159
 date-test.r3 / Julian date / Julian date setter #160
@@ -75,10 +72,6 @@ mold-test.r3 / mold file! / mold file escaping #68
 mold-test.r3 / mold url! / mold url escaping #56
 percent-test.r3 / percent issues / large percent #33
 percent-test.r3 / percent issues / large percent #34
-series-test.r3 / DELINE / ENLINE / ENLINE #1229
-struct-test.r3 / Invalid struct construction / (no test) #175
-struct-test.r3 / Invalid struct construction / (no test) #176
-struct-test.r3 / Invalid struct construction / (no test) #177
 task-test.r3 / task / (no test) #1
 task-test.r3 / task / (no test) #2
 task-test.r3 / task / (no test) #3

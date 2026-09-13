@@ -4877,6 +4877,28 @@ rule NumbersCompareAcrossTheirDatatypes {
         amount_of(request.left), amount_of(request.right)))
 }
 
+-- NUMBER? answers false for anything that is not an integer, a decimal, a
+-- percent or a money, and takes an unset rather than refusing one. Its
+-- declaration is the only one in Rebol that says so out loud --
+-- `value [any-type! unset!]` -- because ANY-TYPE! does not include the unset
+-- and the author wanted the question askable of anything at all.
+--
+-- Which is what the word is for. A caller writing `if number? :maybe [...]`
+-- is asking whether there is a number there, and a word holding nothing is a
+-- perfectly good no. Refusing turns the question into an error the caller then
+-- has to guard, which is the guard they were asking NUMBER? to be.
+--
+-- A NaN is the other false: `if (!isnan(VAL_DECIMAL(...))) result = TRUE`, so
+-- the one decimal that is not a number answers the question truthfully.
+rule NumberOfAnythingElseIsFalseAndAnUnsetIsAskable {
+    when: EvaluateCall(number_question, subject)
+
+    ensures: not CallFails(error: expect_arg)
+    ensures: CallResult(value:
+        is_integer(subject) or is_money(subject) or is_percent(subject)
+            or (is_decimal(subject) and not is_not_a_number(subject)))
+}
+
 -- A time compares as its length in seconds, so `0:0:1 = 1` and
 -- `0:0:1 < 2.0`. It meets an integer, a decimal and a percent this way and
 -- does not meet a money, so `equal? 0:0:1 $1` is false rather than true.
@@ -10860,6 +10882,34 @@ rule CopyOfAnObjectDuplicatesItsSlots {
         writing_a_field_of(the_copy) = leaves(subject, unchanged)
 }
 
+-- An error is copied the same way, because underneath it is an object with
+-- eight fixed fields and the same arm answers both. `copy try [1 / 0]` is a
+-- second error carrying the same code, type and id, and writing one of its
+-- fields leaves the original alone.
+--
+-- Which is what makes an error safe to keep. Rebol's own copy-test walks every
+-- datatype it calls copyable and asserts `not same? :c :x` of each, and the
+-- error is one of them: a caller who takes a copy of a raised error so as to
+-- annotate it must not be annotating the one the raiser still holds.
+rule CopyOfAnErrorAnswersASecondError {
+    when: EvaluateCall(copy, subject)
+    requires: is_error(subject)
+
+    ensures: CallResult(value: an_error_whose_fields_are_its_own(subject))
+    ensures: writing_a_field_of(the_copy) = leaves(subject, unchanged)
+}
+
+-- /PART on any of them is refused rather than ignored. An object has no order
+-- and no length, so "the first so many" of one names nothing, and the C says
+-- so at the top of the arm: `if (D_REF(2)) Trap0(RE_BAD_REFINES);`.
+rule CopyPartOfSomethingWithNoOrderIsRefused {
+    when: EvaluateCall(copy, subject)
+    requires: is_any_object(subject) or is_error(subject)
+    requires: refinement_asked(part)
+
+    ensures: CallFails(error: bad_refines)
+}
+
 -- An object sits OUTSIDE the set of datatypes a deep copy duplicates, so a
 -- nested object stays shared and TAKE/DEEP hands a taken object through
 -- untouched.
@@ -11045,6 +11095,41 @@ rule DelectGatesOnItsOutputThenDeclines {
 }
 
 -- === Reading and writing a series by position ==========
+
+-- FIRST+ answers the first item and moves the WORD on, leaving the series it
+-- names exactly as it was.
+--
+-- It takes a word rather than a value -- `first+: native ['word [word!]]` --
+-- and the C changes the index in the variable, not the series behind it:
+-- `*D_ARG(1) = *value; if (index < tail) VAL_INDEX(value) += 1;` and then
+-- `Do_Ordinal(ds, 1)` on the copy taken before the step. So a series handed to
+-- a function and walked with FIRST+ comes back to the caller whole.
+--
+-- Removing the item instead reads identically at the call site and is a
+-- different operation. Rebol's own CSV encoder is where it shows: TO-CSV walks
+-- its argument with `first+ data` and then `foreach x data`, and a FIRST+ that
+-- removes leaves the caller's block empty. The suite asserts on exactly that,
+-- with the comment "we need to make sure original was not modified" beside it.
+rule FirstPlusMovesTheWordAndNotTheSeries {
+    when: EvaluateCall(first_plus, word)
+    requires: holds_a_series(word)
+
+    ensures: CallResult(value: the_first_item_of(the_series_named_by(word)))
+    ensures: the_word_now_names(one_position_further_along)
+    ensures: the_series_itself = unchanged
+}
+
+-- At the tail there is nothing to answer and nowhere to go, so the word stays
+-- where it is and the answer is none. The C guards the step with
+-- `if (index < tail)` and asks the ordinary FIRST for the value.
+rule FirstPlusAtTheTailAnswersNoneAndStaysPut {
+    when: EvaluateCall(first_plus, word)
+    requires: holds_a_series(word)
+    requires: is_at_the_tail(the_series_named_by(word))
+
+    ensures: CallResult(value: none)
+    ensures: the_word_now_names(where_it_already_was)
+}
 
 -- PICK counts from one, and answers none for a position that is not there.
 --

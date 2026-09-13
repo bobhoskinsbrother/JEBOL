@@ -557,3 +557,30 @@ port-test.r3 / file port / DELETE file #157
 #
 module-test.r3 / module import / import needs url! #47
 module-test.r3 / module import / import needs url! #48
+
+# ---------------------------------------------------------------------------
+#
+# Four assertions sit in the arm of a guard that is false on this machine, so
+# they never run -- here or on ./r3-head, which answers the guard the same way.
+# They are not wrong and they are not work; they are the arm not taken.
+#
+#   >> system/platform
+#   == macOS           ; r3-head 3.22.5
+#   >> system/version < 3.19.1
+#   == false           ; r3-head 3.22.5
+#
+# series-test.r3 writes its ENLINE test as
+# `either 'Windows = system/platform [...][...]`, one assertion in each arm.
+# Exactly one of the two can run, on any machine and in any Rebol, and the
+# reader counts both because both are written.
+#
+series-test.r3 / DELINE / ENLINE / ENLINE #1229
+
+# struct-test.r3 guards three assertions on `system/version < 3.19.1` with the
+# comment "this syntax is no longer supported" beside them. 3.22.5 is not below
+# 3.19.1, so the other arm is the one that runs and these three are about a
+# Rebol older than the one being matched.
+#
+struct-test.r3 / Invalid struct construction / (no test) #175
+struct-test.r3 / Invalid struct construction / (no test) #176
+struct-test.r3 / Invalid struct construction / (no test) #177

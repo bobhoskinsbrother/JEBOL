@@ -5637,3 +5637,71 @@ One helper answered all sixty-eight bad-make-arg refusals in JEBOL and all
 sixty-eight carried a word. Nothing in JEBOL's own tests asserted on it -- they
 check the id -- which is how it survived, and Rebol's own `evaluation-test.r3`
 turned out to be measuring it after all.
+
+## 195. FIRST+ moves the word, not the series, and a CSV encoder is where the difference shows
+
+**`first+` takes a word rather than a value** -- `first+: native ['word [word!]]`
+-- and the C changes the index held in the variable, leaving the series behind
+it untouched:
+
+    *D_ARG(1) = *value;
+    index = VAL_INDEX(value);
+    if (index < tail) VAL_INDEX(value) += ...;
+    return Do_Ordinal(ds, 1);
+
+So the answer is the first item of the position the word named a moment ago,
+and the word now names one position further along. At the tail there is nothing
+to answer and nowhere to go: the guard is `if (index < tail)`, and FIRST asks
+the ordinary question and gets none.
+
+**Removing the item instead reads identically at the call site.** Both answer
+the first item; both leave the word naming a series with one fewer item in
+front of it. The difference is the *head*, and only a caller who kept a name
+for the series ever looks there. Rebol's own CSV encoder is such a caller:
+
+    output: make block! 2 * length? data
+    unless empty? data [append output format-field first+ data]
+    foreach x data [append append output delimiter format-field :x]
+
+With a FIRST+ that removes, `to-csv ["x x"]` empties the caller's block and
+answers the right string, so the only thing that notices is the assertion right
+after it -- which Rebol's suite writes, with the comment "we need to make sure
+original was not modified" beside it.
+
+## 196. NUMBER? is the one native whose declaration spells out `unset!`
+
+`value [any-type! unset!]` -- and both halves are needed, because `any-type!`
+does not include the unset:
+
+    >> find to block! any-type! #(unset!)
+    == none            ; r3-head 3.22.5
+
+Every other native with an untyped parameter refuses an unset argument, which
+is the right default. NUMBER? is asked *whether there is a number there*, and a
+word holding nothing is a perfectly good no; refusing turns the question into
+an error the caller then has to guard, which is the guard they were asking
+NUMBER? to be.
+
+    >> number? ()
+    == false
+
+The other false is a NaN, by the same reading -- `if (!isnan(VAL_DECIMAL(...)))
+result = TRUE` -- so the one decimal that is not a number answers truthfully.
+
+## 197. COPY of an error is COPY of an object, and /PART of either is refused
+
+An error is an object with eight fixed fields underneath, so the same arm
+answers both and `copy try [1 / 0]` is a second error carrying the same code,
+type and id. Writing a field of the copy leaves the original alone; the field
+*values* stay shared until /DEEP says otherwise.
+
+Rebol's own copy-test walks every datatype it calls copyable and asserts
+`not same? :c :x` of each, and the error is on that list. A copy that is the
+same error is the quiet kind of wrong: a caller who takes one so as to annotate
+it is annotating the one the raiser still holds.
+
+**/PART on anything with no order is refused rather than ignored** --
+`if (D_REF(2)) Trap0(RE_BAD_REFINES);` at the top of the arm. "The first so
+many" of an object names nothing. A bitset and a map are not in that group and
+accept /PART without complaint on r3-head, which is worth knowing before
+widening the refusal.

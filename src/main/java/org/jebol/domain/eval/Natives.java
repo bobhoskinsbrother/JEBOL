@@ -691,6 +691,12 @@ public final class Natives {
 
     private static final Set<Datatype> ANYTHING = Typeset.ANY_TYPE.members();
 
+    private static Set<Datatype> anythingAtAll() {
+        Set<Datatype> accepted = EnumSet.copyOf(ANYTHING);
+        accepted.add(Datatype.UNSET);
+        return Set.copyOf(accepted);
+    }
+
     private static List<Parameter> takesAnything(String... names) {
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
@@ -3890,7 +3896,7 @@ public final class Natives {
         define("did", takesAnything("value"),
                 (arguments, evaluator, context) -> LogicValue.of(arguments.get(0).isTruthy()));
 
-        define("number?", takes("value"),
+        define("number?", List.of(Parameter.required("value", anythingAtAll())),
                 (arguments, evaluator, context) -> LogicValue.of(switch (arguments.get(0)) {
                     case DecimalValue quantity -> !Double.isNaN(quantity.quantity());
                     case IntegerValue whole -> true;
@@ -5347,14 +5353,21 @@ public final class Natives {
         define("sixth", List.of(Parameter.required("series")),
                 (arguments, evaluator, context) -> pick(arguments.get(0), 6));
 
-        define("first+", List.of(Parameter.required("series")),
+        define("first+", List.of(Parameter.softQuoted("word")),
                 (arguments, evaluator, context) -> {
-                    if (!(arguments.get(0) instanceof SeriesValue series)) {
-                        return raiseWrongArgument(arguments.get(0), "first+", "series");
+                    if (!(arguments.get(0) instanceof WordValue named)
+                            || !named.isBound()
+                            || !named.binding().knows(named.canonical())) {
+                        throw Raised.of(EvaluationFailure.INVALID_ARG, arguments.get(0));
+                    }
+                    ContextSlot slot = named.binding().slotFor(named.canonical());
+                    if (!(slot.value() instanceof SeriesValue series)) {
+                        throw Raised.of(EvaluationFailure.INVALID_ARG,
+                                WordValue.of(named.spelling()));
                     }
                     Value first = pick(series, 1);
                     if (!series.atTail()) {
-                        removeFrom(series, series.index(), 1);
+                        slot.setValue(series.atIndex(series.index() + 1));
                     }
                     return first;
                 });
@@ -5590,6 +5603,13 @@ public final class Natives {
                     }
                     if (!refinements.contains("part")) {
                         return copied(original, deeply, kinds);
+                    }
+                    if (hasNoOrderToTakeTheFirstSoManyOf(original)) {
+                        throw Raised.of(EvaluationFailure.BAD_REFINES,
+                                "/part names the first so many of something with an "
+                                        + "order, and a "
+                                        + original.datatype().literalSpelling()
+                                        + " has none");
                     }
                     if (!(original instanceof SeriesValue series)) {
                         return raiseCannotUse(original, "copy");
@@ -8188,6 +8208,7 @@ public final class Natives {
         if (!kinds.contains(original.datatype()) && original != null
                 && !(original instanceof SeriesValue) && !(original instanceof MapValue)
                 && !(original instanceof BitsetValue)
+                && !(original instanceof ErrorValue)
                 && !(original instanceof ObjectValue)) {
             return original;
         }
@@ -8223,8 +8244,27 @@ public final class Natives {
                                 memberCopiedFrom(slot.value(), deeply, kinds)));
                 yield duplicate;
             }
+            case ErrorValue raised -> anErrorWhoseFieldsAreItsOwn(raised, deeply, kinds);
             default -> original;
         };
+    }
+
+    private static boolean hasNoOrderToTakeTheFirstSoManyOf(Value subject) {
+        return subject instanceof ObjectValue || subject instanceof ErrorValue
+                || subject instanceof ModuleValue || subject instanceof PortValue;
+    }
+
+    private static Value anErrorWhoseFieldsAreItsOwn(
+            ErrorValue raised, boolean deeply, Set<Datatype> kinds) {
+
+        Map<String, Value> fields = new LinkedHashMap<>();
+        for (String name : ErrorValue.FIELDS) {
+            raised.field(name).ifPresent(held ->
+                    fields.put(name, memberCopiedFrom(held, deeply, kinds)));
+        }
+        return new ErrorValue(raised.category(), raised.errorId(), raised.message(),
+                raised.subject(), raised.secondArgument(), raised.thirdArgument(),
+                raised.near(), raised.whereChain(), fields);
     }
 
     private static Value memberCopiedFrom(Value member, boolean deeply, Set<Datatype> kinds) {
