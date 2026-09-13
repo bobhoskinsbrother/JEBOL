@@ -4346,8 +4346,9 @@ public final class Natives {
                         Parameter.belongingTo("with", "separator", ANYTHING)),
                 Set.of("all", "with"),
                 (arguments, evaluator, context, refinements) -> {
-                    List<Value> pieces = evaluator.evaluateEachOrRaise(
-                                    (BlockValue) arguments.get(0), context).stream()
+                    List<Value> all = evaluator.evaluateEachOrRaise(
+                            (BlockValue) arguments.get(0), context);
+                    List<Value> pieces = all.stream()
                             .filter(piece -> refinements.contains("all")
                                     || !(piece instanceof NoneValue
                                             || piece instanceof UnsetValue))
@@ -4355,8 +4356,6 @@ public final class Natives {
                     String separator = refinements.contains("with") && arguments.size() > 1
                             ? Molder.form(arguments.get(1))
                             : "";
-                    List<Value> all = evaluator.evaluateEachOrRaise(
-                            (BlockValue) arguments.get(0), context);
                     Datatype kind = all.isEmpty() ? Datatype.STRING : switch (
                             all.getFirst().datatype()) {
                         case FILE, URL, EMAIL, REF -> all.getFirst().datatype();

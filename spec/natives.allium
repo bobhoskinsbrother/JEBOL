@@ -5884,6 +5884,27 @@ open question "Does /console on CALL differ observably from plain inheritance on
 -- disappears where a real R3 dropped it too but for a reason the code did
 -- not know it was matching.
 
+-- AJOIN evaluates the block it was given once, and everything it answers is
+-- read off that one pass.
+--
+-- The C reduces into a buffer and then walks the buffer -- there is one
+-- `Reduce_Block` and no second one -- so a call inside the block happens once,
+-- in the order it was written, and what it did to the world it did once.
+--
+-- Stated because a second pass is invisible in the answer. Working out the
+-- datatype from the first value by reducing again gives exactly the right
+-- string and calls every function in the block twice, and nothing in the text
+-- says so. Rebol's own BBCode codec is where it showed: its table emitter
+-- writes `ajoin [{<} datatag get-col-width {>} data ...]`, and GET-COL-WIDTH
+-- counts the column it is on -- so the second pass walked the column counter
+-- past the end of the widths and the second column came out with no width.
+rule AjoinEvaluatesItsBlockOnce {
+    when: EvaluateCall(ajoin, block)
+
+    ensures: the_block_was_evaluated(exactly_once)
+    ensures: CallResult(value: the_pieces_of(that_one_evaluation, run_together))
+}
+
 -- Resolved against a real R3: JOIN keeps the datatype of what it is
 -- joining onto, so `join %a "b"` is the file %ab rather than a string.
 -- Joining onto something that is not a series gives a string, which is

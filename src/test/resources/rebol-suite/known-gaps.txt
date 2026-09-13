@@ -52,7 +52,6 @@
 #     it -- `// Include PATHS` is the C's own comment -- so binding one
 #     function's body reached into another's.
 #
-bbcode-test.r3 / (no group) / (no test) #1
 checksum-test.r3 / file-checksum / file-checksum with bigger file #254
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13

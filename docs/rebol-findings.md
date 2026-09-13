@@ -5826,3 +5826,23 @@ the left.
 
 Subtraction is not symmetric here because the two sides mean different things:
 a date minus a count is a date, and a count minus a date is nothing.
+
+## 204. AJOIN evaluated its block twice, and only a side effect could tell
+
+The C reduces into a buffer and then walks the buffer -- one `Reduce_Block`,
+no second one. JEBOL reduced once to build the pieces and again to read the
+first value's datatype off, and the answer was right every time:
+
+    >> counted: 0
+    >> bump: does [counted: counted + 1  ajoin ["#" counted]]
+    >> ajoin ["<" bump ">" bump "!"]
+    == "<#1>#2!"       ; correct in both
+    >> counted
+    == 2               ; r3-head.  JEBOL said 4.
+
+Nothing in the text says so. What noticed was Rebol's own BBCode codec: its
+table emitter writes `ajoin [{<} datatag get-col-width {>} data ...]`, and
+GET-COL-WIDTH counts the column it is on. The second pass walked the counter
+past the end of the widths, so the second column of a `[csv widths='100 20 *']`
+table came out with no width -- one wrong attribute in one of sixty test cases,
+and the only visible trace of a function being called twice everywhere.
