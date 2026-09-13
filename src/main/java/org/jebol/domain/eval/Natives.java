@@ -2933,7 +2933,7 @@ public final class Natives {
                     default -> false;
                 }));
 
-        define("unbind", List.of(Parameter.required("word")),
+        define("unbind", List.of(Parameter.required("word", aBlockOrAnyWord())),
                 Set.of("deep"),
                 (arguments, evaluator, context, refinements) ->
                         unbound(arguments.get(0), refinements.contains("deep")));
@@ -2974,12 +2974,15 @@ public final class Natives {
                     if (!(arguments.get(0) instanceof BlockValue block)) {
                         return raiseWrongArgument(arguments.get(0), "bind", "word or block");
                     }
+                    boolean deeply = !refinements.contains("only");
                     if (refinements.contains("new") || refinements.contains("set")) {
-                        defineFreshWordsOf(block, target, refinements.contains("set"));
+                        defineFreshWordsOf(
+                                block, target, refinements.contains("set"), deeply);
                     }
                     return refinements.contains("copy")
-                            ? Binder.bindACopyOfWhatTheTargetHoldsItself(block, target)
-                            : Binder.bindWhatTheTargetHoldsItself(block, target);
+                            ? Binder.bindACopyOfWhatTheTargetHoldsItself(
+                                    block, target, deeply)
+                            : Binder.bindWhatTheTargetHoldsItself(block, target, deeply);
                 });
     }
 
@@ -4411,6 +4414,7 @@ public final class Natives {
                         return switch (field) {
                             case "spec" -> module.header();
                             case "title" -> module.headerField("title");
+                            case "body" -> blockOfFieldsAndValues(module.context());
                             case "words" -> BlockValue.block(
                                     module.context().fieldsExcludingSelf().keySet().stream()
                                             .<Value>map(WordValue::of).toList());
@@ -7490,9 +7494,11 @@ public final class Natives {
                 });
     }
 
-    private static void defineFreshWordsOf(BlockValue block, Context target, boolean settersOnly) {
+    private static void defineFreshWordsOf(
+            BlockValue block, Context target, boolean settersOnly, boolean deeply) {
+
         List<Value> words = new ArrayList<>();
-        gatherWords(block, true, settersOnly, words);
+        gatherWords(block, deeply, settersOnly, words);
         words.forEach(word -> target.define(((WordValue) word).canonical()));
     }
 
@@ -13496,14 +13502,22 @@ public final class Natives {
             return WordValue.of(word.spelling(), word.datatype());
         }
         if (value instanceof BlockValue block) {
-            List<Value> loosened = block.remaining().stream()
-                    .map(item -> deeply || item instanceof WordValue
-                            ? unbound(item, deeply)
-                            : item)
-                    .toList();
-            return new BlockValue(new BlockStorage(loosened), 1, block.datatype());
+            loosenInPlace(block, deeply);
+            return block;
         }
         return value;
+    }
+
+    private static void loosenInPlace(BlockValue block, boolean deeply) {
+        for (int at = block.index(); at <= block.storageLength(); at++) {
+            Value item = block.storage().at(at);
+            if (item instanceof WordValue word) {
+                block.storage().rebindAt(at,
+                        WordValue.of(word.spelling(), word.datatype()));
+            } else if (deeply && item instanceof BlockValue nested) {
+                loosenInPlace(nested, true);
+            }
+        }
     }
 
     private static boolean isExactlyAString(Value value) {
@@ -14835,6 +14849,12 @@ public final class Natives {
     }
 
     private static final Set<Datatype> ANY_WORD_DATATYPES = Typeset.ANY_WORD.members();
+
+    private static Set<Datatype> aBlockOrAnyWord() {
+        Set<Datatype> accepted = EnumSet.copyOf(ANY_WORD_DATATYPES);
+        accepted.add(Datatype.BLOCK);
+        return Set.copyOf(accepted);
+    }
 
     private static Set<Datatype> anyObjectOr(Datatype... alsoAccepted) {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_OBJECT.members());

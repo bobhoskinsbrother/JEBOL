@@ -81,30 +81,63 @@ public final class Binder {
     public static BlockValue bindWhatTheTargetHoldsItself(
             BlockValue block, Context target) {
 
+        return bindWhatTheTargetHoldsItself(block, target, ALL_THE_WAY_DOWN);
+    }
+
+    /**
+     * The same, going only as far down as the caller asked.
+     *
+     * <p>BIND/ONLY is the shallow one. {@code flags = D_REF(4) ? 0 :
+     * BIND_DEEP} is the first line of the C's BIND, so the refinement takes
+     * the deep flag away and the loop's {@code ANY_BLOCK_OR_MAP} arm never
+     * runs: a block or a map standing in the block is stepped over rather
+     * than walked into.
+     */
+    public static BlockValue bindWhatTheTargetHoldsItself(
+            BlockValue block, Context target, boolean deeply) {
+
         for (int at = 0; at < block.lengthFromHere(); at++) {
             int where = block.index() + at;
-            block.storage().set(where,
-                    boundIfTheTargetHoldsIt(block.storage().at(where), target));
+            Value item = block.storage().at(where);
+            if (deeply || item instanceof WordValue) {
+                block.storage().set(where, boundIfTheTargetHoldsIt(item, target));
+            }
         }
         return block;
     }
+
+    public static final boolean ALL_THE_WAY_DOWN = true;
+
+    public static final boolean THE_TOP_LEVEL_ONLY = false;
 
     /**
      * The same, into a copy, which is what BIND/COPY answers.
      *
      * <p>{@code Copy_Block_Deep} before the bind in the C, so the block the
-     * caller still holds is untouched all the way down.
+     * caller still holds is untouched all the way down. The copy is deep
+     * whatever the depth of the binding: /COPY says which series the caller
+     * gets back and /ONLY says how far the binding reaches into it, and the C
+     * takes them in that order.
      */
     public static BlockValue bindACopyOfWhatTheTargetHoldsItself(
             BlockValue block, Context target) {
 
-        List<Value> bound = new ArrayList<>(block.lengthFromHere());
+        return bindACopyOfWhatTheTargetHoldsItself(block, target, ALL_THE_WAY_DOWN);
+    }
+
+    /** The same again, binding only as far down as the caller asked. */
+    public static BlockValue bindACopyOfWhatTheTargetHoldsItself(
+            BlockValue block, Context target, boolean deeply) {
+
+        return bindWhatTheTargetHoldsItself(aDeepCopyOf(block), target, deeply);
+    }
+
+    private static BlockValue aDeepCopyOf(BlockValue block) {
+        List<Value> copied = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
-            bound.add(item instanceof BlockValue nested
-                    ? bindACopyOfWhatTheTargetHoldsItself(nested, target)
-                    : boundIfTheTargetHoldsIt(item, target));
+            copied.add(item instanceof BlockValue nested ? aDeepCopyOf(nested) : item);
         }
-        return laidOutLike(block, new BlockStorage(bound));
+        return laidOutLike(block, new BlockStorage(copied));
     }
 
     private static Value boundIfTheTargetHoldsIt(Value value, Context target) {

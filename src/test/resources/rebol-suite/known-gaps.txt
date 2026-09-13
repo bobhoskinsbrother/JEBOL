@@ -80,18 +80,6 @@ error-test.r3 / Error issues / protected catalog #43
 evaluation-test.r3 / do script / do needs #44
 gob-test.r3 / MOVE gob! / move gob! #12
 gob-test.r3 / MOVE gob! / move gob! #13
-module-test.r3 / make module / inlined module #13
-module-test.r3 / make module / inlined module #14
-module-test.r3 / make module / inlined module #15
-module-test.r3 / make module / inlined module #16
-module-test.r3 / make module / module body modified on export #17
-module-test.r3 / module import / import block #30
-module-test.r3 / module import / import needs url! #47
-module-test.r3 / module import / import needs url! #48
-module-test.r3 / module import / import/no-lib block #31
-module-test.r3 / module import / lib-local #49
-module-test.r3 / module issues / issue-1005 #51
-module-test.r3 / module issues / issue-1005 #54
 mold-test.r3 / form error! / form error! #214
 mold-test.r3 / mold file! / mold file escaping #68
 mold-test.r3 / mold url! / mold url escaping #56

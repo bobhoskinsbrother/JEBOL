@@ -41,6 +41,8 @@ public final class Repl {
 
     static final String THE_ROOT_SWITCH = "--root";
 
+    static final String THE_DATA_SWITCH = "--data";
+
     private final Interpreter interpreter;
     private final BufferedReader input;
     private final PrintStream output;
@@ -87,7 +89,8 @@ public final class Repl {
             if (arguments[at].equals(SECURITY_SWITCH_THERE_IS_NOTHING_HERE_TO_TURN_OFF)) {
                 continue;
             }
-            if (arguments[at].equals(THE_ROOT_SWITCH)) {
+            if (arguments[at].equals(THE_ROOT_SWITCH)
+                    || arguments[at].equals(THE_DATA_SWITCH)) {
                 at++;
                 continue;
             }
@@ -97,12 +100,17 @@ public final class Repl {
     }
 
     private static Path theRootAskedFor(String[] arguments) {
+        String written = whatFollows(THE_ROOT_SWITCH, arguments);
+        return written.isEmpty() ? THE_WHOLE_MACHINE : Path.of(written);
+    }
+
+    private static String whatFollows(String switchName, String[] arguments) {
         for (int at = 0; at + 1 < arguments.length; at++) {
-            if (arguments[at].equals(THE_ROOT_SWITCH)) {
-                return Path.of(arguments[at + 1]);
+            if (arguments[at].equals(switchName)) {
+                return arguments[at + 1];
             }
         }
-        return THE_WHOLE_MACHINE;
+        return "";
     }
 
     private static Interpreter anInterpreterFor(
@@ -119,11 +127,25 @@ public final class Repl {
             interpreter.useFileSystem(FileSystemPort.rootedAt(root));
             interpreter.useEnvironment(new ProcessEnvironment());
             interpreter.useProcesses(new JavaProcesses());
+            putTheApplicationDataWhereTheParentKeepsIt(interpreter, arguments);
         }
         if (ChosenScreen.wasAskedFor(arguments)) {
             ChosenScreen.attachTo(interpreter, arguments, out);
         }
         return interpreter;
+    }
+
+    private static void putTheApplicationDataWhereTheParentKeepsIt(
+            Interpreter interpreter, String[] arguments) {
+
+        String written = whatFollows(THE_DATA_SWITCH, arguments);
+        if (written.isEmpty()) {
+            return;
+        }
+        String saying = "system/options/data: %" + written;
+        interpreter.defineFreshWordsIn(saying);
+        interpreter.run(saying);
+        interpreter.followTheApplicationDataDirectory();
     }
 
     private static void giveItTheImageCodecWhichReachesNothingAndIsNotAGrant(

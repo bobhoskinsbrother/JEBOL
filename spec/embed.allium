@@ -458,6 +458,37 @@ rule ASecondInterpreterIsConfinedAsThisOneIs {
             the_host_path_of(the_root_this_script_sees()))
 }
 
+-- And it is told where the application data is, for the same reason and with
+-- the same consequence if it is not.
+--
+-- A real Rebol needs no such arrangement: parent and child each work the data
+-- directory out from the operating system and each get the same answer. Here
+-- the host is entitled to move it, and a confined host must, so the child
+-- working it out for itself gets a different answer from its parent. The
+-- child then looks for modules where its parent did not put them, and IMPORT
+-- of a module the parent installed a moment earlier fails with "module not
+-- found".
+--
+-- Which is the same fact as the root, one level down. Confinement is not only
+-- what a script may reach; it is what the paths mean, and
+-- `system/options/data` is a path with a meaning the host decided. A child
+-- rooted the same way and told a different data directory agrees about every
+-- path except the one the two of them are most likely to share.
+--
+-- The modules directory follows the data directory in the child exactly as it
+-- does in the parent, so nothing has to be said about it separately: this is
+-- TheModulesDirectorySitsBesideTheData in spec/natives.allium, running in the
+-- child.
+rule ASecondInterpreterFindsTheSameApplicationData {
+    when: run: ScriptRun.created
+    requires: files in run.interpreter.bounds.granted_services
+    requires: the_host_moved_the_data_directory()
+
+    ensures: the_launcher_at(system_options_boot()) =
+        a_command_that_puts_its_application_data_at(
+            the_data_directory_this_script_sees())
+}
+
 -- A capture waits, and the host is told so rather than working it out. A
 -- child still running has not finished writing, so there is nothing to give
 -- back yet, and a host that answered early would answer with part of the

@@ -753,6 +753,69 @@ rule BindingABlockTouchesOnlyWhatTheContextHoldsItself {
         word_keeps_the_binding_it_had(word) when not holds_itself(target, word)
 }
 
+-- /ONLY says how far down that walk goes, and it is the only refinement that
+-- says so. The first line of the C's BIND is `flags = D_REF(4) ? 0 :
+-- BIND_DEEP`: every other refinement adds a flag and this one takes the deep
+-- flag away. A block bound with /ONLY has its own words placed and the blocks
+-- inside it left exactly as they were written.
+rule BindOnlyStaysAtTheTopLevelOfTheBlock {
+    when: EvaluateCall(bind, block, target)
+    requires: is_block(block)
+    requires: refinement_asked(only)
+
+    ensures: for word in the_words_at_the_top_level_of(block):
+        word_is_bound_to(word, target) when holds_itself(target, word)
+    ensures: for word in the_words_below_the_top_level_of(block):
+        word_keeps_the_binding_it_had(word)
+}
+
+-- /SET and /NEW add the words they find to the context as they walk, so how
+-- far down the walk goes decides which names become variables. They follow
+-- /ONLY, because they are the same walk: `(mode & BIND_ALL) || ((mode &
+-- BIND_SET) && IS_SET_WORD(value))` is a branch inside the loop that /ONLY
+-- has already stopped from recursing.
+--
+-- Which is the whole of what makes a module's private names private. Rebol's
+-- own module builder is one such call, `bind/only/set body context`, with the
+-- comment "Only top level defined words are module variables" beside it. So a
+-- module body writing `attempt [z: 1]` gets no Z of its own, the set-word
+-- stays unbound, and the assignment raises not-defined rather than quietly
+-- making a variable one nesting level down from where the author could see
+-- it.
+rule CollectingWordsIntoTheContextFollowsTheSameDepth {
+    when: EvaluateCall(bind, block, target)
+    requires: is_block(block)
+    requires: refinement_asked(set) or refinement_asked(new)
+
+    ensures:
+        if refinement_asked(only):
+            the_words_added_to(target) =
+                the_words_at_the_top_level_of(block)
+        else:
+            the_words_added_to(target) =
+                the_words_at_every_depth_of(block)
+}
+
+-- UNBIND loosens the block it was handed and answers that same block. The C
+-- is `Unbind_Block(VAL_BLK_DATA(word), D_REF(2) != 0); return R_ARG1` -- the
+-- walk writes into the values in place, and what comes back is the argument.
+--
+-- So a caller holding the block from before sees the change, which is what
+-- callers rely on. MODULE is `make module! unbind/deep reduce [spec body]`,
+-- and the body block inside that REDUCE is the caller's own block, not a copy
+-- of it. Answering a copy leaves the caller's block bound, and every later
+-- step of building the module -- removing the EXPORT keywords, collecting the
+-- hidden names, binding the body to the new context -- then happens to a
+-- block nobody outside can see.
+rule UnbindLoosensTheBlockItWasGivenRatherThanACopy {
+    when: EvaluateCall(unbind, subject)
+    requires: is_block(subject)
+
+    ensures: CallResult(value: the_same_series_as(subject))
+    ensures: for word in the_words_it_reached(subject):
+        word_is_unbound(word)
+}
+
 -- WITH is the same binding followed by an evaluation, so it leaves the same
 -- words alone.
 --
@@ -983,6 +1046,28 @@ rule ToModuleJoinsAHeaderAndAContext {
     ensures: CallResult(value: module_with(
         header: first_of(pair_of_objects),
         context: second_of(pair_of_objects)))
+}
+
+-- BODY-OF a module answers its fields and their values, the same block an
+-- object answers.
+--
+-- There is no third arm in the C for this. `types.reb` gives module! the
+-- object typeclass, so Set_Block_Var and the reflect path walk a module's
+-- frame exactly as they walk an object's, and `body-of module [] [a: 1]`
+-- comes back as `[lib-local: make object! [] a: 1]`. The header is not in it,
+-- because the header is what SPEC-OF answers.
+--
+-- LIB-LOCAL is first because MAKE-MODULE* puts it there before anything the
+-- author wrote: `append context 'lib-local` is the line after the context is
+-- made. It holds what this module imported, which is nothing at all for a
+-- module that imported nothing, and an empty object rather than none so that
+-- `m/lib-local/whatever` reads as absent rather than raising.
+rule TheBodyOfAModuleIsItsFieldsAndValues {
+    when: EvaluateCall(body_of, subject)
+    requires: is_module(subject)
+
+    ensures: CallResult(value: the_fields_and_values_of(subject))
+    ensures: first_field_of(subject) = lib_local
 }
 
 -- === Reading and writing the bits of a set =================
@@ -13046,6 +13131,29 @@ rule TheRootContextIsDeclaredAndEmpty {
     when: ReadSystemField(contexts)
     ensures: the_contexts_hold_a_field_called(root)
     ensures: the_root_context = none
+}
+
+-- SYSTEM/CONTEXTS/USER opens with two words in it before a script has run a
+-- line: REBOL, holding the system object, and LIB-LOCAL, holding the user
+-- context itself. One line of sys-start.reb puts both there, `append tmp
+-- reduce ['REBOL :system 'lib-local :tmp]`, and it runs before any user code
+-- does.
+--
+-- LIB-LOCAL is the interesting one, and naming the context after itself is
+-- not a trick. Every module gets a LIB-LOCAL holding what that module
+-- imported, so `lib-local` inside a module is the module's own import
+-- library. Code at the top level of a script is not inside a module, and what
+-- it imported went into the user context, so the honest answer to the same
+-- question there is the user context. A script asking `lib-local` gets the
+-- same kind of answer whether or not the author wrapped it in a module, which
+-- is what lets one piece of code be either.
+rule TheUserContextOpensWithRebolAndItself {
+    when: ReadSystemField(contexts)
+
+    ensures: the_user_context_holds_a_field_called(rebol)
+    ensures: the_user_context_holds_a_field_called(lib_local)
+    ensures: the_field_named(rebol) = the_system_object()
+    ensures: the_field_named(lib_local) = the_user_context()
 }
 
 -- SYSTEM/SCHEMES holds schemes and nothing else.

@@ -536,3 +536,24 @@ port-test.r3 / file port / APPEND file-port #166
 #
 port-test.r3 / file port / DELETE file #155
 port-test.r3 / file port / DELETE file #157
+
+# ---------------------------------------------------------------------------
+#
+# module-test.r3 imports a module over https from github, and Rebol's own TLS
+# cannot read the certificate github serves. Both assertions fail on r3-head:
+# the outer one asks that the import raised nothing, and the inner one reads
+# the word that import was to have defined.
+#
+#   >> not error? try [import https://github.com/Oldes/Rebol3/raw/master/src/tests/units/files/test-needs-url.reb]
+#    [TLS] ** Error: Missing public key in certifiate
+#    [TLS] ** Error: Bad certificate
+#    [TLS] ** Access error: protocol error: "Bad certificate"
+#   == false           ; r3-head 3.22.5, and JEBOL
+#
+# It is that certificate rather than https in general. The same r3-head reads
+# https://src.rebol.tech/modules/thru-cache.reb without complaint, which is
+# Rebol's own module host and an ordinary RSA certificate. JEBOL runs Rebol's
+# prot-tls.reb unchanged, so it stops in the same place with the same words.
+#
+module-test.r3 / module import / import needs url! #47
+module-test.r3 / module import / import needs url! #48

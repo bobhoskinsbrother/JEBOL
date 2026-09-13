@@ -5433,3 +5433,95 @@ produced, and this build verifying one it produced. The second caught a defect
 the first could not -- `bp512r1` signatures were rejected because its DER
 SEQUENCE runs past 127 bytes and needs the long-form length, `30 81 84`, which
 is the only curve of the eight where that happens.
+
+## 188. UNBIND loosens the block it was handed, and MODULE depends on that
+
+**`Unbind_Block(VAL_BLK_DATA(word), D_REF(2) != 0); return R_ARG1`** is the whole
+of the UNBIND native. The walk writes the binding fields of the values where they
+stand, and what comes back is the argument. The declaration in `natives.reb` says
+so out loud: `word [block! any-word!] {A word or block (modified) (returned)}`.
+
+**Answering a copy instead is invisible until a caller keeps the block.** MODULE
+is one line -- `make module! unbind/deep reduce pick [[spec body] [spec body
+words]] not mixin` -- and the body inside that REDUCE is the caller's own block.
+Every later step of building the module happens to whatever UNBIND handed back:
+the EXPORT keywords are parsed out of it with `remove skip`, the hidden names are
+collected, the body is bound to the new context. With a copy in the middle, all
+of that happens to a block nobody outside can reach, and Rebol's own test for it
+fails:
+
+    >> body: [export 'b]  module [] body  body
+    == ['b]            ; r3-head 3.22.5, and now JEBOL
+    == [export 'b]     ; JEBOL before, because UNBIND copied
+
+**Protection does not stop it.** A protected block unbinds without complaint on
+r3-head, because a word's binding is not part of the series holding it. So the
+in-place write reaches past the protection check that a real change to the series
+would hit.
+
+## 189. BIND/ONLY is the only refinement that takes depth away, and /SET follows it
+
+**`flags = D_REF(4) ? 0 : BIND_DEEP` is the first line of the C's BIND.** Every
+other refinement adds a flag; /ONLY takes the deep flag off. So the loop's
+`ANY_BLOCK_OR_MAP` arm never runs and a block standing inside the block being
+bound is stepped over rather than walked into.
+
+**/SET and /NEW are branches inside that same loop, so they inherit the depth**:
+
+    if ((mode & BIND_ALL) || ((mode & BIND_SET) && (IS_SET_WORD(value))))
+        Append_Frame(frame, value, 0);
+
+Which is the whole of what makes a module's private names private.
+`make-module*` collects the module's variables with one call, and the comment
+beside it is the rule:
+
+    bind/only/set body context
+    ; Only top level defined words are module variables.
+
+So a module body writing `attempt [z1: 12345] z1` gets no Z1 of its own, the
+set-word stays unbound, and the read after it raises not-defined -- which is
+exactly what `module-test.r3` asserts four times over. Collecting deeply instead
+makes the module quietly answer 12345, and the four assertions were the only
+thing that would ever have said so.
+
+## 190. The user context opens with REBOL and LIB-LOCAL, and a bare LIB-LOCAL reads it
+
+**One line of `sys-start.reb` puts both there before any user code runs:**
+
+    tmp: make object! 320
+    append tmp reduce ['REBOL :system 'lib-local :tmp]
+    system/contexts/user: tmp
+
+REBOL holding the system object is a convenience. LIB-LOCAL holding the context
+itself is the interesting half, and naming a context after itself is not a trick.
+Every module gets a LIB-LOCAL holding what that module imported --
+`context/lib-local: any [mixins make object! 0]` in `make-module*` -- so
+`lib-local` inside a module is the module's own import library. Code at the top
+level of a script is not inside a module and what it imported went into the user
+context, so the honest answer to the same question there is the user context.
+That is what lets one piece of code be either a script or a module without the
+word meaning something different.
+
+    >> same? lib-local system/contexts/user
+    == true
+
+## 191. A child interpreter must be told where the application data is, not only where the root is
+
+**Rebol needs no such arrangement and JEBOL does.** In a real Rebol a parent and
+a child each work the data directory out from the operating system and each get
+the same answer. Here an embedding host is entitled to move `system/options/data`,
+and a confined host must, because the operator's own hidden folder is outside the
+directory the script was given.
+
+So a child that works it out for itself gets a different answer from its parent.
+The modules directory follows the data directory, so the child then looks for
+modules where its parent did not put them, and `import 'whatever` fails with
+"module not found" on a module the parent installed a moment earlier. Rebol's own
+`module-test.r3` does exactly that: it writes two modules into
+`system/options/modules` and then runs a second interpreter through
+`system/options/boot` that imports them by name.
+
+Which is the same fact as the root, one level down. Confinement is not only what
+a script may reach; it is what the paths mean. The launcher therefore carries
+`--data` beside `--root`, and `followTheApplicationDataDirectory()` rewrites it
+whenever the host moves the directory.

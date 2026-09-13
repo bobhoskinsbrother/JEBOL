@@ -79,6 +79,19 @@ public final class BlockStorage {
         items.set(oneBasedIndex - 1, value);
     }
 
+    /**
+     * Puts a word back where an equal word stands, binding aside.
+     *
+     * <p>For UNBIND, which reaches past protection because a word's binding
+     * is not part of the series holding it. The C writes the binding fields
+     * of the value in place -- {@code UNBIND(val)} inside
+     * {@code Unbind_Block} -- so no series is being changed and a protected
+     * block unbinds as any other does.
+     */
+    public void rebindAt(int oneBasedIndex, WordValue word) {
+        items.set(oneBasedIndex - 1, word);
+    }
+
     public void append(Value value) {
         refuseIfProtected();
         items.add(value);

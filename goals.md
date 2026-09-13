@@ -32,22 +32,22 @@ or in none. Every number below was checked on 2026-09-13 by running it.
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
 | `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
-| `known-gaps.txt` | **53 fail**, and they are goals 1 to 3 below |
-| `fails-on-rebol-too.txt` | 156 a real 3.22.5 also fails or never runs |
+| `known-gaps.txt` | **41 fail**, and they are goals 1 and 2 below |
+| `fails-on-rebol-too.txt` | 158 a real 3.22.5 also fails or never runs |
 | `scripts/error-parity.py` | **81 of Rebol's 142 error ids can be raised. 61 cannot** |
 
-`./gradlew check` is 18,237 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 18,286 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception. `./gradlew browserCheck` is
 the second gate and is not optional; it renders the same paint list in Java2D
 and in a real Chrome and compares them pixel for pixel.
 
-**`port-test.r3` owns none of the 53.** It had 29 when the file ports were
+**`port-test.r3` owns none of the 41.** It had 29 when the file ports were
 picked up: eighteen were real defects and have been fixed, and eleven turned
 out to be assertions a real 3.22.5 does not pass here either -- nine guarded on
 Windows or on Linux's `/proc`, and two with stale expected checksums. Those
 eleven moved to `fails-on-rebol-too.txt` with the measurement beside each.
 
-The 53 are broken into goals 1 to 3 below, and one entry that no work will
+The 41 are broken into goals 1 and 2 below, and one entry that no work will
 retire: `checksum-test.r3` asks to read `system/options/boot`, which is the
 launcher a script runs to start a confined child interpreter and therefore has
 to sit outside whatever root the script can see. Retiring it would mean giving
@@ -268,65 +268,7 @@ and the count goes up, that is the answer, so write it down here.
 
 ---
 
-### 1. Modules and IMPORT -- 12
-
-`module-test.r3` stopped nine times, and every one came back to
-`system/options/modules` being none.
-
-**Both halves of that are fixed, on 12 September 2026, because the last of the
-sweepable files needed them.** IMPORT looks in three places in order -- what is already loaded, a file
-in the modules directory, and the address in `system/modules`, which it
-downloads and saves -- and two of the three were unreachable here:
-
-- **`system/options/modules` was none.** `sys-start.reb` writes it in one line,
-  `modules: attempt [make-dir/deep join data %modules/]`, and nothing else
-  decides it. It is set when a host installs a filesystem *and* the data
-  directory is there. The second condition is JEBOL's own: the line above it in
-  `sys-start.reb` makes the data directory, and JEBOL does not, because the path
-  it defaults to is the operator's own and a confined filesystem reads that path
-  as somewhere else entirely -- making it eagerly put a folder named after the
-  operator's home inside every sandbox, which three tests of what a fresh
-  directory contains noticed at once.
-- **`system/modules` started empty.** `sysobj.reb` builds it as a table of
-  addresses, and a module that loads replaces its own -- `repend system/modules
-  [name module]` is the last thing LOAD-MODULE does, so the table is both the
-  list of what may be fetched and the record of what has been. The table is put
-  down before the library loads, for that reason.
-
-Three of `module-test.r3`'s entries came off with it, and `import 'thru-cache`
-now downloads, saves and imports.
-
-**Two things were left out of the table on purpose**, and the reasoning is in
-"A standing note: IMPORT fetches and evaluates code over the network" above.
-The fourteen compiled extensions are gone because nothing here can load a
-shared library -- each was a round trip to github ending in failure, and several
-named things this build has anyway. The nineteen addresses for modules JEBOL
-already vendors should go the same way and have not yet; that is the next piece
-of this goal.
-
-#### What is left
-
-Twelve entries in `module-test.r3`, and they are about IMPORT itself rather than
-about where a module comes from. Read them with `SuiteStops` before planning:
-the nine stops this goal was written around are gone, so the list is a different
-list now and has not been re-derived.
-
-Two more defects turned up on the way and are fixed, both found by an IMPORT
-that got further than before:
-
-- **UPPERCASE and LOWERCASE took only a quoted string**, where the declaration
-  says `string [any-string! char!]`. The module loader names a downloaded file
-  with `lowercase second split-path source`, and SPLIT-PATH of a url answers a
-  file.
-- **TO-REAL-FILE dropped the trailing slash from a directory.** `OS_Real_Path`
-  stats what it resolved and appends one -- the comment beside the line is the
-  rule. Rebol's cache module opens with `join to-real-file any [get-env "TEMP"
-  so/data] %thru-cache/`, and without the slash its whole cache went to a
-  directory named by running two names together.
-
----
-
-### 2. The PDF encoder hangs where the C takes a millisecond -- 9
+### 1. The PDF encoder hangs where the C takes a millisecond -- 9
 
 **Measured on 12 September 2026, and it is not what this goal said.** PDF *is*
 implemented: `codec-pdf.reb` is Rebol's own REBOL, vendored and loaded like
@@ -379,7 +321,7 @@ does not bring. That stays true. Somebody who wants more than the borrowed
 codec gives adds the library and a bridge to it themselves, and with neither
 present nothing registers and nothing is attempted.
 
-### 3. The scattered singles and pairs -- 31 across fourteen files
+### 2. The scattered singles and pairs -- 31 across fourteen files
 
 What is left when the others above are taken out:
 
@@ -405,7 +347,7 @@ on its own.
 
 ---
 
-### 4. The error catalogue: 61 ids cannot be raised
+### 3. The error catalogue: 61 ids cannot be raised
 
 `too-long` is one of Rebol's error ids and JEBOL simply did not have it. That
 was found by needing it, which is no way to find things, so the whole catalogue
@@ -434,7 +376,7 @@ remembered.
 
 ---
 
-### 5. What reaching zero would not prove
+### 4. What reaching zero would not prove
 
 None of this is on `known-gaps.txt` and none of it can be, because the suite
 tests what functions **return** and these are all about what functions **say
@@ -520,7 +462,7 @@ whether the change worked.
 
 ---
 
-### 6. What the suite does not ask
+### 5. What the suite does not ask
 
 **The suite is the measure, and it is not the whole surface.** Running all 930
 combinations of MAKE and TO against fifteen target types and thirty-one source
@@ -629,7 +571,7 @@ found two things that four separate readings of the C had not. See
 
 ---
 
-### 7. The 32 prelude forks
+### 6. The 32 prelude forks
 
 `prelude.reb` defines 36 words and Rebol defines 32 of them in `src/mezz` too:
 
@@ -645,7 +587,7 @@ the same function, and if not, why was it forked?
 
 ---
 
-### 8. Loose ends
+### 7. Loose ends
 
 **`task!` is a datatype word and not yet a datatype.** `task!` answers
 `#(datatype!)` on both, but `make task! [1 + 1]` gives `#(task!)` on a real
@@ -696,7 +638,7 @@ goals above.
 
 ---
 
-### 9. Graphics -- fourteen DRAW commands
+### 8. Graphics -- fourteen DRAW commands
 
 **DRAW renders 22 of R3's 36 commands.** The fourteen it does not:
 
@@ -712,7 +654,7 @@ path, VID, Android, and the events-name-the-wrong-window one.
 
 ---
 
-### 10. Code from outside is not authenticated -- the TLS client
+### 9. Code from outside is not authenticated -- the TLS client
 
 **Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
 failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
@@ -783,7 +725,7 @@ does not control should know that before it does.
 
 ---
 
-### 11. Code from outside is not verified -- no checksum on a fetched module
+### 10. Code from outside is not verified -- no checksum on a fetched module
 
 **Nothing crosses the wire today**, which is why this is a goal rather than a
 live hole: the thirteen modules this build has no other way to reach are bundled
@@ -831,7 +773,7 @@ wants that more than it wants either check.
 
 ---
 
-### 12. The type-major refactor
+### 11. The type-major refactor
 
 **The original complaint, and much the largest piece left.** One `t-*.c` per
 increment, bitset as the pilot.
@@ -843,7 +785,7 @@ enumerate every arm that needed work. That is what the action seam wants.
 
 ---
 
-### 13. The boot -- 343ms cold, 72ms warm
+### 12. The boot -- 343ms cold, 72ms warm
 
 **343ms for the first interpreter, 72ms once the JVM has settled.** A
 7900-test run pays the 72ms per class, and that is the floor rather than the
@@ -854,7 +796,7 @@ already in that allocation path, and it costs about 2ms of the 72.
 
 ---
 
-### 14. LLM-friendly MCP tools
+### 13. LLM-friendly MCP tools
 
 **The reader will only ever be an LLM, and that decides the design.** A model
 does not misunderstand, it infers confidently from training data that is mostly

@@ -28,7 +28,7 @@ class TheBundledSchemeFromTheSourceTest {
                 make-dir/deep system/options/data""";
         interpreter.defineFreshWordsIn(makingIt);
         interpreter.run(makingIt);
-        interpreter.putTheModulesDirectoryBesideTheData();
+        interpreter.followTheApplicationDataDirectory();
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

@@ -41,7 +41,7 @@ class WhereAModuleComesFromFromTheSourceTest {
                 make-dir/deep system/options/data""";
         interpreter.defineFreshWordsIn(makingIt);
         interpreter.run(makingIt);
-        interpreter.putTheModulesDirectoryBesideTheData();
+        interpreter.followTheApplicationDataDirectory();
 
         assertThat(interpreter.display(interpreter.run("""
                 reduce [
@@ -68,7 +68,7 @@ class WhereAModuleComesFromFromTheSourceTest {
                 make-dir/deep system/options/data""";
         interpreter.defineFreshWordsIn(moving);
         interpreter.run(moving);
-        interpreter.putTheModulesDirectoryBesideTheData();
+        interpreter.followTheApplicationDataDirectory();
 
         assertThat(interpreter.display(interpreter.run(
                 "system/options/modules"))).isEqualTo("%/elsewhere/modules/");

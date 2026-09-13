@@ -323,7 +323,13 @@ public final class Interpreter {
                 && system.context().ownSlotFor("contexts").value()
                         instanceof ObjectValue contexts) {
             contexts.context().set("user", new ObjectValue(userContext));
+            openTheUserContextWithRebolAndItself(system);
         }
+    }
+
+    private void openTheUserContextWithRebolAndItself(ObjectValue system) {
+        userContext.set("REBOL", system);
+        userContext.set("lib-local", new ObjectValue(userContext));
     }
 
     /**
@@ -382,10 +388,10 @@ public final class Interpreter {
     }
 
     private static String writtenBootLauncher() {
-        return writtenBootLauncher("/");
+        return writtenBootLauncher("/", "");
     }
 
-    private static String writtenBootLauncher(String hostRoot) {
+    private static String writtenBootLauncher(String hostRoot, String dataDirectory) {
         String jvm = ProcessHandle.current().info().command()
                 .orElse(System.getProperty("java.home", "") + "/bin/java");
         try {
@@ -393,8 +399,9 @@ public final class Interpreter {
                     java.nio.file.Files.createTempFile("jebol-boot", ".sh");
             java.nio.file.Files.writeString(launcher, "#!/bin/sh\nexec \"" + jvm
                     + "\" -cp \"" + aClasspathMadeAbsoluteSoItWorksFromAnyDirectory()
-                    + "\" org.jebol.adapter.cli.Repl --root \"" + hostRoot
-                    + "\" \"$@\"\n");
+                    + "\" org.jebol.adapter.cli.Repl --root \"" + hostRoot + "\""
+                    + whereTheApplicationDataIsSwitch(dataDirectory)
+                    + " \"$@\"\n");
             if (!launcher.toFile().setExecutable(true)) {
                 return "";
             }
@@ -403,6 +410,14 @@ public final class Interpreter {
         } catch (IOException unwritable) {
             return "";
         }
+    }
+
+    private static final String THE_DATA_SWITCH = "--data";
+
+    private static String whereTheApplicationDataIsSwitch(String dataDirectory) {
+        return dataDirectory.isEmpty()
+                ? ""
+                : " " + THE_DATA_SWITCH + " \"" + dataDirectory + "\"";
     }
 
     private static String declarationsIn(String path) {
@@ -786,35 +801,52 @@ public final class Interpreter {
      */
     public void useFileSystem(FilePort port) {
         evaluator.useFiles(port);
-        confineAnyInterpreterThisOneStarts(port);
-        putTheModulesDirectoryBesideTheData();
+        noteTheRootAnInterpreterThisOneStartsMustShare(port);
+        followTheApplicationDataDirectory();
     }
 
     /**
-     * Says where an imported module is kept, and makes the directory. Call it
-     * again after moving {@code system/options/data}, which the modules follow.
+     * Settles everything that hangs off {@code system/options/data}: the
+     * modules directory beside it, which is made, and what an interpreter this
+     * one starts is told about where to find both. Call it again whenever a
+     * host moves the data directory.
      */
-    public void putTheModulesDirectoryBesideTheData() {
+    public void followTheApplicationDataDirectory() {
         runTheBootStep("modules-directory.reb");
+        confineAnyInterpreterThisOneStarts();
     }
 
-    private void confineAnyInterpreterThisOneStarts(FilePort port) {
+    private String theRootAnyChildMustShare = "";
+
+    private void noteTheRootAnInterpreterThisOneStartsMustShare(FilePort port) {
         if (!bounds.grantedServices().contains(HostService.PROCESSES)) {
             return;
         }
-        String hostRoot;
         try {
-            hostRoot = port.hostPathOf("/");
+            theRootAnyChildMustShare = port.hostPathOf("/");
         } catch (RuntimeException noRoot) {
+            theRootAnyChildMustShare = "";
+        }
+    }
+
+    private void confineAnyInterpreterThisOneStarts() {
+        if (theRootAnyChildMustShare.isEmpty()) {
             return;
         }
-        String launcher = writtenBootLauncher(hostRoot);
+        String launcher = writtenBootLauncher(
+                theRootAnyChildMustShare, theDataDirectoryThisScriptSees());
         if (launcher.isEmpty()) {
             return;
         }
         String saying = "system/options/boot: %" + launcher;
         defineFreshWordsIn(saying);
         run(saying);
+    }
+
+    private String theDataDirectoryThisScriptSees() {
+        return pathInto("system", "options", "data") instanceof StringValue written
+                ? written.text()
+                : "";
     }
 
     /** Reads source without evaluating it, leaving every word unbound. */

@@ -59,4 +59,70 @@ class BootProcessFromTheSourceTest {
                 100 = call/shell/wait append to-local-file system/options/boot
                     { --do "quit/return 100"}""")).isEqualTo("#(true)");
     }
+
+    private static Interpreter interpreterWithTheDataDirectoryMoved() {
+        Interpreter interpreter = interpreterWithAHost();
+        String moving = """
+                system/options/data: %/data/
+                make-dir/deep system/options/data""";
+        interpreter.defineFreshWordsIn(moving);
+        interpreter.run(moving);
+        interpreter.followTheApplicationDataDirectory();
+        return interpreter;
+    }
+
+    private static final String AGREED = "agreed";
+
+    private static String doesTheChildSay(
+            Interpreter interpreter, String childScript, String expected) {
+
+        String asking = """
+                write %%child.r3 {%s}
+                heard: copy ""
+                call/wait/shell/output reform [
+                    to-local-file system/options/boot %%child.r3] heard
+                either {%s} = heard ['%s] [heard]"""
+                .formatted(childScript, expected, AGREED);
+        interpreter.defineFreshWordsIn(asking);
+        return interpreter.display(interpreter.run(asking));
+    }
+
+    @Test
+    @DisplayName("a child is told where its parent keeps application data")
+    void aChildIsToldWhereItsParentKeepsApplicationData() {
+        assertThat(doesTheChildSay(interpreterWithTheDataDirectoryMoved(), """
+                Rebol []
+                probe system/options/data
+                probe system/options/modules""",
+                "%/data/^/%/data/modules/^/")).isEqualTo(AGREED);
+    }
+
+    @Test
+    @DisplayName("so it imports a module its parent installed a moment earlier")
+    void itImportsAModuleItsParentInstalledAMomentEarlier() {
+        Interpreter interpreter = interpreterWithTheDataDirectoryMoved();
+        String installing = """
+                write system/options/modules/whisper.reb
+                    {Rebol [name: whisper type: module] export whispered: 42}""";
+        interpreter.defineFreshWordsIn(installing);
+        interpreter.run(installing);
+
+        assertThat(doesTheChildSay(interpreter, """
+                Rebol []
+                import 'whisper
+                probe whispered""", "42^/")).isEqualTo(AGREED);
+    }
+
+    @Test
+    @DisplayName("and where the host moved nothing, neither of them has a modules directory")
+    void whereTheHostMovedNothingNeitherHasAModulesDirectory() {
+        Interpreter interpreter = interpreterWithAHost();
+        String asking = "none? system/options/modules";
+        interpreter.defineFreshWordsIn(asking);
+
+        assertThat(interpreter.display(interpreter.run(asking))).isEqualTo("#(true)");
+        assertThat(doesTheChildSay(interpreter, """
+                Rebol []
+                probe none? system/options/modules""", "#(true)^/")).isEqualTo(AGREED);
+    }
 }

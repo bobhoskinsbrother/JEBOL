@@ -67,7 +67,7 @@ final class SuiteHost {
                 set '~ system/options/data""";
         interpreter.defineFreshWordsIn(sayingSo);
         interpreter.run(sayingSo);
-        interpreter.putTheModulesDirectoryBesideTheData();
+        interpreter.followTheApplicationDataDirectory();
     }
 
     private static void putTheModulesTheSuiteImportsWhereImportLooks(Path root)
