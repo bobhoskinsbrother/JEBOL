@@ -663,19 +663,43 @@ found two things that four separate readings of the C had not. See
 
 ---
 
-### 5. The 32 prelude forks
+### 5. The prelude is a bootstrap, not 32 forks -- audited 2026-09-14
 
-`prelude.reb` defines 36 words and Rebol defines 32 of them in `src/mezz` too:
+**Run, and the answer is that there were no forks.** Every one of the 36 words
+`prelude.reb` defines was put to both interpreters -- `type?`, `spec-of` and
+`body-of` on each, the two outputs diffed exactly -- and 35 matched to the
+character. The one that did not was `empty?`, and it turned out not to be a
+fork either.
 
-```
-all-of  any-of  body-of  cause-error  clean-path  clos  closure  collect
-default  dirize  does  empty?  enum  funco  has  join  keys-of  map  max  min
-rejoin  script?  spec-of  split-path  suffix?  title-of  to-word  types-of
-undirize  values-of  words-of  wrap
-```
+**The prelude's copies are replaced as Rebol's library loads.** 32 of the 36
+are also defined in a vendored `mezz` file, and the definition standing at
+runtime is the library's: `collect`'s body at runtime is
+`mezz-series.reb`'s, not the prelude's, and the two differ. The prelude's
+versions exist so that the prelude and the earliest library files can run at
+all -- deleting `empty?` from it makes the prelude fail to load, because the
+prelude uses it before `mezz-series.reb` has defined it.
 
-Audit by identity rather than by datatype: for each one, is JEBOL's version
-the same function, and if not, why was it forked?
+The four the library does not define -- `to-block`, `to-decimal`, `to-string`
+and `funct` -- answer what a real 3.22.5 answers anyway.
+
+**What the audit did find was a defect one layer down.** `make :tail?
+[[{Doc} series [series! none!]]]` is how Rebol's library widens a built-in's
+declared types without rewriting it, and it is how `empty?` is defined. JEBOL
+took the derived parameters for calling -- a narrowed derivation refused
+arguments correctly -- and then reported the *original's* specification from
+`spec-of`, because a built-in's declaration is looked up by name and a derived
+one carries the original's name. `empty?` therefore advertised `tail?`'s
+narrow type list. Fixed: a derived built-in carries its own specification.
+
+**And it found why nothing had caught that.** `runtime-parity.py` compared
+`spec-of` **length**, so a widened type list and a rewritten docstring of the
+same item count both read as agreement. It compares the text now. Re-run
+after the change, the count is unmoved -- 3 of 582, the same three
+`request-*` functions JEBOL serves through its own port -- so the loose
+measure had been hiding exactly one thing, and this was it.
+
+The lesson is the one this file keeps learning: **a measure that counts
+instead of comparing will agree with anything.**
 
 ---
 
@@ -946,7 +970,68 @@ already in that allocation path, and it costs about 2ms of the 72.
 
 ---
 
-### 12. LLM-friendly MCP tools
+### 12. A debugger
+
+**Two halves, and the file has learned to say which is which.** One is parity
+work with a reference standing behind it. The other is a feature nothing can
+be checked against, and pretending otherwise is what went wrong with DRAW.
+
+**The half with a reference: R3's own debug natives.** All six words are
+defined here -- `trace`, `stack`, `ds`, `dump`, `dp`, `check` -- and at least
+one of them answers differently. `trace on` over `x: 1 + 2`, measured on
+2026-09-13:
+
+```
+R3                              JEBOL
+ 4: x:                          3 : x:
+ 5: 1                           4 : 1
+ 6: + : op! [value1 value2]     (missing)
+ 7: 2                           6 : 2
+   --> +                        (missing)
+   <-- + == 3                   (missing)
+```
+
+So JEBOL names no operator, reports no call into one and no value out of one,
+and counts lines differently. `trace/back` and `trace/function` are untested
+here, and `stack` with its eight refinements -- `/block /word /func /args
+/size /depth /limit` -- has had nothing said about it at all. Every one of
+those is checkable against `./r3-head` in a second, which makes this the
+cheap half and the half to do first.
+
+**The half with no reference: stopping, stepping and looking.** R3 has no
+breakpoints, no stepping and no way to inspect a paused frame, so there is
+nothing to port and nothing to diff. It is a feature, on its own merits, and
+the merits are real: this interpreter is meant to be embedded in a server,
+and a dialect that misbehaves in production is currently debugged by printing.
+
+What it would be built on is already there and was built for something else.
+The evaluator walks explicit frames on the heap rather than recursing -- that
+is what makes `where` and `near` work on a raised error, and what makes the
+depth limit a policy rather than the host stack. A stepper wants exactly that
+seam: a frame you can stop at, read and resume.
+
+**Three things to decide before any of it, and none is technical:**
+
+1. **What drives it.** The Debug Adapter Protocol is what an editor speaks,
+   and speaking it means an ordinary editor debugs a REBOL script with no
+   plugin. It is also a wire protocol in a jar that has no dependencies, so it
+   would be written here or not at all.
+2. **What a paused script does to its host.** A run carries a deadline and a
+   grant, and a debugger that parks a request thread is the same problem as
+   the blocking VIEW in `screen.allium`. A paused script has to be visible to
+   the bounds that were set for it, or the bounds are a lie.
+3. **Whether a script may debug itself.** `trace` already lets one, which
+   makes a breakpoint native the obvious next step and the security question
+   immediate: a script that can pause and inspect frames can inspect frames it
+   was not given.
+
+**Do the parity half first regardless.** It is measurable today, it costs
+little, and a `trace` that agrees with R3 is the thing anybody reaches for
+before they reach for a debugger.
+
+---
+
+### 13. LLM-friendly MCP tools
 
 **The reader will only ever be an LLM, and that decides the design.** A model
 does not misunderstand, it infers confidently from training data that is mostly

@@ -16,7 +16,10 @@ questions that only a running one can answer:
 
     type?      what datatype the function reports itself as
     words-of   the words it says it takes, refinements included
-    spec-of    how much of its own specification it can produce
+    spec-of    the specification itself, text for text -- not its length,
+               which is what this asked for until 2026-09-14 and why a
+               widened type list and a rewritten docstring both read as
+               agreement
 
 The function list comes from `./r3-head`, so it is Rebol's list rather than
 JEBOL's, and a function JEBOL does not have at all shows up as ABSENT rather
@@ -51,7 +54,8 @@ ask: func [w [word!] /local v t s p] [
         v: get w
         t: either error? t: try [mold type? :v] ["?"] [t]
         s: either error? s: try [mold words-of :v] ["?"] [s]
-        p: either error? p: try [length? spec-of :v] ["?"] [mold p]
+        p: either error? p: try [mold spec-of :v] ["?"] [p]
+        p: either none? p ["?"] [trim/lines copy p]
         print [mold w tab t tab s tab p]
     ]
 ]
@@ -125,11 +129,11 @@ def main():
     print("  %4d absent from JEBOL" % len(absent))
     print("  %4d report a different datatype" % len(kinds))
     print("  %4d answer words-of differently" % len(words))
-    print("  %4d answer a different spec length" % len(specs))
+    print("  %4d answer a different spec" % len(specs))
 
     show = len(names) if "--all" in sys.argv else 8
     for title, rows in (("datatype", kinds), ("words-of", words),
-                        ("spec-of length", specs)):
+                        ("spec-of", specs)):
         if not rows:
             continue
         print("\n--- %s (%d)" % (title, len(rows)))

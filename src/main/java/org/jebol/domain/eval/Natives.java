@@ -7823,6 +7823,9 @@ public final class Natives {
     }
 
     private Value specOf(NativeValue built) {
+        if (built.ownSpec().isPresent()) {
+            return built.ownSpec().orElseThrow();
+        }
         BlockValue declared = declaredSpecs().get(built.nativeName());
         if (declared != null) {
             return declared;
@@ -11764,7 +11767,7 @@ public final class Natives {
         }
         if (!(original instanceof FunctionValue written)) {
             return original instanceof NativeValue built && !keepingTheSpecification
-                    ? new NativeValue(built.nativeName(),
+                    ? built.derivedWith((BlockValue) first,
                             FunctionSpec.parametersIn((BlockValue) first))
                     : original;
         }

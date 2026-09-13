@@ -23,14 +23,14 @@ min: :minimum
 ;; two thirds of theirs is written in REBOL, and none of these needs
 ;; anything the language cannot say.
 
+;; Needed by the prelude itself, which runs before Rebol's library. The
+;; library's own EMPTY? -- TAIL? widened with object! and none! in
+;; mezz-series.reb -- replaces this one as soon as that file loads, and is
+;; what a script sees. Deleting this makes the prelude fail to load.
 empty?: func [
     "Whether a series has nothing left from where it is."
     series
 ][
-    ;; None answers true rather than refusing, which is the useful way
-    ;; round for a guard: code asks this about a series it may not have
-    ;; got back. TAIL? on its own refuses none, and so do FIRST, HEAD and
-    ;; NEXT -- only this, INDEX? and LENGTH? forgive it.
     either none? series [true] [tail? series]
 ]
 

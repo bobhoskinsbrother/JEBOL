@@ -1,6 +1,7 @@
 package org.jebol.domain.value;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -14,10 +15,19 @@ public record NativeValue(
         String nativeName,
         List<Parameter> parameters,
         Set<String> declaredRefinements,
-        Set<String> askedRefinements) implements Value {
+        Set<String> askedRefinements,
+        Optional<BlockValue> ownSpec) implements Value {
 
     public NativeValue(String nativeName, List<Parameter> parameters) {
-        this(nativeName, parameters, Set.of(), Set.of());
+        this(nativeName, parameters, Set.of(), Set.of(), Optional.empty());
+    }
+
+    public NativeValue(
+            String nativeName, List<Parameter> parameters,
+            Set<String> declaredRefinements, Set<String> askedRefinements) {
+
+        this(nativeName, parameters, declaredRefinements, askedRefinements,
+                Optional.empty());
     }
 
     /**
@@ -28,7 +38,20 @@ public record NativeValue(
      * {@link org.jebol.domain.eval.RefinedCallable}.
      */
     public NativeValue askedFor(Set<String> refinements) {
-        return new NativeValue(nativeName, parameters, declaredRefinements, refinements);
+        return new NativeValue(nativeName, parameters, declaredRefinements,
+                refinements, ownSpec);
+    }
+
+    /**
+     * The same built-in carrying a specification of its own.
+     *
+     * <p>What MAKE on a built-in answers. A built-in's declaration is normally
+     * looked up by its name, and a derived one has the original's name and its
+     * own declaration, so the name would find the wrong one.
+     */
+    public NativeValue derivedWith(BlockValue spec, List<Parameter> declared) {
+        return new NativeValue(nativeName, declared, declaredRefinements,
+                askedRefinements, Optional.of(spec));
     }
 
     public boolean declares(String refinement) {

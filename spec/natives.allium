@@ -996,6 +996,54 @@ rule AWellFormedReturnAnnotationRoundTripsThroughSpecOf {
     ensures: CallResult(value: the_spec_the_function_was_defined_with(subject))
 }
 
+-- === Deriving one function from another =====================
+
+-- MAKE on a function answers another function with a new specification,
+-- keeping the behaviour unless a new body is given as well.
+--
+-- `make :tail? [[{Doc} series [series! none!]]]` is how Rebol's own library
+-- widens a built-in's declared types without rewriting it, and
+-- `mezz-series.reb` uses it for exactly that: EMPTY? is TAIL? with `object!`
+-- and `none!` added and a docstring of its own.
+--
+-- The derived function is a different value -- `same?` answers false -- and
+-- **the specification it answers to SPEC-OF is the one it was derived with,
+-- not the one the original carries.** That half is the whole point: a
+-- built-in's declaration is looked up by its name, and a derived one has the
+-- original's name and its own specification, so the name is the wrong thing
+-- to look it up by.
+--
+-- The types are the derived ones for calling as well as for reading. A
+-- built-in derived with a narrower list refuses an argument the original
+-- would have taken: `d: make :tail? [[{Doc} series [block!]]]` then
+-- `d "text"` raises expect-arg, where `tail? "text"` answers.
+--
+-- A `*` where the specification goes keeps the original's, which is how a
+-- body is replaced without restating the interface.
+rule MakeOnAFunctionAnswersOneWithTheNewSpecification {
+    when: EvaluateCall(make, original, parts)
+    requires: is_any_function(original)
+    requires: is_block(first_of(parts))
+
+    ensures: CallResult(value: a_function_whose_spec_is(first_of(parts)))
+    ensures: the_answer_is_not(same_as: original)
+}
+
+rule ADerivedFunctionKeepsTheBehaviourUnlessANewBodyIsGiven {
+    when: EvaluateCall(make, original, parts)
+    requires: is_any_function(original)
+    requires: count_of(parts) < 2
+
+    ensures: CallResult(value: a_function_that_does_what(original) does)
+}
+
+rule ADerivedBuiltInReadsAsItsOwnSpecificationRatherThanTheOriginals {
+    when: EvaluateCall(spec_of, derived)
+    requires: was_derived_from_a_built_in(derived)
+
+    ensures: CallResult(value: the_spec_it_was_derived_with(derived))
+}
+
 -- BODY-OF answers a copy of the function's body, deep enough that changing
 -- the answer never reaches the function. So `clear second body-of :f` clears
 -- the copy's string and the function still holds `[append "xx" s]`, and a
