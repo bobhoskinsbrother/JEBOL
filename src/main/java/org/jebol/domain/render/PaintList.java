@@ -174,14 +174,14 @@ public record PaintList(List<PaintInstruction> instructions) {
             return Optional.empty();
         }
         return Optional.of(
-                new PaintInstruction.Writing(where, text, Colour.BLACK));
+                PaintInstruction.Writing.plain(where, text, Colour.BLACK));
     }
 
     private static java.util.Optional<PaintInstruction> pictured(
             Value held, Placement where) {
 
         return held instanceof ImageValue pixels
-                ? Optional.of(new PaintInstruction.Picture(where, pixels))
+                ? Optional.of(PaintInstruction.Picture.atItsOwnSize(where, pixels))
                 : Optional.empty();
     }
 

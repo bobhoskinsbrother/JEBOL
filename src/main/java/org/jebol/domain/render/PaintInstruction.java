@@ -10,12 +10,10 @@ import org.jebol.domain.value.ImageValue;
  */
 public sealed interface PaintInstruction {
 
-    /** Where it goes, what it may cover, and how much shows through. */
     Placement where();
 
     PaintKind kind();
 
-    /** A rectangle of one colour. */
     record Fill(Placement where, Colour colour) implements PaintInstruction {
 
         @Override
@@ -24,9 +22,18 @@ public sealed interface PaintInstruction {
         }
     }
 
-    /** A line of characters, drawn from the top left of the placement. */
-    record Writing(Placement where, String text, Colour colour)
+    record Writing(
+            Placement where, String text, Colour colour,
+            double size, boolean bold, boolean italic)
             implements PaintInstruction {
+
+        /** The size a gob's own text is written at when nothing asks for one. */
+        public static final double THE_ORDINARY_SIZE = 12;
+
+        /** Plain, at the ordinary size: what a gob's own string is. */
+        public static Writing plain(Placement where, String text, Colour colour) {
+            return new Writing(where, text, colour, THE_ORDINARY_SIZE, false, false);
+        }
 
         @Override
         public PaintKind kind() {
@@ -34,8 +41,16 @@ public sealed interface PaintInstruction {
         }
     }
 
-    /** An image, pixel for pixel. */
-    record Picture(Placement where, ImageValue pixels) implements PaintInstruction {
+    record Picture(
+            Placement where, ImageValue pixels,
+            double wide, double high, Transform transform)
+            implements PaintInstruction {
+
+        /** At its own size and square to the surface, which is what a gob shows. */
+        public static Picture atItsOwnSize(Placement where, ImageValue pixels) {
+            return new Picture(where, pixels,
+                    pixels.size().x(), pixels.size().y(), Transform.NONE);
+        }
 
         @Override
         public PaintKind kind() {
@@ -43,11 +58,6 @@ public sealed interface PaintInstruction {
         }
     }
 
-    /**
-     * A path, painted with a stroke or a fill or both. Either may be absent; a
-     * shape with neither is dropped before it reaches a renderer rather than
-     * being drawn invisibly.
-     */
     record Drawn(
             Placement where,
             java.util.List<PathStep> path,

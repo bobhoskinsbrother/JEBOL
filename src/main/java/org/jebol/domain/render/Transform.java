@@ -36,6 +36,28 @@ public record Transform(
                 downSkew * then.acrossMove + downScale * then.downMove + downMove);
     }
 
+    /**
+     * The transform that undoes this one, or this one where there is none.
+     *
+     * <p>A transform that squashes everything onto a line has no undoing, and
+     * {@code scale 0 1} is the ordinary way to write one by accident. The C
+     * divides by the determinant without looking; dividing by zero here would
+     * put infinities into every coordinate that followed.
+     */
+    public Transform inverted() {
+        double determinant = acrossScale * downScale - downSkew * acrossSkew;
+        if (determinant == 0 || !Double.isFinite(determinant)) {
+            return this;
+        }
+        return new Transform(
+                downScale / determinant,
+                -downSkew / determinant,
+                -acrossSkew / determinant,
+                acrossScale / determinant,
+                (acrossSkew * downMove - downScale * acrossMove) / determinant,
+                (downSkew * acrossMove - acrossScale * downMove) / determinant);
+    }
+
     public static Transform movedBy(double across, double down) {
         return new Transform(1, 0, 0, 1, across, down);
     }

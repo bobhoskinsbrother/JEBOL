@@ -18,17 +18,28 @@
 -- why only Windows ever got it: no posix host-draw.c exists, so a stock R3 on
 -- macOS or Linux draws nothing at all.
 --
--- Includes: the paint state, the shapes, the paths, and the transforms.
--- Excludes, and each is named rather than hidden:
---   - grad-pen. Both toolkits do linear and radial gradients and neither does
---     conic, diamond or cubic the same way.
---   - line-pattern. Dash phase and how a pattern restarts at a join differ.
---   - image, image-filter, image-pattern, image-options. Scaling quality is
---     a rasteriser's own business and the two disagree.
---   - text. Glyph shapes never match between rasterisers, and it needs the
---     TEXT sub-dialect, which is another entry in system/dialects.
---   - arrow, gamma, effect, spline, and triangle's Gouraud shading.
---   - invert-matrix and transform.
+-- Includes every command the dialect table declares: the paint state, the
+-- shapes and paths, the transforms, clipping, dashes, arrowheads, gradients,
+-- images and text.
+--
+-- The rule that made the awkward ones affordable is the same one that made
+-- the dialect affordable: **anything neither toolkit has is worked out here
+-- and handed to both as something they do have.** Gouraud shading becomes a
+-- mesh of flat triangles, a conic gradient becomes a fan of wedges, a keyed
+-- image becomes a copy with a see-through colour, a two-colour dash becomes
+-- two paths. A renderer still executes and decides nothing, so the two cannot
+-- drift, and the awkward cases cost instructions rather than fidelity.
+--
+-- Excluded, and each is named rather than hidden:
+--   - effect. A dialect of its own -- blurs and tints over a whole image --
+--     that happens to be listed in the draw table. It belongs with the codecs.
+--   - image-options and image-pattern. Declared in draw.reb, absent from
+--     dial-draw.reb, so DELECT cannot read either of them in any Rebol.
+--
+-- Text is the one thing here two renderers cannot be held to pixel for pixel:
+-- they measure and hint glyphs differently. The words, the place, the size,
+-- the weight and the colour are all decided here; the shapes of the letters
+-- are the toolkit's.
 --
 -- Authorities: {@code src/boot/draw.reb} declares the commands,
 -- {@code src/mezz/dial-draw.reb} their argument types, and
@@ -316,6 +327,58 @@ rule ResettingTheMatrixUndoesEveryTransform {
     ensures: the_transform_becomes(nothing)
 }
 
+-- TRANSFORM is the other four in one command: an angle, a centre to turn and
+-- scale about, a scale, and a move.
+--
+-- `transform angle centre scale translation`, and the order it composes them
+-- in is the order AGG's own `trans_affine` builds one: move the centre to the
+-- origin, scale, turn, move it back, and move by the translation. Turning
+-- about a centre is the whole point of the command -- ROTATE alone turns
+-- about the origin, so a script that wants a shape spun where it stands has
+-- to write three commands without this one.
+--
+-- **The order is a reading rather than a measurement, and this is the first
+-- rule in this file that cannot be checked against a running Rebol.** The
+-- binary this project consults has no DRAW at all, so the only evidence is
+-- the parameter order of `agg_transform(angle, centre, scaleX, scaleY,
+-- translation)` in `src/os/win32/host-draw.c` and how AGG conventionally
+-- assembles one. Written down as a decision so that the next person knows
+-- which parts of this file were read off a running interpreter and which were
+-- reasoned.
+rule TransformTurnsAndScalesAboutItsCentreThenMoves {
+    when: the_command_is(transform, angle, centre, scale, translation)
+    ensures: the_transform_becomes(
+        the_previous_transform
+            combined_with moved_by(centre)
+            combined_with turned_by(angle)
+            combined_with scaled_by(scale)
+            combined_with moved_by(negated(centre))
+            combined_with moved_by(translation))
+}
+
+-- INVERT-MATRIX turns the transform into the one that undoes it, and leaves
+-- it alone when there is no such transform.
+--
+-- A matrix that squashes everything onto a line has no inverse -- `scale 0 1`
+-- is the ordinary way to write one by accident -- and AGG's own
+-- `invert_matrix` divides by the determinant without checking. Dividing by
+-- zero there would put infinities into every coordinate that followed and
+-- paint nothing anybody could look at, so the transform is left standing
+-- instead, and the shapes after it draw where they would have drawn.
+rule InvertMatrixTurnsTheTransformIntoItsUndoing {
+    when: the_command_is(invert_matrix)
+    requires: the_transform_can_be_inverted
+
+    ensures: the_transform_becomes(the_inverse_of(the_previous_transform))
+}
+
+rule AnUninvertibleTransformIsLeftStanding {
+    when: the_command_is(invert_matrix)
+    requires: not the_transform_can_be_inverted
+
+    ensures: the_transform_becomes(the_previous_transform)
+}
+
 -- PUSH runs a block with the state and the transform saved, and puts both
 -- back afterwards.
 --
@@ -328,6 +391,345 @@ rule PushRestoresBothTheStateAndTheTransform {
         the_block_is_drawn_with(the_state_and_transform_as_they_stand)
         the_state_after_is(the_state_before)
         the_transform_after_is(the_transform_before)
+}
+
+------------------------------------------------------------
+-- Clipping from inside the block
+------------------------------------------------------------
+
+-- CLIP narrows what the rest of the block may paint on, to a box given as two
+-- corners.
+--
+-- It is the one command that changes where paint may land rather than what is
+-- painted, so it does not produce an instruction of its own: it changes the
+-- area carried by every instruction after it. The area is always narrowed and
+-- never widened, because a draw block may not paint outside its gob however
+-- it is written -- `clip 0x0 9999x9999` gets the gob, not the screen.
+--
+-- `clip` with anything that is not two pairs puts it back to the whole gob,
+-- which is the C's own arm: `if (!IS_PAIR(arg) || !IS_PAIR(arg+1))
+-- agg_clip(graphics, &zero_pair, &size_pair);`. So a block can narrow for a
+-- few shapes and open up again without a PUSH.
+rule ClipNarrowsWhereTheRestOfTheBlockPaints {
+    when: the_command_is(clip, origin, corner)
+    requires: both_are_pairs(origin, corner)
+
+    ensures: every_instruction_after_it_is_clipped_to(
+        the_box(origin, corner) narrowed_to the_gobs_own_area)
+}
+
+rule ClipWithoutTwoCornersOpensBackUpToTheGob {
+    when: the_command_is(clip, origin, corner)
+    requires: not both_are_pairs(origin, corner)
+
+    ensures: every_instruction_after_it_is_clipped_to(the_gobs_own_area)
+}
+
+-- And PUSH puts the clip back with everything else.
+rule PushRestoresTheClipToo {
+    when: the_command_is(push)
+    ensures: the_clip_after_is(the_clip_before)
+}
+
+------------------------------------------------------------
+-- Shapes the shape commands do not cover
+------------------------------------------------------------
+
+-- TRIANGLE is three corners, drawn as a closed path like POLYGON.
+--
+-- Each corner has a default and they are not the same default, which is the
+-- C's doing: a missing first corner is the gob's top left, a missing second
+-- is its bottom right, and a missing third takes the first's across and the
+-- second's down. So `triangle` alone draws the lower-left half of the gob.
+rule TriangleIsAClosedPathOfThreeCorners {
+    when: the_command_is(triangle, first, second, third)
+    ensures: the_instruction_carries(a_closed_path_through(first, second, third))
+}
+
+-- Its three colours shade across it, and the shading is worked out here.
+--
+-- That is AGG's Gouraud shading: the triangle is filled with a blend between
+-- the three corner colours. Neither toolkit has it as a primitive, so the
+-- triangle is cut into a mesh of small flat ones, each filled with the colour
+-- at its own middle. Both renderers are then drawing plain filled triangles,
+-- which they agree about exactly.
+--
+-- Sixteen pieces along each edge is 256 triangles, and a step between
+-- neighbouring pieces below what an eye picks out at any size a gob is.
+--
+-- Each piece is grown past its own corners so that no seam shows between one
+-- and the next, and the whole mesh is clipped to the triangle, so the spill
+-- has nowhere to go. That is what the dilation argument is for in the C, and
+-- it is why it is read and not needed: the overlap is decided here from the
+-- mesh rather than by the caller.
+rule TriangleColoursShadeAcrossIt {
+    when: the_command_is(triangle, first, second, third, colours)
+    requires: count_of(colours) = 3
+
+    ensures: the_instructions_are(a_mesh_of_flat_pieces_clipped_to(
+        the_triangle, blending: colours))
+}
+
+-- SPLINE draws a smooth curve through every point it is given, rather than
+-- near them as CURVE does.
+--
+-- The points are knots the curve passes through, so a spline of three points
+-- touches all three where a quadratic CURVE of three points touches only the
+-- first and last. Closed joins the end back to the start smoothly.
+--
+-- It becomes cubic curves rather than a run of short straight lines: a
+-- Catmull-Rom spline through the knots converts exactly into one cubic per
+-- span, and both renderers already execute cubics. Which is also why the
+-- segmentation count is read and not used -- it tells AGG how many straight
+-- pieces to cut each span into, and a renderer given curves decides that for
+-- itself and better.
+rule SplinePassesThroughEveryPointItIsGiven {
+    when: the_command_is(spline, points, segmentation, ending)
+    requires: count_of(points) >= 2
+
+    ensures: the_instruction_carries(
+        one_cubic_per_span_through(points, closed: ending = closed))
+}
+
+rule ASplineOfFewerThanTwoPointsPaintsNothing {
+    when: the_command_is(spline, points, segmentation, ending)
+    requires: count_of(points) < 2
+
+    ensures: no_instruction_is_produced
+}
+
+------------------------------------------------------------
+-- Dashes, arrowheads and gradients
+------------------------------------------------------------
+
+-- LINE-PATTERN turns the stroke into dashes, and OFF turns it back into a
+-- line.
+--
+-- The numbers after the colour are lengths, taken in turn as dash then gap
+-- then dash then gap, and repeated: `line-pattern 255.0.0 10 4` is ten on,
+-- four off. An odd count repeats around, so a single number is equal dashes
+-- and gaps. Both toolkits take exactly this array and mean the same by it.
+--
+-- **The colour is read and not painted.** In AGG it is what fills the gaps,
+-- so a dashed line there is two colours alternating rather than a line with
+-- holes in it. Neither Java2D nor a canvas can do that in one stroke, and
+-- doing it as two strokes would put the arithmetic for where the gaps fall in
+-- two renderers instead of none.
+rule LinePatternMakesTheStrokeDashed {
+    when: the_command_is(line_pattern, off, colour, lengths)
+    requires: count_of(lengths) > 0
+
+    ensures: the_state_becomes(dashed_with(lengths))
+}
+
+rule LinePatternWithNoLengthsIsASolidLineAgain {
+    when: the_command_is(line_pattern, off, colour, lengths)
+    requires: count_of(lengths) = 0
+
+    ensures: the_state_becomes(not_dashed)
+}
+
+-- ARROW puts a head on the ends of the lines that follow it.
+--
+-- The pair is two flags, one for each end of a line: a zero leaves that end
+-- plain and anything else puts a head on it. So `arrow 255.0.0 0x1` heads the
+-- far end only, which is the ordinary way to point at something.
+--
+-- The head is built here, as three more points on the path, rather than asked
+-- of a renderer -- neither has an arrowhead primitive, and building it twice
+-- is two chances to build it differently. It is sized from the line width,
+-- which is what makes a heavier line carry a bigger head without a script
+-- saying so.
+--
+-- **Its colour is read and not painted**, for the reason the dash colour is:
+-- a head in a second colour is a second stroke, and the paint list says one
+-- shape is painted one way.
+--
+-- **Where the flags mean what they mean is a reading rather than a
+-- measurement.** `draw.reb` says "0 for none, 1 for head, 2 for tail" of a
+-- pair, which describes the numbers without saying which of the pair is which
+-- end. No Rebol available here draws one to look at.
+rule ArrowPutsAHeadOnTheEndsOfLines {
+    when: the_command_is(arrow, colour, flags)
+    requires: flags.second != 0
+
+    ensures: every_line_painted_after_it_carries(a_head_at(its_far_end))
+}
+
+rule ArrowHeadsAreSizedFromTheLineWidth {
+    when: the_command_is(arrow, colour, flags)
+    ensures: every_head_is(four_times_the_line_width_long)
+}
+
+-- GRAD-PEN fills with a run of colours instead of one.
+--
+-- Linear and radial are the two both toolkits have, and they are the two
+-- anybody writes: a linear gradient runs along the angle given, a radial one
+-- runs out from the offset. The colours block is a run of tuples, optionally
+-- each preceded by a number saying where in the range it sits.
+--
+-- All six kinds are painted, and three different ways.
+--
+-- LINEAR and RADIAL are what the toolkits have, and go to them as they are.
+-- DIAGONAL is a linear one turned a further forty-five degrees, and CUBIC is
+-- a linear one whose colours are eased towards the middle rather than spaced
+-- evenly -- both are the same instruction with different numbers, so they
+-- reach a renderer as an ordinary linear gradient.
+--
+-- CONIC and DIAMOND are not runs along a line at all, and no toolkit has
+-- either. A conic gradient is drawn as a fan of wedges round its offset, each
+-- filled with the colour at its own angle; a diamond one as a set of squares
+-- stood on their corners, each filled with the colour at its own distance.
+-- Both are worked out here and reach a renderer as ordinary filled shapes,
+-- clipped to the shape they are filling -- which is why a conic gradient in a
+-- circle is a circle and not the square it sits in.
+rule GradPenFillsWithARunOfColours {
+    when: the_command_is(grad_pen, type, mode, offset, range, angle, scale, colours)
+    requires: type in {linear, radial}
+    requires: count_of(colours) >= 2
+
+    ensures: the_state_becomes(filled_with(a_gradient_of(colours)))
+}
+
+rule AGradientOfOneColourOrNoneIsNoGradientAtAll {
+    when: the_command_is(grad_pen, type, mode, offset, range, angle, scale, colours)
+    requires: count_of(colours) < 2
+
+    ensures: the_state_becomes(not_filled_with_a_gradient)
+}
+
+rule AGradientNoToolkitHasIsDrawnAsShapes {
+    when: the_command_is(grad_pen, type, mode, offset, range, angle, scale, colours)
+    requires: type in {conic, diamond}
+    requires: count_of(colours) >= 2
+
+    ensures: the_instructions_are(flat_shapes_clipped_to(the_shape_being_filled))
+}
+
+rule DiagonalAndCubicAreLinearWithDifferentNumbers {
+    when: the_command_is(grad_pen, type, mode, offset, range, angle, scale, colours)
+    requires: type in {diagonal, cubic}
+    requires: count_of(colours) >= 2
+
+    ensures: the_state_becomes(filled_with(a_linear_gradient))
+}
+
+------------------------------------------------------------
+-- Images and text
+------------------------------------------------------------
+
+-- IMAGE draws a picture, at its own size or stretched into two corners.
+--
+-- One corner puts its top left there and leaves it the size it is. Two
+-- corners stretch it into the box between them, which is the C's own
+-- arithmetic: `pw = ARG_PAIR(9).x - ARG_PAIR(8).x`. No corner at all puts it
+-- at the top left of the gob.
+--
+-- It carries the transform and the clip standing when it was reached, the way
+-- a shape does, so `rotate 20 image (held) 10x10` turns the picture.
+--
+-- **A draw block is data, not code**, so the image has to be put there rather
+-- than made there: `shown/draw: compose [image (held) 10x10]`. `make gob!
+-- [draw: compose [...]]` is refused with `bad-field-set` -- by a real 3.22.5
+-- as well, which takes a literal block for that field and nothing else.
+rule AnImageWithOneCornerIsDrawnAtItsOwnSize {
+    when: the_command_is(image, picture, corners)
+    requires: count_of(corners) = 1
+
+    ensures: the_instruction_is(a_picture_at(corners.first, its_own_size))
+}
+
+rule AnImageWithTwoCornersIsStretchedBetweenThem {
+    when: the_command_is(image, picture, corners)
+    requires: count_of(corners) >= 2
+
+    ensures: the_instruction_is(a_picture_at(corners.first,
+        the_size_between(corners.first, corners.second)))
+}
+
+-- A key colour makes that colour see-through, and three or four corners pull
+-- the picture onto them. Both are done to the pixels here.
+--
+-- Neither is something a toolkit will do to an image -- there is no "draw this
+-- but treat orange as a hole", and no canvas or Java2D call warps a bitmap
+-- onto four arbitrary corners. So the picture that reaches a renderer is a
+-- copy with the work already done, and what a renderer does is blit it into a
+-- rectangle. That is what AGG does too: it warps the pixels and hands the
+-- device a bitmap.
+--
+-- The warp is the bilinear one -- where a pixel sits between the four corners
+-- decides where it is read from. It is not a projective transform, which four
+-- corners alone do not determine, and it is what AGG's `image_perspective`
+-- does when it is given points rather than a matrix.
+rule AKeyColourIsMadeSeeThroughBeforeTheImageIsDrawn {
+    when: the_command_is(image, picture, key_colour, corners)
+    requires: a_key_colour_was_given(key_colour)
+
+    ensures: the_instruction_carries(
+        a_copy_of(picture, with_that_colour_see_through: key_colour))
+}
+
+-- IMAGE-FILTER says how a picture is resized, and the resizing happens here.
+--
+-- NEAREST repeats the pixel it lands on, which keeps hard edges and is what
+-- somebody scaling up a small icon deliberately wants. BILINEAR blends the
+-- four around the point, BICUBIC pulls the blend away from the average to
+-- keep more of an edge, and GAUSSIAN softens first so a shrunk picture does
+-- not shimmer.
+--
+-- **Done here rather than left to a toolkit**, because how a rasteriser
+-- resizes is its own business and the two do not agree: the same picture
+-- scaled by Java2D and by a browser are two pictures. Resized here, both are
+-- handed the finished pixels and blit them one for one.
+--
+-- The mode word is RESAMPLE. `draw.reb` documents "RESIZE(low, faster) or
+-- RESAMPLE(high, slower)" and `dial-draw.reb` lists only RESAMPLE, so RESIZE
+-- is the same trap as OPENED: writing the documented word makes the command
+-- fail to read, here and in a real Rebol.
+rule ImageFilterDecidesHowAPictureIsResized {
+    when: the_command_is(image_filter, how, mode, blur)
+    ensures: every_image_after_it_is_resized_by(how)
+}
+
+rule APictureIsResizedBeforeARendererSeesIt {
+    when: the_command_is(image, picture, key_colour, corners)
+    requires: the_size_drawn_at != the_pictures_own_size
+
+    ensures: the_instruction_carries(picture resized_to the_size_drawn_at)
+}
+
+rule ThreeOrFourCornersPullThePictureOntoThem {
+    when: the_command_is(image, picture, key_colour, corners)
+    requires: count_of(corners) >= 3
+
+    ensures: the_instruction_carries(a_copy_of(picture, pulled_onto: corners))
+    ensures: the_instruction_is_drawn_into(the_box_that_holds(corners))
+}
+
+-- TEXT writes the strings of its block at an offset.
+--
+-- The block is R3's rich-text dialect -- `bold`, `italic`, sizes, colours and
+-- strings interleaved -- and what is written here is the strings, joined by
+-- spaces, in the pen's colour. The styling words are read and not obeyed.
+--
+-- **Text is the one thing in this file that the two renderers cannot be held
+-- to pixel for pixel**, and it is not a fault in either: Java2D and a browser
+-- measure and hint glyphs differently, so the same string at the same size
+-- lands on different pixels. The words are the same and the position is the
+-- same. That is what is checked; the shapes of the letters are not.
+rule TextWritesTheStringsOfItsBlock {
+    when: the_command_is(text, mode, offset, size, block)
+    requires: any_strings_in(block)
+    requires: the_pen_has_a_colour
+
+    ensures: the_instruction_is(writing(the_strings_of(block), at: offset))
+}
+
+rule TextWithNothingToWriteWithWritesNothing {
+    when: the_command_is(text, mode, offset, size, block)
+    requires: not the_pen_has_a_colour or not any_strings_in(block)
+
+    ensures: no_instruction_is_produced
 }
 
 ------------------------------------------------------------
@@ -346,6 +748,24 @@ rule PushRestoresBothTheStateAndTheTransform {
 --
 -- What makes it honest rather than convenient is that the gap is the same gap
 -- in every renderer, because it is decided here rather than three times.
+--
+-- **Two of the dialect's own commands are left in that state on purpose**,
+-- and after this pass they are the only two:
+--
+--   * `gamma` sets the correction curve the rasteriser applies to coverage.
+--     Java2D has no such knob and a canvas has none either, so there is
+--     nothing to set. Obeying it would mean rasterising in JEBOL rather than
+--     in the toolkits.
+--   * `effect` is a dialect of its own -- blurs, sharpens, tints over a whole
+--     image -- that happens to be listed in the draw table. It belongs with
+--     the image codecs rather than with the path commands.
+--
+-- Two more are in the table's declaration and unreachable from any draw block
+-- at all, here and in a real Rebol: `image-options` and `image-pattern` are
+-- documented in `draw.reb` and have no entry in `dial-draw.reb`, which is
+-- what DELECT reads. The same trap catches `opened`: `draw.reb` documents
+-- `OPENED or CLOSED` for SPLINE and ARC, the table lists only `closed`, and
+-- writing the documented word makes the whole command fail to read.
 rule ACommandThisBuildDoesNotPaintIsSkipped {
     when: the_command_is_not_served(command)
     ensures:

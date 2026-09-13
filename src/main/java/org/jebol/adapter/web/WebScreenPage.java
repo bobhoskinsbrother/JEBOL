@@ -39,17 +39,34 @@ final class WebScreenPage {
                 brush.beginPath();
                 brush.rect(step.clip.across, step.clip.down, step.clip.wide, step.clip.high);
                 brush.clip();
+                if (step['clip-shape'] && step['clip-shape'].length) {
+                  const t = step.transform;
+                  brush.save();
+                  if (t) brush.transform(t[0], t[1], t[2], t[3], t[4], t[5]);
+                  const inside = asPath(step['clip-shape']);
+                  brush.restore();
+                  if (t) {
+                    const placed = new Path2D();
+                    const shift = new DOMMatrix([t[0], t[1], t[2], t[3], t[4], t[5]]);
+                    placed.addPath(inside, shift);
+                    brush.clip(placed);
+                  } else {
+                    brush.clip(inside);
+                  }
+                }
                 brush.globalAlpha = step.opacity / 255;
                 if (step.kind === 'fill') {
                   brush.fillStyle = step.colour;
                   brush.fillRect(step.across, step.down, step.wide, step.high);
                 } else if (step.kind === 'writing') {
                   brush.fillStyle = step.colour;
-                  brush.font = '12px sans-serif';
+                  const size = step.size || 12;
+                  brush.font = (step.italic ? 'italic ' : '')
+                      + (step.bold ? 'bold ' : '') + size + 'px sans-serif';
                   brush.fillText(step.text, step.across + 2,
-                      step.down + Math.min(step.high - 2, 14));
+                      step.down + Math.min(step.high - 2, size + 2));
                 } else if (step.kind === 'picture') {
-                  brush.putImageData(asImageData(step), step.across, step.down);
+                  showPicture(step);
                 } else if (step.kind === 'drawing') {
                   drawShape(step);
                 }
@@ -61,12 +78,40 @@ final class WebScreenPage {
             const joinNames = { 'miter': 'miter', 'miter-bevel': 'miter',
                                 'round': 'round', 'bevel': 'bevel' };
 
+            function showPicture(step) {
+              const pixels = asImageData(step);
+              const held = document.createElement('canvas');
+              held.width = pixels.width;
+              held.height = pixels.height;
+              held.getContext('2d').putImageData(pixels, 0, 0);
+              const t = step.transform;
+              if (t) brush.transform(t[0], t[1], t[2], t[3], t[4], t[5]);
+              brush.drawImage(held, step.across, step.down,
+                  step['draw-wide'], step['draw-high']);
+            }
+
+            function asGradient(fill) {
+              const run = fill.gradient === 'radial'
+                  ? brush.createRadialGradient(
+                      fill['across-start'], fill['down-start'], 0,
+                      fill['across-start'], fill['down-start'], fill.radius)
+                  : brush.createLinearGradient(
+                      fill['across-start'], fill['down-start'],
+                      fill['across-end'], fill['down-end']);
+              for (const stop of fill.stops) {
+                run.addColorStop(Math.min(1, Math.max(0, stop.at)), stop.colour);
+              }
+              return run;
+            }
+
             function drawShape(step) {
               const shape = asPath(step.path);
               const t = step.transform;
               brush.transform(t[0], t[1], t[2], t[3], t[4], t[5]);
               if (step.fill) {
-                brush.fillStyle = step.fill.colour;
+                brush.fillStyle = step.fill.gradient
+                    ? asGradient(step.fill)
+                    : step.fill.colour;
                 brush.fill(shape, step.fill.rule === 'even-odd' ? 'evenodd' : 'nonzero');
               }
               if (step.stroke) {
@@ -74,7 +119,9 @@ final class WebScreenPage {
                 brush.lineWidth = step.stroke.width;
                 brush.lineCap = capNames[step.stroke.cap];
                 brush.lineJoin = joinNames[step.stroke.join];
+                brush.setLineDash(step.stroke.dashes || []);
                 brush.stroke(shape);
+                brush.setLineDash([]);
               }
             }
 
@@ -114,7 +161,8 @@ final class WebScreenPage {
               const raw = atob(step.pixels);
               const octets = new Uint8ClampedArray(raw.length);
               for (let at = 0; at < raw.length; at++) octets[at] = raw.charCodeAt(at);
-              return new ImageData(octets, step.wide, step.high);
+              return new ImageData(octets,
+                  step['pixel-wide'] || step.wide, step['pixel-high'] || step.high);
             }
 
             const pictures = new EventSource('/paint');

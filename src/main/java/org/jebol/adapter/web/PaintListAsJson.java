@@ -31,9 +31,17 @@ final class PaintListAsJson {
             case PaintInstruction.Writing written -> anObject(
                     placed(written),
                     saying("text", written.text()),
-                    saying("colour", written.colour().asHexTriplet()));
+                    saying("colour", written.colour().asHexTriplet()),
+                    measuring("size", written.size()),
+                    holding("bold", String.valueOf(written.bold())),
+                    holding("italic", String.valueOf(written.italic())));
             case PaintInstruction.Picture shown -> anObject(
                     placed(shown),
+                    measuring("draw-wide", shown.wide()),
+                    measuring("draw-high", shown.high()),
+                    counting("pixel-wide", (int) Math.round(shown.pixels().size().x())),
+                    counting("pixel-high", (int) Math.round(shown.pixels().size().y())),
+                    holding("transform", asSixNumbers(shown.transform())),
                     saying("pixels", asOctets(shown.pixels())));
             case PaintInstruction.Drawn drawing -> anObject(
                     placed(drawing),
@@ -108,16 +116,46 @@ final class PaintListAsJson {
                         saying("colour", colour.asHexTriplet()),
                         measuring("width", painted.lineWidth()),
                         saying("cap", painted.lineCap().spelling()),
-                        saying("join", painted.lineJoin().spelling())))
+                        saying("join", painted.lineJoin().spelling()),
+                        holding("dashes", asAListOfNumbers(painted.dashes()))))
                 .orElse("null");
     }
 
     private static String asAFill(PaintState painted) {
+        if (painted.fillGradient().isPresent()) {
+            return asAGradient(painted.fillGradient().orElseThrow(), painted);
+        }
         return painted.fillColour()
                 .map(colour -> anObject(
                         saying("colour", colour.asHexTriplet()),
                         saying("rule", painted.fillRule().spelling())))
                 .orElse("null");
+    }
+
+    private static String asAGradient(Gradient gradient, PaintState painted) {
+        StringBuilder stops = new StringBuilder("[");
+        for (int at = 0; at < gradient.colours().size(); at++) {
+            stops.append(at == 0 ? "" : ",").append(anObject(
+                    measuring("at", Math.min(1, Math.max(0, gradient.stops().get(at)))),
+                    saying("colour", gradient.colours().get(at).asHexTriplet())));
+        }
+        return anObject(
+                saying("rule", painted.fillRule().spelling()),
+                saying("gradient", gradient.radial() ? "radial" : "linear"),
+                measuring("across-start", gradient.acrossStart()),
+                measuring("down-start", gradient.downStart()),
+                measuring("across-end", gradient.acrossEnd()),
+                measuring("down-end", gradient.downEnd()),
+                measuring("radius", gradient.radius()),
+                holding("stops", stops.append("]").toString()));
+    }
+
+    private static String asAListOfNumbers(java.util.List<Double> numbers) {
+        StringBuilder written = new StringBuilder("[");
+        for (int at = 0; at < numbers.size(); at++) {
+            written.append(at == 0 ? "" : ",").append(measuring(numbers.get(at)));
+        }
+        return written.append("]").toString();
     }
 
     private static String measuring(String name, double value) {
@@ -134,6 +172,7 @@ final class PaintListAsJson {
         Placement where = instruction.where();
         return String.join(",",
                 saying("kind", instruction.kind().spelling()),
+                holding("clip-shape", asSteps(where.clipShape())),
                 counting("across", where.across()),
                 counting("down", where.down()),
                 counting("wide", where.wide()),
@@ -171,7 +210,7 @@ final class PaintListAsJson {
         int high = (int) Math.round(pixels.size().y());
         byte[] octets = new byte[Math.max(0, wide * high * CHANNELS_A_PIXEL)];
         for (int pixel = 0; pixel < wide * high; pixel++) {
-            int[] parts = pixels.pixelAt(pixel);
+            int[] parts = pixels.pixelAt(pixel + 1);
             int at = pixel * CHANNELS_A_PIXEL;
             octets[at] = (byte) parts[0];
             octets[at + 1] = (byte) parts[1];

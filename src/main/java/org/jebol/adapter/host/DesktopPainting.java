@@ -62,6 +62,7 @@ public final class DesktopPainting {
         Graphics2D own = (Graphics2D) onto.create();
         try {
             confineTo(own, where.clip());
+            confineToTheShape(own, where, instruction);
             applyTransparency(own, where.opacity());
             switch (instruction) {
                 case PaintInstruction.Fill filled -> fill(own, where, filled);
@@ -76,6 +77,24 @@ public final class DesktopPainting {
 
     private static void confineTo(Graphics2D onto, ClipRectangle area) {
         onto.setClip(area.across(), area.down(), area.wide(), area.high());
+    }
+
+    private static void confineToTheShape(
+            Graphics2D onto, Placement where, PaintInstruction instruction) {
+
+        if (where.clipShape().isEmpty()) {
+            return;
+        }
+        Graphics2D underTheTransform = (Graphics2D) onto.create();
+        try {
+            if (instruction instanceof PaintInstruction.Drawn drawing) {
+                underTheTransform.transform(javaTransformOf(drawing.transform()));
+            }
+            onto.clip(underTheTransform.getTransform().createTransformedShape(
+                    pathFrom(where.clipShape(), PaintState.AT_THE_START)));
+        } finally {
+            underTheTransform.dispose();
+        }
     }
 
     private static void applyTransparency(Graphics2D onto, int opacity) {
@@ -96,18 +115,24 @@ public final class DesktopPainting {
     private static void write(
             Graphics2D onto, Placement where, PaintInstruction.Writing written) {
 
-        onto.setFont(TEXT);
+        Font asked = TEXT.deriveFont(
+                (written.bold() ? Font.BOLD : 0) | (written.italic() ? Font.ITALIC : 0),
+                (float) written.size());
+        onto.setFont(asked);
         onto.setColor(javaColourOf(written.colour()));
         onto.drawString(written.text(),
                 where.across() + WRITING_INSET,
                 where.down() + Math.min(
-                        where.high() - WRITING_INSET, TEXT.getSize() + WRITING_INSET));
+                        where.high() - WRITING_INSET, asked.getSize() + WRITING_INSET));
     }
 
     private static void show(
             Graphics2D onto, Placement where, PaintInstruction.Picture shown) {
 
-        onto.drawImage(asJavaImage(shown.pixels()), where.across(), where.down(), null);
+        onto.transform(javaTransformOf(shown.transform()));
+        onto.drawImage(asJavaImage(shown.pixels()),
+                where.across(), where.down(),
+                (int) Math.round(shown.wide()), (int) Math.round(shown.high()), null);
     }
 
     private static void draw(Graphics2D onto, PaintInstruction.Drawn drawing) {
@@ -124,15 +149,40 @@ public final class DesktopPainting {
     private static void fillBeforeStrokingSoTheStrokeKeepsItsFullWidth(
             Graphics2D onto, PaintInstruction.Drawn drawing, Path2D.Double path) {
 
-        drawing.painted().fillColour().ifPresent(colour -> {
+        drawing.painted().fillGradient().ifPresentOrElse(gradient -> {
+            onto.setPaint(javaPaintOf(gradient));
+            onto.fill(path);
+        }, () -> drawing.painted().fillColour().ifPresent(colour -> {
             onto.setColor(javaColourOf(colour));
             onto.fill(path);
-        });
+        }));
         drawing.painted().strokeColour().ifPresent(colour -> {
             onto.setColor(javaColourOf(colour));
             onto.setStroke(javaStrokeOf(drawing.painted()));
             onto.draw(path);
         });
+    }
+
+    private static java.awt.Paint javaPaintOf(Gradient gradient) {
+        float[] stops = new float[gradient.stops().size()];
+        Color[] colours = new Color[gradient.colours().size()];
+        for (int at = 0; at < stops.length; at++) {
+            stops[at] = (float) Math.min(1, Math.max(at / (float) stops.length,
+                    gradient.stops().get(at)));
+            colours[at] = javaColourOf(gradient.colours().get(at));
+        }
+        if (gradient.radial()) {
+            return new java.awt.RadialGradientPaint(
+                    new java.awt.geom.Point2D.Double(
+                            gradient.acrossOffset(), gradient.downOffset()),
+                    (float) gradient.radius(), stops, colours);
+        }
+        return new java.awt.LinearGradientPaint(
+                new java.awt.geom.Point2D.Double(
+                        gradient.acrossStart(), gradient.downStart()),
+                new java.awt.geom.Point2D.Double(
+                        gradient.acrossEnd(), gradient.downEnd()),
+                stops, colours);
     }
 
     private static Path2D.Double pathFrom(
@@ -182,18 +232,28 @@ public final class DesktopPainting {
         path.lineTo(to.across(), to.down());
     }
 
+    private static final float THE_MITRE_LIMIT_BOTH_TOOLKITS_START_AT = 10;
+
     private static BasicStroke javaStrokeOf(PaintState painted) {
-        return new BasicStroke((float) painted.lineWidth(),
-                switch (painted.lineCap()) {
-                    case BUTT -> BasicStroke.CAP_BUTT;
-                    case SQUARE -> BasicStroke.CAP_SQUARE;
-                    case ROUNDED -> BasicStroke.CAP_ROUND;
-                },
-                switch (painted.lineJoin()) {
-                    case MITER, MITER_BEVEL -> BasicStroke.JOIN_MITER;
-                    case ROUND -> BasicStroke.JOIN_ROUND;
-                    case BEVEL -> BasicStroke.JOIN_BEVEL;
-                });
+        int cap = switch (painted.lineCap()) {
+            case BUTT -> BasicStroke.CAP_BUTT;
+            case SQUARE -> BasicStroke.CAP_SQUARE;
+            case ROUNDED -> BasicStroke.CAP_ROUND;
+        };
+        int join = switch (painted.lineJoin()) {
+            case MITER, MITER_BEVEL -> BasicStroke.JOIN_MITER;
+            case ROUND -> BasicStroke.JOIN_ROUND;
+            case BEVEL -> BasicStroke.JOIN_BEVEL;
+        };
+        if (painted.dashes().isEmpty()) {
+            return new BasicStroke((float) painted.lineWidth(), cap, join);
+        }
+        float[] dashes = new float[painted.dashes().size()];
+        for (int at = 0; at < dashes.length; at++) {
+            dashes[at] = (float) Math.max(0.01, painted.dashes().get(at));
+        }
+        return new BasicStroke((float) painted.lineWidth(), cap, join,
+                THE_MITRE_LIMIT_BOTH_TOOLKITS_START_AT, dashes, 0);
     }
 
     private static AffineTransform javaTransformOf(Transform transform) {
@@ -215,7 +275,7 @@ public final class DesktopPainting {
                 new BufferedImage(wide, high, BufferedImage.TYPE_INT_ARGB);
         for (int down = 0; down < high; down++) {
             for (int across = 0; across < wide; across++) {
-                int[] parts = pixels.pixelAt(down * wide + across);
+                int[] parts = pixels.pixelAt(down * wide + across + 1);
                 drawable.setRGB(across, down, new Color(
                         parts[0], parts[1], parts[2],
                         parts.length >= 4 ? parts[3] : OPAQUE).getRGB());

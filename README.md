@@ -184,8 +184,11 @@ Things to note:
 - **PDF belongs in an optional extension**, not in the jar. **SWF is not worth
   writing at all**, and both of those decisions are worth more than the
   assertions they cost.
-- **DRAW does not yet render every command R3 does.** `image` and `text` are the
-  two whose absence makes a page look wrong rather than plain.
+- **DRAW paints every command its dialect table declares**, including the ones
+  no toolkit has — Gouraud-shaded triangles, conic and diamond gradients,
+  two-colour dashes, keyed and warped images — because those are worked out in
+  the domain and handed to both renderers as plain shapes and pixels. There is
+  no Rebol to check the pictures against: a stock 3.22.5 has no `draw` at all.
 - **TLS loads but does not connect.**
 - **Twenty-eight of Rebol's error ids cannot be raised here**, and every one of
   them has a written reason — twenty-four are ids a real 3.22.5 cannot raise

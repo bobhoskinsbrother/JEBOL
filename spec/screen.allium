@@ -525,6 +525,61 @@ entity PaintList {
     count: instructions.count
 }
 
+-- === How closely two renderers have to agree ================
+
+-- The paint list has to match exactly. The pictures do not, and cannot.
+--
+-- Two things are being checked and they are not the same check. One renderer
+-- and another are handed an identical list of instructions -- that is exact,
+-- it is decided here rather than three times, and nothing excuses a
+-- difference in it. What each of them then rasterises is another matter:
+-- Java2D and a browser's engine both anti-alias, and they disagree about how
+-- much of an edge pixel a sloped line covers. No amount of care in either
+-- renderer removes that, because it is two different rasterisers and not a
+-- fault in the port.
+--
+-- Which is why the picture comparison held to zero differing pixels for as
+-- long as every shape in it was an axis-aligned box. A box has no
+-- part-covered edge, so both engines answer the same thing. The first curve,
+-- sloped stroke, gradient or letter ends that, and a gate that demanded
+-- exactness would have to be either loosened in a hurry or worked around by
+-- never drawing a curve in it.
+--
+-- So the comparison allows a difference where a difference is physical and
+-- nowhere else. A pixel in the flat inside of a shape must match: if the two
+-- disagree there, one of them executed the instruction differently and that
+-- is a defect. A pixel on an edge may differ, because that is where coverage
+-- is a judgement.
+rule TheInsideOfAShapeMatchesExactly {
+    when: two_renderers_execute(the_same_paint_list)
+    requires: the_pixel_is_not_on_an_edge_in_either_picture
+
+    ensures: the_two_pixels_are_the_same_colour
+}
+
+rule AnEdgePixelMayDifferByTheAllowance {
+    when: two_renderers_execute(the_same_paint_list)
+    requires: the_pixel_is_on_an_edge_in_either_picture
+
+    ensures: every_channel_differs_by_at_most(the_channel_allowance)
+}
+
+-- "On an edge" is decided from the picture rather than from the instructions,
+-- because it is the rasteriser's edges that matter and not the geometry's: a
+-- pixel is on an edge when the eight around it are not all one colour.
+--
+-- The two numbers are written here so that widening one is a change to the
+-- specification rather than a number somebody nudged in a test. The channel
+-- allowance is 24 of 255, which is about a tenth of the range and comfortably
+-- more than two engines' coverage arithmetic will differ by on a single
+-- sample; and at most a fortieth of the picture may be edge pixels that use
+-- any of that allowance, which is far more edge than a page of shapes has and
+-- far less than a renderer painting the wrong thing would produce.
+config {
+    channel_allowance: Integer = 24
+    most_edge_pixels_that_may_differ: Decimal = 0.025
+}
+
 -- A gob paints itself before its children, and its children in pane order.
 --
 -- The order is the whole of what "in front" means, and the C's compositor

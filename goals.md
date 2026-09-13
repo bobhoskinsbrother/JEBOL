@@ -737,18 +737,69 @@ goals above.
 
 ---
 
-### 7. Graphics -- fourteen DRAW commands
+### 7. Graphics -- DRAW is done; what is left is VID and the old markup path
 
-**DRAW renders 22 of R3's 36 commands.** The fourteen it does not:
+**Every command the dialect table declares is painted**, measured by
+extracting both lists on 2026-09-13: `dial-draw.reb` declares 35 drawing
+commands and the seven SHAPE sub-commands, and JEBOL handles all of them bar
+`effect`. It was 22 that morning.
 
-```
-arrow  clip  gamma  grad-pen  image  image-filter  image-options
-image-pattern  invert-matrix  line-pattern  spline  text  transform  triangle
-```
+The fourteen that went in: `transform`, `invert-matrix`, `clip`, `triangle`
+with its Gouraud shading, `spline`, `arrow`, `line-pattern`, `grad-pen` in all
+six kinds, `image`, `image-filter`, `gamma` and `text`.
 
-`image` and `text` are the two that make pages look wrong rather than plain.
+**The rule that made the awkward ones affordable** is the one worth keeping:
+*anything neither toolkit has is worked out in the domain and handed to both
+as something they do have.* Gouraud shading becomes a mesh of 256 flat
+triangles clipped to the triangle; a conic gradient becomes a fan of 240
+wedges clipped to the shape it fills; a diamond one becomes rings; a
+two-colour dash becomes two paths, one for the dashes and one for the gaps; a
+keyed image becomes a copy with that colour made see-through; a warped image
+becomes a resampled copy; a scaled image is resampled here so that two
+rasterisers cannot disagree about it. A renderer still executes and decides
+nothing.
 
-Also here: the stroked-curve comparison problem, the 522 lines of old markup
+The two renderers grew one primitive between them: clipping to a path rather
+than only to a rectangle. Both toolkits have it natively.
+
+**What is genuinely excluded, and why:**
+
+- `effect` is a dialect of its own -- blurs and tints over a whole image --
+  that happens to be listed in the draw table. It belongs with the codecs.
+- `image-options` and `image-pattern` are declared in `draw.reb` and absent
+  from `dial-draw.reb`, so DELECT cannot read either of them in any Rebol.
+  The same trap catches `opened` and `resize`: both are documented in
+  `draw.reb`, neither is in the table, and writing the documented word makes
+  the whole command fail to read.
+
+**There is no reference for any of it and that is a fact about Rebol, not a
+gap here.** `./r3-head` has no `draw` at all -- `value? 'draw` is false --
+because `n-draw.c` does not exist in the checkout and `n-graphics.c` is
+excluded from the build as `;old source`. The only dispatcher in the tree is
+`src/os/win32/host-draw.c`, Windows-only, calling an AGG that is not
+vendored, and no assertion in Rebol's 10,133 mentions the dialect. So the
+argument handling was read off that C and the pixels were checked the only
+way available: the same paint list executed by Java2D and by a real Chrome,
+compared.
+
+**That comparison is now tolerant where it has to be and exact everywhere
+else**, which is what made curves, gradients and text checkable at all. A
+pixel in the flat inside of a shape must match exactly; an edge pixel may
+differ by up to 24 of 255, and at most a fortieth of the picture may be edge
+that uses it. The numbers are in `spec/screen.allium` so that widening one is
+a change to the specification. A deliberate 12-by-12 patch differing by 7 was
+caught by it, so the allowance has not made it blind.
+
+`./gradlew browserCheck` draws 28 pictures in both renderers and writes them
+to `build/renderer-pictures/` beside a difference map, which is the quickest
+way to see what a change did.
+
+**Text is the one thing the two renderers cannot be held to pixel for pixel.**
+They measure and hint glyphs differently. The words, the place, the size, the
+weight and the colour are all decided in the domain; the shapes of the letters
+are the toolkit's, and the raster comparison leaves them alone.
+
+Still here: the stroked-curve comparison problem, the 522 lines of old markup
 path, VID, Android, and the events-name-the-wrong-window one.
 
 ---

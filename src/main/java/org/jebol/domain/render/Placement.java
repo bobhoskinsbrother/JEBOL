@@ -9,13 +9,25 @@ package org.jebol.domain.render;
  */
 public record Placement(
         int across, int down, int wide, int high,
-        ClipRectangle clip, int opacity) {
+        ClipRectangle clip, int opacity, java.util.List<PathStep> clipShape) {
 
     /** Fully opaque. What a gob starts at and what most of them stay at. */
     public static final int OPAQUE = 255;
 
     public Placement {
         opacity = Math.clamp(opacity, 0, OPAQUE);
+        clipShape = java.util.List.copyOf(clipShape);
+    }
+
+    /** Clipped to a rectangle and nothing finer, which is the ordinary case. */
+    public Placement(
+            int across, int down, int wide, int high, ClipRectangle clip, int opacity) {
+        this(across, down, wide, high, clip, opacity, java.util.List.of());
+    }
+
+    /** The same place, narrowed to the inside of a shape as well. */
+    public Placement insideTheShape(java.util.List<PathStep> shape) {
+        return new Placement(across, down, wide, high, clip, opacity, shape);
     }
 
     /** Whether anything of this would show at all. */
