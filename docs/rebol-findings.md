@@ -5992,3 +5992,36 @@ progress rather than from one. Two things had to be true for that to work:
 Every shape now matches r3-head's head exactly; its tail is its own console's
 frames -- `do either either if -apply-` -- which an embedded interpreter does
 not have.
+
+## 210. A task is five fields and a block, and DO of one answers the task
+
+`make task!` reads its block the way MAKE MODULE! reads one.
+`Make_Module_Spec` builds the header either way, which is why the fields are
+always TITLE, HEADER, PARENT, PATH and ARGS whatever was written:
+
+    >> make task! [title: "x"]      ; a body, not a spec
+    == make task! [title: _ header: _ parent: _ path: _ args: _]
+    >> (make task! [[title: "x"] []])/title
+    == "x"                          ; a first block IS a spec
+    >> make task! [[title: "x"]]
+    ** bad-make-arg                 ; a spec with no body after it
+
+A task molds as its header whether it is molded or formed -- `case REB_TASK:
+Mold_Object(value, mold);` with no `if (!molded)` beside it, where an object, a
+module and a port each have a formed shape too. So `form make task! []` is the
+same text as `mold`, and `append "" task` writes the whole header.
+
+**DO of a task answers the task**: `case REB_TASK: Do_Task(value); ret =
+R_ARG1;`. The answer is the argument and not anything the body produced,
+because by then it may not have produced anything -- `Do_Task` is
+`OS_Create_Thread((void*) Launch_Task, task, 50000)`. That is what Rebol's own
+test means by "trying to evaluate a task should not crash": `do make task!
+[1 / 0]` answers a task rather than raising.
+
+**Nothing is started here, and the reason is not effort.** The body is bound to
+the contexts the parent is using, and none of them is safe to touch from two
+threads. Running it on the calling thread instead would raise where a real
+Rebol answers a task, which is both a different behaviour and a worse one. The
+open question beside `DoOfATaskAnswersTheTask` says what a real answer would
+need: a host service the caller grants, the way the filesystem and the
+processes are, so that the absence is sayable rather than silent.

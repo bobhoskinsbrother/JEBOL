@@ -24,6 +24,8 @@ public final class Molder {
 
     private static final String THE_WORD_EVERY_OBJECT_HOLDS_FOR_ITSELF = "self";
 
+    private static final boolean ALWAYS_MOLDED = true;
+
     private Molder() {
     }
 
@@ -270,6 +272,8 @@ public final class Molder {
                     new ObjectValue(port.context()), Datatype.PORT, forReading);
             case ModuleValue module -> renderObject(
                     new ObjectValue(module.context()), Datatype.MODULE, forReading);
+            case TaskValue task -> renderObject(
+                    new ObjectValue(task.context()), Datatype.TASK, ALWAYS_MOLDED);
             case ErrorValue error -> renderError(error, forReading);
             case StructValue struct -> renderStruct(struct, forReading);
             case JavaObjectValue host -> "#[java-object! " + host.className() + "]";

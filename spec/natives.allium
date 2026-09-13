@@ -1091,6 +1091,69 @@ rule TheBodyOfAModuleIsItsFieldsAndValues {
     ensures: first_field_of(subject) = lib_local
 }
 
+-- === Making a task, and what running one would mean ==========
+
+-- A task is a header of five fixed fields and a block of code, and the block
+-- it is made from is read the way MAKE MODULE! reads one.
+--
+-- `Make_Module_Spec` builds the header either way, which is why the fields are
+-- always TITLE, HEADER, PARENT, PATH and ARGS whatever was written. A block
+-- whose first item is a block is a spec and a body, and the spec's set-words
+-- fill the header; anything else is a body on its own and the header holds
+-- nothing. A spec with no body block after it is refused.
+--
+-- So `make task! [title: "x"]` does not set the title: the block is a body,
+-- and a body's set-words are code rather than fields. `make task! [[title:
+-- "x"] []]` sets it, because that first block is a spec.
+rule MakingATaskReadsItsBlockTheWayAModuleDoes {
+    when: EvaluateCall(make, task_datatype, given)
+    requires: is_block(given)
+
+    ensures:
+        if is_block(first_of(given)):
+            CallResult(value: a_task_whose_header_is_filled_from(first_of(given)))
+        else:
+            CallResult(value: a_task_whose_header_holds_nothing())
+    ensures: the_fields_are(title, header, parent, path, args)
+}
+
+rule ATaskMadeFromAnythingElseIsRefused {
+    when: EvaluateCall(make, task_datatype, given)
+    requires: not is_block(given)
+        or (is_block(first_of(given)) and not is_block(second_of(given)))
+
+    ensures: CallFails(error: bad_make_arg, about: given)
+}
+
+-- A task molds as its header whether it was molded or formed. `Mold_Object`
+-- is called for a task in both cases, where an object, a module and a port
+-- each have a formed shape as well -- so `form make task! []` is the same
+-- text as `mold make task! []`, and `append "" task` writes the whole thing.
+rule ATaskIsMoldedWhetherItIsMoldedOrFormed {
+    when: EvaluateForm(subject)
+    requires: is_task(subject)
+
+    ensures: the_text = what_mold_would_write(subject)
+}
+
+-- DO of a task answers the task, and the body is run somewhere else.
+--
+-- `case REB_TASK: Do_Task(value); ret = R_ARG1;` -- the answer is the
+-- argument, not anything the body produced, because by then the body has not
+-- necessarily produced anything: `Do_Task` is `OS_Create_Thread((void*)
+-- Launch_Task, task, 50000)`. So `do make task! [1 / 0]` answers a task rather
+-- than raising, which is what Rebol's own test means by "trying to evaluate a
+-- task should not crash".
+rule DoOfATaskAnswersTheTask {
+    when: EvaluateCall(do, subject)
+    requires: is_task(subject)
+
+    ensures: CallResult(value: subject)
+    ensures: not CallFails(error: any_error)
+}
+
+open question "DO of a task does not start anything here. The datatype is whole -- a task is made, molded, read and written through its fields, and DO answers it -- and the one thing missing is the thread. `Do_Task` hands the body to `OS_Create_Thread`, and the body is bound to the contexts the parent is using, so running it on a second thread means every context, every series and every slot being safe to touch from two threads at once. None of them is. Running it on the calling thread instead is not the same behaviour and is worse than not running it: `do make task! [1 / 0]` would raise where a real Rebol answers a task, and the suite asserts the second. So the choice is between a concurrency model and nothing, and nothing is what is here. What it costs is a script that uses tasks for real doing nothing quietly, which is the dangerous kind of silence -- a host service that had to be granted, the way the filesystem and the processes are, would at least make the absence sayable."
+
 -- === Reading and writing the bits of a set =================
 
 -- POKE on a bitset answers the SET, where POKE on every other series answers

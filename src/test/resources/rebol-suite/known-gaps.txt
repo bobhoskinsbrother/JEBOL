@@ -53,7 +53,3 @@
 #     function's body reached into another's.
 #
 checksum-test.r3 / file-checksum / file-checksum with bigger file #254
-task-test.r3 / task / (no test) #1
-task-test.r3 / task / (no test) #2
-task-test.r3 / task / (no test) #3
-task-test.r3 / task / (no test) #4

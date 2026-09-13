@@ -1546,6 +1546,12 @@ public final class Evaluator {
             }
             return module.context().ownSlotFor(field.canonical()).value();
         }
+        if (target instanceof TaskValue task && selector instanceof WordValue field) {
+            if (!task.context().holds(field.canonical())) {
+                throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
+            }
+            return task.context().ownSlotFor(field.canonical()).value();
+        }
         if (target instanceof StringValue path && joinsItsPathSegments(path)) {
             return joinedOntoPath(path, selector);
         }
@@ -1634,6 +1640,7 @@ public final class Evaluator {
             case ObjectValue object -> object.context();
             case PortValue port -> port.context();
             case ModuleValue module -> module.context();
+            case TaskValue task -> task.context();
             default -> null;
         };
     }

@@ -77,14 +77,8 @@ translation from allium spec to a dialect.
 **Interoperability is the point.** REBOL with Java postgres jar files and not having to 
 re-implement everything every time: make good use of the massive JVM ecosystem.
 
-**It is the real case against Truffle.** Not runtime distribution — Truffle
-languages have been ordinary Maven artifacts on a standard JDK since 23.1.
-The objection that survives is operational: a polyglot context is a
-heavyweight thing to hold per request, and what a profiler shows you is the
-framework's frames rather than yours.
-
 Oldes' branch rather than REBOL 2, R3-Alpha as it is the version with the most
-surviving reference material (and it is alive) so there is a running binary to
+surviving reference material (and it is currently still active) so there is a running binary to
 check answers against.
 
 ## What is Ported, and What is Copied?
@@ -99,8 +93,7 @@ is rewritten in Java against the C as the authority.
 it stands, byte for byte, from a vendored copy under
 `src/main/resources/org/jebol/mezz/`. Eighty-two files, about 860 KB of
 Rebol's own library: `join`, `collect`, `split`, the codecs, the port schemes,
-`sys-load`. None of it is rewritten in Java and none of it is copied into a
-prelude.
+`sys-load`. 
 
 That means a function is ported by making the C it depends on work, not by
 reimplementing the function. When `join` misbehaves the fault is underneath it,
@@ -109,7 +102,7 @@ is Rebol's rather than an approximation of it: every C function R3 exposes has
 a match, none of its 404 functions is missing, and `system/catalog/datatypes`
 has all fifty-eight of Rebol's (plus `java-object!`).
 
-**That is a claim about declarations, and it is narrower than it sounds.**
+**Declaration checking.**
 `scripts/c-parity.py` compares two files, so it cannot fail on anything a
 declaration does not say. `scripts/runtime-parity.py` asks two *running*
 interpreters instead — what datatype each function reports itself as, what

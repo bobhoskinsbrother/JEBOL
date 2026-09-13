@@ -36,6 +36,7 @@ public sealed interface Value permits
         ObjectValue,
         PortValue,
         ModuleValue,
+        TaskValue,
         MapValue,
         BitsetValue,
         ErrorValue,

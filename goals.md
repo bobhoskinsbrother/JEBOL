@@ -30,30 +30,30 @@ or in none. Every number below was checked on 2026-09-13 by running it.
 | `scripts/runtime-parity.py` | the same question asked of two *running* interpreters. Of 582 functions, **0 absent and 3 differ**, the same 3 in every column: `request-color`, `request-dir` and `request-file`, which JEBOL serves through its own port rather than shelling out to `osascript`. It began at 1 absent, 123, 581 and 430 |
 | `PortingBacklogTest` | 0 of R3's 404 functions missing |
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
-| `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, though `task!` is a name without an arm |
+| `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, and every one of them has an arm |
 | `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
-| `known-gaps.txt` | **10 fail**, and they are goal 1 below |
+| `known-gaps.txt` | **1 fails**, and no work will retire it -- goal 1 below |
 | `fails-on-rebol-too.txt` | 162 a real 3.22.5 also fails or never runs |
 | `scripts/error-parity.py` | **81 of Rebol's 142 error ids can be raised. 61 cannot** |
 
-`./gradlew check` is 18,403 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 18,438 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception. `./gradlew browserCheck` is
 the second gate and is not optional; it renders the same paint list in Java2D
 and in a real Chrome and compares them pixel for pixel.
 
-**`port-test.r3` owns none of the 10.** It had 29 when the file ports were
+**`port-test.r3` owns none of it.** It had 29 when the file ports were
 picked up: eighteen were real defects and have been fixed, and eleven turned
 out to be assertions a real 3.22.5 does not pass here either -- nine guarded on
 Windows or on Linux's `/proc`, and two with stale expected checksums. Those
 eleven moved to `fails-on-rebol-too.txt` with the measurement beside each.
 
-All ten are goal 1 below, and one of them is the entry no work will
-retire: `checksum-test.r3` asks to read `system/options/boot`, which is the
-launcher a script runs to start a confined child interpreter and therefore has
-to sit outside whatever root the script can see. Retiring it would mean giving
-up confinement propagation. The reason is written at the top of
-`known-gaps.txt`. The rest own no entries: they are equivalence the suite
-cannot see, the two security goals, and the engineering and tooling work.
+The one that is left is goal 1 below: `checksum-test.r3` asks to read
+`system/options/boot`, which is the launcher a script runs to start a confined
+child interpreter and therefore has to sit outside whatever root the script can
+see. Retiring it would mean giving up confinement propagation. The reason is
+written at the top of `known-gaps.txt`. Every other goal owns no entries at
+all: they are equivalence the suite cannot see, the two security goals, and the
+engineering and tooling work.
 
 ---
 
@@ -290,100 +290,37 @@ does not bring. That stays true. Somebody who wants more than the borrowed
 codec gives adds the library and a bridge to it themselves, and with neither
 present nothing registers and nothing is attempted.
 
-### 1. The last nine, each of which needs something built first
-
-The scattered singles and pairs are gone -- twenty-one of the thirty went in
-one session, and the four guard arms that could never run went to
-`fails-on-rebol-too.txt` with the guard's answer beside them. What is left is
-nine entries in four groups, and none of them is a small wrong answer. Each
-needs a piece of machinery that does not exist yet, so each is sized here
-rather than lumped together.
-
-Read them with `org.jebol.suite.ShowFailures`, which prints why each listed gap
-fails and the first line of its source. It boots an interpreter before reading
-the suite, and that matters: the reader cannot read a datatype written in
-construction syntax until one exists, and quietly answers a truncated file if
-none does -- which is how `datatype-test.r3` looked like twenty-eight
-assertions instead of fifty-one.
-
-#### 1a. The `task!` datatype -- 4 entries
-
-    task-test.r3   make task! []   -> cannot use to task! on block!
-
-The guard the block is written under is true on both interpreters, so this is
-real work rather than an arm that never runs: a real 3.22.5 makes a task and
-answers `task? do test-task`. `task!` is a name in the datatype catalogue here
-with nothing behind it, which is recorded under the loose ends below, and it is
-a larger decision than four assertions warrant on its own.
-
-#### 1b. A gob's position is an unsigned count -- 2 entries
-
-`move g -1` on a gob is `take/part` and then `insert` at `skip g -1`, and a
-gob's index underflows rather than stopping at the head:
-
-    >> g: make gob! []  append g make gob! 1x1
-    >> index? skip g -1
-    == 0
-    >> index? skip g -2
-    == 4294967295          ; r3-head 3.22.5
-
-`VAL_GOB_INDEX` is an unsigned thirty-two bit count and `index?` adds one to it
-in the same width, so stepping back past the head wraps, and inserting at a
-wrapped position appends. JEBOL's `GobValue` enforces `index >= 1`, and there
-are a hundred and eighty places that hold one. Modelling the wraparound is the
-faithful answer and it reaches the whole gob and screen model, so it wants
-doing deliberately rather than in passing. Half of it -- allowing index zero
-and nothing else -- would pass these two assertions and diverge on the next
-one.
-
-#### 1c. A comma is not a delimiter -- 2 entries
-
-`mold-test.r3` molds every one of the first two hundred and fifty-six
-characters into a url and a file and loads it back. Four characters fail, and
-`,` is the one that matters:
-
-    >> load "[1,2]"
-    == [1.2]               ; r3-head: a comma is a decimal point
-    == [1 2]               ; JEBOL
-    >> load "[a,b]"
-    ** invalid             ; r3-head: a comma inside a word is malformed
-    == [a b]               ; JEBOL
-    >> load "[a:/x<y]"
-    == [a:/x<y]            ; r3-head: `<` and `>` are inside a url
-    ** invalid             ; JEBOL
-
-`Lex_Map` makes `,` LEX_SPECIAL rather than LEX_DELIMIT, so it ends nothing: it
-is a decimal point in a number, an ordinary character in a file or a url, and
-an error inside a word. JEBOL's `endsLexeme` lists it as a delimiter along with
-the brackets and the semicolon. Taking it out is the right fix and it changes
-how every lexeme ends, so it needs its own boundary list: the delimiters are
-exactly the LEX_DELIMIT rows of `Lex_Map` (the control characters, space,
-`"`, `(`, `)`, `;`, `[`, `]`, `{`, `}`, and `/` which a url takes anyway), and
-everything else belongs to whatever token it is standing in.
-
-#### 1d. FORM of an error, and the WHERE chain under it -- 1 entry
-
-    >> form try [1 / 0]
-    == "^/** Math error: attempt to divide by zero^/** Where: / try do either either if -apply-^/** Near: / 0^/"
-
-Three things are missing. The layout: a leading newline, `** <Type> error: `
-with the type capitalised as the catalogue writes it, then a `** Where:` line
-and a `** Near:` line, then a trailing newline. The wording: "attempt to divide
-by zero" is the catalogue's words with the arguments substituted, where JEBOL
-forms its own message. And the WHERE field, which a real Rebol fills with the
-whole call chain -- `[/ f g try do either either if -apply-]` for a failure two
-functions deep -- where JEBOL records only the native that raised.
-
-The chain is the substantial half and is worth having for itself: it is what
-makes a raised error say where it came from, and nothing else in the build
-records it.
-
-#### 1e. And one that no work will retire
+### 1. One entry, and no work will retire it
 
     checksum-test.r3   binary? file-checksum system/options/boot 'md5
 
-The reason is at the top of `known-gaps.txt` and has not changed: the launcher
-has to sit outside the root the script can see, so a script cannot read it.
+`known-gaps.txt` is down to this single line, and it is the one that stays. The
+reason is at the top of the file and has not changed: `system/options/boot` is
+the launcher a script runs to start a confined child interpreter, so it has to
+sit outside whatever root the script can see, and this assertion asks to read
+it. With `--root /` it passes here exactly as it does on ./r3-head; under the
+suite host it cannot, and making the field name something inside the root would
+give up confinement propagation to retire one assertion.
+
+**So the suite has nothing left to say about JEBOL, and the goals below are the
+ones it could never see.** Read them in order: the error catalogue, then what
+reaching zero would not prove, then what the suite does not ask.
+
+Two things are worth keeping from the way the last of it was cleared.
+
+**`org.jebol.suite.ShowFailures` prints why each listed gap fails** and the
+first line of its source, which is the report this file used to ask people to
+assemble by hand. `ShowAssertion` prints the source behind a gap's name. Both
+boot an interpreter before reading the suite, and that matters: the reader
+cannot read a datatype written in construction syntax until one exists, and
+quietly answers a truncated file if none does -- which made `datatype-test.r3`
+look like twenty-eight assertions instead of fifty-one.
+
+**Four of the last thirty-one were never work at all** and are now in
+`fails-on-rebol-too.txt` with the guard's answer beside them: one arm of an
+`either 'Windows = system/platform`, and three guarded on
+`system/version < 3.19.1`. The arm not taken is not a gap, and the file already
+had a section for exactly that shape.
 
 ---
 
@@ -629,9 +566,16 @@ the same function, and if not, why was it forked?
 
 ### 6. Loose ends
 
-**`task!` is a datatype word and not yet a datatype.** `task!` answers
-`#(datatype!)` on both, but `make task! [1 + 1]` gives `#(task!)` on a real
-Rebol and `cannot-use` here. It is the last one that is not really there.
+**A task is made and read and never run.** The datatype is whole -- `make
+task!` builds the five-field header, the fields are read and written through a
+path, it molds and forms as its header, and DO answers it. The one thing
+missing is the thread: `Do_Task` is `OS_Create_Thread`, and the body is bound
+to the contexts the parent is using, none of which is safe to touch from two
+threads. Running it on the calling thread instead would be worse than not
+running it -- `do make task! [1 / 0]` would raise where a real Rebol answers a
+task. The open question beside `DoOfATaskAnswersTheTask` in spec/natives.allium
+says what it would take, and that a host service the caller has to grant is the
+shape the answer probably wants.
 
 **Five scheme names R3 registers and JEBOL does not.**
 

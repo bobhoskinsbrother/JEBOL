@@ -1989,6 +1989,31 @@ public final class Natives {
 
     private static final double MOST_SECONDS_A_DURATION_HOLDS = 9_223_372_036.0;
 
+    private static Value aTaskMadeFrom(Value value) {
+        if (!(value instanceof BlockValue given) || given.datatype() != Datatype.BLOCK) {
+            return raiseBadMakeArg(value, "task!");
+        }
+        List<Value> written = given.remaining();
+        if (written.isEmpty() || !(written.getFirst() instanceof BlockValue spec)
+                || spec.datatype() != Datatype.BLOCK) {
+            return TaskValue.running(given);
+        }
+        if (written.size() < 2 || !(written.get(1) instanceof BlockValue body)
+                || body.datatype() != Datatype.BLOCK) {
+            return raiseBadMakeArg(value, "task!");
+        }
+        TaskValue task = TaskValue.running(body);
+        List<Value> fields = spec.remaining();
+        for (int at = 0; at + 1 < fields.size(); at++) {
+            if (fields.get(at) instanceof WordValue named
+                    && named.datatype() == Datatype.SET_WORD
+                    && task.context().holds(named.canonical())) {
+                task.context().set(named.canonical(), fields.get(at + 1));
+            }
+        }
+        return task;
+    }
+
     private static Value aTimeMadeFrom(Value value) {
         return switch (value) {
             case TimeValue already -> already;
@@ -4522,6 +4547,17 @@ public final class Natives {
                                 fields.set("type", WordValue.of(described[1]));
                                 yield new ObjectValue(fields);
                             }
+                            default -> NoneValue.none();
+                        };
+                    }
+                    if (arguments.get(0) instanceof TaskValue task) {
+                        return switch (field) {
+                            case "body" -> blockOfFieldsAndValues(task.context());
+                            case "words" -> BlockValue.block(
+                                    task.context().fieldsExcludingSelf().keySet().stream()
+                                            .<Value>map(WordValue::of).toList());
+                            case "values" -> BlockValue.block(List.copyOf(
+                                    task.context().fieldsExcludingSelf().values()));
                             default -> NoneValue.none();
                         };
                     }
@@ -12545,6 +12581,7 @@ public final class Natives {
                     ? new PortValue(built.context())
                     : raiseBadMakeArg(value, "port!");
             case MODULE -> moduleFromHeaderAndWords(value);
+            case TASK -> asking.builds() ? aTaskMadeFrom(value) : raiseBadMakeArg(value, "task!");
             case BITSET -> bitsetOf(value);
             case TYPESET -> switch (value) {
                 case TypesetValue already -> already;
