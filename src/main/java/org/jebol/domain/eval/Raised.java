@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.DatatypeValue;
+import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Value;
@@ -76,5 +78,19 @@ public final class Raised extends RuntimeException {
                 failure.description() + ": " + Molder.mold(first)
                         + " and " + Molder.mold(second),
                 first, second));
+    }
+
+    /**
+     * A native refusing a datatype it has no rule for, worded as REBOL's
+     * own {@code cannot-use} is: the native's name as ARG1 and the datatype
+     * that offended as ARG2, so a script reads either without parsing prose.
+     */
+    public static Raised cannotUse(Value value, String nativeName) {
+        return new Raised(ErrorValue.about(
+                ErrorCategory.SCRIPT, "cannot-use",
+                "cannot use " + nativeName + " on "
+                        + value.datatype().literalSpelling() + " value",
+                WordValue.of(nativeName),
+                DatatypeValue.of(value.datatype())));
     }
 }

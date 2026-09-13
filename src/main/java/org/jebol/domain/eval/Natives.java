@@ -760,15 +760,20 @@ public final class Natives {
 
     private void defineArithmetic() {
         define("add", takesNumbers("value1", "value2"),
-                (arguments, evaluator, context) -> arithmetic(arguments, Operation.ADD));
+                (arguments, evaluator, context) ->
+                        Arithmetic.sum(arguments.get(0), arguments.get(1)));
         define("subtract", takesNumbers("value1", "value2"),
-                (arguments, evaluator, context) -> arithmetic(arguments, Operation.SUBTRACT));
+                (arguments, evaluator, context) ->
+                        Arithmetic.difference(arguments.get(0), arguments.get(1)));
         define("multiply", takesNumbers("value1", "value2"),
-                (arguments, evaluator, context) -> arithmetic(arguments, Operation.MULTIPLY));
+                (arguments, evaluator, context) ->
+                        Arithmetic.product(arguments.get(0), arguments.get(1)));
         define("divide", takesNumbers("value1", "value2"),
-                (arguments, evaluator, context) -> arithmetic(arguments, Operation.DIVIDE));
+                (arguments, evaluator, context) ->
+                        Arithmetic.quotient(arguments.get(0), arguments.get(1)));
         define("remainder", takesNumbers("value1", "value2"),
-                (arguments, evaluator, context) -> arithmetic(arguments, Operation.REMAINDER));
+                (arguments, evaluator, context) ->
+                        Arithmetic.remainder(arguments.get(0), arguments.get(1)));
         define("square-root", takesOnlyNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.sqrt(Comparison.asDouble(arguments.get(0)))));
@@ -1030,11 +1035,8 @@ public final class Natives {
                 (arguments, evaluator, context) -> LogicValue.of(
                         isPrime(wholeNumberOf(arguments.get(0), "prime?"))));
         define("integer-divide", takesNumbers("dividend", "divisor"),
-                (arguments, evaluator, context) -> {
-                    long divisor = (long) Comparison.asDouble(arguments.get(1));
-                    requireNonZero(divisor);
-                    return IntegerValue.of((long) Comparison.asDouble(arguments.get(0)) / divisor);
-                });
+                (arguments, evaluator, context) ->
+                        Arithmetic.wholeQuotient(arguments.get(0), arguments.get(1)));
 
         define("clamp", List.of(
                         Parameter.required("value", CLAMPABLE),
@@ -1071,8 +1073,7 @@ public final class Natives {
                 (arguments, evaluator, context) -> arguments.getFirst()
                         instanceof BitsetValue members
                         ? members.complemented()
-                        : arithmetic(List.of(IntegerValue.of(0), arguments.get(0)),
-                                Operation.SUBTRACT));
+                        : Arithmetic.difference(IntegerValue.of(0), arguments.get(0)));
 
         define("maximum", takesComparable("value1", "value2"),
                 (arguments, evaluator, context) ->
@@ -1099,19 +1100,19 @@ public final class Natives {
         define("mod", List.of(
                         Parameter.required("dividend", DIVISIBLE),
                         Parameter.required("divisor", DIVISIBLE)),
-                (arguments, evaluator, context) -> remainderOf(
+                (arguments, evaluator, context) -> Arithmetic.rest(
                         arguments.get(0), arguments.get(1),
-                        Division.SIGN_FOLLOWS_THE_DIVIDEND));
+                        Arithmetic.Division.SIGN_FOLLOWS_THE_DIVIDEND));
 
         define("modulo", List.of(
                         Parameter.required("dividend", DIVISIBLE),
                         Parameter.required("divisor", DIVISIBLE)),
                 Set.of("floor"),
-                (arguments, evaluator, context, refinements) -> remainderOf(
+                (arguments, evaluator, context, refinements) -> Arithmetic.rest(
                         arguments.get(0), arguments.get(1),
                         refinements.contains("floor")
-                                ? Division.SIGN_FOLLOWS_THE_DIVISOR
-                                : Division.NEVER_NEGATIVE));
+                                ? Arithmetic.Division.SIGN_FOLLOWS_THE_DIVISOR
+                                : Arithmetic.Division.NEVER_NEGATIVE));
 
         define("shift-left", List.of(
                         Parameter.required("value", Set.of(Datatype.INTEGER)),
@@ -1123,8 +1124,6 @@ public final class Natives {
                 (arguments, evaluator, context) -> shifted(arguments, false));
 
     }
-
-    private enum Operation { ADD, SUBTRACT, MULTIPLY, DIVIDE, REMAINDER, MODULO }
 
     private enum Bitwise { AND, OR, XOR }
 
@@ -1173,14 +1172,6 @@ public final class Natives {
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
             Datatype.MONEY, Datatype.CHAR, Datatype.TIME);
 
-    private static double asMagnitude(Value value) {
-        return switch (value) {
-            case CharacterValue character -> character.codepoint();
-            case TimeValue time -> time.nanoseconds();
-            default -> Comparison.asDouble(value);
-        };
-    }
-
     private static double inRadians(Value angle, Set<String> refinements) {
         double given = Comparison.asDouble(angle);
         return refinements.contains("radians") ? given : Math.toRadians(given);
@@ -1191,68 +1182,10 @@ public final class Natives {
     }
 
     private static double tangentOf(double radians) {
-        if (nearlyTheSame(Math.abs(radians), Math.PI / 2.0)) {
+        if (Arithmetic.nearlyTheSame(Math.abs(radians), Math.PI / 2.0)) {
             return radians < 0 ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
         }
         return Math.tan(radians);
-    }
-
-    private enum Division {
-        SIGN_FOLLOWS_THE_DIVIDEND,
-        NEVER_NEGATIVE,
-        SIGN_FOLLOWS_THE_DIVISOR
-    }
-
-    private static Value remainderOf(Value dividend, Value divisor, Division definition) {
-        if (dividend instanceof IntegerValue whole && divisor instanceof IntegerValue by) {
-            long dividedBy = by.magnitude();
-            requireNonZero(dividedBy);
-            long rest = whole.magnitude() % dividedBy;
-            return IntegerValue.of(switch (definition) {
-                case SIGN_FOLLOWS_THE_DIVIDEND -> rest;
-                case NEVER_NEGATIVE -> rest < 0 ? rest + Math.abs(dividedBy) : rest;
-                case SIGN_FOLLOWS_THE_DIVISOR -> rest != 0 && (rest < 0) != (dividedBy < 0)
-                        ? rest + dividedBy
-                        : rest;
-            });
-        }
-        double first = asMagnitude(dividend);
-        double second = asMagnitude(divisor);
-        requireNonZero(second);
-        if (definition == Division.SIGN_FOLLOWS_THE_DIVIDEND) {
-            return likeTheDividend(dividend, first % second);
-        }
-        double by = definition == Division.NEVER_NEGATIVE
-                ? Math.abs(second) : second;
-        double rest = ((first % by) + by) % by;
-        return likeTheDividend(dividend, negligibleAgainstItsOperands(rest, first, by)
-                ? 0.0
-                : rest);
-    }
-
-    private static boolean negligibleAgainstItsOperands(
-            double rest, double dividend, double divisor) {
-
-        return nearlyTheSame(dividend, dividend - rest)
-                || nearlyTheSame(divisor, divisor + rest);
-    }
-
-    private static final long STEPS_MODULUS_ALLOWS = 10;
-
-    private static boolean nearlyTheSame(double first, double second) {
-        return Comparison.looselyEqual(
-                DecimalValue.of(first), DecimalValue.of(second), STEPS_MODULUS_ALLOWS);
-    }
-
-    private static Value likeTheDividend(Value dividend, double magnitude) {
-        return switch (dividend) {
-            case CharacterValue ignored -> CharacterValue.of((int) magnitude);
-            case TimeValue ignored -> TimeValue.ofNanoseconds((long) magnitude);
-            case MoneyValue ignored -> MoneyValue.of(
-                    new BigDecimal((long) magnitude));
-            case IntegerValue ignored -> IntegerValue.of((long) magnitude);
-            default -> DecimalValue.of(magnitude);
-        };
     }
 
     private static Value magnitudeOf(Value value) {
@@ -1342,7 +1275,7 @@ public final class Natives {
     private static Value combined(Value left, Value right, Bitwise operation) {
         if (VectorMath.isVectorArithmetic(left, right)) {
             if (!(left instanceof VectorValue)) {
-                throw notRelated(left, right);
+                throw Arithmetic.notRelated(left, right);
             }
             return VectorMath.done(left, right, switch (operation) {
                 case AND -> VectorMath.Operation.AND;
@@ -1362,9 +1295,9 @@ public final class Natives {
         if (left instanceof PairValue leftPair) {
             return PairValue.of(
                     combinedBits(roundedHalfUp(leftPair.x()),
-                            roundedHalfUp(firstHalfOf(right)), operation),
+                            roundedHalfUp(Arithmetic.firstHalfOf(right)), operation),
                     combinedBits(roundedHalfUp(leftPair.y()),
-                            roundedHalfUp(secondHalfOf(right)), operation));
+                            roundedHalfUp(Arithmetic.secondHalfOf(right)), operation));
         }
         if (left instanceof TupleValue) {
             return tupleCombined(left, right, operation);
@@ -1399,52 +1332,11 @@ public final class Natives {
         };
     }
 
-    private static Value characterArithmetic(
-            CharacterValue letter, Value right, Operation operation) {
-
-        long other = switch (right) {
-            case CharacterValue another -> another.codepoint();
-            case IntegerValue whole -> whole.magnitude();
-            case DecimalValue fraction -> (long) fraction.quantity();
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "a character takes a character or a number, not a "
-                            + right.datatype().literalSpelling());
-        };
-        long codepoint = letter.codepoint();
-        long answered = switch (operation) {
-            case ADD -> codepoint + other;
-            case SUBTRACT -> codepoint - other;
-            case MULTIPLY -> codepoint * other;
-            case DIVIDE -> dividedBy(codepoint, other);
-            case REMAINDER -> remainderOf(codepoint, other);
-            default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    "cannot use that on a character");
-        };
-        if (operation == Operation.SUBTRACT && right instanceof CharacterValue) {
-            return IntegerValue.of(answered);
-        }
-        return CharacterValue.of(requireACodepoint(answered));
-    }
-
-    private static long dividedBy(long codepoint, long other) {
-        if (other == 0) {
-            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
-        }
-        return codepoint / other;
-    }
-
-    private static long remainderOf(long codepoint, long other) {
-        if (other == 0) {
-            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
-        }
-        return codepoint % other;
-    }
-
     private int aValidCodepointUpTo(int limit) {
         while (true) {
             int picked = 1 + randomness.below(limit);
             boolean surrogate = picked >= 0xD800 && picked <= 0xDFFF;
-            if (!surrogate && picked <= MAXIMUM_CODEPOINT) {
+            if (!surrogate && picked <= CharacterValue.MAXIMUM_CODEPOINT) {
                 return picked;
             }
         }
@@ -1574,259 +1466,16 @@ public final class Natives {
                 : new DateValue(drawn.getYear(), drawn.getMonthValue(),
                         drawn.getDayOfMonth(),
                         java.util.Optional.of(TimeValue.ofNanoseconds(
-                                randomLongUpTo(NANOSECONDS_A_DAY))),
+                                randomLongUpTo(TimeValue.NANOSECONDS_PER_DAY))),
                         when.zoneMinutes());
     }
 
     private static final int MONTHS_A_YEAR = 12;
     private static final int LONGEST_MONTH = 31;
 
-    private static int requireACodepoint(long wanted) {
-        boolean surrogate = wanted >= 0xD800 && wanted <= 0xDFFF;
-        if (wanted < 0 || wanted > MAXIMUM_CODEPOINT || surrogate) {
-            throw Raised.of(EvaluationFailure.INVALID_CHAR, IntegerValue.of(wanted));
-        }
-        return (int) wanted;
-    }
-
-    private static Value vectorArithmetic(Value left, Value right, Operation operation) {
-        VectorMath.Operation asked = switch (operation) {
-            case ADD -> VectorMath.Operation.ADD;
-            case SUBTRACT -> VectorMath.Operation.SUBTRACT;
-            case MULTIPLY -> VectorMath.Operation.MULTIPLY;
-            case DIVIDE -> VectorMath.Operation.DIVIDE;
-            case REMAINDER -> VectorMath.Operation.REMAINDER;
-            default -> null;
-        };
-        boolean orderMatters = asked != VectorMath.Operation.ADD
-                && asked != VectorMath.Operation.MULTIPLY;
-        if (asked == null || (!(left instanceof VectorValue) && orderMatters)) {
-            throw notRelated(left, right);
-        }
-        Value other = left instanceof VectorValue ? right : left;
-        if (!(other instanceof VectorValue)
-                && !(other instanceof IntegerValue) && !(other instanceof DecimalValue)) {
-            throw notRelated(left, right);
-        }
-        return VectorMath.done(left, right, asked);
-    }
-
-    private static Raised notRelated(Value left, Value right) {
-        return Raised.of(EvaluationFailure.NOT_RELATED,
-                WordValue.of(left.datatype().literalSpelling()),
-                WordValue.of(right.datatype().literalSpelling()));
-    }
-
-    private static Value arithmetic(List<Value> arguments, Operation operation) {
-        Value left = arguments.get(0);
-        Value right = arguments.get(1);
-
-        if (VectorMath.isVectorArithmetic(left, right)) {
-            return vectorArithmetic(left, right, operation);
-        }
-        if (left instanceof CharacterValue letter) {
-            return characterArithmetic(letter, right, operation);
-        }
-        if (left instanceof PairValue || right instanceof PairValue) {
-            return pairArithmetic(left, right, operation);
-        }
-        if (left instanceof TupleValue || right instanceof TupleValue) {
-            return tupleArithmetic(left, right, operation);
-        }
-        if (left instanceof DateValue || right instanceof DateValue) {
-            return dateArithmetic(left, right, operation);
-        }
-        if (right instanceof CharacterValue letter
-                && (left instanceof IntegerValue || left instanceof DecimalValue)) {
-            Value asNumber = left instanceof IntegerValue
-                    ? IntegerValue.of(letter.codepoint())
-                    : DecimalValue.of(letter.codepoint());
-            Value plainer = left instanceof DecimalValue quantity
-                    ? DecimalValue.of(quantity.quantity())
-                    : left;
-            return arithmetic(List.of(plainer, asNumber), operation);
-        }
-        if (left instanceof MoneyValue amount) {
-            return moneyArithmetic(amount, right, operation);
-        }
-        if (left instanceof TimeValue || right instanceof TimeValue) {
-            return timeArithmetic(left, right, operation);
-        }
-        if (right instanceof MoneyValue) {
-            return moneyArithmetic(MoneyValue.of(asBigDecimal(left)), right, operation);
-        }
-        if (left instanceof IntegerValue leftInteger && right instanceof IntegerValue rightInteger) {
-            return integerArithmetic(leftInteger.magnitude(), rightInteger.magnitude(), operation);
-        }
-        return decimalArithmetic(Comparison.asDouble(left), Comparison.asDouble(right), operation, true);
-    }
-
-    private static Value integerArithmetic(long left, long right, Operation operation) {
-        try {
-            return switch (operation) {
-                case ADD -> IntegerValue.of(Math.addExact(left, right));
-                case SUBTRACT -> IntegerValue.of(Math.subtractExact(left, right));
-                case MULTIPLY -> IntegerValue.of(Math.multiplyExact(left, right));
-                case DIVIDE -> {
-                    requireNonZero(right);
-                    yield left % right == 0
-                            ? IntegerValue.of(left / right)
-                            : DecimalValue.of((double) left / right);
-                }
-                case REMAINDER -> {
-                    requireNonZero(right);
-                    yield IntegerValue.of(left % right);
-                }
-                case MODULO -> {
-                    requireNonZero(right);
-                    long rest = left % right;
-                    yield IntegerValue.of(rest < 0 ? rest + Math.abs(right) : rest);
-                }
-            };
-        } catch (ArithmeticException overflowed) {
-            throw Raised.of(EvaluationFailure.OVERFLOW, overflowed.getMessage());
-        }
-    }
-
-    private static Value decimalArithmetic(double left, double right, Operation operation) {
-        return decimalArithmetic(left, right, operation, false);
-    }
-
-    private static Value decimalArithmetic(
-            double left, double right, Operation operation, boolean infinitiesAllowed) {
-        return switch (operation) {
-            case ADD -> DecimalValue.of(left + right);
-            case SUBTRACT -> DecimalValue.of(left - right);
-            case MULTIPLY -> DecimalValue.of(left * right);
-            case DIVIDE -> {
-                if (!infinitiesAllowed) {
-                    requireNonZero(right);
-                }
-                yield DecimalValue.of(left / right);
-            }
-            case REMAINDER -> {
-                requireNonZero(right);
-                yield DecimalValue.of(left % right);
-            }
-            case MODULO -> {
-                requireNonZero(right);
-                double rest = left % right;
-                yield DecimalValue.of(rest < 0 ? rest + Math.abs(right) : rest);
-            }
-        };
-    }
-
-    private static Value pairArithmetic(Value left, Value right, Operation operation) {
-        requireAPairOrAPlainNumber(left);
-        requireAPairOrAPlainNumber(right);
-        if (operation == Operation.DIVIDE || operation == Operation.REMAINDER
-                || operation == Operation.MODULO) {
-            requireNonZero(firstHalfOf(right));
-            requireNonZero(secondHalfOf(right));
-        }
-        return PairValue.of(
-                halfArithmetic(firstHalfOf(left), firstHalfOf(right), operation),
-                halfArithmetic(secondHalfOf(left), secondHalfOf(right), operation));
-    }
-
-    private static void requireAPairOrAPlainNumber(Value side) {
-        if (side instanceof PairValue
-                || side instanceof IntegerValue
-                || side instanceof DecimalValue) {
-            return;
-        }
-        throw Raised.of(EvaluationFailure.NOT_RELATED,
-                side.datatype().literalSpelling() + " does not go with pair arithmetic");
-    }
-
-    private static double halfArithmetic(double left, double right, Operation operation) {
-        return ((DecimalValue) decimalArithmetic(left, right, operation)).quantity();
-    }
-
-    private static double firstHalfOf(Value value) {
-        return value instanceof PairValue pair ? pair.x() : Comparison.asDouble(value);
-    }
-
-    private static double secondHalfOf(Value value) {
-        return value instanceof PairValue pair ? pair.y() : Comparison.asDouble(value);
-    }
-
-    private static Value tupleArithmetic(Value left, Value right, Operation operation) {
-        return octetByOctet(left, right, (octet, against, fractional) ->
-                switch (operation) {
-                    case ADD -> octet + (long) against;
-                    case SUBTRACT -> octet - (long) against;
-                    case MULTIPLY -> {
-                        if (octet == 0) {
-                            yield 0;
-                        }
-                        if (against > 255) {
-                            yield 255;
-                        }
-                        yield fractional ? (long) (octet * against) : octet * (long) against;
-                    }
-                    case DIVIDE -> {
-                        if (against == 0) {
-                            throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "tuple");
-                        }
-                        yield fractional
-                                ? (long) roundedHalfAwayFromZero(octet / against)
-                                : octet / (long) against;
-                    }
-                    case REMAINDER, MODULO -> {
-                        if ((long) against == 0) {
-                            throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "tuple");
-                        }
-                        yield octet % (long) against;
-                    }
-                });
-    }
-
     private static Value tupleCombined(Value left, Value right, Bitwise operation) {
-        return octetByOctet(left, right, (octet, against, fractional) ->
+        return Arithmetic.octetByOctet(left, right, (octet, against, fractional) ->
                 combinedBits(octet, (long) against, operation));
-    }
-
-    @FunctionalInterface
-    private interface OctetWork {
-        long against(long octet, double amount, boolean fractional);
-    }
-
-    private static Value octetByOctet(Value left, Value right, OctetWork work) {
-        refuseATimeBesideATuple(left, right);
-        if (!(left instanceof TupleValue ours)) {
-            return raiseCannotUse(left, "tuple arithmetic");
-        }
-        TupleValue theirs = right instanceof TupleValue tuple ? tuple : null;
-        if (theirs == null && !Comparison.isNumeric(right)) {
-            return raiseCannotUse(right, "tuple arithmetic");
-        }
-        int width = theirs == null
-                ? ours.segmentCount()
-                : Math.max(ours.segmentCount(), theirs.segmentCount());
-        boolean fractional = right.datatype() == Datatype.DECIMAL
-                || right.datatype() == Datatype.PERCENT;
-        double amount = theirs == null ? Comparison.asDouble(right) : 0;
-
-        int[] answer = new int[width];
-        for (int at = 1; at <= width; at++) {
-            long worked = work.against(ours.octetAt(at),
-                    theirs == null ? amount : theirs.octetAt(at), fractional);
-            answer[at - 1] = (int) Math.max(0, Math.min(255, worked));
-        }
-        return TupleValue.of(answer);
-    }
-
-    private static void refuseATimeBesideATuple(Value left, Value right) {
-        if (left instanceof TimeValue || right instanceof TimeValue) {
-            throw Raised.of(EvaluationFailure.NOT_RELATED,
-                    DatatypeValue.of(Datatype.TIME),
-                    DatatypeValue.of(Datatype.TUPLE));
-        }
-    }
-
-    private static double roundedHalfAwayFromZero(double amount) {
-        return amount < 0 ? -Math.round(-amount) : Math.round(amount);
     }
 
     private static Value interpolated(Value from, Value to, Value fraction) {
@@ -1926,76 +1575,13 @@ public final class Natives {
         return randomLongUpTo(bound);
     }
 
-    private static Value timeArithmetic(Value left, Value right, Operation operation) {
-        if (!(left instanceof TimeValue) && right instanceof TimeValue) {
-            return aNumberAgainstATime(left, (TimeValue) right, operation);
-        }
-        if (right instanceof TimeValue other) {
-            return aTimeAgainstATime(left, other, operation);
-        }
-        if (right instanceof MoneyValue rate) {
-            return aTimeAgainstAMoney(left, rate, operation);
-        }
-        if (right instanceof DecimalValue portion
-                && portion.datatype() == Datatype.PERCENT) {
-            return aTimeAgainstAProportion(left, portion, operation);
-        }
-        if (!(right instanceof IntegerValue) && !(right instanceof DecimalValue)) {
-            throw notRelatedToATime(right, operation);
-        }
-        if (operation == Operation.MULTIPLY || operation == Operation.DIVIDE) {
-            long scaled = (long) ((DecimalValue) decimalArithmetic(
-                    nanosecondsOf(left), Comparison.asDouble(right), operation)).quantity();
-            return TimeValue.ofNanoseconds(scaled);
-        }
-        return addedInWholeNanoseconds(left, right, operation);
-    }
-
-    private static Value addedInWholeNanoseconds(
-            Value left, Value right, Operation operation) {
-
-        long ours = wholeNanosecondsOf(left);
-        long theirs = wholeNanosecondsOf(right);
-        return TimeValue.ofNanoseconds(withinWhatADurationHolds(switch (operation) {
-            case ADD -> ours + theirs;
-            case SUBTRACT -> ours - theirs;
-            default -> {
-                requireNonZero(theirs);
-                yield operation == Operation.REMAINDER
-                        ? ours % theirs
-                        : Math.floorMod(ours, theirs);
-            }
-        }));
-    }
-
-    private static long withinWhatADurationHolds(long nanoseconds) {
-        if (nanoseconds < -LONGEST_DURATION || nanoseconds > LONGEST_DURATION) {
-            throw Raised.of(EvaluationFailure.TYPE_LIMIT,
-                    DatatypeValue.of(Datatype.TIME));
-        }
-        return nanoseconds;
-    }
-
-    private static final long LONGEST_DURATION =
-            (9_223_372_036L / 3600L) * 3600L * 1_000_000_000L;
-
-    private static long wholeNanosecondsOf(Value value) {
-        if (value instanceof TimeValue time) {
-            return time.nanoseconds();
-        }
-        if (value instanceof IntegerValue seconds) {
-            return seconds.magnitude() * NANOSECONDS_A_SECOND;
-        }
-        return Math.round(Comparison.asDouble(value) * NANOSECONDS_A_SECOND);
-    }
-
     private static Value aDurationOfSeconds(Value value) {
         double seconds = Comparison.asDouble(value);
         if (seconds < -MOST_SECONDS_A_DURATION_HOLDS
                 || seconds > MOST_SECONDS_A_DURATION_HOLDS) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, value);
         }
-        return TimeValue.ofNanoseconds(wholeNanosecondsOf(value));
+        return TimeValue.ofNanoseconds(Arithmetic.wholeNanosecondsOf(value));
     }
 
     private static final double MOST_SECONDS_A_DURATION_HOLDS = 9_223_372_036.0;
@@ -2072,8 +1658,8 @@ public final class Natives {
         if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
             return raiseBadMakeArg(parts, "time!");
         }
-        long nanoseconds = seconds * NANOSECONDS_A_SECOND
-                + Math.round(fraction * NANOSECONDS_A_SECOND);
+        long nanoseconds = seconds * TimeValue.NANOSECONDS_PER_SECOND
+                + Math.round(fraction * TimeValue.NANOSECONDS_PER_SECOND);
         return TimeValue.ofNanoseconds(negated ? -nanoseconds : nanoseconds);
     }
 
@@ -2128,193 +1714,15 @@ public final class Natives {
         return scanning.readsATime() ? scanning.nanoseconds() : null;
     }
 
-    private static Value aNumberAgainstATime(
-            Value left, TimeValue right, Operation operation) {
-
-        boolean allowed = switch (operation) {
-            case ADD, MULTIPLY -> true;
-            case SUBTRACT -> left instanceof IntegerValue;
-            default -> false;
-        };
-        if (!allowed) {
-            throw notRelatedToATime(left, operation);
-        }
-        if (operation == Operation.SUBTRACT) {
-            return addedInWholeNanoseconds(left, right, operation);
-        }
-        return timeArithmetic(right, left, operation);
-    }
-
-    private static Value aTimeAgainstATime(
-            Value left, TimeValue right, Operation operation) {
-
-        if (operation == Operation.DIVIDE) {
-            requireNonZero(right.nanoseconds());
-            return DecimalValue.of(
-                    nanosecondsOf(left) / (double) right.nanoseconds());
-        }
-        if (operation == Operation.MULTIPLY) {
-            throw notRelatedToATime(right, operation);
-        }
-        return addedInWholeNanoseconds(left, right, operation);
-    }
-
-    private static Value aTimeAgainstAMoney(
-            Value left, MoneyValue rate, Operation operation) {
-
-        BigDecimal hours = BigDecimal.valueOf(
-                nanosecondsOf(left) / NANOSECONDS_AN_HOUR);
-        return switch (operation) {
-            case MULTIPLY -> moneyArithmetic(hours, rate.amount(), operation);
-            case DIVIDE -> moneyArithmetic(rate.amount(), hours, operation);
-            default -> throw notRelatedToATime(rate, operation);
-        };
-    }
-
-    private static Value aTimeAgainstAProportion(
-            Value left, DecimalValue portion, Operation operation) {
-
-        if (operation != Operation.MULTIPLY) {
-            throw notRelatedToATime(portion, operation);
-        }
-        return TimeValue.ofNanoseconds(
-                (long) (nanosecondsOf(left) * portion.quantity()));
-    }
-
-    private static Raised notRelatedToATime(Value other, Operation operation) {
-        return Raised.of(EvaluationFailure.NOT_RELATED,
-                WordValue.of(operation.name().toLowerCase(Locale.ROOT)),
-                DatatypeValue.of(Datatype.TIME));
-    }
-
-    private static final long NANOSECONDS_A_SECOND = 1_000_000_000L;
-    private static final long NANOSECONDS_A_DAY = 86_400L * NANOSECONDS_A_SECOND;
-
-    private static double nanosecondsOf(Value value) {
-        return value instanceof TimeValue time
-                ? time.nanoseconds()
-                : Comparison.asDouble(value) * NANOSECONDS_A_SECOND;
-    }
-
     private static Value scalarOf(Value value) {
         return value instanceof TimeValue time
                 ? DecimalValue.of(time.nanoseconds())
                 : value;
     }
 
-    private static Value dateArithmetic(Value left, Value right, Operation operation) {
-        if (left instanceof DateValue from && right instanceof DateValue to) {
-            if (operation != Operation.SUBTRACT) {
-                return raiseCannotUse(left, "date arithmetic");
-            }
-            return IntegerValue.of(dayNumberOf(from) - dayNumberOf(to));
-        }
-        if (operation == Operation.SUBTRACT && !(left instanceof DateValue)) {
-            throw Raised.of(EvaluationFailure.NOT_RELATED,
-                    WordValue.of(operation.name().toLowerCase(Locale.ROOT) + ":"),
-                    DatatypeValue.of(left.datatype()));
-        }
-        DateValue moment = left instanceof DateValue date ? date : (DateValue) right;
-        Value span = left instanceof DateValue ? right : left;
-        int sign = operation == Operation.SUBTRACT ? -1 : 1;
-        return span.datatype() == Datatype.INTEGER
-                ? dateMovedByDays(moment, sign * (long) Comparison.asDouble(span))
-                : dateMovedByClock(moment, sign * clockShiftOf(span));
-    }
-
-    private static long clockShiftOf(Value span) {
-        return span instanceof TimeValue duration
-                ? duration.nanoseconds()
-                : (long) (Comparison.asDouble(span) * NANOSECONDS_A_DAY);
-    }
-
-    private static DateValue dateMovedByDays(DateValue moment, long days) {
-        java.time.LocalDate shifted =
-                java.time.LocalDate.ofEpochDay(dayNumberOf(moment) + days);
-        return new DateValue(shifted.getYear(), shifted.getMonthValue(),
-                shifted.getDayOfMonth(), moment.timeOfDay(), moment.zoneMinutes());
-    }
-
-    private static DateValue dateMovedByClock(DateValue moment, long nanoseconds) {
-        long shifted = moment.timeOfDay().map(TimeValue::nanoseconds).orElse(0L)
-                + nanoseconds;
-        java.time.LocalDate day = java.time.LocalDate.ofEpochDay(
-                dayNumberOf(moment) + Math.floorDiv(shifted, NANOSECONDS_A_DAY));
-        return new DateValue(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
-                Optional.of(TimeValue.ofNanoseconds(
-                        Math.floorMod(shifted, NANOSECONDS_A_DAY))),
-                moment.zoneMinutes());
-    }
-
     private static Value timeBetween(DateValue from, DateValue to) {
-        long days = dayNumberOf(from) - dayNumberOf(to);
-        return TimeValue.ofNanoseconds(days * 24L * 60L * 60L * 1_000_000_000L);
-    }
-
-    private static long dayNumberOf(DateValue date) {
-        return java.time.LocalDate.of(date.year(), date.month(), date.day()).toEpochDay();
-    }
-
-    private static Value moneyArithmetic(MoneyValue amount, Value other, Operation operation) {
-        return withinTheDeciRange((MoneyValue) moneyArithmetic(
-                amount.amount(), widenedToMeetMoney(other, operation), operation));
-    }
-
-    private static BigDecimal widenedToMeetMoney(Value other, Operation operation) {
-        if (other instanceof TimeValue span) {
-            if (operation != Operation.MULTIPLY) {
-                throw Raised.of(EvaluationFailure.NOT_RELATED,
-                        "only multiplication takes a time on the right of a money");
-            }
-            return BigDecimal.valueOf(
-                    (double) span.nanoseconds() / NANOSECONDS_AN_HOUR);
-        }
-        if (other instanceof MoneyValue
-                || other instanceof IntegerValue
-                || other instanceof DecimalValue) {
-            return asBigDecimal(other);
-        }
-        throw Raised.of(EvaluationFailure.NOT_RELATED,
-                other.datatype().literalSpelling() + " does not go with money arithmetic");
-    }
-
-    private static final double NANOSECONDS_AN_HOUR = 3_600_000_000_000.0;
-
-    private static Value moneyArithmetic(BigDecimal left, BigDecimal right, Operation operation) {
-        return switch (operation) {
-            case ADD -> MoneyValue.of(left.add(right));
-            case SUBTRACT -> MoneyValue.of(left.subtract(right));
-            case MULTIPLY -> MoneyValue.of(left.multiply(right, MoneyValue.ARITHMETIC));
-            case DIVIDE -> {
-                requireNonZero(right.doubleValue());
-                yield MoneyValue.of(left.divide(right, MoneyValue.ARITHMETIC));
-            }
-            case REMAINDER -> {
-                requireNonZero(right.doubleValue());
-                yield MoneyValue.of(left.remainder(right, MoneyValue.ARITHMETIC));
-            }
-            case MODULO -> {
-                requireNonZero(right.doubleValue());
-                BigDecimal rest = left.remainder(right, MoneyValue.ARITHMETIC);
-                yield MoneyValue.of(rest.signum() < 0 ? rest.add(right.abs()) : rest);
-            }
-        };
-    }
-
-    private static void requireNonZero(double divisor) {
-        if (divisor == 0.0) {
-            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
-        }
-    }
-
-    private static BigDecimal asBigDecimal(Value value) {
-        return switch (value) {
-            case MoneyValue money -> money.amount();
-            case IntegerValue integer -> BigDecimal.valueOf(integer.magnitude());
-            case DecimalValue decimal -> BigDecimal.valueOf(decimal.quantity());
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    value.datatype().literalSpelling() + " is not a number");
-        };
+        long days = Arithmetic.dayNumberOf(from) - Arithmetic.dayNumberOf(to);
+        return TimeValue.ofNanoseconds(days * TimeValue.NANOSECONDS_PER_DAY);
     }
 
     private void defineComparison() {
@@ -3263,7 +2671,7 @@ public final class Natives {
                                 index -> walked.atIndex(walked.index() + (int) index),
                                 walked.lengthFromHere());
                     }
-                    long passes = (long) asMagnitude(arguments.get(1));
+                    long passes = (long) Arithmetic.asMagnitude(arguments.get(1));
                     return countedLoop(
                             evaluator, context, counter, body,
                             index -> IntegerValue.of(index + 1), passes);
@@ -3576,9 +2984,9 @@ public final class Natives {
         int tail = series.storageLength() + 1;
         int endIndex = end instanceof SeriesValue other
                 ? other.index()
-                : (int) asMagnitude(end);
+                : (int) Arithmetic.asMagnitude(end);
         endIndex = Math.max(0, Math.min(endIndex, tail));
-        long stepBy = (long) asMagnitude(step);
+        long stepBy = (long) Arithmetic.asMagnitude(step);
         Value last = NoneValue.none();
         try {
             int at = series.index();
@@ -3992,7 +3400,7 @@ public final class Natives {
                         Parameter.required("radius", Typeset.NUMBER.members())),
                 (arguments, evaluator, context) -> {
                     ImageOperations.blur((ImageValue) arguments.getFirst(),
-                            (int) Math.round(asMagnitude(arguments.get(1))));
+                            (int) Math.round(Arithmetic.asMagnitude(arguments.get(1))));
                     return arguments.getFirst();
                 });
 
@@ -4468,7 +3876,7 @@ public final class Natives {
                             case CharacterValue letter -> letter.codepoint();
                             case IntegerValue number
                                     when number.magnitude() >= 0
-                                    && number.magnitude() <= MAXIMUM_CODEPOINT ->
+                                    && number.magnitude() <= CharacterValue.MAXIMUM_CODEPOINT ->
                                     (int) number.magnitude();
                             default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                                     "poke into a string takes a character or a "
@@ -5355,7 +4763,7 @@ public final class Natives {
                     if (arguments.getFirst() instanceof PortValue port
                             && isAFilePort(port)) {
                         return movedWithinTheFile(port, evaluator,
-                                (long) asMagnitude(arguments.get(1)));
+                                (long) Arithmetic.asMagnitude(arguments.get(1)));
                     }
                     if (!(arguments.getFirst() instanceof SeriesValue series)) {
                         return raiseWrongArgument(arguments.getFirst(), "atz", "series");
@@ -5631,7 +5039,7 @@ public final class Natives {
                             && isAFilePort(port)) {
                         return movedWithinTheFile(port, evaluator,
                                 SeekableFilePort.positionOf(port)
-                                        + (long) asMagnitude(arguments.get(1)));
+                                        + (long) Arithmetic.asMagnitude(arguments.get(1)));
                     }
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.get(0), "skip");
@@ -5652,7 +5060,7 @@ public final class Natives {
                     if (arguments.getFirst() instanceof PortValue port
                             && isAFilePort(port)) {
                         return movedWithinTheFile(port, evaluator,
-                                (long) asMagnitude(arguments.get(1)) - 1);
+                                (long) Arithmetic.asMagnitude(arguments.get(1)) - 1);
                     }
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.get(0), "at");
@@ -5914,7 +5322,7 @@ public final class Natives {
                                 ? argumentFor("part", List.of("part"), arguments,
                                         refinements, 1)
                                 : IntegerValue.of(tuple.segmentCount());
-                        return reversedOctets(tuple, (int) asMagnitude(limit));
+                        return reversedOctets(tuple, (int) Arithmetic.asMagnitude(limit));
                     }
                     if (arguments.get(0) instanceof PairValue pair) {
                         return pair.reversed();
@@ -6310,8 +5718,8 @@ public final class Natives {
 
         if (scale == null) {
             return TimeValue.ofNanoseconds(Math.round(
-                    (double) time.nanoseconds() / NANOSECONDS_A_SECOND)
-                    * NANOSECONDS_A_SECOND);
+                    (double) time.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND)
+                    * TimeValue.NANOSECONDS_PER_SECOND);
         }
         if (scale instanceof TimeValue step) {
             return TimeValue.ofNanoseconds(step.nanoseconds() == 0
@@ -6320,7 +5728,7 @@ public final class Natives {
                             * step.nanoseconds());
         }
         double stepSeconds = Comparison.asDouble(scale);
-        double seconds = (double) time.nanoseconds() / NANOSECONDS_A_SECOND;
+        double seconds = (double) time.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND;
         double rounded = stepSeconds == 0
                 ? seconds
                 : Math.round(seconds / stepSeconds) * stepSeconds;
@@ -6576,7 +5984,7 @@ public final class Natives {
     private static long transcodeArgument(
             String refinement, List<Value> arguments, Set<String> refinements) {
 
-        return (long) asMagnitude(argumentFor(
+        return (long) Arithmetic.asMagnitude(argumentFor(
                 refinement, TRANSCODE_ARGUMENT_ORDER, arguments, refinements, 1));
     }
 
@@ -8997,8 +8405,8 @@ public final class Natives {
     }
 
     private static Value pickTimePart(TimeValue time, Value selector) {
-        long seconds = Math.abs(time.nanoseconds()) / NANOSECONDS_A_SECOND;
-        long fraction = Math.abs(time.nanoseconds()) % NANOSECONDS_A_SECOND;
+        long seconds = Math.abs(time.nanoseconds()) / TimeValue.NANOSECONDS_PER_SECOND;
+        long fraction = Math.abs(time.nanoseconds()) % TimeValue.NANOSECONDS_PER_SECOND;
         String part = selector instanceof WordValue named
                 ? named.canonical()
                 : positionAsTimePartName(selector);
@@ -9008,7 +8416,7 @@ public final class Natives {
             case "second" -> fraction == 0
                     ? IntegerValue.of(seconds % 60)
                     : DecimalValue.of(
-                            seconds % 60 + (double) fraction / NANOSECONDS_A_SECOND);
+                            seconds % 60 + (double) fraction / TimeValue.NANOSECONDS_PER_SECOND);
             default -> NoneValue.none();
         };
     }
@@ -9660,12 +9068,7 @@ public final class Natives {
     }
 
     private static Value raiseCannotUse(Value value, String nativeName) {
-        throw new Raised(ErrorValue.about(
-                ErrorCategory.SCRIPT, "cannot-use",
-                "cannot use " + nativeName + " on "
-                        + value.datatype().literalSpelling() + " value",
-                WordValue.of(nativeName),
-                DatatypeValue.of(value.datatype())));
+        throw Raised.cannotUse(value, nativeName);
     }
 
     private void defineEncodings() {
@@ -10952,7 +10355,7 @@ public final class Natives {
             wide = (int) Math.round(wasWide * portion.quantity());
             high = (int) Math.round(wasHigh * portion.quantity());
         } else {
-            wide = (int) Math.round(asMagnitude(asked));
+            wide = (int) Math.round(Arithmetic.asMagnitude(asked));
             high = scaledFrom(wide, wasHigh, wasWide);
         }
         if (wide <= 0 || high <= 0) {
@@ -12224,9 +11627,9 @@ public final class Natives {
             return (TimeValue) raiseBadMakeArg(BlockValue.block(whole), "date!");
         }
         return TimeValue.ofNanoseconds(
-                hour.magnitude() * SECONDS_AN_HOUR * NANOSECONDS_A_SECOND
-                        + minute.magnitude() * SECONDS_A_MINUTE * NANOSECONDS_A_SECOND
-                        + Math.round(second * NANOSECONDS_A_SECOND));
+                hour.magnitude() * SECONDS_AN_HOUR * TimeValue.NANOSECONDS_PER_SECOND
+                        + minute.magnitude() * SECONDS_A_MINUTE * TimeValue.NANOSECONDS_PER_SECOND
+                        + Math.round(second * TimeValue.NANOSECONDS_PER_SECOND));
     }
 
     private static final long SECONDS_A_MINUTE = 60L;
@@ -12241,7 +11644,7 @@ public final class Natives {
             raiseBadMakeArg(BlockValue.block(whole), "date!");
         }
         long minutes = ((TimeValue) left.getFirst()).nanoseconds()
-                / (SECONDS_A_MINUTE * NANOSECONDS_A_SECOND);
+                / (SECONDS_A_MINUTE * TimeValue.NANOSECONDS_PER_SECOND);
         if (Math.abs(minutes) > FURTHEST_ZONE_MINUTES) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     "a zone reaches fifteen hours either side of UTC");
@@ -12796,7 +12199,7 @@ public final class Natives {
                     ? asItStands(wanted, truth.truth() ? 1.0 : 0.0)
                     : raiseBadMakeArg(value, wanted.literalSpelling());
             case TimeValue clock -> asHundredths(wanted,
-                    (double) clock.nanoseconds() / NANOSECONDS_A_SECOND);
+                    (double) clock.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND);
             case DateValue moment -> asHundredths(wanted, secondsSinceTheEpoch(moment));
             case BinaryValue bits -> asHundredths(wanted,
                     Double.longBitsToDouble(bitsOfRightAligned(bits)));
@@ -12871,7 +12274,7 @@ public final class Natives {
             case DateValue moment -> IntegerValue.of(instantOf(moment));
             case DecimalValue number -> wholeNumberWithinRange(number.quantity());
             case MoneyValue amount -> IntegerValue.of(amount.amount().longValue());
-            case TimeValue clock -> IntegerValue.of(clock.nanoseconds() / NANOSECONDS_A_SECOND);
+            case TimeValue clock -> IntegerValue.of(clock.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND);
             default -> raiseBadMakeArg(value, "integer!");
         };
     }
@@ -12906,8 +12309,8 @@ public final class Natives {
 
     private static double secondsSinceTheEpoch(DateValue when) {
         DateValue.Moment moment = when.moment();
-        return (double) moment.dayNumber() * (NANOSECONDS_A_DAY / NANOSECONDS_A_SECOND)
-                + (double) moment.nanosecondsIntoTheDay() / NANOSECONDS_A_SECOND;
+        return (double) moment.dayNumber() * (TimeValue.NANOSECONDS_PER_DAY / TimeValue.NANOSECONDS_PER_SECOND)
+                + (double) moment.nanosecondsIntoTheDay() / TimeValue.NANOSECONDS_PER_SECOND;
     }
 
     private static Value wordNamed(String spelling, Datatype kind) {
@@ -13231,7 +12634,7 @@ public final class Natives {
     }
 
     private static Value asMoney(Conversion asking, Value value) {
-        return withinTheDeciRange(switch (value) {
+        return Arithmetic.withinTheDeciRange(switch (value) {
             case MoneyValue already -> already;
             case IntegerValue whole -> MoneyValue.of(BigDecimal.valueOf(whole.magnitude()));
             case DecimalValue quantity ->
@@ -13243,14 +12646,6 @@ public final class Natives {
                     : (MoneyValue) raiseBadMakeArg(value, "money!");
             default -> (MoneyValue) raiseBadMakeArg(value, "money!");
         });
-    }
-
-    private static MoneyValue withinTheDeciRange(MoneyValue amount) {
-        if (!amount.isWithinTheDeciRange()) {
-            throw Raised.of(EvaluationFailure.OVERFLOW,
-                    "a money holds twenty-six digits and a power of ten from -128 to 127");
-        }
-        return amount;
     }
 
     private static MoneyValue readMoney(String text) {
@@ -13319,7 +12714,7 @@ public final class Natives {
             return TimeValue.ofNanoseconds(here.toLocalTime().toNanoOfDay());
         }
         if (refinements.contains("zone")) {
-            return TimeValue.ofNanoseconds(offsetMinutes * 60L * NANOSECONDS_A_SECOND);
+            return TimeValue.ofNanoseconds(offsetMinutes * 60L * TimeValue.NANOSECONDS_PER_SECOND);
         }
         if (refinements.contains("weekday")) {
             return IntegerValue.of(here.getDayOfWeek().getValue());
@@ -13404,7 +12799,6 @@ public final class Natives {
         return (int) wanted;
     }
 
-    private static final long MAXIMUM_CODEPOINT = 0x10FFFF;
 
     private static Value thePixelFoundIn(
             ImageValue picture, Value wanted, Set<String> refinements) {
@@ -15998,7 +15392,7 @@ public final class Natives {
             Value asked = argumentFor(refinement, ARGUMENT_ORDER, arguments, refinements, 1);
             return asked == null
                     ? Optional.empty()
-                    : Optional.of((long) asMagnitude(asked));
+                    : Optional.of((long) Arithmetic.asMagnitude(asked));
         }
 
         private static Optional<Long> refusingANegative(Optional<Long> asked) {
@@ -16184,7 +15578,7 @@ public final class Natives {
             Value asked = argumentFor(refinement, ARGUMENT_ORDER, arguments, refinements, 2);
             return asked == null
                     ? Optional.empty()
-                    : Optional.of((long) asMagnitude(asked));
+                    : Optional.of((long) Arithmetic.asMagnitude(asked));
         }
 
         private static Optional<Long> refusingANegative(String what, Optional<Long> asked) {
