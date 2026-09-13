@@ -181,6 +181,81 @@ public record ErrorValue(
         return Character.toUpperCase(spelling.charAt(0)) + spelling.substring(1);
     }
 
+    private static final int MOST_OF_THE_LOCATION_THAT_IS_SHOWN = 60;
+
+    /**
+     * The four lines FORM writes: the type and the message, then the chain of
+     * calls and the location when there are any.
+     *
+     * <p>{@code Mold_Error} writes them in that order, each followed by a
+     * newline, and leaves out a line whose field is none. The words come from
+     * the catalogue rather than from here, so a script that changes an
+     * argument changes the message.
+     */
+    public String formedAsRebolFormsIt() {
+        StringBuilder written = new StringBuilder("\n** ")
+                .append(categoryWordCapitalisedAsR3WritesIt())
+                .append(" error: ")
+                .append(theMessageTheCatalogueGives())
+                .append('\n');
+        field("where").filter(said -> !(said instanceof NoneValue)).ifPresent(chain ->
+                written.append("** Where: ").append(Molder.form(chain)).append('\n'));
+        field("near").filter(said -> !(said instanceof NoneValue)).ifPresent(where ->
+                written.append("** Near: ").append(theLocationShown(where)).append('\n'));
+        return written.toString();
+    }
+
+    private String theMessageTheCatalogueGives() {
+        Value said = ErrorWording.forTheId(
+                categoryWordCapitalisedAsR3WritesIt(), errorId).orElse(null);
+        if (said == null) {
+            return ErrorWording.NOTHING_IN_THE_CATALOGUE;
+        }
+        if (!(said instanceof BlockValue words)) {
+            return Molder.form(said);
+        }
+        StringBuilder built = new StringBuilder();
+        for (Value item : words.remaining()) {
+            if (!built.isEmpty() && built.charAt(built.length() - 1) != '\n') {
+                built.append(' ');
+            }
+            built.append(theFieldItNamesOrTheItemItself(item));
+        }
+        return built.toString();
+    }
+
+    private String theFieldItNamesOrTheItemItself(Value item) {
+        if (item instanceof WordValue named && named.datatype().isAnyWord()) {
+            Optional<Value> held = field(named.canonical());
+            if (held.isPresent()) {
+                return Molder.mold(held.get());
+            }
+        }
+        return Molder.form(item);
+    }
+
+    private static String theLocationShown(Value where) {
+        if (where instanceof StringValue text && where.datatype() == Datatype.STRING) {
+            return text.text();
+        }
+        if (!(where instanceof BlockValue fragment)) {
+            return Molder.mold(where);
+        }
+        StringBuilder built = new StringBuilder();
+        for (Value item : fragment.remaining()) {
+            if (built.length() > MOST_OF_THE_LOCATION_THAT_IS_SHOWN) {
+                break;
+            }
+            if (!built.isEmpty()) {
+                built.append(' ');
+            }
+            built.append(Molder.mold(item));
+        }
+        return built.length() > MOST_OF_THE_LOCATION_THAT_IS_SHOWN
+                ? built.substring(0, MOST_OF_THE_LOCATION_THAT_IS_SHOWN) + "..."
+                : built.toString();
+    }
+
     public static ErrorValue script(String errorId, String message) {
         return of(ErrorCategory.SCRIPT, errorId, message);
     }

@@ -5328,6 +5328,79 @@ rule TakingEverythingFromAnEmptySeriesGivesAnEmptyOne {
 
 -- === Failure ===============================================
 
+-- FORM of an error is four lines, and its words come from the catalogue
+-- rather than from the implementation.
+--
+-- `Mold_Error` writes them in order: a newline, `** `, the type word, the
+-- boot string ` error: `, the message, a newline; then `** Where: ` and the
+-- chain when there is one; then `** Near: ` and the location when there is
+-- one. Each of the last two is followed by a newline and left out entirely
+-- when the field is none.
+--
+--     ^/** Math error: attempt to divide by zero^/
+--     ** Where: / try do either either if -apply-^/
+--     ** Near: / 0^/
+--
+-- **The message is looked up rather than stored.** `Find_Error_Info` reads
+-- `system/catalog/errors/<type>/<id>`, so the words a script sees are the
+-- ones in `errors.reb`, and a script that changes an argument changes the
+-- message: setting `e/arg1` on a no-value error makes it say the new word.
+-- An implementation with its own sentence per failure answers something no
+-- real Rebol ever says, and answers it in a place scripts read.
+--
+-- A catalogue entry is a string or a block. A string is formed as it stands.
+-- A block is walked, and the two kinds of item go different ways:
+-- `Form_Block_Series` looks a word or a get-word up among the error's own
+-- fields, and `Mold_Value(mold, val, wval != 0)` **molds what it found** and
+-- **forms everything else**. So `expect-arg: [:arg1 "does not allow" :arg3
+-- "for its" :arg2 "argument"]` shows the datatype as `#(integer!)` and the
+-- prose without quotes, and `User: [message: [:arg1]]` shows a string message
+-- with its quotes.
+rule FormingAnErrorTakesItsWordsFromTheCatalogue {
+    when: EvaluateForm(subject)
+    requires: is_error(subject)
+
+    ensures: the_text_begins(a_newline, "** ", the_type_word, " error: ")
+    ensures: the_message = the_catalogue_entry_for(subject.type, subject.id)
+    ensures: for item in the_entry:
+        if names_a_field_of(subject, item): the_field_is_molded(item)
+        else: the_item_is_formed(item)
+    ensures: a_where_line_follows when subject.where != none
+    ensures: a_near_line_follows when subject.near != none
+}
+
+-- WHERE is the chain of calls the failure came up through, innermost first,
+-- and it does not stop at the user's functions.
+--
+-- Every call pushes and the error collects them all, so `try [1 / 0]` inside
+-- a script answers `[/ try do either either if -apply-]`: the native that
+-- raised, the native that caught, and the rest of whatever was running. A
+-- chain that records only the functions a script defined is a different
+-- answer and says less -- a failure inside a native called from a native
+-- looks as though it happened nowhere.
+rule TheWhereChainRecordsEveryCallAndNotOnlyTheDefinedOnes {
+    when: an_error_is_raised(request)
+
+    ensures: request.error_value.where =
+        the_calls_open_at_the_time(innermost_first)
+    ensures: a_native_that_evaluates_a_block_is_among_them()
+}
+
+-- NEAR is the code around the failure, molded, and cut at sixty characters
+-- with three dots after it. `Mold_Simple_Block(mold, VAL_BLK_DATA(value),
+-- 60)` stops as soon as the text passes the limit and then trims to exactly
+-- it. A location that is a string rather than a block -- which is how a
+-- source file and line number is carried -- is appended as it stands.
+rule TheNearLocationIsMoldedAndCutAtSixtyCharacters {
+    when: EvaluateForm(subject)
+    requires: is_error(subject)
+    requires: is_block(subject.near)
+
+    ensures: the_near_text = molded_items_separated_by_spaces(subject.near)
+    ensures: the_near_text_is_cut_at_sixty_with_three_dots()
+        when is_longer_than_sixty(the_near_text)
+}
+
 -- TRY turns a raised error into an ordinary value. It is the only thing
 -- that stops an error propagating, and it is why the guarantee that no
 -- failure escapes as a host exception is keepable.

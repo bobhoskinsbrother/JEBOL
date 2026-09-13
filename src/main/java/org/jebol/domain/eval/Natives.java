@@ -516,6 +516,8 @@ public final class Natives {
                 if (fields.get(pair) instanceof WordValue name
                         && name.datatype() == Datatype.SET_WORD) {
                     inside.set(name.spelling(), fields.get(pair + 1));
+                    ErrorWording.say(category.spelling(), name.spelling(),
+                            fields.get(pair + 1));
                 }
             }
             errors.set(category.spelling(), new ObjectValue(inside));

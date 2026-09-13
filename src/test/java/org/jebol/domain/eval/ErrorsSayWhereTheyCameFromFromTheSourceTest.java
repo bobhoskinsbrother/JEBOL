@@ -46,10 +46,10 @@ class ErrorsSayWhereTheyCameFromFromTheSourceTest {
     void thefunctionItHappenedInsideIsNamed() {
         assertThat(answerTo("""
                 mold all [f: does [1 / 0] error? e: try [f] e/where]"""))
-                .as("R3 answers [/ f try all print do either either if -apply-]; "
-                        + "the tail is its own console's frames and is not "
+                .as("R3 answers [/ f try all do either either if -apply-]; the "
+                        + "tail is its own console's frames and is not "
                         + "reproducible, the head is about the script and matches")
-                .isEqualTo("\"[/ f]\"");
+                .isEqualTo("\"[/ f try all]\"");
     }
 
     @Test

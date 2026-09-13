@@ -1009,7 +1009,7 @@ public final class Molder {
 
     private static String renderError(ErrorValue error, boolean forReading) {
         if (!forReading) {
-            return error.toString();
+            return error.formedAsRebolFormsIt();
         }
         Map<String, Value> fields = new LinkedHashMap<>();
         for (String name : ErrorValue.FIELDS) {

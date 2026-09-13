@@ -5924,3 +5924,71 @@ Reproduced rather than corrected. Rebol's own gob-test asserts the arrangement
 MOVE leaves, and an implementation that clamped at the head -- which is what a
 series does and what JEBOL did -- answers a different pane for the same two
 lines.
+
+## 208. FORM of an error takes its words from the catalogue, not from the implementation
+
+`Mold_Error` writes four things in order, each followed by a newline, and
+leaves out a line whose field is none:
+
+    ^/** Math error: attempt to divide by zero^/
+    ** Where: / try do either either if -apply-^/
+    ** Near: / 0^/
+
+The boot strings are `" error: "`, `"** Where: "` and `"** Near: "`, and the
+type is the catalogue's key word -- Math, Script, User, Internal.
+
+**The message is looked up rather than stored.** `Find_Error_Info` reads
+`system/catalog/errors/<type>/<id>`, so what a script sees is what
+`errors.reb` says, and changing an argument changes the message:
+
+    >> raised: make error! [type: 'Script id: 'no-value arg1: 'x]
+    >> form raised
+    == "^/** Script error: x has no value^/"
+    >> raised/arg1: 'y  form raised
+    == "^/** Script error: y has no value^/"
+
+An implementation with its own sentence per failure -- which JEBOL had, one per
+`EvaluationFailure` -- answers something no real Rebol ever says, in a place
+scripts read.
+
+**A catalogue entry is a string or a block, and the two items in a block go
+different ways.** `Form_Block_Series` looks a word or a get-word up among the
+error's own fields and calls `Mold_Value(mold, val, wval != 0)`, so a
+substituted field is **molded** and everything else is **formed**. That is why
+`expect-arg: [:arg1 "does not allow" :arg3 "for its" :arg2 "argument"]` shows
+the datatype as `#(integer!)` with its construct syntax and the prose without
+quotes, and why `User: [message: [:arg1]]` shows a string message *with* its
+quotes.
+
+**NEAR is molded and cut at sixty characters** with three dots after it;
+`Mold_Simple_Block` stops as soon as the text passes the limit and then trims
+to exactly it.
+
+An id the catalogue does not name is not the fallback boot string: r3-head
+raises invalid-arg out of the lookup before any forming happens. JEBOL answers
+"(improperly formatted error)" there, which is untested either way and is the
+one thing about this that is not matched.
+
+## 209. WHERE records every call that was entered, across nested walks
+
+JEBOL built the chain from the frames of the walk the error was leaving, so it
+stopped at the edge of whatever native had started that walk: `try [1 / 0]`
+answered `[/]` where a real Rebol answers `[/ try ...]`. A native that
+evaluates a block -- TRY, DO, IF, ALL, REDUCE -- starts a nested walk, and
+everything above it was invisible.
+
+The chain is now built once, at the innermost raise, from every walk in
+progress rather than from one. Two things had to be true for that to work:
+
+- `evaluateNextOrRaise` walks its own frames without going through `walk`, so
+  it had to record itself too. Until it did, `all [... try [...] ...]` lost the
+  whole enclosing frame and answered `[/ all probe]`.
+- A call still gathering its arguments is not a call that has been entered.
+  `deliver` pops a pending call and sets `theCallNearAndWhereAreAbout` before
+  invoking it, so the chain reads that field and not the pending stack.
+  Reading both put `error?` in the chain of
+  `all [error? e: try [1 / 0] e/where]`, where a real Rebol has not entered it.
+
+Every shape now matches r3-head's head exactly; its tail is its own console's
+frames -- `do either either if -apply-` -- which an embedded interpreter does
+not have.

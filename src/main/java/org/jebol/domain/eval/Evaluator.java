@@ -88,6 +88,8 @@ public final class Evaluator {
 
     private final Deque<OpenCall> functionsBeingRun = new ArrayDeque<>();
 
+    private final Deque<Deque<Frame>> walksInProgress = new ArrayDeque<>();
+
     private String nameOfTheCallBeingMade = "";
 
     private String lastWordCalledThrough = "";
@@ -548,7 +550,13 @@ public final class Evaluator {
         Deque<Frame> frames = new ArrayDeque<>();
         frames.push(frame);
         frame.sink = (produced, startedAt, stoppedBefore) -> false;
-        Value produced = walkFrames(frames);
+        walksInProgress.push(frames);
+        Value produced;
+        try {
+            produced = walkFrames(frames);
+        } finally {
+            walksInProgress.pop();
+        }
         return new Step(produced, frame.position);
     }
 
@@ -591,9 +599,11 @@ public final class Evaluator {
         root.sink = sink;
         frames.push(root);
         int callsOpenBeforeTheWalk = functionsBeingRun.size();
+        walksInProgress.push(frames);
         try {
             return walkFrames(frames);
         } finally {
+            walksInProgress.pop();
             while (functionsBeingRun.size() > callsOpenBeforeTheWalk) {
                 handBackTheFrameTakenOverBy(functionsBeingRun.pop());
             }
@@ -655,18 +665,22 @@ public final class Evaluator {
     }
 
     private Raised sayingWhereItCameFrom(Raised raised, Deque<Frame> frames) {
+        if (raised.error().whereChain().isPresent()) {
+            return raised;
+        }
         List<Value> chain = new ArrayList<>();
         Value nearest = null;
-        for (Frame open : frames) {
+        for (Frame open : everyCallOpenInnermostFirst(frames)) {
             List<PendingCall> deepestFirst = new ArrayList<>();
             if (open.theCallNearAndWhereAreAbout != null) {
                 deepestFirst.add(open.theCallNearAndWhereAreAbout);
+                if (open.theCallNearAndWhereAreAbout.calledThrough() != null) {
+                    chain.add(WordValue.of(
+                            open.theCallNearAndWhereAreAbout.calledThrough()));
+                }
             }
             deepestFirst.addAll(open.pendingCalls);
             for (PendingCall waiting : deepestFirst) {
-                if (waiting.calledThrough() != null) {
-                    chain.add(WordValue.of(waiting.calledThrough()));
-                }
                 if (nearest == null && waiting.startedAt() >= 0) {
                     nearest = open.code.atIndex(waiting.startedAt());
                 }
@@ -677,15 +691,19 @@ public final class Evaluator {
             said = said.near(nearest);
         }
         if (!chain.isEmpty()) {
-            List<Value> already = said.whereChain()
-                    .filter(BlockValue.class::isInstance)
-                    .map(held -> ((BlockValue) held).remaining())
-                    .orElseGet(List::of);
-            List<Value> together = new ArrayList<>(already);
-            together.addAll(chain);
-            said = said.raisedThrough(BlockValue.block(together));
+            said = said.raisedThrough(BlockValue.block(chain));
         }
         return said == raised.error() ? raised : new Raised(said);
+    }
+
+    private List<Frame> everyCallOpenInnermostFirst(Deque<Frame> frames) {
+        List<Frame> open = new ArrayList<>(frames);
+        for (Deque<Frame> enclosing : walksInProgress) {
+            if (enclosing != frames) {
+                open.addAll(enclosing);
+            }
+        }
+        return open;
     }
 
     private void push(Deque<Frame> frames, BlockValue code, Context context) {
