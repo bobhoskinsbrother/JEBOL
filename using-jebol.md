@@ -269,15 +269,18 @@ page, because it is the number that moves.
 included — though a task is made, read and answered by DO without ever running
 on a thread. Four fields of `access-os` (`uid`, `euid`, `gid`, `egid`) answer
 `not-here`, because the JVM cannot ask a portable question. Five scheme names
-are not registered: `callback`, `clipboard`, `midi`, `serial` and `udp`.
+are not registered: `callback`, `clipboard`, `midi`, `serial` and `udp`. A
+scheme name in R3 promises less than it looks — it registers whether or not
+the build can serve it, and refuses at open time — so what is missing here is
+mostly the registration.
 
 **Transport.** `read https://` works and `import` fetches over it. The TLS
-client does not authenticate the server: no chain is built and no trust anchor
-exists to build one against, so a listener is kept out and somebody in the
-middle is not. A fetched module is not checksummed either. Both are
-divergences from a real Rebol rather than gaps against it, because Rebol does
-neither, and both are things to weigh before fetching code over a network you
-do not control.
+client does not authenticate the server: an expired certificate, a self-signed
+one, one issued for another host and one from an untrusted root are all read
+without complaint. A fetched module is not checksummed either. A real 3.22.5
+does neither check, so this is a divergence from good practice rather than
+from Rebol — and both are things to weigh before fetching code over a network
+you do not control.
 
 **Memory.** A script that asks for more than the heap can give is refused as
 `no-memory` where it asks MAKE for it, and can still take the host down with a

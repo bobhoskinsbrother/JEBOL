@@ -17,7 +17,7 @@ list of things nobody has to do any more is a list nobody reads.
 point here for what it answered, on purpose: the same figures were once written
 into four files and drifted until two of them disagreed about how many error ids
 can be raised, with nothing to say which was right. A count belongs in one place
-or in none. Every number below was checked on 2026-09-13 by running it.
+or in none. Every number below was checked on 2026-09-14 by running it.
 
 ---
 
@@ -715,7 +715,57 @@ instead of comparing will agree with anything.**
 
 ---
 
-### 6. Loose ends
+### 6. The five scheme names R3 registers and JEBOL does not
+
+```
+callback  clipboard  midi  serial  udp
+```
+
+**Four of the five are already declared in a file JEBOL already loads.**
+`sys-ports.reb` is vendored byte-identical to Rebol's and carries `make-scheme`
+blocks for `callback`, `clipboard`, `serial` and `udp` -- spec, init and awake,
+all written in REBOL. They are not registered here because **JEBOL registers
+its own list instead**: `/org/jebol/boot/schemes.reb` and five `scheme-*.reb`
+files beside it name console, tcp, dns, event, bundled, file, dir, checksum,
+crypt and system, and nothing reaches the vendored declarations.
+
+Nothing is missing underneath, either. `system/standard/port-spec-serial`,
+`port-spec-net`, `net-info` and `do-callback` all exist here, and
+`sys/make-scheme` called by hand registers `udp` and `callback` and they appear
+in `system/schemes` immediately. So this is a registration that does not
+happen, not a subsystem that is absent.
+
+**The important half is what a scheme name promises, which is less than it
+looks.** R3 registers the name whether or not the build can serve it, and the
+refusal comes at open time. Measured on `./r3-head`, which is macOS and has
+neither clipboard nor midi nor serial compiled in:
+
+| | `open` | `read` |
+| --- | --- | --- |
+| `clipboard://` | a port | `read-error` |
+| `udp://:40999` | a port | -- |
+| `callback://` | a port | -- |
+| `serial://...` | `none` | -- |
+| `midi://` | `cannot-open` | -- |
+
+So parity on four of them is mostly registering the name and letting the
+device say no, which is what R3 does. What each then needs to actually work is
+a separate question with a different answer per scheme: `udp` is a datagram
+socket the JVM has; `midi` is `javax.sound.midi`, which the JDK also has, and
+is the one of the five with no vendored declaration at all -- it is `p-midi.c`
+and optional even in the C; `clipboard` is `java.awt.Toolkit`, and is
+Windows-only in R3, so JEBOL would be ahead rather than at parity; `serial`
+has nothing in the JDK, so it is a dependency or it is nothing, and the jar
+takes no dependencies.
+
+**Do the registration first and separately**, because it is cheap, it is what
+the parity measure actually reads, and it makes each absent device sayable --
+a script gets `cannot-open` on the scheme it asked for, rather than
+`no-scheme` on a name Rebol has.
+
+---
+
+### 7. Loose ends
 
 **A task is made and read and never run.** The datatype is whole -- `make
 task!` builds the five-field header, the fields are read and written through a
@@ -773,7 +823,7 @@ goals above.
 
 ---
 
-### 7. Graphics -- DRAW is done; what is left is VID and the old markup path
+### 8. Graphics -- DRAW is done; what is left is VID and the old markup path
 
 **Every command the dialect table declares is painted**, measured by
 extracting both lists on 2026-09-13: `dial-draw.reb` declares 35 drawing
@@ -840,15 +890,28 @@ path, VID, Android, and the events-name-the-wrong-window one.
 
 ---
 
-### 8. Code from outside is not authenticated -- the TLS client
+### 9. Code from outside is not authenticated -- the TLS client
 
 **Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
 failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
 suite asks whether a certificate was checked.
 
-`read https://` works here now, and `import` fetches over it. What that
-transport gives is confidentiality against somebody listening and **nothing
-against somebody in the middle.** Three holes, each read off the source:
+**TLS is not broken. It is unauthenticated, and so is Rebol's.** Measured on
+2026-09-14, both interpreters, against badssl.com:
+
+| | JEBOL | `./r3-head` |
+| --- | --- | --- |
+| `read https://raw.githubusercontent.com/...` | 10,828 bytes | reads |
+| `read https://expired.badssl.com/` | **reads it** | reads it |
+| `read https://self-signed.badssl.com/` | **reads it** | reads it |
+| `read https://wrong.host.badssl.com/` | **reads it** | reads it |
+| `read https://untrusted-root.badssl.com/` | **reads it** | reads it |
+
+So the handshake works, the record layer works, and every certificate a
+browser would refuse is accepted by both. That is confidentiality against
+somebody listening and **nothing against somebody in the middle** -- and it is
+a divergence from good practice rather than from the C, which is why it is
+here rather than on a gap list. Three holes, each read off the source:
 
 1. **The chain is never checked.** `decode-certificates` reads the list, takes
    the first certificate's public key, and stops. No issuer, no chain building,
@@ -911,7 +974,7 @@ does not control should know that before it does.
 
 ---
 
-### 9. Code from outside is not verified -- no checksum on a fetched module
+### 10. Code from outside is not verified -- no checksum on a fetched module
 
 **Nothing crosses the wire today**, which is why this is a goal rather than a
 live hole: the thirteen modules this build has no other way to reach are bundled
@@ -959,7 +1022,7 @@ wants that more than it wants either check.
 
 ---
 
-### 10. The type-major refactor
+### 11. The type-major refactor
 
 **The original complaint, and much the largest piece left.** One `t-*.c` per
 increment, bitset as the pilot.
@@ -971,7 +1034,7 @@ enumerate every arm that needed work. That is what the action seam wants.
 
 ---
 
-### 11. The boot -- 343ms cold, 72ms warm
+### 12. The boot -- 343ms cold, 72ms warm
 
 **343ms for the first interpreter, 72ms once the JVM has settled.** A
 7900-test run pays the 72ms per class, and that is the floor rather than the
@@ -982,7 +1045,7 @@ already in that allocation path, and it costs about 2ms of the 72.
 
 ---
 
-### 12. A debugger
+### 13. A debugger
 
 **Two halves, and the file has learned to say which is which.** One is parity
 work with a reference standing behind it. The other is a feature nothing can
@@ -1043,7 +1106,7 @@ before they reach for a debugger.
 
 ---
 
-### 13. LLM-friendly MCP tools
+### 14. LLM-friendly MCP tools
 
 **The reader will only ever be an LLM, and that decides the design.** A model
 does not misunderstand, it infers confidently from training data that is mostly

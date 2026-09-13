@@ -198,11 +198,11 @@ Things to note:
   the domain and handed to both renderers as plain shapes and pixels. There is
   no Rebol to check the pictures against: a stock 3.22.5 has no `draw` at all.
 - **`read https://` works, and the TLS client does not authenticate the
-  server.** No chain is built, no trust anchor exists to build one against, and
-  the one signature check there is does not refuse. That is confidentiality
-  against somebody listening and nothing against somebody in the middle. It is
-  a divergence from the C rather than a gap against it, because Rebol does not
-  check either.
+  server.** An expired certificate, a self-signed one, one issued for another
+  host and one from an untrusted root are all read without complaint — by a
+  real 3.22.5 as well, which is why this is a divergence from good practice
+  rather than from the C. That is confidentiality against somebody listening
+  and nothing against somebody in the middle.
 - **Twenty-eight of Rebol's error ids cannot be raised here**, and every one of
   them has a written reason — twenty-four are ids a real 3.22.5 cannot raise
   either.
