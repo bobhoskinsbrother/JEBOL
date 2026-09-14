@@ -1064,6 +1064,34 @@ adding a kind broke every renderer's switch at compile time. `VectorValue`
 proved it again -- adding it to `SeriesValue permits` made the compiler
 enumerate every arm that needed work. That is what the action seam wants.
 
+**Switches and enums out, classes in.** A bitset must answer what happens when
+you append to it, and answer it in the class called bitset. Today that answer
+is an arm in a switch inside a sixteen-thousand-line `Natives`, and an enum
+constant with a body is the same switch wearing a jacket -- `Arithmetic.Kind`
+and `Combining.SetKind` are targets of this goal, not the shape to copy.
+
+**The seam is missing.** The C keeps `Value_Dispatch`, a table indexed by
+datatype that `Do_Action` reads with argument one's type; every `REBTYPE(X)` is
+one entry. JEBOL has no such table. `ActionNames` knows *which* sixty built-ins
+are actions, because `type? :append` must answer `action!`, and that is all.
+
+**Two-operand actions delegate their coercion to the class too.** `t-bitset.c`
+answers AND with `if (!IS_BITSET(arg) && !IS_BINARY(arg)) Trap_Math_Args`, and
+that is right: what a time may be added to is the time class's business, and
+the time class is where a reader looks for it. No ladder, no table of pairings.
+
+**Where the arms are**, by how often each datatype is named inside `Natives`:
+
+| 13 | 14 | 19 | 23 | 32 | 42 | 42 | 46 | 53 | 57 | 58 | 59 | 62 | 63 | 94 | 127 | 195 | 218 | 441 |
+| -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- |
+| event | struct | typeset | money | date | vector | gob | map | image | pair | time | **bitset** | char | tuple | port | object | binary | string | block |
+
+Bitset pilots it: seventeen arms in `REBTYPE(Bitset)` and it answers to nothing
+else. **An increment is done when its datatype is named nowhere in `Natives`.**
+
+**What proves it.** The datatype's own `.r3` file, and `error-parity.py`
+unchanged -- an arm that quietly stops raising is the failure this invites.
+
 ---
 
 ### 12. The boot -- 343ms cold, 72ms warm
