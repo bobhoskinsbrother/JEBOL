@@ -16,20 +16,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-/**
- * One action, asked of one value, with its refinements already read.
- *
- * <p>An arm should be about its own datatype and nothing else, so the
- * refinements are resolved here rather than in each of the ten places an
- * action lands. What reaches an arm is a plain question -- add this, this
- * many times, this much of it, whole or spliced -- and the arm answers it in
- * the terms of its own type.
- *
- * <p>{@code /part} keeps its awkwardness, because REBOL's does: it may be a
- * count, or a position in the very same storage the value came from, and the
- * second form is only meaningful against that value. Reading it once here is
- * the reason an arm never has to know that.
- */
 public record Asked(
         Value subject,
         Value given,
@@ -43,19 +29,6 @@ public record Asked(
         Evaluator evaluator,
         Context context) {
 
-    /**
-     * The same {@code /part}, read the way a binary reads it, which is not
-     * the way {@link #howMuchOfIt} reads it and never has been.
-     *
-     * <p>Two differences, both of which a test pins. A position in the same
-     * storage counts backwards as a distance here and as a signed offset
-     * there, so appending {@code /part} a position behind the value adds
-     * octets rather than none. And a fractional or paired limit is quietly
-     * ignored here where the other reading raises {@code invalid-part}.
-     *
-     * <p>Keeping both is not tidiness deferred -- collapsing them would
-     * change what REBOL answers.
-     */
     public int howManyOctetsWanted() {
         return howManyOctets;
     }
@@ -68,14 +41,6 @@ public record Asked(
                 .orElse(items);
     }
 
-    /**
-     * The run of a block {@code /part} names, measured from where the block is
-     * held and reaching backwards when the count is negative.
-     *
-     * <p>Measured against the block handed in rather than against the value as
-     * written, which matters when {@code /dup} has already spread it: the copy
-     * is what is being put in, so the copy is what {@code /part} cuts.
-     */
     public List<Value> theWantedItemsOf(BlockValue added) {
         return howMuchOf(added, limitAsked)
                 .map(count -> {
@@ -92,14 +57,7 @@ public record Asked(
                 .orElseGet(added::remaining);
     }
 
-    /**
-     * What an arm says when it serves an action but none of its refinements.
-     *
-     * <p>The wording names a gob whatever the datatype is, which is what it
-     * has always said and what the tests pin. An image reaching here is told
-     * it is a gob, and that is worth fixing under its own change rather than
-     * quietly here.
-     */
+
     public void refuseRefinementsThisDatatypeDoesNotServe(String nativeName) {
         for (String unfinished : List.of("part", "only", "dup")) {
             if (refinementsAsked.contains(unfinished)) {
@@ -109,14 +67,6 @@ public record Asked(
         }
     }
 
-    /**
-     * Reads the refinements once, so that every arm below is handed the same
-     * already-answered question.
-     *
-     * <p>{@code theArgumentFor} is how the registry hands over a refinement's
-     * argument; the plumbing that finds it stays where refinements are
-     * declared rather than coming in here.
-     */
     public static Asked reading(
             Value subject, Value given, Set<String> refinementsAsked,
             java.util.function.Function<String, Value> theArgumentFor,

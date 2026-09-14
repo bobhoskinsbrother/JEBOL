@@ -1,17 +1,6 @@
 package org.jebol.domain.host;
 
-/**
- * A kind of thing outside the interpreter that a script can ask for.
- *
- * <p>A host grants a kind and not a function. A host that lets a script
- * read one file almost always lets it read every file it can see, and a
- * host that does not want the file system does not want one corner of it
- * either. A grant per function reads as finer control and gives none: the
- * host can say which verb and not which file, and the verb was never the
- * interesting half.
- *
- * <p>Specified in {@code spec/embed.allium}.
- */
+
 public enum HostService {
 
     /** Read, write, delete, rename, list, and ask about files. */

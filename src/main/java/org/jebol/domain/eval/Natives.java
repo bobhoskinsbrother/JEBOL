@@ -1,6 +1,5 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.date.DateArithmetic;
 import org.jebol.domain.date.DateMaking;
 import org.jebol.domain.date.DatePart;
 import org.jebol.domain.host.HostService;
@@ -23,17 +22,9 @@ import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-/**
- * The built-in function set, and the context that holds it.
- *
- * <p>Every native gathers arguments, type-checks them and raises exactly as a
- * user function does. Nothing about being built in changes how it is called,
- * which is what lets {@code :print} be assigned to another word and called
- * through it.
- *
- * <p>Every operator has a prefix twin doing the same work, so {@code 1 + 2}
- * and {@code add 1 2} are one behaviour reached two ways.
- */
+import static java.util.Set.copyOf;
+import static java.util.Set.of;
+
 public final class Natives {
 
     private final RebolRandom randomness = new RebolRandom();
@@ -118,13 +109,6 @@ public final class Natives {
         return Map.copyOf(specs);
     }
 
-    /**
-     * Forgets what the interpreter's own setup did.
-     *
-     * <p>Loading the prelude and the borrowed library catches errors of
-     * its own, and a script must not see those as the last thing that
-     * went wrong. Called once building is finished.
-     */
     public void forgetStartupState() {
         runState.set("last-error", NoneValue.none());
         runState.set("last-result", NoneValue.none());
@@ -180,18 +164,16 @@ public final class Natives {
         defineOperator("|", "or~");
     }
 
-    private Set<HostService> grantedServices = Set.of();
+    private Set<HostService> grantedServices = of();
 
     private char localFileSeparator = '/';
 
-    /** Tells the natives what this machine puts between path parts. */
     public void useFileSeparator(char separator) {
         this.localFileSeparator = separator;
     }
 
     private String bootLauncher = "";
 
-    /** Tells the natives what starts this interpreter from a shell. */
     public void useBootLauncher(String launcherPath) {
         this.bootLauncher = launcherPath;
     }
@@ -204,46 +186,25 @@ public final class Natives {
 
     private String errorCatalogueSource = "";
 
-    /** Tells the natives what the vendored errors.reb says. */
     public void useErrorCatalogue(String source) {
         this.errorCatalogueSource = source;
     }
 
     private String functionDeclarationSource = "";
 
-    /** Tells the natives what Rebol's own declaration files say. */
     public void useFunctionDeclarations(String... sources) {
         this.functionDeclarationSource = String.join("\n", sources);
         this.declaredSpecs = null;
     }
 
-    /** The natives with a set of host services granted. */
     public static Natives standard(Set<HostService> granted) {
         Natives natives = standard();
-        natives.grantedServices = Set.copyOf(granted);
+        natives.grantedServices = copyOf(granted);
         return natives;
     }
 
-    /**
-     * Narrows what is granted to exactly this set.
-     *
-     * <p>Called once, when the interpreter has finished building itself. The
-     * library may read the clock while it loads and a script may not unless the
-     * host said so, and the two are not the same question: loading Rebol's own
-     * files is part of making the language, and the grants are about what a
-     * script can reach once there is one. See decision 19.
-     *
-     * <p>The screen is granted while loading for the same reason and it looks
-     * more alarming than it is. {@code view-funcs.reb} ends by calling
-     * INIT-VIEW-SYSTEM, which takes a root gob and opens the event port, and
-     * without that the file stops on its last line and defines none of VIEW,
-     * UNVIEW or DO-EVENTS. Nothing reaches a screen: the port an interpreter
-     * starts with has no display, so the root gob is sized at nothing and
-     * SHOW is never called. Once this runs, a script with no grant cannot
-     * call any of the three commands.
-     */
     public void grantOnly(Set<HostService> granted) {
-        this.grantedServices = Set.copyOf(granted);
+        this.grantedServices = copyOf(granted);
     }
 
     private void requireService(HostService service) {
@@ -257,7 +218,7 @@ public final class Natives {
     }
 
     private static final java.util.Set<String> FIELDS_THE_OPERATING_SYSTEM_ANSWERS =
-            java.util.Set.of("uid", "euid", "gid", "egid", "pid");
+            Set.of("uid", "euid", "gid", "egid", "pid");
 
     private static final int TERMINATE = 15;
 
@@ -293,7 +254,7 @@ public final class Natives {
     }
 
     private static boolean endProcess(long process, int signal) {
-        java.util.Optional<ProcessHandle> found = ProcessHandle.of(process);
+        Optional<ProcessHandle> found = ProcessHandle.of(process);
         if (found.isEmpty()) {
             throw Raised.of(EvaluationFailure.PROCESS_NOT_FOUND, IntegerValue.of(process));
         }
@@ -632,14 +593,14 @@ public final class Natives {
     }
 
     private void define(String name, List<Parameter> parameters, Callable behaviour) {
-        define(name, parameters, Set.of(),
+        define(name, parameters, of(),
                 (arguments, evaluator, context, refinements) ->
                         behaviour.call(arguments, evaluator, context));
     }
 
     private void define(String name, List<Parameter> parameters,
             Set<String> refinements, RefinedCallable behaviour) {
-        definitions.put(name, new NativeValue(name, parameters, refinements, Set.of()));
+        definitions.put(name, new NativeValue(name, parameters, refinements, of()));
         behaviours.put(name, behaviour);
     }
 
@@ -652,7 +613,7 @@ public final class Natives {
     }
 
     private static List<Parameter> takesCombinable(String... names) {
-        Set<Datatype> combinable = Set.of(Datatype.LOGIC, Datatype.INTEGER, Datatype.CHAR,
+        Set<Datatype> combinable = of(Datatype.LOGIC, Datatype.INTEGER, Datatype.CHAR,
                 Datatype.TUPLE, Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET,
                 Datatype.DATATYPE, Datatype.PAIR, Datatype.VECTOR);
         List<Parameter> parameters = new ArrayList<>();
@@ -675,7 +636,7 @@ public final class Natives {
     private static Set<Datatype> anythingAtAll() {
         Set<Datatype> accepted = EnumSet.copyOf(ANYTHING);
         accepted.add(Datatype.UNSET);
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private static List<Parameter> takesAnything(String... names) {
@@ -696,7 +657,7 @@ public final class Natives {
     }
 
     private static List<Parameter> takesOnlyNumbers(String... names) {
-        Set<Datatype> numbers = Set.of(
+        Set<Datatype> numbers = of(
                 Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT);
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
@@ -706,7 +667,7 @@ public final class Natives {
     }
 
     private static List<Parameter> takesWholeNumbersAndDecimals(String... names) {
-        Set<Datatype> numbers = Set.of(Datatype.INTEGER, Datatype.DECIMAL);
+        Set<Datatype> numbers = of(Datatype.INTEGER, Datatype.DECIMAL);
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
             parameters.add(Parameter.required(name, numbers));
@@ -715,7 +676,7 @@ public final class Natives {
     }
 
     private static List<Parameter> takesNumbers(String... names) {
-        Set<Datatype> numbers = Set.of(
+        Set<Datatype> numbers = of(
                 Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
                 Datatype.MONEY, Datatype.PAIR, Datatype.TUPLE,
                 Datatype.TIME, Datatype.DATE, Datatype.CHAR, Datatype.VECTOR);
@@ -745,11 +706,11 @@ public final class Natives {
         define("square-root", takesOnlyNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.sqrt(Comparison.asDouble(arguments.get(0)))));
-        define("sqrt", List.of(Parameter.required("value", Set.of(Datatype.DECIMAL))),
+        define("sqrt", List.of(Parameter.required("value", of(Datatype.DECIMAL))),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.sqrt(Comparison.asDouble(arguments.get(0)))));
         define("now", List.of(),
-                Set.of("year", "month", "day", "time", "zone", "date",
+                of("year", "month", "day", "time", "zone", "date",
                         "weekday", "yearday", "precise", "utc"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.CLOCK);
@@ -768,7 +729,7 @@ public final class Natives {
                                 ? NoneValue.none()
                                 : arguments.getFirst());
 
-        define("forever", List.of(Parameter.required("body", Set.of(Datatype.BLOCK))),
+        define("forever", List.of(Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     BlockValue body = (BlockValue) arguments.getFirst();
                     Value last = NoneValue.none();
@@ -791,8 +752,8 @@ public final class Natives {
                 (arguments, evaluator, context) -> pick(arguments.getFirst(), 10));
 
         define("trace", List.of(Parameter.required("mode",
-                        Set.of(Datatype.INTEGER, Datatype.LOGIC))),
-                Set.of("back", "function"),
+                        of(Datatype.INTEGER, Datatype.LOGIC))),
+                of("back", "function"),
                 (arguments, evaluator, context, refinements) -> {
                     Value mode = arguments.getFirst();
                     Trace tracing = evaluator.tracing();
@@ -815,9 +776,9 @@ public final class Natives {
                 });
 
         define("load-extension", List.of(
-                        Parameter.required("name", Set.of(Datatype.FILE, Datatype.BINARY)),
-                        Parameter.belongingTo("dispatch", "function", Set.of(Datatype.HANDLE))),
-                Set.of("dispatch"),
+                        Parameter.required("name", of(Datatype.FILE, Datatype.BINARY)),
+                        Parameter.belongingTo("dispatch", "function", of(Datatype.HANDLE))),
+                of("dispatch"),
                 (arguments, evaluator, context, refinements) ->
                         refuseExtensionPoint("load-extension"));
         define("do-callback", takes("callback"),
@@ -825,10 +786,10 @@ public final class Natives {
         define("do-commands", takes("commands"),
                 (arguments, evaluator, context) -> refuseExtensionPoint("do-commands"));
         define("access-os", List.of(
-                        Parameter.required("field", Set.of(Datatype.WORD)),
+                        Parameter.required("field", of(Datatype.WORD)),
                         Parameter.belongingTo("set", "value",
-                                Set.of(Datatype.INTEGER, Datatype.BLOCK))),
-                Set.of("set"),
+                                of(Datatype.INTEGER, Datatype.BLOCK))),
+                of("set"),
                 (arguments, evaluator, context, refinements) -> {
                     WordValue field = (WordValue) arguments.getFirst();
                     if (!FIELDS_THE_OPERATING_SYSTEM_ANSWERS.contains(field.canonical())) {
@@ -843,8 +804,8 @@ public final class Natives {
                     return signalled(arguments.get(1));
                 });
 
-        define("arctangent2", List.of(Parameter.required("point", Set.of(Datatype.PAIR))),
-                Set.of("radians"),
+        define("arctangent2", List.of(Parameter.required("point", of(Datatype.PAIR))),
+                of("radians"),
                 (arguments, evaluator, context, refinements) -> {
                     PairValue point = (PairValue) arguments.getFirst();
                     double angle = Math.atan2(point.y(), point.x());
@@ -862,7 +823,7 @@ public final class Natives {
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.exp(Comparison.asDouble(arguments.get(0)))));
         define("fraction", List.of(Parameter.required("number",
-                        Set.of(Datatype.DECIMAL))),
+                        of(Datatype.DECIMAL))),
                 (arguments, evaluator, context) -> {
                     double whole = Comparison.asDouble(arguments.get(0));
                     return DecimalValue.of(whole - (long) whole);
@@ -870,28 +831,28 @@ public final class Natives {
         define("log-2", takesOnlyNumbers("value"),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.log(Comparison.asDouble(arguments.get(0))) / Math.log(2)));
-        define("sine", takesOnlyNumbers("value"), Set.of("radians"),
+        define("sine", takesOnlyNumbers("value"), of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         withoutTheNoiseNearZero(
                                 Math.sin(inRadians(arguments.get(0), refinements)))));
-        define("cosine", takesOnlyNumbers("value"), Set.of("radians"),
+        define("cosine", takesOnlyNumbers("value"), of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         withoutTheNoiseNearZero(
                                 Math.cos(inRadians(arguments.get(0), refinements)))));
-        define("tangent", takesOnlyNumbers("value"), Set.of("radians"),
+        define("tangent", takesOnlyNumbers("value"), of("radians"),
                 (arguments, evaluator, context, refinements) ->
                         DecimalValue.of(tangentOf(inRadians(arguments.get(0), refinements))));
-        define("arcsine", takesOnlyNumbers("value"), Set.of("radians"),
+        define("arcsine", takesOnlyNumbers("value"), of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
                                 ? Math.asin(Comparison.asDouble(arguments.get(0)))
                                 : Math.toDegrees(Math.asin(Comparison.asDouble(arguments.get(0))))));
-        define("arccosine", takesOnlyNumbers("value"), Set.of("radians"),
+        define("arccosine", takesOnlyNumbers("value"), of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
                                 ? Math.acos(Comparison.asDouble(arguments.get(0)))
                                 : Math.toDegrees(Math.acos(Comparison.asDouble(arguments.get(0))))));
-        define("arctangent", takesOnlyNumbers("value"), Set.of("radians"),
+        define("arctangent", takesOnlyNumbers("value"), of("radians"),
                 (arguments, evaluator, context, refinements) -> DecimalValue.of(
                         refinements.contains("radians")
                                 ? Math.atan(Comparison.asDouble(arguments.get(0)))
@@ -903,7 +864,7 @@ public final class Natives {
                 (arguments, evaluator, context) -> magnitudeOf(arguments.get(0)));
 
         define("random", List.of(Parameter.required("value")),
-                Set.of("seed", "only", "secure"),
+                of("seed", "only", "secure"),
                 (arguments, evaluator, context, refinements) -> {
                     if (refinements.contains("seed")) {
                         return seededBy(arguments.get(0));
@@ -946,11 +907,11 @@ public final class Natives {
                     };
                 });
 
-        define("complement?", List.of(Parameter.required("value", Set.of(Datatype.BITSET))),
+        define("complement?", List.of(Parameter.required("value", of(Datatype.BITSET))),
                 (arguments, evaluator, context) -> LogicValue.of(
                         ((BitsetValue) arguments.getFirst()).isComplemented()));
 
-        define("complement", List.of(Parameter.required("value", Set.of(
+        define("complement", List.of(Parameter.required("value", of(
                         Datatype.LOGIC, Datatype.INTEGER, Datatype.TUPLE,
                         Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET,
                         Datatype.IMAGE))),
@@ -973,8 +934,8 @@ public final class Natives {
         defineRadianFunction("atan", Math::atan);
         defineRadianFunction("sqrt", Math::sqrt);
         define("atan2", List.of(
-                        Parameter.required("y", Set.of(Datatype.DECIMAL)),
-                        Parameter.required("x", Set.of(Datatype.DECIMAL))),
+                        Parameter.required("y", of(Datatype.DECIMAL)),
+                        Parameter.required("x", of(Datatype.DECIMAL))),
                 (arguments, evaluator, context) -> DecimalValue.of(Math.atan2(
                         Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1)))));
 
@@ -1013,9 +974,9 @@ public final class Natives {
                         arguments.get(0), arguments.get(1), arguments.get(2)));
 
         define("distance", List.of(
-                        Parameter.required("value1", Set.of(Datatype.PAIR)),
-                        Parameter.required("value2", Set.of(Datatype.PAIR))),
-                Set.of("taxicab"),
+                        Parameter.required("value1", of(Datatype.PAIR)),
+                        Parameter.required("value2", of(Datatype.PAIR))),
+                of("taxicab"),
                 (arguments, evaluator, context, refinements) -> betweenTwoPoints(
                         (PairValue) arguments.get(0), (PairValue) arguments.get(1),
                         refinements.contains("taxicab")));
@@ -1077,7 +1038,7 @@ public final class Natives {
         define("modulo", List.of(
                         Parameter.required("dividend", DIVISIBLE),
                         Parameter.required("divisor", DIVISIBLE)),
-                Set.of("floor"),
+                of("floor"),
                 (arguments, evaluator, context, refinements) -> Arithmetic.rest(
                         arguments.get(0), arguments.get(1),
                         refinements.contains("floor")
@@ -1085,18 +1046,18 @@ public final class Natives {
                                 : Arithmetic.Division.NEVER_NEGATIVE));
 
         define("shift-left", List.of(
-                        Parameter.required("value", Set.of(Datatype.INTEGER)),
-                        Parameter.required("bits", Set.of(Datatype.INTEGER))),
+                        Parameter.required("value", of(Datatype.INTEGER)),
+                        Parameter.required("bits", of(Datatype.INTEGER))),
                 (arguments, evaluator, context) -> shifted(arguments, true));
         define("shift-right", List.of(
-                        Parameter.required("value", Set.of(Datatype.INTEGER)),
-                        Parameter.required("bits", Set.of(Datatype.INTEGER))),
+                        Parameter.required("value", of(Datatype.INTEGER)),
+                        Parameter.required("bits", of(Datatype.INTEGER))),
                 (arguments, evaluator, context) -> shifted(arguments, false));
 
     }
 
     private void defineRadianFunction(String name, java.util.function.DoubleUnaryOperator work) {
-        define(name, List.of(Parameter.required("value", Set.of(Datatype.DECIMAL))),
+        define(name, List.of(Parameter.required("value", of(Datatype.DECIMAL))),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         work.applyAsDouble(Comparison.asDouble(arguments.get(0)))));
     }
@@ -1104,7 +1065,7 @@ public final class Natives {
     private static List<Parameter> takesWholeNumbers(String... names) {
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
-            parameters.add(Parameter.required(name, Set.of(Datatype.INTEGER)));
+            parameters.add(Parameter.required(name, of(Datatype.INTEGER)));
         }
         return parameters;
     }
@@ -1132,11 +1093,11 @@ public final class Natives {
         return true;
     }
 
-    private static final Set<Datatype> MEASURABLE = Set.of(
+    private static final Set<Datatype> MEASURABLE = of(
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
             Datatype.MONEY, Datatype.TIME, Datatype.PAIR);
 
-    private static final Set<Datatype> DIVISIBLE = Set.of(
+    private static final Set<Datatype> DIVISIBLE = of(
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
             Datatype.MONEY, Datatype.CHAR, Datatype.TIME);
 
@@ -1625,7 +1586,7 @@ public final class Natives {
     private void defineControl() {
         define("if", List.of(Parameter.required("condition", ANYTHING),
                         Parameter.required("branch", ANYTHING)),
-                Set.of("only"),
+                of("only"),
                 (arguments, evaluator, context, refinements) -> {
                     if (!arguments.get(0).isTruthy()) {
                         return NoneValue.none();
@@ -1636,7 +1597,7 @@ public final class Natives {
         define("either", List.of(Parameter.required("condition", ANYTHING),
                         Parameter.required("true-branch", ANYTHING),
                         Parameter.required("false-branch", ANYTHING)),
-                Set.of("only"),
+                of("only"),
                 (arguments, evaluator, context, refinements) -> branchTaken(
                         arguments.get(0).isTruthy() ? arguments.get(1) : arguments.get(2),
                         evaluator, context, refinements));
@@ -1647,9 +1608,9 @@ public final class Natives {
                 });
 
         define("do", List.of(Parameter.required("value", ANYTHING),
-                        Parameter.belongingTo("args", "arg", Set.of()),
-                        Parameter.belongingTo("next", "var", Set.of(Datatype.WORD))),
-                Set.of("next", "args"),
+                        Parameter.belongingTo("args", "arg", of()),
+                        Parameter.belongingTo("next", "var", of(Datatype.WORD))),
+                of("next", "args"),
                 (arguments, evaluator, context, refinements) -> {
                     if (refinements.contains("args") && arguments.size() > 1) {
                         Value given = argumentFor("args", List.of("args", "next"),
@@ -1715,7 +1676,7 @@ public final class Natives {
                     };
                 });
 
-        define("any", List.of(Parameter.required("block", Set.of(Datatype.BLOCK))),
+        define("any", List.of(Parameter.required("block", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     BlockValue block = (BlockValue) arguments.get(0);
                     BlockValue at = block;
@@ -1733,7 +1694,7 @@ public final class Natives {
                     return NoneValue.none();
                 });
 
-        define("all", List.of(Parameter.required("block", Set.of(Datatype.BLOCK))),
+        define("all", List.of(Parameter.required("block", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     BlockValue at = (BlockValue) arguments.get(0);
                     Value last = UnsetValue.unset();
@@ -1754,7 +1715,7 @@ public final class Natives {
 
         define("unless", List.of(Parameter.required("condition", ANYTHING),
                         Parameter.required("branch", ANYTHING)),
-                Set.of("only"),
+                of("only"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0).isTruthy()) {
                         return NoneValue.none();
@@ -1763,9 +1724,9 @@ public final class Natives {
                 });
 
         define("switch", List.of(Parameter.required("value"),
-                        Parameter.required("choices", Set.of(Datatype.BLOCK)),
-                        Parameter.belongingTo("default", "fallback", Set.of(Datatype.BLOCK))),
-                Set.of("case", "default", "all"),
+                        Parameter.required("choices", of(Datatype.BLOCK)),
+                        Parameter.belongingTo("default", "fallback", of(Datatype.BLOCK))),
+                of("case", "default", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     List<Value> choices = ((BlockValue) arguments.get(1)).remaining();
                     boolean runsThemAll = refinements.contains("all");
@@ -1808,8 +1769,8 @@ public final class Natives {
                     return NoneValue.none();
                 });
 
-        define("case", List.of(Parameter.required("choices", Set.of(Datatype.BLOCK))),
-                Set.of("all"),
+        define("case", List.of(Parameter.required("choices", of(Datatype.BLOCK))),
+                of("all"),
                 (arguments, evaluator, context, refinements) -> {
                     BlockValue choices = (BlockValue) arguments.get(0);
                     BlockValue at = choices;
@@ -1842,8 +1803,8 @@ public final class Natives {
                 });
 
         define("attempt", List.of(
-                        Parameter.required("block", Set.of(Datatype.BLOCK, Datatype.PAREN))),
-                Set.of("safer"),
+                        Parameter.required("block", of(Datatype.BLOCK, Datatype.PAREN))),
+                of("safer"),
                 (arguments, evaluator, context, refinements) -> {
                     try {
                         return evaluator.evaluateOrRaise(
@@ -1859,9 +1820,9 @@ public final class Natives {
                 });
 
         define("try", List.of(
-                        Parameter.required("block", Set.of(Datatype.BLOCK, Datatype.PAREN)),
-                        Parameter.belongingTo("with", "handler", Set.of())),
-                Set.of("all", "with"),
+                        Parameter.required("block", of(Datatype.BLOCK, Datatype.PAREN)),
+                        Parameter.belongingTo("with", "handler", of())),
+                of("all", "with"),
                 (arguments, evaluator, context, refinements) -> {
                     runState.set("last-error", NoneValue.none());
                     Value failure;
@@ -1926,8 +1887,8 @@ public final class Natives {
                 });
 
         define("throw", List.of(Parameter.required("value", ANYTHING),
-                        Parameter.belongingTo("name", "word", Set.of(Datatype.WORD))),
-                Set.of("name"),
+                        Parameter.belongingTo("name", "word", of(Datatype.WORD))),
+                of("name"),
                 (arguments, evaluator, context, refinements) -> {
                     throw new ThrownSignal(arguments.getFirst(),
                             refinements.contains("name") && arguments.size() > 1
@@ -1935,11 +1896,11 @@ public final class Natives {
                                     : null);
                 });
 
-        define("catch", List.of(Parameter.required("block", Set.of(Datatype.BLOCK)),
+        define("catch", List.of(Parameter.required("block", of(Datatype.BLOCK)),
                         Parameter.belongingTo("name", "word",
-                                Set.of(Datatype.WORD, Datatype.BLOCK)),
-                        Parameter.belongingTo("with", "callback", Set.of())),
-                Set.of("name", "all", "quit", "with"),
+                                of(Datatype.WORD, Datatype.BLOCK)),
+                        Parameter.belongingTo("with", "callback", of())),
+                of("name", "all", "quit", "with"),
                 (arguments, evaluator, context, refinements) -> {
                     Value handled;
                     Value carriedName = NoneValue.none();
@@ -1991,18 +1952,18 @@ public final class Natives {
                 (spec, body) -> makeFunction(spec, body, Context.root()));
         Transcoder.makeValuesWith(this::constructionOf);
         define("func", List.of(
-                        Parameter.required("spec", Set.of(Datatype.BLOCK)),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                        Parameter.required("spec", of(Datatype.BLOCK)),
+                        Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> makeFunction(
                         (BlockValue) arguments.get(0),
                         (BlockValue) arguments.get(1),
                         context));
 
         define("function", List.of(
-                        Parameter.required("spec", Set.of(Datatype.BLOCK)),
-                        Parameter.required("body", Set.of(Datatype.BLOCK)),
-                        Parameter.belongingTo("with", "object", Set.of())),
-                Set.of("with", "extern"),
+                        Parameter.required("spec", of(Datatype.BLOCK)),
+                        Parameter.required("body", of(Datatype.BLOCK)),
+                        Parameter.belongingTo("with", "object", of())),
+                of("with", "extern"),
                 (arguments, evaluator, context, refinements) -> {
                     BlockValue spec = (BlockValue) arguments.get(0);
                     BlockValue body = (BlockValue) arguments.get(1);
@@ -2113,10 +2074,10 @@ public final class Natives {
                         madeFrom(arguments.get(0), arguments.get(1), evaluator, context));
 
         define("construct", List.of(
-                        Parameter.required("body", Set.of(Datatype.BLOCK,
+                        Parameter.required("body", of(Datatype.BLOCK,
                                 Datatype.STRING, Datatype.BINARY)),
-                        Parameter.belongingTo("with", "object", Set.of(Datatype.OBJECT))),
-                Set.of("only", "with"),
+                        Parameter.belongingTo("with", "object", of(Datatype.OBJECT))),
+                of("only", "with"),
                 (arguments, evaluator, context, refinements) -> {
                     Context built = Context.childOf(evaluator.systemContext());
                     Value body = arguments.getFirst();
@@ -2155,8 +2116,8 @@ public final class Natives {
                         Parameter.required("target", Typeset.ANY_OBJECT.members()),
                         Parameter.required("source", Typeset.ANY_OBJECT.members()),
                         Parameter.belongingTo("only", "from",
-                                Set.of(Datatype.BLOCK, Datatype.INTEGER))),
-                Set.of("only", "all", "extend"),
+                                of(Datatype.BLOCK, Datatype.INTEGER))),
+                of("only", "all", "extend"),
                 (arguments, evaluator, context, refinements) -> {
                     Context into = fieldsOf(arguments.getFirst());
                     if (into.isClosedToNewNames()) {
@@ -2169,8 +2130,8 @@ public final class Natives {
                 });
 
         define("use", List.of(
-                        Parameter.required("words", Set.of(Datatype.BLOCK)),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                        Parameter.required("words", of(Datatype.BLOCK)),
+                        Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     Context scope = Context.childOf(context);
                     for (Value item : ((BlockValue) arguments.get(0)).remaining()) {
@@ -2185,16 +2146,16 @@ public final class Natives {
                             Binder.bind((BlockValue) arguments.get(1), scope), scope);
                 });
 
-        define("context", List.of(Parameter.required("body", Set.of(Datatype.BLOCK))),
-                Set.of("only"),
+        define("context", List.of(Parameter.required("body", of(Datatype.BLOCK))),
+                of("only"),
                 (arguments, evaluator, context, refinements) -> makeObject(
                         evaluator, context, Optional.empty(), (BlockValue) arguments.get(0)));
 
         define("in", List.of(
-                        Parameter.required("object", Set.of(Datatype.OBJECT, Datatype.ERROR,
+                        Parameter.required("object", of(Datatype.OBJECT, Datatype.ERROR,
                                 Datatype.PORT, Datatype.MODULE, Datatype.TASK,
                                 Datatype.BLOCK)),
-                        Parameter.required("word", Set.of(Datatype.WORD, Datatype.LIT_WORD,
+                        Parameter.required("word", of(Datatype.WORD, Datatype.LIT_WORD,
                                 Datatype.GET_WORD, Datatype.SET_WORD, Datatype.REFINEMENT,
                                 Datatype.ISSUE, Datatype.BLOCK, Datatype.PAREN))),
                 (arguments, evaluator, context) -> {
@@ -2214,8 +2175,8 @@ public final class Natives {
                 });
 
         define("apply", List.of(Parameter.required("func"),
-                        Parameter.required("block", Set.of(Datatype.BLOCK))),
-                Set.of("only"),
+                        Parameter.required("block", of(Datatype.BLOCK))),
+                of("only"),
                 (arguments, evaluator, context, refinements) -> {
                     BlockValue given = (BlockValue) arguments.get(1);
                     List<Value> supplied = refinements.contains("only")
@@ -2242,8 +2203,8 @@ public final class Natives {
                     return evaluator.applyFunction(callee, exactly);
                 });
 
-        define("assert", List.of(Parameter.required("conditions", Set.of(Datatype.BLOCK))),
-                Set.of("type"),
+        define("assert", List.of(Parameter.required("conditions", of(Datatype.BLOCK))),
+                of("type"),
                 (arguments, evaluator, context, refinements) -> {
                     if (refinements.contains("type")) {
                         return assertedTypes(
@@ -2257,11 +2218,11 @@ public final class Natives {
                 (arguments, evaluator, context) -> IntegerValue.of(
                         Molder.mold(arguments.get(0)).hashCode()));
 
-        define("collect-words", List.of(Parameter.required("block", Set.of(Datatype.BLOCK)),
+        define("collect-words", List.of(Parameter.required("block", of(Datatype.BLOCK)),
                         Parameter.belongingTo("ignore", "words",
                                 anyObjectOr(Datatype.BLOCK, Datatype.NONE)),
-                        Parameter.belongingTo("as", "type", Set.of(Datatype.DATATYPE))),
-                Set.of("deep", "set", "ignore", "as"),
+                        Parameter.belongingTo("as", "type", of(Datatype.DATATYPE))),
+                of("deep", "set", "ignore", "as"),
                 (arguments, evaluator, context, refinements) -> {
                     List<Value> found = new ArrayList<>();
                     gatherWords((BlockValue) arguments.get(0), refinements.contains("deep"),
@@ -2288,10 +2249,10 @@ public final class Natives {
                 });
 
         define("new-line", List.of(
-                        Parameter.required("position", Set.of(Datatype.BLOCK, Datatype.PAREN)),
+                        Parameter.required("position", of(Datatype.BLOCK, Datatype.PAREN)),
                         Parameter.required("value"),
-                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
-                Set.of("all", "skip"),
+                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER))),
+                of("all", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     BlockValue block = (BlockValue) arguments.get(0);
                     boolean wanted = arguments.get(1).isTruthy();
@@ -2319,20 +2280,20 @@ public final class Natives {
                     return block;
                 });
         define("new-line?", List.of(
-                        Parameter.required("position", Set.of(Datatype.BLOCK, Datatype.PAREN))),
+                        Parameter.required("position", of(Datatype.BLOCK, Datatype.PAREN))),
                 (arguments, evaluator, context) -> {
                     BlockValue block = (BlockValue) arguments.get(0);
                     return LogicValue.of(block.storage().breaksLineAt(block.index()));
                 });
 
-        define("object", List.of(Parameter.required("spec", Set.of(Datatype.BLOCK))),
-                Set.of("only"),
+        define("object", List.of(Parameter.required("spec", of(Datatype.BLOCK))),
+                of("only"),
                 (arguments, evaluator, context, refinements) -> makeObject(
                         evaluator, context, Optional.empty(), (BlockValue) arguments.get(0)));
 
         define("with", List.of(
-                        Parameter.required("context", Set.of(Datatype.OBJECT)),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                        Parameter.required("context", of(Datatype.OBJECT)),
+                        Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     Context inside = ((ObjectValue) arguments.get(0)).context();
                     return evaluator.evaluateOrRaise(
@@ -2365,14 +2326,14 @@ public final class Natives {
                 }));
 
         define("unbind", List.of(Parameter.required("word", aBlockOrAnyWord())),
-                Set.of("deep"),
+                of("deep"),
                 (arguments, evaluator, context, refinements) ->
                         unbound(arguments.get(0), refinements.contains("deep")));
 
         define("bind", List.of(
                         Parameter.required("word"),
                         Parameter.required("target")),
-                Set.of("copy", "only", "new", "set"),
+                of("copy", "only", "new", "set"),
                 (arguments, evaluator, context, refinements) -> {
                     Context target = arguments.get(1) instanceof WordValue word
                             ? boundContextOf(word)
@@ -2431,7 +2392,7 @@ public final class Natives {
                 .filter(slot -> !slot.canonical().equals("self"))
                 .forEach(slot -> fields.set(
                         slot.spelling(), clonedAndRebound(slot.value(),
-                                Set.of(existing.context()), fields))));
+                                of(existing.context()), fields))));
 
         declaredFieldsIn(body).forEach(fields::define);
 
@@ -2459,7 +2420,7 @@ public final class Natives {
 
         ObjectValue merged = new ObjectValue(fields);
         fields.set("self", merged);
-        Set<Context> sources = Set.of(prototype.context(), other.context());
+        Set<Context> sources = of(prototype.context(), other.context());
         fields.slots().stream()
                 .filter(slot -> !slot.canonical().equals("self"))
                 .toList()
@@ -2509,7 +2470,7 @@ public final class Natives {
     private void defineLoops() {
         define("loop", List.of(
                         Parameter.required("count", Typeset.NUMBER.members()),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                        Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     long passes = ((IntegerValue) arguments.get(0)).magnitude();
                     BlockValue body = (BlockValue) arguments.get(1);
@@ -2527,7 +2488,7 @@ public final class Natives {
         define("repeat", List.of(
                         Parameter.softQuoted("counter"),
                         Parameter.required("count", WHAT_REPEAT_COUNTS_BY),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                        Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     WordValue counter = (WordValue) arguments.get(0);
                     BlockValue body = (BlockValue) arguments.get(2);
@@ -2549,8 +2510,8 @@ public final class Natives {
                 });
 
         define("while", List.of(
-                        Parameter.required("condition", Set.of(Datatype.BLOCK)),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                        Parameter.required("condition", of(Datatype.BLOCK)),
+                        Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     BlockValue condition = (BlockValue) arguments.get(0);
                     BlockValue body = (BlockValue) arguments.get(1);
@@ -2566,7 +2527,7 @@ public final class Natives {
                     return last;
                 });
 
-        define("until", List.of(Parameter.required("body", Set.of(Datatype.BLOCK))),
+        define("until", List.of(Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     BlockValue body = (BlockValue) arguments.get(0);
                     Value last;
@@ -2585,7 +2546,7 @@ public final class Natives {
                         Parameter.required("start"),
                         Parameter.required("end"),
                         Parameter.required("step"),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                        Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> steppedLoop(
                         evaluator,
                         context,
@@ -2598,7 +2559,7 @@ public final class Natives {
         define("foreach", List.of(
                         Parameter.softQuoted("target"),
                         Parameter.required("series"),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                        Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> forEachLoop(
                         evaluator,
                         context,
@@ -2609,10 +2570,10 @@ public final class Natives {
         define("remove-each", List.of(
                         Parameter.softQuoted("word"),
                         Parameter.required("series",
-                                Set.of(Datatype.BLOCK, Datatype.BINARY,
+                                of(Datatype.BLOCK, Datatype.BINARY,
                                         Datatype.STRING, Datatype.MAP, Datatype.VECTOR)),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
-                Set.of("count"),
+                        Parameter.required("body", of(Datatype.BLOCK))),
+                of("count"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(1) instanceof MapValue map) {
                         return removedEachPairFrom(
@@ -2669,8 +2630,8 @@ public final class Natives {
 
         define("map-each", List.of(
                         Parameter.softQuoted("word"),
-                        Parameter.required("series", Set.of(Datatype.BLOCK)),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                        Parameter.required("series", of(Datatype.BLOCK)),
+                        Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     Context locals = Context.loopFrameOf(context);
                     List<WordValue> names = loopNamesIn(arguments.get(0), "map-each");
@@ -2694,8 +2655,8 @@ public final class Natives {
         define("forskip", List.of(
                         Parameter.softQuoted("word"),
                         Parameter.required("size",
-                                Set.of(Datatype.INTEGER, Datatype.DECIMAL)),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                                of(Datatype.INTEGER, Datatype.DECIMAL)),
+                        Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> walkBySteps(
                         evaluator,
                         (WordValue) arguments.get(0),
@@ -2704,7 +2665,7 @@ public final class Natives {
 
         define("forall", List.of(
                         Parameter.softQuoted("word"),
-                        Parameter.required("body", Set.of(Datatype.BLOCK))),
+                        Parameter.required("body", of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> walkBySteps(
                         evaluator,
                         (WordValue) arguments.get(0),
@@ -2717,7 +2678,7 @@ public final class Natives {
                 });
 
         define("break", List.of(Parameter.belongingTo("return", "value", ANYTHING)),
-                Set.of("return"),
+                of("return"),
                 (arguments, evaluator, context, refinements) -> {
                     throw refinements.contains("return") && !arguments.isEmpty()
                             ? LoopSignal.breakingWith(arguments.getFirst())
@@ -3099,7 +3060,7 @@ public final class Natives {
     }
 
     private void defineReflection() {
-        define("load", takes("source"), Set.of("all"),
+        define("load", takes("source"), of("all"),
                 (arguments, evaluator, context, refinements) -> loaded(
                         arguments.get(0), !refinements.contains("all")));
 
@@ -3107,9 +3068,9 @@ public final class Natives {
                 (arguments, evaluator, context) -> arguments.get(0));
 
         define("shift", List.of(
-                        Parameter.required("value", Set.of(Datatype.INTEGER)),
-                        Parameter.required("places", Set.of(Datatype.INTEGER))),
-                Set.of("logical"),
+                        Parameter.required("value", of(Datatype.INTEGER)),
+                        Parameter.required("places", of(Datatype.INTEGER))),
+                of("logical"),
                 (arguments, evaluator, context, refinements) -> IntegerValue.of(
                         refinements.contains("logical")
                                 ? bitsShifted(
@@ -3155,7 +3116,7 @@ public final class Natives {
         define("datatype?", takes("value"),
                 (arguments, evaluator, context) -> LogicValue.of(
                         arguments.get(0).datatype() == Datatype.DATATYPE));
-        define("type?", takesAnything("value"), Set.of("word"),
+        define("type?", takesAnything("value"), of("word"),
                 (arguments, evaluator, context, refinements) -> refinements.contains("word")
                         ? WordValue.of(arguments.get(0).datatype().literalSpelling())
                         : DatatypeValue.of(arguments.get(0).datatype()));
@@ -3195,28 +3156,28 @@ public final class Natives {
 
         defineCodepointRange("ascii?", 0x7F);
         defineCodepointRange("latin1?", 0xFF);
-        define("form-oid", List.of(Parameter.required("oid", Set.of(Datatype.BINARY))),
+        define("form-oid", List.of(Parameter.required("oid", of(Datatype.BINARY))),
                 (arguments, evaluator, context) -> StringValue.of(objectIdentifierWritten(
                         ((BinaryValue) arguments.getFirst()).octetsFromHere())));
 
         define("binary", List.of(
-                        Parameter.required("ctx", Set.of(Datatype.OBJECT,
+                        Parameter.required("ctx", of(Datatype.OBJECT,
                                 Datatype.BINARY, Datatype.INTEGER, Datatype.NONE)),
-                        Parameter.belongingTo("init", "spec", Set.of(Datatype.BINARY,
+                        Parameter.belongingTo("init", "spec", of(Datatype.BINARY,
                                 Datatype.INTEGER, Datatype.NONE)),
                         Parameter.belongingTo("write", "data",
-                                Set.of(Datatype.BINARY, Datatype.BLOCK)),
-                        Parameter.belongingTo("read", "code", Set.of(Datatype.WORD,
+                                of(Datatype.BINARY, Datatype.BLOCK)),
+                        Parameter.belongingTo("read", "code", of(Datatype.WORD,
                                 Datatype.BLOCK, Datatype.INTEGER, Datatype.BINARY)),
-                        Parameter.belongingTo("into", "out", Set.of(Datatype.BLOCK)),
-                        Parameter.belongingTo("with", "num", Set.of(Datatype.INTEGER))),
-                Set.of("init", "write", "read", "into", "with"),
+                        Parameter.belongingTo("into", "out", of(Datatype.BLOCK)),
+                        Parameter.belongingTo("with", "num", of(Datatype.INTEGER))),
+                of("init", "write", "read", "into", "with"),
                 (arguments, evaluator, context, refinements) ->
                         theBinaryDialect(arguments, refinements, evaluator, context));
 
         define("register", List.of(
                         Parameter.hardQuoted("name"),
-                        Parameter.required("value", Set.of(Datatype.STRUCT))),
+                        Parameter.required("value", of(Datatype.STRUCT))),
                 (arguments, evaluator, context) ->
                         structLayoutFiledUnder(arguments));
 
@@ -3227,14 +3188,14 @@ public final class Natives {
                 });
 
         define("premultiply", List.of(
-                        Parameter.required("image", Set.of(Datatype.IMAGE))),
+                        Parameter.required("image", of(Datatype.IMAGE))),
                 (arguments, evaluator, context) -> {
                     ImageOperations.premultiply((ImageValue) arguments.getFirst());
                     return arguments.getFirst();
                 });
 
         define("blur", List.of(
-                        Parameter.required("image", Set.of(Datatype.IMAGE)),
+                        Parameter.required("image", of(Datatype.IMAGE)),
                         Parameter.required("radius", Typeset.NUMBER.members())),
                 (arguments, evaluator, context) -> {
                     ImageOperations.blur((ImageValue) arguments.getFirst(),
@@ -3243,67 +3204,67 @@ public final class Natives {
                 });
 
         define("resize", List.of(
-                        Parameter.required("image", Set.of(Datatype.IMAGE)),
-                        Parameter.required("size", Set.of(Datatype.PAIR,
+                        Parameter.required("image", of(Datatype.IMAGE)),
+                        Parameter.required("size", of(Datatype.PAIR,
                                 Datatype.PERCENT, Datatype.INTEGER)),
                         Parameter.belongingTo("filter", "name",
-                                Set.of(Datatype.WORD, Datatype.INTEGER)),
+                                of(Datatype.WORD, Datatype.INTEGER)),
                         Parameter.belongingTo("blur", "factor", Typeset.NUMBER.members())),
-                Set.of("filter", "blur"),
+                of("filter", "blur"),
                 (arguments, evaluator, context, refinements) ->
                         resizedImage(arguments, refinements));
 
         define("image-diff", List.of(
-                        Parameter.required("a", Set.of(Datatype.IMAGE)),
-                        Parameter.required("b", Set.of(Datatype.IMAGE)),
-                        Parameter.belongingTo("part", "offset", Set.of(Datatype.PAIR)),
-                        Parameter.belongingTo("part", "size", Set.of(Datatype.PAIR))),
-                Set.of("part"),
+                        Parameter.required("a", of(Datatype.IMAGE)),
+                        Parameter.required("b", of(Datatype.IMAGE)),
+                        Parameter.belongingTo("part", "offset", of(Datatype.PAIR)),
+                        Parameter.belongingTo("part", "size", of(Datatype.PAIR))),
+                of("part"),
                 (arguments, evaluator, context, refinements) ->
                         DecimalValue.percent(theDifferenceBetweenImages(
                                 arguments, refinements)));
 
         define("image", List.of(
                         Parameter.belongingTo("load", "src-file",
-                                Set.of(Datatype.FILE, Datatype.BINARY)),
+                                of(Datatype.FILE, Datatype.BINARY)),
                         Parameter.belongingTo("save", "dst-file",
-                                Set.of(Datatype.NONE, Datatype.FILE, Datatype.BINARY)),
+                                of(Datatype.NONE, Datatype.FILE, Datatype.BINARY)),
                         Parameter.belongingTo("save", "dst-image",
-                                Set.of(Datatype.NONE, Datatype.IMAGE)),
-                        Parameter.belongingTo("frame", "num", Set.of(Datatype.INTEGER)),
-                        Parameter.belongingTo("as", "type", Set.of(Datatype.WORD))),
-                Set.of("load", "save", "frame", "as"),
+                                of(Datatype.NONE, Datatype.IMAGE)),
+                        Parameter.belongingTo("frame", "num", of(Datatype.INTEGER)),
+                        Parameter.belongingTo("as", "type", of(Datatype.WORD))),
+                of("load", "save", "frame", "as"),
                 (arguments, evaluator, context, refinements) ->
                         theHostsImageCodec(arguments, evaluator, refinements));
 
-        define("generate", List.of(Parameter.required("type", Set.of(Datatype.WORD))),
+        define("generate", List.of(Parameter.required("type", of(Datatype.WORD))),
                 (arguments, evaluator, context) ->
                         theKeyGenerateWouldHaveMade((WordValue) arguments.getFirst()));
 
         define("ecdh", List.of(
                         Parameter.required("key",
-                                Set.of(Datatype.HANDLE, Datatype.NONE)),
-                        Parameter.belongingTo("init", "type", Set.of(Datatype.WORD)),
+                                of(Datatype.HANDLE, Datatype.NONE)),
+                        Parameter.belongingTo("init", "type", of(Datatype.WORD)),
                         Parameter.belongingTo("secret", "public-key",
-                                Set.of(Datatype.BINARY))),
-                Set.of("init", "curve", "public", "secret"),
+                                of(Datatype.BINARY))),
+                of("init", "curve", "public", "secret"),
                 (arguments, evaluator, context, refinements) ->
                         ellipticExchange(arguments, refinements));
 
         define("ecdsa", List.of(
                         Parameter.required("key",
-                                Set.of(Datatype.HANDLE, Datatype.BINARY)),
-                        Parameter.required("hash", Set.of(Datatype.BINARY)),
+                                of(Datatype.HANDLE, Datatype.BINARY)),
+                        Parameter.required("hash", of(Datatype.BINARY)),
                         Parameter.belongingTo("verify", "signature",
-                                Set.of(Datatype.BINARY)),
-                        Parameter.belongingTo("curve", "type", Set.of(Datatype.WORD))),
-                Set.of("sign", "verify", "curve"),
+                                of(Datatype.BINARY)),
+                        Parameter.belongingTo("curve", "type", of(Datatype.WORD))),
+                of("sign", "verify", "curve"),
                 (arguments, evaluator, context, refinements) ->
                         ellipticSignature(arguments, refinements));
 
         define("dh-init", List.of(
-                        Parameter.required("g", Set.of(Datatype.BINARY)),
-                        Parameter.required("p", Set.of(Datatype.BINARY))),
+                        Parameter.required("g", of(Datatype.BINARY)),
+                        Parameter.required("p", of(Datatype.BINARY))),
                 (arguments, evaluator, context) -> DiffieHellmanKey.generatedFor(
                                 ((BinaryValue) arguments.get(0)).octetsFromHere(),
                                 ((BinaryValue) arguments.get(1)).octetsFromHere())
@@ -3312,38 +3273,38 @@ public final class Natives {
                         .orElseGet(NoneValue::none));
 
         define("dh", List.of(
-                        Parameter.required("dh-key", Set.of(Datatype.HANDLE)),
+                        Parameter.required("dh-key", of(Datatype.HANDLE)),
                         Parameter.belongingTo("secret", "public-key",
-                                Set.of(Datatype.BINARY))),
-                Set.of("public", "secret"),
+                                of(Datatype.BINARY))),
+                of("public", "secret"),
                 (arguments, evaluator, context, refinements) ->
                         modularExchange(arguments, refinements));
 
         define("rsa-init", List.of(
-                        Parameter.required("n", Set.of(Datatype.BINARY)),
-                        Parameter.required("e", Set.of(Datatype.BINARY)),
-                        Parameter.belongingTo("private", "d", Set.of(Datatype.BINARY)),
-                        Parameter.belongingTo("private", "p", Set.of(Datatype.BINARY)),
-                        Parameter.belongingTo("private", "q", Set.of(Datatype.BINARY))),
-                Set.of("private"),
+                        Parameter.required("n", of(Datatype.BINARY)),
+                        Parameter.required("e", of(Datatype.BINARY)),
+                        Parameter.belongingTo("private", "d", of(Datatype.BINARY)),
+                        Parameter.belongingTo("private", "p", of(Datatype.BINARY)),
+                        Parameter.belongingTo("private", "q", of(Datatype.BINARY))),
+                of("private"),
                 (arguments, evaluator, context, refinements) ->
                         rsaKeyBuiltFrom(arguments, refinements));
 
         define("rsa", List.of(
-                        Parameter.required("rsa-key", Set.of(Datatype.HANDLE)),
+                        Parameter.required("rsa-key", of(Datatype.HANDLE)),
                         Parameter.required("data", anyStringOr(Datatype.BINARY)),
-                        Parameter.belongingTo("verify", "signature", Set.of(Datatype.BINARY)),
+                        Parameter.belongingTo("verify", "signature", of(Datatype.BINARY)),
                         Parameter.belongingTo("hash", "algorithm",
-                                Set.of(Datatype.WORD, Datatype.NONE))),
-                Set.of("encrypt", "decrypt", "sign", "verify", "hash", "oaep", "pss"),
+                                of(Datatype.WORD, Datatype.NONE))),
+                of("encrypt", "decrypt", "sign", "verify", "hash", "oaep", "pss"),
                 (arguments, evaluator, context, refinements) ->
                         rsaOperation(arguments, refinements));
 
         define("rc4", List.of(
-                        Parameter.belongingTo("key", "crypt-key", Set.of(Datatype.BINARY)),
-                        Parameter.belongingTo("stream", "ctx", Set.of(Datatype.HANDLE)),
-                        Parameter.belongingTo("stream", "data", Set.of(Datatype.BINARY))),
-                Set.of("key", "stream"),
+                        Parameter.belongingTo("key", "crypt-key", of(Datatype.BINARY)),
+                        Parameter.belongingTo("stream", "ctx", of(Datatype.HANDLE)),
+                        Parameter.belongingTo("stream", "data", of(Datatype.BINARY))),
+                of("key", "stream"),
                 (arguments, evaluator, context, refinements) -> {
                     int streamBeginsAt = refinements.contains("key") ? 1 : 0;
                     if (refinements.contains("stream")) {
@@ -3362,14 +3323,14 @@ public final class Natives {
                     return UnsetValue.unset();
                 });
 
-        define("utf?", List.of(Parameter.required("data", Set.of(Datatype.BINARY))),
+        define("utf?", List.of(Parameter.required("data", of(Datatype.BINARY))),
                 (arguments, evaluator, context) -> IntegerValue.of(
                         byteOrderMarkOf(((BinaryValue) arguments.getFirst())
                                 .octetsFromHere())));
 
-        define("invalid-utf?", List.of(Parameter.required("data", Set.of(Datatype.BINARY)),
-                        Parameter.belongingTo("utf", "num", Set.of(Datatype.INTEGER))),
-                Set.of("utf"),
+        define("invalid-utf?", List.of(Parameter.required("data", of(Datatype.BINARY)),
+                        Parameter.belongingTo("utf", "num", of(Datatype.INTEGER))),
+                of("utf"),
                 (arguments, evaluator, context, refinements) -> {
                     BinaryValue bytes = (BinaryValue) arguments.get(0);
                     int trouble = firstMalformedUtf8(bytes);
@@ -3390,7 +3351,7 @@ public final class Natives {
                 (arguments, evaluator, context) ->
                         LogicValue.of(isTheZeroOfItsDatatype(arguments.getFirst())));
 
-        define("value?", List.of(Parameter.required("word", Set.of(Datatype.WORD))),
+        define("value?", List.of(Parameter.required("word", of(Datatype.WORD))),
                 (arguments, evaluator, context) -> {
                     WordValue word = (WordValue) arguments.get(0);
                     boolean known = word.isBound() && word.binding().knows(word.canonical());
@@ -3399,7 +3360,7 @@ public final class Natives {
                 });
 
         define("unset", List.of(Parameter.required("word",
-                        Set.of(Datatype.WORD, Datatype.BLOCK, Datatype.NONE))),
+                        of(Datatype.WORD, Datatype.BLOCK, Datatype.NONE))),
                 (arguments, evaluator, context) -> {
                     if (arguments.get(0) instanceof NoneValue nothing) {
                         return nothing;
@@ -3424,7 +3385,7 @@ public final class Natives {
                 });
 
         define("protect", List.of(Parameter.required("target")),
-                Set.of("deep", "words", "values", "hide", "lock"),
+                of("deep", "words", "values", "hide", "lock"),
                 (arguments, evaluator, context, refinements) -> {
                     if (refinements.contains("hide")
                             && arguments.getFirst() instanceof WordValue word) {
@@ -3450,7 +3411,7 @@ public final class Natives {
                 });
 
         define("unprotect", List.of(Parameter.required("target")),
-                Set.of("deep", "words", "values"),
+                of("deep", "words", "values"),
                 (arguments, evaluator, context, refinements) -> {
                     if (!protectFieldNamedBy(arguments.getFirst(), false, refinements)) {
                         protectNamed(arguments.getFirst(), false, refinements);
@@ -3461,11 +3422,11 @@ public final class Natives {
                 });
 
         define("delect", List.of(
-                        Parameter.required("dialect", Set.of(Datatype.OBJECT)),
-                        Parameter.required("input", Set.of(Datatype.BLOCK)),
-                        Parameter.required("output", Set.of(Datatype.BLOCK)),
-                        Parameter.belongingTo("in", "where", Set.of(Datatype.BLOCK))),
-                Set.of("in", "all"),
+                        Parameter.required("dialect", of(Datatype.OBJECT)),
+                        Parameter.required("input", of(Datatype.BLOCK)),
+                        Parameter.required("output", of(Datatype.BLOCK)),
+                        Parameter.belongingTo("in", "where", of(Datatype.BLOCK))),
+                of("in", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     requireChangeable(arguments.get(2));
                     return Delect.read(
@@ -3479,7 +3440,7 @@ public final class Natives {
         defineSet();
     }
 
-    private static final Set<Datatype> PATH_SHAPED = Set.of(
+    private static final Set<Datatype> PATH_SHAPED = of(
             Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH);
 
     private static Value writtenThroughPath(BlockValue path, Value supplied) {
@@ -3511,7 +3472,7 @@ public final class Natives {
         define("set", List.of(
                         Parameter.required("target", NAME_SHAPED),
                         Parameter.required("value", ANYTHING)),
-                Set.of("any", "only", "some"),
+                of("any", "only", "some"),
                 (arguments, evaluator, context, refinements) -> {
                     Value target = arguments.getFirst();
                     Value supplied = arguments.get(1);
@@ -3585,8 +3546,8 @@ public final class Natives {
 
         define("take",
                 List.of(Parameter.required("series"),
-                        Parameter.belongingTo("part", "count", Set.of())),
-                Set.of("part", "last", "deep", "all"),
+                        Parameter.belongingTo("part", "count", of())),
+                of("part", "last", "deep", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0) instanceof NoneValue nothing) {
                         return nothing;
@@ -3634,9 +3595,9 @@ public final class Natives {
                     return deepenedIfAsked(takeSeveral(series, wanted), refinements);
                 });
 
-        define("ajoin", List.of(Parameter.required("block", Set.of(Datatype.BLOCK)),
+        define("ajoin", List.of(Parameter.required("block", of(Datatype.BLOCK)),
                         Parameter.belongingTo("with", "separator", ANYTHING)),
-                Set.of("all", "with"),
+                of("all", "with"),
                 (arguments, evaluator, context, refinements) -> {
                     List<Value> all = evaluator.evaluateEachOrRaise(
                             (BlockValue) arguments.get(0), context);
@@ -3659,7 +3620,7 @@ public final class Natives {
                 });
 
         define("poke", List.of(Parameter.required("series",
-                                Set.of(Datatype.BLOCK, Datatype.PAREN, Datatype.HASH,
+                                of(Datatype.BLOCK, Datatype.PAREN, Datatype.HASH,
                                         Datatype.PATH, Datatype.SET_PATH,
                                         Datatype.GET_PATH, Datatype.LIT_PATH,
                                         Datatype.STRING, Datatype.FILE, Datatype.URL,
@@ -3671,7 +3632,7 @@ public final class Natives {
                         Parameter.required("value", ANYTHING)),
                 (arguments, evaluator, context) -> {
                     Optional<Value> itsOwn =
-                            theRebolActorsAnswer("poke", arguments, Set.of(), evaluator);
+                            theRebolActorsAnswer("poke", arguments, of(), evaluator);
                     if (itsOwn.isPresent()) {
                         return itsOwn.get();
                     }
@@ -3760,8 +3721,8 @@ public final class Natives {
                                 setOperandOr(Datatype.BLOCK, Datatype.DATE)),
                         Parameter.required("second",
                                 setOperandOr(Datatype.BLOCK, Datatype.DATE)),
-                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
-                Set.of("case", "skip"),
+                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER))),
+                of("case", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0) instanceof TypesetValue
                             || arguments.get(0) instanceof BitsetValue
@@ -3785,7 +3746,7 @@ public final class Natives {
                 });
 
         define("reflect", List.of(Parameter.required("value"),
-                        Parameter.required("field", Set.of(Datatype.WORD))),
+                        Parameter.required("field", of(Datatype.WORD))),
                 (arguments, evaluator, context) -> {
                     String field = ((WordValue) arguments.get(1)).canonical();
                     if (arguments.getFirst() instanceof VectorValue vector) {
@@ -3875,7 +3836,7 @@ public final class Natives {
                             case "spec" -> written.spec();
                             case "body" -> copied(written.body(), true);
                             case "words" -> wordsNamedIn(written.spec());
-                            case "types" -> typesetsOf(written.parameters(), Set.of());
+                            case "types" -> typesetsOf(written.parameters(), of());
                             default -> NoneValue.none();
                         };
                     }
@@ -3905,7 +3866,7 @@ public final class Natives {
                             case "spec" -> behind.spec();
                             case "body" -> copied(behind.body(), true);
                             case "words" -> wordsNamedIn(behind.spec());
-                            case "types" -> typesetsOf(behind.parameters(), Set.of());
+                            case "types" -> typesetsOf(behind.parameters(), of());
                             default -> NoneValue.none();
                         };
                     }
@@ -3929,8 +3890,8 @@ public final class Natives {
         define("put", List.of(Parameter.required("target"),
                         Parameter.required("key", ANYTHING),
                         Parameter.required("value", ANYTHING),
-                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
-                Set.of("case", "skip"),
+                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER))),
+                of("case", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     Optional<Value> itsOwn =
                             theRebolActorsAnswer("put", arguments, refinements, evaluator);
@@ -3987,9 +3948,9 @@ public final class Natives {
         define("select", List.of(Parameter.required("series"),
                         Parameter.required("value", ANYTHING),
                         Parameter.belongingTo("part", "range", PART_LIMIT),
-                        Parameter.belongingTo("with", "wild", Set.of(Datatype.STRING)),
-                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
-                Set.of("case", "skip", "any", "only", "last", "part", "same", "with",
+                        Parameter.belongingTo("with", "wild", of(Datatype.STRING)),
+                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER))),
+                of("case", "skip", "any", "only", "last", "part", "same", "with",
                         "reverse"),
                 (arguments, evaluator, context, refinements) -> {
                     Optional<Value> itsOwn =
@@ -4052,7 +4013,7 @@ public final class Natives {
                 });
 
         define("get", List.of(Parameter.required("word")),
-                Set.of("any"),
+                of("any"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0) instanceof BlockValue path
                             && path.datatype() == Datatype.PATH) {
@@ -4079,16 +4040,16 @@ public final class Natives {
             List<Value> arguments, Set<String> refinements) {
 
         if (!refinements.contains("name") || arguments.size() < 2) {
-            return Set.of();
+            return of();
         }
         return switch (arguments.get(1)) {
-            case WordValue single -> Set.of(single.canonical());
+            case WordValue single -> of(single.canonical());
             case BlockValue several -> several.remaining().stream()
                     .filter(WordValue.class::isInstance)
                     .map(WordValue.class::cast)
                     .map(WordValue::canonical)
                     .collect(java.util.stream.Collectors.toSet());
-            default -> Set.of();
+            default -> of();
         };
     }
 
@@ -4354,7 +4315,7 @@ public final class Natives {
         return forward < text.length() && text.charAt(forward) == '[';
     }
 
-    private static final Set<Datatype> NAME_SHAPED = Set.of(
+    private static final Set<Datatype> NAME_SHAPED = of(
             Datatype.WORD, Datatype.LIT_WORD, Datatype.SET_WORD, Datatype.GET_WORD,
             Datatype.ISSUE, Datatype.REFINEMENT,
             Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
@@ -4425,8 +4386,8 @@ public final class Natives {
 
     private static Set<Integer> unwantedCodePoints(Value characters) {
         return switch (characters) {
-            case CharacterValue character -> Set.of(character.codepoint());
-            case IntegerValue whole -> Set.of((int) whole.magnitude());
+            case CharacterValue character -> of(character.codepoint());
+            case IntegerValue whole -> of((int) whole.magnitude());
             case StringValue text -> text.text().codePoints().boxed()
                     .collect(java.util.stream.Collectors.toSet());
             case BinaryValue bytes -> {
@@ -4436,7 +4397,7 @@ public final class Natives {
                 }
                 yield octets;
             }
-            default -> Set.of();
+            default -> of();
         };
     }
 
@@ -4479,7 +4440,7 @@ public final class Natives {
     private static Set<Datatype> anyStringOrCharacter() {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_STRING.members());
         accepted.add(Datatype.CHAR);
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private void defineCaseChange(
@@ -4487,8 +4448,8 @@ public final class Natives {
 
         define(name, List.of(
                         Parameter.required("text", anyStringOrCharacter()),
-                        Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER))),
-                Set.of("part"),
+                        Parameter.belongingTo("part", "limit", of(Datatype.INTEGER))),
+                of("part"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof CharacterValue letter) {
                         return theOneCharacterChanged(letter, change);
@@ -4547,7 +4508,7 @@ public final class Natives {
     private void defineSeries() {
         define("length?", List.of(Parameter.required("series")),
                 (arguments, evaluator, context) -> theRebolActorsAnswer(
-                        "length?", arguments, Set.of(), evaluator)
+                        "length?", arguments, of(), evaluator)
                 .orElseGet(() -> switch (arguments.get(0)) {
                     case NoneValue nothing -> nothing;
                     case PortValue queued when theEventQueueOf(queued).isPresent() ->
@@ -4579,7 +4540,7 @@ public final class Natives {
                         Parameter.required("index")),
                 (arguments, evaluator, context) -> {
                     Optional<Value> itsOwn =
-                            theRebolActorsAnswer("pick", arguments, Set.of(), evaluator);
+                            theRebolActorsAnswer("pick", arguments, of(), evaluator);
                     if (itsOwn.isPresent()) {
                         return itsOwn.get();
                     }
@@ -4595,7 +4556,7 @@ public final class Natives {
 
         define("atz", List.of(Parameter.required("series"),
                         Parameter.required("position",
-                                Set.of(Datatype.INTEGER, Datatype.PAIR))),
+                                of(Datatype.INTEGER, Datatype.PAIR))),
                 (arguments, evaluator, context) -> {
                     if (arguments.getFirst() instanceof PortValue port
                             && isAFilePort(port)) {
@@ -4609,7 +4570,7 @@ public final class Natives {
                             positionAskedFor(series, arguments.get(1), false) + 1));
                 });
         define("indexz?", List.of(Parameter.required("series", positionable())),
-                Set.of("xy"),
+                of("xy"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
                     case ImageValue picture when refinements.contains("xy") ->
                             whereItStandsInThePicture(picture, 0);
@@ -4621,7 +4582,7 @@ public final class Natives {
                     default -> raiseCannotUse(arguments.get(0), "indexz?");
                 });
         define("pickz", List.of(Parameter.required("series"),
-                        Parameter.required("index", Set.of(Datatype.INTEGER))),
+                        Parameter.required("index", of(Datatype.INTEGER))),
                 (arguments, evaluator, context) -> {
                     if (arguments.getFirst() instanceof BitsetValue) {
                         return pickFrom(arguments.getFirst(), arguments.get(1));
@@ -4741,7 +4702,7 @@ public final class Natives {
                     default -> raiseCannotUse(arguments.get(0), "tail");
                 });
         define("index?", List.of(Parameter.required("series", positionable())),
-                Set.of("xy"),
+                of("xy"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
                     case NoneValue nothing -> nothing;
                     case ImageValue picture when refinements.contains("xy") ->
@@ -4759,7 +4720,7 @@ public final class Natives {
                         Parameter.required("value", ANYTHING),
                         Parameter.belongingTo("part", "range", PART_LIMIT),
                         Parameter.belongingTo("dup", "count", DUP_COUNT)),
-                Set.of("part", "only", "dup"),
+                of("part", "only", "dup"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
                     case PortValue queued when theEventQueueOf(queued).isPresent() ->
                             queuedOnThePort(queued, theEventQueueOf(queued).orElseThrow(),
@@ -4797,7 +4758,7 @@ public final class Natives {
 
         define("truncate", List.of(Parameter.required("series"),
                         Parameter.belongingTo("part", "count", PART_LIMIT)),
-                Set.of("part"),
+                of("part"),
                 (arguments, evaluator, context, refinements) -> {
                     if (!(arguments.getFirst() instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.getFirst(), "truncate");
@@ -4815,7 +4776,7 @@ public final class Natives {
         define("skip", List.of(
                         Parameter.required("series"),
                         Parameter.required("offset",
-                                Set.of(Datatype.INTEGER, Datatype.DECIMAL,
+                                of(Datatype.INTEGER, Datatype.DECIMAL,
                                         Datatype.PERCENT, Datatype.LOGIC,
                                         Datatype.PAIR))),
                 (arguments, evaluator, context) -> {
@@ -4837,7 +4798,7 @@ public final class Natives {
         define("at", List.of(
                         Parameter.required("series"),
                         Parameter.required("index",
-                                Set.of(Datatype.INTEGER, Datatype.DECIMAL,
+                                of(Datatype.INTEGER, Datatype.DECIMAL,
                                         Datatype.PERCENT, Datatype.LOGIC,
                                         Datatype.PAIR))),
                 (arguments, evaluator, context) -> {
@@ -4854,10 +4815,10 @@ public final class Natives {
                 });
 
         define("copy", List.of(Parameter.required("value", copyable()),
-                        Parameter.belongingTo("part", "limit", Set.of()),
+                        Parameter.belongingTo("part", "limit", of()),
                         Parameter.belongingTo("types", "kinds",
-                                Set.of(Datatype.TYPESET, Datatype.DATATYPE))),
-                Set.of("part", "deep", "types"),
+                                of(Datatype.TYPESET, Datatype.DATATYPE))),
+                of("part", "deep", "types"),
                 (arguments, evaluator, context, refinements) -> {
                     Optional<Value> itsOwn = theRebolActorsAnswer(
                             "copy", List.of(arguments.getFirst()),
@@ -4902,9 +4863,9 @@ public final class Natives {
                 List.of(Parameter.required("series"),
                         Parameter.required("value", ANYTHING),
                         Parameter.belongingTo("part", "range", PART_LIMIT),
-                        Parameter.belongingTo("with", "wild", Set.of(Datatype.STRING)),
-                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
-                Set.of("tail", "last", "only", "case", "any", "same", "part",
+                        Parameter.belongingTo("with", "wild", of(Datatype.STRING)),
+                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER))),
+                of("tail", "last", "only", "case", "any", "same", "part",
                         "with", "skip", "reverse", "match"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0) instanceof NoneValue) {
@@ -4974,7 +4935,7 @@ public final class Natives {
                         Parameter.required("value", ANYTHING),
                         Parameter.belongingTo("part", "range", PART_LIMIT),
                         Parameter.belongingTo("dup", "count", DUP_COUNT)),
-                Set.of("only", "part", "dup"),
+                of("only", "part", "dup"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
                     case PortValue queued when theEventQueueOf(queued).isPresent() ->
                             queuedOnThePort(queued, theEventQueueOf(queued).orElseThrow(),
@@ -4987,8 +4948,8 @@ public final class Natives {
 
         define("remove", List.of(Parameter.required("series"),
                         Parameter.belongingTo("part", "count", REMOVE_RANGE),
-                        Parameter.belongingTo("key", "which", Set.of())),
-                Set.of("part", "key"),
+                        Parameter.belongingTo("key", "which", of())),
+                of("part", "key"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0) instanceof NoneValue nothing) {
                         return nothing;
@@ -5033,8 +4994,8 @@ public final class Natives {
                 });
 
         define("reverse", List.of(Parameter.required("series"),
-                        Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER))),
-                Set.of("part"),
+                        Parameter.belongingTo("part", "limit", of(Datatype.INTEGER))),
+                of("part"),
                 (arguments, evaluator, context, refinements) -> {
                     if (refinements.contains("part")
                             && arguments.getFirst() instanceof SeriesValue series) {
@@ -5080,7 +5041,7 @@ public final class Natives {
                         Parameter.required("value", ANYTHING),
                         Parameter.belongingTo("part", "range", PART_LIMIT),
                         Parameter.belongingTo("dup", "count", DUP_COUNT)),
-                Set.of("part", "only", "dup"),
+                of("part", "only", "dup"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.get(0) instanceof StructValue struct) {
                         refuseUnfinishedRefinements(refinements, "change");
@@ -5201,10 +5162,10 @@ public final class Natives {
 
         define("sort",
                 List.of(Parameter.required("series", Typeset.SERIES.members()),
-                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)),
-                        Parameter.belongingTo("compare", "comparator", Set.of()),
+                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER)),
+                        Parameter.belongingTo("compare", "comparator", of()),
                         Parameter.belongingTo("part", "count", PART_LIMIT)),
-                Set.of("case", "compare", "skip", "reverse", "all", "part", "unstable"),
+                of("case", "compare", "skip", "reverse", "all", "part", "unstable"),
                 (arguments, evaluator, context, refinements) -> {
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseCannotUse(arguments.get(0), "sort");
@@ -5269,11 +5230,11 @@ public final class Natives {
         defineSetOperation("union", Combining.Sets.UNION);
         defineSetOperation("exclude", Combining.Sets.EXCLUDE);
         define("unique", List.of(
-                        Parameter.required("set1", Set.of(
+                        Parameter.required("set1", of(
                                 Datatype.BLOCK, Datatype.STRING, Datatype.BITSET,
                                 Datatype.TYPESET, Datatype.MAP)),
-                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
-                Set.of("case", "skip"),
+                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER))),
+                of("case", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     Value width = argumentFor("skip", List.of("skip"), arguments,
                             refinements, 1);
@@ -5292,8 +5253,8 @@ public final class Natives {
 
         define("reduce", List.of(Parameter.required("block"),
                         Parameter.belongingTo("into", "target", Typeset.ANY_BLOCK.members()),
-                        Parameter.belongingTo("only", "words", Set.of())),
-                Set.of("into", "only", "no-set"),
+                        Parameter.belongingTo("only", "words", of())),
+                of("into", "only", "no-set"),
                 (arguments, evaluator, context, refinements) -> {
                     Value source = arguments.getFirst();
                     Value target = refinements.contains("into") && arguments.size() > 1
@@ -5335,7 +5296,7 @@ public final class Natives {
 
         define("compose", List.of(Parameter.required("block"),
                         Parameter.belongingTo("into", "out", Typeset.ANY_BLOCK.members())),
-                Set.of("only", "deep", "into"),
+                of("only", "deep", "into"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof MapValue template) {
                         return composedMap(template, evaluator, context,
@@ -5364,16 +5325,16 @@ public final class Natives {
 
         define("transcode",
                 List.of(Parameter.required("source"),
-                        Parameter.belongingTo("line", "count", Set.of(Datatype.INTEGER)),
-                        Parameter.belongingTo("part", "length", Set.of(Datatype.INTEGER))),
-                Set.of("one", "error", "next", "part", "line", "only"),
+                        Parameter.belongingTo("line", "count", of(Datatype.INTEGER)),
+                        Parameter.belongingTo("part", "length", of(Datatype.INTEGER))),
+                of("one", "error", "next", "part", "line", "only"),
                 (arguments, evaluator, context, refinements) ->
                         SourceReading.asAskedFor(arguments, refinements).answer());
 
         define("round",
                 List.of(Parameter.required("value"),
-                        Parameter.belongingTo("to", "multiple", Set.of())),
-                Set.of("to", "down", "even", "half-down", "floor", "ceiling",
+                        Parameter.belongingTo("to", "multiple", of())),
+                of("to", "down", "even", "half-down", "floor", "ceiling",
                         "half-ceiling"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof TimeValue time) {
@@ -6532,8 +6493,8 @@ public final class Natives {
     private void defineTabbing(String name, boolean toTabs) {
         define(name, List.of(
                         Parameter.required("text", anyStringOr(Datatype.BINARY)),
-                        Parameter.belongingTo("size", "width", Set.of(Datatype.INTEGER))),
-                Set.of("size"),
+                        Parameter.belongingTo("size", "width", of(Datatype.INTEGER))),
+                of("size"),
                 (arguments, evaluator, context, refinements) -> {
                     int width = refinements.contains("size") && arguments.size() > 1
                             ? (int) ((IntegerValue) arguments.get(1)).magnitude()
@@ -6704,7 +6665,7 @@ public final class Natives {
                 .toList());
     }
 
-    private static final Set<Datatype> NAMES_A_PARAMETER = Set.of(
+    private static final Set<Datatype> NAMES_A_PARAMETER = of(
             Datatype.WORD, Datatype.REFINEMENT, Datatype.LIT_WORD, Datatype.GET_WORD);
 
     private static Value doneAsAScript(
@@ -7005,7 +6966,7 @@ public final class Natives {
             case ObjectValue object -> object.context().slots().stream()
                     .map(ContextSlot::canonical)
                     .collect(java.util.stream.Collectors.toSet());
-            default -> Set.of();
+            default -> of();
         };
     }
 
@@ -7013,7 +6974,7 @@ public final class Natives {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
         accepted.add(Datatype.TUPLE);
         accepted.add(Datatype.GOB);
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private static final Set<Datatype> SERIES_LIKE = EnumSet.of(
@@ -7036,8 +6997,8 @@ public final class Natives {
         define(name, List.of(
                         Parameter.required("first", setOperandOr(Datatype.BLOCK)),
                         Parameter.required("second", setOperandOr(Datatype.BLOCK)),
-                        Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
-                Set.of("case", "skip"),
+                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER))),
+                of("case", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     Value width = argumentFor("skip", List.of("skip"), arguments, refinements, 2);
                     return Combining.sets(arguments.get(0), arguments.get(1), how,
@@ -7318,7 +7279,7 @@ public final class Natives {
                         .filter(WordValue.class::isInstance)
                         .map(word -> ((WordValue) word).canonical())
                         .collect(java.util.stream.Collectors.toSet())
-                : Set.of();
+                : of();
         List<Value> results = new ArrayList<>();
         for (Value item : block.remaining()) {
             if (item instanceof WordValue word && word.datatype() == Datatype.WORD
@@ -7811,7 +7772,7 @@ public final class Natives {
         return switch (target) {
             case BitsetValue members -> new BitsetActions(members).heldForAPath(selector);
             case MapValue map -> map.select(selector);
-            case DateValue date -> DatePart.of(date, selector);
+            case DateValue date -> DatePart.readFrom(date, selector);
             case TimeValue time -> pickTimePart(time, selector);
             case GobValue gob -> GobPath.childOf(gob, positionPickedFrom(selector));
             default -> selector instanceof IntegerValue position
@@ -8085,7 +8046,7 @@ public final class Natives {
         theEventQueueOf(queue).ifPresent(onIt -> onIt.storage().insertAt(
                 onIt.storage().length() + 1,
                 new EventValue(EventCatalogue.typeIndexOf(happened).orElseThrow(),
-                        Set.of(), EventValue.Model.PORT, 0, port)));
+                        of(), EventValue.Model.PORT, 0, port)));
     }
 
     private static Value waitedOnTheScreen(PortValue port, Evaluator evaluator) {
@@ -8210,7 +8171,7 @@ public final class Natives {
         Set<Datatype> accepted = EnumSet.of(
                 Datatype.BITSET, Datatype.TYPESET, Datatype.STRING, Datatype.MAP);
         accepted.addAll(List.of(alsoAccepted));
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private static double roundedBy(double value, Set<String> refinements) {
@@ -8247,9 +8208,9 @@ public final class Natives {
     private void defineEncodings() {
         define("enhex", List.of(
                         Parameter.required("value", anyStringOr(Datatype.BINARY)),
-                        Parameter.belongingTo("escape", "char", Set.of(Datatype.CHAR)),
-                        Parameter.belongingTo("except", "unescaped", Set.of(Datatype.BITSET))),
-                Set.of("escape", "except", "uri"),
+                        Parameter.belongingTo("escape", "char", of(Datatype.CHAR)),
+                        Parameter.belongingTo("except", "unescaped", of(Datatype.BITSET))),
+                of("escape", "except", "uri"),
                 (arguments, evaluator, context, refinements) -> {
                     Value value = arguments.getFirst();
                     char escape = escapeCharacterIn(arguments, refinements);
@@ -8267,8 +8228,8 @@ public final class Natives {
 
         define("dehex", List.of(
                         Parameter.required("value", anyStringOr(Datatype.BINARY)),
-                        Parameter.belongingTo("escape", "char", Set.of(Datatype.CHAR))),
-                Set.of("escape", "uri"),
+                        Parameter.belongingTo("escape", "char", of(Datatype.CHAR))),
+                of("escape", "uri"),
                 (arguments, evaluator, context, refinements) -> {
                     Value value = arguments.getFirst();
                     byte[] decoded = Encodings.percentDecoded(
@@ -8284,10 +8245,10 @@ public final class Natives {
         define("enbase", List.of(
                         Parameter.required("value",
                                 anyStringOr(Datatype.BINARY, Datatype.INTEGER)),
-                        Parameter.required("base", Set.of(Datatype.INTEGER)),
+                        Parameter.required("base", of(Datatype.INTEGER)),
                         Parameter.belongingTo("part", "limit",
                                 anyStringOr(Datatype.BINARY, Datatype.INTEGER))),
-                Set.of("url", "part", "flat"),
+                of("url", "part", "flat"),
                 (arguments, evaluator, context, refinements) -> {
                     int base = (int) ((IntegerValue) arguments.get(1)).magnitude();
                     requireAKnownBase(base);
@@ -8311,10 +8272,10 @@ public final class Natives {
 
         define("debase", List.of(
                         Parameter.required("value", anyStringOr(Datatype.BINARY)),
-                        Parameter.required("base", Set.of(Datatype.INTEGER)),
+                        Parameter.required("base", of(Datatype.INTEGER)),
                         Parameter.belongingTo("part", "limit",
                                 anyStringOr(Datatype.BINARY, Datatype.INTEGER))),
-                Set.of("url", "part"),
+                of("url", "part"),
                 (arguments, evaluator, context, refinements) -> {
                     int base = (int) ((IntegerValue) arguments.get(1)).magnitude();
                     requireAKnownBase(base);
@@ -8332,11 +8293,11 @@ public final class Natives {
 
         define("checksum", List.of(
                         Parameter.required("data", CHECKSUMMABLE),
-                        Parameter.required("method", Set.of(Datatype.WORD)),
+                        Parameter.required("method", of(Datatype.WORD)),
                         Parameter.belongingTo("with", "spec",
                                 anyStringOr(Datatype.BINARY, Datatype.INTEGER)),
                         Parameter.belongingTo("part", "length", PART_LIMIT)),
-                Set.of("with", "part"),
+                of("with", "part"),
                 (arguments, evaluator, context, refinements) -> {
                     String method = ((WordValue) arguments.get(1)).canonical();
                     if (arguments.getFirst().datatype() == Datatype.FILE) {
@@ -8372,10 +8333,10 @@ public final class Natives {
 
         define("compress", List.of(
                         Parameter.required("data", COMPRESSIBLE),
-                        Parameter.required("method", Set.of(Datatype.WORD)),
+                        Parameter.required("method", of(Datatype.WORD)),
                         Parameter.belongingTo("part", "length", PART_LIMIT),
-                        Parameter.belongingTo("level", "lvl", Set.of(Datatype.INTEGER))),
-                Set.of("part", "level"),
+                        Parameter.belongingTo("level", "lvl", of(Datatype.INTEGER))),
+                of("part", "level"),
                 (arguments, evaluator, context, refinements) -> {
                     String method = requireAKnownCompression(arguments.get(1));
                     Value level = refinements.contains("level")
@@ -8393,11 +8354,11 @@ public final class Natives {
                 });
 
         define("decompress", List.of(
-                        Parameter.required("data", Set.of(Datatype.BINARY)),
-                        Parameter.required("method", Set.of(Datatype.WORD)),
+                        Parameter.required("data", of(Datatype.BINARY)),
+                        Parameter.required("method", of(Datatype.WORD)),
                         Parameter.belongingTo("part", "length", COUNT_OR_POSITION),
-                        Parameter.belongingTo("size", "bytes", Set.of(Datatype.INTEGER))),
-                Set.of("part", "size"),
+                        Parameter.belongingTo("size", "bytes", of(Datatype.INTEGER))),
+                of("part", "size"),
                 (arguments, evaluator, context, refinements) -> {
                     String method = requireAKnownCompression(arguments.get(1));
                     try {
@@ -8423,10 +8384,10 @@ public final class Natives {
         defineCloak("decloak", true);
 
         define("iconv", List.of(
-                        Parameter.required("data", Set.of(Datatype.BINARY)),
+                        Parameter.required("data", of(Datatype.BINARY)),
                         Parameter.required("codepage", characterSetNames()),
                         Parameter.belongingTo("to", "target", characterSetNames())),
-                Set.of("to"),
+                of("to"),
                 (arguments, evaluator, context, refinements) -> {
                     byte[] octets = ((BinaryValue) arguments.getFirst()).octetsFromHere();
                     java.nio.charset.Charset from = characterSetFor(arguments.get(1));
@@ -8443,12 +8404,12 @@ public final class Natives {
                 });
 
         define("filter", List.of(
-                        Parameter.required("data", Set.of(Datatype.BINARY)),
+                        Parameter.required("data", of(Datatype.BINARY)),
                         Parameter.required("width", Typeset.NUMBER.members()),
                         Parameter.required("type",
-                                Set.of(Datatype.INTEGER, Datatype.WORD)),
-                        Parameter.belongingTo("skip", "bpp", Set.of(Datatype.INTEGER))),
-                Set.of("skip"),
+                                of(Datatype.INTEGER, Datatype.WORD)),
+                        Parameter.belongingTo("skip", "bpp", of(Datatype.INTEGER))),
+                of("skip"),
                 (arguments, evaluator, context, refinements) -> {
                     byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
                     int width = (int) Comparison.asDouble(arguments.get(1));
@@ -8459,12 +8420,12 @@ public final class Natives {
                 });
 
         define("unfilter", List.of(
-                        Parameter.required("data", Set.of(Datatype.BINARY)),
+                        Parameter.required("data", of(Datatype.BINARY)),
                         Parameter.required("width", Typeset.NUMBER.members()),
                         Parameter.belongingTo("as", "type",
-                                Set.of(Datatype.INTEGER, Datatype.WORD)),
-                        Parameter.belongingTo("skip", "bpp", Set.of(Datatype.INTEGER))),
-                Set.of("as", "skip"),
+                                of(Datatype.INTEGER, Datatype.WORD)),
+                        Parameter.belongingTo("skip", "bpp", of(Datatype.INTEGER))),
+                of("as", "skip"),
                 (arguments, evaluator, context, refinements) -> {
                     byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
                     int width = (int) Comparison.asDouble(arguments.get(1));
@@ -8481,10 +8442,10 @@ public final class Natives {
                 });
 
         define("swap-endian", List.of(
-                        Parameter.required("value", Set.of(Datatype.BINARY)),
-                        Parameter.belongingTo("width", "bytes", Set.of(Datatype.INTEGER)),
+                        Parameter.required("value", of(Datatype.BINARY)),
+                        Parameter.belongingTo("width", "bytes", of(Datatype.INTEGER)),
                         Parameter.belongingTo("part", "range", COUNT_OR_POSITION)),
-                Set.of("width", "part"),
+                of("width", "part"),
                 (arguments, evaluator, context, refinements) -> {
                     BinaryValue bytes = (BinaryValue) arguments.getFirst();
                     Value asked = refinements.contains("width")
@@ -8515,10 +8476,10 @@ public final class Natives {
 
     private void defineCloak(String name, boolean decode) {
         define(name, List.of(
-                        Parameter.required("data", Set.of(Datatype.BINARY)),
-                        Parameter.required("key", Set.of(Datatype.STRING,
+                        Parameter.required("data", of(Datatype.BINARY)),
+                        Parameter.required("key", of(Datatype.STRING,
                                 Datatype.BINARY, Datatype.INTEGER))),
-                Set.of("with"),
+                of("with"),
                 (arguments, evaluator, context, refinements) -> {
                     BinaryValue data = (BinaryValue) arguments.getFirst();
                     refuseIfProtected(data);
@@ -8547,7 +8508,7 @@ public final class Natives {
     }
 
     private static Set<Datatype> characterSetNames() {
-        return Set.of(Datatype.WORD, Datatype.INTEGER, Datatype.TAG, Datatype.STRING);
+        return of(Datatype.WORD, Datatype.INTEGER, Datatype.TAG, Datatype.STRING);
     }
 
     private static java.nio.charset.Charset characterSetFor(Value asked) {
@@ -8592,7 +8553,7 @@ public final class Natives {
                 continue;
             }
             slot.setValue(clonedAndRebound(slot.value(),
-                    Set.of(from.context()), into.context()));
+                    of(from.context()), into.context()));
         }
     }
 
@@ -8759,11 +8720,11 @@ public final class Natives {
     private static Set<Datatype> anyStringOr(Datatype... alsoAccepted) {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_STRING.members());
         accepted.addAll(List.of(alsoAccepted));
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private void defineInterpreterState() {
-        define("version", List.of(), Set.of("data"),
+        define("version", List.of(), of("data"),
                 (arguments, evaluator, context, refinements) ->
                         refinements.contains("data")
                                 ? TupleValue.of(VERSION_PARTS)
@@ -8771,7 +8732,7 @@ public final class Natives {
 
         define("pokez", List.of(
                         Parameter.required("series", pokeableDatatypes()),
-                        Parameter.required("index", Set.of(Datatype.INTEGER)),
+                        Parameter.required("index", of(Datatype.INTEGER)),
                         Parameter.required("value")),
                 (arguments, evaluator, context) -> {
                     long index = ((IntegerValue) arguments.get(1)).magnitude();
@@ -8785,7 +8746,7 @@ public final class Natives {
                 });
 
         define("to-real-file", List.of(Parameter.required("path",
-                        Set.of(Datatype.FILE, Datatype.STRING))),
+                        of(Datatype.FILE, Datatype.STRING))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.FILES);
                     return throughPort(() -> {
@@ -8798,8 +8759,8 @@ public final class Natives {
                 });
 
         define("recycle", List.of(
-                        Parameter.belongingTo("ballast", "size", Set.of(Datatype.INTEGER))),
-                Set.of("off", "on", "ballast", "torture", "pools"),
+                        Parameter.belongingTo("ballast", "size", of(Datatype.INTEGER))),
+                of("off", "on", "ballast", "torture", "pools"),
                 (arguments, evaluator, context, refinements) -> {
                     if (refinements.contains("off")) {
                         return UnsetValue.unset();
@@ -8809,8 +8770,8 @@ public final class Natives {
 
         define("stats", List.of(
                         Parameter.belongingTo("dump-series", "pool-id",
-                                Set.of(Datatype.INTEGER))),
-                Set.of("show", "profile", "timer", "evals", "dump-series"),
+                                of(Datatype.INTEGER))),
+                of("show", "profile", "timer", "evals", "dump-series"),
                 (arguments, evaluator, context, refinements) -> {
                     if (refinements.contains("dump-series")) {
                         return NoneValue.none();
@@ -8828,7 +8789,7 @@ public final class Natives {
                 });
 
         define("echo", List.of(Parameter.required("target",
-                        Set.of(Datatype.FILE, Datatype.NONE, Datatype.LOGIC))),
+                        of(Datatype.FILE, Datatype.NONE, Datatype.LOGIC))),
                 (arguments, evaluator, context) -> {
                     evaluator.stopEchoing();
                     Value target = arguments.getFirst();
@@ -8854,7 +8815,7 @@ public final class Natives {
 
         define("wait", List.of(Parameter.required("value",
                         waitableDatatypes())),
-                Set.of("all", "only"),
+                of("all", "only"),
                 (arguments, evaluator, context, refinements) -> {
                     Value asked = arguments.getFirst();
                     if (asked instanceof PortValue port
@@ -8898,16 +8859,16 @@ public final class Natives {
                 });
 
         define("do-codec", List.of(
-                        Parameter.required("handle", Set.of(Datatype.HANDLE)),
-                        Parameter.required("action", Set.of(Datatype.WORD)),
-                        Parameter.required("data", Set.of(Datatype.BINARY,
+                        Parameter.required("handle", of(Datatype.HANDLE)),
+                        Parameter.required("action", of(Datatype.WORD)),
+                        Parameter.required("data", of(Datatype.BINARY,
                                 Datatype.IMAGE, Datatype.STRING))),
                 (arguments, evaluator, context) -> ranCodec(
                         (HandleValue) arguments.get(0),
                         (WordValue) arguments.get(1),
                         arguments.get(2)));
 
-        define("release", List.of(Parameter.required("handle", Set.of(Datatype.HANDLE))),
+        define("release", List.of(Parameter.required("handle", of(Datatype.HANDLE))),
                 (arguments, evaluator, context) -> {
                     HandleValue handle = (HandleValue) arguments.get(0);
                     if (handle.payload() instanceof JavaObjectValue carried
@@ -8918,20 +8879,20 @@ public final class Natives {
                     return LogicValue.of(handle.isContext());
                 });
 
-        define("map-event", List.of(Parameter.required("event", Set.of(Datatype.EVENT))),
+        define("map-event", List.of(Parameter.required("event", of(Datatype.EVENT))),
                 (arguments, evaluator, context) -> mappedEvent(
                         (EventValue) arguments.get(0)));
 
         define("wake-up", List.of(
-                        Parameter.required("port", Set.of(Datatype.PORT)),
-                        Parameter.required("event", Set.of(Datatype.EVENT))),
+                        Parameter.required("port", of(Datatype.PORT)),
+                        Parameter.required("event", of(Datatype.EVENT))),
                 (arguments, evaluator, context) -> wokenPort(
                         (PortValue) arguments.get(0), arguments.get(1), evaluator));
 
         define("map-gob-offset", List.of(
-                        Parameter.required("gob", Set.of(Datatype.GOB)),
-                        Parameter.required("xy", Set.of(Datatype.PAIR))),
-                Set.of("reverse"),
+                        Parameter.required("gob", of(Datatype.GOB)),
+                        Parameter.required("xy", of(Datatype.PAIR))),
+                of("reverse"),
                 (arguments, evaluator, context, refinements) -> {
                     GobValue from = (GobValue) arguments.get(0);
                     PairValue point = (PairValue) arguments.get(1);
@@ -8950,7 +8911,7 @@ public final class Natives {
                         colourByteOfRoundingNotTruncating(arguments.get(2))));
 
         define("grayscale", List.of(Parameter.required("target",
-                        Set.of(Datatype.TUPLE, Datatype.IMAGE))),
+                        of(Datatype.TUPLE, Datatype.IMAGE))),
                 (arguments, evaluator, context) -> overEveryColour(arguments.getFirst(),
                         parts -> IntegerValue.of(
                                 Colours.grey(parts[0], parts[1], parts[2])),
@@ -8960,8 +8921,8 @@ public final class Natives {
                         }));
 
         define("luminosity", List.of(Parameter.required("target",
-                        Set.of(Datatype.TUPLE, Datatype.IMAGE))),
-                Set.of("luma"),
+                        of(Datatype.TUPLE, Datatype.IMAGE))),
+                of("luma"),
                 (arguments, evaluator, context, refinements) -> {
                     boolean luma = refinements.contains("luma");
                     return overEveryColour(arguments.getFirst(),
@@ -8975,25 +8936,25 @@ public final class Natives {
                             });
                 });
 
-        define("hsv-to-rgb", List.of(Parameter.required("hsv", Set.of(Datatype.TUPLE))),
+        define("hsv-to-rgb", List.of(Parameter.required("hsv", of(Datatype.TUPLE))),
                 (arguments, evaluator, context) -> recolouredTuple(
                         (TupleValue) arguments.getFirst(),
                         parts -> Colours.hsvToRgb(parts[0], parts[1], parts[2])));
-        define("rgb-to-hsv", List.of(Parameter.required("rgb", Set.of(Datatype.TUPLE))),
+        define("rgb-to-hsv", List.of(Parameter.required("rgb", of(Datatype.TUPLE))),
                 (arguments, evaluator, context) -> recolouredTuple(
                         (TupleValue) arguments.getFirst(),
                         parts -> Colours.rgbToHsv(parts[0], parts[1], parts[2])));
 
         define("color-distance", List.of(
-                        Parameter.required("a", Set.of(Datatype.TUPLE)),
-                        Parameter.required("b", Set.of(Datatype.TUPLE))),
+                        Parameter.required("a", of(Datatype.TUPLE)),
+                        Parameter.required("b", of(Datatype.TUPLE))),
                 (arguments, evaluator, context) -> DecimalValue.of(Colours.perceptionDistance(
                         threeParts((TupleValue) arguments.get(0)),
                         threeParts((TupleValue) arguments.get(1)))));
 
         define("tint", List.of(
-                        Parameter.required("target", Set.of(Datatype.TUPLE, Datatype.IMAGE)),
-                        Parameter.required("rgb", Set.of(Datatype.TUPLE)),
+                        Parameter.required("target", of(Datatype.TUPLE, Datatype.IMAGE)),
+                        Parameter.required("rgb", of(Datatype.TUPLE)),
                         Parameter.required("amount", Typeset.NUMBER.members())),
                 (arguments, evaluator, context) -> {
                     int[] mixture = threeParts((TupleValue) arguments.get(1));
@@ -9004,7 +8965,7 @@ public final class Natives {
                 });
 
         define("limit-usage", List.of(
-                        Parameter.required("field", Set.of(Datatype.WORD)),
+                        Parameter.required("field", of(Datatype.WORD)),
                         Parameter.required("limit", Typeset.NUMBER.members())),
                 (arguments, evaluator, context) -> {
                     UsageLimit which = switch (
@@ -9027,7 +8988,7 @@ public final class Natives {
                 });
 
         define("dump", List.of(Parameter.required("value")),
-                Set.of("fmt"),
+                of("fmt"),
                 (arguments, evaluator, context, refinements) -> arguments.getFirst());
 
         define("check", List.of(Parameter.required("series", Typeset.SERIES.members())),
@@ -9037,7 +8998,7 @@ public final class Natives {
                 });
 
         define("evoke", List.of(Parameter.required("chant",
-                        Set.of(Datatype.WORD, Datatype.BLOCK, Datatype.INTEGER))),
+                        of(Datatype.WORD, Datatype.BLOCK, Datatype.INTEGER))),
                 (arguments, evaluator, context) -> {
                     List<Value> chants = arguments.getFirst() instanceof BlockValue several
                             ? several.remaining()
@@ -9049,8 +9010,8 @@ public final class Natives {
                     return UnsetValue.unset();
                 });
 
-        define("stack", List.of(Parameter.required("offset", Set.of(Datatype.INTEGER))),
-                Set.of("block", "word", "func", "args", "size", "depth", "limit"),
+        define("stack", List.of(Parameter.required("offset", of(Datatype.INTEGER))),
+                of("block", "word", "func", "args", "size", "depth", "limit"),
                 (arguments, evaluator, context, refinements) -> {
                     int offset = (int) ((IntegerValue) arguments.getFirst()).magnitude();
                     int callsOpen = evaluator.callsInProgress().size();
@@ -9125,11 +9086,11 @@ public final class Natives {
         accepted.addAll(Typeset.SERIES.members());
         accepted.add(Datatype.PAIR);
         accepted.add(Datatype.NONE);
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private static final Set<String> SCHEMES_THIS_BUILD_SERVES =
-            Set.of("console", "tcp", "dns", "event", "checksum", "file", "dir",
+            of("console", "tcp", "dns", "event", "checksum", "file", "dir",
                     "crypt");
 
     private static void startTheCipherBehindBlankingTheKeyInTheSpec(PortValue port) {
@@ -9971,7 +9932,7 @@ public final class Natives {
         return written.length() <= width ? written : written.substring(0, width);
     }
 
-    private static final Set<String> DEBUG_ONLY_CHANTS = Set.of(
+    private static final Set<String> DEBUG_ONLY_CHANTS = of(
             "crash-dump", "watch-recycle", "watch-alloc",
             "watch-obj-copy", "watch-expand", "crash");
 
@@ -10028,7 +9989,7 @@ public final class Natives {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.NUMBER.members());
         accepted.addAll(List.of(Datatype.TIME, Datatype.PORT,
                 Datatype.BLOCK, Datatype.NONE));
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private static void sleepInterruptibly(long milliseconds, Evaluator evaluator) {
@@ -10059,17 +10020,17 @@ public final class Natives {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
         accepted.add(Datatype.BITSET);
         accepted.add(Datatype.TUPLE);
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private void defineStrings() {
-        define("find-script", List.of(Parameter.required("script", Set.of(Datatype.BINARY))),
+        define("find-script", List.of(Parameter.required("script", of(Datatype.BINARY))),
                 (arguments, evaluator, context) -> {
                     BinaryValue script = (BinaryValue) arguments.getFirst();
                     int at = headerStartsIn(script.asText());
                     return at < 0 ? NoneValue.none() : script.atIndex(script.index() + at);
                 });
-        define("split-lines", List.of(Parameter.required("value", Set.of(Datatype.STRING))),
+        define("split-lines", List.of(Parameter.required("value", of(Datatype.STRING))),
                 (arguments, evaluator, context) -> {
                     String whole = ((StringValue) arguments.getFirst()).text();
                     if (whole.isEmpty()) {
@@ -10079,22 +10040,22 @@ public final class Natives {
                             .<Value>map(StringValue::of)
                             .toList());
                 });
-        define("wildcard?", List.of(Parameter.required("path", Set.of(Datatype.FILE))),
+        define("wildcard?", List.of(Parameter.required("path", of(Datatype.FILE))),
                 (arguments, evaluator, context) -> LogicValue.of(
                         ((StringValue) arguments.getFirst()).text().chars()
                                 .anyMatch(letter -> letter == '*' || letter == '?')));
         defineCaseChange("uppercase", text -> text.toUpperCase(Locale.ROOT));
         defineCaseChange("lowercase", text -> text.toLowerCase(Locale.ROOT));
         define("trim", List.of(
-                        Parameter.required("text", Set.of(
+                        Parameter.required("text", of(
                                 Datatype.STRING, Datatype.FILE, Datatype.URL,
                                 Datatype.EMAIL, Datatype.TAG, Datatype.REF,
                                 Datatype.BINARY, Datatype.BLOCK, Datatype.PAREN,
                                 Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH,
                                 Datatype.LIT_PATH, Datatype.HASH,
                                 Datatype.OBJECT, Datatype.ERROR, Datatype.MODULE)),
-                        Parameter.belongingTo("with", "characters", Set.of())),
-                Set.of("head", "tail", "auto", "lines", "all", "with"),
+                        Parameter.belongingTo("with", "characters", of())),
+                of("head", "tail", "auto", "lines", "all", "with"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof ObjectValue
                             || arguments.getFirst() instanceof ModuleValue
@@ -10146,7 +10107,7 @@ public final class Natives {
                 });
     }
 
-    private static final Set<Datatype> SHARES_ITS_BRANCH_WITH_MAKE = Set.of(
+    private static final Set<Datatype> SHARES_ITS_BRANCH_WITH_MAKE = of(
             Datatype.ERROR, Datatype.FUNCTION, Datatype.CLOSURE, Datatype.STRUCT);
 
     private static Value objectConvertedFrom(Value value) {
@@ -10210,10 +10171,10 @@ public final class Natives {
                         Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1))));
 
         define("to-hex", List.of(
-                        Parameter.required("value", Set.of(
+                        Parameter.required("value", of(
                                 Datatype.INTEGER, Datatype.CHAR, Datatype.TUPLE)),
-                        Parameter.belongingTo("size", "width", Set.of(Datatype.INTEGER))),
-                Set.of("size"),
+                        Parameter.belongingTo("size", "width", of(Datatype.INTEGER))),
+                of("size"),
                 (arguments, evaluator, context, refinements) -> {
                     OptionalLong width =
                             refinements.contains("size") && arguments.size() > 1
@@ -10235,7 +10196,7 @@ public final class Natives {
 
 
         define("deline", List.of(Parameter.required("text", Typeset.ANY_STRING.members())),
-                Set.of("lines"),
+                of("lines"),
                 (arguments, evaluator, context, refinements) -> {
                     StringValue text = (StringValue) arguments.getFirst();
                     if (refinements.contains("lines")) {
@@ -10247,7 +10208,7 @@ public final class Natives {
                             text, Natives::withOneLineFeedPerEnding);
                 });
         define("enline", List.of(Parameter.required("text",
-                        Set.of(Datatype.STRING, Datatype.BLOCK))),
+                        of(Datatype.STRING, Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     if (arguments.getFirst() instanceof BlockValue) {
                         throw Raised.of(EvaluationFailure.NOT_DONE,
@@ -10875,7 +10836,7 @@ public final class Natives {
         return port;
     }
 
-    private static final Set<Datatype> CAN_NAME_A_SCHEME = Set.of(
+    private static final Set<Datatype> CAN_NAME_A_SCHEME = of(
             Datatype.FILE, Datatype.URL, Datatype.BLOCK,
             Datatype.OBJECT, Datatype.WORD, Datatype.PORT);
 
@@ -12217,13 +12178,13 @@ public final class Natives {
     private void definePorts() {
         define("read", List.of(
                         Parameter.required("source",
-                                Set.of(Datatype.FILE, Datatype.PORT, Datatype.URL,
+                                of(Datatype.FILE, Datatype.PORT, Datatype.URL,
                                         Datatype.BLOCK, Datatype.WORD)),
                         Parameter.belongingTo("part", "length",
-                                Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
+                                of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
                         Parameter.belongingTo("seek", "index",
-                                Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT))),
-                Set.of("part", "seek", "string", "binary", "lines", "all"),
+                                of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT))),
+                of("part", "seek", "string", "binary", "lines", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof PortValue port) {
                         refuseAPortWhoseSpecIsNotAnObject(port);
@@ -12249,15 +12210,15 @@ public final class Natives {
 
         define("write", List.of(
                         Parameter.required("destination",
-                                Set.of(Datatype.FILE, Datatype.PORT, Datatype.URL,
+                                of(Datatype.FILE, Datatype.PORT, Datatype.URL,
                                         Datatype.BLOCK, Datatype.WORD)),
                         Parameter.required("data"),
                         Parameter.belongingTo("part", "length",
-                                Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
+                                of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
                         Parameter.belongingTo("seek", "index",
-                                Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
-                        Parameter.belongingTo("allow", "access", Set.of(Datatype.BLOCK))),
-                Set.of("part", "seek", "append", "allow", "lines", "binary", "all"),
+                                of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
+                        Parameter.belongingTo("allow", "access", of(Datatype.BLOCK))),
+                of("part", "seek", "append", "allow", "lines", "binary", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof PortValue port) {
                         refuseAPortWhoseSpecIsNotAnObject(port);
@@ -12278,8 +12239,8 @@ public final class Natives {
                 });
 
         define("to-local-file", List.of(Parameter.required("path",
-                        Set.of(Datatype.FILE, Datatype.STRING))),
-                Set.of("full"),
+                        of(Datatype.FILE, Datatype.STRING))),
+                of("full"),
                 (arguments, evaluator, context, refinements) -> {
                     String path = ((StringValue) arguments.getFirst()).text();
                     boolean resolvingDots = refinements.contains("full");
@@ -12294,7 +12255,7 @@ public final class Natives {
                 });
 
         define("to-rebol-file", List.of(Parameter.required("path",
-                        Set.of(Datatype.FILE, Datatype.STRING))),
+                        of(Datatype.FILE, Datatype.STRING))),
                 (arguments, evaluator, context) -> StringValue.of(
                         oneSlashPerRunOfSeparators(
                                 ((StringValue) arguments.getFirst()).text()),
@@ -12302,19 +12263,19 @@ public final class Natives {
 
         define("call", List.of(
                         Parameter.required("command",
-                                Set.of(Datatype.STRING, Datatype.BLOCK, Datatype.FILE,
+                                of(Datatype.STRING, Datatype.BLOCK, Datatype.FILE,
                                         Datatype.EMAIL, Datatype.REF, Datatype.TAG,
                                         Datatype.URL)),
                         Parameter.belongingTo("input", "in",
-                                Set.of(Datatype.STRING, Datatype.BINARY,
+                                of(Datatype.STRING, Datatype.BINARY,
                                         Datatype.FILE, Datatype.NONE)),
                         Parameter.belongingTo("output", "out",
-                                Set.of(Datatype.STRING, Datatype.BINARY,
+                                of(Datatype.STRING, Datatype.BINARY,
                                         Datatype.FILE, Datatype.NONE)),
                         Parameter.belongingTo("error", "err",
-                                Set.of(Datatype.STRING, Datatype.BINARY,
+                                of(Datatype.STRING, Datatype.BINARY,
                                         Datatype.FILE, Datatype.NONE))),
-                Set.of("wait", "console", "shell", "info", "input", "output", "error"),
+                of("wait", "console", "shell", "info", "input", "output", "error"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.PROCESSES);
                     ProgramCalling calling = ProgramCalling.asAskedFor(
@@ -12323,7 +12284,7 @@ public final class Natives {
                             calling.answerThrough(evaluator.processes(), evaluator));
                 });
 
-        define("input", List.of(), Set.of("hide"),
+        define("input", List.of(), of("hide"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.CONSOLE);
                     return throughPort(() -> {
@@ -12335,7 +12296,7 @@ public final class Natives {
                 });
 
         define("ask", List.of(Parameter.required("question", Typeset.SERIES.members())),
-                Set.of("hide"),
+                of("hide"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.CONSOLE);
                     return throughPort(() -> {
@@ -12349,7 +12310,7 @@ public final class Natives {
                 });
 
         define("get-env", List.of(Parameter.required("name",
-                        Set.of(Datatype.STRING, Datatype.WORD, Datatype.LIT_WORD))),
+                        of(Datatype.STRING, Datatype.WORD, Datatype.LIT_WORD))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.ENVIRONMENT);
                     return throughPort(() -> {
@@ -12376,9 +12337,9 @@ public final class Natives {
 
         define("set-env", List.of(
                         Parameter.required("name",
-                                Set.of(Datatype.STRING, Datatype.WORD, Datatype.LIT_WORD)),
+                                of(Datatype.STRING, Datatype.WORD, Datatype.LIT_WORD)),
                         Parameter.required("value",
-                                Set.of(Datatype.STRING, Datatype.NONE))),
+                                of(Datatype.STRING, Datatype.NONE))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.ENVIRONMENT);
                     Value given = arguments.get(1);
@@ -12397,7 +12358,7 @@ public final class Natives {
                             evaluator.files().workingDirectory(), Datatype.FILE));
                 });
 
-        define("change-dir", List.of(Parameter.required("path", Set.of(Datatype.FILE))),
+        define("change-dir", List.of(Parameter.required("path", of(Datatype.FILE))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.WORKING_DIRECTORY);
                     String asked = ((StringValue) arguments.getFirst()).text();
@@ -12409,8 +12370,8 @@ public final class Natives {
                     });
                 });
 
-        define("make-dir", List.of(Parameter.required("path", Set.of(Datatype.FILE))),
-                Set.of("deep"),
+        define("make-dir", List.of(Parameter.required("path", of(Datatype.FILE))),
+                of("deep"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.FILES);
                     return throughPort(() -> {
@@ -12422,7 +12383,7 @@ public final class Natives {
                 });
 
         define("create", List.of(Parameter.required("path",
-                        Set.of(Datatype.FILE, Datatype.URL))),
+                        of(Datatype.FILE, Datatype.URL))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.FILES);
                     return throughPort(() -> {
@@ -12437,7 +12398,7 @@ public final class Natives {
                 });
 
         define("delete", List.of(Parameter.required("path",
-                        Set.of(Datatype.FILE, Datatype.URL))),
+                        of(Datatype.FILE, Datatype.URL))),
                 (arguments, evaluator, context) -> {
                     Value target = arguments.getFirst();
                     Optional<String> behindTheUrl =
@@ -12461,9 +12422,9 @@ public final class Natives {
                 });
 
         define("rename", List.of(
-                        Parameter.required("from", Set.of(Datatype.FILE, Datatype.BLOCK,
+                        Parameter.required("from", of(Datatype.FILE, Datatype.BLOCK,
                                 Datatype.PORT, Datatype.URL)),
-                        Parameter.required("to", Set.of(Datatype.FILE, Datatype.BLOCK,
+                        Parameter.required("to", of(Datatype.FILE, Datatype.BLOCK,
                                 Datatype.PORT, Datatype.URL))),
                 (arguments, evaluator, context) -> {
                     for (Value end : List.of(arguments.getFirst(), arguments.get(1))) {
@@ -12475,7 +12436,7 @@ public final class Natives {
                     return movedOrRefusedByTheName(evaluator, arguments);
                 });
 
-        define("read-dir", List.of(Parameter.required("path", Set.of(Datatype.FILE))),
+        define("read-dir", List.of(Parameter.required("path", of(Datatype.FILE))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.FILES);
                     return throughPort(() -> BlockValue.block(
@@ -12485,7 +12446,7 @@ public final class Natives {
                                     .toList()));
                 });
 
-        define("exists?", List.of(Parameter.required("path", Set.of(Datatype.FILE))),
+        define("exists?", List.of(Parameter.required("path", of(Datatype.FILE))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.FILES);
                     return throughPort(() -> LogicValue.of(
@@ -12494,8 +12455,8 @@ public final class Natives {
                 });
 
         define("dir?", List.of(Parameter.required("target",
-                        Set.of(Datatype.FILE, Datatype.URL, Datatype.NONE))),
-                Set.of("check"),
+                        of(Datatype.FILE, Datatype.URL, Datatype.NONE))),
+                of("check"),
                 (arguments, evaluator, context, refinements) -> {
                     Value target = arguments.getFirst();
                     if (!(target instanceof StringValue address)
@@ -12511,7 +12472,7 @@ public final class Natives {
                 });
 
         define("set-scheme", List.of(
-                        Parameter.required("scheme", Set.of(Datatype.OBJECT))),
+                        Parameter.required("scheme", of(Datatype.OBJECT))),
                 (arguments, evaluator, context) -> {
                     ObjectValue scheme = (ObjectValue) arguments.getFirst();
                     Value given = scheme.context().holds("name")
@@ -12530,8 +12491,8 @@ public final class Natives {
                         arguments.getFirst() instanceof PortValue));
 
         define("open", List.of(Parameter.required("spec"),
-                        Parameter.belongingTo("allow", "access", Set.of(Datatype.BLOCK))),
-                Set.of("new", "read", "write", "seek", "allow"),
+                        Parameter.belongingTo("allow", "access", of(Datatype.BLOCK))),
+                of("new", "read", "write", "seek", "allow"),
                 (arguments, evaluator, context, refinements) -> {
                     Value built = arguments.getFirst() instanceof PortValue already
                             ? already
@@ -12567,10 +12528,10 @@ public final class Natives {
                     return port;
                 });
 
-        define("update", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
+        define("update", List.of(Parameter.required("port", of(Datatype.PORT))),
                 (arguments, evaluator, context) -> {
                     Optional<Value> itsOwn =
-                            theRebolActorsAnswer("update", arguments, Set.of(), evaluator);
+                            theRebolActorsAnswer("update", arguments, of(), evaluator);
                     if (itsOwn.isPresent()) {
                         return itsOwn.get();
                     }
@@ -12587,16 +12548,16 @@ public final class Natives {
                     return NoneValue.none();
                 });
 
-        define("flush", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
+        define("flush", List.of(Parameter.required("port", of(Datatype.PORT))),
                 (arguments, evaluator, context) -> {
                     evaluator.output().flush();
                     return arguments.getFirst();
                 });
 
-        define("open?", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
+        define("open?", List.of(Parameter.required("port", of(Datatype.PORT))),
                 (arguments, evaluator, context) -> {
                     Optional<Value> itsOwn =
-                            theRebolActorsAnswer("open?", arguments, Set.of(), evaluator);
+                            theRebolActorsAnswer("open?", arguments, of(), evaluator);
                     if (itsOwn.isPresent()) {
                         return itsOwn.get();
                     }
@@ -12607,10 +12568,10 @@ public final class Natives {
                     return LogicValue.of(port.isOpen());
                 });
 
-        define("close", List.of(Parameter.required("port", Set.of(Datatype.PORT))),
+        define("close", List.of(Parameter.required("port", of(Datatype.PORT))),
                 (arguments, evaluator, context) -> {
                     Optional<Value> itsOwn =
-                            theRebolActorsAnswer("close", arguments, Set.of(), evaluator);
+                            theRebolActorsAnswer("close", arguments, of(), evaluator);
                     if (itsOwn.isPresent()) {
                         return itsOwn.get();
                     }
@@ -12628,12 +12589,12 @@ public final class Natives {
                 });
 
         define("modify", List.of(
-                        Parameter.required("target", Set.of(Datatype.PORT, Datatype.FILE)),
-                        Parameter.required("field", Set.of(Datatype.WORD, Datatype.NONE)),
+                        Parameter.required("target", of(Datatype.PORT, Datatype.FILE)),
+                        Parameter.required("field", of(Datatype.WORD, Datatype.NONE)),
                         Parameter.required("value")),
                 (arguments, evaluator, context) -> {
                     Optional<Value> itsOwn =
-                            theRebolActorsAnswer("modify", arguments, Set.of(), evaluator);
+                            theRebolActorsAnswer("modify", arguments, of(), evaluator);
                     if (itsOwn.isPresent()) {
                         return itsOwn.get();
                     }
@@ -12662,7 +12623,7 @@ public final class Natives {
                 });
 
         define("browse", List.of(Parameter.required("url",
-                        Set.of(Datatype.URL, Datatype.FILE, Datatype.NONE))),
+                        of(Datatype.URL, Datatype.FILE, Datatype.NONE))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.WINDOWS);
                     return throughWindow(() -> {
@@ -12675,10 +12636,10 @@ public final class Natives {
                 });
 
         define("request-file", List.of(
-                        Parameter.belongingTo("file", "name", Set.of(Datatype.FILE)),
-                        Parameter.belongingTo("title", "text", Set.of(Datatype.STRING)),
-                        Parameter.belongingTo("filter", "list", Set.of(Datatype.BLOCK))),
-                Set.of("save", "multi", "file", "title", "filter"),
+                        Parameter.belongingTo("file", "name", of(Datatype.FILE)),
+                        Parameter.belongingTo("title", "text", of(Datatype.STRING)),
+                        Parameter.belongingTo("filter", "list", of(Datatype.BLOCK))),
+                of("save", "multi", "file", "title", "filter"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.WINDOWS);
                     List<String> filters = filterPairsIn(arguments, refinements);
@@ -12703,9 +12664,9 @@ public final class Natives {
                 });
 
         define("request-dir", List.of(
-                        Parameter.belongingTo("title", "text", Set.of(Datatype.STRING)),
-                        Parameter.belongingTo("dir", "name", Set.of(Datatype.FILE))),
-                Set.of("title", "dir", "keep"),
+                        Parameter.belongingTo("title", "text", of(Datatype.STRING)),
+                        Parameter.belongingTo("dir", "name", of(Datatype.FILE))),
+                of("title", "dir", "keep"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.WINDOWS);
                     return throughWindow(() -> evaluator.windows().chooseDirectory(
@@ -12718,8 +12679,8 @@ public final class Natives {
                 });
 
         define("request-color", List.of(
-                        Parameter.belongingTo("default", "color", Set.of(Datatype.TUPLE))),
-                Set.of("default"),
+                        Parameter.belongingTo("default", "color", of(Datatype.TUPLE))),
+                of("default"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.WINDOWS);
                     return throughWindow(() -> {
@@ -12743,13 +12704,13 @@ public final class Natives {
                 });
 
         define("query", List.of(
-                        Parameter.required("target", Set.of(Datatype.FILE, Datatype.DATE,
+                        Parameter.required("target", of(Datatype.FILE, Datatype.DATE,
                                 Datatype.HANDLE, Datatype.PORT, Datatype.URL,
                                 Datatype.BLOCK, Datatype.WORD, Datatype.VECTOR)),
                         Parameter.required("field",
-                                Set.of(Datatype.WORD, Datatype.BLOCK,
+                                of(Datatype.WORD, Datatype.BLOCK,
                                         Datatype.NONE, Datatype.DATATYPE))),
-                Set.of("mode"),
+                of("mode"),
                 (arguments, evaluator, context, refinements) -> {
                     Optional<Value> itsOwn = theRebolActorsAnswer(
                             "query", arguments, refinements, evaluator);
@@ -12764,7 +12725,7 @@ public final class Natives {
                     if (target instanceof DateValue date) {
                         return questionedByField(field, evaluator,
                                 DatePart.partNames(),
-                                part -> DatePart.of(date, WordValue.of(part)));
+                                part -> DatePart.readFrom(date, WordValue.of(part)));
                     }
                     if (target instanceof HandleValue handle) {
                         return questionedByField(field, evaluator,
@@ -13465,13 +13426,13 @@ public final class Natives {
     private static Set<Datatype> aBlockOrAnyWord() {
         Set<Datatype> accepted = EnumSet.copyOf(ANY_WORD_DATATYPES);
         accepted.add(Datatype.BLOCK);
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private static Set<Datatype> anyObjectOr(Datatype... alsoAccepted) {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_OBJECT.members());
         accepted.addAll(List.of(alsoAccepted));
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private static final Set<Datatype> PART_LIMIT = java.util.stream.Stream.concat(
@@ -13485,19 +13446,19 @@ public final class Natives {
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     private static final Set<Datatype> CHECKSUMMABLE =
-            Set.of(Datatype.BINARY, Datatype.STRING, Datatype.FILE);
+            of(Datatype.BINARY, Datatype.STRING, Datatype.FILE);
 
     private static final Set<Datatype> COMPRESSIBLE =
-            Set.of(Datatype.BINARY, Datatype.STRING);
+            of(Datatype.BINARY, Datatype.STRING);
 
     private static final Set<Datatype> REMOVE_RANGE = java.util.stream.Stream.concat(
             PART_LIMIT.stream(), java.util.stream.Stream.of(Datatype.CHAR))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
-    private static final Set<Datatype> DUP_COUNT = Set.of(
+    private static final Set<Datatype> DUP_COUNT = of(
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT, Datatype.PAIR);
 
-    private static final Set<String> CONSOLE_MODES = Set.of("echo", "line", "error");
+    private static final Set<String> CONSOLE_MODES = of("echo", "line", "error");
 
     private static Value libraryFunction(Context context, String name) {
         if (!context.knows(name)) {
@@ -13721,7 +13682,7 @@ public final class Natives {
     private record WordsToResolve(int startAt, Set<String> spellings, boolean limited) {
 
         static WordsToResolve everything() {
-            return new WordsToResolve(1, Set.of(), false);
+            return new WordsToResolve(1, of(), false);
         }
 
         boolean allows(String canonical) {
@@ -13739,7 +13700,7 @@ public final class Natives {
         if (onlyThese instanceof IntegerValue position) {
             int startAt = Math.max(1, (int) position.magnitude());
             if (startAt > targetSlots.size()) {
-                return new WordsToResolve(startAt, Set.of(), true);
+                return new WordsToResolve(startAt, of(), true);
             }
             return new WordsToResolve(startAt,
                     targetSlots.subList(startAt - 1, targetSlots.size()).stream()
@@ -13977,7 +13938,7 @@ public final class Natives {
                     "append on a file port is a write, and takes no dup or only");
         }
         return writtenToTheFileBehind(
-                port, data, evaluator, List.of(), Set.of("append"));
+                port, data, evaluator, List.of(), of("append"));
     }
 
     private Value writtenToTheFileBehind(
@@ -14073,20 +14034,20 @@ public final class Natives {
         Set<Datatype> accepted = EnumSet.of(Datatype.DATATYPE);
         accepted.addAll(Typeset.ANY_BLOCK.members());
         accepted.addAll(Typeset.ANY_STRING.members());
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private static Set<Datatype> copyable() {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
         accepted.addAll(Typeset.ANY_FUNCTION.members());
-        accepted.addAll(Set.of(Datatype.ACTION, Datatype.CLOSURE,
+        accepted.addAll(of(Datatype.ACTION, Datatype.CLOSURE,
                 Datatype.COMMAND, Datatype.REBCODE, Datatype.STRUCT));
         accepted.add(Datatype.PORT);
         accepted.add(Datatype.MAP);
         accepted.add(Datatype.OBJECT);
         accepted.add(Datatype.BITSET);
         accepted.add(Datatype.ERROR);
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private static Set<Datatype> positionable() {
@@ -14094,7 +14055,7 @@ public final class Natives {
         accepted.add(Datatype.PORT);
         accepted.add(Datatype.NONE);
         accepted.add(Datatype.GOB);
-        return Set.copyOf(accepted);
+        return copyOf(accepted);
     }
 
     private static Value pathInto(Context context, String... names) {
@@ -14573,7 +14534,7 @@ public final class Natives {
     }
 
     private static final Set<String> THE_SCHEMES_THAT_ARE_QUEUES =
-            Set.of("system", "event", "callback");
+            of("system", "event", "callback");
 
     private static Optional<BlockValue> theEventQueueOf(Value value) {
         if (!(value instanceof PortValue port)
@@ -14699,7 +14660,7 @@ public final class Natives {
     private void defineParse() {
         define("parse", List.of(Parameter.required("input", PARSEABLE),
                         Parameter.required("rule")),
-                Set.of("case"),
+                of("case"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(1)) {
                     case BlockValue rule -> arguments.get(0) instanceof StringValue
                             || arguments.get(0) instanceof BinaryValue
@@ -14720,7 +14681,7 @@ public final class Natives {
                         arguments.get(0), arguments.get(1)));
     }
 
-    private static final Set<Datatype> CLAMPABLE = Set.of(
+    private static final Set<Datatype> CLAMPABLE = of(
             Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
             Datatype.TUPLE, Datatype.PAIR, Datatype.MONEY);
 
@@ -14837,17 +14798,17 @@ public final class Natives {
 
     private void defineScreen() {
         define("init-top-window",
-                List.of(Parameter.required("gob", Set.of(Datatype.GOB))),
+                List.of(Parameter.required("gob", of(Datatype.GOB))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.WINDOWS);
                     return theRootGobTakenBy(evaluator.screen(), arguments.getFirst());
                 });
 
         define("gui-metric",
-                List.of(Parameter.required("keyword", Set.of(Datatype.WORD)),
+                List.of(Parameter.required("keyword", of(Datatype.WORD)),
                         Parameter.belongingTo("set", "val", ANYTHING),
-                        Parameter.belongingTo("display", "idx", Set.of(Datatype.INTEGER))),
-                Set.of("set", "display"),
+                        Parameter.belongingTo("display", "idx", of(Datatype.INTEGER))),
+                of("set", "display"),
                 (arguments, evaluator, context, refinements) -> {
                     requireService(HostService.WINDOWS);
                     return measurementOf(evaluator.screen(),
@@ -14857,7 +14818,7 @@ public final class Natives {
 
         define("show",
                 List.of(Parameter.required("gob",
-                        Set.of(Datatype.GOB, Datatype.NONE, Datatype.BLOCK))),
+                        of(Datatype.GOB, Datatype.NONE, Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     requireService(HostService.WINDOWS);
                     return whatWasShown(evaluator.screen(), arguments.getFirst());
@@ -14959,8 +14920,8 @@ public final class Natives {
 
     private void defineOutput() {
         define("mold", List.of(Parameter.required("value", ANYTHING),
-                        Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER))),
-                Set.of("all", "only", "flat", "part"),
+                        Parameter.belongingTo("part", "limit", of(Datatype.INTEGER))),
+                of("all", "only", "flat", "part"),
                 (arguments, evaluator, context, refinements) -> {
                     Function<Value, String> written =
                             refinements.contains("only")
@@ -14987,8 +14948,8 @@ public final class Natives {
         define("form", takesAnything("value"),
                 (arguments, evaluator, context) -> StringValue.of(Molder.form(arguments.get(0))));
 
-        define("quit", List.of(Parameter.belongingTo("return", "value", Set.of())),
-                Set.of("now", "return"),
+        define("quit", List.of(Parameter.belongingTo("return", "value", of())),
+                of("now", "return"),
                 (arguments, evaluator, context, refinements) -> {
                     throw new QuitRequested(refinements.contains("return")
                             ? arguments.getFirst()

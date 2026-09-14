@@ -49,6 +49,36 @@ public record TimeValue(long nanoseconds) implements Value {
         return Math.abs(nanoseconds) % NANOSECONDS_PER_SECOND;
     }
 
+    private static final long NANOSECONDS_PER_MINUTE =
+            SECONDS_PER_MINUTE * NANOSECONDS_PER_SECOND;
+
+    private long hoursCountedWithTheirSign() {
+        return nanoseconds / NANOSECONDS_PER_HOUR;
+    }
+
+    private long minutesCountedWithTheirSign() {
+        return nanoseconds % NANOSECONDS_PER_HOUR / NANOSECONDS_PER_MINUTE;
+    }
+
+    public TimeValue withTheHour(long hours) {
+        return ofNanoseconds(nanoseconds
+                - hoursCountedWithTheirSign() * NANOSECONDS_PER_HOUR
+                + hours * NANOSECONDS_PER_HOUR);
+    }
+
+    public TimeValue withTheMinute(long minutes) {
+        return ofNanoseconds(nanoseconds
+                - minutesCountedWithTheirSign() * NANOSECONDS_PER_MINUTE
+                + minutes * NANOSECONDS_PER_MINUTE);
+    }
+
+    public TimeValue withTheSecondOf(long secondsInNanoseconds) {
+        long secondsPart = nanoseconds
+                - hoursCountedWithTheirSign() * NANOSECONDS_PER_HOUR
+                - minutesCountedWithTheirSign() * NANOSECONDS_PER_MINUTE;
+        return ofNanoseconds(nanoseconds - secondsPart + secondsInNanoseconds);
+    }
+
     @Override
     public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
         return java.util.Optional.of(inHundredths(
