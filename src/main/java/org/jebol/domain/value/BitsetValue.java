@@ -2,17 +2,6 @@ package org.jebol.domain.value;
 
 import java.util.Arrays;
 
-/**
- * A set of character codes, held as bits.
- *
- * <p>Membership is a lookup rather than a search, which is what a bitset is
- * for: a PARSE rule saying "any of these characters" without listing them
- * as alternatives, and a delimiter set that does not care how many
- * delimiters there are.
- *
- * <p>Not a series. It has no position and no order, so FIND answers whether
- * something is in it rather than where -- the one place FIND gives a logic.
- */
 public final class BitsetValue implements Value {
 
     private static final int BITS_PER_OCTET = 8;
@@ -35,52 +24,20 @@ public final class BitsetValue implements Value {
         return protectedFromChange;
     }
 
-    /** Whether this set means everything except what its bits name. */
     public boolean isComplemented() {
         return complemented;
     }
 
-    /**
-     * A set with the same members, holding its own octets.
-     *
-     * <p>COPY on a bitset has to duplicate the octets. A bitset can be
-     * written through a path, and a shallow copy means that writing to the
-     * copy writes to the original: Rebol's own url-parser copies the URI set
-     * from the catalogue and adds a percent sign to the copy, and with a
-     * shallow copy the catalogue's own set gained the percent sign as well.
-     * Every later use of it was then wrong, and nothing pointed at COPY.
-     *
-     * <p>The octets travel and the complement does not, which reads like a
-     * mistake and is what REBOL does: {@code copy complement charset "a"} is
-     * the plain set, holding only the letter it was told to leave out. The
-     * copy arm is one line, {@code VAL_SERIES(value) =
-     * Copy_Series_Value(value)}, and a fresh series carries no flag -- where
-     * COMPLEMENT, two arms above it, sets {@code BITS_NOT(ser)} by hand
-     * because it has to. MAKE from another bitset is the same line and loses
-     * it the same way.
-     *
-     * <p>Carrying the flag over is the reading that looks right and is not
-     * the one a real 3.22.1 gives, so a script that copies a complemented set
-     * gets the opposite answer to every question it then asks.
-     */
     public BitsetValue duplicate() {
         return new BitsetValue(octets.clone());
     }
 
-    /** A set of everything this one leaves out. */
     public BitsetValue complemented() {
         BitsetValue turned = new BitsetValue(octets.clone());
         turned.complemented = !complemented;
         return turned;
     }
 
-    /**
-     * Adds every member of another set to this one, in place.
-     *
-     * <p>In place because APPEND on a bitset changes the set the caller
-     * holds, the way APPEND on a series does. Answering a new set would
-     * leave the caller's unchanged and look like the call did nothing.
-     */
     public void addAll(BitsetValue others) {
         byte[] theirs = others.octets;
         if (theirs.length > octets.length) {
@@ -93,10 +50,6 @@ public final class BitsetValue implements Value {
         }
     }
 
-    /**
-     * Puts every member of another set in, or takes every one out, minding
-     * the complement the way {@link #hold} does.
-     */
     public void holdAll(BitsetValue members, boolean wanted) {
         byte[] theirs = members.octets;
         for (int code = 0; code < theirs.length * BITS_PER_OCTET; code++) {
@@ -106,13 +59,6 @@ public final class BitsetValue implements Value {
         }
     }
 
-    /**
-     * Clears the raw bits another set names, whatever the complement says.
-     *
-     * <p>What the C's REMOVE does: it reaches {@code Set_Bits(..., FALSE)}
-     * without the sense-inversion APPEND, INSERT and POKE all get. The spec
-     * parks whether that is meant for a complemented set.
-     */
     public void clearAllDirectly(BitsetValue members) {
         byte[] theirs = members.octets;
         for (int code = 0; code < theirs.length * BITS_PER_OCTET; code++) {
@@ -126,7 +72,6 @@ public final class BitsetValue implements Value {
         return new BitsetValue(octets.clone());
     }
 
-    /** A bitset holding every code in the text. */
     public static BitsetValue ofCharacters(int... codes) {
         if (codes.length == 0) {
             return new BitsetValue(new byte[0]);
@@ -154,23 +99,6 @@ public final class BitsetValue implements Value {
         return complemented != namesDirectly(code);
     }
 
-    /**
-     * Whether the set holds a character when either case will do.
-     *
-     * <p>{@code Check_Bit} takes an {@code uncased} flag and tries the
-     * lowercase first, then the uppercase, and only then turns the answer
-     * round for a complemented set. Both tries happen before the flip, so a
-     * complemented set holds a letter when neither case of it is named.
-     *
-     * <p>FIND asks for this and PICK does not, which is the whole of
-     * {@code IS_CHAR(arg) && action == A_FIND && !D_REF(ARG_FIND_CASE)}:
-     * only a char, only FIND, and only without /case. An integer naming the
-     * same code point is always asked exactly.
-     *
-     * <p>Above the folding table the C leaves the character alone, so this
-     * does too. Folding further would answer questions about scripts REBOL
-     * itself does not fold.
-     */
     public boolean holdsEitherCaseOf(int code) {
         boolean held = code >= UNICODE_FOLDING_TABLE_SIZE
                 ? namesDirectly(code)
@@ -181,21 +109,6 @@ public final class BitsetValue implements Value {
 
     private static final int UNICODE_FOLDING_TABLE_SIZE = 0x2E00;
 
-    /**
-     * Puts a character in the set, or takes it out.
-     *
-     * <p>{@code PD_Bitset} writes a bit through a path, and it minds the
-     * complement flag: {@code t = IS_TRUE(val); if (BITS_NOT(ser)) t = !t;}.
-     * A complemented set holds every character its octets do not name, thus
-     * to put a character into one, the octet for that character is cleared.
-     *
-     * <p>The inversion changes nothing for an ordinary set, which is why it
-     * is easy to leave out and hard to notice afterwards.
-     *
-     * <p>Changes this set rather than answering a new one, because a path
-     * writes through to the value the word holds and a parse rule that
-     * already names that word has to see the change.
-     */
     public void hold(int code, boolean wanted) {
         if (complemented == wanted) {
             clearDirectly(code);
@@ -217,14 +130,6 @@ public final class BitsetValue implements Value {
                 && (octets[octet] & (1 << (7 - code % BITS_PER_OCTET))) != 0;
     }
 
-    /**
-     * Empties the set, length and all.
-     *
-     * <p>`Clear_Series(VAL_SERIES(value))` -- so a cleared set holds nothing
-     * rather than holding zero bits, and `length? clear make bitset! "ab"` is 0
-     * rather than 8. The C weighs the two readings in a comment beside the arm
-     * and takes this one.
-     */
     public void clear() {
         octets = new byte[0];
     }

@@ -957,7 +957,7 @@ public final class Natives {
                     case BitsetValue members -> members.complemented();
                     case BinaryValue bytes -> newBytesEachFlipped(bytes);
                     case ImageValue image -> newImageEachChannelFlipped(image);
-                    case TypesetValue kinds -> complementOfTypeset(kinds);
+                    case TypesetValue kinds -> new TypesetActions(kinds).complemented();
                     case TupleValue tuple -> flippedOctets(tuple);
                     default -> raiseWrongArgument(
                             arguments.get(0), "complement", "logic or integer");
@@ -6717,7 +6717,7 @@ public final class Natives {
             return clock.nanoseconds() == 0;
         }
         if (value instanceof MoneyValue amount) {
-            return amount.amount().signum() == 0;
+            return new MoneyActions(amount).isNoAmountAtAll();
         }
         return Comparison.isNumeric(value) && Comparison.asDouble(value) == 0.0;
     }
@@ -8505,12 +8505,6 @@ public final class Natives {
                 Datatype.BITSET, Datatype.TYPESET, Datatype.STRING, Datatype.MAP);
         accepted.addAll(List.of(alsoAccepted));
         return Set.copyOf(accepted);
-    }
-
-    private static TypesetValue complementOfTypeset(TypesetValue members) {
-        Set<Datatype> rest = EnumSet.allOf(Datatype.class);
-        rest.removeAll(members.members());
-        return TypesetValue.of(Set.copyOf(rest));
     }
 
     private static double roundedBy(double value, Set<String> refinements) {
@@ -11572,7 +11566,7 @@ public final class Natives {
             case TYPESET -> switch (value) {
                 case TypesetValue already -> already;
                 case BlockValue block when block.datatype() == Datatype.BLOCK ->
-                        TypesetValue.of(datatypesNamedIn(block));
+                        TypesetValue.of(TypesetActions.datatypesNamedIn(block));
                 default -> raiseBadMakeArg(value, "typeset!");
             };
             case TIME -> aTimeMadeFrom(value);
@@ -12052,38 +12046,6 @@ public final class Natives {
 
     private static final int MOST_HEX_DIGITS_SCANNED = 16;
 
-    private static Set<Datatype> datatypesNamedIn(BlockValue spec) {
-        Set<Datatype> found = EnumSet.noneOf(Datatype.class);
-        for (Value item : spec.remaining()) {
-            if (!namedTypesAddedFrom(item, found)) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(item));
-            }
-        }
-        return found;
-    }
-
-    private static boolean namedTypesAddedFrom(Value item, Set<Datatype> found) {
-        if (item instanceof DatatypeValue datatype) {
-            found.add(datatype.represents());
-            return true;
-        }
-        if (item instanceof TypesetValue typeset) {
-            found.addAll(typeset.members());
-            return true;
-        }
-        if (!(item instanceof WordValue word)) {
-            return false;
-        }
-        String spelling = word.spelling();
-        Optional<Datatype> one = Datatype.named(spelling);
-        one.ifPresent(found::add);
-        Optional<Typeset> family = Typeset.named(spelling.endsWith("!")
-                ? spelling.substring(0, spelling.length() - 1)
-                : spelling);
-        family.ifPresent(members -> found.addAll(members.members()));
-        return one.isPresent() || family.isPresent();
-    }
-
     private static Value asPair(Value value) {
         return switch (value) {
             case PairValue pair -> pair;
@@ -12098,7 +12060,7 @@ public final class Natives {
     }
 
     private static Value asMoney(Conversion asking, Value value) {
-        return Arithmetic.withinTheDeciRange(switch (value) {
+        return MoneyActions.withinTheDeciRange(switch (value) {
             case MoneyValue already -> already;
             case IntegerValue whole -> MoneyValue.of(BigDecimal.valueOf(whole.magnitude()));
             case DecimalValue quantity ->
@@ -15318,8 +15280,8 @@ public final class Natives {
                     clipped(point.y(), ((PairValue) lowest).y(), ((PairValue) highest).y()));
             case TupleValue parts -> clampedTuple(
                     parts, (TupleValue) lowest, (TupleValue) highest);
-            case MoneyValue amount -> clampedMoney(
-                    amount, (MoneyValue) lowest, (MoneyValue) highest);
+            case MoneyValue amount -> new MoneyActions(amount).heldBetween(
+                    (MoneyValue) lowest, (MoneyValue) highest);
             default -> value;
         };
     }
@@ -15335,18 +15297,6 @@ public final class Natives {
             held[at] = Math.max(low, Math.min(high, octets[at]));
         }
         return TupleValue.of(held);
-    }
-
-    private static Value clampedMoney(
-            MoneyValue value, MoneyValue lowest, MoneyValue highest) {
-
-        if (value.amount().compareTo(lowest.amount()) <= 0) {
-            return lowest;
-        }
-        if (highest.amount().compareTo(value.amount()) <= 0) {
-            return highest;
-        }
-        return value;
     }
 
     private static double clipped(double value, double lowest, double highest) {

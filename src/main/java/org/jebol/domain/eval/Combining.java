@@ -321,8 +321,8 @@ public final class Combining {
 
             @Override
             Value combine(TwoSets asked) {
-                return typesetsDatatypeByDatatype((TypesetValue) asked.first(),
-                        (TypesetValue) asked.second(), asked.how());
+                return new TypesetActions((TypesetValue) asked.first())
+                        .combinedWith((TypesetValue) asked.second(), asked.how());
             }
         },
 
@@ -403,28 +403,6 @@ public final class Combining {
             };
         }
         return BitsetValue.of(both);
-    }
-
-    private static TypesetValue typesetsDatatypeByDatatype(
-            TypesetValue ours, TypesetValue theirs, Sets how) {
-
-        Set<Datatype> mine = ours.members();
-        Set<Datatype> yours = theirs.members();
-        Set<Datatype> result = EnumSet.noneOf(Datatype.class);
-        for (Datatype each : Datatype.values()) {
-            boolean inMine = mine.contains(each);
-            boolean inYours = yours.contains(each);
-            boolean kept = switch (how) {
-                case UNION -> inMine || inYours;
-                case INTERSECT -> inMine && inYours;
-                case DIFFERENCE -> inMine ^ inYours;
-                case EXCLUDE -> inMine && !inYours;
-            };
-            if (kept) {
-                result.add(each);
-            }
-        }
-        return TypesetValue.of(Set.copyOf(result));
     }
 
     private static MapValue mapsKeyByKey(TwoSets asked) {

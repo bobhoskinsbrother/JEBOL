@@ -114,7 +114,7 @@ public final class Arithmetic {
         };
     }
 
-    private enum Operation { ADD, SUBTRACT, MULTIPLY, DIVIDE, REMAINDER, MODULO }
+    enum Operation { ADD, SUBTRACT, MULTIPLY, DIVIDE, REMAINDER, MODULO }
 
     private static Value combined(Value left, Value right, Operation operation) {
         return theKindThatClaims(left, right).combine(left, right, operation);
@@ -245,7 +245,7 @@ public final class Arithmetic {
 
             @Override
             Value combine(Value left, Value right, Operation operation) {
-                return moneyCombined((MoneyValue) left, right, operation);
+                return new MoneyActions((MoneyValue) left).combinedWith(right, operation);
             }
         },
 
@@ -269,8 +269,8 @@ public final class Arithmetic {
 
             @Override
             Value combine(Value left, Value right, Operation operation) {
-                return moneyCombined(
-                        MoneyValue.of(asBigDecimal(left)), right, operation);
+                return new MoneyActions(MoneyValue.of(MoneyActions.asBigDecimal(left)))
+                        .combinedWith(right, operation);
             }
         },
 
@@ -556,8 +556,8 @@ public final class Arithmetic {
         BigDecimal hours = BigDecimal.valueOf(
                 nanosecondsOf(left) / (double) TimeValue.NANOSECONDS_PER_HOUR);
         return switch (operation) {
-            case MULTIPLY -> moneyCombined(hours, rate.amount(), operation);
-            case DIVIDE -> moneyCombined(rate.amount(), hours, operation);
+            case MULTIPLY -> MoneyActions.amountCombined(hours, rate.amount(), operation);
+            case DIVIDE -> MoneyActions.amountCombined(rate.amount(), hours, operation);
             default -> throw notRelatedToATime(operation);
         };
     }
@@ -618,51 +618,6 @@ public final class Arithmetic {
         return nanoseconds;
     }
 
-    private static Value moneyCombined(MoneyValue amount, Value other, Operation operation) {
-        return withinTheDeciRange((MoneyValue) moneyCombined(
-                amount.amount(), widenedToMeetMoney(other, operation), operation));
-    }
-
-    private static Value moneyCombined(
-            BigDecimal left, BigDecimal right, Operation operation) {
-
-        return switch (operation) {
-            case ADD -> MoneyValue.of(left.add(right));
-            case SUBTRACT -> MoneyValue.of(left.subtract(right));
-            case MULTIPLY -> MoneyValue.of(left.multiply(right, MoneyValue.ARITHMETIC));
-            case DIVIDE -> {
-                requireNonZero(right.doubleValue());
-                yield MoneyValue.of(left.divide(right, MoneyValue.ARITHMETIC));
-            }
-            case REMAINDER -> {
-                requireNonZero(right.doubleValue());
-                yield MoneyValue.of(left.remainder(right, MoneyValue.ARITHMETIC));
-            }
-            case MODULO -> {
-                requireNonZero(right.doubleValue());
-                BigDecimal rest = left.remainder(right, MoneyValue.ARITHMETIC);
-                yield MoneyValue.of(rest.signum() < 0 ? rest.add(right.abs()) : rest);
-            }
-        };
-    }
-
-    private static BigDecimal widenedToMeetMoney(Value other, Operation operation) {
-        if (other instanceof TimeValue span) {
-            if (operation != Operation.MULTIPLY) {
-                throw Raised.of(EvaluationFailure.NOT_RELATED,
-                        "only multiplication takes a time on the right of a money");
-            }
-            return BigDecimal.valueOf(
-                    (double) span.nanoseconds() / TimeValue.NANOSECONDS_PER_HOUR);
-        }
-        if (other instanceof MoneyValue
-                || other instanceof IntegerValue
-                || other instanceof DecimalValue) {
-            return asBigDecimal(other);
-        }
-        throw Raised.of(EvaluationFailure.NOT_RELATED,
-                other.datatype().literalSpelling() + " does not go with money arithmetic");
-    }
 
     private static Value likeTheDividend(Value dividend, double magnitude) {
         return switch (dividend) {
@@ -696,23 +651,6 @@ public final class Arithmetic {
         };
     }
 
-    static BigDecimal asBigDecimal(Value value) {
-        return switch (value) {
-            case MoneyValue money -> money.amount();
-            case IntegerValue integer -> BigDecimal.valueOf(integer.magnitude());
-            case DecimalValue decimal -> BigDecimal.valueOf(decimal.quantity());
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    value.datatype().literalSpelling() + " is not a number");
-        };
-    }
-
-    static MoneyValue withinTheDeciRange(MoneyValue amount) {
-        if (!amount.isWithinTheDeciRange()) {
-            throw Raised.of(EvaluationFailure.OVERFLOW,
-                    "a money holds twenty-six digits and a power of ten from -128 to 127");
-        }
-        return amount;
-    }
 
     static long dayNumberOf(DateValue date) {
         return LocalDate.of(date.year(), date.month(), date.day()).toEpochDay();
