@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * segments are rejoined with the slashes they were written with, because a
  * path formed without them is not the path.
  */
-public final class StringActions implements Actions {
+public final class StringActions extends SeriesActions {
 
     private final StringValue text;
 
@@ -27,21 +27,18 @@ public final class StringActions implements Actions {
     }
 
     @Override
-    public Value subject() {
+    StringValue held() {
         return text;
+    }
+
+    @Override
+    void takeOneOutAt(int oneBasedIndex) {
+        text.storage().removeAt(oneBasedIndex);
     }
 
     @Override
     public Value cleared() {
-        while (text.storage().length() >= text.index()) {
-            text.storage().removeAt(text.index());
-        }
-        return text;
-    }
-
-    @Override
-    public int length() {
-        return text.lengthFromHere();
+        return clearedOneAtATime();
     }
 
     @Override

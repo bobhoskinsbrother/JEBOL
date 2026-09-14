@@ -13,7 +13,7 @@ import org.jebol.domain.value.Value;
  * of its text, an integer contributes one byte, and a block contributes
  * whatever each of its items contributes in turn.
  */
-public final class BinaryActions implements Actions {
+public final class BinaryActions extends SeriesActions {
 
     private final BinaryValue bytes;
 
@@ -22,21 +22,18 @@ public final class BinaryActions implements Actions {
     }
 
     @Override
-    public Value subject() {
+    BinaryValue held() {
         return bytes;
+    }
+
+    @Override
+    void takeOneOutAt(int oneBasedIndex) {
+        bytes.storage().removeAt(oneBasedIndex);
     }
 
     @Override
     public Value cleared() {
-        while (bytes.storage().length() >= bytes.index()) {
-            bytes.storage().removeAt(bytes.index());
-        }
-        return bytes;
-    }
-
-    @Override
-    public int length() {
-        return bytes.lengthFromHere();
+        return clearedOneAtATime();
     }
 
     @Override

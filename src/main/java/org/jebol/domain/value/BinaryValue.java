@@ -1,6 +1,5 @@
 package org.jebol.domain.value;
 
-/** A position into binary storage, written {@code #{DEADBEEF}}. */
 public record BinaryValue(BinaryStorage storage, int index) implements SeriesValue {
 
     public BinaryValue {
@@ -17,26 +16,10 @@ public record BinaryValue(BinaryStorage storage, int index) implements SeriesVal
         return new BinaryValue(BinaryStorage.of(octets), 1);
     }
 
-    /**
-     * The octets from here on, read as UTF-8 text.
-     *
-     * <p>What TRANSCODE needs: a script that has read a file holds a
-     * binary, and reading source out of it means deciding an encoding.
-     * UTF-8 is what REBOL 3 sources are.
-     */
     public String asText() {
         return new String(octetsFromHere(), java.nio.charset.StandardCharsets.UTF_8);
     }
 
-    /**
-     * The octets from here on, as octets.
-     *
-     * <p>What anything that wants the bytes themselves needs. Going through
-     * {@link #asText()} and back loses every byte above 0x7F, because
-     * decoding as UTF-8 turns an octet that is not valid UTF-8 into the
-     * replacement character. That is how {@code make bitset! #{FF}} came out
-     * holding {@code #{3F}}, which is a question mark.
-     */
     public byte[] octetsFromHere() {
         byte[] octets = new byte[storageLength() - index + 1];
         for (int at = 0; at < octets.length; at++) {

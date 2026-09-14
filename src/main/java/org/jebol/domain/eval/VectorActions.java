@@ -15,7 +15,7 @@ import java.util.List;
  * numbers its bytes spell, dropping any odd bytes at the end that cannot make
  * a whole one.
  */
-public final class VectorActions implements Actions {
+public final class VectorActions extends SeriesActions {
 
     private final VectorValue vector;
 
@@ -24,19 +24,20 @@ public final class VectorActions implements Actions {
     }
 
     @Override
-    public Value subject() {
+    VectorValue held() {
         return vector;
     }
 
+    @Override
+    void takeOneOutAt(int oneBasedIndex) {
+        vector.storage().removeAt(oneBasedIndex);
+    }
+
+    /** A vector drops a whole run at once rather than one number at a time. */
     @Override
     public Value cleared() {
         vector.storage().clearFrom(vector.index());
         return vector;
-    }
-
-    @Override
-    public int length() {
-        return vector.lengthFromHere();
     }
 
     @Override

@@ -16,7 +16,7 @@ import org.jebol.domain.value.Value;
  * that would have stopped /DUP ever reaching it, and is kept only because
  * ImageSeries takes it.
  */
-public final class ImageActions implements Actions {
+public final class ImageActions extends SeriesActions {
 
     private final ImageValue picture;
 
@@ -25,13 +25,13 @@ public final class ImageActions implements Actions {
     }
 
     @Override
-    public Value subject() {
+    ImageValue held() {
         return picture;
     }
 
     @Override
-    public int length() {
-        return picture.lengthFromHere();
+    void takeOneOutAt(int oneBasedIndex) {
+        picture.storage().removeFrom(oneBasedIndex, 1);
     }
 
     @Override

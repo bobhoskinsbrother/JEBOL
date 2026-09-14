@@ -18,7 +18,7 @@ import java.util.List;
  * <p>None of /PART, /ONLY or /DUP is served, and saying so is the first thing
  * either arm does.
  */
-public final class GobActions implements Actions {
+public final class GobActions extends SeriesActions {
 
     private final GobValue gob;
 
@@ -27,20 +27,21 @@ public final class GobActions implements Actions {
     }
 
     @Override
-    public Value subject() {
+    GobValue held() {
         return gob;
     }
 
+    @Override
+    void takeOneOutAt(int oneBasedIndex) {
+        gob.storage().removeChildren(oneBasedIndex, 1);
+    }
+
+    /** A pane drops the whole run of children at once. */
     @Override
     public Value cleared() {
         gob.storage().removeChildren(gob.index(),
                 gob.storage().length() - gob.index() + 1);
         return gob;
-    }
-
-    @Override
-    public int length() {
-        return gob.lengthFromHere();
     }
 
     @Override

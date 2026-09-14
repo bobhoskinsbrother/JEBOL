@@ -5052,12 +5052,8 @@ public final class Natives {
                                 "/key removes from a map or a bitset, not a series");
                     }
                     long howMany = howManyWanted(series, arguments, refinements, 1).orElse(1L);
-                    SeriesValue removingFrom = theRunReachingBackIfNegative(series, howMany);
-                    for (long dropped = 0; dropped < Math.abs(howMany)
-                            && !removingFrom.atTail(); dropped++) {
-                        removeOneAt(removingFrom, removingFrom.index());
-                    }
-                    return removingFrom;
+                    return ((SeriesActions) Actions.of((Value) series).orElseThrow())
+                            .removed(howMany);
                 });
 
         define("reverse", List.of(Parameter.required("series"),
@@ -5131,8 +5127,10 @@ public final class Natives {
                             series = series.atIndex((int) (series.index() - back));
                             taking = back;
                         }
+                        SeriesActions arms = (SeriesActions)
+                                Actions.of((Value) series).orElseThrow();
                         for (long gone = 0; gone < taking && !series.atTail(); gone++) {
-                            removeOneAt(series, series.index());
+                            arms.takeOneOutAt(series.index());
                         }
                         int before = series.storageLength();
                         insertInto(series, replacement);
@@ -6887,17 +6885,6 @@ public final class Natives {
             return Math.abs(upTo.index() - from.index());
         }
         return -1;
-    }
-
-    private static void removeOneAt(SeriesValue series, int index) {
-        switch (series) {
-            case BlockValue block -> block.storage().removeAt(index);
-            case StringValue text -> text.storage().removeAt(index);
-            case BinaryValue bytes -> bytes.storage().removeAt(index);
-            case ImageValue image -> image.storage().removeFrom(index, 1);
-            case GobValue gob -> gob.storage().removeChildren(index, 1);
-            case VectorValue vector -> vector.storage().removeAt(index);
-        }
     }
 
     private static Value reversedTextACharacterAtATime(StringValue text) {

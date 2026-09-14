@@ -19,7 +19,7 @@ import java.util.List;
  * lines keeps those breaks when it is spliced into another, because where a
  * line ends is a property of the block rather than of how it is printed.
  */
-public final class BlockActions implements Actions {
+public final class BlockActions extends SeriesActions {
 
     private final BlockValue block;
 
@@ -28,21 +28,18 @@ public final class BlockActions implements Actions {
     }
 
     @Override
-    public Value subject() {
+    BlockValue held() {
         return block;
+    }
+
+    @Override
+    void takeOneOutAt(int oneBasedIndex) {
+        block.storage().removeAt(oneBasedIndex);
     }
 
     @Override
     public Value cleared() {
-        while (block.storage().length() >= block.index()) {
-            block.storage().removeAt(block.index());
-        }
-        return block;
-    }
-
-    @Override
-    public int length() {
-        return block.lengthFromHere();
+        return clearedOneAtATime();
     }
 
     @Override
