@@ -57,6 +57,11 @@ public final class BitsetActions implements Actions {
     }
 
     @Override
+    public Value complemented() {
+        return members.complemented();
+    }
+
+    @Override
     public Value append(Asked asked) {
         return givenTheBitsOf(asked);
     }

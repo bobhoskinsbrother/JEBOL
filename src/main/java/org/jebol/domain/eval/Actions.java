@@ -82,4 +82,18 @@ public interface Actions {
     default int length() {
         throw Raised.cannotUse(subject(), "length?");
     }
+
+    /**
+     * COMPLEMENT: everything this one is not.
+     *
+     * <p>What that means is the datatype's own: a bitset turns its
+     * membership round, a binary and an integer turn their bits over, a
+     * typeset answers the datatypes it excluded, and an image flips every
+     * channel of every pixel.
+     */
+    default Value complemented() {
+        throw Raised.of(EvaluationFailure.EXPECT_ARG,
+                "complement wanted a logic or integer, not a "
+                        + subject().datatype().literalSpelling());
+    }
 }

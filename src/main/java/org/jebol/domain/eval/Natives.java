@@ -954,11 +954,10 @@ public final class Natives {
                 (arguments, evaluator, context) -> switch (arguments.get(0)) {
                     case LogicValue truth -> LogicValue.of(!truth.truth());
                     case IntegerValue whole -> IntegerValue.of(~whole.magnitude());
-                    case BitsetValue members -> members.complemented();
-                    case BinaryValue bytes -> newBytesEachFlipped(bytes);
-                    case ImageValue image -> newImageEachChannelFlipped(image);
                     case TypesetValue kinds -> new TypesetActions(kinds).complemented();
-                    case TupleValue tuple -> flippedOctets(tuple);
+                    case TupleValue tuple -> new TupleActions(tuple).complemented();
+                    case Value subject when Actions.of(subject).isPresent() ->
+                            Actions.of(subject).orElseThrow().complemented();
                     default -> raiseWrongArgument(
                             arguments.get(0), "complement", "logic or integer");
                 });
@@ -1422,34 +1421,6 @@ public final class Natives {
             int held = octets[at];
             octets[at] = octets[width - at - 1];
             octets[width - at - 1] = held;
-        }
-        return TupleValue.of(octets);
-    }
-
-    private static Value newImageEachChannelFlipped(ImageValue image) {
-        ImageStorage flipped = ImageStorage.of(
-                image.storage().wide(), image.storage().high());
-        for (int pixel = 1; pixel <= image.storage().length(); pixel++) {
-            int[] channels = image.storage().pixelAt(pixel);
-            flipped.setColourAt(pixel,
-                    ~channels[0] & 0xFF, ~channels[1] & 0xFF, ~channels[2] & 0xFF);
-            flipped.setAlphaAt(pixel, ~channels[3] & 0xFF);
-        }
-        return new ImageValue(flipped, 1);
-    }
-
-    private static Value newBytesEachFlipped(BinaryValue bytes) {
-        byte[] flipped = bytes.octetsFromHere();
-        for (int at = 0; at < flipped.length; at++) {
-            flipped[at] = (byte) ~flipped[at];
-        }
-        return new BinaryValue(new BinaryStorage(flipped), 1);
-    }
-
-    private static Value flippedOctets(TupleValue tuple) {
-        int[] octets = tuple.segments();
-        for (int at = 0; at < octets.length; at++) {
-            octets[at] = 255 - octets[at];
         }
         return TupleValue.of(octets);
     }

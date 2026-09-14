@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.BinaryStorage;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.Value;
 
@@ -36,6 +37,15 @@ public final class BinaryActions implements Actions {
     @Override
     public int length() {
         return bytes.lengthFromHere();
+    }
+
+    @Override
+    public Value complemented() {
+        byte[] flipped = bytes.octetsFromHere();
+        for (int at = 0; at < flipped.length; at++) {
+            flipped[at] = (byte) ~flipped[at];
+        }
+        return new BinaryValue(new BinaryStorage(flipped), 1);
     }
 
     @Override

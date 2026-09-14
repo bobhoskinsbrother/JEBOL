@@ -27,6 +27,19 @@ public final class TupleActions {
         this.left = left;
     }
 
+    /**
+     * COMPLEMENT, which subtracts each octet from 255 rather than turning its
+     * bits over, so a colour complements to the colour a reader expects and
+     * not to a number that happens to share its bits.
+     */
+    public Value complemented() {
+        int[] octets = ((TupleValue) left).segments();
+        for (int at = 0; at < octets.length; at++) {
+            octets[at] = 255 - octets[at];
+        }
+        return TupleValue.of(octets);
+    }
+
     /** ADD, SUBTRACT, MULTIPLY, DIVIDE, REMAINDER and MODULO, octet by octet. */
     Value combinedWith(Value right, Arithmetic.Operation operation) {
         return octetByOctet(left, right, (octet, against, fractional) ->
