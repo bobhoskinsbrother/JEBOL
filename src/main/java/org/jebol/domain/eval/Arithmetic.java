@@ -1,8 +1,6 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.IntegerValue;
@@ -15,10 +13,7 @@ import org.jebol.domain.value.VectorValue;
 import org.jebol.domain.value.WordValue;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.Locale;
-import java.util.Optional;
 
 /**
  * The one arithmetic every arithmetic native reaches. Five operations --
@@ -167,7 +162,8 @@ public final class Arithmetic {
 
             @Override
             Value combine(Value left, Value right, Operation operation) {
-                return characterCombined((CharacterValue) left, right, operation);
+                return new CharacterActions((CharacterValue) left)
+                        .combinedWith(right, operation);
             }
         },
 
@@ -179,16 +175,7 @@ public final class Arithmetic {
 
             @Override
             Value combine(Value left, Value right, Operation operation) {
-                requireAPairOrAPlainNumber(left);
-                requireAPairOrAPlainNumber(right);
-                if (operation == Operation.DIVIDE || operation == Operation.REMAINDER
-                        || operation == Operation.MODULO) {
-                    requireNonZero(firstHalfOf(right));
-                    requireNonZero(secondHalfOf(right));
-                }
-                return PairValue.of(
-                        halfCombined(firstHalfOf(left), firstHalfOf(right), operation),
-                        halfCombined(secondHalfOf(left), secondHalfOf(right), operation));
+                return new PairActions(left).combinedWith(right, operation);
             }
         },
 
@@ -200,8 +187,7 @@ public final class Arithmetic {
 
             @Override
             Value combine(Value left, Value right, Operation operation) {
-                return octetByOctet(left, right, (octet, against, fractional) ->
-                        octetCombined(octet, against, fractional, operation));
+                return new TupleActions(left).combinedWith(right, operation);
             }
         },
 
@@ -213,7 +199,9 @@ public final class Arithmetic {
 
             @Override
             Value combine(Value left, Value right, Operation operation) {
-                return dateCombined(left, right, operation);
+                return left instanceof DateValue moment
+                        ? new DateActions(moment).combinedWith(right, operation)
+                        : new DateActions((DateValue) right).takenBy(left, operation);
             }
         },
 
@@ -257,7 +245,9 @@ public final class Arithmetic {
 
             @Override
             Value combine(Value left, Value right, Operation operation) {
-                return timeCombined(left, right, operation);
+                return left instanceof TimeValue span
+                        ? new TimeActions(span).combinedWith(right, operation)
+                        : new TimeActions((TimeValue) right).takenBy(left, operation);
             }
         },
 
@@ -340,7 +330,7 @@ public final class Arithmetic {
         }
     }
 
-    private static Value decimalCombined(double left, double right, Operation operation) {
+    static Value decimalCombined(double left, double right, Operation operation) {
         return decimalCombined(left, right, operation, false);
     }
 
@@ -366,256 +356,6 @@ public final class Arithmetic {
                 yield DecimalValue.of(rest < 0 ? rest + Math.abs(right) : rest);
             }
         };
-    }
-
-    private static Value characterCombined(
-            CharacterValue letter, Value right, Operation operation) {
-
-        long other = switch (right) {
-            case CharacterValue another -> another.codepoint();
-            case IntegerValue whole -> whole.magnitude();
-            case DecimalValue fraction -> (long) fraction.quantity();
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "a character takes a character or a number, not a "
-                            + right.datatype().literalSpelling());
-        };
-        long codepoint = letter.codepoint();
-        long answered = switch (operation) {
-            case ADD -> codepoint + other;
-            case SUBTRACT -> codepoint - other;
-            case MULTIPLY -> codepoint * other;
-            case DIVIDE -> dividedBy(codepoint, other);
-            case REMAINDER -> restOf(codepoint, other);
-            case MODULO -> throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    "cannot use that on a character");
-        };
-        if (operation == Operation.SUBTRACT && right instanceof CharacterValue) {
-            return IntegerValue.of(answered);
-        }
-        return CharacterValue.of(requireACodepoint(answered));
-    }
-
-    private static long dividedBy(long codepoint, long other) {
-        if (other == 0) {
-            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
-        }
-        return codepoint / other;
-    }
-
-    private static long restOf(long codepoint, long other) {
-        if (other == 0) {
-            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
-        }
-        return codepoint % other;
-    }
-
-    private static int requireACodepoint(long wanted) {
-        boolean surrogate = wanted >= 0xD800 && wanted <= 0xDFFF;
-        if (wanted < 0 || wanted > CharacterValue.MAXIMUM_CODEPOINT || surrogate) {
-            throw Raised.of(EvaluationFailure.INVALID_CHAR, IntegerValue.of(wanted));
-        }
-        return (int) wanted;
-    }
-
-    private static void requireAPairOrAPlainNumber(Value side) {
-        if (side instanceof PairValue
-                || side instanceof IntegerValue
-                || side instanceof DecimalValue) {
-            return;
-        }
-        throw Raised.of(EvaluationFailure.NOT_RELATED,
-                side.datatype().literalSpelling() + " does not go with pair arithmetic");
-    }
-
-    private static double halfCombined(double left, double right, Operation operation) {
-        return ((DecimalValue) decimalCombined(left, right, operation)).quantity();
-    }
-
-    private static long octetCombined(
-            long octet, double against, boolean fractional, Operation operation) {
-
-        return switch (operation) {
-            case ADD -> octet + (long) against;
-            case SUBTRACT -> octet - (long) against;
-            case MULTIPLY -> {
-                if (octet == 0) {
-                    yield 0;
-                }
-                if (against > 255) {
-                    yield 255;
-                }
-                yield fractional ? (long) (octet * against) : octet * (long) against;
-            }
-            case DIVIDE -> {
-                if (against == 0) {
-                    throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "tuple");
-                }
-                yield fractional
-                        ? (long) roundedHalfAwayFromZero(octet / against)
-                        : octet / (long) against;
-            }
-            case REMAINDER, MODULO -> {
-                if ((long) against == 0) {
-                    throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "tuple");
-                }
-                yield octet % (long) against;
-            }
-        };
-    }
-
-    private static Value dateCombined(Value left, Value right, Operation operation) {
-        if (left instanceof DateValue from && right instanceof DateValue to) {
-            if (operation != Operation.SUBTRACT) {
-                throw Raised.cannotUse(left, "date arithmetic");
-            }
-            return IntegerValue.of(dayNumberOf(from) - dayNumberOf(to));
-        }
-        if (operation == Operation.SUBTRACT && !(left instanceof DateValue)) {
-            throw Raised.of(EvaluationFailure.NOT_RELATED,
-                    WordValue.of(operation.name().toLowerCase(Locale.ROOT) + ":"),
-                    DatatypeValue.of(left.datatype()));
-        }
-        DateValue moment = left instanceof DateValue date ? date : (DateValue) right;
-        Value span = left instanceof DateValue ? right : left;
-        int sign = operation == Operation.SUBTRACT ? -1 : 1;
-        return span.datatype() == Datatype.INTEGER
-                ? dateMovedByDays(moment, sign * (long) Comparison.asDouble(span))
-                : dateMovedByClock(moment, sign * clockShiftOf(span));
-    }
-
-    private static DateValue dateMovedByDays(DateValue moment, long days) {
-        LocalDate shifted = LocalDate.ofEpochDay(dayNumberOf(moment) + days);
-        return new DateValue(shifted.getYear(), shifted.getMonthValue(),
-                shifted.getDayOfMonth(), moment.timeOfDay(), moment.zoneMinutes());
-    }
-
-    private static DateValue dateMovedByClock(DateValue moment, long nanoseconds) {
-        long shifted = moment.timeOfDay().map(TimeValue::nanoseconds).orElse(0L)
-                + nanoseconds;
-        LocalDate day = LocalDate.ofEpochDay(dayNumberOf(moment)
-                + Math.floorDiv(shifted, TimeValue.NANOSECONDS_PER_DAY));
-        return new DateValue(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
-                Optional.of(TimeValue.ofNanoseconds(
-                        Math.floorMod(shifted, TimeValue.NANOSECONDS_PER_DAY))),
-                moment.zoneMinutes());
-    }
-
-    private static long clockShiftOf(Value span) {
-        return span instanceof TimeValue duration
-                ? duration.nanoseconds()
-                : (long) (Comparison.asDouble(span) * TimeValue.NANOSECONDS_PER_DAY);
-    }
-
-    private static Value timeCombined(Value left, Value right, Operation operation) {
-        if (!(left instanceof TimeValue) && right instanceof TimeValue duration) {
-            return aNumberAgainstATime(left, duration, operation);
-        }
-        if (right instanceof TimeValue other) {
-            return aTimeAgainstATime(left, other, operation);
-        }
-        if (right instanceof MoneyValue rate) {
-            return aTimeAgainstAMoney(left, rate, operation);
-        }
-        if (right instanceof DecimalValue portion
-                && portion.datatype() == Datatype.PERCENT) {
-            return aTimeAgainstAProportion(left, portion, operation);
-        }
-        if (!(right instanceof IntegerValue) && !(right instanceof DecimalValue)) {
-            throw notRelatedToATime(operation);
-        }
-        if (operation == Operation.MULTIPLY || operation == Operation.DIVIDE) {
-            long scaled = (long) ((DecimalValue) decimalCombined(
-                    nanosecondsOf(left), Comparison.asDouble(right), operation)).quantity();
-            return TimeValue.ofNanoseconds(scaled);
-        }
-        return addedInWholeNanoseconds(left, right, operation);
-    }
-
-    private static Raised notRelatedToATime(Operation operation) {
-        return Raised.of(EvaluationFailure.NOT_RELATED,
-                WordValue.of(operation.name().toLowerCase(Locale.ROOT)),
-                DatatypeValue.of(Datatype.TIME));
-    }
-
-    private static Value aTimeAgainstATime(
-            Value left, TimeValue right, Operation operation) {
-
-        if (operation == Operation.DIVIDE) {
-            requireNonZero(right.nanoseconds());
-            return DecimalValue.of(nanosecondsOf(left) / (double) right.nanoseconds());
-        }
-        if (operation == Operation.MULTIPLY) {
-            throw notRelatedToATime(operation);
-        }
-        return addedInWholeNanoseconds(left, right, operation);
-    }
-
-    private static Value aTimeAgainstAMoney(
-            Value left, MoneyValue rate, Operation operation) {
-
-        BigDecimal hours = BigDecimal.valueOf(
-                nanosecondsOf(left) / (double) TimeValue.NANOSECONDS_PER_HOUR);
-        return switch (operation) {
-            case MULTIPLY -> MoneyActions.amountCombined(hours, rate.amount(), operation);
-            case DIVIDE -> MoneyActions.amountCombined(rate.amount(), hours, operation);
-            default -> throw notRelatedToATime(operation);
-        };
-    }
-
-    private static Value aTimeAgainstAProportion(
-            Value left, DecimalValue portion, Operation operation) {
-
-        if (operation != Operation.MULTIPLY) {
-            throw notRelatedToATime(operation);
-        }
-        return TimeValue.ofNanoseconds((long) (nanosecondsOf(left) * portion.quantity()));
-    }
-
-    private static Value aNumberAgainstATime(
-            Value left, TimeValue right, Operation operation) {
-
-        boolean allowed = switch (operation) {
-            case ADD, MULTIPLY -> true;
-            case SUBTRACT -> left instanceof IntegerValue;
-            case DIVIDE, REMAINDER, MODULO -> false;
-        };
-        if (!allowed) {
-            throw notRelatedToATime(operation);
-        }
-        if (operation == Operation.SUBTRACT) {
-            return addedInWholeNanoseconds(left, right, operation);
-        }
-        return timeCombined(right, left, operation);
-    }
-
-    private static Value addedInWholeNanoseconds(
-            Value left, Value right, Operation operation) {
-
-        long ours = wholeNanosecondsOf(left);
-        long theirs = wholeNanosecondsOf(right);
-        return TimeValue.ofNanoseconds(withinWhatADurationHolds(switch (operation) {
-            case ADD -> ours + theirs;
-            case SUBTRACT -> ours - theirs;
-            default -> {
-                requireNonZero(theirs);
-                yield operation == Operation.REMAINDER
-                        ? ours % theirs
-                        : Math.floorMod(ours, theirs);
-            }
-        }));
-    }
-
-    private static double nanosecondsOf(Value value) {
-        return value instanceof TimeValue time
-                ? time.nanoseconds()
-                : Comparison.asDouble(value) * TimeValue.NANOSECONDS_PER_SECOND;
-    }
-
-    private static long withinWhatADurationHolds(long nanoseconds) {
-        if (nanoseconds < -TimeValue.LONGEST || nanoseconds > TimeValue.LONGEST) {
-            throw Raised.of(EvaluationFailure.TYPE_LIMIT, DatatypeValue.of(Datatype.TIME));
-        }
-        return nanoseconds;
     }
 
 
@@ -652,79 +392,15 @@ public final class Arithmetic {
     }
 
 
-    static long dayNumberOf(DateValue date) {
-        return LocalDate.of(date.year(), date.month(), date.day()).toEpochDay();
-    }
-
-    static long wholeNanosecondsOf(Value value) {
-        if (value instanceof TimeValue time) {
-            return time.nanoseconds();
-        }
-        if (value instanceof IntegerValue seconds) {
-            return seconds.magnitude() * TimeValue.NANOSECONDS_PER_SECOND;
-        }
-        return Math.round(Comparison.asDouble(value) * TimeValue.NANOSECONDS_PER_SECOND);
-    }
-
     static void requireNonZero(double divisor) {
         if (divisor == 0.0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }
     }
 
-    static double firstHalfOf(Value value) {
-        return value instanceof PairValue pair ? pair.x() : Comparison.asDouble(value);
-    }
-
-    static double secondHalfOf(Value value) {
-        return value instanceof PairValue pair ? pair.y() : Comparison.asDouble(value);
-    }
-
-    static double roundedHalfAwayFromZero(double amount) {
-        return amount < 0 ? -Math.round(-amount) : Math.round(amount);
-    }
-
     static Raised notRelated(Value left, Value right) {
         return Raised.of(EvaluationFailure.NOT_RELATED,
                 WordValue.of(left.datatype().literalSpelling()),
                 WordValue.of(right.datatype().literalSpelling()));
-    }
-
-    @FunctionalInterface
-    interface OctetWork {
-        long against(long octet, double amount, boolean fractional);
-    }
-
-    static Value octetByOctet(Value left, Value right, OctetWork work) {
-        refuseATimeBesideATuple(left, right);
-        if (!(left instanceof TupleValue ours)) {
-            throw Raised.cannotUse(left, "tuple arithmetic");
-        }
-        TupleValue theirs = right instanceof TupleValue tuple ? tuple : null;
-        if (theirs == null && !Comparison.isNumeric(right)) {
-            throw Raised.cannotUse(right, "tuple arithmetic");
-        }
-        int width = theirs == null
-                ? ours.segmentCount()
-                : Math.max(ours.segmentCount(), theirs.segmentCount());
-        boolean fractional = right.datatype() == Datatype.DECIMAL
-                || right.datatype() == Datatype.PERCENT;
-        double amount = theirs == null ? Comparison.asDouble(right) : 0;
-
-        int[] answer = new int[width];
-        for (int at = 1; at <= width; at++) {
-            long worked = work.against(ours.octetAt(at),
-                    theirs == null ? amount : theirs.octetAt(at), fractional);
-            answer[at - 1] = (int) Math.max(0, Math.min(255, worked));
-        }
-        return TupleValue.of(answer);
-    }
-
-    private static void refuseATimeBesideATuple(Value left, Value right) {
-        if (left instanceof TimeValue || right instanceof TimeValue) {
-            throw Raised.of(EvaluationFailure.NOT_RELATED,
-                    DatatypeValue.of(Datatype.TIME),
-                    DatatypeValue.of(Datatype.TUPLE));
-        }
     }
 }

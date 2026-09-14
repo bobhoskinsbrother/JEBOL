@@ -132,8 +132,8 @@ public final class Combining {
             Value combine(Value left, Value right, Bitwise operation) {
                 PairValue point = (PairValue) left;
                 return PairValue.of(
-                        bitsOf(point.x(), Arithmetic.firstHalfOf(right), operation),
-                        bitsOf(point.y(), Arithmetic.secondHalfOf(right), operation));
+                        bitsOf(point.x(), PairActions.firstHalfOf(right), operation),
+                        bitsOf(point.y(), PairActions.secondHalfOf(right), operation));
             }
 
             private long bitsOf(double ours, double theirs, Bitwise operation) {
@@ -150,7 +150,7 @@ public final class Combining {
 
             @Override
             Value combine(Value left, Value right, Bitwise operation) {
-                return Arithmetic.octetByOctet(left, right,
+                return TupleActions.octetByOctet(left, right,
                         (octet, against, fractional) ->
                                 combinedBits(octet, (long) against, operation));
             }

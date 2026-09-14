@@ -1482,7 +1482,7 @@ public final class Natives {
                 || seconds > MOST_SECONDS_A_DURATION_HOLDS) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, value);
         }
-        return TimeValue.ofNanoseconds(Arithmetic.wholeNanosecondsOf(value));
+        return TimeValue.ofNanoseconds(TimeActions.wholeNanosecondsOf(value));
     }
 
     private static final double MOST_SECONDS_A_DURATION_HOLDS = 9_223_372_036.0;
@@ -1622,7 +1622,7 @@ public final class Natives {
     }
 
     private static Value timeBetween(DateValue from, DateValue to) {
-        long days = Arithmetic.dayNumberOf(from) - Arithmetic.dayNumberOf(to);
+        long days = DateActions.dayNumberOf(from) - DateActions.dayNumberOf(to);
         return TimeValue.ofNanoseconds(days * TimeValue.NANOSECONDS_PER_DAY);
     }
 
