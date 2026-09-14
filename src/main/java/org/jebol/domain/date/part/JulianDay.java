@@ -1,5 +1,9 @@
-package org.jebol.domain.date;
+package org.jebol.domain.date.part;
 
+import org.jebol.domain.eval.EvaluationFailure;
+import org.jebol.domain.eval.Raised;
+import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.TimeValue;
 
@@ -82,14 +86,18 @@ final class JulianDay {
 
     private static LocalDate aDayThatMayHaveRolledOver(int year, int month, int day) {
         if (year < 0 || year > WIDEST_YEAR_A_DATE_HOLDS) {
-            throw DatePart.noDateReachesThatYear();
+            throw noDateReachesThatYear();
         }
         try {
             return LocalDate.of(year, 1, 1)
                     .plusMonths(month - 1L)
                     .plusDays(day - 1L);
         } catch (java.time.DateTimeException | ArithmeticException unreachable) {
-            throw DatePart.noDateReachesThatYear();
+            throw noDateReachesThatYear();
         }
+    }
+
+    private static Raised noDateReachesThatYear() {
+        return Raised.of(EvaluationFailure.TYPE_LIMIT, DatatypeValue.of(Datatype.DATE));
     }
 }

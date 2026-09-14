@@ -1,7 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.date.DateMaking;
-import org.jebol.domain.date.DatePart;
+import org.jebol.domain.date.part.DatePart;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.parse.Parser;

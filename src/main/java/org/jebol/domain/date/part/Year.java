@@ -1,0 +1,18 @@
+package org.jebol.domain.date.part;
+
+import org.jebol.domain.value.DateValue;
+import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.Value;
+
+final class Year implements WritableDateField {
+
+    @Override
+    public Value readFrom(DateValue date) {
+        return IntegerValue.of(date.year());
+    }
+
+    @Override
+    public DateValue writtenOn(DateValue date, Assigned given) {
+        return date.onTheDay(given.asWholeNumber(), date.month(), date.day());
+    }
+}
