@@ -6,19 +6,6 @@ import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
 
-/**
- * What a tuple does when an action is performed on it, which is what
- * {@code REBTYPE(Tuple)} answers in {@code t-tuple.c}.
- *
- * <p>A tuple works octet by octet and every answer is clipped back into a
- * byte, because a tuple is a colour or a version rather than a row of
- * numbers. Two guards in the C are not obvious and are kept here: a zero
- * octet multiplied is left alone rather than made zero again, and a
- * multiplier above 255 saturates instead of overflowing.
- *
- * <p>A time beside a tuple is refused before anything else is asked, which is
- * the one pairing the C singles out.
- */
 public final class TupleActions {
 
     private final Value left;
@@ -27,11 +14,6 @@ public final class TupleActions {
         this.left = left;
     }
 
-    /**
-     * COMPLEMENT, which subtracts each octet from 255 rather than turning its
-     * bits over, so a colour complements to the colour a reader expects and
-     * not to a number that happens to share its bits.
-     */
     public Value complemented() {
         int[] octets = ((TupleValue) left).segments();
         for (int at = 0; at < octets.length; at++) {
@@ -40,7 +22,6 @@ public final class TupleActions {
         return TupleValue.of(octets);
     }
 
-    /** ADD, SUBTRACT, MULTIPLY, DIVIDE, REMAINDER and MODULO, octet by octet. */
     Value combinedWith(Value right, Arithmetic.Operation operation) {
         return octetByOctet(left, right, (octet, against, fractional) ->
                 octetCombined(octet, against, fractional, operation));
@@ -83,20 +64,11 @@ public final class TupleActions {
         return amount < 0 ? -Math.round(-amount) : Math.round(amount);
     }
 
-    /** What one octet is worked out from, which the bitwise operators share. */
     @FunctionalInterface
     public interface OctetWork {
         long against(long octet, double amount, boolean fractional);
     }
 
-    /**
-     * Every octet of the wider of the two tuples, worked out and clipped.
-     *
-     * <p>A plain number on the right stands in for every octet, and whether it
-     * was written as a fraction changes the answer: a tuple divided by 2 and
-     * the same tuple divided by 2.0 round differently, which is why the work
-     * is told rather than left to guess.
-     */
     public static Value octetByOctet(Value left, Value right, OctetWork work) {
         refuseATimeBesideATuple(left, right);
         if (!(left instanceof TupleValue ours)) {

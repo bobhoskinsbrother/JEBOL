@@ -13,15 +13,6 @@ import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 
-/**
- * What a set of datatypes does when an action is performed on it, which is
- * what {@code REBTYPE(Typeset)} answers in {@code t-typeset.c}.
- *
- * <p>A typeset reads three spellings of the same idea and says so here rather
- * than at each call: a datatype value, another typeset, or a word -- and a
- * word may name one datatype ({@code integer!}) or a whole family
- * ({@code number!}), with or without its mark.
- */
 public final class TypesetActions {
 
     private final TypesetValue members;
@@ -30,24 +21,17 @@ public final class TypesetActions {
         this.members = members;
     }
 
-    /** COMPLEMENT: every datatype this one does not hold. */
     public TypesetValue complemented() {
         Set<Datatype> rest = EnumSet.allOf(Datatype.class);
         rest.removeAll(members.members());
         return TypesetValue.of(Set.copyOf(rest));
     }
 
-    /** FIND, which asks whether one datatype is among the members. */
     public boolean holds(Value asked) {
         return asked instanceof DatatypeValue wanted
                 && members.holds(wanted.represents());
     }
 
-    /**
-     * INTERSECT, UNION, EXCLUDE and DIFFERENCE, walked datatype by datatype
-     * because a typeset is a membership question rather than a series and
-     * there is nothing to keep in order.
-     */
     public TypesetValue combinedWith(TypesetValue theirs, Combining.Sets how) {
         Set<Datatype> mine = members.members();
         Set<Datatype> yours = theirs.members();
@@ -68,7 +52,6 @@ public final class TypesetActions {
         return TypesetValue.of(Set.copyOf(kept));
     }
 
-    /** MAKE and TO from a block, which names its members one spelling at a time. */
     public static Set<Datatype> datatypesNamedIn(BlockValue spec) {
         Set<Datatype> found = EnumSet.noneOf(Datatype.class);
         for (Value item : spec.remaining()) {
@@ -79,13 +62,6 @@ public final class TypesetActions {
         return found;
     }
 
-    /**
-     * Whichever datatypes one item names, added to what is already found.
-     *
-     * <p>Answers false rather than raising when the item names none, because
-     * the two callers differ: building a typeset refuses the item, and reading
-     * a function spec walks past it.
-     */
     public static boolean addTheTypesNamedBy(Value item, Set<Datatype> found) {
         if (item instanceof DatatypeValue datatype) {
             found.add(datatype.represents());

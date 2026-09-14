@@ -16,27 +16,8 @@ import org.jebol.domain.value.WordValue;
 import java.math.BigDecimal;
 import java.util.Arrays;
 
-/**
- * The one arithmetic every arithmetic native reaches. Five operations --
- * ADD, SUBTRACT, MULTIPLY, DIVIDE and REMAINDER -- over a dozen datatypes
- * that each combine differently, plus the three division conventions MOD
- * and MODULO ask for.
- *
- * <p>Which rules apply is decided by the pair of operands rather than by
- * either one alone, and the order matters: a vector beside an integer is
- * vector arithmetic, a character beside an integer is character arithmetic,
- * and a money beside a time bills an hourly rate. {@link Kind} names each of
- * those pairings once, in the order REBOL tries them, and the first that
- * claims a pair owns it.
- */
 public final class Arithmetic {
 
-    /**
-     * Which way the sign of a remainder falls, which is the whole difference
-     * between REBOL's three: {@code //} and MOD leave it following the
-     * dividend, MODULO never answers a negative, and MODULO/FLOOR follows
-     * the divisor.
-     */
     public enum Division {
         SIGN_FOLLOWS_THE_DIVIDEND,
         NEVER_NEGATIVE,
@@ -46,39 +27,32 @@ public final class Arithmetic {
     private Arithmetic() {
     }
 
-    /** ADD, and what {@code +} evaluates to. */
     public static Value sum(Value left, Value right) {
         return combined(left, right, Operation.ADD);
     }
 
-    /** SUBTRACT, and what {@code -} evaluates to. */
     public static Value difference(Value left, Value right) {
         return combined(left, right, Operation.SUBTRACT);
     }
 
-    /** MULTIPLY, and what {@code *} evaluates to. */
     public static Value product(Value left, Value right) {
         return combined(left, right, Operation.MULTIPLY);
     }
 
-    /** DIVIDE, and what {@code /} evaluates to. */
     public static Value quotient(Value left, Value right) {
         return combined(left, right, Operation.DIVIDE);
     }
 
-    /** REMAINDER, and what {@code //} evaluates to. */
     public static Value remainder(Value left, Value right) {
         return combined(left, right, Operation.REMAINDER);
     }
 
-    /** INTEGER-DIVIDE: a whole quotient, with the fraction thrown away. */
     public static Value wholeQuotient(Value dividend, Value divisor) {
         long by = (long) Comparison.asDouble(divisor);
         requireNonZero(by);
         return IntegerValue.of((long) Comparison.asDouble(dividend) / by);
     }
 
-    /** MOD and MODULO, which differ only in where they put the sign. */
     public static Value rest(Value dividend, Value divisor, Division definition) {
         if (dividend instanceof IntegerValue whole && divisor instanceof IntegerValue by) {
             return IntegerValue.of(
@@ -110,13 +84,6 @@ public final class Arithmetic {
         };
     }
 
-    /**
-     * Which of the six a datatype is being asked for.
-     *
-     * <p>Public because it is the contract between the dispatcher and each
-     * datatype's own arm, and those now live in their own packages. A date
-     * has to be told which operation it is being asked to do.
-     */
     public enum Operation { ADD, SUBTRACT, MULTIPLY, DIVIDE, REMAINDER, MODULO }
 
     private static Value combined(Value left, Value right, Operation operation) {
@@ -130,12 +97,6 @@ public final class Arithmetic {
                 .orElse(Kind.FRACTIONS);
     }
 
-    /**
-     * The pairings REBOL knows, in the order it tries them. Declaration
-     * order is the priority: a vector beside a pair is vector arithmetic
-     * because VECTORS is asked first, and FRACTIONS is what two plain
-     * numbers fall through to when nothing above has claimed them.
-     */
     private enum Kind {
 
         VECTORS {
@@ -366,7 +327,6 @@ public final class Arithmetic {
         };
     }
 
-
     private static Value likeTheDividend(Value dividend, double magnitude) {
         return switch (dividend) {
             case CharacterValue ignored -> CharacterValue.of((int) magnitude);
@@ -398,7 +358,6 @@ public final class Arithmetic {
             default -> Comparison.asDouble(value);
         };
     }
-
 
     static void requireNonZero(double divisor) {
         if (divisor == 0.0) {

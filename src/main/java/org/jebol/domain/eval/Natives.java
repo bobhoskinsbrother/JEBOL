@@ -1595,10 +1595,6 @@ public final class Natives {
                 : value;
     }
 
-    private static Value timeBetween(DateValue from, DateValue to) {
-        long days = DateArithmetic.dayNumberOf(from) - DateArithmetic.dayNumberOf(to);
-        return TimeValue.ofNanoseconds(days * TimeValue.NANOSECONDS_PER_DAY);
-    }
 
     private void defineComparison() {
         asksAbout("equal?", Comparison.Strictness.EQUAL, true);
@@ -3776,7 +3772,7 @@ public final class Natives {
                     }
                     if (arguments.get(0) instanceof DateValue from
                             && arguments.get(1) instanceof DateValue to) {
-                        return timeBetween(from, to);
+                        return from.spanTo(to);
                     }
                     Value width = argumentFor("skip", List.of("skip"), arguments,
                             refinements, 2);
@@ -10936,15 +10932,6 @@ public final class Natives {
         return converted(Conversion.MAKE, wanted, from);
     }
 
-    private static long bitsOfRightAligned(BinaryValue binary) {
-        int howMany = binary.lengthFromHere();
-        long bits = 0;
-        for (int at = Math.max(0, howMany - Long.BYTES); at < howMany; at++) {
-            bits = (bits << 8) | (binary.storage().at(binary.index() + at) & 0xFFL);
-        }
-        return bits;
-    }
-
     private static byte[] bytesFromHere(BinaryValue binary) {
         int howMany = binary.lengthFromHere();
         byte[] bytes = new byte[howMany];
@@ -11034,14 +11021,6 @@ public final class Natives {
             octets[at] = (int) (whole.magnitude() & 0xFF);
         }
         return BinaryValue.of(octets);
-    }
-
-    private enum Conversion {
-        MAKE, TO;
-
-        boolean builds() {
-            return this == MAKE;
-        }
     }
 
     private static void refuseToBuildSomethingOutOfNothing(Datatype wanted, Value from) {
@@ -11254,36 +11233,22 @@ public final class Natives {
 
     private static Value decimalBuiltFrom(
             Conversion asking, Datatype wanted, Value value) {
-        return switch (value) {
-            case DecimalValue number -> asItStands(wanted, number.quantity());
-            case IntegerValue whole -> asItStands(wanted, whole.magnitude());
-            case MoneyValue amount -> asItStands(wanted, amount.amount().doubleValue());
-            case CharacterValue letter -> asItStands(wanted, letter.codepoint());
-            case LogicValue truth -> asking.builds()
-                    ? asItStands(wanted, truth.truth() ? 1.0 : 0.0)
-                    : raiseBadMakeArg(value, wanted.literalSpelling());
-            case TimeValue clock -> asHundredths(wanted,
-                    (double) clock.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND);
-            case DateValue moment -> asHundredths(wanted, secondsSinceTheEpoch(moment));
-            case BinaryValue bits -> asHundredths(wanted,
-                    Double.longBitsToDouble(bitsOfRightAligned(bits)));
-            case StringValue text when text.datatype() == Datatype.STRING ->
-                    asHundredths(wanted, decimalReadFrom(text, wanted));
-            case BlockValue parts -> asHundredths(wanted, mantissaTimesTenTo(parts, wanted));
-            default -> raiseBadMakeArg(value, wanted.literalSpelling());
-        };
+        return value.asDecimal(wanted, asking)
+                .orElseGet(() -> scannedIntoADecimal(wanted, value));
     }
 
-    private static Value asItStands(Datatype wanted, double quantity) {
-        return wanted == Datatype.PERCENT
-                ? DecimalValue.percent(quantity)
-                : DecimalValue.of(quantity);
+    private static Value scannedIntoADecimal(Datatype wanted, Value value) {
+        if (value instanceof StringValue text && text.datatype() == Datatype.STRING) {
+            return asHundredths(wanted, decimalReadFrom(text, wanted));
+        }
+        if (value instanceof BlockValue parts) {
+            return asHundredths(wanted, mantissaTimesTenTo(parts, wanted));
+        }
+        return raiseBadMakeArg(value, wanted.literalSpelling());
     }
 
     private static Value asHundredths(Datatype wanted, double quantity) {
-        return wanted == Datatype.PERCENT
-                ? DecimalValue.percent(quantity / 100.0)
-                : DecimalValue.of(quantity);
+        return Value.quantityInHundredths(wanted, quantity);
     }
 
     private static double decimalReadFrom(StringValue text, Datatype wanted) {
@@ -11334,8 +11299,10 @@ public final class Natives {
                     hexNumberIn(issue);
             case StringValue text -> parseInteger(text.text());
             case CharacterValue character -> IntegerValue.of(character.codepoint());
-            case BinaryValue bytes -> IntegerValue.of(bitsOfRightAligned(bytes));
-            case DateValue moment -> IntegerValue.of(instantOf(moment));
+            case BinaryValue bytes ->
+                    IntegerValue.of(bytes.bitsOfTheLastEightOctets());
+            case DateValue moment ->
+                    IntegerValue.of(moment.wholeSecondsSinceTheEpoch());
             case DecimalValue number -> wholeNumberWithinRange(number.quantity());
             case MoneyValue amount -> IntegerValue.of(amount.amount().longValue());
             case TimeValue clock -> IntegerValue.of(clock.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND);
@@ -11365,16 +11332,6 @@ public final class Natives {
         } catch (NumberFormatException notHexAtAll) {
             return raiseBadMakeArg(issue, "integer!");
         }
-    }
-
-    private static long instantOf(DateValue moment) {
-        return Math.round(secondsSinceTheEpoch(moment));
-    }
-
-    private static double secondsSinceTheEpoch(DateValue when) {
-        DateValue.Moment moment = when.moment();
-        return (double) moment.dayNumber() * (TimeValue.NANOSECONDS_PER_DAY / TimeValue.NANOSECONDS_PER_SECOND)
-                + (double) moment.nanosecondsIntoTheDay() / TimeValue.NANOSECONDS_PER_SECOND;
     }
 
     private static Value wordNamed(String spelling, Datatype kind) {

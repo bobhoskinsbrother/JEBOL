@@ -184,6 +184,12 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency) implement
     }
 
     @Override
+    public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+        return java.util.Optional.of(
+                Value.quantityAsItStands(wanted, amount.doubleValue()));
+    }
+
+    @Override
     public Datatype datatype() {
         return Datatype.MONEY;
     }

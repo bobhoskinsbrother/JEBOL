@@ -9,18 +9,6 @@ import org.jebol.domain.value.Value;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * What an image does when an action is performed on it, which is what
- * {@code REBTYPE(Image)} answers in {@code t-image.c}.
- *
- * <p>An image is a series of pixels, so APPEND and INSERT put pixels in and
- * the width is made to fit again afterwards.
- *
- * <p>None of /PART, /ONLY or /DUP is served. The repeat count handed to
- * {@link ImageSeries} is therefore always one -- it is read after the refusal
- * that would have stopped /DUP ever reaching it, and is kept only because
- * ImageSeries takes it.
- */
 public final class ImageActions extends SeriesActions {
 
     private final ImageValue picture;
@@ -64,7 +52,6 @@ public final class ImageActions extends SeriesActions {
         return List.copyOf(read);
     }
 
-    /** Pixels taken out of a picture come back as a picture one row deep. */
     @Override
     Value ofTheSameKindHolding(List<Value> items) {
         ImageValue made = ImageValue.of(items.size(), items.isEmpty() ? 0 : 1);

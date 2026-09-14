@@ -19,18 +19,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
-/**
- * What a bitset does when an action is performed on it, which is what
- * {@code REBTYPE(Bitset)} answers in {@code t-bitset.c}.
- *
- * <p>Two kinds of question live here rather than on {@link BitsetValue}. One
- * is anything that has to read a REBOL value of unknown datatype and decide
- * what bits it names -- a character, a codepoint, a string, a binary, or a
- * block of runs written {@code [#"a" - #"z"]}. The other is anything that
- * refuses, because refusing means raising a REBOL error and the value model
- * knows nothing about those. Setting and testing a bit that is already a
- * number stays on the value, where it always was.
- */
 public final class BitsetActions implements Actions {
 
     private final BitsetValue members;
@@ -71,24 +59,12 @@ public final class BitsetActions implements Actions {
         return givenTheBitsOf(asked);
     }
 
-    /**
-     * APPEND and INSERT, which mean the same thing to a bitset: a set has no
-     * order, so there is no end to add to and no position to go in at.
-     */
     private Value givenTheBitsOf(Asked asked) {
         Natives.requireChangeable(members);
         addAllOf(asked.given());
         return members;
     }
 
-    /**
-     * FIND, and PICK through a path.
-     *
-     * <p>{@code anyWillDo} is /ANY: one member is enough rather than all of
-     * them. {@code eitherCaseWillDo} is the absence of /CASE, which only FIND
-     * asks for -- {@code Check_Bit}'s uncased flag tries both cases of a
-     * letter before a complemented set turns the answer round.
-     */
     public boolean holds(Value asked, boolean anyWillDo, boolean eitherCaseWillDo) {
         if (asked instanceof CharacterValue letter) {
             return eitherCaseWillDo
@@ -101,35 +77,22 @@ public final class BitsetActions implements Actions {
         return holdsEachOf(codePointsAskedAboutBy(asked), anyWillDo);
     }
 
-    /** FIND without /ANY and without /CASE, which is what a path selector is. */
     public boolean holds(Value asked) {
         return holds(asked, false, false);
     }
 
-    /** {@code bitset/#"a"}, which answers true or false rather than the member. */
     public Value heldForAPath(Value selector) {
         return LogicValue.of(holds(selector));
     }
 
-    /** APPEND, INSERT and POKE with a true value: the bits go in. */
     public void addAllOf(Value asked) {
         members.holdAll(meantBy(asked), true);
     }
 
-    /** POKE with a false value, which takes the bits out again. */
     public void holdAllOf(Value asked, boolean wanted) {
         members.holdAll(meantBy(asked), wanted);
     }
 
-    /**
-     * REMOVE, which a bitset serves only through /KEY or /PART.
-     *
-     * <p>The whole decision is the bitset's, as it is in the C: both
-     * refinements together are {@code bad-refines}, neither is
-     * {@code missing-arg}, and /PART takes four datatypes and no others.
-     * The resolver hands over whichever refinement's argument is asked for,
-     * so the refinement plumbing stays in the registry where it belongs.
-     */
     public Value removed(Set<String> refinements, Function<String, Value> theArgumentFor) {
         boolean byKey = refinements.contains("key");
         boolean byPart = refinements.contains("part");
@@ -162,19 +125,10 @@ public final class BitsetActions implements Actions {
         }
     }
 
-    /**
-     * LENGTH?, which counts bits rather than members: a set is as long as the
-     * octets it reaches over, eight to each.
-     */
     public int bitsReachedOver() {
         return members.octets().length * 8;
     }
 
-    /**
-     * Whether this is the zero of its own datatype, which ZERO? asks and a
-     * complemented set answers the other way round -- all bits set is the
-     * empty set once the complement is applied.
-     */
     public boolean isTheEmptySet() {
         byte held = (byte) (members.isComplemented() ? 0xFF : 0);
         for (byte octet : members.octets()) {
@@ -185,11 +139,6 @@ public final class BitsetActions implements Actions {
         return true;
     }
 
-    /**
-     * TO BINARY!, which hands back the bits as they are held and turns every
-     * one of them over first if the set is complemented, so the binary reads
-     * as the members rather than as the storage.
-     */
     public byte[] asOctets() {
         byte[] held = members.octets();
         if (!members.isComplemented()) {
@@ -211,7 +160,6 @@ public final class BitsetActions implements Actions {
         return !anyWillDo;
     }
 
-    /** MAKE and TO: whatever the source names, as a set of bits. */
     public static Value madeFrom(Value source) {
         return switch (source) {
             case StringValue text ->
@@ -227,10 +175,6 @@ public final class BitsetActions implements Actions {
         };
     }
 
-    /**
-     * What an integer means to an action rather than to MAKE: one bit at that
-     * position, where MAKE reads the same integer as room for that many bits.
-     */
     public static BitsetValue meantBy(Value source) {
         if (source instanceof IntegerValue point) {
             return BitsetValue.of(withBitSet(new byte[0], bitAsked(point.magnitude())));
@@ -380,12 +324,10 @@ public final class BitsetActions implements Actions {
         return grown;
     }
 
-    /** The characters of a string, as a set. */
     public static BitsetValue charactersIn(String characters) {
         return BitsetValue.ofCharacters(characters.chars().toArray());
     }
 
-    /** Every codepoint from one to another, both ends included. */
     public static BitsetValue rangeOfCharacters(int from, int to) {
         int[] codes = new int[to - from + 1];
         for (int at = 0; at < codes.length; at++) {
@@ -394,12 +336,10 @@ public final class BitsetActions implements Actions {
         return BitsetValue.ofCharacters(codes);
     }
 
-    /** What {@code system/catalog/bitsets/alpha} holds. */
     public static BitsetValue lettersOfBothCases() {
         return together(rangeOfCharacters('a', 'z'), rangeOfCharacters('A', 'Z'));
     }
 
-    /** What {@code system/catalog/bitsets/quoted-printable} holds. */
     public static BitsetValue quotedPrintableOctets() {
         StringBuilder allowed = new StringBuilder();
         for (int character = 0; character <= LAST_ASCII_CHARACTER; character++) {
@@ -412,7 +352,6 @@ public final class BitsetActions implements Actions {
 
     private static final int LAST_ASCII_CHARACTER = 127;
 
-    /** Both sets at once, which builds the catalogue's compound entries. */
     public static BitsetValue together(BitsetValue first, BitsetValue second) {
         byte[] left = first.octets();
         byte[] right = second.octets();

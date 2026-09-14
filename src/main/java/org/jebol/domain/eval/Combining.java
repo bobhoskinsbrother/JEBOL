@@ -21,41 +21,23 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Bringing two values together bit by bit or member by member: AND~, OR~
- * and XOR~ on one side, INTERSECT, UNION, EXCLUDE and DIFFERENCE on the
- * other.
- *
- * <p>Both are decided by the pair of operands rather than by either one
- * alone, and both try their pairings in a fixed order. {@link BitKind} and
- * {@link SetKind} name those pairings once each, in that order, and the
- * first that claims a pair owns it.
- */
 public final class Combining {
 
-    /** What AND~, OR~ and XOR~ ask for. */
     public enum Bitwise { AND, OR, XOR }
 
-    /** What INTERSECT, UNION, EXCLUDE and DIFFERENCE ask for. */
     public enum Sets { INTERSECT, UNION, EXCLUDE, DIFFERENCE }
 
     private Combining() {
     }
 
-    /** AND~, OR~ or XOR~ over whichever pairing the two operands make. */
     public static Value bitwise(Value left, Value right, Bitwise operation) {
         return theBitKindThatClaims(left, right).combine(left, right, operation);
     }
 
-    /** INTERSECT, UNION, EXCLUDE or DIFFERENCE, comparing loosely. */
     public static Value sets(Value first, Value second, Sets how) {
         return sets(first, second, how, false, 1);
     }
 
-    /**
-     * INTERSECT, UNION, EXCLUDE or DIFFERENCE, where /CASE says to tell
-     * two spellings apart and /SKIP says how many items make one record.
-     */
     public static Value sets(
             Value first, Value second, Sets how, boolean mindingCase, int stride) {
 
@@ -78,11 +60,6 @@ public final class Combining {
                         first instanceof BlockValue ? second : first, "a set operation"));
     }
 
-    /**
-     * The pairings AND~, OR~ and XOR~ know, in the order they are tried.
-     * WHOLE_NUMBERS is what a pair falls through to when nothing above has
-     * claimed it, which is where anything that is not a number is refused.
-     */
     private enum BitKind {
 
         VECTORS {
@@ -222,12 +199,6 @@ public final class Combining {
                 "and takes a whole number, not " + value.datatype().literalSpelling());
     }
 
-    /**
-     * The two operands of one set operation and how it was asked for, which
-     * is what every pairing below needs and what carries the walk they share:
-     * keep the records of the first set the combination wants, then let the
-     * second set contribute the ones it is entitled to.
-     */
     private record TwoSets(
             Value first, Value second, Sets how, boolean mindingCase, int stride) {
 
@@ -293,11 +264,6 @@ public final class Combining {
         }
     }
 
-    /**
-     * The pairings a set operation knows, in the order they are tried. A
-     * pair that reaches the end of the list is refused rather than guessed
-     * at, which is why there is no fallback here.
-     */
     private enum SetKind {
 
         BITSETS {

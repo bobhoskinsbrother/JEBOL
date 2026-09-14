@@ -57,4 +57,20 @@ public sealed interface Value permits
     default boolean isTruthy() {
         return true;
     }
+
+    default java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+        return java.util.Optional.empty();
+    }
+
+    static Value quantityAsItStands(Datatype wanted, double quantity) {
+        return wanted == Datatype.PERCENT
+                ? DecimalValue.percent(quantity)
+                : DecimalValue.of(quantity);
+    }
+
+    static Value quantityInHundredths(Datatype wanted, double quantity) {
+        return wanted == Datatype.PERCENT
+                ? DecimalValue.percent(quantity / 100.0)
+                : DecimalValue.of(quantity);
+    }
 }

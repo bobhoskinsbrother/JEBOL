@@ -61,6 +61,34 @@ public record DateValue(
         return Datatype.DATE;
     }
 
+    @Override
+    public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+        return java.util.Optional.of(
+                Value.quantityInHundredths(wanted, secondsSinceTheEpoch()));
+    }
+
+    public double secondsSinceTheEpoch() {
+        Moment instant = moment();
+        return (double) instant.dayNumber() * SECONDS_A_DAY
+                + (double) instant.nanosecondsIntoTheDay() / NANOSECONDS_A_SECOND;
+    }
+
+    public long wholeSecondsSinceTheEpoch() {
+        return Math.round(secondsSinceTheEpoch());
+    }
+
+    public long dayNumber() {
+        return java.time.LocalDate.of(year, month, day).toEpochDay();
+    }
+
+    public TimeValue spanTo(DateValue other) {
+        return TimeValue.ofNanoseconds(
+                (dayNumber() - other.dayNumber()) * NANOSECONDS_A_DAY);
+    }
+
+    private static final long NANOSECONDS_A_SECOND = 1_000_000_000L;
+    private static final long SECONDS_A_DAY = 24L * 60L * 60L;
+
     /**
      * Where a date sits on the line of instants: which day, and how far into
      * it. Two longs rather than one, because a nanosecond count that reached

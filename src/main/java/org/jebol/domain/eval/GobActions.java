@@ -8,17 +8,6 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-/**
- * What a gob does when an action is performed on it, which is what
- * {@code REBTYPE(Gob)} answers in {@code t-gob.c}.
- *
- * <p>A gob's series is its pane, and a pane holds gobs and nothing else.
- * APPEND puts a child at the end of the pane and answers the gob; INSERT puts
- * one where the gob is held and answers the position after it.
- *
- * <p>None of /PART, /ONLY or /DUP is served, and saying so is the first thing
- * either arm does.
- */
 public final class GobActions extends SeriesActions {
 
     private final GobValue gob;
@@ -45,13 +34,11 @@ public final class GobActions extends SeriesActions {
                 pane.storage().length());
     }
 
-    /** Children taken out of a pane come back as a block, not as a gob. */
     @Override
     Value ofTheSameKindHolding(List<Value> items) {
         return BlockValue.block(items);
     }
 
-    /** A pane drops the whole run of children at once. */
     @Override
     public Value cleared() {
         gob.storage().removeChildren(gob.index(),
@@ -73,12 +60,6 @@ public final class GobActions extends SeriesActions {
         return gob;
     }
 
-    /**
-     * One gob, or every gob a block holds, put into the pane from a position.
-     *
-     * <p>Each one lands after the last, and never past the end of a pane that
-     * detaching a child may have shortened underneath.
-     */
     Value givenTheChildrenOf(Value value, int at) {
         int goesAt = at;
         for (Value child : theChildrenOffered(value)) {

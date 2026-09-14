@@ -8,14 +8,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Which part of a date a path names, and what writing through that path does
- * -- {@code PD_Date} in {@code t-date.c}.
- *
- * <p>Fourteen parts, and a path may name one by word or by number, because
- * the C reads {@code sym = SYM_YEAR + Int32(arg) - 1} and so counts them in
- * a fixed order. {@code date/3} and {@code date/day} are the same question.
- */
 public final class DatePart {
 
     private static final List<String> IN_THE_ORDER_A_NUMBER_COUNTS_THEM = List.of(
@@ -308,8 +300,6 @@ public final class DatePart {
                         Math.floorMod(sinceMidnight, NANOSECONDS_A_DAY))),
                 Optional.of(offsetMinutes));
     }
-
-
 
     public static Value of(DateValue date, Value selector) {
         String part = switch (selector) {

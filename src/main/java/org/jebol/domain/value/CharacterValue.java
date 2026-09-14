@@ -26,6 +26,11 @@ public record CharacterValue(int codepoint) implements Value {
     }
 
     @Override
+    public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+        return java.util.Optional.of(Value.quantityAsItStands(wanted, codepoint));
+    }
+
+    @Override
     public Datatype datatype() {
         return Datatype.CHAR;
     }

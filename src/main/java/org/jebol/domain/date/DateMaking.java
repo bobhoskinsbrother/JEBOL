@@ -16,22 +16,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Building a date out of something that is not one -- {@code MT_Date} in
- * {@code t-date.c}, and the timestamp conversions beside it.
- *
- * <p>A block naming a date is read in three runs, each of which may be
- * absent: a calendar day, then a clock, then a zone. The runs are told apart
- * by how many items each takes and what datatype leads it, not by any marker,
- * so {@code [2026 1 1]} is a day and {@code [1-Jan-2026 12:00]} is a day
- * already made plus a clock.
- *
- * <p>The day-month-year order is decided by looking at the numbers rather
- * than by a rule: a first number above ninety-nine cannot be a day of the
- * month, so it is read as the year and the two swap. That is REBOL's own
- * guess and it is wrong for a year under a hundred, which it has no way to
- * tell from a day.
- */
 public final class DateMaking {
 
     private DateMaking() {
@@ -42,10 +26,8 @@ public final class DateMaking {
     private static final long MICROSECONDS_A_SECOND = 1_000_000L;
     private static final long MICROSECONDS_A_DAY = 86_400L * MICROSECONDS_A_SECOND;
 
-    /** The furthest a zone reaches either side of UTC, in minutes. */
     private static final int FURTHEST_ZONE_MINUTES = 15 * 60;
 
-    /** The instant so many microseconds after the epoch. */
     public static Value atTheTimestamp(long microseconds) {
         long dayNumber = Math.floorDiv(microseconds, MICROSECONDS_A_DAY);
         long withinTheDay = Math.floorMod(microseconds, MICROSECONDS_A_DAY);
@@ -54,12 +36,10 @@ public final class DateMaking {
                 TimeValue.ofNanoseconds(withinTheDay * 1_000L));
     }
 
-    /** Microseconds to a whole second, for a timestamp given in seconds. */
     public static long microsecondsInASecond() {
         return MICROSECONDS_A_SECOND;
     }
 
-    /** MAKE DATE! of a block: a day, then perhaps a clock, then perhaps a zone. */
     public static Value fromParts(List<Value> parts) {
         if (parts.isEmpty()) {
             throw refuse(parts);
@@ -102,10 +82,6 @@ public final class DateMaking {
         throw refuse(parts);
     }
 
-    /**
-     * Above this a first number cannot be a day of the month, so it is read
-     * as the year instead and the two change places.
-     */
     private static final int MOST_A_DAY_OF_THE_MONTH_COULD_BE = 99;
 
     private static int howManyPartsTheClockTakes(List<Value> after) {
@@ -159,13 +135,6 @@ public final class DateMaking {
         return Optional.of((int) minutes);
     }
 
-    /**
-     * What MAKE answers when a block names no date.
-     *
-     * <p>Two arguments, not one: {@code bad-make-arg} words itself as
-     * {@code [{cannot MAKE} :arg1 {from:} :arg2]}, so a script reads the
-     * datatype asked for and the block that failed without parsing prose.
-     */
     private static Raised refuse(List<Value> parts) {
         return Raised.of(EvaluationFailure.BAD_MAKE_ARG,
                 DatatypeValue.of(Datatype.DATE), BlockValue.block(parts));

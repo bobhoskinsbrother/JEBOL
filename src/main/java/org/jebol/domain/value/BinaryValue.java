@@ -29,6 +29,21 @@ public record BinaryValue(BinaryStorage storage, int index) implements SeriesVal
     }
 
     @Override
+    public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+        return java.util.Optional.of(Value.quantityInHundredths(
+                wanted, Double.longBitsToDouble(bitsOfTheLastEightOctets())));
+    }
+
+    public long bitsOfTheLastEightOctets() {
+        int howMany = lengthFromHere();
+        long bits = 0;
+        for (int at = Math.max(0, howMany - Long.BYTES); at < howMany; at++) {
+            bits = (bits << 8) | (storage().at(index() + at) & 0xFFL);
+        }
+        return bits;
+    }
+
+    @Override
     public Datatype datatype() {
         return Datatype.BINARY;
     }

@@ -8,18 +8,6 @@ import org.jebol.domain.value.WordValue;
 
 import java.util.List;
 
-/**
- * What an object does when an action is performed on it, which is what
- * {@code REBTYPE(Object)} answers in {@code t-object.c}.
- *
- * <p>Appending to an object means gaining fields, and there is no position
- * for them to go in at, so APPEND and INSERT are the same thing. A lone word
- * names a field with no value yet; a block names them in pairs.
- *
- * <p>Three refusals guard it. An object closed to new names takes none. A
- * field the object is hiding cannot be written through. And {@code self} is
- * what a context calls itself and can never be one of its own fields.
- */
 public final class ObjectActions implements Actions {
 
     private final ObjectValue object;

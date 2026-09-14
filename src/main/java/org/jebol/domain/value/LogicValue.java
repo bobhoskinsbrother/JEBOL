@@ -19,6 +19,14 @@ public record LogicValue(boolean truth) implements Value {
     }
 
     @Override
+    public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+        return asking.builds()
+                ? java.util.Optional.of(
+                        Value.quantityAsItStands(wanted, truth() ? 1.0 : 0.0))
+                : java.util.Optional.empty();
+    }
+
+    @Override
     public Datatype datatype() {
         return Datatype.LOGIC;
     }
