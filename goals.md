@@ -1080,14 +1080,19 @@ answers AND with `if (!IS_BITSET(arg) && !IS_BINARY(arg)) Trap_Math_Args`, and
 that is right: what a time may be added to is the time class's business, and
 the time class is where a reader looks for it. No ladder, no table of pairings.
 
-**Where the arms are**, by how often each datatype is named inside `Natives`:
+**Where the arms are**, counting `case <X>Value` arms inside `Natives` --
+400 of them in all. Counting every *mention* of a datatype is the wrong
+measure and was the one written here first: 350 of block's 420 mentions are
+`BlockValue.block(...)` building an answer, which every native that returns a
+block has to do and no refactor removes.
 
-| 13 | 14 | 19 | 23 | 32 | 42 | 42 | 46 | 53 | 57 | 58 | 59 | 62 | 63 | 94 | 127 | 195 | 218 | 441 |
-| -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- |
-| event | struct | typeset | money | date | vector | gob | map | image | pair | time | **bitset** | char | tuple | port | object | binary | string | block |
+| 1 | 4 | 5 | 5 | 6 | 6 | 7 | 9 | 10 | 10 | 11 | 13 | 13 | 14 | 18 | 19 | 37 | 43 | 47 |
+| - | - | - | - | - | - | - | - | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- |
+| event | struct | typeset | pair | date | bitset | time | tuple | money | map | gob | char | image | object | vector | port | binary | block | string |
 
-Bitset pilots it: seventeen arms in `REBTYPE(Bitset)` and it answers to nothing
-else. **An increment is done when its datatype is named nowhere in `Natives`.**
+**An increment is done when its datatype has no `case` arm left in an action's
+registration.** Arms outside the sixty actions -- MOLD's per-datatype writing,
+the reader's, the parser's -- are not this goal.
 
 **What proves it.** The datatype's own `.r3` file, and `error-parity.py`
 unchanged -- an arm that quietly stops raising is the failure this invites.
