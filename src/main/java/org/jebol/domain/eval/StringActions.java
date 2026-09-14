@@ -1,11 +1,14 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Molder;
+import org.jebol.domain.value.SeriesValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -34,6 +37,20 @@ public final class StringActions extends SeriesActions {
     @Override
     void takeOneOutAt(int oneBasedIndex) {
         text.storage().removeAt(oneBasedIndex);
+    }
+
+    @Override
+    List<Value> elementsOf(SeriesValue from) {
+        return ((StringValue) from).text().codePoints()
+                .<Value>mapToObj(CharacterValue::of)
+                .toList();
+    }
+
+    /** Keeps the datatype: taking from a file answers a file, not a string. */
+    @Override
+    Value ofTheSameKindHolding(List<Value> items) {
+        return StringValue.of(items.stream()
+                .map(Molder::form).collect(Collectors.joining()), text.datatype());
     }
 
     @Override

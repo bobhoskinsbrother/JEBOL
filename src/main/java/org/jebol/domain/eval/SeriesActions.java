@@ -3,6 +3,8 @@ package org.jebol.domain.eval;
 import org.jebol.domain.value.SeriesValue;
 import org.jebol.domain.value.Value;
 
+import java.util.List;
+
 /**
  * The arms every series answers the same way, which the C shares as
  * {@code Do_Series} across {@code t-block.c} and {@code t-string.c}.
@@ -24,6 +26,20 @@ abstract class SeriesActions implements Actions {
 
     /** Takes one element out at a position, which is the step of every walk. */
     abstract void takeOneOutAt(int oneBasedIndex);
+
+    /**
+     * The elements from a position onwards, each as the value a script sees:
+     * a character for a string, an integer for a binary, a tuple of four
+     * channels for an image.
+     */
+    abstract List<Value> elementsOf(SeriesValue from);
+
+    /**
+     * A new series of this one's own kind holding these values, which is what
+     * TAKE and COPY answer with. A string built from characters, a binary
+     * from octets, a vector narrowed back to its own width.
+     */
+    abstract Value ofTheSameKindHolding(List<Value> items);
 
     @Override
     public Value subject() {
@@ -51,6 +67,45 @@ abstract class SeriesActions implements Actions {
             takeOneOutAt(removingFrom.index());
         }
         return (Value) removingFrom;
+    }
+
+    /** Takes a run out at a position, one element at a time. */
+    void takeOutFrom(int oneBasedIndex, int howMany) {
+        for (int gone = 0; gone < howMany; gone++) {
+            takeOneOutAt(oneBasedIndex);
+        }
+    }
+
+    /**
+     * TAKE: lifts a run out and answers it as a series of this kind.
+     *
+     * <p>A negative count reaches backwards from the position, and neither
+     * direction reaches past an end -- asking for more than is there takes
+     * what is there.
+     */
+    public Value takenSeveral(long wanted) {
+        int from = Math.min(held().index(), held().storageLength() + 1);
+        int howMany;
+        if (wanted >= 0) {
+            howMany = (int) Math.min(wanted, held().lengthFromHere());
+        } else {
+            howMany = (int) Math.min(-wanted, from - 1L);
+            from -= howMany;
+        }
+        List<Value> taken = List.copyOf(
+                elementsOf(held().head()).subList(from - 1, from - 1 + howMany));
+        takeOutFrom(from, howMany);
+        return ofTheSameKindHolding(taken);
+    }
+
+    /** TAKE with no count: the one element here, or none when there is none. */
+    public Value takenOne() {
+        if (held().lengthFromHere() == 0) {
+            return org.jebol.domain.value.NoneValue.none();
+        }
+        Value taken = elementsOf(held()).getFirst();
+        takeOutFrom(held().index(), 1);
+        return taken;
     }
 
     /**

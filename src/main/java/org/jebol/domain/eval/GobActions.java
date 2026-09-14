@@ -3,6 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.GobValue;
+import org.jebol.domain.value.SeriesValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -34,6 +35,20 @@ public final class GobActions extends SeriesActions {
     @Override
     void takeOneOutAt(int oneBasedIndex) {
         gob.storage().removeChildren(oneBasedIndex, 1);
+    }
+
+    @Override
+    List<Value> elementsOf(SeriesValue from) {
+        GobValue pane = (GobValue) from;
+        return pane.storage().pane().subList(
+                Math.min(pane.index() - 1, pane.storage().length()),
+                pane.storage().length());
+    }
+
+    /** Children taken out of a pane come back as a block, not as a gob. */
+    @Override
+    Value ofTheSameKindHolding(List<Value> items) {
+        return BlockValue.block(items);
     }
 
     /** A pane drops the whole run of children at once. */

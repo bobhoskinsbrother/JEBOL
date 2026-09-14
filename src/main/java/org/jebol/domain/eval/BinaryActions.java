@@ -2,7 +2,12 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.BinaryStorage;
 import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.SeriesValue;
 import org.jebol.domain.value.Value;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * What a binary does when an action is performed on it, which is what
@@ -29,6 +34,22 @@ public final class BinaryActions extends SeriesActions {
     @Override
     void takeOneOutAt(int oneBasedIndex) {
         bytes.storage().removeAt(oneBasedIndex);
+    }
+
+    @Override
+    List<Value> elementsOf(SeriesValue from) {
+        BinaryValue octets = (BinaryValue) from;
+        List<Value> read = new ArrayList<>(octets.lengthFromHere());
+        for (int at = 0; at < octets.lengthFromHere(); at++) {
+            read.add(IntegerValue.of(octets.storage().at(octets.index() + at)));
+        }
+        return List.copyOf(read);
+    }
+
+    @Override
+    Value ofTheSameKindHolding(List<Value> items) {
+        return BinaryValue.of(items.stream()
+                .mapToInt(item -> (int) ((IntegerValue) item).magnitude()).toArray());
     }
 
     @Override

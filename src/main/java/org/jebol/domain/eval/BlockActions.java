@@ -38,6 +38,17 @@ public final class BlockActions extends SeriesActions {
     }
 
     @Override
+    List<Value> elementsOf(org.jebol.domain.value.SeriesValue from) {
+        return ((BlockValue) from).remaining();
+    }
+
+    /** Keeps the datatype: taking from a path answers a path, not a block. */
+    @Override
+    Value ofTheSameKindHolding(List<Value> items) {
+        return BlockValue.block(items).as(block.datatype());
+    }
+
+    @Override
     public Value cleared() {
         return clearedOneAtATime();
     }

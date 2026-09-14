@@ -2,7 +2,12 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.ImageStorage;
 import org.jebol.domain.value.ImageValue;
+import org.jebol.domain.value.SeriesValue;
+import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * What an image does when an action is performed on it, which is what
@@ -45,6 +50,28 @@ public final class ImageActions extends SeriesActions {
             flipped.setAlphaAt(pixel, ~channels[3] & 0xFF);
         }
         return new ImageValue(flipped, 1);
+    }
+
+    @Override
+    List<Value> elementsOf(SeriesValue from) {
+        ImageValue pixels = (ImageValue) from;
+        List<Value> read = new ArrayList<>(pixels.lengthFromHere());
+        for (int at = pixels.index(); at <= pixels.storageLength(); at++) {
+            int[] channels = pixels.storage().pixelAt(at);
+            read.add(TupleValue.of(
+                    channels[0], channels[1], channels[2], channels[3]));
+        }
+        return List.copyOf(read);
+    }
+
+    /** Pixels taken out of a picture come back as a picture one row deep. */
+    @Override
+    Value ofTheSameKindHolding(List<Value> items) {
+        ImageValue made = ImageValue.of(items.size(), items.isEmpty() ? 0 : 1);
+        for (int at = 1; at <= items.size(); at++) {
+            ImagePath.write(made, at, items.get(at - 1));
+        }
+        return made;
     }
 
     @Override

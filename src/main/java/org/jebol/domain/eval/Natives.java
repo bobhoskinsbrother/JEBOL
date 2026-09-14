@@ -3047,34 +3047,11 @@ public final class Natives {
 
     private static List<Value> itemsOf(Value series) {
         return switch (series) {
-            case BlockValue block -> block.remaining();
-            case GobValue gob -> gob.storage().pane()
-                    .subList(Math.min(gob.index() - 1, gob.storage().length()),
-                            gob.storage().length());
-            case StringValue text -> text.text().codePoints()
-                    .mapToObj(codepoint -> (Value) CharacterValue.of(codepoint))
-                    .toList();
+            case SeriesValue walkable -> armsOf(walkable).elementsOf(walkable);
             case ObjectValue object -> fieldsAndValuesOf(object.context());
             case PortValue port -> fieldsAndValuesOf(port.context());
             case ModuleValue module -> fieldsAndValuesOf(module.context());
-            case BinaryValue binary -> {
-                List<Value> octets = new ArrayList<>(binary.lengthFromHere());
-                for (int at = 0; at < binary.lengthFromHere(); at++) {
-                    octets.add(IntegerValue.of(binary.storage().at(binary.index() + at)));
-                }
-                yield List.copyOf(octets);
-            }
             case MapValue map -> map.walkable();
-            case VectorValue vector -> vector.remaining();
-            case ImageValue picture -> {
-                List<Value> pixels = new ArrayList<>(picture.lengthFromHere());
-                for (int at = picture.index(); at <= picture.storageLength(); at++) {
-                    int[] channels = picture.storage().pixelAt(at);
-                    pixels.add(TupleValue.of(
-                            channels[0], channels[1], channels[2], channels[3]));
-                }
-                yield List.copyOf(pixels);
-            }
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "cannot walk " + series.datatype().literalSpelling() + " value");
         };
@@ -6326,12 +6303,7 @@ public final class Natives {
     }
 
     private static Value takeOne(SeriesValue series) {
-        if (series.lengthFromHere() == 0) {
-            return NoneValue.none();
-        }
-        Value taken = itemsOf(series).getFirst();
-        removeFrom(series, series.index(), 1);
-        return taken;
+        return armsOf(series).takenOne();
     }
 
     private static Value deepenedIfAsked(Value taken, Set<String> refinements) {
@@ -6341,27 +6313,12 @@ public final class Natives {
     }
 
     private static Value takeSeveral(SeriesValue series, long wanted) {
-        int from = Math.min(series.index(), series.storageLength() + 1);
-        int howMany;
-        if (wanted >= 0) {
-            howMany = (int) Math.min(wanted, series.lengthFromHere());
-        } else {
-            howMany = (int) Math.min(-wanted, from - 1L);
-            from -= howMany;
-        }
-        List<Value> taken = List.copyOf(
-                itemsOf(series.head()).subList(from - 1, from - 1 + howMany));
-        removeFrom(series, from, howMany);
-        return switch (series) {
-            case StringValue text -> StringValue.of(taken.stream()
-                    .map(Molder::form).collect(Collectors.joining()), text.datatype());
-            case BinaryValue bytes -> BinaryValue.of(taken.stream()
-                    .mapToInt(item -> (int) ((IntegerValue) item).magnitude()).toArray());
-            case BlockValue block -> BlockValue.block(taken).as(block.datatype());
-            case ImageValue image -> takenPixels(image, taken);
-            case GobValue ignored -> BlockValue.block(taken);
-            case VectorValue vector -> vectorHolding(vector.kind(), taken);
-        };
+        return armsOf(series).takenSeveral(wanted);
+    }
+
+    /** The series arms for a value, which every series datatype now has. */
+    private static SeriesActions armsOf(SeriesValue series) {
+        return (SeriesActions) Actions.of((Value) series).orElseThrow();
     }
 
     static List<Value> numbersContributedTo(VectorKind kind, Value value) {
@@ -6470,31 +6427,8 @@ public final class Natives {
         return offered.subList(0, (int) Math.min(wanted, offered.size()));
     }
 
-    private static VectorValue vectorHolding(VectorKind kind, List<Value> numbers) {
-        VectorStorage made = new VectorStorage(kind, 0);
-        numbers.forEach(number -> made.append(VectorPath.storedFormOf(kind, number)));
-        return new VectorValue(made, 1);
-    }
-
-    private static ImageValue takenPixels(ImageValue image, List<Value> taken) {
-        ImageValue made = ImageValue.of(taken.size(), taken.isEmpty() ? 0 : 1);
-        for (int at = 1; at <= taken.size(); at++) {
-            ImagePath.write(made, at, taken.get(at - 1));
-        }
-        return made;
-    }
-
     private static void removeFrom(SeriesValue series, int oneBasedIndex, int howMany) {
-        for (int removed = 0; removed < howMany; removed++) {
-            switch (series) {
-                case BlockValue block -> block.storage().removeAt(oneBasedIndex);
-                case StringValue text -> text.storage().removeAt(oneBasedIndex);
-                case BinaryValue bytes -> bytes.storage().removeAt(oneBasedIndex);
-                case ImageValue image -> image.storage().removeFrom(oneBasedIndex, 1);
-                case GobValue gob -> gob.storage().removeChildren(oneBasedIndex, 1);
-                case VectorValue vector -> vector.storage().removeAt(oneBasedIndex);
-            }
-        }
+        armsOf(series).takeOutFrom(oneBasedIndex, howMany);
     }
 
     private static double roundedHalfAway(double value) {
