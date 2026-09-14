@@ -1,4 +1,9 @@
-package org.jebol.domain.eval;
+package org.jebol.domain.date;
+
+import org.jebol.domain.eval.Arithmetic;
+import org.jebol.domain.eval.Comparison;
+import org.jebol.domain.eval.EvaluationFailure;
+import org.jebol.domain.eval.Raised;
 
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
@@ -23,16 +28,16 @@ import java.util.Optional;
  * clock, carrying into the next day or back into the last one when the time
  * runs past either end.
  */
-public final class DateActions {
+public final class DateArithmetic {
 
     private final DateValue moment;
 
-    public DateActions(DateValue moment) {
+    public DateArithmetic(DateValue moment) {
         this.moment = moment;
     }
 
     /** ADD and SUBTRACT, which is all a date's arithmetic amounts to. */
-    Value combinedWith(Value right, Arithmetic.Operation operation) {
+    public Value combinedWith(Value right, Arithmetic.Operation operation) {
         if (right instanceof DateValue to) {
             return daysSince(to, operation);
         }
@@ -46,7 +51,7 @@ public final class DateActions {
      * three days minus now is not anything, and REBOL says so by naming the
      * operator and the left-hand datatype rather than the date.
      */
-    Value takenBy(Value left, Arithmetic.Operation operation) {
+    public Value takenBy(Value left, Arithmetic.Operation operation) {
         if (operation == Arithmetic.Operation.SUBTRACT) {
             throw Raised.of(EvaluationFailure.NOT_RELATED,
                     WordValue.of(operation.name().toLowerCase(Locale.ROOT) + ":"),
@@ -93,7 +98,7 @@ public final class DateActions {
     }
 
     /** Days since the epoch, which is how two dates are compared and subtracted. */
-    static long dayNumberOf(DateValue date) {
+    public static long dayNumberOf(DateValue date) {
         return LocalDate.of(date.year(), date.month(), date.day()).toEpochDay();
     }
 }

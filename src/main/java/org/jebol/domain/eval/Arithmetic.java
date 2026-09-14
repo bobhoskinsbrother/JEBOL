@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.date.DateArithmetic;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.DecimalValue;
@@ -109,7 +110,14 @@ public final class Arithmetic {
         };
     }
 
-    enum Operation { ADD, SUBTRACT, MULTIPLY, DIVIDE, REMAINDER, MODULO }
+    /**
+     * Which of the six a datatype is being asked for.
+     *
+     * <p>Public because it is the contract between the dispatcher and each
+     * datatype's own arm, and those now live in their own packages. A date
+     * has to be told which operation it is being asked to do.
+     */
+    public enum Operation { ADD, SUBTRACT, MULTIPLY, DIVIDE, REMAINDER, MODULO }
 
     private static Value combined(Value left, Value right, Operation operation) {
         return theKindThatClaims(left, right).combine(left, right, operation);
@@ -200,8 +208,8 @@ public final class Arithmetic {
             @Override
             Value combine(Value left, Value right, Operation operation) {
                 return left instanceof DateValue moment
-                        ? new DateActions(moment).combinedWith(right, operation)
-                        : new DateActions((DateValue) right).takenBy(left, operation);
+                        ? new DateArithmetic(moment).combinedWith(right, operation)
+                        : new DateArithmetic((DateValue) right).takenBy(left, operation);
             }
         },
 

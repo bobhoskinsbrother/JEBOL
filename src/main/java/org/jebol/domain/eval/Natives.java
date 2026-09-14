@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.date.DateArithmetic;
+import org.jebol.domain.date.DatePart;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.parse.Parser;
@@ -1593,7 +1595,7 @@ public final class Natives {
     }
 
     private static Value timeBetween(DateValue from, DateValue to) {
-        long days = DateActions.dayNumberOf(from) - DateActions.dayNumberOf(to);
+        long days = DateArithmetic.dayNumberOf(from) - DateArithmetic.dayNumberOf(to);
         return TimeValue.ofNanoseconds(days * TimeValue.NANOSECONDS_PER_DAY);
     }
 
@@ -7812,7 +7814,7 @@ public final class Natives {
         return switch (target) {
             case BitsetValue members -> new BitsetActions(members).heldForAPath(selector);
             case MapValue map -> map.select(selector);
-            case DateValue date -> DateParts.of(date, selector);
+            case DateValue date -> DatePart.of(date, selector);
             case TimeValue time -> pickTimePart(time, selector);
             case GobValue gob -> GobPath.childOf(gob, positionPickedFrom(selector));
             default -> selector instanceof IntegerValue position
@@ -12906,8 +12908,8 @@ public final class Natives {
                     }
                     if (target instanceof DateValue date) {
                         return questionedByField(field, evaluator,
-                                DateParts.partNames(),
-                                part -> DateParts.of(date, WordValue.of(part)));
+                                DatePart.partNames(),
+                                part -> DatePart.of(date, WordValue.of(part)));
                     }
                     if (target instanceof HandleValue handle) {
                         return questionedByField(field, evaluator,

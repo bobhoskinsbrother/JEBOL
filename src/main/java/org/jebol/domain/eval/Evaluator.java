@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.date.DatePart;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
@@ -1366,7 +1367,7 @@ public final class Evaluator {
                 && segments.getFirst() instanceof WordValue holder) {
             ContextSlot slot = resolve(
                     holder.isBound() ? holder : holder.boundTo(frame.context));
-            slot.setValue(DateParts.written(
+            slot.setValue(DatePart.written(
                     date, selectorFor(lastSegment, frame.context), written));
             return;
         }
@@ -1520,7 +1521,7 @@ public final class Evaluator {
             return partOfATime(time, selector);
         }
         if (target instanceof DateValue date) {
-            return DateParts.of(date, selector);
+            return DatePart.of(date, selector);
         }
         if (target instanceof BitsetValue set && selector instanceof CharacterValue letter) {
             return LogicValue.of(set.holds(letter.codepoint()));

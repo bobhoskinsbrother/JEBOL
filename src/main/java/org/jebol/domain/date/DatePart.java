@@ -1,11 +1,22 @@
-package org.jebol.domain.eval;
+package org.jebol.domain.date;
 
+import org.jebol.domain.eval.EvaluationFailure;
+import org.jebol.domain.eval.Raised;
 import org.jebol.domain.value.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-final class DateParts {
+/**
+ * Which part of a date a path names, and what writing through that path does
+ * -- {@code PD_Date} in {@code t-date.c}.
+ *
+ * <p>Fourteen parts, and a path may name one by word or by number, because
+ * the C reads {@code sym = SYM_YEAR + Int32(arg) - 1} and so counts them in
+ * a fixed order. {@code date/3} and {@code date/day} are the same question.
+ */
+public final class DatePart {
 
     private static final List<String> IN_THE_ORDER_A_NUMBER_COUNTS_THEM = List.of(
             "year", "month", "day", "time", "date", "zone", "hour", "minute",
@@ -13,14 +24,14 @@ final class DateParts {
 
     private static final long NANOSECONDS_A_DAY = 24L * 60L * 60L * 1_000_000_000L;
 
-    private DateParts() {
+    private DatePart() {
     }
 
-    static List<String> partNames() {
+    public static List<String> partNames() {
         return IN_THE_ORDER_A_NUMBER_COUNTS_THEM;
     }
 
-    static DateValue written(DateValue date, Value selector, Value given) {
+    public static DateValue written(DateValue date, Value selector, Value given) {
         String part = thePartNamedBy(selector);
         if (part == null) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
@@ -89,14 +100,14 @@ final class DateParts {
         return sameClockOn(was, aMonthOrDayPastItsRangeRollsOn(year, month, day));
     }
 
-    private static java.time.LocalDate aMonthOrDayPastItsRangeRollsOn(
+    private static LocalDate aMonthOrDayPastItsRangeRollsOn(
             int year, int month, int day) {
-        return java.time.LocalDate.of(year, 1, 1)
+        return LocalDate.of(year, 1, 1)
                 .plusMonths(month - 1L)
                 .plusDays(day - 1L);
     }
 
-    private static DateValue sameClockOn(DateValue was, java.time.LocalDate day) {
+    private static DateValue sameClockOn(DateValue was, LocalDate day) {
         return new DateValue(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
                 was.timeOfDay(), was.zoneMinutes());
     }
@@ -222,7 +233,7 @@ final class DateParts {
         long nanoseconds = (hours + 12) * NANOSECONDS_AN_HOUR
                 + minutes * NANOSECONDS_A_MINUTE
                 + seconds * NANOSECONDS_IN_A_SECOND;
-        java.time.LocalDate landedOn = aDayThatMayHaveRolledOver(year, month, day)
+        LocalDate landedOn = aDayThatMayHaveRolledOver(year, month, day)
                 .plusDays(nanoseconds / NANOSECONDS_A_DAY);
         return new DateValue(landedOn.getYear(), landedOn.getMonthValue(),
                 landedOn.getDayOfMonth(),
@@ -233,7 +244,7 @@ final class DateParts {
 
     private static final int WIDEST_YEAR_A_DATE_HOLDS = 0x3fff;
 
-    private static java.time.LocalDate aDayThatMayHaveRolledOver(
+    private static LocalDate aDayThatMayHaveRolledOver(
             int year, int month, int day) {
 
         if (year < 0 || year > WIDEST_YEAR_A_DATE_HOLDS) {
@@ -249,7 +260,7 @@ final class DateParts {
     }
 
     private static DateValue theYearAndDayOf(DateValue was, int dayOfYear) {
-        return sameClockOn(was, java.time.LocalDate.of(was.year(), 1, 1)
+        return sameClockOn(was, LocalDate.of(was.year(), 1, 1)
                 .plusDays(dayOfYear - 1L));
     }
 
@@ -289,7 +300,7 @@ final class DateParts {
                 + (offsetMinutes - standing.zoneMinutes().orElse(0))
                         * 60L * NANOSECONDS_A_SECOND;
         long daysOver = Math.floorDiv(sinceMidnight, NANOSECONDS_A_DAY);
-        java.time.LocalDate day = java.time.LocalDate
+        LocalDate day = LocalDate
                 .of(standing.year(), standing.month(), standing.day())
                 .plusDays(daysOver);
         return new DateValue(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
@@ -300,7 +311,7 @@ final class DateParts {
 
 
 
-    static Value of(DateValue date, Value selector) {
+    public static Value of(DateValue date, Value selector) {
         String part = switch (selector) {
             case WordValue asked -> asked.canonical();
             case IntegerValue position -> position.magnitude() >= 1
@@ -335,8 +346,8 @@ final class DateParts {
 
     private static final long NANOSECONDS_A_SECOND = 1_000_000_000L;
 
-    private static java.time.LocalDate asLocalDate(DateValue date) {
-        return java.time.LocalDate.of(date.year(), date.month(), date.day());
+    private static LocalDate asLocalDate(DateValue date) {
+        return LocalDate.of(date.year(), date.month(), date.day());
     }
 
     private static long nanosecondsOf(DateValue date) {
@@ -368,7 +379,7 @@ final class DateParts {
         long hours = seconds / 3600;
         long minutes = seconds / 60 % 60;
         long wholeSeconds = seconds % 60;
-        java.time.LocalDate day = asLocalDate(date);
+        LocalDate day = asLocalDate(date);
         if (hours <= 12) {
             day = day.minusDays(1);
             hours += 12;
