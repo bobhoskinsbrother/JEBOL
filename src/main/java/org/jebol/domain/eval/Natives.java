@@ -339,45 +339,6 @@ public final class Natives {
                 .<Value>map(WordValue::of).toList());
     }
 
-    private static BitsetValue charactersIn(String characters) {
-        return BitsetValue.ofCharacters(characters.chars().toArray());
-    }
-
-    private static BitsetValue quotedPrintableOctets() {
-        StringBuilder allowed = new StringBuilder();
-        for (int character = 0; character <= LAST_ASCII_CHARACTER; character++) {
-            if (character != '=') {
-                allowed.append((char) character);
-            }
-        }
-        return charactersIn(allowed.toString());
-    }
-
-    private static final int LAST_ASCII_CHARACTER = 127;
-
-    private static BitsetValue rangeOfCharacters(int from, int to) {
-        int[] codes = new int[to - from + 1];
-        for (int at = 0; at < codes.length; at++) {
-            codes[at] = from + at;
-        }
-        return BitsetValue.ofCharacters(codes);
-    }
-
-    private static BitsetValue lettersOfBothCases() {
-        return together(rangeOfCharacters('a', 'z'), rangeOfCharacters('A', 'Z'));
-    }
-
-    private static BitsetValue together(BitsetValue first, BitsetValue second) {
-        byte[] left = first.octets();
-        byte[] right = second.octets();
-        byte[] both = new byte[Math.max(left.length, right.length)];
-        for (int at = 0; at < both.length; at++) {
-            both[at] = (byte) ((at < left.length ? left[at] : 0)
-                    | (at < right.length ? right[at] : 0));
-        }
-        return BitsetValue.of(both);
-    }
-
     private ObjectValue systemObject(Context systemContext) {
         Context catalog = Context.root();
         catalog.set("datatypes", BlockValue.block(
@@ -400,21 +361,25 @@ public final class Natives {
         bitsets.set("crlf", BitsetValue.ofCharacters('\r', '\n'));
         bitsets.set("space", BitsetValue.ofCharacters(' ', '\t'));
         bitsets.set("whitespace", BitsetValue.ofCharacters(' ', '\t', '\r', '\n'));
-        bitsets.set("numeric", rangeOfCharacters('0', '9'));
-        bitsets.set("alpha", lettersOfBothCases());
-        bitsets.set("alpha-numeric", together(lettersOfBothCases(), rangeOfCharacters('0', '9')));
-        bitsets.set("hex-digits", together(rangeOfCharacters('0', '9'),
-                together(rangeOfCharacters('a', 'f'), rangeOfCharacters('A', 'F'))));
+        bitsets.set("numeric", BitsetActions.rangeOfCharacters('0', '9'));
+        bitsets.set("alpha", BitsetActions.lettersOfBothCases());
+        bitsets.set("alpha-numeric", BitsetActions.together(
+                BitsetActions.lettersOfBothCases(),
+                BitsetActions.rangeOfCharacters('0', '9')));
+        bitsets.set("hex-digits", BitsetActions.together(
+                BitsetActions.rangeOfCharacters('0', '9'),
+                BitsetActions.together(BitsetActions.rangeOfCharacters('a', 'f'),
+                        BitsetActions.rangeOfCharacters('A', 'F'))));
         bitsets.set("plus-minus", BitsetValue.ofCharacters('+', '-'));
         bitsets.set("not-crlf",
                 BitsetValue.ofCharacters('\r', '\n').complemented());
-        bitsets.set("uri", charactersIn(
+        bitsets.set("uri", BitsetActions.charactersIn(
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
                         + "!#$&'()*+,-./:;=?@_~"));
-        bitsets.set("uri-component", charactersIn(
+        bitsets.set("uri-component", BitsetActions.charactersIn(
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
                         + "!'()*-._~"));
-        bitsets.set("quoted-printable", quotedPrintableOctets());
+        bitsets.set("quoted-printable", BitsetActions.quotedPrintableOctets());
         catalog.set("bitsets", new ObjectValue(bitsets));
 
         catalog.set("structs", registeredStructLayouts);
@@ -2139,7 +2104,7 @@ public final class Natives {
             case DatatypeValue wanted when wanted.represents() == Datatype.MAP ->
                     mapMadeFrom(body);
             case DatatypeValue wanted when wanted.represents() == Datatype.BITSET ->
-                    bitsetOf(body);
+                    BitsetActions.madeFrom(body);
             case DatatypeValue wanted when wanted.represents() == Datatype.PAIR ->
                     asPair(body);
             case DatatypeValue wanted when wanted.represents() == Datatype.FUNCTION ->
@@ -3791,9 +3756,8 @@ public final class Natives {
                     }
                     if (arguments.get(0) instanceof BitsetValue members) {
                         requireChangeable(members);
-                        members.holdAll(
-                                (BitsetValue) bitsMeantBy(arguments.get(1)),
-                                arguments.get(2).isTruthy());
+                        new BitsetActions(members).holdAllOf(
+                                arguments.get(1), arguments.get(2).isTruthy());
                         return members;
                     }
                     if (arguments.get(0) instanceof MapValue map) {
@@ -4665,7 +4629,8 @@ public final class Natives {
                             lengthLeftInTheFile(port, evaluator);
                     case PortValue port ->
                             IntegerValue.of(port.context().fieldCount());
-                    case BitsetValue set -> IntegerValue.of(set.octets().length * 8);
+                    case BitsetValue set ->
+                            IntegerValue.of(new BitsetActions(set).bitsReachedOver());
                     case StructValue struct -> IntegerValue.of(struct.size());
                     default -> raiseWrongArgument(arguments.get(0), "length?", "series");
                 }));
@@ -4897,7 +4862,7 @@ public final class Natives {
                             addPairsToMap(map, arguments, refinements, "append");
                     case BitsetValue members -> {
                         requireChangeable(members);
-                        members.holdAll((BitsetValue) bitsMeantBy(arguments.get(1)), true);
+                        new BitsetActions(members).addAllOf(arguments.get(1));
                         yield members;
                     }
                     case StringValue string -> {
@@ -5074,7 +5039,8 @@ public final class Natives {
                                 refinements.contains("case"));
                     }
                     if (arguments.get(0) instanceof BitsetValue bitset) {
-                        return LogicValue.of(bitsetHolds(bitset, arguments.get(1),
+                        return LogicValue.of(new BitsetActions(bitset).holds(
+                                arguments.get(1),
                                 refinements.contains("any"),
                                 !refinements.contains("case")));
                     }
@@ -5134,7 +5100,7 @@ public final class Natives {
                                     arguments.get(1), false);
                     case BitsetValue members -> {
                         requireChangeable(members);
-                        members.holdAll((BitsetValue) bitsMeantBy(arguments.get(1)), true);
+                        new BitsetActions(members).addAllOf(arguments.get(1));
                         yield members;
                     }
                     case ObjectValue object ->
@@ -5222,7 +5188,11 @@ public final class Natives {
                         return map;
                     }
                     if (arguments.get(0) instanceof BitsetValue members) {
-                        return membersCleared(members, arguments, refinements);
+                        requireChangeable(members);
+                        return new BitsetActions(members).removed(refinements,
+                                refinement -> argumentFor(refinement,
+                                        List.of("part", "key"),
+                                        arguments, refinements, 1));
                     }
                     if (!(arguments.get(0) instanceof SeriesValue series)) {
                         return raiseWrongArgument(arguments.get(0), "remove", "series");
@@ -6732,13 +6702,7 @@ public final class Natives {
 
     private static boolean isTheZeroOfItsDatatype(Value value) {
         if (value instanceof BitsetValue members) {
-            byte held = (byte) (members.isComplemented() ? 0xFF : 0);
-            for (byte octet : members.octets()) {
-                if (octet != held) {
-                    return false;
-                }
-            }
-            return true;
+            return new BitsetActions(members).isTheEmptySet();
         }
         if (value instanceof PairValue pair) {
             return pair.x() == 0 && pair.y() == 0;
@@ -6758,198 +6722,8 @@ public final class Natives {
         return Comparison.isNumeric(value) && Comparison.asDouble(value) == 0.0;
     }
 
-    private static Value bitsMeantBy(Value source) {
-        if (source instanceof IntegerValue point) {
-            return BitsetValue.of(withBitSet(new byte[0], bitAsked(point.magnitude())));
-        }
-        if (!(source instanceof CharacterValue || source instanceof StringValue
-                || source instanceof BinaryValue || source instanceof BlockValue)) {
-            throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(source));
-        }
-        return bitsetOf(source);
-    }
-
-    private static Value bitsetOf(Value source) {
-        return switch (source) {
-            case StringValue text -> BitsetValue.ofCharacters(text.text().codePoints().toArray());
-            case CharacterValue character ->
-                    BitsetValue.ofCharacters(character.codepoint());
-            case IntegerValue room -> BitsetValue.of(
-                    new byte[(bitAsked(room.magnitude()) + 7) / 8]);
-            case BinaryValue octets -> BitsetValue.of(octets.octetsFromHere());
-            case BitsetValue existing -> existing.duplicate();
-            case BlockValue members -> bitsetFromBlock(members);
-            default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    Molder.mold(source) + " names no characters a set could hold");
-        };
-    }
-
-    private static Value bitsetFromBlock(BlockValue members) {
-        List<Value> items = members.remaining();
-        boolean complemented = !items.isEmpty()
-                && items.getFirst() instanceof WordValue word
-                && word.canonical().equals("not");
-        BlockValue rest = complemented ? members.atIndex(members.index() + 1) : members;
-        List<Value> specs = rest.remaining();
-        BitsetValue set = BitsetValue.of(octetsNamedBy(specs, members));
-        return complemented ? set.complemented() : set;
-    }
-
-    private static byte[] octetsNamedBy(List<Value> specs, BlockValue whole) {
-        byte[] octets = new byte[0];
-        for (int at = 0; at < specs.size(); at++) {
-            Value spec = specs.get(at);
-            if (spec instanceof WordValue word && word.canonical().equals("bits")) {
-                if (at + 1 >= specs.size()
-                        || !(specs.get(at + 1) instanceof BinaryValue held)) {
-                    throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(whole));
-                }
-                octets = withOctetsSet(octets, held.octetsFromHere());
-                at++;
-            } else if (spec instanceof BinaryValue held) {
-                octets = withOctetsSet(octets, held.octetsFromHere());
-            } else if (spec instanceof StringValue text) {
-                for (int point : text.text().codePoints().toArray()) {
-                    octets = withBitSet(octets, point);
-                }
-            } else if (spec instanceof CharacterValue || spec instanceof IntegerValue) {
-                int from = bitAsked((long) codePointOf(spec));
-                int to = from;
-                if (at + 1 < specs.size()
-                        && specs.get(at + 1) instanceof WordValue dash
-                        && dash.spelling().equals("-")) {
-                    to = bitAsked((long) codePointOf(farEndOfTheRun(spec, specs, at + 2)));
-                    at += 2;
-                }
-                if (to < from) {
-                    throw Raised.of(EvaluationFailure.PAST_END, String.valueOf(to));
-                }
-                for (int point = from; point <= to; point++) {
-                    octets = withBitSet(octets, point);
-                }
-            } else {
-                throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(whole));
-            }
-        }
-        return octets;
-    }
-
-    private static Value farEndOfTheRun(Value opening, List<Value> specs, int at) {
-        Value closing = at < specs.size() ? specs.get(at) : UnsetValue.unset();
-        if (opening.datatype() != closing.datatype()) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(closing));
-        }
-        return closing;
-    }
-
-    private static byte[] withBitSet(byte[] octets, int point) {
-        int reaching = point / 8 + 1;
-        byte[] grown = octets.length >= reaching
-                ? octets
-                : Arrays.copyOf(octets, reaching);
-        grown[point / 8] |= (byte) (0x80 >> (point % 8));
-        return grown;
-    }
-
-    private static byte[] withOctetsSet(byte[] octets, byte[] more) {
-        byte[] grown = octets.length >= more.length
-                ? octets
-                : Arrays.copyOf(octets, more.length);
-        for (int at = 0; at < more.length; at++) {
-            grown[at] |= more[at];
-        }
-        return grown;
-    }
-
-    private static int[] codePointsIn(BlockValue members) {
-        List<Value> items = members.remaining();
-        List<Integer> points = new ArrayList<>();
-        for (int at = 0; at < items.size(); at++) {
-            boolean isRange = at + 2 < items.size()
-                    && items.get(at + 1) instanceof WordValue dash
-                    && dash.spelling().equals("-");
-            if (isRange) {
-                int from = codePointOf(items.get(at));
-                int to = codePointOf(items.get(at + 2));
-                for (int point = from; point <= to; point++) {
-                    points.add(point);
-                }
-                at += 2;
-                continue;
-            }
-            if (items.get(at) instanceof CharacterValue || items.get(at) instanceof IntegerValue) {
-                points.add(codePointOf(items.get(at)));
-            } else if (items.get(at) instanceof StringValue text) {
-                text.text().codePoints().forEach(points::add);
-            }
-        }
-        return points.stream().mapToInt(Integer::intValue).toArray();
-    }
-
-    private static int codePointOf(Value value) {
-        return value instanceof CharacterValue character
-                ? character.codepoint()
-                : (int) Comparison.asDouble(value);
-    }
-
-    private static boolean bitsetHolds(
-            BitsetValue members, Value asked, boolean anyWillDo, boolean eitherCaseWillDo) {
-        if (asked instanceof CharacterValue letter) {
-            return eitherCaseWillDo
-                    ? members.holdsEitherCaseOf(letter.codepoint())
-                    : members.holds(letter.codepoint());
-        }
-        if (asked instanceof IntegerValue codepoint) {
-            return members.holds(bitAsked(codepoint.magnitude()));
-        }
-        return holdsEachOf(members, codePointsAskedAboutBy(asked), anyWillDo);
-    }
-
-    private static boolean bitsetHolds(BitsetValue members, Value asked, boolean anyWillDo) {
-        return bitsetHolds(members, asked, anyWillDo, false);
-    }
-
-    private static int bitAsked(long codepoint) {
-        if (codepoint < 0 || codepoint > Integer.MAX_VALUE) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    codepoint + " names no bit a set could hold");
-        }
-        return (int) codepoint;
-    }
-
     static Value bitsetHoldsForAPath(BitsetValue members, Value selector) {
-        return LogicValue.of(bitsetHolds(members, selector, false));
-    }
-
-    private static int[] codePointsAskedAboutBy(Value asked) {
-        if (asked instanceof StringValue text) {
-            return text.text().codePoints().toArray();
-        }
-        if (asked instanceof BinaryValue octets) {
-            byte[] bytes = octets.octetsFromHere();
-            int[] points = new int[bytes.length];
-            for (int at = 0; at < bytes.length; at++) {
-                points[at] = bytes[at] & 0xFF;
-            }
-            return points;
-        }
-        if (asked instanceof BlockValue specs) {
-            int[] points = codePointsIn(specs);
-            for (int point : points) {
-                bitAsked(point);
-            }
-            return points;
-        }
-        throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(asked));
-    }
-
-    private static boolean holdsEachOf(BitsetValue members, int[] wanted, boolean anyWillDo) {
-        for (int point : wanted) {
-            if (members.holds(point) == anyWillDo) {
-                return anyWillDo;
-            }
-        }
-        return !anyWillDo;
+        return new BitsetActions(members).heldForAPath(selector);
     }
 
     private <T> void shuffleTheWayTheCDoes(List<T> items) {
@@ -8308,7 +8082,7 @@ public final class Natives {
 
     private static Value pickFrom(Value target, Value selector) {
         return switch (target) {
-            case BitsetValue members -> LogicValue.of(bitsetHolds(members, selector, false));
+            case BitsetValue members -> new BitsetActions(members).heldForAPath(selector);
             case MapValue map -> map.select(selector);
             case DateValue date -> DateParts.of(date, selector);
             case TimeValue time -> pickTimePart(time, selector);
@@ -11794,7 +11568,7 @@ public final class Natives {
                     : raiseBadMakeArg(value, "port!");
             case MODULE -> moduleFromHeaderAndWords(value);
             case TASK -> asking.builds() ? aTaskMadeFrom(value) : raiseBadMakeArg(value, "task!");
-            case BITSET -> bitsetOf(value);
+            case BITSET -> BitsetActions.madeFrom(value);
             case TYPESET -> switch (value) {
                 case TypesetValue already -> already;
                 case BlockValue block when block.datatype() == Datatype.BLOCK ->
@@ -11843,23 +11617,14 @@ public final class Natives {
             case VectorValue vector -> binaryOfBytes(vector.octetsFromHere());
             case StructValue struct -> binaryOfBytes(struct.octets());
             case TupleValue segments -> binaryOfBytes(octetsOf(segments));
-            case BitsetValue members -> binaryOfBytes(members.isComplemented()
-                    ? eachByteTurnedOver(members.octets())
-                    : members.octets());
+            case BitsetValue members ->
+                    binaryOfBytes(new BitsetActions(members).asOctets());
             case ImageValue picture -> binaryOfBytes(everyPixelOf(picture));
             case CharacterValue letter -> binaryOfBytes(
                     Character.toString(letter.codepoint())
                             .getBytes(StandardCharsets.UTF_8));
             default -> raiseInvalidArgument(value);
         };
-    }
-
-    private static byte[] eachByteTurnedOver(byte[] octets) {
-        byte[] turned = new byte[octets.length];
-        for (int at = 0; at < octets.length; at++) {
-            turned[at] = (byte) ~octets[at];
-        }
-        return turned;
     }
 
     private static byte[] octetsOf(TupleValue segments) {
@@ -12951,34 +12716,6 @@ public final class Natives {
 
     private static boolean isExactlyAString(Value value) {
         return value instanceof StringValue && value.datatype() == Datatype.STRING;
-    }
-
-    private static Value membersCleared(
-            BitsetValue members, List<Value> arguments, Set<String> refinements) {
-        requireChangeable(members);
-        if (refinements.contains("key") && refinements.contains("part")) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                    "/key and /part each say what to remove, and only one can");
-        }
-        if (refinements.contains("key")) {
-            members.clearAllDirectly((BitsetValue) bitsMeantBy(argumentFor(
-                    "key", List.of("part", "key"), arguments, refinements, 1)));
-            return members;
-        }
-        if (refinements.contains("part")) {
-            Value range = argumentFor(
-                    "part", List.of("part", "key"), arguments, refinements, 1);
-            if (!(range instanceof BlockValue || range instanceof BinaryValue
-                    || range instanceof CharacterValue
-                    || isExactlyAString(range))) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        Molder.mold(range) + " names no range of members");
-            }
-            members.clearAllDirectly((BitsetValue) bitsMeantBy(range));
-            return members;
-        }
-        throw Raised.of(EvaluationFailure.MISSING_ARG,
-                "/key or /part must say what to remove from the set");
     }
 
     private static Value objectGainingFields(
