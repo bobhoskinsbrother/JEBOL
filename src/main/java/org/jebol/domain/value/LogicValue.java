@@ -22,7 +22,7 @@ public record LogicValue(boolean truth) implements Value {
     public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
         return asking.builds()
                 ? java.util.Optional.of(
-                        Value.quantityAsItStands(wanted, truth() ? 1.0 : 0.0))
+                        asItStands(wanted, truth() ? 1.0 : 0.0))
                 : java.util.Optional.empty();
     }
 

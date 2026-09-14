@@ -62,13 +62,13 @@ public sealed interface Value permits
         return java.util.Optional.empty();
     }
 
-    static Value quantityAsItStands(Datatype wanted, double quantity) {
+    default Value asItStands(Datatype wanted, double quantity) {
         return wanted == Datatype.PERCENT
                 ? DecimalValue.percent(quantity)
                 : DecimalValue.of(quantity);
     }
 
-    static Value quantityInHundredths(Datatype wanted, double quantity) {
+    default Value inHundredths(Datatype wanted, double quantity) {
         return wanted == Datatype.PERCENT
                 ? DecimalValue.percent(quantity / 100.0)
                 : DecimalValue.of(quantity);

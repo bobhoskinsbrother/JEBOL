@@ -64,7 +64,7 @@ public record DateValue(
     @Override
     public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
         return java.util.Optional.of(
-                Value.quantityInHundredths(wanted, secondsSinceTheEpoch()));
+                inHundredths(wanted, secondsSinceTheEpoch()));
     }
 
     public double secondsSinceTheEpoch() {

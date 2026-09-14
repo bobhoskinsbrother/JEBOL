@@ -11238,26 +11238,27 @@ public final class Natives {
     }
 
     private static Value scannedIntoADecimal(Datatype wanted, Value value) {
+        return theQuantityScannedFrom(wanted, value)
+                .stream()
+                .mapToObj(quantity -> value.inHundredths(wanted, quantity))
+                .findFirst()
+                .orElseGet(() -> raiseBadMakeArg(value, wanted.literalSpelling()));
+    }
+
+    private static OptionalDouble theQuantityScannedFrom(Datatype wanted, Value value) {
         if (value instanceof StringValue text && text.datatype() == Datatype.STRING) {
-            return asHundredths(wanted, decimalReadFrom(text, wanted));
+            return decimalReadFrom(text, wanted);
         }
         if (value instanceof BlockValue parts) {
-            return asHundredths(wanted, mantissaTimesTenTo(parts, wanted));
+            return OptionalDouble.of(mantissaTimesTenTo(parts, wanted));
         }
-        return raiseBadMakeArg(value, wanted.literalSpelling());
+        return OptionalDouble.empty();
     }
 
-    private static Value asHundredths(Datatype wanted, double quantity) {
-        return Value.quantityInHundredths(wanted, quantity);
-    }
-
-    private static double decimalReadFrom(StringValue text, Datatype wanted) {
+    private static OptionalDouble decimalReadFrom(StringValue text, Datatype wanted) {
         String qualified = qualifiedNumberIn(
                 text.text(), "a number", MOST_FRACTION_CHARACTERS);
-        return decimalScannedFrom(qualified, wanted == Datatype.PERCENT)
-                .orElseThrow(() -> Raised.of(EvaluationFailure.BAD_MAKE_ARG,
-                        "cannot make a " + wanted.literalSpelling()
-                                + " out of \"" + text.text() + "\""));
+        return decimalScannedFrom(qualified, wanted == Datatype.PERCENT);
     }
 
     private static double mantissaTimesTenTo(BlockValue parts, Datatype wanted) {

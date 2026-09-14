@@ -17,7 +17,7 @@ public record DecimalValue(double quantity, Datatype datatype) implements Value 
 
     @Override
     public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
-        return java.util.Optional.of(Value.quantityAsItStands(wanted, quantity));
+        return java.util.Optional.of(asItStands(wanted, quantity));
     }
 
     public static DecimalValue of(double quantity) {

@@ -30,7 +30,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements SeriesVal
 
     @Override
     public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
-        return java.util.Optional.of(Value.quantityInHundredths(
+        return java.util.Optional.of(inHundredths(
                 wanted, Double.longBitsToDouble(bitsOfTheLastEightOctets())));
     }
 

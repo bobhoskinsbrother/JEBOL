@@ -13,7 +13,7 @@ public record IntegerValue(long magnitude) implements Value {
 
     @Override
     public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
-        return java.util.Optional.of(Value.quantityAsItStands(wanted, magnitude));
+        return java.util.Optional.of(asItStands(wanted, magnitude));
     }
 
     @Override
