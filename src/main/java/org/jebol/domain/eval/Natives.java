@@ -2918,7 +2918,7 @@ public final class Natives {
 
         List<WordValue> names = loopNamesIn(target, "foreach");
         List<WordValue> taking = namesThatTakeAValue(names);
-        refuseMoreNamesThanAPairHas(series, taking);
+        MapActions.refuseMoreNamesThanAPairHas(series, taking);
         Supplier<List<Value>> itemsAsTheyStandNow =
                 () -> keysOnly(series, taking.size());
 
@@ -2942,16 +2942,6 @@ public final class Natives {
         return last;
     }
 
-    private static void refuseMoreNamesThanAPairHas(
-            Value series, List<WordValue> names) {
-
-        if (names.size() > 2 && (series instanceof MapValue || series instanceof ObjectValue)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "a walk over " + series.datatype().literalSpelling()
-                            + " takes a key and a value, and " + names.size()
-                            + " names is one more than a pair has");
-        }
-    }
 
     private static List<WordValue> loopNamesIn(Value target, String nativeName) {
         if (!(target instanceof BlockValue block)) {
@@ -4833,43 +4823,11 @@ public final class Natives {
                     case PortValue openFile when isAFilePort(openFile) ->
                             appendedToTheFileBehind(
                                     openFile, arguments.get(1), evaluator, refinements);
-                    case BlockValue block -> {
-                        if (duplicated(arguments.get(1), arguments, refinements)
-                                instanceof BlockValue added
-                                && added.datatype() == Datatype.BLOCK
-                                && !refinements.contains("only")) {
-                            block.storage().spliceInAt(
-                                    block.storage().length() + 1,
-                                    firstFew(arguments.get(1), added.remaining(),
-                                            arguments, refinements, 2),
-                                    added.storage(), added.index());
-                        } else {
-                            block.storage().append(arguments.get(1));
-                        }
-                        yield block.head();
-                    }
-                    case BinaryValue bytes -> {
-                        for (int octet : SeriesContents.octetsContributedBy(
-                                duplicated(arguments.get(1), arguments, refinements),
-                                partCountFor(arguments, refinements))) {
-                            bytes.storage().append(octet);
-                        }
-                        yield bytes.head();
-                    }
+                    case Value subject when Actions.of(subject).isPresent() ->
+                            Actions.of(subject).orElseThrow().append(askedOf(
+                                    subject, arguments, refinements, evaluator, context));
                     case ObjectValue object ->
                             objectGainingFields(object, arguments, refinements, "append");
-                    case MapValue map ->
-                            addPairsToMap(map, arguments, refinements, "append");
-                    case BitsetValue members -> {
-                        requireChangeable(members);
-                        new BitsetActions(members).addAllOf(arguments.get(1));
-                        yield members;
-                    }
-                    case StringValue string -> {
-                        textContributedBy(arguments, refinements).codePoints()
-                                .forEach(string.storage()::append);
-                        yield string.head();
-                    }
                     case GobValue gob -> {
                         refuseUnfinishedRefinements(refinements, "append");
                         insertChildren(gob, gob.storage().length() + 1,
@@ -5720,26 +5678,21 @@ public final class Natives {
     private static MapValue composedMap(
             MapValue template, Evaluator evaluator, Context context,
             boolean keepingBlocksWhole, boolean goingDeep) {
-        List<Value> pairs = new ArrayList<>();
-        for (Value key : template.keys()) {
-            pairs.add(key);
-            Value held = template.select(key);
+
+        return new MapActions(template).composedThrough(held -> {
             if (held instanceof BlockValue paren
                     && paren.datatype() == Datatype.PAREN) {
-                pairs.add(evaluator.evaluateOrRaise(
-                        paren.as(Datatype.BLOCK), context));
-            } else if (goingDeep && held instanceof BlockValue nested
-                    && nested.datatype() == Datatype.BLOCK) {
-                pairs.add(composed(
-                        nested, evaluator, context, keepingBlocksWhole, true));
-            } else if (goingDeep && held instanceof MapValue nested) {
-                pairs.add(composedMap(
-                        nested, evaluator, context, keepingBlocksWhole, true));
-            } else {
-                pairs.add(held);
+                return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
             }
-        }
-        return MapValue.of(pairs);
+            if (goingDeep && held instanceof BlockValue nested
+                    && nested.datatype() == Datatype.BLOCK) {
+                return composed(nested, evaluator, context, keepingBlocksWhole, true);
+            }
+            if (goingDeep && held instanceof MapValue nested) {
+                return composedMap(nested, evaluator, context, keepingBlocksWhole, true);
+            }
+            return held;
+        });
     }
 
     private static String textOfSource(Value source) {
@@ -7164,7 +7117,7 @@ public final class Natives {
 
         requireChangeable(map);
         List<WordValue> names = loopNamesIn(arguments.getFirst(), "remove-each");
-        refuseMoreNamesThanAPairHas(map, namesThatTakeAValue(names));
+        MapActions.refuseMoreNamesThanAPairHas(map, namesThatTakeAValue(names));
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.define(name.spelling()));
         BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
@@ -8038,7 +7991,21 @@ public final class Natives {
         }
     }
 
-    private static void requireChangeable(Value series) {
+    /**
+     * Reads /PART, /ONLY and /DUP once, so that the arm the action lands in
+     * is handed an answered question rather than the plumbing.
+     */
+    private static Asked askedOf(
+            Value subject, List<Value> arguments, Set<String> refinements,
+            Evaluator evaluator, Context context) {
+
+        return Asked.reading(subject, arguments.get(1), refinements,
+                refinement -> argumentFor(refinement,
+                        List.of("part", "dup"), arguments, refinements, 2),
+                evaluator, context);
+    }
+
+    static void requireChangeable(Value series) {
         boolean refused = switch (series) {
             case BlockValue block -> block.storage().isProtected();
             case StringValue text -> text.storage().isProtected();
@@ -12176,35 +12143,14 @@ public final class Natives {
 
     private static Value mapMadeFrom(Value given) {
         if (isANumberButNotAPercentageWhichIsNoRoomAtAll(given)) {
-            if (Comparison.asDouble(given) < 0) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                        "a map cannot have room for " + Molder.form(given) + " pairs");
-            }
+            MapActions.refuseRoomForFewerThanNoPairs(given);
             refuseMoreRoomThanASeriesCounts(Datatype.MAP, given);
             return MapValue.empty();
         }
-        List<Value> pairs = switch (given) {
-            case MapValue already -> already.flattened();
-            case ObjectValue object -> object.context().slots().stream()
-                    .filter(slot -> !slot.canonical().equals("self"))
-                    .<Value>mapMulti((slot, accept) -> {
-                        accept.accept(WordValue.of(slot.spelling()));
-                        accept.accept(slot.value());
-                    })
-                    .toList();
-            case BlockValue block when block.datatype() == Datatype.BLOCK
-                    || block.datatype() == Datatype.PAREN -> block.remaining();
-            default -> null;
-        };
-        if (pairs == null) {
-            return raiseBadMakeArg(given, "map!");
-        }
-        if (pairs.size() % 2 != 0) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "a map needs a value for every key, and this has "
-                            + pairs.size() + " items");
-        }
-        return MapValue.of(pairs);
+        List<Value> pairs = MapActions.pairsOffered(given);
+        return pairs == null
+                ? raiseBadMakeArg(given, "map!")
+                : MapActions.madeFrom(given, pairs);
     }
 
     private static Value raiseHalfAnExpression(Value assigning) {
@@ -12508,22 +12454,10 @@ public final class Natives {
             Set<String> refinements, String nativeName) {
 
         requireChangeable(map);
-        if (!(arguments.get(1) instanceof BlockValue pairs)
-                || pairs.datatype() != Datatype.BLOCK) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    nativeName + " puts pairs into a map, and needs a block of them, "
-                            + "not a " + arguments.get(1).datatype().literalSpelling());
-        }
-        if (refinements.contains("dup")) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                    nativeName + "/dup means nothing for a map, where adding a key "
-                            + "twice over leaves one key");
-        }
-        List<Value> wanted = pairsWantedBy(pairs, arguments, refinements);
-        for (int at = 0; at + 1 < wanted.size(); at += 2) {
-            map.put(wanted.get(at), wanted.get(at + 1));
-        }
-        return map;
+        MapActions.refuseWhatIsNotAWholeBlockOfPairs(
+                arguments.get(1), refinements.contains("dup"), nativeName);
+        return new MapActions(map).given(pairsWantedBy(
+                (BlockValue) arguments.get(1), arguments, refinements));
     }
 
     private static List<Value> pairsWantedBy(
@@ -12716,15 +12650,6 @@ public final class Natives {
         if (object.context().holds("self")) {
             Evaluator.refuseToWriteTheNameAnObjectAnswersToItselfBy(field);
         }
-    }
-
-    private static List<Value> firstFew(
-            Value source, List<Value> items, List<Value> arguments,
-            Set<String> refinements, int where) {
-        return howManyWanted(source, arguments, refinements, where)
-                .map(count -> items.subList(0,
-                        (int) Math.max(0, Math.min(count, items.size()))))
-                .orElse(items);
     }
 
     private static String runTogether(Value value) {

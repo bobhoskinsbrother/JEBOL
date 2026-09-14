@@ -354,7 +354,11 @@ public final class Combining {
 
             @Override
             Value combine(TwoSets asked) {
-                return mapsKeyByKey(asked);
+                MapValue ours = asked.first() instanceof MapValue map
+                        ? map
+                        : MapValue.empty();
+                return new MapActions(ours).combinedWith(
+                        asked.second(), asked.how(), asked.mindingCase());
             }
         },
 
@@ -405,31 +409,4 @@ public final class Combining {
         return BitsetValue.of(both);
     }
 
-    private static MapValue mapsKeyByKey(TwoSets asked) {
-        boolean mindingCase = asked.mindingCase();
-        Sets how = asked.how();
-        MapValue ours = asked.first() instanceof MapValue map ? map : MapValue.empty();
-        MapValue theirs = asked.second() instanceof MapValue map ? map : MapValue.empty();
-        MapValue kept = MapValue.empty();
-        for (Value key : ours.keys()) {
-            boolean inTheirs = theirs.holds(key, mindingCase);
-            boolean wanted = switch (how) {
-                case INTERSECT -> inTheirs;
-                case UNION -> true;
-                case EXCLUDE, DIFFERENCE -> !inTheirs;
-            };
-            if (wanted && !kept.holds(key, mindingCase)) {
-                kept.put(key, ours.select(key, mindingCase), mindingCase);
-            }
-        }
-        if (how == Sets.UNION || how == Sets.DIFFERENCE) {
-            for (Value key : theirs.keys()) {
-                boolean inOurs = ours.holds(key, mindingCase);
-                if ((how == Sets.UNION || !inOurs) && !kept.holds(key, mindingCase)) {
-                    kept.put(key, theirs.select(key, mindingCase), mindingCase);
-                }
-            }
-        }
-        return kept;
-    }
 }

@@ -31,12 +31,19 @@ import java.util.function.Function;
  * knows nothing about those. Setting and testing a bit that is already a
  * number stays on the value, where it always was.
  */
-public final class BitsetActions {
+public final class BitsetActions implements Actions {
 
     private final BitsetValue members;
 
     public BitsetActions(BitsetValue members) {
         this.members = members;
+    }
+
+    @Override
+    public Value append(Asked asked) {
+        Natives.requireChangeable(members);
+        addAllOf(asked.given());
+        return members;
     }
 
     /**

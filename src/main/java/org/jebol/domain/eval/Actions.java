@@ -1,0 +1,49 @@
+package org.jebol.domain.eval;
+
+import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.BitsetValue;
+import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.MapValue;
+import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.Value;
+
+import java.util.Optional;
+
+/**
+ * The arms one datatype answers an action with -- JEBOL's
+ * {@code Value_Dispatch}, which the C indexes by the type of argument one.
+ *
+ * <p>Every method refuses by default, which is {@code REBTYPE}'s
+ * {@code default: Trap_Action} and the reason a datatype implements only what
+ * it actually serves.
+ *
+ * <p><strong>Half built on purpose.</strong> {@link #of} answers nothing for a
+ * datatype whose arms have not moved yet, and the registry falls back to its
+ * own switch for those. The interface becomes sealed, and the fallback goes,
+ * when the last datatype is in -- sealing it now would block the migration
+ * rather than help it.
+ */
+public interface Actions {
+
+    /**
+     * The arms for one value, or nothing when that datatype has not moved yet.
+     *
+     * <p>The datatypes listed here are the ones whose arms live in their own
+     * class. Everything else is still answered by the registry's switch.
+     */
+    static Optional<Actions> of(Value subject) {
+        return switch (subject) {
+            case BitsetValue members -> Optional.of(new BitsetActions(members));
+            case MapValue pairs -> Optional.of(new MapActions(pairs));
+            case BinaryValue bytes -> Optional.of(new BinaryActions(bytes));
+            case StringValue text -> Optional.of(new StringActions(text));
+            case BlockValue block -> Optional.of(new BlockActions(block));
+            default -> Optional.empty();
+        };
+    }
+
+    /** APPEND: put this at the end, and answer the series from its head. */
+    default Value append(Asked asked) {
+        throw Raised.cannotUse(asked.subject(), "append");
+    }
+}
