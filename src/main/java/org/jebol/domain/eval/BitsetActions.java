@@ -40,6 +40,23 @@ public final class BitsetActions implements Actions {
     }
 
     @Override
+    public Value subject() {
+        return members;
+    }
+
+    @Override
+    public Value cleared() {
+        Natives.requireChangeable(members);
+        members.clear();
+        return members;
+    }
+
+    @Override
+    public int length() {
+        return bitsReachedOver();
+    }
+
+    @Override
     public Value append(Asked asked) {
         return givenTheBitsOf(asked);
     }

@@ -29,6 +29,16 @@ public final class ObjectActions implements Actions {
     }
 
     @Override
+    public Value subject() {
+        return object;
+    }
+
+    @Override
+    public int length() {
+        return object.context().fieldCount();
+    }
+
+    @Override
     public Value append(Asked asked) {
         return gainingFields(asked, "append");
     }

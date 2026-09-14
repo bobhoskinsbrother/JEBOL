@@ -50,6 +50,9 @@ public interface Actions {
         };
     }
 
+    /** The value these arms answer for, so a refusal can name it. */
+    Value subject();
+
     /** APPEND: put this at the end, and answer the series from its head. */
     default Value append(Asked asked) {
         throw Raised.cannotUse(asked.subject(), "append");
@@ -61,5 +64,22 @@ public interface Actions {
      */
     default Value insert(Asked asked) {
         throw Raised.cannotUse(asked.subject(), "insert");
+    }
+
+    /**
+     * CLEAR: throw away everything from here to the end, and answer the value
+     * still standing where it was.
+     *
+     * <p>From <em>here</em>, not from the head: clearing a block held at its
+     * third item leaves the first two. A datatype with no position of its own
+     * empties completely, because everywhere is its head.
+     */
+    default Value cleared() {
+        throw Raised.cannotUse(subject(), "clear");
+    }
+
+    /** LENGTH?: how many, counted in whatever this datatype counts in. */
+    default int length() {
+        throw Raised.cannotUse(subject(), "length?");
     }
 }

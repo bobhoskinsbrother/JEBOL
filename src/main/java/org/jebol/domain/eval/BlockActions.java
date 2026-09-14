@@ -28,6 +28,24 @@ public final class BlockActions implements Actions {
     }
 
     @Override
+    public Value subject() {
+        return block;
+    }
+
+    @Override
+    public Value cleared() {
+        while (block.storage().length() >= block.index()) {
+            block.storage().removeAt(block.index());
+        }
+        return block;
+    }
+
+    @Override
+    public int length() {
+        return block.lengthFromHere();
+    }
+
+    @Override
     public Value append(Asked asked) {
         if (asked.duplicated() instanceof BlockValue added
                 && splicesRatherThanGoesInWhole(added, asked)) {

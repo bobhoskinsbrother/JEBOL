@@ -4606,21 +4606,18 @@ public final class Natives {
                     case PortValue queued when theEventQueueOf(queued).isPresent() ->
                             IntegerValue.of(theEventQueueOf(queued).orElseThrow()
                                     .lengthFromHere());
-                    case MapValue map -> IntegerValue.of(map.pairCount());
                     case TupleValue tuple -> IntegerValue.of(tuple.shownCount());
                     case WordValue word -> IntegerValue.of(
                             word.spelling().codePointCount(0, word.spelling().length()));
+                    case Value subject when Actions.of(subject).isPresent() ->
+                            IntegerValue.of(Actions.of(subject).orElseThrow().length());
                     case SeriesValue series -> IntegerValue.of(series.lengthFromHere());
-                    case ObjectValue object ->
-                            IntegerValue.of(object.context().fieldCount());
                     case ModuleValue module ->
                             IntegerValue.of(module.context().fieldCount());
                     case PortValue port when isAFilePort(port) ->
                             lengthLeftInTheFile(port, evaluator);
                     case PortValue port ->
                             IntegerValue.of(port.context().fieldCount());
-                    case BitsetValue set ->
-                            IntegerValue.of(new BitsetActions(set).bitsReachedOver());
                     case StructValue struct -> IntegerValue.of(struct.size());
                     default -> raiseWrongArgument(arguments.get(0), "length?", "series");
                 }));
@@ -5248,43 +5245,8 @@ public final class Natives {
                         }
                         yield queued;
                     }
-                    case BitsetValue members -> {
-                        requireChangeable(members);
-                        members.clear();
-                        yield members;
-                    }
-                    case MapValue map -> {
-                        requireChangeable(map);
-                        map.clear();
-                        yield map;
-                    }
-                    case BlockValue block -> {
-                        while (block.storage().length() >= block.index()) {
-                            block.storage().removeAt(block.index());
-                        }
-                        yield block;
-                    }
-                    case StringValue text0 -> {
-                        while (text0.storage().length() >= text0.index()) {
-                            text0.storage().removeAt(text0.index());
-                        }
-                        yield text0;
-                    }
-                    case BinaryValue bytes -> {
-                        while (bytes.storage().length() >= bytes.index()) {
-                            bytes.storage().removeAt(bytes.index());
-                        }
-                        yield bytes;
-                    }
-                    case GobValue gob -> {
-                        gob.storage().removeChildren(gob.index(),
-                                gob.storage().length() - gob.index() + 1);
-                        yield gob;
-                    }
-                    case VectorValue vector -> {
-                        vector.storage().clearFrom(vector.index());
-                        yield vector;
-                    }
+                    case Value subject when Actions.of(subject).isPresent() ->
+                            Actions.of(subject).orElseThrow().cleared();
                     case StructValue struct -> {
                         struct.clear();
                         yield struct;

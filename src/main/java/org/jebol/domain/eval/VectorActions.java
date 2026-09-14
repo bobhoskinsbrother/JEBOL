@@ -24,6 +24,22 @@ public final class VectorActions implements Actions {
     }
 
     @Override
+    public Value subject() {
+        return vector;
+    }
+
+    @Override
+    public Value cleared() {
+        vector.storage().clearFrom(vector.index());
+        return vector;
+    }
+
+    @Override
+    public int length() {
+        return vector.lengthFromHere();
+    }
+
+    @Override
     public Value append(Asked asked) {
         for (Value number : numbersAddedBy(asked)) {
             vector.storage().append(VectorPath.storedFormOf(vector.kind(), number));

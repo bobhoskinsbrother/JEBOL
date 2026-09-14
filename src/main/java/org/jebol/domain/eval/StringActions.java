@@ -27,6 +27,24 @@ public final class StringActions implements Actions {
     }
 
     @Override
+    public Value subject() {
+        return text;
+    }
+
+    @Override
+    public Value cleared() {
+        while (text.storage().length() >= text.index()) {
+            text.storage().removeAt(text.index());
+        }
+        return text;
+    }
+
+    @Override
+    public int length() {
+        return text.lengthFromHere();
+    }
+
+    @Override
     public Value append(Asked asked) {
         contributedBy(asked).codePoints().forEach(text.storage()::append);
         return text.head();

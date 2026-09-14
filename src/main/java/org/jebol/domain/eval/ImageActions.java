@@ -24,6 +24,16 @@ public final class ImageActions implements Actions {
     }
 
     @Override
+    public Value subject() {
+        return picture;
+    }
+
+    @Override
+    public int length() {
+        return picture.lengthFromHere();
+    }
+
+    @Override
     public Value append(Asked asked) {
         asked.refuseRefinementsThisDatatypeDoesNotServe("append");
         return ImageSeries.appended(picture, asked.given(), asked.howManyTimes());

@@ -30,6 +30,23 @@ public final class MapActions implements Actions {
     }
 
     @Override
+    public Value subject() {
+        return pairs;
+    }
+
+    @Override
+    public Value cleared() {
+        Natives.requireChangeable(pairs);
+        pairs.clear();
+        return pairs;
+    }
+
+    @Override
+    public int length() {
+        return pairs.pairCount();
+    }
+
+    @Override
     public Value append(Asked asked) {
         return givenTheBlockOfPairs(asked, "append");
     }

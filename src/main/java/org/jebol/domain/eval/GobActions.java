@@ -27,6 +27,23 @@ public final class GobActions implements Actions {
     }
 
     @Override
+    public Value subject() {
+        return gob;
+    }
+
+    @Override
+    public Value cleared() {
+        gob.storage().removeChildren(gob.index(),
+                gob.storage().length() - gob.index() + 1);
+        return gob;
+    }
+
+    @Override
+    public int length() {
+        return gob.lengthFromHere();
+    }
+
+    @Override
     public Value append(Asked asked) {
         asked.refuseRefinementsThisDatatypeDoesNotServe("append");
         givenTheChildrenOf(asked.given(), gob.storage().length() + 1);

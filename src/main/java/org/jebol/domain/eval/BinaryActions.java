@@ -21,6 +21,24 @@ public final class BinaryActions implements Actions {
     }
 
     @Override
+    public Value subject() {
+        return bytes;
+    }
+
+    @Override
+    public Value cleared() {
+        while (bytes.storage().length() >= bytes.index()) {
+            bytes.storage().removeAt(bytes.index());
+        }
+        return bytes;
+    }
+
+    @Override
+    public int length() {
+        return bytes.lengthFromHere();
+    }
+
+    @Override
     public Value append(Asked asked) {
         for (int octet : octetsContributedBy(asked)) {
             bytes.storage().append(octet);
