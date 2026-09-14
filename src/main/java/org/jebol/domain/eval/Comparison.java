@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.date.DateOrder;
 import org.jebol.domain.value.*;
 
 import java.math.BigDecimal;
@@ -371,7 +372,7 @@ public final class Comparison {
             return first.equals(second) && first.segmentCount() == second.segmentCount();
         }
         if (left instanceof DateValue first && right instanceof DateValue second) {
-            return sameDateBitsAndTime(first, second);
+            return DateOrder.writtenTheSameWay(first, second);
         }
         if (left instanceof ObjectValue first && right instanceof ObjectValue second) {
             return strictFields(first, second);
@@ -390,18 +391,6 @@ public final class Comparison {
             return true;
         }
         return left.equals(right);
-    }
-
-    private static boolean sameDateBitsAndTime(DateValue first, DateValue second) {
-        return first.year() == second.year()
-                && first.month() == second.month()
-                && first.day() == second.day()
-                && first.timeOfDay().equals(second.timeOfDay())
-                && aMissingZoneCountsAsZero(first).equals(aMissingZoneCountsAsZero(second));
-    }
-
-    private static Integer aMissingZoneCountsAsZero(DateValue date) {
-        return date.zoneMinutes().orElse(0);
     }
 
     /**
@@ -590,7 +579,7 @@ public final class Comparison {
      */
     public static int compareForSorting(Value left, Value right, boolean mindingCase) {
         if (left instanceof DateValue first && right instanceof DateValue second) {
-            return first.moment().compareTo(second.moment());
+            return DateOrder.comparing(first, second);
         }
         if (left instanceof PairValue first && right instanceof PairValue second) {
             return orderingOfPairs(first, second);
