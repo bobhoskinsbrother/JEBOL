@@ -1063,6 +1063,11 @@ fifteen-thousand-line `Natives`, and an enum constant with a body is the same
 switch wearing a jacket -- `Arithmetic.Kind` and `Combining.SetKind` are targets
 of this goal, not the shape to copy.
 
+An enum does earn its keep, but only as a **registry**: it is right for the name,
+the number and the closed set, and wrong for the behaviour, which goes in a class
+per member that the registry delegates to. `org.jebol.domain.date.part` is the
+worked example and the shape to copy.
+
 #### The move, in the order it has to happen
 
 Worked out on `decimalBuiltFrom`, which went from a ten-armed switch to
@@ -1085,6 +1090,74 @@ first, and each wrong version looked like progress.
 5. **Then look at what the collapsed call site calls.** A switch begets a switch
    one level down. `scannedIntoADecimal` still asked twice what type it had, and
    that is where the defect was.
+
+#### The second move: when the switch is over one type's own field names
+
+`DatePart` was the other shape, and it needed a different recipe. Its two
+switches were not over datatypes at all -- they were over the fourteen names a
+date answers to, `year` through `julian`, one switch to read and one to write,
+with a `List<String>` beside them giving the order a numeric selector counts.
+Both are gone and nothing in the package is over cc=10. The steps, in the order
+that worked:
+
+1. **Cure the feature envy first, and the switch collapses on its own.** This is
+   the whole lesson. `DatePart` held forty-three statics reaching into a date to
+   take it apart and put it back together -- `hoursPartOf(clock)`,
+   `sameClockOn(was, day)`, `atTheSameInstantIn(date, minutes)`. None of them
+   were about *which* part was named; they were `DateValue`'s own work, done from
+   outside. Moving them home as `date.onTheDay(...)`, `date.atTheTime(...)`,
+   `date.withTheZoneDropped()` left each arm one line long, and only then was
+   there anything to collapse. **Doing it the other way round produces an enum
+   with fat bodies**, which is the jacket again.
+2. **A list of names carrying an order is an enum that has not been allowed to
+   exist.** `IN_THE_ORDER_A_NUMBER_COUNTS_THEM` as fourteen strings was the tell.
+   As an enum, declaration order *is* the number (`values()[n - 1]`, mirroring
+   the C's `sym = SYM_YEAR + Int32(arg) - 1`) and `name().toLowerCase()` *is* the
+   spelling. Both facts are derived instead of restated, so the class cannot
+   disagree with itself about what `date/6` is called.
+3. **The enum is a registry; the behaviour is a class per member.** Fourteen
+   constants with bodies is one 320-line file, and a part cannot be tested or
+   grown on its own. `YEAR(new Year())` and a two-line delegation is the shape
+   that keeps the ordering and gets real classes.
+4. **A capability only some members have is a narrower interface, not a default
+   that throws.** `date/weekday:` must refuse. As an inherited `default` that
+   raises, that is a runtime fact; as `Weekday implements DateField` while the
+   other thirteen implement `WritableDateField`, it is a compile-time one and
+   cannot be acquired by accident. One `instanceof` survives, at the seam, and
+   it has to: a selector arrives as a REBOL value, so *which* part is always
+   answered at runtime.
+5. **A predicate true of a subset of members belongs on the members.**
+   `EnumSet.of(TIME, ZONE, TIMEZONE, HOUR, MINUTE, SECOND)` for the six that
+   read as none when a date carries no clock is the same
+   names-listed-somewhere-else shape as step 2, one line shorter. It is
+   `needsAClock()` overridden on six classes.
+6. **The value on the right of the colon is an object too.** Five statics picked
+   an assigned `Value` apart -- `wholeNumberIn`, `offsetAskedFor`,
+   `withinReach`, `secondsInNanoseconds`, `aDateIn`. They are one micro-type,
+   `Assigned`, answering `asWholeNumber()`, `asAZoneOffsetInMinutes()`,
+   `asADate()`, `asAJulianDayCount()`. `writtenOn` takes `Assigned` rather than
+   `Value`, so the wrapping happens once at the seam and the zone range check
+   sits beside the only thing that asks about it.
+7. **What is not a part of the type does not live in the type's class.** The
+   Julian day conversion was ninety lines of calendar arithmetic inside
+   `DatePart` and is not a part of a date. It is `JulianDay`.
+
+**The package is the unit, and its surface should be one type.** The fourteen
+live in `org.jebol.domain.date.part` with `DatePart` -- the registry -- inside
+it, not beside it. Putting the registry one package up would have forced all
+seventeen types public, and fourteen of them to declare a public constructor,
+purely so a neighbour could call `new Year()`. Inside, `DatePart` is the only
+public type in the package and the parts cannot be reached around it. **If a
+package split forces public constructors, the thing that constructs belongs in
+the package.**
+
+**The package carries the context, so the class names stay plain.**
+`org.jebol.domain.date.part.Year`, not `YearOfADate` or `DateYearField`. And
+because the spelling comes from the enum constant, a class is free to be named
+for what it is rather than for the REBOL word: `DATE(new CalendarDay())`,
+`UTC(new UniversalTime())`, `TIME(new Clock())`. `<Type><Aspect>` still governs
+the aspect classes one package up -- `DateArithmetic`, `DateOrder`,
+`DateMaking` -- because those have no package of their own to lean on.
 
 **Chasing the propagation is how the defects surface, both times so far.** The
 special case exists *because* something diverges -- `MAKE DATE!`'s refusal had
@@ -1126,7 +1199,14 @@ Migrating APPEND, INSERT, CLEAR, REMOVE and LENGTH? took `defineSeries` from
 
 **Done is no `define*` above 40** -- not zero, because sixty natives routing
 through the seam is still sixty branches, and that floor is the table doing its
-job. 307 switch statements across the tree today, 177 methods over cc=10.
+job. 305 switch statements across the tree today, 175 methods over cc=10.
+
+**Expect the tree-wide number to barely move, and do not read that as failure.**
+The date work deleted two switches of 20 and 17 and took the count from 177 to
+175. The win is local by construction -- this goal is one datatype at a time --
+so the number that says whether a piece landed is the one for the package that
+moved, and it should read *nothing above 10*. The tree number only jumps when a
+`define*` itself moves.
 
 `--ceilings` is a ratchet over every method, not only these. Nothing has to
 come down, but nothing may go up, so a refactor that stalls cannot quietly
@@ -1159,6 +1239,13 @@ all seven end as one line with the value answering.
 | 51 | `Natives.converted` | what this becomes | `value.asA(wanted)` |
 | 47 | `Molder.renderOne` | how this is written out | `value.molded(how)` |
 
+Rows one, two, three, six and seven are the first recipe -- a switch over
+datatypes, collapsing onto the value. Rows four and five are both, in order: a
+switch over the target's datatype on the outside, and inside each branch a switch
+over that type's own field names. So a path class gets the second recipe and the
+table that reaches it gets the first, and **the second has to come first**,
+because the field-name switch is where the feature envy is.
+
 `renderOne` is the easiest next one and the best check of the pattern: every arm
 is already one call, several of them to the value itself, so it should reduce to
 `value.molded(...)` with no wall in the way -- nothing about writing a value out
@@ -1167,12 +1254,14 @@ needs to raise.
 `converted` is the hardest, because MAKE and TO differ per datatype and the
 scanning wall sits right in the middle of it.
 
-**Two per-datatype packages exist so far.** `org.jebol.domain.date` holds
-`DatePart`, `DateOrder`, `DateMaking` and `DateArithmetic`; the values stay in
-`domain.value` because the sealed family cannot be split. Naming inside a
-package is `<Type><Aspect>` with the aspect a REBOL word -- `DatePart`, not
-`DateActions`. **The `*Actions` classes in `domain.eval` are the old naming and
-want moving into their own packages.**
+**One per-datatype package exists so far, and it has a subpackage.**
+`org.jebol.domain.date` holds `DateArithmetic`, `DateOrder` and `DateMaking`;
+`org.jebol.domain.date.part` holds `DatePart` and the fourteen parts. The values
+stay in `domain.value` because the sealed family cannot be split. Naming is
+`<Type><Aspect>` with the aspect a REBOL word -- `DatePart`, not `DateActions`
+-- except inside a subpackage that already says the type, where the plain word
+wins. **The `*Actions` classes in `domain.eval` are the old naming and want
+moving into their own packages.**
 
 #### The second seam, which this goal did not name
 
@@ -1180,11 +1269,23 @@ want moving into their own packages.**
 one layer over: a switch over datatypes deciding what `thing/field` means.
 It is already half migrated and nobody wrote that down -- `BlockPath`,
 `GobPath`, `ImagePath`, `EventPath`, `StructPath`, `VectorPath` and
-`DateParts` are type-major path classes that already exist. Finishing it is
+`DatePart` are type-major path classes that already exist. Finishing it is
 the same shape of work and the same two numbers to watch.
+
+**But do not copy the existing ones.** `GobPath` is
+`static Value read(GobValue gob, Value selector)` on a class with a private
+constructor -- a static taking the datatype as argument one, which is step 2's
+counter-example. `DatePart` is what the rest should look like. The others are
+targets of this goal, not the pattern.
 
 **What proves it.** The datatype's own `.r3` file, and `error-parity.py`
 unchanged -- an arm that quietly stops raising is the failure this invites.
+Two working notes that each cost a round trip: `ide_diagnostics` on a
+closed file can report a whole class of phantom errors right after a new type is
+added (it claimed all fourteen constants failed to implement an interface method
+they inherit), so `compileJava` is the authority and `ide_sync_files` clears it;
+and a `cd` inside a Bash call persists, so the gate afterwards runs from the
+wrong directory.
 
 ---
 
