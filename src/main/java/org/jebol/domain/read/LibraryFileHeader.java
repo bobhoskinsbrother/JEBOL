@@ -43,12 +43,12 @@ public record LibraryFileHeader(
         List<String> exported = List.of();
         List<Value> items = fields.remaining();
         for (int at = 0; at + 1 < items.size(); at++) {
-            if (!(items.get(at) instanceof WordValue named)
-                    || named.datatype() != Datatype.SET_WORD) {
+            if (!(items.get(at) instanceof WordValue field)
+                    || field.datatype() != Datatype.SET_WORD) {
                 continue;
             }
             Value given = items.get(at + 1);
-            switch (named.canonical()) {
+            switch (field.canonical()) {
                 case "type" -> declaredType = plainTextOf(given);
                 case "name" -> moduleName = plainTextOf(given);
                 case "exports" -> exported = wordsIn(given);

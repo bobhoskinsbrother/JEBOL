@@ -11,8 +11,8 @@ final class GobPath {
     }
 
     static Value read(GobValue gob, Value selector) {
-        if (selector instanceof WordValue named) {
-            return field(gob, named);
+        if (selector instanceof WordValue asked) {
+            return field(gob, asked);
         }
         if (!(selector instanceof IntegerValue position)) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
@@ -35,9 +35,9 @@ final class GobPath {
         return at < 1 || at > gob.storage().length();
     }
 
-    static Value field(GobValue gob, WordValue named) {
+    static Value field(GobValue gob, WordValue asked) {
         GobStorage storage = gob.storage();
-        return switch (named.canonical()) {
+        return switch (asked.canonical()) {
             case "offset" -> storage.offset();
             case "size" -> storage.size();
             case "alpha" -> IntegerValue.of(storage.alpha());
@@ -52,7 +52,7 @@ final class GobPath {
             case "parent" -> parentOf(storage);
             case "data" -> storage.data();
             case "flags" -> flagsOf(storage);
-            default -> throw Raised.of(EvaluationFailure.INVALID_PATH, named.spelling());
+            default -> throw Raised.of(EvaluationFailure.INVALID_PATH, asked.spelling());
         };
     }
 
@@ -70,10 +70,10 @@ final class GobPath {
         return BlockValue.block(words);
     }
 
-    static void write(GobValue gob, WordValue named, Value written) {
-        if (!accepted(gob.storage(), named.canonical(), written)) {
+    static void write(GobValue gob, WordValue asked, Value written) {
+        if (!accepted(gob.storage(), asked.canonical(), written)) {
             throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
-                    named.spelling() + " will not hold "
+                    asked.spelling() + " will not hold "
                             + written.datatype().literalSpelling());
         }
     }

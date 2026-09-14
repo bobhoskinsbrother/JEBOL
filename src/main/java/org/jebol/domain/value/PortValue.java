@@ -30,8 +30,8 @@ public record PortValue(Context context) implements Value {
             return "";
         }
         return scheme.context().holds("name")
-                && scheme.context().ownSlotFor("name").value() instanceof WordValue named
-                ? named.canonical()
+                && scheme.context().ownSlotFor("name").value() instanceof WordValue word
+                ? word.canonical()
                 : "";
     }
 

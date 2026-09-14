@@ -367,18 +367,18 @@ public final class StringParser {
     }
 
     private int switchTheInputToWhatThisNames(BlockValue path) {
-        Value named = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
-        ParseTargets.refuseAnInputThatIsNotASeries(path, named);
-        if (named instanceof StringValue marked) {
+        Value held = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
+        ParseTargets.refuseAnInputThatIsNotASeries(path, held);
+        if (held instanceof StringValue marked) {
             adoptInput(marked);
             return 1;
         }
         return NO_MATCH;
     }
 
-    private static Value whatTheSlotHolds(Context holder, WordValue named) {
-        return holder.knows(named.canonical())
-                ? holder.slotFor(named.canonical()).value()
+    private static Value whatTheSlotHolds(Context holder, WordValue word) {
+        return holder.knows(word.canonical())
+                ? holder.slotFor(word.canonical()).value()
                 : NoneValue.none();
     }
 
@@ -710,13 +710,13 @@ public final class StringParser {
         if (!target.knows(word.canonical())) {
             return matchValue(word);
         }
-        Value named = target.slotFor(word.canonical()).value();
-        if (named instanceof UnsetValue || named.datatype().isAnyFunction()) {
+        Value held = target.slotFor(word.canonical()).value();
+        if (held instanceof UnsetValue || held.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, (Value) word);
         }
-        return named instanceof BlockValue rule && rule.datatype() == Datatype.BLOCK
+        return held instanceof BlockValue rule && rule.datatype() == Datatype.BLOCK
                 ? matchSequence(rule.remaining())
-                : matchValue(named);
+                : matchValue(held);
     }
 
     private boolean endOfInput() {
@@ -814,12 +814,12 @@ public final class StringParser {
     }
 
     private Value whatTheWordHolds(Value wanted) {
-        if (!(wanted instanceof WordValue named) || named.datatype() != Datatype.WORD) {
+        if (!(wanted instanceof WordValue word) || word.datatype() != Datatype.WORD) {
             return wanted;
         }
-        Context target = named.isBound() ? named.binding() : context;
-        return target.knows(named.canonical())
-                ? target.slotFor(named.canonical()).value()
+        Context target = word.isBound() ? word.binding() : context;
+        return target.knows(word.canonical())
+                ? target.slotFor(word.canonical()).value()
                 : wanted;
     }
 

@@ -28,20 +28,20 @@ final class ChecksumPort {
     }
 
     private static RunningSumThatAReadDoesNotEnd sumNamed(String method) {
-        String named = Encodings.DIGESTS.get(method);
-        if (named == null) {
+        String algorithm = Encodings.DIGESTS.get(method);
+        if (algorithm == null) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, method);
         }
-        if (Encodings.RIPEMD_160.equals(named)
-                || Encodings.XXH_3.equals(named)
-                || Encodings.XXH_32.equals(named)
-                || Encodings.XXH_64.equals(named)
-                || Encodings.XXH_128.equals(named)
-                || Encodings.MD_4.equals(named)) {
+        if (Encodings.RIPEMD_160.equals(algorithm)
+                || Encodings.XXH_3.equals(algorithm)
+                || Encodings.XXH_32.equals(algorithm)
+                || Encodings.XXH_64.equals(algorithm)
+                || Encodings.XXH_128.equals(algorithm)
+                || Encodings.MD_4.equals(algorithm)) {
             return keepingTheBytes(method);
         }
         try {
-            return aroundTheDigest(MessageDigest.getInstance(named));
+            return aroundTheDigest(MessageDigest.getInstance(algorithm));
         } catch (NoSuchAlgorithmException unavailable) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, method);
         }
@@ -159,9 +159,9 @@ final class ChecksumPort {
         if (!(port.fieldNamed("spec") instanceof org.jebol.domain.value.ObjectValue spec)
                 || !spec.context().holds("method")
                 || !(spec.context().ownSlotFor("method").value()
-                        instanceof WordValue named)) {
+                        instanceof WordValue method)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, "checksum");
         }
-        return named.canonical();
+        return method.canonical();
     }
 }

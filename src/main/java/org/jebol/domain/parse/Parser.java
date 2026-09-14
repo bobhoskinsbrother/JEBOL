@@ -351,12 +351,12 @@ public final class Parser {
         if (written instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
             return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
         }
-        if (written instanceof WordValue named) {
-            return switch (named.datatype()) {
-                case LIT_WORD -> named.as(Datatype.WORD);
+        if (written instanceof WordValue word) {
+            return switch (word.datatype()) {
+                case LIT_WORD -> word.as(Datatype.WORD);
                 case WORD -> evaluator.evaluateOrRaise(
-                        BlockValue.block(List.of(named)), context);
-                default -> named;
+                        BlockValue.block(List.of(word)), context);
+                default -> word;
             };
         }
         if (written instanceof BlockValue path && path.datatype() == Datatype.PATH) {
@@ -668,12 +668,12 @@ public final class Parser {
     }
 
     private Value whatTheWordHolds(Value wanted) {
-        if (!(wanted instanceof WordValue named) || named.datatype() != Datatype.WORD) {
+        if (!(wanted instanceof WordValue word) || word.datatype() != Datatype.WORD) {
             return wanted;
         }
-        Context target = named.isBound() ? named.binding() : context;
-        return target.knows(named.canonical())
-                ? target.slotFor(named.canonical()).value()
+        Context target = word.isBound() ? word.binding() : context;
+        return target.knows(word.canonical())
+                ? target.slotFor(word.canonical()).value()
                 : wanted;
     }
 
@@ -810,13 +810,13 @@ public final class Parser {
         if (!target.knows(word.canonical())) {
             return false;
         }
-        Value named = target.slotFor(word.canonical()).value();
-        if (named instanceof UnsetValue || named.datatype().isAnyFunction()) {
+        Value held = target.slotFor(word.canonical()).value();
+        if (held instanceof UnsetValue || held.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, (Value) word);
         }
-        return named instanceof BlockValue rule && rule.datatype() == Datatype.BLOCK
+        return held instanceof BlockValue rule && rule.datatype() == Datatype.BLOCK
                 ? matchSequence(rule.remaining())
-                : matchValue(named);
+                : matchValue(held);
     }
 
     private boolean matchValue(Value rule) {

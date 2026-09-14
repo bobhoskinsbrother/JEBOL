@@ -139,10 +139,10 @@ final class FunctionSpec {
     }
 
     private static Value resolveTypeName(Value declared) {
-        if (!(declared instanceof WordValue named) || !named.spelling().endsWith("!")) {
+        if (!(declared instanceof WordValue word) || !word.spelling().endsWith("!")) {
             return declared;
         }
-        String withoutMark = named.spelling().substring(0, named.spelling().length() - 1);
+        String withoutMark = word.spelling().substring(0, word.spelling().length() - 1);
         for (Datatype candidate : Datatype.values()) {
             if (candidate.spelling().equalsIgnoreCase(withoutMark)) {
                 return DatatypeValue.of(candidate);
@@ -151,6 +151,6 @@ final class FunctionSpec {
         return Typeset.named(withoutMark)
                 .map(typeset -> (Value) TypesetValue.of(typeset))
                 .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_USE,
-                        named.spelling() + " names no datatype"));
+                        word.spelling() + " names no datatype"));
     }
 }

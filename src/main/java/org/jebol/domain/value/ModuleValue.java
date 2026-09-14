@@ -80,8 +80,8 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
 
     @Override
     public String toString() {
-        Value named = headerField("name");
-        return named instanceof WordValue word
+        Value declared = headerField("name");
+        return declared instanceof WordValue word
                 ? "module " + word.canonical()
                 : "module with " + context.slotCount() + " words";
     }

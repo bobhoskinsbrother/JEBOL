@@ -105,8 +105,8 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         watching.add(stream);
     }
 
-    private void sendToEveryBrowser(String named, String payload) {
-        byte[] message = ("event: " + named + "\ndata: " + payload + "\n\n")
+    private void sendToEveryBrowser(String event, String payload) {
+        byte[] message = ("event: " + event + "\ndata: " + payload + "\n\n")
                 .getBytes(StandardCharsets.UTF_8);
         for (OutputStream stream : watching) {
             try {

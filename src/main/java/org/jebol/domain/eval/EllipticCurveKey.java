@@ -90,8 +90,8 @@ final class EllipticCurveKey implements AKeyThatCanBeReleased {
         return computedHere != null;
     }
 
-    boolean startAgainOn(String named) {
-        Optional<EllipticCurveKey> fresh = onCurve(named);
+    boolean startAgainOn(String wantedCurve) {
+        Optional<EllipticCurveKey> fresh = onCurve(wantedCurve);
         if (fresh.isEmpty()) {
             return false;
         }
@@ -111,37 +111,37 @@ final class EllipticCurveKey implements AKeyThatCanBeReleased {
         return curveName;
     }
 
-    static Optional<EllipticCurveKey> onCurve(String named) {
-        Optional<WeierstrassCurve> carriedHere = WeierstrassCurve.named(named);
+    static Optional<EllipticCurveKey> onCurve(String curveName) {
+        Optional<WeierstrassCurve> carriedHere = WeierstrassCurve.named(curveName);
         if (carriedHere.isPresent()) {
-            return Optional.of(madeOnACurveThisBuildComputes(named, carriedHere.get()));
+            return Optional.of(madeOnACurveThisBuildComputes(curveName, carriedHere.get()));
         }
-        String known = CURVES_THIS_BUILD_HAS.get(named);
+        String known = CURVES_THIS_BUILD_HAS.get(curveName);
         if (known == null) {
             return Optional.empty();
         }
-        return WIDTH_OF_THE_EXCHANGE_ONLY_CURVES.containsKey(named)
-                ? madeForTheExchangeAlone(named, known)
-                : madeOnACurveWithTwoCoordinates(named, known);
+        return WIDTH_OF_THE_EXCHANGE_ONLY_CURVES.containsKey(curveName)
+                ? madeForTheExchangeAlone(curveName, known)
+                : madeOnACurveWithTwoCoordinates(curveName, known);
     }
 
     private static EllipticCurveKey madeOnACurveThisBuildComputes(
-            String named, WeierstrassCurve curve) {
+            String curveName, WeierstrassCurve curve) {
 
         BigInteger privateNumber = curve.aPrivateNumber(RANDOMLY);
         return new EllipticCurveKey(curve, privateNumber,
-                curve.timesTheGenerator(privateNumber), named);
+                curve.timesTheGenerator(privateNumber), curveName);
     }
 
     private static Optional<EllipticCurveKey> madeOnACurveWithTwoCoordinates(
-            String named, String asTheJdkCallsIt) {
+            String curveName, String asTheJdkCallsIt) {
 
         try {
             KeyPairGenerator generating = KeyPairGenerator.getInstance("EC");
             generating.initialize(new ECGenParameterSpec(asTheJdkCallsIt));
             KeyPair pair = generating.generateKeyPair();
             int width = (theCurveBehind(pair).getCurve().getField().getFieldSize() + 7) / 8;
-            return Optional.of(new EllipticCurveKey(pair, named, width,
+            return Optional.of(new EllipticCurveKey(pair, curveName, width,
                     HowThePointIsPublished.BOTH_COORDINATES_AFTER_A_LEAD_BYTE));
         } catch (GeneralSecurityException | RuntimeException noSuchCurve) {
             return Optional.empty();
@@ -149,14 +149,14 @@ final class EllipticCurveKey implements AKeyThatCanBeReleased {
     }
 
     private static Optional<EllipticCurveKey> madeForTheExchangeAlone(
-            String named, String asTheJdkCallsIt) {
+            String curveName, String asTheJdkCallsIt) {
 
         try {
             KeyPairGenerator generating = KeyPairGenerator.getInstance("XDH");
             generating.initialize(new NamedParameterSpec(asTheJdkCallsIt));
             return Optional.of(new EllipticCurveKey(
-                    generating.generateKeyPair(), named,
-                    WIDTH_OF_THE_EXCHANGE_ONLY_CURVES.get(named),
+                    generating.generateKeyPair(), curveName,
+                    WIDTH_OF_THE_EXCHANGE_ONLY_CURVES.get(curveName),
                     HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN));
         } catch (GeneralSecurityException | RuntimeException noSuchCurve) {
             return Optional.empty();

@@ -596,7 +596,7 @@ final class BrotliDecoder {
         private Huffman complexCode(int alphabetSize, int skip) {
             int[] codeLengthLengths = new int[CODE_LENGTH_CODES];
             int space = 32;
-            int named = 0;
+            int symbolsUsed = 0;
             for (int each = skip; each < CODE_LENGTH_CODES; each++) {
                 int peeked = bits.peekFourPaddingWithZerosPastTheEndOfTheData();
                 int width = CODE_LENGTH_PREFIX_LENGTH[peeked];
@@ -605,17 +605,17 @@ final class BrotliDecoder {
                 codeLengthLengths[CODE_LENGTH_ORDER[each]] = value;
                 if (value != 0) {
                     space -= 32 >> value;
-                    named++;
+                    symbolsUsed++;
                     if (space <= 0) {
                         break;
                     }
                 }
             }
-            if (named != 1 && space != 0) {
+            if (symbolsUsed != 1 && space != 0) {
                 throw new IllegalArgumentException(
                         "Brotli code-length code is not a prefix code");
             }
-            Huffman lengthCode = named == 1
+            Huffman lengthCode = symbolsUsed == 1
                     ? Huffman.ofOneSymbol(theOnlyOneNamed(codeLengthLengths))
                     : Huffman.ofLengths(codeLengthLengths);
 

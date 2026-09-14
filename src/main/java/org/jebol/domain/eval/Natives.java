@@ -195,8 +195,8 @@ public final class Natives {
 
     private String operatingSystemName = "JVM";
 
-    public void useOperatingSystemNamed(String named) {
-        this.operatingSystemName = named;
+    public void useOperatingSystemNamed(String operatingSystem) {
+        this.operatingSystemName = operatingSystem;
     }
 
     private String errorCatalogueSource = "";
@@ -267,11 +267,11 @@ public final class Natives {
         } else {
             List<Value> pair = ((BlockValue) asked).remaining();
             if (pair.size() != 2
-                    || !(pair.get(0) instanceof IntegerValue named)
+                    || !(pair.get(0) instanceof IntegerValue whichProcess)
                     || !(pair.get(1) instanceof IntegerValue chosen)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
             }
-            process = named.magnitude();
+            process = whichProcess.magnitude();
             signal = (int) chosen.magnitude();
         }
         requireService(HostService.PROCESSES);
@@ -315,9 +315,9 @@ public final class Natives {
                 .isTruthy();
     }
 
-    private static Value refuseExtensionPoint(String named) {
+    private static Value refuseExtensionPoint(String extensionPoint) {
         throw Raised.of(EvaluationFailure.NO_SERVICE,
-                named + " calls code written in C, which is "
+                extensionPoint + " calls code written in C, which is "
                         + ServiceRefusal.NEVER_PORTABLE.name()
                                 .toLowerCase(java.util.Locale.ROOT).replace('_', ' '));
     }
@@ -424,7 +424,7 @@ public final class Natives {
                 .<Value>map(WordValue::of).toList()));
 
         catalog.set("natives", BlockValue.block(definitions.keySet().stream()
-                .filter(named -> !ACTION_NAMES.contains(named))
+                .filter(spelling -> !ACTION_NAMES.contains(spelling))
                 .sorted()
                 .<Value>map(WordValue::of).toList()));
 
@@ -592,9 +592,9 @@ public final class Natives {
         system.set("locale", new ObjectValue(locale));
         Context codecs = Context.root();
         for (int at = 0; at < Codecs.REGISTERED.size(); at++) {
-            String named = Codecs.REGISTERED.get(at);
-            codecs.set(named, HandleValue.function(
-                    "codec", CODEC_HANDLE_IDENTITY + at, WordValue.of(named)));
+            String codec = Codecs.REGISTERED.get(at);
+            codecs.set(codec, HandleValue.function(
+                    "codec", CODEC_HANDLE_IDENTITY + at, WordValue.of(codec)));
         }
         system.set("codecs", new ObjectValue(codecs));
         Context console = Context.root();
@@ -1538,10 +1538,10 @@ public final class Natives {
         TaskValue task = TaskValue.running(body);
         List<Value> fields = spec.remaining();
         for (int at = 0; at + 1 < fields.size(); at++) {
-            if (fields.get(at) instanceof WordValue named
-                    && named.datatype() == Datatype.SET_WORD
-                    && task.context().holds(named.canonical())) {
-                task.context().set(named.canonical(), fields.get(at + 1));
+            if (fields.get(at) instanceof WordValue field
+                    && field.datatype() == Datatype.SET_WORD
+                    && task.context().holds(field.canonical())) {
+                task.context().set(field.canonical(), fields.get(at + 1));
             }
         }
         return task;
@@ -1748,9 +1748,9 @@ public final class Natives {
                         case BlockValue block when block.datatype() == Datatype.BLOCK
                                 || block.datatype() == Datatype.PAREN ->
                                 evaluator.evaluateOrRaise(block, context);
-                        case StringValue named when named.datatype() == Datatype.FILE
-                                || named.datatype() == Datatype.URL ->
-                                runAsAScript(named, evaluator);
+                        case StringValue address when address.datatype() == Datatype.FILE
+                                || address.datatype() == Datatype.URL ->
+                                runAsAScript(address, evaluator);
                         case StringValue text -> {
                             try {
                                 yield evaluator.evaluateSource(text.text());
@@ -1761,9 +1761,9 @@ public final class Natives {
                         case BinaryValue bytes ->
                                 doneAsAScript(bytes, evaluator, context);
                         case ErrorValue built -> throw new Raised(built);
-                        case WordValue named when named.datatype() == Datatype.WORD
-                                || named.datatype() == Datatype.GET_WORD ->
-                                evaluator.valueOfWordIn(named, context);
+                        case WordValue word when word.datatype() == Datatype.WORD
+                                || word.datatype() == Datatype.GET_WORD ->
+                                evaluator.valueOfWordIn(word, context);
                         case WordValue quoted when quoted.datatype() == Datatype.LIT_WORD ->
                                 quoted.as(Datatype.WORD);
                         case BlockValue quoted when quoted.datatype() == Datatype.LIT_PATH ->
@@ -2238,11 +2238,11 @@ public final class Natives {
                         Parameter.required("body", Set.of(Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
                     Context scope = Context.childOf(context);
-                    for (Value named : ((BlockValue) arguments.get(0)).remaining()) {
-                        if (!(named instanceof WordValue word)) {
+                    for (Value item : ((BlockValue) arguments.get(0)).remaining()) {
+                        if (!(item instanceof WordValue word)) {
                             throw Raised.of(EvaluationFailure.EXPECT_ARG,
                                     "use names words, not "
-                                            + named.datatype().literalSpelling());
+                                            + item.datatype().literalSpelling());
                         }
                         scope.define(word.spelling());
                     }
@@ -2288,15 +2288,15 @@ public final class Natives {
                             : new ArrayList<>(
                                     evaluator.evaluateEachOrRaise(given, context));
                     Value callee = arguments.get(0);
-                    while (callee instanceof NativeValue named
-                            && named.nativeName().equals("do")
+                    while (callee instanceof NativeValue builtIn
+                            && builtIn.nativeName().equals("do")
                             && !supplied.isEmpty()
                             && supplied.getFirst().datatype().isAnyFunction()) {
                         callee = supplied.removeFirst();
                     }
-                    if (callee instanceof NativeValue named
-                            && !named.declaredRefinements().isEmpty()) {
-                        return applyWithRefinements(named, supplied, evaluator);
+                    if (callee instanceof NativeValue builtIn
+                            && !builtIn.declaredRefinements().isEmpty()) {
+                        return applyWithRefinements(builtIn, supplied, evaluator);
                     }
                     int wanted = (int) arityOf(callee);
                     List<Value> exactly = new ArrayList<>(
@@ -2335,18 +2335,18 @@ public final class Natives {
                             "ignore", List.of("ignore", "as"), arguments, refinements, 1);
                     if (ignoring != null && !(ignoring instanceof NoneValue)) {
                         Set<String> known = namesIn(ignoring);
-                        found.removeIf(word -> word instanceof WordValue named
-                                && known.contains(named.canonical()));
+                        found.removeIf(word -> word instanceof WordValue spelt
+                                && known.contains(spelt.canonical()));
                     }
                     if (refinements.contains("as")) {
                         Value wanted = argumentFor(
                                 "as", List.of("ignore", "as"), arguments, refinements, 1);
-                        if (!(wanted instanceof DatatypeValue named)
-                                || !ANY_WORD_DATATYPES.contains(named.represents())) {
+                        if (!(wanted instanceof DatatypeValue wantedType)
+                                || !ANY_WORD_DATATYPES.contains(wantedType.represents())) {
                             throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, "as");
                         }
                         found.replaceAll(word -> word instanceof WordValue spelt
-                                ? spelt.as(named.represents())
+                                ? spelt.as(wantedType.represents())
                                 : word);
                     }
                     return BlockValue.block(found);
@@ -2439,8 +2439,8 @@ public final class Natives {
                         Parameter.required("target")),
                 Set.of("copy", "only", "new", "set"),
                 (arguments, evaluator, context, refinements) -> {
-                    Context target = arguments.get(1) instanceof WordValue named
-                            ? boundContextOf(named)
+                    Context target = arguments.get(1) instanceof WordValue word
+                            ? boundContextOf(word)
                             : fieldsOf(arguments.get(1));
                     if (target == null) {
                         throw Raised.of(EvaluationFailure.EXPECT_ARG,
@@ -3503,14 +3503,14 @@ public final class Natives {
                         return nothing;
                     }
                     switch (arguments.get(0)) {
-                        case WordValue named -> {
-                            Evaluator.refuseToWriteTheNameAnObjectAnswersToItselfBy(named);
-                            slotOf(named).setValue(UnsetValue.unset());
+                        case WordValue word -> {
+                            Evaluator.refuseToWriteTheNameAnObjectAnswersToItselfBy(word);
+                            slotOf(word).setValue(UnsetValue.unset());
                         }
-                        case BlockValue named -> {
-                            named.remaining().forEach(
+                        case BlockValue words -> {
+                            words.remaining().forEach(
                                     Evaluator::refuseToWriteTheNameAnObjectAnswersToItselfBy);
-                            for (Value item : named.remaining()) {
+                            for (Value item : words.remaining()) {
                                 if (item instanceof WordValue word) {
                                     slotOf(word).setValue(UnsetValue.unset());
                                 }
@@ -3525,8 +3525,8 @@ public final class Natives {
                 Set.of("deep", "words", "values", "hide", "lock"),
                 (arguments, evaluator, context, refinements) -> {
                     if (refinements.contains("hide")
-                            && arguments.getFirst() instanceof WordValue named) {
-                        slotOf(named).hide(true);
+                            && arguments.getFirst() instanceof WordValue word) {
+                        slotOf(word).hide(true);
                         return arguments.getFirst();
                     }
                     if (refinements.contains("hide") && refinements.contains("words")
@@ -3897,9 +3897,9 @@ public final class Natives {
                     if (arguments.getFirst() instanceof StructValue struct) {
                         return whatAStructReflects(struct, field, arguments.get(1));
                     }
-                    if (arguments.getFirst() instanceof DatatypeValue named) {
+                    if (arguments.getFirst() instanceof DatatypeValue asked) {
                         String[] described = DATATYPE_SPECS.get(
-                                named.represents().spelling());
+                                asked.represents().spelling());
                         if (described == null) {
                             return NoneValue.none();
                         }
@@ -4132,7 +4132,7 @@ public final class Natives {
                         return NoneValue.none();
                     }
                     int limit = searchLimit(series, arguments, refinements);
-                    Wildcards wildcards = Wildcards.named(argumentFor(
+                    Wildcards wildcards = Wildcards.readFrom(argumentFor(
                             "with", SEARCH_ARGUMENTS, arguments, refinements, 2));
                     int found = positionSearched(series, arguments.get(1), refinements,
                             limit, stride, wildcards);
@@ -4162,10 +4162,10 @@ public final class Natives {
                         return BlockValue.block(List.copyOf(
                                 object.context().fieldsExcludingSelf().values()));
                     }
-                    if (!(arguments.get(0) instanceof WordValue named)) {
+                    if (!(arguments.get(0) instanceof WordValue word)) {
                         return arguments.get(0);
                     }
-                    Value held = slotOf(named).value();
+                    Value held = slotOf(word).value();
                     if (held instanceof UnsetValue && !refinements.contains("any")) {
                         throw Raised.of(EvaluationFailure.NO_VALUE,
                                 ((WordValue) arguments.get(0)).spelling() + " has no value");
@@ -4776,15 +4776,15 @@ public final class Natives {
 
         define("first+", List.of(Parameter.softQuoted("word")),
                 (arguments, evaluator, context) -> {
-                    if (!(arguments.get(0) instanceof WordValue named)
-                            || !named.isBound()
-                            || !named.binding().knows(named.canonical())) {
+                    if (!(arguments.get(0) instanceof WordValue word)
+                            || !word.isBound()
+                            || !word.binding().knows(word.canonical())) {
                         throw Raised.of(EvaluationFailure.INVALID_ARG, arguments.get(0));
                     }
-                    ContextSlot slot = named.binding().slotFor(named.canonical());
+                    ContextSlot slot = word.binding().slotFor(word.canonical());
                     if (!(slot.value() instanceof SeriesValue series)) {
                         throw Raised.of(EvaluationFailure.INVALID_ARG,
-                                WordValue.of(named.spelling()));
+                                WordValue.of(word.spelling()));
                     }
                     Value first = pick(series, 1);
                     if (!series.atTail()) {
@@ -5098,7 +5098,7 @@ public final class Natives {
                     }
                     int limit = searchLimit(series, arguments, refinements);
                     long stride = searchStride(arguments, refinements);
-                    Wildcards wildcards = Wildcards.named(argumentFor(
+                    Wildcards wildcards = Wildcards.readFrom(argumentFor(
                             "with", SEARCH_ARGUMENTS, arguments, refinements, 2));
                     refuseUnbyteableNeedle(arguments.getFirst(), arguments.get(1), "find");
                     boolean subOneForwardStride = refinements.contains("skip")
@@ -6056,8 +6056,8 @@ public final class Natives {
 
         if ((wanted instanceof DatatypeValue || wanted instanceof TypesetValue)
                 && !refinements.contains("only")) {
-            return wanted instanceof DatatypeValue named
-                    ? items.get(at).datatype() == named.represents()
+            return wanted instanceof DatatypeValue wantedType
+                    ? items.get(at).datatype() == wantedType.represents()
                     : ((TypesetValue) wanted).holds(items.get(at).datatype());
         }
         if (wanted instanceof BlockValue run
@@ -6229,7 +6229,7 @@ public final class Natives {
 
         private static final Wildcards STARS_AND_QUESTION_MARKS = new Wildcards('*', '?');
 
-        static Wildcards named(Value given) {
+        static Wildcards readFrom(Value given) {
             if (!(given instanceof StringValue chosen)) {
                 return STARS_AND_QUESTION_MARKS;
             }
@@ -6520,11 +6520,11 @@ public final class Natives {
 
     private static int compareByColumns(List<Value> left, List<Value> right,
             List<Value> columns, boolean mindingCase) {
-        for (Value named : columns) {
-            if (!(named instanceof IntegerValue column)) {
+        for (Value asked : columns) {
+            if (!(asked instanceof IntegerValue column)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
                         "a column to sort by is a number, not "
-                                + named.datatype().literalSpelling());
+                                + asked.datatype().literalSpelling());
             }
             int at = (int) column.magnitude() - 1;
             if (at < 0 || at >= left.size() || at >= right.size()) {
@@ -6790,8 +6790,8 @@ public final class Natives {
                 && items.getFirst() instanceof WordValue word
                 && word.canonical().equals("not");
         BlockValue rest = complemented ? members.atIndex(members.index() + 1) : members;
-        List<Value> named = rest.remaining();
-        BitsetValue set = BitsetValue.of(octetsNamedBy(named, members));
+        List<Value> specs = rest.remaining();
+        BitsetValue set = BitsetValue.of(octetsNamedBy(specs, members));
         return complemented ? set.complemented() : set;
     }
 
@@ -6799,7 +6799,7 @@ public final class Natives {
         byte[] octets = new byte[0];
         for (int at = 0; at < specs.size(); at++) {
             Value spec = specs.get(at);
-            if (spec instanceof WordValue named && named.canonical().equals("bits")) {
+            if (spec instanceof WordValue word && word.canonical().equals("bits")) {
                 if (at + 1 >= specs.size()
                         || !(specs.get(at + 1) instanceof BinaryValue held)) {
                     throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(whole));
@@ -7093,14 +7093,14 @@ public final class Natives {
             TranscodeResult read = Transcoder.transcode(functionDeclarationSource);
             List<Value> values = read.values().map(BlockValue::remaining).orElse(List.of());
             for (int at = 0; at + 2 < values.size(); at++) {
-                if (values.get(at) instanceof WordValue named
-                        && named.datatype() == Datatype.SET_WORD
+                if (values.get(at) instanceof WordValue declaring
+                        && declaring.datatype() == Datatype.SET_WORD
                         && values.get(at + 1) instanceof WordValue kind
                         && (kind.canonical().equals("native")
                                 || kind.canonical().equals("action"))
                         && values.get(at + 2) instanceof BlockValue spec
                         && spec.datatype() == Datatype.BLOCK) {
-                    found.putIfAbsent(named.canonical(), spec);
+                    found.putIfAbsent(declaring.canonical(), spec);
                 }
             }
         } catch (RuntimeException unreadable) {
@@ -7111,14 +7111,14 @@ public final class Natives {
     }
 
     private Value applyWithRefinements(
-            NativeValue named, List<Value> supplied, Evaluator evaluator) {
+            NativeValue builtIn, List<Value> supplied, Evaluator evaluator) {
 
         Set<String> asked = new LinkedHashSet<>();
         List<Value> beforeAnyRefinement = new ArrayList<>();
         Map<String, List<Value>> belongingTo = new LinkedHashMap<>();
         String reading = null;
         int at = 0;
-        for (Value word : wordsOfBuiltIn(named)) {
+        for (Value word : wordsOfBuiltIn(builtIn)) {
             Value next = at < supplied.size() ? supplied.get(at) : NoneValue.none();
             at++;
             if (word instanceof WordValue marker
@@ -7135,7 +7135,7 @@ public final class Natives {
             }
         }
 
-        NativeValue refined = named.askedFor(asked);
+        NativeValue refined = builtIn.askedFor(asked);
         Deque<Value> plain = new ArrayDeque<>(beforeAnyRefinement);
         Map<String, Deque<Value>> refinementArguments = new LinkedHashMap<>();
         belongingTo.forEach((name, values) ->
@@ -7158,8 +7158,8 @@ public final class Natives {
         return evaluator.applyFunction(refined, arguments);
     }
 
-    private List<Value> wordsOfBuiltIn(NativeValue named) {
-        return wordsNamedIn(specOf(named)) instanceof BlockValue words
+    private List<Value> wordsOfBuiltIn(NativeValue builtIn) {
+        return wordsNamedIn(specOf(builtIn)) instanceof BlockValue words
                 ? words.remaining()
                 : List.of();
     }
@@ -7227,9 +7227,9 @@ public final class Natives {
         }
     }
 
-    private static Value runAsAScript(StringValue named, Evaluator evaluator) {
+    private static Value runAsAScript(StringValue address, Evaluator evaluator) {
         Value doStar = systemInternalFunction(evaluator.systemContext(), "do*");
-        return evaluator.applyFunction(doStar, List.of(named));
+        return evaluator.applyFunction(doStar, List.of(address));
     }
 
     private static boolean interpreterMeets(TupleValue wanted, Evaluator evaluator) {
@@ -7809,10 +7809,10 @@ public final class Natives {
         }
     }
 
-    private static void refuseHiddenField(ObjectValue object, Value named) {
-        List<Value> names = named instanceof BlockValue pairs
+    private static void refuseHiddenField(ObjectValue object, Value target) {
+        List<Value> names = target instanceof BlockValue pairs
                 ? pairs.remaining()
-                : List.of(named);
+                : List.of(target);
         for (Value name : names) {
             if (name instanceof WordValue word
                     && object.context().everySlot().stream().anyMatch(
@@ -7826,8 +7826,8 @@ public final class Natives {
     private static List<Value> reducedOnlyWords(
             BlockValue block, Evaluator evaluator, Value exceptions) {
 
-        Set<String> kept = exceptions instanceof BlockValue named
-                ? named.remaining().stream()
+        Set<String> kept = exceptions instanceof BlockValue excepted
+                ? excepted.remaining().stream()
                         .filter(WordValue.class::isInstance)
                         .map(word -> ((WordValue) word).canonical())
                         .collect(java.util.stream.Collectors.toSet())
@@ -7879,8 +7879,8 @@ public final class Natives {
 
     private static final int COLUMNS_A_TERMINAL_IS_ASSUMED_TO_HAVE = 80;
 
-    private static int measureOfTheConsole(String named) {
-        return named.equals("window-cols")
+    private static int measureOfTheConsole(String measurement) {
+        return measurement.equals("window-cols")
                 ? COLUMNS_A_TERMINAL_IS_ASSUMED_TO_HAVE
                 : 0;
     }
@@ -8168,7 +8168,7 @@ public final class Natives {
             return false;
         }
         List<Value> items = switch (target) {
-            case BlockValue named when !isAPath(named) -> named.remaining();
+            case BlockValue block when !isAPath(block) -> block.remaining();
             case WordValue only -> List.of(only);
             default -> List.of();
         };
@@ -8322,8 +8322,8 @@ public final class Natives {
     private static Value pickTimePart(TimeValue time, Value selector) {
         long seconds = Math.abs(time.nanoseconds()) / TimeValue.NANOSECONDS_PER_SECOND;
         long fraction = Math.abs(time.nanoseconds()) % TimeValue.NANOSECONDS_PER_SECOND;
-        String part = selector instanceof WordValue named
-                ? named.canonical()
+        String part = selector instanceof WordValue asked
+                ? asked.canonical()
                 : positionAsTimePartName(selector);
         return switch (part) {
             case "hour" -> IntegerValue.of(seconds / 3600);
@@ -8994,11 +8994,11 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
                     int width = (int) Comparison.asDouble(arguments.get(1));
-                    boolean named = refinements.contains("as");
+                    boolean filterGiven = refinements.contains("as");
                     int bpp = bytesPerPixelIn(arguments, refinements, 2);
-                    requirePngGeometry(named ? width : width + 1, bpp, data.length);
+                    requirePngGeometry(filterGiven ? width : width + 1, bpp, data.length);
                     int filter = -1;
-                    if (named) {
+                    if (filterGiven) {
                         filter = pngFilterNamedBy(argumentFor("as",
                                 List.of("as", "skip"), arguments, refinements, 2));
                     }
@@ -9076,11 +9076,11 @@ public final class Natives {
         return Set.of(Datatype.WORD, Datatype.INTEGER, Datatype.TAG, Datatype.STRING);
     }
 
-    private static java.nio.charset.Charset characterSetFor(Value named) {
-        String spelling = switch (named) {
+    private static java.nio.charset.Charset characterSetFor(Value asked) {
+        String spelling = switch (asked) {
             case WordValue word -> word.canonical();
             case StringValue text -> text.text();
-            default -> Molder.form(named);
+            default -> Molder.form(asked);
         };
         java.nio.charset.Charset found = Encodings.charsetNamed(spelling);
         if (found == null) {
@@ -9122,18 +9122,18 @@ public final class Natives {
         }
     }
 
-    private static int pngFilterNamedBy(Value named) {
-        if (named instanceof IntegerValue whole) {
+    private static int pngFilterNamedBy(Value asked) {
+        if (asked instanceof IntegerValue whole) {
             int which = (int) whole.magnitude();
             if (which < 0 || which >= Encodings.PNG_FILTERS.size()) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, "filter type");
             }
             return which;
         }
-        int found = Encodings.PNG_FILTERS.indexOf(((WordValue) named).canonical());
+        int found = Encodings.PNG_FILTERS.indexOf(((WordValue) asked).canonical());
         if (found < 0) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    ((WordValue) named).spelling());
+                    ((WordValue) asked).spelling());
         }
         return found;
     }
@@ -9166,14 +9166,14 @@ public final class Natives {
     }
 
     private static String requireAKnownCompression(Value method) {
-        String named = ((WordValue) method).canonical();
-        if (Encodings.COMPRESSIONS_ELSEWHERE.contains(named)) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA, named);
+        String asked = ((WordValue) method).canonical();
+        if (Encodings.COMPRESSIONS_ELSEWHERE.contains(asked)) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA, asked);
         }
-        if (!Encodings.COMPRESSIONS.contains(named)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, named);
+        if (!Encodings.COMPRESSIONS.contains(asked)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
-        return named;
+        return asked;
     }
 
     private static char escapeCharacterIn(
@@ -9193,8 +9193,8 @@ public final class Natives {
         if (refinements.contains("except")) {
             Value asked = argumentFor("except", List.of("escape", "except"),
                     arguments, refinements, 1);
-            if (asked instanceof BitsetValue named) {
-                return octet -> Encodings.setHolds(named, octet);
+            if (asked instanceof BitsetValue members) {
+                return octet -> Encodings.setHolds(members, octet);
             }
         }
         return value.datatype() == Datatype.FILE || value.datatype() == Datatype.URL
@@ -9362,8 +9362,8 @@ public final class Natives {
                         return UnsetValue.unset();
                     }
                     requireService(HostService.FILES);
-                    String path = target instanceof StringValue named
-                            ? named.text()
+                    String path = target instanceof StringValue address
+                            ? address.text()
                             : "output.txt";
                     FilePort files = evaluator.files();
                     return throughPort(() -> {
@@ -9668,8 +9668,8 @@ public final class Natives {
         if (!(port.fieldNamed("spec") instanceof ObjectValue spec)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, port);
         }
-        String algorithm = valueInSpec(spec, "algorithm") instanceof WordValue named
-                ? named.canonical()
+        String algorithm = valueInSpec(spec, "algorithm") instanceof WordValue word
+                ? word.canonical()
                 : "";
         if (!CryptPort.serves(algorithm)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
@@ -9933,13 +9933,13 @@ public final class Natives {
                 : 0;
     }
 
-    private static void nameTheValueRead(WordValue named, Value read) {
-        if (!named.isBound() || !named.binding().knows(named.canonical())) {
-            throw Raised.of(EvaluationFailure.NOT_DEFINED, named.spelling());
+    private static void nameTheValueRead(WordValue word, Value read) {
+        if (!word.isBound() || !word.binding().knows(word.canonical())) {
+            throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }
-        ContextSlot slot = named.binding().slotFor(named.canonical());
+        ContextSlot slot = word.binding().slotFor(word.canonical());
         if (slot.isProtected()) {
-            throw Raised.of(EvaluationFailure.LOCKED_WORD, named.spelling());
+            throw Raised.of(EvaluationFailure.LOCKED_WORD, word.spelling());
         }
         slot.setValue(read);
     }
@@ -10074,12 +10074,12 @@ public final class Natives {
         if (!refinements.contains("filter")) {
             return;
         }
-        Value named = argumentFor("filter", List.of("filter", "blur"),
+        Value asked = argumentFor("filter", List.of("filter", "blur"),
                 arguments, refinements, 2);
-        boolean known = named instanceof WordValue word
+        boolean known = asked instanceof WordValue word
                 && THE_FILTERS.stream().anyMatch(word.canonical()::equalsIgnoreCase);
         if (!known) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, named);
+            throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
     }
 
@@ -10125,11 +10125,11 @@ public final class Natives {
     private static String imageCodecNamed(List<Value> arguments,
             Evaluator evaluator, Set<String> refinements) {
 
-        Value named = imageArgument("as", 0, arguments, refinements);
-        String type = named instanceof WordValue word ? word.canonical() : "";
+        Value asked = imageArgument("as", 0, arguments, refinements);
+        String type = asked instanceof WordValue word ? word.canonical() : "";
         boolean known = evaluator.images().knows(type);
-        if (named != null && !known) {
-            throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, named);
+        if (asked != null && !known) {
+            throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, asked);
         }
         return type;
     }
@@ -10192,9 +10192,9 @@ public final class Natives {
         if (written == null) {
             throw Raised.of(EvaluationFailure.NO_CODEC, IntegerValue.of(0));
         }
-        if (destination instanceof StringValue named
+        if (destination instanceof StringValue address
                 && destination.datatype() == Datatype.FILE) {
-            evaluator.files().write(named.text(), written);
+            evaluator.files().write(address.text(), written);
             return destination;
         }
         if (destination instanceof BinaryValue holding) {
@@ -10378,9 +10378,9 @@ public final class Natives {
             List.of("encrypt", "decrypt", "sign", "verify");
 
     private static Value rsaOperation(List<Value> arguments, Set<String> refinements) {
-        List<String> named = RSA_ACTIONS.stream().filter(refinements::contains).toList();
+        List<String> asked = RSA_ACTIONS.stream().filter(refinements::contains).toList();
         boolean padded = refinements.contains("oaep") || refinements.contains("pss");
-        if (named.size() > 1 || ((padded || refinements.contains("hash")) && named.isEmpty())) {
+        if (asked.size() > 1 || ((padded || refinements.contains("hash")) && asked.isEmpty())) {
             throw Raised.of(EvaluationFailure.BAD_REFINES,
                     "rsa does one thing per call");
         }
@@ -10392,10 +10392,10 @@ public final class Natives {
                     arguments.getFirst() instanceof HandleValue other
                             ? other.typeName() : "rsa-key");
         }
-        if (named.isEmpty()) {
+        if (asked.isEmpty()) {
             return NoneValue.none();
         }
-        String action = named.getFirst();
+        String action = asked.getFirst();
         if (!key.canDecryptAndSign() && (action.equals("decrypt") || action.equals("sign"))) {
             return NoneValue.none();
         }
@@ -10423,8 +10423,8 @@ public final class Natives {
         if (!refinements.contains("hash")) {
             return "sha256";
         }
-        Value named = arguments.get(refinements.contains("verify") ? 3 : 2);
-        return named instanceof WordValue digest ? digest.canonical() : "sha256";
+        Value asked = arguments.get(refinements.contains("verify") ? 3 : 2);
+        return asked instanceof WordValue digest ? digest.canonical() : "sha256";
     }
 
     private static byte[] signatureGivenTo(List<Value> arguments, Set<String> refinements) {
@@ -10510,14 +10510,14 @@ public final class Natives {
             """;
 
     private int obeyAnsweringHowManyValuesItTook(Value chant, Evaluator evaluator) {
-        if (chant instanceof WordValue named) {
-            if (DEBUG_ONLY_CHANTS.contains(named.canonical())) {
-                throw Raised.of(EvaluationFailure.FEATURE_NA, named.spelling());
+        if (chant instanceof WordValue word) {
+            if (DEBUG_ONLY_CHANTS.contains(word.canonical())) {
+                throw Raised.of(EvaluationFailure.FEATURE_NA, word.spelling());
             }
-            if (named.canonical().equals("stack-size")) {
+            if (word.canonical().equals("stack-size")) {
                 return 1;
             }
-            if (named.canonical().equals("delect")) {
+            if (word.canonical().equals("delect")) {
                 return 0;
             }
             evaluator.output().write(EVOKE_HELP);
@@ -10712,8 +10712,8 @@ public final class Natives {
     private void defineConversion() {
         define("to", takesAnything("type", "value"),
                 (arguments, evaluator, context) -> {
-                    DatatypeValue wanted = arguments.getFirst() instanceof DatatypeValue named
-                            ? named
+                    DatatypeValue wanted = arguments.getFirst() instanceof DatatypeValue asked
+                            ? asked
                             : DatatypeValue.of(arguments.getFirst().datatype());
                     if (wanted.represents() == Datatype.EVENT) {
                         return EventPath.made(wanted, arguments.get(1),
@@ -10787,8 +10787,8 @@ public final class Natives {
                         Parameter.required("type", asTypeOrExample()),
                         Parameter.required("value")),
                 (arguments, evaluator, context) -> {
-                    Datatype wanted = arguments.get(0) instanceof DatatypeValue named
-                            ? named.represents()
+                    Datatype wanted = arguments.get(0) instanceof DatatypeValue asked
+                            ? asked.represents()
                             : arguments.get(0).datatype();
                     Value value = arguments.get(1);
                     if (value.datatype() == wanted) {
@@ -11122,10 +11122,10 @@ public final class Natives {
     }
 
     private static Value simpleValueOf(Value given, Evaluator evaluator, Context context) {
-        if (given instanceof WordValue named
-                && (named.datatype() == Datatype.WORD
-                        || named.datatype() == Datatype.GET_WORD)) {
-            return evaluator.valueOfWordIn(named, context);
+        if (given instanceof WordValue word
+                && (word.datatype() == Datatype.WORD
+                        || word.datatype() == Datatype.GET_WORD)) {
+            return evaluator.valueOfWordIn(word, context);
         }
         if (given instanceof BlockValue path
                 && (path.datatype() == Datatype.PATH
@@ -11729,8 +11729,8 @@ public final class Natives {
     }
 
     private static Value converted(Conversion asking, Value type, Value value) {
-        DatatypeValue wanted = type instanceof DatatypeValue named
-                ? named
+        DatatypeValue wanted = type instanceof DatatypeValue asked
+                ? asked
                 : DatatypeValue.of(type.datatype());
         refuseToBuildSomethingOutOfNothing(wanted.represents(), value);
         return switch (wanted.represents()) {
@@ -11797,15 +11797,15 @@ public final class Natives {
             case BITSET -> bitsetOf(value);
             case TYPESET -> switch (value) {
                 case TypesetValue already -> already;
-                case BlockValue named when named.datatype() == Datatype.BLOCK ->
-                        TypesetValue.of(datatypesNamedIn(named));
+                case BlockValue block when block.datatype() == Datatype.BLOCK ->
+                        TypesetValue.of(datatypesNamedIn(block));
                 default -> raiseBadMakeArg(value, "typeset!");
             };
             case TIME -> aTimeMadeFrom(value);
             case TUPLE -> tupleFrom(value);
             case LOGIC -> LogicValue.of(countsAsTrue(asking, value));
-            case DATATYPE -> value instanceof WordValue named
-                    ? datatypeNamed(named, value)
+            case DATATYPE -> value instanceof WordValue word
+                    ? datatypeNamed(word, value)
                     : raiseBadMakeArg(value, "datatype!");
             case IMAGE -> imageConvertedFrom(value);
             default -> raiseCannotUse(value, "to " + wanted.represents().literalSpelling());
@@ -11965,8 +11965,8 @@ public final class Natives {
             case LogicValue truth -> asking.builds()
                     ? IntegerValue.of(truth.truth() ? 1 : 0)
                     : raiseBadMakeArg(value, "integer!");
-            case WordValue named when named.datatype() == Datatype.ISSUE ->
-                    hexNumberIn(named);
+            case WordValue issue when issue.datatype() == Datatype.ISSUE ->
+                    hexNumberIn(issue);
             case StringValue text -> parseInteger(text.text());
             case CharacterValue character -> IntegerValue.of(character.codepoint());
             case BinaryValue bytes -> IntegerValue.of(bitsOfRightAligned(bytes));
@@ -12032,7 +12032,7 @@ public final class Natives {
         }
         String spelling = switch (value) {
             case StringValue text -> text.text();
-            case DatatypeValue named -> named.represents().literalSpelling();
+            case DatatypeValue asked -> asked.represents().literalSpelling();
             default -> null;
         };
         if (spelling == null) {
@@ -12184,9 +12184,9 @@ public final class Natives {
         return TupleValue.of(octets);
     }
 
-    private static Value datatypeNamed(WordValue named, Value original) {
+    private static Value datatypeNamed(WordValue word, Value original) {
         for (Datatype candidate : Datatype.values()) {
-            if (candidate.literalSpelling().equalsIgnoreCase(named.spelling())) {
+            if (candidate.literalSpelling().equalsIgnoreCase(word.spelling())) {
                 return DatatypeValue.of(candidate);
             }
         }
@@ -12287,9 +12287,9 @@ public final class Natives {
 
     private static final int MOST_HEX_DIGITS_SCANNED = 16;
 
-    private static Set<Datatype> datatypesNamedIn(BlockValue named) {
+    private static Set<Datatype> datatypesNamedIn(BlockValue spec) {
         Set<Datatype> found = EnumSet.noneOf(Datatype.class);
-        for (Value item : named.remaining()) {
+        for (Value item : spec.remaining()) {
             if (!namedTypesAddedFrom(item, found)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(item));
             }
@@ -12640,13 +12640,13 @@ public final class Natives {
             return OptionalDouble.empty();
         }
         boolean negative = body.charAt(0) == '-';
-        String named = body.substring(hash + 1);
-        if (named.equalsIgnoreCase("INF")) {
+        String afterTheHash = body.substring(hash + 1);
+        if (afterTheHash.equalsIgnoreCase("INF")) {
             return OptionalDouble.of(negative
                     ? Double.NEGATIVE_INFINITY
                     : Double.POSITIVE_INFINITY);
         }
-        return named.equalsIgnoreCase("NAN")
+        return afterTheHash.equalsIgnoreCase("NAN")
                 ? OptionalDouble.of(Double.NaN)
                 : OptionalDouble.empty();
     }
@@ -13013,9 +13013,9 @@ public final class Natives {
         }
     }
 
-    private static void refuseTheSelfTheObjectAlreadyHas(ObjectValue object, Value named) {
+    private static void refuseTheSelfTheObjectAlreadyHas(ObjectValue object, Value field) {
         if (object.context().holds("self")) {
-            Evaluator.refuseToWriteTheNameAnObjectAnswersToItselfBy(named);
+            Evaluator.refuseToWriteTheNameAnObjectAnswersToItselfBy(field);
         }
     }
 
@@ -13066,16 +13066,16 @@ public final class Natives {
                                         port, evaluator, arguments, refinements)
                                 : readFromPort(port, evaluator, arguments, refinements);
                     }
-                    Optional<String> named =
+                    Optional<String> behindTheUrl =
                             theFileNamedByAUrl(arguments.getFirst(), evaluator, context);
-                    if (named.isEmpty() && routesToAScheme(arguments.getFirst())) {
+                    if (behindTheUrl.isEmpty() && routesToAScheme(arguments.getFirst())) {
                         return readFromPort(
                                 portOpenedFor(arguments.getFirst(), evaluator, context),
                                 evaluator, arguments, refinements);
                     }
                     requireService(HostService.FILES);
                     return throughPort(() -> FileReading
-                            .asAskedForAt(named.orElseGet(() ->
+                            .asAskedForAt(behindTheUrl.orElseGet(() ->
                                     ((StringValue) arguments.getFirst()).text()),
                                     arguments, refinements)
                             .answerThrough(evaluator.files()));
@@ -13274,12 +13274,14 @@ public final class Natives {
                         Set.of(Datatype.FILE, Datatype.URL))),
                 (arguments, evaluator, context) -> {
                     Value target = arguments.getFirst();
-                    Optional<String> named = theFileNamedByAUrl(target, evaluator, context);
-                    if (named.isEmpty() && target.datatype() != Datatype.FILE) {
+                    Optional<String> behindTheUrl =
+                            theFileNamedByAUrl(target, evaluator, context);
+                    if (behindTheUrl.isEmpty() && target.datatype() != Datatype.FILE) {
                         throw schemeRefusal("deletes through", target);
                     }
                     requireService(HostService.FILES);
-                    String path = named.orElseGet(() -> ((StringValue) target).text());
+                    String path = behindTheUrl.orElseGet(
+                            () -> ((StringValue) target).text());
                     Value itsPort = evaluator.applyFunction(
                             systemInternalFunction(context, "make-port*"), List.of(target));
                     try {
@@ -13330,25 +13332,26 @@ public final class Natives {
                 Set.of("check"),
                 (arguments, evaluator, context, refinements) -> {
                     Value target = arguments.getFirst();
-                    if (!(target instanceof StringValue named) || named.text().isEmpty()) {
+                    if (!(target instanceof StringValue address)
+                            || address.text().isEmpty()) {
                         return LogicValue.of(false);
                     }
                     if (refinements.contains("check")
                             && target.datatype() == Datatype.FILE
-                            && liesOnTheDiskAsADirectory(evaluator, named.text())) {
+                            && liesOnTheDiskAsADirectory(evaluator, address.text())) {
                         return LogicValue.of(true);
                     }
-                    return LogicValue.of(endsTheWayADirectoryIsWritten(named.text()));
+                    return LogicValue.of(endsTheWayADirectoryIsWritten(address.text()));
                 });
 
         define("set-scheme", List.of(
                         Parameter.required("scheme", Set.of(Datatype.OBJECT))),
                 (arguments, evaluator, context) -> {
                     ObjectValue scheme = (ObjectValue) arguments.getFirst();
-                    Value named = scheme.context().holds("name")
+                    Value given = scheme.context().holds("name")
                             ? scheme.context().ownSlotFor("name").value()
                             : NoneValue.none();
-                    if (!(named instanceof WordValue name)
+                    if (!(given instanceof WordValue name)
                             || !SCHEMES_THIS_BUILD_SERVES.contains(name.canonical())) {
                         return NoneValue.none();
                     }
@@ -13471,10 +13474,10 @@ public final class Natives {
                     if (arguments.getFirst() instanceof PortValue aPort
                             && aPort.schemeName().equals("crypt")) {
                         refuseAClosedCipherPort(aPort);
-                        if (!(arguments.get(1) instanceof WordValue named)) {
+                        if (!(arguments.get(1) instanceof WordValue setting)) {
                             return aPort;
                         }
-                        return CryptPort.modify(aPort, named.canonical(),
+                        return CryptPort.modify(aPort, setting.canonical(),
                                 arguments.get(2));
                     }
                     if (!(arguments.get(1) instanceof WordValue mode)
@@ -13604,10 +13607,10 @@ public final class Natives {
                     }
                     if (target instanceof PortValue console
                             && console.schemeName().equals("console")) {
-                        if (field instanceof WordValue named
-                                && !named.canonical().equals("words")
-                                && !CONSOLE_MEASUREMENTS.contains(named.canonical())) {
-                            throw Raised.of(EvaluationFailure.INVALID_ARG, named);
+                        if (field instanceof WordValue asked
+                                && !asked.canonical().equals("words")
+                                && !CONSOLE_MEASUREMENTS.contains(asked.canonical())) {
+                            throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
                         }
                         return questionedByField(field, evaluator,
                                 CONSOLE_MEASUREMENTS,
@@ -13623,14 +13626,16 @@ public final class Natives {
                                         SeekableFilePort.pathOf(openFile)),
                                 field, evaluator));
                     }
-                    Optional<String> named = theFileNamedByAUrl(target, evaluator, context);
-                    if (named.isEmpty()
+                    Optional<String> behindTheUrl =
+                            theFileNamedByAUrl(target, evaluator, context);
+                    if (behindTheUrl.isEmpty()
                             && (target instanceof PortValue || routesToAScheme(target))) {
                         throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
                                 WordValue.of("query").as(Datatype.SET_WORD));
                     }
                     requireService(HostService.FILES);
-                    String path = named.orElseGet(() -> ((StringValue) target).text());
+                    String path = behindTheUrl.orElseGet(
+                            () -> ((StringValue) target).text());
                     if (path.isEmpty()) {
                         return NoneValue.none();
                     }
@@ -13651,26 +13656,26 @@ public final class Natives {
         if (field instanceof BlockValue wanted) {
             List<Value> answer = new ArrayList<>();
             for (Value item : wanted.remaining()) {
-                if (!(item instanceof WordValue named)) {
+                if (!(item instanceof WordValue asked)) {
                     throw Raised.of(EvaluationFailure.INVALID_ARG,
                             "a query field is a word, not "
                                     + item.datatype().literalSpelling());
                 }
-                if (named.datatype() != Datatype.GET_WORD) {
-                    answer.add(named.as(Datatype.SET_WORD));
+                if (asked.datatype() != Datatype.GET_WORD) {
+                    answer.add(asked.as(Datatype.SET_WORD));
                 }
-                answer.add(queryFieldOf(about, named));
+                answer.add(queryFieldOf(about, asked));
             }
             return BlockValue.block(answer);
         }
-        if (field instanceof WordValue named) {
-            return queryFieldOf(about, named);
+        if (field instanceof WordValue asked) {
+            return queryFieldOf(about, asked);
         }
         return everythingKnownAbout(about);
     }
 
-    private static Value queryFieldOf(FileInformation about, WordValue named) {
-        return switch (named.canonical()) {
+    private static Value queryFieldOf(FileInformation about, WordValue asked) {
+        return switch (asked.canonical()) {
             case "size" -> about.size().<Value>map(IntegerValue::of).orElseGet(NoneValue::none);
             case "type" -> WordValue.of(about.isDirectory() ? "dir" : "file");
             case "date", "modified" -> asDateValue(about.modified());
@@ -13678,7 +13683,7 @@ public final class Natives {
             case "created" -> asDateValue(about.created());
             case "name" -> StringValue.of(about.name(), Datatype.FILE);
             default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    named.spelling() + " is not a field a file has");
+                    asked.spelling() + " is not a field a file has");
         };
     }
 
@@ -13861,7 +13866,7 @@ public final class Natives {
                 case BinaryValue piped -> ProcessPort.ProgramInput.SUPPLIED_BYTES;
                 case StringValue text when text.datatype() == Datatype.STRING ->
                         ProcessPort.ProgramInput.SUPPLIED_BYTES;
-                case StringValue named -> ProcessPort.ProgramInput.A_FILES_CONTENTS;
+                case StringValue address -> ProcessPort.ProgramInput.A_FILES_CONTENTS;
                 default -> ProcessPort.ProgramInput.NOTHING_AT_ALL;
             };
         }
@@ -13874,7 +13879,7 @@ public final class Natives {
                 case BinaryValue captured -> ProcessPort.ProgramOutput.CAPTURED;
                 case StringValue text when text.datatype() == Datatype.STRING ->
                         ProcessPort.ProgramOutput.CAPTURED;
-                case StringValue named -> ProcessPort.ProgramOutput.INTO_A_FILE;
+                case StringValue address -> ProcessPort.ProgramOutput.INTO_A_FILE;
                 default -> ProcessPort.ProgramOutput.DISCARDED;
             };
         }
@@ -13978,12 +13983,12 @@ public final class Natives {
 
     private static Optional<String> theNameABundledUrlAsksFor(PortValue port) {
         if (!(port.fieldNamed("spec") instanceof ObjectValue spec)
-                || !(valueInSpec(spec, "host") instanceof StringValue named)
+                || !(valueInSpec(spec, "host") instanceof StringValue host)
                 || !(valueInSpec(spec, "path") instanceof NoneValue)
                 || !(valueInSpec(spec, "target") instanceof NoneValue)) {
             return Optional.empty();
         }
-        return named.text().isEmpty() ? Optional.empty() : Optional.of(named.text());
+        return host.text().isEmpty() ? Optional.empty() : Optional.of(host.text());
     }
 
     private Value bytesReadFromTheConnection(PortValue port, Evaluator evaluator) {
@@ -14047,8 +14052,8 @@ public final class Natives {
             return raiseWrongArgument(wanted, "in", "word");
         }
         for (Value item : searched.remaining()) {
-            Value resolved = item instanceof WordValue named && named.isBound()
-                    ? evaluator.evaluateOrRaise(BlockValue.block(List.of(named)), context)
+            Value resolved = item instanceof WordValue bound && bound.isBound()
+                    ? evaluator.evaluateOrRaise(BlockValue.block(List.of(bound)), context)
                     : item;
             if (resolved instanceof ObjectValue object
                     && object.context().holds(word.canonical())) {
@@ -14063,23 +14068,23 @@ public final class Natives {
 
         List<Value> items = pairs.remaining();
         for (int at = 0; at < items.size(); at += 2) {
-            Value named = items.get(at);
-            Value held = switch (named) {
+            Value subject = items.get(at);
+            Value held = switch (subject) {
                 case WordValue word when word.datatype() == Datatype.WORD ->
                         evaluator.evaluateOrRaise(
-                                BlockValue.block(List.of(named)), context);
+                                BlockValue.block(List.of(subject)), context);
                 case BlockValue path when path.datatype() == Datatype.PATH ->
                         evaluator.evaluateOrRaise(
-                                BlockValue.block(List.of(named)), context);
+                                BlockValue.block(List.of(subject)), context);
                 default -> {
-                    throw Raised.of(EvaluationFailure.INVALID_ARG, named);
+                    throw Raised.of(EvaluationFailure.INVALID_ARG, subject);
                 }
             };
             if (at + 1 >= items.size()) {
                 throw Raised.of(EvaluationFailure.MISSING_ARG);
             }
             if (!isOfType(held, items.get(at + 1), context)) {
-                throw Raised.of(EvaluationFailure.WRONG_TYPE, named);
+                throw Raised.of(EvaluationFailure.WRONG_TYPE, subject);
             }
         }
         return LogicValue.of(true);
@@ -14102,11 +14107,11 @@ public final class Natives {
 
     private static boolean isOfType(Value held, Value type, Context context) {
         return switch (type) {
-            case DatatypeValue named -> held.datatype() == named.represents();
+            case DatatypeValue wanted -> held.datatype() == wanted.represents();
             case TypesetValue set -> set.holds(held.datatype());
-            case WordValue named -> {
-                Value resolved = context.knows(named.canonical())
-                        ? context.slotFor(named.canonical()).value()
+            case WordValue word -> {
+                Value resolved = context.knows(word.canonical())
+                        ? context.slotFor(word.canonical()).value()
                         : NoneValue.none();
                 yield resolved != type && isOfType(held, resolved, context);
             }
@@ -14174,8 +14179,8 @@ public final class Natives {
         return BlockValue.block(spec);
     }
 
-    private static Context boundContextOf(WordValue named) {
-        return named.isBound() ? named.binding() : null;
+    private static Context boundContextOf(WordValue word) {
+        return word.isBound() ? word.binding() : null;
     }
 
     private static byte[] withSurrogatePairsJoined(byte[] bytes) {
@@ -14242,7 +14247,7 @@ public final class Natives {
     }
 
     private static String textBehindTheMark(byte[] bytes, int marked) {
-        java.nio.charset.Charset named = switch (marked) {
+        java.nio.charset.Charset theMarkAnnounces = switch (marked) {
             case 8 -> StandardCharsets.UTF_8;
             case 16 -> StandardCharsets.UTF_16BE;
             case -16 -> StandardCharsets.UTF_16LE;
@@ -14251,7 +14256,7 @@ public final class Natives {
         };
         int width = Math.abs(marked) == 8 ? 3 : Math.abs(marked) / 8;
         try {
-            return named.newDecoder()
+            return theMarkAnnounces.newDecoder()
                     .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
                     .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
                     .decode(java.nio.ByteBuffer.wrap(bytes, width, bytes.length - width))
@@ -14340,10 +14345,10 @@ public final class Natives {
     }
 
     private static boolean objectHasFieldToFind(Value subject, Value wanted) {
-        if (!(wanted instanceof WordValue named) || named.datatype() != Datatype.WORD) {
+        if (!(wanted instanceof WordValue word) || word.datatype() != Datatype.WORD) {
             return false;
         }
-        String field = named.canonical();
+        String field = word.canonical();
         if (field.equals("self")) {
             return false;
         }
@@ -14547,14 +14552,14 @@ public final class Natives {
         built.append(separator);
     }
 
-    private record WordsToResolve(int startAt, Set<String> named, boolean limited) {
+    private record WordsToResolve(int startAt, Set<String> spellings, boolean limited) {
 
         static WordsToResolve everything() {
             return new WordsToResolve(1, Set.of(), false);
         }
 
         boolean allows(String canonical) {
-            return !limited || named.contains(canonical);
+            return !limited || spellings.contains(canonical);
         }
     }
 
@@ -14576,8 +14581,8 @@ public final class Natives {
                             .collect(java.util.stream.Collectors.toUnmodifiableSet()),
                     true);
         }
-        if (onlyThese instanceof BlockValue named) {
-            return new WordsToResolve(1, named.remaining().stream()
+        if (onlyThese instanceof BlockValue only) {
+            return new WordsToResolve(1, only.remaining().stream()
                     .filter(word -> word instanceof WordValue spelled
                             && (spelled.datatype() == Datatype.WORD
                                     || spelled.datatype() == Datatype.SET_WORD))
@@ -14633,21 +14638,21 @@ public final class Natives {
             return BlockValue.block(
                     VectorQuery.FIELDS.stream().<Value>map(WordValue::of).toList());
         }
-        if (field instanceof WordValue named) {
-            return VectorQuery.field(vector, named.canonical())
-                    .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, named));
+        if (field instanceof WordValue only) {
+            return VectorQuery.field(vector, only.canonical())
+                    .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, only));
         }
         if (field instanceof BlockValue asked) {
             List<Value> answer = new ArrayList<>();
             for (Value item : asked.remaining()) {
-                if (!(item instanceof WordValue named)) {
+                if (!(item instanceof WordValue each)) {
                     throw Raised.of(EvaluationFailure.INVALID_ARG, item);
                 }
-                if (named.datatype() != Datatype.GET_WORD) {
-                    answer.add(named.as(Datatype.SET_WORD));
+                if (each.datatype() != Datatype.GET_WORD) {
+                    answer.add(each.as(Datatype.SET_WORD));
                 }
-                answer.add(VectorQuery.field(vector, named.canonical()).orElseThrow(
-                        () -> Raised.of(EvaluationFailure.INVALID_ARG, named)));
+                answer.add(VectorQuery.field(vector, each.canonical()).orElseThrow(
+                        () -> Raised.of(EvaluationFailure.INVALID_ARG, each)));
             }
             return BlockValue.block(answer);
         }
@@ -14664,20 +14669,20 @@ public final class Natives {
             Value field, Evaluator evaluator, List<String> partNames,
             Function<String, Value> partOf) {
         return switch (field) {
-            case WordValue named when named.canonical().equals("words") ->
+            case WordValue only when only.canonical().equals("words") ->
                     namesAsWords(partNames);
-            case WordValue named -> oneKnownPart(named, partNames, partOf);
+            case WordValue only -> oneKnownPart(only, partNames, partOf);
             case BlockValue asked -> {
                 List<Value> answer = new ArrayList<>();
                 for (Value item : asked.remaining()) {
-                    if (!(item instanceof WordValue named)) {
+                    if (!(item instanceof WordValue each)) {
                         throw Raised.of(EvaluationFailure.INVALID_ARG,
                                 Molder.mold(item) + " names no part");
                     }
-                    if (named.datatype() != Datatype.GET_WORD) {
-                        answer.add(named.as(Datatype.SET_WORD));
+                    if (each.datatype() != Datatype.GET_WORD) {
+                        answer.add(each.as(Datatype.SET_WORD));
                     }
-                    answer.add(oneKnownPart(named, partNames, partOf));
+                    answer.add(oneKnownPart(each, partNames, partOf));
                 }
                 yield BlockValue.block(answer);
             }
@@ -14699,13 +14704,13 @@ public final class Natives {
                 partNames.stream().<Value>map(WordValue::of).toList());
     }
 
-    private static Value oneKnownPart(WordValue named, List<String> partNames,
+    private static Value oneKnownPart(WordValue asked, List<String> partNames,
             Function<String, Value> partOf) {
-        if (!partNames.contains(named.canonical())) {
+        if (!partNames.contains(asked.canonical())) {
             throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    "query has no " + named.canonical() + " to answer here");
+                    "query has no " + asked.canonical() + " to answer here");
         }
-        return partOf.apply(named.canonical());
+        return partOf.apply(asked.canonical());
     }
 
     private static boolean routesToAScheme(Value source) {
@@ -14714,11 +14719,11 @@ public final class Natives {
                 || source instanceof WordValue;
     }
 
-    private PortValue portOpenedFor(Value named, Evaluator evaluator, Context context) {
+    private PortValue portOpenedFor(Value address, Evaluator evaluator, Context context) {
         Value built = evaluator.applyFunction(
-                systemInternalFunction(context, "make-port*"), List.of(named));
+                systemInternalFunction(context, "make-port*"), List.of(address));
         if (!(built instanceof PortValue port)) {
-            throw schemeRefusal("writes", named);
+            throw schemeRefusal("writes", address);
         }
         if (theActorWrittenInRebol(port).isPresent()) {
             return port;
@@ -15453,8 +15458,8 @@ public final class Natives {
         if (port.fieldNamed("spec") instanceof ObjectValue spec) {
             if (spec.context().holds("host")
                     && spec.context().ownSlotFor("host").value()
-                            instanceof StringValue named) {
-                return named.text();
+                            instanceof StringValue host) {
+                return host.text();
             }
             if (spec.context().holds("ref")
                     && spec.context().ownSlotFor("ref").value()
@@ -15805,8 +15810,8 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     Function<Value, String> written =
                             refinements.contains("only")
-                                    && arguments.getFirst() instanceof BlockValue named
-                                    && named.datatype() == Datatype.BLOCK
+                                    && arguments.getFirst() instanceof BlockValue block
+                                    && block.datatype() == Datatype.BLOCK
                             ? value -> Molder.moldOnly((BlockValue) value)
                             : refinements.contains("all")
                                     ? Molder::moldAll

@@ -315,8 +315,8 @@ class MakeAndToFromTheSourceTest {
         @ParameterizedTest(name = "make {0}! none is refused")
         @ValueSource(strings = {"string", "file", "email", "ref", "url", "tag", "object"})
         @DisplayName("a string or an object refuses it as a bad make argument")
-        void astringOrAnObjectRefusesIt(String named) {
-            assertThat(errorOr("make " + named + "! none")).isEqualTo("bad-make-arg");
+        void astringOrAnObjectRefusesIt(String datatype) {
+            assertThat(errorOr("make " + datatype + "! none")).isEqualTo("bad-make-arg");
         }
 
         @ParameterizedTest(name = "make {0}! none is refused")
@@ -324,8 +324,8 @@ class MakeAndToFromTheSourceTest {
             "block", "paren", "path", "set-path", "get-path", "lit-path",
         })
         @DisplayName("and a block shape as an invalid argument, which is a different arm")
-        void ablockShapeRefusesItDifferently(String named) {
-            assertThat(errorOr("make " + named + "! none"))
+        void ablockShapeRefusesItDifferently(String datatype) {
+            assertThat(errorOr("make " + datatype + "! none"))
                     .as("Make_Block_Type reaches Trap_Arg where the string maker "
                             + "reaches Trap_Make, and Rebol reports the two "
                             + "differently")
@@ -335,8 +335,8 @@ class MakeAndToFromTheSourceTest {
         @ParameterizedTest(name = "to {0}! none is refused")
         @ValueSource(strings = {"string", "file", "email", "ref", "url", "tag"})
         @DisplayName("and TO refuses it too, where it used to answer the word none")
-        void toRefusesItToo(String named) {
-            assertThat(errorOr("to " + named + "! none")).isEqualTo("bad-make-arg");
+        void toRefusesItToo(String datatype) {
+            assertThat(errorOr("to " + datatype + "! none")).isEqualTo("bad-make-arg");
         }
 
         @Test
@@ -359,8 +359,8 @@ class MakeAndToFromTheSourceTest {
             "money,   $1",
         })
         @DisplayName("true")
-        void whenTrue(String named, String expected) {
-            assertThat(answerTo("mold make " + named + "! true")).isEqualTo(expected);
+        void whenTrue(String datatype, String expected) {
+            assertThat(answerTo("mold make " + datatype + "! true")).isEqualTo(expected);
         }
 
         @ParameterizedTest(name = "make {0}! false is {1}")
@@ -371,8 +371,8 @@ class MakeAndToFromTheSourceTest {
             "money,   $0",
         })
         @DisplayName("and false")
-        void whenFalse(String named, String expected) {
-            assertThat(answerTo("mold make " + named + "! false")).isEqualTo(expected);
+        void whenFalse(String datatype, String expected) {
+            assertThat(answerTo("mold make " + datatype + "! false")).isEqualTo(expected);
         }
 
         @Test
@@ -387,14 +387,14 @@ class MakeAndToFromTheSourceTest {
         @ValueSource(strings = {"integer", "decimal", "percent", "money"})
         @DisplayName("but TO will not read one at all, which is the sharpest place "
                 + "MAKE and TO come apart")
-        void tostillWillNotReadOne(String named) {
-            assertThat(errorOr("to " + named + "! true"))
+        void tostillWillNotReadOne(String datatype) {
+            assertThat(errorOr("to " + datatype + "! true"))
                     .as("the C leaves a note where it refuses: no integer is "
                             + "uniquely representative of true, so converting one "
                             + "is a question with no answer, where building one "
                             + "from true is a choice that can be made")
                     .isEqualTo("bad-make-arg");
-            assertThat(errorOr("to " + named + "! false")).isEqualTo("bad-make-arg");
+            assertThat(errorOr("to " + datatype + "! false")).isEqualTo("bad-make-arg");
         }
     }
 
@@ -407,16 +407,16 @@ class MakeAndToFromTheSourceTest {
             "block", "paren", "path", "set-path", "get-path", "lit-path",
         })
         @DisplayName("nothing included, where MAKE calls the same thing invalid")
-        void nothingIncluded(String named) {
+        void nothingIncluded(String datatype) {
             assertThat(answerTo("mold reduce ["
-                    + "(" + named + "? made: to " + named + "! none) "
+                    + "(" + datatype + "? made: to " + datatype + "! none) "
                     + "(1 = length? made) "
                     + "(none? first made)]"))
                     .as("the shape asked for, holding the one value and nothing "
                             + "else -- two empty results would compare equal, so "
                             + "the length is worth checking separately")
                     .isEqualTo("[#(true) #(true) #(true)]");
-            assertThat(errorOr("make " + named + "! none")).isEqualTo("invalid-arg");
+            assertThat(errorOr("make " + datatype + "! none")).isEqualTo("invalid-arg");
         }
 
         @Test
@@ -603,8 +603,8 @@ class MakeAndToFromTheSourceTest {
         @ParameterizedTest(name = "to {0}! #FF is refused")
         @ValueSource(strings = {"decimal", "percent"})
         @DisplayName("an issue has digits in it and is still not a number")
-        void anissueIsStillNotANumber(String named) {
-            assertThat(errorOr("to " + named + "! #FF"))
+        void anissueIsStillNotANumber(String datatype) {
+            assertThat(errorOr("to " + datatype + "! #FF"))
                     .as("bad-make-arg rather than expect-arg: the caller passed a "
                             + "value this conversion cannot use, not the wrong kind "
                             + "of thing to a function")
@@ -924,8 +924,8 @@ class MakeAndToFromTheSourceTest {
         @ParameterizedTest(name = "make {0}! 4 molds as nothing")
         @ValueSource(strings = {"path", "set-path", "get-path", "lit-path"})
         @DisplayName("an empty path writes nothing at all, not even its own mark")
-        void anemptyPathWritesNothing(String named) {
-            assertThat(answerTo("mold make " + named + "! 4"))
+        void anemptyPathWritesNothing(String datatype) {
+            assertThat(answerTo("mold make " + datatype + "! 4"))
                     .as("the line above the rule in the C returns before writing "
                             + "anything, so a set-path with room for four things "
                             + "does not write the colon that would read back as "
@@ -977,8 +977,8 @@ class MakeAndToFromTheSourceTest {
         })
         @DisplayName("because Make_Object_Block sets the line flag on every "
                 + "set-word it writes")
-        void becauseTheLineFlagIsSet(String named, String expected) {
-            assertThat(answerTo("mold to " + named + "! make object! [a: 1]"))
+        void becauseTheLineFlagIsSet(String datatype, String expected) {
+            assertThat(answerTo("mold to " + datatype + "! make object! [a: 1]"))
                     .as("a property of the block rather than of how it is later "
                             + "printed, and the molder honours it for the three "
                             + "shapes that have brackets to put a break inside")

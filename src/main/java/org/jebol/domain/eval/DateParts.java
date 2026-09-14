@@ -50,9 +50,9 @@ final class DateParts {
     }
 
     private static String thePartNamedBy(Value selector) {
-        if (selector instanceof WordValue named) {
-            return IN_THE_ORDER_A_NUMBER_COUNTS_THEM.contains(named.canonical())
-                    ? named.canonical()
+        if (selector instanceof WordValue asked) {
+            return IN_THE_ORDER_A_NUMBER_COUNTS_THEM.contains(asked.canonical())
+                    ? asked.canonical()
                     : null;
         }
         if (!(selector instanceof IntegerValue position)) {
@@ -302,7 +302,7 @@ final class DateParts {
 
     static Value of(DateValue date, Value selector) {
         String part = switch (selector) {
-            case WordValue named -> named.canonical();
+            case WordValue asked -> asked.canonical();
             case IntegerValue position -> position.magnitude() >= 1
                     && position.magnitude() <= IN_THE_ORDER_A_NUMBER_COUNTS_THEM.size()
                     ? IN_THE_ORDER_A_NUMBER_COUNTS_THEM.get((int) position.magnitude() - 1)

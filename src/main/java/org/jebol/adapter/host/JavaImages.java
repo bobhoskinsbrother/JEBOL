@@ -151,8 +151,8 @@ public final class JavaImages implements ImagePort {
         return AT_THE_CORNER;
     }
 
-    private static int numberIn(Node descriptor, String named) {
-        Node held = descriptor.getAttributes().getNamedItem(named);
+    private static int numberIn(Node descriptor, String attribute) {
+        Node held = descriptor.getAttributes().getNamedItem(attribute);
         return held == null ? 0 : Integer.parseInt(held.getNodeValue());
     }
 

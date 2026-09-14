@@ -67,27 +67,27 @@ final class PaintListAsJson {
     }
 
     private static String asAStep(PathStep step) {
-        String named = saying("step", step.kind().spelling());
+        String kind = saying("step", step.kind().spelling());
         return switch (step) {
-            case PathStep.MoveTo to -> anObject(named, at(to.across(), to.down()));
-            case PathStep.LineTo to -> anObject(named, at(to.across(), to.down()));
-            case PathStep.QuadraticTo to -> anObject(named,
+            case PathStep.MoveTo to -> anObject(kind, at(to.across(), to.down()));
+            case PathStep.LineTo to -> anObject(kind, at(to.across(), to.down()));
+            case PathStep.QuadraticTo to -> anObject(kind,
                     at(to.across(), to.down()),
                     controlling(to.controlAcross(), to.controlDown()));
-            case PathStep.CubicTo to -> anObject(named,
+            case PathStep.CubicTo to -> anObject(kind,
                     at(to.across(), to.down()),
                     controlling(to.firstControlAcross(), to.firstControlDown()),
                     secondControl(to.secondControlAcross(), to.secondControlDown()));
-            case PathStep.EllipseAt ellipse -> anObject(named,
+            case PathStep.EllipseAt ellipse -> anObject(kind,
                     at(ellipse.centreAcross(), ellipse.centreDown()),
                     radiating(ellipse.radiusAcross(), ellipse.radiusDown()));
-            case PathStep.ArcTo arc -> anObject(named,
+            case PathStep.ArcTo arc -> anObject(kind,
                     at(arc.centreAcross(), arc.centreDown()),
                     radiating(arc.radiusAcross(), arc.radiusDown()),
                     measuring("begins", arc.beginsAt()),
                     measuring("turns", arc.turnsThrough()),
                     holding("closes", String.valueOf(arc.closes())));
-            case PathStep.Close ignored -> anObject(named);
+            case PathStep.Close ignored -> anObject(kind);
         };
     }
 

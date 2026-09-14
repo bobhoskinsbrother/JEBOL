@@ -226,8 +226,8 @@ public record ErrorValue(
     }
 
     private String theFieldItNamesOrTheItemItself(Value item) {
-        if (item instanceof WordValue named && named.datatype().isAnyWord()) {
-            Optional<Value> held = field(named.canonical());
+        if (item instanceof WordValue word && word.datatype().isAnyWord()) {
+            Optional<Value> held = field(word.canonical());
             if (held.isPresent()) {
                 return Molder.mold(held.get());
             }

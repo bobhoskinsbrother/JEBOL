@@ -34,8 +34,8 @@ class DoFileFromTheSourceTest {
         return answerTo(root, "failure: try [" + source + "] failure/id");
     }
 
-    private static void script(Path root, String named, String body) throws IOException {
-        Files.writeString(root.resolve(named), body);
+    private static void script(Path root, String fileName, String body) throws IOException {
+        Files.writeString(root.resolve(fileName), body);
     }
 
     @Nested

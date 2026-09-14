@@ -153,28 +153,28 @@ public record EventValue(
     public List<Value> moldingSpec() {
         List<Value> spec = new ArrayList<>();
         if (typeIndex != 0) {
-            named(spec, "type", WordValue.of(EventCatalogue.typeAt(typeIndex)));
+            setWord(spec,"type", WordValue.of(EventCatalogue.typeAt(typeIndex)));
         }
         if (model == Model.PORT || model == Model.OBJECT || model == Model.MIDI) {
-            named(spec, "port", attached);
+            setWord(spec,"port", attached);
         }
         if (model == Model.GUI && attached instanceof GobValue gob) {
-            named(spec, "gob", gob);
+            setWord(spec,"gob", gob);
         }
         if (has(Flag.HAS_XY)) {
-            named(spec, "offset", PairValue.of(offsetX(), offsetY()));
+            setWord(spec,"offset", PairValue.of(offsetX(), offsetY()));
         }
-        keyRead().ifPresent(key -> named(spec, "key", key));
+        keyRead().ifPresent(key -> setWord(spec, "key", key));
         if (!raisedFlagWords().isEmpty()) {
-            named(spec, "flags", BlockValue.block(raisedFlagWords()));
+            setWord(spec,"flags", BlockValue.block(raisedFlagWords()));
         }
         if (has(Flag.HAS_CODE)) {
-            named(spec, "code", IntegerValue.of(data));
+            setWord(spec,"code", IntegerValue.of(data));
         }
         return spec;
     }
 
-    private static void named(List<Value> spec, String field, Value value) {
+    private static void setWord(List<Value> spec, String field, Value value) {
         spec.add(WordValue.of(field, Datatype.SET_WORD));
         spec.add(value);
     }

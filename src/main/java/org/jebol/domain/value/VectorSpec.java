@@ -39,10 +39,10 @@ public final class VectorSpec {
                 && "vector!".equals(leading.canonical())) {
             rest = rest.subList(1, rest.size());
         }
-        if (rest.isEmpty() || !(rest.getFirst() instanceof WordValue named)) {
+        if (rest.isEmpty() || !(rest.getFirst() instanceof WordValue word)) {
             return Optional.empty();
         }
-        Optional<VectorKind> kind = VectorKind.named(named.spelling());
+        Optional<VectorKind> kind = VectorKind.named(word.spelling());
         if (kind.isEmpty()) {
             return Optional.empty();
         }
@@ -69,10 +69,10 @@ public final class VectorSpec {
                     ? THE_WIDEST_WHOLE_NUMBER
                     : THE_WIDEST_DECIMAL, parts.size(), BlockValue.block(parts), 1);
         }
-        if (!(leading instanceof WordValue named)) {
+        if (!(leading instanceof WordValue word)) {
             return Optional.empty();
         }
-        Optional<VectorKind> byName = VectorKind.named(named.spelling());
+        Optional<VectorKind> byName = VectorKind.named(word.spelling());
         if (byName.isPresent()) {
             return assembled(byName.get(), parts.subList(1, parts.size()), resolveGetWord);
         }
@@ -93,13 +93,13 @@ public final class VectorSpec {
                 at++;
             }
         }
-        if (at >= parts.size() || !(parts.get(at) instanceof WordValue named)) {
+        if (at >= parts.size() || !(parts.get(at) instanceof WordValue word)) {
             return Optional.empty();
         }
         boolean wantsDecimals;
-        if ("integer!".equals(named.canonical())) {
+        if ("integer!".equals(word.canonical())) {
             wantsDecimals = false;
-        } else if ("decimal!".equals(named.canonical())) {
+        } else if ("decimal!".equals(word.canonical())) {
             wantsDecimals = true;
             if (Boolean.TRUE.equals(unsigned)) {
                 return Optional.empty();

@@ -152,12 +152,12 @@ class SystemCataloguesFromTheSourceTest {
         void theFiltersAreTheOnesResizeCanBeAskedFor() {
             assertThat(answerTo("block? system/catalog/filters")).isEqualTo(TRUE);
             assertThat(answerTo("15 = length? system/catalog/filters")).isEqualTo(TRUE);
-            for (String named : new String[] {
+            for (String filter : new String[] {
                     "Point", "Box", "Triangle", "Hermite", "Hanning", "Hamming",
                     "Blackman", "Gaussian", "Quadratic", "Cubic", "Catrom",
                     "Mitchell", "Lanczos", "Bessel", "Sinc"}) {
-                assertThat(answerTo("true? find system/catalog/filters '" + named))
-                        .as(named).isEqualTo(TRUE);
+                assertThat(answerTo("true? find system/catalog/filters '" + filter))
+                        .as(filter).isEqualTo(TRUE);
             }
             assertThat(answerTo("true? find system/catalog/filters 'nonsense"))
                     .isEqualTo(FALSE);

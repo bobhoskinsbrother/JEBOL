@@ -205,9 +205,9 @@ class ActionParityTest {
 
         Map<String, Set<String>> wanted = new LinkedHashMap<>();
         typeclassOf.forEach((datatype, typeclass) -> {
-            String named = typeclass.isEmpty() ? "" : Character.toUpperCase(
+            String capitalised = typeclass.isEmpty() ? "" : Character.toUpperCase(
                     typeclass.charAt(0)) + typeclass.substring(1);
-            Set<String> arms = armsOf.get(named);
+            Set<String> arms = armsOf.get(capitalised);
             if (arms == null) {
                 return;
             }

@@ -15,7 +15,7 @@ import java.util.Set;
  * so that MOLD can print {@code series!} rather than the twenty datatypes
  * it stands for.
  */
-public record TypesetValue(Optional<Typeset> named, Set<Datatype> members) implements Value {
+public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) implements Value {
 
     public TypesetValue {
         members = members.isEmpty() ? Set.of() : EnumSet.copyOf(members);

@@ -35,8 +35,8 @@ public final class DesktopScreen implements ScreenPort {
 
     @Override
     public void useDrawDialect(Value dialect) {
-        this.drawDialect = dialect instanceof org.jebol.domain.value.ObjectValue named
-                ? named
+        this.drawDialect = dialect instanceof org.jebol.domain.value.ObjectValue given
+                ? given
                 : null;
     }
 
@@ -245,8 +245,8 @@ public final class DesktopScreen implements ScreenPort {
     private static String titleOf(GobValue gob) {
         Value text = gob.storage().contentIfKind(
                 org.jebol.domain.value.GobStorage.Content.STRING);
-        return text instanceof StringValue named && !named.text().isEmpty()
-                ? named.text()
+        return text instanceof StringValue title && !title.text().isEmpty()
+                ? title.text()
                 : "REBOL: untitled";
     }
 

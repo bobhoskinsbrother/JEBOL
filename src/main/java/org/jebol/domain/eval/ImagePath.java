@@ -8,8 +8,8 @@ final class ImagePath {
     }
 
     static Value read(ImageValue image, Value selector) {
-        if (selector instanceof WordValue named) {
-            return aboutTheImage(image, named);
+        if (selector instanceof WordValue field) {
+            return aboutTheImage(image, field);
         }
         int pixel = pixelNamedBy(image, selector);
         if (pixel < 1 || pixel > image.lengthFromHere()) {
@@ -41,8 +41,8 @@ final class ImagePath {
     }
 
     static void writeThroughPath(ImageValue image, Value selector, Value written) {
-        if (selector instanceof WordValue named) {
-            writeTheWholePicture(image, named, written);
+        if (selector instanceof WordValue field) {
+            writeTheWholePicture(image, field, written);
             return;
         }
         int pixel = pixelNamedBy(image, selector);
@@ -54,9 +54,9 @@ final class ImagePath {
     }
 
     private static void writeTheWholePicture(
-            ImageValue image, WordValue named, Value written) {
+            ImageValue image, WordValue field, Value written) {
 
-        switch (named.canonical()) {
+        switch (field.canonical()) {
             case "size" -> reshapeTo(image, written);
             case "rgb", "color" -> fillEveryPixel(image, written, 0, 1, 2);
             case "rgba", "rgbo" -> fillEveryPixel(image, written, 0, 1, 2, 3);
@@ -69,7 +69,7 @@ final class ImagePath {
             case "red" -> fillOneChannel(image, written, 1);
             case "green" -> fillOneChannel(image, written, 2);
             case "blue" -> fillOneChannel(image, written, 3);
-            default -> throw Raised.of(EvaluationFailure.INVALID_PATH, named.spelling());
+            default -> throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
         }
     }
 
@@ -257,8 +257,8 @@ final class ImagePath {
         return (int) octet;
     }
 
-    private static Value aboutTheImage(ImageValue image, WordValue named) {
-        return switch (named.canonical()) {
+    private static Value aboutTheImage(ImageValue image, WordValue field) {
+        return switch (field.canonical()) {
             case "size" -> image.size();
             case "width" -> IntegerValue.of(image.storage().wide());
             case "height" -> IntegerValue.of(image.storage().high());
@@ -276,7 +276,7 @@ final class ImagePath {
             case "color" -> averageColourOf(image);
             case "luminosity" -> oneBytePerPixel(image, ImagePath::luminosityOf);
             case "gray" -> oneBytePerPixel(image, ImagePath::greyOf);
-            default -> throw Raised.of(EvaluationFailure.INVALID_PATH, named.spelling());
+            default -> throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
         };
     }
 

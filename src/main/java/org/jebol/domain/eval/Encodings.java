@@ -478,24 +478,24 @@ final class Encodings {
     static final Map<String, String> DIGESTS = digestMethods();
 
     private static Map<String, String> digestMethods() {
-        Map<String, String> named = new LinkedHashMap<>();
-        named.put("md5", "MD5");
-        named.put("sha1", "SHA-1");
-        named.put("sha224", "SHA-224");
-        named.put("sha256", "SHA-256");
-        named.put("sha384", "SHA-384");
-        named.put("sha512", "SHA-512");
-        named.put("sha3-224", "SHA3-224");
-        named.put("sha3-256", "SHA3-256");
-        named.put("sha3-384", "SHA3-384");
-        named.put("sha3-512", "SHA3-512");
-        named.put("ripemd160", RIPEMD_160);
-        named.put("xxh3", XXH_3);
-        named.put("xxh32", XXH_32);
-        named.put("xxh64", XXH_64);
-        named.put("xxh128", XXH_128);
-        named.put("md4", MD_4);
-        return Map.copyOf(named);
+        Map<String, String> theJdkCallsIt = new LinkedHashMap<>();
+        theJdkCallsIt.put("md5", "MD5");
+        theJdkCallsIt.put("sha1", "SHA-1");
+        theJdkCallsIt.put("sha224", "SHA-224");
+        theJdkCallsIt.put("sha256", "SHA-256");
+        theJdkCallsIt.put("sha384", "SHA-384");
+        theJdkCallsIt.put("sha512", "SHA-512");
+        theJdkCallsIt.put("sha3-224", "SHA3-224");
+        theJdkCallsIt.put("sha3-256", "SHA3-256");
+        theJdkCallsIt.put("sha3-384", "SHA3-384");
+        theJdkCallsIt.put("sha3-512", "SHA3-512");
+        theJdkCallsIt.put("ripemd160", RIPEMD_160);
+        theJdkCallsIt.put("xxh3", XXH_3);
+        theJdkCallsIt.put("xxh32", XXH_32);
+        theJdkCallsIt.put("xxh64", XXH_64);
+        theJdkCallsIt.put("xxh128", XXH_128);
+        theJdkCallsIt.put("md4", MD_4);
+        return Map.copyOf(theJdkCallsIt);
     }
 
     static final List<String> CYCLIC = List.of("crc32", "adler32", "crc24", "tcp");
@@ -576,23 +576,23 @@ final class Encodings {
     static final String MD_4 = "MD4";
 
     static byte[] digestOf(byte[] octets, String method) {
-        String named = DIGESTS.get(method);
-        if (RIPEMD_160.equals(named)) {
+        String algorithm = DIGESTS.get(method);
+        if (RIPEMD_160.equals(algorithm)) {
             return RipeMd160.of(octets);
         }
-        if (XXH_3.equals(named)) {
+        if (XXH_3.equals(algorithm)) {
             return XxHash3.of64MostSignificantByteFirst(octets);
         }
-        if (XXH_32.equals(named)) {
+        if (XXH_32.equals(algorithm)) {
             return XxHash.of32MostSignificantByteFirst(octets);
         }
-        if (XXH_64.equals(named)) {
+        if (XXH_64.equals(algorithm)) {
             return XxHash.of64MostSignificantByteFirst(octets);
         }
-        if (XXH_128.equals(named)) {
+        if (XXH_128.equals(algorithm)) {
             return XxHash3.of128MostSignificantByteFirst(octets);
         }
-        if (MD_4.equals(named)) {
+        if (MD_4.equals(algorithm)) {
             return Md4.of(octets);
         }
         try {
@@ -605,10 +605,10 @@ final class Encodings {
 
     static byte[] keyedDigestOf(byte[] octets, String method, byte[] key) {
         try {
-            String named = "Hmac" + DIGESTS.get(method).replace("-", "");
-            javax.crypto.Mac mac = javax.crypto.Mac.getInstance(named);
+            String algorithm = "Hmac" + DIGESTS.get(method).replace("-", "");
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance(algorithm);
             mac.init(new javax.crypto.spec.SecretKeySpec(
-                    key.length == 0 ? new byte[1] : key, named));
+                    key.length == 0 ? new byte[1] : key, algorithm));
             return mac.doFinal(octets);
         } catch (java.security.NoSuchAlgorithmException
                 | java.security.InvalidKeyException unavailable) {
@@ -867,14 +867,14 @@ final class Encodings {
         return digestOf(cycled, "sha1");
     }
 
-    static boolean hasCharacterSet(String named) {
-        return charsetNamed(named) != null;
+    static boolean hasCharacterSet(String asked) {
+        return charsetNamed(asked) != null;
     }
 
-    static String textDecodedAs(byte[] octets, java.nio.charset.Charset named) {
-        boolean bigEndian = "UTF-32BE".equalsIgnoreCase(named.name());
-        if (!bigEndian && !"UTF-32LE".equalsIgnoreCase(named.name())) {
-            return new String(octets, named);
+    static String textDecodedAs(byte[] octets, java.nio.charset.Charset charset) {
+        boolean bigEndian = "UTF-32BE".equalsIgnoreCase(charset.name());
+        if (!bigEndian && !"UTF-32LE".equalsIgnoreCase(charset.name())) {
+            return new String(octets, charset);
         }
         return utf32KeepingTheLeadingMarkTheJvmWouldDrop(octets, bigEndian);
     }
@@ -894,27 +894,27 @@ final class Encodings {
     }
 
     static String textBehindAnyMark(byte[] octets) {
-        java.nio.charset.Charset named;
+        java.nio.charset.Charset theMarkAnnounces;
         int width;
         if (startsWith(octets, 0xEF, 0xBB, 0xBF)) {
-            named = java.nio.charset.StandardCharsets.UTF_8;
+            theMarkAnnounces = java.nio.charset.StandardCharsets.UTF_8;
             width = 3;
         } else if (startsWith(octets, 0xFF, 0xFE, 0x00, 0x00)) {
-            named = java.nio.charset.Charset.forName("UTF-32LE");
+            theMarkAnnounces = java.nio.charset.Charset.forName("UTF-32LE");
             width = 4;
         } else if (startsWith(octets, 0x00, 0x00, 0xFE, 0xFF)) {
-            named = java.nio.charset.Charset.forName("UTF-32BE");
+            theMarkAnnounces = java.nio.charset.Charset.forName("UTF-32BE");
             width = 4;
         } else if (startsWith(octets, 0xFE, 0xFF)) {
-            named = java.nio.charset.StandardCharsets.UTF_16BE;
+            theMarkAnnounces = java.nio.charset.StandardCharsets.UTF_16BE;
             width = 2;
         } else if (startsWith(octets, 0xFF, 0xFE)) {
-            named = java.nio.charset.StandardCharsets.UTF_16LE;
+            theMarkAnnounces = java.nio.charset.StandardCharsets.UTF_16LE;
             width = 2;
         } else {
             return new String(octets, java.nio.charset.StandardCharsets.UTF_8);
         }
-        return new String(octets, width, octets.length - width, named);
+        return new String(octets, width, octets.length - width, theMarkAnnounces);
     }
 
     private static boolean startsWith(byte[] octets, int... expected) {
@@ -929,9 +929,9 @@ final class Encodings {
         return true;
     }
 
-    static java.nio.charset.Charset charsetNamed(String named) {
+    static java.nio.charset.Charset charsetNamed(String asked) {
         String canonical = CODEPAGES.getOrDefault(
-                named.toLowerCase(java.util.Locale.ROOT), named);
+                asked.toLowerCase(java.util.Locale.ROOT), asked);
         try {
             return java.nio.charset.Charset.forName(canonical);
         } catch (IllegalArgumentException unknown) {

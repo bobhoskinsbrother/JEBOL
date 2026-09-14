@@ -89,10 +89,12 @@ class MezzanineLoadTest {
                 return new Attempt(file.getFileName().toString(), definitions, "loaded");
             }
             String said = outcome.value().toString();
-            int named = said.lastIndexOf(": ");
+            int detailStartsAt = said.lastIndexOf(": ");
             return new Attempt(file.getFileName().toString(), definitions,
                     outcome.errorId().orElse("failed")
-                            + (named >= 0 ? " " + said.substring(named + 2) : ""));
+                            + (detailStartsAt >= 0
+                                    ? " " + said.substring(detailStartsAt + 2)
+                                    : ""));
         } catch (RuntimeException refused) {
             return new Attempt(file.getFileName().toString(), definitions,
                     refused.getClass().getSimpleName());

@@ -25,27 +25,27 @@ final class ParseTargets {
     }
 
     static WordValue refuseAnythingSetAndCopyCannotWriteInto(Value written) {
-        WordValue named = refuseAnythingButAWordOrASetWord(written);
-        if (THE_WORDS_THE_DIALECT_RESERVES.contains(named.canonical())) {
-            throw Raised.of(EvaluationFailure.PARSE_COMMAND, named);
+        WordValue word = refuseAnythingButAWordOrASetWord(written);
+        if (THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical())) {
+            throw Raised.of(EvaluationFailure.PARSE_COMMAND, word);
         }
-        return named;
+        return word;
     }
 
     static WordValue refuseAnythingButAWordOrASetWord(Value written) {
-        if (written instanceof WordValue named
-                && (named.datatype() == Datatype.WORD
-                        || named.datatype() == Datatype.SET_WORD)) {
-            return named;
+        if (written instanceof WordValue word
+                && (word.datatype() == Datatype.WORD
+                        || word.datatype() == Datatype.SET_WORD)) {
+            return word;
         }
         throw somewhereThatIsNotAVariable(written);
     }
 
     static WordValue refuseAnythingButAWordOrAGetWord(Value read) {
-        if (read instanceof WordValue named
-                && (named.datatype() == Datatype.WORD
-                        || named.datatype() == Datatype.GET_WORD)) {
-            return named;
+        if (read instanceof WordValue word
+                && (word.datatype() == Datatype.WORD
+                        || word.datatype() == Datatype.GET_WORD)) {
+            return word;
         }
         throw somewhereThatIsNotAVariable(read);
     }

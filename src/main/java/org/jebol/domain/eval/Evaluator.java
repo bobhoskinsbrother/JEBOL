@@ -903,16 +903,16 @@ public final class Evaluator {
     private static final String THE_NAME_AN_OBJECT_ANSWERS_TO_ITSELF_BY = "self";
 
     static void refuseToWriteTheNameAnObjectAnswersToItselfBy(Value written) {
-        if (written instanceof WordValue named
-                && named.canonical().equals(THE_NAME_AN_OBJECT_ANSWERS_TO_ITSELF_BY)) {
+        if (written instanceof WordValue word
+                && word.canonical().equals(THE_NAME_AN_OBJECT_ANSWERS_TO_ITSELF_BY)) {
             throw Raised.of(EvaluationFailure.SELF_PROTECTED);
         }
     }
 
     private static boolean asksForReEvaluation(Value argument) {
         return switch (argument) {
-            case WordValue named -> named.datatype() == Datatype.WORD
-                    || named.datatype() == Datatype.GET_WORD;
+            case WordValue word -> word.datatype() == Datatype.WORD
+                    || word.datatype() == Datatype.GET_WORD;
             case BlockValue path -> path.datatype() == Datatype.PATH;
             default -> argument.datatype().isAnyFunction();
         };
@@ -954,8 +954,8 @@ public final class Evaluator {
 
     private StepOutcome startCall(
             Frame frame, Deque<Frame> frames, Value callee,
-            List<String> refinements, List<String> named) {
-        PendingCall call = PendingCall.prefix(callee, refinements, named);
+            List<String> refinements, List<String> mentioned) {
+        PendingCall call = PendingCall.prefix(callee, refinements, mentioned);
         call.startedAt(frame.startedThisValueAt,
                 nameWrittenAt(frame, frame.startedThisValueAt));
         if (aCallNeedingNothingNeverReachesThePendingStack(call)) {
@@ -977,8 +977,8 @@ public final class Evaluator {
 
     private static void refuseSelfAsAnInvalidPathRatherThanAGuardedSlot(
             Value lastSegment) {
-        if (lastSegment instanceof WordValue named
-                && named.canonical().equals("self")) {
+        if (lastSegment instanceof WordValue word
+                && word.canonical().equals("self")) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     "self is what a context calls itself and cannot be assigned");
         }
@@ -1167,7 +1167,7 @@ public final class Evaluator {
         return startCall(
                 frame, frames,
                 refined(selection.value(), selection.refinements()),
-                selection.refinements(), selection.named());
+                selection.refinements(), selection.mentioned());
     }
 
     private Value refined(Value callee, List<String> refinements) {
@@ -1432,14 +1432,14 @@ public final class Evaluator {
         }
         Value current = selectFirst(segments.get(0), context);
         List<String> refinements = new ArrayList<>();
-        List<String> named = new ArrayList<>();
+        List<String> mentioned = new ArrayList<>();
 
         for (int index = 1; index < segments.size(); index++) {
             Value segment = segments.get(index);
             if (current.datatype().isAnyFunction()) {
                 if (segment instanceof WordValue asked
                         && asked.datatype() == Datatype.GET_WORD) {
-                    named.add(asked.canonical());
+                    mentioned.add(asked.canonical());
                     if (resolve(asked.isBound() ? asked : asked.boundTo(context))
                             .value().isTruthy()) {
                         refinements.add(asked.canonical());
@@ -1447,13 +1447,13 @@ public final class Evaluator {
                     continue;
                 }
                 refinements.add(refinementNameOf(segment));
-                named.add(refinementNameOf(segment));
+                mentioned.add(refinementNameOf(segment));
                 continue;
             }
             refuseAPathIntoSomethingWithNoParts(path, current);
             current = selectWith(current, selectorFor(segment, context));
         }
-        return new Selection(current, List.copyOf(refinements), List.copyOf(named));
+        return new Selection(current, List.copyOf(refinements), List.copyOf(mentioned));
     }
 
     private static void refuseAPathIntoSomethingWithNoParts(
@@ -1534,9 +1534,9 @@ public final class Evaluator {
             return half.orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
                     "a pair has an x half, a y half and an area, and nothing else"));
         }
-        if (target instanceof ErrorValue raised && selector instanceof WordValue named) {
-            return raised.field(named.canonical()).orElseThrow(() ->
-                    Raised.of(EvaluationFailure.INVALID_PATH, named.spelling()));
+        if (target instanceof ErrorValue raised && selector instanceof WordValue field) {
+            return raised.field(field.canonical()).orElseThrow(() ->
+                    Raised.of(EvaluationFailure.INVALID_PATH, field.spelling()));
         }
         if (target instanceof ObjectValue object && selector instanceof WordValue field) {
             if (!object.context().holds(field.canonical())) {
@@ -1565,15 +1565,15 @@ public final class Evaluator {
         if (target instanceof StringValue path && joinsItsPathSegments(path)) {
             return joinedOntoPath(path, selector);
         }
-        if (target instanceof StringValue text && selector instanceof WordValue named) {
-            return switch (named.canonical()) {
+        if (target instanceof StringValue text && selector instanceof WordValue field) {
+            return switch (field.canonical()) {
                 case "length" -> IntegerValue.of(text.lengthFromHere());
                 case "size" -> IntegerValue.of(
                         text.text().getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
                 case "width" -> IntegerValue.of(terminalWidthOf(text.text()));
-                case "user", "host" -> emailPartOf(text, named.canonical());
+                case "user", "host" -> emailPartOf(text, field.canonical());
                 default -> throw Raised.of(
-                        EvaluationFailure.INVALID_PATH, named.spelling());
+                        EvaluationFailure.INVALID_PATH, field.spelling());
             };
         }
         if (target instanceof BlockValue block) {
@@ -1586,12 +1586,12 @@ public final class Evaluator {
             return GobPath.read(gob, selector);
         }
         if (target instanceof HandleValue handle) {
-            if (!(selector instanceof WordValue named)) {
+            if (!(selector instanceof WordValue field)) {
                 throw Raised.of(EvaluationFailure.INVALID_PATH,
                         "a handle is selected by name, not by "
                                 + selector.datatype().literalSpelling());
             }
-            if (handle.isContext() && named.canonical().equals("type")) {
+            if (handle.isContext() && field.canonical().equals("type")) {
                 return WordValue.of(handle.typeName());
             }
             return NoneValue.none();
@@ -1667,7 +1667,7 @@ public final class Evaluator {
      * 3.22.1 as much as here. Rebol's own event test guards its port case with
      * `if system/ports/event [...]` for that reason.
      */
-    public Value hostPort(String named) {
+    public Value hostPort(String scheme) {
         if (!systemContext.knows("system")) {
             return NoneValue.none();
         }
@@ -1676,10 +1676,10 @@ public final class Evaluator {
             return NoneValue.none();
         }
         if (!(system.context().ownSlotFor("ports").value() instanceof ObjectValue ports)
-                || !ports.context().holds(named)) {
+                || !ports.context().holds(scheme)) {
             return NoneValue.none();
         }
-        return ports.context().ownSlotFor(named).value();
+        return ports.context().ownSlotFor(scheme).value();
     }
 
     private static Value partOfATime(TimeValue time, Value selector) {
@@ -1687,12 +1687,12 @@ public final class Evaluator {
         long fraction = Math.abs(time.nanoseconds()) % NANOSECONDS_IN_A_SECOND;
         int which = switch (selector) {
             case IntegerValue position -> (int) position.magnitude();
-            case WordValue named -> switch (named.canonical()) {
+            case WordValue field -> switch (field.canonical()) {
                 case "hour" -> 1;
                 case "minute" -> 2;
                 case "second" -> 3;
                 default -> throw Raised.of(EvaluationFailure.INVALID_PATH,
-                        named.spelling());
+                        field.spelling());
             };
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH,
                     Molder.mold(selector));
@@ -1765,7 +1765,7 @@ public final class Evaluator {
     }
 
     private record Selection(
-            Value value, List<String> refinements, List<String> named) {
+            Value value, List<String> refinements, List<String> mentioned) {
     }
 
     private static final class Frame {

@@ -280,9 +280,9 @@ public final class GobStorage {
             spec.add(WordValue.of("alpha", Datatype.SET_WORD));
             spec.add(IntegerValue.of(OPAQUE - alpha));
         }
-        String named = moldedContentName();
-        if (!named.isEmpty()) {
-            spec.add(WordValue.of(named, Datatype.SET_WORD));
+        String contentField = moldedContentName();
+        if (!contentField.isEmpty()) {
+            spec.add(WordValue.of(contentField, Datatype.SET_WORD));
             spec.add(content);
         }
         return spec;

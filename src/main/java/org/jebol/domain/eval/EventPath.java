@@ -12,12 +12,12 @@ final class EventPath {
     static Value read(EventValue event, Value selector, Value guiPort,
             Value callbackPort, Value consolePort) {
 
-        if (!(selector instanceof WordValue named)) {
+        if (!(selector instanceof WordValue asked)) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     "an event's fields are named, and "
                             + selector.datatype().literalSpelling() + " is not a name");
         }
-        return switch (named.canonical()) {
+        return switch (asked.canonical()) {
             case "type" -> event.typeIndex() == 0
                     ? NoneValue.none()
                     : WordValue.of(EventCatalogue.typeAt(event.typeIndex()));
@@ -35,7 +35,7 @@ final class EventPath {
                     : NoneValue.none();
             case "data" -> droppedFileOf(event);
             default -> throw Raised.of(
-                    EvaluationFailure.INVALID_PATH, named.spelling());
+                    EvaluationFailure.INVALID_PATH, asked.spelling());
         };
     }
 
@@ -100,15 +100,15 @@ final class EventPath {
     private static java.util.Optional<EventValue> writtenType(
             EventValue event, Value value) {
 
-        if (!(value instanceof WordValue named)
-                || !(named.datatype() == Datatype.WORD
-                        || named.datatype() == Datatype.LIT_WORD)) {
+        if (!(value instanceof WordValue eventType)
+                || !(eventType.datatype() == Datatype.WORD
+                        || eventType.datatype() == Datatype.LIT_WORD)) {
             return java.util.Optional.empty();
         }
         return java.util.Optional.of(event.withType(
-                EventCatalogue.typeIndexOf(named.canonical())
+                EventCatalogue.typeIndexOf(eventType.canonical())
                         .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG,
-                                named.spelling()
+                                eventType.spelling()
                                         + " is not in system/catalog/event-types"))));
     }
 
@@ -160,11 +160,11 @@ final class EventPath {
                     theModelAndTypeChangeBeforeTheValueIsLookedAt.withData(
                             letter.codepoint(), EventValue.Flag.HAS_CODE));
         }
-        if (value instanceof WordValue named
-                && (named.datatype() == Datatype.WORD
-                        || named.datatype() == Datatype.LIT_WORD)) {
+        if (value instanceof WordValue keyWord
+                && (keyWord.datatype() == Datatype.WORD
+                        || keyWord.datatype() == Datatype.LIT_WORD)) {
             java.util.Optional<Integer> at =
-                    EventCatalogue.keyIndexOf(named.canonical());
+                    EventCatalogue.keyIndexOf(keyWord.canonical());
             return at.map(position ->
                     theModelAndTypeChangeBeforeTheValueIsLookedAt.withData(
                             aNamedKeyCannotCollideWithACharacter(position),
@@ -194,12 +194,12 @@ final class EventPath {
             Value written = given.datatype() == Datatype.UNSET
                     ? NoneValue.none()
                     : simpleValueOf.apply(given);
-            String field = name instanceof WordValue named ? named.canonical() : "";
+            String field = name instanceof WordValue asked ? asked.canonical() : "";
             java.util.Optional<EventValue> after = written(built, field, written);
             if (after.isEmpty()) {
                 throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
-                        name instanceof WordValue named
-                                ? WordValue.of(named.spelling())
+                        name instanceof WordValue asked
+                                ? WordValue.of(asked.spelling())
                                 : name,
                         DatatypeValue.of(written.datatype()));
             }

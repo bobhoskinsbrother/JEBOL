@@ -71,9 +71,9 @@ public final class Delect {
 
             @Override
             public boolean accepts(Value value) {
-                return value instanceof WordValue named
-                        && named.datatype() == Datatype.WORD
-                        && named.canonical().equals(word);
+                return value instanceof WordValue written
+                        && written.datatype() == Datatype.WORD
+                        && written.canonical().equals(word);
             }
         }
     }
@@ -324,11 +324,11 @@ public final class Delect {
     private static Optional<java.util.Set<Datatype>> typesNamedBy(
             Value written, Context where) {
 
-        if (written instanceof DatatypeValue named) {
-            return Optional.of(java.util.Set.of(named.represents()));
+        if (written instanceof DatatypeValue one) {
+            return Optional.of(java.util.Set.of(one.represents()));
         }
-        if (written instanceof TypesetValue named) {
-            return Optional.of(named.members());
+        if (written instanceof TypesetValue family) {
+            return Optional.of(family.members());
         }
         if (!(written instanceof WordValue word)) {
             return Optional.empty();
@@ -345,8 +345,8 @@ public final class Delect {
 
         if (where.holds(word.canonical())
                 && where.slotFor(word.canonical()).value()
-                        instanceof TypesetValue named) {
-            return Optional.of(named.members());
+                        instanceof TypesetValue family) {
+            return Optional.of(family.members());
         }
         return Typeset.named(withoutItsMark(word.spelling())).map(Typeset::members);
     }

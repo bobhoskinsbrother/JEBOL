@@ -66,8 +66,8 @@ final class SeekableFilePort {
         for (String field : WHERE_A_FILE_KEEPS_ITS_PATH_BEFORE_WHERE_A_URL_DOES) {
             if (fields.context().holds(field)
                     && fields.context().ownSlotFor(field).value()
-                            instanceof StringValue named) {
-                return named.text();
+                            instanceof StringValue path) {
+                return path.text();
             }
         }
         return "";

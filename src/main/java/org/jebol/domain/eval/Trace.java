@@ -79,10 +79,10 @@ final class Trace {
         written.append(String.format("%-2d", position))
                 .append(": ")
                 .append(molded(value));
-        if (value instanceof WordValue named
-                && (named.datatype() == Datatype.WORD
-                        || named.datatype() == Datatype.GET_WORD)) {
-            written.append(whatTheWordHolds(named, context));
+        if (value instanceof WordValue word
+                && (word.datatype() == Datatype.WORD
+                        || word.datatype() == Datatype.GET_WORD)) {
+            written.append(whatTheWordHolds(word, context));
         }
         emit(written.toString());
     }
@@ -130,15 +130,15 @@ final class Trace {
         this.depthNow = depth;
     }
 
-    private String whatTheWordHolds(WordValue named, Context context) {
-        if (!named.isBound() && !context.knows(named.canonical())) {
+    private String whatTheWordHolds(WordValue word, Context context) {
+        if (!word.isBound() && !context.knows(word.canonical())) {
             return "";
         }
-        Context holder = named.isBound() ? named.binding() : context;
-        if (!holder.knows(named.canonical())) {
+        Context holder = word.isBound() ? word.binding() : context;
+        if (!holder.knows(word.canonical())) {
             return "";
         }
-        Value held = holder.slotFor(named.canonical()).value();
+        Value held = holder.slotFor(word.canonical()).value();
         if (held.datatype().isAnyFunction()) {
             return " : " + held.datatype().literalSpelling() + " " + molded(held);
         }

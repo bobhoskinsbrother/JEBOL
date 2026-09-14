@@ -32,10 +32,10 @@ final class RichText {
                 case StringValue said -> runs.add(
                         new Run(said.text(), colour, size, bold, italic));
                 case TupleValue parts -> colour = Colour.ofTuple(parts);
-                case WordValue named -> {
+                case WordValue command -> {
                     boolean turningItOn =
-                            named.datatype() != org.jebol.domain.value.Datatype.REFINEMENT;
-                    switch (named.canonical()) {
+                            command.datatype() != org.jebol.domain.value.Datatype.REFINEMENT;
+                    switch (command.canonical()) {
                         case "bold", "b" -> bold = turningItOn;
                         case "italic", "i" -> italic = turningItOn;
                         default -> {

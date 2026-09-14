@@ -467,10 +467,10 @@ class ReplEndToEndTest {
         }
 
         private static java.nio.file.Path scriptSaying(
-                java.nio.file.Path directory, String named, String source)
+                java.nio.file.Path directory, String fileName, String source)
                 throws java.io.IOException {
 
-            java.nio.file.Path written = directory.resolve(named);
+            java.nio.file.Path written = directory.resolve(fileName);
             java.nio.file.Files.writeString(written, source);
             return written;
         }

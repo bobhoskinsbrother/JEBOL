@@ -31,9 +31,9 @@ public final class VectorQuery {
     }
 
     /** One field, or nothing at all when the name is not one of them. */
-    public static Optional<Value> field(VectorValue vector, String named) {
+    public static Optional<Value> field(VectorValue vector, String field) {
         VectorKind kind = vector.kind();
-        return switch (named) {
+        return switch (field) {
             case "signed" -> Optional.of(LogicValue.of(kind.isSigned()));
             case "type" -> Optional.of(
                     WordValue.of(kind.elementDatatype().literalSpelling()));
@@ -41,7 +41,7 @@ public final class VectorQuery {
             case "length" -> Optional.of(IntegerValue.of(vector.storageLength()));
             case "min", "minimum" -> Optional.of(extreme(vector, true));
             case "max", "maximum" -> Optional.of(extreme(vector, false));
-            default -> statistic(vector, named);
+            default -> statistic(vector, field);
         };
     }
 
@@ -93,8 +93,8 @@ public final class VectorQuery {
                 : Long.compareUnsigned(left, right) < 0;
     }
 
-    private static Optional<Value> statistic(VectorValue vector, String named) {
-        if (!FIELDS.contains(named) && !"average".equals(named)) {
+    private static Optional<Value> statistic(VectorValue vector, String field) {
+        if (!FIELDS.contains(field) && !"average".equals(field)) {
             return Optional.empty();
         }
         Spread spread = Spread.of(vector);
@@ -102,7 +102,7 @@ public final class VectorQuery {
             return Optional.of(NoneValue.none());
         }
         VectorKind kind = vector.kind();
-        return Optional.of(switch (named) {
+        return Optional.of(switch (field) {
             case "sum" -> asTheVectorCounts(kind, spread.sum);
             case "range" -> asTheVectorCounts(kind,
                     spread.largest - spread.smallest);

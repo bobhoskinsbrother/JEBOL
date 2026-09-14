@@ -153,12 +153,12 @@ final class Bincode {
 
     static void write(Cursor cursor, Script dialect,
             LongSupplier secondsSinceTheEpoch,
-            BiConsumer<WordValue, Value> named) {
+            BiConsumer<WordValue, Value> nameTheValue) {
 
         for (int step = 0; step < dialect.size(); step++) {
             if (dialect.asWritten(step) instanceof WordValue naming
                     && naming.datatype() == Datatype.SET_WORD) {
-                named.accept(naming, IntegerValue.of(cursor.at + 1));
+                nameTheValue.accept(naming, IntegerValue.of(cursor.at + 1));
                 continue;
             }
             if (carriesItsOwnBytes(dialect.valueAt(step))) {
@@ -221,8 +221,8 @@ final class Bincode {
     }
 
     static List<Value> read(Cursor cursor, Script dialect,
-            BiConsumer<WordValue, Value> named) {
-        Produced read = new Produced(named);
+            BiConsumer<WordValue, Value> nameTheValue) {
+        Produced read = new Produced(nameTheValue);
         for (int step = 0; step < dialect.size(); step++) {
             if (dialect.asWritten(step) instanceof WordValue naming
                     && naming.datatype() == Datatype.SET_WORD) {
@@ -252,12 +252,12 @@ final class Bincode {
 
         private final List<Value> values = new ArrayList<>();
 
-        private final BiConsumer<WordValue, Value> named;
+        private final BiConsumer<WordValue, Value> nameTheValue;
 
         private final List<WordValue> waiting = new ArrayList<>();
 
-        private Produced(BiConsumer<WordValue, Value> named) {
-            this.named = named;
+        private Produced(BiConsumer<WordValue, Value> nameTheValue) {
+            this.nameTheValue = nameTheValue;
         }
 
         private void willName(WordValue word) {
@@ -267,7 +267,7 @@ final class Bincode {
         private void add(Value value) {
             values.add(value);
             for (WordValue word : waiting) {
-                named.accept(word, value);
+                nameTheValue.accept(word, value);
             }
             waiting.clear();
         }
@@ -283,34 +283,34 @@ final class Bincode {
             read.add(bytesAfterTheirLength(cursor, lengthCodeOf(code)));
             return step;
         }
-        Value named = dialect.asWritten(step);
+        Value command = dialect.asWritten(step);
         switch (baseOf(code)) {
             case "at" -> moveTo(cursor,
-                    wholeNumberReadAfter(dialect, ++step, named) - 1);
+                    wholeNumberReadAfter(dialect, ++step, command) - 1);
             case "atz" -> moveTo(cursor,
-                    wholeNumberReadAfter(dialect, ++step, named));
+                    wholeNumberReadAfter(dialect, ++step, command));
             case "skip" -> moveTo(cursor,
-                    cursor.at + wholeNumberReadAfter(dialect, ++step, named));
+                    cursor.at + wholeNumberReadAfter(dialect, ++step, command));
             case "index" -> read.add(IntegerValue.of(cursor.at + 1));
             case "indexz" -> read.add(IntegerValue.of(cursor.at));
             case "length" -> read.add(IntegerValue.of(lengthPrefixRead(cursor)));
             case "length?" -> read.add(
                     IntegerValue.of(cursor.octets.size() - (long) cursor.at));
             case "pad" -> moveTo(cursor, alignedUp(cursor.at,
-                    wholeNumberReadAfter(dialect, ++step, named)));
+                    wholeNumberReadAfter(dialect, ++step, command)));
             case "ub" -> read.add(IntegerValue.of(bitsRead(cursor,
-                    (int) wholeNumberReadAfter(dialect, ++step, named))));
+                    (int) wholeNumberReadAfter(dialect, ++step, command))));
             case "sb" -> read.add(IntegerValue.of(signedBitsRead(cursor,
-                    (int) wholeNumberReadAfter(dialect, ++step, named))));
+                    (int) wholeNumberReadAfter(dialect, ++step, command))));
             case "fb" -> read.add(DecimalValue.of(signedBitsRead(cursor,
-                    (int) wholeNumberReadAfter(dialect, ++step, named))
+                    (int) wholeNumberReadAfter(dialect, ++step, command))
                     / A_WHOLE_FIXED_POINT_UNIT));
             case "encodedu32" -> read.add(IntegerValue.of(
                     sevenBitsAByteRead(cursor) & WIDEST_A_NARROW_ONE_TAKES));
             case "encodedu64" -> read.add(IntegerValue.of(sevenBitsAByteRead(cursor)));
             case "vint" -> read.add(IntegerValue.of(aVariableNumberRead(cursor)));
             case "skipbits" -> skipBits(cursor,
-                    wholeNumberReadAfter(dialect, ++step, named));
+                    wholeNumberReadAfter(dialect, ++step, command));
             case "bit" -> read.add(LogicValue.of(nextBit(cursor) == 1));
             case "not-bit" -> read.add(LogicValue.of(nextBit(cursor) == 0));
             case "align" -> alignToAByte(cursor);

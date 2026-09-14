@@ -172,11 +172,11 @@ public final class BitsetValue implements Value {
      * itself does not fold.
      */
     public boolean holdsEitherCaseOf(int code) {
-        boolean named = code >= UNICODE_FOLDING_TABLE_SIZE
+        boolean held = code >= UNICODE_FOLDING_TABLE_SIZE
                 ? namesDirectly(code)
                 : namesDirectly(Character.toLowerCase(code))
                         || namesDirectly(Character.toUpperCase(code));
-        return complemented != named;
+        return complemented != held;
     }
 
     private static final int UNICODE_FOLDING_TABLE_SIZE = 0x2E00;

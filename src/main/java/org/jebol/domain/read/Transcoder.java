@@ -613,11 +613,11 @@ public final class Transcoder {
         }
         Value first = contents.getFirst();
 
-        if (!(first instanceof WordValue named)) {
+        if (!(first instanceof WordValue leading)) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
         }
         if (contents.size() == 1) {
-            Value simple = switch (named.canonical()) {
+            Value simple = switch (leading.canonical()) {
                 case "true" -> LogicValue.yes();
                 case "false" -> LogicValue.no();
                 case "none" -> NoneValue.none();
@@ -628,11 +628,11 @@ public final class Transcoder {
                 return simple;
             }
         }
-        if (namesAVector(named, contents.size())) {
+        if (namesAVector(leading, contents.size())) {
             return org.jebol.domain.value.VectorSpec.readConstruction(contents)
                     .orElseThrow(() -> failure(SyntaxFailure.MALCONSTRUCT, null));
         }
-        Value resolved = datatypeNamed(named);
+        Value resolved = datatypeNamed(leading);
         if (contents.size() == 1) {
             return resolved;
         }
@@ -652,11 +652,11 @@ public final class Transcoder {
         return MapValue.of(pairs);
     }
 
-    private static boolean namesAVector(WordValue named, int howManyParts) {
-        if ("vector!".equals(named.canonical())) {
+    private static boolean namesAVector(WordValue leading, int howManyParts) {
+        if ("vector!".equals(leading.canonical())) {
             return howManyParts > 1;
         }
-        return org.jebol.domain.value.VectorKind.named(named.spelling()).isPresent();
+        return org.jebol.domain.value.VectorKind.named(leading.spelling()).isPresent();
     }
 
     private Value datatypeNamed(WordValue word) {
@@ -976,13 +976,13 @@ public final class Transcoder {
         if (scout > position && scout < codepoints.length && codepoints[scout] == ':'
                 && (scout + 1 >= codepoints.length
                         || isDelimiterOrSpace(codepoints[scout + 1]))) {
-            StringBuilder named = new StringBuilder();
+            StringBuilder spelling = new StringBuilder();
             while (position < scout) {
-                named.appendCodePoint(peek());
+                spelling.appendCodePoint(peek());
                 advance();
             }
             advance();
-            return WordValue.of(named.toString(), Datatype.SET_WORD);
+            return WordValue.of(spelling.toString(), Datatype.SET_WORD);
         }
         if (scout >= codepoints.length || isDelimiterOrSpace(codepoints[scout])) {
             return classify(readLexeme());
@@ -1429,9 +1429,9 @@ public final class Transcoder {
             return readPath(lexeme);
         }
         if (lexeme.endsWith(":") && lexeme.length() > 1) {
-            String named = lexeme.substring(0, lexeme.length() - 1);
-            refuseTheNoneWordAsAName(named, "word-set", lexeme);
-            return WordValue.of(named, Datatype.SET_WORD);
+            String spelling = lexeme.substring(0, lexeme.length() - 1);
+            refuseTheNoneWordAsAName(spelling, "word-set", lexeme);
+            return WordValue.of(spelling, Datatype.SET_WORD);
         }
         if (lexeme.startsWith(":") && lexeme.length() > 1) {
             if (Character.isDigit(lexeme.charAt(1))) {
@@ -1901,8 +1901,8 @@ public final class Transcoder {
 
     private static final int MOST_A_ZONE_MAY_BE = 15 * 60 + 45;
 
-    private void refuseTheNoneWordAsAName(String named, String tokenKind, String lexeme) {
-        if (named.equals("_")) {
+    private void refuseTheNoneWordAsAName(String spelling, String tokenKind, String lexeme) {
+        if (spelling.equals("_")) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, tokenKind);
         }
     }

@@ -107,7 +107,7 @@ final class RsaKey {
         return cipher.doFinal(data);
     }
 
-    private static String digestNamedFallingBackToSha256(String asked) {
+    private static String theDigestOrSha256(String asked) {
         return switch (asked) {
             case "md5" -> "MD5";
             case "sha1" -> "SHA-1";
@@ -120,22 +120,22 @@ final class RsaKey {
 
     private static Signature signatureFor(String digest, boolean probabilistic)
             throws java.security.GeneralSecurityException {
-        String named = digestNamedFallingBackToSha256(digest);
+        String algorithm = theDigestOrSha256(digest);
         if (!probabilistic) {
-            return Signature.getInstance(named.replace("-", "") + "withRSA");
+            return Signature.getInstance(algorithm.replace("-", "") + "withRSA");
         }
         Signature scheme = Signature.getInstance("RSASSA-PSS");
         scheme.setParameter(new java.security.spec.PSSParameterSpec(
-                named, "MGF1",
-                new java.security.spec.MGF1ParameterSpec(named),
-                saltAsLongAsTheDigest(named),
+                algorithm, "MGF1",
+                new java.security.spec.MGF1ParameterSpec(algorithm),
+                saltAsLongAsTheDigest(algorithm),
                 java.security.spec.PSSParameterSpec.TRAILER_FIELD_BC));
         return scheme;
     }
 
-    private static int saltAsLongAsTheDigest(String named)
+    private static int saltAsLongAsTheDigest(String algorithm)
             throws java.security.NoSuchAlgorithmException {
-        return java.security.MessageDigest.getInstance(named).getDigestLength();
+        return java.security.MessageDigest.getInstance(algorithm).getDigestLength();
     }
 
     byte[] signed(byte[] data, String digest, boolean probabilistic) throws Exception {

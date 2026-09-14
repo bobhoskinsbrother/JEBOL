@@ -14,7 +14,7 @@ final class PendingCall {
     private final boolean infix;
     private final List<String> refinements;
 
-    private final List<String> namedGrantedOrNot;
+    private final List<String> mentioned;
     private final List<Parameter> consuming;
 
     private PendingCall(
@@ -24,14 +24,14 @@ final class PendingCall {
             List<Value> supplied,
             boolean infix,
             List<String> refinements,
-            List<String> named) {
+            List<String> mentioned) {
         this.callee = callee;
         this.slot = slot;
         this.needed = needed;
         this.infix = infix;
         this.refinements = List.copyOf(refinements);
-        this.namedGrantedOrNot = List.copyOf(named);
-        this.consuming = arrivingParametersOf(callee, this.namedGrantedOrNot);
+        this.mentioned = List.copyOf(mentioned);
+        this.consuming = arrivingParametersOf(callee, this.mentioned);
         this.arguments.addAll(supplied);
     }
 
@@ -104,9 +104,9 @@ final class PendingCall {
         };
     }
 
-    static PendingCall prefix(Value callee, List<String> refinements, List<String> named) {
-        return new PendingCall(callee, null, arityOf(callee, named),
-                List.of(), false, refinements, named);
+    static PendingCall prefix(Value callee, List<String> refinements, List<String> mentioned) {
+        return new PendingCall(callee, null, arityOf(callee, mentioned),
+                List.of(), false, refinements, mentioned);
     }
 
     List<String> refinements() {
@@ -139,12 +139,12 @@ final class PendingCall {
         return infix;
     }
 
-    private static int arityOf(Value callee, List<String> named) {
+    private static int arityOf(Value callee, List<String> mentioned) {
         return switch (callee) {
             case FunctionValue function ->
-                    argumentsWrittenGrantedOrNotFor(function.parameters(), named);
+                    argumentsWrittenGrantedOrNotFor(function.parameters(), mentioned);
             case NativeValue built ->
-                    argumentsWrittenGrantedOrNotFor(built.parameters(), named);
+                    argumentsWrittenGrantedOrNotFor(built.parameters(), mentioned);
             case OperatorValue operator -> operator.arity();
             default -> throw Raised.of(
                     EvaluationFailure.CANNOT_USE,
@@ -153,11 +153,11 @@ final class PendingCall {
     }
 
     private static int argumentsWrittenGrantedOrNotFor(
-            List<Parameter> parameters, List<String> named) {
+            List<Parameter> parameters, List<String> mentioned) {
         return (int) parameters.stream()
                 .filter(Parameter::consumesAnArgument)
                 .filter(parameter -> parameter.owningRefinement()
-                        .map(named::contains).orElse(true))
+                        .map(mentioned::contains).orElse(true))
                 .count();
     }
 
@@ -186,8 +186,8 @@ final class PendingCall {
 
     List<Value> argumentsInDeclaredOrder() {
         if (arguments.size() != consuming.size()
-                || (namedGrantedOrNot.size() < 2
-                        && namedGrantedOrNot.size() == refinements.size())) {
+                || (mentioned.size() < 2
+                        && mentioned.size() == refinements.size())) {
             return List.copyOf(arguments);
         }
         List<Parameter> declared = declaredParametersOf(callee);

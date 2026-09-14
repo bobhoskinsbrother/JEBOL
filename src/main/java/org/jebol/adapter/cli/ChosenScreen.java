@@ -23,7 +23,7 @@ final class ChosenScreen {
     }
 
     static boolean wasAskedFor(String[] arguments) {
-        return named(arguments).isPresent();
+        return theSwitchValueIn(arguments).isPresent();
     }
 
     static String[] withoutTheSwitch(String[] arguments) {
@@ -33,7 +33,7 @@ final class ChosenScreen {
     }
 
     static void attachTo(Interpreter interpreter, String[] arguments, PrintStream out) {
-        String asked = named(arguments).orElseThrow();
+        String asked = theSwitchValueIn(arguments).orElseThrow();
         switch (asked.toLowerCase(Locale.ROOT)) {
             case A_WINDOW -> attachAWindow(interpreter, out);
             case A_PAGE -> attachAPage(interpreter, out);
@@ -70,7 +70,7 @@ final class ChosenScreen {
                         + "; it is " + A_WINDOW + " or " + A_PAGE);
     }
 
-    private static Optional<String> named(String[] arguments) {
+    private static Optional<String> theSwitchValueIn(String[] arguments) {
         for (String each : arguments) {
             if (each.startsWith(SWITCH)) {
                 return Optional.of(each.substring(SWITCH.length()));

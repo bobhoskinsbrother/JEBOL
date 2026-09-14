@@ -291,22 +291,22 @@ final class CryptPort {
             java.util.Set.of("tag-length", "aad-length");
 
     private static boolean anAlgorithmWasSet(Working working, Value given) {
-        if (!(given instanceof WordValue named) || !serves(named.canonical())) {
+        if (!(given instanceof WordValue asked) || !serves(asked.canonical())) {
             return false;
         }
-        working.algorithm = named.canonical();
+        working.algorithm = asked.canonical();
         return true;
     }
 
     private static boolean aDirectionWasSet(Working working, Value given) {
-        if (!(given instanceof WordValue named)) {
+        if (!(given instanceof WordValue asked)) {
             return false;
         }
-        if (named.canonical().equals("encrypt")) {
+        if (asked.canonical().equals("encrypt")) {
             working.decrypting = false;
             return true;
         }
-        if (named.canonical().equals("decrypt")) {
+        if (asked.canonical().equals("decrypt")) {
             working.decrypting = true;
             return true;
         }

@@ -46,8 +46,8 @@ public final class BrowserScreen implements ScreenPort {
 
     @Override
     public void useDrawDialect(Value dialect) {
-        this.drawDialect = dialect instanceof org.jebol.domain.value.ObjectValue named
-                ? named
+        this.drawDialect = dialect instanceof org.jebol.domain.value.ObjectValue given
+                ? given
                 : null;
     }
 

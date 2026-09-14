@@ -316,11 +316,11 @@ public final class DrawDialect {
         private static final int THE_GRADIENT_COLOURS = 9;
 
         private Optional<Gradient> aGradientFrom(List<Value> arguments) {
-            Optional<String> named = wordAt(arguments, THE_GRADIENT_TYPE);
-            if (named.isEmpty()) {
+            Optional<String> asked = wordAt(arguments, THE_GRADIENT_TYPE);
+            if (asked.isEmpty()) {
                 return Optional.empty();
             }
-            Optional<GradientShape> shape = GradientShape.named(named.orElseThrow());
+            Optional<GradientShape> shape = GradientShape.named(asked.orElseThrow());
             List<Colour> colours = everyColourIn(arguments, THE_GRADIENT_COLOURS);
             if (shape.isEmpty() || colours.size() < 2) {
                 return Optional.empty();
