@@ -1080,19 +1080,50 @@ answers AND with `if (!IS_BITSET(arg) && !IS_BINARY(arg)) Trap_Math_Args`, and
 that is right: what a time may be added to is the time class's business, and
 the time class is where a reader looks for it. No ladder, no table of pairings.
 
-**Where the arms are**, counting `case <X>Value` arms inside `Natives` --
-400 of them in all. Counting every *mention* of a datatype is the wrong
-measure and was the one written here first: 350 of block's 420 mentions are
-`BlockValue.block(...)` building an answer, which every native that returns a
-block has to do and no refactor removes.
+**The measure is `scripts/complexity.py`**, and the registration tables are
+what it watches. Two earlier measures were wrong and are worth not repeating:
+counting every *mention* of a datatype can never reach zero, because
+`BlockValue.block(...)` building an answer is 350 of block's 420; and counting
+`case` arms misses an if-chain, which is dispatch too.
 
-| 1 | 4 | 5 | 5 | 6 | 6 | 7 | 9 | 10 | 10 | 11 | 13 | 13 | 14 | 18 | 19 | 37 | 43 | 47 |
-| - | - | - | - | - | - | - | - | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- |
-| event | struct | typeset | pair | date | bitset | time | tuple | money | map | gob | char | image | object | vector | port | binary | block | string |
+Cyclomatic complexity catches both, and it moves only where work happens.
+Migrating APPEND, INSERT, CLEAR, REMOVE and LENGTH? took `defineSeries` from
+**263 to 227** while `defineSet` stayed at **162**, having been untouched.
 
-**An increment is done when its datatype has no `case` arm left in an action's
-registration.** Arms outside the sixty actions -- MOLD's per-datatype writing,
-the reader's, the parser's -- are not this goal.
+| cc | | cc | |
+| -- | -- | -- | -- |
+| 227 | `defineSeries` | 67 | `defineObjects` |
+| 162 | `defineSet` | 54 | `defineArithmetic` |
+| 77 | `defineControl` | 39 | `defineInterpreterState` |
+| 74 | `definePorts` | 32 | `defineReflection` |
+
+**Done is no `define*` above 40.** Not zero: sixty natives routing through the
+seam is still sixty branches, and that floor is the table doing its job.
+
+`--ceilings` is a ratchet over every method, not only these. Nothing has to
+come down, but nothing may go up, so a refactor that stalls cannot quietly
+undo itself.
+
+#### What is high and is not this goal
+
+- `BrotliDictionaryMatches.findAll` at 225 carries `Do not tidy it.` -- its
+  shape is the C's, converted mechanically, and the port was bisected against
+  the reference encoder in that shape. `LzmaEncoder.pricedStep` at 90 and the
+  other compressors are the same kind of port.
+- `SymmetryPartitionSort` is Rebol's own sort, ported to keep its order stable
+  in the same places.
+- `Molder.renderOne` at 47 is per-datatype **writing**, which is a real
+  type-major seam and a different one -- the C's `Mold_Value`. Worth doing,
+  not worth confusing with the action seam.
+
+#### The second seam, which this goal did not name
+
+`Evaluator.writeThroughPath` at 62 and `selectWith` at 61 are the same smear
+one layer over: a switch over datatypes deciding what `thing/field` means.
+It is already half migrated and nobody wrote that down -- `BlockPath`,
+`GobPath`, `ImagePath`, `EventPath`, `StructPath`, `VectorPath` and
+`DateParts` are type-major path classes that already exist. Finishing it is
+the same shape of work and the same two numbers to watch.
 
 **What proves it.** The datatype's own `.r3` file, and `error-parity.py`
 unchanged -- an arm that quietly stops raising is the failure this invites.
