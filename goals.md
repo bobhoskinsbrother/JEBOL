@@ -1057,28 +1057,62 @@ wants that more than it wants either check.
 ### 11. The type-major refactor
 
 **The original complaint, and much the largest piece left.** One `t-*.c` per
-increment, bitset as the pilot.
+increment: a bitset must answer what happens when you append to it, and answer
+it in the class called bitset. Today that answer is an arm in a switch inside a
+fifteen-thousand-line `Natives`, and an enum constant with a body is the same
+switch wearing a jacket -- `Arithmetic.Kind` and `Combining.SetKind` are targets
+of this goal, not the shape to copy.
 
-The graphics work left a hint about the shape: `PaintInstruction` is sealed, so
-adding a kind broke every renderer's switch at compile time. `VectorValue`
-proved it again -- adding it to `SeriesValue permits` made the compiler
-enumerate every arm that needed work. That is what the action seam wants.
+#### The move, in the order it has to happen
 
-**Switches and enums out, classes in.** A bitset must answer what happens when
-you append to it, and answer it in the class called bitset. Today that answer
-is an arm in a switch inside a sixteen-thousand-line `Natives`, and an enum
-constant with a body is the same switch wearing a jacket -- `Arithmetic.Kind`
-and `Combining.SetKind` are targets of this goal, not the shape to copy.
+Worked out on `decimalBuiltFrom`, which went from a ten-armed switch to
+`value.asDecimal(wanted, asking)`. Every step below was got wrong at least once
+first, and each wrong version looked like progress.
 
-**The seam is missing.** The C keeps `Value_Dispatch`, a table indexed by
+1. **Read the arms and find the one sentence they share.** All ten said *work
+   out what number this value is, then wrap it as a decimal or a percent*. Only
+   the first half varied. If no sentence is shared, this is not the move.
+2. **Invert the call so the receiver is the value.** `value.asDecimal(...)`,
+   never `asDecimal(value, ...)`. A static taking the datatype as an argument
+   is a switch relabelled -- `DateArithmetic.dayNumberOf(date)` was one, and had
+   to be redone as `date.dayNumber()`.
+3. **Shared halves become `default` methods, not statics.** `static` on an
+   interface is a namespace; `default` is inherited behaviour that a value calls
+   on itself. `Value` should hold no `static`.
+4. **Failure answers `Optional.empty()`, it does not raise.** `domain.value` may
+   not raise, so the caller raises the ordinary refusal. This is a feature: it
+   forces the refusal to be the standard one.
+5. **Then look at what the collapsed call site calls.** A switch begets a switch
+   one level down. `scannedIntoADecimal` still asked twice what type it had, and
+   that is where the defect was.
+
+**Chasing the propagation is how the defects surface, both times so far.** The
+special case exists *because* something diverges -- `MAKE DATE!`'s refusal had
+lost an argument, and `TO DECIMAL! "abc"` put prose in `arg1` and left `arg2`
+empty where `r3-head` gives `#(decimal!)` and `"abc"`. Removing the divergence
+is what shrinks the branch, so **check the arm against `./r3-head` before
+preserving it**.
+
+**Where it stops, and why that is not a shrug.** A string and a block cannot
+answer `asDecimal` because scanning a number raises `invalid-chars`, and
+`domain.value` may not raise. Same wall as `DateValue` not being able to leave
+its package: `Value` is sealed in an unnamed module. **Open question worth
+settling once:** where the number scanner lives so both sides can see it.
+
+**Test the arguments, not the id.** All seventy-nine `bad-make-arg` assertions
+in the suite check `e/id` alone, which is why two wrong refusals survived. Prove
+a new test has teeth by reintroducing the bug and watching it go red.
+
+**The seam is half built.** The C keeps `Value_Dispatch`, a table indexed by
 datatype that `Do_Action` reads with argument one's type; every `REBTYPE(X)` is
-one entry. JEBOL has no such table. `ActionNames` knows *which* sixty built-ins
-are actions, because `type? :append` must answer `action!`, and that is all.
+one entry. `Actions.of` is JEBOL's, and it answers nothing yet for a datatype
+that has not moved, so the registry falls through to its own switch. It seals,
+and the fallback goes, when the last one is in.
 
 **Two-operand actions delegate their coercion to the class too.** `t-bitset.c`
-answers AND with `if (!IS_BITSET(arg) && !IS_BINARY(arg)) Trap_Math_Args`, and
-that is right: what a time may be added to is the time class's business, and
-the time class is where a reader looks for it. No ladder, no table of pairings.
+answers AND with `if (!IS_BITSET(arg) && !IS_BINARY(arg)) Trap_Math_Args`: what
+a time may be added to is the time class's business. No ladder, no table of
+pairings.
 
 **The measure is `scripts/complexity.py`**, and the registration tables are
 what it watches. Two earlier measures were wrong and are worth not repeating:
@@ -1090,15 +1124,9 @@ Cyclomatic complexity catches both, and it moves only where work happens.
 Migrating APPEND, INSERT, CLEAR, REMOVE and LENGTH? took `defineSeries` from
 **263 to 227** while `defineSet` stayed at **162**, having been untouched.
 
-| cc | | cc | |
-| -- | -- | -- | -- |
-| 227 | `defineSeries` | 67 | `defineObjects` |
-| 162 | `defineSet` | 54 | `defineArithmetic` |
-| 77 | `defineControl` | 39 | `defineInterpreterState` |
-| 74 | `definePorts` | 32 | `defineReflection` |
-
-**Done is no `define*` above 40.** Not zero: sixty natives routing through the
-seam is still sixty branches, and that floor is the table doing its job.
+**Done is no `define*` above 40** -- not zero, because sixty natives routing
+through the seam is still sixty branches, and that floor is the table doing its
+job. 307 switch statements across the tree today, 177 methods over cc=10.
 
 `--ceilings` is a ratchet over every method, not only these. Nothing has to
 come down, but nothing may go up, so a refactor that stalls cannot quietly
@@ -1115,6 +1143,36 @@ undo itself.
 - `Molder.renderOne` at 47 is per-datatype **writing**, which is a real
   type-major seam and a different one -- the C's `Mold_Value`. Worth doing,
   not worth confusing with the action seam.
+
+#### Where the move applies, worst first
+
+Seven places switch on the datatype. The same five steps fit all of them, and
+all seven end as one line with the value answering.
+
+| cc | where | what each arm says | becomes |
+| -- | ----- | ------------------ | ------- |
+| 227 | `defineSeries` | what this series does when acted on | `Actions.of(value)` |
+| 162 | `defineSet` | how two of these combine | `value.combinedWith(...)` |
+| 74 | `definePorts` | what this scheme does | a scheme port per name |
+| 62 | `Evaluator.writeThroughPath` | what `thing/field:` writes | `Path_Dispatch` |
+| 61 | `Evaluator.selectWith` | what `thing/field` reads | the same table |
+| 51 | `Natives.converted` | what this becomes | `value.asA(wanted)` |
+| 47 | `Molder.renderOne` | how this is written out | `value.molded(how)` |
+
+`renderOne` is the easiest next one and the best check of the pattern: every arm
+is already one call, several of them to the value itself, so it should reduce to
+`value.molded(...)` with no wall in the way -- nothing about writing a value out
+needs to raise.
+
+`converted` is the hardest, because MAKE and TO differ per datatype and the
+scanning wall sits right in the middle of it.
+
+**Two per-datatype packages exist so far.** `org.jebol.domain.date` holds
+`DatePart`, `DateOrder`, `DateMaking` and `DateArithmetic`; the values stay in
+`domain.value` because the sealed family cannot be split. Naming inside a
+package is `<Type><Aspect>` with the aspect a REBOL word -- `DatePart`, not
+`DateActions`. **The `*Actions` classes in `domain.eval` are the old naming and
+want moving into their own packages.**
 
 #### The second seam, which this goal did not name
 
