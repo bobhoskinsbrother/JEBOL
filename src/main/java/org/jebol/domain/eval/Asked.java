@@ -34,6 +34,7 @@ public record Asked(
         Value subject,
         Value given,
         Value duplicated,
+        Value limitAsked,
         Optional<Long> howMuchOfIt,
         int howManyOctets,
         long howManyTimes,
@@ -65,6 +66,30 @@ public record Asked(
                 .map(count -> items.subList(0,
                         (int) Math.max(0, Math.min(count, items.size()))))
                 .orElse(items);
+    }
+
+    /**
+     * The run of a block {@code /part} names, measured from where the block is
+     * held and reaching backwards when the count is negative.
+     *
+     * <p>Measured against the block handed in rather than against the value as
+     * written, which matters when {@code /dup} has already spread it: the copy
+     * is what is being put in, so the copy is what {@code /part} cuts.
+     */
+    public List<Value> theWantedItemsOf(BlockValue added) {
+        return howMuchOf(added, limitAsked)
+                .map(count -> {
+                    List<Value> whole = added.head().remaining();
+                    int here = added.index() - 1;
+                    int from = count >= 0 ? here : (int) Math.max(0, here + count);
+                    int to = count >= 0
+                            ? (int) Math.min(whole.size(), here + count)
+                            : here;
+                    int start = Math.min(from, whole.size());
+                    return whole.subList(start,
+                            Math.max(Math.min(to, whole.size()), start));
+                })
+                .orElseGet(added::remaining);
     }
 
     /**
@@ -103,6 +128,7 @@ public record Asked(
                 subject,
                 given,
                 duplicated(given, times),
+                limit,
                 howMuchOf(given, limit),
                 howManyOctetsOf(given, limit),
                 refinementsAsked.contains("dup") && times instanceof IntegerValue counted

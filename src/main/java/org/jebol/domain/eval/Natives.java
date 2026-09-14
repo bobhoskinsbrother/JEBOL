@@ -4826,27 +4826,6 @@ public final class Natives {
                     case Value subject when Actions.of(subject).isPresent() ->
                             Actions.of(subject).orElseThrow().append(askedOf(
                                     subject, arguments, refinements, evaluator, context));
-                    case ObjectValue object ->
-                            objectGainingFields(object, arguments, refinements, "append");
-                    case GobValue gob -> {
-                        refuseUnfinishedRefinements(refinements, "append");
-                        insertChildren(gob, gob.storage().length() + 1,
-                                arguments.get(1));
-                        yield gob;
-                    }
-                    case VectorValue vector -> {
-                        for (Value number : numbersAddedBy(
-                                vector.kind(), arguments, refinements, true)) {
-                            vector.storage().append(
-                                    VectorPath.storedFormOf(vector.kind(), number));
-                        }
-                        yield vector.head();
-                    }
-                    case ImageValue picture -> {
-                        refuseUnfinishedRefinements(refinements, "append");
-                        yield ImageSeries.appended(picture, arguments.get(1),
-                                howManyTimesOver(arguments, refinements));
-                    }
                     default -> raiseCannotUse(arguments.get(0), "append");
                 });
 
@@ -5056,69 +5035,9 @@ public final class Natives {
                     case PortValue queued when theEventQueueOf(queued).isPresent() ->
                             queuedOnThePort(queued, theEventQueueOf(queued).orElseThrow(),
                                     arguments.get(1), false);
-                    case BitsetValue members -> {
-                        requireChangeable(members);
-                        new BitsetActions(members).addAllOf(arguments.get(1));
-                        yield members;
-                    }
-                    case ObjectValue object ->
-                            objectGainingFields(object, arguments, refinements, "insert");
-                    case BlockValue stranded -> {
-                        BlockValue block = (BlockValue) clampedToTail(stranded);
-                        if (duplicated(arguments.get(1), arguments, refinements)
-                                instanceof BlockValue added
-                                && added.datatype() == Datatype.BLOCK
-                                && !refinements.contains("only")) {
-                            List<Value> items = partOf(added, arguments, refinements);
-                            block.storage().spliceInAt(block.index(), items,
-                                    added.storage(), added.index());
-                            yield block.atIndex(block.index() + items.size());
-                        }
-                        block.storage().insertAt(block.index(), arguments.get(1));
-                        yield block.atIndex(block.index() + 1);
-                    }
-                    case StringValue strandedText -> {
-                        StringValue text = (StringValue) clampedToTail(strandedText);
-                        int[] added = textContributedBy(arguments, refinements)
-                                .codePoints().toArray();
-                        for (int at = 0; at < added.length; at++) {
-                            text.storage().insertAt(text.index() + at, added[at]);
-                        }
-                        yield text.atIndex(text.index() + added.length);
-                    }
-                    case BinaryValue strandedBytes -> {
-                        BinaryValue bytes = (BinaryValue) clampedToTail(strandedBytes);
-                        int[] octets = SeriesContents.octetsContributedBy(
-                                duplicated(arguments.get(1), arguments, refinements),
-                                partCountFor(arguments, refinements));
-                        for (int at = octets.length; at > 0; at--) {
-                            bytes.storage().insertAt(bytes.index(), octets[at - 1]);
-                        }
-                        yield bytes.atIndex(bytes.index() + octets.length);
-                    }
-                    case MapValue map ->
-                            addPairsToMap(map, arguments, refinements, "insert");
-                    case GobValue gob -> {
-                        refuseUnfinishedRefinements(refinements, "insert");
-                        insertChildren(gob, gob.positionWithinThePane(), arguments.get(1));
-                        yield gob;
-                    }
-                    case VectorValue strandedVector -> {
-                        VectorValue vector = (VectorValue) clampedToTail(strandedVector);
-                        List<Value> numbers = numbersAddedBy(
-                                vector.kind(), arguments, refinements, true);
-                        for (int at = numbers.size(); at > 0; at--) {
-                            vector.storage().insertAt(vector.index(),
-                                    VectorPath.storedFormOf(
-                                            vector.kind(), numbers.get(at - 1)));
-                        }
-                        yield vector.atIndex(vector.index() + numbers.size());
-                    }
-                    case ImageValue picture -> {
-                        refuseUnfinishedRefinements(refinements, "insert");
-                        yield ImageSeries.inserted(picture, arguments.get(1),
-                                howManyTimesOver(arguments, refinements));
-                    }
+                    case Value subject when Actions.of(subject).isPresent() ->
+                            Actions.of(subject).orElseThrow().insert(askedOf(
+                                    subject, arguments, refinements, evaluator, context));
                     default -> raiseCannotUse(arguments.get(0), "insert");
                 });
 
@@ -6514,7 +6433,7 @@ public final class Natives {
         };
     }
 
-    private static List<Value> numbersContributedTo(VectorKind kind, Value value) {
+    static List<Value> numbersContributedTo(VectorKind kind, Value value) {
         if (value instanceof VectorValue source) {
             return source.remaining();
         }
@@ -6606,7 +6525,7 @@ public final class Natives {
         return vector.atIndex(vector.index() + numbers.size());
     }
 
-    private static List<Value> numbersOfferedTo(VectorKind kind, Value value, int limit) {
+    static List<Value> numbersOfferedTo(VectorKind kind, Value value, int limit) {
         if (!(value instanceof SeriesValue source)) {
             return numbersContributedTo(kind, value);
         }
@@ -6982,7 +6901,7 @@ public final class Natives {
         return Binder.bindAndDefine(read.values().orElseThrow(), context);
     }
 
-    private static SeriesValue clampedToTail(SeriesValue series) {
+    static SeriesValue clampedToTail(SeriesValue series) {
         int tail = series.storageLength() + 1;
         return series.index() > tail ? series.atIndex(tail) : series;
     }
@@ -7004,7 +6923,8 @@ public final class Natives {
                 }
             }
             case ImageValue image -> insertPixels(image, value);
-            case GobValue gob -> insertChildren(gob, gob.positionWithinThePane(), value);
+            case GobValue gob -> new GobActions(gob)
+                    .givenTheChildrenOf(value, gob.positionWithinThePane());
             case VectorValue vector -> {
                 List<Value> numbers = numbersContributedTo(vector.kind(), value);
                 for (int at = numbers.size(); at > 0; at--) {
@@ -7147,19 +7067,6 @@ public final class Natives {
         if (guarded) {
             throw new org.jebol.domain.value.ProtectedFromChange();
         }
-    }
-
-    private static String textContributedBy(
-            List<Value> arguments, Set<String> refinements) {
-
-        Value adding = duplicated(arguments.get(1), arguments, refinements);
-        String written = adding instanceof BlockValue added
-                && added.datatype() == Datatype.BLOCK
-                ? runTogether(added)
-                : Molder.form(adding);
-        return howManyWanted(arguments.get(1), arguments, refinements, 2)
-                .map(count -> theFirstCodePointsOf(written, count.intValue()))
-                .orElse(written);
     }
 
     private static Value duplicated(
@@ -7536,7 +7443,7 @@ public final class Natives {
         }
     }
 
-    private static void refuseHiddenField(ObjectValue object, Value target) {
+    static void refuseHiddenField(ObjectValue object, Value target) {
         List<Value> names = target instanceof BlockValue pairs
                 ? pairs.remaining()
                 : List.of(target);
@@ -8144,27 +8051,6 @@ public final class Natives {
                         what + "/" + unfinished + " on a gob is not implemented");
             }
         }
-    }
-
-    private static Value insertChildren(GobValue gob, int at, Value value) {
-        List<Value> children = switch (value) {
-            case GobValue only -> List.<Value>of(only);
-            case BlockValue block when block.datatype() == Datatype.BLOCK ->
-                    block.remaining();
-            default -> throw Raised.of(EvaluationFailure.EXPECT_VAL,
-                    "a pane holds gobs, not " + value.datatype().literalSpelling());
-        };
-        int goesAt = at;
-        for (Value child : children) {
-            if (!(child instanceof GobValue one)) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        "a pane holds gobs, not "
-                                + child.datatype().literalSpelling());
-            }
-            gob.storage().insertChild(goesAt, one);
-            goesAt = Math.min(goesAt + 1, gob.storage().length() + 1);
-        }
-        return gob;
     }
 
     private static Value madeGob(Value from, Evaluator evaluator, Context context) {
@@ -12449,36 +12335,6 @@ public final class Natives {
                 .orElseGet(block::remaining);
     }
 
-    private static Value addPairsToMap(
-            MapValue map, List<Value> arguments,
-            Set<String> refinements, String nativeName) {
-
-        requireChangeable(map);
-        MapActions.refuseWhatIsNotAWholeBlockOfPairs(
-                arguments.get(1), refinements.contains("dup"), nativeName);
-        return new MapActions(map).given(pairsWantedBy(
-                (BlockValue) arguments.get(1), arguments, refinements));
-    }
-
-    private static List<Value> pairsWantedBy(
-            BlockValue pairs, List<Value> arguments, Set<String> refinements) {
-
-        List<Value> whole = pairs.head().remaining();
-        int here = pairs.index() - 1;
-        long asked = howManyWanted(pairs, arguments, refinements, 2)
-                .orElse((long) (whole.size() - here));
-        int from = here;
-        int count;
-        if (asked >= 0) {
-            count = (int) Math.min(asked, whole.size() - here);
-        } else {
-            count = (int) Math.min(-asked, here);
-            from = here - count;
-        }
-        count -= count % 2;
-        return whole.subList(from, from + count);
-    }
-
     private static void refuseASizeItCannotWrite(long width) {
         if (width <= 0 || width > 0xFFFFFFFFL) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, IntegerValue.of(width));
@@ -12614,39 +12470,14 @@ public final class Natives {
         return value instanceof StringValue && value.datatype() == Datatype.STRING;
     }
 
-    private static Value objectGainingFields(
-            ObjectValue object, List<Value> arguments,
-            Set<String> refinements, String verb) {
-        if (object.context().isClosedToNewNames()) {
-            throw Raised.of(EvaluationFailure.PROTECTED, verb);
-        }
-        refuseHiddenField(object, arguments.get(1));
-        if (arguments.get(1) instanceof WordValue only) {
-            refuseTheSelfTheObjectAlreadyHas(object, only);
-            object.context().set(only.canonical(), UnsetValue.unset());
-            return object;
-        }
-        List<Value> pairs = duplicated(arguments.get(1), arguments, refinements)
-                instanceof BlockValue added
-                ? partOf(added, arguments, refinements)
-                : List.of(arguments.get(1));
-        refuseTheObjectsOwnSelfBeforeAnyFieldIsAdded(object, pairs);
-        for (int at = 0; at + 1 < pairs.size(); at += 2) {
-            if (pairs.get(at) instanceof WordValue field) {
-                object.context().set(field.canonical(), pairs.get(at + 1));
-            }
-        }
-        return object;
-    }
-
-    private static void refuseTheObjectsOwnSelfBeforeAnyFieldIsAdded(
+    static void refuseTheObjectsOwnSelfBeforeAnyFieldIsAdded(
             ObjectValue object, List<Value> pairs) {
         for (int at = 0; at + 1 < pairs.size(); at += 2) {
             refuseTheSelfTheObjectAlreadyHas(object, pairs.get(at));
         }
     }
 
-    private static void refuseTheSelfTheObjectAlreadyHas(ObjectValue object, Value field) {
+    static void refuseTheSelfTheObjectAlreadyHas(ObjectValue object, Value field) {
         if (object.context().holds("self")) {
             Evaluator.refuseToWriteTheNameAnObjectAnswersToItselfBy(field);
         }

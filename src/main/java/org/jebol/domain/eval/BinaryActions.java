@@ -22,10 +22,24 @@ public final class BinaryActions implements Actions {
 
     @Override
     public Value append(Asked asked) {
-        for (int octet : SeriesContents.octetsContributedBy(
-                asked.duplicated(), asked.howManyOctetsWanted())) {
+        for (int octet : octetsContributedBy(asked)) {
             bytes.storage().append(octet);
         }
         return bytes.head();
+    }
+
+    @Override
+    public Value insert(Asked asked) {
+        BinaryValue held = (BinaryValue) Natives.clampedToTail(bytes);
+        int[] octets = octetsContributedBy(asked);
+        for (int at = octets.length; at > 0; at--) {
+            held.storage().insertAt(held.index(), octets[at - 1]);
+        }
+        return held.atIndex(held.index() + octets.length);
+    }
+
+    private static int[] octetsContributedBy(Asked asked) {
+        return SeriesContents.octetsContributedBy(
+                asked.duplicated(), asked.howManyOctetsWanted());
     }
 }

@@ -32,6 +32,16 @@ public final class StringActions implements Actions {
         return text.head();
     }
 
+    @Override
+    public Value insert(Asked asked) {
+        StringValue held = (StringValue) Natives.clampedToTail(text);
+        int[] added = contributedBy(asked).codePoints().toArray();
+        for (int at = 0; at < added.length; at++) {
+            held.storage().insertAt(held.index() + at, added[at]);
+        }
+        return held.atIndex(held.index() + added.length);
+    }
+
     /**
      * The text a value contributes to a string, with {@code /dup} already
      * spread and {@code /part} cutting it in codepoints rather than in the

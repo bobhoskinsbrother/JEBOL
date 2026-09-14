@@ -34,6 +34,11 @@ public final class MapActions implements Actions {
         return givenTheBlockOfPairs(asked, "append");
     }
 
+    @Override
+    public Value insert(Asked asked) {
+        return givenTheBlockOfPairs(asked, "insert");
+    }
+
     /**
      * APPEND and INSERT, which mean the same thing to a map: there is no
      * position for a pair to go into, so both put the keys in.

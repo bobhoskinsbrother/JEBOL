@@ -41,6 +41,19 @@ public final class BitsetActions implements Actions {
 
     @Override
     public Value append(Asked asked) {
+        return givenTheBitsOf(asked);
+    }
+
+    @Override
+    public Value insert(Asked asked) {
+        return givenTheBitsOf(asked);
+    }
+
+    /**
+     * APPEND and INSERT, which mean the same thing to a bitset: a set has no
+     * order, so there is no end to add to and no position to go in at.
+     */
+    private Value givenTheBitsOf(Asked asked) {
         Natives.requireChangeable(members);
         addAllOf(asked.given());
         return members;

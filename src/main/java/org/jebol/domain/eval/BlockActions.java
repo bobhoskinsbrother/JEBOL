@@ -4,6 +4,8 @@ import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Value;
 
+import java.util.List;
+
 /**
  * What a block does when an action is performed on it, which is what
  * {@code REBTYPE(Block)} answers in {@code t-block.c}.
@@ -37,6 +39,20 @@ public final class BlockActions implements Actions {
             block.storage().append(asked.given());
         }
         return block.head();
+    }
+
+    @Override
+    public Value insert(Asked asked) {
+        BlockValue held = (BlockValue) Natives.clampedToTail(block);
+        if (asked.duplicated() instanceof BlockValue added
+                && splicesRatherThanGoesInWhole(added, asked)) {
+            List<Value> items = asked.theWantedItemsOf(added);
+            held.storage().spliceInAt(held.index(), items,
+                    added.storage(), added.index());
+            return held.atIndex(held.index() + items.size());
+        }
+        held.storage().insertAt(held.index(), asked.given());
+        return held.atIndex(held.index() + 1);
     }
 
     /** A paren or a path goes in whole, and so does a block /ONLY asked for. */

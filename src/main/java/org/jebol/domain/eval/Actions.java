@@ -3,9 +3,13 @@ package org.jebol.domain.eval;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.GobValue;
+import org.jebol.domain.value.ImageValue;
 import org.jebol.domain.value.MapValue;
+import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.VectorValue;
 
 import java.util.Optional;
 
@@ -38,6 +42,10 @@ public interface Actions {
             case BinaryValue bytes -> Optional.of(new BinaryActions(bytes));
             case StringValue text -> Optional.of(new StringActions(text));
             case BlockValue block -> Optional.of(new BlockActions(block));
+            case ObjectValue object -> Optional.of(new ObjectActions(object));
+            case GobValue gob -> Optional.of(new GobActions(gob));
+            case ImageValue picture -> Optional.of(new ImageActions(picture));
+            case VectorValue numbers -> Optional.of(new VectorActions(numbers));
             default -> Optional.empty();
         };
     }
@@ -45,5 +53,13 @@ public interface Actions {
     /** APPEND: put this at the end, and answer the series from its head. */
     default Value append(Asked asked) {
         throw Raised.cannotUse(asked.subject(), "append");
+    }
+
+    /**
+     * INSERT: put this in where the series is held, and answer the position
+     * just past what went in, so a second insert carries on after the first.
+     */
+    default Value insert(Asked asked) {
+        throw Raised.cannotUse(asked.subject(), "insert");
     }
 }
