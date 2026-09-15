@@ -987,6 +987,41 @@ rule ASetPathComputesItsValueBeforeWalkingItsPath {
             any_segment_of(selection.path) is_resolved)
 }
 
+-- A write through a path lands where the selected value sits, and the place it
+-- sits is not always a word.
+--
+-- A date, a pair, a tuple and an event cannot be changed in place, so writing
+-- one part of one means rebuilding the whole value and storing the new one back.
+-- `d/year: 2001` stores it into the word d. But the same value may be held in a
+-- slot of an object, a position in a block, a key in a map, or any of those
+-- nested inside each other, and the write has to reach all of them:
+-- `o/dd/year: 2001`, `b/1/year: 2001`, `m/k/year: 2001`, `w/1/1/year: 2001`.
+--
+-- Two questions are separate here and only the first is per-datatype: what a
+-- datatype does with a selector, and how the write reaches the datatype.
+-- Answering them together makes every value type invent its own reaching, and
+-- each one invents the same wrong answer -- look back for a word and rebind it
+-- -- which refuses every value that no word directly holds.
+--
+-- The C keeps them apart, and that is why it has no such limit. `Next_Path`
+-- holds a pointer to the slot it walked to and each `PD_X` returns `PE_SET` or
+-- `PE_USE` to say what the walker should do with that slot. A datatype handler
+-- never learns how the value was reached, so there is nothing for it to get
+-- wrong.
+--
+-- `r3-head` writes every one of the four value types through every container
+-- and at any depth: `[1-Jan-2001/0:00]`, `9.2.3`, `[9x2]`, and an event whose
+-- type became `up`.
+rule AWriteThroughAPathLandsWhereTheValueSits {
+    when: selection: PathEvaluation.status transitions_to selected
+    requires: selection.path.datatype = set_path
+    requires: the_selected_value_cannot_be_changed_in_place(selection)
+
+    ensures:
+        the_rebuilt_value_is_stored_where_the_selected_one_sat(selection)
+        not it_requires_a_word_to_hold_the_selected_value(selection)
+}
+
 -- A protected field refuses a write through a path as a REBOL error, with
 -- the same id a protected word gives a set-word: `locked-word`.
 --

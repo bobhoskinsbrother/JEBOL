@@ -9,7 +9,7 @@ package org.jebol.domain.value;
  * what {@code unset!} means, and the evaluator reports that differently from
  * a name that was never bound at all.
  */
-public final class ContextSlot {
+public final class ContextSlot implements Slot {
 
     private final Context context;
     private final String spelling;
@@ -42,10 +42,12 @@ public final class ContextSlot {
         return canonical;
     }
 
+    @Override
     public Value value() {
         return value;
     }
 
+    @Override
     public void setValue(Value replacement) {
         if (replacement == null) {
             throw new IllegalArgumentException(

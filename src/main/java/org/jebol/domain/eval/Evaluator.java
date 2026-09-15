@@ -33,6 +33,7 @@ public final class Evaluator {
     private final Map<String, RefinedCallable> behaviours;
     private final OutputPort output;
     private final Context systemContext;
+    private final PathDispatch pathDispatch = new PathDispatch();
 
     private Context runtimeContext;
     private final int maximumDepth;
@@ -1238,7 +1239,8 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     "a one-segment path has nothing to assign through");
         }
-        Value target = select(allButLast, frame.context).value();
+        Slot place = select(allButLast, frame.context).slot();
+        Value target = place.value();
         Value lastSegment = segments.get(segments.size() - 1);
         refuseAPathIntoSomethingWithNoParts(path, target);
 
@@ -1253,12 +1255,8 @@ public final class Evaluator {
             return;
         }
 
-        if (target instanceof EventValue event && lastSegment instanceof WordValue field
-                && segments.size() == 2
-                && segments.getFirst() instanceof WordValue holder) {
-            ContextSlot slot = resolve(
-                    holder.isBound() ? holder : holder.boundTo(frame.context));
-            slot.setValue(EventPath.written(event, field.canonical(), written)
+        if (target instanceof EventValue event && lastSegment instanceof WordValue field) {
+            place.setValue(EventPath.written(event, field.canonical(), written)
                     .orElseThrow(() -> Raised.of(
                             EvaluationFailure.BAD_PATH_SET, field.spelling())));
             return;
@@ -1275,17 +1273,10 @@ public final class Evaluator {
                     withHalfWritten(half, lastSegment, written));
             return;
         }
-        if (contextBehind(target) instanceof Context fields
-                && selectorFor(lastSegment, frame.context) instanceof WordValue field) {
-            if (!fields.holds(field.canonical())) {
-                throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
-            }
-            ContextSlot slot = fields.ownSlotFor(field.canonical());
-            if (slot.isProtected()) {
-                throw Raised.of(EvaluationFailure.LOCKED_WORD,
-                        "the field is protected");
-            }
-            slot.setValue(written);
+        Optional<Dispatcher> dispatched = pathDispatch.forDatatype(target.datatype());
+        if (dispatched.isPresent()) {
+            dispatched.get().writeTo(
+                    place, selectorFor(lastSegment, frame.context), written);
             return;
         }
         if (segments.size() >= 3 && target instanceof BlockValue elements
@@ -1305,7 +1296,7 @@ public final class Evaluator {
             int at = BlockPath.positionOf(block, selector)
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
                             Molder.mold(selector)));
-            replaceInSeries(block, at, written);
+            SeriesSlot.write(block, at, written);
             return;
         }
         if (target instanceof StringValue joining && joinsItsPathSegments(joining)) {
@@ -1329,15 +1320,8 @@ public final class Evaluator {
         if (target instanceof SeriesValue series
                 && selectorFor(lastSegment, frame.context)
                         instanceof IntegerValue where) {
-            replaceInSeries(series,
+            SeriesSlot.write(series,
                     series.index() + (int) where.magnitude() - 1, written);
-            return;
-        }
-        if (target instanceof TupleValue tuple && lastSegment instanceof IntegerValue where
-                && segments.getFirst() instanceof WordValue holder && segments.size() == 2) {
-            ContextSlot slot = resolve(
-                    holder.isBound() ? holder : holder.boundTo(frame.context));
-            slot.setValue(withOctetWritten(tuple, (int) where.magnitude(), written));
             return;
         }
         if (target instanceof BitsetValue set) {
@@ -1356,28 +1340,6 @@ public final class Evaluator {
                 return;
             }
         }
-        if (target instanceof PairValue pair && segments.size() == 2
-                && segments.getFirst() instanceof WordValue holder) {
-            ContextSlot slot = resolve(
-                    holder.isBound() ? holder : holder.boundTo(frame.context));
-            slot.setValue(withHalfWritten(pair, lastSegment, written));
-            return;
-        }
-        if (target instanceof DateValue date && segments.size() == 2
-                && segments.getFirst() instanceof WordValue holder) {
-            ContextSlot slot = resolve(
-                    holder.isBound() ? holder : holder.boundTo(frame.context));
-            slot.setValue(DatePart.writtenOn(
-                    date, selectorFor(lastSegment, frame.context), written));
-            return;
-        }
-        if (target instanceof MapValue map) {
-            if (map.isProtected()) {
-                throw Raised.of(EvaluationFailure.PROTECTED, "map is protected");
-            }
-            storeUnderKey(map, selectorFor(lastSegment, frame.context), written);
-            return;
-        }
         if (target instanceof ErrorValue raised && lastSegment instanceof WordValue field) {
             if (!ErrorValue.FIELDS.contains(field.canonical())) {
                 throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
@@ -1394,13 +1356,6 @@ public final class Evaluator {
         }
         throw Raised.of(EvaluationFailure.INVALID_PATH,
                 "cannot assign through " + target.datatype().literalSpelling());
-    }
-
-    private static void storeUnderKey(MapValue map, Value key, Value written) {
-        if (key instanceof NoneValue) {
-            return;
-        }
-        map.put(key, written);
     }
 
     private static PairValue withHalfWritten(PairValue pair, Value segment, Value written) {
@@ -1431,13 +1386,13 @@ public final class Evaluator {
         if (segments.isEmpty()) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, "an empty path selects nothing");
         }
-        Value current = selectFirst(segments.get(0), context);
+        Slot current = selectFirst(segments.get(0), context);
         List<String> refinements = new ArrayList<>();
         List<String> mentioned = new ArrayList<>();
 
         for (int index = 1; index < segments.size(); index++) {
             Value segment = segments.get(index);
-            if (current.datatype().isAnyFunction()) {
+            if (current.value().datatype().isAnyFunction()) {
                 if (segment instanceof WordValue asked
                         && asked.datatype() == Datatype.GET_WORD) {
                     mentioned.add(asked.canonical());
@@ -1451,10 +1406,37 @@ public final class Evaluator {
                 mentioned.add(refinementNameOf(segment));
                 continue;
             }
-            refuseAPathIntoSomethingWithNoParts(path, current);
-            current = selectWith(current, selectorFor(segment, context));
+            refuseAPathIntoSomethingWithNoParts(path, current.value());
+            current = slotWith(current, selectorFor(segment, context));
         }
         return new Selection(current, List.copyOf(refinements), List.copyOf(mentioned));
+    }
+
+    private Slot slotWith(Slot holder, Value selector) {
+        Value target = holder.value();
+        Optional<Dispatcher> dispatched = pathDispatch.forDatatype(target.datatype());
+        if (dispatched.isPresent()) {
+            return dispatched.get().placeWithin(holder, selector);
+        }
+        if (target instanceof SeriesValue series
+                && selector instanceof IntegerValue position
+                && reachesIntoTheSeries(series, position)) {
+            return new SeriesSlot(series, positionIn(series, position),
+                    selectWith(target, selector));
+        }
+        return new ComputedSlot(selectWith(target, selector));
+    }
+
+    private static boolean reachesIntoTheSeries(
+            SeriesValue series, IntegerValue position) {
+
+        long counted = countedFromTheSeriesPosition(position.magnitude());
+        return counted >= 1 && counted <= series.lengthFromHere();
+    }
+
+    private static int positionIn(SeriesValue series, IntegerValue position) {
+        return series.index()
+                + (int) countedFromTheSeriesPosition(position.magnitude()) - 1;
     }
 
     private static void refuseAPathIntoSomethingWithNoParts(
@@ -1474,19 +1456,23 @@ public final class Evaluator {
                     Datatype.WORD, Datatype.SET_WORD, Datatype.GET_WORD,
                     Datatype.LIT_WORD, Datatype.REFINEMENT, Datatype.ISSUE);
 
-    private Value selectFirst(Value segment, Context context) {
+    private Slot selectFirst(Value segment, Context context) {
         if (segment instanceof WordValue word) {
             WordValue bound = word.isBound() ? word : word.boundTo(context);
-            Value held = resolve(bound).value();
-            if (held.datatype() == Datatype.UNSET) {
+            ContextSlot slot = resolve(bound);
+            if (slot.value().datatype() == Datatype.UNSET) {
                 throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
             }
-            return held;
+            return slot;
         }
-        return segment;
+        return new ComputedSlot(segment);
     }
 
     private Value selectorFor(Value segment, Context context) {
+        return withAnyFractionTruncated(resolvedSegment(segment, context));
+    }
+
+    private Value resolvedSegment(Value segment, Context context) {
         if (segment instanceof WordValue word && word.datatype() == Datatype.GET_WORD) {
             return resolve(word.isBound() ? word : word.boundTo(context)).value();
         }
@@ -1494,6 +1480,12 @@ public final class Evaluator {
             return evaluateOrRaise(Binder.bind(paren.as(Datatype.BLOCK), context), context);
         }
         return segment;
+    }
+
+    private static Value withAnyFractionTruncated(Value selector) {
+        return selector instanceof DecimalValue fractional
+                ? IntegerValue.of((long) fractional.quantity())
+                : selector;
     }
 
     private String refinementNameOf(Value segment) {
@@ -1505,63 +1497,19 @@ public final class Evaluator {
     }
 
     private Value selectWith(Value target, Value selector) {
-        if (selector instanceof DecimalValue fractional) {
-            selector = IntegerValue.of((long) fractional.quantity());
-        }
-        if (target instanceof MapValue map) {
-            return map.select(selector);
-        }
-        if (target instanceof TupleValue tuple && selector instanceof IntegerValue position) {
-            long at = position.magnitude();
-            return at < 1 || at > tuple.shownCount()
-                    ? NoneValue.none()
-                    : IntegerValue.of(tuple.octetAt((int) at));
+        Optional<Dispatcher> dispatched = pathDispatch.forDatatype(target.datatype());
+        if (dispatched.isPresent()) {
+            return dispatched.get().readFrom(target, selector);
         }
         if (target instanceof TimeValue time) {
             return partOfATime(time, selector);
         }
-        if (target instanceof DateValue date) {
-            return DatePart.readFrom(date, selector);
-        }
         if (target instanceof BitsetValue set && selector instanceof CharacterValue letter) {
             return LogicValue.of(set.holds(letter.codepoint()));
-        }
-        if (target instanceof PairValue pair) {
-            Optional<Value> half = switch (selector) {
-                case IntegerValue position -> pair.halfAt((int) position.magnitude());
-                case WordValue name -> pair.half(name.canonical());
-                default -> Optional.empty();
-            };
-            return half.orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
-                    "a pair has an x half, a y half and an area, and nothing else"));
         }
         if (target instanceof ErrorValue raised && selector instanceof WordValue field) {
             return raised.field(field.canonical()).orElseThrow(() ->
                     Raised.of(EvaluationFailure.INVALID_PATH, field.spelling()));
-        }
-        if (target instanceof ObjectValue object && selector instanceof WordValue field) {
-            if (!object.context().holds(field.canonical())) {
-                throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
-            }
-            return object.context().ownSlotFor(field.canonical()).value();
-        }
-        if (target instanceof PortValue port && selector instanceof WordValue field) {
-            if (!port.context().holds(field.canonical())) {
-                throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
-            }
-            return port.context().ownSlotFor(field.canonical()).value();
-        }
-        if (target instanceof ModuleValue module && selector instanceof WordValue field) {
-            if (!module.context().holds(field.canonical())) {
-                throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
-            }
-            return module.context().ownSlotFor(field.canonical()).value();
-        }
-        if (target instanceof TaskValue task && selector instanceof WordValue field) {
-            if (!task.context().holds(field.canonical())) {
-                throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
-            }
-            return task.context().ownSlotFor(field.canonical()).value();
         }
         if (target instanceof StringValue path && joinsItsPathSegments(path)) {
             return joinedOntoPath(path, selector);
@@ -1646,16 +1594,6 @@ public final class Evaluator {
                         + " from " + target.datatype().literalSpelling());
     }
 
-    private static Context contextBehind(Value target) {
-        return switch (target) {
-            case ObjectValue object -> object.context();
-            case PortValue port -> port.context();
-            case ModuleValue module -> module.context();
-            case TaskValue task -> task.context();
-            default -> null;
-        };
-    }
-
     /**
      * A field of {@code system/ports}, or none.
      *
@@ -1710,63 +1648,12 @@ public final class Evaluator {
 
     private static final long NANOSECONDS_IN_A_SECOND = 1_000_000_000L;
 
-    private static void replaceInSeries(SeriesValue series, int at, Value value) {
-        switch (series) {
-            case BlockValue block -> block.storage().set(at, value);
-            case StringValue text -> text.storage().set(at,
-                    value instanceof CharacterValue character
-                            ? character.codepoint()
-                            : Molder.form(value).codePointAt(0));
-            case BinaryValue bytes -> bytes.storage().set(at, octetFrom(value));
-            case ImageValue image -> ImagePath.write(image, at, value);
-            case GobValue gob ->
-                    GobPath.pokeWhichInsertsRatherThanReplaces(gob, at, value);
-            case VectorValue vector -> vector.storage().set(at,
-                    VectorPath.storedFormOf(vector.kind(), value));
-        }
-    }
-
-    private static int octetFrom(Value value) {
-        if (!(value instanceof IntegerValue number)) {
-            return 0;
-        }
-        long wanted = number.magnitude();
-        if (wanted < 0) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    wanted + " is not a byte: a binary holds 0 to 255");
-        }
-        if (wanted > 255) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    wanted + " is not a byte: a binary holds 0 to 255");
-        }
-        return (int) wanted;
-    }
-
-    private static Value withOctetWritten(TupleValue tuple, int position, Value written) {
-        if (position < 1 || position > TupleValue.MAXIMUM_SEGMENTS) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, Integer.toString(position));
-        }
-        if (written instanceof NoneValue) {
-            int[] shortened = new int[position - 1];
-            for (int at = 1; at < position; at++) {
-                shortened[at - 1] = tuple.octetAt(at);
-            }
-            return TupleValue.of(shortened);
-        }
-        if (!(written instanceof IntegerValue) && !(written instanceof DecimalValue)) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, Molder.mold(written));
-        }
-        long amount = written instanceof IntegerValue whole
-                ? whole.magnitude()
-                : (long) ((DecimalValue) written).quantity();
-        int[] octets = tuple.octetsToTwelve();
-        octets[position - 1] = (int) Math.max(0, Math.min(255, amount));
-        int kept = position > tuple.shownCount() ? position : tuple.segmentCount();
-        return TupleValue.of(java.util.Arrays.copyOf(octets, kept));
-    }
-
     private record Selection(
-            Value value, List<String> refinements, List<String> mentioned) {
+            Slot slot, List<String> refinements, List<String> mentioned) {
+
+        Value value() {
+            return slot.value();
+        }
     }
 
     private static final class Frame {
