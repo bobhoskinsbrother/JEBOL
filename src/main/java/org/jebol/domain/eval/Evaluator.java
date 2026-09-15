@@ -1402,7 +1402,7 @@ public final class Evaluator {
             return new SeriesSlot(series, positionIn(series, position),
                     selectWith(target, selector));
         }
-        return new ComputedSlot(selectWith(target, selector));
+        return new ComputedSlot(selectWith(target, selector), selector);
     }
 
     private static boolean reachesIntoTheSeries(
@@ -1443,7 +1443,7 @@ public final class Evaluator {
             }
             return slot;
         }
-        return new ComputedSlot(segment);
+        return new ComputedSlot(segment, segment);
     }
 
     private Value selectorFor(Value segment, Context context) {

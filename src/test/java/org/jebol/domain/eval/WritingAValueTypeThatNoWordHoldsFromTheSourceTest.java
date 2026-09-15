@@ -66,6 +66,30 @@ class WritingAValueTypeThatNoWordHoldsFromTheSourceTest {
     }
 
     @Nested
+    @DisplayName("but a value that was computed rather than stored refuses the write")
+    class AComputedValue {
+
+        @Test
+        @DisplayName("as bad-field-set, naming the segment that computed it")
+        void refusesNamingTheSegment() {
+            assertThat(answerTo("""
+                    d: 1-Jan-2000/0:00
+                    raised: try [d/date/year: 2001]
+                    mold reduce [raised/id raised/arg1]"""))
+                    .isEqualTo("\"[bad-field-set date]\"");
+        }
+
+        @Test
+        @DisplayName("and leaves the date it was reached through alone")
+        void leavesTheDateAlone() {
+            assertThat(answerTo("""
+                    d: 1-Jan-2000/0:00
+                    try [d/date/year: 2001]
+                    d""")).isEqualTo("1-Jan-2000/0:00");
+        }
+    }
+
+    @Nested
     @DisplayName("and so is every other value that cannot be changed in place")
     class EveryOtherValueType {
 

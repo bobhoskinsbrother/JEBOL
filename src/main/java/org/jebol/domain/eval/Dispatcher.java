@@ -8,7 +8,7 @@ interface Dispatcher {
     Value readFrom(Value target, Value selector);
 
     default Slot placeWithin(Slot holder, Value selector) {
-        return new ComputedSlot(readFrom(holder.value(), selector));
+        return new ComputedSlot(readFrom(holder.value(), selector), selector);
     }
 
     default void writeTo(Slot place, Value selector, Value written) {
