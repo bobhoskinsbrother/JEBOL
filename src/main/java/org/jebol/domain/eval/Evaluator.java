@@ -24,10 +24,8 @@ import java.util.function.Predicate;
  */
 public final class Evaluator {
 
-    /** How deep nesting may go before an ordinary error is raised. */
     public static final int DEFAULT_MAXIMUM_DEPTH = 10_000;
 
-    /** How many steps between asking whether the script should stop. */
     public static final int DEFAULT_CHECK_EVERY = 1_000;
 
     private final Map<String, RefinedCallable> behaviours;
@@ -61,7 +59,6 @@ public final class Evaluator {
 
     private final Trace trace = new Trace();
 
-    /** The tracer, for TRACE to set the level on. */
     public Trace tracing() {
         return trace;
     }
@@ -108,12 +105,10 @@ public final class Evaluator {
         return interruption.reasonToStop();
     }
 
-    /** How many frames are open right now. */
     public int framesOpen() {
         return framesOpen;
     }
 
-    /** How many values this interpreter has walked. Only ever rises. */
     public long valuesWalked() {
         return valuesWalked;
     }
@@ -181,7 +176,6 @@ public final class Evaluator {
 
     private OutputPort alsoWritingTo;
 
-    /** Where print and prin send their text. */
     public OutputPort output() {
         if (alsoWritingTo == null) {
             return output;
@@ -204,12 +198,10 @@ public final class Evaluator {
         this.alsoWritingTo = second;
     }
 
-    /** Stops echoing. ECHO of none or false. */
     public void stopEchoing() {
         this.alsoWritingTo = null;
     }
 
-    /** How a script starts another program. Not at all, by default. */
     public ProcessPort processes() {
         return processes;
     }
@@ -236,67 +228,54 @@ public final class Evaluator {
         this.bundledModules = bundled;
     }
 
-    /** Gives the script a way to start another program. */
     public void useProcesses(ProcessPort port) {
         this.processes = port;
     }
 
-    /** Where a script reads a line from the operator. Nowhere, by default. */
     public ConsolePort console() {
         return console;
     }
 
-    /** Gives the script a console to read. */
     public void useConsole(ConsolePort port) {
         this.console = port;
     }
 
-    /** Where a script puts a window on a screen. Nowhere, by default. */
     public WindowPort windows() {
         return windows;
     }
 
-    /** Gives the script a screen to put a window on. */
     public void useWindows(WindowPort port) {
         this.windows = port;
     }
 
-    /** Where a script puts a gob tree. On no screen at all, by default. */
     public ScreenPort screen() {
         return screen;
     }
 
-    /** Gives the script a screen to draw a gob tree on. */
     public void useScreen(ScreenPort port) {
         this.screen = port;
     }
 
-    /** The names the host was started with. None, by default. */
     public EnvironmentPort environment() {
         return environment;
     }
 
-    /** Gives the script an environment to read. */
     public void useEnvironment(EnvironmentPort port) {
         this.environment = port;
     }
 
-    /** The image codec the host carries. None, by default. */
     public ImagePort images() {
         return images;
     }
 
-    /** Gives the script an image codec to reach. */
     public void useImages(ImagePort port) {
         this.images = port;
     }
 
-    /** Where a script's reading and writing goes. Nowhere, by default. */
     public FilePort files() {
         return files;
     }
 
-    /** Gives the script a filesystem to reach. */
     public void useFiles(FilePort port) {
         this.files = port;
     }
@@ -365,7 +344,6 @@ public final class Evaluator {
         return applyFunction(handler, padded);
     }
 
-    /** The context holding the natives, for the ones that evaluate blocks. */
     public Context systemContext() {
         return systemContext;
     }
