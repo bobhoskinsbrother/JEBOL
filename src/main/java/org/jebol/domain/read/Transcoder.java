@@ -666,20 +666,24 @@ public final class Transcoder {
         return readDatatype(word.spelling().substring(0, word.spelling().length() - 1));
     }
 
-    private static final java.util.Set<Datatype> HAVE_NO_MAKER = java.util.Set.of(
-            Datatype.INTEGER, Datatype.MONEY, Datatype.CHAR, Datatype.WORD,
-            Datatype.SET_WORD, Datatype.GET_WORD, Datatype.LIT_WORD,
-            Datatype.REFINEMENT, Datatype.ISSUE, Datatype.FRAME, Datatype.PORT,
-            Datatype.HANDLE, Datatype.LIBRARY, Datatype.UTYPE);
+    private static final java.util.Set<Datatype> HAVE_NO_MAKER =
+            Typeset.ANY_WORD.membersAnd(
+                    Datatype.INTEGER, Datatype.MONEY, Datatype.CHAR,
+                    Datatype.FRAME, Datatype.PORT, Datatype.HANDLE,
+                    Datatype.LIBRARY, Datatype.UTYPE);
 
     private static final java.util.Set<Datatype> READ_AS_TEXT_OR_BYTES =
-            java.util.Set.of(Datatype.STRING, Datatype.FILE, Datatype.URL,
-                    Datatype.EMAIL, Datatype.TAG, Datatype.REF, Datatype.BINARY);
+            everyStringAndTheBinary();
+
+    private static java.util.Set<Datatype> everyStringAndTheBinary() {
+        java.util.Set<Datatype> accepted =
+                java.util.EnumSet.copyOf(Typeset.ANY_STRING.members());
+        accepted.add(Datatype.BINARY);
+        return java.util.Set.copyOf(accepted);
+    }
 
     private static final java.util.Set<Datatype> READ_AS_A_BLOCK =
-            java.util.Set.of(Datatype.BLOCK, Datatype.PAREN, Datatype.PATH,
-                    Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
-                    Datatype.HASH);
+            Typeset.ANY_BLOCK.members();
 
     private Value textOrBytesStandingWhereItWasTold(
             Datatype datatype, List<Value> contents) {

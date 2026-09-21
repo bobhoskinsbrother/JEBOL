@@ -86,6 +86,20 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
                 Math.min(index - 1, storage.length()), storage.length());
     }
 
+    /**
+     * The set-words from this position on, in the order they are written.
+     *
+     * <p>What a loader walks to give a name a slot before the body that
+     * assigns it runs.
+     */
+    public List<WordValue> setWordsFromHere() {
+        return remaining().stream()
+                .filter(WordValue.class::isInstance)
+                .map(WordValue.class::cast)
+                .filter(word -> word.datatype() == Datatype.SET_WORD)
+                .toList();
+    }
+
     @Override
     public boolean sharesStorageWith(SeriesValue other) {
         return other instanceof BlockValue block && block.storage == storage;

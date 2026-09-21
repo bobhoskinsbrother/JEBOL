@@ -73,6 +73,20 @@ public enum Typeset {
         return members;
     }
 
+    /**
+     * This typeset's members and the datatypes named as well.
+     *
+     * <p>For a declaration that takes a whole family and a few besides, so
+     * that it is written as the family rather than as the family's members
+     * copied out. A datatype joining the family joins every such declaration
+     * with it.
+     */
+    public Set<Datatype> membersAnd(Datatype... alsoTaken) {
+        Set<Datatype> taken = EnumSet.copyOf(members);
+        taken.addAll(Set.of(alsoTaken));
+        return Set.copyOf(taken);
+    }
+
     /** The typeset with this name, if there is one. */
     public static Optional<Typeset> named(String spelling) {
         String wanted = spelling.toLowerCase(Locale.ROOT);

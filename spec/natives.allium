@@ -4557,11 +4557,26 @@ rule ReadingAnOversizedIntegerRaises {
 -- SET takes a word, a lit-word, a path, a block or an object, and the
 -- refusal is at the door: `set 1 1` is expect-arg, from the argument check,
 -- rather than a failure raised inside the native.
+--
+-- Two of the five words are the whole of the word family it takes. The
+-- declaration is `word<word! lit-word! any-path! block! object!>`, so a
+-- set-word and a get-word are refused as surely as an integer is:
+-- `set quote a: 1` is expect-arg, not an assignment. An issue and a
+-- refinement are refused the same way, and because the refusal is the
+-- argument check rather than anything inside SET, the error names the
+-- function and the parameter -- arg1 `set`, arg2 `word` -- and not the
+-- value it disliked.
+--
+-- All four are worth pinning because the natural reading of "a name" is
+-- the any-word typeset, and that is four datatypes too many. JEBOL read it
+-- that way: it assigned through a set-word and a get-word where R3 refuses,
+-- and it refused an issue and a refinement with an invented message in
+-- place of the declared parameter's name.
 rule SetTakesANameShapedArgument {
     when: EvaluateCall(set, target, value)
-    requires: not (is_word(target) or is_path(target)
-        or is_block(target) or is_object(target))
-    ensures: CallFailed(failure: expect_arg)
+    requires: not (is_plain_word(target) or is_lit_word(target)
+        or is_path(target) or is_block(target) or is_object(target))
+    ensures: CallFails(error: expect_arg, about: set)
 }
 
 -- PRIME? is trial division by six-and-one-either-side up to the square
@@ -7175,6 +7190,30 @@ rule TheTypeWordKeepsTheSpellingItWasGiven {
 -- it is given, so `collect-words/ignore [a: 1 b: 2] [a]` is [b]. It takes
 -- an object as readily as a block, which is how a caller asks what is in
 -- here that a context does not already know about.
+
+-- Resolved against a real R3: TRIM takes every series, and refuses the ones
+-- it has no arm for at the action rather than at the door.
+--
+-- Its declaration is `series<series! object! error! module!>`, and `series!`
+-- there is the whole typeset -- an image and a vector included. So
+-- `trim make image! [2x2]` passes the argument check and then raises
+-- cannot-use, naming TRIM and image!. It does not raise expect-arg, which is
+-- what a narrower declaration would have given.
+--
+-- The difference is visible to a script, because the two errors carry
+-- different ids and different arguments. It is worth pinning because the
+-- natural way to write the declaration is to list the types TRIM can
+-- actually do something with, and that list is not the declared one.
+--
+-- JEBOL wrote it the natural way and so answered expect-arg for both an
+-- image and a vector. The declaration had been copied out by hand into a
+-- list of fifteen datatypes, and once it is a hand-written list nothing
+-- compares it with the one the C declares.
+rule TrimTakesEverySeriesAndRefusesLater {
+    when: EvaluateCall(trim, subject)
+    requires: is_image(subject) or is_vector(subject)
+    ensures: CallFails(error: cannot_use, about: subject)
+}
 
 -- Resolved against a real R3: TRIM has five modes and they are not
 -- variations on each other. The plain form takes whitespace off both

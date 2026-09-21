@@ -468,11 +468,12 @@ public final class Evaluator {
                         code.storage().at(startedAt).datatype());
     }
 
-    private static final Set<Datatype> WORKS_SOMETHING_OUT = EnumSet.of(
-            Datatype.WORD, Datatype.SET_WORD, Datatype.GET_WORD, Datatype.LIT_WORD,
-            Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
-            Datatype.PAREN, Datatype.FUNCTION, Datatype.CLOSURE, Datatype.NATIVE,
-            Datatype.ACTION, Datatype.OP, Datatype.COMMAND);
+    private static final Set<Datatype> WORKS_SOMETHING_OUT =
+            Typeset.ANY_PATH.membersAnd(
+                    Datatype.WORD, Datatype.SET_WORD, Datatype.GET_WORD,
+                    Datatype.LIT_WORD, Datatype.PAREN,
+                    Datatype.FUNCTION, Datatype.CLOSURE, Datatype.NATIVE,
+                    Datatype.ACTION, Datatype.OP, Datatype.COMMAND);
 
     /**
      * Evaluates expressions in order until one satisfies {@code stopsHere},
@@ -1427,12 +1428,10 @@ public final class Evaluator {
     }
 
     private static final java.util.Set<Datatype> HAVE_NO_PARTS_TO_SELECT =
-            java.util.Set.of(
+            Typeset.ANY_WORD.membersAnd(
                     Datatype.UNSET, Datatype.NONE, Datatype.LOGIC,
                     Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
-                    Datatype.MONEY, Datatype.DATATYPE, Datatype.TYPESET,
-                    Datatype.WORD, Datatype.SET_WORD, Datatype.GET_WORD,
-                    Datatype.LIT_WORD, Datatype.REFINEMENT, Datatype.ISSUE);
+                    Datatype.MONEY, Datatype.DATATYPE, Datatype.TYPESET);
 
     private Slot selectFirst(Value segment, Context context) {
         if (segment instanceof WordValue word) {

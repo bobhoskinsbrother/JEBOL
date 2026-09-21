@@ -5,7 +5,6 @@ import org.jebol.domain.date.part.DatePart;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.parse.Parser;
-import org.jebol.domain.parse.StringParser;
 import org.jebol.domain.read.SyntaxFailure;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
@@ -657,8 +656,7 @@ public final class Natives {
     }
 
     private static List<Parameter> takesOnlyNumbers(String... names) {
-        Set<Datatype> numbers = of(
-                Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT);
+        Set<Datatype> numbers = Typeset.NUMBER.members();
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
             parameters.add(Parameter.required(name, numbers));
@@ -676,8 +674,7 @@ public final class Natives {
     }
 
     private static List<Parameter> takesNumbers(String... names) {
-        Set<Datatype> numbers = of(
-                Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
+        Set<Datatype> numbers = Typeset.NUMBER.membersAnd(
                 Datatype.MONEY, Datatype.PAIR, Datatype.TUPLE,
                 Datatype.TIME, Datatype.DATE, Datatype.CHAR, Datatype.VECTOR);
         List<Parameter> parameters = new ArrayList<>();
@@ -1093,12 +1090,10 @@ public final class Natives {
         return true;
     }
 
-    private static final Set<Datatype> MEASURABLE = of(
-            Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
+    private static final Set<Datatype> MEASURABLE = Typeset.NUMBER.membersAnd(
             Datatype.MONEY, Datatype.TIME, Datatype.PAIR);
 
-    private static final Set<Datatype> DIVISIBLE = of(
-            Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
+    private static final Set<Datatype> DIVISIBLE = Typeset.NUMBER.membersAnd(
             Datatype.MONEY, Datatype.CHAR, Datatype.TIME);
 
     private static double inRadians(Value angle, Set<String> refinements) {
@@ -2152,12 +2147,10 @@ public final class Natives {
                         evaluator, context, Optional.empty(), (BlockValue) arguments.get(0)));
 
         define("in", List.of(
-                        Parameter.required("object", of(Datatype.OBJECT, Datatype.ERROR,
-                                Datatype.PORT, Datatype.MODULE, Datatype.TASK,
-                                Datatype.BLOCK)),
-                        Parameter.required("word", of(Datatype.WORD, Datatype.LIT_WORD,
-                                Datatype.GET_WORD, Datatype.SET_WORD, Datatype.REFINEMENT,
-                                Datatype.ISSUE, Datatype.BLOCK, Datatype.PAREN))),
+                        Parameter.required("object",
+                                Typeset.ANY_OBJECT.membersAnd(Datatype.BLOCK)),
+                        Parameter.required("word", Typeset.ANY_WORD.membersAnd(
+                                Datatype.BLOCK, Datatype.PAREN))),
                 (arguments, evaluator, context) -> {
                     if (arguments.getFirst() instanceof BlockValue searched
                             && searched.datatype() != Datatype.PATH) {
@@ -2459,10 +2452,7 @@ public final class Natives {
     }
 
     private static List<String> declaredFieldsIn(BlockValue body) {
-        return body.remaining().stream()
-                .filter(WordValue.class::isInstance)
-                .map(WordValue.class::cast)
-                .filter(word -> word.datatype() == Datatype.SET_WORD)
+        return body.setWordsFromHere().stream()
                 .map(WordValue::spelling)
                 .toList();
     }
@@ -3440,8 +3430,7 @@ public final class Natives {
         defineSet();
     }
 
-    private static final Set<Datatype> PATH_SHAPED = of(
-            Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH);
+    private static final Set<Datatype> PATH_SHAPED = Typeset.ANY_PATH.members();
 
     private static Value writtenThroughPath(BlockValue path, Value supplied) {
         List<Value> segments = path.remaining();
@@ -3470,7 +3459,7 @@ public final class Natives {
 
     private void defineSet() {
         define("set", List.of(
-                        Parameter.required("target", NAME_SHAPED),
+                        Parameter.required("word", WHAT_SET_TAKES),
                         Parameter.required("value", ANYTHING)),
                 of("any", "only", "some"),
                 (arguments, evaluator, context, refinements) -> {
@@ -3619,15 +3608,7 @@ public final class Natives {
                             .collect(Collectors.joining(separator)), kind);
                 });
 
-        define("poke", List.of(Parameter.required("series",
-                                of(Datatype.BLOCK, Datatype.PAREN, Datatype.HASH,
-                                        Datatype.PATH, Datatype.SET_PATH,
-                                        Datatype.GET_PATH, Datatype.LIT_PATH,
-                                        Datatype.STRING, Datatype.FILE, Datatype.URL,
-                                        Datatype.TAG, Datatype.EMAIL, Datatype.REF,
-                                        Datatype.BINARY, Datatype.MAP, Datatype.BITSET,
-                                        Datatype.PORT, Datatype.GOB, Datatype.IMAGE,
-                                        Datatype.VECTOR)),
+        define("poke", List.of(Parameter.required("series", WHAT_POKE_TAKES),
                         Parameter.required("index"),
                         Parameter.required("value", ANYTHING)),
                 (arguments, evaluator, context) -> {
@@ -4315,16 +4296,30 @@ public final class Natives {
         return forward < text.length() && text.charAt(forward) == '[';
     }
 
-    private static final Set<Datatype> NAME_SHAPED = of(
-            Datatype.WORD, Datatype.LIT_WORD, Datatype.SET_WORD, Datatype.GET_WORD,
-            Datatype.ISSUE, Datatype.REFINEMENT,
-            Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
-            Datatype.BLOCK, Datatype.OBJECT);
+    private static final Set<Datatype> WHAT_SET_TAKES = whatSetTakes();
+
+    private static Set<Datatype> whatSetTakes() {
+        Set<Datatype> accepted = EnumSet.of(
+                Datatype.WORD, Datatype.LIT_WORD, Datatype.BLOCK, Datatype.OBJECT);
+        accepted.addAll(Typeset.ANY_PATH.members());
+        return Set.copyOf(accepted);
+    }
 
     private static void refuseUnassignableName(Value name, EvaluationFailure failure) {
         if (name.datatype() == Datatype.ISSUE || name.datatype() == Datatype.REFINEMENT) {
             throw Raised.of(failure,
                     "set cannot assign to a " + name.datatype().literalSpelling());
+        }
+    }
+
+    private static final Set<Datatype> THE_SERIES_TRIM_HAS_NO_ARM_FOR =
+            EnumSet.of(Datatype.IMAGE, Datatype.VECTOR);
+
+    private static void refuseTheSeriesTrimHasNoArmFor(Value series) {
+        if (THE_SERIES_TRIM_HAS_NO_ARM_FOR.contains(series.datatype())) {
+            throw Raised.of(EvaluationFailure.CANNOT_USE,
+                    WordValue.of("trim").as(Datatype.SET_WORD),
+                    DatatypeValue.of(series.datatype()));
         }
     }
 
@@ -4657,7 +4652,7 @@ public final class Natives {
                 (arguments, evaluator, context) -> arguments.get(0) instanceof SeriesValue series
                         ? LogicValue.of(series.atHead())
                         : raiseCannotUse(arguments.get(0), "head?"));
-        define("tail?", List.of(Parameter.required("series", SERIES_LIKE)),
+        define("tail?", List.of(Parameter.required("series", WHAT_TAIL_TAKES)),
                 (arguments, evaluator, context) -> switch (arguments.get(0)) {
                     case NoneValue ignored -> LogicValue.yes();
                     case MapValue map -> LogicValue.of(map.pairCount() == 0);
@@ -4776,9 +4771,8 @@ public final class Natives {
         define("skip", List.of(
                         Parameter.required("series"),
                         Parameter.required("offset",
-                                of(Datatype.INTEGER, Datatype.DECIMAL,
-                                        Datatype.PERCENT, Datatype.LOGIC,
-                                        Datatype.PAIR))),
+                                Typeset.NUMBER.membersAnd(
+                                        Datatype.LOGIC, Datatype.PAIR))),
                 (arguments, evaluator, context) -> {
                     if (arguments.getFirst() instanceof PortValue port
                             && isAFilePort(port)) {
@@ -4798,9 +4792,8 @@ public final class Natives {
         define("at", List.of(
                         Parameter.required("series"),
                         Parameter.required("index",
-                                of(Datatype.INTEGER, Datatype.DECIMAL,
-                                        Datatype.PERCENT, Datatype.LOGIC,
-                                        Datatype.PAIR))),
+                                Typeset.NUMBER.membersAnd(
+                                        Datatype.LOGIC, Datatype.PAIR))),
                 (arguments, evaluator, context) -> {
                     if (arguments.getFirst() instanceof PortValue port
                             && isAFilePort(port)) {
@@ -6977,21 +6970,33 @@ public final class Natives {
         return copyOf(accepted);
     }
 
-    private static final Set<Datatype> SERIES_LIKE = EnumSet.of(
-            Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL,
-            Datatype.TAG, Datatype.REF, Datatype.BINARY,
-            Datatype.BLOCK, Datatype.PAREN, Datatype.PATH, Datatype.SET_PATH,
-            Datatype.GET_PATH, Datatype.LIT_PATH, Datatype.HASH,
-            Datatype.PORT, Datatype.BITSET,
-            Datatype.TYPESET, Datatype.MAP, Datatype.GOB, Datatype.IMAGE,
-            Datatype.VECTOR);
+    private static Set<Datatype> alsoAccepting(
+            Set<Datatype> family, Datatype... alsoTaken) {
 
-    private static final Set<Datatype> PARSEABLE = EnumSet.of(
-            Datatype.BINARY, Datatype.STRING, Datatype.FILE, Datatype.EMAIL,
-            Datatype.REF, Datatype.URL, Datatype.TAG, Datatype.IMAGE,
-            Datatype.VECTOR, Datatype.BLOCK, Datatype.PAREN, Datatype.PATH,
-            Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
-            Datatype.HASH);
+        Set<Datatype> accepted = EnumSet.copyOf(family);
+        accepted.addAll(List.of(alsoTaken));
+        return Set.copyOf(accepted);
+    }
+
+    private static Set<Datatype> everySeriesAnd(Datatype... alsoTaken) {
+        return alsoAccepting(Typeset.SERIES.members(), alsoTaken);
+    }
+
+    private static final Set<Datatype> THE_BLOCK_AND_STRING_FAMILIES =
+            alsoAccepting(Typeset.ANY_BLOCK.members(),
+                    Typeset.ANY_STRING.members().toArray(Datatype[]::new));
+
+    private static final Set<Datatype> WHAT_TAIL_TAKES = everySeriesAnd(
+            Datatype.GOB, Datatype.PORT, Datatype.BITSET,
+            Datatype.TYPESET, Datatype.MAP);
+
+    private static final Set<Datatype> WHAT_POKE_TAKES = everySeriesAnd(
+            Datatype.PORT, Datatype.MAP, Datatype.GOB, Datatype.BITSET);
+
+    private static final Set<Datatype> WHAT_TRIM_TAKES = everySeriesAnd(
+            Datatype.OBJECT, Datatype.ERROR, Datatype.MODULE);
+
+    private static final Set<Datatype> WHAT_PARSE_TAKES = Typeset.SERIES.members();
 
     private void defineSetOperation(String name, Combining.Sets how) {
         define(name, List.of(
@@ -7046,12 +7051,9 @@ public final class Natives {
         return new BlockValue(built, 1, source.datatype());
     }
 
-    private static final Set<Datatype> DEEP_COPIED = EnumSet.of(
-            Datatype.BLOCK, Datatype.PAREN, Datatype.PATH, Datatype.SET_PATH,
-            Datatype.GET_PATH, Datatype.LIT_PATH, Datatype.HASH,
-            Datatype.STRING, Datatype.FILE, Datatype.URL, Datatype.EMAIL,
-            Datatype.TAG, Datatype.REF, Datatype.BINARY, Datatype.BITSET,
-            Datatype.MAP, Datatype.FUNCTION);
+    private static final Set<Datatype> DEEP_COPIED = alsoAccepting(
+            THE_BLOCK_AND_STRING_FAMILIES,
+            Datatype.BINARY, Datatype.BITSET, Datatype.MAP, Datatype.FUNCTION);
 
     private static Set<Datatype> whichDatatypesToCopy(
             List<Value> arguments, Set<String> refinements) {
@@ -10047,13 +10049,7 @@ public final class Natives {
         defineCaseChange("uppercase", text -> text.toUpperCase(Locale.ROOT));
         defineCaseChange("lowercase", text -> text.toLowerCase(Locale.ROOT));
         define("trim", List.of(
-                        Parameter.required("text", of(
-                                Datatype.STRING, Datatype.FILE, Datatype.URL,
-                                Datatype.EMAIL, Datatype.TAG, Datatype.REF,
-                                Datatype.BINARY, Datatype.BLOCK, Datatype.PAREN,
-                                Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH,
-                                Datatype.LIT_PATH, Datatype.HASH,
-                                Datatype.OBJECT, Datatype.ERROR, Datatype.MODULE)),
+                        Parameter.required("series", WHAT_TRIM_TAKES),
                         Parameter.belongingTo("with", "characters", of())),
                 of("head", "tail", "auto", "lines", "all", "with"),
                 (arguments, evaluator, context, refinements) -> {
@@ -10066,6 +10062,7 @@ public final class Natives {
                         }
                         return trimmedObject(arguments.getFirst());
                     }
+                    refuseTheSeriesTrimHasNoArmFor(arguments.getFirst());
                     refuseContradictoryTrim(arguments.getFirst(), refinements);
                     if (arguments.getFirst() instanceof BlockValue block) {
                         return trimmedBlock(block, refinements);
@@ -12181,9 +12178,9 @@ public final class Natives {
                                 of(Datatype.FILE, Datatype.PORT, Datatype.URL,
                                         Datatype.BLOCK, Datatype.WORD)),
                         Parameter.belongingTo("part", "length",
-                                of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
+                                Typeset.NUMBER.members()),
                         Parameter.belongingTo("seek", "index",
-                                of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT))),
+                                Typeset.NUMBER.members())),
                 of("part", "seek", "string", "binary", "lines", "all"),
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof PortValue port) {
@@ -12214,9 +12211,9 @@ public final class Natives {
                                         Datatype.BLOCK, Datatype.WORD)),
                         Parameter.required("data"),
                         Parameter.belongingTo("part", "length",
-                                of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
+                                Typeset.NUMBER.members()),
                         Parameter.belongingTo("seek", "index",
-                                of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
+                                Typeset.NUMBER.members()),
                         Parameter.belongingTo("allow", "access", of(Datatype.BLOCK))),
                 of("part", "seek", "append", "allow", "lines", "binary", "all"),
                 (arguments, evaluator, context, refinements) -> {
@@ -12263,9 +12260,7 @@ public final class Natives {
 
         define("call", List.of(
                         Parameter.required("command",
-                                of(Datatype.STRING, Datatype.BLOCK, Datatype.FILE,
-                                        Datatype.EMAIL, Datatype.REF, Datatype.TAG,
-                                        Datatype.URL)),
+                                Typeset.ANY_STRING.membersAnd(Datatype.BLOCK)),
                         Parameter.belongingTo("input", "in",
                                 of(Datatype.STRING, Datatype.BINARY,
                                         Datatype.FILE, Datatype.NONE)),
@@ -13436,8 +13431,7 @@ public final class Natives {
     }
 
     private static final Set<Datatype> PART_LIMIT = java.util.stream.Stream.concat(
-            java.util.stream.Stream.of(Datatype.INTEGER, Datatype.DECIMAL,
-                    Datatype.PERCENT, Datatype.PAIR),
+            Typeset.NUMBER.membersAnd(Datatype.PAIR).stream(),
             Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
@@ -13455,8 +13449,8 @@ public final class Natives {
             PART_LIMIT.stream(), java.util.stream.Stream.of(Datatype.CHAR))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
-    private static final Set<Datatype> DUP_COUNT = of(
-            Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT, Datatype.PAIR);
+    private static final Set<Datatype> DUP_COUNT =
+            Typeset.NUMBER.membersAnd(Datatype.PAIR);
 
     private static final Set<String> CONSOLE_MODES = of("echo", "line", "error");
 
@@ -14658,17 +14652,13 @@ public final class Natives {
     }
 
     private void defineParse() {
-        define("parse", List.of(Parameter.required("input", PARSEABLE),
+        define("parse", List.of(Parameter.required("input", WHAT_PARSE_TAKES),
                         Parameter.required("rule")),
                 of("case"),
                 (arguments, evaluator, context, refinements) -> switch (arguments.get(1)) {
-                    case BlockValue rule -> arguments.get(0) instanceof StringValue
-                            || arguments.get(0) instanceof BinaryValue
-                            ? StringParser.answer(evaluator, context,
-                                    (SeriesValue) arguments.get(0), rule,
-                                    refinements.contains("case"))
-                            : Parser.answer(evaluator, context, arguments.get(0), rule,
-                                    refinements.contains("case"));
+                    case BlockValue rule -> Parser.over(evaluator, context,
+                            arguments.get(0), refinements.contains("case"))
+                            .answerFor(rule);
                     default -> {
                         throw Raised.of(EvaluationFailure.EXPECT_ARG,
                                 "parse needs a rule block, not "
@@ -14681,8 +14671,7 @@ public final class Natives {
                         arguments.get(0), arguments.get(1)));
     }
 
-    private static final Set<Datatype> CLAMPABLE = of(
-            Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
+    private static final Set<Datatype> CLAMPABLE = Typeset.NUMBER.membersAnd(
             Datatype.TUPLE, Datatype.PAIR, Datatype.MONEY);
 
     private static Value heldInsideTheRange(Value value, Value lowest, Value highest) {

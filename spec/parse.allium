@@ -24,6 +24,7 @@ use "./values.allium" as values
 -- these is looked up, and what it holds is used as a rule.
 enum ParseKeyword {
     any             -- the rule that follows, zero or more times
+    | while         -- the same, but a round that stands still does not stop it
     | some          -- the rule that follows, one or more times
     | opt           -- the rule that follows, zero or one time
     | to            -- advance to just before the rule matches
@@ -31,15 +32,19 @@ enum ParseKeyword {
     | end           -- matches only at the tail
     | skip          -- consume one item without looking at it
     | into          -- descend into the block at this position
+    | quote         -- match the next item as itself, keyword or not
     | set           -- put what the next rule matched into a word
     | copy          -- put everything the next rule matched into a word
     | collect       -- gather what the rules below KEEP, and answer that
     | keep          -- add what the next rule matched to the collection
     | ahead         -- match the next rule without consuming it
-    | not           -- succeed where the next rule fails, consuming nothing
-    | reject        -- fail the current block at once, trying no alternative
+    | not           -- flag the rule that follows: see NotFlagsTheRuleAfterIt
+    | reject        -- end the current block as a failure, at once
+    | break         -- end the current block as a match, at once
+    | accept        -- BREAK under its other name, and the same keyword
     | return        -- end the parse at once and answer a value
-    | then          -- match nothing and succeed, letting the next rule run
+    | then          -- commit: see ThenGivesUpTheRemainingAlternatives
+    | if            -- run the paren after it, and fail when it is false
     | remove        -- take what the next rule matched out of the input
     | change        -- replace what the next rule matched with a value
     | insert        -- put a value in at the position, consuming nothing
@@ -128,6 +133,18 @@ entity ParseAttempt {
         -- asked why `parse "ab" [2 skip]` was false while
         -- `parse [a b] [2 skip]` was true.
         --
+        -- It then happened again in the other direction, and worse,
+        -- because by then each walk had its own copy of the vocabulary
+        -- and its own copy of how many rule slots each keyword takes.
+        -- Four lists, none of them agreeing: NOT, THEN, REJECT and BREAK
+        -- reached only the string walk, QUOTE and INTO only the block
+        -- walk, and each absence raised parse_rule rather than answering.
+        --
+        -- So ParseKeyword above is the one list, and every walk decides
+        -- what a keyword means by asking it rather than by holding its
+        -- own table. A keyword added here that some walk does not answer
+        -- for is a build failure, not a parse that raises at run time.
+        --
         -- What a KEEP puts in the collection follows the input: one item
         -- of a block is that item, one character of a string is a
         -- character, and a run of characters is a slice keeping the
@@ -191,6 +208,38 @@ rule RepeatCountNeedsARuleToRepeat {
             attempt.failure = parse_end
         else:
             attempt.status = null
+}
+
+-- A keyword with nothing after it is the other case, and it is not the same
+-- one. A count that has run out of rule raises parse_end, as above. A keyword
+-- may raise or may simply not match, and which it does is a fact about the
+-- keyword rather than anything derivable, so ParseKeyword carries it.
+--
+-- Missing its own word or literal raises. TO and THRU want a target, INTO a
+-- block, QUOTE an item, COLLECT and KEEP a target, IF a paren and INSERT a
+-- value, and a bare one of those is parse_end. SET and COPY want a variable,
+-- and a bare one of those is parse_variable.
+--
+-- Missing only the rule it would have applied does not raise. `parse [a]
+-- [some]` is false, and so are bare ANY, WHILE, OPT, AND, AHEAD, NOT, THEN,
+-- RETURN, REMOVE, CHANGE, REJECT, BREAK, ACCEPT, CASE, NO-CASE and FAIL. SET
+-- and COPY join them once the variable is there: `parse [a] [set x]` is
+-- false, not an error.
+--
+-- CHANGE is the one that shows this is not derivable from the shape. It
+-- takes a word's worth of argument exactly as SET does, and bare it is false
+-- where bare SET raises.
+--
+-- JEBOL had nine of these wrong over a block, raising parse_end where R3
+-- answers false. Over a string it was worse: `parse "a" [any]` reached a
+-- list index that was not there and threw IndexOutOfBoundsException out of
+-- the interpreter, which no script is allowed to be able to do.
+rule WhetherABareKeywordRaisesIsAFactAboutTheKeyword {
+    when: attempt: ParseAttempt.keyword_read
+    requires: attempt.rule_exhausted
+
+    ensures:
+        attempt.status != raised or attempt.failure != null
 }
 
 -- === How many times ========================================
@@ -665,26 +714,85 @@ rule LookaheadPutsThePositionBack {
 -- comes next, not a step over it, so a rule after a NOT starts from the same
 -- position the NOT looked at -- which is why `not "x" "abc"` matches "abc"
 -- from the head rather than from one past it.
+--
+-- NOT flags the whole rule after it, counts included. `parse [a] [not 2 'a 'a]`
+-- is true: the flagged rule is `2 'a`, which wants two and finds one, so the
+-- NOT succeeds and the following `'a` matches the one that is there.
+rule NotFlagsTheRuleAfterIt {
+    when: attempt: ParseAttempt.not_read
+    requires: attempt.status = null
+
+    ensures:
+        attempt.status = null
+}
+
+-- === Ending a block early =================================
+
+-- BREAK ends the block it is written in at once and counts it a match,
+-- leaving the position where BREAK found it. ACCEPT is the same keyword
+-- under another name; the C gives them one case.
+--
+-- Where the block was being repeated, the repeat stops too, and it stops
+-- as a success however few rounds have run. `parse [a a] [some ['a break] 'a]`
+-- is true: the first round matches one `a` and breaks, SOME ends there with
+-- one round rather than demanding more, and the trailing `'a` takes the
+-- second. `parse [a a] [some ['a break]]` is false by contrast -- not because
+-- the repeat failed but because it stopped one item short of the tail, and a
+-- parse with input left over is a failure.
+--
+-- A bare `parse [] [break]` is true, and so is `parse "" [break]`.
+rule BreakEndsTheBlockAsAMatch {
+    when: attempt: ParseAttempt.break_read
+    requires: attempt.status = null
+
+    ensures:
+        attempt.status = matched
+}
+
+-- REJECT is BREAK's opposite: it ends the block it is written in at once
+-- and counts it a failure. What matters is which block. The alternatives
+-- inside that block are given up -- `[['a reject | 'b] | 'a]` never tries
+-- the `'b` -- but the block is only one rule to whatever contains it, so
+-- an alternative outside it is still tried, and that parse is true on `[a]`
+-- because the outer `| 'a` runs.
+rule RejectEndsTheBlockAsAFailure {
+    when: attempt: ParseAttempt.reject_read
+    requires: attempt.status = null
+
+    ensures:
+        attempt.status = unmatched
+}
+
+-- THEN is a commit, and the description that reads best is the one the C
+-- supports: it does nothing at all unless the rule after it fails, and on
+-- that failure it gives up the alternatives remaining in the current block
+-- rather than trying them.
+--
+-- `parse [a] ['a then 'x | 'a]` is false where `parse [a] ['a 'x | 'a]` is
+-- true. The `'x` fails in both; without THEN the walk falls back to the
+-- second alternative and matches, and with THEN it does not look.
+--
+-- Like REJECT it commits one block and no more, so
+-- `parse [a] [['a then 'x | 'a] | 'a]` is true: the inner block commits and
+-- fails, and the outer alternative still runs.
+--
+-- Read as "match nothing and succeed" instead, THEN becomes a no-op that
+-- answers true for the first parse above. That is what JEBOL's string walk
+-- did, and nothing caught it because the block walk had no THEN at all to
+-- disagree with.
+rule ThenGivesUpTheRemainingAlternatives {
+    when: attempt: ParseAttempt.then_read
+    requires: attempt.status = null
+
+    ensures:
+        attempt.status = null
+}
 
 -- === One dialect, whichever series is being walked ========
 
--- Every keyword above means the same thing over a string as over a
--- block. What changes is only what a rule matches against: a string rule
--- matches a run of characters and a block rule matches one item.
--- Everything else -- the counts, SET, COPY, COLLECT, KEEP, the
--- alternatives, the backtracking -- is the same dialect.
---
--- This is worth stating because it is the kind of thing an
--- implementation quietly gets wrong. Matching a string and matching a
--- block want different code, and once they are two walks nothing forces
--- the second to keep up with the first. JEBOL's string walk had no
--- counts, no SET, no COPY, no COLLECT and no KEEP, and no test asked why
--- `parse "ab" [2 skip]` was false when `parse [a b] [2 skip]` was true.
---
--- What a KEEP puts in the collection follows the input: one item of a
--- block is that item, one character of a string is a character, and a
--- run of characters is a slice that keeps the input's own datatype. So
--- collecting from a file gives file pieces, not string pieces.
+-- Stated once, on ParseAttempt, as the guarantee
+-- TheDialectDoesNotDependOnTheInputType. It said the same thing twice
+-- here, which is the habit the guarantee itself is about.
 -- === Collecting while matching ============================
 
 -- COLLECT changes what PARSE answers. Ordinarily a parse is a question

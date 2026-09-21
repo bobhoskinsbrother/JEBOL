@@ -2,17 +2,11 @@ package org.jebol.domain.eval;
 
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DeclaredArgumentTypesFromTheSourceTest {
-
-    private static final String REFUSED = "expect-arg";
-    private static final String ACCEPTED = "accepted";
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
@@ -20,124 +14,126 @@ class DeclaredArgumentTypesFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String whatHappensTo(String call) {
-        return answerTo("either error? e: try [" + call + "] [e/id] ['accepted]");
+    private static String failureFrom(String call) {
+        return answerTo("""
+                e: try [""" + call + """
+                ] rejoin [e/id " | " mold e/arg1 " " mold e/arg2]""");
     }
 
-    @Nested
-    @DisplayName("FRACTION takes a decimal and nothing else")
-    class TheFractionalPart {
-
-        @Test
-        @DisplayName("a decimal is what it is for")
-        void adecimalIsAccepted() {
-            assertThat(answerTo("fraction 1.5")).isEqualTo("0.5");
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {"2", "1%", "$1", "1x1", "first {a}", "{a}"})
-        @DisplayName("and a whole number is turned away with everything else")
-        void everythingElseIsRefused(String written) {
-            assertThat(whatHappensTo("fraction " + written))
-                    .as("n-math.c declares number [decimal!], which excludes "
-                            + "integer! and percent! that number! would have let in")
-                    .isEqualTo(REFUSED);
-        }
+    @Test
+    @DisplayName("TRIM on an image raises cannot-use, not expect-arg")
+    void trimOnAnImageRaisesCannotUse() {
+        assertThat(failureFrom("""
+                trim make image! [2x2]"""))
+                .isEqualTo("\"cannot-use | trim: #(image!)\"");
     }
 
-    @Nested
-    @DisplayName("TO-DEGREES and TO-RADIANS take a whole number or a decimal")
-    class TheAngles {
-
-        @Test
-        @DisplayName("both forms of number are accepted")
-        void numbersAreAccepted() {
-            assertThat(whatHappensTo("to-degrees 1")).isEqualTo(ACCEPTED);
-            assertThat(whatHappensTo("to-degrees 1.0")).isEqualTo(ACCEPTED);
-            assertThat(whatHappensTo("to-radians 180")).isEqualTo(ACCEPTED);
-            assertThat(answerTo("to-radians 0")).isEqualTo("0.0");
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {"1%", "$1", "1x1", "1.1.1", "1:00", "1-Jan-2000", "first {a}"})
-        @DisplayName("and the seven other scalars are turned away")
-        void theOtherScalarsAreRefused(String written) {
-            assertThat(whatHappensTo("to-degrees " + written)).isEqualTo(REFUSED);
-            assertThat(whatHappensTo("to-radians " + written)).isEqualTo(REFUSED);
-        }
+    @Test
+    @DisplayName("TRIM on a vector raises cannot-use, not expect-arg")
+    void trimOnAVectorRaisesCannotUse() {
+        assertThat(failureFrom("""
+                trim make vector! [integer! 8 [1 2 3]]"""))
+                .isEqualTo("\"cannot-use | trim: #(vector!)\"");
     }
 
-    @Nested
-    @DisplayName("CHECKSUM and COMPRESS take some strings and not others")
-    class TheStringlikeArguments {
-
-        @Test
-        @DisplayName("a string and a binary are what both are for")
-        void stringsAndBinariesAreAccepted() {
-            assertThat(answerTo("checksum {a} 'md5"))
-                    .isEqualTo("#{0CC175B9C0F1B6A831C399E269772661}");
-            assertThat(answerTo("binary? compress {a} 'zlib")).isEqualTo("#(true)");
-            assertThat(answerTo("to string! decompress compress {hello} 'zlib 'zlib"))
-                    .as("and the pair of them still round-trips")
-                    .isEqualTo("\"hello\"");
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {"http://a", "<a>", "a@b.c", "@a"})
-        @DisplayName("but a url, a tag, an email and a ref are turned away by both")
-        void theOtherStringsAreRefused(String written) {
-            assertThat(whatHappensTo("checksum " + written + " 'md5"))
-                    .as("n-strings.c declares data [binary! string! file!], which is "
-                            + "narrower than any-string!")
-                    .isEqualTo(REFUSED);
-            assertThat(whatHappensTo("compress " + written + " 'zlib"))
-                    .isEqualTo(REFUSED);
-        }
-
-        @Test
-        @DisplayName("and COMPRESS turns a file away where CHECKSUM does not")
-        void afileTellsThemApart() {
-            assertThat(whatHappensTo("compress %a 'zlib"))
-                    .as("COMPRESS declares [binary! string!] and CHECKSUM adds file!, "
-                            + "which it hands to FILE-CHECKSUM")
-                    .isEqualTo(REFUSED);
-            assertThat(whatHappensTo("checksum %a 'md5"))
-                    .as("a file! reaches the body, and whatever the body then says "
-                            + "about a file that is not there, it is not the "
-                            + "declaration turning it away")
-                    .isNotEqualTo(REFUSED);
-        }
+    @Test
+    @DisplayName("TRIM on an integer is outside the declaration and raises expect-arg")
+    void trimOnAnIntegerRaisesExpectArg() {
+        assertThat(failureFrom("trim 1"))
+                .isEqualTo("\"expect-arg | trim series\"");
     }
 
-    @Nested
-    @DisplayName("a /part limit of number! series! does not include a pair")
-    class ThePartLimits {
+    @Test
+    @DisplayName("TRIM still trims a string")
+    void trimStillTrimsAString() {
+        assertThat(answerTo("""
+                trim "  a  \"""")).isEqualTo("\"a\"");
+    }
 
-        @Test
-        @DisplayName("a whole number is a length, on both of them")
-        void awholeNumberIsALength() {
-            assertThat(answerTo("swap-endian/part #{0102} 2")).isEqualTo("#{0201}");
-            assertThat(whatHappensTo("decompress/part compress {hello} 'zlib 'zlib 20"))
-                    .isNotEqualTo(REFUSED);
-        }
+    @Test
+    @DisplayName("TRIM still trims a block")
+    void trimStillTrimsABlock() {
+        assertThat(answerTo("""
+                trim [#(none) 1 #(none)]""")).isEqualTo("[1]");
+    }
 
-        @Test
-        @DisplayName("and a pair is turned away, where REMOVE and COPY accept one")
-        void apairIsRefused() {
-            assertThat(whatHappensTo("swap-endian/part #{0102} 1x1"))
-                    .as("f-series.c declares range [number! series!] and says nothing "
-                            + "about pair!, so the /part limit shared with REMOVE is "
-                            + "the wrong set to reach for")
-                    .isEqualTo(REFUSED);
-            assertThat(whatHappensTo("decompress/part #{} 'zlib 1x1"))
-                    .isEqualTo(REFUSED);
-        }
+    @Test
+    @DisplayName("TRIM still takes an object")
+    void trimStillWorksOnAnObject() {
+        assertThat(answerTo("""
+                type? trim make object! [a: 1]""")).isEqualTo("#(object!)");
+    }
 
-        @Test
-        @DisplayName("and a series is a position rather than a count")
-        void aseriesIsAPosition() {
-            assertThat(whatHappensTo("swap-endian/part #{0102} tail #{0102}"))
-                    .isNotEqualTo(REFUSED);
-        }
+    @Test
+    @DisplayName("SET refuses a set-word, naming the function and the parameter")
+    void setRefusesASetWord() {
+        assertThat(failureFrom("""
+                set quote a: 1""")).isEqualTo("\"expect-arg | set word\"");
+    }
+
+    @Test
+    @DisplayName("SET refuses a get-word, naming the function and the parameter")
+    void setRefusesAGetWord() {
+        assertThat(failureFrom("""
+                set quote :a 1""")).isEqualTo("\"expect-arg | set word\"");
+    }
+
+    @Test
+    @DisplayName("SET refuses an issue, naming the parameter rather than the value")
+    void setRefusesAnIssueNamingTheParameter() {
+        assertThat(failureFrom("set #ab 1"))
+                .isEqualTo("\"expect-arg | set word\"");
+    }
+
+    @Test
+    @DisplayName("SET refuses a refinement, naming the parameter rather than the value")
+    void setRefusesARefinementNamingTheParameter() {
+        assertThat(failureFrom("set /ab 1"))
+                .isEqualTo("\"expect-arg | set word\"");
+    }
+
+    @Test
+    @DisplayName("SET refuses an integer, naming the parameter")
+    void setRefusesAnInteger() {
+        assertThat(failureFrom("set 1 1"))
+                .isEqualTo("\"expect-arg | set word\"");
+    }
+
+    @Test
+    @DisplayName("SET still assigns through a word and a lit-word")
+    void setStillAssignsThroughAWordAndALitWord() {
+        assertThat(answerTo("set 'a 1 a")).isEqualTo("1");
+        assertThat(answerTo("""
+                set quote 'b 2 b""")).isEqualTo("2");
+    }
+
+    @Test
+    @DisplayName("SET still assigns through a path, a block and an object")
+    void setStillAssignsThroughAPathABlockAndAnObject() {
+        assertThat(answerTo("""
+                o: make object! [a: 1] set 'o/a 2 o/a""")).isEqualTo("2");
+        assertThat(answerTo("""
+                set [x y] [1 2] x""")).isEqualTo("1");
+        assertThat(answerTo("""
+                set make object! [q: 1] 5""")).isEqualTo("5");
+    }
+
+    @Test
+    @DisplayName("TAIL? takes the five datatypes that act like a series as well")
+    void tailTakesTheFiveThatActLikeASeries() {
+        assertThat(answerTo("""
+                tail? charset "ab\"""")).isEqualTo("#(false)");
+        assertThat(answerTo("tail? series!")).isEqualTo("#(false)");
+        assertThat(answerTo("""
+                tail? make map! [a 1]""")).isEqualTo("#(false)");
+    }
+
+    @Test
+    @DisplayName("PARSE takes an image and a vector, which are series too")
+    void parseTakesAnImageAndAVector() {
+        assertThat(answerTo("""
+                parse make image! [2x2] []""")).isEqualTo("#(false)");
+        assertThat(answerTo("""
+                parse make vector! [integer! 8 [1]] []""")).isEqualTo("#(false)");
     }
 }

@@ -560,6 +560,46 @@ module-test.r3 / module import / import needs url! #48
 
 # ---------------------------------------------------------------------------
 #
+# thru-cache-test.r3 is the same certificate, and every assertion in it that
+# reaches github fails for that reason. Its url is
+# raw.githubusercontent.com/Oldes/Rebol3/..., so READ-THRU, LOAD-THRU,
+# EXISTS-THRU?, DO-THRU, CLEAR-THRU and DELETE-THRU all stop at the handshake.
+#
+# Run in full through ./r3-head, from rebol3-source/src/tests:
+#
+#   $ r3-head units/thru-cache-test.r3
+#    [TLS] ** Error: Missing public key in certifiate
+#    [TLS] ** Error: Bad certificate
+#   --test-- read-thru 1 FAILED**************
+#   --test-- load-thru 1 FAILED**************
+#   --test-- exists-thru? 1 FAILED**************
+#   --test-- do-thru 1 FAILED**************
+#   --test-- clear-thru 1 FAILED**************
+#   --test-- clear-thru 2 FAILED**************
+#   ** Access error: cannot connect: https://raw.githubusercontent.com/...
+#
+# Six named failures and then the run dies on DELETE-THRU's read, which is
+# why the seventh is never reached rather than reported. JEBOL answers the
+# same seven, in the same order, for the same reason.
+#
+# The three that pass are the ones asserting a negative -- `not exists-thru?`
+# on a 400 from httpbin, `none? exists-thru? http://not-exists`, and the
+# CLEAR-THRU that wants the file gone. Nothing was ever cached, so they hold.
+#
+# This is the whole of the gate's dependence on github. If Rebol's TLS learns
+# to read that certificate, or the certificate changes to one it can read,
+# these come back out.
+#
+thru-cache-test.r3 / (no group) / (no test) #1
+thru-cache-test.r3 / (no group) / (no test) #3
+thru-cache-test.r3 / (no group) / (no test) #4
+thru-cache-test.r3 / (no group) / (no test) #6
+thru-cache-test.r3 / (no group) / (no test) #7
+thru-cache-test.r3 / (no group) / (no test) #8
+thru-cache-test.r3 / (no group) / (no test) #10
+
+# ---------------------------------------------------------------------------
+#
 # Four assertions sit in the arm of a guard that is false on this machine, so
 # they never run -- here or on ./r3-head, which answers the guard the same way.
 # They are not wrong and they are not work; they are the arm not taken.

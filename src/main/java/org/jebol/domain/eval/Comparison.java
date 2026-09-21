@@ -4,6 +4,7 @@ import org.jebol.domain.date.DateOrder;
 import org.jebol.domain.value.*;
 
 import java.math.BigDecimal;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -57,17 +58,23 @@ public final class Comparison {
         }
     }
 
-    private static final Set<Datatype> REFUSE_TO_BE_ORDERED = Set.of(
+    private static final Set<Datatype> REFUSE_TO_BE_ORDERED = everythingIn(
+            Typeset.ANY_OBJECT, Typeset.ANY_FUNCTION,
             Datatype.UNSET, Datatype.END, Datatype.NONE, Datatype.LOGIC,
             Datatype.BITSET, Datatype.MAP, Datatype.TYPESET,
-            Datatype.OBJECT, Datatype.MODULE, Datatype.ERROR, Datatype.PORT,
-            Datatype.TASK, Datatype.FRAME, Datatype.IMAGE,
-            Datatype.NATIVE, Datatype.FUNCTION, Datatype.OP,
-            Datatype.ACTION, Datatype.CLOSURE, Datatype.COMMAND,
-            Datatype.JAVA_OBJECT);
+            Datatype.FRAME, Datatype.IMAGE, Datatype.JAVA_OBJECT);
+
+    private static Set<Datatype> everythingIn(
+            Typeset first, Typeset second, Datatype... alsoRefusing) {
+
+        Set<Datatype> refusing = EnumSet.copyOf(first.members());
+        refusing.addAll(second.members());
+        refusing.addAll(Set.of(alsoRefusing));
+        return Set.copyOf(refusing);
+    }
 
     private static final Set<Datatype> NUMBERS_A_TIME_WILL_MEET_WHICH_EXCLUDE_MONEY =
-            Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT);
+            Typeset.NUMBER.members();
 
     private static final long NANOSECONDS_PER_SECOND = 1_000_000_000L;
 
@@ -210,7 +217,7 @@ public final class Comparison {
     private static final boolean IT_DID_NOT = false;
 
     private static final Set<Datatype> ANY_NUMBER_WHICH_EXCLUDES_A_TIME =
-            Set.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT, Datatype.MONEY);
+            Typeset.NUMBER.membersAnd(Datatype.MONEY);
 
     /**
      * REBOL's {@code =} as the series functions ask it: equal, folding case,

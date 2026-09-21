@@ -1191,6 +1191,58 @@ rule LoadUnwrapsASingleValue {
 
 -- === Loading Rebol's own library ==========================
 
+-- Where a file's assignments land, and the two answers there are.
+--
+-- Before a file's body runs, every set-word in it is given a slot, so that a
+-- function defined halfway down can be called by one defined at the top. The
+-- question is which context gets the slot when some context already has the
+-- name, and it has two answers rather than one.
+--
+-- A sys file and a module take the name for themselves, shadowing whatever
+-- is above. That is the whole point of them: Rebol's JSON codec defines a
+-- parse rule named EXP and another named STACK, and lib's EXP and STACK are
+-- natives that must survive it.
+--
+-- A file loading into lib itself does not shadow. Its set-word lands in lib
+-- only where nothing above lib already answers to the name, so a file may
+-- assign through to a name it did not declare.
+--
+-- Two policies, and the reason to say so is that they look identical in the
+-- writing -- walk the body, find the set-words, define them -- and differ
+-- only in which question is asked about the name. JEBOL wrote that walk out
+-- three times, two of them asking one question and the third the other, and
+-- nothing recorded which was meant.
+rule AFileWithItsOwnContextShadowsWhatIsAboveIt {
+    when: load: LibraryFileLoad.begins
+    requires: load.target != library
+
+    ensures:
+        load.status = loading
+}
+
+-- What counts as a header, asked once.
+--
+-- A transcoded library file carries one when its first value is the word
+-- REBOL and its second is a block. Both halves matter: the word alone is a
+-- word like any other, and a file may legitimately open with one.
+--
+-- Where a file has a header, the body is everything from the third value on.
+-- Where it has none, the header is empty and the body is the whole file.
+--
+-- Stated as a rule because JEBOL asked it in three places and one of them
+-- asked a weaker question -- whether the file held two values at all --
+-- and so would have taken the first two values of a headerless file for a
+-- header and thrown them away. Nothing caught it because every file it ran
+-- on did have a header. A test cannot reach that, which is the argument for
+-- there being one answer rather than three.
+rule AHeaderIsTheWordRebolFollowedByABlock {
+    when: load: LibraryFileLoad.begins
+    requires: load.status = loading
+
+    ensures:
+        load.status = loading
+}
+
 rule LibraryFileLoadBegins {
     when: LoadLibraryFile(file_name, header, declared_type, declared_exports, catalogue_target)
     ensures: LibraryFileLoad.created(

@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.eval.*;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.read.LibraryFile;
 import org.jebol.domain.read.LibraryFileHeader;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
@@ -54,12 +55,11 @@ public final class Interpreter {
         Natives natives = Natives.standard(duringTheBoot);
         natives.useFileSeparator(java.io.File.separatorChar);
         natives.useOperatingSystemNamed(whatRebolCallsThisOperatingSystem());
-        String catalogue = resourceText("/org/jebol/errors.reb");
-        natives.useErrorCatalogue(catalogue == null ? "" : catalogue);
+        natives.useErrorCatalogue(theSourceIn("/org/jebol/errors.reb"));
         natives.useFunctionDeclarations(
-                declarationsIn("/org/jebol/actions.reb"),
-                declarationsIn("/org/jebol/natives.reb"),
-                declarationsIn("/org/jebol/gen-natives.reb"));
+                theSourceIn("/org/jebol/actions.reb"),
+                theSourceIn("/org/jebol/natives.reb"),
+                theSourceIn("/org/jebol/gen-natives.reb"));
         this.bounds = bounds;
         this.systemContext = natives.asContext();
         this.systemInternals = natives.systemInternals();
@@ -128,11 +128,8 @@ public final class Interpreter {
 
     /** One boot step as it was written, for a caller that has to fill it in. */
     public static String bootStepNamed(String name) {
-        String source = resourceText(BOOT + name);
-        if (source == null) {
-            throw new IllegalStateException(name + " is missing from the build");
-        }
-        return source;
+        return resourceText(BOOT + name).orElseThrow(() -> new IllegalStateException(
+                name + " is missing from the build"));
     }
 
     private static final String BOOT = "/org/jebol/boot/";
@@ -161,17 +158,12 @@ public final class Interpreter {
     private static final String PRELUDE = "/org/jebol/prelude.reb";
 
     private void loadPrelude() {
-        String source = resourceText(PRELUDE);
-        if (source == null) {
-            throw new IllegalStateException("the prelude is missing from the build");
-        }
-        TranscodeResult read = LibrarySource.reading(PRELUDE, source);
-        BlockValue values = read.values().orElseThrow(() -> new IllegalStateException(
-                "the prelude does not read: " + read.error().orElseThrow()));
-        BlockValue body = values.remaining().size() >= 2
-                ? values.atIndex(3)
-                : values;
-        defineAssignedWordsIn(body, systemContext);
+        BlockValue body = theLibraryFileAt(PRELUDE)
+                .orElseThrow(() -> new IllegalStateException(
+                        "the prelude is missing from the build, or does not read"))
+                .body();
+        declareTheSetWordsOf(body, systemContext,
+                AnAssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
         Outcome outcome = evaluator.evaluate(Binder.bind(body, systemContext), systemContext);
         if (outcome instanceof Outcome.Raised raised) {
             throw new IllegalStateException("the prelude failed to load: " + raised.failure());
@@ -189,21 +181,18 @@ public final class Interpreter {
                 registerTheSchemesJebolCanServe();
                 openTheEventPort();
             }
-            String source = resourceText(MEZZANINE + name);
-            if (source == null) {
+            Optional<TranscodeResult> reading = theBorrowedFileNamed(name);
+            if (reading.isEmpty()) {
                 continue;
             }
-            TranscodeResult read = LibrarySource.reading(MEZZANINE + name, source);
+            TranscodeResult read = reading.orElseThrow();
             if (read.values().isEmpty()) {
                 borrowedLoadFailures.put(name, read.error().orElseThrow().toString());
                 continue;
             }
-            BlockValue values = read.values().orElseThrow();
-            boolean hasHeader = startsWithARebolHeader(values);
-            LibraryFileHeader header = hasHeader
-                    ? LibraryFileHeader.readFrom(values.remaining().get(1))
-                    : LibraryFileHeader.none();
-            BlockValue body = hasHeader ? values.atIndex(3) : values;
+            LibraryFile file = LibraryFile.readFrom(read.values().orElseThrow());
+            LibraryFileHeader header = file.header();
+            BlockValue body = file.body();
 
             Outcome outcome = header.declaresAModule()
                     || isAProtocolAndSoAModuleWhateverItsHeaderSays(name)
@@ -223,7 +212,8 @@ public final class Interpreter {
     }
 
     private Outcome loadAsASystemFile(BlockValue body) {
-        declareTheSetWordsOf(body);
+        declareTheSetWordsOf(body, systemInternals,
+                AnAssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
         return evaluator.evaluate(
                 Binder.bind(body, systemInternals), systemInternals);
     }
@@ -233,41 +223,45 @@ public final class Interpreter {
             if (!entry.endsWith(INTO_SYS)) {
                 continue;
             }
-            String name = fileNameIn(entry);
-            String source = resourceText(MEZZANINE + name);
-            if (source == null) {
-                continue;
-            }
-            TranscodeResult read = LibrarySource.reading(MEZZANINE + name, source);
-            if (read.values().isEmpty()) {
-                continue;
-            }
-            BlockValue values = read.values().orElseThrow();
-            declareTheSetWordsOf(
-                    startsWithARebolHeader(values) ? values.atIndex(3) : values);
+            theLibraryFileAt(MEZZANINE + fileNameIn(entry))
+                    .ifPresent(file -> declareTheSetWordsOf(
+                            file.body(), systemInternals,
+                            AnAssignmentMayLand
+                                    .HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE));
         }
     }
 
-    private void declareTheSetWordsOf(BlockValue body) {
-        for (Value item : body.remaining()) {
-            if (item instanceof WordValue word
-                    && word.datatype() == Datatype.SET_WORD
-                    && !systemInternals.holds(word.canonical())) {
-                systemInternals.define(word.spelling());
+    private Optional<TranscodeResult> theBorrowedFileNamed(String name) {
+        return resourceText(MEZZANINE + name)
+                .map(source -> LibrarySource.reading(MEZZANINE + name, source));
+    }
+
+    private enum AnAssignmentMayLand {
+        HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE,
+        HERE_OR_IN_WHATEVER_IS_ABOVE
+    }
+
+    private static void declareTheSetWordsOf(
+            BlockValue body, Context into, AnAssignmentMayLand mayLand) {
+
+        for (WordValue word : body.setWordsFromHere()) {
+            if (!alreadyAnsweredFor(into, word.canonical(), mayLand)) {
+                into.define(word.spelling());
             }
         }
     }
 
-    private static boolean startsWithARebolHeader(BlockValue values) {
-        List<Value> items = values.remaining();
-        return items.size() >= 2
-                && items.get(0) instanceof WordValue opening
-                && "rebol".equals(opening.canonical())
-                && items.get(1) instanceof BlockValue;
+    private static boolean alreadyAnsweredFor(
+            Context into, String canonical, AnAssignmentMayLand mayLand) {
+
+        return mayLand == AnAssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE
+                ? into.holds(canonical)
+                : into.knows(canonical);
     }
 
     private Outcome loadInto(BlockValue body, Context target) {
-        defineAssignedWordsIn(body, target);
+        declareTheSetWordsOf(body, target,
+                AnAssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
         return evaluator.evaluate(Binder.bind(body, target), target);
     }
 
@@ -278,13 +272,8 @@ public final class Interpreter {
                 own.define(exported);
             }
         }
-        for (Value item : body.remaining()) {
-            if (item instanceof WordValue word
-                    && word.datatype() == Datatype.SET_WORD
-                    && !own.holds(word.canonical())) {
-                own.define(word.spelling());
-            }
-        }
+        declareTheSetWordsOf(body, own,
+                AnAssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
         Outcome outcome = evaluator.evaluate(Binder.bind(body, own), own);
         if (outcome instanceof Outcome.Raised) {
             return outcome;
@@ -359,11 +348,9 @@ public final class Interpreter {
     }
 
     private List<String> borrowedFileNames() {
-        String order = resourceText(MEZZANINE + "ORDER.txt");
-        if (order == null) {
-            return List.of();
-        }
-        return order.lines()
+        return resourceText(MEZZANINE + "ORDER.txt")
+                .stream()
+                .flatMap(String::lines)
                 .map(String::strip)
                 .filter(line -> !line.isEmpty() && !line.startsWith("#"))
                 .toList();
@@ -431,9 +418,8 @@ public final class Interpreter {
                 : " " + THE_DATA_SWITCH + " \"" + dataDirectory + "\"";
     }
 
-    private static String declarationsIn(String path) {
-        String source = resourceText(path);
-        return source == null ? "" : source;
+    private static String theSourceIn(String path) {
+        return resourceText(path).orElse("");
     }
 
     private static Optional<byte[]> theModuleBundledAs(String name) {
@@ -470,10 +456,16 @@ public final class Interpreter {
         }
     }
 
-    private static String resourceText(String path) {
+    private static Optional<String> resourceText(String path) {
         return resourceBytes(path)
-                .map(bytes -> new String(bytes, StandardCharsets.UTF_8))
-                .orElse(null);
+                .map(bytes -> new String(bytes, StandardCharsets.UTF_8));
+    }
+
+    private static Optional<LibraryFile> theLibraryFileAt(String path) {
+        return resourceText(path)
+                .map(source -> LibrarySource.reading(path, source))
+                .flatMap(TranscodeResult::values)
+                .map(LibraryFile::readFrom);
     }
 
     /** An interpreter with the standard bounds, whose output goes nowhere. */
@@ -660,15 +652,6 @@ public final class Interpreter {
     public void defineFreshWordsIn(String source) {
         TranscodeResult read = Transcoder.transcode(source);
         read.values().ifPresent(this::defineWordsIn);
-    }
-
-    private void defineAssignedWordsIn(BlockValue block, Context into) {
-        for (Value item : block.remaining()) {
-            if (item instanceof WordValue word && word.datatype() == Datatype.SET_WORD
-                    && !into.knows(word.canonical())) {
-                into.define(word.spelling());
-            }
-        }
     }
 
     private void defineWordsIn(BlockValue block) {
