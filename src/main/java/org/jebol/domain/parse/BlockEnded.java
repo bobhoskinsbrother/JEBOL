@@ -1,6 +1,6 @@
 package org.jebol.domain.parse;
 
-final class BlockEnded extends RuntimeException {
+public final class BlockEnded extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
@@ -11,15 +11,15 @@ final class BlockEnded extends RuntimeException {
         this.asAMatch = asAMatch;
     }
 
-    static BlockEnded asAMatch() {
+    public static BlockEnded asAMatch() {
         return new BlockEnded(true);
     }
 
-    static BlockEnded asAFailure() {
+    public static BlockEnded asAFailure() {
         return new BlockEnded(false);
     }
 
-    boolean endedAsAMatch() {
+    public boolean endedAsAMatch() {
         return asAMatch;
     }
 }

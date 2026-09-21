@@ -9,22 +9,22 @@ import org.jebol.domain.value.SeriesValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
-final class ParseTargets {
+public final class ParseTargets {
 
-    static final Set<String> THE_WORDS_THE_DIALECT_RESERVES = Set.of(
+    public static final Set<String> THE_WORDS_THE_DIALECT_RESERVES = Set.of(
             "|", "set", "copy", "some", "any", "opt", "not", "and", "ahead",
             "then", "remove", "insert", "change", "if", "fail", "reject",
             "while", "collect", "keep", "return", "limit", "??", "case",
             "no-case", "accept", "break", "skip", "to", "thru", "quote",
             "do", "into", "only", "end");
 
-    static final Set<String> THE_WORDS_THAT_NAME_WHERE_COLLECT_PUTS_IT =
+    public static final Set<String> THE_WORDS_THAT_NAME_WHERE_COLLECT_PUTS_IT =
             Set.of("set", "into", "after");
 
     private ParseTargets() {
     }
 
-    static WordValue refuseAnythingSetAndCopyCannotWriteInto(Value written) {
+    public static WordValue refuseAnythingSetAndCopyCannotWriteInto(Value written) {
         WordValue word = refuseAnythingButAWordOrASetWord(written);
         if (THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical())) {
             throw Raised.of(EvaluationFailure.PARSE_COMMAND, word);
@@ -32,7 +32,7 @@ final class ParseTargets {
         return word;
     }
 
-    static WordValue refuseAnythingButAWordOrASetWord(Value written) {
+    public static WordValue refuseAnythingButAWordOrASetWord(Value written) {
         if (written instanceof WordValue word
                 && (word.datatype() == Datatype.WORD
                         || word.datatype() == Datatype.SET_WORD)) {
@@ -41,7 +41,7 @@ final class ParseTargets {
         throw somewhereThatIsNotAVariable(written);
     }
 
-    static WordValue refuseAnythingButAWordOrAGetWord(Value read) {
+    public static WordValue refuseAnythingButAWordOrAGetWord(Value read) {
         if (read instanceof WordValue word
                 && (word.datatype() == Datatype.WORD
                         || word.datatype() == Datatype.GET_WORD)) {
@@ -50,7 +50,7 @@ final class ParseTargets {
         throw somewhereThatIsNotAVariable(read);
     }
 
-    static void refuseAnInputThatIsNotASeries(Value rule, Value held) {
+    public static void refuseAnInputThatIsNotASeries(Value rule, Value held) {
         if (!(held instanceof SeriesValue)) {
             throw Raised.of(EvaluationFailure.PARSE_SERIES, rule);
         }
