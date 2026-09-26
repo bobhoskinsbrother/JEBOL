@@ -10,7 +10,7 @@ public final class SweepRunner {
     private SweepRunner() {
     }
 
-    public static void main(String[] argued) throws Exception {
+    static void main(String[] argued) throws Exception {
         Interpreter interpreter = SuiteHost.installOn(
                 Interpreter.writingTo(new OutputPort() {
                     @Override

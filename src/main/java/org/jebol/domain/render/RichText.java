@@ -49,8 +49,8 @@ final class RichText {
     }
 
     private static double sizeOf(Value item, double standing) {
-        return item instanceof org.jebol.domain.value.IntegerValue whole
-                ? whole.magnitude()
+        return item instanceof org.jebol.domain.value.IntegerValue(long magnitude)
+                ? magnitude
                 : standing;
     }
 

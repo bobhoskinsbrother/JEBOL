@@ -636,10 +636,10 @@ public final class Transcoder {
         if (contents.size() == 1) {
             return resolved;
         }
-        if (!(resolved instanceof DatatypeValue built)) {
+        if (!(resolved instanceof DatatypeValue(Datatype represents))) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
         }
-        return builtFrom(built.represents(), contents.subList(1, contents.size()));
+        return builtFrom(represents, contents.subList(1, contents.size()));
     }
 
     private Value readMap() {
@@ -703,11 +703,11 @@ public final class Transcoder {
         if (!(whole instanceof SeriesValue series)) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
         }
-        if (!(position instanceof IntegerValue at)) {
+        if (!(position instanceof IntegerValue(long magnitude))) {
             return series;
         }
         long tail = series.storageLength() + 1L;
-        long counted = at.magnitude() - 1;
+        long counted = magnitude - 1;
         return series.atIndex(
                 (int) (counted < 0 || counted > tail - 1 ? tail : counted + 1));
     }
@@ -742,8 +742,8 @@ public final class Transcoder {
         }
         Value only = contents.getFirst();
         return switch (datatype) {
-            case DECIMAL -> only instanceof IntegerValue whole
-                    ? DecimalValue.of(whole.magnitude())
+            case DECIMAL -> only instanceof IntegerValue(long magnitude)
+                    ? DecimalValue.of(magnitude)
                     : requireDatatype(only, Datatype.DECIMAL);
             case OBJECT -> objectFrom(only);
             case BITSET -> only instanceof BinaryValue octets

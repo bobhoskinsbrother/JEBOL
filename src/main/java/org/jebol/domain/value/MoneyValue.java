@@ -173,9 +173,9 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency) implement
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof MoneyValue money
-                && currency.equals(money.currency)
-                && amount.compareTo(money.amount) == 0;
+        return other instanceof MoneyValue(BigDecimal amount1, Optional<String> currency1)
+                && currency.equals(currency1)
+                && amount.compareTo(amount1) == 0;
     }
 
     @Override

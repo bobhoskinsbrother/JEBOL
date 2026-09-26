@@ -55,7 +55,7 @@ public final class Repl {
         this.output = output;
     }
 
-    public static void main(String[] arguments) {
+    static void main(String[] arguments) {
         int status = runTheCommandLine(arguments, System.out,
                 System.getProperty("user.dir", "."));
         if (status != KEEP_THE_PROCESS) {
@@ -236,8 +236,8 @@ public final class Repl {
 
     private static int exitCodeOf(ScriptOutcome outcome) {
         if (outcome.conclusion() == Conclusion.QUIT_EARLY) {
-            return outcome.value() instanceof IntegerValue whole
-                    ? (int) whole.magnitude()
+            return outcome.value() instanceof IntegerValue(long magnitude)
+                    ? (int) magnitude
                     : 0;
         }
         return outcome.succeeded() ? 0 : 1;

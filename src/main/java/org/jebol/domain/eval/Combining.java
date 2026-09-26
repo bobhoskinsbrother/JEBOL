@@ -179,8 +179,8 @@ public final class Combining {
     }
 
     private static long wholeNumberOf(Value value) {
-        if (value instanceof IntegerValue whole) {
-            return whole.magnitude();
+        if (value instanceof IntegerValue(long magnitude)) {
+            return magnitude;
         }
         throw Raised.of(EvaluationFailure.EXPECT_ARG,
                 "and takes a whole number, not " + value.datatype().literalSpelling());

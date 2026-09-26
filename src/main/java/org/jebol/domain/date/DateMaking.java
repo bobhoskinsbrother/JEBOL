@@ -64,17 +64,17 @@ public final class DateMaking {
     }
 
     private static DateValue calendarDayIn(List<Value> parts) {
-        if (parts.get(0) instanceof IntegerValue first
-                && parts.get(1) instanceof IntegerValue monthPart
-                && parts.get(2) instanceof IntegerValue third) {
-            int day = (int) first.magnitude();
-            int year = (int) third.magnitude();
+        if (parts.get(0) instanceof IntegerValue(long magnitude2)
+                && parts.get(1) instanceof IntegerValue(long magnitude1)
+                && parts.get(2) instanceof IntegerValue(long magnitude)) {
+            int day = (int) magnitude2;
+            int year = (int) magnitude;
             if (day > MOST_A_DAY_OF_THE_MONTH_COULD_BE) {
                 year = day;
-                day = (int) third.magnitude();
+                day = (int) magnitude;
             }
             try {
-                return DateValue.of(year, (int) monthPart.magnitude(), day);
+                return DateValue.of(year, (int) magnitude1, day);
             } catch (IllegalArgumentException namesNoDay) {
                 throw refuse(parts);
             }
@@ -98,21 +98,21 @@ public final class DateMaking {
         if (written.size() == 1 && written.getFirst() instanceof TimeValue already) {
             return already;
         }
-        if (!(written.get(0) instanceof IntegerValue hour)
-                || !(written.get(1) instanceof IntegerValue minute)
+        if (!(written.get(0) instanceof IntegerValue(long magnitude1))
+                || !(written.get(1) instanceof IntegerValue(long magnitude))
                 || !(written.get(2) instanceof IntegerValue
                         || written.get(2) instanceof DecimalValue)) {
             throw refuse(whole);
         }
         double second = Comparison.asDouble(written.get(2));
-        if (hour.magnitude() < 0 || hour.magnitude() > 23
-                || minute.magnitude() < 0 || minute.magnitude() >= 60
+        if (magnitude1 < 0 || magnitude1 > 23
+                || magnitude < 0 || magnitude >= 60
                 || second < 0 || second >= 60.0) {
             throw refuse(whole);
         }
         return TimeValue.ofNanoseconds(
-                hour.magnitude() * SECONDS_AN_HOUR * TimeValue.NANOSECONDS_PER_SECOND
-                        + minute.magnitude() * SECONDS_A_MINUTE
+                magnitude1 * SECONDS_AN_HOUR * TimeValue.NANOSECONDS_PER_SECOND
+                        + magnitude * SECONDS_A_MINUTE
                                 * TimeValue.NANOSECONDS_PER_SECOND
                         + Math.round(second * TimeValue.NANOSECONDS_PER_SECOND));
     }
@@ -123,10 +123,10 @@ public final class DateMaking {
         if (left.isEmpty()) {
             return Optional.empty();
         }
-        if (left.size() > 1 || !(left.getFirst() instanceof TimeValue offset)) {
+        if (left.size() > 1 || !(left.getFirst() instanceof TimeValue(long nanoseconds))) {
             throw refuse(whole);
         }
-        long minutes = offset.nanoseconds()
+        long minutes = nanoseconds
                 / (SECONDS_A_MINUTE * TimeValue.NANOSECONDS_PER_SECOND);
         if (Math.abs(minutes) > FURTHEST_ZONE_MINUTES) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,

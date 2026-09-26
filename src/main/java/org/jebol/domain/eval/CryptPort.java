@@ -346,10 +346,10 @@ final class CryptPort {
     private static boolean aCountWasSet(
             Value given, java.util.function.IntConsumer into) {
 
-        if (!(given instanceof IntegerValue count)) {
+        if (!(given instanceof IntegerValue(long magnitude))) {
             return false;
         }
-        into.accept((int) count.magnitude());
+        into.accept((int) magnitude);
         return true;
     }
 

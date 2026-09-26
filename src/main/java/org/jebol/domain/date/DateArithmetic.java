@@ -75,8 +75,8 @@ public final class DateArithmetic {
     }
 
     private static long clockShiftOf(Value span) {
-        return span instanceof TimeValue duration
-                ? duration.nanoseconds()
+        return span instanceof TimeValue(long nanoseconds)
+                ? nanoseconds
                 : (long) (Comparison.asDouble(span) * TimeValue.NANOSECONDS_PER_DAY);
     }
 

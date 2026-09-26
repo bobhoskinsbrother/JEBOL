@@ -5,7 +5,7 @@ public final class ShowAssertion {
     private ShowAssertion() {
     }
 
-    public static void main(String[] argued) throws Exception {
+    static void main(String[] argued) throws Exception {
         org.jebol.application.Interpreter.create();
         String wanted = argued[0];
         for (SuiteFile file : RebolSuiteTest.filesInSuite()) {

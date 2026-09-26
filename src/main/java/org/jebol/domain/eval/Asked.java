@@ -81,8 +81,8 @@ public record Asked(
                 limit,
                 howMuchOf(given, limit),
                 howManyOctetsOf(given, limit),
-                refinementsAsked.contains("dup") && times instanceof IntegerValue counted
-                        ? Math.max(0, counted.magnitude())
+                refinementsAsked.contains("dup") && times instanceof IntegerValue(long magnitude)
+                        ? Math.max(0, magnitude)
                         : 1,
                 refinementsAsked.contains("only"),
                 refinementsAsked,
@@ -91,8 +91,8 @@ public record Asked(
     }
 
     private static int howManyOctetsOf(Value given, Value limit) {
-        if (limit instanceof IntegerValue wanted) {
-            return (int) wanted.magnitude();
+        if (limit instanceof IntegerValue(long magnitude)) {
+            return (int) magnitude;
         }
         if (limit instanceof SeriesValue upTo
                 && given instanceof SeriesValue from
@@ -131,8 +131,7 @@ public record Asked(
     }
 
     private static Optional<Long> howMuchOf(Value given, Value limit) {
-        if (limit instanceof IntegerValue wanted) {
-            long magnitude = wanted.magnitude();
+        if (limit instanceof IntegerValue(long magnitude)) {
             if (magnitude > Integer.MAX_VALUE || magnitude < Integer.MIN_VALUE) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Long.toString(magnitude));
             }

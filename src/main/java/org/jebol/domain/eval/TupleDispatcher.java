@@ -15,12 +15,11 @@ final class TupleDispatcher implements Dispatcher {
     @Override
     public Value readFrom(Value target, Value selector) {
         TupleValue tuple = tupleIn(target);
-        if (!(selector instanceof IntegerValue position)) {
+        if (!(selector instanceof IntegerValue(long at))) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     "cannot select " + selector.datatype().literalSpelling()
                             + " from " + target.datatype().literalSpelling());
         }
-        long at = position.magnitude();
         return at < 1 || at > tuple.shownCount()
                 ? NoneValue.none()
                 : IntegerValue.of(tuple.octetAt((int) at));
@@ -28,12 +27,12 @@ final class TupleDispatcher implements Dispatcher {
 
     @Override
     public void writeTo(Slot place, Value selector, Value written) {
-        if (!(selector instanceof IntegerValue position)) {
+        if (!(selector instanceof IntegerValue(long magnitude))) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     Molder.mold(selector));
         }
         place.setValue(withOctetWritten(
-                tupleIn(place.value()), (int) position.magnitude(), written));
+                tupleIn(place.value()), (int) magnitude, written));
     }
 
     private static Value withOctetWritten(
@@ -52,8 +51,8 @@ final class TupleDispatcher implements Dispatcher {
         if (!(written instanceof IntegerValue) && !(written instanceof DecimalValue)) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, Molder.mold(written));
         }
-        long amount = written instanceof IntegerValue whole
-                ? whole.magnitude()
+        long amount = written instanceof IntegerValue(long magnitude)
+                ? magnitude
                 : (long) ((DecimalValue) written).quantity();
         int[] octets = tuple.octetsToTwelve();
         octets[position - 1] = (int) Math.max(0, Math.min(255, amount));

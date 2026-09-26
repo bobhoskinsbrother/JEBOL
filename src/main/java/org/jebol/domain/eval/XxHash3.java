@@ -109,7 +109,7 @@ final class XxHash3 {
         int first = message[0] & 0xFF;
         int middle = message[length >> 1] & 0xFF;
         int last = message[length - 1] & 0xFF;
-        return (first << 16 | middle << 24 | last | length << 8) & 0xFFFFFFFFL;
+        return (first << 16 | (long) middle << 24 | last | (long) length << 8) & 0xFFFFFFFFL;
     }
 
     private static long shortFlip() {
@@ -270,8 +270,8 @@ final class XxHash3 {
         long high = wordAt(message, length - 4) & 0xFFFFFFFFL;
         long flip = longAt(SECRET, 16) ^ longAt(SECRET, 24);
         long keyed = (low + (high << 32)) ^ flip;
-        long productLow = keyed * (P64_1 + (length << 2));
-        long productHigh = Math.unsignedMultiplyHigh(keyed, P64_1 + (length << 2));
+        long productLow = keyed * (P64_1 + ((long) length << 2));
+        long productHigh = Math.unsignedMultiplyHigh(keyed, P64_1 + ((long) length << 2));
 
         productHigh += productLow << 1;
         productLow ^= productHigh >>> 3;

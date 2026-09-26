@@ -164,8 +164,8 @@ final class ShapeSubDialect {
             if (each instanceof org.jebol.domain.value.DecimalValue fraction) {
                 return fraction.quantity();
             }
-            if (each instanceof org.jebol.domain.value.IntegerValue whole) {
-                return whole.magnitude();
+            if (each instanceof IntegerValue(long magnitude)) {
+                return magnitude;
             }
         }
         return whenAbsent;

@@ -119,12 +119,12 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
         boolean declaredAsAnArray = false;
         if (at < written.size() && written.get(at) instanceof BlockValue howMany) {
             List<Value> counted = howMany.remaining();
-            if (counted.size() != 1 || !(counted.getFirst() instanceof IntegerValue count)) {
+            if (counted.size() != 1 || !(counted.getFirst() instanceof IntegerValue(long magnitude))) {
                 throw StructLayoutRefused.becauseTheFieldIsWrong(
                         "the field " + name + " says how many of itself there are "
                                 + "with something that is not a whole number");
             }
-            dimension = (int) count.magnitude();
+            dimension = (int) magnitude;
             declaredAsAnArray = true;
             at++;
         }
@@ -214,9 +214,9 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
     }
 
     private static boolean sameType(StructFieldType mine, StructFieldType theirs) {
-        if (mine instanceof StructFieldType.Nested inside
-                && theirs instanceof StructFieldType.Nested alongside) {
-            return inside.spec().describesTheSameBytesAs(alongside.spec());
+        if (mine instanceof StructFieldType.Nested(StructSpec spec1)
+                && theirs instanceof StructFieldType.Nested(StructSpec spec)) {
+            return spec1.describesTheSameBytesAs(spec);
         }
         return mine.equals(theirs);
     }

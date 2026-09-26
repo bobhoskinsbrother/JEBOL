@@ -11,9 +11,9 @@ public record ObjectValue(Context context) implements Value {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof ObjectValue object
-                && context.fieldsExcludingSelf().equals(object.context.fieldsExcludingSelf())
-                && context.fieldCount() == object.context.fieldCount();
+        return other instanceof ObjectValue(Context context1)
+                && context.fieldsExcludingSelf().equals(context1.fieldsExcludingSelf())
+                && context.fieldCount() == context1.fieldCount();
     }
 
     @Override

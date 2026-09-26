@@ -26,11 +26,11 @@ public record PortValue(Context context) implements Value {
 
     /** The name of the scheme this port belongs to, or an empty string. */
     public String schemeName() {
-        if (!(fieldNamed("scheme") instanceof ObjectValue scheme)) {
+        if (!(fieldNamed("scheme") instanceof ObjectValue(Context context1))) {
             return "";
         }
-        return scheme.context().holds("name")
-                && scheme.context().ownSlotFor("name").value() instanceof WordValue word
+        return context1.holds("name")
+                && context1.ownSlotFor("name").value() instanceof WordValue word
                 ? word.canonical()
                 : "";
     }

@@ -89,9 +89,9 @@ final class EventPath {
                     : java.util.Optional.empty();
             case "offset" -> writtenOffset(event, value);
             case "key" -> writtenKey(event, value);
-            case "code" -> value instanceof IntegerValue given
+            case "code" -> value instanceof IntegerValue(long magnitude)
                     ? java.util.Optional.of(event.withData(
-                            (int) given.magnitude(), EventValue.Flag.HAS_CODE))
+                            (int) magnitude, EventValue.Flag.HAS_CODE))
                     : java.util.Optional.empty();
             default -> java.util.Optional.empty();
         };
@@ -132,13 +132,13 @@ final class EventPath {
     private static java.util.Optional<EventValue> writtenOffset(
             EventValue event, Value value) {
 
-        if (!(value instanceof PairValue where)) {
+        if (!(value instanceof PairValue(double x, double y))) {
             return java.util.Optional.empty();
         }
         return java.util.Optional.of(event.withData(
                 EventValue.packedOffset(
-                        asShortRaisingRatherThanTruncating(where.x()),
-                        asShortRaisingRatherThanTruncating(where.y())),
+                        asShortRaisingRatherThanTruncating(x),
+                        asShortRaisingRatherThanTruncating(y)),
                 EventValue.Flag.HAS_XY));
     }
 
@@ -155,10 +155,10 @@ final class EventPath {
 
         EventValue theModelAndTypeChangeBeforeTheValueIsLookedAt =
                 withTheModelAndTypeSetFirst(event);
-        if (value instanceof CharacterValue letter) {
+        if (value instanceof CharacterValue(int codepoint)) {
             return java.util.Optional.of(
                     theModelAndTypeChangeBeforeTheValueIsLookedAt.withData(
-                            letter.codepoint(), EventValue.Flag.HAS_CODE));
+                            codepoint, EventValue.Flag.HAS_CODE));
         }
         if (value instanceof WordValue keyWord
                 && (keyWord.datatype() == Datatype.WORD

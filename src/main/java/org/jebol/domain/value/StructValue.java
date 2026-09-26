@@ -78,12 +78,12 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         if (!field.isArray()) {
             return elementOf(field, 0);
         }
-        if (field.type() instanceof StructFieldType.Numeric number) {
+        if (field.type() instanceof StructFieldType.Numeric(VectorKind kind)) {
             long[] stored = new long[field.dimension()];
             for (int element = 0; element < stored.length; element++) {
-                stored[element] = data.numberAt(addressOf(field, element), number.kind());
+                stored[element] = data.numberAt(addressOf(field, element), kind);
             }
-            return VectorValue.holding(number.kind(), stored);
+            return VectorValue.holding(kind, stored);
         }
         return BlockValue.block(elementsOf(field));
     }
@@ -198,9 +198,9 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
     }
 
     private void writeWholeArrayFrom(StructField field, VectorValue given) {
-        if (!(field.type() instanceof StructFieldType.Numeric number)
+        if (!(field.type() instanceof StructFieldType.Numeric(VectorKind kind))
                 || given.lengthFromHere() != field.dimension()
-                || given.storage().kind().bytes() != number.kind().bytes()) {
+                || given.storage().kind().bytes() != kind.bytes()) {
             throw StructLayoutRefused.becauseTheFieldIsWrong(
                     "the field " + field.name() + " takes " + field.dimension()
                             + " values of its own width and this vector is not that");

@@ -446,8 +446,8 @@ public final class Comparison {
             return Double.doubleToRawLongBits(first.quantity())
                     == Double.doubleToRawLongBits(second.quantity());
         }
-        if (left instanceof ObjectValue first && right instanceof ObjectValue second) {
-            return first.context() == second.context();
+        if (left instanceof ObjectValue(Context context1) && right instanceof ObjectValue(Context context)) {
+            return context1 == context;
         }
         if (left instanceof MapValue || left instanceof BitsetValue) {
             return left == right;
@@ -493,8 +493,8 @@ public final class Comparison {
         if (left instanceof CharacterValue) {
             return Integer.compare(codepointOf(left), codepointOf(right));
         }
-        if (left instanceof IntegerValue leftInteger && right instanceof IntegerValue rightInteger) {
-            return Long.compare(leftInteger.magnitude(), rightInteger.magnitude());
+        if (left instanceof IntegerValue(long magnitude1) && right instanceof IntegerValue(long magnitude)) {
+            return Long.compare(magnitude1, magnitude);
         }
         if (isNumeric(left) && isNumeric(right)) {
             double first = asDouble(left);
@@ -600,8 +600,8 @@ public final class Comparison {
             if (leftIsNaN || rightIsNaN) {
                 return leftIsNaN == rightIsNaN ? 0 : (leftIsNaN ? 1 : -1);
             }
-            if (left instanceof IntegerValue first && right instanceof IntegerValue second) {
-                return Long.compare(first.magnitude(), second.magnitude());
+            if (left instanceof IntegerValue(long magnitude1) && right instanceof IntegerValue(long magnitude)) {
+                return Long.compare(magnitude1, magnitude);
             }
             return Double.compare(asDouble(left), asDouble(right));
         }
@@ -621,8 +621,8 @@ public final class Comparison {
     }
 
     private static int codepointOf(Value value) {
-        return value instanceof CharacterValue character
-                ? character.codepoint()
+        return value instanceof CharacterValue(int codepoint)
+                ? codepoint
                 : (int) ((IntegerValue) value).magnitude();
     }
 

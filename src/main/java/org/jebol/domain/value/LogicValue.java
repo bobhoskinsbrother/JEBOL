@@ -38,6 +38,6 @@ public record LogicValue(boolean truth) implements Value {
 
     @Override
     public String toString() {
-        return truth ? "true" : "false";
+        return Boolean.toString(truth);
     }
 }

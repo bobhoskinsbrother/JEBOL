@@ -55,9 +55,9 @@ public final class Arithmetic {
     }
 
     public static Value rest(Value dividend, Value divisor, Division definition) {
-        if (dividend instanceof IntegerValue whole && divisor instanceof IntegerValue by) {
+        if (dividend instanceof IntegerValue(long magnitude1) && divisor instanceof IntegerValue(long magnitude)) {
             return IntegerValue.of(
-                    wholeRest(whole.magnitude(), by.magnitude(), definition));
+                    wholeRest(magnitude1, magnitude, definition));
         }
         double first = asMagnitude(dividend);
         double second = asMagnitude(divisor);

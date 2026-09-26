@@ -695,68 +695,58 @@ final class BrotliDecoder {
         }
     }
 
-    private static final class Huffman {
-
-        private final int[] countPerLength;
-        private final int[] symbolsInOrder;
-        private final int onlySymbol;
-
-        private Huffman(int[] countPerLength, int[] symbolsInOrder, int onlySymbol) {
-            this.countPerLength = countPerLength;
-            this.symbolsInOrder = symbolsInOrder;
-            this.onlySymbol = onlySymbol;
-        }
+    private record Huffman(int[] countPerLength, int[] symbolsInOrder, int onlySymbol) {
 
         static Huffman ofOneSymbol(int symbol) {
-            return new Huffman(null, null, symbol);
-        }
+                return new Huffman(null, null, symbol);
+            }
 
-        static Huffman ofLengths(int[] lengths) {
-            int[] counts = new int[MAX_CODE_LENGTH + 1];
-            int total = 0;
-            for (int length : lengths) {
-                counts[length]++;
-                if (length != 0) {
-                    total++;
+            static Huffman ofLengths(int[] lengths) {
+                int[] counts = new int[MAX_CODE_LENGTH + 1];
+                int total = 0;
+                for (int length : lengths) {
+                    counts[length]++;
+                    if (length != 0) {
+                        total++;
+                    }
                 }
-            }
-            counts[0] = 0;
-            int[] starts = new int[MAX_CODE_LENGTH + 2];
-            for (int length = 1; length <= MAX_CODE_LENGTH; length++) {
-                starts[length + 1] = starts[length] + counts[length];
-            }
-            int[] symbols = new int[total];
-            int[] filled = new int[MAX_CODE_LENGTH + 2];
-            for (int symbol = 0; symbol < lengths.length; symbol++) {
-                int length = lengths[symbol];
-                if (length != 0) {
-                    symbols[starts[length + 1] - counts[length] + filled[length]] = symbol;
-                    filled[length]++;
+                counts[0] = 0;
+                int[] starts = new int[MAX_CODE_LENGTH + 2];
+                for (int length = 1; length <= MAX_CODE_LENGTH; length++) {
+                    starts[length + 1] = starts[length] + counts[length];
                 }
+                int[] symbols = new int[total];
+                int[] filled = new int[MAX_CODE_LENGTH + 2];
+                for (int symbol = 0; symbol < lengths.length; symbol++) {
+                    int length = lengths[symbol];
+                    if (length != 0) {
+                        symbols[starts[length + 1] - counts[length] + filled[length]] = symbol;
+                        filled[length]++;
+                    }
+                }
+                return new Huffman(counts, symbols, -1);
             }
-            return new Huffman(counts, symbols, -1);
-        }
 
-        int read(BitsLeastSignificantOfEachByteFirst bits) {
-            if (onlySymbol >= 0) {
-                return onlySymbol;
-            }
-            int code = 0;
-            int first = 0;
-            int index = 0;
-            for (int length = 1; length <= MAX_CODE_LENGTH; length++) {
-                code |= bits.take(1);
-                int howMany = countPerLength[length];
-                if (code - first < howMany) {
-                    return symbolsInOrder[index + code - first];
+            int read(BitsLeastSignificantOfEachByteFirst bits) {
+                if (onlySymbol >= 0) {
+                    return onlySymbol;
                 }
-                index += howMany;
-                first = (first + howMany) << 1;
-                code <<= 1;
+                int code = 0;
+                int first = 0;
+                int index = 0;
+                for (int length = 1; length <= MAX_CODE_LENGTH; length++) {
+                    code |= bits.take(1);
+                    int howMany = countPerLength[length];
+                    if (code - first < howMany) {
+                        return symbolsInOrder[index + code - first];
+                    }
+                    index += howMany;
+                    first = (first + howMany) << 1;
+                    code <<= 1;
+                }
+                throw new IllegalArgumentException("Brotli symbol is longer than any code");
             }
-            throw new IllegalArgumentException("Brotli symbol is longer than any code");
         }
-    }
 
     private static final class BitsLeastSignificantOfEachByteFirst {
 

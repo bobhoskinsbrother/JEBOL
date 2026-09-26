@@ -141,7 +141,7 @@ class EmbeddingTest {
             ExecutorService worker = Executors.newSingleThreadExecutor();
             try {
                 Future<ScriptOutcome> running =
-                        worker.submit((Callable<ScriptOutcome>) () ->
+                        worker.submit(() ->
                                 interpreter.run("while [true] [1]"));
 
                 Thread.sleep(150);

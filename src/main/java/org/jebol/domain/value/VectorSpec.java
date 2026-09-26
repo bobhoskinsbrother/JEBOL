@@ -108,11 +108,11 @@ public final class VectorSpec {
             return Optional.empty();
         }
         at++;
-        if (at >= parts.size() || !(parts.get(at) instanceof IntegerValue width)) {
+        if (at >= parts.size() || !(parts.get(at) instanceof IntegerValue(long magnitude))) {
             return Optional.empty();
         }
         Optional<VectorKind> kind = VectorKind.of(
-                wantsDecimals, Boolean.TRUE.equals(unsigned), (int) width.magnitude());
+                wantsDecimals, Boolean.TRUE.equals(unsigned), (int) magnitude);
         if (kind.isEmpty()) {
             return Optional.empty();
         }
@@ -128,11 +128,11 @@ public final class VectorSpec {
         int position = 1;
 
         Value looking = lookedUp(parts, at, resolveGetWord);
-        if (looking instanceof IntegerValue counted) {
-            if (counted.magnitude() < 0) {
+        if (looking instanceof IntegerValue(long magnitude1)) {
+            if (magnitude1 < 0) {
                 return Optional.empty();
             }
-            howMany = (int) counted.magnitude();
+            howMany = (int) magnitude1;
             looking = lookedUp(parts, ++at, resolveGetWord);
         }
         if (looking instanceof BlockValue || looking instanceof BinaryValue) {
@@ -143,8 +143,8 @@ public final class VectorSpec {
             data = looking;
             looking = lookedUp(parts, ++at, resolveGetWord);
         }
-        if (looking instanceof IntegerValue where) {
-            position = (int) Math.max(1, where.magnitude());
+        if (looking instanceof IntegerValue(long magnitude)) {
+            position = (int) Math.max(1, magnitude);
             looking = lookedUp(parts, ++at, resolveGetWord);
         } else if (looking instanceof DecimalValue where) {
             position = (int) Math.max(1, (long) where.quantity());

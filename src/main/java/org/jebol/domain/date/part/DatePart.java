@@ -77,10 +77,9 @@ public enum DatePart implements DateField {
                     .filter(part -> part.spelling().equals(asked.canonical()))
                     .findFirst();
         }
-        if (!(selector instanceof IntegerValue position)) {
+        if (!(selector instanceof IntegerValue(long counted))) {
             return Optional.empty();
         }
-        long counted = position.magnitude();
         return counted >= 1 && counted <= values().length
                 ? Optional.of(values()[(int) counted - 1])
                 : Optional.empty();

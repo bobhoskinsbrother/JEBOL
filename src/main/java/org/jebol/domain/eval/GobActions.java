@@ -76,7 +76,7 @@ public final class GobActions extends SeriesActions {
 
     private static List<Value> theChildrenOffered(Value value) {
         return switch (value) {
-            case GobValue only -> List.<Value>of(only);
+            case GobValue only -> List.of(only);
             case BlockValue block when block.datatype() == Datatype.BLOCK ->
                     block.remaining();
             default -> throw Raised.of(EvaluationFailure.EXPECT_VAL,

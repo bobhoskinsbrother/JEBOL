@@ -72,12 +72,8 @@ final class RebolRandom {
                 rounds--;
             }
         }
-        for (int at = 0; at < SHORT_LAG; at++) {
-            state[at + LONG_LAG - SHORT_LAG] = preparing[at];
-        }
-        for (int at = SHORT_LAG; at < LONG_LAG; at++) {
-            state[at - SHORT_LAG] = preparing[at];
-        }
+        System.arraycopy(preparing, 0, state, 63, SHORT_LAG);
+        System.arraycopy(preparing, SHORT_LAG, state, 0, LONG_LAG - 37);
         for (int round = 0; round < 10; round++) {
             fill(preparing, LONG_LAG + LONG_LAG - 1);
         }

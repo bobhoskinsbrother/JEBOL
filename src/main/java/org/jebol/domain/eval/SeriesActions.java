@@ -17,7 +17,7 @@ abstract class SeriesActions implements Actions {
 
     @Override
     public Value subject() {
-        return (Value) held();
+        return held();
     }
 
     @Override
@@ -31,7 +31,7 @@ abstract class SeriesActions implements Actions {
                 && !removingFrom.atTail(); dropped++) {
             takeOneOutAt(removingFrom.index());
         }
-        return (Value) removingFrom;
+        return removingFrom;
     }
 
     void takeOutFrom(int oneBasedIndex, int howMany) {
@@ -68,7 +68,7 @@ abstract class SeriesActions implements Actions {
         while (held().storageLength() >= held().index()) {
             takeOneOutAt(held().index());
         }
-        return (Value) held();
+        return held();
     }
 
     private SeriesValue theRunReachingBackIfNegative(long wanted) {

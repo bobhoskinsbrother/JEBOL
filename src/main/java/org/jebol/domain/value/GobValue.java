@@ -78,9 +78,9 @@ public record GobValue(GobStorage storage, int index) implements SeriesValue {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof GobValue gob
-                && gob.storage == storage
-                && gob.index == index;
+        return other instanceof GobValue(GobStorage storage1, int index1)
+                && storage1 == storage
+                && index1 == index;
     }
 
     @Override

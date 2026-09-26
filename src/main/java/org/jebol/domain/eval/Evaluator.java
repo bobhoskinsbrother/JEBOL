@@ -634,8 +634,8 @@ public final class Evaluator {
             }
 
             try {
-                if (takeOneStep(frame, frames) instanceof StepOutcome.Produced produced) {
-                    deliver(frame, produced.value(), frames);
+                if (takeOneStep(frame, frames) instanceof StepOutcome.Produced(Value value)) {
+                    deliver(frame, value, frames);
                 }
             } catch (ReturnSignal returning) {
                 unwindToFunction(frames, returning);
@@ -1225,12 +1225,12 @@ public final class Evaluator {
 
         refuseSelfAsAnInvalidPathRatherThanAGuardedSlot(lastSegment);
 
-        if (segments.size() == 3 && lastSegment instanceof IntegerValue channel
+        if (segments.size() == 3 && lastSegment instanceof IntegerValue(long magnitude1)
                 && select(BlockValue.path(segments.subList(0, 1), Datatype.PATH),
                         frame.context).value() instanceof ImageValue image) {
             Value pixelSegment = selectorFor(segments.get(1), frame.context);
             ImagePath.writeOneChannel(
-                    image, pixelSegment, (int) channel.magnitude(), written);
+                    image, pixelSegment, (int) magnitude1, written);
             return;
         }
 
@@ -1297,10 +1297,9 @@ public final class Evaluator {
             return;
         }
         if (target instanceof SeriesValue series
-                && selectorFor(lastSegment, frame.context)
-                        instanceof IntegerValue where) {
+                && selectorFor(lastSegment, frame.context) instanceof IntegerValue(long magnitude)) {
             SeriesSlot.write(series,
-                    series.index() + (int) where.magnitude() - 1, written);
+                    series.index() + (int) magnitude - 1, written);
             return;
         }
         if (target instanceof BitsetValue set) {
@@ -1481,8 +1480,8 @@ public final class Evaluator {
         if (target instanceof TimeValue time) {
             return partOfATime(time, selector);
         }
-        if (target instanceof BitsetValue set && selector instanceof CharacterValue letter) {
-            return LogicValue.of(set.holds(letter.codepoint()));
+        if (target instanceof BitsetValue set && selector instanceof CharacterValue(int codepoint1)) {
+            return LogicValue.of(set.holds(codepoint1));
         }
         if (target instanceof ErrorValue raised && selector instanceof WordValue field) {
             return raised.field(field.canonical()).orElseThrow(() ->
@@ -1532,8 +1531,8 @@ public final class Evaluator {
         if (target instanceof StructValue struct) {
             return StructPath.read(struct, selector);
         }
-        if (target instanceof SeriesValue series && selector instanceof IntegerValue position) {
-            long index = countedFromTheSeriesPosition(position.magnitude());
+        if (target instanceof SeriesValue series && selector instanceof IntegerValue(long magnitude)) {
+            long index = countedFromTheSeriesPosition(magnitude);
             if (index < 1 - (series.index() - 1) || index > series.lengthFromHere()) {
                 return NoneValue.none();
             }
@@ -1552,16 +1551,16 @@ public final class Evaluator {
         if (target instanceof BitsetValue members) {
             return Natives.bitsetHoldsForAPath(members, selector);
         }
-        if (target instanceof CharacterValue character
+        if (target instanceof CharacterValue(int codepoint)
                 && selector instanceof WordValue asked) {
             switch (asked.canonical()) {
                 case "width" -> {
                     return IntegerValue.of(
-                            CharacterColumns.widthOf(character.codepoint()));
+                            CharacterColumns.widthOf(codepoint));
                 }
                 case "size" -> {
                     return IntegerValue.of(
-                            CharacterColumns.utf8SizeOf(character.codepoint()));
+                            CharacterColumns.utf8SizeOf(codepoint));
                 }
                 default -> { }
             }
@@ -1587,15 +1586,15 @@ public final class Evaluator {
         if (!systemContext.knows("system")) {
             return NoneValue.none();
         }
-        if (!(systemContext.slotFor("system").value() instanceof ObjectValue system)
-                || !system.context().holds("ports")) {
+        if (!(systemContext.slotFor("system").value() instanceof ObjectValue(Context context1))
+                || !context1.holds("ports")) {
             return NoneValue.none();
         }
-        if (!(system.context().ownSlotFor("ports").value() instanceof ObjectValue ports)
-                || !ports.context().holds(scheme)) {
+        if (!(context1.ownSlotFor("ports").value() instanceof ObjectValue(Context context))
+                || !context.holds(scheme)) {
             return NoneValue.none();
         }
-        return ports.context().ownSlotFor(scheme).value();
+        return context.ownSlotFor(scheme).value();
     }
 
     private static Value partOfATime(TimeValue time, Value selector) {

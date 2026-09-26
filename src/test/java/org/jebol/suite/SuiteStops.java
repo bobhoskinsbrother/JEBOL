@@ -38,7 +38,7 @@ public final class SuiteStops {
         return interpreter;
     }
 
-    public static void main(String[] argued) throws Exception {
+    static void main(String[] argued) throws Exception {
         long least = argued.length > 0 ? Long.parseLong(argued[0]) : 1;
         Map<String, Long> owed = new TreeMap<>();
         for (String entry : RebolSuiteTest.knownGaps()) {

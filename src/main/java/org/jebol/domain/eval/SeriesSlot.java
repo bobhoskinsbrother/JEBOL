@@ -29,8 +29,8 @@ record SeriesSlot(SeriesValue series, int at, Value held) implements Slot {
         switch (series) {
             case BlockValue block -> block.storage().set(at, value);
             case StringValue text -> text.storage().set(at,
-                    value instanceof CharacterValue character
-                            ? character.codepoint()
+                    value instanceof CharacterValue(int codepoint)
+                            ? codepoint
                             : Molder.form(value).codePointAt(0));
             case BinaryValue bytes -> bytes.storage().set(at, octetFrom(value));
             case ImageValue image -> ImagePath.write(image, at, value);
@@ -42,10 +42,9 @@ record SeriesSlot(SeriesValue series, int at, Value held) implements Slot {
     }
 
     private static int octetFrom(Value value) {
-        if (!(value instanceof IntegerValue number)) {
+        if (!(value instanceof IntegerValue(long wanted))) {
             return 0;
         }
-        long wanted = number.magnitude();
         if (wanted < 0) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     wanted + " is not a byte: a binary holds 0 to 255");

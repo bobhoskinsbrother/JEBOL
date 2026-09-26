@@ -705,9 +705,7 @@ final class LzmaEncoder {
                         (((slot >> 1) - 1) - ALIGN_BITS) << BIT_PRICE_SHIFT_BITS;
             }
             int distanceBase = span * FULL_DISTANCES;
-            for (int each = 0; each < 4; each++) {
-                distancePrices[distanceBase + each] = slotPrices[priceBase + each];
-            }
+            System.arraycopy(slotPrices, priceBase + 0, distancePrices, distanceBase + 0, 4);
             for (int distance = 4; distance < FULL_DISTANCES; distance += 2) {
                 int slotPrice =
                         slotPrices[priceBase + SLOT_OF_A_SMALL_DISTANCE[distance]];
@@ -859,9 +857,7 @@ final class LzmaEncoder {
             return 1;
         }
         choiceLength[1] = 1;
-        for (int which = 0; which < NUMBER_OF_REPEATS; which++) {
-            choiceRepeats[which] = current[which];
-        }
+        if (NUMBER_OF_REPEATS >= 0) System.arraycopy(current, 0, choiceRepeats, 0, NUMBER_OF_REPEATS);
         for (int at = last; at >= 2; at--) {
             choicePrice[at] = INFINITY_PRICE;
         }

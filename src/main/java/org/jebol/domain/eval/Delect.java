@@ -90,8 +90,8 @@ public final class Delect {
         if (types.contains(Datatype.INTEGER) && value instanceof DecimalValue fraction) {
             return IntegerValue.of(cutDownRatherThanRounded(fraction));
         }
-        if (types.contains(Datatype.DECIMAL) && value instanceof IntegerValue whole) {
-            return DecimalValue.of(whole.magnitude());
+        if (types.contains(Datatype.DECIMAL) && value instanceof IntegerValue(long magnitude)) {
+            return DecimalValue.of(magnitude);
         }
         return value;
     }
@@ -324,8 +324,8 @@ public final class Delect {
     private static Optional<java.util.Set<Datatype>> typesNamedBy(
             Value written, Context where) {
 
-        if (written instanceof DatatypeValue one) {
-            return Optional.of(java.util.Set.of(one.represents()));
+        if (written instanceof DatatypeValue(Datatype represents)) {
+            return Optional.of(java.util.Set.of(represents));
         }
         if (written instanceof TypesetValue family) {
             return Optional.of(family.members());

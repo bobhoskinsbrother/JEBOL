@@ -190,45 +190,41 @@ final class BrotliGenericEncoder {
         }
     }
 
-    private static final class PriceEverything implements FindsTheCopies {
+    private record PriceEverything(int quality, BrotliBinaryTreeHasher tree) implements FindsTheCopies {
 
-        private final int quality;
-        private final BrotliBinaryTreeHasher tree;
+            PriceEverything(int quality, int howMuchInput) {
+                this(quality, new BrotliBinaryTreeHasher(WINDOW_BITS, howMuchInput, true));
+            }
 
-        PriceEverything(int quality, int howMuchInput) {
-            this.quality = quality;
-            this.tree = new BrotliBinaryTreeHasher(WINDOW_BITS, howMuchInput, true);
-        }
+            @Override
+            public void getReady(byte[] data, int howMuchInput,
+                                 boolean theWholeInputAtOnce) {
+            }
 
-        @Override
-        public void getReady(byte[] data, int howMuchInput,
-                boolean theWholeInputAtOnce) {
-        }
+            @Override
+            public void stitchToPreviousBlock(byte[] data, int mask,
+                                              int howManyBytes, int position) {
 
-        @Override
-        public void stitchToPreviousBlock(byte[] data, int mask,
-                int howManyBytes, int position) {
+                tree.stitchToPreviousBlock(data, mask, howManyBytes, position);
+            }
 
-            tree.stitchToPreviousBlock(data, mask, howManyBytes, position);
-        }
+            @Override
+            public void find(byte[] data, int mask, int startedAt, int bytes,
+                             int[] recentDistances, int[] insertLengthCarried,
+                             BrotliDistances distances, BrotliCommand commands,
+                             long[] howManyLiterals) {
 
-        @Override
-        public void find(byte[] data, int mask, int startedAt, int bytes,
-                int[] recentDistances, int[] insertLengthCarried,
-                BrotliDistances distances, BrotliCommand commands,
-                long[] howManyLiterals) {
-
-            if (quality == LOWEST_QUALITY_THAT_PRICES_EVERYTHING) {
-                BrotliPricedParse.findAllForTen(data, mask, startedAt, bytes,
-                        WINDOW_BITS, tree, recentDistances, insertLengthCarried,
-                        distances, commands, howManyLiterals);
-            } else {
-                BrotliPricedParse.findAllForEleven(data, mask, startedAt, bytes,
-                        WINDOW_BITS, tree, recentDistances, insertLengthCarried,
-                        distances, commands, howManyLiterals);
+                if (quality == LOWEST_QUALITY_THAT_PRICES_EVERYTHING) {
+                    BrotliPricedParse.findAllForTen(data, mask, startedAt, bytes,
+                            WINDOW_BITS, tree, recentDistances, insertLengthCarried,
+                            distances, commands, howManyLiterals);
+                } else {
+                    BrotliPricedParse.findAllForEleven(data, mask, startedAt, bytes,
+                            WINDOW_BITS, tree, recentDistances, insertLengthCarried,
+                            distances, commands, howManyLiterals);
+                }
             }
         }
-    }
 
     private boolean worthWaitingForMoreInput() {
         int gatheredSoFar = inputAt - lastFlushAt;

@@ -229,7 +229,7 @@ public final class Molder {
             case NoneValue ignored -> forReading ? "_" : "none";
             case LogicValue logic -> forReading
                     ? (logic.truth() ? "#(true)" : "#(false)")
-                    : (logic.truth() ? "true" : "false");
+                    : (Boolean.toString(logic.truth()));
             case IntegerValue integer -> Long.toString(integer.magnitude());
             case DecimalValue decimal -> renderDecimal(decimal);
             case MoneyValue money -> renderMoney(money);

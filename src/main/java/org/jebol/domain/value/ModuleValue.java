@@ -62,10 +62,10 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof ModuleValue module
+        return other instanceof ModuleValue(Context context1, ObjectValue header1)
                 && context.fieldsExcludingSelf().equals(
-                        module.context.fieldsExcludingSelf())
-                && header.equals(module.header);
+                        context1.fieldsExcludingSelf())
+                && header.equals(header1);
     }
 
     @Override

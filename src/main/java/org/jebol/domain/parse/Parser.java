@@ -168,15 +168,17 @@ public final class Parser implements ParseWalk {
         if (at >= rules.size()) {
             return null;
         }
-        if (rules.get(at) instanceof IntegerValue count) {
-            return (int) count.magnitude();
+        if (rules.get(at) instanceof IntegerValue(long magnitude)) {
+            return (int) magnitude;
         }
         return rules.get(at) instanceof WordValue word && word.datatype() == Datatype.WORD ? countBehind(word) : null;
     }
 
     Integer countBehind(WordValue word) {
         Context target = word.isBound() ? word.binding() : context;
-        return target.knows(word.canonical()) && target.slotFor(word.canonical()).value() instanceof IntegerValue count ? (int) count.magnitude() : null;
+        return target.knows(word.canonical()) && target.slotFor(word.canonical()).value() instanceof IntegerValue(
+                long magnitude
+        ) ? (int) magnitude : null;
     }
 
     @Override
@@ -520,7 +522,7 @@ public final class Parser implements ParseWalk {
         if (!(held instanceof BlockValue marked)) {
             return NO_MATCH;
         }
-        if (source == null || !marked.sharesStorageWith(source)) {
+        if (!marked.sharesStorageWith(source)) {
             return NO_MATCH;
         }
         int sought = marked.index() - source.index();
@@ -682,7 +684,7 @@ public final class Parser implements ParseWalk {
             }
             case BlockValue nested when nested.datatype() == Datatype.BLOCK -> matchSequence(nested.remaining());
             case BitsetValue members ->
-                    !atEnd() && current() instanceof CharacterValue character && members.holds(character.codepoint()) && advanceOne();
+                    !atEnd() && current() instanceof CharacterValue(int codepoint) && members.holds(codepoint) && advanceOne();
             case DatatypeValue wanted -> matchesDatatype(wanted.represents());
             case TypesetValue wanted -> !atEnd() && wanted.holds(current().datatype()) && advanceOne();
             case WordValue word when word.datatype() == Datatype.LIT_WORD -> matchesLiteral(word.as(Datatype.WORD));
@@ -958,8 +960,8 @@ public final class Parser implements ParseWalk {
             case BinaryValue existing -> {
                 List<Integer> octets = new ArrayList<>();
                 for (Value item : gathered) {
-                    if (item instanceof IntegerValue octet) {
-                        octets.add((int) octet.magnitude());
+                    if (item instanceof IntegerValue(long magnitude)) {
+                        octets.add((int) magnitude);
                     } else if (item instanceof BinaryValue slice) {
                         for (byte octet : slice.octetsFromHere()) {
                             octets.add(octet & 0xFF);

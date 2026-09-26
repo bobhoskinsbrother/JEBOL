@@ -55,7 +55,7 @@ final class PendingCall {
         List<Parameter> declared = switch (callee) {
             case NativeValue built -> built.parameters();
             case FunctionValue function -> function.parameters();
-            case null, default -> List.<Parameter>of();
+            case null, default -> List.of();
         };
         return declared.stream().filter(Parameter::consumesAnArgument).toList();
     }

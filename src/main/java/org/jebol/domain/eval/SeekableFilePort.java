@@ -32,8 +32,8 @@ final class SeekableFilePort {
         return switch (port.fieldNamed(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)) {
             case IntegerValue at -> at.magnitude();
             case BlockValue kept
-                    when kept.remaining().get(THE_POSITION) instanceof IntegerValue at ->
-                    at.magnitude();
+                    when kept.remaining().get(THE_POSITION) instanceof IntegerValue(long magnitude) ->
+                    magnitude;
             default -> 0;
         };
     }
@@ -60,12 +60,12 @@ final class SeekableFilePort {
     }
 
     static String pathOf(PortValue port) {
-        if (!(port.fieldNamed("spec") instanceof ObjectValue fields)) {
+        if (!(port.fieldNamed("spec") instanceof ObjectValue(org.jebol.domain.value.Context context))) {
             return "";
         }
         for (String field : WHERE_A_FILE_KEEPS_ITS_PATH_BEFORE_WHERE_A_URL_DOES) {
-            if (fields.context().holds(field)
-                    && fields.context().ownSlotFor(field).value()
+            if (context.holds(field)
+                    && context.ownSlotFor(field).value()
                             instanceof StringValue path) {
                 return path.text();
             }

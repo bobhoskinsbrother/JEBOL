@@ -343,10 +343,10 @@ final class Bincode {
     }
 
     private static int countOfBytesAt(Script dialect, int step) {
-        if (!(dialect.valueAt(step) instanceof IntegerValue howMany)) {
+        if (!(dialect.valueAt(step) instanceof IntegerValue(long magnitude))) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, dialect.asWritten(step));
         }
-        return (int) howMany.magnitude();
+        return (int) magnitude;
     }
 
     private static Value runOfBytesRead(Cursor cursor, String code, int wanted) {
@@ -470,8 +470,8 @@ final class Bincode {
     }
 
     private static double anyNumberOf(Value given) {
-        if (given instanceof IntegerValue whole) {
-            return whole.magnitude();
+        if (given instanceof IntegerValue(long magnitude)) {
+            return magnitude;
         }
         if (given instanceof DecimalValue fraction) {
             return fraction.quantity();
@@ -650,8 +650,8 @@ final class Bincode {
     }
 
     private static void msdosTimeWritten(Cursor cursor, Value given) {
-        long nanoseconds = given instanceof TimeValue clock
-                ? clock.nanoseconds()
+        long nanoseconds = given instanceof TimeValue(long nanoseconds1)
+                ? nanoseconds1
                 : theInstantIn(given).timeOfDay()
                         .map(TimeValue::nanoseconds).orElse(0L);
         long seconds = nanoseconds / A_SECOND;
@@ -887,15 +887,15 @@ final class Bincode {
             Script dialect, int step, Value code) {
 
         Value given = valueReadAfter(dialect, step, code);
-        if (given instanceof IntegerValue number) {
-            return number.magnitude();
+        if (given instanceof IntegerValue(long magnitude)) {
+            return magnitude;
         }
         throw Raised.of(EvaluationFailure.INVALID_SPEC, dialect.asWritten(step));
     }
 
     private static long wholeNumberWritten(Value given) {
-        if (given instanceof IntegerValue number) {
-            return number.magnitude();
+        if (given instanceof IntegerValue(long magnitude)) {
+            return magnitude;
         }
         throw refuse(given);
     }

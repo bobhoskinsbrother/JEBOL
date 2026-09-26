@@ -50,8 +50,8 @@ final class ImageSeries {
                     part(parts, 0), part(parts, 1), part(parts, 2),
                     parts.length > 3 ? parts[3] : WHOLLY);
         }
-        if (written instanceof IntegerValue alpha) {
-            return APixelWrite.ofAnAlphaAlone((int) alpha.magnitude() & 0xFF);
+        if (written instanceof IntegerValue(long magnitude)) {
+            return APixelWrite.ofAnAlphaAlone((int) magnitude & 0xFF);
         }
         return null;
     }
@@ -170,9 +170,9 @@ final class ImageSeries {
         int row = (image.index() - 1) / storage.wide();
         int wanted = rectangle.storage().wide();
         int tall = rectangle.storage().high();
-        if (shapeOfTheRectangle instanceof PairValue shape) {
-            wanted = Math.max(0, (int) shape.x());
-            tall = Math.max(0, (int) shape.y());
+        if (shapeOfTheRectangle instanceof PairValue(double x, double y)) {
+            wanted = Math.max(0, (int) x);
+            tall = Math.max(0, (int) y);
         } else if (aCountWhereAShapeBelongs(shapeOfTheRectangle)) {
             wanted = 0;
             tall = 0;
@@ -230,8 +230,8 @@ final class ImageSeries {
             return false;
         }
         int[] there = image.storage().pixelAt(oneBasedPixel);
-        if (wanted instanceof IntegerValue alpha) {
-            return there[3] == ((int) alpha.magnitude() & 0xFF);
+        if (wanted instanceof IntegerValue(long magnitude)) {
+            return there[3] == ((int) magnitude & 0xFF);
         }
         if (!(wanted instanceof TupleValue colour)) {
             return false;

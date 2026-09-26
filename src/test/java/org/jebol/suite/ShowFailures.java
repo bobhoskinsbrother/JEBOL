@@ -9,7 +9,7 @@ public final class ShowFailures {
     private ShowFailures() {
     }
 
-    public static void main(String[] argued) throws Exception {
+    static void main(String[] argued) throws Exception {
         Interpreter.create();
         List<String> gaps = RebolSuiteTest.knownGaps();
         for (SuiteFile file : RebolSuiteTest.filesInSuite()) {

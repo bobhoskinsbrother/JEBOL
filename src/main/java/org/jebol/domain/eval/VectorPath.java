@@ -61,8 +61,8 @@ public final class VectorPath {
 
     private static Integer positionChosenBy(VectorValue vector, Value selector) {
         long asked;
-        if (selector instanceof IntegerValue number) {
-            asked = number.magnitude();
+        if (selector instanceof IntegerValue(long magnitude)) {
+            asked = magnitude;
         } else if (selector instanceof DecimalValue number) {
             asked = (long) number.quantity();
         } else {

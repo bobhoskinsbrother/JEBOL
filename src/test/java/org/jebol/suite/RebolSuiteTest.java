@@ -219,9 +219,7 @@ class RebolSuiteTest {
         }
         String letters = lettersRecordedBy(interpreter);
         for (int at = 0; at < step.nested().size(); at++) {
-            boolean everyRunHeld = at < letters.length()
-                    ? letters.charAt(at) == 't'
-                    : false;
+            boolean everyRunHeld = at < letters.length() && letters.charAt(at) == 't';
             if (at == step.nested().size() - 1 && letters.length() > step.nested().size()) {
                 everyRunHeld = letters.chars().skip(at).allMatch(letter -> letter == 't');
             }

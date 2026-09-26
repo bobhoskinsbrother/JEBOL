@@ -156,9 +156,9 @@ final class ChecksumPort {
     }
 
     static String methodOf(PortValue port) {
-        if (!(port.fieldNamed("spec") instanceof org.jebol.domain.value.ObjectValue spec)
-                || !spec.context().holds("method")
-                || !(spec.context().ownSlotFor("method").value()
+        if (!(port.fieldNamed("spec") instanceof ObjectValue(Context context))
+                || !context.holds("method")
+                || !(context.ownSlotFor("method").value()
                         instanceof WordValue method)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, "checksum");
         }

@@ -65,7 +65,7 @@ final class BrotliMetaBlockWriter {
         int width = BrotliCodes.log2Floor(number);
         into.write(1, 1);
         into.write(3, width);
-        into.write(width, number - (1 << width));
+        into.write(width, number - (1L << width));
     }
 
     static void writeUncompressed(byte[] data, int mask, int from, int length,

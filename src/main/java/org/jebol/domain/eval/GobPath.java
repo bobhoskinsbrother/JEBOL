@@ -14,12 +14,12 @@ final class GobPath {
         if (selector instanceof WordValue asked) {
             return field(gob, asked);
         }
-        if (!(selector instanceof IntegerValue position)) {
+        if (!(selector instanceof IntegerValue(long magnitude))) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     "cannot select " + selector.datatype().literalSpelling()
                             + " from a gob");
         }
-        return childOf(gob, position.magnitude());
+        return childOf(gob, magnitude);
     }
 
     static Value childOf(GobValue gob, long count) {
@@ -89,10 +89,10 @@ final class GobPath {
                 return true;
             }).orElse(false);
             case "alpha" -> {
-                if (!(written instanceof IntegerValue given)) {
+                if (!(written instanceof IntegerValue(long magnitude))) {
                     yield false;
                 }
-                storage.alpha(given.magnitude());
+                storage.alpha(magnitude);
                 yield true;
             }
             case "image" -> writtenImage(storage, written);
@@ -119,8 +119,8 @@ final class GobPath {
         if (written instanceof PairValue pair) {
             return java.util.Optional.of(pair);
         }
-        if (written instanceof IntegerValue whole) {
-            return java.util.Optional.of(PairValue.square(whole.magnitude()));
+        if (written instanceof IntegerValue(long magnitude)) {
+            return java.util.Optional.of(PairValue.square(magnitude));
         }
         if (written instanceof DecimalValue fraction) {
             return java.util.Optional.of(PairValue.square(fraction.quantity()));

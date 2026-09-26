@@ -30,8 +30,8 @@ public final class TypesetActions {
     }
 
     public boolean holds(Value asked) {
-        return asked instanceof DatatypeValue wanted
-                && members.holds(wanted.represents());
+        return asked instanceof DatatypeValue(Datatype represents)
+                && members.holds(represents);
     }
 
     public TypesetValue combinedWith(TypesetValue theirs, SetOperation how) {
@@ -59,8 +59,8 @@ public final class TypesetActions {
     }
 
     public static boolean addTheTypesNamedBy(Value item, Set<Datatype> found) {
-        if (item instanceof DatatypeValue datatype) {
-            found.add(datatype.represents());
+        if (item instanceof DatatypeValue(Datatype represents)) {
+            found.add(represents);
             return true;
         }
         if (item instanceof TypesetValue typeset) {

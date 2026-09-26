@@ -98,9 +98,9 @@ public final class MapValue implements Value {
             return one.datatype() == other.datatype()
                     && one.canonical().equals(other.canonical());
         }
-        if (held instanceof CharacterValue one && wanted instanceof CharacterValue other) {
-            return Character.toLowerCase(one.codepoint())
-                    == Character.toLowerCase(other.codepoint());
+        if (held instanceof CharacterValue(int codepoint1) && wanted instanceof CharacterValue(int codepoint)) {
+            return Character.toLowerCase(codepoint1)
+                    == Character.toLowerCase(codepoint);
         }
         return false;
     }

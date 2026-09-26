@@ -169,8 +169,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                 if (!(other instanceof WordValue numbered)
                         || !NUMBERED_ASSERT.equals(numbered.spelling())
                         || here >= after.size()
-                        || !(after.get(here++) instanceof IntegerValue which)
-                        || which.magnitude() != ++next[0]) {
+                        || !(after.get(here++) instanceof IntegerValue(long magnitude))
+                        || magnitude != ++next[0]) {
                     return false;
                 }
                 continue;

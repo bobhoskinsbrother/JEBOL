@@ -24,13 +24,13 @@ public final class MoneyActions {
     }
 
     private static BigDecimal widenedToMeet(Value other, ArithmeticOperation operation) {
-        if (other instanceof TimeValue span) {
+        if (other instanceof TimeValue(long nanoseconds)) {
             if (!operation.multiplies()) {
                 throw Raised.of(EvaluationFailure.NOT_RELATED,
                         "only multiplication takes a time on the right of a money");
             }
             return BigDecimal.valueOf(
-                    (double) span.nanoseconds() / TimeValue.NANOSECONDS_PER_HOUR);
+                    (double) nanoseconds / TimeValue.NANOSECONDS_PER_HOUR);
         }
         if (other instanceof MoneyValue
                 || other instanceof IntegerValue

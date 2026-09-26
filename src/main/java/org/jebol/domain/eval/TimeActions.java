@@ -124,11 +124,11 @@ public final class TimeActions {
     }
 
     static long wholeNanosecondsOf(Value value) {
-        if (value instanceof TimeValue time) {
-            return time.nanoseconds();
+        if (value instanceof TimeValue(long nanoseconds)) {
+            return nanoseconds;
         }
-        if (value instanceof IntegerValue seconds) {
-            return seconds.magnitude() * TimeValue.NANOSECONDS_PER_SECOND;
+        if (value instanceof IntegerValue(long magnitude)) {
+            return magnitude * TimeValue.NANOSECONDS_PER_SECOND;
         }
         return Math.round(Comparison.asDouble(value) * TimeValue.NANOSECONDS_PER_SECOND);
     }

@@ -448,14 +448,14 @@ final class BrotliEncoder {
                 int prefix = tail >> width;
                 int code = (width << 1) + prefix + 42;
                 writer.write(commandDepth[code], commandBits[code]);
-                writer.write(width, tail - (prefix << width));
+                writer.write(width, tail - ((long) prefix << width));
                 commandHistogram[code]++;
             } else if (insertLength < 2114) {
                 int tail = insertLength - 66;
                 int width = BrotliCodes.log2Floor(tail);
                 int code = width + 50;
                 writer.write(commandDepth[code], commandBits[code]);
-                writer.write(width, tail - (1 << width));
+                writer.write(width, tail - (1L << width));
                 commandHistogram[code]++;
             } else {
                 writer.write(commandDepth[61], commandBits[61]);
@@ -487,14 +487,14 @@ final class BrotliEncoder {
                 int prefix = tail >> width;
                 int code = (width << 1) + prefix + 20;
                 writer.write(commandDepth[code], commandBits[code]);
-                writer.write(width, tail - (prefix << width));
+                writer.write(width, tail - ((long) prefix << width));
                 commandHistogram[code]++;
             } else if (copyLength < 2118) {
                 int tail = copyLength - 70;
                 int width = BrotliCodes.log2Floor(tail);
                 int code = width + 28;
                 writer.write(commandDepth[code], commandBits[code]);
-                writer.write(width, tail - (1 << width));
+                writer.write(width, tail - (1L << width));
                 commandHistogram[code]++;
             } else {
                 writer.write(commandDepth[39], commandBits[39]);
@@ -514,7 +514,7 @@ final class BrotliEncoder {
                 int prefix = tail >> width;
                 int code = (width << 1) + prefix + 4;
                 writer.write(commandDepth[code], commandBits[code]);
-                writer.write(width, tail - (prefix << width));
+                writer.write(width, tail - ((long) prefix << width));
                 commandHistogram[code]++;
             } else if (copyLength < 136) {
                 int tail = copyLength - 8;
@@ -529,7 +529,7 @@ final class BrotliEncoder {
                 int width = BrotliCodes.log2Floor(tail);
                 int code = width + 28;
                 writer.write(commandDepth[code], commandBits[code]);
-                writer.write(width, tail - (1 << width));
+                writer.write(width, tail - (1L << width));
                 writer.write(commandDepth[64], commandBits[64]);
                 commandHistogram[code]++;
                 commandHistogram[64]++;

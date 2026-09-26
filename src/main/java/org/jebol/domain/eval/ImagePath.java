@@ -187,8 +187,8 @@ final class ImagePath {
             java.util.List<Value> numbers = vector.remaining();
             int[] octets = new int[numbers.size()];
             for (int at = 0; at < octets.length; at++) {
-                octets[at] = numbers.get(at) instanceof IntegerValue number
-                        ? (int) number.magnitude() & 0xFF
+                octets[at] = numbers.get(at) instanceof IntegerValue(long magnitude)
+                        ? (int) magnitude & 0xFF
                         : 0;
             }
             return octets;
@@ -197,15 +197,15 @@ final class ImagePath {
     }
 
     private static int byteOrRefuse(Value written) {
-        if (!(written instanceof IntegerValue number)) {
+        if (!(written instanceof IntegerValue(long magnitude))) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "a whole picture is filled from a tuple or a number");
         }
-        if (number.magnitude() < 0 || number.magnitude() > 255) {
+        if (magnitude < 0 || magnitude > 255) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     "a colour byte holds 0 to 255");
         }
-        return (int) number.magnitude();
+        return (int) magnitude;
     }
 
     static void writeOneChannel(
@@ -214,8 +214,8 @@ final class ImagePath {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "a pixel has four bytes, so " + channel + " names none of them");
         }
-        if (!(written instanceof IntegerValue octet)
-                || octet.magnitude() < 0 || octet.magnitude() > 255) {
+        if (!(written instanceof IntegerValue(long magnitude))
+                || magnitude < 0 || magnitude > 255) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "one byte of a pixel holds 0 to 255");
         }
@@ -225,7 +225,7 @@ final class ImagePath {
                     "pixel " + pixel + " is outside the image");
         }
         image.storage().setChannelAt(image.index() + pixel - 1, channel,
-                (int) octet.magnitude());
+                (int) magnitude);
     }
 
     private static int pixelNamedBy(ImageValue image, Value selector) {

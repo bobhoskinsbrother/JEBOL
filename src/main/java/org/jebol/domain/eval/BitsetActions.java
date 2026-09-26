@@ -66,13 +66,13 @@ public final class BitsetActions implements Actions {
     }
 
     public boolean holds(Value asked, boolean anyWillDo, boolean eitherCaseWillDo) {
-        if (asked instanceof CharacterValue letter) {
+        if (asked instanceof CharacterValue(int codepoint)) {
             return eitherCaseWillDo
-                    ? members.holdsEitherCaseOf(letter.codepoint())
-                    : members.holds(letter.codepoint());
+                    ? members.holdsEitherCaseOf(codepoint)
+                    : members.holds(codepoint);
         }
-        if (asked instanceof IntegerValue codepoint) {
-            return members.holds(bitAsked(codepoint.magnitude()));
+        if (asked instanceof IntegerValue(long magnitude)) {
+            return members.holds(bitAsked(magnitude));
         }
         return holdsEachOf(codePointsAskedAboutBy(asked), anyWillDo);
     }
@@ -176,8 +176,8 @@ public final class BitsetActions implements Actions {
     }
 
     public static BitsetValue meantBy(Value source) {
-        if (source instanceof IntegerValue point) {
-            return BitsetValue.of(withBitSet(new byte[0], bitAsked(point.magnitude())));
+        if (source instanceof IntegerValue(long magnitude)) {
+            return BitsetValue.of(withBitSet(new byte[0], bitAsked(magnitude)));
         }
         if (!(source instanceof CharacterValue || source instanceof StringValue
                 || source instanceof BinaryValue || source instanceof BlockValue)) {
@@ -214,12 +214,12 @@ public final class BitsetActions implements Actions {
                     octets = withBitSet(octets, point);
                 }
             } else if (spec instanceof CharacterValue || spec instanceof IntegerValue) {
-                int from = bitAsked((long) codePointOf(spec));
+                int from = bitAsked(codePointOf(spec));
                 int to = from;
                 if (at + 1 < specs.size()
                         && specs.get(at + 1) instanceof WordValue dash
                         && dash.spelling().equals("-")) {
-                    to = bitAsked((long) codePointOf(farEndOfTheRun(spec, specs, at + 2)));
+                    to = bitAsked(codePointOf(farEndOfTheRun(spec, specs, at + 2)));
                     at += 2;
                 }
                 if (to < from) {
@@ -292,8 +292,8 @@ public final class BitsetActions implements Actions {
     }
 
     private static int codePointOf(Value value) {
-        return value instanceof CharacterValue character
-                ? character.codepoint()
+        return value instanceof CharacterValue(int codepoint)
+                ? codepoint
                 : (int) Comparison.asDouble(value);
     }
 

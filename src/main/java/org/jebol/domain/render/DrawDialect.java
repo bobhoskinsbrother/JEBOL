@@ -107,7 +107,7 @@ public final class DrawDialect {
                 case "fill-rule" -> wordAt(arguments, 0).flatMap(FillRule::named)
                         .ifPresent(rule -> state = state.withFillRule(rule));
                 case "anti-alias" -> state = state.withAntiAliasing(
-                        arguments.getFirst() instanceof LogicValue said && said.truth());
+                        arguments.getFirst() instanceof LogicValue(boolean truth) && truth);
                 case "line-pattern" -> {
                     state = state.withDashes(everyNumberIn(arguments));
                     gapColour = colourAt(arguments, THE_DASH_COLOUR);
