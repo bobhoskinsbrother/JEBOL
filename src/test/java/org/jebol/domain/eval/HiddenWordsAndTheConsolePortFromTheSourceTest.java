@@ -4,6 +4,9 @@ import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,6 +20,11 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
     private static String errorIdFrom(String source) {
         return answerTo("failure: try [" + source + "] failure/id");
+    }
+
+    private static String errorIdAndSubjectsFrom(String source) {
+        return answerTo("failure: try [" + source + "] "
+                + "reduce [failure/id failure/arg1 failure/arg2]");
     }
 
     @Nested
@@ -122,6 +130,82 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
         void helpWorks() {
             assertThat(answerTo("""
                     unset? ? system/ports/output""")).isEqualTo("#(true)");
+        }
+    }
+
+    @Nested
+    @DisplayName("the three modes MODIFY turns on and off")
+    class TheConsoleModes {
+
+        @ParameterizedTest(name = "{0} set to {1}")
+        @CsvSource({
+                "echo,  true",
+                "echo,  false",
+                "line,  true",
+                "line,  false",
+                "error, true",
+                "error, false",
+        })
+        void settingAModeAnswersTheSetting(String mode, String setting) {
+            assertThat(answerTo(
+                    "modify system/ports/output (quote " + mode + ") " + setting))
+                    .isEqualTo("#(" + setting + ")");
+        }
+
+        @Test
+        @DisplayName("the mode is named without regard to case")
+        void namedWithoutRegardToCase() {
+            assertThat(answerTo("""
+                    modify system/ports/output (quote ECHO) true""")).isEqualTo("#(true)");
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {"bogus", "nonsense", "echoes"})
+        void aWordThatIsNotOneOfTheThreeIsRefused(String word) {
+            assertThat(errorIdAndSubjectsFrom(
+                    "modify system/ports/output (quote " + word + ") true"))
+                    .isEqualTo("[bad-file-mode " + word + " _]");
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {"created", "accessed", "modified", "owner-read",
+                "group-write", "world-execute"})
+        void aPortModeIsNotAConsoleMode(String word) {
+            assertThat(errorIdAndSubjectsFrom(
+                    "modify system/ports/output (quote " + word + ") true"))
+                    .isEqualTo("[bad-file-mode " + word + " _]");
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @CsvSource({
+                "5,          5",
+                "0,          0",
+                "-1,         -1",
+                "none,       _",
+                "'\"true\"', '\"true\"'",
+                "'[true]',   '[true]'",
+                "1.0,        1.0",
+        })
+        void aModeHoldsOnlyTrueOrFalse(String written, String molded) {
+            assertThat(errorIdAndSubjectsFrom(
+                    "modify system/ports/output (quote echo) " + written))
+                    .isEqualTo("[invalid-value-for " + molded + " echo]");
+        }
+
+        @Test
+        @DisplayName("no mode at all is refused the same way, about nothing")
+        void noModeAtAll() {
+            assertThat(errorIdAndSubjectsFrom("""
+                    modify system/ports/output none true"""))
+                    .isEqualTo("[bad-file-mode _ _]");
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {"\"echo\"", "5", "#\"e\"", "[echo]"})
+        void somethingThatIsNotAWordNeverReachesTheModes(String written) {
+            assertThat(errorIdFrom(
+                    "modify system/ports/output " + written + " true"))
+                    .isEqualTo("expect-arg");
         }
     }
 }

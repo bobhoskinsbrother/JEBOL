@@ -178,7 +178,7 @@ class PortDatatypeTest {
         void modifyRefusesAnUnknownMode() {
             assertThat(errorIdFrom(withAConsole(),
                     "p: open [scheme: 'console] modify p 'colour true"))
-                    .isEqualTo("invalid-arg");
+                    .isEqualTo("bad-file-mode");
         }
 
         @Test
@@ -186,7 +186,7 @@ class PortDatatypeTest {
         void modifyRefusesANonLogic() {
             assertThat(errorIdFrom(withAConsole(),
                     "p: open [scheme: 'console] modify p 'line 9"))
-                    .isEqualTo("invalid-arg");
+                    .isEqualTo("invalid-value-for");
         }
     }
 

@@ -2708,6 +2708,58 @@ rule WritingToTheConsolePortGoesThroughTheConsole {
     ensures: the_console_shows(formed(data))
 }
 
+-- MODIFY turns one of the console's three modes on or off and answers the
+-- setting. Echo says whether what the operator types is written back out,
+-- line says whether a whole line is gathered before it is handed over, and
+-- error says whether failures go out on the error channel rather than the
+-- ordinary one.
+--
+-- Those three names are not the interpreter's to choose. Rebol keeps a table
+-- of the modes a port or a console takes, and the interpreter reads the
+-- console row of that table rather than carrying its own copy of the three
+-- words -- so a mode added to the table is a mode the interpreter accepts,
+-- and there is no second list to fall out of step.
+rule ModifyingAConsoleModeSetsIt {
+    when: EvaluateCall(modify, target, field, value)
+    requires: names_the_console_port(target)
+    requires: field in the_modes_the_console_takes()
+    requires: is_logic(value)
+
+    ensures: CallResult(value: value)
+}
+
+open question "Where does a console mode live once it is set? Rebol hands it to the device and keeps nothing on the port, so reading `system/ports/output/echo` back is a bad path there; JEBOL writes the setting into a field of the port, so the same path answers TRUE and the port has gained a field that a Rebol port has not got. Nothing in JEBOL reads the field afterwards, which is the awkward part: the setting is recorded and then ignored, so a script that turns echo off still sees what it types. Three readings are open. The field could go and the console adapter could hold the three settings and honour them, which is what the modes are for and the only one that makes MODIFY do anything. The field could stay and the adapter could read it, which keeps the setting where a script can see it but leaves a port carrying a field Rebol's does not. Or the port could go on accepting the call and changing nothing, and the rule should say so plainly rather than implying a setting was made. The first is almost certainly right, but it is a console feature rather than a port one, and deciding it means saying what echo, line and error each mean for a host that is not a terminal."
+
+-- A word that is not one of the three is refused, and the failure carries
+-- the word itself rather than a sentence listing what was allowed.
+--
+-- Which matters more than it sounds. A caller that has misspelled a mode
+-- wants to compare the failure's subject with the word it passed, and a
+-- message reading "echo, line or error" makes that a matter of parsing
+-- prose. The same error covers a file that is to be made new and never
+-- written to, so the id says a mode was wrong and the subject says which.
+rule ModifyingAModeTheConsoleHasNotGotIsRefused {
+    when: EvaluateCall(modify, target, field, value)
+    requires: names_the_console_port(target)
+    requires: field not in the_modes_the_console_takes()
+
+    ensures: CallFails(error: bad_file_mode, about: field)
+}
+
+-- A mode is on or off and holds nothing else. A value that is neither is
+-- refused, and the failure carries both the value and the mode it was
+-- offered for, because either one alone leaves the caller guessing which of
+-- the two arguments was the mistake.
+rule AConsoleModeHoldsOnlyTrueOrFalse {
+    when: EvaluateCall(modify, target, field, value)
+    requires: names_the_console_port(target)
+    requires: field in the_modes_the_console_takes()
+    requires: not is_logic(value)
+
+    ensures: CallFails(error: invalid_value_for, about: value)
+    ensures: the_failure_also_names(field)
+}
+
 -- === The cipher port =======================================
 
 -- MAKE PORT! builds a port out of any of six spellings of a specification,

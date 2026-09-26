@@ -57,6 +57,8 @@ public final class Interpreter {
         natives.useOperatingSystemNamed(whatRebolCallsThisOperatingSystem());
         natives.useErrorCatalogue(theSourceIn("/org/jebol/errors.reb"));
         natives.useDatatypeSpecs(theSourceIn("/org/jebol/typespec.reb"));
+        natives.useOperatorTable(theSourceIn("/org/jebol/ops.reb"));
+        natives.useModeTable(theSourceIn("/org/jebol/modes.reb"));
         natives.useFunctionDeclarations(
                 theSourceIn("/org/jebol/actions.reb"),
                 theSourceIn("/org/jebol/natives.reb"),
@@ -166,8 +168,8 @@ public final class Interpreter {
         declareTheSetWordsOf(body, systemContext,
                 AnAssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
         Outcome outcome = evaluator.evaluate(Binder.bind(body, systemContext), systemContext);
-        if (outcome instanceof Outcome.Raised raised) {
-            throw new IllegalStateException("the prelude failed to load: " + raised.failure());
+        if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
+            throw new IllegalStateException("the prelude failed to load: " + failure);
         }
     }
 
@@ -201,8 +203,8 @@ public final class Interpreter {
                     : entry.endsWith(INTO_SYS)
                             ? loadAsASystemFile(body)
                             : loadInto(body, systemContext);
-            if (outcome instanceof Outcome.Raised raised) {
-                borrowedLoadFailures.put(name, raised.failure().toString());
+            if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
+                borrowedLoadFailures.put(name, failure.toString());
             }
         }
         describeTheQoiCodec();
@@ -291,7 +293,7 @@ public final class Interpreter {
     private void registerTheModule(LibraryFileHeader header, Context own) {
         String name = header.moduleName();
         if (name.isEmpty()
-                || !(pathInto("system", "modules") instanceof ObjectValue modules)) {
+                || !(pathInto("system", "modules") instanceof ObjectValue(Context context))) {
             return;
         }
         Context spec = Context.root();
@@ -299,7 +301,7 @@ public final class Interpreter {
         spec.set("type", WordValue.of("module"));
         spec.set("exports", BlockValue.block(header.exportedNames().stream()
                 .<Value>map(WordValue::of).toList()));
-        modules.context().set(name, new ModuleValue(own, new ObjectValue(spec)));
+        context.set(name, new ModuleValue(own, new ObjectValue(spec)));
     }
 
     private Value pathInto(String... names) {
@@ -307,11 +309,11 @@ public final class Interpreter {
                 ? systemContext.slotFor(names[0]).value()
                 : UnsetValue.unset();
         for (int at = 1; at < names.length; at++) {
-            if (!(here instanceof ObjectValue object)
-                    || !object.context().holds(names[at])) {
+            if (!(here instanceof ObjectValue(Context context))
+                    || !context.holds(names[at])) {
                 return UnsetValue.unset();
             }
-            here = object.context().ownSlotFor(names[at]).value();
+            here = context.ownSlotFor(names[at]).value();
         }
         return here;
     }
@@ -321,9 +323,8 @@ public final class Interpreter {
                 && systemContext.slotFor("system").value()
                         instanceof ObjectValue system
                 && system.context().holds("contexts")
-                && system.context().ownSlotFor("contexts").value()
-                        instanceof ObjectValue contexts) {
-            contexts.context().set("user", new ObjectValue(userContext));
+                && system.context().ownSlotFor("contexts").value() instanceof ObjectValue(Context context)) {
+            context.set("user", new ObjectValue(userContext));
             openTheUserContextWithRebolAndItself(system);
         }
     }

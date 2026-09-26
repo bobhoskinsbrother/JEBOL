@@ -66,35 +66,31 @@ public final class Natives {
         defineLayout();
         defineScreen();
         defineOutput();
-        defineOperators();
     }
 
-    private void defineOperators() {
-        defineOperator("!=", "not-equal?");
-        defineOperator("!==", "strict-not-equal?");
-        defineOperator("%", "remainder");
-        defineOperator("%%", "modulo");
-        defineOperator("&", "and~");
-        defineOperator("*", "multiply");
-        defineOperator("**", "power");
-        defineOperator("+", "add");
-        defineOperator("-", "subtract");
-        defineOperator("/", "divide");
-        defineOperator("//", "integer-divide");
-        defineOperator("<", "lesser?");
-        defineOperator("<<", "shift-left");
-        defineOperator("<=", "lesser-or-equal?");
-        defineOperator("<>", "not-equal?");
-        defineOperator("=", "equal?");
-        defineOperator("==", "strict-equal?");
-        defineOperator("=?", "same?");
-        defineOperator(">", "greater?");
-        defineOperator(">=", "greater-or-equal?");
-        defineOperator(">>", "shift-right");
-        defineOperator("and", "and~");
-        defineOperator("or", "or~");
-        defineOperator("xor", "xor~");
-        defineOperator("|", "or~");
+    public void useOperatorTable(String source) {
+        operatorTwins.clear();
+        List<Value> written = theRowsBelowTheHeaderOf(source);
+        for (int at = 0; at + 1 < written.size(); at += 2) {
+            if (written.get(at) instanceof WordValue operator
+                    && written.get(at + 1) instanceof WordValue twin) {
+                defineOperator(operator.spelling(), twin.spelling());
+            }
+        }
+    }
+
+    private static final int A_HEADER_IS_THE_WORD_REBOL_AND_ITS_BLOCK = 2;
+
+    private static List<Value> theRowsBelowTheHeaderOf(String source) {
+        try {
+            List<Value> values =
+                    Transcoder.transcode(source).values().orElseThrow().remaining();
+            return values.subList(
+                    Math.min(A_HEADER_IS_THE_WORD_REBOL_AND_ITS_BLOCK, values.size()),
+                    values.size());
+        } catch (RuntimeException unreadable) {
+            return List.of();
+        }
     }
 
     private Set<HostService> grantedServices = of();
@@ -128,6 +124,13 @@ public final class Natives {
     public void useDatatypeSpecs(String source) {
         this.datatypeSpecSource = source;
         this.datatypeSpecs = null;
+    }
+
+    private String modeTableSource = "";
+
+    public void useModeTable(String source) {
+        this.modeTableSource = source;
+        this.consoleModes = null;
     }
 
     private String functionDeclarationSource = "";
@@ -165,18 +168,18 @@ public final class Natives {
     private Value signalled(Value asked) {
         long process;
         int signal;
-        if (asked instanceof IntegerValue only) {
-            process = only.magnitude();
+        if (asked instanceof IntegerValue(long magnitude2)) {
+            process = magnitude2;
             signal = TERMINATE;
         } else {
             List<Value> pair = ((BlockValue) asked).remaining();
             if (pair.size() != 2
-                    || !(pair.get(0) instanceof IntegerValue whichProcess)
-                    || !(pair.get(1) instanceof IntegerValue chosen)) {
+                    || !(pair.get(0) instanceof IntegerValue(long magnitude1))
+                    || !(pair.get(1) instanceof IntegerValue(long magnitude))) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
             }
-            process = whichProcess.magnitude();
-            signal = (int) chosen.magnitude();
+            process = magnitude1;
+            signal = (int) magnitude;
         }
         requireService(HostService.PROCESSES);
         return LogicValue.of(endProcess(process, signal));
@@ -371,7 +374,7 @@ public final class Natives {
         for (String policy : new String[] {
                 "file", "net", "eval", "memory", "secure", "protect", "debug",
                 "envr", "call", "browse", "extension"}) {
-            policies.set(policy, TupleValue.of(new int[] {0, 0, 0}));
+            policies.set(policy, TupleValue.of(0, 0, 0));
         }
         state.set("policies", new ObjectValue(policies));
         for (String field : new String[] {
@@ -697,17 +700,17 @@ public final class Natives {
                     Trace tracing = evaluator.tracing();
                     tracing.writeTo(evaluator.output());
                     if (refinements.contains("back")) {
-                        if (mode instanceof IntegerValue lines) {
+                        if (mode instanceof IntegerValue(long magnitude)) {
                             tracing.showTheLastAndStopTracing(
-                                    (int) lines.magnitude());
+                                    (int) magnitude);
                             return UnsetValue.unset();
                         }
                         tracing.keepRatherThanPrint(mode.isTruthy());
                     } else {
                         tracing.keepRatherThanPrint(false);
                     }
-                    int wanted = mode instanceof IntegerValue level
-                            ? (int) level.magnitude()
+                    int wanted = mode instanceof IntegerValue(long magnitude)
+                            ? (int) magnitude
                             : (mode.isTruthy() ? Trace.EVERYTHING : 0);
                     tracing.level(wanted, refinements.contains("function"));
                     return UnsetValue.unset();
@@ -1122,10 +1125,10 @@ public final class Natives {
     }
 
     private static Value extreme(Value left, Value right, boolean wantingLarger) {
-        if (left instanceof PairValue leftPair && right instanceof PairValue rightPair) {
+        if (left instanceof PairValue(double x1, double y1) && right instanceof PairValue(double x, double y)) {
             return PairValue.of(
-                    furtherOf(leftPair.x(), rightPair.x(), wantingLarger),
-                    furtherOf(leftPair.y(), rightPair.y(), wantingLarger));
+                    furtherOf(x1, x, wantingLarger),
+                    furtherOf(y1, y, wantingLarger));
         }
         boolean takeLeft = wantingLarger
                 ? Comparison.compareForSorting(left, right, false) >= 0
@@ -1297,12 +1300,12 @@ public final class Natives {
             }
             return TupleValue.of(octets);
         }
-        if (from instanceof PairValue start) {
-            if (!(to instanceof PairValue end)) {
+        if (from instanceof PairValue(double x1, double y1)) {
+            if (!(to instanceof PairValue(double x, double y))) {
                 throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(to));
             }
-            return PairValue.of(alongTheWay(start.x(), end.x(), walked),
-                    alongTheWay(start.y(), end.y(), walked));
+            return PairValue.of(alongTheWay(x1, x, walked),
+                    alongTheWay(y1, y, walked));
         }
         throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(from));
     }
@@ -1403,11 +1406,11 @@ public final class Natives {
     private static Value aTimeOfHoursMinutesAndSeconds(BlockValue parts) {
         List<Value> given = parts.remaining();
         if (given.isEmpty() || given.size() > 3
-                || !(given.getFirst() instanceof IntegerValue hours)) {
+                || !(given.getFirst() instanceof IntegerValue(long magnitude1))) {
             return raiseBadMakeArg(parts, "time!");
         }
-        boolean negated = hours.magnitude() < 0;
-        long seconds = whatFitsInThirtyTwoBits(Math.abs(hours.magnitude()), parts) * 3600L;
+        boolean negated = magnitude1 < 0;
+        long seconds = whatFitsInThirtyTwoBits(Math.abs(magnitude1), parts) * 3600L;
         double fraction = 0.0;
         for (int at = 1; at < given.size(); at++) {
             if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
@@ -1421,10 +1424,10 @@ public final class Natives {
                 }
                 break;
             }
-            if (!(part instanceof IntegerValue whole) || whole.magnitude() < 0) {
+            if (!(part instanceof IntegerValue(long magnitude)) || magnitude < 0) {
                 return raiseBadMakeArg(parts, "time!");
             }
-            seconds += whatFitsInThirtyTwoBits(whole.magnitude(), parts)
+            seconds += whatFitsInThirtyTwoBits(magnitude, parts)
                     * (at == 1 ? 60L : 1L);
         }
         if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
@@ -1487,8 +1490,8 @@ public final class Natives {
     }
 
     private static Value scalarOf(Value value) {
-        return value instanceof TimeValue time
-                ? DecimalValue.of(time.nanoseconds())
+        return value instanceof TimeValue(long nanoseconds)
+                ? DecimalValue.of(nanoseconds)
                 : value;
     }
 
@@ -1906,8 +1909,8 @@ public final class Natives {
                     Context inside = context;
                     if (refinements.contains("with") && arguments.size() > 2) {
                         Value given = arguments.get(2);
-                        inside = given instanceof ObjectValue object
-                                ? object.context()
+                        inside = given instanceof ObjectValue(Context context1)
+                                ? context1
                                 : ((ObjectValue) makeObject(evaluator, context,
                                         Optional.empty(), (BlockValue) given)).context();
                     }
@@ -2023,8 +2026,8 @@ public final class Natives {
                                     ? text.text()
                                     : textOfBytes((BinaryValue) body));
                     if (refinements.contains("with") && arguments.size() > 1
-                            && arguments.get(1) instanceof ObjectValue prototype) {
-                        prototype.context().fieldsExcludingSelf()
+                            && arguments.get(1) instanceof ObjectValue(Context context1)) {
+                        context1.fieldsExcludingSelf()
                                 .forEach(built::set);
                     }
                     constructInto(built, items, refinements.contains("only"));
@@ -2171,12 +2174,12 @@ public final class Natives {
                     if (refinements.contains("as")) {
                         Value wanted = argumentFor(
                                 "as", List.of("ignore", "as"), arguments, refinements, 1);
-                        if (!(wanted instanceof DatatypeValue wantedType)
-                                || !ANY_WORD_DATATYPES.contains(wantedType.represents())) {
+                        if (!(wanted instanceof DatatypeValue(Datatype represents))
+                                || !ANY_WORD_DATATYPES.contains(represents)) {
                             throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, "as");
                         }
                         found.replaceAll(word -> word instanceof WordValue spelt
-                                ? spelt.as(wantedType.represents())
+                                ? spelt.as(represents)
                                 : word);
                     }
                     return BlockValue.block(found);
@@ -2238,8 +2241,8 @@ public final class Natives {
 
         define("selfless?", List.of(Parameter.required("context")),
                 (arguments, evaluator, context) -> LogicValue.of(
-                        !(arguments.get(0) instanceof ObjectValue object)
-                                || !object.context().holds("self")));
+                        !(arguments.get(0) instanceof ObjectValue(Context context1))
+                                || !context1.holds("self")));
 
         define("protected?", List.of(Parameter.required("value")),
                 (arguments, evaluator, context) -> LogicValue.of(switch (arguments.get(0)) {
@@ -2686,11 +2689,11 @@ public final class Natives {
         if (start instanceof SeriesValue series) {
             return steppedOverSeries(evaluator, locals, counter, series, end, step, bound);
         }
-        if (start instanceof IntegerValue from
-                && end instanceof IntegerValue to
-                && step instanceof IntegerValue by) {
+        if (start instanceof IntegerValue(long magnitude2)
+                && end instanceof IntegerValue(long magnitude1)
+                && step instanceof IntegerValue(long magnitude)) {
             return steppedOverWholeNumbers(evaluator, locals, counter,
-                    from.magnitude(), to.magnitude(), by.magnitude(), bound);
+                    magnitude2, magnitude1, magnitude, bound);
         }
         return steppedOverRealNumbers(evaluator, locals, counter,
                 Comparison.asDouble(start), Comparison.asDouble(end),
@@ -3381,20 +3384,20 @@ public final class Natives {
         Value holder = slotOf(head).value();
         for (int at = 1; at < segments.size() - 1; at++) {
             if (!(segments.get(at) instanceof WordValue field)
-                    || !(holder instanceof ObjectValue object)
-                    || !object.context().holds(field.canonical())) {
+                    || !(holder instanceof ObjectValue(Context context))
+                    || !context.holds(field.canonical())) {
                 return raiseCannotUse(path, "set");
             }
-            holder = object.context().slotFor(field.canonical()).value();
+            holder = context.slotFor(field.canonical()).value();
         }
         if (!(segments.getLast() instanceof WordValue field)
-                || !(holder instanceof ObjectValue object)) {
+                || !(holder instanceof ObjectValue(Context context))) {
             return raiseCannotUse(path, "set");
         }
-        if (!object.context().holds(field.canonical())) {
+        if (!context.holds(field.canonical())) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
         }
-        object.context().ownSlotFor(field.canonical()).setValue(supplied);
+        context.ownSlotFor(field.canonical()).setValue(supplied);
         return supplied;
     }
 
@@ -3607,20 +3610,20 @@ public final class Natives {
                         text.storage().set(text.index() + (int) at - 1, codepoint);
                         return arguments.get(2);
                     }
-                    if (arguments.get(0) instanceof BinaryValue bytes
+                    if (arguments.get(0) instanceof BinaryValue(BinaryStorage storage1, int index1)
                             && arguments.get(2) instanceof IntegerValue octet) {
-                        bytes.storage().set(bytes.index() + (int) at - 1,
+                        storage1.set(index1 + (int) at - 1,
                                 asAnOctet(octet));
                         return arguments.get(2);
                     }
-                    if (arguments.get(0) instanceof BinaryValue bytes
-                            && arguments.get(2) instanceof CharacterValue character) {
-                        if (character.codepoint() > 0xFF) {
+                    if (arguments.get(0) instanceof BinaryValue(BinaryStorage storage, int index)
+                            && arguments.get(2) instanceof CharacterValue(int codepoint)) {
+                        if (codepoint > 0xFF) {
                             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                                    character.codepoint() + " does not fit in a byte");
+                                    codepoint + " does not fit in a byte");
                         }
-                        bytes.storage().set(bytes.index() + (int) at - 1,
-                                character.codepoint());
+                        storage.set(index + (int) at - 1,
+                                codepoint);
                         return arguments.get(2);
                     }
                     if (arguments.get(0) instanceof BitsetValue set) {
@@ -3659,8 +3662,8 @@ public final class Natives {
                     }
                     Value width = argumentFor("skip", List.of("skip"), arguments,
                             refinements, 2);
-                    int stride = width instanceof IntegerValue wanted
-                            ? (int) Math.max(1, wanted.magnitude())
+                    int stride = width instanceof IntegerValue(long magnitude)
+                            ? (int) Math.max(1, magnitude)
                             : 1;
                     return Combining.sets(arguments.get(0), arguments.get(1),
                             SetOperation.named("difference").orElseThrow(),
@@ -3681,9 +3684,9 @@ public final class Natives {
                     if (arguments.getFirst() instanceof StructValue struct) {
                         return whatAStructReflects(struct, field, arguments.get(1));
                     }
-                    if (arguments.getFirst() instanceof DatatypeValue asked) {
+                    if (arguments.getFirst() instanceof DatatypeValue(Datatype represents)) {
                         DatatypeSpec described =
-                                datatypeSpecs().get(asked.represents().spelling());
+                                datatypeSpecs().get(represents.spelling());
                         if (described == null) {
                             return NoneValue.none();
                         }
@@ -3792,16 +3795,16 @@ public final class Natives {
                             default -> NoneValue.none();
                         };
                     }
-                    if (!(arguments.get(0) instanceof ObjectValue object)) {
+                    if (!(arguments.get(0) instanceof ObjectValue(Context context1))) {
                         return NoneValue.none();
                     }
                     return switch (field) {
-                        case "body" -> blockOfFieldsAndValues(object.context());
-                        case "words" -> BlockValue.block(object.context().slots().stream()
+                        case "body" -> blockOfFieldsAndValues(context1);
+                        case "words" -> BlockValue.block(context1.slots().stream()
                                 .filter(slot -> !slot.canonical().equals("self"))
                                 .<Value>map(slot -> WordValue.of(slot.spelling()))
                                 .toList());
-                        case "values" -> BlockValue.block(object.context().slots().stream()
+                        case "values" -> BlockValue.block(context1.slots().stream()
                                 .filter(slot -> !slot.canonical().equals("self"))
                                 .map(ContextSlot::value)
                                 .toList());
@@ -3942,9 +3945,9 @@ public final class Natives {
                         return evaluator.evaluateOrRaise(
                                 BlockValue.block(List.of(path)), context);
                     }
-                    if (arguments.get(0) instanceof ObjectValue object) {
+                    if (arguments.get(0) instanceof ObjectValue(Context context1)) {
                         return BlockValue.block(List.copyOf(
-                                object.context().fieldsExcludingSelf().values()));
+                                context1.fieldsExcludingSelf().values()));
                     }
                     if (!(arguments.get(0) instanceof WordValue word)) {
                         return arguments.get(0);
@@ -4093,24 +4096,24 @@ public final class Natives {
     private static void refuseUnbyteableNeedle(
             Value haystack, Value needle, String nativeName) {
 
-        if (!(haystack instanceof BinaryValue) || !(needle instanceof IntegerValue whole)) {
+        if (!(haystack instanceof BinaryValue) || !(needle instanceof IntegerValue(long magnitude))) {
             return;
         }
-        if (whole.magnitude() < 0 || whole.magnitude() > 255) {
+        if (magnitude < 0 || magnitude > 255) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    nativeName + " on a binary wanted a byte, not " + whole.magnitude());
+                    nativeName + " on a binary wanted a byte, not " + magnitude);
         }
     }
 
     private static Value errorFromSpec(Value spec, Evaluator evaluator, Context context) {
         Value theSpecAsWritten = spec;
         boolean fromAnObject = spec instanceof ObjectValue;
-        if (spec instanceof ObjectValue already) {
-            spec = BlockValue.block(setWordsAndValuesOf(already.context()));
+        if (spec instanceof ObjectValue(Context context2)) {
+            spec = BlockValue.block(setWordsAndValuesOf(context2));
         } else if (spec instanceof BlockValue body && body.datatype() == Datatype.BLOCK) {
             Value built = makeObject(evaluator, context, Optional.empty(), body);
-            if (built instanceof ObjectValue holder) {
-                spec = BlockValue.block(setWordsAndValuesOf(holder.context()));
+            if (built instanceof ObjectValue(Context context1)) {
+                spec = BlockValue.block(setWordsAndValuesOf(context1));
             }
         }
         if (!(spec instanceof BlockValue fields)) {
@@ -4395,8 +4398,8 @@ public final class Natives {
                         return rewrittenInPlace(text, change);
                     }
                     Value limit = argumentFor("part", List.of("part"), arguments, refinements, 1);
-                    long wanted = limit instanceof IntegerValue asked
-                            ? asked.magnitude()
+                    long wanted = limit instanceof IntegerValue(long magnitude)
+                            ? magnitude
                             : text.lengthFromHere();
                     StringValue changingFrom =
                             (StringValue) theRunReachingBackIfNegative(text, wanted);
@@ -4484,9 +4487,9 @@ public final class Natives {
                     if (queue.isPresent()) {
                         return pickFrom(queue.get(), arguments.get(1));
                     }
-                    return arguments.get(1) instanceof LogicValue chosen
+                    return arguments.get(1) instanceof LogicValue(boolean truth)
                             && !(arguments.getFirst() instanceof BitsetValue)
-                            ? pick(arguments.get(0), chosen.truth() ? 1 : 2)
+                            ? pick(arguments.get(0), truth ? 1 : 2)
                             : pickFrom(arguments.get(0), arguments.get(1));
                 });
 
@@ -4675,7 +4678,7 @@ public final class Natives {
                     case TupleValue parts ->
                             IntegerValue.of(parts.octetAt(parts.segmentCount()));
                     case SeriesValue series ->
-                            pick((Value) series, series.lengthFromHere());
+                            pick(series, series.lengthFromHere());
                     default -> raiseCannotUse(arguments.get(0), "last");
                 });
 
@@ -4786,9 +4789,9 @@ public final class Natives {
                     Value limit = argumentFor("part", List.of("part", "types"),
                             arguments, refinements, 1);
                     if (series instanceof ImageValue picture
-                            && limit instanceof PairValue shape) {
+                            && limit instanceof PairValue(double x, double y)) {
                         return ImageSeries.rectangleCopiedFrom(picture,
-                                (int) shape.x(), (int) shape.y());
+                                (int) x, (int) y);
                     }
                     return copiedFront(series, limit, deeply, kinds);
                 });
@@ -4821,8 +4824,8 @@ public final class Natives {
                                 !refinements.contains("case")));
                     }
                     if (arguments.get(0) instanceof TypesetValue typeset) {
-                        return LogicValue.of(arguments.get(1) instanceof DatatypeValue wanted
-                                && typeset.holds(wanted.represents()));
+                        return LogicValue.of(arguments.get(1) instanceof DatatypeValue(Datatype represents)
+                                && typeset.holds(represents));
                     }
                     if (arguments.get(0) instanceof GobValue searched) {
                         if (!(arguments.get(1) instanceof GobValue wanted)) {
@@ -4923,7 +4926,7 @@ public final class Natives {
                                 "/key removes from a map or a bitset, not a series");
                     }
                     long howMany = howManyWanted(series, arguments, refinements, 1).orElse(1L);
-                    return ((SeriesActions) Actions.of((Value) series).orElseThrow())
+                    return ((SeriesActions) Actions.of(series).orElseThrow())
                             .removed(howMany);
                 });
 
@@ -4999,7 +5002,7 @@ public final class Natives {
                             taking = back;
                         }
                         SeriesActions arms = (SeriesActions)
-                                Actions.of((Value) series).orElseThrow();
+                                Actions.of(series).orElseThrow();
                         for (long gone = 0; gone < taking && !series.atTail(); gone++) {
                             arms.takeOneOutAt(series.index());
                         }
@@ -5114,21 +5117,21 @@ public final class Natives {
                                     "sort/skip and sort/compare on a vector!");
                         }
                         return sortedElements(vector,
-                                partCount instanceof IntegerValue asked
-                                        ? (int) Math.min(asked.magnitude(),
+                                partCount instanceof IntegerValue(long magnitude)
+                                        ? (int) Math.min(magnitude,
                                                 vector.lengthFromHere())
                                         : vector.lengthFromHere(),
                                 refinements.contains("reverse"));
                     }
-                    int howMany = partCount instanceof IntegerValue wanted
-                            ? (int) Math.min(wanted.magnitude(), series.lengthFromHere())
+                    int howMany = partCount instanceof IntegerValue(long magnitude)
+                            ? (int) Math.min(magnitude, series.lengthFromHere())
                             : series.lengthFromHere();
                     howMany = Math.max(0, howMany);
                     if (howMany <= 1) {
                         return series;
                     }
-                    int stride = skipSize instanceof IntegerValue size
-                            ? (int) size.magnitude()
+                    int stride = skipSize instanceof IntegerValue(long magnitude)
+                            ? (int) magnitude
                             : 1;
                     if (refinements.contains("skip")
                             && (stride < 1 || stride > howMany || howMany % stride != 0)) {
@@ -5136,10 +5139,10 @@ public final class Natives {
                                 "a record width of " + stride + " does not divide "
                                         + howMany);
                     }
-                    if (comparator instanceof IntegerValue column
+                    if (comparator instanceof IntegerValue(long magnitude)
                             && (!refinements.contains("skip")
-                                    || column.magnitude() < 1
-                                    || column.magnitude() > stride)) {
+                                    || magnitude < 1
+                                    || magnitude > stride)) {
                         throw Raised.of(EvaluationFailure.INVALID_ARG,
                                 "there is no column " + Molder.mold(comparator)
                                         + " to sort by");
@@ -5172,8 +5175,8 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     Value width = argumentFor("skip", List.of("skip"), arguments,
                             refinements, 1);
-                    int stride = width instanceof IntegerValue wanted
-                            ? (int) Math.max(1, wanted.magnitude())
+                    int stride = width instanceof IntegerValue(long magnitude)
+                            ? (int) Math.max(1, magnitude)
                             : 1;
                     return Combining.sets(
                             arguments.getFirst(), arguments.getFirst(),
@@ -5276,9 +5279,9 @@ public final class Natives {
                                 ? arguments.get(arguments.size() - 1)
                                 : null, refinements);
                     }
-                    if (arguments.get(0) instanceof PairValue pair) {
+                    if (arguments.get(0) instanceof PairValue(double x, double y)) {
                         return PairValue.of(
-                                roundedHalfAway(pair.x()), roundedHalfAway(pair.y()));
+                                roundedHalfAway(x), roundedHalfAway(y));
                     }
                     double value = Comparison.asDouble(arguments.get(0));
                     if (!refinements.contains("to")) {
@@ -5308,11 +5311,11 @@ public final class Natives {
                     (double) time.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND)
                     * TimeValue.NANOSECONDS_PER_SECOND);
         }
-        if (scale instanceof TimeValue step) {
-            return TimeValue.ofNanoseconds(step.nanoseconds() == 0
+        if (scale instanceof TimeValue(long nanoseconds)) {
+            return TimeValue.ofNanoseconds(nanoseconds == 0
                     ? time.nanoseconds()
-                    : Math.round((double) time.nanoseconds() / step.nanoseconds())
-                            * step.nanoseconds());
+                    : Math.round((double) time.nanoseconds() / nanoseconds)
+                            * nanoseconds);
         }
         double stepSeconds = Comparison.asDouble(scale);
         double seconds = (double) time.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND;
@@ -5700,8 +5703,8 @@ public final class Natives {
 
         if ((wanted instanceof DatatypeValue || wanted instanceof TypesetValue)
                 && !refinements.contains("only")) {
-            return wanted instanceof DatatypeValue wantedType
-                    ? items.get(at).datatype() == wantedType.represents()
+            return wanted instanceof DatatypeValue(Datatype represents)
+                    ? items.get(at).datatype() == represents
                     : ((TypesetValue) wanted).holds(items.get(at).datatype());
         }
         if (wanted instanceof BlockValue run
@@ -5720,8 +5723,8 @@ public final class Natives {
             return textRunMatchesAt(series, items, at, wanted, refinements);
         }
         if (wanted instanceof BitsetValue members) {
-            return items.get(at) instanceof CharacterValue character
-                    && members.holds(character.codepoint());
+            return items.get(at) instanceof CharacterValue(int codepoint)
+                    && members.holds(codepoint);
         }
         return matches(items.get(at), wanted, refinements.contains("case"));
     }
@@ -5731,8 +5734,8 @@ public final class Natives {
             Set<String> refinements) {
 
         if (wanted instanceof BitsetValue members) {
-            return items.get(at) instanceof CharacterValue character
-                    && members.holds(character.codepoint());
+            return items.get(at) instanceof CharacterValue(int codepoint)
+                    && members.holds(codepoint);
         }
         List<Value> run = itemsOfNeedle(series, wanted);
         if (at + run.size() > items.size()) {
@@ -5748,12 +5751,12 @@ public final class Natives {
     }
 
     private static List<Value> theBytesThatSpell(Value wanted) {
-        if (wanted instanceof CharacterValue letter
-                && letter.codepoint() <= 0xFF) {
-            return List.of(IntegerValue.of(letter.codepoint()));
+        if (wanted instanceof CharacterValue(int codepoint1)
+                && codepoint1 <= 0xFF) {
+            return List.of(IntegerValue.of(codepoint1));
         }
-        String text = wanted instanceof CharacterValue letter
-                ? new String(Character.toChars(letter.codepoint()))
+        String text = wanted instanceof CharacterValue(int codepoint)
+                ? new String(Character.toChars(codepoint))
                 : ((StringValue) wanted).text();
         List<Value> octets = new ArrayList<>();
         for (byte octet : text.getBytes(StandardCharsets.UTF_8)) {
@@ -5842,8 +5845,8 @@ public final class Natives {
                     refinements.contains("case"), wildcards) >= 0;
         }
         if (wanted instanceof BitsetValue members) {
-            return items.get(at) instanceof CharacterValue character
-                    && members.holds(character.codepoint());
+            return items.get(at) instanceof CharacterValue(int codepoint)
+                    && members.holds(codepoint);
         }
         if (wanted instanceof BlockValue run
                 && run.datatype() == Datatype.BLOCK
@@ -5858,8 +5861,8 @@ public final class Natives {
                 return false;
             }
             for (int step = 0; step < sought.length; step++) {
-                if (!(items.get(at + step) instanceof CharacterValue character)
-                        || Character.toLowerCase(character.codepoint())
+                if (!(items.get(at + step) instanceof CharacterValue(int codepoint))
+                        || Character.toLowerCase(codepoint)
                                 != Character.toLowerCase(sought[step])) {
                     return false;
                 }
@@ -6042,11 +6045,11 @@ public final class Natives {
         List<Value> ordered = records.stream().flatMap(List::stream).toList();
         for (int at = 0; at < ordered.size(); at++) {
             if (series instanceof StringValue text
-                    && ordered.get(at) instanceof CharacterValue character) {
-                text.storage().set(text.index() + at, character.codepoint());
-            } else if (series instanceof BinaryValue bytes
-                    && ordered.get(at) instanceof IntegerValue octet) {
-                bytes.storage().set(bytes.index() + at, (int) octet.magnitude());
+                    && ordered.get(at) instanceof CharacterValue(int codepoint)) {
+                text.storage().set(text.index() + at, codepoint);
+            } else if (series instanceof BinaryValue(BinaryStorage storage, int index)
+                    && ordered.get(at) instanceof IntegerValue(long magnitude)) {
+                storage.set(index + at, (int) magnitude);
             }
         }
         return series;
@@ -6112,8 +6115,8 @@ public final class Natives {
     }
 
     private static Value lentElementOf(SeriesValue series, Value element) {
-        return series instanceof BinaryValue && element instanceof IntegerValue octet
-                ? CharacterValue.of((int) octet.magnitude())
+        return series instanceof BinaryValue && element instanceof IntegerValue(long magnitude)
+                ? CharacterValue.of((int) magnitude)
                 : element;
     }
 
@@ -6165,15 +6168,15 @@ public final class Natives {
     private static int compareByColumns(List<Value> left, List<Value> right,
             List<Value> columns, boolean mindingCase) {
         for (Value asked : columns) {
-            if (!(asked instanceof IntegerValue column)) {
+            if (!(asked instanceof IntegerValue(long magnitude))) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
                         "a column to sort by is a number, not "
                                 + asked.datatype().literalSpelling());
             }
-            int at = (int) column.magnitude() - 1;
+            int at = (int) magnitude - 1;
             if (at < 0 || at >= left.size() || at >= right.size()) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        "there is no column " + column.magnitude() + " to sort by");
+                        "there is no column " + magnitude + " to sort by");
             }
             int ordering = Comparison.compareForSorting(left.get(at), right.get(at), mindingCase);
             if (ordering != 0) {
@@ -6186,8 +6189,8 @@ public final class Natives {
     private static int askComparatorTheOtherWayRound(
             Value comparator, Value left, Value right, Evaluator evaluator) {
         Value answer = evaluator.applyFunction(comparator, List.of(right, left));
-        if (answer instanceof LogicValue truth) {
-            return truth.truth() ? 1 : -1;
+        if (answer instanceof LogicValue(boolean truth1)) {
+            return truth1 ? 1 : -1;
         }
         if (Comparison.isNumeric(answer)) {
             double amount = Comparison.asDouble(answer);
@@ -6212,7 +6215,7 @@ public final class Natives {
 
     /** The series arms for a value, which every series datatype now has. */
     private static SeriesActions armsOf(SeriesValue series) {
-        return (SeriesActions) Actions.of((Value) series).orElseThrow();
+        return (SeriesActions) Actions.of(series).orElseThrow();
     }
 
     static List<Value> numbersContributedTo(VectorKind kind, Value value) {
@@ -6252,8 +6255,8 @@ public final class Natives {
                         partCountFor(arguments, refinements))
                 : numbersContributedTo(kind, arguments.get(1));
         Value times = argumentFor("dup", List.of("part", "dup"), arguments, refinements, 2);
-        long rounds = refinements.contains("dup") && times instanceof IntegerValue counted
-                ? counted.magnitude()
+        long rounds = refinements.contains("dup") && times instanceof IntegerValue(long magnitude)
+                ? magnitude
                 : 1;
         List<Value> added = new ArrayList<>();
         for (long round = 0; round < rounds; round++) {
@@ -6335,17 +6338,17 @@ public final class Natives {
         if (value instanceof BitsetValue members) {
             return new BitsetActions(members).isTheEmptySet();
         }
-        if (value instanceof PairValue pair) {
-            return pair.x() == 0 && pair.y() == 0;
+        if (value instanceof PairValue(double x, double y)) {
+            return x == 0 && y == 0;
         }
         if (value instanceof TupleValue segments) {
             return Arrays.stream(segments.segments()).allMatch(part -> part == 0);
         }
-        if (value instanceof CharacterValue letter) {
-            return letter.codepoint() == 0;
+        if (value instanceof CharacterValue(int codepoint)) {
+            return codepoint == 0;
         }
-        if (value instanceof TimeValue clock) {
-            return clock.nanoseconds() == 0;
+        if (value instanceof TimeValue(long nanoseconds)) {
+            return nanoseconds == 0;
         }
         if (value instanceof MoneyValue amount) {
             return new MoneyActions(amount).isNoAmountAtAll();
@@ -6488,12 +6491,7 @@ public final class Natives {
 
     private static Map<String, DatatypeSpec> specsReadFrom(String source) {
         Map<String, DatatypeSpec> read = new LinkedHashMap<>();
-        List<Value> values;
-        try {
-            values = Transcoder.transcode(source).values().orElseThrow().remaining();
-        } catch (RuntimeException unreadable) {
-            return read;
-        }
+        List<Value> values = theRowsBelowTheHeaderOf(source);
         for (int at = 0; at + 1 < values.size(); at++) {
             if (!(values.get(at) instanceof WordValue name)
                     || !(values.get(at + 1) instanceof BlockValue row)) {
@@ -6511,14 +6509,42 @@ public final class Natives {
     }
 
     private List<Value> catalogueEntries() {
-        try {
-            TranscodeResult read = Transcoder.transcode(errorCatalogueSource);
-            List<Value> values = read.values().orElseThrow().remaining();
-            return values.subList(2, values.size());
-        } catch (RuntimeException unreadable) {
-            return List.of();
-        }
+        return theRowsBelowTheHeaderOf(errorCatalogueSource);
     }
+
+    private SequencedSet<String> consoleModes;
+
+    private static final String THE_CONSOLE_MODE_HEADING = "*console-modes*";
+
+    private SequencedSet<String> consoleModes() {
+        if (consoleModes == null) {
+            consoleModes = theConsoleModesInTheModeTable();
+        }
+        return consoleModes;
+    }
+
+    private SequencedSet<String> theConsoleModesInTheModeTable() {
+        List<Value> rows = theRowsBelowTheHeaderOf(modeTableSource);
+        for (int at = 0; at + 1 < rows.size(); at++) {
+            if (rows.get(at) instanceof WordValue name
+                    && name.canonical().equals(THE_CONSOLE_MODE_HEADING)
+                    && rows.get(at + 1) instanceof BlockValue listed) {
+                return theWordsIn(listed);
+            }
+        }
+        return new LinkedHashSet<>();
+    }
+
+    private static SequencedSet<String> theWordsIn(BlockValue listed) {
+        SequencedSet<String> named = new LinkedHashSet<>();
+        for (Value each : listed.remaining()) {
+            if (each instanceof WordValue word) {
+                named.add(word.canonical());
+            }
+        }
+        return named;
+    }
+
 
     private Map<String, BlockValue> declaredSpecs;
 
@@ -6644,9 +6670,9 @@ public final class Natives {
             throw Raised.of(EvaluationFailure.INVALID_ARG, why.spelling());
         }
         List<Value> parts = ((BlockValue) read).remaining();
-        if (parts.getFirst() instanceof ObjectValue header
-                && header.context().holds("needs")
-                && header.context().slotFor("needs").value()
+        if (parts.getFirst() instanceof ObjectValue(Context context1)
+                && context1.holds("needs")
+                && context1.slotFor("needs").value()
                         instanceof TupleValue wanted
                 && !interpreterMeets(wanted, evaluator)) {
             throw new Raised(ErrorValue.of(SyntaxFailure.NEEDS.category(),
@@ -6737,8 +6763,8 @@ public final class Natives {
     private static int partCountFor(List<Value> arguments, Set<String> refinements) {
         Value limit = argumentFor(
                 "part", List.of("part", "dup"), arguments, refinements, 2);
-        if (limit instanceof IntegerValue wanted) {
-            return (int) wanted.magnitude();
+        if (limit instanceof IntegerValue(long magnitude)) {
+            return (int) magnitude;
         }
         if (limit instanceof SeriesValue upTo
                 && arguments.get(1) instanceof SeriesValue from
@@ -7177,8 +7203,8 @@ public final class Natives {
     }
 
     private static Value reversedFrontInPlace(SeriesValue series, Value limit) {
-        int howMany = limit instanceof IntegerValue wanted
-                ? (int) Math.max(0, Math.min(wanted.magnitude(), series.lengthFromHere()))
+        int howMany = limit instanceof IntegerValue(long magnitude)
+                ? (int) Math.max(0, Math.min(magnitude, series.lengthFromHere()))
                 : series.lengthFromHere();
         return switch (series) {
             case BlockValue block -> {
@@ -7379,20 +7405,20 @@ public final class Natives {
         Value seek = refinements.contains("seek")
                 ? argumentFor("seek", List.of("part", "seek"), arguments, refinements, 1)
                 : null;
-        if (seek instanceof IntegerValue where) {
-            SeekableFilePort.moveTo(port, where.magnitude());
+        if (seek instanceof IntegerValue(long magnitude2)) {
+            SeekableFilePort.moveTo(port, magnitude2);
         }
         Value part = refinements.contains("part")
                 ? argumentFor("part", List.of("part", "seek"), arguments, refinements, 1)
                 : null;
-        if (part instanceof IntegerValue wanted
-                && wanted.magnitude() < 0
-                && -wanted.magnitude() > SeekableFilePort.positionOf(port)) {
+        if (part instanceof IntegerValue(long magnitude1)
+                && magnitude1 < 0
+                && -magnitude1 > SeekableFilePort.positionOf(port)) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, part);
         }
         Value read = throughPort(() -> SeekableFilePort.readFrom(
                 evaluator.files(), port,
-                part instanceof IntegerValue wanted ? wanted.magnitude() : null));
+                part instanceof IntegerValue(long magnitude) ? magnitude : null));
         if (wasClosed) {
             port.markOpen(false);
         }
@@ -7569,19 +7595,19 @@ public final class Natives {
         }
         Value reached = start.binding().slotFor(start.canonical()).value();
         for (int at = 1; at < segments.size() - 1; at++) {
-            if (!(reached instanceof ObjectValue step)
+            if (!(reached instanceof ObjectValue(Context context))
                     || !(segments.get(at) instanceof WordValue between)
-                    || !step.context().holds(between.canonical())) {
+                    || !context.holds(between.canonical())) {
                 return null;
             }
-            reached = step.context().ownSlotFor(between.canonical()).value();
+            reached = context.ownSlotFor(between.canonical()).value();
         }
-        if (!(reached instanceof ObjectValue holder)
+        if (!(reached instanceof ObjectValue(Context context))
                 || !(segments.getLast() instanceof WordValue last)
-                || !holder.context().holds(last.canonical())) {
+                || !context.holds(last.canonical())) {
             return null;
         }
-        return holder.context().ownSlotFor(last.canonical());
+        return context.ownSlotFor(last.canonical());
     }
 
     private static boolean protectNamed(
@@ -7726,9 +7752,9 @@ public final class Natives {
             }
             return count.magnitude();
         }
-        if (howMuch instanceof DecimalValue count
-                && count.datatype() != Datatype.PERCENT) {
-            return (long) count.quantity();
+        if (howMuch instanceof DecimalValue(double quantity, Datatype datatype)
+                && datatype != Datatype.PERCENT) {
+            return (long) quantity;
         }
         if (!(howMuch instanceof SeriesValue upTo)
                 || !series.sharesStorageWith(upTo)) {
@@ -7752,8 +7778,8 @@ public final class Natives {
             case DateValue date -> DatePart.readFrom(date, selector);
             case TimeValue time -> pickTimePart(time, selector);
             case GobValue gob -> GobPath.childOf(gob, positionPickedFrom(selector));
-            default -> selector instanceof IntegerValue position
-                    ? pick(target, (int) position.magnitude())
+            default -> selector instanceof IntegerValue(long magnitude)
+                    ? pick(target, (int) magnitude)
                     : raiseCannotUse(target, "pick");
         };
     }
@@ -7776,10 +7802,10 @@ public final class Natives {
     }
 
     private static String positionAsTimePartName(Value selector) {
-        if (!(selector instanceof IntegerValue position)) {
+        if (!(selector instanceof IntegerValue(long magnitude))) {
             return "";
         }
-        return switch ((int) position.magnitude()) {
+        return switch ((int) magnitude) {
             case 1 -> "hour";
             case 2 -> "minute";
             case 3 -> "second";
@@ -7956,7 +7982,7 @@ public final class Natives {
             return LogicValue.yes();
         }
         Value said = evaluator.applyFunction(awake, List.of(event));
-        return LogicValue.of(said instanceof LogicValue answered && answered.truth());
+        return LogicValue.of(said instanceof LogicValue(boolean truth) && truth);
     }
 
     private static Value howLongToWaitAmong(List<Value> waitedOn) {
@@ -7979,7 +8005,7 @@ public final class Natives {
         while (true) {
             Value said = evaluator.applyFunction(
                     queue.fieldNamed("awake"), List.of(queue, ports));
-            if (said instanceof LogicValue answered && answered.truth()) {
+            if (said instanceof LogicValue(boolean truth) && truth) {
                 return theFirstWokenAmongEmptyingTheWakeList(waitedOn, queue);
             }
             if (!(said instanceof LogicValue)) {
@@ -8029,8 +8055,7 @@ public final class Natives {
     private static Value waitedOnTheScreen(PortValue port, Evaluator evaluator) {
         while (theScreenStillHasSomethingToSay(evaluator)) {
             for (ScreenEvent reported : evaluator.screen().takeQueuedEvents()) {
-                if (wokenPort(port, guiEventFor(reported), evaluator)
-                        instanceof LogicValue said && said.truth()) {
+                if (wokenPort(port, guiEventFor(reported), evaluator) instanceof LogicValue(boolean truth) && truth) {
                     return NoneValue.none();
                 }
             }
@@ -8229,8 +8254,8 @@ public final class Natives {
                 (arguments, evaluator, context, refinements) -> {
                     int base = (int) ((IntegerValue) arguments.get(1)).magnitude();
                     requireAKnownBase(base);
-                    byte[] octets = arguments.getFirst() instanceof IntegerValue number
-                            ? boundedByAnyPart(asFewBytesAsHoldIt(number.magnitude()),
+                    byte[] octets = arguments.getFirst() instanceof IntegerValue(long magnitude)
+                            ? boundedByAnyPart(asFewBytesAsHoldIt(magnitude),
                                     arguments, refinements)
                             : theUnitsAskedFor(
                                     arguments.getFirst(), arguments, refinements);
@@ -8325,8 +8350,8 @@ public final class Natives {
                                     octetsOf(arguments.getFirst()),
                                     arguments, refinements, 2),
                             method,
-                            level instanceof IntegerValue asked
-                                    ? (int) asked.magnitude()
+                            level instanceof IntegerValue(long magnitude)
+                                    ? (int) magnitude
                                     : java.util.zip.Deflater.DEFAULT_COMPRESSION));
                 });
 
@@ -8348,8 +8373,8 @@ public final class Natives {
                                         octetsOf(arguments.getFirst()),
                                         arguments, refinements, 2),
                                 method,
-                                wanted instanceof IntegerValue asked
-                                        ? (int) asked.magnitude()
+                                wanted instanceof IntegerValue(long magnitude)
+                                        ? (int) magnitude
                                         : 0));
                     } catch (IllegalArgumentException notCompressed) {
                         throw Raised.of(EvaluationFailure.BAD_PRESS,
@@ -8429,8 +8454,8 @@ public final class Natives {
                             ? argumentFor("width", List.of("width", "part"),
                                     arguments, refinements, 1)
                             : null;
-                    int width = asked instanceof IntegerValue given
-                            ? (int) given.magnitude()
+                    int width = asked instanceof IntegerValue(long magnitude)
+                            ? (int) magnitude
                             : 2;
                     byte[] octets = bytes.octetsFromHere();
                     int reach = refinements.contains("part")
@@ -8474,8 +8499,8 @@ public final class Natives {
     }
 
     private static byte[] keyBytesFor(Value key, boolean asItStands) {
-        if (key instanceof IntegerValue whole) {
-            return Encodings.hashedKey(Long.toString(whole.magnitude())
+        if (key instanceof IntegerValue(long magnitude)) {
+            return Encodings.hashedKey(Long.toString(magnitude)
                     .getBytes(StandardCharsets.UTF_8));
         }
         byte[] bytes = key instanceof BinaryValue octets
@@ -8535,8 +8560,8 @@ public final class Natives {
     }
 
     private static int pngFilterNamedBy(Value asked) {
-        if (asked instanceof IntegerValue whole) {
-            int which = (int) whole.magnitude();
+        if (asked instanceof IntegerValue(long magnitude)) {
+            int which = (int) magnitude;
             if (which < 0 || which >= Encodings.PNG_FILTERS.size()) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, "filter type");
             }
@@ -8557,7 +8582,7 @@ public final class Natives {
                 ? argumentFor("skip", List.of("as", "skip"),
                         arguments, refinements, where)
                 : null;
-        return asked instanceof IntegerValue given ? (int) given.magnitude() : 1;
+        return asked instanceof IntegerValue(long magnitude) ? (int) magnitude : 1;
     }
 
     private static void requirePngGeometry(int width, int bytesPerPixel, int length) {
@@ -8594,8 +8619,8 @@ public final class Natives {
                 ? argumentFor("escape", List.of("escape", "except"),
                         arguments, refinements, 1)
                 : null;
-        return asked instanceof CharacterValue given
-                ? (char) given.codepoint()
+        return asked instanceof CharacterValue(int codepoint)
+                ? (char) codepoint
                 : '%';
     }
 
@@ -8670,10 +8695,10 @@ public final class Natives {
         if (size == null) {
             throw Raised.of(EvaluationFailure.MISSING_ARG);
         }
-        if (!(size instanceof IntegerValue asked)) {
+        if (!(size instanceof IntegerValue(long magnitude))) {
             throw Raised.of(EvaluationFailure.BAD_REFINE, size);
         }
-        long slots = Math.max(1, asked.magnitude()) & 0xFFFFFFFFL;
+        long slots = Math.max(1, magnitude) & 0xFFFFFFFFL;
         long hash = Integer.toUnsignedLong(hashOfValue(value));
         return slots == 0 ? hash : hash % slots;
     }
@@ -8811,8 +8836,8 @@ public final class Natives {
                             || asked instanceof TimeValue)) {
                         return NoneValue.none();
                     }
-                    long milliseconds = asked instanceof TimeValue clock
-                            ? clock.nanoseconds() / 1_000_000L
+                    long milliseconds = asked instanceof TimeValue(long nanoseconds)
+                            ? nanoseconds / 1_000_000L
                             : (long) (1000 * Comparison.asDouble(asked));
                     sleepInterruptibly(Math.max(0, milliseconds), evaluator);
                     return NoneValue.none();
@@ -9011,7 +9036,7 @@ public final class Natives {
                         return IntegerValue.of(Evaluator.DEFAULT_MAXIMUM_DEPTH);
                     }
                     if (refinements.contains("size")) {
-                        return IntegerValue.of((callsOpen + 1) * FRAME_VALUE_UNITS);
+                        return IntegerValue.of((long) (callsOpen + 1) * FRAME_VALUE_UNITS);
                     }
                     List<Value> backtrace = new ArrayList<>();
                     if (offset == 0) {
@@ -9239,9 +9264,9 @@ public final class Natives {
         if (given instanceof BinaryValue bytes) {
             return bytes;
         }
-        if (given instanceof ObjectValue object
-                && object.context().knows("buffer")
-                && object.context().slotFor("buffer").value()
+        if (given instanceof ObjectValue(Context context)
+                && context.knows("buffer")
+                && context.slotFor("buffer").value()
                         instanceof BinaryValue held) {
             return held;
         }
@@ -9340,8 +9365,8 @@ public final class Natives {
 
     private static int bitsAlreadyTakenIn(ObjectValue held) {
         return held.context().knows("r-mask")
-                && held.context().slotFor("r-mask").value() instanceof IntegerValue taken
-                ? (int) taken.magnitude()
+                && held.context().slotFor("r-mask").value() instanceof IntegerValue(long magnitude)
+                ? (int) magnitude
                 : 0;
     }
 
@@ -9449,9 +9474,9 @@ public final class Natives {
         refuseAFilterTheCatalogueHasNot(arguments, refinements);
         int wide;
         int high;
-        if (asked instanceof PairValue size) {
-            wide = (int) size.x();
-            high = (int) size.y();
+        if (asked instanceof PairValue(double x, double y)) {
+            wide = (int) x;
+            high = (int) y;
             if (wide == 0 && high == 0) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
             }
@@ -9461,10 +9486,10 @@ public final class Natives {
             if (high == 0) {
                 high = scaledFrom(wide, wasHigh, wasWide);
             }
-        } else if (asked instanceof DecimalValue portion
-                && portion.datatype() == Datatype.PERCENT) {
-            wide = (int) Math.round(wasWide * portion.quantity());
-            high = (int) Math.round(wasHigh * portion.quantity());
+        } else if (asked instanceof DecimalValue(double quantity, Datatype datatype)
+                && datatype == Datatype.PERCENT) {
+            wide = (int) Math.round(wasWide * quantity);
+            high = (int) Math.round(wasHigh * quantity);
         } else {
             wide = (int) Math.round(Arithmetic.asMagnitude(asked));
             high = scaledFrom(wide, wasHigh, wasWide);
@@ -9552,8 +9577,8 @@ public final class Natives {
         String type = imageCodecNamed(arguments, evaluator, refinements);
         Value source = imageArgument("load", 0, arguments, refinements);
         Value frame = imageArgument("frame", 0, arguments, refinements);
-        int which = frame instanceof IntegerValue counted
-                ? (int) counted.magnitude()
+        int which = frame instanceof IntegerValue(long magnitude)
+                ? (int) magnitude
                 : 1;
         ImagePort.Pixels read = whatTheCodecMadeOf(
                 source, type, which, evaluator);
@@ -9935,8 +9960,8 @@ public final class Natives {
             evaluator.output().write(EVOKE_HELP);
             return 0;
         }
-        if (chant instanceof IntegerValue which
-                && (which.magnitude() < 0 || which.magnitude() > 2)) {
+        if (chant instanceof IntegerValue(long magnitude)
+                && (magnitude < 0 || magnitude > 2)) {
             evaluator.output().write(EVOKE_HELP);
         }
         return 0;
@@ -10086,8 +10111,8 @@ public final class Natives {
         if (!(value instanceof ErrorValue raised)) {
             return raiseBadMakeArg(value, "object!");
         }
-        if (raised.field("code").orElseGet(NoneValue::none) instanceof IntegerValue code
-                && code.magnitude() < LOWEST_CODE_AN_ERROR_CATALOGUE_ENTRY_HAS) {
+        if (raised.field("code").orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
+                && magnitude < LOWEST_CODE_AN_ERROR_CATALOGUE_ENTRY_HAS) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, value);
         }
         Context fields = Context.childOf(Context.root());
@@ -10109,11 +10134,11 @@ public final class Natives {
         if (!(given.getFirst() instanceof ObjectValue specification)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, given.getFirst());
         }
-        if (given.size() < 2 || !(given.get(1) instanceof ObjectValue body)) {
+        if (given.size() < 2 || !(given.get(1) instanceof ObjectValue(Context context))) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,
                     given.size() < 2 ? given.getFirst() : given.get(1));
         }
-        return new ModuleValue(body.context(), specification);
+        return new ModuleValue(context, specification);
     }
 
     private void defineConversion() {
@@ -10194,8 +10219,8 @@ public final class Natives {
                         Parameter.required("type", asTypeOrExample()),
                         Parameter.required("value")),
                 (arguments, evaluator, context) -> {
-                    Datatype wanted = arguments.get(0) instanceof DatatypeValue asked
-                            ? asked.represents()
+                    Datatype wanted = arguments.get(0) instanceof DatatypeValue(Datatype represents)
+                            ? represents
                             : arguments.get(0).datatype();
                     Value value = arguments.get(1);
                     if (value.datatype() == wanted) {
@@ -10244,7 +10269,7 @@ public final class Natives {
             case NativeValue built -> built.parameters();
             case OperatorValue operator ->
                     List.of(Parameter.required("a"), Parameter.required("b"));
-            default -> List.<Parameter>of();
+            default -> List.of();
         };
         int counted = 0;
         for (Parameter parameter : declared) {
@@ -10305,9 +10330,9 @@ public final class Natives {
         if (from instanceof ImageValue original) {
             return new ImageValue(original.storage().copy(), 1);
         }
-        if (from instanceof PairValue size) {
-            return ImageValue.of(sideOfClampedBelowAndRefusedAbove(size.x()),
-                    sideOfClampedBelowAndRefusedAbove(size.y()));
+        if (from instanceof PairValue(double x, double y)) {
+            return ImageValue.of(sideOfClampedBelowAndRefusedAbove(x),
+                    sideOfClampedBelowAndRefusedAbove(y));
         }
         if (from instanceof BlockValue parts && !parts.remaining().isEmpty()) {
             return imageFromParts(parts);
@@ -10326,12 +10351,12 @@ public final class Natives {
 
     private static Value imageFromParts(BlockValue specification) {
         List<Value> parts = specification.remaining();
-        if (!(parts.getFirst() instanceof PairValue size)) {
+        if (!(parts.getFirst() instanceof PairValue(double x, double y))) {
             return raiseMalconstruct(specification);
         }
         ImageValue made = ImageValue.of(
-                sideThatCanExist(size.x(), specification),
-                sideThatCanExist(size.y(), specification));
+                sideThatCanExist(x, specification),
+                sideThatCanExist(y, specification));
         int at = 1;
         if (at < parts.size() && parts.get(at) instanceof BinaryValue colours) {
             fillColoursFrom(made, colours);
@@ -10347,9 +10372,9 @@ public final class Natives {
         } else if (at < parts.size() && parts.get(at) instanceof TupleValue colour) {
             fillWith(made, colour);
             at++;
-            if (at < parts.size() && parts.get(at) instanceof IntegerValue alpha) {
+            if (at < parts.size() && parts.get(at) instanceof IntegerValue(long magnitude)) {
                 for (int pixel = 1; pixel <= made.storageLength(); pixel++) {
-                    made.storage().setAlphaAt(pixel, (int) alpha.magnitude() & 0xFF);
+                    made.storage().setAlphaAt(pixel, (int) magnitude & 0xFF);
                 }
                 at++;
             }
@@ -10464,14 +10489,14 @@ public final class Natives {
     }
 
     private static long positionAskedFor(SeriesValue series, Value given, boolean fromOne) {
-        if (given instanceof PairValue coordinate) {
+        if (given instanceof PairValue(double x, double y)) {
             if (!(series instanceof ImageValue image)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
                         series.datatype().literalSpelling()
                                 + " has no width, so a pair names no position in it");
             }
-            return ((long) coordinate.y() - (fromOne ? 1 : 0)) * image.storage().wide()
-                    + (long) coordinate.x();
+            return ((long) y - (fromOne ? 1 : 0)) * image.storage().wide()
+                    + (long) x;
         }
         return switch (given) {
             case IntegerValue number -> number.magnitude();
@@ -10504,9 +10529,7 @@ public final class Natives {
             TupleValue colour, java.util.function.UnaryOperator<int[]> formula) {
         int[] made = colour.segments().clone();
         int[] recoloured = formula.apply(threeParts(colour));
-        for (int octet = 0; octet < Math.min(made.length, recoloured.length); octet++) {
-            made[octet] = recoloured[octet];
-        }
+        System.arraycopy(recoloured, 0, made, 0, Math.min(made.length, recoloured.length));
         return TupleValue.of(made);
     }
 
@@ -10544,8 +10567,8 @@ public final class Natives {
 
     private static Value madeVector(Value from, Evaluator evaluator, Context context) {
         if (from instanceof IntegerValue counted || from instanceof DecimalValue) {
-            long howMany = from instanceof IntegerValue whole
-                    ? whole.magnitude()
+            long howMany = from instanceof IntegerValue(long magnitude)
+                    ? magnitude
                     : (long) ((DecimalValue) from).quantity();
             if (howMany < 0) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(from));
@@ -10629,7 +10652,7 @@ public final class Natives {
         return fields.slots().stream()
                 .filter(slot -> !slot.canonical().equals("self"))
                 .flatMap(slot -> java.util.stream.Stream.of(
-                        (Value) WordValue.of(slot.spelling(), Datatype.SET_WORD),
+                        WordValue.of(slot.spelling(), Datatype.SET_WORD),
                         slot.value()))
                 .toList();
     }
@@ -10658,18 +10681,18 @@ public final class Natives {
 
     private static Value timeFromParts(List<Value> parts) {
         if (parts.isEmpty() || parts.size() > 3
-                || !(parts.get(0) instanceof IntegerValue hours)) {
+                || !(parts.get(0) instanceof IntegerValue(long magnitude1))) {
             return raiseBadMakeArg(BlockValue.block(parts), "time!");
         }
-        boolean negative = hours.magnitude() < 0;
-        long seconds = Math.abs(hours.magnitude()) * 3600;
+        boolean negative = magnitude1 < 0;
+        long seconds = Math.abs(magnitude1) * 3600;
         long nanoseconds = 0;
         if (parts.size() > 1) {
-            if (!(parts.get(1) instanceof IntegerValue minutes)
-                    || minutes.magnitude() < 0) {
+            if (!(parts.get(1) instanceof IntegerValue(long magnitude))
+                    || magnitude < 0) {
                 return raiseBadMakeArg(BlockValue.block(parts), "time!");
             }
-            seconds += minutes.magnitude() * 60;
+            seconds += magnitude * 60;
         }
         if (parts.size() > 2) {
             switch (parts.get(2)) {
@@ -10948,10 +10971,10 @@ public final class Natives {
         List<Value> items = block.remaining();
         int[] octets = new int[items.size()];
         for (int at = 0; at < items.size(); at++) {
-            if (!(items.get(at) instanceof IntegerValue whole)) {
+            if (!(items.get(at) instanceof IntegerValue(long magnitude))) {
                 return raiseCannotUse(items.get(at), "to binary!");
             }
-            octets[at] = (int) (whole.magnitude() & 0xFF);
+            octets[at] = (int) (magnitude & 0xFF);
         }
         return BinaryValue.of(octets);
     }
@@ -11075,8 +11098,8 @@ public final class Natives {
             case CHAR -> asCharacter(value);
             case PAIR -> asPair(value);
             case MONEY -> asMoney(asking, value);
-            case PORT -> value instanceof ObjectValue built
-                    ? new PortValue(built.context())
+            case PORT -> value instanceof ObjectValue(Context context)
+                    ? new PortValue(context)
                     : raiseBadMakeArg(value, "port!");
             case MODULE -> moduleFromHeaderAndWords(value);
             case TASK -> asking.builds() ? aTaskMadeFrom(value) : raiseBadMakeArg(value, "task!");
@@ -11213,8 +11236,8 @@ public final class Natives {
     }
 
     private static double numberInTheBlock(Value part, Datatype wanted) {
-        if (part instanceof IntegerValue whole) {
-            return whole.magnitude();
+        if (part instanceof IntegerValue(long magnitude)) {
+            return magnitude;
         }
         if (part instanceof DecimalValue number) {
             return number.quantity();
@@ -11280,8 +11303,8 @@ public final class Natives {
         if (value instanceof WordValue word) {
             return WordValue.of(word.spelling(), kind);
         }
-        if (value instanceof LogicValue truth) {
-            return WordValue.of(truth.truth() ? "true" : "false", kind);
+        if (value instanceof LogicValue(boolean truth1)) {
+            return WordValue.of(Boolean.toString(truth1), kind);
         }
         if (value instanceof CharacterValue letter) {
             return WordValue.of(theWordASingleCharacterSpells(letter), kind);
@@ -11729,8 +11752,8 @@ public final class Natives {
 
         Value times = argumentFor("dup", List.of("part", "dup"),
                 arguments, refinements, 2);
-        return refinements.contains("dup") && times instanceof IntegerValue counted
-                ? Math.max(0, counted.magnitude())
+        return refinements.contains("dup") && times instanceof IntegerValue(long magnitude)
+                ? Math.max(0, magnitude)
                 : 1;
     }
 
@@ -11888,11 +11911,11 @@ public final class Natives {
         if (value instanceof MoneyValue amount) {
             return amount.amount().longValue();
         }
-        if (value instanceof CharacterValue letter) {
-            return letter.codepoint();
+        if (value instanceof CharacterValue(int codepoint)) {
+            return codepoint;
         }
-        if (value instanceof TimeValue time) {
-            return time.nanoseconds() / 1_000_000_000L;
+        if (value instanceof TimeValue(long nanoseconds)) {
+            return nanoseconds / 1_000_000_000L;
         }
         if (value instanceof DateValue date) {
             return date.day();
@@ -11910,8 +11933,8 @@ public final class Natives {
     }
 
     private static long wholeNumberOf(Value value, String nativeName) {
-        if (value instanceof IntegerValue whole) {
-            return whole.magnitude();
+        if (value instanceof IntegerValue(long magnitude)) {
+            return magnitude;
         }
         throw Raised.of(EvaluationFailure.EXPECT_ARG,
                 nativeName + " takes a whole number, not "
@@ -11937,8 +11960,7 @@ public final class Natives {
             Value source, List<Value> arguments, Set<String> refinements, int where) {
         Value count = argumentFor(
                 "part", List.of("part", "dup"), arguments, refinements, where);
-        if (count instanceof IntegerValue wanted) {
-            long magnitude = wanted.magnitude();
+        if (count instanceof IntegerValue(long magnitude)) {
             if (magnitude > Integer.MAX_VALUE || magnitude < Integer.MIN_VALUE) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Long.toString(magnitude));
             }
@@ -12577,14 +12599,14 @@ public final class Natives {
                         return CryptPort.modify(aPort, setting.canonical(),
                                 arguments.get(2));
                     }
-                    if (!(arguments.get(1) instanceof WordValue mode)
-                            || !CONSOLE_MODES.contains(mode.canonical())) {
-                        throw Raised.of(EvaluationFailure.INVALID_ARG,
-                                "a port mode is echo, line or error");
+                    Value asked = arguments.get(1);
+                    if (!(asked instanceof WordValue mode)
+                            || !consoleModes().contains(mode.canonical())) {
+                        throw Raised.of(EvaluationFailure.BAD_FILE_MODE, asked);
                     }
                     if (!(arguments.get(2) instanceof LogicValue)) {
-                        throw Raised.of(EvaluationFailure.INVALID_ARG,
-                                "a port mode is set to true or false");
+                        throw Raised.of(EvaluationFailure.INVALID_VALUE_FOR,
+                                arguments.get(2), mode);
                     }
                     if (arguments.getFirst() instanceof PortValue port) {
                         port.setField(mode.canonical(), arguments.get(2));
@@ -12791,13 +12813,13 @@ public final class Natives {
                 ? already
                 : evaluator.applyFunction(
                         systemInternalFunction(context, "make-port*"), List.of(target));
-        Value described = built instanceof PortValue port
-                ? pathInto(port.context(), "scheme", "info")
+        Value described = built instanceof PortValue(Context context1)
+                ? pathInto(context1, "scheme", "info")
                 : NoneValue.none();
-        if (!(described instanceof ObjectValue itsInfo)) {
+        if (!(described instanceof ObjectValue(Context context1))) {
             return BlockValue.block(List.of());
         }
-        return BlockValue.block(itsInfo.context().slots().stream()
+        return BlockValue.block(context1.slots().stream()
                 .filter(slot -> !slot.canonical().equals("self"))
                 .<Value>map(slot -> WordValue.of(slot.spelling()))
                 .toList());
@@ -13152,9 +13174,9 @@ public final class Natives {
             Value resolved = item instanceof WordValue bound && bound.isBound()
                     ? evaluator.evaluateOrRaise(BlockValue.block(List.of(bound)), context)
                     : item;
-            if (resolved instanceof ObjectValue object
-                    && object.context().holds(word.canonical())) {
-                return word.boundTo(object.context());
+            if (resolved instanceof ObjectValue(Context context1)
+                    && context1.holds(word.canonical())) {
+                return word.boundTo(context1);
             }
         }
         return NoneValue.none();
@@ -13427,8 +13449,6 @@ public final class Natives {
     private static final Set<Datatype> DUP_COUNT =
             Typeset.NUMBER.membersAnd(Datatype.PAIR);
 
-    private static final Set<String> CONSOLE_MODES = of("echo", "line", "error");
-
     private static Value libraryFunction(Context context, String name) {
         if (!context.knows(name)) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
@@ -13490,14 +13510,13 @@ public final class Natives {
     private static final String FILE_CHECKSUM = "file-checksum";
 
     private static Value systemInternalFunction(Context context, String name) {
-        if (!(pathInto(context, "system", "contexts", "sys")
-                instanceof ObjectValue internals)) {
+        if (!(pathInto(context, "system", "contexts", "sys") instanceof ObjectValue(Context context1))) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
         }
-        if (!internals.context().knows(name)) {
+        if (!context1.knows(name)) {
             throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, UnsetValue.unset());
         }
-        Value held = internals.context().slotFor(name).value();
+        Value held = context1.slotFor(name).value();
         if (!(held instanceof FunctionValue || held instanceof NativeValue
                 || held instanceof OperatorValue)) {
             throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, held);
@@ -13506,9 +13525,8 @@ public final class Natives {
     }
 
     private static void recordTheScriptArguments(Evaluator evaluator, Value given) {
-        if (pathInto(evaluator.systemContext(), "system", "script")
-                instanceof ObjectValue script) {
-            script.context().set("args", given);
+        if (pathInto(evaluator.systemContext(), "system", "script") instanceof ObjectValue(Context context)) {
+            context.set("args", given);
         }
     }
 
@@ -13666,8 +13684,8 @@ public final class Natives {
         if (!refinements.contains("only")) {
             return WordsToResolve.everything();
         }
-        if (onlyThese instanceof IntegerValue position) {
-            int startAt = Math.max(1, (int) position.magnitude());
+        if (onlyThese instanceof IntegerValue(long magnitude)) {
+            int startAt = Math.max(1, (int) magnitude);
             if (startAt > targetSlots.size()) {
                 return new WordsToResolve(startAt, of(), true);
             }
@@ -13920,24 +13938,25 @@ public final class Natives {
         }
         if (refinements.contains("append")) {
             SeekableFilePort.moveTo(port, throughPort(
-                    () -> SeekableFilePort.wholeSize(evaluator.files(), port))
-                    instanceof IntegerValue size ? size.magnitude() : 0);
+                    () -> SeekableFilePort.wholeSize(evaluator.files(), port)) instanceof IntegerValue(
+                    long magnitude
+            ) ? magnitude : 0);
         }
         Value seek = refinements.contains("seek")
                 ? argumentFor("seek", FileWriting.ARGUMENT_ORDER,
                         arguments, refinements, 2)
                 : null;
-        if (seek instanceof IntegerValue where) {
-            SeekableFilePort.moveTo(port, where.magnitude());
+        if (seek instanceof IntegerValue(long magnitude1)) {
+            SeekableFilePort.moveTo(port, magnitude1);
         }
         byte[] octets = octetsOf(data);
         Value part = refinements.contains("part")
                 ? argumentFor("part", FileWriting.ARGUMENT_ORDER,
                         arguments, refinements, 2)
                 : null;
-        if (part instanceof IntegerValue wanted) {
+        if (part instanceof IntegerValue(long magnitude)) {
             octets = Arrays.copyOf(octets,
-                    (int) Math.max(0, Math.min(wanted.magnitude(), octets.length)));
+                    (int) Math.max(0, Math.min(magnitude, octets.length)));
         }
         byte[] written = octets;
         return throughPort(() -> {
@@ -14032,11 +14051,11 @@ public final class Natives {
                 ? context.slotFor(names[0]).value()
                 : NoneValue.none();
         for (int step = 1; step < names.length; step++) {
-            if (!(reached instanceof ObjectValue holder)
-                    || !holder.context().holds(names[step])) {
+            if (!(reached instanceof ObjectValue(Context context1))
+                    || !context1.holds(names[step])) {
                 return NoneValue.none();
             }
-            reached = holder.context().ownSlotFor(names[step]).value();
+            reached = context1.ownSlotFor(names[step]).value();
         }
         return reached;
     }
@@ -14061,10 +14080,10 @@ public final class Natives {
         List<Value> given = parts.remaining();
         if (given.size() < 2
                 || !(given.get(0) instanceof ObjectValue header)
-                || !(given.get(1) instanceof ObjectValue words)) {
+                || !(given.get(1) instanceof ObjectValue(Context context))) {
             return raiseBadMakeArg(value, "module!");
         }
-        return new ModuleValue(words.context(), header);
+        return new ModuleValue(context, header);
     }
 
     private static Optional<ObjectValue> theActorWrittenInRebol(PortValue port) {
@@ -14413,8 +14432,8 @@ public final class Natives {
                 return withTheLineFeedByteLinesAsks(
                         boundedOctets(binary.octetsFromHere()));
             }
-            if (data instanceof CharacterValue character) {
-                return utf8(Character.toString(character.codepoint()));
+            if (data instanceof CharacterValue(int codepoint)) {
+                return utf8(Character.toString(codepoint));
             }
             if (data instanceof BlockValue block && oneValuePerLine) {
                 return utf8(eachValueFormedOnItsOwnLine(block));
@@ -14482,11 +14501,10 @@ public final class Natives {
     }
 
     private static int portNumberOf(PortValue port) {
-        if (port.fieldNamed("spec") instanceof ObjectValue spec
-                && spec.context().holds("port")
-                && spec.context().ownSlotFor("port").value()
-                        instanceof IntegerValue given) {
-            return (int) given.magnitude();
+        if (port.fieldNamed("spec") instanceof ObjectValue(Context context)
+                && context.holds("port")
+                && context.ownSlotFor("port").value() instanceof IntegerValue(long magnitude)) {
+            return (int) magnitude;
         }
         return NetworkPort.wellKnownPortFor(port.schemeName()).orElse(0);
     }
@@ -14551,14 +14569,14 @@ public final class Natives {
     }
 
     private static String hostNamedBy(PortValue port) {
-        if (port.fieldNamed("spec") instanceof ObjectValue spec) {
-            if (spec.context().holds("host")
-                    && spec.context().ownSlotFor("host").value()
+        if (port.fieldNamed("spec") instanceof ObjectValue(Context context)) {
+            if (context.holds("host")
+                    && context.ownSlotFor("host").value()
                             instanceof StringValue host) {
                 return host.text();
             }
-            if (spec.context().holds("ref")
-                    && spec.context().ownSlotFor("ref").value()
+            if (context.holds("ref")
+                    && context.ownSlotFor("ref").value()
                             instanceof StringValue reference) {
                 String written = reference.text();
                 int afterScheme = written.indexOf("://");
@@ -14836,12 +14854,12 @@ public final class Natives {
             return 0;
         }
         Value written = arguments.getLast();
-        if (!(written instanceof IntegerValue index)) {
+        if (!(written instanceof IntegerValue(long magnitude))) {
             throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "a display is numbered with an integer, not "
                             + written.datatype().literalSpelling());
         }
-        return (int) index.magnitude();
+        return (int) magnitude;
     }
 
     private static Value whatWasShown(ScreenPort screen, Value given) {
@@ -14872,13 +14890,10 @@ public final class Natives {
     }
 
     private static int binaryBaseNamedBy(Evaluator evaluator) {
-        return evaluator.systemContext().slotFor("system").value()
-                        instanceof ObjectValue system
-                && system.context().slotFor("options").value()
-                        instanceof ObjectValue options
-                && options.context().slotFor("binary-base").value()
-                        instanceof IntegerValue base
-                ? (int) base.magnitude()
+        return evaluator.systemContext().slotFor("system").value() instanceof ObjectValue(Context context1)
+                && context1.slotFor("options").value() instanceof ObjectValue(Context context)
+                && context.slotFor("binary-base").value() instanceof IntegerValue(long magnitude)
+                ? (int) magnitude
                 : 16;
     }
 
@@ -14903,9 +14918,9 @@ public final class Natives {
                                     () -> inTheSystemBase.apply(value))
                             : inTheSystemBase;
                     if (refinements.contains("part") && arguments.size() > 1
-                            && arguments.get(1) instanceof IntegerValue limit) {
+                            && arguments.get(1) instanceof IntegerValue(long magnitude)) {
                         return StringValue.of(Molder.moldWithin(arguments.getFirst(),
-                                (int) Math.max(0, limit.magnitude()), how));
+                                (int) Math.max(0, magnitude), how));
                     }
                     return StringValue.of(how.apply(arguments.getFirst()));
                 });
