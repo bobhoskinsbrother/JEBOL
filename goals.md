@@ -1295,20 +1295,26 @@ once the JVM has settled**, averaged over twenty after twenty warm-up builds.
 An 18,787-test run pays the warm figure per class, which is what makes it the
 number worth moving.
 
-**The earlier reading here was 343ms cold and 72ms warm, and the two do not
-compare.** Cold went up and warm went down, which no single change explains,
-so the honest reading is that the two were not measured the same way rather
-than that the boot got slower and faster at once. Anyone working this goal
-should take both figures again before trusting either, and write down how.
+**It was 343ms cold and 72ms warm, and both moved for the same reason.**
+Reading Rebol's own declarations instead of transcribing them added files to
+read and parse, and that is paid once: `sysobj.reb` and the boot step go
+through `LibrarySource.reading`, which transcodes a file once for the whole
+process and hands out a copy after. So the first interpreter pays and the
+rest do not.
+
+Warm went the other way because the same change took work out of every boot.
+`prelude.reb` lost 463 lines -- the copies of `system/standard`, `ports`,
+`view`, `schemes` and the console options -- and the prelude is transcoded
+and evaluated on each `Interpreter.create()`. Building those objects from the
+declaration once beats building them from the prelude every time.
+
+What is left in the warm path is the evaluation itself: `make object!` over
+the declaration runs per interpreter even though the answer is the same every
+time. Caching the built object, not just the parsed file, is the next move
+here, and it is the same trick `LibrarySource` already plays one layer down.
 
 Pool first, then library caching. The series byte accounting behind STATS is
 already in that allocation path, and it costs about 2ms of the warm figure.
-
-**Reading Rebol's own declarations instead of transcribing them put work into
-the boot that was not there before** -- `sysobj.reb` is transcoded and
-evaluated on every `Interpreter.create()`. That is a real cost and a fair
-target for caching, since the result is the same for every interpreter in the
-process, the way `LibrarySource` already caches each borrowed file.
 
 ---
 
