@@ -10,7 +10,7 @@ final class TheDialectsWords {
 
     static Map<String, ParseKeyword> bySpelling() {
         Map<String, ParseKeyword> words = new LinkedHashMap<>();
-        for (ParseKeyword keyword : new ParseKeyword[] {
+        for (ParseKeyword keyword : new ParseKeyword[]{
                 new Repeat("any", 0),
                 new Repeat("while", 0),
                 new Repeat("some", 1),
@@ -41,9 +41,8 @@ final class TheDialectsWords {
                 new MindCase("no-case", false),
                 new Fail(),
                 new Limit()}) {
-
-            words.put(keyword.spelling(), keyword);
-        }
+                    words.put(keyword.spelling(), keyword);
+            }
         return Map.copyOf(words);
     }
 }
