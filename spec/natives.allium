@@ -14285,6 +14285,51 @@ rule TheConsoleCarriesItsCurrentLineAndItsHistory {
     ensures: the_console_holds_a_field_called(history)
 }
 
+-- The shape of the system object is Rebol's declaration and not the
+-- interpreter's invention: the field names, the nesting, and every constant
+-- that does not depend on this machine or this build.
+--
+-- Which settles a question that had been answered twice and differently. The
+-- fields were written out by hand in two places, once in the interpreter's
+-- host language and once in the library it loads first, and both copies said
+-- so in a comment. Two copies of a declaration drift, and these had: the
+-- error template carried the wrong kind of word and the state object had
+-- lost its note. What the interpreter genuinely knows and the declaration
+-- cannot -- which datatypes exist, which functions it carries, which ciphers
+-- it can actually run, where this machine keeps a home directory -- it still
+-- fills in, and those are the only fields it writes.
+rule TheSystemObjectHasTheShapeRebolDeclares {
+    when: ReadSystemField(name)
+    requires: the_field_is_a_constant_rather_than_something_this_build_reports()
+
+    ensures: the_field_holds_what_the_declaration_says()
+}
+
+-- The error template's TYPE and ID hold plain words, not lit-words.
+--
+-- It reads like a detail and it is the difference between a template a
+-- script can compare against and one it cannot. The declaration builds the
+-- template with CONSTRUCT, which stores what is written instead of
+-- evaluating it, so `type: user` leaves the word USER sitting in the field.
+-- Copying that line into code that does evaluate turns it into a lit-word,
+-- which molds with a tick Rebol's has not got and stops being equal to the
+-- TYPE of any error actually raised.
+rule TheErrorTemplateHoldsPlainWordsForItsTypeAndId {
+    when: ReadSystemField(standard)
+
+    ensures: the_error_templates_type = the_word(user)
+    ensures: the_error_templates_id = the_word(message)
+}
+
+-- SYSTEM/STATE carries the sentence Rebol writes there about itself, which
+-- is the only thing in the object that explains why reading it back does not
+-- show everything that was declared.
+rule TheStateSaysThatSomeOfItIsHidden {
+    when: ReadSystemField(state)
+
+    ensures: the_field_named(note) = the_sentence_the_declaration_carries()
+}
+
 -- SYSTEM/CONTEXTS/ROOT is declared and is none, which is what a real 3.22.1
 -- answers. Worth having as a field rather than absent: code walking the
 -- contexts finds three names and one of them holding nothing, rather than a

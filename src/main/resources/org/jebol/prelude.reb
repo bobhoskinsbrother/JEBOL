@@ -416,427 +416,64 @@ clean-path: func [
     to file! text
 ]
 
-;; system/standard holds the shapes that other functions build from.
-;; Rebol keeps it in sysobj.reb and ENUM reads the enum object out of it.
-;; MAKE-SCHEME puts each scheme it builds in system/schemes, and INPUT reads
-;; system/ports/input. Both start empty, thus a scheme exists only once
-;; something has registered it.
-;; The console options, copied from sysobj.reb. Data rather than functions,
-;; like system/standard below it.
+;; SYSTEM/SCHEMES, SYSTEM/PORTS and SYSTEM/VIEW are all declared in
+;; sysobj.reb and the boot step before this makes them from it, so the only
+;; thing left here is the one place JEBOL differs. Rebol starts SCHEMES as a
+;; block and INIT-SCHEMES in sys-ports.reb turns it into an object once the
+;; host has registered what it can serve; JEBOL registers its schemes from
+;; Java instead, so the object has to exist before the first MAKE-SCHEME
+;; rather than after.
+system/schemes: make object! []
+;; sysobj.reb declares SYSTEM/STANDARD and the boot step before this makes
+;; the object from that file, so the shapes a scheme, a port, a header and
+;; the rest are built from are Rebol's own text rather than a copy of it.
 ;;
-;; NO-COLOR and ANSI are what mezz-logger.reb reads on its fourth line, and
-;; their absence stopped that file before it defined any of its five
-;; functions. LOG is a map of verbosity per service, and SELECT on it
-;; answering none is what makes a service fall back to the file's own
-;; default.
-append system/options reduce [
-    ;; QUIET is read by every one of mezz-logger.reb's five functions before
-    ;; they write anything, and by Rebol's start-up banner.
-    to set-word! 'quiet     false
-    to set-word! 'no-color  false
-    to set-word! 'log       make map! [rebol: 1 http: 1 tls: 1 zip: 1 tar: 1]
-    to set-word! 'ansi      make map! [
-        reset:             "^[[0m"
-        bold:              "^[[1m"
-        italic:            "^[[3m"
-        underline:         "^[[4m"
-        invert:            "^[[7m"
-        bold-off:          "^[[22m"
-        italic-off:        "^[[23m"
-        underline-off:     "^[[24m"
-        invert-off:        "^[[27m"
-        foreground:        "^[[39m"
-        background:        "^[[49m"
-        gray:              "^[[38;5;244m"
-        black:             "^[[30m"
-        red:               "^[[31m"
-        green:             "^[[32m"
-        yellow:            "^[[33m"
-        blue:              "^[[34m"
-        magenta:           "^[[35m"
-        cyan:              "^[[36m"
-        white:             "^[[37m"
-        bright-red:        "^[[91m"
-        bright-green:      "^[[92m"
-        bright-yellow:     "^[[93m"
-        bright-blue:       "^[[94m"
-        bright-magenta:    "^[[95m"
-        bright-cyan:       "^[[96m"
-        bright-white:      "^[[97m"
-        black-bg:          "^[[40m"
-        red-bg:            "^[[41m"
-        green-bg:          "^[[42m"
-        yellow-bg:         "^[[43m"
-        blue-bg:           "^[[44m"
-        magenta-bg:        "^[[45m"
-        cyan-bg:           "^[[46m"
-        white-bg:          "^[[47m"
-        bright-red-bg:     "^[[101m"
-        bright-green-bg:   "^[[102m"
-        bright-yellow-bg:  "^[[103m"
-        bright-blue-bg:    "^[[104m"
-        bright-magenta-bg: "^[[105m"
-        bright-cyan-bg:    "^[[106m"
-        bright-white-bg:   "^[[107m"
-        error:             "^[[38;5;201m"
-        banner:            "^[[30;107m"
-    ]
+;; Two of the declared fields are deliberately left empty there for something
+;; else to fill, and this is what fills them. ENUM is marked "is defined
+;; later in %mezz-func.r file" and carries two functions, which is why it
+;; cannot be data in a declaration. STATS is what STATS/PROFILE refreshes in
+;; place, and DELTA-PROFILE copies it, runs a block, asks again and
+;; differences the two, so its thirteen fields start as numbers to subtract.
+
+system/standard/stats: make object! [
+    timer: 0:0:0
+    evals: 0
+    eval-natives: 0
+    eval-functions: 0
+    series-made: 0
+    series-freed: 0
+    series-expanded: 0
+    series-bytes: 0
+    series-recycled: 0
+    made-blocks: 0
+    made-objects: 0
+    recycles: 0
+    collisions: 0
 ]
 
-append system reduce [
-    to set-word! 'schemes  make object! []
-    ;; The seven fields sysobj.reb declares, all none until a host fills one.
-    ;; Not decoration: `Get_Event_Var` reads EVENT for a GUI event's port,
-    ;; CALLBACK for a callback's and INPUT for a console event's, so a field
-    ;; missing here is a field an event answers nothing for. All seven are none
-    ;; in a stock console 3.22.1 too, which is why Rebol's own event test guards
-    ;; its port case with `if system/ports/event [...]`.
-    to set-word! 'ports    make object! [
-        system: none
-        event: none
-        input: none
-        output: none
-        echo: none
-        mail: none
-        callback: none
+
+system/standard/enum: make object! [
+    title*: none
+
+    assert: func [
+        "Fails unless the value is one of the enumeration's."
+        value [integer!]
+    ][
+        unless find values-of self value [
+            cause-error 'script 'invalid-value-for reduce [value title*]
+        ]
+        true
     ]
-]
 
-;; system/view, the twentieth and last of sysobj.reb's top-level fields and
-;; the one JEBOL never copied. view-funcs.reb reads SCREEN-GOB on its own
-;; first line of INIT-VIEW-SYSTEM and walks METRICS with FOREACH straight
-;; after, so its absence is why VIEW raises invalid-path rather than doing
-;; anything.
-;;
-;; The six metrics start at 0x0 and never at none. sysobj.reb writes them as
-;; one chained run of set-words ending in a single value, so all six take that
-;; value, and a real 3.22.1 with no graphics host answers 0x0 for every one of
-;; them. This was copied without the trailing value and read as none for as
-;; long as it existed, which VIEW would have found the hard way: it centres a
-;; window with `screen/size - window/size / 2` and offsets it by title-size,
-;; and neither subtraction works on none.
-append system reduce [
-    to set-word! 'view
-    make object! [
-        screen-gob: none
-        handler: none
-        metrics: construct [
-            screen-size:
-            border-size:
-            border-fixed:
-            title-size:
-            work-origin:
-            work-size: 0x0
+    name: func [
+        "The name of a value in the enumeration, or none."
+        value [integer!]
+        /local pos
+    ][
+        all [
+            pos: find values-of self value
+            pick words-of self index? pos
         ]
-    ]
-]
-
-append system reduce [
-    to set-word! 'standard
-    make object! [
-        ;; The shapes a scheme and a port are built from, copied from
-        ;; sysobj.reb. Data rather than functions: MAKE-SCHEME and MAKE-PORT*
-        ;; in sys-ports.reb are Rebol's own and are loaded, and both build
-        ;; from these.
-        ;; What STATS/PROFILE fills in and answers. The same object every
-        ;; time, refreshed in place, because that is what the C does --
-        ;; `stats = Get_System(SYS_STANDARD, STD_STATS); *ds = *stats;` -- and
-        ;; DELTA-PROFILE depends on it: it copies this, runs a block, asks
-        ;; again, and differences the copy against the object it still holds.
-        ;;
-        ;; Thirteen fields in sysobj.reb's order, because DELTA-PROFILE walks
-        ;; them with FOREACH rather than naming them.
-        stats: make object! [
-            timer: 0:0:0
-            evals: 0
-            eval-natives: 0
-            eval-functions: 0
-            series-made: 0
-            series-freed: 0
-            series-expanded: 0
-            series-bytes: 0
-            series-recycled: 0
-            made-blocks: 0
-            made-objects: 0
-            recycles: 0
-            collisions: 0
-        ]
-
-        scheme: make object! [
-            name: none          ;; word of console, file, http and so on
-            title: none         ;; user-friendly title for the scheme
-            spec: none          ;; custom spec for the scheme, if it needs one
-            info: none          ;; prototype info object that QUERY answers
-            actor: none         ;; the handler for this scheme's port actions
-            awake: none         ;; the handler for this scheme's port events
-        ]
-
-        port: make object! [
-            spec: none          ;; published specification of the port
-            scheme: none        ;; scheme object used for this port
-            parent: none        ;; port's parent, for a port inside a port
-            actor: none         ;; port action handler
-            awake: none         ;; port awake function
-            state: none         ;; internal state values, private
-            extra: none         ;; the host's own storage
-            data: none          ;; data buffer, usually binary or block
-        ]
-
-        port-spec-head: make object! [
-            title: none         ;; user-friendly title for the port
-            scheme: none        ;; reference to the scheme that defines it
-            ref: none           ;; reference path or url, for errors
-        ]
-
-        ;; The port specs each scheme extends, copied from sysobj.reb. Data
-        ;; rather than functions, like everything else in system/standard.
-        ;;
-        ;; Absent ones do not degrade: a set-path cannot create a field, so a
-        ;; protocol file that writes to one stops there. PORT-SPEC-NET alone
-        ;; was four of Rebol's own files -- prot-http, prot-pop3, prot-smtp and
-        ;; prot-daytime all open by extending it.
-        port-spec-file: make port-spec-head [
-            path: none
-        ]
-
-        port-spec-net: make port-spec-head [
-            host: none
-            port: 80
-            path: none
-            target: none
-            query: none
-            fragment: none
-        ]
-
-        port-spec-checksum: make port-spec-head [
-            scheme: 'checksum
-            method: none
-        ]
-
-        port-spec-crypt: make port-spec-head [
-            scheme: 'crypt
-            direction: 'encrypt
-            algorithm: none
-            init-vector: none
-            key: none
-        ]
-
-        port-spec-midi: make port-spec-head [
-            scheme: 'midi
-            device-in: none
-            device-out: none
-        ]
-
-        ;; What QUERY answers about a file, and what a scheme's own QUERY
-        ;; builds from: `info: make system/standard/file-info [...]`, which is
-        ;; how both prot-http.reb and prot-mysql.reb describe what they are
-        ;; looking at. Seven fields, in sysobj.reb's order, and the comment on
-        ;; DATE is Rebol's own: "same as `modified` (it is here just for
-        ;; backwards compatibility)".
-        file-info: construct [
-            name:
-            size:
-            type:
-            date:
-            modified:
-            accessed:
-            created:
-        ]
-
-        ;; The shape a module header is built from. MAKE-MODULE* starts with
-        ;; `construct/with :spec system/standard/header`, so a header block
-        ;; from a file is filled into a copy of this and every field it did
-        ;; not set is none. Without the prototype that ATTEMPT answers none
-        ;; and the ASSERT/TYPE below it raises.
-        ;;
-        ;; Ten fields, in sysobj.reb's order, because a header is read by
-        ;; walking WORDS-OF. VERSION starts at 0.0.0 and TITLE at "Untitled"
-        ;; because MAKE-MODULE* asserts that the first is a tuple, and a
-        ;; header that says neither still has to make a module.
-        header: make object! [
-            version: 0.0.0
-            title: "Untitled"
-            name: none
-            type: none
-            date: none
-            file: none
-            author: none
-            needs: none
-            options: none
-            checksum: none
-        ]
-
-        enum: make object! [
-            title*: none
-
-            assert: func [
-                "Fails unless the value is one of the enumeration's."
-                value [integer!]
-            ][
-                unless find values-of self value [
-                    cause-error 'script 'invalid-value-for reduce [value title*]
-                ]
-                true
-            ]
-
-            name: func [
-                "The name of a value in the enumeration, or none."
-                value [integer!]
-                /local pos
-            ][
-                all [
-                    pos: find values-of self value
-                    pick words-of self index? pos
-                ]
-            ]
-        ]
-
-        ;; The rest of sysobj.reb's standard object. Seventeen of its
-        ;; twenty-nine fields were never copied across, and a set-path cannot
-        ;; create a field, so every one of them stopped whatever wrote to it:
-        ;; view-funcs.reb died on its eighteenth line writing FONT, and
-        ;; sys-base.reb's DO* builds `make system/standard/script` on every
-        ;; script it runs.
-        ;;
-        ;; Declared here rather than in Java because sysobj.reb is REBOL and
-        ;; this is the file that speaks it. Nothing about a record of empty
-        ;; slots needs the host language.
-
-        codec: construct [
-            name:
-            type:
-            title:
-            suffixes:
-            decode:
-            encode:
-            identify:
-        ]
-
-        ;; The template every error is built from. CODE and TYPE and ID carry
-        ;; sysobj.reb's own defaults rather than none, because that is what a
-        ;; MAKE over this has to start from.
-        error: construct [
-            code: 0
-            type: 'user
-            id: 'message
-            arg1:
-            arg2:
-            arg3:
-            near:
-            where:
-        ]
-
-        ;; What DO* fills in for each script it runs, and what system/script
-        ;; holds afterwards.
-        script: construct [
-            title:
-            header:
-            parent:
-            path:
-            args:
-        ]
-
-        port-spec-serial: make port-spec-head [
-            path: none
-            speed: 115200
-            data-size: 8
-            parity: none
-            stop-bits: 1
-            flow-control: none
-        ]
-
-        port-spec-audio: make port-spec-head [
-            scheme: 'audio
-            source: none
-            channels: 2
-            rate: 44100
-            bits: 16
-            sample-type: 1
-            loop-count: 0
-        ]
-
-        net-info: construct [
-            local-ip:
-            local-port:
-            remote-ip:
-            remote-port:
-        ]
-
-        console-info: construct [
-            buffer-cols:
-            buffer-rows:
-            window-cols:
-            window-rows:
-            length:
-        ]
-
-        vector-info: construct [
-            signed:
-            type:
-            size:
-            length:
-            minimum:
-            maximum:
-            range:
-            sum:
-            mean:
-            median:
-            variance:
-            sample-variance:
-            population-deviation:
-            sample-deviation:
-        ]
-
-        date-info: construct [
-            year:
-            month:
-            day:
-            time:
-            date:
-            zone:
-            hour:
-            minute:
-            second:
-            weekday:
-            yearday:
-            timezone:
-            utc:
-            julian:
-        ]
-
-        handle-info: construct [
-            type:
-        ]
-
-        midi-info: construct [
-            devices-in:
-            devices-out:
-        ]
-
-        extension: construct [
-            lib-base:
-            lib-file:
-            lib-boot:
-            command:
-            cmd-index:
-            words:
-        ]
-
-        type-spec: construct [
-            title:
-            type:
-        ]
-
-        ;; The last four are none in sysobj.reb and something else fills each.
-        ;; BINCODE is the C's, written by the base-code block at
-        ;; u-bincode.c:178, so it stays none until the bincode dialect is
-        ;; ported. UTYPE is the C's dispatch table for a datatype JEBOL has
-        ;; not got. FONT and PARA are view-funcs.reb's, and a real 3.22.1
-        ;; leaves both none unless the build included VID.
-        bincode: none
-        utype: none
-        font: none
-        para: none
     ]
 ]
 

@@ -233,18 +233,7 @@ public final class Natives {
         return new Natives();
     }
 
-    private static BlockValue typeNames(String... spellings) {
-        return BlockValue.block(Arrays.stream(spellings)
-                .map(spelling -> (Value) WordValue.of(spelling + "!"))
-                .toList());
-    }
-
     private static final List<String> ACTION_NAMES = ActionNames.inDeclarationOrder();
-
-    private static BlockValue typeNamesWithoutSuffix(String... spellings) {
-        return BlockValue.block(Arrays.stream(spellings)
-                .<Value>map(WordValue::of).toList());
-    }
 
     private ObjectValue systemObject(Context systemContext) {
         Context catalog = Context.root();
@@ -252,42 +241,6 @@ public final class Natives {
                 Arrays.stream(Datatype.values())
                         .map(datatype -> (Value) DatatypeValue.of(datatype))
                         .toList()));
-
-        catalog.set("reflectors", BlockValue.block(List.of(
-                WordValue.of("spec"),
-                typeNames("any-function", "any-object", "vector", "datatype", "struct"),
-                WordValue.of("body"),
-                typeNames("any-function", "any-object", "map", "struct"),
-                WordValue.of("words"),
-                typeNames("any-function", "any-object", "map", "date", "handle", "struct"),
-                WordValue.of("values"), typeNames("any-object", "map", "struct"),
-                WordValue.of("types"), typeNames("any-function"),
-                WordValue.of("title"), typeNames("any-function", "datatype", "module"))));
-
-        Context bitsets = Context.root();
-        bitsets.set("crlf", BitsetValue.ofCharacters('\r', '\n'));
-        bitsets.set("space", BitsetValue.ofCharacters(' ', '\t'));
-        bitsets.set("whitespace", BitsetValue.ofCharacters(' ', '\t', '\r', '\n'));
-        bitsets.set("numeric", BitsetActions.rangeOfCharacters('0', '9'));
-        bitsets.set("alpha", BitsetActions.lettersOfBothCases());
-        bitsets.set("alpha-numeric", BitsetActions.together(
-                BitsetActions.lettersOfBothCases(),
-                BitsetActions.rangeOfCharacters('0', '9')));
-        bitsets.set("hex-digits", BitsetActions.together(
-                BitsetActions.rangeOfCharacters('0', '9'),
-                BitsetActions.together(BitsetActions.rangeOfCharacters('a', 'f'),
-                        BitsetActions.rangeOfCharacters('A', 'F'))));
-        bitsets.set("plus-minus", BitsetValue.ofCharacters('+', '-'));
-        bitsets.set("not-crlf",
-                BitsetValue.ofCharacters('\r', '\n').complemented());
-        bitsets.set("uri", BitsetActions.charactersIn(
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-                        + "!#$&'()*+,-./:;=?@_~"));
-        bitsets.set("uri-component", BitsetActions.charactersIn(
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-                        + "!'()*-._~"));
-        bitsets.set("quoted-printable", BitsetActions.quotedPrintableOctets());
-        catalog.set("bitsets", new ObjectValue(bitsets));
 
         catalog.set("structs", registeredStructLayouts);
 
@@ -299,12 +252,6 @@ public final class Natives {
                 .filter(spelling -> !ACTION_NAMES.contains(spelling))
                 .sorted()
                 .<Value>map(WordValue::of).toList()));
-
-        catalog.set("boot-flags", typeNamesWithoutSuffix(
-                "script", "args", "do", "import", "version", "debug", "secure",
-                "help", "vers", "quiet", "verbose", "secure-min", "secure-max",
-                "trace", "halt", "cgi", "boot-level", "no-window", "no-color",
-                "legacy-repl"));
 
         catalog.set("ciphers", BlockValue.block(CryptPort.catalogue()));
 
@@ -319,9 +266,6 @@ public final class Natives {
                 WordValue.of(RC4_HANDLE_TYPE), WordValue.of(DHM_HANDLE_TYPE),
                 WordValue.of(RSA_HANDLE_TYPE), WordValue.of(ECDH_HANDLE_TYPE),
                 WordValue.of("codec"))));
-
-        catalog.set("event-types", EventCatalogue.typesBlock());
-        catalog.set("event-keys", EventCatalogue.keysBlock());
 
         catalog.set("checksums", BlockValue.block(
                 Encodings.checksumMethods().stream()
@@ -352,13 +296,6 @@ public final class Natives {
             bootFlags.set(flag, LogicValue.no());
         }
         options.set("flags", new ObjectValue(bootFlags));
-        options.set("quiet", LogicValue.no());
-        options.set("no-color", LogicValue.no());
-        options.set("binary-base", IntegerValue.of(16));
-        options.set("decimal-digits", IntegerValue.of(15));
-        options.set("probe-limit", IntegerValue.of(16000));
-        options.set("http-redirects", IntegerValue.of(10));
-        options.set("default-suffix", StringValue.of(".reb", Datatype.FILE));
         options.set("home", StringValue.of(
                 System.getProperty("user.home", "") + "/", Datatype.FILE));
         options.set("boot", bootLauncher.isEmpty()
@@ -416,52 +353,10 @@ public final class Natives {
         system.set("product", WordValue.of("core"));
         system.set("license", NoneValue.none());
 
-        Context build = Context.root();
-        for (String field : new String[] {
-                "os", "os-version", "abi", "sys", "arch", "libc", "vendor",
-                "target", "compiler", "date", "git"}) {
-            build.set(field, NoneValue.none());
-        }
-        system.set("build", new ObjectValue(build));
-
-        Context whoIsRunningIt = Context.root();
-        whoIsRunningIt.set("name", NoneValue.none());
-        whoIsRunningIt.set("data", MapValue.of(List.of()));
-        system.set("user", new ObjectValue(whoIsRunningIt));
-
-        Context dialects = Context.root();
-        for (String dialect : new String[] {
-                "secure", "draw", "effect", "text", "rebcode"}) {
-            dialects.set(dialect, NoneValue.none());
-        }
-        system.set("dialects", new ObjectValue(dialects));
-
-        Context aboutTheScript = Context.root();
-        for (String field : new String[] {
-                "title", "header", "parent", "path", "args"}) {
-            aboutTheScript.set(field, NoneValue.none());
-        }
-        system.set("script", new ObjectValue(aboutTheScript));
-
         Context modules = Context.root();
         modules.set("help", NoneValue.none());
         system.set("modules", new ObjectValue(modules));
 
-        Context locale = Context.root();
-        for (String field : new String[] {
-                "language", "language*", "locale", "locale*"}) {
-            locale.set(field, NoneValue.none());
-        }
-        locale.set("months", BlockValue.block(java.util.stream.Stream.of(
-                        "January", "February", "March", "April", "May", "June",
-                        "July", "August", "September", "October", "November",
-                        "December")
-                .<Value>map(StringValue::of).toList()));
-        locale.set("days", BlockValue.block(java.util.stream.Stream.of(
-                        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
-                        "Saturday", "Sunday")
-                .<Value>map(StringValue::of).toList()));
-        system.set("locale", new ObjectValue(locale));
         Context codecs = Context.root();
         for (int at = 0; at < Codecs.REGISTERED.size(); at++) {
             String codec = Codecs.REGISTERED.get(at);
@@ -469,10 +364,6 @@ public final class Natives {
                     "codec", CODEC_HANDLE_IDENTITY + at, WordValue.of(codec)));
         }
         system.set("codecs", new ObjectValue(codecs));
-        Context console = Context.root();
-        console.set("history", BlockValue.block(List.of()));
-        console.set("current", NoneValue.none());
-        system.set("console", new ObjectValue(console));
 
         Context internals = Context.childOf(systemContext);
         systemContext.set("native", NoneValue.none());

@@ -67,7 +67,6 @@ public final class Interpreter {
         this.systemContext = natives.asContext();
         this.systemInternals = natives.systemInternals();
         this.userContext = Context.childOf(systemContext);
-        publishTheUserContext();
         this.evaluator = new Evaluator(
                 natives.behaviours(),
                 systemContext,
@@ -77,6 +76,8 @@ public final class Interpreter {
                 bounds.checkEvery());
         evaluator.putRuntimeWordsIn(userContext);
         evaluator.useBundledModules(Interpreter::theModuleBundledAs);
+        takeTheShapeRebolDeclares();
+        publishTheUserContext();
         loadPrelude();
         putTheAddressesOfTheModulesRebolPublishes();
         loadRebolsOwnLibrary();
@@ -103,6 +104,49 @@ public final class Interpreter {
 
     private void putTheAddressesOfTheModulesRebolPublishes() {
         runTheBootStep("modules.reb");
+    }
+
+    private static final String THE_DECLARATION = "the-declaration";
+
+    private static final String THE_SYSTEM_OBJECT_DECLARATION = "/org/jebol/sysobj.reb";
+
+    private void takeTheShapeRebolDeclares() {
+        BlockValue body = theLibraryFileAt(THE_SYSTEM_OBJECT_DECLARATION)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Rebol's system object declaration is missing from the build"))
+                .body();
+        Context whereTheDeclarationsOwnWordsLand = Context.childOf(systemContext);
+        declareTheSetWordsOf(body, whereTheDeclarationsOwnWordsLand,
+                AnAssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
+        BlockValue step = theLibraryFileAt(BOOT + "system-object.reb")
+                .orElseThrow(() -> new IllegalStateException(
+                        "the system object boot step is missing from the build"))
+                .body();
+        Context whereTheStepsOwnWordsLand = Context.childOf(systemContext);
+        whereTheStepsOwnWordsLand.set(THE_DECLARATION, withoutTheFilesLineBreaks(
+                Binder.bind(body, whereTheDeclarationsOwnWordsLand)));
+        declareTheSetWordsOf(step, whereTheStepsOwnWordsLand,
+                AnAssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
+        Outcome outcome = evaluator.evaluate(
+                Binder.bind(step, whereTheStepsOwnWordsLand),
+                whereTheStepsOwnWordsLand);
+        if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
+            throw new IllegalStateException(
+                    "the system object would not build from Rebol's declaration: "
+                            + failure);
+        }
+    }
+
+    private static BlockValue withoutTheFilesLineBreaks(BlockValue block) {
+        for (int at = block.index(); at <= block.storageLength(); at++) {
+            block.storage().setLineBreakAt(at, false);
+        }
+        for (Value each : block.remaining()) {
+            if (each instanceof BlockValue nested) {
+                withoutTheFilesLineBreaks(nested);
+            }
+        }
+        return block;
     }
 
 
