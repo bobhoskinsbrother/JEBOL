@@ -8,14 +8,6 @@ import org.jebol.domain.value.WordValue;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * A walk through one series, as the dialect's keywords ask it.
- *
- * <p>Every keyword is written against this and against nothing else, so a
- * keyword cannot reach into how a block is walked or how a string is. What
- * differs between the two lives behind these methods; what the keyword means
- * lives in the keyword.
- */
 public interface ParseWalk {
 
     int NO_MATCH = -1;

@@ -3,7 +3,6 @@ package org.jebol.domain.eval.arithmetic;
 import java.util.Map;
 import java.util.Optional;
 
-/** AND, OR and XOR, which meet numbers, logics, tuples, binaries and bitsets. */
 public interface BitwiseOperation extends ValueOperation {
 
     boolean onLogics(boolean ours, boolean theirs);

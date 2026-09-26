@@ -41,75 +41,6 @@ public final class Natives {
 
     private final MapValue registeredStructLayouts = MapValue.empty();
 
-    private static final Map<String, String[]> DATATYPE_SPECS = datatypeSpecs();
-
-    private static Map<String, String[]> datatypeSpecs() {
-        Map<String, String[]> specs = new LinkedHashMap<>();
-        Object[] table = {
-            "end", new String[] {"internal marker for end of block", "internal"},
-            "unset", new String[] {"no value returned or set", "internal"},
-            "none", new String[] {"no value represented", "scalar"},
-            "logic", new String[] {"boolean true or false", "scalar"},
-            "integer", new String[] {"64 bit integer", "scalar"},
-            "decimal", new String[] {"64bit floating point number (IEEE standard)", "scalar"},
-            "percent", new String[] {"special form of decimals (used mainly for layout)", "scalar"},
-            "money", new String[] {"high precision decimals with denomination (opt)", "scalar"},
-            "char", new String[] {"8bit and 16bit character", "scalar"},
-            "pair", new String[] {"two dimensional point or size", "scalar"},
-            "tuple", new String[] {"sequence of small integers (colors, versions, IP)", "scalar"},
-            "time", new String[] {"time of day or duration", "scalar"},
-            "date", new String[] {"day, month, year, time of day, and timezone", "scalar"},
-            "binary", new String[] {"string series of bytes", "string"},
-            "string", new String[] {"string series of characters", "string"},
-            "file", new String[] {"file name or path", "string"},
-            "email", new String[] {"email address", "string"},
-            "ref", new String[] {"reference", "string"},
-            "url", new String[] {"uniform resource locator or identifier", "string"},
-            "tag", new String[] {"markup string (HTML or XML)", "string"},
-            "bitset", new String[] {"set of bit flags", "string"},
-            "image", new String[] {"RGB image with alpha channel", "vector"},
-            "vector", new String[] {"high performance arrays (single datatype)", "vector"},
-            "block", new String[] {"series of values", "block"},
-            "paren", new String[] {"automatically evaluating block", "block"},
-            "path", new String[] {"refinements to functions, objects, files", "block"},
-            "set-path", new String[] {"definition of a path's value", "block"},
-            "get-path", new String[] {"the value of a path", "block"},
-            "lit-path", new String[] {"literal path value", "block"},
-            "hash", new String[] {"series of values (using hash table)", "block"},
-            "map", new String[] {"name-value pairs (hash associative)", "block"},
-            "datatype", new String[] {"type of datatype", "symbol"},
-            "typeset", new String[] {"set of datatypes", "opt-object"},
-            "word", new String[] {"word (symbol or variable)", "word"},
-            "set-word", new String[] {"definition of a word's value", "word"},
-            "get-word", new String[] {"the value of a word (variable)", "word"},
-            "lit-word", new String[] {"literal word value", "word"},
-            "refinement", new String[] {"variation of meaning or location", "word"},
-            "issue", new String[] {"identifying marker word", "word"},
-            "native", new String[] {"direct CPU evaluated function", "function"},
-            "action", new String[] {"datatype native function (standard polymorphic)", "function"},
-            "rebcode", new String[] {"virtual machine function", "block"},
-            "command", new String[] {"special dispatch-based function", "function"},
-            "op", new String[] {"infix operator (special evaluation exception)", "function"},
-            "closure", new String[] {"function with persistent locals (indefinite extent)", "function"},
-            "function", new String[] {"interpreted function (user-defined or mezzanine)", "function"},
-            "frame", new String[] {"internal context frame", "internal"},
-            "object", new String[] {"context of names with values", "object"},
-            "module", new String[] {"loadable context of code and data", "object"},
-            "error", new String[] {"errors and throws", "object"},
-            "task", new String[] {"evaluation environment", "object"},
-            "port", new String[] {"external series, an I/O channel", "object"},
-            "gob", new String[] {"graphical object", "opt-object"},
-            "event", new String[] {"user interface event (efficiently sized)", "opt-object"},
-            "handle", new String[] {"arbitrary internal object or value", "internal"},
-            "struct", new String[] {"native structure definition", "block"},
-            "library", new String[] {"external library reference", "internal"},
-            "utype", new String[] {"user defined datatype", "object"},
-        };
-        for (int at = 0; at + 1 < table.length; at += 2) {
-            specs.put((String) table[at], (String[]) table[at + 1]);
-        }
-        return Map.copyOf(specs);
-    }
 
     public void forgetStartupState() {
         runState.set("last-error", NoneValue.none());
@@ -190,6 +121,13 @@ public final class Natives {
 
     public void useErrorCatalogue(String source) {
         this.errorCatalogueSource = source;
+    }
+
+    private String datatypeSpecSource = "";
+
+    public void useDatatypeSpecs(String source) {
+        this.datatypeSpecSource = source;
+        this.datatypeSpecs = null;
     }
 
     private String functionDeclarationSource = "";
@@ -3744,18 +3682,18 @@ public final class Natives {
                         return whatAStructReflects(struct, field, arguments.get(1));
                     }
                     if (arguments.getFirst() instanceof DatatypeValue asked) {
-                        String[] described = DATATYPE_SPECS.get(
-                                asked.represents().spelling());
+                        DatatypeSpec described =
+                                datatypeSpecs().get(asked.represents().spelling());
                         if (described == null) {
                             return NoneValue.none();
                         }
                         return switch (field) {
-                            case "title" -> StringValue.of(described[0]);
-                            case "type" -> WordValue.of(described[1]);
+                            case "title" -> StringValue.of(described.title());
+                            case "type" -> WordValue.of(described.category());
                             case "spec" -> {
                                 Context fields = Context.root();
-                                fields.set("title", StringValue.of(described[0]));
-                                fields.set("type", WordValue.of(described[1]));
+                                fields.set("title", StringValue.of(described.title()));
+                                fields.set("type", WordValue.of(described.category()));
                                 yield new ObjectValue(fields);
                             }
                             default -> NoneValue.none();
@@ -6537,6 +6475,39 @@ public final class Natives {
                 found.add(plain);
             }
         }
+    }
+
+    private Map<String, DatatypeSpec> datatypeSpecs;
+
+    private Map<String, DatatypeSpec> datatypeSpecs() {
+        if (datatypeSpecs == null) {
+            datatypeSpecs = Map.copyOf(specsReadFrom(datatypeSpecSource));
+        }
+        return datatypeSpecs;
+    }
+
+    private static Map<String, DatatypeSpec> specsReadFrom(String source) {
+        Map<String, DatatypeSpec> read = new LinkedHashMap<>();
+        List<Value> values;
+        try {
+            values = Transcoder.transcode(source).values().orElseThrow().remaining();
+        } catch (RuntimeException unreadable) {
+            return read;
+        }
+        for (int at = 0; at + 1 < values.size(); at++) {
+            if (!(values.get(at) instanceof WordValue name)
+                    || !(values.get(at + 1) instanceof BlockValue row)) {
+                continue;
+            }
+            List<Value> said = row.remaining();
+            if (said.size() >= 2
+                    && said.get(0) instanceof StringValue title
+                    && said.get(1) instanceof WordValue category) {
+                read.put(name.canonical(),
+                        new DatatypeSpec(title.text(), category.canonical()));
+            }
+        }
+        return read;
     }
 
     private List<Value> catalogueEntries() {

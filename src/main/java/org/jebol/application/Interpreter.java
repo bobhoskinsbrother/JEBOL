@@ -56,6 +56,7 @@ public final class Interpreter {
         natives.useFileSeparator(java.io.File.separatorChar);
         natives.useOperatingSystemNamed(whatRebolCallsThisOperatingSystem());
         natives.useErrorCatalogue(theSourceIn("/org/jebol/errors.reb"));
+        natives.useDatatypeSpecs(theSourceIn("/org/jebol/typespec.reb"));
         natives.useFunctionDeclarations(
                 theSourceIn("/org/jebol/actions.reb"),
                 theSourceIn("/org/jebol/natives.reb"),
