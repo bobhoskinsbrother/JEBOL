@@ -1,5 +1,7 @@
 package org.jebol.domain.date;
 
+import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
+
 import org.jebol.domain.eval.Arithmetic;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.EvaluationFailure;
@@ -25,31 +27,31 @@ public final class DateArithmetic {
         this.moment = moment;
     }
 
-    public Value combinedWith(Value right, Arithmetic.Operation operation) {
+    public Value combinedWith(Value right, ArithmeticOperation operation) {
         if (right instanceof DateValue to) {
             return daysSince(to, operation);
         }
         return movedBy(right, operation);
     }
 
-    public Value takenBy(Value left, Arithmetic.Operation operation) {
-        if (operation == Arithmetic.Operation.SUBTRACT) {
+    public Value takenBy(Value left, ArithmeticOperation operation) {
+        if (operation.subtractsOneFromTheOther()) {
             throw Raised.of(EvaluationFailure.NOT_RELATED,
-                    WordValue.of(operation.name().toLowerCase(Locale.ROOT) + ":"),
+                    WordValue.of(operation.spelling() + ":"),
                     DatatypeValue.of(left.datatype()));
         }
         return movedBy(left, operation);
     }
 
-    private Value daysSince(DateValue to, Arithmetic.Operation operation) {
-        if (operation != Arithmetic.Operation.SUBTRACT) {
+    private Value daysSince(DateValue to, ArithmeticOperation operation) {
+        if (!operation.subtractsOneFromTheOther()) {
             throw Raised.cannotUse(moment, "date arithmetic");
         }
         return IntegerValue.of(moment.dayNumber() - to.dayNumber());
     }
 
-    private Value movedBy(Value span, Arithmetic.Operation operation) {
-        int sign = operation == Arithmetic.Operation.SUBTRACT ? -1 : 1;
+    private Value movedBy(Value span, ArithmeticOperation operation) {
+        int sign = operation.signWhenMoving();
         return span.datatype() == Datatype.INTEGER
                 ? movedByDays(sign * (long) Comparison.asDouble(span))
                 : movedByTheClock(sign * clockShiftOf(span));

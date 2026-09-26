@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.date.DateArithmetic;
+import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.DecimalValue;
@@ -28,23 +29,23 @@ public final class Arithmetic {
     }
 
     public static Value sum(Value left, Value right) {
-        return combined(left, right, Operation.ADD);
+        return combined(left, right, ArithmeticOperation.theOneCalled("add"));
     }
 
     public static Value difference(Value left, Value right) {
-        return combined(left, right, Operation.SUBTRACT);
+        return combined(left, right, ArithmeticOperation.theOneCalled("subtract"));
     }
 
     public static Value product(Value left, Value right) {
-        return combined(left, right, Operation.MULTIPLY);
+        return combined(left, right, ArithmeticOperation.theOneCalled("multiply"));
     }
 
     public static Value quotient(Value left, Value right) {
-        return combined(left, right, Operation.DIVIDE);
+        return combined(left, right, ArithmeticOperation.theOneCalled("divide"));
     }
 
     public static Value remainder(Value left, Value right) {
-        return combined(left, right, Operation.REMAINDER);
+        return combined(left, right, ArithmeticOperation.theOneCalled("remainder"));
     }
 
     public static Value wholeQuotient(Value dividend, Value divisor) {
@@ -84,9 +85,7 @@ public final class Arithmetic {
         };
     }
 
-    public enum Operation { ADD, SUBTRACT, MULTIPLY, DIVIDE, REMAINDER, MODULO }
-
-    private static Value combined(Value left, Value right, Operation operation) {
+    private static Value combined(Value left, Value right, ArithmeticOperation operation) {
         return theKindThatClaims(left, right).combine(left, right, operation);
     }
 
@@ -106,11 +105,9 @@ public final class Arithmetic {
             }
 
             @Override
-            Value combine(Value left, Value right, Operation operation) {
-                VectorMath.Operation asked = vectorOperationFor(operation);
-                boolean orderMatters = asked != VectorMath.Operation.ADD
-                        && asked != VectorMath.Operation.MULTIPLY;
-                if (asked == null || (!(left instanceof VectorValue) && orderMatters)) {
+            Value combine(Value left, Value right, ArithmeticOperation operation) {
+                if (!operation.worksOnVectors()
+                        || (!(left instanceof VectorValue) && !operation.isCommutative())) {
                     throw notRelated(left, right);
                 }
                 Value other = left instanceof VectorValue ? right : left;
@@ -119,7 +116,7 @@ public final class Arithmetic {
                         && !(other instanceof DecimalValue)) {
                     throw notRelated(left, right);
                 }
-                return VectorMath.done(left, right, asked);
+                return VectorMath.done(left, right, operation);
             }
         },
 
@@ -130,7 +127,7 @@ public final class Arithmetic {
             }
 
             @Override
-            Value combine(Value left, Value right, Operation operation) {
+            Value combine(Value left, Value right, ArithmeticOperation operation) {
                 return new CharacterActions((CharacterValue) left)
                         .combinedWith(right, operation);
             }
@@ -143,7 +140,7 @@ public final class Arithmetic {
             }
 
             @Override
-            Value combine(Value left, Value right, Operation operation) {
+            Value combine(Value left, Value right, ArithmeticOperation operation) {
                 return new PairActions(left).combinedWith(right, operation);
             }
         },
@@ -155,7 +152,7 @@ public final class Arithmetic {
             }
 
             @Override
-            Value combine(Value left, Value right, Operation operation) {
+            Value combine(Value left, Value right, ArithmeticOperation operation) {
                 return new TupleActions(left).combinedWith(right, operation);
             }
         },
@@ -167,7 +164,7 @@ public final class Arithmetic {
             }
 
             @Override
-            Value combine(Value left, Value right, Operation operation) {
+            Value combine(Value left, Value right, ArithmeticOperation operation) {
                 return left instanceof DateValue moment
                         ? new DateArithmetic(moment).combinedWith(right, operation)
                         : new DateArithmetic((DateValue) right).takenBy(left, operation);
@@ -182,7 +179,7 @@ public final class Arithmetic {
             }
 
             @Override
-            Value combine(Value left, Value right, Operation operation) {
+            Value combine(Value left, Value right, ArithmeticOperation operation) {
                 CharacterValue letter = (CharacterValue) right;
                 Value asNumber = left instanceof IntegerValue
                         ? IntegerValue.of(letter.codepoint())
@@ -201,7 +198,7 @@ public final class Arithmetic {
             }
 
             @Override
-            Value combine(Value left, Value right, Operation operation) {
+            Value combine(Value left, Value right, ArithmeticOperation operation) {
                 return new MoneyActions((MoneyValue) left).combinedWith(right, operation);
             }
         },
@@ -213,7 +210,7 @@ public final class Arithmetic {
             }
 
             @Override
-            Value combine(Value left, Value right, Operation operation) {
+            Value combine(Value left, Value right, ArithmeticOperation operation) {
                 return left instanceof TimeValue span
                         ? new TimeActions(span).combinedWith(right, operation)
                         : new TimeActions((TimeValue) right).takenBy(left, operation);
@@ -227,7 +224,7 @@ public final class Arithmetic {
             }
 
             @Override
-            Value combine(Value left, Value right, Operation operation) {
+            Value combine(Value left, Value right, ArithmeticOperation operation) {
                 return new MoneyActions(MoneyValue.of(MoneyActions.asBigDecimal(left)))
                         .combinedWith(right, operation);
             }
@@ -240,7 +237,7 @@ public final class Arithmetic {
             }
 
             @Override
-            Value combine(Value left, Value right, Operation operation) {
+            Value combine(Value left, Value right, ArithmeticOperation operation) {
                 return integerCombined(((IntegerValue) left).magnitude(),
                         ((IntegerValue) right).magnitude(), operation);
             }
@@ -253,79 +250,31 @@ public final class Arithmetic {
             }
 
             @Override
-            Value combine(Value left, Value right, Operation operation) {
-                return decimalCombined(Comparison.asDouble(left),
-                        Comparison.asDouble(right), operation, true);
+            Value combine(Value left, Value right, ArithmeticOperation operation) {
+                return operation.onFractions(Comparison.asDouble(left),
+                        Comparison.asDouble(right), true);
             }
         };
 
         abstract boolean claims(Value left, Value right);
 
-        abstract Value combine(Value left, Value right, Operation operation);
+        abstract Value combine(Value left, Value right, ArithmeticOperation operation);
     }
 
-    private static VectorMath.Operation vectorOperationFor(Operation operation) {
-        return switch (operation) {
-            case ADD -> VectorMath.Operation.ADD;
-            case SUBTRACT -> VectorMath.Operation.SUBTRACT;
-            case MULTIPLY -> VectorMath.Operation.MULTIPLY;
-            case DIVIDE -> VectorMath.Operation.DIVIDE;
-            case REMAINDER -> VectorMath.Operation.REMAINDER;
-            case MODULO -> null;
-        };
+
+
+
+
+    static Value decimalCombined(
+            double left, double right, ArithmeticOperation operation) {
+        return operation.onFractions(left, right);
     }
 
-    private static Value integerCombined(long left, long right, Operation operation) {
-        try {
-            return switch (operation) {
-                case ADD -> IntegerValue.of(Math.addExact(left, right));
-                case SUBTRACT -> IntegerValue.of(Math.subtractExact(left, right));
-                case MULTIPLY -> IntegerValue.of(Math.multiplyExact(left, right));
-                case DIVIDE -> {
-                    requireNonZero(right);
-                    yield left % right == 0
-                            ? IntegerValue.of(left / right)
-                            : DecimalValue.of((double) left / right);
-                }
-                case REMAINDER -> {
-                    requireNonZero(right);
-                    yield IntegerValue.of(left % right);
-                }
-                case MODULO -> IntegerValue.of(
-                        wholeRest(left, right, Division.NEVER_NEGATIVE));
-            };
-        } catch (ArithmeticException overflowed) {
-            throw Raised.of(EvaluationFailure.OVERFLOW, overflowed.getMessage());
-        }
+    static Value integerCombined(long left, long right, ArithmeticOperation operation) {
+        return operation.onWholeNumbers(left, right);
     }
 
-    static Value decimalCombined(double left, double right, Operation operation) {
-        return decimalCombined(left, right, operation, false);
-    }
 
-    private static Value decimalCombined(
-            double left, double right, Operation operation, boolean infinitiesAllowed) {
-        return switch (operation) {
-            case ADD -> DecimalValue.of(left + right);
-            case SUBTRACT -> DecimalValue.of(left - right);
-            case MULTIPLY -> DecimalValue.of(left * right);
-            case DIVIDE -> {
-                if (!infinitiesAllowed) {
-                    requireNonZero(right);
-                }
-                yield DecimalValue.of(left / right);
-            }
-            case REMAINDER -> {
-                requireNonZero(right);
-                yield DecimalValue.of(left % right);
-            }
-            case MODULO -> {
-                requireNonZero(right);
-                double rest = left % right;
-                yield DecimalValue.of(rest < 0 ? rest + Math.abs(right) : rest);
-            }
-        };
-    }
 
     private static Value likeTheDividend(Value dividend, double magnitude) {
         return switch (dividend) {

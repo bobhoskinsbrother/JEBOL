@@ -1,5 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.eval.arithmetic.BitwiseOperation;
+import org.jebol.domain.eval.sets.SetOperation;
+
 import org.jebol.domain.date.DateMaking;
 import org.jebol.domain.date.part.DatePart;
 import org.jebol.domain.host.HostService;
@@ -1010,15 +1013,15 @@ public final class Natives {
         define("and~", takesCombinable("value1", "value2"),
                 (arguments, evaluator, context) ->
                         Combining.bitwise(arguments.get(0), arguments.get(1),
-                                Combining.Bitwise.AND));
+                                BitwiseOperation.theOneCalled("and")));
         define("or~", takesCombinable("value1", "value2"),
                 (arguments, evaluator, context) ->
                         Combining.bitwise(arguments.get(0), arguments.get(1),
-                                Combining.Bitwise.OR));
+                                BitwiseOperation.theOneCalled("or")));
         define("xor~", takesCombinable("value1", "value2"),
                 (arguments, evaluator, context) ->
                         Combining.bitwise(arguments.get(0), arguments.get(1),
-                                Combining.Bitwise.XOR));
+                                BitwiseOperation.theOneCalled("xor")));
 
         define("lerp", List.of(Parameter.required("value1"),
                         Parameter.required("value2"), Parameter.required("fraction")),
@@ -3709,7 +3712,7 @@ public final class Natives {
                             || arguments.get(0) instanceof BitsetValue
                             || arguments.get(0) instanceof MapValue) {
                         return Combining.sets(arguments.get(0), arguments.get(1),
-                                Combining.Sets.DIFFERENCE,
+                                SetOperation.named("difference").orElseThrow(),
                                 refinements.contains("case"), 1);
                     }
                     if (arguments.get(0) instanceof DateValue from
@@ -3722,7 +3725,7 @@ public final class Natives {
                             ? (int) Math.max(1, wanted.magnitude())
                             : 1;
                     return Combining.sets(arguments.get(0), arguments.get(1),
-                            Combining.Sets.DIFFERENCE,
+                            SetOperation.named("difference").orElseThrow(),
                             refinements.contains("case"), stride);
                 });
 
@@ -5219,9 +5222,9 @@ public final class Natives {
                                     || series instanceof BinaryValue);
                 });
 
-        defineSetOperation("intersect", Combining.Sets.INTERSECT);
-        defineSetOperation("union", Combining.Sets.UNION);
-        defineSetOperation("exclude", Combining.Sets.EXCLUDE);
+        defineSetOperation("intersect");
+        defineSetOperation("union");
+        defineSetOperation("exclude");
         define("unique", List.of(
                         Parameter.required("set1", of(
                                 Datatype.BLOCK, Datatype.STRING, Datatype.BITSET,
@@ -5236,7 +5239,7 @@ public final class Natives {
                             : 1;
                     return Combining.sets(
                             arguments.getFirst(), arguments.getFirst(),
-                            Combining.Sets.UNION, refinements.contains("case"), stride);
+                            SetOperation.named("union").orElseThrow(), refinements.contains("case"), stride);
                 });
 
         define("fourth", List.of(Parameter.required("series")),
@@ -6998,7 +7001,8 @@ public final class Natives {
 
     private static final Set<Datatype> WHAT_PARSE_TAKES = Typeset.SERIES.members();
 
-    private void defineSetOperation(String name, Combining.Sets how) {
+    private void defineSetOperation(String name) {
+        SetOperation how = SetOperation.named(name).orElseThrow();
         define(name, List.of(
                         Parameter.required("first", setOperandOr(Datatype.BLOCK)),
                         Parameter.required("second", setOperandOr(Datatype.BLOCK)),

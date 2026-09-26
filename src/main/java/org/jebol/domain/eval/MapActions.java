@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.eval.sets.SetOperation;
+
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.MapValue;
@@ -53,24 +55,19 @@ public final class MapActions implements Actions {
         return given(theWantedPairsOf((BlockValue) asked.given(), asked));
     }
 
-    public MapValue combinedWith(Value other, Combining.Sets how, boolean mindingCase) {
+    public MapValue combinedWith(Value other, SetOperation how, boolean mindingCase) {
         MapValue theirs = other instanceof MapValue map ? map : MapValue.empty();
         MapValue kept = MapValue.empty();
         for (Value key : pairs.keys()) {
             boolean inTheirs = theirs.holds(key, mindingCase);
-            boolean wanted = switch (how) {
-                case INTERSECT -> inTheirs;
-                case UNION -> true;
-                case EXCLUDE, DIFFERENCE -> !inTheirs;
-            };
-            if (wanted && !kept.holds(key, mindingCase)) {
+            if (how.theFirstSetKeeps(inTheirs) && !kept.holds(key, mindingCase)) {
                 kept.put(key, pairs.select(key, mindingCase), mindingCase);
             }
         }
-        if (how == Combining.Sets.UNION || how == Combining.Sets.DIFFERENCE) {
+        if (how.theSecondSetContributes()) {
             for (Value key : theirs.keys()) {
                 boolean inOurs = pairs.holds(key, mindingCase);
-                if ((how == Combining.Sets.UNION || !inOurs)
+                if (how.theSecondSetKeeps(inOurs)
                         && !kept.holds(key, mindingCase)) {
                     kept.put(key, theirs.select(key, mindingCase), mindingCase);
                 }

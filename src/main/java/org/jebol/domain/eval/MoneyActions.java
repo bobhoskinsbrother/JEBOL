@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
+
 import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.MoneyValue;
@@ -16,14 +18,14 @@ public final class MoneyActions {
         this.amount = amount;
     }
 
-    Value combinedWith(Value other, Arithmetic.Operation operation) {
+    Value combinedWith(Value other, ArithmeticOperation operation) {
         return withinTheDeciRange(
                 amountCombined(amount.amount(), widenedToMeet(other, operation), operation));
     }
 
-    private static BigDecimal widenedToMeet(Value other, Arithmetic.Operation operation) {
+    private static BigDecimal widenedToMeet(Value other, ArithmeticOperation operation) {
         if (other instanceof TimeValue span) {
-            if (operation != Arithmetic.Operation.MULTIPLY) {
+            if (!operation.multiplies()) {
                 throw Raised.of(EvaluationFailure.NOT_RELATED,
                         "only multiplication takes a time on the right of a money");
             }
@@ -40,26 +42,9 @@ public final class MoneyActions {
     }
 
     static MoneyValue amountCombined(
-            BigDecimal left, BigDecimal right, Arithmetic.Operation operation) {
+            BigDecimal left, BigDecimal right, ArithmeticOperation operation) {
 
-        return switch (operation) {
-            case ADD -> MoneyValue.of(left.add(right));
-            case SUBTRACT -> MoneyValue.of(left.subtract(right));
-            case MULTIPLY -> MoneyValue.of(left.multiply(right, MoneyValue.ARITHMETIC));
-            case DIVIDE -> {
-                Arithmetic.requireNonZero(right.doubleValue());
-                yield MoneyValue.of(left.divide(right, MoneyValue.ARITHMETIC));
-            }
-            case REMAINDER -> {
-                Arithmetic.requireNonZero(right.doubleValue());
-                yield MoneyValue.of(left.remainder(right, MoneyValue.ARITHMETIC));
-            }
-            case MODULO -> {
-                Arithmetic.requireNonZero(right.doubleValue());
-                BigDecimal rest = left.remainder(right, MoneyValue.ARITHMETIC);
-                yield MoneyValue.of(rest.signum() < 0 ? rest.add(right.abs()) : rest);
-            }
-        };
+        return operation.onAmounts(left, right);
     }
 
     public Value heldBetween(MoneyValue lowest, MoneyValue highest) {

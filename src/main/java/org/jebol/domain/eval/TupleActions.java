@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
+
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.TimeValue;
@@ -22,42 +24,16 @@ public final class TupleActions {
         return TupleValue.of(octets);
     }
 
-    Value combinedWith(Value right, Arithmetic.Operation operation) {
+    Value combinedWith(Value right, ArithmeticOperation operation) {
         return octetByOctet(left, right, (octet, against, fractional) ->
                 octetCombined(octet, against, fractional, operation));
     }
 
     private static long octetCombined(
             long octet, double against, boolean fractional,
-            Arithmetic.Operation operation) {
+            ArithmeticOperation operation) {
 
-        return switch (operation) {
-            case ADD -> octet + (long) against;
-            case SUBTRACT -> octet - (long) against;
-            case MULTIPLY -> {
-                if (octet == 0) {
-                    yield 0;
-                }
-                if (against > 255) {
-                    yield 255;
-                }
-                yield fractional ? (long) (octet * against) : octet * (long) against;
-            }
-            case DIVIDE -> {
-                if (against == 0) {
-                    throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "tuple");
-                }
-                yield fractional
-                        ? (long) roundedHalfAwayFromZero(octet / against)
-                        : octet / (long) against;
-            }
-            case REMAINDER, MODULO -> {
-                if ((long) against == 0) {
-                    throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "tuple");
-                }
-                yield octet % (long) against;
-            }
-        };
+        return operation.onOctets(octet, against, fractional);
     }
 
     private static double roundedHalfAwayFromZero(double amount) {

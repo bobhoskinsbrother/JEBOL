@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
+
 import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.PairValue;
@@ -13,12 +15,10 @@ public final class PairActions {
         this.left = left;
     }
 
-    Value combinedWith(Value right, Arithmetic.Operation operation) {
+    Value combinedWith(Value right, ArithmeticOperation operation) {
         refuseWhatIsNotAPairOrAPlainNumber(left);
         refuseWhatIsNotAPairOrAPlainNumber(right);
-        if (operation == Arithmetic.Operation.DIVIDE
-                || operation == Arithmetic.Operation.REMAINDER
-                || operation == Arithmetic.Operation.MODULO) {
+        if (operation.needsANonZeroDivisor()) {
             Arithmetic.requireNonZero(firstHalfOf(right));
             Arithmetic.requireNonZero(secondHalfOf(right));
         }
@@ -38,7 +38,7 @@ public final class PairActions {
     }
 
     private static double halfCombined(
-            double ours, double theirs, Arithmetic.Operation operation) {
+            double ours, double theirs, ArithmeticOperation operation) {
         return ((DecimalValue) Arithmetic.decimalCombined(ours, theirs, operation))
                 .quantity();
     }

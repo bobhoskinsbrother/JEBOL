@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
+
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.IntegerValue;
@@ -13,19 +15,11 @@ public final class CharacterActions {
         this.letter = letter;
     }
 
-    Value combinedWith(Value right, Arithmetic.Operation operation) {
+    Value combinedWith(Value right, ArithmeticOperation operation) {
         long other = codepointOfferedBy(right);
         long codepoint = letter.codepoint();
-        long answered = switch (operation) {
-            case ADD -> codepoint + other;
-            case SUBTRACT -> codepoint - other;
-            case MULTIPLY -> codepoint * other;
-            case DIVIDE -> dividedBy(codepoint, other);
-            case REMAINDER -> restOf(codepoint, other);
-            case MODULO -> throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    "cannot use that on a character");
-        };
-        if (operation == Arithmetic.Operation.SUBTRACT && right instanceof CharacterValue) {
+        long answered = operation.onCodepoints(codepoint, other);
+        if (operation.subtractsOneFromTheOther() && right instanceof CharacterValue) {
             return IntegerValue.of(answered);
         }
         return CharacterValue.of(requireACodepoint(answered));

@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.eval.sets.SetOperation;
+
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
@@ -32,20 +34,14 @@ public final class TypesetActions {
                 && members.holds(wanted.represents());
     }
 
-    public TypesetValue combinedWith(TypesetValue theirs, Combining.Sets how) {
+    public TypesetValue combinedWith(TypesetValue theirs, SetOperation how) {
         Set<Datatype> mine = members.members();
         Set<Datatype> yours = theirs.members();
         Set<Datatype> kept = EnumSet.noneOf(Datatype.class);
         for (Datatype each : Datatype.values()) {
             boolean inMine = mine.contains(each);
             boolean inYours = yours.contains(each);
-            boolean wanted = switch (how) {
-                case UNION -> inMine || inYours;
-                case INTERSECT -> inMine && inYours;
-                case DIFFERENCE -> inMine ^ inYours;
-                case EXCLUDE -> inMine && !inYours;
-            };
-            if (wanted) {
+            if (how.holdsWhen(inMine, inYours)) {
                 kept.add(each);
             }
         }

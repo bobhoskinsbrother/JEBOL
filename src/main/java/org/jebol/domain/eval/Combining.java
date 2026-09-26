@@ -1,5 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.eval.arithmetic.BitwiseOperation;
+import org.jebol.domain.eval.sets.SetOperation;
+
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.BlockValue;
@@ -23,23 +26,19 @@ import java.util.Set;
 
 public final class Combining {
 
-    public enum Bitwise { AND, OR, XOR }
-
-    public enum Sets { INTERSECT, UNION, EXCLUDE, DIFFERENCE }
-
     private Combining() {
     }
 
-    public static Value bitwise(Value left, Value right, Bitwise operation) {
+    public static Value bitwise(Value left, Value right, BitwiseOperation operation) {
         return theBitKindThatClaims(left, right).combine(left, right, operation);
     }
 
-    public static Value sets(Value first, Value second, Sets how) {
+    public static Value sets(Value first, Value second, SetOperation how) {
         return sets(first, second, how, false, 1);
     }
 
     public static Value sets(
-            Value first, Value second, Sets how, boolean mindingCase, int stride) {
+            Value first, Value second, SetOperation how, boolean mindingCase, int stride) {
 
         TwoSets asked = new TwoSets(first, second, how, mindingCase, stride);
         return theSetKindThatClaims(first, second).combine(asked);
@@ -69,15 +68,11 @@ public final class Combining {
             }
 
             @Override
-            Value combine(Value left, Value right, Bitwise operation) {
+            Value combine(Value left, Value right, BitwiseOperation operation) {
                 if (!(left instanceof VectorValue)) {
                     throw Arithmetic.notRelated(left, right);
                 }
-                return VectorMath.done(left, right, switch (operation) {
-                    case AND -> VectorMath.Operation.AND;
-                    case OR -> VectorMath.Operation.OR;
-                    case XOR -> VectorMath.Operation.XOR;
-                });
+                return VectorMath.done(left, right, operation);
             }
         },
 
@@ -88,14 +83,10 @@ public final class Combining {
             }
 
             @Override
-            Value combine(Value left, Value right, Bitwise operation) {
+            Value combine(Value left, Value right, BitwiseOperation operation) {
                 boolean ours = left.isTruthy();
                 boolean theirs = right.isTruthy();
-                return LogicValue.of(switch (operation) {
-                    case AND -> ours && theirs;
-                    case OR -> ours || theirs;
-                    case XOR -> ours ^ theirs;
-                });
+                return LogicValue.of(operation.onLogics(ours, theirs));
             }
         },
 
@@ -106,14 +97,14 @@ public final class Combining {
             }
 
             @Override
-            Value combine(Value left, Value right, Bitwise operation) {
+            Value combine(Value left, Value right, BitwiseOperation operation) {
                 PairValue point = (PairValue) left;
                 return PairValue.of(
                         bitsOf(point.x(), PairActions.firstHalfOf(right), operation),
                         bitsOf(point.y(), PairActions.secondHalfOf(right), operation));
             }
 
-            private long bitsOf(double ours, double theirs, Bitwise operation) {
+            private long bitsOf(double ours, double theirs, BitwiseOperation operation) {
                 return combinedBits(
                         roundedHalfUp(ours), roundedHalfUp(theirs), operation);
             }
@@ -126,7 +117,7 @@ public final class Combining {
             }
 
             @Override
-            Value combine(Value left, Value right, Bitwise operation) {
+            Value combine(Value left, Value right, BitwiseOperation operation) {
                 return TupleActions.octetByOctet(left, right,
                         (octet, against, fractional) ->
                                 combinedBits(octet, (long) against, operation));
@@ -140,7 +131,7 @@ public final class Combining {
             }
 
             @Override
-            Value combine(Value left, Value right, Bitwise operation) {
+            Value combine(Value left, Value right, BitwiseOperation operation) {
                 return octetsCycledAgainstTheLonger(
                         (BinaryValue) left, (BinaryValue) right, operation);
             }
@@ -153,7 +144,7 @@ public final class Combining {
             }
 
             @Override
-            Value combine(Value left, Value right, Bitwise operation) {
+            Value combine(Value left, Value right, BitwiseOperation operation) {
                 return IntegerValue.of(combinedBits(
                         wholeNumberOf(left), wholeNumberOf(right), operation));
             }
@@ -161,11 +152,11 @@ public final class Combining {
 
         abstract boolean claims(Value left, Value right);
 
-        abstract Value combine(Value left, Value right, Bitwise operation);
+        abstract Value combine(Value left, Value right, BitwiseOperation operation);
     }
 
     private static Value octetsCycledAgainstTheLonger(
-            BinaryValue left, BinaryValue right, Bitwise operation) {
+            BinaryValue left, BinaryValue right, BitwiseOperation operation) {
 
         BinaryValue longer = left.lengthFromHere() >= right.lengthFromHere() ? left : right;
         BinaryValue shorter = longer == left ? right : left;
@@ -179,12 +170,8 @@ public final class Combining {
         return BinaryValue.of(combined);
     }
 
-    static long combinedBits(long left, long right, Bitwise operation) {
-        return switch (operation) {
-            case AND -> left & right;
-            case OR -> left | right;
-            case XOR -> left ^ right;
-        };
+    static long combinedBits(long left, long right, BitwiseOperation operation) {
+        return operation.onWholeElements(left, right);
     }
 
     private static long roundedHalfUp(double half) {
@@ -200,7 +187,7 @@ public final class Combining {
     }
 
     private record TwoSets(
-            Value first, Value second, Sets how, boolean mindingCase, int stride) {
+            Value first, Value second, SetOperation how, boolean mindingCase, int stride) {
 
         List<Value> keptFrom(List<Value> ourMembers, List<Value> theirMembers) {
             List<List<Value>> ours = inRecords(ourMembers);
@@ -222,20 +209,15 @@ public final class Combining {
         }
 
         private boolean theFirstSetKeeps(List<List<Value>> theirs, List<Value> candidate) {
-            boolean inTheirs = holds(theirs, candidate);
-            return switch (how) {
-                case INTERSECT -> inTheirs;
-                case UNION -> true;
-                case EXCLUDE, DIFFERENCE -> !inTheirs;
-            };
+            return how.theFirstSetKeeps(holds(theirs, candidate));
         }
 
         private boolean theSecondSetKeeps(List<List<Value>> ours, List<Value> candidate) {
-            return how == Sets.UNION || !holds(ours, candidate);
+            return how.theSecondSetKeeps(holds(ours, candidate));
         }
 
         private boolean theSecondSetContributesAsWell() {
-            return how == Sets.UNION || how == Sets.DIFFERENCE;
+            return how.theSecondSetContributes();
         }
 
         private List<List<Value>> inRecords(List<Value> items) {
@@ -357,7 +339,7 @@ public final class Combining {
     }
 
     private static BitsetValue bitsetsOctetByOctet(
-            BitsetValue ours, BitsetValue theirs, Sets how) {
+            BitsetValue ours, BitsetValue theirs, SetOperation how) {
 
         byte[] left = ours.octets();
         byte[] right = theirs.octets();
@@ -365,12 +347,7 @@ public final class Combining {
         for (int at = 0; at < both.length; at++) {
             int mine = at < left.length ? left[at] & 0xFF : 0;
             int yours = at < right.length ? right[at] & 0xFF : 0;
-            both[at] = (byte) switch (how) {
-                case UNION -> mine | yours;
-                case INTERSECT -> mine & yours;
-                case EXCLUDE -> mine & ~yours;
-                case DIFFERENCE -> mine ^ yours;
-            };
+            both[at] = (byte) how.combinedBits(mine, yours);
         }
         return BitsetValue.of(both);
     }

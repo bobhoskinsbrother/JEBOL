@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
+
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.DecimalValue;
@@ -20,7 +22,7 @@ public final class TimeActions {
         this.span = span;
     }
 
-    Value combinedWith(Value right, Arithmetic.Operation operation) {
+    Value combinedWith(Value right, ArithmeticOperation operation) {
         if (right instanceof TimeValue other) {
             return againstAnotherTime(other, operation);
         }
@@ -34,85 +36,90 @@ public final class TimeActions {
         if (!(right instanceof IntegerValue) && !(right instanceof DecimalValue)) {
             throw notRelatedToATime(operation);
         }
-        if (operation == Arithmetic.Operation.MULTIPLY
-                || operation == Arithmetic.Operation.DIVIDE) {
+        if (operation.scalesRatherThanShifts()) {
             return scaledByAPlainNumber(right, operation);
         }
         return addedInWholeNanosecondsTo(right, operation);
     }
 
-    Value takenBy(Value left, Arithmetic.Operation operation) {
-        boolean allowed = switch (operation) {
-            case ADD, MULTIPLY -> true;
-            case SUBTRACT -> left instanceof IntegerValue;
-            case DIVIDE, REMAINDER, MODULO -> false;
-        };
+    Value takenBy(Value left, ArithmeticOperation operation) {
+        boolean allowed = operation.isCommutative()
+                || (operation.subtractsOneFromTheOther() && left instanceof IntegerValue);
         if (!allowed) {
             throw notRelatedToATime(operation);
         }
-        if (operation == Arithmetic.Operation.SUBTRACT) {
+        if (operation.subtractsOneFromTheOther()) {
             return TimeValue.ofNanoseconds(withinWhatADurationHolds(
                     wholeNanosecondsOf(left) - span.nanoseconds()));
         }
         return combinedWith(left, operation);
     }
 
-    private Value againstAnotherTime(TimeValue other, Arithmetic.Operation operation) {
-        if (operation == Arithmetic.Operation.DIVIDE) {
+    private Value againstAnotherTime(TimeValue other, ArithmeticOperation operation) {
+        if (operation.divides()) {
             Arithmetic.requireNonZero(other.nanoseconds());
             return DecimalValue.of(
                     (double) span.nanoseconds() / (double) other.nanoseconds());
         }
-        if (operation == Arithmetic.Operation.MULTIPLY) {
+        if (operation.multiplies()) {
             throw notRelatedToATime(operation);
         }
         return addedInWholeNanosecondsTo(other, operation);
     }
 
-    private Value billedAt(MoneyValue rate, Arithmetic.Operation operation) {
+    private Value billedAt(MoneyValue rate, ArithmeticOperation operation) {
         BigDecimal hours = BigDecimal.valueOf(
                 (double) span.nanoseconds() / (double) TimeValue.NANOSECONDS_PER_HOUR);
-        return switch (operation) {
-            case MULTIPLY -> MoneyActions.amountCombined(hours, rate.amount(), operation);
-            case DIVIDE -> MoneyActions.amountCombined(rate.amount(), hours, operation);
-            default -> throw notRelatedToATime(operation);
-        };
+        if (operation.multiplies()) {
+            return MoneyActions.amountCombined(hours, rate.amount(), operation);
+        }
+        if (operation.divides()) {
+            return MoneyActions.amountCombined(rate.amount(), hours, operation);
+        }
+        throw notRelatedToATime(operation);
     }
 
-    private Value scaledBy(DecimalValue portion, Arithmetic.Operation operation) {
-        if (operation != Arithmetic.Operation.MULTIPLY) {
+    private Value scaledBy(DecimalValue portion, ArithmeticOperation operation) {
+        if (!operation.multiplies()) {
             throw notRelatedToATime(operation);
         }
         return TimeValue.ofNanoseconds((long) (span.nanoseconds() * portion.quantity()));
     }
 
-    private Value scaledByAPlainNumber(Value right, Arithmetic.Operation operation) {
+    private Value scaledByAPlainNumber(Value right, ArithmeticOperation operation) {
         double by = Comparison.asDouble(right);
-        if (operation == Arithmetic.Operation.DIVIDE) {
+        if (operation.divides()) {
             Arithmetic.requireNonZero(by);
             return TimeValue.ofNanoseconds((long) (span.nanoseconds() / by));
         }
         return TimeValue.ofNanoseconds((long) (span.nanoseconds() * by));
     }
 
-    private Value addedInWholeNanosecondsTo(Value right, Arithmetic.Operation operation) {
+    private Value addedInWholeNanosecondsTo(Value right, ArithmeticOperation operation) {
         long ours = span.nanoseconds();
         long theirs = wholeNanosecondsOf(right);
-        return TimeValue.ofNanoseconds(withinWhatADurationHolds(switch (operation) {
-            case ADD -> ours + theirs;
-            case SUBTRACT -> ours - theirs;
-            default -> {
-                Arithmetic.requireNonZero(theirs);
-                yield operation == Arithmetic.Operation.REMAINDER
-                        ? ours % theirs
-                        : Math.floorMod(ours, theirs);
-            }
-        }));
+        return TimeValue.ofNanoseconds(
+                withinWhatADurationHolds(nanosecondsCombined(ours, theirs, operation)));
     }
 
-    private static Raised notRelatedToATime(Arithmetic.Operation operation) {
+    private static long nanosecondsCombined(
+            long ours, long theirs, ArithmeticOperation operation) {
+
+        if (operation.subtractsOneFromTheOther()) {
+            return ours - theirs;
+        }
+        if (!operation.needsANonZeroDivisor()) {
+            return ours + theirs;
+        }
+        Arithmetic.requireNonZero(theirs);
+        return operation.keepsTheSignOfTheDividend()
+                ? ours % theirs
+                : Math.floorMod(ours, theirs);
+    }
+
+    private static Raised notRelatedToATime(ArithmeticOperation operation) {
         return Raised.of(EvaluationFailure.NOT_RELATED,
-                WordValue.of(operation.name().toLowerCase(Locale.ROOT)),
+                WordValue.of(operation.spelling()),
                 DatatypeValue.of(Datatype.TIME));
     }
 

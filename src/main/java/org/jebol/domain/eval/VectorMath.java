@@ -1,8 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.eval.arithmetic.ValueOperation;
 import org.jebol.domain.value.*;
 
-import java.util.function.LongBinaryOperator;
 
 /**
  * Arithmetic across a whole vector at once.
@@ -18,15 +18,6 @@ import java.util.function.LongBinaryOperator;
  */
 public final class VectorMath {
 
-    /** The eight operations {@code REBTYPE(Vector)} sends this way. */
-    public enum Operation {
-        ADD, SUBTRACT, MULTIPLY, DIVIDE, REMAINDER, AND, OR, XOR;
-
-        boolean isBitwise() {
-            return this == AND || this == OR || this == XOR;
-        }
-    }
-
     private VectorMath() {
     }
 
@@ -35,7 +26,7 @@ public final class VectorMath {
         return left instanceof VectorValue || right instanceof VectorValue;
     }
 
-    public static Value done(Value left, Value right, Operation operation) {
+    public static Value done(Value left, Value right, ValueOperation operation) {
         if (left instanceof VectorValue first && right instanceof VectorValue second) {
             return elementByElement(first, second, operation);
         }
@@ -48,7 +39,7 @@ public final class VectorMath {
     }
 
     private static Value everyElementAgainstTheNumberReducedToTheVectorsKind(
-            VectorValue vector, Value number, Operation operation) {
+            VectorValue vector, Value number, ValueOperation operation) {
 
         VectorKind kind = vector.kind();
         refuseBitwiseOnDecimals(kind, operation);
@@ -69,7 +60,7 @@ public final class VectorMath {
     }
 
     private static Value elementByElement(VectorValue left, VectorValue right,
-            Operation operation) {
+            ValueOperation operation) {
 
         VectorKind kind = left.kind();
         if (kind != right.kind()) {
@@ -95,60 +86,41 @@ public final class VectorMath {
         return new VectorValue(answer, 1);
     }
 
-    private static void refuseBitwiseOnDecimals(VectorKind kind, Operation operation) {
+    private static void refuseBitwiseOnDecimals(VectorKind kind, ValueOperation operation) {
         if (kind.measures() && operation.isBitwise()) {
             throw Raised.of(EvaluationFailure.NOT_RELATED,
-                    org.jebol.domain.value.WordValue.of(
-                            operation.name().toLowerCase(java.util.Locale.ROOT)),
+                    org.jebol.domain.value.WordValue.of(operation.spelling()),
                     org.jebol.domain.value.WordValue.of(kind.spelling()));
         }
     }
 
-    private static void refuseElementByZero(Operation operation, boolean isZero) {
-        boolean guarded = operation == Operation.DIVIDE
-                || operation == Operation.REMAINDER;
+    private static void refuseElementByZero(ValueOperation operation, boolean isZero) {
+        boolean guarded = operation.needsANonZeroDivisor()
+                && !operation.isBitwise();
         if (guarded && isZero) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "");
         }
     }
 
-    private static void refuseDivisionByZero(VectorKind kind, Operation operation,
+    private static void refuseDivisionByZero(VectorKind kind, ValueOperation operation,
             long truncatedDivisor) {
 
-        boolean guarded = operation == Operation.REMAINDER
-                || (operation == Operation.DIVIDE && !kind.measures());
+        boolean guarded = operation.keepsTheSignOfTheDividend()
+                || (operation.divides() && !kind.measures());
         if (guarded && truncatedDivisor == 0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "");
         }
     }
 
     private static long counted(VectorKind kind, long held, long against,
-            Operation operation) {
+            ValueOperation operation) {
 
-        LongBinaryOperator arithmetic = switch (operation) {
-            case ADD -> Long::sum;
-            case SUBTRACT -> (ours, theirs) -> ours - theirs;
-            case MULTIPLY -> (ours, theirs) -> ours * theirs;
-            case DIVIDE -> (ours, theirs) -> ours / theirs;
-            case REMAINDER -> (ours, theirs) -> ours % theirs;
-            case AND -> (ours, theirs) -> ours & theirs;
-            case OR -> (ours, theirs) -> ours | theirs;
-            case XOR -> (ours, theirs) -> ours ^ theirs;
-        };
-        return kind.store(arithmetic.applyAsLong(held, against));
+        return kind.store(operation.onWholeElements(held, against));
     }
 
     private static long measured(VectorKind kind, double held, double against,
-            Operation operation) {
+            ValueOperation operation) {
 
-        double answer = switch (operation) {
-            case ADD -> held + against;
-            case SUBTRACT -> held - against;
-            case MULTIPLY -> held * against;
-            case DIVIDE -> held / against;
-            case REMAINDER -> held % against;
-            default -> held;
-        };
-        return kind.storeMeasured(answer);
+        return kind.storeMeasured(operation.onMeasuredElements(held, against));
     }
 }
