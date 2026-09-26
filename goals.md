@@ -17,7 +17,7 @@ list of things nobody has to do any more is a list nobody reads.
 point here for what it answered, on purpose: the same figures were once written
 into four files and drifted until two of them disagreed about how many error ids
 can be raised, with nothing to say which was right. A count belongs in one place
-or in none. Every number below was checked on 2026-09-14 by running it.
+or in none. Every number below was checked on 2026-09-26 by running it.
 
 ---
 
@@ -32,14 +32,14 @@ or in none. Every number below was checked on 2026-09-14 by running it.
 | `Interpreter.borrowedLoadFailures()` | empty -- every borrowed file loads whole |
 | `system/catalog/datatypes` | 59 against R3's 58, the extra being `java-object!`, and every one of them has an arm |
 | `SuiteCoverageTest` | the reader reaches 10,133 of 10,133 assertions |
-| `known-gaps.txt` | **1 fails**, and no work will retire it -- goal 1 below |
-| `fails-on-rebol-too.txt` | 162 a real 3.22.5 also fails or never runs |
+| `known-gaps.txt` | **1 fails**, and no work will retire it -- "One entry, and no work will retire it", under Standing below |
+| `fails-on-rebol-too.txt` | 169 a real 3.22.5 also fails or never runs |
 | `scripts/error-parity.py` | **114 of Rebol's 142 error ids can be raised, and every one of the 28 that cannot has a written reason.** It also reports the 4 ids JEBOL raises that Rebol does not name -- all four are the host-grant system and the browser view, which R3 has no equivalent of -- and that no id is filed under a category the catalogue disagrees with |
-| `corpus/` | 1,166 entries -- published REBOL examples with their published answers, plus fourteen whole programs that must load and survive a round trip through MOLD |
+| `corpus/` | 1,167 entries -- published REBOL examples with their published answers, plus fourteen whole programs that must load and survive a round trip through MOLD |
 | `dial-draw.reb` against `DrawDialect` | 34 of the 35 drawing commands the table declares are painted; `effect` is a dialect of its own and is not |
-| the shipped jar | about 1,730 KB and no dependencies |
+| the shipped jar | about 1,940 KB and no dependencies |
 
-`./gradlew check` is 18,601 tests, 0 failed, 0 skipped. An unread suite file
+`./gradlew check` is 18,787 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception. `./gradlew browserCheck` is
 the second gate and is not optional; it renders the same paint list in Java2D
 and in a real Chrome and compares them -- exactly inside every shape, and to a
@@ -51,7 +51,7 @@ out to be assertions a real 3.22.5 does not pass here either -- nine guarded on
 Windows or on Linux's `/proc`, and two with stale expected checksums. Those
 eleven moved to `fails-on-rebol-too.txt` with the measurement beside each.
 
-The one that is left is goal 1 below: `checksum-test.r3` asks to read
+The one that is left is under Standing below: `checksum-test.r3` asks to read
 `system/options/boot`, which is the launcher a script runs to start a confined
 child interpreter and therefore has to sit outside whatever root the script can
 see. Retiring it would mean giving up confinement propagation. The reason is
@@ -279,11 +279,19 @@ fail, and this one has a cause anybody can point at.
 **Ordered by importance, not by size, and the first rule is that agreeing with
 the C comes before improving on it.** This is a port. A place where JEBOL
 answers something a real 3.22.5 does not is a defect; a place where both are
-weak is a decision, and it waits. So the suite backlog leads, then the
-equivalence the suite cannot see, then the two security goals -- which are
+weak is a decision, and it waits.
+
+So the order runs: the places JEBOL and a real 3.22.5 give different answers
+(1 to 5), then the largest engineering piece and the two capabilities that
+are half-built (6 to 8), then the two security goals (9 and 10) -- which are
 divergences from the C rather than gaps against it, because Rebol does not
-authenticate a server or check a fetched module either -- and the engineering
-and tooling last.
+authenticate a server or check a fetched module either -- and the speed,
+tooling and comfort work last (11 to 13).
+
+**Within the divergences, cheap before large.** Goal 1 is four declarations
+in a file the build already loads; goal 4 is a hundred and forty answers to
+work through. That is deliberate: a small goal finished is a measure that
+moves, and this file is read by somebody deciding what to pick up next.
 
 Several goals own no `known-gaps.txt` entries, which is not the same as being
 small: no assertion in Rebol's suite asks whether an error id can be raised or
@@ -316,44 +324,61 @@ Rebol writes in REBOL.
 
 **Anything beyond it is an optional extension and a dependency the caller
 chooses.** A real PDF capability means a real PDF library, and the shipped jar
-has no dependencies at all -- about 1,730 KB of which the borrowed library and
-the bundled modules are most of it, and nothing on the classpath that the JVM
-does not bring. That stays true. Somebody who wants more than the borrowed
+has no dependencies at all -- about 1,940 KB of which the borrowed library,
+the bundled modules and the seven of Rebol's own boot files the build reads
+rather than transcribing -- `actions`, `errors`, `modes`, `natives`, `ops`,
+`sysobj` and `typespec` -- are most of it, and nothing on the classpath that
+the JVM does not bring. That stays true. Somebody who wants more than the borrowed
 codec gives adds the library and a bridge to it themselves, and with neither
 present nothing registers and nothing is attempted.
 
-### 1. One entry, and no work will retire it
+### 1. The five scheme names R3 registers and JEBOL does not
 
-    checksum-test.r3   binary? file-checksum system/options/boot 'md5
+```
+callback  clipboard  midi  serial  udp
+```
 
-`known-gaps.txt` is down to this single line, and it is the one that stays. The
-reason is at the top of the file and has not changed: `system/options/boot` is
-the launcher a script runs to start a confined child interpreter, so it has to
-sit outside whatever root the script can see, and this assertion asks to read
-it. With `--root /` it passes here exactly as it does on ./r3-head; under the
-suite host it cannot, and making the field name something inside the root would
-give up confinement propagation to retire one assertion.
+**Four of the five are already declared in a file JEBOL already loads.**
+`sys-ports.reb` is vendored byte-identical to Rebol's and carries `make-scheme`
+blocks for `callback`, `clipboard`, `serial` and `udp` -- spec, init and awake,
+all written in REBOL. They are not registered here because **JEBOL registers
+its own list instead**: `/org/jebol/boot/schemes.reb` and five `scheme-*.reb`
+files beside it name console, tcp, dns, event, bundled, file, dir, checksum,
+crypt and system, and nothing reaches the vendored declarations.
 
-**So the suite has nothing left to say about JEBOL, and the goals below are the
-ones it could never see.** Read them in order: what the error catalogue work
-uncovered, then what reaching zero would not prove, then what the suite does
-not ask.
+Nothing is missing underneath, either. `system/standard/port-spec-serial`,
+`port-spec-net`, `net-info` and `do-callback` all exist here, and
+`sys/make-scheme` called by hand registers `udp` and `callback` and they appear
+in `system/schemes` immediately. So this is a registration that does not
+happen, not a subsystem that is absent.
 
-Two things are worth keeping from the way the last of it was cleared.
+**The important half is what a scheme name promises, which is less than it
+looks.** R3 registers the name whether or not the build can serve it, and the
+refusal comes at open time. Measured on `./r3-head`, which is macOS and has
+neither clipboard nor midi nor serial compiled in:
 
-**`org.jebol.suite.ShowFailures` prints why each listed gap fails** and the
-first line of its source, which is the report this file used to ask people to
-assemble by hand. `ShowAssertion` prints the source behind a gap's name. Both
-boot an interpreter before reading the suite, and that matters: the reader
-cannot read a datatype written in construction syntax until one exists, and
-quietly answers a truncated file if none does -- which made `datatype-test.r3`
-look like twenty-eight assertions instead of fifty-one.
+| | `open` | `read` |
+| --- | --- | --- |
+| `clipboard://` | a port | `read-error` |
+| `udp://:40999` | a port | -- |
+| `callback://` | a port | -- |
+| `serial://...` | `none` | -- |
+| `midi://` | `cannot-open` | -- |
 
-**Four of the last thirty-one were never work at all** and are now in
-`fails-on-rebol-too.txt` with the guard's answer beside them: one arm of an
-`either 'Windows = system/platform`, and three guarded on
-`system/version < 3.19.1`. The arm not taken is not a gap, and the file already
-had a section for exactly that shape.
+So parity on four of them is mostly registering the name and letting the
+device say no, which is what R3 does. What each then needs to actually work is
+a separate question with a different answer per scheme: `udp` is a datagram
+socket the JVM has; `midi` is `javax.sound.midi`, which the JDK also has, and
+is the one of the five with no vendored declaration at all -- it is `p-midi.c`
+and optional even in the C; `clipboard` is `java.awt.Toolkit`, and is
+Windows-only in R3, so JEBOL would be ahead rather than at parity; `serial`
+has nothing in the JDK, so it is a dependency or it is nothing, and the jar
+takes no dependencies.
+
+**Do the registration first and separately**, because it is cheap, it is what
+the parity measure actually reads, and it makes each absent device sayable --
+a script gets `cannot-open` on the scheme it asked for, rather than
+`no-scheme` on a name Rebol has.
 
 ---
 
@@ -675,393 +700,78 @@ found two things that four separate readings of the C had not. See
 
 ---
 
-### 5. The prelude is a bootstrap, not 32 forks -- audited 2026-09-14
+### 5. Three found by reading Rebol's own declarations
 
-**Run, and the answer is that there were no forks.** Every one of the 36 words
-`prelude.reb` defines was put to both interpreters -- `type?`, `spec-of` and
-`body-of` on each, the two outputs diffed exactly -- and 35 matched to the
-character. The one that did not was `empty?`, and it turned out not to be a
-fork either.
+**All three came out of one piece of work and none of them came from a test.**
+The system object, the operator table and the console modes were each written
+out by hand in JEBOL when Rebol already declares them in a file the build
+ships. Replacing the copies with the file found these, and the pattern is
+worth naming: a transcription is checked against nothing, so a wrong letter in
+one survives every test that was written from the same wrong letter.
 
-**The prelude's copies are replaced as Rebol's library loads.** 32 of the 36
-are also defined in a vendored `mezz` file, and the definition standing at
-runtime is the library's: `collect`'s body at runtime is
-`mezz-series.reb`'s, not the prelude's, and the two differ. The prelude's
-versions exist so that the prelude and the earliest library files can run at
-all -- deleting `empty?` from it makes the prelude fail to load, because the
-prelude uses it before `mezz-series.reb` has defined it.
+**1. `system/standard/stats` starts at zero and a real 3.22.5 starts at none.**
+Measured:
 
-The four the library does not define -- `to-block`, `to-decimal`, `to-string`
-and `funct` -- answer what a real 3.22.5 answers anyway.
+    $ ./r3-head --do "print mold system/standard/stats"
+    make object! [ timer: _ evals: _ eval-natives: _ ... ]
 
-**What the audit did find was a defect one layer down.** `make :tail?
-[[{Doc} series [series! none!]]]` is how Rebol's library widens a built-in's
-declared types without rewriting it, and it is how `empty?` is defined. JEBOL
-took the derived parameters for calling -- a narrowed derivation refused
-arguments correctly -- and then reported the *original's* specification from
-`spec-of`, because a built-in's declaration is looked up by name and a derived
-one carries the original's name. `empty?` therefore advertised `tail?`'s
-narrow type list. Fixed: a derived built-in carries its own specification.
+JEBOL answers `0:00` and twelve zeroes. The declaration in `sysobj.reb` is a
+`construct` whose thirteen set-words chain to a single trailing value, so all
+thirteen are none, and taking the file at its word would fix it for free. It
+was not taken, deliberately: `STATS/PROFILE` fills the object in place and
+`DELTA-PROFILE` copies it, runs a block, asks again and subtracts the two, so
+the fields being numbers is load-bearing for a function that works. Changing
+them to none is a behaviour change with its own spec rule and its own tests,
+and it belongs here rather than folded into a refactor.
 
-**And it found why nothing had caught that.** `runtime-parity.py` compared
-`spec-of` **length**, so a widened type list and a rewritten docstring of the
-same item count both read as agreement. It compares the text now. Re-run
-after the change, the count is unmoved -- 3 of 582, the same three
-`request-*` functions JEBOL serves through its own port -- so the loose
-measure had been hiding exactly one thing, and this was it.
+**2. `??` is a parse keyword and JEBOL does not have it.**
 
-The lesson is the one this file keeps learning: **a measure that counts
-instead of comparing will agree with anything.**
+    parse [a b] [?? skip skip]      ; r3-head prints `skip: [a b]`, answers true
+                                    ; JEBOL raises parse-rule
 
----
+`words.reb` lists thirty-four words under its parse section and JEBOL's
+keyword table carries thirty. Three of the four missing are right: `|` marks
+an alternative rather than being a keyword, and `do` and `only` are reserved
+words the parse engine never acts on -- `./r3-head` refuses both with
+`parse-rule`, exactly as JEBOL does. `??` is the real one.
 
-### 6. The five scheme names R3 registers and JEBOL does not
+The C is three lines at `u-parse.c:1109`: print the rules from this point and
+the input at this position, limited to seventy-six characters, consume
+nothing, carry on. What makes it more than three lines here is that the parse
+walk has no way to write a line, and giving it one is a decision about whether
+the domain prints -- which is why this is a goal and not a fix.
 
-```
-callback  clipboard  midi  serial  udp
-```
+`TheDialectsWordsMatchRebolsOwnTest` pins the table against a vendored copy of
+`words.reb` and names the four absences, so closing this one turns that test
+red and the person closing it updates the line. That is the intent: the list
+is a ledger, not a permanent truth.
 
-**Four of the five are already declared in a file JEBOL already loads.**
-`sys-ports.reb` is vendored byte-identical to Rebol's and carries `make-scheme`
-blocks for `callback`, `clipboard`, `serial` and `udp` -- spec, init and awake,
-all written in REBOL. They are not registered here because **JEBOL registers
-its own list instead**: `/org/jebol/boot/schemes.reb` and five `scheme-*.reb`
-files beside it name console, tcp, dns, event, bundled, file, dir, checksum,
-crypt and system, and nothing reaches the vendored declarations.
+**3. `words-of lib` hands back words `get/any` cannot read.**
 
-Nothing is missing underneath, either. `system/standard/port-spec-serial`,
-`port-spec-net`, `net-info` and `do-callback` all exist here, and
-`sys/make-scheme` called by hand registers `udp` and `callback` and they appear
-in `system/schemes` immediately. So this is a registration that does not
-happen, not a subsystem that is absent.
+    foreach w words-of lib [if op? get/any w [...]]
 
-**The important half is what a scheme name promises, which is less than it
-looks.** R3 registers the name whether or not the build can serve it, and the
-refusal comes at open time. Measured on `./r3-head`, which is macOS and has
-neither clipboard nor midi nor serial compiled in:
-
-| | `open` | `read` |
-| --- | --- | --- |
-| `clipboard://` | a port | `read-error` |
-| `udp://:40999` | a port | -- |
-| `callback://` | a port | -- |
-| `serial://...` | `none` | -- |
-| `midi://` | `cannot-open` | -- |
-
-So parity on four of them is mostly registering the name and letting the
-device say no, which is what R3 does. What each then needs to actually work is
-a separate question with a different answer per scheme: `udp` is a datagram
-socket the JVM has; `midi` is `javax.sound.midi`, which the JDK also has, and
-is the one of the five with no vendored declaration at all -- it is `p-midi.c`
-and optional even in the C; `clipboard` is `java.awt.Toolkit`, and is
-Windows-only in R3, so JEBOL would be ahead rather than at parity; `serial`
-has nothing in the JDK, so it is a dependency or it is nothing, and the jar
-takes no dependencies.
-
-**Do the registration first and separately**, because it is cheap, it is what
-the parity measure actually reads, and it makes each absent device sayable --
-a script gets `cannot-open` on the scheme it asked for, rather than
-`no-scheme` on a name Rebol has.
+works in `./r3-head` and fails here with `a word with no binding was
+evaluated: true`. Undiagnosed. It matters more than a sweep failing, because
+it is the shape every "walk the library and ask each word about itself" probe
+takes, and several of the measures in this file are written that way.
 
 ---
 
-### 7. Loose ends
-
-**A task is made and read and never run.** The datatype is whole -- `make
-task!` builds the five-field header, the fields are read and written through a
-path, it molds and forms as its header, and DO answers it. The one thing
-missing is the thread: `Do_Task` is `OS_Create_Thread`, and the body is bound
-to the contexts the parent is using, none of which is safe to touch from two
-threads. Running it on the calling thread instead would be worse than not
-running it -- `do make task! [1 / 0]` would raise where a real Rebol answers a
-task. The open question beside `DoOfATaskAnswersTheTask` in spec/natives.allium
-says what it would take, and that a host service the caller has to grant is the
-shape the answer probably wants.
-
-**The command-line REPL grants only WINDOWS**, so `read %README.md` answers
-`no-service` there. Whether that is the design or a gap in the CLI has never
-been decided. It is older than the scheme work above and is not part of it.
-
-**Four fields of `access-os` answer `not-here`** -- `uid`, `euid`, `gid`,
-`egid` -- where a real Rebol answers a number. The JVM has no portable way to
-ask. `pid` works.
-
-**61 open questions across nine spec files**, the heaviest being
-`natives.allium` with 26. It read 55 and 19 until 2026-09-13, and the drift is
-the point rather than a slip: **finishing every goal above would not empty this
-list, and the list grows as the goals are worked.** Each goal that ports a
-subsystem properly tends to leave a question behind, because reading the C
-closely is what turns "we never thought about it" into "here are two readings
-and neither is obviously right".
-
-Roughly a third are owned by a goal above and would be forced by doing it: the
-four in `draw.allium` and two of the six in `screen.allium` by the graphics
-goal, two of the seven in `load.allium` by modules and IMPORT, and a handful in
-`natives.allium` by the error catalogue and the surface sweeps.
-
-The rest are owned by nothing, and three groups stand out. **All three in
-`parse.allium`** -- what THEN commits to, what a word holding a foreign position
-names, and how far backtracking goes -- because no goal covers PARSE. **All five
-in `embed.allium`**: how often the evaluator checks whether to stop, whether
-there is a memory bound as well as a time bound, what a host sees of a script's
-progress, and the two about a started program's streams. And the standing design
-questions in `natives.allium`: where SECURE's boundary sits, whether a `struct!`
-is ever more than its layout, which verbs reach a port's actor, and whether
-values may cross between interpreter instances.
-
-Those want a pass of their own rather than a line here, and it is not one of the
-goals above.
-
----
-
-### 8. Graphics -- DRAW is done; what is left is VID and the old markup path
-
-**Every command the dialect table declares is painted**, measured by
-extracting both lists on 2026-09-13: `dial-draw.reb` declares 35 drawing
-commands and the seven SHAPE sub-commands, and JEBOL handles all of them bar
-`effect`. It was 22 that morning.
-
-The fourteen that went in: `transform`, `invert-matrix`, `clip`, `triangle`
-with its Gouraud shading, `spline`, `arrow`, `line-pattern`, `grad-pen` in all
-six kinds, `image`, `image-filter`, `gamma` and `text`.
-
-**The rule that made the awkward ones affordable** is the one worth keeping:
-*anything neither toolkit has is worked out in the domain and handed to both
-as something they do have.* Gouraud shading becomes a mesh of 256 flat
-triangles clipped to the triangle; a conic gradient becomes a fan of 240
-wedges clipped to the shape it fills; a diamond one becomes rings; a
-two-colour dash becomes two paths, one for the dashes and one for the gaps; a
-keyed image becomes a copy with that colour made see-through; a warped image
-becomes a resampled copy; a scaled image is resampled here so that two
-rasterisers cannot disagree about it. A renderer still executes and decides
-nothing.
-
-The two renderers grew one primitive between them: clipping to a path rather
-than only to a rectangle. Both toolkits have it natively.
-
-**What is genuinely excluded, and why:**
-
-- `effect` is a dialect of its own -- blurs and tints over a whole image --
-  that happens to be listed in the draw table. It belongs with the codecs.
-- `image-options` and `image-pattern` are declared in `draw.reb` and absent
-  from `dial-draw.reb`, so DELECT cannot read either of them in any Rebol.
-  The same trap catches `opened` and `resize`: both are documented in
-  `draw.reb`, neither is in the table, and writing the documented word makes
-  the whole command fail to read.
-
-**There is no reference for any of it and that is a fact about Rebol, not a
-gap here.** `./r3-head` has no `draw` at all -- `value? 'draw` is false --
-because `n-draw.c` does not exist in the checkout and `n-graphics.c` is
-excluded from the build as `;old source`. The only dispatcher in the tree is
-`src/os/win32/host-draw.c`, Windows-only, calling an AGG that is not
-vendored, and no assertion in Rebol's 10,133 mentions the dialect. So the
-argument handling was read off that C and the pixels were checked the only
-way available: the same paint list executed by Java2D and by a real Chrome,
-compared.
-
-**That comparison is now tolerant where it has to be and exact everywhere
-else**, which is what made curves, gradients and text checkable at all. A
-pixel in the flat inside of a shape must match exactly; an edge pixel may
-differ by up to 24 of 255, and at most a fortieth of the picture may be edge
-that uses it. The numbers are in `spec/screen.allium` so that widening one is
-a change to the specification. A deliberate 12-by-12 patch differing by 7 was
-caught by it, so the allowance has not made it blind.
-
-`./gradlew browserCheck` draws 28 pictures in both renderers and writes them
-to `build/renderer-pictures/` beside a difference map, which is the quickest
-way to see what a change did.
-
-**Text is the one thing the two renderers cannot be held to pixel for pixel.**
-They measure and hint glyphs differently. The words, the place, the size, the
-weight and the colour are all decided in the domain; the shapes of the letters
-are the toolkit's, and the raster comparison leaves them alone.
-
-Still here: the stroked-curve comparison problem, the 522 lines of old markup
-path, VID, Android, and the events-name-the-wrong-window one.
-
----
-
-### 9. Check the certificate -- the TLS client authenticates nobody
-
-**Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
-failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
-suite asks whether a certificate was checked.
-
-**TLS is not broken. It is unauthenticated, and so is Rebol's.** Measured on
-2026-09-14, both interpreters, against badssl.com:
-
-| | JEBOL | `./r3-head` |
-| --- | --- | --- |
-| `read https://raw.githubusercontent.com/...` | 10,828 bytes | reads |
-| `read https://expired.badssl.com/` | **reads it** | reads it |
-| `read https://self-signed.badssl.com/` | **reads it** | reads it |
-| `read https://wrong.host.badssl.com/` | **reads it** | reads it |
-| `read https://untrusted-root.badssl.com/` | **reads it** | reads it |
-
-So the handshake works, the record layer works, and every certificate a
-browser would refuse is accepted by both. That is confidentiality against
-somebody listening and **nothing against somebody in the middle** -- and it is
-a divergence from good practice rather than from the C, which is why it is
-here rather than on a gap list. Three holes, each read off the source:
-
-1. **The chain is never checked.** `decode-certificates` reads the list, takes
-   the first certificate's public key, and stops. No issuer, no chain building,
-   no expiry, no hostname match.
-2. **There is no trust anchor to check it against.** No trust store anywhere in
-   the source. mbedTLS is vendored but only the primitives -- `oid.c`,
-   `ecp.c`, `md.c`, `asn1parse.c`. `x509.c` is not among them; the handshake is
-   written in REBOL.
-3. **The one signature check there is does not stop anything.**
-   `decode-certificate-verify` acts only for signature type 2052 and ends:
-
-        unless rsa/verify/pss :key :to-sign :signature [
-            log-error "Certificate validation failed!"
-        ]
-
-   `log-error` is `sys/log/error`, which prints. A failed verification is a log
-   line and the handshake carries on. And it verifies against the key from the
-   certificate the server itself sent, so even aborting would prove only that
-   the server holds its own private key -- not who it is.
-
-So a proxy presenting a certificate of its own is accepted, and a module
-fetched through one is evaluated. That is the other half of the note on IMPORT
-above: a checksum answers "is this the code I expected", and this answers "am I
-even talking to who I think" -- and neither is being asked.
-
-#### The decision this needs first
-
-**JEBOL's rule is to be faithful to the C, and here faithfulness reproduces the
-hole.** `prot-tls.reb` is Rebol's file, loaded rather than rewritten, and that
-rule has earned its keep everywhere else. It cannot hold here: a port that
-silently accepts any certificate is not a faithful port of a security decision,
-because Rebol did not decide this -- hand-rolled TLS is hard and this is what it
-looks like when it is not finished.
-
-Which leaves where the divergence goes. **Decided: a host port, refusing by
-default, checked in the domain.** The reasoning, and then the work.
-
-**A port and not a native.** Trust anchors belong to the machine, not to the
-language. The JDK carries them in `cacerts` and `java.security` will build and
-check a chain without a single dependency, which is the same bargain every
-other host service here takes -- the domain owns the port, the adapter uses the
-JDK, and the jar stays dependency-free. It also makes the absence sayable: a
-host that installs no authority gets a refusal, not a hole.
-
-**Refusing by default, and the grant is what opens it.** The other services
-start closed and this one must too. A host that genuinely wants to reach a box
-with a self-signed certificate says so once, in the bounds, where somebody
-reviewing the deployment can see it -- rather than every `read https://` in
-every script being quietly unauthenticated.
-
-**Not by editing the vendored file.** `prot-tls.reb` is Rebol's and is loaded
-byte for byte; the hook is the `CRT` codec, which the protocol already calls to
-read the chain. JEBOL can serve that codec as a native that validates as it
-decodes, which puts the check on the one path every certificate already takes.
-
-#### What is already in hand
-
-- **The fields are parsed.** `codec-crt.reb` builds `version`,
-  `serial-number`, `fingerprint`, `algorithm`, `issuer`, `valid-from`,
-  `valid-to`, `subject`, `public-key`, `issuer-id`, `subject-id`, `extensions`
-  and `signature` out of a DER certificate, and `decode 'crt` answers on a real
-  one from `raw.githubusercontent.com`.
-- **The signature primitives work.** `rsa/verify` and `ecdsa/verify` are here
-  and the eight elliptic curves a modern JDK dropped are served.
-- **The blunt mitigation exists meanwhile.** A host that grants no NETWORK
-  cannot open the socket at all.
-
-#### The work
-
-1. **A `CertificateAuthority` port**, owned by the domain: given a chain and a
-   hostname, it answers trusted or names why not -- expired, not yet valid,
-   wrong host, no path to an anchor, bad signature. One adapter over
-   `java.security.cert.CertPathValidator` and the JDK's default trust store;
-   one null adapter that refuses everything, which is what an ungranted host
-   gets.
-2. **A grant beside the others**, so `Bounds.standard()` refuses an
-   unauthenticated connection and a host opts out deliberately rather than by
-   default.
-3. **The hostname check**, which is the half nobody gets from a chain
-   validator for free: match the subject alternative names against the host the
-   URL asked for, wildcards included. `wrong.host.badssl.com` is the test that
-   fails until this exists.
-4. **Refuse rather than log.** The failure must end the handshake. Anything
-   that logs and carries on is what is there now.
-5. **A test against badssl.com for each refusal**, plus one good host that must
-   still read, plus the same four put to `./r3-head` so the divergence stays
-   measured rather than assumed. **They reach the network**, so they belong
-   with `thru-cache-test.r3` in whatever the answer to that turns out to be --
-   see the note at the top of this file about the gate reaching the internet.
-
-#### What to check before starting
-
-Rebol's own suite must still pass. Nothing in it reads a bad certificate
-today, but `thru-cache-test.r3` reads two real hosts over HTTPS and those must
-keep working with validation switched on -- which is also the cheapest proof
-that the good path is not broken by the check.
-
-**Until it is done, say so where it matters.** `read https://` reads as a
-secure operation and is not one. A host embedding this and reaching anything it
-does not control should know that before it does.
-
----
-
-### 10. Code from outside is not verified -- no checksum on a fetched module
-
-**Nothing crosses the wire today**, which is why this is a goal rather than a
-live hole: the thirteen modules this build has no other way to reach are bundled
-with it and read through the `bundled:` scheme, and `system/modules` names
-nothing remote. The moment an address points outward again -- a host adds one, a
-module this build does not carry is wanted, an extension becomes loadable -- the
-fetch has to be verified, and **a checksum must be implemented on that path
-before it is used.**
-
-What is already there, and what is not:
-
-- **`import/check hash`** exists and is the right mechanism. `load-module`
-  declares `hash [binary!]` and takes it from the caller, so the expected digest
-  comes from outside the thing being checked.
-- **A script's own `checksum:` header field is verified** by `load-header`,
-  which answers `bad-checksum` on a mismatch. **That is not the same thing and
-  must not be mistaken for it.** The file asserts its own hash, so a file that
-  was tampered with carries a tampered hash and passes. It catches corruption in
-  transit and nothing else.
-- **`download-extension` verifies nothing.** It is `content: read source` then
-  `write file content`, with no digest between them. That is the hole.
-
-So the requirement, when the path is next used:
-
-1. `system/modules` carries an expected digest beside each remote address, not
-   only the address.
-2. The fetch verifies the bytes against it **before** they are written to the
-   modules directory and **before** anything is evaluated. Writing an unverified
-   module to disk is most of the damage already done, because the next run finds
-   it as a local file and never fetches again.
-3. A mismatch fails the import. It is not a warning and not a log line.
-4. No digest recorded for an address means the address is not usable.
-
-A bundled module is a different and much weaker case: it cannot change under a
-running system, so a digest there guards a corrupted build rather than an
-attacker. Worth having, not urgent.
-
-**The TLS client goal is the other half of this.** A checksum answers "is this the code I
-expected"; authenticating the server answers "am I even talking to who I think".
-Neither is being asked, and a fetch wants both.
-
-Still to decide: whether a host should be able to refuse the fetch outright, the
-way it refuses the filesystem and the network. A host serving untrusted scripts
-wants that more than it wants either check.
-
----
-
-### 11. The type-major refactor
+### 6. The type-major refactor
 
 **The original complaint, and much the largest piece left.** One `t-*.c` per
 increment: a bitset must answer what happens when you append to it, and answer
 it in the class called bitset. Today that answer is an arm in a switch inside a
 fifteen-thousand-line `Natives`, and an enum constant with a body is the same
-switch wearing a jacket -- `Arithmetic.Kind` and `Combining.SetKind` are targets
-of this goal, not the shape to copy.
+switch wearing a jacket.
+
+**Two of the targets this goal used to name are gone.** `Arithmetic.Kind` and
+`Combining.SetKind` were both replaced by a class per member behind a
+registry, along with `Arithmetic.Operation`, `VectorMath.Operation` and
+`Combining.Bitwise`; the parse dialect went the same way, from one enum and a
+switch to thirty keyword classes behind `ParseKeyword.BY_SPELLING`. Those are
+the worked examples now, beside `org.jebol.domain.date.part`. What is left is
+the rest of `Natives`.
 
 An enum does earn its keep, but only as a **registry**: it is right for the name,
 the number and the closed set, and wrong for the behaviour, which goes in a class
@@ -1289,18 +999,320 @@ wrong directory.
 
 ---
 
-### 12. The boot -- 343ms cold, 72ms warm
+### 7. Graphics -- DRAW is done; what is left is VID and the old markup path
 
-**343ms for the first interpreter, 72ms once the JVM has settled.** A
-7900-test run pays the 72ms per class, and that is the floor rather than the
-machine.
+**Every command the dialect table declares is painted**, measured by
+extracting both lists on 2026-09-13: `dial-draw.reb` declares 35 drawing
+commands and the seven SHAPE sub-commands, and JEBOL handles all of them bar
+`effect`. It was 22 that morning.
 
-Pool first, then library caching. The series byte accounting behind STATS is
-already in that allocation path, and it costs about 2ms of the 72.
+The fourteen that went in: `transform`, `invert-matrix`, `clip`, `triangle`
+with its Gouraud shading, `spline`, `arrow`, `line-pattern`, `grad-pen` in all
+six kinds, `image`, `image-filter`, `gamma` and `text`.
+
+**The rule that made the awkward ones affordable** is the one worth keeping:
+*anything neither toolkit has is worked out in the domain and handed to both
+as something they do have.* Gouraud shading becomes a mesh of 256 flat
+triangles clipped to the triangle; a conic gradient becomes a fan of 240
+wedges clipped to the shape it fills; a diamond one becomes rings; a
+two-colour dash becomes two paths, one for the dashes and one for the gaps; a
+keyed image becomes a copy with that colour made see-through; a warped image
+becomes a resampled copy; a scaled image is resampled here so that two
+rasterisers cannot disagree about it. A renderer still executes and decides
+nothing.
+
+The two renderers grew one primitive between them: clipping to a path rather
+than only to a rectangle. Both toolkits have it natively.
+
+**What is genuinely excluded, and why:**
+
+- `effect` is a dialect of its own -- blurs and tints over a whole image --
+  that happens to be listed in the draw table. It belongs with the codecs.
+- `image-options` and `image-pattern` are declared in `draw.reb` and absent
+  from `dial-draw.reb`, so DELECT cannot read either of them in any Rebol.
+  The same trap catches `opened` and `resize`: both are documented in
+  `draw.reb`, neither is in the table, and writing the documented word makes
+  the whole command fail to read.
+
+**There is no reference for any of it and that is a fact about Rebol, not a
+gap here.** `./r3-head` has no `draw` at all -- `value? 'draw` is false --
+because `n-draw.c` does not exist in the checkout and `n-graphics.c` is
+excluded from the build as `;old source`. The only dispatcher in the tree is
+`src/os/win32/host-draw.c`, Windows-only, calling an AGG that is not
+vendored, and no assertion in Rebol's 10,133 mentions the dialect. So the
+argument handling was read off that C and the pixels were checked the only
+way available: the same paint list executed by Java2D and by a real Chrome,
+compared.
+
+**That comparison is now tolerant where it has to be and exact everywhere
+else**, which is what made curves, gradients and text checkable at all. A
+pixel in the flat inside of a shape must match exactly; an edge pixel may
+differ by up to 24 of 255, and at most a fortieth of the picture may be edge
+that uses it. The numbers are in `spec/screen.allium` so that widening one is
+a change to the specification. A deliberate 12-by-12 patch differing by 7 was
+caught by it, so the allowance has not made it blind.
+
+`./gradlew browserCheck` draws 28 pictures in both renderers and writes them
+to `build/renderer-pictures/` beside a difference map, which is the quickest
+way to see what a change did.
+
+**Text is the one thing the two renderers cannot be held to pixel for pixel.**
+They measure and hint glyphs differently. The words, the place, the size, the
+weight and the colour are all decided in the domain; the shapes of the letters
+are the toolkit's, and the raster comparison leaves them alone.
+
+Still here: the stroked-curve comparison problem, the 522 lines of old markup
+path, VID, Android, and the events-name-the-wrong-window one.
 
 ---
 
-### 13. A debugger
+### 8. Loose ends
+
+**A task is made and read and never run.** The datatype is whole -- `make
+task!` builds the five-field header, the fields are read and written through a
+path, it molds and forms as its header, and DO answers it. The one thing
+missing is the thread: `Do_Task` is `OS_Create_Thread`, and the body is bound
+to the contexts the parent is using, none of which is safe to touch from two
+threads. Running it on the calling thread instead would be worse than not
+running it -- `do make task! [1 / 0]` would raise where a real Rebol answers a
+task. The open question beside `DoOfATaskAnswersTheTask` in spec/natives.allium
+says what it would take, and that a host service the caller has to grant is the
+shape the answer probably wants.
+
+**The command-line REPL grants only WINDOWS**, so `read %README.md` answers
+`no-service` there. Whether that is the design or a gap in the CLI has never
+been decided. It is older than the scheme work above and is not part of it.
+
+**Four fields of `access-os` answer `not-here`** -- `uid`, `euid`, `gid`,
+`egid` -- where a real Rebol answers a number. The JVM has no portable way to
+ask. `pid` works.
+
+**61 open questions across nine spec files**, the heaviest being
+`natives.allium` with 26. It read 55 and 19 until 2026-09-13, and the drift is
+the point rather than a slip: **finishing every goal above would not empty this
+list, and the list grows as the goals are worked.** Each goal that ports a
+subsystem properly tends to leave a question behind, because reading the C
+closely is what turns "we never thought about it" into "here are two readings
+and neither is obviously right".
+
+Roughly a third are owned by a goal above and would be forced by doing it: the
+four in `draw.allium` and two of the six in `screen.allium` by the graphics
+goal, two of the seven in `load.allium` by modules and IMPORT, and a handful in
+`natives.allium` by the error catalogue and the surface sweeps.
+
+The rest are owned by nothing, and three groups stand out. **All three in
+`parse.allium`** -- what THEN commits to, what a word holding a foreign position
+names, and how far backtracking goes -- because no goal covers PARSE. **All five
+in `embed.allium`**: how often the evaluator checks whether to stop, whether
+there is a memory bound as well as a time bound, what a host sees of a script's
+progress, and the two about a started program's streams. And the standing design
+questions in `natives.allium`: where SECURE's boundary sits, whether a `struct!`
+is ever more than its layout, which verbs reach a port's actor, and whether
+values may cross between interpreter instances.
+
+Those want a pass of their own rather than a line here, and it is not one of the
+goals above.
+
+---
+
+### 9. Check the certificate -- the TLS client authenticates nobody
+
+**Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
+failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
+suite asks whether a certificate was checked.
+
+**TLS is not broken. It is unauthenticated, and so is Rebol's.** Measured on
+2026-09-14, both interpreters, against badssl.com:
+
+| | JEBOL | `./r3-head` |
+| --- | --- | --- |
+| `read https://raw.githubusercontent.com/...` | 10,828 bytes | reads |
+| `read https://expired.badssl.com/` | **reads it** | reads it |
+| `read https://self-signed.badssl.com/` | **reads it** | reads it |
+| `read https://wrong.host.badssl.com/` | **reads it** | reads it |
+| `read https://untrusted-root.badssl.com/` | **reads it** | reads it |
+
+So the handshake works, the record layer works, and every certificate a
+browser would refuse is accepted by both. That is confidentiality against
+somebody listening and **nothing against somebody in the middle** -- and it is
+a divergence from good practice rather than from the C, which is why it is
+here rather than on a gap list. Three holes, each read off the source:
+
+1. **The chain is never checked.** `decode-certificates` reads the list, takes
+   the first certificate's public key, and stops. No issuer, no chain building,
+   no expiry, no hostname match.
+2. **There is no trust anchor to check it against.** No trust store anywhere in
+   the source. mbedTLS is vendored but only the primitives -- `oid.c`,
+   `ecp.c`, `md.c`, `asn1parse.c`. `x509.c` is not among them; the handshake is
+   written in REBOL.
+3. **The one signature check there is does not stop anything.**
+   `decode-certificate-verify` acts only for signature type 2052 and ends:
+
+        unless rsa/verify/pss :key :to-sign :signature [
+            log-error "Certificate validation failed!"
+        ]
+
+   `log-error` is `sys/log/error`, which prints. A failed verification is a log
+   line and the handshake carries on. And it verifies against the key from the
+   certificate the server itself sent, so even aborting would prove only that
+   the server holds its own private key -- not who it is.
+
+So a proxy presenting a certificate of its own is accepted, and a module
+fetched through one is evaluated. That is the other half of the note on IMPORT
+above: a checksum answers "is this the code I expected", and this answers "am I
+even talking to who I think" -- and neither is being asked.
+
+#### The decision this needs first
+
+**JEBOL's rule is to be faithful to the C, and here faithfulness reproduces the
+hole.** `prot-tls.reb` is Rebol's file, loaded rather than rewritten, and that
+rule has earned its keep everywhere else. It cannot hold here: a port that
+silently accepts any certificate is not a faithful port of a security decision,
+because Rebol did not decide this -- hand-rolled TLS is hard and this is what it
+looks like when it is not finished.
+
+Which leaves where the divergence goes. **Decided: a host port, refusing by
+default, checked in the domain.** The reasoning, and then the work.
+
+**A port and not a native.** Trust anchors belong to the machine, not to the
+language. The JDK carries them in `cacerts` and `java.security` will build and
+check a chain without a single dependency, which is the same bargain every
+other host service here takes -- the domain owns the port, the adapter uses the
+JDK, and the jar stays dependency-free. It also makes the absence sayable: a
+host that installs no authority gets a refusal, not a hole.
+
+**Refusing by default, and the grant is what opens it.** The other services
+start closed and this one must too. A host that genuinely wants to reach a box
+with a self-signed certificate says so once, in the bounds, where somebody
+reviewing the deployment can see it -- rather than every `read https://` in
+every script being quietly unauthenticated.
+
+**Not by editing the vendored file.** `prot-tls.reb` is Rebol's and is loaded
+byte for byte; the hook is the `CRT` codec, which the protocol already calls to
+read the chain. JEBOL can serve that codec as a native that validates as it
+decodes, which puts the check on the one path every certificate already takes.
+
+#### What is already in hand
+
+- **The fields are parsed.** `codec-crt.reb` builds `version`,
+  `serial-number`, `fingerprint`, `algorithm`, `issuer`, `valid-from`,
+  `valid-to`, `subject`, `public-key`, `issuer-id`, `subject-id`, `extensions`
+  and `signature` out of a DER certificate, and `decode 'crt` answers on a real
+  one from `raw.githubusercontent.com`.
+- **The signature primitives work.** `rsa/verify` and `ecdsa/verify` are here
+  and the eight elliptic curves a modern JDK dropped are served.
+- **The blunt mitigation exists meanwhile.** A host that grants no NETWORK
+  cannot open the socket at all.
+
+#### The work
+
+1. **A `CertificateAuthority` port**, owned by the domain: given a chain and a
+   hostname, it answers trusted or names why not -- expired, not yet valid,
+   wrong host, no path to an anchor, bad signature. One adapter over
+   `java.security.cert.CertPathValidator` and the JDK's default trust store;
+   one null adapter that refuses everything, which is what an ungranted host
+   gets.
+2. **A grant beside the others**, so `Bounds.standard()` refuses an
+   unauthenticated connection and a host opts out deliberately rather than by
+   default.
+3. **The hostname check**, which is the half nobody gets from a chain
+   validator for free: match the subject alternative names against the host the
+   URL asked for, wildcards included. `wrong.host.badssl.com` is the test that
+   fails until this exists.
+4. **Refuse rather than log.** The failure must end the handshake. Anything
+   that logs and carries on is what is there now.
+5. **A test against badssl.com for each refusal**, plus one good host that must
+   still read, plus the same four put to `./r3-head` so the divergence stays
+   measured rather than assumed. **They reach the network**, so they belong
+   with `thru-cache-test.r3` in whatever the answer to that turns out to be --
+   see the note at the top of this file about the gate reaching the internet.
+
+#### What to check before starting
+
+Rebol's own suite must still pass. Nothing in it reads a bad certificate
+today, but `thru-cache-test.r3` reads two real hosts over HTTPS and those must
+keep working with validation switched on -- which is also the cheapest proof
+that the good path is not broken by the check.
+
+**Until it is done, say so where it matters.** `read https://` reads as a
+secure operation and is not one. A host embedding this and reaching anything it
+does not control should know that before it does.
+
+---
+
+### 10. Code from outside is not verified -- no checksum on a fetched module
+
+**Nothing crosses the wire today**, which is why this is a goal rather than a
+live hole: the thirteen modules this build has no other way to reach are bundled
+with it and read through the `bundled:` scheme, and `system/modules` names
+nothing remote. The moment an address points outward again -- a host adds one, a
+module this build does not carry is wanted, an extension becomes loadable -- the
+fetch has to be verified, and **a checksum must be implemented on that path
+before it is used.**
+
+What is already there, and what is not:
+
+- **`import/check hash`** exists and is the right mechanism. `load-module`
+  declares `hash [binary!]` and takes it from the caller, so the expected digest
+  comes from outside the thing being checked.
+- **A script's own `checksum:` header field is verified** by `load-header`,
+  which answers `bad-checksum` on a mismatch. **That is not the same thing and
+  must not be mistaken for it.** The file asserts its own hash, so a file that
+  was tampered with carries a tampered hash and passes. It catches corruption in
+  transit and nothing else.
+- **`download-extension` verifies nothing.** It is `content: read source` then
+  `write file content`, with no digest between them. That is the hole.
+
+So the requirement, when the path is next used:
+
+1. `system/modules` carries an expected digest beside each remote address, not
+   only the address.
+2. The fetch verifies the bytes against it **before** they are written to the
+   modules directory and **before** anything is evaluated. Writing an unverified
+   module to disk is most of the damage already done, because the next run finds
+   it as a local file and never fetches again.
+3. A mismatch fails the import. It is not a warning and not a log line.
+4. No digest recorded for an address means the address is not usable.
+
+A bundled module is a different and much weaker case: it cannot change under a
+running system, so a digest there guards a corrupted build rather than an
+attacker. Worth having, not urgent.
+
+**The TLS client goal is the other half of this.** A checksum answers "is this the code I
+expected"; authenticating the server answers "am I even talking to who I think".
+Neither is being asked, and a fetch wants both.
+
+Still to decide: whether a host should be able to refuse the fetch outright, the
+way it refuses the filesystem and the network. A host serving untrusted scripts
+wants that more than it wants either check.
+
+---
+
+### 11. The boot -- the warm figure is the one that costs
+
+**Measured 2026-09-26: about 495ms for the first interpreter and about 50ms
+once the JVM has settled**, averaged over twenty after twenty warm-up builds.
+An 18,787-test run pays the warm figure per class, which is what makes it the
+number worth moving.
+
+**The earlier reading here was 343ms cold and 72ms warm, and the two do not
+compare.** Cold went up and warm went down, which no single change explains,
+so the honest reading is that the two were not measured the same way rather
+than that the boot got slower and faster at once. Anyone working this goal
+should take both figures again before trusting either, and write down how.
+
+Pool first, then library caching. The series byte accounting behind STATS is
+already in that allocation path, and it costs about 2ms of the warm figure.
+
+**Reading Rebol's own declarations instead of transcribing them put work into
+the boot that was not there before** -- `sysobj.reb` is transcoded and
+evaluated on every `Interpreter.create()`. That is a real cost and a fair
+target for caching, since the result is the same for every interpreter in the
+process, the way `LibrarySource` already caches each borrowed file.
+
+---
+
+### 12. A debugger
 
 **Two halves, and the file has learned to say which is which.** One is parity
 work with a reference standing behind it. The other is a feature nothing can
@@ -1361,7 +1373,7 @@ before they reach for a debugger.
 
 ---
 
-### 14. LLM-friendly MCP tools
+### 13. LLM-friendly MCP tools
 
 **The reader will only ever be an LLM, and that decides the design.** A model
 does not misunderstand, it infers confidently from training data that is mostly
@@ -1461,6 +1473,91 @@ tokens -- what earns space is only what contradicts the prior: `if 0` is true,
 
 One thing to price before starting: error text becomes an interface. Reword it
 later and whatever was built on the old wording breaks.
+
+---
+
+## Standing, and not goals
+
+Neither of these is work. The first is a gap that stays open on purpose and
+the second is a finished audit, kept because what it found is still true.
+They sat in the numbered list for a while and being numbered made them read
+as things somebody ought to pick up, which is exactly what they are not.
+
+---
+
+### One entry, and no work will retire it
+
+    checksum-test.r3   binary? file-checksum system/options/boot 'md5
+
+`known-gaps.txt` is down to this single line, and it is the one that stays. The
+reason is at the top of the file and has not changed: `system/options/boot` is
+the launcher a script runs to start a confined child interpreter, so it has to
+sit outside whatever root the script can see, and this assertion asks to read
+it. With `--root /` it passes here exactly as it does on ./r3-head; under the
+suite host it cannot, and making the field name something inside the root would
+give up confinement propagation to retire one assertion.
+
+**So the suite has nothing left to say about JEBOL, and the numbered goals
+are the ones it could never see.** Read them in order: the scheme names R3
+registers, what the error catalogue work uncovered, what reaching zero would
+not prove, what the suite does not ask, and what reading Rebol's own
+declarations found.
+
+Two things are worth keeping from the way the last of it was cleared.
+
+**`org.jebol.suite.ShowFailures` prints why each listed gap fails** and the
+first line of its source, which is the report this file used to ask people to
+assemble by hand. `ShowAssertion` prints the source behind a gap's name. Both
+boot an interpreter before reading the suite, and that matters: the reader
+cannot read a datatype written in construction syntax until one exists, and
+quietly answers a truncated file if none does -- which made `datatype-test.r3`
+look like twenty-eight assertions instead of fifty-one.
+
+**Four of the last thirty-one were never work at all** and are now in
+`fails-on-rebol-too.txt` with the guard's answer beside them: one arm of an
+`either 'Windows = system/platform`, and three guarded on
+`system/version < 3.19.1`. The arm not taken is not a gap, and the file already
+had a section for exactly that shape.
+
+---
+
+### The prelude is a bootstrap, not 32 forks -- audited 2026-09-14
+
+**Run, and the answer is that there were no forks.** Every one of the 36 words
+`prelude.reb` defines was put to both interpreters -- `type?`, `spec-of` and
+`body-of` on each, the two outputs diffed exactly -- and 35 matched to the
+character. The one that did not was `empty?`, and it turned out not to be a
+fork either.
+
+**The prelude's copies are replaced as Rebol's library loads.** 32 of the 36
+are also defined in a vendored `mezz` file, and the definition standing at
+runtime is the library's: `collect`'s body at runtime is
+`mezz-series.reb`'s, not the prelude's, and the two differ. The prelude's
+versions exist so that the prelude and the earliest library files can run at
+all -- deleting `empty?` from it makes the prelude fail to load, because the
+prelude uses it before `mezz-series.reb` has defined it.
+
+The four the library does not define -- `to-block`, `to-decimal`, `to-string`
+and `funct` -- answer what a real 3.22.5 answers anyway.
+
+**What the audit did find was a defect one layer down.** `make :tail?
+[[{Doc} series [series! none!]]]` is how Rebol's library widens a built-in's
+declared types without rewriting it, and it is how `empty?` is defined. JEBOL
+took the derived parameters for calling -- a narrowed derivation refused
+arguments correctly -- and then reported the *original's* specification from
+`spec-of`, because a built-in's declaration is looked up by name and a derived
+one carries the original's name. `empty?` therefore advertised `tail?`'s
+narrow type list. Fixed: a derived built-in carries its own specification.
+
+**And it found why nothing had caught that.** `runtime-parity.py` compared
+`spec-of` **length**, so a widened type list and a rewritten docstring of the
+same item count both read as agreement. It compares the text now. Re-run
+after the change, the count is unmoved -- 3 of 582, the same three
+`request-*` functions JEBOL serves through its own port -- so the loose
+measure had been hiding exactly one thing, and this was it.
+
+The lesson is the one this file keeps learning: **a measure that counts
+instead of comparing will agree with anything.**
 
 ---
 

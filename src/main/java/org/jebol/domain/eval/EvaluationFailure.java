@@ -30,7 +30,7 @@ public enum EvaluationFailure {
     BAD_FILE_MODE(ErrorCategory.ACCESS, "bad-file-mode",
             "a mode a port or a file has not got, "
                     + "or a file to be made new that nobody may write to"),
-    INVALID_VALUE_FOR(ErrorCategory.ACCESS, "invalid-value-for",
+    INVALID_VALUE_FOR(ErrorCategory.SCRIPT, "invalid-value-for",
             "a value the named mode will not hold"),
     INVALID_PORT(ErrorCategory.ACCESS, "invalid-port",
             "a port whose own fields are not what a port keeps there"),
