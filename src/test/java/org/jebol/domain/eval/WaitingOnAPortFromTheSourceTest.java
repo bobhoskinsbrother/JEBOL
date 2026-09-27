@@ -33,6 +33,12 @@ class WaitingOnAPortFromTheSourceTest {
         }
 
         @Override
+        public Datagrams bindTo(int portNumber) {
+            throw new Refused("no-connect", "this server carries no datagrams",
+                    String.valueOf(portNumber));
+        }
+
+        @Override
         public Connection connectTo(String hostName, int portNumber) {
             whatItWasAskedFor.add(hostName + ":" + portNumber);
             return new Connection() {

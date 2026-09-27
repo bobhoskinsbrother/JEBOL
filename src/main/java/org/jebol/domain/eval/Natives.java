@@ -4344,6 +4344,15 @@ public final class Natives {
                     case PortValue queued when theEventQueueOf(queued).isPresent() ->
                             IntegerValue.of(theEventQueueOf(queued).orElseThrow()
                                     .lengthFromHere());
+                    case PortValue unmeasurable
+                            when unmeasurable.schemeName().equals("clipboard") ->
+                            throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
+                                    WordValue.of("length?").as(Datatype.SET_WORD));
+                    case PortValue buffered
+                            when buffered.schemeName().equals("udp") ->
+                            IntegerValue.of(
+                                    buffered.fieldNamed("data") instanceof SeriesValue held
+                                            ? held.lengthFromHere() : 0);
                     case TupleValue tuple -> IntegerValue.of(tuple.shownCount());
                     case WordValue word -> IntegerValue.of(
                             word.spelling().codePointCount(0, word.spelling().length()));
@@ -12287,7 +12296,7 @@ public final class Natives {
                     Optional<String> behindTheUrl =
                             theFileNamedByAUrl(target, evaluator, context);
                     if (behindTheUrl.isEmpty() && target.datatype() != Datatype.FILE) {
-                        throw schemeRefusal("deletes through", target);
+                        throw schemeRefusal("delete", "deletes through", target);
                     }
                     requireService(HostService.FILES);
                     String path = behindTheUrl.orElseGet(
@@ -12312,7 +12321,7 @@ public final class Natives {
                 (arguments, evaluator, context) -> {
                     for (Value end : List.of(arguments.getFirst(), arguments.get(1))) {
                         if (end.datatype() != Datatype.FILE) {
-                            throw schemeRefusal("renames", end);
+                            throw schemeRefusal("rename", "renames", end);
                         }
                     }
                     requireService(HostService.FILES);
@@ -12395,6 +12404,9 @@ public final class Natives {
                     requireServiceForScheme(port.schemeName());
                     if (port.schemeName().equals("tcp")) {
                         connectTheTcpPort(port, evaluator);
+                    }
+                    if (port.schemeName().equals("udp")) {
+                        bindTheDatagramPort(port, evaluator);
                     }
                     if (port.schemeName().equals("crypt")) {
                         startTheCipherBehindBlankingTheKeyInTheSpec(port);
@@ -12949,6 +12961,32 @@ public final class Natives {
         }
     }
 
+    private Value whatTheOperatorLastCopied(PortValue port, Evaluator evaluator,
+            List<Value> arguments, Set<String> refinements) {
+
+        requireService(HostService.CLIPBOARD);
+        String copied = theClipboardsAnswer(evaluator);
+        if (refinements.contains("part") && arguments.size() > 1
+                && arguments.get(1) instanceof IntegerValue(long wanted)) {
+            copied = copied.substring(0, (int) Math.min(
+                    Math.max(wanted, 0), copied.length()));
+        }
+        port.setField("data", StringValue.of(copied));
+        if (refinements.contains("lines")) {
+            return BlockValue.block(copied.lines()
+                    .<Value>map(StringValue::of).toList());
+        }
+        return StringValue.of(copied);
+    }
+
+    private static String theClipboardsAnswer(Evaluator evaluator) {
+        try {
+            return evaluator.clipboard().read();
+        } catch (ClipboardPort.Unreachable unreachable) {
+            throw Raised.of(EvaluationFailure.READ_ERROR, unreachable.getMessage());
+        }
+    }
+
     private Value readFromPort(PortValue port, Evaluator evaluator,
             List<Value> arguments, Set<String> refinements) {
 
@@ -12959,8 +12997,11 @@ public final class Natives {
         }
         return switch (port.schemeName()) {
             case "console" -> lineReadFromTheConsole(evaluator);
+            case "clipboard" ->
+                    whatTheOperatorLastCopied(port, evaluator, arguments, refinements);
             case "bundled" -> theSourceOfABundledModule(port, evaluator);
             case "tcp" -> bytesReadFromTheConnection(port, evaluator);
+            case "udp" -> oneDatagramReadInto(port, evaluator);
             case "dns" -> addressesOfTheNameThePortNames(port, evaluator);
             case "checksum" ->
                     ChecksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
@@ -13728,7 +13769,7 @@ public final class Natives {
         Value built = evaluator.applyFunction(
                 systemInternalFunction(context, "make-port*"), List.of(address));
         if (!(built instanceof PortValue port)) {
-            throw schemeRefusal("writes", address);
+            throw schemeRefusal("write", "writes", address);
         }
         if (theActorWrittenInRebol(port).isPresent()) {
             return port;
@@ -13754,9 +13795,26 @@ public final class Natives {
                 : Optional.empty();
     }
 
-    private static Raised schemeRefusal(String verbs, Value routed) {
+    private static final Set<String> THE_SCHEMES_THIS_BUILD_SERVES_ITSELF = of(
+            "console", "clipboard", "file", "dir", "tcp", "dns", "event",
+            "system", "callback", "bundled", "checksum", "crypt");
+
+    private static Raised schemeRefusal(String verb, String verbs, Value routed) {
+        if (THE_SCHEMES_THIS_BUILD_SERVES_ITSELF.contains(theSchemeWordOf(routed))) {
+            return Raised.of(EvaluationFailure.NO_PORT_ACTION,
+                    WordValue.of(verb).as(Datatype.SET_WORD));
+        }
         return Raised.of(EvaluationFailure.NO_SERVICE,
                 "nothing here " + verbs + " " + schemeNameOf(routed));
+    }
+
+    private static String theSchemeWordOf(Value routed) {
+        return switch (routed) {
+            case WordValue word -> word.canonical();
+            case PortValue port -> port.schemeName();
+            case StringValue written -> written.text().split(":", 2)[0];
+            default -> "";
+        };
     }
 
     private static String schemeNameOf(Value routed) {
@@ -13790,13 +13848,31 @@ public final class Natives {
         }
         return switch (port.schemeName()) {
             case "console" -> writtenToTheConsole(port, data, evaluator);
+            case "clipboard" -> putOnTheClipboard(port, data, evaluator);
             case "tcp" -> sentDownTheConnection(port, data, evaluator);
+            case "udp" -> oneDatagramSentFrom(port, data, evaluator);
             case "checksum" -> summedIntoThePort(port, data, arguments, refinements);
             case "crypt" -> encipheredIntoThePort(port, data);
             case "file" -> writtenToTheFileBehind(
                     port, data, evaluator, arguments, refinements);
-            default -> throw schemeRefusal("writes", port);
+            default -> throw schemeRefusal("write", "writes", port);
         };
+    }
+
+    private Value putOnTheClipboard(PortValue port, Value data, Evaluator evaluator) {
+        requireService(HostService.CLIPBOARD);
+        String text = switch (data) {
+            case StringValue written -> written.text();
+            case BinaryValue bytes -> new String(
+                    bytes.octetsFromHere(), StandardCharsets.UTF_8);
+            default -> throw Raised.of(EvaluationFailure.INVALID_PORT_ARG, data);
+        };
+        try {
+            evaluator.clipboard().write(text);
+        } catch (ClipboardPort.Unreachable unreachable) {
+            throw Raised.of(EvaluationFailure.WRITE_ERROR, unreachable.getMessage());
+        }
+        return port;
     }
 
     private static void refuseAPortOpenedOnlyToRead(
@@ -14061,8 +14137,9 @@ public final class Natives {
         switch (scheme) {
             case "console" -> theSchemeReachesNothingOutside();
             case "file", "dir" -> requireService(HostService.FILES);
-            case "tcp", "dns" -> requireService(HostService.NETWORK);
+            case "tcp", "dns", "udp" -> requireService(HostService.NETWORK);
             case "event" -> requireService(HostService.WINDOWS);
+            case "clipboard" -> requireService(HostService.CLIPBOARD);
             case "system", "callback", "bundled" -> theSchemeReachesNothingOutside();
             case "checksum", "crypt" -> theSchemeReachesNothingOutside();
             default -> {
@@ -14379,6 +14456,67 @@ public final class Natives {
     }
 
     private static final int OPEN_FAILED = 3;
+
+    private static final int WHATEVER_NUMBER_THE_MACHINE_HAS_FREE = 0;
+
+    private void bindTheDatagramPort(PortValue port, Evaluator evaluator) {
+        int number = theSpecNamesSomewhereToSendTo(port)
+                ? WHATEVER_NUMBER_THE_MACHINE_HAS_FREE
+                : portNumberOf(port);
+        throughNetwork(() -> {
+            NetworkPort.Datagrams bound = evaluator.network().bindTo(number);
+            port.setField("state", JavaObjectValue.of(bound));
+            return port;
+        });
+    }
+
+    private static boolean theSpecNamesSomewhereToSendTo(PortValue port) {
+        return !theHostToSendTo(port).isEmpty();
+    }
+
+    private static String theHostToSendTo(PortValue port) {
+        if (port.fieldNamed("spec") instanceof ObjectValue(Context context)
+                && context.holds("host")
+                && context.ownSlotFor("host").value() instanceof StringValue host) {
+            return host.text();
+        }
+        return "";
+    }
+
+    private static NetworkPort.Datagrams datagramsBehind(PortValue port) {
+        if (port.fieldNamed("state") instanceof JavaObjectValue carried
+                && carried.held().orElse(null) instanceof NetworkPort.Datagrams bound) {
+            return bound;
+        }
+        throw Raised.of(EvaluationFailure.NOT_OPEN, port.schemeName());
+    }
+
+    private Value oneDatagramReadInto(PortValue port, Evaluator evaluator) {
+        requireService(HostService.NETWORK);
+        NetworkPort.Datagrams bound = datagramsBehind(port);
+        return throughNetwork(() -> {
+            BinaryValue arrived = BinaryValue.of(unsignedOctets(bound.receive()));
+            addToThePortsData(port, arrived);
+            queueWhatHappenedTo(port, "read", evaluator);
+            return port;
+        });
+    }
+
+    private Value oneDatagramSentFrom(PortValue port, Value data, Evaluator evaluator) {
+        requireService(HostService.NETWORK);
+        byte[] bytes = switch (data) {
+            case StringValue written -> written.text().getBytes(StandardCharsets.UTF_8);
+            case BinaryValue carried -> carried.octetsFromHere();
+            default -> throw Raised.of(EvaluationFailure.INVALID_PORT_ARG, data);
+        };
+        NetworkPort.Datagrams bound = datagramsBehind(port);
+        return throughNetwork(() -> {
+            bound.sendTo(theHostToSendTo(port), portNumberOf(port), bytes);
+            port.setField("data", NoneValue.none());
+            queueWhatHappenedTo(port, "wrote", evaluator);
+            return port;
+        });
+    }
 
     private void connectTheTcpPort(PortValue port, Evaluator evaluator) {
         String host = hostNamedBy(port);

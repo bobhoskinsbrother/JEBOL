@@ -332,53 +332,129 @@ the JVM does not bring. That stays true. Somebody who wants more than the borrow
 codec gives adds the library and a bridge to it themselves, and with neither
 present nothing registers and nothing is attempted.
 
-### 1. The five scheme names R3 registers and JEBOL does not
+### 1. The five schemes: the names are registered, the devices are not
 
-```
-callback  clipboard  midi  serial  udp
-```
+**The names are done and that is all that is done.** `callback`,
+`clipboard`, `serial` and `udp` are declared in `sys-ports.reb`'s
+`INIT-SCHEMES`, which this build now calls instead of registering a list of
+its own; the five boot files that had copied those declarations out are
+gone, one having been byte-identical to the block it copied.
+`system/ports/input` and `system/ports/callback` came with it -- both were
+none here and are ports in a real 3.22.5, and INPUT and OUTPUT are one port
+rather than two.
 
-**Four of the five are already declared in a file JEBOL already loads.**
-`sys-ports.reb` is vendored byte-identical to Rebol's and carries `make-scheme`
-blocks for `callback`, `clipboard`, `serial` and `udp` -- spec, init and awake,
-all written in REBOL. They are not registered here because **JEBOL registers
-its own list instead**: `/org/jebol/boot/schemes.reb` and five `scheme-*.reb`
-files beside it name console, tcp, dns, event, bundled, file, dir, checksum,
-crypt and system, and nothing reaches the vendored declarations.
+**What that bought is a true answer in place of a false one**, and no more.
+Asking for one of these used to get `no-scheme`, which says Rebol has no
+such doorway when Rebol does. It now gets `no-service`, which says the
+doorway is there and nothing is behind it.
 
-Nothing is missing underneath, either. `system/standard/port-spec-serial`,
-`port-spec-net`, `net-info` and `do-callback` all exist here, and
-`sys/make-scheme` called by hand registers `udp` and `callback` and they appear
-in `system/schemes` immediately. So this is a registration that does not
-happen, not a subsystem that is absent.
+**Two of the five were real devices in the C and are now real devices here
+too.** The table that stood here claimed `read clipboard://` answers
+`read-error` on a stock macOS build; measured on `./r3-head`, it does not --
+it answers a string. So the clipboard and UDP were built rather than
+registered, each against the C arm by arm:
 
-**The important half is what a scheme name promises, which is less than it
-looks.** R3 registers the name whether or not the build can serve it, and the
-refusal comes at open time. Measured on `./r3-head`, which is macOS and has
-neither clipboard nor midi nor serial compiled in:
-
-| | `open` | `read` |
+| | the C, via `./r3-head` | JEBOL |
 | --- | --- | --- |
-| `clipboard://` | a port | `read-error` |
-| `udp://:40999` | a port | -- |
-| `callback://` | a port | -- |
-| `serial://...` | `none` | -- |
-| `midi://` | `cannot-open` | -- |
+| `read clipboard://` | a string | the same string |
+| `write clipboard:// "x"` | the port | the port |
+| `read/lines`, `read/part n` | lines, clipped | identical |
+| `write clipboard:// 5` | `invalid-port-arg` | `invalid-port-arg` |
+| `open udp://:n` | a port | a port |
+| a datagram over the loopback | arrives | arrives |
+| `read` a UDP port | the **port**, bytes in `port/data` | identical |
+| `length?` of one | bytes buffered | identical |
+| `open udp://:n` twice | `no-connect` | `no-connect` |
+| `open serial://usb/9600` | `none` -- no device on this build | `no-service` |
+| `open midi://` | `cannot-open` -- no device on this build | `no-scheme` |
 
-So parity on four of them is mostly registering the name and letting the
-device say no, which is what R3 does. What each then needs to actually work is
-a separate question with a different answer per scheme: `udp` is a datagram
-socket the JVM has; `midi` is `javax.sound.midi`, which the JDK also has, and
-is the one of the five with no vendored declaration at all -- it is `p-midi.c`
-and optional even in the C; `clipboard` is `java.awt.Toolkit`, and is
-Windows-only in R3, so JEBOL would be ahead rather than at parity; `serial`
-has nothing in the JDK, so it is a dependency or it is nothing, and the jar
-takes no dependencies.
+The clipboard goes through `java.awt.Toolkit` and UDP through
+`DatagramSocket`, both behind ports the domain owns, so the evaluator
+touches neither. The clipboard has a grant of its own, `CLIPBOARD`, because
+what the operator last copied is not something a script that may print has
+thereby been allowed to read.
 
-**Do the registration first and separately**, because it is cheap, it is what
-the parity measure actually reads, and it makes each absent device sayable --
-a script gets `cannot-open` on the scheme it asked for, rather than
-`no-scheme` on a name Rebol has.
+**Three places where there was no C answer to copy**, each written up in
+`spec/natives.allium` beside the rule it produced:
+
+1. `write udp-port 5` **kills the C**. No error, no output after it, exit
+   without a word: the actor takes the address of the value's bytes without
+   checking it has any. JEBOL refuses with `invalid-port-arg`, borrowed from
+   the C's own clipboard actor, which does check.
+2. Two datagrams read one after another leave `#{6F6E6500000074776F}` in the
+   C -- "one", three zero bytes, "two". The line is `p-net.c:300`,
+   `GET_FLAG(sock->modes, RST_UDP && result == 0)`, with the `&&` inside the
+   macro argument instead of outside it. JEBOL appends cleanly.
+3. The C has no clipboard device for posix at all, so a Linux build has
+   none. JEBOL's works there, which is a place both were weak and one
+   improved.
+
+**What is left of the five.** `serial` needs a dependency the jar will not
+take. `midi` is below. `callback` opens a port and nothing can drive it,
+which is its own goal.
+
+**MIDI is the one with no vendored declaration.** It is `p-midi.c`, optional
+even in the C, and its REBOL side is `sys-ports-midi.reb`, which is in
+`rebol3-source` and is not among the files this build loads. That file works
+by `append/only system/schemes [...]` while SCHEMES is still a block, which
+is exactly the state `INIT-SCHEMES` sets up and then drains on its last line,
+so loading it is now possible where it was not before -- the note in
+`ORDER.txt` saying it would write `system/schemes/title: "MIDI"` described a
+build that never ran `INIT-SCHEMES`, and that is no longer this one.
+
+Registering the name is the whole of this goal and it is worth doing on its
+own. Measured on `./r3-head`, which is macOS with no MIDI compiled in,
+`open midi://` answers `cannot-open`; here it answers `no-scheme`, which
+tells a script the doorway does not exist rather than that nothing is behind
+it. What MIDI would then need to actually work is `javax.sound.midi`, which
+the JDK has, and that is a device rather than a registration and belongs in
+its own goal.
+
+**Two separate ordering facts pin when the registration can run, and they
+are not the same kind of problem.** Both were found the hard way.
+
+*The first is protection.* `mezz-tail.reb` calls `protect-system`, which
+seals every field of the system object, `system/schemes` among them.
+`INIT-SCHEMES` assigns that field outright -- `system/schemes: make object!
+20` -- so once the seal is on, it cannot run at all. That sets a latest
+point: before `mezz-tail.reb`. Rebol seals the same field, and its own
+`mezz-secure.reb` carries `;system/schemes` commented out of the unprotect
+list with the note "should not be modified, fix this".
+
+*The second is the shape of a half-built field, and protection has nothing
+to do with it.* `SYSTEM/SCHEMES` starts as a block and becomes an object
+only when `INIT-SCHEMES` converts it. Rebol's optional scheme files are
+written for that block: they `append/only` a specification to it, and the
+last line of `INIT-SCHEMES` reads those back and registers each one. The
+borrowed protocol files do something different -- they call `MAKE-SCHEME`
+directly. Against the object that is correct and is how they register today.
+Against the block it leaves behind an entry of a shape that last line cannot
+read, and the boot stops there. That sets an earliest point: after
+`sys-ports.reb` defines `MAKE-SCHEME`, and before the first protocol file
+calls it.
+
+Those two bounds leave one window, and the registration runs in it -- keyed
+to `prot-mysql.reb`, the first borrowed file that registers a scheme of its
+own.
+
+**A wrong-type sweep over OPEN found a divergence that is nothing to do with
+schemes, and it is written here because that is where it turned up.**
+`actions.reb` declares `open` as `spec [port! file! url! block! word!]` and
+this build reads that very file, so the declaration is the same on both
+sides. The C refuses anything else at the call boundary and JEBOL does not:
+
+| | C, via `./r3-head` | JEBOL |
+| --- | --- | --- |
+| `open 5` | `expect-arg` | `invalid-arg` |
+| `open "udp://"` | `expect-arg` | `invalid-arg` |
+| `open none` | `expect-arg` | `invalid-arg` |
+
+`Natives.java` declares it as `Parameter.required("spec")` with no types and
+checks inside instead, which is why the declared list has no effect. It is
+not special to OPEN as a rule -- `modify` with a string field correctly
+answers `expect-arg` -- so this is one action declared loosely rather than a
+missing mechanism. Untested here on purpose: a test asserting `invalid-arg`
+would pin the defect, and one asserting `expect-arg` would be red.
 
 ---
 

@@ -39,6 +39,19 @@ public interface NetworkPort {
      */
     Connection connectTo(String hostName, int portNumber);
 
+    Datagrams bindTo(int portNumber);
+
+    interface Datagrams {
+
+        void sendTo(String hostName, int portNumber, byte[] bytes);
+
+        byte[] receive();
+
+        boolean isOpen();
+
+        void close();
+    }
+
     /** One open connection, which a script drives through an ordinary port. */
     interface Connection {
 
@@ -92,6 +105,11 @@ public interface NetworkPort {
             @Override
             public Connection connectTo(String hostName, int portNumber) {
                 throw refuse(hostName);
+            }
+
+            @Override
+            public Datagrams bindTo(int portNumber) {
+                throw refuse(String.valueOf(portNumber));
             }
 
             private Refused refuse(String about) {

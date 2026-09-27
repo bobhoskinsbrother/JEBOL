@@ -417,13 +417,12 @@ clean-path: func [
 ]
 
 ;; SYSTEM/SCHEMES, SYSTEM/PORTS and SYSTEM/VIEW are all declared in
-;; sysobj.reb and the boot step before this makes them from it, so the only
-;; thing left here is the one place JEBOL differs. Rebol starts SCHEMES as a
-;; block and INIT-SCHEMES in sys-ports.reb turns it into an object once the
-;; host has registered what it can serve; JEBOL registers its schemes from
-;; Java instead, so the object has to exist before the first MAKE-SCHEME
-;; rather than after.
-system/schemes: make object! []
+;; sysobj.reb and the boot step before this makes them from it, so there is
+;; nothing to do here. SCHEMES starts as a block on purpose: INIT-SCHEMES in
+;; sys-ports.reb moves whatever the optional scheme files have collected into
+;; it aside, turns SCHEMES into an object, registers the common schemes and
+;; then works through what it set aside. Turning it into an object here would
+;; take that step away from the file that owns it.
 ;; sysobj.reb declares SYSTEM/STANDARD and the boot step before this makes
 ;; the object from that file, so the shapes a scheme, a port, a header and
 ;; the rest are built from are Rebol's own text rather than a copy of it.

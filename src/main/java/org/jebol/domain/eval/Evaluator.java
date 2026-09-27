@@ -214,6 +214,16 @@ public final class Evaluator {
         this.network = port;
     }
 
+    private ClipboardPort clipboard = ClipboardPort.none();
+
+    public ClipboardPort clipboard() {
+        return clipboard;
+    }
+
+    public void useClipboard(ClipboardPort port) {
+        this.clipboard = port;
+    }
+
     /**
      * The modules bundled with this build, which BUNDLED reads through.
      *

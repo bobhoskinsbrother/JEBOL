@@ -1,7 +1,9 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.adapter.host.JavaClipboard;
 import org.jebol.adapter.host.JavaImages;
 import org.jebol.adapter.host.JavaProcesses;
+import org.jebol.adapter.host.JavaSockets;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
@@ -129,6 +131,8 @@ public final class Repl {
             interpreter.useFileSystem(FileSystemPort.rootedAt(root));
             interpreter.useEnvironment(new ProcessEnvironment());
             interpreter.useProcesses(new JavaProcesses());
+            interpreter.useClipboard(new JavaClipboard());
+            interpreter.useNetwork(new JavaSockets());
             putTheApplicationDataWhereTheParentKeepsIt(interpreter, arguments);
         }
         if (ChosenScreen.wasAskedFor(arguments)) {

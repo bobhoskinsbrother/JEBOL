@@ -82,8 +82,7 @@ public final class Interpreter {
         putTheAddressesOfTheModulesRebolPublishes();
         loadRebolsOwnLibrary();
         nameTheLauncherOnlyOnceTheLibraryHasLoaded();
-        registerTheSchemesJebolCanServe();
-        openTheEventPort();
+        registerTheSchemesRebolDeclares();
         natives.grantOnly(bounds.grantedServices());
         natives.forgetStartupState();
     }
@@ -153,20 +152,12 @@ public final class Interpreter {
 
     private boolean theSchemesAreRegistered;
 
-    private void registerTheSchemesJebolCanServe() {
+    private void registerTheSchemesRebolDeclares() {
         if (theSchemesAreRegistered || !systemInternals.knows("make-scheme")) {
             return;
         }
         theSchemesAreRegistered = true;
-        for (String scheme : new String[] {
-                "schemes.reb",
-                "scheme-system.reb",
-                "scheme-file.reb",
-                "scheme-dir.reb",
-                "scheme-checksum.reb",
-                "scheme-crypt.reb"}) {
-            runTheBootStep(scheme);
-        }
+        runTheBootStep("schemes.reb");
     }
 
     private void runTheBootStep(String name) {
@@ -181,26 +172,9 @@ public final class Interpreter {
 
     private static final String BOOT = "/org/jebol/boot/";
 
-    private void openTheEventPort() {
-        if (!systemInternals.knows("make-scheme")) {
-            return;
-        }
-        runTheBootStep("ports.reb");
-    }
-
-    private void openTheSystemPort() {
-        run("unless port? system/ports/system "
-                + "[system/ports/system: lib/open [scheme: 'system]]");
-    }
-
-    private void openTheOutputPort() {
-        run("unless port? system/ports/output "
-                + "[system/ports/output: lib/open [scheme: 'console]]");
-    }
-
     private static final String
-            THE_BORROWED_FILE_THAT_FORCES_THE_SCHEMES_TO_BE_REGISTERED_MIDWAY =
-            "view-funcs.reb";
+            THE_FIRST_BORROWED_FILE_THAT_REGISTERS_A_SCHEME_OF_ITS_OWN =
+            "prot-mysql.reb";
 
     private static final String PRELUDE = "/org/jebol/prelude.reb";
 
@@ -224,9 +198,8 @@ public final class Interpreter {
         for (String entry : borrowedFileNames()) {
             String name = fileNameIn(entry);
             if (name.equals(
-                    THE_BORROWED_FILE_THAT_FORCES_THE_SCHEMES_TO_BE_REGISTERED_MIDWAY)) {
-                registerTheSchemesJebolCanServe();
-                openTheEventPort();
+                    THE_FIRST_BORROWED_FILE_THAT_REGISTERS_A_SCHEME_OF_ITS_OWN)) {
+                registerTheSchemesRebolDeclares();
             }
             Optional<TranscodeResult> reading = theBorrowedFileNamed(name);
             if (reading.isEmpty()) {
@@ -777,6 +750,10 @@ public final class Interpreter {
     /** Tells this interpreter where its script's network may reach. */
     public void useNetwork(NetworkPort port) {
         evaluator.useNetwork(port);
+    }
+
+    public void useClipboard(ClipboardPort port) {
+        evaluator.useClipboard(port);
     }
 
     /** Gives the script a way to start another program. */

@@ -2581,6 +2581,318 @@ rule TheAnswerIsTheDestination {
     ensures: CallResult(value: request.destination)
 }
 
+-- === Which schemes this build registers ====================
+
+-- The scheme names are Rebol's declaration, not a list kept here.
+--
+-- `init-schemes` in the borrowed library declares thirteen, and this build
+-- had written five of those out again in boot files of its own -- one of
+-- them byte for byte. A hand-kept copy of a declaration drifts, and this one
+-- had: CALLBACK, CLIPBOARD, SERIAL and UDP are declared in a file this build
+-- already loads and were registered nowhere, so a script asking for one was
+-- told there is no scheme of that name, about four names Rebol has.
+--
+-- Registering a name is not claiming a device, and that is what makes it
+-- cheap and honest. Rebol registers CLIPBOARD on a build with no clipboard
+-- compiled into it and lets the open refuse. A name that is registered and
+-- has nothing behind it gives a caller the true answer -- this doorway
+-- exists and nothing is through it -- where an unregistered name gives a
+-- false one.
+rule TheRegisteredSchemeNamesAreTheOnesRebolDeclares {
+    when: ReadSystemField(schemes)
+
+    ensures: every_scheme_name_the_borrowed_library_declares_is_registered()
+}
+
+-- BUNDLED is registered beside them and is this build's own. Rebol has no
+-- equivalent because it fetches a module over the wire where this build
+-- reads one out of itself, so the name is an addition rather than a
+-- divergence.
+rule TheBundledSchemeIsRegisteredBesideRebolsOwn {
+    when: ReadSystemField(schemes)
+
+    ensures: the_schemes_hold_a_field_called(bundled)
+}
+
+-- Opening the schemes opens the standard ports, and INPUT and OUTPUT are one
+-- port rather than two.
+--
+-- They are assigned in a single chained expression where the schemes are
+-- declared, so the console port answers to both names. It matters to anyone
+-- reading a mode back off one after setting it on the other, and it is the
+-- reason INPUT can be none while OUTPUT is a port: that state means the
+-- declaration never ran, not that one port failed to open.
+rule OpeningTheSchemesOpensTheStandardPorts {
+    when: ReadSystemField(ports)
+
+    ensures: the_field_named(input) = the_field_named(output)
+    ensures: the_field_named(callback).datatype = port
+}
+
+-- === Datagrams ============================================
+
+-- A UDP port is a bound socket that sends and receives datagrams, and it
+-- needs the network grant, the same one a connection needs.
+--
+-- Opening it binds rather than connects, which is the difference from TCP
+-- and the reason the specification carries a port number and may carry no
+-- host at all: `udp://:41001` binds and listens, `udp://127.0.0.1:41001`
+-- binds and has somewhere to send to.
+rule OpeningAUdpPortBindsIt {
+    when: EvaluateCall(open, specification)
+    requires: names_the_udp_scheme(specification)
+    requires: network in granted_services()
+
+    ensures: CallResult(datatype: port)
+    ensures: the_port_is_bound_to(the_port_number_asked_for())
+}
+
+-- A number another socket already holds is refused, and refused as a
+-- connection failure rather than as a bad specification, because the
+-- specification was fine and the machine said no.
+rule APortNumberAlreadyHeldIsRefused {
+    when: EvaluateCall(open, specification)
+    requires: names_the_udp_scheme(specification)
+    requires: another_socket_already_holds(the_port_number_asked_for())
+
+    ensures: CallFails(error: no_connect)
+}
+
+-- Writing sends one datagram to the host and port the specification names,
+-- and answers the port so writes chain.
+rule WritingAUdpPortSendsOneDatagram {
+    when: EvaluateCall(write, target, data)
+    requires: names_the_udp_scheme(target)
+    requires: network in granted_services()
+
+    ensures: CallResult(value: target)
+    ensures: one_datagram_carrying(data) = sent_to(the_host_and_port_of(target))
+}
+
+-- Reading answers the port, and the datagram lands in the port's data as
+-- bytes.
+--
+-- Not the bytes themselves, which is worth stating because it is the
+-- opposite of what a reader expects and it is what the C does: measured on
+-- `./r3-head`, `read` on a bound UDP port answers a `port!` and the message
+-- turns up in `port/data` as a `binary!`. A caller reads the data field
+-- afterwards. Following the C here rather than JEBOL's own TCP, whose READ
+-- answers the bytes: agreeing with the C comes before being consistent with
+-- a place this port already differs.
+--
+-- The bytes are appended at the tail rather than replacing what is there,
+-- so two datagrams read one after the other leave both, and a caller that
+-- wants one message at a time clears the field between reads.
+--
+-- Appended cleanly, with nothing between them, and that is one more place
+-- with no C answer to copy. Reading "one" and then "two" on `./r3-head`
+-- leaves `#{6F6E6500000074776F}` -- the two messages with three zero bytes
+-- wedged between. The line responsible is `p-net.c:300`,
+-- `GET_FLAG(sock->modes, RST_UDP && result == 0)`, where the `&&` is inside
+-- the macro's argument instead of outside it, so the test is against flag
+-- one rather than the UDP flag and the tail advances by the wrong amount.
+-- Reproducing that would be copying a typo.
+rule ReadingAUdpPortLeavesTheDatagramInItsData {
+    when: EvaluateCall(read, target)
+    requires: names_the_udp_scheme(target)
+    requires: network in granted_services()
+
+    ensures: CallResult(value: target)
+    ensures: the_datagrams_bytes_are_appended_to_the_data_field(target)
+}
+
+-- A write leaves nothing behind it. The C puts the written value in the
+-- data field to hold it safe while the send happens and sets the field back
+-- to none once it is done, so a caller reading the field after a write sees
+-- none rather than what was sent.
+rule WritingAUdpPortLeavesNothingInItsData {
+    when: EvaluateCall(write, target, data)
+    requires: names_the_udp_scheme(target)
+
+    ensures: the_data_field_of(target) = none
+}
+
+-- What happened is queued as an event, the way a TCP port does it, so a
+-- script driven by WAIT and an awake handler sees the same traffic.
+rule AUdpPortRecordsWhatHappenedToIt {
+    when: EvaluateCall(verb, target)
+    requires: verb in {read, write}
+    requires: names_the_udp_scheme(target)
+
+    ensures: an_event_is_queued_for(target)
+}
+
+-- Text and bytes and nothing else, and here there is no C answer to agree
+-- with because the C does not survive the question.
+--
+-- Measured on `./r3-head`: `write p 5` on a bound UDP port kills the
+-- process. No error, no output after it, exit without a word. The actor
+-- takes the address of the value's bytes without checking that it has any,
+-- so an integer is read as though it were a series. The clipboard actor in
+-- the same build checks and raises `invalid-port-arg`, which is the shape
+-- borrowed here: refusing is the only available behaviour that is not a
+-- crash, and matching a crash is not a thing a port can do.
+rule ADatagramPortTakesTextAndBytesAndNothingElse {
+    when: EvaluateCall(write, target, data)
+    requires: names_the_udp_scheme(target)
+    requires: data.datatype not in [string, binary]
+
+    ensures: CallFails(error: invalid_port_arg, about: data)
+}
+
+-- LENGTH? of a datagram port is how much is sitting in its data, and zero
+-- before anything has arrived. It is a real answer here where the clipboard
+-- refuses the same verb, because this port has a buffer and that one does
+-- not.
+rule TheLengthOfADatagramPortIsWhatItHasBuffered {
+    when: EvaluateCall(length?, target)
+    requires: names_the_udp_scheme(target)
+
+    ensures: CallResult(value: length_of(the_data_field_of(target)))
+}
+
+-- OPEN? is true once it is bound, and false after it is closed.
+rule ADatagramPortIsOpenOnceItIsBound {
+    when: EvaluateCall(open?, target)
+    requires: names_the_udp_scheme(target)
+
+    ensures: CallResult(value: the_port_is_still_bound(target))
+}
+
+-- Without the grant it refuses before it binds anything, so a script that
+-- was not given the network cannot learn which ports are free either.
+rule ADatagramPortNeedsTheNetworkGrant {
+    when: EvaluateCall(verb, target)
+    requires: verb in {read, write, open}
+    requires: names_the_udp_scheme(target)
+    requires: network not in granted_services()
+
+    ensures: CallFails(error: no_service)
+}
+
+-- === The clipboard ========================================
+
+-- The clipboard is what the operator has copied, and it is a device this
+-- build serves rather than a name it merely registers.
+--
+-- It needs a grant of its own and not the console's. The console is what a
+-- script says to the operator and is a channel the operator is watching; the
+-- clipboard is whatever they last copied anywhere on the machine, which may
+-- be a password or an address, and a script that may print is not thereby a
+-- script that may read that.
+rule ReadingTheClipboardAnswersWhatIsOnIt {
+    when: EvaluateCall(read, target)
+    requires: names_the_clipboard_scheme(target)
+    requires: clipboard in granted_services()
+
+    ensures: CallResult(datatype: string)
+    ensures: result = what_the_operator_last_copied()
+}
+
+-- Writing puts text on it and answers the port, so writes chain the way
+-- every other port's do.
+rule WritingTheClipboardPutsItThere {
+    when: EvaluateCall(write, target, data)
+    requires: names_the_clipboard_scheme(target)
+    requires: clipboard in granted_services()
+    requires: data.datatype in [string, binary]
+
+    ensures: CallResult(value: target)
+    ensures: a_later_read_answers(formed(data))
+}
+
+-- Text and bytes and nothing else, refused as a wrong argument for a port
+-- rather than as a wrong type in general.
+--
+-- The distinction is the C's and it is worth keeping: a number is a perfectly
+-- good value that this particular port cannot carry, which is a different
+-- complaint from a number where the language wanted a string.
+rule TheClipboardTakesTextAndBytesAndNothingElse {
+    when: EvaluateCall(write, target, data)
+    requires: names_the_clipboard_scheme(target)
+    requires: data.datatype not in [string, binary]
+
+    ensures: CallFails(error: invalid_port_arg, about: data)
+}
+
+-- Reading and writing open the device themselves when the port is closed,
+-- and let it go again afterwards, so `read clipboard://` works without an
+-- OPEN around it. A port the caller opened stays open.
+rule TheClipboardOpensItselfForOneCallAndCloses {
+    when: EvaluateCall(verb, target)
+    requires: verb in {read, write}
+    requires: names_the_clipboard_scheme(target)
+    requires: not the_port_was_already_open(target)
+
+    ensures: the_call_proceeds()
+    ensures: the_port_is_closed_again_afterwards()
+}
+
+-- /PART limits how much is read, and /LINES answers the text split into a
+-- block of lines instead of one string.
+rule ReadingPartOfTheClipboardLimitsTheLength {
+    when: EvaluateCall(read, target)
+    requires: names_the_clipboard_scheme(target)
+    requires: asked_for(part)
+
+    ensures: length_of(result) <= the_length_asked_for()
+}
+
+rule ReadingTheClipboardInLinesAnswersABlock {
+    when: EvaluateCall(read, target)
+    requires: names_the_clipboard_scheme(target)
+    requires: asked_for(lines)
+
+    ensures: CallResult(datatype: block)
+    ensures: every_entry_is_one_line_of(what_the_operator_last_copied())
+}
+
+-- Five verbs and no more. Anything else is refused by name, which is the
+-- ordinary answer for a port whose actor has no arm for the verb.
+rule TheClipboardServesFiveVerbs {
+    when: EvaluateCall(verb, target)
+    requires: names_the_clipboard_scheme(target)
+    requires: verb not in {read, write, open, close, open?}
+
+    ensures: CallFails(error: no_port_action, about: verb)
+}
+
+-- A machine with no clipboard is refused rather than answered, and this is
+-- where JEBOL is ahead of the C rather than level with it.
+--
+-- The C has a clipboard device for Windows and for macOS and none for
+-- posix, so a Linux build has no clipboard at all. This one goes through
+-- the JVM's own, which is the same code on all three, so a Linux machine
+-- with a display gets a working clipboard where a real 3.22.5 gets nothing.
+-- That is a place where both were weak and one improved, which the rule
+-- says is a decision rather than a defect -- recorded here so it is not
+-- read later as drift.
+--
+-- Without a display there is nothing to reach on any platform, and the
+-- answer is a read or write failure naming what is missing, not a crash
+-- and not an empty string pretending the clipboard was empty.
+rule AMachineWithNoClipboardRefuses {
+    when: EvaluateCall(verb, target)
+    requires: verb in {read, write}
+    requires: names_the_clipboard_scheme(target)
+    requires: clipboard in granted_services()
+    requires: not this_machine_has_a_clipboard()
+
+    ensures: CallFails(error: read_error_or_write_error)
+}
+
+-- Without the grant it refuses, and the refusal names the service rather
+-- than the scheme, because the scheme is registered and the permission is
+-- what is missing.
+rule TheClipboardNeedsItsGrant {
+    when: EvaluateCall(verb, target)
+    requires: verb in {read, write, open}
+    requires: names_the_clipboard_scheme(target)
+    requires: clipboard not in granted_services()
+
+    ensures: CallFails(error: no_service)
+}
+
 -- === Routing to a scheme this host does not serve ==========
 
 -- READ, WRITE and RENAME take more than a file. Each also accepts a url, a

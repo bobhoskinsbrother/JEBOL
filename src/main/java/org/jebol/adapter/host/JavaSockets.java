@@ -52,6 +52,68 @@ public final class JavaSockets implements NetworkPort {
         }
     }
 
+    @Override
+    public Datagrams bindTo(int portNumber) {
+        try {
+            DatagramSocket bound = new DatagramSocket(portNumber);
+            bound.setSoTimeout(LONGEST_WAIT_BEFORE_GIVING_UP_MILLISECONDS);
+            return new BoundDatagrams(bound);
+        } catch (SocketException alreadyHeld) {
+            throw new Refused("no-connect",
+                    alreadyHeld.getMessage() == null
+                            ? "that port number could not be bound"
+                            : alreadyHeld.getMessage(),
+                    String.valueOf(portNumber));
+        }
+    }
+
+    private record BoundDatagrams(DatagramSocket socket) implements Datagrams {
+
+        @Override
+        public void sendTo(String hostName, int portNumber, byte[] bytes) {
+            try {
+                socket.send(new DatagramPacket(bytes, bytes.length,
+                        InetAddress.getByName(hostName), portNumber));
+            } catch (UnknownHostException noSuchHost) {
+                throw new Refused("no-connect", "no host of that name", hostName);
+            } catch (IOException refused) {
+                throw new Refused("write-error",
+                        refused.getMessage() == null
+                                ? "the datagram could not be sent"
+                                : refused.getMessage(),
+                        hostName + ":" + portNumber);
+            }
+        }
+
+        @Override
+        public byte[] receive() {
+            byte[] room = new byte[MOST_BYTES_AT_ONCE];
+            DatagramPacket arrived = new DatagramPacket(room, room.length);
+            try {
+                socket.receive(arrived);
+                return Arrays.copyOf(arrived.getData(), arrived.getLength());
+            } catch (SocketTimeoutException nothingCame) {
+                return new byte[0];
+            } catch (IOException broken) {
+                throw new Refused("read-error",
+                        broken.getMessage() == null
+                                ? "the datagram could not be read"
+                                : broken.getMessage(),
+                        String.valueOf(socket.getLocalPort()));
+            }
+        }
+
+        @Override
+        public boolean isOpen() {
+            return !socket.isClosed();
+        }
+
+        @Override
+        public void close() {
+            socket.close();
+        }
+    }
+
     private static void closeQuietly(Socket socket) {
         try {
             socket.close();

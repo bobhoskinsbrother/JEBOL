@@ -28,6 +28,34 @@ class ReplEndToEndTest {
         return captured.toString(StandardCharsets.UTF_8);
     }
 
+    @Nested
+    @DisplayName("the schemes Rebol declares, at the prompt")
+    class TheSchemesAtThePrompt {
+
+        @Test
+        @DisplayName("a name Rebol declares is there to be asked about")
+        void aDeclaredSchemeIsThere() {
+            assertThat(session("object? get in system/schemes (quote udp)",
+                    "object? get in system/schemes (quote clipboard)"))
+                    .contains("== #(true)");
+        }
+
+        @Test
+        @DisplayName("opening one says the device is missing, not that the scheme is")
+        void openingOneSaysTheDeviceIsMissing() {
+            assertThat(session("failure: try [open udp://:40999] failure/id"))
+                    .contains("no-service")
+                    .doesNotContain("no-scheme");
+        }
+
+        @Test
+        @DisplayName("and a name nobody declares still says there is no such scheme")
+        void anUndeclaredNameSaysNoScheme() {
+            assertThat(session("failure: try [open frobozz://] failure/id"))
+                    .contains("no-scheme");
+        }
+    }
+
     private static String sessionWithFiles(java.nio.file.Path directory, String... linesTyped) {
         String typed = String.join("\n", List.of(linesTyped)) + "\nquit\n";
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
