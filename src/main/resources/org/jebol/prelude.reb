@@ -76,7 +76,7 @@ title-of:  func ["A function's title." value] [reflect :value 'title]
 ; a function belongs here unless it needs something REBOL cannot say.
 ;
 ; Carrying them in Java bought nothing and cost something -- more surface
-; to be wrong on, and a definition that Rebol's own library silently
+; to be wrong on, and a functionDefinition that Rebol's own library silently
 ; replaces the moment that file is borrowed.
 to-block:   func ["A value as a block." value] [to block! :value]
 to-decimal: func ["A value as a decimal." value] [to decimal! :value]
@@ -238,7 +238,7 @@ wrap: func [
     "Evaluates a block with every set-word in it made local to the block."
     body [block!] "What to evaluate"
 ][
-    ;; Rebol's own definition. The fresh object is what the set-words are
+    ;; Rebol's own functionDefinition. The fresh object is what the set-words are
     ;; bound into, so `wrap [x: 2]` leaves any x outside alone.
     do bind/copy/set body make object! 0
 ]
@@ -327,7 +327,7 @@ funct: func [
     body [block!] "What it does"
     /extern words [block!] "Names that must not be made local"
 ][
-    ;; Rebol's own definition. The set-words are collected from the body
+    ;; Rebol's own functionDefinition. The set-words are collected from the body
     ;; and added after /local, so a function written this way cannot
     ;; change a word outside itself by accident.
     spec: copy/deep spec
@@ -356,7 +356,7 @@ split-path: func [
     target [file! url! string!] "The path to split"
     /local names-a-directory trimmed slash-at
 ][
-    ;; Rebol's own definition, in base-files.reb, is one PARSE with two
+    ;; Rebol's own functionDefinition, in base-files.reb, is one PARSE with two
     ;; rules. The first rule is the one that is easy to miss: a path made
     ;; only of slashes and dots is a directory with no name after it, thus
     ;; %/ splits into [%/ %""] and %../ into [%../ %""].

@@ -6,6 +6,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.Set;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class LimitUsageFromTheSourceTest {
@@ -48,14 +51,14 @@ class LimitUsageFromTheSourceTest {
     class TheNativeItself {
 
         private static Value called(Evaluator evaluator, String field, Value limit) {
-            return Natives.standard(java.util.Set.of()).behaviours()
+            return Natives.standard(Set.of()).behaviours()
                     .get("limit-usage")
-                    .call(java.util.List.of(WordValue.of(field), limit),
-                            evaluator, null, java.util.Set.of());
+                    .call(List.of(WordValue.of(field), limit),
+                            evaluator, null, Set.of());
         }
 
         private static Evaluator anEvaluator() {
-            Natives natives = Natives.standard(java.util.Set.of());
+            Natives natives = Natives.standard(Set.of());
             return new Evaluator(natives.behaviours(), natives.asContext(),
                     line -> { });
         }

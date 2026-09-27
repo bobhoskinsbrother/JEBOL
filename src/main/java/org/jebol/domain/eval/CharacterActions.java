@@ -15,7 +15,7 @@ public final class CharacterActions {
         this.letter = letter;
     }
 
-    Value combinedWith(Value right, ArithmeticOperation operation) {
+    public Value combinedWith(Value right, ArithmeticOperation operation) {
         long other = codepointOfferedBy(right);
         long codepoint = letter.codepoint();
         long answered = operation.onCodepoints(codepoint, other);

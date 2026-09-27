@@ -25,7 +25,7 @@ Rebol [
 	}
 ]
 
-;-- SYS context definition begins here --
+;-- SYS context functionDefinition begins here --
 ;	WARNING: ORDER DEPENDENT part of context (accessed from C code)
 
 native: _

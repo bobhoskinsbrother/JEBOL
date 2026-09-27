@@ -24,7 +24,7 @@ public final class TupleActions {
         return TupleValue.of(octets);
     }
 
-    Value combinedWith(Value right, ArithmeticOperation operation) {
+    public Value combinedWith(Value right, ArithmeticOperation operation) {
         return octetByOctet(left, right, (octet, against, fractional) ->
                 octetCombined(octet, against, fractional, operation));
     }

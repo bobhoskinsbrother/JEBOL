@@ -8,6 +8,7 @@ import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -53,7 +54,7 @@ public final class Interpreter {
                 EnumSet.of(HostService.CLOCK, HostService.WINDOWS);
         duringTheBoot.addAll(bounds.grantedServices());
         Natives natives = Natives.standard(duringTheBoot);
-        natives.useFileSeparator(java.io.File.separatorChar);
+        natives.useFileSeparator(File.separatorChar);
         natives.useOperatingSystemNamed(whatRebolCallsThisOperatingSystem());
         natives.useErrorCatalogue(theSourceIn("/org/jebol/errors.reb"));
         natives.useDatatypeSpecs(theSourceIn("/org/jebol/typespec.reb"));
@@ -75,8 +76,8 @@ public final class Interpreter {
                 this::reasonToStop,
                 bounds.checkEvery());
         evaluator.putRuntimeWordsIn(userContext);
-        evaluator.useBundledModules(Interpreter::theModuleBundledAs);
-        takeTheShapeRebolDeclares();
+        evaluator.useBundledModules(Interpreter::bundledModules);
+        declareRebolSequentially();
         publishTheUserContext();
         loadPrelude();
         putTheAddressesOfTheModulesRebolPublishes();
@@ -109,7 +110,7 @@ public final class Interpreter {
 
     private static final String THE_SYSTEM_OBJECT_DECLARATION = "/org/jebol/sysobj.reb";
 
-    private void takeTheShapeRebolDeclares() {
+    private void declareRebolSequentially() {
         BlockValue body = theLibraryFileAt(THE_SYSTEM_OBJECT_DECLARATION)
                 .orElseThrow(() -> new IllegalStateException(
                         "Rebol's system object declaration is missing from the build"))
@@ -397,11 +398,11 @@ public final class Interpreter {
     private static String aClasspathMadeAbsoluteSoItWorksFromAnyDirectory() {
         return java.util.Arrays.stream(
                         System.getProperty("java.class.path", "")
-                                .split(java.io.File.pathSeparator))
+                                .split(File.pathSeparator))
                 .filter(entry -> !entry.isEmpty())
                 .map(entry -> java.nio.file.Path.of(entry).toAbsolutePath().toString())
                 .collect(java.util.stream.Collectors.joining(
-                        java.io.File.pathSeparator));
+                        File.pathSeparator));
     }
 
     private static String writtenBootLauncher() {
@@ -441,7 +442,7 @@ public final class Interpreter {
         return resourceText(path).orElse("");
     }
 
-    private static Optional<byte[]> theModuleBundledAs(String name) {
+    private static Optional<byte[]> bundledModules(String name) {
         return resourceBytes(MODULES + name);
     }
 

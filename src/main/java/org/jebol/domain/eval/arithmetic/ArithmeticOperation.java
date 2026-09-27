@@ -54,7 +54,7 @@ public interface ArithmeticOperation extends ValueOperation {
         return Optional.ofNullable(BY_SPELLING.get(spelling));
     }
 
-    static ArithmeticOperation theOneCalled(String spelling) {
+    static ArithmeticOperation findOperation(String spelling) {
         return named(spelling).orElseThrow();
     }
 }

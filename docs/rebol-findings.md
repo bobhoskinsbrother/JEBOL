@@ -4581,9 +4581,9 @@ function spec block in the error", says the C above the line - and it is the mor
 the two, because a stray set-word means little without the specification around it.
 
 **One set-word is allowed: `return:` followed by a block naming what the function answers.**
-Red writes a function that way and the C allows it so the same definition reads in both - "It
+Red writes a function that way and the C allows it so the same functionDefinition reads in both - "It
 will be ignored while evaluating", says the comment, and it is. **One only**: a second
-`return:` is a malformed definition like any other set-word.
+`return:` is a malformed functionDefinition like any other set-word.
 
 **A type block holds words, not datatypes.** `integer!` is a word the system context binds to
 a datatype, and the reader hands it over as written, so the name is resolved when the spec is
@@ -5246,7 +5246,7 @@ object reaches its parent and can place a word the object itself has not
 got. That is recorded as an open question in `spec/natives.allium` rather
 than quietly implemented one way or the other. Entry 2 is pinned by
 `BindingNamesTheHolderTest` instead of by the corpus, because what it
-asserts is about where a definition lands rather than about a value.
+asserts is about where a functionDefinition lands rather than about a value.
 Entry 17 is pinned by `WordCharactersTest` and by the corpus. Entries 18
 and 19 are pinned by `ProtectByNameTest` and `ProtectedObjectTest`, and
 entry 20 by `ConversionFamilyTest`, which carries the list of forty-five names

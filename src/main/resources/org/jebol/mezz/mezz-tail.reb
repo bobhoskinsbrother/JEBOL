@@ -13,7 +13,7 @@ REBOL [
 
 funco: :func ; save it for expert usage
 
-; Final FUNC definition:
+; Final FUNC functionDefinition:
 func: funco [
 	{Defines a user function with given spec and body.}
 	spec [block!] {Help string (opt) followed by arg words (and opt type and string)}

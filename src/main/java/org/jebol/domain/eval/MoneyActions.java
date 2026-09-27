@@ -18,7 +18,7 @@ public final class MoneyActions {
         this.amount = amount;
     }
 
-    Value combinedWith(Value other, ArithmeticOperation operation) {
+    public Value combinedWith(Value other, ArithmeticOperation operation) {
         return withinTheDeciRange(
                 amountCombined(amount.amount(), widenedToMeet(other, operation), operation));
     }
@@ -61,7 +61,7 @@ public final class MoneyActions {
         return amount.amount().signum() == 0;
     }
 
-    static BigDecimal asBigDecimal(Value value) {
+    public static BigDecimal asBigDecimal(Value value) {
         return switch (value) {
             case MoneyValue money -> money.amount();
             case IntegerValue integer -> BigDecimal.valueOf(integer.magnitude());

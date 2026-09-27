@@ -34,6 +34,5 @@ public interface RefinedCallable {
      *     without their slashes. Empty for a plain call.
      * @return the value produced, never null
      */
-    Value call(List<Value> arguments, Evaluator evaluator, Context context,
-            Set<String> refinements);
+    Value call(List<Value> arguments, Evaluator evaluator, Context context, Set<String> refinements);
 }

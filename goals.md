@@ -281,17 +281,24 @@ the C comes before improving on it.** This is a port. A place where JEBOL
 answers something a real 3.22.5 does not is a defect; a place where both are
 weak is a decision, and it waits.
 
-So the order runs: the places JEBOL and a real 3.22.5 give different answers
-(1 to 5), then the largest engineering piece and the two capabilities that
-are half-built (6 to 8), then the two security goals (9 and 10) -- which are
-divergences from the C rather than gaps against it, because Rebol does not
-authenticate a server or check a fetched module either -- and the speed,
-tooling and comfort work last (11 to 13).
+So the order runs: the registration contract first (1), then the places
+JEBOL and a real 3.22.5 give different answers (2 to 6), then the largest
+engineering piece and the two capabilities that are half-built (7 to 9),
+then the two security goals (10 and 11) -- which are divergences from the C
+rather than gaps against it, because Rebol does not authenticate a server
+or check a fetched module either -- and the speed, tooling and comfort work
+last (12 to 14).
 
-**Within the divergences, cheap before large.** Goal 1 is four declarations
-in a file the build already loads; goal 4 is a hundred and forty answers to
-work through. That is deliberate: a small goal finished is a measure that
-moves, and this file is read by somebody deciding what to pick up next.
+**The first one is first because of what it unblocks, not its size.** It is
+the only goal that other goals are waiting on: two of the five schemes, six
+error ids nothing can raise, fourteen withheld modules, and the shape the
+type-major refactor needs to land in. Its own list is at the end of it.
+
+**Within the divergences, cheap before large.** The scheme goal is two
+devices and a vendored file; the MAKE and TO goal is a hundred and forty
+answers to work through. That is deliberate: a small goal finished is a
+measure that moves, and this file is read by somebody deciding what to pick
+up next.
 
 Several goals own no `known-gaps.txt` entries, which is not the same as being
 small: no assertion in Rebol's suite asks whether an error id can be raised or
@@ -332,7 +339,146 @@ the JVM does not bring. That stays true. Somebody who wants more than the borrow
 codec gives adds the library and a bridge to it themselves, and with neither
 present nothing registers and nothing is attempted.
 
-### 1. The five schemes: the names are registered, the devices are not
+### 1. One registration contract, used inwards first and outwards after
+
+**Everything a Java library would need is already built. What is missing is
+a contract saying what the thing being registered is.**
+
+| the piece | where it already is |
+| --- | --- |
+| a Java function a script can call | `Interpreter.defineFunction(name, arity, HostFunction)` |
+| proof it works | `InteropTest.rebolCanCallAHostFunction` |
+| values crossing both ways | `HostValues.toHost` and `fromHost` |
+| a grant gating the crossing | `bounds.hostAccess().allowsCalling()`, refused as `host-access` |
+| a throwable crossing safely | any becomes a catchable `host-error` |
+| registering a codec | `register-codec` in `sys-codec.reb`, about forty callers |
+| registering a scheme | `sys/make-scheme`, thirteen callers in `init-schemes` |
+
+A Java PDF library is reachable today: call `defineFunction` a few times,
+then run `register-codec [name: 'pdf decode: :pdf-decode]`. Nothing new has
+to be plumbed. But registering a bare function says nothing about what it
+**is**, so nothing can ask what is present, grant one capability while
+withholding another, or report that an extension failed to start rather
+than that a word was missing.
+
+`FunctionDefinition` is the beginning of that contract: a name, its parameters, its
+behaviour, its refinements, and `registerWordDefinition` taking the
+interface so a shipped built-in and an added library register the same way.
+
+#### Part one: put Natives on the contract
+
+**This comes first, and not because extensions need it.** `Natives` is
+fifteen thousand lines that define every built-in through a private
+`define` and dispatch through switches on a verb or a scheme name. Moving
+those onto `FunctionDefinition` is the type-major refactor's delivery mechanism,
+and doing it first means the contract is proved against four hundred real
+cases before anything outside depends on it. A contract drawn from one
+example and published is a contract that will be wrong.
+
+The test that it was drawn correctly is that **nothing outside can tell a
+capability this build ships from one a library added**.
+
+Work, roughly in order:
+
+- one `FunctionDefinition` per built-in, replacing the `define(...)` call
+- the shared helpers off the interface: `acceptsAllNumbers` is on `FunctionDefinition`
+  today because it needed somewhere to live, and a scheme functionDefinition should
+  not inherit a method about numeric parameter lists. An abstract class the
+  arithmetic definitions extend is the likelier home
+- accessors in the house style. `getName` and `parameters` are JavaBean
+  prefixes where everything around them reads `spelling()`, `parameters()`,
+  `behaviours()`. This interface is the one an outside library implements,
+  so its names are the ones that matter most
+- the registry as an instance the interpreter owns, not a static. A static
+  collection cannot be substituted in a test and cannot be added to
+- the switches go as their arms become definitions
+
+#### Part two: what may be replaced, and what may not
+
+**There are two separations here and only one of them is a restriction.**
+
+*Shadowing has to keep working.* A script writing `add: func [a b][99]` and
+getting 99 is ordinary REBOL and a real 3.22.5 allows it. Closing that
+would break parity.
+
+*Replacing must not.* Measured on 2026-09-27:
+
+| | the C | JEBOL |
+| --- | --- | --- |
+| `add: func [a b][99]` then `add 1 2` | 99 | 99 |
+| then `lib/add 1 2` | **3** | **99** |
+
+In Rebol the script's functionDefinition lands in the user context and shadows;
+lib keeps its own. Here it overwrites lib. So the separation this goal
+needs at the registry is already missing one layer below it, and the two
+are the same problem: `Natives` does not distinguish what it ships from
+what a script adds.
+
+The shape that answers both: two collections the registry owns, the
+built-ins sealed once boot has finished and the registered extensions
+consulted second. A lookup tries the built-ins first, so nothing registered
+later can shadow one. Registering a name the built-ins already hold is
+refused as `already-used`, which is a real error id meaning exactly that.
+Sealed after boot rather than immutable throughout, because boot is what
+fills it.
+
+There is a precedent to follow: `defineFunction` writes to `userContext`
+and not to lib, so host functions already land where they cannot clobber a
+built-in.
+
+#### Part three: the other kinds
+
+A scheme is not a function and has no parameters or behaviour in the same
+sense: it has a spec, an init, an awake and an actor. A codec has a name,
+suffixes, and three functions. So `FunctionDefinition` is the function contract and
+the others are siblings, with the registration overloaded per kind rather
+than one contract wide enough to leave most of itself empty in every use.
+
+Settle this before the second kind is written, because it is the difference
+between two interfaces and one.
+
+#### Part four: how a library arrives
+
+Only after the three above, and the question underneath it is not
+mechanical. See the open question below.
+
+#### What this unlocks
+
+Listed because it is the reason this is first rather than large:
+
+- **`serial`**, from the scheme goal below, needs a device the JDK has not
+  got, so it is a dependency or it is nothing, and the jar takes none. An
+  extension is the shape of that answer.
+- **`midi`**, likewise, except the JDK does have `javax.sound.midi`. It
+  could be built in, and it is still a device nobody has asked for, which
+  makes it a better extension than a core capability.
+- **Six error ids that can never be raised** because this build has no
+  extensions: `bad-extension`, `extension-init`, `no-extension`,
+  `command-fail`, `bad-command`, `handle-exists`. They are counted as
+  unraisable in the goal on what reaching zero would not prove, and that
+  count comes down without touching the error catalogue.
+- **Fourteen compiled modules withheld** from `system/modules` -- blend2d,
+  sqlite, webp, brotli, zstd and the rest -- because their addresses send
+  IMPORT after a shared library this build cannot open. Several have a JVM
+  library that would serve.
+- **PDF and everything like it.** The section above already states the
+  answer: somebody who wants more than the borrowed codec adds the library
+  and a bridge themselves, and with neither present nothing registers. That
+  was written before there was a mechanism to point at.
+- **`callback`**, which is where this was found. Its scheme is registered
+  and nothing can drive it, because in the C the only thing that posts a
+  callback event is a loaded extension. On the JVM a provider calling back
+  into REBOL is an ordinary method call, so the C's whole `RXIARG`
+  marshalling layer has no counterpart and the hard part does not exist.
+
+It does not help the parity goals or the tooling. Those stay where they
+are.
+
+open question "Should an extension be discovered from the classpath or handed over by the host? Discovery is what makes `drop the jar in and it works` true, which is the point of the idea, and it is safer than the C's answer because nothing is fetched at run time: the classpath is assembled by whoever built the application, not by a script. Against it, every other capability in this port is handed over one at a time and refused unless granted, and discovery inverts that into presence being permission. The middle -- discover what is there, still require a grant before a script reaches it -- keeps both properties and costs the host one extra step, and is the reading this file would take if nobody argues otherwise. What settles it is whether an extension is safe by virtue of someone having chosen to ship it, which is true of a codec and much less true of a device."
+
+---
+
+### 2. The five schemes: the names are registered, the devices are not
 
 **The names are done and that is all that is done.** `callback`,
 `clipboard`, `serial` and `udp` are declared in `sys-ports.reb`'s
@@ -458,7 +604,7 @@ would pin the defect, and one asserting `expect-arg` would be red.
 
 ---
 
-### 2. Five divergences the error catalogue work uncovered
+### 3. Five divergences the error catalogue work uncovered
 
 The catalogue goal that stood here is finished and what it found is not. These
 five were each measured against `./r3-head`, none of them is about which ids
@@ -573,7 +719,7 @@ id is filed under a category the catalogue disagrees with.
 
 ---
 
-### 3. What reaching zero would not prove
+### 4. What reaching zero would not prove
 
 None of this is on `known-gaps.txt` and none of it can be, because the suite
 tests what functions **return** and these are all about what functions **say
@@ -667,7 +813,7 @@ comparing will agree with anything.
 
 ---
 
-### 4. What the suite does not ask
+### 5. What the suite does not ask
 
 **The suite is the measure, and it is not the whole surface.** Running all 930
 combinations of MAKE and TO against fifteen target types and thirty-one source
@@ -776,7 +922,7 @@ found two things that four separate readings of the C had not. See
 
 ---
 
-### 5. Three found by reading Rebol's own declarations
+### 6. Three found by reading Rebol's own declarations
 
 **All three came out of one piece of work and none of them came from a test.**
 The system object, the operator table and the console modes were each written
@@ -833,7 +979,7 @@ takes, and several of the measures in this file are written that way.
 
 ---
 
-### 6. The type-major refactor
+### 7. The type-major refactor
 
 **The original complaint, and much the largest piece left.** One `t-*.c` per
 increment: a bitset must answer what happens when you append to it, and answer
@@ -841,13 +987,64 @@ it in the class called bitset. Today that answer is an arm in a switch inside a
 fifteen-thousand-line `Natives`, and an enum constant with a body is the same
 switch wearing a jacket.
 
-**Two of the targets this goal used to name are gone.** `Arithmetic.Kind` and
-`Combining.SetKind` were both replaced by a class per member behind a
-registry, along with `Arithmetic.Operation`, `VectorMath.Operation` and
-`Combining.Bitwise`; the parse dialect went the same way, from one enum and a
-switch to thirty keyword classes behind `ParseKeyword.BY_SPELLING`. Those are
-the worked examples now, beside `org.jebol.domain.date.part`. What is left is
-the rest of `Natives`.
+**Some of the targets this goal used to name are gone and two are not.**
+`Arithmetic.Kind` went, along with `Arithmetic.Operation`,
+`VectorMath.Operation` and `Combining.Bitwise`; the parse dialect went the
+same way, from one enum and a switch to thirty keyword classes behind
+`ParseKeyword.BY_SPELLING`; and the arithmetic type switch is now eleven
+classes behind `ArithmeticType`. Those are the worked examples, beside
+`org.jebol.domain.date.part`.
+
+`Combining.BitKind` and `Combining.SetKind` are **still enums with bodies**,
+at lines 62 and 249 of `Combining.java`. This file said otherwise for a
+while because the check was a search for the qualified name, which an
+unqualified inner enum never matches. Search for `enum BitKind`, not for
+`Combining.BitKind`.
+
+#### The operand kinds, and how the three fit together
+
+`ArithmeticType` already asks each kind `shouldHandle(left, right)` and then
+`combine(left, right, operation)`. `BitKind` asks `claims` and `combine`
+with a bitwise operation. They are the same pair with a different operation
+type, which makes a shared shape earned rather than speculative -- this is
+the third variant, not the first.
+
+Four of `BitKind`'s six members already exist as `ArithmeticType` classes:
+
+| | arithmetic | bitwise | sets |
+| --- | --- | --- | --- |
+| Vectors, Points, Tuples, WholeNumbers | yes | yes | |
+| Truths, Octets | | yes | |
+| Characters, Dates, Amounts, Durations, Fractions, and the two mixed pairs | yes | | |
+| Bitsets, Typesets, Text, Maps, Blocks | | | yes |
+
+So one class per kind, carrying an overloaded `combine` for each operation
+type it can serve. Three things decided while looking at it:
+
+- **`claims` cannot be shared for all four.** Vectors and WholeNumbers ask
+  the identical question on both sides. Points and Tuples do not: arithmetic
+  claims `left instanceof PairValue || right instanceof PairValue` where
+  bitwise claims only `left instanceof PairValue`. Merging them would send
+  `5 and 1.2.3` somewhere new. Keep the question per operation, and probe
+  the mixed operands against `./r3-head` before merging rather than after.
+- **Generics will not express this.** A class cannot implement
+  `OperandKind<ArithmeticOperation>` and `OperandKind<BitwiseOperation>` at
+  once; Java forbids the same generic interface twice with different
+  arguments. Two plain interfaces, each with its own `claims` and its own
+  `combine`, and a class implements whichever apply. Nothing then carries an
+  arm it has no answer for.
+- **Sets stay out.** They share no member with either, work on collections
+  rather than numbers, and their combine takes a `TwoSets` carrying the
+  operation, case-sensitivity and stride. A third interface of the same
+  shape, with no supertype over the three.
+
+**One measured cost to fix while doing it.** `Arithmetic.arithmeticTypes()`
+builds a fresh list of eleven new objects on every arithmetic operation. Two
+million adds allocate seventy-two megabytes of garbage. The list is
+constant: it wants building once, and held by a registry instance rather
+than returned from a static.
+
+What is left after that is the rest of `Natives`.
 
 An enum does earn its keep, but only as a **registry**: it is right for the name,
 the number and the closed set, and wrong for the behaviour, which goes in a class
@@ -1075,7 +1272,7 @@ wrong directory.
 
 ---
 
-### 7. Graphics -- DRAW is done; what is left is VID and the old markup path
+### 8. Graphics -- DRAW is done; what is left is VID and the old markup path
 
 **Every command the dialect table declares is painted**, measured by
 extracting both lists on 2026-09-13: `dial-draw.reb` declares 35 drawing
@@ -1142,7 +1339,7 @@ path, VID, Android, and the events-name-the-wrong-window one.
 
 ---
 
-### 8. Loose ends
+### 9. Loose ends
 
 **A task is made and read and never run.** The datatype is whole -- `make
 task!` builds the five-field header, the fields are read and written through a
@@ -1191,7 +1388,7 @@ goals above.
 
 ---
 
-### 9. Check the certificate -- the TLS client authenticates nobody
+### 10. Check the certificate -- the TLS client authenticates nobody
 
 **Found on 12 September 2026, by reading `prot-tls.reb` rather than by a test
 failing.** It owns no `known-gaps.txt` entries, because no assertion in Rebol's
@@ -1316,7 +1513,7 @@ does not control should know that before it does.
 
 ---
 
-### 10. Code from outside is not verified -- no checksum on a fetched module
+### 11. Code from outside is not verified -- no checksum on a fetched module
 
 **Nothing crosses the wire today**, which is why this is a goal rather than a
 live hole: the thirteen modules this build has no other way to reach are bundled
@@ -1364,7 +1561,7 @@ wants that more than it wants either check.
 
 ---
 
-### 11. The boot -- the warm figure is the one that costs
+### 12. The boot -- the warm figure is the one that costs
 
 **Measured 2026-09-26: about 495ms for the first interpreter and about 50ms
 once the JVM has settled**, averaged over twenty after twenty warm-up builds.
@@ -1394,7 +1591,7 @@ already in that allocation path, and it costs about 2ms of the warm figure.
 
 ---
 
-### 12. A debugger
+### 13. A debugger
 
 **Two halves, and the file has learned to say which is which.** One is parity
 work with a reference standing behind it. The other is a feature nothing can
@@ -1455,7 +1652,7 @@ before they reach for a debugger.
 
 ---
 
-### 13. LLM-friendly MCP tools
+### 14. LLM-friendly MCP tools
 
 **The reader will only ever be an LLM, and that decides the design.** A model
 does not misunderstand, it infers confidently from training data that is mostly
@@ -1612,7 +1809,7 @@ character. The one that did not was `empty?`, and it turned out not to be a
 fork either.
 
 **The prelude's copies are replaced as Rebol's library loads.** 32 of the 36
-are also defined in a vendored `mezz` file, and the definition standing at
+are also defined in a vendored `mezz` file, and the functionDefinition standing at
 runtime is the library's: `collect`'s body at runtime is
 `mezz-series.reb`'s, not the prelude's, and the two differ. The prelude's
 versions exist so that the prelude and the earliest library files can run at

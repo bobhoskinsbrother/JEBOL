@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.eval.arithmetic.BitwiseOperation;
+import org.jebol.domain.eval.definition.*;
 import org.jebol.domain.eval.sets.SetOperation;
 
 import org.jebol.domain.date.DateMaking;
@@ -508,7 +509,7 @@ public final class Natives {
         return parameters;
     }
 
-    private static List<Parameter> takesNumbers(String... names) {
+    private static List<Parameter> acceptsNumbers(String... names) {
         Set<Datatype> numbers = Typeset.NUMBER.membersAnd(
                 Datatype.MONEY, Datatype.PAIR, Datatype.TUPLE,
                 Datatype.TIME, Datatype.DATE, Datatype.CHAR, Datatype.VECTOR);
@@ -519,20 +520,19 @@ public final class Natives {
         return parameters;
     }
 
+    private void registerFunctionDefinition(FunctionDefinition functionDefinition) {
+        String name = functionDefinition.name();
+        definitions.put(name, new NativeValue(name, functionDefinition.parameters(), functionDefinition.refinements(), of()));
+        behaviours.put(name, functionDefinition.behaviour());
+    }
+
+
     private void defineArithmetic() {
-        define("add", takesNumbers("value1", "value2"),
-                (arguments, evaluator, context) ->
-                        Arithmetic.sum(arguments.get(0), arguments.get(1)));
-        define("subtract", takesNumbers("value1", "value2"),
-                (arguments, evaluator, context) ->
-                        Arithmetic.difference(arguments.get(0), arguments.get(1)));
-        define("multiply", takesNumbers("value1", "value2"),
-                (arguments, evaluator, context) ->
-                        Arithmetic.product(arguments.get(0), arguments.get(1)));
-        define("divide", takesNumbers("value1", "value2"),
-                (arguments, evaluator, context) ->
-                        Arithmetic.quotient(arguments.get(0), arguments.get(1)));
-        define("remainder", takesNumbers("value1", "value2"),
+        registerFunctionDefinition(new AddFunctionDefinition());
+        registerFunctionDefinition(new SubtractFunctionDefinition());
+        registerFunctionDefinition(new MultiplyFunctionDefinition());
+        registerFunctionDefinition(new DivideFunctionDefinition());
+        define("remainder", acceptsNumbers("value1", "value2"),
                 (arguments, evaluator, context) ->
                         Arithmetic.remainder(arguments.get(0), arguments.get(1)));
         define("square-root", takesOnlyNumbers("value"),
@@ -794,7 +794,7 @@ public final class Natives {
         define("prime?", takesWholeNumbers("value"),
                 (arguments, evaluator, context) -> LogicValue.of(
                         isPrime(wholeNumberOf(arguments.get(0), "prime?"))));
-        define("integer-divide", takesNumbers("dividend", "divisor"),
+        define("integer-divide", acceptsNumbers("dividend", "divisor"),
                 (arguments, evaluator, context) ->
                         Arithmetic.wholeQuotient(arguments.get(0), arguments.get(1)));
 
@@ -829,7 +829,7 @@ public final class Natives {
                             Math.pow(Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1))));
                 });
 
-        define("negate", withBitsets(takesNumbers("value")),
+        define("negate", withBitsets(acceptsNumbers("value")),
                 (arguments, evaluator, context) -> arguments.getFirst()
                         instanceof BitsetValue members
                         ? members.complemented()
@@ -3162,12 +3162,12 @@ public final class Natives {
                     return trouble < 0 ? NoneValue.none() : bytes.atIndex(trouble);
                 });
 
-        define("negative?", takesNumbers("value"),
+        define("negative?", acceptsNumbers("value"),
                 (arguments, evaluator, context) -> LogicValue.of(
                         arguments.get(0) instanceof PairValue pair
                                 ? bothHalves(pair, half -> half < 0)
                                 : Comparison.asDouble(arguments.get(0)) < 0));
-        define("positive?", takesNumbers("value"),
+        define("positive?", acceptsNumbers("value"),
                 (arguments, evaluator, context) -> LogicValue.of(
                         arguments.get(0) instanceof PairValue pair
                                 ? bothHalves(pair, half -> half > 0)

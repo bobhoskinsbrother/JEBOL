@@ -22,7 +22,7 @@ public final class TimeActions {
         this.span = span;
     }
 
-    Value combinedWith(Value right, ArithmeticOperation operation) {
+    public Value combinedWith(Value right, ArithmeticOperation operation) {
         if (right instanceof TimeValue other) {
             return againstAnotherTime(other, operation);
         }
@@ -42,7 +42,7 @@ public final class TimeActions {
         return addedInWholeNanosecondsTo(right, operation);
     }
 
-    Value takenBy(Value left, ArithmeticOperation operation) {
+    public Value takenBy(Value left, ArithmeticOperation operation) {
         boolean allowed = operation.isCommutative()
                 || (operation.subtractsOneFromTheOther() && left instanceof IntegerValue);
         if (!allowed) {

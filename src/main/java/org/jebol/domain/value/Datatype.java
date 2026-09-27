@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -102,17 +103,11 @@ public enum Datatype {
         this.spelling = spelling;
     }
 
-    /** The REBOL name without its trailing exclamation mark. */
     public String spelling() {
         return spelling;
     }
 
-    /**
-     * The datatype a name stands for, with or without its exclamation
-     * mark. Empty when the name is not a datatype's, because a bare word
-     * in a block is far more often something else.
-     */
-    public static java.util.Optional<Datatype> named(String spelling) {
+    public static Optional<Datatype> named(String spelling) {
         String wanted = spelling.endsWith("!")
                 ? spelling.substring(0, spelling.length() - 1)
                 : spelling;
@@ -124,7 +119,6 @@ public enum Datatype {
         return java.util.Optional.empty();
     }
 
-    /** The REBOL name as written in source, including the exclamation mark. */
     public String literalSpelling() {
         return spelling + "!";
     }
@@ -145,14 +139,6 @@ public enum Datatype {
         return ANY_WORD.contains(this);
     }
 
-    /**
-     * Whether this is a series datatype.
-     *
-     * <p>The last column of `boot/types.reb` is the authority, and it puts
-     * `image` in `series` beside the strings, the blocks and the binary. An image
-     * is a series whose element is four bytes, so every navigation action follows
-     * from the membership rather than being written for it.
-     */
     public boolean isSeries() {
         return isAnyString() || isAnyBlock()
                 || this == BINARY || this == IMAGE || this == VECTOR;

@@ -15,7 +15,7 @@ gets eight of these warnings for `StringDatatype`, `BlockDatatype`,
 warning disappears, which is how it was confirmed.
 
 `scripts/check-spec.sh` prints these. Filter with
-`grep -v "definition.unused\|entity.unused"` when you want the real
+`grep -v "functionDefinition.unused\|entity.unused"` when you want the real
 output.
 
 **`allium model` doesn't export variants at all.** Only `allium parse`

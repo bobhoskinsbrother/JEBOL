@@ -15,7 +15,7 @@ public final class PairActions {
         this.left = left;
     }
 
-    Value combinedWith(Value right, ArithmeticOperation operation) {
+    public Value combinedWith(Value right, ArithmeticOperation operation) {
         refuseWhatIsNotAPairOrAPlainNumber(left);
         refuseWhatIsNotAPairOrAPlainNumber(right);
         if (operation.needsANonZeroDivisor()) {
