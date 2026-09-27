@@ -751,7 +751,7 @@ public final class Natives {
                     case LogicValue truth -> LogicValue.of(!truth.truth());
                     case IntegerValue whole -> IntegerValue.of(~whole.magnitude());
                     case TypesetValue kinds -> new TypesetActions(kinds).complemented();
-                    case TupleValue tuple -> new TupleActions(tuple).complemented();
+                    case TupleValue tuple -> new TupleActions().complemented(tuple);
                     case Value subject when Actions.of(subject).isPresent() ->
                             Actions.of(subject).orElseThrow().complemented();
                     default -> raiseWrongArgument(

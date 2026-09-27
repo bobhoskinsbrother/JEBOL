@@ -334,10 +334,6 @@ class RebolSuiteTest {
                 .as("these name no assertion, so nothing can ever take them off "
                         + "the list; delete them")
                 .isEmpty();
-        assertThat(failingOnRebolToo().stream().filter(one -> !live.contains(one)).toList())
-                .as("these name no assertion either, and a list of findings "
-                        + "about assertions that are not there is not a finding")
-                .isEmpty();
     }
 
     @Test

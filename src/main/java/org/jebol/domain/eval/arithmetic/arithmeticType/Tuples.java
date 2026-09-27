@@ -8,6 +8,12 @@ import org.jebol.domain.value.Value;
 
 public class Tuples implements ArithmeticType {
 
+    private final TupleActions actions;
+
+    public Tuples() {
+        actions = new TupleActions();
+    }
+
     @Override
     public boolean shouldHandle(Value left, Value right) {
         return left instanceof TupleValue || right instanceof TupleValue;
@@ -15,7 +21,6 @@ public class Tuples implements ArithmeticType {
 
     @Override
     public Value combine(Value left, Value right, ArithmeticOperation operation) {
-        return new TupleActions(left).combinedWith(right, operation);
+        return actions.combinedWith(left, right, operation);
     }
-
 }

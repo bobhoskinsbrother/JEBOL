@@ -8,7 +8,7 @@ import org.jebol.domain.value.Value;
 
 public class Points implements ArithmeticType {
 
-                 @Override
+    @Override
     public boolean shouldHandle(Value left, Value right) {
         return left instanceof PairValue || right instanceof PairValue;
     }

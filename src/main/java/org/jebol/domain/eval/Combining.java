@@ -1,28 +1,23 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.eval.arithmetic.BitwiseOperation;
+import org.jebol.domain.eval.bit.bitType.BitType;
+import org.jebol.domain.eval.bit.bitType.Bitsets;
+import org.jebol.domain.eval.bit.bitType.Characters;
+import org.jebol.domain.eval.bit.bitType.Datatypes;
+import org.jebol.domain.eval.bit.bitType.Octets;
+import org.jebol.domain.eval.bit.bitType.Points;
+import org.jebol.domain.eval.bit.bitType.Truths;
+import org.jebol.domain.eval.bit.bitType.Tuples;
+import org.jebol.domain.eval.bit.bitType.Typesets;
+import org.jebol.domain.eval.bit.bitType.Vectors;
+import org.jebol.domain.eval.bit.bitType.WholeNumbers;
 import org.jebol.domain.eval.sets.SetOperation;
-
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.TypesetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.VectorValue;
+import org.jebol.domain.value.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 
 public final class Combining {
 
@@ -30,7 +25,7 @@ public final class Combining {
     }
 
     public static Value bitwise(Value left, Value right, BitwiseOperation operation) {
-        return theBitKindThatClaims(left, right).combine(left, right, operation);
+        return theBitTypeThatHandles(left, right).combine(left, right, operation);
     }
 
     public static Value sets(Value first, Value second, SetOperation how) {
@@ -44,11 +39,11 @@ public final class Combining {
         return theSetKindThatClaims(first, second).combine(asked);
     }
 
-    private static BitKind theBitKindThatClaims(Value left, Value right) {
-        return Arrays.stream(BitKind.values())
-                .filter(kind -> kind.claims(left, right))
+    private static BitType theBitTypeThatHandles(Value left, Value right) {
+        return bitTypes().stream()
+                .filter(kind -> kind.shouldHandle(left, right))
                 .findFirst()
-                .orElse(BitKind.WHOLE_NUMBERS);
+                .orElseThrow(() -> Raised.of(EvaluationFailure.EXPECT_ARG, left));
     }
 
     private static SetKind theSetKindThatClaims(Value first, Value second) {
@@ -59,131 +54,20 @@ public final class Combining {
                         first instanceof BlockValue ? second : first, "a set operation"));
     }
 
-    private enum BitKind {
+    private static List<BitType> bitTypes() {
 
-        VECTORS {
-            @Override
-            boolean claims(Value left, Value right) {
-                return VectorMath.isVectorArithmetic(left, right);
-            }
-
-            @Override
-            Value combine(Value left, Value right, BitwiseOperation operation) {
-                if (!(left instanceof VectorValue)) {
-                    throw Arithmetic.notRelated(left, right);
-                }
-                return VectorMath.done(left, right, operation);
-            }
-        },
-
-        TRUTHS {
-            @Override
-            boolean claims(Value left, Value right) {
-                return left instanceof LogicValue && right instanceof LogicValue;
-            }
-
-            @Override
-            Value combine(Value left, Value right, BitwiseOperation operation) {
-                boolean ours = left.isTruthy();
-                boolean theirs = right.isTruthy();
-                return LogicValue.of(operation.onLogics(ours, theirs));
-            }
-        },
-
-        POINTS {
-            @Override
-            boolean claims(Value left, Value right) {
-                return left instanceof PairValue;
-            }
-
-            @Override
-            Value combine(Value left, Value right, BitwiseOperation operation) {
-                PairValue point = (PairValue) left;
-                return PairValue.of(
-                        bitsOf(point.x(), PairActions.firstHalfOf(right), operation),
-                        bitsOf(point.y(), PairActions.secondHalfOf(right), operation));
-            }
-
-            private long bitsOf(double ours, double theirs, BitwiseOperation operation) {
-                return combinedBits(
-                        roundedHalfUp(ours), roundedHalfUp(theirs), operation);
-            }
-        },
-
-        TUPLES {
-            @Override
-            boolean claims(Value left, Value right) {
-                return left instanceof TupleValue;
-            }
-
-            @Override
-            Value combine(Value left, Value right, BitwiseOperation operation) {
-                return TupleActions.octetByOctet(left, right,
-                        (octet, against, fractional) ->
-                                combinedBits(octet, (long) against, operation));
-            }
-        },
-
-        OCTETS {
-            @Override
-            boolean claims(Value left, Value right) {
-                return left instanceof BinaryValue && right instanceof BinaryValue;
-            }
-
-            @Override
-            Value combine(Value left, Value right, BitwiseOperation operation) {
-                return octetsCycledAgainstTheLonger(
-                        (BinaryValue) left, (BinaryValue) right, operation);
-            }
-        },
-
-        WHOLE_NUMBERS {
-            @Override
-            boolean claims(Value left, Value right) {
-                return false;
-            }
-
-            @Override
-            Value combine(Value left, Value right, BitwiseOperation operation) {
-                return IntegerValue.of(combinedBits(
-                        wholeNumberOf(left), wholeNumberOf(right), operation));
-            }
-        };
-
-        abstract boolean claims(Value left, Value right);
-
-        abstract Value combine(Value left, Value right, BitwiseOperation operation);
-    }
-
-    private static Value octetsCycledAgainstTheLonger(
-            BinaryValue left, BinaryValue right, BitwiseOperation operation) {
-
-        BinaryValue longer = left.lengthFromHere() >= right.lengthFromHere() ? left : right;
-        BinaryValue shorter = longer == left ? right : left;
-        int cycle = shorter.lengthFromHere();
-        int[] combined = new int[longer.lengthFromHere()];
-        for (int at = 0; at < combined.length; at++) {
-            int theirs = cycle == 0 ? 0 : shorter.storage().at(shorter.index() + at % cycle);
-            combined[at] = (int) combinedBits(
-                    longer.storage().at(longer.index() + at), theirs, operation) & 0xFF;
-        }
-        return BinaryValue.of(combined);
-    }
-
-    static long combinedBits(long left, long right, BitwiseOperation operation) {
-        return operation.onWholeElements(left, right);
-    }
-
-    private static long roundedHalfUp(double half) {
-        return (long) Math.floor(half + 0.5);
-    }
-
-    private static long wholeNumberOf(Value value) {
-        if (value instanceof IntegerValue(long magnitude)) {
-            return magnitude;
-        }
-        throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                "and takes a whole number, not " + value.datatype().literalSpelling());
+        return List.of(
+                new WholeNumbers(),
+                new Characters(),
+                new Truths(),
+                new Points(),
+                new Tuples(),
+                new Octets(),
+                new Bitsets(),
+                new Typesets(),
+                new Datatypes(),
+                new Vectors()
+        );
     }
 
     private record TwoSets(

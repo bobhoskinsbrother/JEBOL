@@ -4953,6 +4953,174 @@ rule PrimeIsAnsweredForEveryWholeNumber {
     ensures: PredicateHolds(holds: has_no_divisor_below_its_square_root(subject))
 }
 
+-- === What AND, OR and XOR take on each side =================
+
+-- The three bit operators are dispatched on the value to their left, and
+-- that one fact explains everything else in this section. The left operand
+-- picks the code that runs; that code then decides which right operands it
+-- can work with, what datatype the answer is, and -- this is the part that
+-- surprises -- which failure is raised when it cannot work with the right
+-- operand at all.
+--
+-- There is no single "these two do not go together" failure. There are
+-- five, and which one you get depends on what is on the left rather than
+-- on what is wrong. `5 and 1.2.3` is not-related, `#{0F} and 1.2.3` is
+-- invalid-arg, and `integer! and 1.2.3` is cannot-use. All three are the
+-- same mistake, reported by three different datatypes' code.
+--
+-- The operator makes no difference. AND, OR and XOR accept exactly the
+-- same pairs and raise exactly the same failure on the same pair; only the
+-- answers differ.
+--
+-- Getting this wrong is cheap to do and expensive to find. JEBOL sent
+-- every pair it did not recognise to one fallback that read the left
+-- operand as a whole number, so it answered expect-arg almost everywhere
+-- the C answers one of the five, and where the left was an integer and the
+-- right a pair it cast the integer to a pair and killed the process.
+
+-- The ten datatypes in the declaration are the outer gate, and it closes
+-- before any per-datatype code runs. A decimal, a string, a date or a none
+-- is expect-arg on either side, from the argument check rather than from
+-- anything inside the operator.
+--
+-- Which is why the C's own handlers hold branches nothing can reach
+-- through these operators: t-logic.c reads a none on the right as false
+-- and t-tuple.c reads a decimal as a whole number, and neither will ever
+-- be asked to.
+rule BitOperationsTakeTenDatatypes {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: not (datatype_of(left) in {binary, bitset, char, datatype,
+        integer, logic, pair, tuple, typeset, vector}
+        and datatype_of(right) in {binary, bitset, char, datatype,
+        integer, logic, pair, tuple, typeset, vector})
+    ensures: LogicFailed(failure: expect_arg)
+}
+
+-- Past that gate the answer is always the left operand's datatype, never
+-- the right's and never a widening of the two. `5 and #"A"` is the integer
+-- 1 and `#"A" and 5` is the character whose codepoint is 1, which is the
+-- clearest statement of the rule available: the same two values, the same
+-- operator, two answers of different types.
+rule TheLeftOperandDecidesTheAnswersDatatype {
+    when: EvaluateLogicOperation(operation, left, right)
+    ensures: LogicResult(datatype: datatype_of(left))
+}
+
+-- A whole number on the left takes a whole number or a character on the
+-- right, and a character is read as its codepoint. Everything else of the
+-- ten is not-related.
+rule WholeNumberBitsTakeAWholeNumberOrACharacter {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: is_integer(left)
+    requires: not (is_integer(right) or is_char(right))
+    ensures: LogicFailed(failure: not_related)
+}
+
+-- A character on the left takes the same two, the other way round: a
+-- character or a whole number, and the answer is a character.
+rule CharacterBitsTakeACharacterOrAWholeNumber {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: is_char(left)
+    requires: not (is_char(right) or is_integer(right))
+    ensures: LogicFailed(failure: not_related)
+}
+
+-- A truth on the left takes only a truth, and the failure is expect-val
+-- rather than any of the other four. It is the only datatype of the ten
+-- that raises this one, and it is not a mistake in the C: `true and 5`
+-- reports that a logic was expected, naming what the code wanted rather
+-- than what it was given.
+rule TruthBitsTakeATruth {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: is_logic(left)
+    requires: not is_logic(right)
+    ensures: LogicFailed(failure: expect_val)
+}
+
+-- A pair on the left takes a pair or a whole number, the whole number
+-- applying to both halves. Everything else is not-related, so `1x2 and
+-- #"A"` raises although a character reads as a number everywhere a whole
+-- number does.
+rule PointBitsTakeAPointOrAWholeNumber {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: is_pair(left)
+    requires: not (is_pair(right) or is_integer(right))
+    ensures: LogicFailed(failure: not_related)
+}
+
+-- A tuple on the left takes a tuple or a whole number, the whole number
+-- applying to every octet. Everything else is not-related.
+rule TupleBitsTakeATupleOrAWholeNumber {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: is_tuple(left)
+    requires: not (is_tuple(right) or is_integer(right))
+    ensures: LogicFailed(failure: not_related)
+}
+
+-- A binary on the left takes a binary and nothing else, and the failure is
+-- invalid-arg. Not even a whole number is read as a byte: `#{0F} and 5` is
+-- refused where `5 and #"A"` is not.
+rule OctetBitsTakeOctets {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: is_binary(left)
+    requires: not is_binary(right)
+    ensures: LogicFailed(failure: invalid_arg)
+}
+
+-- A bitset on the left takes a bitset or a binary -- the binary read as
+-- the bits themselves -- and everything else is not-related. This is the
+-- one place a binary appears on the right of something that is not a
+-- binary.
+rule BitsetBitsTakeABitsetOrOctets {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: is_bitset(left)
+    requires: not (is_bitset(right) or is_binary(right))
+    ensures: LogicFailed(failure: not_related)
+}
+
+-- A typeset on the left takes a typeset or a datatype, the datatype read
+-- as the typeset holding only itself. Everything else is invalid-arg,
+-- the same failure a binary raises and for the same reason in the C.
+rule TypesetBitsTakeATypesetOrADatatype {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: is_typeset(left)
+    requires: not (is_typeset(right) or is_datatype(right))
+    ensures: LogicFailed(failure: invalid_arg)
+}
+
+-- A datatype on the left has no bit operations at all, and that includes a
+-- datatype on the right: `integer! and integer!` is cannot-use. A datatype
+-- is in the declaration only so that it can appear on the right of a
+-- typeset, and reading the declaration as permission to put one on the
+-- left is the mistake this rule exists to stop.
+rule ADatatypeHasNoBitOperations {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: is_datatype(left)
+    ensures: LogicFailed(failure: cannot_use)
+}
+
+-- A vector on the left takes a vector or a whole number, the whole number
+-- applying to every element. Everything else is cannot-use, which no other
+-- datatype of the ten raises for a right operand it dislikes.
+rule VectorBitsTakeAVectorOrAWholeNumber {
+    when: EvaluateLogicOperation(operation, left, right)
+    requires: is_vector(left)
+    requires: not (is_vector(right) or is_integer(right))
+    ensures: LogicFailed(failure: cannot_use)
+}
+
+-- Neither operand is changed. Worth stating because five of the ten
+-- datatypes carry their contents in a series that other values can share,
+-- and the C's own code for a bitset and a typeset writes the answer back
+-- over the left operand's slot before returning it. What it writes over is
+-- the copy on the stack, so `b1: charset "ab"  b1 and charset "bc"` leaves
+-- b1 holding a and b -- but the code reads as though it would not, and a
+-- port that followed it literally would quietly destroy the caller's set.
+rule BitOperationsChangeNeitherOperand {
+    when: EvaluateLogicOperation(operation, left, right)
+    ensures: LogicResult(left_unchanged: true, right_unchanged: true)
+}
+
 -- === Decimals and the maths natives ========================
 
 -- Three remainders, three definitions of division, and the names do not

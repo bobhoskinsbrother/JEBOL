@@ -14,13 +14,11 @@ public class WholeNumbers implements ArithmeticType {
 
     @Override
     public Value combine(Value left, Value right, ArithmeticOperation operation) {
-        return integerCombined(((IntegerValue) left).magnitude(),
-                ((IntegerValue) right).magnitude(), operation);
+        return integerCombined(((IntegerValue) left).magnitude(), ((IntegerValue) right).magnitude(), operation);
     }
 
     private Value integerCombined(long left, long right, ArithmeticOperation operation) {
         return operation.onWholeNumbers(left, right);
     }
-
 
 }

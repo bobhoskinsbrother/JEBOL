@@ -10,13 +10,10 @@ import org.jebol.domain.value.Value;
 
 public final class TupleActions {
 
-    private final Value left;
-
-    public TupleActions(Value left) {
-        this.left = left;
+    public TupleActions() {
     }
 
-    public Value complemented() {
+    public Value complemented(Value left) {
         int[] octets = ((TupleValue) left).segments();
         for (int at = 0; at < octets.length; at++) {
             octets[at] = 255 - octets[at];
@@ -24,20 +21,16 @@ public final class TupleActions {
         return TupleValue.of(octets);
     }
 
-    public Value combinedWith(Value right, ArithmeticOperation operation) {
+    public Value combinedWith(Value left, Value right, ArithmeticOperation operation) {
         return octetByOctet(left, right, (octet, against, fractional) ->
                 octetCombined(octet, against, fractional, operation));
     }
 
-    private static long octetCombined(
+    private long octetCombined(
             long octet, double against, boolean fractional,
             ArithmeticOperation operation) {
 
         return operation.onOctets(octet, against, fractional);
-    }
-
-    private static double roundedHalfAwayFromZero(double amount) {
-        return amount < 0 ? -Math.round(-amount) : Math.round(amount);
     }
 
     @FunctionalInterface
@@ -45,7 +38,7 @@ public final class TupleActions {
         long against(long octet, double amount, boolean fractional);
     }
 
-    public static Value octetByOctet(Value left, Value right, OctetWork work) {
+    public Value octetByOctet(Value left, Value right, OctetWork work) {
         refuseATimeBesideATuple(left, right);
         if (!(left instanceof TupleValue ours)) {
             throw Raised.cannotUse(left, "tuple arithmetic");
@@ -70,7 +63,7 @@ public final class TupleActions {
         return TupleValue.of(answer);
     }
 
-    private static void refuseATimeBesideATuple(Value left, Value right) {
+    private void refuseATimeBesideATuple(Value left, Value right) {
         if (left instanceof TimeValue || right instanceof TimeValue) {
             throw Raised.of(EvaluationFailure.NOT_RELATED,
                     DatatypeValue.of(Datatype.TIME),

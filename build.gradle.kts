@@ -1,6 +1,7 @@
 plugins {
     java
     application
+    jacoco
 }
 
 group = "org.jebol"
@@ -125,6 +126,14 @@ tasks.test {
 
 // The specifications are the primary artefact, so they are checked by the
 // same gate as the code rather than by a step somebody has to remember.
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
 val checkSpec by tasks.registering(Exec::class) {
     group = "verification"
     description = "Validate the Allium specifications in spec/"

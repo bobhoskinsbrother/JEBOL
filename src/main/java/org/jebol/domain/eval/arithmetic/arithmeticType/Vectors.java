@@ -11,6 +11,7 @@ import org.jebol.domain.value.VectorValue;
 import static org.jebol.domain.eval.Arithmetic.notRelated;
 
 public class Vectors implements ArithmeticType {
+
     @Override
     public boolean shouldHandle(Value left, Value right) {
         return VectorMath.isVectorArithmetic(left, right);
@@ -18,17 +19,13 @@ public class Vectors implements ArithmeticType {
 
     @Override
     public Value combine(Value left, Value right, ArithmeticOperation operation) {
-        if (!operation.worksOnVectors()
-                || (!(left instanceof VectorValue) && !operation.isCommutative())) {
+        if (!operation.worksOnVectors() || (!(left instanceof VectorValue) && !operation.isCommutative())) {
             throw notRelated(left, right);
         }
         Value other = left instanceof VectorValue ? right : left;
-        if (!(other instanceof VectorValue)
-                && !(other instanceof IntegerValue)
-                && !(other instanceof DecimalValue)) {
+        if (!(other instanceof VectorValue) && !(other instanceof IntegerValue) && !(other instanceof DecimalValue)) {
             throw notRelated(left, right);
         }
         return VectorMath.done(left, right, operation);
     }
-
 }

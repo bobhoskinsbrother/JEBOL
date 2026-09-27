@@ -43,11 +43,11 @@ public final class PairActions {
                 .quantity();
     }
 
-    static double firstHalfOf(Value value) {
+    public static double firstHalfOf(Value value) {
         return value instanceof PairValue pair ? pair.x() : Comparison.asDouble(value);
     }
 
-    static double secondHalfOf(Value value) {
+    public static double secondHalfOf(Value value) {
         return value instanceof PairValue pair ? pair.y() : Comparison.asDouble(value);
     }
 }

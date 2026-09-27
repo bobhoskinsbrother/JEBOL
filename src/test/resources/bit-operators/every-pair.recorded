@@ -1,0 +1,452 @@
+=== every pair of the ten datatypes the declaration accepts ===
+and~ (12) (10)                              | 8
+and~ (12) (false)                           | !not-related
+and~ (12) (10x12)                           | !not-related
+and~ (12) (10.12.6)                         | !not-related
+and~ (12) (#"J")                            | 8
+and~ (12) (#{33})                           | !not-related
+and~ (12) (charset "bc")                    | !not-related
+and~ (12) (any-block!)                      | !not-related
+and~ (12) (integer!)                        | !not-related
+and~ (12) (make vector! [integer! 8 [10 12 6]])| !not-related
+and~ (true) (10)                            | !expect-val
+and~ (true) (false)                         | #(false)
+and~ (true) (10x12)                         | !expect-val
+and~ (true) (10.12.6)                       | !expect-val
+and~ (true) (#"J")                          | !expect-val
+and~ (true) (#{33})                         | !expect-val
+and~ (true) (charset "bc")                  | !expect-val
+and~ (true) (any-block!)                    | !expect-val
+and~ (true) (integer!)                      | !expect-val
+and~ (true) (make vector! [integer! 8 [10 12 6]])| !expect-val
+and~ (12x10) (10)                           | 8x10
+and~ (12x10) (false)                        | !not-related
+and~ (12x10) (10x12)                        | 8x8
+and~ (12x10) (10.12.6)                      | !not-related
+and~ (12x10) (#"J")                         | !not-related
+and~ (12x10) (#{33})                        | !not-related
+and~ (12x10) (charset "bc")                 | !not-related
+and~ (12x10) (any-block!)                   | !not-related
+and~ (12x10) (integer!)                     | !not-related
+and~ (12x10) (make vector! [integer! 8 [10 12 6]])| !not-related
+and~ (12.10.6) (10)                         | 8.10.2
+and~ (12.10.6) (false)                      | !not-related
+and~ (12.10.6) (10x12)                      | !not-related
+and~ (12.10.6) (10.12.6)                    | 8.8.6
+and~ (12.10.6) (#"J")                       | !not-related
+and~ (12.10.6) (#{33})                      | !not-related
+and~ (12.10.6) (charset "bc")               | !not-related
+and~ (12.10.6) (any-block!)                 | !not-related
+and~ (12.10.6) (integer!)                   | !not-related
+and~ (12.10.6) (make vector! [integer! 8 [10 12 6]])| !not-related
+and~ (#"L") (10)                            | #"^H"
+and~ (#"L") (false)                         | !not-related
+and~ (#"L") (10x12)                         | !not-related
+and~ (#"L") (10.12.6)                       | !not-related
+and~ (#"L") (#"J")                          | #"H"
+and~ (#"L") (#{33})                         | !not-related
+and~ (#"L") (charset "bc")                  | !not-related
+and~ (#"L") (any-block!)                    | !not-related
+and~ (#"L") (integer!)                      | !not-related
+and~ (#"L") (make vector! [integer! 8 [10 12 6]])| !not-related
+and~ (#{0F10}) (10)                         | !invalid-arg
+and~ (#{0F10}) (false)                      | !invalid-arg
+and~ (#{0F10}) (10x12)                      | !invalid-arg
+and~ (#{0F10}) (10.12.6)                    | !invalid-arg
+and~ (#{0F10}) (#"J")                       | !invalid-arg
+and~ (#{0F10}) (#{33})                      | #{0310}
+and~ (#{0F10}) (charset "bc")               | !invalid-arg
+and~ (#{0F10}) (any-block!)                 | !invalid-arg
+and~ (#{0F10}) (integer!)                   | !invalid-arg
+and~ (#{0F10}) (make vector! [integer! 8 [10 12 6]])| !invalid-arg
+and~ (charset "ab") (10)                    | !not-related
+and~ (charset "ab") (false)                 | !not-related
+and~ (charset "ab") (10x12)                 | !not-related
+and~ (charset "ab") (10.12.6)               | !not-related
+and~ (charset "ab") (#"J")                  | !not-related
+and~ (charset "ab") (#{33})                 | #(bitset! #{})
+and~ (charset "ab") (charset "bc")          | #(bitset! #{00000000000000000000000020})
+and~ (charset "ab") (any-block!)            | !not-related
+and~ (charset "ab") (integer!)              | !not-related
+and~ (charset "ab") (make vector! [integer! 8 [10 12 6]])| !not-related
+and~ (any-string!) (10)                     | !invalid-arg
+and~ (any-string!) (false)                  | !invalid-arg
+and~ (any-string!) (10x12)                  | !invalid-arg
+and~ (any-string!) (10.12.6)                | !invalid-arg
+and~ (any-string!) (#"J")                   | !invalid-arg
+and~ (any-string!) (#{33})                  | !invalid-arg
+and~ (any-string!) (charset "bc")           | !invalid-arg
+and~ (any-string!) (any-block!)             | make typeset! []
+and~ (any-string!) (integer!)               | make typeset! []
+and~ (any-string!) (make vector! [integer! 8 [10 12 6]])| !invalid-arg
+and~ (integer!) (10)                        | !cannot-use
+and~ (integer!) (false)                     | !cannot-use
+and~ (integer!) (10x12)                     | !cannot-use
+and~ (integer!) (10.12.6)                   | !cannot-use
+and~ (integer!) (#"J")                      | !cannot-use
+and~ (integer!) (#{33})                     | !cannot-use
+and~ (integer!) (charset "bc")              | !cannot-use
+and~ (integer!) (any-block!)                | !cannot-use
+and~ (integer!) (integer!)                  | !cannot-use
+and~ (integer!) (make vector! [integer! 8 [10 12 6]])| !cannot-use
+and~ (make vector! [integer! 8 [12 10 6]]) (10)| #(int8! [8 10 2])
+and~ (make vector! [integer! 8 [12 10 6]]) (false)| !cannot-use
+and~ (make vector! [integer! 8 [12 10 6]]) (10x12)| !cannot-use
+and~ (make vector! [integer! 8 [12 10 6]]) (10.12.6)| !cannot-use
+and~ (make vector! [integer! 8 [12 10 6]]) (#"J")| !cannot-use
+and~ (make vector! [integer! 8 [12 10 6]]) (#{33})| !cannot-use
+and~ (make vector! [integer! 8 [12 10 6]]) (charset "bc")| !cannot-use
+and~ (make vector! [integer! 8 [12 10 6]]) (any-block!)| !cannot-use
+and~ (make vector! [integer! 8 [12 10 6]]) (integer!)| !cannot-use
+and~ (make vector! [integer! 8 [12 10 6]]) (make vector! [integer! 8 [10 12 6]])| #(int8! [8 8 6])
+or~ (12) (10)                               | 14
+or~ (12) (false)                            | !not-related
+or~ (12) (10x12)                            | !not-related
+or~ (12) (10.12.6)                          | !not-related
+or~ (12) (#"J")                             | 78
+or~ (12) (#{33})                            | !not-related
+or~ (12) (charset "bc")                     | !not-related
+or~ (12) (any-block!)                       | !not-related
+or~ (12) (integer!)                         | !not-related
+or~ (12) (make vector! [integer! 8 [10 12 6]])| !not-related
+or~ (true) (10)                             | !expect-val
+or~ (true) (false)                          | #(true)
+or~ (true) (10x12)                          | !expect-val
+or~ (true) (10.12.6)                        | !expect-val
+or~ (true) (#"J")                           | !expect-val
+or~ (true) (#{33})                          | !expect-val
+or~ (true) (charset "bc")                   | !expect-val
+or~ (true) (any-block!)                     | !expect-val
+or~ (true) (integer!)                       | !expect-val
+or~ (true) (make vector! [integer! 8 [10 12 6]])| !expect-val
+or~ (12x10) (10)                            | 14x10
+or~ (12x10) (false)                         | !not-related
+or~ (12x10) (10x12)                         | 14x14
+or~ (12x10) (10.12.6)                       | !not-related
+or~ (12x10) (#"J")                          | !not-related
+or~ (12x10) (#{33})                         | !not-related
+or~ (12x10) (charset "bc")                  | !not-related
+or~ (12x10) (any-block!)                    | !not-related
+or~ (12x10) (integer!)                      | !not-related
+or~ (12x10) (make vector! [integer! 8 [10 12 6]])| !not-related
+or~ (12.10.6) (10)                          | 14.10.14
+or~ (12.10.6) (false)                       | !not-related
+or~ (12.10.6) (10x12)                       | !not-related
+or~ (12.10.6) (10.12.6)                     | 14.14.6
+or~ (12.10.6) (#"J")                        | !not-related
+or~ (12.10.6) (#{33})                       | !not-related
+or~ (12.10.6) (charset "bc")                | !not-related
+or~ (12.10.6) (any-block!)                  | !not-related
+or~ (12.10.6) (integer!)                    | !not-related
+or~ (12.10.6) (make vector! [integer! 8 [10 12 6]])| !not-related
+or~ (#"L") (10)                             | #"N"
+or~ (#"L") (false)                          | !not-related
+or~ (#"L") (10x12)                          | !not-related
+or~ (#"L") (10.12.6)                        | !not-related
+or~ (#"L") (#"J")                           | #"N"
+or~ (#"L") (#{33})                          | !not-related
+or~ (#"L") (charset "bc")                   | !not-related
+or~ (#"L") (any-block!)                     | !not-related
+or~ (#"L") (integer!)                       | !not-related
+or~ (#"L") (make vector! [integer! 8 [10 12 6]])| !not-related
+or~ (#{0F10}) (10)                          | !invalid-arg
+or~ (#{0F10}) (false)                       | !invalid-arg
+or~ (#{0F10}) (10x12)                       | !invalid-arg
+or~ (#{0F10}) (10.12.6)                     | !invalid-arg
+or~ (#{0F10}) (#"J")                        | !invalid-arg
+or~ (#{0F10}) (#{33})                       | #{3F33}
+or~ (#{0F10}) (charset "bc")                | !invalid-arg
+or~ (#{0F10}) (any-block!)                  | !invalid-arg
+or~ (#{0F10}) (integer!)                    | !invalid-arg
+or~ (#{0F10}) (make vector! [integer! 8 [10 12 6]])| !invalid-arg
+or~ (charset "ab") (10)                     | !not-related
+or~ (charset "ab") (false)                  | !not-related
+or~ (charset "ab") (10x12)                  | !not-related
+or~ (charset "ab") (10.12.6)                | !not-related
+or~ (charset "ab") (#"J")                   | !not-related
+or~ (charset "ab") (#{33})                  | #(bitset! #{33000000000000000000000060})
+or~ (charset "ab") (charset "bc")           | #(bitset! #{00000000000000000000000070})
+or~ (charset "ab") (any-block!)             | !not-related
+or~ (charset "ab") (integer!)               | !not-related
+or~ (charset "ab") (make vector! [integer! 8 [10 12 6]])| !not-related
+or~ (any-string!) (10)                      | !invalid-arg
+or~ (any-string!) (false)                   | !invalid-arg
+or~ (any-string!) (10x12)                   | !invalid-arg
+or~ (any-string!) (10.12.6)                 | !invalid-arg
+or~ (any-string!) (#"J")                    | !invalid-arg
+or~ (any-string!) (#{33})                   | !invalid-arg
+or~ (any-string!) (charset "bc")            | !invalid-arg
+or~ (any-string!) (any-block!)              | make typeset! [string! file! email! ref! url! tag! block! paren! path! set-path! get-path! lit-path! hash!]
+or~ (any-string!) (integer!)                | make typeset! [integer! string! file! email! ref! url! tag!]
+or~ (any-string!) (make vector! [integer! 8 [10 12 6]])| !invalid-arg
+or~ (integer!) (10)                         | !cannot-use
+or~ (integer!) (false)                      | !cannot-use
+or~ (integer!) (10x12)                      | !cannot-use
+or~ (integer!) (10.12.6)                    | !cannot-use
+or~ (integer!) (#"J")                       | !cannot-use
+or~ (integer!) (#{33})                      | !cannot-use
+or~ (integer!) (charset "bc")               | !cannot-use
+or~ (integer!) (any-block!)                 | !cannot-use
+or~ (integer!) (integer!)                   | !cannot-use
+or~ (integer!) (make vector! [integer! 8 [10 12 6]])| !cannot-use
+or~ (make vector! [integer! 8 [12 10 6]]) (10)| #(int8! [14 10 14])
+or~ (make vector! [integer! 8 [12 10 6]]) (false)| !cannot-use
+or~ (make vector! [integer! 8 [12 10 6]]) (10x12)| !cannot-use
+or~ (make vector! [integer! 8 [12 10 6]]) (10.12.6)| !cannot-use
+or~ (make vector! [integer! 8 [12 10 6]]) (#"J")| !cannot-use
+or~ (make vector! [integer! 8 [12 10 6]]) (#{33})| !cannot-use
+or~ (make vector! [integer! 8 [12 10 6]]) (charset "bc")| !cannot-use
+or~ (make vector! [integer! 8 [12 10 6]]) (any-block!)| !cannot-use
+or~ (make vector! [integer! 8 [12 10 6]]) (integer!)| !cannot-use
+or~ (make vector! [integer! 8 [12 10 6]]) (make vector! [integer! 8 [10 12 6]])| #(int8! [14 14 6])
+xor~ (12) (10)                              | 6
+xor~ (12) (false)                           | !not-related
+xor~ (12) (10x12)                           | !not-related
+xor~ (12) (10.12.6)                         | !not-related
+xor~ (12) (#"J")                            | 70
+xor~ (12) (#{33})                           | !not-related
+xor~ (12) (charset "bc")                    | !not-related
+xor~ (12) (any-block!)                      | !not-related
+xor~ (12) (integer!)                        | !not-related
+xor~ (12) (make vector! [integer! 8 [10 12 6]])| !not-related
+xor~ (true) (10)                            | !expect-val
+xor~ (true) (false)                         | #(true)
+xor~ (true) (10x12)                         | !expect-val
+xor~ (true) (10.12.6)                       | !expect-val
+xor~ (true) (#"J")                          | !expect-val
+xor~ (true) (#{33})                         | !expect-val
+xor~ (true) (charset "bc")                  | !expect-val
+xor~ (true) (any-block!)                    | !expect-val
+xor~ (true) (integer!)                      | !expect-val
+xor~ (true) (make vector! [integer! 8 [10 12 6]])| !expect-val
+xor~ (12x10) (10)                           | 6x0
+xor~ (12x10) (false)                        | !not-related
+xor~ (12x10) (10x12)                        | 6x6
+xor~ (12x10) (10.12.6)                      | !not-related
+xor~ (12x10) (#"J")                         | !not-related
+xor~ (12x10) (#{33})                        | !not-related
+xor~ (12x10) (charset "bc")                 | !not-related
+xor~ (12x10) (any-block!)                   | !not-related
+xor~ (12x10) (integer!)                     | !not-related
+xor~ (12x10) (make vector! [integer! 8 [10 12 6]])| !not-related
+xor~ (12.10.6) (10)                         | 6.0.12
+xor~ (12.10.6) (false)                      | !not-related
+xor~ (12.10.6) (10x12)                      | !not-related
+xor~ (12.10.6) (10.12.6)                    | 6.6.0
+xor~ (12.10.6) (#"J")                       | !not-related
+xor~ (12.10.6) (#{33})                      | !not-related
+xor~ (12.10.6) (charset "bc")               | !not-related
+xor~ (12.10.6) (any-block!)                 | !not-related
+xor~ (12.10.6) (integer!)                   | !not-related
+xor~ (12.10.6) (make vector! [integer! 8 [10 12 6]])| !not-related
+xor~ (#"L") (10)                            | #"F"
+xor~ (#"L") (false)                         | !not-related
+xor~ (#"L") (10x12)                         | !not-related
+xor~ (#"L") (10.12.6)                       | !not-related
+xor~ (#"L") (#"J")                          | #"^F"
+xor~ (#"L") (#{33})                         | !not-related
+xor~ (#"L") (charset "bc")                  | !not-related
+xor~ (#"L") (any-block!)                    | !not-related
+xor~ (#"L") (integer!)                      | !not-related
+xor~ (#"L") (make vector! [integer! 8 [10 12 6]])| !not-related
+xor~ (#{0F10}) (10)                         | !invalid-arg
+xor~ (#{0F10}) (false)                      | !invalid-arg
+xor~ (#{0F10}) (10x12)                      | !invalid-arg
+xor~ (#{0F10}) (10.12.6)                    | !invalid-arg
+xor~ (#{0F10}) (#"J")                       | !invalid-arg
+xor~ (#{0F10}) (#{33})                      | #{3C23}
+xor~ (#{0F10}) (charset "bc")               | !invalid-arg
+xor~ (#{0F10}) (any-block!)                 | !invalid-arg
+xor~ (#{0F10}) (integer!)                   | !invalid-arg
+xor~ (#{0F10}) (make vector! [integer! 8 [10 12 6]])| !invalid-arg
+xor~ (charset "ab") (10)                    | !not-related
+xor~ (charset "ab") (false)                 | !not-related
+xor~ (charset "ab") (10x12)                 | !not-related
+xor~ (charset "ab") (10.12.6)               | !not-related
+xor~ (charset "ab") (#"J")                  | !not-related
+xor~ (charset "ab") (#{33})                 | #(bitset! #{33000000000000000000000060})
+xor~ (charset "ab") (charset "bc")          | #(bitset! #{00000000000000000000000050})
+xor~ (charset "ab") (any-block!)            | !not-related
+xor~ (charset "ab") (integer!)              | !not-related
+xor~ (charset "ab") (make vector! [integer! 8 [10 12 6]])| !not-related
+xor~ (any-string!) (10)                     | !invalid-arg
+xor~ (any-string!) (false)                  | !invalid-arg
+xor~ (any-string!) (10x12)                  | !invalid-arg
+xor~ (any-string!) (10.12.6)                | !invalid-arg
+xor~ (any-string!) (#"J")                   | !invalid-arg
+xor~ (any-string!) (#{33})                  | !invalid-arg
+xor~ (any-string!) (charset "bc")           | !invalid-arg
+xor~ (any-string!) (any-block!)             | make typeset! [string! file! email! ref! url! tag! block! paren! path! set-path! get-path! lit-path! hash!]
+xor~ (any-string!) (integer!)               | make typeset! [integer! string! file! email! ref! url! tag!]
+xor~ (any-string!) (make vector! [integer! 8 [10 12 6]])| !invalid-arg
+xor~ (integer!) (10)                        | !cannot-use
+xor~ (integer!) (false)                     | !cannot-use
+xor~ (integer!) (10x12)                     | !cannot-use
+xor~ (integer!) (10.12.6)                   | !cannot-use
+xor~ (integer!) (#"J")                      | !cannot-use
+xor~ (integer!) (#{33})                     | !cannot-use
+xor~ (integer!) (charset "bc")              | !cannot-use
+xor~ (integer!) (any-block!)                | !cannot-use
+xor~ (integer!) (integer!)                  | !cannot-use
+xor~ (integer!) (make vector! [integer! 8 [10 12 6]])| !cannot-use
+xor~ (make vector! [integer! 8 [12 10 6]]) (10)| #(int8! [6 0 12])
+xor~ (make vector! [integer! 8 [12 10 6]]) (false)| !cannot-use
+xor~ (make vector! [integer! 8 [12 10 6]]) (10x12)| !cannot-use
+xor~ (make vector! [integer! 8 [12 10 6]]) (10.12.6)| !cannot-use
+xor~ (make vector! [integer! 8 [12 10 6]]) (#"J")| !cannot-use
+xor~ (make vector! [integer! 8 [12 10 6]]) (#{33})| !cannot-use
+xor~ (make vector! [integer! 8 [12 10 6]]) (charset "bc")| !cannot-use
+xor~ (make vector! [integer! 8 [12 10 6]]) (any-block!)| !cannot-use
+xor~ (make vector! [integer! 8 [12 10 6]]) (integer!)| !cannot-use
+xor~ (make vector! [integer! 8 [12 10 6]]) (make vector! [integer! 8 [10 12 6]])| #(int8! [6 6 0])
+
+=== a datatype outside the ten, on the right ===
+and~ 12 (1.5)                               | !expect-arg
+and~ 12 (50%)                               | !expect-arg
+and~ 12 ($5)                                | !expect-arg
+and~ 12 (0:00:01)                           | !expect-arg
+and~ 12 (1-Jan-2020)                        | !expect-arg
+and~ 12 ("ab")                              | !expect-arg
+and~ 12 (%a)                                | !expect-arg
+and~ 12 (<t>)                               | !expect-arg
+and~ 12 (#i)                                | !expect-arg
+and~ 12 ([1 2])                             | !expect-arg
+and~ 12 ([])                                | !expect-arg
+and~ 12 ("")                                | !expect-arg
+and~ 12 ('a)                                | !expect-arg
+and~ 12 (quote a:)                          | !expect-arg
+and~ 12 (none)                              | !expect-arg
+and~ 12 (make object! [])                   | !expect-arg
+and~ 12 (try [1 / 0])                       | !expect-arg
+and~ 12 (())                                | !expect-arg
+
+=== a datatype outside the ten, on the left ===
+and~ (1.5) 10                               | !expect-arg
+and~ (50%) 10                               | !expect-arg
+and~ ($5) 10                                | !expect-arg
+and~ (0:00:01) 10                           | !expect-arg
+and~ (1-Jan-2020) 10                        | !expect-arg
+and~ ("ab") 10                              | !expect-arg
+and~ (%a) 10                                | !expect-arg
+and~ (<t>) 10                               | !expect-arg
+and~ (#i) 10                                | !expect-arg
+and~ ([1 2]) 10                             | !expect-arg
+and~ ([]) 10                                | !expect-arg
+and~ ("") 10                                | !expect-arg
+and~ ('a) 10                                | !expect-arg
+and~ (quote a:) 10                          | !expect-arg
+and~ (none) 10                              | !expect-arg
+and~ (make object! []) 10                   | !expect-arg
+and~ (try [1 / 0]) 10                       | !expect-arg
+and~ (()) 10                                | !expect-arg
+
+=== outside on both sides, and the gate closing first ===
+and~ 1.5 2.5                                | !expect-arg
+and~ "ab" none                              | !expect-arg
+and~ integer! 1.5                           | !expect-arg
+and~ 1.5 integer!                           | !expect-arg
+
+=== the answer's datatype is the left operand's ===
+type? and~ (12) (10)                        | #(integer!)
+type? and~ (12) (#"J")                      | #(integer!)
+type? and~ (#"L") (10)                      | #(char!)
+type? and~ (#"L") (#"J")                    | #(char!)
+type? and~ (true) (false)                   | #(logic!)
+type? and~ (12x10) (10)                     | #(pair!)
+type? and~ (12x10) (10x12)                  | #(pair!)
+type? and~ (12.10.6) (10)                   | #(tuple!)
+type? and~ (12.10.6) (10.12.6)              | #(tuple!)
+type? and~ (#{0F10}) (#{33})                | #(binary!)
+type? and~ (charset "ab") (#{33})           | #(bitset!)
+type? and~ (charset "ab") (charset "bc")    | #(bitset!)
+type? and~ (any-string!) (any-block!)       | #(typeset!)
+type? and~ (any-string!) (integer!)         | #(typeset!)
+type? and~ (make vector! [integer! 8 [12 10 6]]) (10)| #(vector!)
+type? and~ (make vector! [integer! 8 [12 10 6]]) (make vector! [integer! 8 [10 12 6]])| #(vector!)
+type? or~ (12) (10)                         | #(integer!)
+type? or~ (12) (#"J")                       | #(integer!)
+type? or~ (#"L") (10)                       | #(char!)
+type? or~ (#"L") (#"J")                     | #(char!)
+type? or~ (true) (false)                    | #(logic!)
+type? or~ (12x10) (10)                      | #(pair!)
+type? or~ (12x10) (10x12)                   | #(pair!)
+type? or~ (12.10.6) (10)                    | #(tuple!)
+type? or~ (12.10.6) (10.12.6)               | #(tuple!)
+type? or~ (#{0F10}) (#{33})                 | #(binary!)
+type? or~ (charset "ab") (#{33})            | #(bitset!)
+type? or~ (charset "ab") (charset "bc")     | #(bitset!)
+type? or~ (any-string!) (any-block!)        | #(typeset!)
+type? or~ (any-string!) (integer!)          | #(typeset!)
+type? or~ (make vector! [integer! 8 [12 10 6]]) (10)| #(vector!)
+type? or~ (make vector! [integer! 8 [12 10 6]]) (make vector! [integer! 8 [10 12 6]])| #(vector!)
+type? xor~ (12) (10)                        | #(integer!)
+type? xor~ (12) (#"J")                      | #(integer!)
+type? xor~ (#"L") (10)                      | #(char!)
+type? xor~ (#"L") (#"J")                    | #(char!)
+type? xor~ (true) (false)                   | #(logic!)
+type? xor~ (12x10) (10)                     | #(pair!)
+type? xor~ (12x10) (10x12)                  | #(pair!)
+type? xor~ (12.10.6) (10)                   | #(tuple!)
+type? xor~ (12.10.6) (10.12.6)              | #(tuple!)
+type? xor~ (#{0F10}) (#{33})                | #(binary!)
+type? xor~ (charset "ab") (#{33})           | #(bitset!)
+type? xor~ (charset "ab") (charset "bc")    | #(bitset!)
+type? xor~ (any-string!) (any-block!)       | #(typeset!)
+type? xor~ (any-string!) (integer!)         | #(typeset!)
+type? xor~ (make vector! [integer! 8 [12 10 6]]) (10)| #(vector!)
+type? xor~ (make vector! [integer! 8 [12 10 6]]) (make vector! [integer! 8 [10 12 6]])| #(vector!)
+
+=== neither operand is changed ===
+the bitset on the left, afterwards          | #(bitset! #{00000000000000000000000060})
+the bitset on the right, afterwards         | #(bitset! #{00000000000000000000000030})
+the vector on the left, afterwards          | #(int8! [12 10 6])
+the vector on the right, afterwards         | #(int8! [10 12 6])
+the tuple on the left, afterwards           | 12.10.6
+the binary on the left, afterwards          | #{0F10}
+the binary on the right, afterwards         | #{33}
+the typeset on the left, afterwards         | make typeset! [string! file! email! ref! url! tag!]
+the typeset on the right, afterwards        | make typeset! [block! paren! path! set-path! get-path! lit-path! hash!]
+the pair on the left, afterwards            | 12x10
+
+=== degenerate operands are ordinary operands ===
+and~ #{} #{0F10}                            | #{0000}
+and~ #{0F10} #{}                            | #{0000}
+and~ #{} #{}                                | #{}
+and~ (make bitset! #{}) (charset "ab")      | #(bitset! #{})
+and~ (charset "ab") (make bitset! #{})      | #(bitset! #{})
+and~ (make typeset! []) any-string!         | make typeset! []
+and~ any-string! (make typeset! [])         | make typeset! []
+and~ (make vector! [integer! 8 []]) 10      | #(int8! [])
+and~ 0 0                                    | 0
+and~ 0x0 0                                  | 0x0
+and~ 0.0.0 0                                | 0.0.0
+and~ 0.0.0 0.0.0                            | 0.0.0
+and~ -1 -1                                  | -1
+or~ -1 0                                    | -1
+xor~ -1 -1                                  | 0
+and~ 0 12                                   | 0
+and~ 12 0                                   | 0
+and~ (to char! 0) (to char! 0)              | #"^@"
+and~ false false                            | #(false)
+or~ false false                             | #(false)
+
+=== every spelling reaches the same code ===
+and~ 12 10                                  | 8
+12 and 10                                   | 8
+12 & 10                                     | 8
+or~ 12 10                                   | 14
+12 or 10                                    | 14
+12 | 10                                     | 14
+xor~ 12 10                                  | 6
+12 xor 10                                   | 6
+and~ 12x10 10x12                            | 8x8
+12x10 and 10x12                             | 8x8
+12x10 & 10x12                               | 8x8
+or~ 12x10 10x12                             | 14x14
+12x10 or 10x12                              | 14x14
+12x10 | 10x12                               | 14x14
+xor~ 12x10 10x12                            | 6x6
+12x10 xor 10x12                             | 6x6
+and~ 12 10x12                               | !not-related
+12 and 10x12                                | !not-related
+12 & 10x12                                  | !not-related

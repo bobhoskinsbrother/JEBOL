@@ -8,8 +8,26 @@
 #
 # Nothing goes in here on reasoning. Each line was run through ./r3-head, the
 # same 3.22.5 the port is measured against, and the answer written down below
-# it. If a line here ever starts passing in JEBOL, JEBOL has diverged from
-# Rebol and the line should come back out.
+# it.
+#
+# This list is a target eventually, and it is not one yet. The order matters
+# and it is the same order as everywhere else here: equivalence first, then
+# improving on it.
+#
+# **Until the goals are finished, a line here starting to pass is a defect.**
+# It means JEBOL answers something a real 3.22.5 does not, which is the
+# definition of a divergence in this port, and the thing to do is find out
+# why and fix it rather than celebrate. The entry stays.
+#
+# **After the goals are finished, the same event is progress.** Rebol's own
+# suite asserts every one of these, so every one is something Rebol meant to
+# work and did not. That is when this file becomes the next thing to aim at,
+# and a line passing is worth taking off the list and saying so.
+#
+# AssertionsRebolFailsTooTest runs every line and expects it to fail, so
+# either way the event is loud. It is a suite of its own rather than a filter
+# on the main one because a filtered assertion is invisible, and a hundred
+# and sixty-nine of them is too many to keep invisible.
 #
 # ---------------------------------------------------------------------------
 #
