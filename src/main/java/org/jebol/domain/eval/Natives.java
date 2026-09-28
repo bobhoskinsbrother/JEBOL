@@ -834,7 +834,7 @@ public final class Natives {
                             : DecimalValue.of(raised);
                 });
 
-        define("negate", withBitsets(acceptsNumbers("value")),
+        define("negate", List.of(Parameter.required("value", NEGATABLE)),
                 (arguments, evaluator, context) -> negated(arguments.getFirst()));
 
         define("maximum", takesComparable("value1", "value2"),
@@ -958,9 +958,9 @@ public final class Natives {
                 }
                 yield IntegerValue.of(Math.abs(whole.magnitude()));
             }
-            case DecimalValue quantity -> quantity.quantity() == 0.0
-                    ? quantity
-                    : DecimalValue.of(Math.abs(quantity.quantity()));
+            case DecimalValue(double quantity, Datatype datatype) -> quantity == 0.0
+                    ? value
+                    : new DecimalValue(Math.abs(quantity), datatype);
             case PairValue pair -> PairValue.of(Math.abs(pair.x()), Math.abs(pair.y()));
             case TimeValue time -> TimeValue.ofNanoseconds(Math.abs(time.nanoseconds()));
             case MoneyValue money -> MoneyValue.of(money.amount().abs());
@@ -1021,10 +1021,15 @@ public final class Natives {
         return left.datatype() == Datatype.PERCENT && right.datatype() == Datatype.PERCENT;
     }
 
+    private static final Set<Datatype> NEGATABLE = Typeset.NUMBER.membersAnd(
+            Datatype.PAIR, Datatype.MONEY, Datatype.TIME, Datatype.BITSET);
+
     private static Value negated(Value value) {
         return switch (value) {
             case BitsetValue members -> members.complemented();
             case PairValue(double x, double y) -> PairValue.of(-x, -y);
+            case DecimalValue(double quantity, Datatype datatype) ->
+                    new DecimalValue(-quantity, datatype);
             default -> Arithmetic.difference(IntegerValue.of(0), value);
         };
     }

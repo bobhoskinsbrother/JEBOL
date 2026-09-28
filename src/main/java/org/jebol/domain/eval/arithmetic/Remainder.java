@@ -22,7 +22,6 @@ final class Remainder implements ArithmeticOperation {
 
     @Override
     public Value onFractions(double left, double right, boolean infinitiesAllowed) {
-        Overflowing.refuseAZeroDivisor(right);
         return DecimalValue.of(left % right);
     }
 

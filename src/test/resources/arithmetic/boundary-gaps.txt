@@ -1,0 +1,20 @@
+# Boundary cases JEBOL does not yet answer as a real 3.22.5 does.
+#
+# Same ratchet as the pairing recording: anything not listed must match
+# exactly, anything listed must still diverge, so a fix fails the build until
+# its entry goes.
+#
+# 3 of 103 when the probe was written. Two are fixed and gone: the widest
+# negative whole number divided by -1 overflows rather than wrapping back to
+# itself, and a decimal remainder by zero is NaN rather than a zero-divide.
+#
+# The one left needs money to carry a sign of its own. R3 stores a money as a
+# deci, which has a sign bit, so a zero keeps the sign the arithmetic gave it:
+# -$1 + $1 is -$0 and $1 + -$1 is $0. Measured, the rule is the left operand's
+# sign for adding and subtracting and the product of the two signs for
+# multiplying, and -$0 = $0 is true, so it is representation rather than
+# value. BigDecimal has no negative zero, so closing this means adding the
+# sign to MoneyValue and carrying it through molding, equality, hashing and
+# the twelve-byte deci round trip.
+-$1 + $1
+negate ($0)

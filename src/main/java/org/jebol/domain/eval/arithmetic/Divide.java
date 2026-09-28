@@ -1,6 +1,8 @@
 package org.jebol.domain.eval.arithmetic;
 
 import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.MoneyValue;
 import org.jebol.domain.value.Value;
@@ -17,6 +19,9 @@ final class Divide implements ArithmeticOperation {
     @Override
     public Value onWholeNumbers(long left, long right) {
         Overflowing.refuseAZeroDivisor(right);
+        if (left == Long.MIN_VALUE && right == -1) {
+            throw Raised.of(EvaluationFailure.OVERFLOW);
+        }
         return left % right == 0
                 ? IntegerValue.of(left / right)
                 : DecimalValue.of((double) left / right);

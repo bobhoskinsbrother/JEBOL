@@ -1,0 +1,232 @@
+negate (2)                              | -2  #(integer!)
+negate (-2)                             | 2  #(integer!)
+negate (0)                              | 0  #(integer!)
+negate (2.5)                            | -2.5  #(decimal!)
+negate (-2.5)                           | 2.5  #(decimal!)
+negate (0.0)                            | -0.0  #(decimal!)
+negate (-0.0)                           | 0.0  #(decimal!)
+negate (200%)                           | -200%  #(percent!)
+negate (-200%)                          | 200%  #(percent!)
+negate ($2)                             | -$2  #(money!)
+negate (-$2)                            | $2  #(money!)
+negate ($0)                             | -$0  #(money!)
+negate (#"B")                           | !expect-arg
+negate (0:00:02)                        | -0:00:02  #(time!)
+negate (-0:00:02)                       | 0:00:02  #(time!)
+negate (1-Jan-2020)                     | !expect-arg
+negate (2x3)                            | -2x-3  #(pair!)
+negate (-2x-3)                          | 2x3  #(pair!)
+negate (2.2.2)                          | !expect-arg
+negate (0.0.0)                          | !expect-arg
+negate (255.255.255)                    | !expect-arg
+negate (9223372036854775807)            | -9223372036854775807  #(integer!)
+negate (-9223372036854775808)           | !overflow
+negate (1e308)                          | -1.0e308  #(decimal!)
+negate ("a")                            | !expect-arg
+negate (none)                           | !expect-arg
+negate ([1])                            | !expect-arg
+negate (true)                           | !expect-arg
+
+absolute (2)                            | 2  #(integer!)
+absolute (-2)                           | 2  #(integer!)
+absolute (0)                            | 0  #(integer!)
+absolute (2.5)                          | 2.5  #(decimal!)
+absolute (-2.5)                         | 2.5  #(decimal!)
+absolute (0.0)                          | 0.0  #(decimal!)
+absolute (-0.0)                         | -0.0  #(decimal!)
+absolute (200%)                         | 200%  #(percent!)
+absolute (-200%)                        | 200%  #(percent!)
+absolute ($2)                           | $2  #(money!)
+absolute (-$2)                          | $2  #(money!)
+absolute ($0)                           | $0  #(money!)
+absolute (#"B")                         | !expect-arg
+absolute (0:00:02)                      | 0:00:02  #(time!)
+absolute (-0:00:02)                     | 0:00:02  #(time!)
+absolute (1-Jan-2020)                   | !expect-arg
+absolute (2x3)                          | 2x3  #(pair!)
+absolute (-2x-3)                        | 2x3  #(pair!)
+absolute (2.2.2)                        | !expect-arg
+absolute (0.0.0)                        | !expect-arg
+absolute (255.255.255)                  | !expect-arg
+absolute (9223372036854775807)          | 9223372036854775807  #(integer!)
+absolute (-9223372036854775808)         | !overflow
+absolute (1e308)                        | 1.0e308  #(decimal!)
+absolute ("a")                          | !expect-arg
+absolute (none)                         | !expect-arg
+absolute ([1])                          | !expect-arg
+absolute (true)                         | !expect-arg
+
+even? (2)                               | #(true)  #(logic!)
+even? (-2)                              | #(true)  #(logic!)
+even? (0)                               | #(true)  #(logic!)
+even? (2.5)                             | #(false)  #(logic!)
+even? (-2.5)                            | #(false)  #(logic!)
+even? (0.0)                             | #(true)  #(logic!)
+even? (-0.0)                            | #(true)  #(logic!)
+even? (200%)                            | #(true)  #(logic!)
+even? (-200%)                           | #(true)  #(logic!)
+even? ($2)                              | #(true)  #(logic!)
+even? (-$2)                             | #(true)  #(logic!)
+even? ($0)                              | #(true)  #(logic!)
+even? (#"B")                            | #(true)  #(logic!)
+even? (0:00:02)                         | #(true)  #(logic!)
+even? (-0:00:02)                        | #(true)  #(logic!)
+even? (1-Jan-2020)                      | #(false)  #(logic!)
+even? (2x3)                             | #(false)  #(logic!)
+even? (-2x-3)                           | #(false)  #(logic!)
+even? (2.2.2)                           | !expect-arg
+even? (0.0.0)                           | !expect-arg
+even? (255.255.255)                     | !expect-arg
+even? (9223372036854775807)             | #(false)  #(logic!)
+even? (-9223372036854775808)            | #(true)  #(logic!)
+even? (1e308)                           | #(true)  #(logic!)
+even? ("a")                             | !expect-arg
+even? (none)                            | !expect-arg
+even? ([1])                             | !expect-arg
+even? (true)                            | !expect-arg
+
+odd? (2)                                | #(false)  #(logic!)
+odd? (-2)                               | #(false)  #(logic!)
+odd? (0)                                | #(false)  #(logic!)
+odd? (2.5)                              | #(true)  #(logic!)
+odd? (-2.5)                             | #(true)  #(logic!)
+odd? (0.0)                              | #(false)  #(logic!)
+odd? (-0.0)                             | #(false)  #(logic!)
+odd? (200%)                             | #(false)  #(logic!)
+odd? (-200%)                            | #(false)  #(logic!)
+odd? ($2)                               | #(false)  #(logic!)
+odd? (-$2)                              | #(false)  #(logic!)
+odd? ($0)                               | #(false)  #(logic!)
+odd? (#"B")                             | #(false)  #(logic!)
+odd? (0:00:02)                          | #(false)  #(logic!)
+odd? (-0:00:02)                         | #(false)  #(logic!)
+odd? (1-Jan-2020)                       | #(true)  #(logic!)
+odd? (2x3)                              | #(false)  #(logic!)
+odd? (-2x-3)                            | #(false)  #(logic!)
+odd? (2.2.2)                            | !expect-arg
+odd? (0.0.0)                            | !expect-arg
+odd? (255.255.255)                      | !expect-arg
+odd? (9223372036854775807)              | #(true)  #(logic!)
+odd? (-9223372036854775808)             | #(false)  #(logic!)
+odd? (1e308)                            | #(false)  #(logic!)
+odd? ("a")                              | !expect-arg
+odd? (none)                             | !expect-arg
+odd? ([1])                              | !expect-arg
+odd? (true)                             | !expect-arg
+
+sign? (2)                               | 1  #(integer!)
+sign? (-2)                              | -1  #(integer!)
+sign? (0)                               | 0  #(integer!)
+sign? (2.5)                             | 1  #(integer!)
+sign? (-2.5)                            | -1  #(integer!)
+sign? (0.0)                             | 0  #(integer!)
+sign? (-0.0)                            | 0  #(integer!)
+sign? (200%)                            | 1  #(integer!)
+sign? (-200%)                           | -1  #(integer!)
+sign? ($2)                              | 1  #(integer!)
+sign? (-$2)                             | -1  #(integer!)
+sign? ($0)                              | 0  #(integer!)
+sign? (#"B")                            | !expect-arg
+sign? (0:00:02)                         | 1  #(integer!)
+sign? (-0:00:02)                        | -1  #(integer!)
+sign? (1-Jan-2020)                      | !expect-arg
+sign? (2x3)                             | !expect-arg
+sign? (-2x-3)                           | !expect-arg
+sign? (2.2.2)                           | !expect-arg
+sign? (0.0.0)                           | !expect-arg
+sign? (255.255.255)                     | !expect-arg
+sign? (9223372036854775807)             | 1  #(integer!)
+sign? (-9223372036854775808)            | -1  #(integer!)
+sign? (1e308)                           | 1  #(integer!)
+sign? ("a")                             | !expect-arg
+sign? (none)                            | !expect-arg
+sign? ([1])                             | !expect-arg
+sign? (true)                            | !expect-arg
+
+zero? (2)                               | #(false)  #(logic!)
+zero? (-2)                              | #(false)  #(logic!)
+zero? (0)                               | #(true)  #(logic!)
+zero? (2.5)                             | #(false)  #(logic!)
+zero? (-2.5)                            | #(false)  #(logic!)
+zero? (0.0)                             | #(true)  #(logic!)
+zero? (-0.0)                            | #(true)  #(logic!)
+zero? (200%)                            | #(false)  #(logic!)
+zero? (-200%)                           | #(false)  #(logic!)
+zero? ($2)                              | #(false)  #(logic!)
+zero? (-$2)                             | #(false)  #(logic!)
+zero? ($0)                              | #(true)  #(logic!)
+zero? (#"B")                            | #(false)  #(logic!)
+zero? (0:00:02)                         | #(false)  #(logic!)
+zero? (-0:00:02)                        | #(false)  #(logic!)
+zero? (1-Jan-2020)                      | #(false)  #(logic!)
+zero? (2x3)                             | #(false)  #(logic!)
+zero? (-2x-3)                           | #(false)  #(logic!)
+zero? (2.2.2)                           | #(false)  #(logic!)
+zero? (0.0.0)                           | #(true)  #(logic!)
+zero? (255.255.255)                     | #(false)  #(logic!)
+zero? (9223372036854775807)             | #(false)  #(logic!)
+zero? (-9223372036854775808)            | #(false)  #(logic!)
+zero? (1e308)                           | #(false)  #(logic!)
+zero? ("a")                             | #(false)  #(logic!)
+zero? (none)                            | #(false)  #(logic!)
+zero? ([1])                             | #(false)  #(logic!)
+zero? (true)                            | #(false)  #(logic!)
+
+positive? (2)                           | #(true)  #(logic!)
+positive? (-2)                          | #(false)  #(logic!)
+positive? (0)                           | #(false)  #(logic!)
+positive? (2.5)                         | #(true)  #(logic!)
+positive? (-2.5)                        | #(false)  #(logic!)
+positive? (0.0)                         | #(false)  #(logic!)
+positive? (-0.0)                        | #(false)  #(logic!)
+positive? (200%)                        | #(true)  #(logic!)
+positive? (-200%)                       | #(false)  #(logic!)
+positive? ($2)                          | #(true)  #(logic!)
+positive? (-$2)                         | #(false)  #(logic!)
+positive? ($0)                          | #(false)  #(logic!)
+positive? (#"B")                        | !expect-arg
+positive? (0:00:02)                     | #(true)  #(logic!)
+positive? (-0:00:02)                    | #(false)  #(logic!)
+positive? (1-Jan-2020)                  | !expect-arg
+positive? (2x3)                         | #(true)  #(logic!)
+positive? (-2x-3)                       | #(false)  #(logic!)
+positive? (2.2.2)                       | !expect-arg
+positive? (0.0.0)                       | !expect-arg
+positive? (255.255.255)                 | !expect-arg
+positive? (9223372036854775807)         | #(true)  #(logic!)
+positive? (-9223372036854775808)        | #(false)  #(logic!)
+positive? (1e308)                       | #(true)  #(logic!)
+positive? ("a")                         | !expect-arg
+positive? (none)                        | !expect-arg
+positive? ([1])                         | !expect-arg
+positive? (true)                        | !expect-arg
+
+negative? (2)                           | #(false)  #(logic!)
+negative? (-2)                          | #(true)  #(logic!)
+negative? (0)                           | #(false)  #(logic!)
+negative? (2.5)                         | #(false)  #(logic!)
+negative? (-2.5)                        | #(true)  #(logic!)
+negative? (0.0)                         | #(false)  #(logic!)
+negative? (-0.0)                        | #(false)  #(logic!)
+negative? (200%)                        | #(false)  #(logic!)
+negative? (-200%)                       | #(true)  #(logic!)
+negative? ($2)                          | #(false)  #(logic!)
+negative? (-$2)                         | #(true)  #(logic!)
+negative? ($0)                          | #(false)  #(logic!)
+negative? (#"B")                        | !expect-arg
+negative? (0:00:02)                     | #(false)  #(logic!)
+negative? (-0:00:02)                    | #(true)  #(logic!)
+negative? (1-Jan-2020)                  | !expect-arg
+negative? (2x3)                         | #(false)  #(logic!)
+negative? (-2x-3)                       | #(true)  #(logic!)
+negative? (2.2.2)                       | !expect-arg
+negative? (0.0.0)                       | !expect-arg
+negative? (255.255.255)                 | !expect-arg
+negative? (9223372036854775807)         | #(false)  #(logic!)
+negative? (-9223372036854775808)        | #(true)  #(logic!)
+negative? (1e308)                       | #(false)  #(logic!)
+negative? ("a")                         | !expect-arg
+negative? (none)                        | !expect-arg
+negative? ([1])                         | !expect-arg
+negative? (true)                        | !expect-arg
+
