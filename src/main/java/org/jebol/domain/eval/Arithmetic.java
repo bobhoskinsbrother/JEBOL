@@ -7,6 +7,7 @@ import org.jebol.domain.value.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 
 public final class Arithmetic {
 
@@ -87,7 +88,25 @@ public final class Arithmetic {
         return arithmeticTypes().stream()
                 .filter(kind -> kind.shouldHandle(left, right, operation))
                 .findFirst()
-                .orElseThrow(() -> Raised.notRelated(left, right));
+                .orElseThrow(() -> nothingCombinesThese(left, right, operation));
+    }
+
+    private static final Set<Datatype> THE_DATATYPES_THAT_DO_ARITHMETIC = Set.of(
+            Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT, Datatype.MONEY,
+            Datatype.CHAR, Datatype.TIME, Datatype.DATE, Datatype.PAIR,
+            Datatype.TUPLE, Datatype.VECTOR);
+
+    private static Raised nothingCombinesThese(
+            Value left, Value right, ArithmeticOperation operation) {
+
+        if (left instanceof LogicValue) {
+            return Raised.of(EvaluationFailure.EXPECT_VAL,
+                    WordValue.of("logic!"),
+                    WordValue.of(right.datatype().literalSpelling()));
+        }
+        return THE_DATATYPES_THAT_DO_ARITHMETIC.contains(left.datatype())
+                ? Raised.notRelated(left, right)
+                : Raised.cannotUse(left, operation.spelling());
     }
 
     private static List<ArithmeticType> arithmeticTypes() {

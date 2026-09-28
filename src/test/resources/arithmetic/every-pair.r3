@@ -47,3 +47,19 @@ foreach [operator symbol] [add + subtract - multiply * divide /] [
         ]
     ]
 ]
+
+print ""
+print "=== an operand outside the declared types, named and as an operator ==="
+outsiders: [{"a"} {none} {[1]} {true} {#a} {%f} {<t>}]
+foreach outsider outsiders [
+    foreach [operator symbol] [add + subtract - multiply * divide /] [
+        left: rejoin [operator " (" outsider ") (3)"]
+        say left outcome-of left
+        say rejoin ["(" outsider ") " symbol " (3)"]
+            outcome-of rejoin ["(" outsider ") " symbol " (3)"]
+        right: rejoin [operator " (2) (" outsider ")"]
+        say right outcome-of right
+        say rejoin ["(2) " symbol " (" outsider ")"]
+            outcome-of rejoin ["(2) " symbol " (" outsider ")"]
+    ]
+]

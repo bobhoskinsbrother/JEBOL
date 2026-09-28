@@ -817,7 +817,9 @@ public final class Natives {
                 (arguments, evaluator, context) -> theFactorialOf(
                         wholeNumberOf(arguments.get(0), "factorial")));
 
-        define("power", List.of(Parameter.required("base"), Parameter.required("exponent")),
+        define("power", List.of(
+                        Parameter.required("base", Typeset.NUMBER.members()),
+                        Parameter.required("exponent", Typeset.NUMBER.members())),
                 (arguments, evaluator, context) -> {
                     if (arguments.get(0) instanceof TupleValue tuple) {
                         return raiseCannotUse(tuple, "power");

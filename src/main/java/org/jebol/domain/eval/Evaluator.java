@@ -1040,21 +1040,31 @@ public final class Evaluator {
     private Value invokeUnderlying(
             OperatorValue operator, List<Value> arguments, Context context) {
         return switch (operator.underlying()) {
-            case NativeValue built -> runNative(built, arguments, context);
+            case NativeValue built ->
+                    runNative(built, arguments, context, THE_LEFT_OPERAND_IS_NOT_CHECKED);
             case FunctionValue function -> applyFunction(function, arguments);
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "operator " + operator.operatorName() + " has no runnable body");
         };
     }
 
+    private static final int EVERY_ARGUMENT_IS_CHECKED = 0;
+
+    private static final int THE_LEFT_OPERAND_IS_NOT_CHECKED = 1;
+
     private Value runNative(
             NativeValue built, List<Value> arguments, Context context) {
+        return runNative(built, arguments, context, EVERY_ARGUMENT_IS_CHECKED);
+    }
+
+    private Value runNative(
+            NativeValue built, List<Value> arguments, Context context, int checkedFrom) {
         RefinedCallable behaviour = behaviours.get(built.nativeName());
         if (behaviour == null) {
             throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "no behaviour registered for " + built.nativeName());
         }
-        checkArgumentTypes(built, arguments, built.nativeName());
+        checkArgumentTypes(built, arguments, built.nativeName(), checkedFrom);
         nativesCalled++;
         Value produced;
         try {
@@ -1114,8 +1124,13 @@ public final class Evaluator {
 
     private void checkArgumentTypes(
             NativeValue built, List<Value> arguments, String calleeName) {
+        checkArgumentTypes(built, arguments, calleeName, EVERY_ARGUMENT_IS_CHECKED);
+    }
+
+    private void checkArgumentTypes(
+            NativeValue built, List<Value> arguments, String calleeName, int checkedFrom) {
         checkArgumentTypes(built.parameters(), built.askedRefinements(),
-                arguments, calleeName);
+                arguments, calleeName, checkedFrom);
     }
 
     private void checkArgumentTypes(
@@ -1126,12 +1141,20 @@ public final class Evaluator {
     private void checkArgumentTypes(
             List<Parameter> parameters, Set<String> asked,
             List<Value> arguments, String calleeName) {
+        checkArgumentTypes(parameters, asked, arguments, calleeName,
+                EVERY_ARGUMENT_IS_CHECKED);
+    }
+
+    private void checkArgumentTypes(
+            List<Parameter> parameters, Set<String> asked,
+            List<Value> arguments, String calleeName, int checkedFrom) {
         List<Parameter> consuming = parameters.stream()
                 .filter(Parameter::consumesAnArgument)
                 .filter(parameter -> parameter.owningRefinement()
                         .map(asked::contains).orElse(true))
                 .toList();
-        for (int index = 0; index < arguments.size() && index < consuming.size(); index++) {
+        for (int index = checkedFrom;
+                index < arguments.size() && index < consuming.size(); index++) {
             Parameter parameter = consuming.get(index);
             Value argument = arguments.get(index);
             if (!parameter.accepts(argument.datatype())) {
