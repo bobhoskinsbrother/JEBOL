@@ -1,8 +1,7 @@
-package org.jebol.domain.eval;
+package org.jebol.domain.value;
 
-import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
-
-import org.jebol.domain.value.*;
+import org.jebol.domain.eval.Arithmetic;
+import org.jebol.domain.eval.Comparison;
 
 public final class PairActions {
 
@@ -16,8 +15,8 @@ public final class PairActions {
         refuseWhatIsNotAPairOrAPlainNumber(left);
         refuseWhatIsNotAPairOrAPlainNumber(right);
         if (operation.needsANonZeroDivisor()) {
-            Arithmetic.requireNonZero(firstHalfOf(right));
-            Arithmetic.requireNonZero(secondHalfOf(right));
+            operation.requireANonZeroDivisor(firstHalfOf(right));
+            operation.requireANonZeroDivisor(secondHalfOf(right));
         }
         return PairValue.of(
                 halfCombined(firstHalfOf(left), firstHalfOf(right), operation),
@@ -36,7 +35,7 @@ public final class PairActions {
 
     private static double halfCombined(
             double ours, double theirs, ArithmeticOperation operation) {
-        return ((DecimalValue) Arithmetic.decimalCombined(ours, theirs, operation))
+        return ((DecimalValue) operation.onFractions(ours, theirs))
                 .quantity();
     }
 

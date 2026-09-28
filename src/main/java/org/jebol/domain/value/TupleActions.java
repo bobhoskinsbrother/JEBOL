@@ -1,8 +1,6 @@
-package org.jebol.domain.eval;
+package org.jebol.domain.value;
 
-import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
-
-import org.jebol.domain.value.*;
+import org.jebol.domain.eval.Comparison;
 
 public final class TupleActions {
 

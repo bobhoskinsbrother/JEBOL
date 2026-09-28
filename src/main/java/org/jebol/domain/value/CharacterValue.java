@@ -11,6 +11,12 @@ import java.util.Optional;
 public record CharacterValue(int codepoint) implements Value {
 
     @Override
+    public Value arithmetic(Value right, ArithmeticOperation operation) {
+        return new CharacterActions(this).combinedWith(right, operation);
+    }
+
+
+    @Override
     public boolean equalTo(Value other, Sameness how) {
         if (other instanceof CharacterValue || how.theyWereBroughtTogetherFirst()) {
             return foldedTo(codepoint) == foldedTo(codepointOf(other));

@@ -29,6 +29,12 @@ public record VectorValue(VectorStorage storage, int index) implements SeriesVal
     }
 
     @Override
+    public Value arithmetic(Value right, ArithmeticOperation operation) {
+        return VectorMath.done(this, right, operation);
+    }
+
+
+    @Override
     public Value bitwise(Value right, BitwiseOperation operation) {
         refuseWhatItCannotTake(right);
         return VectorMath.done(this, right, operation);

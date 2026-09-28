@@ -1,13 +1,8 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
-import org.jebol.domain.eval.arithmetic.ArithmeticType;
-import org.jebol.domain.eval.arithmetic.arithmeticType.*;
 import org.jebol.domain.value.*;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Set;
 
 public final class Arithmetic {
 
@@ -78,59 +73,8 @@ public final class Arithmetic {
     }
 
     public static Value combined(Value left, Value right, ArithmeticOperation operation) {
-        return firstRegisteredHandler(left, right, operation)
-                .combine(left, right, operation);
+        return left.arithmetic(right, operation);
     }
-
-    private static ArithmeticType firstRegisteredHandler(
-            Value left, Value right, ArithmeticOperation operation) {
-
-        return arithmeticTypes().stream()
-                .filter(kind -> kind.shouldHandle(left, right, operation))
-                .findFirst()
-                .orElseThrow(() -> nothingCombinesThese(left, right, operation));
-    }
-
-    private static final Set<Datatype> THE_DATATYPES_THAT_DO_ARITHMETIC = Set.of(
-            Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT, Datatype.MONEY,
-            Datatype.CHAR, Datatype.TIME, Datatype.DATE, Datatype.PAIR,
-            Datatype.TUPLE, Datatype.VECTOR);
-
-    private static Raised nothingCombinesThese(
-            Value left, Value right, ArithmeticOperation operation) {
-
-        if (left instanceof LogicValue) {
-            return Raised.of(EvaluationFailure.EXPECT_VAL,
-                    WordValue.of("logic!"),
-                    WordValue.of(right.datatype().literalSpelling()));
-        }
-        return THE_DATATYPES_THAT_DO_ARITHMETIC.contains(left.datatype())
-                ? Raised.notRelated(left, right)
-                : Raised.cannotUse(left, operation.spelling());
-    }
-
-    private static List<ArithmeticType> arithmeticTypes() {
-        return List.of(
-                new Vectors(),
-                new Characters(),
-                new Points(),
-                new Tuples(),
-                new Dates(),
-                new ANumberAndACharacter(),
-                new Amounts(),
-                new Durations(),
-                new ANumberAndAnAmount(),
-                new WholeNumbers(),
-                new Fractions()
-        );
-    }
-
-
-    static Value decimalCombined(
-            double left, double right, ArithmeticOperation operation) {
-        return operation.onFractions(left, right);
-    }
-
 
     private static Value likeTheDividend(Value dividend, double magnitude) {
         return switch (dividend) {
@@ -168,10 +112,6 @@ public final class Arithmetic {
         if (divisor == 0.0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }
-    }
-
-    public static Raised notRelated(Value left, Value right) {
-        return Raised.notRelated(left, right);
     }
 
 }

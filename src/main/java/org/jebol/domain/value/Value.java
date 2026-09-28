@@ -17,6 +17,7 @@ import java.util.Optional;
  * empty string is true, an empty block is true.
  */
 public sealed interface Value permits
+        RebolNumber,
         UnsetValue,
         NoneValue,
         LogicValue,
@@ -52,6 +53,14 @@ public sealed interface Value permits
 
     default Value bitwise(Value right, BitwiseOperation operation) {
         throw Raised.of(EvaluationFailure.EXPECT_ARG, this);
+    }
+
+    default Value arithmetic(Value right, ArithmeticOperation operation) {
+        throw Raised.cannotUse(this, operation.spelling());
+    }
+
+    default Value refuseTheArithmetic(Value right) {
+        throw Raised.notRelated(this, right);
     }
 
     default Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {

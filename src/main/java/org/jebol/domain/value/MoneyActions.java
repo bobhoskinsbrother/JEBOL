@@ -1,8 +1,4 @@
-package org.jebol.domain.eval;
-
-import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
-
-import org.jebol.domain.value.*;
+package org.jebol.domain.value;
 
 import java.math.BigDecimal;
 
@@ -53,7 +49,7 @@ public final class MoneyActions {
                 other.datatype().literalSpelling() + " does not go with money arithmetic");
     }
 
-    static MoneyValue amountCombined(
+    public static MoneyValue amountCombined(
             BigDecimal left, BigDecimal right, ArithmeticOperation operation) {
 
         return operation.onAmounts(left, right);
@@ -89,7 +85,7 @@ public final class MoneyActions {
         };
     }
 
-    static MoneyValue withinTheDeciRange(MoneyValue built) {
+    public static MoneyValue withinTheDeciRange(MoneyValue built) {
         if (!built.isWithinTheDeciRange()) {
             throw Raised.of(EvaluationFailure.OVERFLOW,
                     "a money holds twenty-six digits and a power of ten from -128 to 127");

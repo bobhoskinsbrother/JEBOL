@@ -1,46 +1,35 @@
-package org.jebol.domain.eval.arithmetic;
-
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.Value;
+package org.jebol.domain.value;
 
 import java.math.BigDecimal;
 
-final class Modulo implements ArithmeticOperation {
+final class Remainder implements ArithmeticOperation {
 
     @Override
     public String spelling() {
-        return "modulo";
+        return "remainder";
     }
 
     @Override
     public Value onWholeNumbers(long left, long right) {
         Overflowing.refuseAZeroDivisor(right);
-        long rest = left % right;
-        return IntegerValue.of(rest < 0 ? rest + Math.abs(right) : rest);
+        return IntegerValue.of(left % right);
     }
 
     @Override
     public Value onFractions(double left, double right, boolean infinitiesAllowed) {
-        Overflowing.refuseAZeroDivisor(right);
-        double rest = left % right;
-        return DecimalValue.of(rest < 0 ? rest + Math.abs(right) : rest);
+        return DecimalValue.of(left % right);
     }
 
     @Override
     public MoneyValue onAmounts(BigDecimal left, BigDecimal right) {
         Overflowing.refuseAZeroDivisor(right.doubleValue());
-        BigDecimal rest = left.remainder(right, MoneyValue.ARITHMETIC);
-        return MoneyValue.of(rest.signum() < 0 ? rest.add(right.abs()) : rest);
+        return MoneyValue.of(left.remainder(right, MoneyValue.ARITHMETIC));
     }
 
     @Override
     public long onCodepoints(long codepoint, long other) {
-        throw Raised.of(EvaluationFailure.CANNOT_USE,
-                "cannot use that on a character");
+        Overflowing.refuseAZeroDivisor(other);
+        return codepoint % other;
     }
 
     @Override
@@ -56,12 +45,12 @@ final class Modulo implements ArithmeticOperation {
 
     @Override
     public boolean worksOnVectors() {
-        return false;
+        return true;
     }
 
     @Override
     public long onWholeElements(long ours, long theirs) {
-        return Math.floorMod(ours, theirs);
+        return ours % theirs;
     }
 
     @Override
@@ -81,7 +70,7 @@ final class Modulo implements ArithmeticOperation {
 
     @Override
     public boolean keepsTheSignOfTheDividend() {
-        return false;
+        return true;
     }
 
     @Override

@@ -4,6 +4,15 @@ import java.util.Optional;
 
 public record TimeValue(long nanoseconds) implements Value {
 
+    @Override
+    public Value arithmetic(Value right, ArithmeticOperation operation) {
+        return right instanceof DateValue moment
+                && operation.isCommutative() && !operation.multiplies()
+                ? new DateArithmetic(moment).takenBy(this, operation)
+                : new TimeActions(this).combinedWith(right, operation);
+    }
+
+
     public DecimalValue asSeconds() {
         return DecimalValue.of((double) nanoseconds / NANOSECONDS_PER_SECOND);
     }

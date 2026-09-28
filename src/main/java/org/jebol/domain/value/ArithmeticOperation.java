@@ -1,12 +1,12 @@
-package org.jebol.domain.eval.arithmetic;
-
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.ValueOperation;
+package org.jebol.domain.value;
 
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
+
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.toUnmodifiableMap;
 
 public interface ArithmeticOperation extends ValueOperation {
 
@@ -45,11 +45,21 @@ public interface ArithmeticOperation extends ValueOperation {
         return onFractions(left, right, false);
     }
 
+    default void requireANonZeroDivisor(double divisor) {
+        if (divisor == 0.0) {
+            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
+        }
+    }
+
     default int signWhenMoving() {
         return subtractsOneFromTheOther() ? -1 : 1;
     }
 
-    Map<String, ArithmeticOperation> BY_SPELLING = TheArithmeticOperations.bySpelling();
+    Map<String, ArithmeticOperation> BY_SPELLING = Stream.of(
+                    new Add(), new Subtract(), new Multiply(), new Divide(),
+                    new Remainder(), new Modulo())
+            .collect(toUnmodifiableMap(
+                    ArithmeticOperation::spelling, identity()));
 
     static Optional<ArithmeticOperation> named(String spelling) {
         return Optional.ofNullable(BY_SPELLING.get(spelling));

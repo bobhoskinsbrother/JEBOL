@@ -36,6 +36,12 @@ final class Numbers {
         return ours == theirs;
     }
 
+    static double quantityOfANumber(Value value) {
+        return value instanceof CharacterValue(int codepoint)
+                ? codepoint
+                : quantityOf(value);
+    }
+
     static double quantityOf(Value value) {
         return switch (value) {
             case IntegerValue(long magnitude) -> magnitude;

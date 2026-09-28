@@ -1,40 +1,39 @@
-package org.jebol.domain.eval.arithmetic;
-
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.Value;
+package org.jebol.domain.value;
 
 import java.math.BigDecimal;
 
-final class Remainder implements ArithmeticOperation {
+final class Modulo implements ArithmeticOperation {
 
     @Override
     public String spelling() {
-        return "remainder";
+        return "modulo";
     }
 
     @Override
     public Value onWholeNumbers(long left, long right) {
         Overflowing.refuseAZeroDivisor(right);
-        return IntegerValue.of(left % right);
+        long rest = left % right;
+        return IntegerValue.of(rest < 0 ? rest + Math.abs(right) : rest);
     }
 
     @Override
     public Value onFractions(double left, double right, boolean infinitiesAllowed) {
-        return DecimalValue.of(left % right);
+        Overflowing.refuseAZeroDivisor(right);
+        double rest = left % right;
+        return DecimalValue.of(rest < 0 ? rest + Math.abs(right) : rest);
     }
 
     @Override
     public MoneyValue onAmounts(BigDecimal left, BigDecimal right) {
         Overflowing.refuseAZeroDivisor(right.doubleValue());
-        return MoneyValue.of(left.remainder(right, MoneyValue.ARITHMETIC));
+        BigDecimal rest = left.remainder(right, MoneyValue.ARITHMETIC);
+        return MoneyValue.of(rest.signum() < 0 ? rest.add(right.abs()) : rest);
     }
 
     @Override
     public long onCodepoints(long codepoint, long other) {
-        Overflowing.refuseAZeroDivisor(other);
-        return codepoint % other;
+        throw Raised.of(EvaluationFailure.CANNOT_USE,
+                "cannot use that on a character");
     }
 
     @Override
@@ -50,12 +49,12 @@ final class Remainder implements ArithmeticOperation {
 
     @Override
     public boolean worksOnVectors() {
-        return true;
+        return false;
     }
 
     @Override
     public long onWholeElements(long ours, long theirs) {
-        return ours % theirs;
+        return Math.floorMod(ours, theirs);
     }
 
     @Override
@@ -75,7 +74,7 @@ final class Remainder implements ArithmeticOperation {
 
     @Override
     public boolean keepsTheSignOfTheDividend() {
-        return true;
+        return false;
     }
 
     @Override

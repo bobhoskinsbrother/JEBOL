@@ -2,6 +2,10 @@ package org.jebol.domain.value;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
+
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.toUnmodifiableMap;
 
 public interface BitwiseOperation extends ValueOperation {
 
@@ -37,7 +41,10 @@ public interface BitwiseOperation extends ValueOperation {
         return ours;
     }
 
-    Map<String, BitwiseOperation> BY_SPELLING = TheBitwiseOperations.bySpelling();
+    Map<String, BitwiseOperation> BY_SPELLING = Stream.of(
+                    new And(), new Or(), new Xor())
+            .collect(toUnmodifiableMap(
+                    BitwiseOperation::spelling, identity()));
 
     static BitwiseOperation theOneCalled(String spelling) {
         return Optional.ofNullable(BY_SPELLING.get(spelling)).orElseThrow();

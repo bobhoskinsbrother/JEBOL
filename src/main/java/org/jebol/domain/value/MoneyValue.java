@@ -30,6 +30,12 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
         return new MoneyValue(amount, currency, wanted);
     }
 
+    @Override
+    public Value arithmetic(Value right, ArithmeticOperation operation) {
+        return new MoneyActions(this).combinedWith(right, operation);
+    }
+
+
     /** 26 significant digits, matching R3-Alpha's width. */
     public static final MathContext ARITHMETIC = new MathContext(26, RoundingMode.HALF_EVEN);
 

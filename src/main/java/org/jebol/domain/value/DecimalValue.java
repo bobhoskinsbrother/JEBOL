@@ -1,6 +1,5 @@
 package org.jebol.domain.value;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 
 /**
@@ -9,7 +8,30 @@ import java.util.Optional;
  * <p>The two share a representation and differ only in how they are printed,
  * which is why the datatype is carried rather than inferred.
  */
-public record DecimalValue(double quantity, Datatype datatype) implements Value {
+public record DecimalValue(double quantity, Datatype datatype)
+        implements Value, RebolNumber {
+
+    @Override
+    public Value combinedWithANumber(Value right, ArithmeticOperation operation) {
+        Value answered = operation.onFractions(
+                quantity, Numbers.quantityOfANumber(right), true);
+        return datatype == Datatype.PERCENT
+                && right.datatype() == Datatype.PERCENT
+                && !operation.divides()
+                && answered instanceof DecimalValue(double amount, Datatype ignored)
+                ? DecimalValue.percent(amount)
+                : answered;
+    }
+
+    @Override
+    public boolean mayLoseATime(ArithmeticOperation operation) {
+        return false;
+    }
+
+    @Override
+    public boolean mayMeetADate() {
+        return false;
+    }
 
     @Override
     public Optional<DecimalValue> asDecimalNumber() {
@@ -18,7 +40,8 @@ public record DecimalValue(double quantity, Datatype datatype) implements Value 
 
     @Override
     public Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
-        return Optional.of(other.amounting(BigDecimal.valueOf(quantity)));
+        return Optional.of(other.amounting(
+                MoneyActions.asBigDecimal(this)));
     }
 
     @Override

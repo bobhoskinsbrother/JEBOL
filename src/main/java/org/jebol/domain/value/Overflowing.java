@@ -1,17 +1,13 @@
-package org.jebol.domain.eval.arithmetic;
-
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Value;
+package org.jebol.domain.value;
 
 import java.util.function.Supplier;
 
-final class Overflowing {
+public final class Overflowing {
 
     private Overflowing() {
     }
 
-    static Value reported(Supplier<Value> counting) {
+    public static Value reported(Supplier<Value> counting) {
         try {
             return counting.get();
         } catch (ArithmeticException overflowed) {
@@ -19,19 +15,19 @@ final class Overflowing {
         }
     }
 
-    static void refuseAZeroDivisor(double divisor) {
+    public static void refuseAZeroDivisor(double divisor) {
         if (divisor == 0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }
     }
 
-    static void refuseAZeroOctetDivisor(double divisor) {
+    public static void refuseAZeroOctetDivisor(double divisor) {
         if (divisor == 0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "tuple");
         }
     }
 
-    static double roundedHalfAwayFromZero(double amount) {
+    public static double roundedHalfAwayFromZero(double amount) {
         return amount < 0 ? -Math.round(-amount) : Math.round(amount);
     }
 }

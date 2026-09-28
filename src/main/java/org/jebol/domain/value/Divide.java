@@ -1,11 +1,4 @@
-package org.jebol.domain.eval.arithmetic;
-
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.Value;
+package org.jebol.domain.value;
 
 import java.math.BigDecimal;
 

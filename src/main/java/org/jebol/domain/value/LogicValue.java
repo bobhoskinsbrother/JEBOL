@@ -4,6 +4,14 @@ package org.jebol.domain.value;
 public record LogicValue(boolean truth) implements Value {
 
     @Override
+    public Value arithmetic(Value right, ArithmeticOperation operation) {
+        throw Raised.of(EvaluationFailure.EXPECT_VAL,
+                WordValue.of("logic!"),
+                WordValue.of(right.datatype().literalSpelling()));
+    }
+
+
+    @Override
     public Value bitwise(Value right, BitwiseOperation operation) {
         return LogicValue.of(operation.onLogics(truth, aTruthFrom(right)));
     }

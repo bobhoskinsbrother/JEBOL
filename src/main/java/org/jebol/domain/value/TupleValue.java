@@ -58,6 +58,12 @@ public record TupleValue(int[] segments) implements Value {
     }
 
     @Override
+    public Value arithmetic(Value right, ArithmeticOperation operation) {
+        return new TupleActions().combinedWith(this, right, operation);
+    }
+
+
+    @Override
     public Value bitwise(Value right, BitwiseOperation operation) {
         return switch (right) {
             case TupleValue theirs -> octetByOctetAgainst(theirs, operation);

@@ -8,7 +8,27 @@ import java.util.Optional;
  *
  * <p>Zero is a value and therefore true. That catches everyone once.
  */
-public record IntegerValue(long magnitude) implements Value {
+public record IntegerValue(long magnitude) implements Value, RebolNumber {
+    @Override
+    public Value combinedWithANumber(Value right, ArithmeticOperation operation) {
+        return switch (right) {
+            case IntegerValue(long theirs) -> operation.onWholeNumbers(magnitude, theirs);
+            case CharacterValue(int codepoint) ->
+                    operation.onWholeNumbers(magnitude, codepoint);
+            default -> operation.onFractions(
+                    magnitude, Numbers.quantityOfANumber(right), true);
+        };
+    }
+
+    @Override
+    public boolean mayLoseATime(ArithmeticOperation operation) {
+        return operation.subtractsOneFromTheOther();
+    }
+
+    @Override
+    public boolean mayMeetADate() {
+        return true;
+    }
 
     @Override
     public Optional<IntegerValue> asWholeNumber() {
@@ -22,7 +42,8 @@ public record IntegerValue(long magnitude) implements Value {
 
     @Override
     public Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
-        return Optional.of(other.amounting(BigDecimal.valueOf(magnitude)));
+        return Optional.of(other.amounting(
+                MoneyActions.asBigDecimal(this)));
     }
 
     @Override

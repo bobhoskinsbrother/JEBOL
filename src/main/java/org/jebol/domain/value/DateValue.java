@@ -17,6 +17,12 @@ public record DateValue(
         Optional<Integer> zoneMinutes) implements Value {
 
     @Override
+    public Value arithmetic(Value right, ArithmeticOperation operation) {
+        return new DateArithmetic(this).combinedWith(right, operation);
+    }
+
+
+    @Override
     public boolean equalTo(Value other, Sameness how) {
         return other instanceof DateValue theirs
                 && moment().compareTo(theirs.moment()) == 0;

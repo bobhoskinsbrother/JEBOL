@@ -1,8 +1,4 @@
-package org.jebol.domain.eval;
-
-import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
-
-import org.jebol.domain.value.*;
+package org.jebol.domain.value;
 
 public final class CharacterActions {
 

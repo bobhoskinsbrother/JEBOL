@@ -1,18 +1,4 @@
-package org.jebol.domain.date;
-
-import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
-
-import org.jebol.domain.eval.Comparison;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Raised;
-
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+package org.jebol.domain.value;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -52,7 +38,7 @@ public final class DateArithmetic {
         refuseASpanADateCannotMoveBy(span, operation);
         int sign = operation.signWhenMoving();
         return span.datatype() == Datatype.INTEGER
-                ? movedByDays(sign * (long) Comparison.asDouble(span))
+                ? movedByDays(sign * (long) quantityOf(span))
                 : movedByTheClock(sign * clockShiftOf(span));
     }
 
@@ -85,10 +71,18 @@ public final class DateArithmetic {
                 moment.zoneMinutes());
     }
 
+    private static double quantityOf(Value span) {
+        return switch (span) {
+            case IntegerValue(long magnitude) -> magnitude;
+            case DecimalValue(double quantity, Datatype ignored) -> quantity;
+            default -> throw Raised.cannotUse(span, "date arithmetic");
+        };
+    }
+
     private static long clockShiftOf(Value span) {
         return span instanceof TimeValue(long nanoseconds)
                 ? nanoseconds
-                : (long) (Comparison.asDouble(span) * TimeValue.NANOSECONDS_PER_DAY);
+                : (long) (quantityOf(span) * TimeValue.NANOSECONDS_PER_DAY);
     }
 
 }

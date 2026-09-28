@@ -1,8 +1,7 @@
-package org.jebol.domain.eval;
+package org.jebol.domain.value;
 
-import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
-
-import org.jebol.domain.value.*;
+import org.jebol.domain.eval.Arithmetic;
+import org.jebol.domain.eval.Comparison;
 
 import java.math.BigDecimal;
 
@@ -52,7 +51,7 @@ public final class TimeActions {
 
     private Value againstAnotherTime(TimeValue other, ArithmeticOperation operation) {
         if (operation.divides()) {
-            Arithmetic.requireNonZero(other.nanoseconds());
+            operation.requireANonZeroDivisor(other.nanoseconds());
             return DecimalValue.of(
                     (double) span.nanoseconds() / (double) other.nanoseconds());
         }
@@ -85,14 +84,14 @@ public final class TimeActions {
         if (!(right instanceof IntegerValue(long divisor))) {
             throw notRelatedToATime(operation);
         }
-        Arithmetic.requireNonZero(divisor);
+        operation.requireANonZeroDivisor(divisor);
         return TimeValue.ofNanoseconds(span.nanoseconds() % divisor);
     }
 
     private Value scaledByAPlainNumber(Value right, ArithmeticOperation operation) {
         double by = Comparison.asDouble(right);
         if (operation.divides()) {
-            Arithmetic.requireNonZero(by);
+            operation.requireANonZeroDivisor(by);
             return TimeValue.ofNanoseconds((long) (span.nanoseconds() / by));
         }
         return TimeValue.ofNanoseconds((long) (span.nanoseconds() * by));
@@ -114,7 +113,7 @@ public final class TimeActions {
         if (!operation.needsANonZeroDivisor()) {
             return ours + theirs;
         }
-        Arithmetic.requireNonZero(theirs);
+        operation.requireANonZeroDivisor(theirs);
         return operation.keepsTheSignOfTheDividend()
                 ? ours % theirs
                 : Math.floorMod(ours, theirs);
@@ -126,7 +125,7 @@ public final class TimeActions {
                 DatatypeValue.of(Datatype.TIME));
     }
 
-    static long wholeNanosecondsOf(Value value) {
+    public static long wholeNanosecondsOf(Value value) {
         if (value instanceof TimeValue(long nanoseconds)) {
             return nanoseconds;
         }
@@ -136,7 +135,7 @@ public final class TimeActions {
         return Math.round(Comparison.asDouble(value) * TimeValue.NANOSECONDS_PER_SECOND);
     }
 
-    static long withinWhatADurationHolds(long nanoseconds) {
+    public static long withinWhatADurationHolds(long nanoseconds) {
         if (nanoseconds < -TimeValue.LONGEST || nanoseconds > TimeValue.LONGEST) {
             throw Raised.of(EvaluationFailure.TYPE_LIMIT, DatatypeValue.of(Datatype.TIME));
         }
